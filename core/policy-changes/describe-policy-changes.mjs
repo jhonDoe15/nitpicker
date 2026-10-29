@@ -1,4 +1,4 @@
-import { CONFIG_FILE_NAME, isPlainObject } from '../../shared/config.mjs';
+import { CONFIG_FILE_NAME, isPlainObject, shownSetting } from '../../shared/config.mjs';
 import { policyDigest } from '../diff/reporting/review/policy-findings.mjs';
 import { buildNarrowingChanges } from './build-files/build-narrowing.mjs';
 import { toolConfigChanges } from './build-files/tool-config-changes.mjs';
@@ -6,7 +6,7 @@ import { coveredPathChanges } from './paths/covered-paths.mjs';
 import { generatedMarkingChanges } from './paths/generated-marking.mjs';
 import { hiddenCodeChanges } from './paths/hidden-code.mjs';
 import { tsconfigChanges } from './paths/tsconfig-changes.mjs';
-import { listedChanges, looseningKindOfSetting, shownSetting } from './loosenings.mjs';
+import { listedChanges, looseningKindOfSetting } from './loosenings.mjs';
 import { timeoutChanges } from './timeout-changes.mjs';
 
 const LISTED_KEYS = new Set([

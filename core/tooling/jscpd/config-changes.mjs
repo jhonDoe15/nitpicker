@@ -1,5 +1,5 @@
 import { JSCPD_PROJECT_FILE } from '../../../shared/conventions/tool-precedence.mjs';
-import { shownSetting } from '../../policy-changes/loosenings.mjs';
+import { shownSetting } from '../../../shared/config.mjs';
 import { JSCPD_MODES, JSCPD_SIZE } from './config.mjs';
 
 const UNITS = { b: 1, k: 1024, m: 1024 ** 2, g: 1024 ** 3 };

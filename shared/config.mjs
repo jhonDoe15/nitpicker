@@ -218,3 +218,7 @@ export function validateFactRuleSettings(config) {
     `"${unsupported}" is not supported with "preset": "${language}": it configures ${rule}, which the ${language} preset does not run yet. Remove it`,
   );
 }
+
+export function shownSetting(value) {
+  return value === undefined ? 'not set' : JSON.stringify(value);
+}
