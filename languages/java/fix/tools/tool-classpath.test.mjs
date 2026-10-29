@@ -1,10 +1,18 @@
-import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fakeJvmTools } from '../test-support/fake-jvm-tools.mjs';
 import {
-  FIX_TOOLS_INIT_SCRIPT,
+  FIX_TOOLS_BUILD,
+  TOOL_RESOLUTION_TIMEOUT_MS,
   gradleToolArguments,
   parseToolClasspaths,
   resolveToolClasspaths,
@@ -19,6 +27,7 @@ const TOOLS = {
   ktlint: { coordinates: 'com.pinterest.ktlint:ktlint-cli:1.8.0:all', transitive: false },
 };
 const ENVIRONMENT = { NITPICKER_MAVEN: 'fake-mvn' };
+const GRADLE_TOOLS = /^.*\/gradle-tools-[0-9a-f]{16}$/u;
 const MAVEN_DEPENDENCY_GOAL =
   'org.apache.maven.plugins:maven-dependency-plugin:3.8.1:build-classpath';
 
@@ -40,13 +49,13 @@ function project(files) {
 }
 
 describe('gradleToolArguments', () => {
-  it('runs the resolving task with the init script and one property naming every tool', () => {
-    expect(gradleToolArguments(TOOLS)).toEqual([
+  it('runs the resolving task of the given build with one property naming every tool', () => {
+    expect(gradleToolArguments(TOOLS, '/cache/tools')).toEqual([
       '--console=plain',
       '--quiet',
       '--no-configuration-cache',
-      '-I',
-      FIX_TOOLS_INIT_SCRIPT,
+      '--project-dir',
+      '/cache/tools',
       '-Pnitpicker.fix.tools=java-format=com.google.googlejavaformat:google-java-format:1.25.2,ktlint=com.pinterest.ktlint:ktlint-cli:1.8.0:all!',
       'nitpickerFixTools',
     ]);
@@ -71,7 +80,7 @@ describe('parseToolClasspaths', () => {
 });
 
 describe('resolveToolClasspaths', () => {
-  it('resolves through Gradle for a Gradle project', () => {
+  it('resolves through a build of its own, never the build of the project, for a Gradle project', () => {
     const root = project(['build.gradle']);
     const tools = fakeJvmTools();
 
@@ -85,17 +94,53 @@ describe('resolveToolClasspaths', () => {
       'java-format': ['/fake/java-format.jar'],
       ktlint: ['/fake/ktlint.jar'],
     });
-    expect(tools.calls).toEqual([
-      {
-        operation: 'fix-tools',
-        command: 'gradle',
-        args: gradleToolArguments(TOOLS),
-        cwd: root,
-        acceptedStatuses: [0],
-        environment: {},
-        input: undefined,
-      },
+    const [call] = tools.calls;
+    expect({ ...call, cwd: call.cwd.replace(GRADLE_TOOLS, '<tools>') }).toEqual({
+      operation: 'fix-tools',
+      command: 'gradle',
+      args: gradleToolArguments(TOOLS, call.cwd),
+      cwd: '<tools>',
+      acceptedStatuses: [0],
+      environment: {},
+      input: undefined,
+      timeout: TOOL_RESOLUTION_TIMEOUT_MS,
+    });
+    expect([
+      readFileSync(path.join(call.cwd, 'build.gradle'), 'utf8'),
+      readFileSync(path.join(call.cwd, 'settings.gradle'), 'utf8'),
+    ]).toEqual([
+      readFileSync(FIX_TOOLS_BUILD, 'utf8'),
+      "rootProject.name = 'nitpicker-fix-tools'\n",
     ]);
+  });
+  it('reuses the jars it resolved before while they still exist', () => {
+    const root = project(['build.gradle']);
+    const jar = path.join(root, 'k.jar');
+    writeFileSync(jar, '');
+    const resolve = () => {
+      const calls = [];
+      const classpaths = resolveToolClasspaths({
+        projectRoot: root,
+        tools: { ktlint: TOOLS.ktlint },
+        executeFixCommand: (invocation) => {
+          calls.push(invocation.operation);
+          return { status: 0, stdout: `nitpicker-fix-tool\tktlint\t${jar}\n`, stderr: '' };
+        },
+      });
+      return { calls, classpaths };
+    };
+
+    const first = resolve();
+    const second = resolve();
+    rmSync(jar);
+    const third = resolve();
+
+    expect([first, second, third]).toEqual([
+      { calls: ['fix-tools'], classpaths: { ktlint: [jar] } },
+      { calls: [], classpaths: { ktlint: [jar] } },
+      { calls: ['fix-tools'], classpaths: { ktlint: [jar] } },
+    ]);
+    expect(existsSync(jar)).toBe(false);
   });
   it('runs the command the environment names instead of the wrapper or the PATH', () => {
     const root = project(['build.gradle']);
@@ -126,6 +171,7 @@ describe('resolveToolClasspaths', () => {
       ['fix-tools', 'fake-mvn'],
     ]);
     expect(tools.calls[0].args.includes(MAVEN_DEPENDENCY_GOAL)).toBe(true);
+    expect(tools.calls[0].timeout).toBe(TOOL_RESOLUTION_TIMEOUT_MS);
   });
   it('fails when the build does not resolve a tool', () => {
     const root = project(['build.gradle']);

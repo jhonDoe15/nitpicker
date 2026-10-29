@@ -24,8 +24,15 @@ const prettierPolicy = staticChecks.find(({ name }) => name === 'prettier-format
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 
+function spawnEnvironment(baseEnvironment, overrides = {}) {
+  if (baseEnvironment === undefined && Object.keys(overrides).length === 0) {
+    return undefined;
+  }
+  return { ...baseEnvironment, ...overrides };
+}
+
 export function spawnInvocation(
-  { command, args, cwd, input, environment, shell = false },
+  { command, args, cwd, input, environment, shell = false, timeout },
   baseEnvironment,
   spawn = spawnSync,
 ) {
@@ -33,7 +40,8 @@ export function spawnInvocation(
     cwd,
     input,
     shell,
-    env: { ...baseEnvironment, ...environment },
+    timeout,
+    env: spawnEnvironment(baseEnvironment, environment),
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
   });

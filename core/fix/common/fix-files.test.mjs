@@ -9,6 +9,7 @@ import {
   readBytes,
   rewrittenBy,
   rewrittenPaths,
+  splitByEncoding,
 } from './fix-files.mjs';
 import { toolPrecedenceOf } from './tool-precedence.mjs';
 
@@ -81,5 +82,18 @@ describe('toolPrecedenceOf', () => {
       toolPrecedenceOf({ ruff: { precedence: ['project'] }, black: { precedence: ['nitpicker'] } }),
     ).toEqual({ ruff: ['project'], black: ['nitpicker'] });
     expect(toolPrecedenceOf()).toEqual({});
+  });
+});
+
+describe('splitByEncoding', () => {
+  it('keeps the UTF-8 files and names the others', () => {
+    const repository = createGitRepository({ 'a.py': 'caf\u00e9 = 1\n' });
+    writeFileSync(path.join(repository.root, 'b.py'), Buffer.from([0x63, 0xe9, 0x0a]));
+    const files = [{ path: 'a.py' }, { path: 'b.py' }];
+
+    expect(splitByEncoding(repository.root, files)).toEqual({
+      files: [{ path: 'a.py' }],
+      undecodable: ['b.py'],
+    });
   });
 });

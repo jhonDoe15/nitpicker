@@ -1,3 +1,4 @@
+import { isUtf8 } from 'node:buffer';
 import { readFileSync } from 'node:fs';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { collectWorkingTreeChanges } from '../changes.mjs';
@@ -38,4 +39,14 @@ export function rewrittenBy(projectRoot, files, action) {
   const before = readBytes(projectRoot, files);
   action();
   return rewrittenPaths(projectRoot, files, before);
+}
+
+export function splitByEncoding(projectRoot, files) {
+  const bytes = readBytes(projectRoot, files);
+  return {
+    files: files.filter(({ path: name }) => isUtf8(bytes.get(name))),
+    undecodable: files
+      .filter(({ path: name }) => !isUtf8(bytes.get(name)))
+      .map(({ path: name }) => name),
+  };
 }

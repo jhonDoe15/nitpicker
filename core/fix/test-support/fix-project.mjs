@@ -7,17 +7,29 @@ import { fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
 import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
 import { containedPath } from '../common/contained-path.mjs';
 
+function readReport(outputRoot, name) {
+  return JSON.parse(readFileSync(containedPath(outputRoot, name), 'utf8'));
+}
+
 export function useFixProject() {
   const { createRepository, makeOutputRoot, runCli } = useCliFixtures(nitpickerCli);
 
-  function fix({ committed, changed, cliArguments = ['--fix', '--no-cache'] }) {
+  function fix({
+    committed,
+    changed,
+    cliArguments = ['--fix', '--no-cache'],
+    prepare,
+    realAnalyzers = false,
+  }) {
     const repository = createRepository({ 'quality-policy.json': policy(), ...committed });
+    prepare?.(repository.root);
     writeFiles(repository.root, changed);
     const output = captureOutput();
+    const outputRoot = makeOutputRoot();
     const exitCode = runCli({
-      arguments_: [...cliArguments, '--base', repository.baseRef, '--output', makeOutputRoot()],
+      arguments_: [...cliArguments, '--base', repository.baseRef, '--output', outputRoot],
       currentProjectRoot: repository.root,
-      analyzers: [fakeAnalyzer()],
+      ...(realAnalyzers ? {} : { analyzers: [fakeAnalyzer()] }),
       stdout: output.stdout,
       stderr: output.stderr,
     });
@@ -27,6 +39,8 @@ export function useFixProject() {
       stderr: output.stderrText,
       read: (name) => readFileSync(containedPath(repository.root, name), 'utf8'),
       baseSource: (name) => fixtureGit(repository.root, ['show', `${repository.baseRef}:${name}`]),
+      newFindings: () => readReport(outputRoot, 'new-findings.json'),
+      toolErrors: () => readReport(outputRoot, 'tool-errors.json'),
     };
   }
 

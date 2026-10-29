@@ -58,6 +58,12 @@ function workspaceOf(directory) {
   return directory;
 }
 
+function parseError(operation, file) {
+  return operation === 'ktlint-fix'
+    ? `${file}:1:1: Not a valid Kotlin file (1:1 expecting a name) ()`
+    : `${file}:1:1: error: expecting a name`;
+}
+
 function launched(invocation) {
   const tokens = parseArgumentFile(invocation.args[0].slice(1));
   const classpathIndex = tokens.indexOf('-cp');
@@ -90,7 +96,7 @@ export function fakeJvmTools({ transform = squeezed, failure = {}, unparsable = 
       const target = containedPath(invocation.cwd, file);
       const content = readFileSync(target, 'utf8');
       if (content.includes(unparsable)) {
-        failed.push(`Error formatting ${file}: ${target}:1:1: error: unparsable`);
+        failed.push(parseError(invocation.operation, file));
       } else {
         writeFileSync(target, transform(content, file));
       }

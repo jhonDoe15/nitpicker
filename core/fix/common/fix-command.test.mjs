@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { failureText, fixerError, runFixCommand } from './fix-command.mjs';
+import { failureText, fixSpawn, fixerError, runFixCommand } from './fix-command.mjs';
 
 const BASE = {
   operation: 'demo-fix',
@@ -84,6 +84,45 @@ describe('runFixCommand', () => {
         describe: (result) => `custom ${result.status}`,
       }),
     ).toThrow('demo-fix failed: custom 3');
+  });
+});
+
+describe('fixSpawn', () => {
+  it('turns a spawn call into an invocation that keeps the timeout, the shell and the environment', () => {
+    const seen = [];
+    const spawn = fixSpawn({
+      operation: 'demo-tools',
+      executeFixCommand: (invocation) => {
+        seen.push(invocation);
+        return { status: 0 };
+      },
+    });
+
+    spawn('mvnw.cmd', ['-q'], { cwd: '/p', env: { A: '1' }, shell: true, timeout: 9 });
+    spawn('java', ['-version']);
+
+    expect(seen).toEqual([
+      {
+        operation: 'demo-tools',
+        command: 'mvnw.cmd',
+        args: ['-q'],
+        cwd: '/p',
+        acceptedStatuses: [0],
+        environment: { A: '1' },
+        input: undefined,
+        shell: true,
+        timeout: 9,
+      },
+      {
+        operation: 'demo-tools',
+        command: 'java',
+        args: ['-version'],
+        cwd: undefined,
+        acceptedStatuses: [0],
+        environment: {},
+        input: undefined,
+      },
+    ]);
   });
 });
 

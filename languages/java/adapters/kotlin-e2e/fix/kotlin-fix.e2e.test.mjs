@@ -16,6 +16,7 @@ const MAVEN_BUILD = {
     '<groupId>demo</groupId><artifactId>demo</artifactId><version>1</version></project>\n',
 };
 const FORMATTED = 'package demo\n\nclass Changed\n';
+const FORMAT_TOOLS = new Set(['ktlint', 'ktfmt']);
 
 function messy(name, body = 'a+b') {
   return `package demo\n\nclass ${name} {\n    fun add( a:Int,b:Int ):Int { return ${body} }\n}\n`;
@@ -44,8 +45,16 @@ function repository({ build, formatter }) {
       [`${SOURCES}/Changed.kt`]: messy('Changed'),
       [`${SOURCES}/Fresh.kt`]: messy('Fresh'),
       [`${SOURCES}/Legacy.kt`]: messy('Legacy', 'a+b+1'),
+      'tools/Script.kt': messy('Script'),
     },
   };
+}
+
+function gateFormatFindings(result) {
+  return result
+    .newFindings()
+    .filter(({ tool, path: file }) => FORMAT_TOOLS.has(tool) && !file.endsWith('Legacy.kt'))
+    .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`);
 }
 
 function outcomeOf(result) {
@@ -57,6 +66,7 @@ function outcomeOf(result) {
       fresh: result.read(`${SOURCES}/Fresh.kt`),
       legacy: result.read(`${SOURCES}/Legacy.kt`),
       unchanged: result.read(`${SOURCES}/Unchanged.kt`),
+      outsideSourceSets: result.read('tools/Script.kt'),
     },
     base: result.baseSource(`${SOURCES}/Changed.kt`),
   };
@@ -77,6 +87,7 @@ Fix notes:
       fresh: formatted('Fresh', formatter),
       legacy: messy('Legacy', 'a+b+1'),
       unchanged: messy('Unchanged'),
+      outsideSourceSets: messy('Script'),
     },
     base: FORMATTED,
   };
@@ -84,11 +95,25 @@ Fix notes:
 
 describe.skipIf(!enabled)('nitpicker --fix for Kotlin', () => {
   it.each(['ktlint', 'ktfmt'])(
-    'formats the changed files of a Gradle project with %s',
+    'formats the changed files of a Gradle project with %s, so the gate finds no format finding in them',
     (formatter) => {
-      const result = fix(repository({ build: GRADLE_BUILD, formatter }));
+      const result = fix({
+        ...repository({ build: GRADLE_BUILD, formatter }),
+        realAnalyzers: true,
+      });
 
-      expect(outcomeOf(result), result.stdout + result.stderr).toEqual(expectedOutcome(formatter));
+      expect(
+        {
+          ...outcomeOf(result),
+          toolErrors: result.toolErrors(),
+          gateFormatFindings: gateFormatFindings(result),
+        },
+        result.stdout + result.stderr,
+      ).toEqual({
+        ...expectedOutcome(formatter),
+        exitCode: result.exitCode,
+        gateFormatFindings: [],
+      });
     },
   );
   it('formats the changed files of a Maven project with ktlint', () => {

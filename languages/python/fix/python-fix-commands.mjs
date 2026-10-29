@@ -2,10 +2,10 @@ import { contextFormatPlan } from '../adapters/formatting/format-command.mjs';
 import { projectConfigFor } from '../adapters/formatting/format-options.mjs';
 import { lintOptions } from '../adapters/python-tools.mjs';
 
+export { FORMAT_FAILURE_STATUS } from '../adapters/python-tools.mjs';
+
 export const BLACK_DEFAULT_EXCLUDES =
   '/(\\.direnv|\\.eggs|\\.git|\\.hg|\\.ipynb_checkpoints|\\.mypy_cache|\\.nox|\\.pytest_cache|\\.ruff_cache|\\.tox|\\.svn|\\.venv|\\.vscode|__pypackages__|_build|buck-out|build|dist|venv)/';
-
-export const FORMAT_FAILURE_STATUS = { black: 123, ruff: 2 };
 
 export function lintFixCommand(context, files) {
   return ['ruff', 'check', ...lintOptions(context), '--force-exclude', '--fix', '--', ...files];
@@ -55,8 +55,7 @@ export function formatStdinCommand(context, file) {
       '-q',
       ...withoutForceExclude(options),
       ...blackForceExclude(context, options),
-      '--stdin-filename',
-      file,
+      `--stdin-filename=${file}`,
       '-',
     ];
   }
@@ -66,8 +65,7 @@ export function formatStdinCommand(context, file) {
     '--no-cache',
     ...options,
     '--force-exclude',
-    '--stdin-filename',
-    file,
+    `--stdin-filename=${file}`,
     '-',
   ];
 }

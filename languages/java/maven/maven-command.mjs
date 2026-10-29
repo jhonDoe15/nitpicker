@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { JVM_NOISE } from '../../../shared/messages/jvm-noise.mjs';
 import { wrapperTarget } from '../adapters/gradle-wrapper/gradle-command.mjs';
 
 const MAVEN_TIMEOUT_MS = 15 * 60 * 1000;
@@ -22,8 +23,6 @@ const MAVEN_NOISE = [
   /^\[ERROR\] After correcting the problems/u,
   /^\[ERROR\]\s+mvn <args> -rf/u,
 ];
-const JVM_NOISE =
-  /^(?:Picked up (?:JAVA_TOOL_OPTIONS|_JAVA_OPTIONS|JDK_JAVA_OPTIONS)|NOTE: Picked up)/u;
 
 export function mavenTarget({ projectRoot, configured, args, platform }) {
   return wrapperTarget({

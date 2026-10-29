@@ -8,7 +8,10 @@ import {
 import { formatNotes } from '../../../core/fix/common/fix-notes.mjs';
 import { rewriteFormatted } from '../../../core/fix/common/format-rewrite.mjs';
 import { toolPrecedenceOf } from '../../../core/fix/common/tool-precedence.mjs';
+import { isGeneratedJvm } from '../adapters/generated/generated-sources.mjs';
 import { kotlinStyleFile, resolveKotlinTools } from '../adapters/kotlin/kotlin-tools.mjs';
+import { declaredSourceRoots } from '../adapters/notices/declared-roots.mjs';
+import { inJvmSourceSets } from '../adapters/notices/outside-roots-notice.mjs';
 import { javaStyle } from '../adapters/style/java-style.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { javaFormat, javaFormatterPlan } from './java-format.mjs';
@@ -16,7 +19,7 @@ import { kotlinFormat, kotlinFormatterPlan } from './kotlin-format.mjs';
 import { resolveToolClasspaths } from './tools/tool-classpath.mjs';
 
 const JAVA_FILE = /\.java$/u;
-const KOTLIN_FILE = /\.kts?$/u;
+const KOTLIN_FILE = /\.kt$/u;
 const NO_JAVA_FORMATTER =
   'No Java formatter runs for this project (conventions "java.formatter" is "none"), so Java files were not rewritten';
 const NO_KOTLIN_FORMATTER =
@@ -132,12 +135,16 @@ export function fixJvm(settings) {
   const headPolicy = settings.headPolicy ?? {};
   const excluded = excludedBy(headPolicy.exclude);
   const withKotlin = config.preset === 'kotlin';
+  const roots = declaredSourceRoots(projectRoot);
   const { comparison, files } = collectFixFiles({
     repositoryRoot,
     projectRoot,
     baseRef,
     accepts: (name) =>
-      (JAVA_FILE.test(name) || (withKotlin && KOTLIN_FILE.test(name))) && !excluded(name),
+      (JAVA_FILE.test(name) || (withKotlin && KOTLIN_FILE.test(name))) &&
+      !excluded(name) &&
+      inJvmSourceSets(name, roots) &&
+      !isGeneratedJvm(projectRoot, name),
   });
   if (files.length === 0) {
     return { fixedFiles: [], toolErrors: [], notes: [] };

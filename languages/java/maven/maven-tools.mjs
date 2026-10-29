@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
+import { JAVA_FORMATTERS } from '../adapters/style/jvm-formatters.mjs';
 import { runMaven } from './maven-command.mjs';
 
 export const MAVEN_PLUGINS = {
@@ -35,20 +36,10 @@ export function dependency(coordinates, exclusions = []) {
 }
 
 export function formatTool(javaStyle, pinned) {
-  if (javaStyle === 'none') {
-    return [];
-  }
-  const palantir = javaStyle === 'palantir';
-  return [
-    {
-      name: palantir ? 'format-palantir' : 'format',
-      coordinates: [
-        palantir
-          ? `com.palantir.javaformat:palantir-java-format:${pinned.palantirJavaFormat}`
-          : `com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}`,
-      ],
-    },
-  ];
+  const formatter = JAVA_FORMATTERS[javaStyle ?? 'google'];
+  return formatter === undefined
+    ? []
+    : [{ name: formatter.classpath, coordinates: [formatter.coordinates(pinned)] }];
 }
 
 export function archunitTool(spring, pinned) {
@@ -119,7 +110,7 @@ function writeToolsProject(directory, tools) {
   writeFileSync(path.join(directory, 'pom.xml'), pom('tools', `<modules>${modules}</modules>`));
 }
 
-function readClasspaths(directory, names) {
+export function readClasspaths(directory, names) {
   return Object.fromEntries(
     names.map((name) => {
       const file = path.join(directory, name, 'classpath.txt');
@@ -129,10 +120,17 @@ function readClasspaths(directory, names) {
   );
 }
 
-function missing(classpaths) {
+export function missing(classpaths) {
   return Object.entries(classpaths)
     .filter(([, jars]) => jars.length === 0 || !jars.every((jar) => existsSync(jar)))
     .map(([name]) => name);
+}
+
+export function toolsKey(tools) {
+  return createHash('sha256')
+    .update(JSON.stringify(tools))
+    .digest('hex')
+    .slice(0, TOOLS_KEY_LENGTH);
 }
 
 export function cacheDirectory(name) {
@@ -142,11 +140,7 @@ export function cacheDirectory(name) {
 }
 
 export function resolveToolSet({ projectRoot, maven, tools, spawn }) {
-  const key = createHash('sha256')
-    .update(JSON.stringify(tools))
-    .digest('hex')
-    .slice(0, TOOLS_KEY_LENGTH);
-  const directory = cacheDirectory(`maven-tools-${key}`);
+  const directory = cacheDirectory(`maven-tools-${toolsKey(tools)}`);
   const cached = readClasspaths(directory, Object.keys(tools));
   if (missing(cached).length === 0) {
     return cached;

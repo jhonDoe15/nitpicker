@@ -100,8 +100,7 @@ describe('formatStdinCommand', () => {
       '--no-cache',
       ...RUFF_FORMAT_OPTIONS,
       '--force-exclude',
-      '--stdin-filename',
-      'src/a.py',
+      '--stdin-filename=src/a.py',
       '-',
     ]);
   });
@@ -122,9 +121,30 @@ describe('formatStdinCommand', () => {
       'py39',
       '--force-exclude',
       `(?:${BLACK_DEFAULT_EXCLUDES})`,
-      '--stdin-filename',
-      'src/a.py',
+      '--stdin-filename=src/a.py',
       '-',
+    ]);
+  });
+});
+
+describe('a file name that starts with a dash', () => {
+  it('stays a file name for ruff and for Black', () => {
+    const [ruff, black] = [PYPROJECT, BLACK].map((pyproject) =>
+      inContext({ 'pyproject.toml': pyproject }, {}, (context) => [
+        lintFixCommand(context, ['-a.py']).slice(-2),
+        formatStdinCommand(context, '-a.py').slice(-2),
+      ]),
+    );
+
+    expect([ruff, black]).toEqual([
+      [
+        ['--', '-a.py'],
+        ['--stdin-filename=-a.py', '-'],
+      ],
+      [
+        ['--', '-a.py'],
+        ['--stdin-filename=-a.py', '-'],
+      ],
     ]);
   });
 });

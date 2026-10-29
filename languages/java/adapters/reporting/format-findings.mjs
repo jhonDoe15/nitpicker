@@ -12,7 +12,7 @@ export function formatFindings({ reportRoot, roots, javaStyle }) {
   const { tool, label, command } = JAVA_FORMATTER_TOOLS[javaStyle] ?? JAVA_FORMATTER_TOOLS.google;
   return ingestFormatCheck(formatLines.join('\n'), {
     tool,
-    message: `File is not formatted with ${label}. Format it with ${command}. ${NOT_YOUR_JAVA_FORMATTER}`,
+    message: `File is not formatted with ${label}. Run nitpicker --fix, or format it with ${command}. ${NOT_YOUR_JAVA_FORMATTER}`,
   }).findings;
 }
 
