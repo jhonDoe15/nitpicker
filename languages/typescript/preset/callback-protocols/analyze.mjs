@@ -2,7 +2,7 @@ import { depthFirst } from '../../../../shared/traversal.mjs';
 import { filesUnder } from '../../../../shared/filesystem.mjs';
 import { syntaxChildren } from '../syntax/children.mjs';
 import { callbackProtocolContracts } from './contracts.mjs';
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import {
   unwrap,
   invokedReadName,

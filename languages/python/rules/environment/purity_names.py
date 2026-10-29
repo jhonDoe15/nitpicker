@@ -67,7 +67,16 @@ RANDOM_NAMES = {
     "secrets.randbits",
     "secrets.SystemRandom",
     "random.SystemRandom",
+    "ulid.new",
+    "uuid6.uuid6",
+    "uuid6.uuid7",
+    "uuid_utils.uuid1",
+    "uuid_utils.uuid4",
+    "uuid_utils.uuid6",
+    "uuid_utils.uuid7",
 }
+NEW_VALUE_FACTORIES = {"ulid.ULID"}
+RANDOM_MODULES = {"faker", "mimesis", "nanoid", "shortuuid", "cuid", "cuid2"}
 SEEDED_FACTORIES = {
     "random.Random",
     "numpy.random.default_rng",
@@ -125,9 +134,45 @@ INPUT_OUTPUT_CALLS = {
     "os.path.isdir",
     "os.path.getsize",
     "os.path.getmtime",
+    "os.popen",
+    "pkgutil.get_data",
+    "nltk.download",
 }
+RESOURCE_READERS = ("read_text", "read_binary", "open_text", "open_binary")
+DATA_READERS = (
+    "read_csv",
+    "read_json",
+    "read_excel",
+    "read_parquet",
+    "read_feather",
+    "read_pickle",
+    "read_table",
+    "read_html",
+    "read_sql",
+)
+NUMPY_READERS = ("load", "loadtxt", "genfromtxt", "fromfile")
+INPUT_OUTPUT_CALLS |= {f"importlib.resources.{name}" for name in RESOURCE_READERS}
+INPUT_OUTPUT_CALLS |= {f"pandas.{name}" for name in DATA_READERS}
+INPUT_OUTPUT_CALLS |= {f"numpy.{name}" for name in NUMPY_READERS}
 MODULE_LOADERS = {"importlib.import_module", "__import__"}
-PATH_FACTORIES = {"pathlib.Path", "pathlib.PurePath", "Path"}
+PATH_FACTORIES = {
+    "pathlib.Path",
+    "pathlib.PurePath",
+    "Path",
+    "importlib.resources.files",
+    "importlib_resources.files",
+}
+PATH_DERIVERS = {
+    "with_name",
+    "with_stem",
+    "with_suffix",
+    "joinpath",
+    "relative_to",
+    "absolute",
+    "expanduser",
+    "resolve",
+}
+PATH_PARTS = {"parent"}
 PATH_METHODS = {
     "read_text",
     "read_bytes",
