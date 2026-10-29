@@ -123,18 +123,18 @@ function resolvedText(build, basedir, name) {
   return value === undefined ? undefined : path.resolve(basedir, value);
 }
 
-function reportsDirectory(plugin, goal) {
+function setting(plugin, goal, name) {
   return plugin === undefined
     ? undefined
-    : configured(executionsWithGoal(plugin, goal)[0], plugin, 'reportsDirectory');
+    : configured(executionsWithGoal(plugin, goal)[0], plugin, name);
 }
 
 function describeModule(project, basedir) {
   const build = childAt(project, 'build');
   const plugins = pluginsOf(project);
   const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
-  const reports = reportsDirectory(plugins.get(SUREFIRE), 'test');
-  const failsafeReports = reportsDirectory(plugins.get(FAILSAFE), 'integration-test');
+  const reports = setting(plugins.get(SUREFIRE), 'test', 'reportsDirectory');
+  const failsafeReports = setting(plugins.get(FAILSAFE), 'integration-test', 'reportsDirectory');
   const sourceRoots = [
     resolvedText(build, basedir, 'sourceDirectory') ?? path.join(basedir, 'src/main/java'),
     ...helperRoots(plugins.get(BUILD_HELPER), 'add-source', basedir),
@@ -168,6 +168,7 @@ function describeModule(project, basedir) {
       failsafeReports ?? path.join(buildDirectory, 'failsafe-reports'),
     ),
     runsFailsafe: runsFailsafe(project, plugins.get(FAILSAFE)),
+    surefireArgLine: setting(plugins.get(SUREFIRE), 'test', 'argLine'),
     published: isPublished(project, plugins),
     jacocoDestFiles: jacocoDestFiles(plugins.get(JACOCO), basedir),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),

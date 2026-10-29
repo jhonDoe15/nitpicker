@@ -15,6 +15,7 @@ import {
   collectTestResults,
   junitLauncherVersion,
   pitClasspath,
+  pitJvmArgs,
   pitTargets,
   pitTests,
   freshExecFiles,
@@ -101,6 +102,20 @@ describe('junitLauncherVersion', () => {
       ]),
     ).toBeUndefined();
     expect(junitLauncherVersion(['/m2/junit-4.13.2.jar'])).toBeUndefined();
+  });
+});
+
+describe('pitJvmArgs', () => {
+  it('keeps the arguments the tests run with, without property references or commas', () => {
+    expect([
+      pitJvmArgs('@{argLine} -XX:+AllowRedefinitionToAddDeleteMethods  ${extra}'),
+      pitJvmArgs('--add-opens java.base/java.lang=ALL-UNNAMED -Dlist=a,b'),
+      pitJvmArgs(undefined),
+    ]).toEqual([
+      ['-XX:+AllowRedefinitionToAddDeleteMethods'],
+      ['--add-opens', 'java.base/java.lang=ALL-UNNAMED'],
+      [],
+    ]);
   });
 });
 

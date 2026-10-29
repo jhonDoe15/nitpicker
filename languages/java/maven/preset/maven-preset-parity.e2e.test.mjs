@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../adapters/java-diff.mjs';
@@ -15,6 +15,29 @@ import {
   twinProjects,
   comparable,
 } from '../__tests__/maven-preset-project.mjs';
+
+const MODE_TEST = `package demo;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
+
+class ModeTest {
+  @Test
+  void runsWithTheJvmArgumentsOfTheBuild() {
+    assertEquals("checked", System.getProperty("nitpicker.mode"));
+  }
+}
+`;
+const SUREFIRE_ARG_LINE =
+  '<build><plugins><plugin><groupId>org.apache.maven.plugins</groupId>' +
+  '<artifactId>maven-surefire-plugin</artifactId><version>3.5.2</version>' +
+  '<configuration><argLine>@{argLine} -Dnitpicker.mode=checked</argLine></configuration>' +
+  '</plugin></plugins></build>';
+
+function appendTo(file, text) {
+  writeFileSync(file, `${readFileSync(file, 'utf8')}${text}`);
+}
 
 describe.skipIf(!enabled)('Java preset on Maven builds', () => {
   useMavenPresetProject();
@@ -41,6 +64,28 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       'spotbugs',
       'structure',
     ]);
+  }, 180_000);
+  it('runs PIT with the JVM arguments the tests of either build need', () => {
+    const [gradleProject, mavenProject] = twinProjects();
+    for (const root of [gradleProject, mavenProject]) {
+      writeFileSync(path.join(root, 'src/test/java/demo/ModeTest.java'), MODE_TEST);
+    }
+    appendTo(
+      path.join(gradleProject, 'build.gradle'),
+      "\ntasks.test { jvmArgs '-Dnitpicker.mode=checked' }\n",
+    );
+    const pom = path.join(mavenProject, 'pom.xml');
+    writeFileSync(
+      pom,
+      readFileSync(pom, 'utf8').replace('</project>', `${SUREFIRE_ARG_LINE}</project>`),
+    );
+    const fromGradle = collectJavaFindings(gradleProject, { gradle, policy: {} });
+    const fromMaven = collectJavaFindings(mavenProject, { maven, policy: {} });
+    const errors = (findings) =>
+      findings.filter((finding) => finding.classification === 'tool-error');
+
+    expect([errors(fromGradle), errors(fromMaven)]).toEqual([[], []]);
+    expect(comparable(fromMaven)).toEqual(comparable(fromGradle));
   }, 180_000);
   it('reports a failing test as a maven-failure tool error that names the test', () => {
     const project = copyOf(path.join(fixtures, 'multi-module'));

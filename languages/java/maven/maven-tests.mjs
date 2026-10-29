@@ -12,6 +12,8 @@ import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { runJava } from './maven-command.mjs';
 import { failedCases, failingTestsError, freshReports } from '../builds/test-failures.mjs';
 
+const PROPERTY_REFERENCE = /[@$]\{[^}]*\}/gu;
+
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
 const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
 const TESTNG_JAR = /^testng-\d.*\.jar$/u;
@@ -184,6 +186,17 @@ export function pitClasspath(tools, testRuntime) {
   ];
 }
 
+function jvmArgsOption(jvmArgs) {
+  return jvmArgs.length === 0 ? [] : ['--jvmArgs', jvmArgs.join(',')];
+}
+
+export function pitJvmArgs(argLine = '') {
+  return argLine
+    .replaceAll(PROPERTY_REFERENCE, ' ')
+    .split(/\s+/u)
+    .filter((argument) => argument !== '' && !argument.includes(','));
+}
+
 export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn }) {
   const pitDir = path.join(reportDir, 'pit');
   rmSync(pitDir, { recursive: true, force: true });
@@ -219,6 +232,7 @@ export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn
       'false',
       '--verbose',
       'false',
+      ...jvmArgsOption(pitJvmArgs(module.surefireArgLine)),
     ],
     cwd: module.basedir,
     accept: (result) => result.status === 0,

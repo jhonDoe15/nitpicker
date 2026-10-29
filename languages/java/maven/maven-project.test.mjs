@@ -243,6 +243,23 @@ function failsafe(executions, configuration = '') {
 
 const inBuild = (plugins) => `<build><plugins>${plugins}</plugins></build>`;
 
+describe('surefireArgLine', () => {
+  it('reads the argLine of the test execution, else of the plugin', () => {
+    const surefire = (body) => soloModule(inBuild(plugin('maven-surefire-plugin', body)));
+    const pluginLevel = '<configuration><argLine>@{argLine} -Xmx1g</argLine></configuration>';
+    const execution =
+      '<executions><execution><goals><goal>test</goal></goals>' +
+      '<configuration><argLine>--add-opens java.base/java.lang=ALL-UNNAMED</argLine></configuration>' +
+      '</execution></executions>';
+
+    expect([
+      surefire(pluginLevel).surefireArgLine,
+      surefire(pluginLevel + execution).surefireArgLine,
+      soloModule('').surefireArgLine,
+    ]).toEqual(['@{argLine} -Xmx1g', '--add-opens java.base/java.lang=ALL-UNNAMED', undefined]);
+  });
+});
+
 describe('lifecycleArgs', () => {
   it('runs verify, with release, publishing and network plugins and JaCoCo checks off, when Failsafe runs', () => {
     const module = soloModule(inBuild(failsafe(`<execution>${IT_GOAL}</execution>`)));
