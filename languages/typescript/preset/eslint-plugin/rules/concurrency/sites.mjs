@@ -32,7 +32,7 @@ export function combinatorName(context, call) {
   return isPromise ? `Promise.${memberName(callee)}` : undefined;
 }
 
-export function sizeOwner(context, node) {
+function sizeOwner(context, node) {
   const target = skipped(resolveConstant(context, skipped(node)));
   const member = [...descendants(target)].find(
     (child) => child.type === 'MemberExpression' && SIZES.has(memberName(child)),
@@ -119,7 +119,8 @@ function pushed(context, identifier) {
     const member = reference.identifier.parent;
     const call = member.parent;
     const isPush = member.type === 'MemberExpression' && memberName(member) === 'push';
-    const loop = isPush && call.type === 'CallExpression' ? enclosingLoop(context, call) : undefined;
+    const loop =
+      isPush && call.type === 'CallExpression' ? enclosingLoop(context, call) : undefined;
     const awaited = call.arguments?.[0]?.type === 'AwaitExpression';
     if (
       loop !== undefined &&

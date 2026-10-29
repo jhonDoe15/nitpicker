@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { FAN_OUT_LEAD, FAN_OUT_RULE, fanOutDetail, withFanOutDetails } from './fan-out-details.mjs';
 
 const FILE = 'src/main/java/shop/Prefetch.java';
-const RULESET = path.resolve(import.meta.dirname, '../gradle/pmd-main-ruleset.xml');
+const RULESET = path.resolve(import.meta.dirname, '../../gradle/pmd-main-ruleset.xml');
 const REST = ', with no bound on how many run together.';
 const roots = [];
 
@@ -95,9 +95,12 @@ describe('fanOutDetail', () => {
   });
 
   it('names the task start that comes first in the source', () => {
-    const text = 'for (String u : urls) { pool.execute(() -> log(u)); supplyAsync(() -> get(u)); }\n';
+    const text =
+      'for (String u : urls) { pool.execute(() -> log(u)); supplyAsync(() -> get(u)); }\n';
 
-    expect(fanOutDetail(text, 1)).toBe('`urls` starts `Executor.execute` for every element at once');
+    expect(fanOutDetail(text, 1)).toBe(
+      '`urls` starts `Executor.execute` for every element at once',
+    );
   });
 
   it('gives up when no collection is visible', () => {

@@ -1,6 +1,6 @@
 import { acceptsArguments, isSelfCall } from '../../spring/spring-scopes.mjs';
 import { typeName } from '../../spring/spring-names.mjs';
-import { SEMAPHORES, callKind, kindOfType } from './clients.mjs';
+import { callKind, isSemaphoreType, kindOfType } from './clients.mjs';
 
 const DEPTH = 3;
 const BOUNDARIES = new Set(['fun', 'class', 'object']);
@@ -28,10 +28,10 @@ function isSemaphore(view, invocation) {
   const type = view.typeOf(invocation.scope, invocation.receiver);
   return type === undefined
     ? LIMITER_NAME.test(invocation.receiver ?? '')
-    : view.is(type, SEMAPHORES);
+    : isSemaphoreType(view, type);
 }
 
-function acquiredBefore(view, top, invocation) {
+function acquiredBefore({ view, top, invocation }) {
   return view.file.invocations.some(
     (candidate) =>
       ACQUIRES.has(candidate.name) &&
@@ -41,10 +41,9 @@ function acquiredBefore(view, top, invocation) {
   );
 }
 
-function guarded(view, top, invocation, frames) {
+function guarded(site, frames) {
   return (
-    frames.some(({ k, host }) => k === 'lambda' && PERMIT_HOSTS.has(host)) ||
-    acquiredBefore(view, top, invocation)
+    frames.some(({ k, host }) => k === 'lambda' && PERMIT_HOSTS.has(host)) || acquiredBefore(site)
   );
 }
 
@@ -118,45 +117,80 @@ function globalKind(project, view, invocation) {
     : kindOfType(global.view, global.type ?? global.initializer, invocation.name);
 }
 
-function reachesOf(project, view, top, depth, visiting) {
+function regionKey(view, top) {
+  return `${view.file.file}:${String(top.id)}`;
+}
+
+function helperRegions(project, region, { invocation, bounded }) {
+  const { via, depth, visiting } = region;
+  return targetsOf(project, region.view, invocation).flatMap((target) => {
+    const top = functionScope(target.view, target.fn);
+    const key = top === undefined ? undefined : regionKey(target.view, top);
+    if (key === undefined || visiting.has(key)) {
+      return [];
+    }
+    return [
+      {
+        view: target.view,
+        top,
+        depth: depth - 1,
+        visiting: new Set([...visiting, key]),
+        via: {
+          helper: via?.helper ?? invocation.name,
+          line: via?.line ?? invocation.line,
+          bounded: (via?.bounded ?? false) || bounded,
+        },
+      },
+    ];
+  });
+}
+
+function regionReaches(project, region, pending) {
+  const { view, top, depth, via } = region;
   return view.file.invocations.flatMap((invocation) => {
     const frames = framesTo(view, invocation.scope, top);
     if (frames === undefined) {
       return [];
     }
-    const bounded = guarded(view, top, invocation, frames);
+    const bounded = guarded({ view, top, invocation }, frames);
     const kind = callKind(view, invocation) ?? globalKind(project, view, invocation);
     if (kind !== undefined) {
       const call = `${invocation.receiver}.${invocation.name}`;
-      return [{ call, kind, bounded, line: invocation.line }];
+      return [
+        {
+          call,
+          kind,
+          helper: via?.helper,
+          bounded: (via?.bounded ?? false) || bounded,
+          line: via?.line ?? invocation.line,
+        },
+      ];
     }
-    if (depth === 0) {
-      return [];
+    if (depth > 0) {
+      pending.push(...helperRegions(project, region, { invocation, bounded }));
     }
-    return targetsOf(project, view, invocation).flatMap((target) =>
-      helperReaches(project, target, depth - 1, visiting).map((reach) => ({
-        ...reach,
-        helper: invocation.name,
-        bounded: bounded || reach.bounded,
-        line: invocation.line,
-      })),
-    );
+    return [];
   });
 }
 
-function helperReaches(project, { view, fn }, depth, visiting) {
-  const key = `${view.file.file}:${fn.name}:${String(fn.line)}`;
-  const scope = functionScope(view, fn);
-  if (scope === undefined || visiting.has(key)) {
-    return [];
-  }
-  return reachesOf(project, view, scope, depth, new Set([...visiting, key]));
-}
-
 export function remoteWork(project, view, starter) {
-  const reaches = reachesOf(project, view, starter, DEPTH, new Set());
+  const pending = [
+    { view, top: starter, depth: DEPTH, visiting: new Set([regionKey(view, starter)]) },
+  ];
+  const reaches = [];
+  for (const region of pending) {
+    reaches.push(...regionReaches(project, region, pending));
+  }
   const open = reaches.filter(({ bounded }) => !bounded);
   return open.length === 0 ? undefined : { ...open[0], lines: open.map(({ line }) => line) };
+}
+
+function isVisible(view, declared) {
+  const { package: owner } = declared.view.file;
+  return (
+    owner === view.file.package ||
+    view.file.imports.some(({ path, all }) => path === (all ? owner : `${owner}.${declared.name}`))
+  );
 }
 
 export function projectIndex(views) {
@@ -169,16 +203,9 @@ export function projectIndex(views) {
   const globals = views.flatMap((view) =>
     (view.file.globals ?? []).map((declared) => ({ ...declared, view })),
   );
-  const visible = (view, declared) =>
-    declared.view.file.package === view.file.package ||
-    view.file.imports.some(
-      ({ path, all }) =>
-        path ===
-        (all ? declared.view.file.package : `${declared.view.file.package}.${declared.name}`),
-    );
   return {
     global: (view, name) =>
-      globals.find((declared) => declared.name === name && visible(view, declared)),
+      globals.find((declared) => declared.name === name && isVisible(view, declared)),
     viewOf: (file) => byFile.get(file.file),
     topLevel: (view, name) =>
       topLevel.filter(

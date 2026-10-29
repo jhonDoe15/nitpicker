@@ -56,15 +56,20 @@ describe('fanOutFindings on the recorded fixture facts', () => {
       ({ location }) => location.line === lineOf(UNBOUNDED, 'pages.relay'),
     );
 
-    expect(relayed).toMatchObject({ tool: 'kotlin-source', rule: 'UnboundedFanOut' });
-    expect(relayed.message).toBe(
-      fanOutMessage({
+    expect(relayed).toEqual({
+      tool: 'kotlin-source',
+      rule: 'UnboundedFanOut',
+      path: UNBOUNDED,
+      identity: expect.any(String),
+      message: fanOutMessage({
         starter: 'async',
         collection: 'urls',
         work: { helper: 'relay', call: 'client.send', kind: 'remote' },
       }),
-    );
-    expect(FAN_OUT_MESSAGES.UnboundedFanOut).toContain('An exception fits only when');
+      classification: 'enforceable',
+      location: { line: lineOf(UNBOUNDED, 'pages.relay') },
+    });
+    expect(Object.keys(FAN_OUT_MESSAGES)).toEqual(['UnboundedFanOut']);
   });
 
   it('keeps identities stable when another function of the file is fixed', () => {

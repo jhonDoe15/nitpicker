@@ -54,7 +54,7 @@ const TYPE_NAME = /^[A-Z][\p{L}\p{N}_.]*$/u;
 const IDENTIFIER = /^[\p{L}_][\p{L}\p{N}_]*$/u;
 const MAX_LABEL = 50;
 
-export function framesUpTo(view, scopeId, stop) {
+function framesUpTo(view, scopeId, stop) {
   const frames = [];
   for (const scope of view.chain(scopeId)) {
     if (scope.id === stop?.id || BOUNDARIES.has(scope.k)) {
@@ -177,7 +177,7 @@ function sizedArgument(view, scopeId, text) {
   );
 }
 
-function sizedLink(view, scopeId, link, names) {
+function sizedLink({ view, scopeId }, link, names) {
   return (
     names.has(link.name) &&
     (link.arguments ?? []).length > 0 &&
@@ -195,7 +195,7 @@ function declaresParameter(scope, name) {
 function chunkVariable(view, site, name) {
   const outer = view.chain(site.parent).find((scope) => declaresParameter(scope, name));
   const last = outer?.collection?.links.at(-1);
-  return last !== undefined && sizedLink(view, outer.parent, last, CHUNKS);
+  return last !== undefined && sizedLink({ view, scopeId: outer.parent }, last, CHUNKS);
 }
 
 function fixedName(view, site, name) {
@@ -243,7 +243,7 @@ export function isFixed(view, site) {
   }
   const { collection } = site;
   return (
-    collection.links.some((link) => sizedLink(view, site.parent, link, WINDOWS)) ||
+    collection.links.some((link) => sizedLink({ view, scopeId: site.parent }, link, WINDOWS)) ||
     fixedRoot(view, site, collection)
   );
 }
