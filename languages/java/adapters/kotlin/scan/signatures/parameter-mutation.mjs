@@ -75,7 +75,7 @@ function aliasesOf(body, name) {
 
 function lambdaScopes(body, name) {
   const parameter = new RegExp(String.raw`(?<![\w.])${name}(?!\w)`);
-  return [...body.matchAll(/\{\s*([\w\s,:<>?()]*?)->/g)]
+  return [...body.matchAll(/\{([\w\s,:<>?()]*?)->/g)]
     .filter((header) => parameter.test(header[1]))
     .map((header) => ({ from: header.index, to: closingIndex(body, header.index) }));
 }
@@ -112,21 +112,14 @@ function indentOf(code, index) {
   return /^[ \t]*/.exec(code.slice(start))[0].length;
 }
 
-function continuedLine(line, indent) {
-  return line.trim() !== '' && /^[ \t]*/.exec(line)[0].length > indent;
-}
-
 function expressionEnd(code, start, indent) {
-  let end = code.indexOf('\n', start);
-  while (end !== -1) {
-    const next = code.indexOf('\n', end + 1);
-    const line = code.slice(end + 1, next === -1 ? undefined : next);
-    if (!continuedLine(line, indent)) {
-      return end;
-    }
-    end = next;
+  const firstBreak = code.indexOf('\n', start);
+  if (firstBreak === -1) {
+    return code.length;
   }
-  return code.length;
+  const continuation = new RegExp(String.raw`(?:\n[ \t]{${indent + 1},}\S[^\n]*)*`, 'y');
+  continuation.lastIndex = firstBreak;
+  return firstBreak + continuation.exec(code)[0].length;
 }
 
 function bodyOf(code, close, indent) {

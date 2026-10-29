@@ -27,7 +27,7 @@ const COPY_CONSTRUCTORS = new Set(['Set', 'Map', 'Array']);
 const COPY_FUNCTIONS = new Set(['structuredClone', 'from']);
 const FRESH_CONTAINERS = new Set(['Set', 'Map']);
 
-export function calleeName(call) {
+function calleeName(call) {
   const { callee } = call;
   if (callee.type === 'Identifier') {
     return callee.name;
@@ -46,7 +46,7 @@ function subscriptStep(node) {
   return node.type === 'MemberExpression' && node.computed ? node.object : undefined;
 }
 
-export function subscriptRoot(node) {
+function subscriptRoot(node) {
   const chain = [node];
   for (const current of chain) {
     const next = subscriptStep(current);

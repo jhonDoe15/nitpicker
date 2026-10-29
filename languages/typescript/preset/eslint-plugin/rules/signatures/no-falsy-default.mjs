@@ -12,20 +12,29 @@ const TEST_PARENTS = new Set([
 const TRUTH_CALLS = new Set(['Boolean']);
 const NULLISH = ts.TypeFlags.Undefined | ts.TypeFlags.Null | ts.TypeFlags.Void;
 
-function isZero(value) {
-  return value === 0 || value === 0n;
-}
+const WIDE_CLASSES = [
+  [ts.TypeFlags.String, 'string'],
+  [ts.TypeFlags.Number, 'number'],
+  [ts.TypeFlags.BigInt, 'bigint'],
+];
+const FALSY_LITERALS = [
+  ['', 'string'],
+  [0, 'number'],
+  [false, 'boolean'],
+];
 
 function falsyClassOf(part) {
   const { flags } = part;
-  if (flags & ts.TypeFlags.String) return 'string';
-  if (flags & ts.TypeFlags.Number) return 'number';
-  if (flags & ts.TypeFlags.BigInt) return 'bigint';
-  if (flags & ts.TypeFlags.BooleanLiteral)
-    return part.intrinsicName === 'false' ? 'boolean' : undefined;
-  if (flags & ts.TypeFlags.StringLiteral) return part.value === '' ? 'string' : undefined;
-  if (flags & ts.TypeFlags.NumberLiteral) return isZero(part.value) ? 'number' : undefined;
-  return undefined;
+  const wide = WIDE_CLASSES.find(([flag]) => flags & flag);
+  if (wide !== undefined) {
+    return wide[1];
+  }
+  const narrow = [
+    [ts.TypeFlags.BooleanLiteral, part.intrinsicName === 'false', 'boolean'],
+    [ts.TypeFlags.StringLiteral, part.value === '', 'string'],
+    [ts.TypeFlags.NumberLiteral, Number(part.value) === 0, 'number'],
+  ];
+  return narrow.find(([flag, falsy]) => flags & flag && falsy)?.[2];
 }
 
 function partsOf(type) {
@@ -41,10 +50,9 @@ function falsyClasses(type) {
 
 function literalClass(node) {
   if (node.type === 'Literal') {
-    if (node.value === '') return 'string';
-    if (node.value === 0) return 'number';
-    if (node.value === false) return 'boolean';
-    return node.bigint === '0' ? 'bigint' : undefined;
+    return node.bigint === '0'
+      ? 'bigint'
+      : FALSY_LITERALS.find(([value]) => value === node.value)?.[1];
   }
   return node.type === 'TemplateLiteral' &&
     node.quasis.length === 1 &&
@@ -60,14 +68,21 @@ function isAbsentValue(node) {
   );
 }
 
+function isOr(node) {
+  return node.type === 'LogicalExpression' && node.operator === '||';
+}
+
 function operandsOf(node) {
+  const pending = [node];
   const operands = [];
-  let current = node;
-  while (current.type === 'LogicalExpression' && current.operator === '||') {
-    operands.unshift(current.right);
-    current = current.left;
+  for (const current of pending) {
+    if (isOr(current)) {
+      pending.push(current.left, current.right);
+    } else {
+      operands.push(current);
+    }
   }
-  return [current, ...operands];
+  return operands.toSorted((left, right) => left.range[0] - right.range[0]);
 }
 
 function isOuterChain(node) {
@@ -75,16 +90,35 @@ function isOuterChain(node) {
   return !(parent.type === 'LogicalExpression' && parent.operator === '||' && parent.left === node);
 }
 
+function isAnd(node) {
+  return node.type === 'LogicalExpression' && node.operator === '&&';
+}
+
+function isTruthTest(parent, child) {
+  if (isAnd(parent)) {
+    return true;
+  }
+  if (parent.type === 'UnaryExpression') {
+    return parent.operator === '!';
+  }
+  if (TEST_PARENTS.has(parent.type)) {
+    return parent.test === child;
+  }
+  return (
+    parent.type === 'CallExpression' &&
+    parent.callee.type === 'Identifier' &&
+    TRUTH_CALLS.has(parent.callee.name)
+  );
+}
+
+const TRANSPARENT = new Set(['LogicalExpression', 'TSNonNullExpression']);
+
 function isCondition(node) {
   let child = node;
   for (const parent of ancestorsOf(node)) {
-    if (parent.type === 'LogicalExpression' && parent.operator === '&&') return true;
-    if (parent.type === 'UnaryExpression') return parent.operator === '!';
-    if (TEST_PARENTS.has(parent.type)) return parent.test === child;
-    if (parent.type === 'CallExpression') {
-      return parent.callee.type === 'Identifier' && TRUTH_CALLS.has(parent.callee.name);
+    if (!TRANSPARENT.has(parent.type) || isAnd(parent)) {
+      return isTruthTest(parent, child);
     }
-    if (parent.type !== 'LogicalExpression' && parent.type !== 'TSNonNullExpression') return false;
     child = parent;
   }
   return false;
@@ -120,8 +154,10 @@ export const rule = {
         return;
       }
       const finalClass = literalClass(fallback);
-      for (const identifier of identifiers) {
-        if (identifier.type !== 'Identifier' || !isParameter(sourceCode, identifier)) continue;
+      const parameters = identifiers.filter(
+        (identifier) => identifier.type === 'Identifier' && isParameter(sourceCode, identifier),
+      );
+      for (const identifier of parameters) {
         const classes = falsyClasses(services.getTypeAtLocation(identifier));
         const equal = classes.size === 1 && classes.has(finalClass);
         if (classes.size > 0 && !equal && !isCondition(report)) {

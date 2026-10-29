@@ -212,8 +212,15 @@ export function typePredicateTags(tags) {
   );
 }
 
-const TRI_STATE_TYPE =
-  /^(?:Promise<\s*)?(?:\?\s*boolean|boolean\s*\|\s*(?:undefined|null)|(?:undefined|null)\s*\|\s*boolean|boolean=)\s*>?$/;
+const TRI_STATE_FORMS = [
+  String.raw`\?\s*boolean`,
+  String.raw`boolean\s*\|\s*(?:undefined|null)`,
+  String.raw`(?:undefined|null)\s*\|\s*boolean`,
+  'boolean=',
+];
+const TRI_STATE_TYPE = new RegExp(
+  String.raw`^(?:Promise<\s*)?(?:${TRI_STATE_FORMS.join('|')})\s*>?$`,
+);
 const BARE_NAME = /^\[[\w$]+\]$/;
 
 function isTriStateTag(tag) {

@@ -4,7 +4,7 @@ const MODIFIER_LINE = new RegExp(
   String.raw`^\s*(?:(?:@[\w.:]+(?:\([^)]*\))?|${MODIFIER_WORDS})\s*)+$`,
 );
 const ANNOTATION = /@(?:[a-z]+:)?(?:\w+\.)*([A-Za-z_]\w*)/g;
-const MAX_MODIFIER_LINES = 8;
+const LOOKBACK = 600;
 const TYPE_HEADER_WINDOW = 300;
 const CLASS_KEYWORD = /\b(?:class|object|interface)\b/g;
 const TYPE_HEADER = /\b(?:class|object|interface)\b[^{};]*$/;
@@ -30,19 +30,17 @@ function lineStart(code, index) {
   return code.lastIndexOf('\n', index - 1) + 1;
 }
 
-export function leadingText(code, index) {
-  const sameLine = code.slice(lineStart(code, index), index);
-  const lines = [sameLine];
-  let start = lineStart(code, index);
-  while (start > 0 && lines.length <= MAX_MODIFIER_LINES) {
-    const previous = code.slice(lineStart(code, start - 1), start - 1);
-    if (!MODIFIER_LINE.test(previous)) {
-      break;
-    }
-    lines.push(previous);
-    start = lineStart(code, start - 1);
-  }
-  return lines.join(' ');
+function leadingText(code, index) {
+  const start = lineStart(code, index);
+  const from = Math.max(0, start - LOOKBACK);
+  const above = code
+    .slice(from, start)
+    .split('\n')
+    .slice(from === 0 ? 0 : 1, -1)
+    .toReversed();
+  const stop = above.findIndex((line) => !MODIFIER_LINE.test(line));
+  const modifiers = stop === -1 ? above : above.slice(0, stop);
+  return [code.slice(start, index), ...modifiers].join(' ');
 }
 
 export function hasModifier(code, index, word) {
@@ -53,8 +51,12 @@ function annotationNames(text) {
   return [...text.matchAll(ANNOTATION)].map((match) => match[1]);
 }
 
+export function isMappedText(text) {
+  return annotationNames(text).some((name) => DATA_MAPPED_MEMBER.has(name));
+}
+
 export function isMappedMember(code, index) {
-  return annotationNames(leadingText(code, index)).some((name) => DATA_MAPPED_MEMBER.has(name));
+  return isMappedText(leadingText(code, index));
 }
 
 export function isMappedClass(code, index) {
