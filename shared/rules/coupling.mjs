@@ -102,22 +102,18 @@ function addStabilityFindings(findings, { analyzerName, direction }) {
 // ---------------------------------------------------------------------------------------------
 // Metric computation on a neutral dependency graph.
 //
-// Input: `{ modules, edges, packageOf, runtime?, roleOf?, fileOf? }`
+// Input: `{ modules, edges, packageOf, runtime? }`
 //   modules   string[]            module ids (a source file / top-level class)
 //   edges     [{ source, target, kind? }]   module -> dependency, both ends in `modules`; the
 //                                  caller decides which edges exist (no self or external edges)
 //   packageOf (module) => string  the package / component a module belongs to
 //   runtime   boolean             also compute the runtime-only variants, from edges whose
 //                                  `kind` is 'runtime' (default false)
-//   roleOf    (module) => role     the feature role of a module (shared/rules/features), so that
-//                                  stability direction measures each feature as one unit
-//   fileOf    (module) => string  the file of a module, for the files a direction names
 // Output: `{ modules, packages, stabilityDirection }`; the adapter adds its own summary.
 //   modules[]: { module, package, fanIn, fanOut, totalCoupling, instability, [runtime*] }
 //   packages[] (sorted by name): { name, modules, fanIn, fanOut, instability, cohesion }
-//   stabilityDirection[]: { source, target, sourceInstability, targetInstability, delta, cause,
-//     path?, message? }, one per unit pair whose source is less stable than its target, largest
-//     delta first (shared/rules/stability/stability-direction.mjs).
+//   stabilityDirection[]: { source, target, sourceInstability, targetInstability, delta },
+//     one per package pair whose source is less stable than its target, largest delta first.
 
 function instabilityOf(fanIn, fanOut) {
   return fanIn + fanOut === 0 ? null : rounded(fanOut / (fanIn + fanOut));
