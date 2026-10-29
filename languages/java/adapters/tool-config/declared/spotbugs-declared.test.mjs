@@ -189,7 +189,7 @@ spotbugs { when (mode) { "strict" -> effort = 'max' } }
     );
     const layered = spotbugsLayers(declarations, { projectWins: true });
 
-    expect(layered).toMatchObject({ effort: 'default', filters: [] });
+    expect([layered.effort, layered.threshold, layered.filters]).toEqual(['default', 'medium', []]);
     expect(layered.notApplied.map(({ setting }) => setting)).toEqual(['excludeFilter', 'effort']);
   });
 });
