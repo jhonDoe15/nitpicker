@@ -68,7 +68,7 @@ async function mutationReport(options, targets) {
   const configPath = path.join(options.projectRoot, '.nitpicker-diff-stryker.config.mjs');
   const createdFiles = [];
   try {
-    const command = writeStrykerConfig({
+    const written = writeStrykerConfig({
       options,
       sourceConfig,
       targets,
@@ -76,13 +76,13 @@ async function mutationReport(options, targets) {
       createdFiles,
       testRunner,
     });
-    const skippedFindings = runStrykerOrExplainSkip(options, configPath, command);
+    const skippedFindings = runStrykerOrExplainSkip(options, configPath, written.command);
     if (skippedFindings !== undefined) {
       return { skipped: skippedFindings };
     }
     return {
       report: withMutationSourceHashes(
-        withoutProjectIgnoredMutants(readMutationReport(options.projectRoot)),
+        withoutProjectIgnoredMutants(readMutationReport(options.projectRoot), written.config),
         options.projectRoot,
       ),
     };
@@ -157,7 +157,7 @@ function writeStrykerConfig({
     `export default ${JSON.stringify(config, null, 2)};\n`,
     createdFiles,
   );
-  return testRunner.command;
+  return { command: testRunner.command, config };
 }
 
 export function strykerRunConfig(sourceConfig, { snapshot, targets, ...files }) {

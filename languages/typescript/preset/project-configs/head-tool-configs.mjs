@@ -1,5 +1,6 @@
 import { precedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
-import { readStrykerProjectConfig } from './stryker-project-config.mjs';
+import { pickedKeys } from './config-module.mjs';
+import { mutationDisabled, readStrykerProjectConfig } from './stryker-project-config.mjs';
 
 const PROJECT_CONFIG_READERS = new Map([['stryker', readStrykerProjectConfig]]);
 const HEAD_KEYS = ['projectConfig', 'projectConfigError'];
@@ -12,33 +13,28 @@ function captured(read, projectRoot) {
   }
 }
 
-function readsProject(tool, settings) {
-  return PROJECT_CONFIG_READERS.has(tool) && precedenceLayers(settings?.precedence).usesProject;
+function readsProject(tool, settings, config) {
+  return (
+    PROJECT_CONFIG_READERS.has(tool) &&
+    precedenceLayers(settings?.precedence).usesProject &&
+    !mutationDisabled(config)
+  );
 }
 
-export function withHeadToolConfigs(tools, projectRoot) {
+export function withHeadToolConfigs(tools, config, projectRoot) {
   return Object.fromEntries(
     Object.entries(tools).map(([tool, settings]) => [
       tool,
-      readsProject(tool, settings)
+      readsProject(tool, settings, config)
         ? { ...settings, ...captured(PROJECT_CONFIG_READERS.get(tool), projectRoot) }
         : settings,
     ]),
   );
 }
 
-export function headToolConfigFacts(tools, headTools = {}) {
-  return Object.fromEntries(
-    Object.entries(tools).map(([tool, settings]) => {
-      if (!readsProject(tool, settings)) {
-        return [tool, settings];
-      }
-      const head = headTools[tool] ?? {};
-      const facts = HEAD_KEYS.filter((key) => head[key] !== undefined).map((key) => [
-        key,
-        head[key],
-      ]);
-      return [tool, { ...settings, ...Object.fromEntries(facts) }];
-    }),
-  );
+export function headProjectConfigFacts(settings, headSettings = {}) {
+  if (HEAD_KEYS.every((key) => headSettings[key] === undefined)) {
+    return { ...headSettings, precedence: headSettings.precedence ?? ['nitpicker'] };
+  }
+  return { ...settings, ...pickedKeys(headSettings, HEAD_KEYS) };
 }

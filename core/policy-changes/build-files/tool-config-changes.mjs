@@ -1,4 +1,10 @@
+import { strykerConfigChanges } from '../../../languages/typescript/preset/project-configs/stryker-config-changes.mjs';
 import { jscpdConfigChanges } from '../../tooling/jscpd/config-changes.mjs';
+
+const APPLIED_CHANGES = new Map([
+  ['jscpd', jscpdConfigChanges],
+  ['stryker', strykerConfigChanges],
+]);
 
 function fileChange(tool, file, { base, head }) {
   if (base.get(file) === head.get(file)) {
@@ -17,7 +23,7 @@ function fileChange(tool, file, { base, head }) {
 
 function fileChanges(entry) {
   if (entry.applied !== undefined) {
-    return jscpdConfigChanges(entry.applied);
+    return APPLIED_CHANGES.get(entry.tool)(entry.applied);
   }
   const files = [...new Set([...entry.base.keys(), ...entry.head.keys()])].toSorted();
   return files.map((file) => fileChange(entry.tool, file, entry));
