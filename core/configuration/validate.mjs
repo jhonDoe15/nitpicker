@@ -27,6 +27,7 @@ import { validateConventions } from '../../shared/conventions/settings.mjs';
 import { stylingApproaches } from '../../languages/typescript/preset/eslint-config/react/react-rules.mjs';
 import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
 import { validateScope, validateTestConsole } from './scopes/scope-settings.mjs';
+import { validateHistory } from './scopes/history-settings.mjs';
 import { TYPESCRIPT_PRESETS, validateLayout } from './scopes/layout-settings.mjs';
 import { validateExtends, validateProjects } from './layers/settings.mjs';
 
@@ -38,12 +39,6 @@ const OPTIONAL_VALIDATORS = [
     },
   ],
   ['exclude', validateStringArray],
-  [
-    'layout',
-    (layout, _key, preset) => {
-      validateLayout(layout, preset);
-    },
-  ],
   ['exceptions', validateProjectExceptions],
   ['legacyInventory', validateProjectRelativePath],
   ['duplicates', validateDuplicates],
@@ -70,6 +65,7 @@ export const KEYS = [
   'kotlin',
   'spring',
   'conventions',
+  'history',
   'extends',
   'projects',
 ];
@@ -95,6 +91,7 @@ export function validateConfig(config) {
   validateReact(config.react);
   validateI18n(config.i18n);
   validateTestConsole(config.testConsole);
+  validateHistory(config.history);
   validateOptional(config);
   validateProjectConventions(config);
   validateRepositorySettings(config);
@@ -183,6 +180,9 @@ function validateOptional(config) {
     if (config[key] !== undefined) {
       validate(config[key], key, config.preset);
     }
+  }
+  if (config.layout !== undefined) {
+    validateLayout(config.layout, config.preset, config.history);
   }
   if (config.exceptions !== undefined) {
     validateTypescriptExceptionRules(config.exceptions, config.preset);
