@@ -53,7 +53,8 @@ Work from a clean checkout of `main` with full history.
    npm run test:installed
    ```
    Both must be green. `test:installed` packs the tarball and installs it into hoisted, nested and
-   linked consumers, so it is the real check of the package contents.
+   linked consumers and one on TypeScript 7, so it is the real check of the package contents. CI
+   runs it too, in the `installed` job of the `typescript` workflow.
 4. **Dry run.** `npm pack --dry-run` from the repository root. Confirm `LICENSE`, `README.md`,
    `package.json`, `core/`, `shared/` and `languages/` are listed, and no tests, fixtures,
    `node_modules` or reports are. Then `npm publish --dry-run`.
