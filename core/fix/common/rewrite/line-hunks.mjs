@@ -99,14 +99,16 @@ function touches(hunk, touched) {
     : range(hunk.aStart, hunk.aEnd).some((line) => touched.has(line));
 }
 
+function contentOf(lines, start, end) {
+  return new Set(lines.slice(start, end).filter((line) => line.trim() !== ''));
+}
+
 function described(hunk, liveLines, formattedLines) {
-  const content = (lines, start, end) =>
-    new Set(lines.slice(start, end).filter((line) => line.trim() !== ''));
   return {
     hunk,
     pure: hunk.aStart === hunk.aEnd || hunk.bStart === hunk.bEnd,
-    removed: content(liveLines, hunk.aStart, hunk.aEnd),
-    added: content(formattedLines, hunk.bStart, hunk.bEnd),
+    removed: contentOf(liveLines, hunk.aStart, hunk.aEnd),
+    added: contentOf(formattedLines, hunk.bStart, hunk.bEnd),
   };
 }
 
@@ -119,11 +121,12 @@ function moves(left, right) {
   );
 }
 
-function withMovedLines(entries, kept) {
-  const linked = entries.filter(
-    (entry) => !kept.includes(entry) && kept.some((other) => moves(entry, other)),
-  );
-  return linked.length === 0 ? kept : withMovedLines(entries, [...kept, ...linked]);
+function withMovedLines(entries, touching) {
+  const kept = [...touching];
+  for (const entry of kept) {
+    kept.push(...entries.filter((other) => !kept.includes(other) && moves(entry, other)));
+  }
+  return kept;
 }
 
 export function touchedLinesFormatted({ base, live, formatted }) {
