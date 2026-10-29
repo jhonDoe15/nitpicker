@@ -137,7 +137,7 @@ function inheritsMember(checker, tsClass, name) {
   return unresolved || [...extended, ...implemented].some((type) => type.getProperty(name));
 }
 
-function isAlias({ services, checker }, member, classNode, call) {
+function isAlias({ services, checker }, { member, classNode, call }) {
   const name = keyName(member);
   const tsClass = services.esTreeNodeToTSNodeMap.get(classNode);
   const own = services.esTreeNodeToTSNodeMap.get(member);
@@ -187,7 +187,7 @@ export const rule = {
           call === undefined ||
           !isThisMethodCall(call) ||
           !forwardsOwnParameters(member.value, call) ||
-          !isAlias(program, member, classNode, call)
+          !isAlias(program, { member, classNode, call })
         ) {
           return;
         }
