@@ -1,5 +1,5 @@
-import { isPlainObject } from '../../../../../shared/config.mjs';
-import { DEPENDENCY_CRUISER_OWNED_OPTIONS, listOf, patternSource } from '../config-values.mjs';
+import { isPlainObject, listOf } from '../../../../../shared/config.mjs';
+import { DEPENDENCY_CRUISER_OWNED_OPTIONS, patternSource } from '../config-values.mjs';
 import { addsEntries, canonical, keyChanges, sortedEntries } from './applied-values.mjs';
 
 const RULE_LISTS = new Set(['forbidden', 'required']);

@@ -2,10 +2,10 @@ import { existsSync, realpathSync, statSync } from 'node:fs';
 import nodeModule from 'node:module';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
-import { isPlainObject } from '../../../../shared/config.mjs';
+import { isPlainObject, listOf } from '../../../../shared/config.mjs';
 import { isRealPathInside } from '../../../../shared/conventions/read-inside.mjs';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-import { listOf, withDependencyCruiserFiles } from './config-values.mjs';
+import { withDependencyCruiserFiles } from './config-values.mjs';
 
 const TOOL = 'dependency-cruiser';
 const CONFIG_EXTENSIONS = ['', '.js', '.json', '.cjs', '.mjs', '.ts', '.cts', '.mts'];
