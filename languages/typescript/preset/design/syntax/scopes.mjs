@@ -22,8 +22,14 @@ function innerScope(statement, scope) {
       scope: { prefix, anchor, isExported: () => scope.isExported(statement) },
     };
   }
-  const isExported = (declaration) => scope.isExported(statement) && hasExportModifier(declaration);
-  return { statements: body.statements, scope: { prefix, anchor, isExported } };
+  return {
+    statements: body.statements,
+    scope: { prefix, anchor, isExported: exportedWithin(statement, scope) },
+  };
+}
+
+function exportedWithin(statement, scope) {
+  return (declaration) => scope.isExported(statement) && hasExportModifier(declaration);
 }
 
 function scoped(statements, scope) {
