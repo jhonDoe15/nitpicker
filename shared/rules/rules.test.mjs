@@ -348,7 +348,7 @@ describe('branchCoverageFindings', () => {
     expect(findings[0]).toMatchObject({
       rule: 'changed-branch-coverage',
       message:
-        'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
+        'Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. To accept the file, add it to "exclude" in nitpicker.config.json.',
       classification: 'enforceable',
       location: { line: 1 },
     });
@@ -364,6 +364,23 @@ describe('branchCoverageFindings', () => {
       'Branch coverage is 50.00%; minimum is 95%. Not taken: the exit. Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/a.py"],"function":"Store.save","reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
     expect(finding.symbol).toBe('Store.save');
+  });
+
+  it('gives each finding the allowed form its message states', () => {
+    const findings = branchCoverageFindings(
+      [
+        { path: 'a', key: 'k', percent: 50 },
+        { path: 'a', key: 'j', percent: 50, arms: ['the exit'] },
+      ],
+      { tool: 'cov', identify },
+    );
+
+    expect(
+      findings.map(({ message, allowedForm }) => [allowedForm, message.includes(allowedForm)]),
+    ).toEqual([
+      ['Add a test for each outcome it misses.', true],
+      ["Test it, or remove it if it can't happen.", true],
+    ]);
   });
 
   it('passes a branch at the minimum', () => {

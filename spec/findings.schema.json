@@ -41,11 +41,11 @@
           "enum": ["enforceable", "descriptive", "tool-error"]
         },
         "allowedForm": {
-          "description": "What to write instead, as the message states it: the sentence or sentences that name the accepted form of the code. Left out when the rule states none apart from the problem.",
+          "description": "What to write instead, as the message states it: the sentence or sentences that name the accepted form of the code. It must be part of `message`; left out when the rule states none apart from the problem.",
           "$ref": "#/$defs/nonEmptyString"
         },
         "exception": {
-          "description": "The entry that accepts this finding when it is intended, as the message prints it. The engine fills it in from the sentence the message ends with (`If this is intended, add {...} to \"exceptions\" in nitpicker.config.json.`) when the analyzer leaves it out. Its `reason` is a placeholder to replace.",
+          "description": "The entry that accepts this finding when it is intended, as the message prints it. The engine fills it in from the sentence the message ends with (`If this is intended, add {...} to \"exceptions\" in nitpicker.config.json.`) when the analyzer leaves it out, and refuses one that differs from that sentence or that a message without the sentence carries. Its `reason` is a placeholder to replace.",
           "$ref": "#/$defs/exception"
         },
         "exceptionList": {
@@ -53,6 +53,10 @@
           "enum": ["exceptions", "python.exceptions"]
         },
         "symbol": { "$ref": "#/$defs/nonEmptyString" },
+        "policyKind": {
+          "description": "On a policy-loosened finding of a report: which kind of policy change it is, which picks the guidance its message gives.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
         "location": { "$ref": "#/$defs/location" },
         "metric": { "$ref": "#/$defs/metric" },
         "ratchet": { "$ref": "#/$defs/ratchet" },
@@ -100,7 +104,8 @@
       "additionalProperties": false,
       "properties": {
         "line": { "type": "integer", "minimum": 1 },
-        "column": { "type": "integer", "minimum": 1 }
+        "column": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 }
       }
     },
     "ratchet": {
@@ -120,7 +125,11 @@
           "$ref": "#/$defs/nonEmptyString"
         },
         "growthAdvice": {
-          "description": "Text appended to `message` (and to `allowedForm`) when the finding is new while the base already had findings under the same ratchet key; `{base}` is replaced with the base value.",
+          "description": "Text added to `message`, before its exception sentence, when the finding is new while the base already had findings under the same ratchet key; `{base}` is replaced with the base value.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "growthAllowedForm": {
+          "description": "The part of `growthAdvice` that names the allowed form; it is appended to `allowedForm` when `growthAdvice` is added to `message`.",
           "$ref": "#/$defs/nonEmptyString"
         },
         "heldMessage": {

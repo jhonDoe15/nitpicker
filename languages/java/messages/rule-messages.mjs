@@ -5,11 +5,29 @@ import { exceptionHint } from '../../../shared/rules/exceptions.mjs';
 import { JAVA_FORMATTER_TOOLS, NOT_YOUR_JAVA_FORMATTER } from '../adapters/style/java-style.mjs';
 
 export const CATALOG_TOOLS = ['pmd', 'checkstyle', 'spotbugs'];
-const CATALOGS = new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)]));
+const catalogs = lazy(() => new Map(CATALOG_TOOLS.map((tool) => [tool, readCatalog(tool)])));
 const CHECKSTYLE_CHECK =
   /^com\.puppycrawl\.tools\.checkstyle\.checks\.(?:\w+\.)*(\w+?)(?:Check)?$/u;
 const SENTENCE_END = /[.!?;]$/u;
-const ALLOWED_FORM_RULES = rulesetNames('spring-ruleset.xml');
+const FIRST_SENTENCE = /^.*?[.!?](?= |$)/u;
+const leadingFormRules = lazy(
+  () =>
+    new Map([
+      ...rulesetNames('spring-ruleset.xml').map((name) => [name, (sentence) => sentence]),
+      ...rulesetNames('spring-test-ruleset.xml').map((name) => [
+        name,
+        (sentence) => FIRST_SENTENCE.exec(sentence)?.[0] ?? sentence,
+      ]),
+    ]),
+);
+
+function lazy(read) {
+  let value;
+  return () => {
+    value ??= read();
+    return value;
+  };
+}
 
 export function readCatalog(tool) {
   return JSON.parse(readFileSync(new URL(`./${tool}.json`, import.meta.url), 'utf8'));
@@ -17,7 +35,7 @@ export function readCatalog(tool) {
 
 function rulesetNames(file) {
   const text = readFileSync(new URL(`../gradle/${file}`, import.meta.url), 'utf8');
-  return new Set([...text.matchAll(/<rule name="([A-Za-z]+)"/gu)].map(([, name]) => name));
+  return [...text.matchAll(/<rule name="([A-Za-z]+)"/gu)].map(([, name]) => name);
 }
 
 export function checkstyleRuleName(source) {
@@ -33,7 +51,7 @@ function layoutFix(javaStyle) {
 }
 
 export function withRuleMessage(finding, { preset = 'java', javaStyle } = {}) {
-  const catalog = CATALOGS.get(finding.tool);
+  const catalog = catalogs().get(finding.tool);
   if (catalog === undefined) {
     return finding;
   }
@@ -72,5 +90,5 @@ function ruleMessage(finding, entry, { preset, javaStyle }) {
 }
 
 function leadingForm({ tool, rule }, sentence) {
-  return tool === 'pmd' && ALLOWED_FORM_RULES.has(rule) ? sentence : undefined;
+  return tool === 'pmd' ? leadingFormRules().get(rule)?.(sentence) : undefined;
 }

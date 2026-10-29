@@ -103,6 +103,7 @@ describe('npm package contents', () => {
     expect(packedFiles.has('languages/java/gradle/spring-ruleset.xml')).toBe(true);
     expect(packedFiles.has('languages/java/gradle/pmd-ruleset.xml')).toBe(true);
     expect(packedFiles.has('spec/config.schema.json')).toBe(true);
+    expect(packedFiles.has('spec/findings.schema.json')).toBe(true);
     expect(
       [...packedFiles].filter((file) => isNotShipped(file) || file === 'package-lock.json'),
     ).toEqual([]);

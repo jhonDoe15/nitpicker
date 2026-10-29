@@ -285,9 +285,12 @@ describe('eslintMessageWithHint', () => {
   });
 
   it('offers growth advice for nitpicker/no-throw only', () => {
-    expect(growthAdviceFor('nitpicker/no-throw')).toBe(
-      'This function had {base} of these at base and the count may not grow: a throw on a new line counts as new even when the count holds, so edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.',
-    );
+    expect(growthAdviceFor('nitpicker/no-throw')).toEqual({
+      growthAdvice:
+        'Edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function. This function had {base} of these at base and the count may not grow: a throw on a new line counts as new even when the count holds.',
+      growthAllowedForm:
+        'Edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.',
+    });
     expect(growthAdviceFor('no-debugger')).toBeUndefined();
   });
 

@@ -122,14 +122,14 @@ function withRatchets(findings, plans) {
       return finding;
     }
     if (plan.kind === 'count') {
-      const growthAdvice = growthAdviceFor(finding.rule);
+      const growth = growthAdviceFor(finding.rule);
       return {
         ...finding,
         ratchet: {
           key: `count:${plan.key}`,
           value: counts.get(countGroupOf(finding, plan)),
           existingCodeOnly: true,
-          ...(growthAdvice === undefined ? {} : { growthAdvice }),
+          ...growth,
         },
       };
     }

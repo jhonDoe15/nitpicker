@@ -3,6 +3,7 @@ import { appendSentence } from '../../../../shared/messages/exception-sentence.m
 import { definedField } from '../../../../shared/messages/messages.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
 import { immutableTypesParts } from './immutable-types-hint.mjs';
+import { withStatedForm } from './stated-form.mjs';
 import { restrictedMatchers } from '../../preset/eslint-config/test-honesty/restricted-matchers.mjs';
 
 const IMMUTABLE_TYPES_PREFIX =
@@ -97,12 +98,20 @@ const ARGUMENT_TYPE_HINT = ' Write the parameter type in the signature: `(rows: 
 
 const DUPLICATE_IMPORT_HINT = ' Merge the imports of one module into a single import statement.';
 
+const UNUSED_VARIABLE_HINT = ' Remove it, or use it.';
+
 const DEPRECATED_HINT = ` Call the replacement that the deprecation names instead of the deprecated API. An exception fits only when it names none and the API cannot be avoided.`;
+
+const NO_THROW_GROWTH_FORM =
+  'Edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.';
 
 const GROWTH_ADVICE = new Map([
   [
     'nitpicker/no-throw',
-    'This function had {base} of these at base and the count may not grow: a throw on a new line counts as new even when the count holds, so edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.',
+    {
+      growthAdvice: `${NO_THROW_GROWTH_FORM} This function had {base} of these at base and the count may not grow: a throw on a new line counts as new even when the count holds.`,
+      growthAllowedForm: NO_THROW_GROWTH_FORM,
+    },
   ],
 ]);
 
@@ -224,6 +233,8 @@ const MESSAGE_REWRITERS = new Map([
   ['no-duplicate-imports', appendHint(DUPLICATE_IMPORT_HINT)],
   ['regexp/no-super-linear-backtracking', appendHint(REGEXP_HINT)],
   ['@typescript-eslint/no-deprecated', appendHint(DEPRECATED_HINT)],
+  ['@typescript-eslint/no-unused-vars', appendHint(UNUSED_VARIABLE_HINT)],
+  ['no-unused-vars', appendHint(UNUSED_VARIABLE_HINT)],
 ]);
 
 const NO_ROUTE_RULES = new Set([
@@ -255,7 +266,7 @@ function eslintHint({ ruleId, text, relativePath, node, sourceFile }) {
   const rewrite = MESSAGE_REWRITERS.get(ruleId);
   const rewritten =
     rewrite === undefined ? text : rewrite({ text, relativePath, node, sourceFile });
-  return typeof rewritten === 'string' ? { message: rewritten } : rewritten;
+  return withStatedForm(ruleId, typeof rewritten === 'string' ? { message: rewritten } : rewritten);
 }
 
 export function eslintMessageWithHint(options) {
@@ -270,6 +281,7 @@ export function routedEslintFields(options) {
   };
 }
 
+/** The ratchet fields that tell a count rule what to do when its count grows; undefined for other rules. */
 export function growthAdviceFor(ruleId) {
   return GROWTH_ADVICE.get(ruleId);
 }

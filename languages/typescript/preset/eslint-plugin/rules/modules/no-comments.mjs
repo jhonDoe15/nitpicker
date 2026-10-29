@@ -122,7 +122,7 @@ export const rule = {
         'Remove the comment and put the intent in code: a descriptive identifier, a named function, or a type. Only non-suppression tool directives may be comments.',
       jsdocProse:
         'JSDoc holds types only: remove the description text and put the intent in a descriptive identifier or a named function.',
-      jsdocUnsupportedTag: `The JSDoc tag @{{tag}} is not allowed: JSDoc holds types only (@param, @returns, @type, @typedef, @template, @import).`,
+      jsdocUnsupportedTag: `Remove the JSDoc tag @{{tag}}: JSDoc holds types only (@param, @returns, @type, @typedef, @template, @import).`,
       jsdocMalformed: 'Write the JSDoc tag as `{{usage}}`.',
       jsdocAnyType: `Do not use \`any\`, \`*\` or a bare \`?\` in a JSDoc type. Use \`unknown\` and parse it into a specific type at the boundary with ${validationName}, or write the specific type.`,
       jsdocNullType: `Use \`undefined\` for an absent value; \`null\` and the \`?T\` and \`T?\` forms are not allowed in a JSDoc type. Type it as optional with \`undefined\`.`,

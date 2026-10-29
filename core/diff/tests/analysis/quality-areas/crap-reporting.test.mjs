@@ -397,6 +397,13 @@ describe('CRAP reporting in the quality-area analyzers', () => {
         message:
           'value CRAP rose from 9 to 9.5 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
         allowedForm: 'Put new code in a new function and cover it with tests.',
+        exception: {
+          rule: 'crap-score-limit',
+          paths: ['src/main/value.ts'],
+          function: 'value',
+          reason: '...',
+        },
+        exceptionList: 'exceptions',
         ratchet: {
           key: 'function:value:occurrence:1:crap',
           value: 9.5,

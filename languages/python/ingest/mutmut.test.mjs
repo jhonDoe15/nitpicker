@@ -51,6 +51,8 @@ describe('mutmut run data ingester', () => {
       identity: 'total|0→1#1',
       message:
         'Survived number: replacing `0` with `1` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+      allowedForm:
+        'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
       classification: 'enforceable',
       symbol: 'total',
       location: { line: 6 },
@@ -71,6 +73,7 @@ describe('mutmut run data ingester', () => {
       path: 'src/shop/pricing.py',
       identity: 'fetch|1→2#1',
       message: 'NoCoverage number: no test runs this code. Add a test that reaches it.',
+      allowedForm: 'Add a test that reaches it.',
       classification: 'enforceable',
       symbol: 'fetch',
       location: { line: 39 },
@@ -210,6 +213,8 @@ describe('mutmut run data ingester', () => {
         identity: 'f|?→?#1',
         message:
           'Survived mutation: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
         symbol: 'f',
       },

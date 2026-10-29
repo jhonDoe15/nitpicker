@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
@@ -53,7 +54,23 @@ describe('config.schema.json', () => {
 
   it('is shipped in the npm package', () => {
     const files = JSON.parse(readFileSync(path.join(PACKAGE_ROOT, 'package.json'), 'utf8')).files;
-    expect(files.includes('spec/config.schema.json')).toBe(true);
+    expect(
+      ['spec/config.schema.json', 'spec/findings.schema.json'].filter(
+        (file) => !files.includes(file),
+      ),
+    ).toEqual([]);
+  });
+
+  it('resolves through the package exports under the names the docs give', () => {
+    const resolve = createRequire(import.meta.url).resolve;
+
+    expect(
+      [
+        'nitpicker/config.schema.json',
+        'nitpicker/spec/config.schema.json',
+        'nitpicker/spec/findings.schema.json',
+      ].map((specifier) => path.relative(PACKAGE_ROOT, resolve(specifier))),
+    ).toEqual(['spec/config.schema.json', 'spec/config.schema.json', 'spec/findings.schema.json']);
   });
 });
 

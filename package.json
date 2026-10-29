@@ -57,11 +57,14 @@
     "!**/__pycache__/**",
     "!**/*.pyc",
     "skills/**",
-    "spec/config.schema.json"
+    "spec/config.schema.json",
+    "spec/findings.schema.json"
   ],
   "exports": {
     "./package.json": "./package.json",
-    "./config.schema.json": "./spec/config.schema.json"
+    "./config.schema.json": "./spec/config.schema.json",
+    "./spec/config.schema.json": "./spec/config.schema.json",
+    "./spec/findings.schema.json": "./spec/findings.schema.json"
   },
   "peerDependencies": {
     "@types/node": ">=20",

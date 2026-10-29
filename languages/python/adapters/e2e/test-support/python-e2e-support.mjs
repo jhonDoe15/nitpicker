@@ -2,6 +2,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import {
   cpSync,
+  existsSync,
   mkdirSync,
   mkdtempSync,
   readFileSync,
@@ -11,6 +12,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { runCli } from '../../../../../core/cli.mjs';
+import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { fileURLToPath } from 'node:url';
 
 const LOCAL_COMMAND_TIMEOUT_MS = 30_000;
@@ -90,6 +92,9 @@ export function gate(root, branch, { extra = [], environment = {} } = {}) {
   });
   function json(name) {
     return JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
+  }
+  if (existsSync(path.join(reports, 'new-findings.json'))) {
+    schemaChecked({ newFindings: json('new-findings.json') });
   }
   return { exitCode, json, text: output.text, reports };
 }

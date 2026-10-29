@@ -3,6 +3,7 @@ import { matchSimilarFindings } from './similar/match.mjs';
 import { normalizeGitPath } from '../git/normalize.mjs';
 import { folderMoves, mainDestination } from '../git/patches/renames.mjs';
 import { insertBeforeRoute } from '../../../shared/messages/exception-sentence.mjs';
+import { withMessage } from '../../../shared/messages/finding-advice.mjs';
 
 export function compareFindings({
   baseFindings,
@@ -151,17 +152,20 @@ function withGrowthAdvice({ findings, baseFindings, renames, directories }) {
   );
   return findings.map((finding) => {
     const advice = finding.ratchet?.growthAdvice;
+    const growthForm = finding.ratchet?.growthAllowedForm;
     const baseValue =
       advice === undefined ? undefined : baseValues.get(ratchetKey(finding, new Map(), new Map()));
     if (baseValue === undefined) {
       return finding;
     }
     const text = advice.replaceAll('{base}', String(baseValue));
-    return {
-      ...finding,
+    return withMessage(finding, {
       message: insertBeforeRoute(finding.message, text),
-      allowedForm: [finding.allowedForm, text].filter((part) => part !== undefined).join(' '),
-    };
+      allowedForm:
+        growthForm === undefined
+          ? finding.allowedForm
+          : [finding.allowedForm, growthForm].filter((part) => part !== undefined).join(' '),
+    });
   });
 }
 
@@ -190,15 +194,14 @@ function grewFinding(headFinding, baseValue) {
   if (worseMessage === undefined) {
     return headFinding;
   }
-  const grown = {
-    ...headFinding,
-    message: worseMessage.replaceAll('{base}', String(baseValue)),
-    allowedForm: worseAllowedForm?.replaceAll('{base}', String(baseValue)),
-  };
-  if (grown.allowedForm === undefined) {
-    delete grown.allowedForm;
-  }
-  return grown;
+  const message = worseMessage.replaceAll('{base}', String(baseValue));
+  const kept = headFinding.allowedForm !== undefined && message.includes(headFinding.allowedForm);
+  return withMessage(headFinding, {
+    message,
+    allowedForm:
+      worseAllowedForm?.replaceAll('{base}', String(baseValue)) ??
+      (kept ? headFinding.allowedForm : undefined),
+  });
 }
 
 function ratchetKey(finding, renames, directories) {
