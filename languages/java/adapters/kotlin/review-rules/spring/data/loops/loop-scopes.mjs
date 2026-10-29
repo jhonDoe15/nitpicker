@@ -1,8 +1,8 @@
-import { ENTITY_MANAGER } from '../../spring-types.mjs';
+import { ENTITY_MANAGER, group } from '../../spring-types.mjs';
 import { elementOf, isCollectionType } from '../../view/member-types.mjs';
 import { ENTITY_WRITES } from '../data-types.mjs';
 
-export const ITERATING = new Set([
+export const ITERATING = group([
   'forEach',
   'forEachIndexed',
   'onEach',
@@ -196,7 +196,7 @@ function referenced(view, invocation, text) {
   return match === null ? localReference(view, invocation, text.trim()) : match.slice(1);
 }
 
-export function references(view, invocation) {
+function references(view, invocation) {
   return iteratingCall(view, invocation)
     ? invocation.arguments
         .map(({ text }) => referenced(view, invocation, text))

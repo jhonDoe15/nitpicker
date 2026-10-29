@@ -156,7 +156,7 @@ function selfFunction(view, id, call) {
   return fn === undefined ? undefined : returnTypeOf(view, fn);
 }
 
-function receiverless(view, id, call, head) {
+function receiverless(view, { id, call, head }) {
   if (head !== undefined) {
     if (call.name === 'partition' && PARTITIONS.has(simpleName(head))) {
       return 'List<List<Any>>';
@@ -190,9 +190,10 @@ function inheritedType(call) {
   return call.arguments.some(({ text }) => PAGED.test(text)) ? 'Page<Any>' : 'List<Any>';
 }
 
-export function callResult(view, id, ownerType, call, head) {
+export function callResult(view, site, ownerType) {
+  const { call } = site;
   if (ownerType === undefined) {
-    return receiverless(view, id, call, head);
+    return receiverless(view, site);
   }
   if (SAME_RECEIVER.has(call.name)) {
     return ownerType;

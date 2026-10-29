@@ -1,47 +1,35 @@
+import { closingIndex, scanKotlinSource } from '../../../scan/kotlin-source.mjs';
+
 const OPENING = new Map([
   ['(', ')'],
   ['[', ']'],
   ['{', '}'],
 ]);
-const CLOSING = new Set(OPENING.values());
+const MARK = /[()[\]{}.,]/gu;
+const ANGLE = /[<>]/gu;
+const LEADING_SPACES = /^ */u;
 const IDENTIFIER = /^[\p{L}_][\p{L}\p{N}_]*/u;
 const NAMED_ARGUMENT = /^[\p{L}_][\p{L}\p{N}_]*\s*=(?!=)\s*/u;
 const DIGIT = /\d/u;
+const CLOSING = new Set(OPENING.values());
 
-function stringEnd(text, start) {
-  const quote = text[start];
-  const triple = quote === '"' && text.startsWith('"""', start);
-  if (triple) {
-    const end = text.indexOf('"""', start + 3);
-    return end < 0 ? text.length : end + 3;
-  }
-  for (let index = start + 1; index < text.length; index += 1) {
-    if (text[index] === '\\') {
-      index += 1;
-    } else if (text[index] === quote) {
-      return index + 1;
-    }
-  }
-  return text.length;
+function sourceOf(text) {
+  return { text, code: scanKotlinSource(text).code };
 }
 
-function topLevel(text, visit) {
+function topLevelMarks(text, wanted) {
   const stack = [];
-  for (let index = 0; index < text.length; index += 1) {
-    const character = text[index];
-    if (character === '"' || character === "'") {
-      index = stringEnd(text, index) - 1;
-    } else if (OPENING.has(character)) {
-      stack.push(OPENING.get(character));
-    } else if (CLOSING.has(character)) {
-      if (stack.pop() !== character) {
-        return false;
-      }
-    } else if (stack.length === 0) {
-      visit(index);
+  const marks = [];
+  for (const { index, 0: mark } of sourceOf(text).code.matchAll(MARK)) {
+    if (OPENING.has(mark)) {
+      stack.push(OPENING.get(mark));
+    } else if (mark === wanted) {
+      marks.push(...(stack.length === 0 ? [index] : []));
+    } else if (CLOSING.has(mark) && stack.pop() !== mark) {
+      return undefined;
     }
   }
-  return stack.length === 0;
+  return stack.length === 0 ? marks : undefined;
 }
 
 function memberDot(text, index) {
@@ -54,11 +42,10 @@ function memberDot(text, index) {
 }
 
 export function lastSelector(text) {
-  let split = -1;
-  const balanced = topLevel(text, (index) => {
-    split = memberDot(text, index) ? index : split;
-  });
-  if (!balanced || split <= 0) {
+  const split = topLevelMarks(text, '.')
+    ?.filter((index) => memberDot(text, index))
+    .at(-1);
+  if (split === undefined || split <= 0) {
     return undefined;
   }
   return {
@@ -68,17 +55,10 @@ export function lastSelector(text) {
 }
 
 export function splitArguments(text) {
-  const parts = [];
-  let start = 0;
-  topLevel(text, (index) => {
-    if (text[index] === ',') {
-      parts.push(text.slice(start, index));
-      start = index + 1;
-    }
-  });
-  parts.push(text.slice(start));
-  return parts
-    .map((part) => part.trim())
+  const bounds = [-1, ...(topLevelMarks(text, ',') ?? []), text.length];
+  return bounds
+    .slice(1)
+    .map((end, index) => text.slice(bounds[index] + 1, end).trim())
     .filter((part) => part !== '')
     .map((part) => {
       const value = part.replace(NAMED_ARGUMENT, '');
@@ -86,33 +66,26 @@ export function splitArguments(text) {
     });
 }
 
-function closing(text, start, open, close) {
+function closingAngle(code, from) {
   let depth = 0;
-  for (let index = start; index < text.length; index += 1) {
-    if (text[index] === '"' || text[index] === "'") {
-      index = stringEnd(text, index) - 1;
-    } else if (text[index] === open) {
-      depth += 1;
-    } else if (text[index] === close) {
-      depth -= 1;
-      if (depth === 0) {
-        return index;
-      }
+  for (const { index, 0: mark } of code.slice(from).matchAll(ANGLE)) {
+    depth += mark === '<' ? 1 : -1;
+    if (depth === 0) {
+      return from + index;
     }
   }
-  return -1;
+  return code.length;
 }
 
-function section(text, start, open, close) {
-  let from = start;
-  while (text[from] === ' ') {
-    from += 1;
-  }
-  if (text[from] !== open) {
+function section(source, start, open) {
+  const from = start + LEADING_SPACES.exec(source.text.slice(start))[0].length;
+  if (source.text[from] !== open) {
     return { end: start };
   }
-  const end = closing(text, from, open, close);
-  return end < 0 ? undefined : { inner: text.slice(from + 1, end), end: end + 1 };
+  const end = open === '<' ? closingAngle(source.code, from) : closingIndex(source.code, from);
+  return end >= source.text.length
+    ? undefined
+    : { inner: source.text.slice(from + 1, end), end: end + 1 };
 }
 
 export function parseSelector(text) {
@@ -120,9 +93,10 @@ export function parseSelector(text) {
   if (name === undefined) {
     return undefined;
   }
-  const types = section(text, name.length, '<', '>');
-  const values = types && section(text, types.end, '(', ')');
-  const lambda = values && section(text, values.end, '{', '}');
+  const source = sourceOf(text);
+  const types = section(source, name.length, '<');
+  const values = types && section(source, types.end, '(');
+  const lambda = values && section(source, values.end, '{');
   if (lambda === undefined || text.slice(lambda.end).trim() !== '') {
     return undefined;
   }
@@ -144,7 +118,7 @@ export function normalized(text) {
 
 export function unwrapped(text) {
   const trimmed = text.trim();
-  if (!trimmed.startsWith('(') || closing(trimmed, 0, '(', ')') !== trimmed.length - 1) {
+  if (!trimmed.startsWith('(') || closingIndex(sourceOf(trimmed).code, 0) !== trimmed.length - 1) {
     return undefined;
   }
   return trimmed.slice(1, -1);

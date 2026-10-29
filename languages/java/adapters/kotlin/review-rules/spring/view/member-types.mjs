@@ -1,7 +1,7 @@
 import { typeArguments, typeName } from '../spring-names.mjs';
 import { BEAN_FACTORIES } from '../spring-types.mjs';
 
-export const MAPS = new Set([
+const MAPS = new Set([
   'Map',
   'MutableMap',
   'HashMap',
@@ -11,7 +11,7 @@ export const MAPS = new Set([
   'NavigableMap',
   'ConcurrentHashMap',
 ]);
-export const COLLECTIONS = new Set([
+const COLLECTIONS = new Set([
   ...MAPS,
   'List',
   'MutableList',
