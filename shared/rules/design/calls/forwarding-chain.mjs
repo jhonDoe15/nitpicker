@@ -4,6 +4,11 @@ import { displayName } from '../design-index.mjs';
 const RULE = DESIGN_RULE_IDS.forwardingChain;
 const MIN_HOPS = 2;
 const MAX_HOPS = 10;
+const UNTYPED = new Set(['any', 'unknown', 'Any']);
+
+function isTyped(type) {
+  return type !== undefined && !UNTYPED.has(type);
+}
 
 function passesAllInOrder(callable) {
   const { arguments: passed } = callable.forward;
@@ -20,8 +25,9 @@ function sameContract(from, to) {
   const targetParams = to.params ?? [];
   return (
     params.length === targetParams.length &&
-    params.every(({ type }, index) => type !== undefined && type === targetParams[index].type) &&
+    params.every(({ type }, index) => isTyped(type) && type === targetParams[index].type) &&
     from.returns === to.returns &&
+    (from.returns === undefined || isTyped(from.returns)) &&
     (from.forward.returned || from.returns === undefined)
   );
 }

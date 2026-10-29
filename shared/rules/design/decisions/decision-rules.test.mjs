@@ -29,10 +29,10 @@ describe('repeated-policy-decision', () => {
     expect(summaries(findings)).toEqual([
       {
         rule: 'repeated-policy-decision',
-        path: 'src/checkout/fees.ts',
+        path: 'src/pay/method.ts',
         identity: 'src/pay/method.ts#PaymentMethod|card,paypal',
         classification: 'descriptive',
-        line: 7,
+        line: 1,
       },
     ]);
     expect(findings[0].message.split(' If this')[0]).toBe(
@@ -95,15 +95,27 @@ describe('foreign-state-decision', () => {
     expect(summaries(findings)).toEqual([
       {
         rule: 'foreign-state-decision',
-        path: 'src/refund/refund.ts',
+        path: 'src/orders/order.ts',
         identity: 'src/orders/order.ts#Order|paidAt,status',
         classification: 'descriptive',
-        line: 5,
+        line: 1,
       },
     ]);
     expect(findings[0].message.split(' If this')[0]).toBe(
       '2 functions outside Order decide on its `paidAt` and `status`: check (src/refund/refund.ts:2), check (src/ship/ship.ts:2). Order already has behaviour; give it a method that answers this question and call that, so the rule lives with the state it reads.',
     );
+  });
+
+  it('joins the fields one function decides on across its reads', () => {
+    const split = fn(owner('src/ship/ship.ts'), 'check', {
+      reads: [
+        { type: order.id, fields: ['status'], decided: ['status', 'total'], line: 5 },
+        { type: order.id, fields: ['paidAt'], decided: ['paidAt', 'status'], line: 9 },
+      ],
+    });
+    const facts = readers([split, reader('src/refund/refund.ts', ['status', 'paidAt', 'total'])]);
+    const identities = designRun(facts, 'foreign-state-decision').map(({ identity }) => identity);
+    expect(identities).toEqual(['src/orders/order.ts#Order|paidAt,status,total']);
   });
 
   it.each([

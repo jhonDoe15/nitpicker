@@ -74,8 +74,10 @@ function repeatedProtocols(index) {
   const accepted = [];
   for (const candidate of candidates) {
     const covered = accepted.some(
-      ({ owner, sequence }) =>
-        owner.id === candidate.owner.id && isSubsequence(candidate.sequence, sequence),
+      ({ owner, sequence, callers }) =>
+        owner.id === candidate.owner.id &&
+        isSubsequence(candidate.sequence, sequence) &&
+        [...candidate.callers.keys()].every((id) => callers.has(id)),
     );
     if (!covered) {
       accepted.push(candidate);
@@ -96,12 +98,11 @@ export function repeatedProtocolFindings(index, finding) {
     const sites = [...protocol.callers.values()].toSorted(
       (left, right) => left.file.localeCompare(right.file) || left.line - right.line,
     );
-    const [first] = sites;
     return finding({
       rule: RULE,
-      path: first.file,
+      path: protocol.owner.file,
       identity: `${protocol.owner.id}|${protocol.sequence.join('>')}`,
-      line: first.line,
+      line: protocol.owner.line,
       message: protocolMessage(protocol, sites, index),
     });
   });

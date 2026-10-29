@@ -26,6 +26,7 @@ describe('protocols config', () => {
     [{ protocols: [{ ...session, steps: [''] }] }, /"protocols\[0\].steps" must be a non-empty/],
     [{ protocols: [{ ...session, reason: '' }] }, /"protocols\[0\].reason" must be a non-empty/],
     [{ protocols: [{ ...session, reason: 3 }] }, /"protocols\[0\].reason" must be a non-empty/],
+    [{ protocols: [session, { ...session, close: ['end'] }] }, /"protocols\[1\].type" repeats/],
     [
       { preset: 'python', protocols: [session] },
       /"protocols" is not supported with "preset": "python"/,
@@ -53,6 +54,7 @@ describe('protocols config', () => {
     [[session], [withSteps], false],
     [[session], [{ ...session, reason: 'one owner' }], false],
     [[session, { ...session, type: 'Lock' }], [{ ...session, type: 'Lock' }, session], false],
+    [[session], [{ ...session, type: 'Lock' }, session], false],
   ])('treats %j -> %j as a loosening: %s', (before, after, loosens) => {
     const kind = looseningKindOfSetting({ setting: 'protocols', before, after }, {});
     expect(kind).toBe(loosens ? 'protocols-loosened' : undefined);

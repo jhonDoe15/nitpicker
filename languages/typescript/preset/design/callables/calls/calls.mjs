@@ -1,9 +1,9 @@
 import ts from 'typescript';
 import { chainOf } from '../../../../../../shared/traversal.mjs';
-import { lineOf, unwrap } from '../../syntax/nodes.mjs';
+import { isClosure, isWrapper, isWrite, lineOf, unwrap } from '../../syntax/nodes.mjs';
 import { isOwnerThis, localKey } from '../scope.mjs';
 import { mutationOfCall } from './mutation.mjs';
-import { targetSite } from './targets.mjs';
+import { targetSite, valueSite } from './targets.mjs';
 
 function isCallNode(node) {
   return (
@@ -30,6 +30,9 @@ function receiverKey(scope, expression) {
 }
 
 function calleeReceiver(scope, node) {
+  if (ts.isPropertyAccessExpression(node)) {
+    return receiverKey(scope, node.expression);
+  }
   if (!ts.isCallExpression(node)) {
     return undefined;
   }
@@ -40,6 +43,9 @@ function calleeReceiver(scope, node) {
 }
 
 function callLine(node) {
+  if (ts.isPropertyAccessExpression(node)) {
+    return lineOf(node.name);
+  }
   if (ts.isCallExpression(node)) {
     const callee = unwrap(node.expression);
     return lineOf(ts.isPropertyAccessExpression(callee) ? callee.name : callee);
@@ -57,10 +63,12 @@ function isFinallyBlock(node, root) {
   );
 }
 
+function ownFunctionParent(root) {
+  return (current) => (current === root || isClosure(current) ? undefined : current.parent);
+}
+
 function isInFinally(node, root) {
-  return chainOf(node, (current) => (current === root ? undefined : current.parent)).some(
-    (current) => isFinallyBlock(current, root),
-  );
+  return chainOf(node, ownFunctionParent(root)).some((current) => isFinallyBlock(current, root));
 }
 
 function hasInstanceReceiver(site) {
@@ -71,7 +79,8 @@ function hasInstanceReceiver(site) {
 
 function callFact(scope, node, site) {
   const receiver = hasInstanceReceiver(site) ? calleeReceiver(scope, node) : undefined;
-  const mutation = ts.isCallExpression(node) ? mutationOfCall(scope, node) : undefined;
+  const isValue = ts.isCallExpression(node) || ts.isPropertyAccessExpression(node);
+  const mutation = isValue ? mutationOfCall(scope, node) : undefined;
   return {
     target: site.id,
     line: callLine(node),
@@ -119,10 +128,29 @@ function usingCalls(scope) {
     .filter((call) => call !== undefined);
 }
 
+function isCallee(node) {
+  const value = chainOf(node, (current) =>
+    isWrapper(current.parent) ? current.parent : undefined,
+  ).at(-1);
+  const { parent } = value;
+  return (
+    (ts.isCallExpression(parent) || ts.isNewExpression(parent) || ts.isDecorator(parent)) &&
+    parent.expression === value
+  );
+}
+
+function accessorRead(scope, node) {
+  if (!ts.isPropertyAccessExpression(node) || isWrite(node) || isCallee(node)) {
+    return undefined;
+  }
+  const site = valueSite(scope, node);
+  return site?.kind === 'accessor' ? site : undefined;
+}
+
 export function collectCalls(scope) {
   const calls = [];
-  for (const node of scope.nodes.filter(isCallNode)) {
-    const site = targetSite(scope, node);
+  for (const node of scope.nodes) {
+    const site = isCallNode(node) ? targetSite(scope, node) : accessorRead(scope, node);
     if (site !== undefined) {
       calls.push({ order: node.getEnd(), fact: callFact(scope, node, site) });
     }

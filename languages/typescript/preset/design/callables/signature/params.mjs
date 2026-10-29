@@ -65,7 +65,10 @@ export function declaredReturnType(scope, node) {
   if (annotation === undefined) {
     return undefined;
   }
-  return KEYWORD_TYPES.has(annotation.kind)
-    ? ts.tokenToString(annotation.kind)
-    : normalizedTypeText(checker, checker.getTypeFromTypeNode(annotation));
+  if (KEYWORD_TYPES.has(annotation.kind)) {
+    return ts.tokenToString(annotation.kind);
+  }
+  const type = checker.getTypeFromTypeNode(annotation);
+  const entry = entryOfNodeOrType(scope, { typeNode: annotation, type });
+  return entry?.id ?? normalizedTypeText(checker, type);
 }
