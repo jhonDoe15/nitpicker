@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { collectImports, importEdges } from '../python-coupling.mjs';
+import { commandTimeoutMs } from '../../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 const INTERPRETERS = ['python3', 'python'];
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -15,7 +16,7 @@ function runScan(context, [, ...args]) {
       cwd: context.projectRoot,
       encoding: 'utf8',
       maxBuffer: MAX_OUTPUT_BYTES,
-      timeout: SCAN_TIMEOUT_MS,
+      timeout: commandTimeoutMs(SCAN_TIMEOUT_MS),
     });
     if (result.error === undefined && result.status === 0) {
       return result;

@@ -1,5 +1,7 @@
 import { spawn } from 'node:child_process';
 import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
+import { ANALYZER_TIMEOUT_KEY } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -70,6 +72,13 @@ function scheduleForceKill(child) {
   return timer;
 }
 
+function timeoutMessage(task) {
+  return (
+    `${task.name} timed out after ${String(task.timeoutMs)} ms. To give it more time, set ` +
+    `"${ANALYZER_TIMEOUT_KEY}": { "${task.name}": <minutes> } in ${CONFIG_FILE_NAME}`
+  );
+}
+
 function createTaskController(child, task) {
   const errors = new Map();
   const state = {
@@ -77,7 +86,7 @@ function createTaskController(child, task) {
     forceKillTimeout: undefined,
   };
   const timeout = setTimeout(() => {
-    terminate(new Error(`${task.name} timed out after ${String(task.timeoutMs)} ms`));
+    terminate(new Error(timeoutMessage(task)));
   }, task.timeoutMs);
   function terminate(error) {
     if (errors.has('termination')) return;

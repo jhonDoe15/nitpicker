@@ -2,10 +2,9 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { mavenBudget } from '../adapters/gradle-wrapper/gradle-budget.mjs';
 import { wrapperTarget } from '../adapters/gradle-wrapper/gradle-command.mjs';
 
-const MAVEN_TIMEOUT_MS = 15 * 60 * 1000;
-const TOOL_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_ERROR_LINES = 40;
 const MILLISECONDS_PER_MINUTE = 60_000;
@@ -68,7 +67,8 @@ function spawnFailure(error, { command, projectRoot, timeoutMs }) {
   return new Error(
     `Maven did not finish in ${projectRoot} within ${duration(timeoutMs)} and was stopped. ` +
       'Its post-integration-test steps may not have run, so containers or servers the build ' +
-      'started may still be running',
+      'started may still be running. Set NITPICKER_MAVEN_TIMEOUT_MINUTES to give each Maven ' +
+      'command more time',
   );
 }
 
@@ -76,7 +76,7 @@ export function runMaven({
   projectRoot,
   maven,
   args,
-  timeoutMs = MAVEN_TIMEOUT_MS,
+  timeoutMs = mavenBudget(process.env).commandTimeoutMs,
   spawn = spawnSync,
 }) {
   const target = mavenTarget({ projectRoot, configured: maven, args: [...MAVEN_FLAGS, ...args] });
@@ -135,7 +135,7 @@ export function runJava({
       cwd,
       encoding: 'utf8',
       maxBuffer: MAX_OUTPUT_BYTES,
-      timeout: TOOL_TIMEOUT_MS,
+      timeout: mavenBudget(process.env).commandTimeoutMs,
     });
     if (result.error?.code === 'ENOENT') {
       throw new Error(

@@ -425,6 +425,13 @@ classpath and its `test` task, and adds no test library to the project.
   timer within its supported range. The analyzer deadline allows two commands (the optional
   Checkstyle configuration export and the analysis), plus one minute for reports. This does
   not change Maven's command budget or configure individual PIT phases.
+- **Maven timeout.** Each Maven command, and each tool nitpicker runs on the Maven build's
+  output, has a 15-minute budget by default. Set `NITPICKER_MAVEN_TIMEOUT_MINUTES` the same way
+  as the Gradle variable, with the same limits. The analyzer deadline allows two commands plus
+  one minute; when both variables are set, the larger budget sets it.
+- **Analyzer deadline.** `"analyzerTimeoutMinutes": { "java": 90 }` (or `"kotlin"`) in
+  `nitpicker.config.json` replaces the analyzer deadline, and Gradle and Maven commands without
+  their own variable get the same budget. See [Analyzer timeouts](usage.md#analyzer-timeouts).
 - **Config keys.** `base`, `disable` and `analyzers` work as before. `history` turns on the
   opt-in [change history](usage.md#change-history) check, which reads git and not the Java runner.
   `thresholds`, `exclude` and `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,

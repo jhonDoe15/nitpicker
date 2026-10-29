@@ -16,6 +16,7 @@ const LISTED_KEYS = new Set([
   'thresholds',
   'analyzers',
   'duplicates',
+  'analyzerTimeoutMinutes',
 ]);
 const LISTED_LAYOUT_KEYS = new Set(['excludedGlobs', 'entryPoints']);
 

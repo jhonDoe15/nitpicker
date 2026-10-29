@@ -145,7 +145,7 @@ set `python.sourceRoots`.
 
 ## Configuration
 
-Config keys with this preset: `base`, `disable` (the analyzer names are `python` and `mutation`), `analyzers`, the keys shared by all languages,
+Config keys with this preset: `base`, `disable` (the analyzer names are `python` and `mutation`), `analyzers`, `analyzerTimeoutMinutes`, the keys shared by all languages,
 `thresholds` (`crapLimit`, enforced from slice 3, the file limits `fileLines`, `testFileLines`,
 `lineLength` and `folderFiles`, the size limits `folderDepth`, `classMethods`, `classFields` and
 `inheritanceDepth`, and the test time limits `unitTestSeconds` and `integrationTestSeconds`), `exclude` (findings under the globs are dropped) and

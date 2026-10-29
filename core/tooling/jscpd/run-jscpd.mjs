@@ -9,6 +9,7 @@ import { layeredJscpdConfig, renamedJscpdSettings } from './config.mjs';
 import { trackTemporaryPath, untrackTemporaryPath } from '../temporary-files.mjs';
 import { resolveTool } from '../tool-resolution.mjs';
 import { rootsPattern } from './skipped-folders.mjs';
+import { commandTimeoutMs } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 export const DUPLICATES_TOOL = 'duplicates';
 export const DUPLICATES_REPORT = 'duplicates.json';
@@ -56,7 +57,7 @@ function runJscpdOnce({ cwd, output, args }) {
     cwd,
     encoding: 'utf8',
     maxBuffer: MAX_OUTPUT_BYTES,
-    timeout: JSCPD_TIMEOUT_MS,
+    timeout: commandTimeoutMs(JSCPD_TIMEOUT_MS),
   });
   if (result.error !== undefined) {
     throw result.error;

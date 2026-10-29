@@ -6,6 +6,7 @@ import { realpathSync, statSync } from 'node:fs';
 import { normalizedRelativePath, assertContainedPath } from './paths.mjs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
+import { commandTimeoutMs } from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 const DEFAULT_ESLINT_TIMEOUT_MS = 4 * 60 * 1000;
 
@@ -95,7 +96,7 @@ export function parseArguments(arguments_) {
     toolRoot: validatedToolRoot(requiredArgument(values, '--tool-root')),
     configRelativePath: normalizedRelativePath(requiredArgument(values, '--config'), '--config'),
     timeoutMs: positiveInteger(
-      Number(values.get('--timeout-ms') ?? DEFAULT_ESLINT_TIMEOUT_MS),
+      Number(values.get('--timeout-ms') ?? commandTimeoutMs(DEFAULT_ESLINT_TIMEOUT_MS)),
       '--timeout-ms',
     ),
     eslintCliPath:

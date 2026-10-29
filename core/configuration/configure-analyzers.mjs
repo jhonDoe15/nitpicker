@@ -18,8 +18,17 @@ import {
   applyThresholds,
 } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { applyDisable } from './config.mjs';
+import { applyAnalyzerTimeouts } from '../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 export function configureAnalyzers(analyzers, config, headPolicy) {
+  return applyAnalyzerTimeouts(
+    configuredWithoutTimeouts(analyzers, config, headPolicy),
+    config.analyzerTimeoutMinutes,
+    [...analyzers, ...(config.analyzers ?? [])].map(({ name }) => name),
+  );
+}
+
+function configuredWithoutTimeouts(analyzers, config, headPolicy) {
   return applyLegacyInventory(
     addCustomAnalyzers(
       applyJavaConfig(

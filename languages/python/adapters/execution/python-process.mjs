@@ -1,4 +1,5 @@
 import { spawnSync } from 'node:child_process';
+import { commandTimeoutMs } from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TOOL_TIMEOUT_MS = 25 * 60 * 1000;
@@ -9,7 +10,7 @@ export const VERSION_PATTERN = /\d+(?:\.\d+)+\S*/;
 export function execute(
   context,
   command,
-  { timeout = TOOL_TIMEOUT_MS, env = {}, defaultEnv = {}, cwd } = {},
+  { timeout = commandTimeoutMs(TOOL_TIMEOUT_MS), env = {}, defaultEnv = {}, cwd } = {},
 ) {
   const [tool, ...args] = command;
   const launch = context.launcher.launch(tool, args);
@@ -43,7 +44,13 @@ function isAccepted(accepted, result) {
 export function run(
   context,
   command,
-  { accepted = [0], rule, timeoutMs = TOOL_TIMEOUT_MS, notFoundHint = '', ...environment },
+  {
+    accepted = [0],
+    rule,
+    timeoutMs = commandTimeoutMs(TOOL_TIMEOUT_MS),
+    notFoundHint = '',
+    ...environment
+  },
 ) {
   const result = execute(context, command, { timeout: timeoutMs, ...environment });
   if (result.error !== undefined || !isAccepted(accepted, result)) {
@@ -59,7 +66,13 @@ export function failure({ context, command, result, rule, timeoutMs, notFoundHin
   );
 }
 
-function describeFailure({ context, command, result, timeoutMs = TOOL_TIMEOUT_MS, notFoundHint }) {
+function describeFailure({
+  context,
+  command,
+  result,
+  timeoutMs = commandTimeoutMs(TOOL_TIMEOUT_MS),
+  notFoundHint,
+}) {
   const [tool, subcommand = '-'] = command;
   const label = subcommand.startsWith('-') ? tool : `${tool} ${subcommand}`;
   const where = `the ${context.launcher.description} environment`;
