@@ -69,17 +69,17 @@ describe.skipIf(!pythonE2eEnabled)('Python design rules end to end', () => {
     expect(designFindings(result)).toEqual([
       {
         tool: 'python',
-        rule: 'caller-protocol',
-        path: 'src/shop/api.py',
-        identity: 'src/shop/api.py#save|session|unclosed:begin',
-        classification: 'enforceable',
-      },
-      {
-        tool: 'python',
         rule: 'forwarding-chain',
         path: 'src/shop/api.py',
         identity: 'src/shop/api.py#handle>src/shop/orders.py#process>src/shop/billing.py#charge',
         classification: 'descriptive',
+      },
+      {
+        tool: 'python',
+        rule: 'protocol-contract',
+        path: 'src/shop/api.py',
+        identity: 'src/shop/api.py#save|session|unclosed:begin',
+        classification: 'enforceable',
       },
     ]);
   });

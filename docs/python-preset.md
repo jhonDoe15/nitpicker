@@ -1532,10 +1532,10 @@ a changed test; mutmut has no such step yet, hence source-only.
 ## Design rules
 
 The shared deep-module design rules (`mutable-state-escape`, `context-threading`, `caller-protocol`,
-`forwarding-chain`, `disjoint-consumer-groups`, `data-clump`, `repeated-policy-decision` and
-`foreign-state-decision`, listed in [`spec/checks.md`](../spec/checks.md)) run on Python sources.
-They are report-only, except `mutable-state-escape` and a call that breaks a `protocols` contract,
-which fail. Test files, generated files and files matched by `exclude` are not judged.
+`protocol-contract`, `forwarding-chain`, `disjoint-consumer-groups`, `data-clump`,
+`repeated-policy-decision` and `foreign-state-decision`, listed in [`spec/checks.md`](../spec/checks.md))
+run on Python sources. They are report-only, except `mutable-state-escape` and `protocol-contract` (a
+call that breaks a `protocols` contract), which fail. Test files, generated files and files matched by `exclude` are not judged.
 
 The rules read facts that the rules script produces from the same `ast` parse as its other checks,
 so they need no extra tool and no import of your code. The producer follows what it can prove from

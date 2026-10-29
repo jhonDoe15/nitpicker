@@ -38,19 +38,14 @@ describe.skipIf(!pythonUsable())('the shared design rules over Python facts', ()
         DESCRIPTIVE,
       ],
       ['data-clump', 'shop/billing.py', 'city: str, street: str, zip_code: str', DESCRIPTIVE],
+      ['disjoint-consumer-groups', 'shop/model.py', 'shop/model.py#Catalog', DESCRIPTIVE],
       [
         'foreign-state-decision',
-        'shop/billing.py',
+        'shop/model.py',
         'shop/model.py#Account|balance,tier',
         DESCRIPTIVE,
       ],
-      [
-        'repeated-policy-decision',
-        'shop/billing.py',
-        'shop/model.py#Status|OPEN,PAID',
-        DESCRIPTIVE,
-      ],
-      ['disjoint-consumer-groups', 'shop/model.py', 'shop/model.py#Catalog', DESCRIPTIVE],
+      ['repeated-policy-decision', 'shop/model.py', 'shop/model.py#Status|OPEN,PAID', DESCRIPTIVE],
     ]);
   });
 
@@ -76,7 +71,7 @@ describe.skipIf(!pythonUsable())('the shared design rules over Python facts', ()
   it('fails a protocol opened without a close that always runs, and passes with blocks', () => {
     expect(findingRows('lifecycle', { protocols: [PROTOCOL] })).toEqual(
       ['manual', 'not_cleanup'].map((caller) => [
-        'caller-protocol',
+        'protocol-contract',
         'db/usage.py',
         `db/usage.py#${caller}|session|unclosed:begin`,
         'enforceable',
