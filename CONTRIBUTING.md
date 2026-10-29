@@ -50,6 +50,9 @@ end-to-end behaviour also needs that language's suite (`npm run test:java`, `tes
 `test:python`), which needs the language's toolchain. CI runs all three, in the `java-e2e`,
 `kotlin-e2e` and `python-e2e` workflows, which follow the same triggers as the `typescript` workflow
 below (pushes to `main` that touch the paths they list, a manual run, and the `run-ci` label).
+The Java and Kotlin suites add Maven resolver retry options to `MAVEN_OPTS`, so a Maven Central
+HTTP 429 (rate limit) is retried up to six times, ten seconds apart, instead of failing the build
+under test. CI keeps `~/.m2` and `~/.gradle` between runs; locally they are your own caches.
 The TypeScript red-base test (`npm run test:typescript`, which runs real vitest through the CLI) is
 not in CI: run it after changing `core/diff/comparison/base-red/` or a test runner's failure report.
 
