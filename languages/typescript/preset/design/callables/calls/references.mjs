@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { wrappedFunction } from '../../syntax/function-values.mjs';
 import { chainOf } from '../../../../../../shared/traversal.mjs';
 import { isAssignmentOperator, isWrapper, outsideClosures } from '../../syntax/nodes.mjs';

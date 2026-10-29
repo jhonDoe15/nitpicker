@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { chainOf } from '../../../../../../shared/traversal.mjs';
 import { accessedName, isClosure, isPlainAssignment, lineOf, unwrap } from '../../syntax/nodes.mjs';
 import { entryOfNodeOrType } from '../../types/type-lookup.mjs';
