@@ -87,6 +87,8 @@ number about a function (`nitpicker/cognitive-complexity`, `complexity`, `max-li
 Generated from `shared/policy.mjs`. "enforced" means the language's adapter produces the
 rule and it fails the gate; "not enforced" means the check does not exist for that language yet;
 "report-only" means the adapter produces the rule when the project opts in and it never fails the gate.
+A rule whose limit names a tool rule for a language (the feature boundary rules for TypeScript and
+JavaScript, which dependency-cruiser enforces) is enforced there by that tool rule, under its name.
 
 The function limits, the file limits and the CRAP score limit ratchet: editing a function that was
 already over a limit on the base fails only when the change raises that metric (lines, statements,
