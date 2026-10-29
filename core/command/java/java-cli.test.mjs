@@ -35,6 +35,8 @@ const xmlText = (text) =>
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&apos;');
 
+const CLONE_SIZE_NOTE =
+  'duplicates/duplicate-clone-size src/main/java/demo/First.java:3 Duplicate with src/main/java/demo/Second.java';
 const CLONE_MESSAGE = [
   'This code repeats src/main/java/demo/Second.java:3 (30 lines).',
   'Keep one copy and call it from both places.',
@@ -203,8 +205,8 @@ Quality gate summary
   duplicates/duplicate-clone src/main/java/demo/First.java:3
     ${CLONE_MESSAGE}
 Design notes for review (not failing): 2 new
-  duplicates/duplicate-clone-size src/main/java/demo/First.java:3 Duplicate with src/main/java/demo/Second.java (lines 30)
-  duplicates/duplicate-clone-size src/main/java/demo/First.java:3 Duplicate with src/main/java/demo/Second.java (tokens 381)
+  ${CLONE_SIZE_NOTE} (lines 30)
+  ${CLONE_SIZE_NOTE} (tokens 381)
 Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     });
