@@ -85,6 +85,13 @@ Before you change code other modules use, or fix a bug, read
   update the property, or hold one shared `Mutex` (a property, not a local) around the whole
   read-modify-write; a `launch` inside the lock does not hold it
   (`pmd/NonAtomicUpdateAcrossSuspension`).
+- In main code, nothing with an outside effect runs while a file, `object`, companion object or
+  enum class loads (`pmd/ClassLoadEffect`): no connection, request, file access, pool, timer,
+  coroutine launch or JVM-wide setting in a top-level property, an `object`'s properties or `init`,
+  an enum entry, or a class its companion creates, nor in a function they call. Do the work in a
+  function `main` or the framework calls after startup (a `@Bean` method, an `ApplicationRunner`, a
+  Ktor module) and pass the result in, or defer it with `by lazy { }`. Constants, loggers, `Regex`
+  and collections can stay.
 - A private or `internal` function or constructor does not declare a default parameter that no
   call in the project sets (`unused-option`): remove the parameter, or pass it from a real call.
 - Never `@Suppress` a detekt or ktlint rule (its name, `all`, a ruleset, `detekt:...`, `ktlint:...`):
