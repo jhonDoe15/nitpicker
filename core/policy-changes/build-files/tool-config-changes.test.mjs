@@ -166,43 +166,51 @@ describe('project tool configs the project opted into', () => {
   it.each([undefined, 'javascript'])(
     'reads what an edit of the dependency-cruiser config a %s project opted into applies',
     (preset) => {
-      const tools = { 'dependency-cruiser': PROJECT };
-      const config = { ...(preset === undefined ? {} : { preset }), tools };
-      const rule =
-        "{ name: 'no-lib', severity: 'error', from: { path: '^src' }, to: { path: '^lib' } }";
-      const at = (rules, options = '{}') => ({
+      const config = {
+        ...(preset === undefined ? {} : { preset }),
+        tools: { 'dependency-cruiser': PROJECT },
+      };
+      const rule = "{ name: 'no-lib', from: { path: '^src' }, to: { path: '^lib' } }";
+      const at = (rules) => ({
         'src/a.ts': 'export const a = 1;\n',
         'tools/rules.cjs': `module.exports = [${rules}];\n`,
-        '.dependency-cruiser.cjs': [
-          '// house rules',
-          `module.exports = { forbidden: require('./tools/rules.cjs'), options: ${options} };`,
-          '',
-        ].join('\n'),
+        '.dependency-cruiser.cjs':
+          "// ours\nmodule.exports = { forbidden: require('./tools/rules.cjs') };\n",
       });
-      const base = at(rule);
-      const changes = (head) => changesOf(between({ base, head, config }));
-      const label = 'dependency-cruiser .dependency-cruiser.cjs';
-
-      expect(changes(at(rule, "{ tsPreCompilationDeps: false, outputType: 'dot' }"))).toEqual({
-        policyLoosenings: [],
-        policyChanges: [],
+      const dropped =
+        'dependency-cruiser .dependency-cruiser.cjs forbidden: ' +
+        '[{"name":"no-lib","from":{"path":"^src"},"to":{"path":"^lib"}}] -> []';
+      expect(changesOf(between({ base: at(rule), head: at(''), config }))).toEqual({
+        policyLoosenings: [dropped],
+        policyChanges: [dropped],
       });
-      expect(changes(at(rule, '{ exclude: { path: /^gen/u } }'))).toEqual({
-        policyLoosenings: [`${label} options.exclude: not set -> ["path ^gen"]`],
-        policyChanges: [`${label} options.exclude: not set -> ["path ^gen"]`],
-      });
-      const dropped = `${label} forbidden: [${JSON.stringify({
-        name: 'no-lib',
-        severity: 'error',
-        from: { path: '^src' },
-        to: { path: '^lib' },
-      })}] -> []`;
-      expect(changes(at(''))).toEqual({ policyLoosenings: [dropped], policyChanges: [dropped] });
-      const unnamed = "{ severity: 'error', from: { path: '^src' }, to: { path: '^vendor' } }";
-      expect(changes(at(`${rule}, ${unnamed}`)).policyLoosenings).toEqual([]);
-      expect(changes(at(`${rule}, ${unnamed}`)).policyChanges).toEqual([expect.any(String)]);
     },
   );
+  it('reads a .dependency-cruiser.json edit per key, without the options nitpicker owns', () => {
+    const config = { preset: 'typescript', tools: { 'dependency-cruiser': PROJECT } };
+    const rule = { name: 'no-lib', from: { path: '^src' }, to: { path: '^lib' } };
+    const unnamed = { from: { path: '^src' }, to: { path: '^vendor' } };
+    const at = (cruiser) => ({
+      'src/a.ts': 'export const a = 1;\n',
+      '.dependency-cruiser.json': JSON.stringify({ forbidden: [rule], ...cruiser }),
+    });
+    const changes = (cruiser) => changesOf(between({ base: at({}), head: at(cruiser), config }));
+    const label = 'dependency-cruiser .dependency-cruiser.json';
+
+    expect(changes({ options: { tsPreCompilationDeps: false, outputType: 'dot' } })).toEqual({
+      policyLoosenings: [],
+      policyChanges: [],
+    });
+    expect(changes({ options: { exclude: { path: '^gen' } } })).toEqual({
+      policyLoosenings: [`${label} options.exclude: not set -> ["path ^gen"]`],
+      policyChanges: [`${label} options.exclude: not set -> ["path ^gen"]`],
+    });
+    const added = `${label} forbidden: ${JSON.stringify([rule])} -> ${JSON.stringify([rule, unnamed])}`;
+    expect(changes({ forbidden: [unnamed, rule] })).toEqual({
+      policyLoosenings: [],
+      policyChanges: [added],
+    });
+  });
   it('shows the knip config a change opts into in the same change', () => {
     const files = { 'knip.json': '{"ignore":["src/**"]}', 'src/a.ts': 'export const a = 1;\n' };
     expect(

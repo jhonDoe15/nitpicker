@@ -1,15 +1,14 @@
 import { isDeepStrictEqual } from 'node:util';
+import { isPlainObject, listOf } from '../../../../../shared/config.mjs';
 import { precedenceLayers } from '../../../../../shared/conventions/tool-precedence.mjs';
 import {
   DEPENDENCY_CRUISER_OWNED_OPTIONS,
-  listOf,
   patternSource,
 } from '../../../preset/project-tools/config-values.mjs';
 
 function pathsOf(option) {
   const source = patternSource(option);
-  const paths =
-    typeof source === 'object' && source !== null && !Array.isArray(source) ? source.path : source;
+  const paths = isPlainObject(source) ? source.path : source;
   return listOf(paths).map(patternSource);
 }
 

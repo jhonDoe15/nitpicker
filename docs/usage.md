@@ -1418,11 +1418,19 @@ too.
 test-runtime and entry-points checks read) takes the first of `.dependency-cruiser.json`,
 `.dependency-cruiser.js`, `.dependency-cruiser.cjs`, `.dependency-cruiser.mjs`,
 `.dependency-cruiser.ts`, `.dependency-cruiser.cts` and `.dependency-cruiser.mts`, the order
-dependency-cruiser searches them. The file is evaluated from the head checkout by the
-dependency-cruiser version nitpicker pins, with its `extends` followed, and the result must be plain
-data. Without the opt-in it is not read and the run prints `Ignoring .dependency-cruiser.js; opt in
-with ...`; naming `"project"` without the file, or with one that does not load, is a tool error for
-every check that reads the graph.
+dependency-cruiser searches them. A JSON config without `extends` is read as data. Any other config is
+evaluated with the dependency-cruiser version nitpicker pins, its `extends` followed: a script config
+is code, and opting in runs it in the head checkout the way the knip config runs (once when the run
+starts and once per side for the policy-change check, only while one of the graph checks is enabled,
+without the CI output variables, stopped after a minute, its output ignored). An `extends` target or
+a local `require`/`import` of the config that resolves outside the repository, through `..` or a
+symlink, is a tool error. Regular expressions are kept and read as their source where nitpicker joins
+patterns; any other value that is not plain data is a tool error that names its key. A
+`webpackConfig` or `babelConfig` `fileName` resolves against the head checkout. Without the opt-in the
+file is not read and the run prints `Ignoring .dependency-cruiser.js; opt in with ...`. Naming
+`"project"` without the file, or with one that does not load, makes `dependency-architecture` a tool
+error that says which; the coupling, test-runtime and entry-points checks then read the graph without
+the project config.
 
 - **Rules.** The `forbidden`, `required` and `allowed` rules of both configs run together. A project
   rule with the name of a nitpicker rule (`no-production-cycles`, `no-production-to-test` and the
@@ -1444,9 +1452,22 @@ every check that reads the graph.
   reporter settings.
 
 `["project"]` and `["project", "nitpicker"]` are the same here, since nitpicker's rules always run.
-The evaluated config applies to both sides of the comparison and is part of the cache key, so an
-edit of a file it `extends` invalidates cached results too; an edit of the config file itself is a
-policy change, and listing `"project"` at all is a loosening (its excludes apply), more so first.
+The project config changes which files and dependencies are checked under every ordering: its
+`exclude` and `doNotFollow` paths take files out of the graph, and a rule it lays over a nitpicker rule
+of the same name can lower that rule's severity. The evaluated config applies to both sides of the
+comparison when both opt in, and a base that does not opt in keeps nitpicker's config; it is part of
+the cache key, so an edit of a file it `extends` or requires invalidates cached results too.
+
+Listing `"project"` at all is a loosening, more so first. While the head opts in, the policy-change
+check evaluates the config on both sides (the base's only when the base opts in too) and compares
+what applies key by key, the options one by one (`options.exclude`), so an edit of a file the config
+`extends` or requires counts and comments, key and rule order and the options nitpicker owns change
+nothing. Added `exclude` or `doNotFollow` paths, added `allowed` rules, a dropped or changed rule, a
+named rule (which can override a nitpicker rule) and any change to the other options are loosenings
+that need a person's acceptance, listed as
+`dependency-cruiser .dependency-cruiser.cjs options.exclude: not set -> ["path ^gen"]`; an added unnamed
+rule or a removed path is listed as a change. When either side cannot be evaluated, the change falls
+back to the files (`dependency-cruiser project config changed: .dependency-cruiser.cjs`).
 
 With the `java` and `kotlin` presets the tools are `pmd` (the project's `config/pmd/ruleset.xml`) and
 `checkstyle` (the project's `config/checkstyle/checkstyle.xml`). Both files are read from the head
