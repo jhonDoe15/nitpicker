@@ -157,9 +157,10 @@ describe('caller-protocol', () => {
     ],
   ])('checks the protocols contract: %s', (_, calls, identities) => {
     const facts = sessionUsers([caller('src/a/save.ts', 'save', calls)]);
-    const findings = designRun(facts, 'caller-protocol', { protocols: [contract] });
+    const findings = designRun(facts, 'protocol-contract', { protocols: [contract] });
     expect(findings.map(({ identity, classification }) => [identity, classification])).toEqual(
       identities.map((identity) => [identity, 'enforceable']),
     );
+    expect(designRun(facts, 'caller-protocol', { protocols: [contract] })).toEqual([]);
   });
 });

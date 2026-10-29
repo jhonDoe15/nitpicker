@@ -1478,10 +1478,10 @@ from a real caller) and the `exceptions` entry that lifts it.
 
 The `structure` check also builds the design facts (`modules`, `types`, `callables`) of the
 production sources from a second type-checked program (test files left out) and runs the deep-module
-design rules over them (`mutable-state-escape`, `context-threading`, `caller-protocol`,
+design rules over them (`mutable-state-escape`, `context-threading`, `caller-protocol`, `protocol-contract`,
 `forwarding-chain`, `disjoint-consumer-groups`, `data-clump`, `repeated-policy-decision`,
-`foreign-state-decision`). They are report-only review signals, except `mutable-state-escape` and the
-violations of a `protocols` contract in `nitpicker.config.json`, which are enforceable. The JavaScript
+`foreign-state-decision`). They are report-only review signals, except `mutable-state-escape` and
+`protocol-contract` (the violations of a `protocols` contract in `nitpicker.config.json`), which are enforceable. The JavaScript
 preset runs them too: JSDoc types count, and a callable without a declared type leaves that part of the
 fact out, so fewer signals fire than in TypeScript. A call is a fact only when TypeScript resolves it to
 one declaration of the project (a union or interface receiver is left out), and a failure of the

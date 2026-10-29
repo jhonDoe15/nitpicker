@@ -2,6 +2,7 @@ export const DESIGN_RULE_IDS = {
   mutableStateEscape: 'mutable-state-escape',
   contextThreading: 'context-threading',
   callerProtocol: 'caller-protocol',
+  protocolContract: 'protocol-contract',
   forwardingChain: 'forwarding-chain',
   disjointConsumerGroups: 'disjoint-consumer-groups',
   dataClump: 'data-clump',
@@ -25,10 +26,15 @@ export const DESIGN_RULE_LANGUAGES = {
   kotlin: false,
 };
 
-export const DESIGN_RULE_SETTINGS = { [DESIGN_RULE_IDS.callerProtocol]: ['protocols'] };
+export const DESIGN_RULE_SETTINGS = { [DESIGN_RULE_IDS.protocolContract]: ['protocols'] };
+
+const FAILING_DESIGN_RULES = new Set([
+  DESIGN_RULE_IDS.mutableStateEscape,
+  DESIGN_RULE_IDS.protocolContract,
+]);
 
 export const REPORT_ONLY_DESIGN_RULES = DESIGN_RULES.filter(
-  (rule) => rule !== DESIGN_RULE_IDS.mutableStateEscape,
+  (rule) => !FAILING_DESIGN_RULES.has(rule),
 );
 
 const LIMITS = {
@@ -37,7 +43,9 @@ const LIMITS = {
   contextThreading:
     'report-only: a parameter of a project type with 5 or more fields passed whole through 2 or more callables, one in another module, that together read at most a third of its fields',
   callerProtocol:
-    'report-only: the same 3 or more steps on one value of a project class repeated by 3 or more callables in 2 or more modules; a call that breaks a `protocols` contract (open without a close on every exit, a step before open) fails',
+    'report-only: the same 3 or more steps on one value of a project class repeated by 3 or more callables in 2 or more modules',
+  protocolContract:
+    'a call that breaks a lifecycle the project lists in `protocols`: an `open` member without a `close` member on every exit, or a listed step before `open`',
   forwardingChain:
     'report-only: 2 or more forwarding hops in a row, each into another module, that pass the same parameters in order and return the result unchanged, with the same parameter and return types',
   disjointConsumerGroups:
@@ -55,6 +63,6 @@ export function designRules(ids) {
     id: ids[key],
     check: 'structure',
     limit,
-    reportOnly: ids[key] !== ids.mutableStateEscape,
+    reportOnly: !FAILING_DESIGN_RULES.has(ids[key]),
   }));
 }
