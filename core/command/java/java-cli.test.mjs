@@ -203,8 +203,8 @@ Quality gate summary
   duplicates/duplicate-clone src/main/java/demo/First.java:3
     ${CLONE_MESSAGE}
 Design notes for review (not failing): 2 new
-  duplicates/duplicate-clone-size src/main/java/demo/First.java:3 Duplicate with src/main/java/demo/Second.java
-  duplicates/duplicate-clone-size src/main/java/demo/First.java:3 Duplicate with src/main/java/demo/Second.java
+  duplicates/duplicate-clone-size src/main/java/demo/First.java:3 Duplicate with src/main/java/demo/Second.java (lines 30)
+  duplicates/duplicate-clone-size src/main/java/demo/First.java:3 Duplicate with src/main/java/demo/Second.java (tokens 381)
 Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     });
@@ -408,10 +408,10 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         'Enforceable findings:',
         `pmd/UnusedPrivateField src/main/java/demo/A.java:3 ${unusedFieldMessage('legacy')}`,
         '',
-        'Design notes for review (not failing): 3 new',
-        '  coupling/coupling . dependencies summary',
-        '  coupling/coupling . modules summary',
-        '  coupling/coupling . packages summary',
+        'Design notes for review (not failing): 3 in the snapshot',
+        '  coupling/coupling . dependencies summary (dependencies 0)',
+        '  coupling/coupling . modules summary (modules 0)',
+        '  coupling/coupling . packages summary (packages 0)',
         '',
       ].join('\n'),
     );

@@ -251,9 +251,10 @@ give each kind of run its own category: a `--all` upload on the default branch
 next comparison upload would close the alerts it opened.
 
 New descriptive findings appear under "Design notes for review (not failing)" in the console.
-The summary shows the first sentence, rule and source location for up to ten notes; an overflow
-count points to `report.txt` for the rest. These notes never change the exit code. A diff lists only
-new notes; `--all` lists notes from the full snapshot. The report files keep every full message.
+The summary shows the first sentence, rule and source location for up to ten notes, rule notes
+before metric notes (which also show the metric and its value); an overflow count points to
+`report.txt` for the rest. These notes never change the exit code. A diff lists only new notes;
+`--all` lists the notes in the full snapshot. The report files keep every full message.
 
 ## Exit codes
 

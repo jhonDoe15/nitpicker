@@ -25,15 +25,10 @@ const noteLine = (number) =>
   `  fake-quality-analyzer/fixture-rule ${file(number)}:1 Review boundary ${String(number)}.`;
 const cases = [
   [0, []],
-  [2, ['Design notes for review (not failing): 2 new', noteLine(1), noteLine(2)]],
-  [
-    12,
-    [
-      'Design notes for review (not failing): 12 new',
-      ...Array.from({ length: 10 }, (_, index) => noteLine(index + 1)),
-    ],
-  ],
+  [2, [noteLine(1), noteLine(2)]],
+  [12, Array.from({ length: 10 }, (_, index) => noteLine(index + 1))],
 ];
+const SCOPES = { diff: 'new', snapshot: 'in the snapshot' };
 
 function snapshotLines(count, notes) {
   return [
@@ -83,6 +78,9 @@ describe.each(['diff', 'snapshot'])('design review notes in %s mode', (mode) => 
       stderr: output.stderr,
     });
     const notes = [
+      ...(count === 0
+        ? []
+        : [`Design notes for review (not failing): ${String(count)} ${SCOPES[mode]}`]),
       ...expectedNotes,
       ...(count === 12 ? [`  … 2 more; see ${diagnosticsPath}`] : []),
     ];

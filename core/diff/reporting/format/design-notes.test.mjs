@@ -50,6 +50,9 @@ describe('design notes in the shared console summary', () => {
     ['No sentence terminator\n across lines', 'No sentence terminator across lines'],
     ['Could these be separate? More detail.', 'Could these be separate?'],
     ['Review `src/orders.ts` here. More detail.', 'Review `src/orders.ts` here.'],
+    ['Split it, e.g. by feature. More detail.', 'Split it, e.g. by feature.'],
+    ['Move it, i.e. out of shared. More detail.', 'Move it, i.e. out of shared.'],
+    ['Keep version 1.2 here. More detail.', 'Keep version 1.2 here.'],
   ])('shows the first sentence without requiring a source location: %s', (message, sentence) => {
     expect(
       renderConsoleSummary(
@@ -63,6 +66,30 @@ describe('design notes in the shared console summary', () => {
         '✓ No new enforceable violations',
         'Design note for review (not failing): 1 new',
         `  design/foreign-state src/orders.ts ${sentence}`,
+        'Full diagnostics: reports/quality/diff/combined/report.txt',
+        '',
+      ].join('\n'),
+    );
+  });
+
+  it('lists rule notes before metric notes and shows the metric value', () => {
+    const metric = { ...note, rule: 'module-coupling', message: 'fanIn for src/orders.ts' };
+    expect(
+      renderConsoleSummary(
+        {
+          newFindings: [{ ...metric, metric: { name: 'fanIn', value: 7 } }, note],
+          toolErrors: [],
+        },
+        { color: false },
+      ),
+    ).toBe(
+      [
+        '',
+        'Quality gate summary',
+        '✓ No new enforceable violations',
+        'Design notes for review (not failing): 2 new',
+        '  design/foreign-state src/orders.ts:8 Review this boundary.',
+        '  design/module-coupling src/orders.ts:8 fanIn for src/orders.ts (fanIn 7)',
         'Full diagnostics: reports/quality/diff/combined/report.txt',
         '',
       ].join('\n'),
