@@ -1,40 +1,90 @@
-const ENDS_WITH_SYNC = /Sync$/u;
+import {
+  CHILD_PROCESS_MODULES,
+  CRYPTO_MODULES,
+  EXECA_MODULES,
+  FS_EXTRA_MODULES,
+  FS_MODULES,
+  ZLIB_MODULES,
+} from '../analysis/node-sync-modules.mjs';
 
-const PROMISIFIED = 'the callback form wrapped with `util.promisify`';
+const ENDS_WITH_SYNC = /Sync$/u;
+const FS_PROMISES = '"node:fs/promises"';
+const FILE_HANDLE = `a \`FileHandle\` from \`open()\` of ${FS_PROMISES} (\`await handle.read()\`, \`await handle.close()\`)`;
+const DESCRIPTOR_CALLS = [
+  'closeSync',
+  'readSync',
+  'writeSync',
+  'readvSync',
+  'writevSync',
+  'fstatSync',
+  'fsyncSync',
+  'fdatasyncSync',
+  'ftruncateSync',
+  'futimesSync',
+  'fchmodSync',
+  'fchownSync',
+];
+const FS_ALTERNATIVES = new Map([
+  ['globSync', `\`for await (const entry of glob(pattern))\` with \`glob\` from ${FS_PROMISES}`],
+  [
+    'existsSync',
+    `\`access\` or \`stat\` from ${FS_PROMISES} (\`await access(path)\` rejects when the path is missing)`,
+  ],
+  ...DESCRIPTOR_CALLS.map((name) => [name, FILE_HANDLE]),
+]);
+const CRYPTO_SYNC_CALLS = [
+  'pbkdf2Sync',
+  'scryptSync',
+  'hkdfSync',
+  'generateKeySync',
+  'generateKeyPairSync',
+  'generatePrimeSync',
+  'checkPrimeSync',
+];
+const SUBPROCESS_SYNC_CALLS = ['execSync', 'execFileSync', 'spawnSync'];
+const EXECA_SYNC_CALLS = ['execaSync', 'execaCommandSync'];
+
+function asyncName(name) {
+  return name.replace(ENDS_WITH_SYNC, '');
+}
+
+function promisified(name) {
+  return `\`await promisify(${asyncName(name)})(...)\` with \`promisify\` from "node:util"`;
+}
 
 export const SYNC_FAMILIES = [
   {
-    modules: new Set(['fs', 'node:fs', 'fs-extra', 'graceful-fs']),
+    modules: new Set(FS_MODULES),
     matches: (name) => ENDS_WITH_SYNC.test(name),
-    alternative:
-      'the promise API (`import { readFile } from "node:fs/promises"`, `await readFile(path)`)',
+    alternative: (name) =>
+      FS_ALTERNATIVES.get(name) ?? `\`await ${asyncName(name)}()\` from ${FS_PROMISES}`,
   },
   {
-    modules: new Set(['child_process', 'node:child_process']),
-    matches: (name) => ['execSync', 'execFileSync', 'spawnSync'].includes(name),
-    alternative: '`execFile` or `spawn` wrapped with `util.promisify`, or `execa`',
-  },
-  {
-    modules: new Set(['crypto', 'node:crypto']),
-    matches: (name) =>
-      [
-        'pbkdf2Sync',
-        'scryptSync',
-        'generateKeyPairSync',
-        'generatePrimeSync',
-        'checkPrimeSync',
-      ].includes(name),
-    alternative: PROMISIFIED,
-  },
-  {
-    modules: new Set(['zlib', 'node:zlib']),
+    modules: new Set(FS_EXTRA_MODULES),
     matches: (name) => ENDS_WITH_SYNC.test(name),
-    alternative: `${PROMISIFIED} (\`promisify(gzip)\`) or the stream \`pipeline\` API`,
+    alternative: (name) =>
+      `\`await ${name === 'existsSync' ? 'pathExists' : asyncName(name)}()\` from "fs-extra"`,
   },
   {
-    modules: new Set(['execa']),
-    matches: (name) => ['execaSync', 'execaCommandSync'].includes(name),
-    alternative: 'the async `execa()` or `execaCommand()`',
+    modules: new Set(CHILD_PROCESS_MODULES),
+    matches: (name) => SUBPROCESS_SYNC_CALLS.includes(name),
+    alternative: () =>
+      '`await promisify(execFile)(file, args)` with `execFile` from "node:child_process" and `promisify` from "node:util"',
+  },
+  {
+    modules: new Set(CRYPTO_MODULES),
+    matches: (name) => CRYPTO_SYNC_CALLS.includes(name),
+    alternative: promisified,
+  },
+  {
+    modules: new Set(ZLIB_MODULES),
+    matches: (name) => ENDS_WITH_SYNC.test(name),
+    alternative: (name) => `${promisified(name)}, or the stream \`pipeline\` API`,
+  },
+  {
+    modules: new Set(EXECA_MODULES),
+    matches: (name) => EXECA_SYNC_CALLS.includes(name),
+    alternative: (name) => `\`await ${asyncName(name)}()\``,
   },
 ];
 

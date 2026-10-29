@@ -157,10 +157,11 @@ export function productionPolicyConfigFor(layout, options = {}) {
     },
     {
       files: [...(layout.entryPoints ?? []), ...configFileGlobsFor(layout)],
-      rules: {
-        'nitpicker/no-process-access-outside-composition-root': 'off',
-        'nitpicker/no-sync-node-api-in-async': 'off',
-      },
+      rules: { 'nitpicker/no-process-access-outside-composition-root': 'off' },
+    },
+    {
+      files: configFileGlobsFor(layout),
+      rules: { 'nitpicker/no-sync-node-api-in-async': 'off' },
     },
   ];
 }
