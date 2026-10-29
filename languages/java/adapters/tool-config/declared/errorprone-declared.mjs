@@ -4,22 +4,18 @@ import { configurations, pluginsNamed, textsOf } from '../../../builds/narrowing
 import { declarationText, gradleSettings, mavenText, quotedStrings } from './declared-build.mjs';
 
 const MEASURED_OPTIONS = new Set(['CheckReturnValue:Packages', 'NullAway:AnnotatedPackages']);
-const NARROWING_OPTIONS = new Set(
-  [
-    'UnannotatedSubPackages',
-    'UnannotatedClasses',
-    'ExcludedClasses',
-    'ExcludedClassAnnotations',
-    'TreatGeneratedAsUnannotated',
-    'OnlyNullMarked',
-    'CustomGeneratedCodeAnnotations',
-  ].map((name) => `NullAway:${name}`),
-);
-const SCOPE_FLAGS = new Set(['-XepDisableWarningsInGeneratedCode']);
-const PROJECT_WINS_FLAGS = new Set([
-  '-XepIgnoreSuppressionAnnotations',
-  '-XepAllSuggestionsAsWarnings',
+const NULLAWAY_RAISING = new Set([
+  ...['CheckOptionalEmptiness', 'CheckContracts', 'AcknowledgeRestrictiveAnnotations'],
+  ...['AcknowledgeAndroidRecent', 'ExhaustiveOverride', 'JSpecifyMode'],
 ]);
+const NULLAWAY_LISTS = ['CheckOptionalEmptinessCustomClasses', 'CustomNullableAnnotations'];
+const NULLAWAY_OPTION_NAMES = new Map([['jspecifyMode', 'JSpecifyMode']]);
+const SOURCE_PATHS = [
+  'src/main/java/A.java',
+  '/p/src/main/java/A.java',
+  '/p/src/main/kotlin/A.java',
+];
+const WINNING_FLAGS = new Set(['-XepIgnoreSuppressionAnnotations', '-XepAllSuggestionsAsWarnings']);
 const MOOT_FLAGS = new Set(['-XepAllErrorsAsWarnings']);
 const SEVERITIES = ['off', 'warn', 'error', 'default'];
 const BOOLEAN_FLAGS = new Map([
@@ -33,19 +29,12 @@ const BOOLEAN_FLAGS = new Map([
   ['ignoreUnknownCheckNames', '-XepIgnoreUnknownCheckNames'],
   ['isCompilingTestOnlyCode', '-XepCompilingTestOnlyCode'],
 ]);
-const SEVERITY_CALLS = new Map([
-  ['disable', 'OFF'],
-  ['enable', 'WARN'],
-  ['warn', 'WARN'],
-  ['error', 'ERROR'],
-]);
+const SEVERITY_CALLS = new Map(
+  Object.entries({ disable: 'OFF', enable: 'WARN', warn: 'WARN', error: 'ERROR' }),
+);
 const ERRORPRONE_NAMES = [
   ...SEVERITY_CALLS.keys(),
-  'check',
-  'option',
-  'excludedPaths',
-  'errorproneArgs',
-  'enabled',
+  ...['check', 'option', 'excludedPaths', 'errorproneArgs', 'enabled'],
   ...BOOLEAN_FLAGS.keys(),
 ];
 const NULLAWAY_NAMES = [
@@ -71,7 +60,8 @@ function literals(value) {
 }
 
 function flagged(found, flags) {
-  return flags.map((flag) => ({ file: found.file, text: found.text.trim(), setting: flag }));
+  const settings = found.conditional ? [found.text.trim()] : flags;
+  return settings.map((flag) => ({ file: found.file, text: found.text.trim(), setting: flag }));
 }
 
 function severityFlags(found) {
@@ -115,7 +105,8 @@ function nullawayFlags(found) {
   const values = literals(found.value);
   const flag = isTrue(found.value) ? 'true' : undefined;
   const value = values.length === 0 ? flag : values.join(',');
-  const option = `${found.name[0].toUpperCase()}${found.name.slice(1)}`;
+  const option =
+    NULLAWAY_OPTION_NAMES.get(found.name) ?? `${found.name[0].toUpperCase()}${found.name.slice(1)}`;
   return value === undefined ? [] : [`-XepOpt:NullAway:${option}=${value}`];
 }
 
@@ -192,9 +183,24 @@ function checkFlag(flag, { projectWins, checks }) {
   return !checks.off.has(name) || projectWins ? `-Xep:${name}:WARN` : 'dropped';
 }
 
-function optionFlag(flag) {
-  const key = flag.slice('-XepOpt:'.length).split('=')[0];
-  return MEASURED_OPTIONS.has(key) || NARROWING_OPTIONS.has(key) ? 'dropped' : flag;
+function optionFlag(flag, checks) {
+  const [key, value] = flag.slice('-XepOpt:'.length).split('=');
+  const [check, option] = key.split(':');
+  if (MEASURED_OPTIONS.has(key) || check !== 'NullAway') {
+    return MEASURED_OPTIONS.has(key) ? 'dropped' : flag;
+  }
+  const raising = NULLAWAY_RAISING.has(option) && value === 'true';
+  const listed = NULLAWAY_LISTS.includes(option) || checks.nullAway.has(option);
+  return raising || listed ? flag : 'dropped';
+}
+
+function sourcesKept(pattern) {
+  try {
+    const excluded = new RegExp(`^(?:${pattern})$`, 'u');
+    return !SOURCE_PATHS.some((file) => excluded.test(file));
+  } catch {
+    return false;
+  }
 }
 
 function classified(flag, context) {
@@ -206,15 +212,15 @@ function classified(flag, context) {
     return checkFlag(flag, context);
   }
   if (flag.startsWith('-XepOpt:')) {
-    return optionFlag(flag);
+    return optionFlag(flag, context.checks);
   }
-  if (flag.startsWith('-XepExcludedPaths:') || SCOPE_FLAGS.has(flag)) {
-    return flag;
+  if (flag.startsWith('-XepExcludedPaths:')) {
+    return sourcesKept(flag.slice('-XepExcludedPaths:'.length)) ? flag : 'dropped';
   }
   if (MOOT_FLAGS.has(flag)) {
     return 'moot';
   }
-  return PROJECT_WINS_FLAGS.has(flag) && projectWins ? flag : 'dropped';
+  return WINNING_FLAGS.has(flag) && projectWins ? flag : 'dropped';
 }
 
 function unionedOptions(flags, lists) {
@@ -280,7 +286,7 @@ function errorproneNotice(declarations, layers) {
     (declaration) => `${declarationText(declaration)} (${declaration.file})`,
   );
   return [
-    `Error Prone runs nitpicker's checks with your flags laid over them; not applied from your build, because they turn a check off, narrow NullAway or name no check nitpicker's Error Prone has: ${[...new Set(skipped)].join(', ')}`,
+    `Error Prone runs nitpicker's checks with your flags laid over them; not applied from your build, because they would drop findings or name no check nitpicker's Error Prone has: ${[...new Set(skipped)].join(', ')}`,
   ];
 }
 
