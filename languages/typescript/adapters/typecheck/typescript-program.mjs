@@ -79,7 +79,9 @@ function projectDiagnostics(ts, configPath, projectRoot) {
     throw configFailure(fatalErrors.map((error) => formatDiagnostic(ts, error)).join('\n'));
   }
   if (parsedConfig.fileNames.length === 0) {
-    return [];
+    return ts.sortAndDeduplicateDiagnostics(
+      parsedConfig.errors.filter((error) => error.code !== NO_INPUTS_CODE),
+    );
   }
   const program = ts.createProgram({
     rootNames: parsedConfig.fileNames,

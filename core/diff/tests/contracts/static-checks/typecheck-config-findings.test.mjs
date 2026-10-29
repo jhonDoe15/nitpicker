@@ -42,7 +42,7 @@ function typecheck(projectConfig) {
 const OPTIONS = { types: [], lib: ['ES2022'], skipLibCheck: true };
 
 describe('type check config diagnostics', () => {
-  it("are reported against the project's own tsconfig, and an unknown option keeps the type check running", async () => {
+  it("name the project's tsconfig, and an unknown option keeps the type check running", async () => {
     const findings = await typecheck({
       compilerOptions: { ...OPTIONS, target: 'ES5', fooBar: true },
       include: ['src'],
