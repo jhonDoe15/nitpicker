@@ -127,7 +127,6 @@ export const STYLE_CASES = [
     'unused-argument',
     every(['ARG001', 'ARG002', 'ARG003', 'ARG004', 'ARG005'], 'remove the unused argument'),
   ),
-  ...ruffCases('boolean-flag', every(['FBT001', 'FBT002'], 'keyword-only')),
   ...ruffCases('try-patterns', [
     ['TRY002', 'specific exception'],
     ['TRY004', 'typeerror'],

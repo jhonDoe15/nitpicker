@@ -93,8 +93,6 @@ select = [
   "ARG003",
   "ARG004",
   "ARG005",
-  "FBT001",
-  "FBT002",
   "PLR2004",
   "PLW0602",
   "PLW0603",
@@ -304,7 +302,7 @@ ignore-variadic-names = true
 # S608: sql-string-formatting owns query construction and parameterization evidence.
 # TRY003: exception messages may be constructed at the raise site without changing semantics.
 # TRY300, TRY301: moving a return or raise to another block does not establish better handling.
-# FBT003: a boolean argument at a call site is often the callee's own API; FBT001/FBT002 own the definition.
+# FBT001, FBT002, FBT003: boolean-flag-parameter owns boolean flags of public functions and methods.
 # PT009, PT027: unittest-style assertions are the native API of unittest projects.
 # PLE0116: ruff reports continue in finally only below Python 3.8; lint passes --target-version py38 or later.
 # PLE1132: PIE804 owns the **{...} literal that repeats a keyword; a written repeat is a SyntaxError.
