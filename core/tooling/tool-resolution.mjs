@@ -12,7 +12,6 @@ import {
 } from '../../shared/messages/troubleshooting.mjs';
 
 export const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
-const manifest = readManifest(path.join(PACKAGE_ROOT, 'package.json'));
 
 export const SNAPSHOT_DIRECTORY_NAMES = ['base', 'head'];
 
@@ -24,10 +23,7 @@ export function resolveTool(name, { projectRoot, bin, packageRoot = PACKAGE_ROOT
 
 function owningTool(name, { projectRoot, packageRoot }) {
   const trustedPackageRoot = realpathSync(packageRoot);
-  const owningManifest =
-    trustedPackageRoot === PACKAGE_ROOT
-      ? manifest
-      : readManifest(path.join(trustedPackageRoot, 'package.json'));
+  const owningManifest = readManifest(path.join(trustedPackageRoot, 'package.json'));
   const owningPeers = new Set(Object.keys(owningManifest.peerDependencies ?? {}));
   const from = owningPeers.has(name) ? projectRoot : trustedPackageRoot;
   if (from === undefined) throw new Error(`Project root is required to resolve peer tool ${name}`);
