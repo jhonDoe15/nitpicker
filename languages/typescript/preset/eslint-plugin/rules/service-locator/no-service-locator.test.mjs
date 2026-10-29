@@ -208,7 +208,7 @@ tester.run('no-service-locator', rule, {
     typed(
       "import { container } from 'tsyringe';\nexport const x = container.resolve('a');",
       lookup(MAIL),
-      { file: 'src/boot/start.ts', options: [{ entryPoints: ['src/other/start.ts'] }] },
+      { file: 'src/boot/begin.ts', options: [{ entryPoints: ['src/other/begin.ts'] }] },
     ),
   ],
 });
