@@ -76,7 +76,7 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
       spring: spring.length,
       loops: loops.length,
       twice: loops.filter((line) => spring.includes(line)),
-    }).toEqual({ spring: 30, loops: 6, twice: [] });
+    }).toEqual({ spring: 32, loops: 6, twice: [] });
   });
 
   it('runs the pinned Checkstyle with the bundled config even when the project declares its own', () => {
