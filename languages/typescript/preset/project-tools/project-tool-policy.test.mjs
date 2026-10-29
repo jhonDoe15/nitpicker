@@ -112,7 +112,8 @@ describe('project tool configs in the head policy', () => {
     const summary = (config, preset) =>
       conventionStyle(preset, { config, projectRoot: root }).summary();
     const notice =
-      'Ignoring knip.jsonc and the "knip" key in package.json; opt in with "tools": { "knip": { "precedence": ["project", "nitpicker"] } }';
+      'Ignoring knip.jsonc and the "knip" key in package.json; ' +
+      'opt in with "tools": { "knip": { "precedence": ["project", "nitpicker"] } }';
     expect(summary({})).toEqual([notice]);
     expect(summary({ preset: 'javascript' }, 'javascript')).toEqual([notice]);
     expect(summary({ tools: OPTED_IN })).toEqual([]);
