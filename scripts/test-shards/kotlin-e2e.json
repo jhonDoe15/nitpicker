@@ -23,6 +23,7 @@
   "languages/java/adapters/kotlin-e2e/one-way/kotlin-preset-one-way-rules-banned.e2e.test.mjs": 59,
   "languages/java/adapters/kotlin-e2e/one-way/kotlin-preset-one-way-rules-exception.e2e.test.mjs": 59,
   "languages/java/adapters/kotlin-e2e/one-way/kotlin-preset-one-way-rules-hostile-config.e2e.test.mjs": 26,
+  "languages/java/adapters/kotlin-e2e/red-base/kotlin-red-base.e2e.test.mjs": 170,
   "languages/java/adapters/kotlin-e2e/review-rules/kotlin-preset-review-rules-exceptions.e2e.test.mjs": 51,
   "languages/java/adapters/kotlin-e2e/review-rules/kotlin-preset-review-rules-findings.e2e.test.mjs": 65,
   "languages/java/adapters/kotlin-e2e/review-rules/kotlin-preset-review-rules-serialization.e2e.test.mjs": 62,
