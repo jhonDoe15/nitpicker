@@ -1778,6 +1778,7 @@
                             "pmd/ExhaustiveEnumPredicate",
                             "pmd/StaticForwardingWrapper",
                             "pmd/SingularAndPluralMember",
+                            "pmd/ClassLoadEffect",
                             "pmd/SpringConstructorInjection",
                             "pmd/SpringImmutableBeans",
                             "pmd/SpringNoServiceLocator",
