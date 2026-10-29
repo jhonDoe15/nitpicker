@@ -46,20 +46,17 @@ function runTool(task) {
   });
 }
 
-async function drain(queue, outcomes) {
-  const entry = queue.shift();
-  if (entry === undefined) {
-    return;
+async function lane(entries, outcomes) {
+  for (const [index, task] of entries) {
+    outcomes[index] = await runTool(task);
   }
-  outcomes[entry.index] = await runTool(entry.task);
-  await drain(queue, outcomes);
 }
 
 export async function superviseTools({ tasks, limit }) {
-  const queue = tasks.map((task, index) => ({ task, index }));
+  const entries = tasks.entries();
   const outcomes = tasks.map(() => ({}));
   await Promise.all(
-    Array.from({ length: Math.min(limit, tasks.length) }, () => drain(queue, outcomes)),
+    Array.from({ length: Math.min(limit, tasks.length) }, () => lane(entries, outcomes)),
   );
   return outcomes;
 }

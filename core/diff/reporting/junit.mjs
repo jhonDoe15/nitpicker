@@ -36,9 +36,10 @@ export function renderJunitReport(report) {
   const profile = junitRunProfile(report.summary, 'quality.diff', escapeXml);
   const testCases = testCasesOf(report, violations, profile);
   const failures = violations.length + report.toolErrors.length;
+  const counts = `tests="${String(testCases.length)}" failures="${String(failures)}" errors="0"${profile.skippedAttribute}`;
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    `<testsuite name="quality.diff" tests="${String(testCases.length)}" failures="${String(failures)}" errors="0"${profile.skippedAttribute} time="${(report.summary.elapsedMs / 1000).toFixed(3)}">`,
+    `<testsuite name="quality.diff" ${counts} time="${(report.summary.elapsedMs / 1000).toFixed(3)}">`,
     ...profile.propertyLines,
     ...testCases,
     ...noteElement(report.notes),
