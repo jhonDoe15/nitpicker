@@ -29,8 +29,12 @@ export function structureFindings(
       numberedAmongSameSource:
         numberedAmongSameSource ?? entry.numberedAmongSameSource ?? repeatsInSource(entry.name),
       sourceHash: hash(text),
-      anchorHash: nameFreeHash(text, entry.name),
-      declarationHash: hash(entry.signature ?? declarationLine(text)),
+      ...(text === ''
+        ? {}
+        : {
+            anchorHash: nameFreeHash(text, entry.name),
+            declarationHash: hash(entry.signature ?? declarationLine(text)),
+          }),
     };
   });
   return evaluateStructure({ functions }, STRUCTURE_TOOL, { hints }).filter(
