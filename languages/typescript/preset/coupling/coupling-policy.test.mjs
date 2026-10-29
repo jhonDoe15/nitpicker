@@ -21,10 +21,10 @@ describe('coupling report', () => {
       fanIn: 3,
       fanOut: 1,
       totalCoupling: 4,
-      instability: 0.25,
+      instability: expect.closeTo(0.25, 10),
       runtimeFanIn: 3,
       runtimeFanOut: 1,
-      runtimeInstability: 0.25,
+      runtimeInstability: expect.closeTo(0.25, 10),
     });
     expect(alpha).toEqual({
       name: 'alpha',
@@ -36,7 +36,7 @@ describe('coupling report', () => {
         internalEdges: 0,
         edgeDensity: 0,
         connectedComponents: 2,
-        largestComponentShare: 0.5,
+        largestComponentShare: expect.closeTo(0.5, 10),
       },
     });
     expect(shared).toEqual({
@@ -47,7 +47,7 @@ describe('coupling report', () => {
       instability: 0,
       cohesion: {
         internalEdges: 1,
-        edgeDensity: 0.5,
+        edgeDensity: expect.closeTo(0.5, 10),
         connectedComponents: 1,
         largestComponentShare: 1,
       },
@@ -73,7 +73,7 @@ describe('coupling report', () => {
     expect(report.packages.map((entry) => entry.name).sort()).toEqual(['build', 'cohesive']);
     expect(cohesive.cohesion).toEqual({
       internalEdges: 1,
-      edgeDensity: 0.5,
+      edgeDensity: expect.closeTo(0.5, 10),
       connectedComponents: 1,
       largestComponentShare: 1,
     });

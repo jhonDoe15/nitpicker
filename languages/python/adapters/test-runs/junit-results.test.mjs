@@ -21,7 +21,7 @@ describe('pytest JUnit results', () => {
       name: 'test_ok[1-2]',
       functionName: 'test_ok',
       id: 'tests/test_a.py::TestA::test_ok[1-2]',
-      seconds: 1234.5,
+      seconds: expect.closeTo(1234.5, 10),
       outcome: 'passed',
     });
     expect(bad).toEqual({
@@ -32,7 +32,7 @@ describe('pytest JUnit results', () => {
       name: 'test_bad',
       functionName: 'test_bad',
       id: 'tests/test_a.py::test_bad',
-      seconds: 0.2,
+      seconds: expect.closeTo(0.2, 10),
       outcome: 'failed',
     });
     expect(skipped.outcome).toBe('skipped');
@@ -44,7 +44,7 @@ describe('pytest JUnit results', () => {
       name: undefined,
       functionName: undefined,
       id: 'tests/test_c.py',
-      seconds: 0.1,
+      seconds: expect.closeTo(0.1, 10),
       outcome: 'failed',
     });
   });

@@ -164,7 +164,7 @@ describe('analyzing the import graph', () => {
       fanIn: 1,
       fanOut: 1,
       totalCoupling: 2,
-      instability: 0.5,
+      instability: expect.closeTo(0.5, 10),
     });
   });
 
@@ -235,7 +235,7 @@ describe('analyzing the import graph', () => {
         fanIn: 2,
         fanOut: 1,
         totalCoupling: 3,
-        instability: 0.3333,
+        instability: expect.closeTo(0.3333, 10),
       });
     });
 

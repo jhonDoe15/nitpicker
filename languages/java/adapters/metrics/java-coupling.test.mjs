@@ -67,7 +67,7 @@ describe('analyzeJavaCoupling', () => {
       fanIn: 3,
       fanOut: 2,
       totalCoupling: 5,
-      instability: 0.4,
+      instability: expect.closeTo(0.4, 10),
     });
     expect(report.modules.find((entry) => entry.file.endsWith('/Main.java'))).toEqual({
       file: 'src/main/java/Main.java',
@@ -86,12 +86,12 @@ describe('analyzeJavaCoupling', () => {
       modules: 3,
       fanIn: 1,
       fanOut: 1,
-      instability: 0.5,
+      instability: expect.closeTo(0.5, 10),
       cohesion: {
         internalEdges: 1,
-        edgeDensity: 0.1667,
+        edgeDensity: expect.closeTo(0.1667, 10),
         connectedComponents: 2,
-        largestComponentShare: 0.6667,
+        largestComponentShare: expect.closeTo(0.6667, 10),
       },
     });
     expect(packageOf(report, 'stable')).toEqual({
@@ -99,7 +99,7 @@ describe('analyzeJavaCoupling', () => {
       modules: 1,
       fanIn: 3,
       fanOut: 2,
-      instability: 0.4,
+      instability: expect.closeTo(0.4, 10),
       cohesion: {
         internalEdges: 0,
         edgeDensity: null,
@@ -112,7 +112,7 @@ describe('analyzeJavaCoupling', () => {
       modules: 1,
       fanIn: 1,
       fanOut: 1,
-      instability: 0.5,
+      instability: expect.closeTo(0.5, 10),
       cohesion: {
         internalEdges: 0,
         edgeDensity: null,
@@ -150,7 +150,7 @@ describe('analyzeJavaCoupling', () => {
 
   it('lists package edges that point at a less stable package', () => {
     expect(analyze().stabilityDirection).toEqual([
-      { source: 'stable', target: 'churn', delta: 0.1 },
+      { source: 'stable', target: 'churn', delta: expect.closeTo(0.1, 10) },
     ]);
   });
 });
@@ -203,7 +203,7 @@ describe('readCouplingFindings', () => {
     );
     expect(
       findings.find((finding) => finding.identity === 'package:stable:instability').metric,
-    ).toEqual({ name: 'instability', value: 0.4 });
+    ).toEqual({ name: 'instability', value: expect.closeTo(0.4, 10) });
     expect(
       findings.find(
         (finding) =>
@@ -274,7 +274,7 @@ describe('Kotlin classes', () => {
 
   it('finds a stability direction violation between Kotlin packages', () => {
     expect(analyzeKotlin().stabilityDirection).toEqual([
-      { source: 'stable', target: 'churn', delta: 0.1667 },
+      { source: 'stable', target: 'churn', delta: expect.closeTo(0.1667, 10) },
     ]);
   });
 
