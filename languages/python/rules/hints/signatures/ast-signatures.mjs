@@ -1,4 +1,4 @@
-import { RULES_TOOL } from './tool.mjs';
+import { RULES_TOOL } from '../tool.mjs';
 
 const OWNED_MUTATION = /^(.+) \((.+)\)$/u;
 const ALIAS = /^(\S+) = (\S+)$/u;

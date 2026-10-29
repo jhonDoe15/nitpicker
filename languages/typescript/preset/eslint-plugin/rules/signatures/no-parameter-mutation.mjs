@@ -132,9 +132,15 @@ export const rule = {
     }
     const scope = { context, sourceCode, services };
     return {
-      CallExpression: (node) => checkCall(scope, node),
-      AssignmentExpression: (node) => checkWrite(scope, node, node.left),
-      UpdateExpression: (node) => checkWrite(scope, node, node.argument),
+      CallExpression(node) {
+        checkCall(scope, node);
+      },
+      AssignmentExpression(node) {
+        checkWrite(scope, node, node.left);
+      },
+      UpdateExpression(node) {
+        checkWrite(scope, node, node.argument);
+      },
       UnaryExpression(node) {
         if (node.operator === 'delete') {
           checkWrite(scope, node, node.argument);
