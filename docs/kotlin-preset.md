@@ -705,7 +705,7 @@ possible, accept the function with an `exceptions` entry for `changed-branch-cov
 (`function` is required; the name is the one the structure findings print, from the Kotlin metrics,
 and only that function's branches are accepted), or `exclude` the file in `nitpicker.config.json`
 (path-level, so it also stops gating every other finding of that file). A line is judged as a whole, as for Java, and a
-reformatted line is a changed line. Lines of inline functions that the compiler copies into other
+line ktlint or ktfmt only reformatted is not a changed line. Lines of inline functions that the compiler copies into other
 files are not in the report (JaCoCo maps them outside the file).
 
 **Alternatives not used.** A newer JaCoCo does not remove the coroutine arms (the pin is 0.8.12, and

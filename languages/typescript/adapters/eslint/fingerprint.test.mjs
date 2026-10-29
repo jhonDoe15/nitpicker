@@ -110,6 +110,18 @@ describe('a finding anchored on a whole function is about its signature', () => 
     expect(find(call('2'))[0].identity).not.toBe(find(call('1'))[0].identity);
   });
 
+  it('keeps the identity through what a formatter rewrites: quotes, semicolons, trailing commas, arrow parentheses', () => {
+    const find = (code) =>
+      findingFor({ code, reported: code.slice(code.indexOf('items'), code.lastIndexOf(')') + 1) });
+    const unformatted = "export const run = () => items.map(item => log('a', item,));\n";
+    const formatted = 'export const run = () => items.map((item) => log("a", item))\n';
+
+    expect(find(formatted)[0].identity).toBe(find(unformatted)[0].identity);
+    expect(find(formatted.replace('"a"', '"b"'))[0].identity).not.toBe(
+      find(unformatted)[0].identity,
+    );
+  });
+
   it('keeps a declaration without a body tied to its whole text', () => {
     const find = (code) => findingFor({ code, reported: code.trim() });
 
@@ -155,7 +167,7 @@ describe('a finding in an edited function stays baselined while the function has
       rule: SILENT,
       path: 'src/legacy.ts',
       identity:
-        'message:Reported text.|node:CatchClause|syntax:1aa86ed9695b52439cb90d7f|occurrence:1',
+        'message:Reported text.|node:CatchClause|syntax:c3a22cec9ea0b8e31608ea14|occurrence:1',
       message:
         'Reported text. If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       location: { line: 4, column: 5 },
@@ -249,7 +261,7 @@ describe('a finding in an edited function stays baselined while the function has
         rule: 'nitpicker/no-silent-catch',
         path: 'src/legacy.ts',
         identity:
-          'message:Reported text.|node:CatchClause|syntax:1aa86ed9695b52439cb90d7f|occurrence:1',
+          'message:Reported text.|node:CatchClause|syntax:c3a22cec9ea0b8e31608ea14|occurrence:1',
         message:
           'Reported text. If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         location: { line: 13, column: 5 },
