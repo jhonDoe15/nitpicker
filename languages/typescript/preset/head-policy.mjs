@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { resolveJscpdPolicy } from '../../../core/tooling/jscpd/config.mjs';
 import {
   readHeadPolicyFile,
   resolveHeadPolicy as resolveSharedHeadPolicy,
@@ -73,8 +74,11 @@ export function resolveHeadPolicy(config = {}, projectRoot) {
 
 function withProjectFacts(policy, config, projectRoot) {
   const prettier = policy.tools?.prettier;
+  const jscpd = resolveJscpdPolicy(policy.tools?.jscpd, projectRoot);
+  const tools = { ...policy.tools, ...(jscpd === undefined ? {} : { jscpd }) };
   return {
     ...policy,
+    ...(jscpd === undefined ? {} : { tools }),
     ...(SCOPED_PRESETS.includes(config.preset)
       ? {
           ...withDetectedScopes(policy, projectRoot),
@@ -84,7 +88,7 @@ function withProjectFacts(policy, config, projectRoot) {
     ...(usesProjectConfig(prettier?.precedence ?? [])
       ? {
           tools: {
-            ...policy.tools,
+            ...tools,
             prettier: { ...prettier, projectConfigDigest: projectFilesDigest(projectRoot) },
           },
         }
@@ -149,12 +153,25 @@ function picked(source, keys) {
   );
 }
 
-function headPrettierDigest(policy, headPolicy) {
-  const digest = headPolicy.tools?.prettier?.projectConfigDigest;
-  const prettier = policy.tools?.prettier;
-  return digest === undefined || !usesProjectConfig(prettier?.precedence ?? [])
-    ? {}
-    : { tools: { ...policy.tools, prettier: { ...prettier, projectConfigDigest: digest } } };
+function headJscpdFacts(settings, headSettings = {}) {
+  if (headSettings.projectConfig === undefined) {
+    return { ...headSettings, precedence: headSettings.precedence ?? ['nitpicker'] };
+  }
+  return { ...settings, ...picked(headSettings, ['projectConfig', 'projectConfigDigest']) };
+}
+
+function headToolFacts(policy, headPolicy) {
+  const tools = { ...policy.tools };
+  if (usesProjectConfig(tools.prettier?.precedence ?? [])) {
+    tools.prettier = {
+      ...tools.prettier,
+      ...picked(headPolicy.tools?.prettier ?? {}, ['projectConfigDigest']),
+    };
+  }
+  if (usesProjectConfig(tools.jscpd?.precedence ?? [])) {
+    tools.jscpd = headJscpdFacts(tools.jscpd, headPolicy.tools?.jscpd);
+  }
+  return policy.tools === undefined ? {} : { tools };
 }
 
 function headTestPlacement(policy, headPolicy) {
@@ -174,7 +191,7 @@ export function withHeadCheckoutFacts(policy, headPolicy = {}) {
         { ...policy[scope], ...picked(headPolicy[scope], keys) },
       ]),
     ),
-    ...headPrettierDigest(policy, headPolicy),
+    ...headToolFacts(policy, headPolicy),
   };
 }
 
