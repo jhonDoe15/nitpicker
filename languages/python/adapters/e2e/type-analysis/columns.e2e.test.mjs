@@ -40,16 +40,16 @@ describe.skipIf(!pythonE2eEnabled)('Python finding columns end to end', () => {
     const columns = result
       .json('new-findings.json')
       .filter(({ tool, rule }) => RULES.has(`${tool}/${rule}`))
-      .map(({ tool, location }) => `${tool} ${String(location.line)}:${String(location.column)}`)
-      .sort();
+      .map(({ tool, location }) => ({ tool, ...location }))
+      .sort((left, right) =>
+        `${left.tool}${String(left.line)}`.localeCompare(`${right.tool}${String(right.line)}`),
+      );
 
     expect(columns, result.text).toEqual([
-      'mypy 1:undefined',
-      'mypy 2:14',
-      'ruff 1:29',
-      'ruff 2:14',
+      { tool: 'mypy', line: 1 },
+      { tool: 'mypy', line: 2, column: ASCII_LINE.indexOf('missing_name') + 1 },
+      { tool: 'ruff', line: 1, column: LINE.indexOf('undefined_name') + 1 },
+      { tool: 'ruff', line: 2, column: ASCII_LINE.indexOf('missing_name') + 1 },
     ]);
-    expect(LINE.indexOf('undefined_name') + 1).toBe(29);
-    expect(ASCII_LINE.indexOf('missing_name') + 1).toBe(14);
   });
 });
