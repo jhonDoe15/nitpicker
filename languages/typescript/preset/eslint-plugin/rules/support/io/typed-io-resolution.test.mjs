@@ -1,5 +1,5 @@
-import { rule as ioInLoop } from '../rules/loops/no-io-in-loop.mjs';
-import { typedIoProject } from '../test-support/typed-io-project.mjs';
+import { rule as ioInLoop } from '../../loops/no-io-in-loop.mjs';
+import { typedIoProject } from '../../../test-support/typed-io-project.mjs';
 
 const STORE = [
   "import { Pool } from 'pg';",
