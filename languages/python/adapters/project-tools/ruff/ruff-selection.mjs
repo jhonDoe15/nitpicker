@@ -84,6 +84,14 @@ function carriedIgnores(layer) {
   return layer.select?.length === 0 && layer.extendSelect.length === 0 ? layer.ignore : [];
 }
 
+function applied(enabled, updates) {
+  const next = new Set(enabled);
+  for (const [code, on] of updates) {
+    next[on ? 'add' : 'delete'](code);
+  }
+  return next;
+}
+
 export function resolveSelection(layers, { catalog, preview = { enabled: false } }) {
   let enabled = expandSelectors(
     DEFAULT_SELECT,
@@ -96,17 +104,10 @@ export function resolveSelection(layers, { catalog, preview = { enabled: false }
       selectorsOf([...layer.ignore, ...carried]),
       { catalog, preview },
     );
-    if (layer.select !== undefined) {
-      enabled = new Set([...updates].filter(([, on]) => on).map(([code]) => code));
-    } else {
-      for (const [code, on] of updates) {
-        if (on) {
-          enabled.add(code);
-        } else {
-          enabled.delete(code);
-        }
-      }
-    }
+    enabled =
+      layer.select === undefined
+        ? applied(enabled, updates)
+        : new Set([...updates].filter(([, on]) => on).map(([code]) => code));
     carried = carriedIgnores(layer);
   }
   return enabled;
