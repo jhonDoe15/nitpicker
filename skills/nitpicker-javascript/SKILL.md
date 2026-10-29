@@ -137,6 +137,11 @@ line) is a finding.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
+- In an `async` function or a request handler, use the promise APIs (`node:fs/promises`,
+  `promisify(execFile)`, `crypto.pbkdf2`), never `readFileSync`, `execSync`, `pbkdf2Sync` and the other
+  `*Sync` calls of `fs`, `child_process`, `crypto` and `zlib`: they block the event loop for every
+  other request (`nitpicker/no-sync-node-api-in-async`). Module top level, a worker thread and a CLI
+  `main` that is only called from startup code stay synchronous.
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
 - CommonJS is allowed: `require()` of a module, and `module.exports = { f }`, `module.exports.f = f`

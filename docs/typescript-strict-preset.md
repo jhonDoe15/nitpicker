@@ -372,6 +372,27 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   separator (`base + path.sep`, `` `${base}/` ``, `'/srv/'`): `full.startsWith(base)` also
   accepts `/srv-other`. A parameter as the first segment is the base and is fine
   (`path.join(dir, 'package.json')`).
+- Blocking calls in async code (`nitpicker/no-sync-node-api-in-async`, production code): a
+  synchronous Node call inside an `async` function or a request handler blocks the event loop, so
+  every other request waits. The calls are every `*Sync` function of `fs`, `fs-extra` and
+  `graceful-fs`, `execSync`, `execFileSync` and `spawnSync` of `child_process`, `pbkdf2Sync`,
+  `scryptSync`, `generateKeyPairSync`, `generatePrimeSync` and `checkPrimeSync` of `crypto`, every
+  `*Sync` function of `zlib`, and `execaSync`/`execaCommandSync` of `execa`, found through the
+  imports (named, default, namespace, renamed, `require` and destructured `require`, and
+  `const { x } = fs`). A request handler is a function passed to a route method (`get`, `post`,
+  `put`, `patch`, `delete`, `all`, `use`, ...) of a file that imports Express, Fastify, Koa, Hono,
+  hapi, restify, connect, polka, h3 or itty-router (inline, or a function declared in the file), or
+  a method decorated with a NestJS `@Get`, `@Post`, `@Put`, `@Patch`, `@Delete`, `@All`, `@Head` or
+  `@Options`. Synchronous array callbacks (`map`, `forEach`, `filter`, ...) are looked through;
+  any other nested function (a stored callback, an event listener, a returned closure) is not
+  inspected. Not reported: module top level, a file that has a shebang or that reads
+  `parentPort`, `workerData` or `isMainThread` from `node:worker_threads` (a worker thread), the
+  entry points and config files, and an `async` function that is declared in the file, never
+  exported and only ever called from startup code (a CLI `main`). The message names the promise
+  API (`import { readFile } from 'node:fs/promises'`), `util.promisify`, or a worker thread. A
+  bounded read that must finish before the function can continue goes in a reviewed `exceptions`
+  entry. Unlike Python, where Ruff's `ASYNC` family covers `time.sleep`, `open` and `requests`,
+  nothing else in the TypeScript preset reports these calls, so no finding is shared.
 - Security sinks: SQL built from strings, weak hashes, disabled TLS checks, HTTP calls without a
   timeout and unsafe deserialization. All five apply to production code, not to test support files (`test-support/`, `mocks/`, `__mocks__/`,
   `__fixtures__/`, `fixtures/`, `stories/`, `.storybook/`, `*.stories.*`, `setupTests.*`); each message
