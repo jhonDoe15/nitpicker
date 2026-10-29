@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { gzipSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import {
@@ -54,22 +55,38 @@ describe('SARIF upload limits', () => {
       },
     ]);
   });
-  it('drops results until the gzipped file fits, naming the file that has them all', () => {
-    const findings = numbered(40, { message: 'x'.repeat(200) });
-    const whole = renderSnapshotSarifReport({ findings, toolErrors: [] });
-    const limits = { results: 25_000, gzipBytes: Math.floor(gzipSync(whole).length / 2) };
+  it('keeps the longest run of findings whose gzipped file fits', () => {
+    const findings = numbered(40).map((value, index) => ({
+      ...value,
+      message: Array.from({ length: 8 }, (_, part) =>
+        createHash('sha512')
+          .update(`${String(index)}:${String(part)}`)
+          .digest('hex'),
+      ).join(''),
+    }));
+    const gzipped = (count) =>
+      gzipSync(renderSnapshotSarifReport({ findings: findings.slice(0, count), toolErrors: [] }))
+        .length;
+    const limits = { results: 25_000, gzipBytes: gzipped(20) + 300 };
 
     const text = renderSnapshotSarifReport({ findings, toolErrors: [] }, { limits });
     const log = JSON.parse(text);
+    const kept = log.runs[0].results.length;
+
+    expect(kept).toBe(20);
 
     expect(gzipSync(text).length).toBeLessThanOrEqual(limits.gzipBytes);
-    expect(log.runs[0].results.length).toBeGreaterThan(0);
-    expect(log.runs[0].results.length).toBeLessThan(40);
-    expect(notificationsOf(log)[0].message.text).toMatch(
-      new RegExp(
-        `^This file lists the first ${String(log.runs[0].results.length)} of 40 findings,.* findings\\.json lists them all\\.$`,
-        'u',
-      ),
+    expect(gzipped(kept + 1)).toBeGreaterThan(limits.gzipBytes);
+    expect(notificationsOf(log)[0].message.text).toBe(
+      `This file lists the first ${String(kept)} of 40 findings, because GitHub code scanning rejects a SARIF run of more than 25000 results or a file over ${String(Math.round((limits.gzipBytes / 1_048_576) * 10) / 10)} MB gzipped. New findings come first, and findings.json lists them all.`,
+    );
+  });
+  it('cuts a run at 25,000 results by default', () => {
+    const log = JSON.parse(renderSarifReport(report({ newFindings: numbered(25_001) })));
+
+    expect(log.runs[0].results).toHaveLength(25_000);
+    expect(log.runs[0].results.at(-1).locations[0].physicalLocation.artifactLocation.uri).toBe(
+      'src/f24999.js',
     );
   });
   it('writes every result and no notification when the file is within the limits', () => {

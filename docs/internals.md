@@ -32,14 +32,14 @@ Contributor notes on formats and protocols that code and names cannot carry. Sou
   run. `--all` writes one `report.sarif` from `findings.json`, with no `baselineState`. The hashed comparison key is
   `partialFingerprints["nitpickerIdentity/v1"]`, so consumers match findings across runs when lines move, and a finding
   has the same fingerprint in both modes. Tool errors become unsuccessful tool-execution notifications. `run.columnKind`
-  is `utf16CodeUnits`, the unit of a finding's `location.column` (`spec/findings.schema.json`): ESLint, TypeScript,
-  oxlint (its byte offsets are converted when read), pyright, PMD, detekt, ktlint and the Kotlin compiler count UTF-16
-  code units with a tab as one. The others are converted after ingestion by `withUtf16Columns`
-  (`shared/ingest/columns/utf16-columns.mjs`) from the source line, per tool: ruff counts code points
-  (`code-points`, in `readPythonFindings`), Checkstyle and javac (Error Prone) expand tabs to every eighth column
-  (`tab-expanded`, in `collectJavaFindings`; a project Checkstyle config with another `tabWidth` is not read), and mypy,
-  run with `--show-column-numbers`, counts UTF-8 bytes up to 2.3 and something else in 2.4, so `ascii-only` keeps its
-  column only on an ASCII line. Code scanning reads a relative `uri`
+  is `utf16CodeUnits`, the unit of a finding's `location.column` (`spec/findings.schema.json`): ESLint, TypeScript and
+  the analyzers built on it, oxlint (its byte offsets are converted when read), pyright, PMD, detekt, ktlint and the
+  Kotlin compiler count UTF-16 code units with a tab as one. Four tools count otherwise, and `withUtf16Columns`
+  (`shared/ingest/columns/utf16-columns.mjs`) converts their columns after ingestion from the source line: ruff counts
+  code points (`code-points`, in `readPythonFindings`), Checkstyle and javac (Error Prone) expand tabs to every eighth
+  column (`tab-expanded`, in `collectJavaFindings`; a project Checkstyle config with another `tabWidth` is not read),
+  and mypy, run with `--show-column-numbers`, counts UTF-8 bytes in 2.3 and a smaller, different number in 2.4, so
+  `ascii-only` keeps its column only on an ASCII line. Code scanning reads a relative `uri`
   as relative to the repository root and never reads `uriBaseId` or `originalUriBaseIds`, so each location's `uri` is
   repository-relative and percent-encoded: the project folder's prefix in the repository (`projectRelativePath` in
   `run-diff.mjs`, `relativeProjectPath` in `snapshot.mjs`, `git rev-parse --show-prefix` of `liveProjectRoot` in
