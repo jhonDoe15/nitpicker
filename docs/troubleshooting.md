@@ -482,17 +482,15 @@ files fall in, and no separate `hookTimeoutMs` (or the same value), or run the t
 
 **Symptom.** `Required tool vitest is not installed from <dir>. Install vitest ^4.1.11 || ^5.0.0 as a
 dev dependency of the project.`; the same for `jest`, `mocha`, `@vitest/coverage-v8`, `@types/node` or
-`typescript` (`Install typescript >=5.7 <7`); `vite is not installed at or above <dir>` or
-`vite could not be resolved from the project`;
-`The type check reads source files with the project's typescript package, which must be 5.7 to 6.x`;
-or `Cannot find package 'vitest' imported from <file>` (Node's `ERR_MODULE_NOT_FOUND`) when
-`node_modules` exists but does not have the package.
+`typescript` (`Install typescript >=5.7`); `vite is not installed at or above <dir>` or
+`vite could not be resolved from the project`; or `Cannot find package 'vitest' imported from <file>`
+(Node's `ERR_MODULE_NOT_FOUND`) when `node_modules` exists but does not have the package.
 
 **Cause.** nitpicker ships its own ESLint, Prettier, dependency-cruiser, knip, jscpd and Stryker, but it
 uses the project's test runner, coverage provider and TypeScript so that the results match the
 project. Those are peer dependencies, and the one the tool needs is not installed in the project.
-TypeScript 7 does not ship a JavaScript API yet, so a project on 7 needs a 5.7 to 6.x `typescript`
-package beside it.
+TypeScript 7 is supported: nitpicker reads its sources with a bundled JavaScript API and type checks
+with the project's own compiler.
 
 **Fix.** Install what the message names as a dev dependency of the project, in the version range it
 shows: `npm install --save-dev vitest @vitest/coverage-v8 typescript @types/node` is the usual set (add
@@ -666,8 +664,8 @@ nitpicker detected is not the one the tests use, set `python.testRunner` (`pytes
 ### The base needs its own Python environment
 
 **Symptom.** `uv sync --frozen --no-install-project --no-install-workspace failed for the base snapshot
-<dir> (exit 1): ...`, `uv is not installed, the base snapshot has other dependencies than the head, so
-it needs an environment of its own`, or `<lock> of the base installs local packages, whose setup code
+<dir> (exit 1): ...`, `uv is not installed` with the reason `the base snapshot has other dependencies than
+the head, so it needs an environment of its own`, or `<lock> of the base installs local packages, whose setup code
 the base environment must not run`. The rule is `environment-failed` on `base`.
 
 **Cause.** When the dependency files of the base differ from the head's (a lock file, `requirements*.txt`

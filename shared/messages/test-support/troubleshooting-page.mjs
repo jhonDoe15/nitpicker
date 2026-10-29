@@ -1,5 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
+import ts from 'typescript';
 import { TROUBLESHOOTING_FILE } from '../troubleshooting.mjs';
 
 export const root = path.resolve(import.meta.dirname, '../../..');
@@ -83,6 +84,7 @@ export function pageEntries() {
         slug: slugOf(title),
         text: entry,
         symptom: plainText(symptom),
+        rawSymptom: symptom,
       };
     });
   });
@@ -96,4 +98,23 @@ export function anchorsLinkedFrom(documents) {
 
 export function sectionOf(markdown, heading) {
   return markdown.split(new RegExp(`^${heading}$`, 'mu'))[1]?.split(/^## /mu)[0] ?? '';
+}
+
+export function stringConstants(source) {
+  const constants = new Map();
+  for (const statement of source.statements) {
+    const declarations = ts.isVariableStatement(statement)
+      ? statement.declarationList.declarations
+      : [];
+    for (const { name, initializer } of declarations) {
+      if (
+        ts.isIdentifier(name) &&
+        initializer !== undefined &&
+        ts.isStringLiteralLike(initializer)
+      ) {
+        constants.set(name.text, initializer.text);
+      }
+    }
+  }
+  return constants;
 }
