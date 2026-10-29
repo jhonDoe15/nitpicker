@@ -111,20 +111,94 @@
     </properties>
   </rule>
   <rule name="SwallowedInterrupt" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This catch of InterruptedException neither rethrows it nor restores the interrupt, so the interrupt status of the thread is lost and work that was asked to stop keeps running.">
+        message="This catch of InterruptedException can complete without rethrowing it or restoring the interrupt, so the interrupt status of the thread is lost and work that was asked to stop keeps running.">
     <priority>2</priority>
     <properties>
       <property name="xpath">
         <value><![CDATA[
 //CatchClause
   [CatchParameter//ClassType[pmd-java:typeIs('java.lang.InterruptedException')]]
-  [let $caught := CatchParameter/VariableId/@Name
-   return not(Block//ThrowStatement
-              or Block//MethodCall[@MethodName = 'interrupt']
-              or Block//(MethodCall[not(@MethodName = ('trace', 'debug', 'info', 'warn', 'warning', 'error', 'severe',
-                                                       'fine', 'finer', 'finest', 'config', 'log', 'print', 'println',
-                                                       'printf', 'format'))]
-                         | ConstructorCall)/ArgumentList//VariableAccess[@Name = $caught])]
+  [let $caught := string(CatchParameter/VariableId/@Name),
+       $levels := ('trace', 'debug', 'info', 'warn', 'warning', 'error', 'fatal', 'severe', 'fine', 'finer',
+                   'finest', 'config', 'log', 'atTrace', 'atDebug', 'atInfo', 'atWarn', 'atError', 'v', 'd', 'i',
+                   'w', 'e', 'wtf'),
+       $reports := function($call) as xs:boolean {
+         $call/@MethodName = 'printStackTrace'
+         or $call[@MethodName = ('print', 'println', 'printf', 'format')]
+              /*[1][self::FieldAccess][@Name = ('out', 'err')]/*[1][pmd-java:typeIs('java.lang.System')]
+         or $call[@MethodName = $levels]/*[1][self::VariableAccess or self::FieldAccess]
+              [matches(@Name, '^(?:log|logger)$', 'i') or matches(@Name, '[a-z0-9](?:Log|Logger)$')
+               or matches(@Name, '_(?:log|logger)$', 'i')]
+       },
+       $stops := function($call, $scope) as xs:boolean {
+         $call[self::MethodCall][@MethodName = 'interrupt'][ArgumentList/@Size = 0]
+           [*[1][self::MethodCall][@MethodName = 'currentThread'][ArgumentList/@Size = 0]
+              [*[1][self::ArgumentList] or *[1][self::TypeExpression][pmd-java:typeIs('java.lang.Thread')]]
+            or (*[1][self::ArgumentList] or *[1][self::ThisExpression])
+              and ancestor::ClassDeclaration[1][pmd-java:typeIs('java.lang.Thread')]]
+         or $call[self::MethodCall][pmd-java:matchesSig('org.junit.jupiter.api.Assertions#fail(_*)')
+              or pmd-java:matchesSig('org.junit.Assert#fail(_*)')
+              or pmd-java:matchesSig('org.assertj.core.api.Assertions#fail(_*)')
+              or pmd-java:matchesSig('org.assertj.core.api.Assertions#failBecauseExceptionWasNotThrown(_*)')
+              or pmd-java:matchesSig('org.assertj.core.api.Fail#fail(_*)')
+              or pmd-java:matchesSig('java.lang.System#exit(int)')]
+         or exists($call[ArgumentList/VariableAccess[@Name = $caught]][not($reports(.))]
+              [not(ancestor::MethodCall[. >> $scope][$reports(.)])])
+       },
+       $runs := function($scope) as xs:boolean {
+         exists($scope/descendant-or-self::*[self::MethodCall or self::ConstructorCall]
+           [not(ancestor::*[self::LambdaExpression or self::AnonymousClassDeclaration or self::ConditionalExpression
+                             or self::SwitchExpression or self::InfixExpression[@Operator = ('&&', '||')]]
+                           [. >> $scope])]
+           [$stops(., $scope)])
+       },
+       $returns := function($scope) as xs:boolean {
+         exists($scope//ReturnStatement[not(ancestor::*[self::LambdaExpression or self::AnonymousClassDeclaration]
+                                              [. >> $scope])])
+       },
+       $flow := function($self, $s, $loop) as xs:boolean+ {
+         if ($s/self::Block) then
+           fold-left($s/*, (true(), false()), function($done, $next) {
+             if (not($done[1])) then $done
+             else let $f := $self($self, $next, $loop) return ($f[1], $done[2] or $f[2]) })
+         else if ($s/self::ThrowStatement) then (false(), false())
+         else if ($s/self::ReturnStatement) then (false(), not($runs($s)))
+         else if ($s/self::BreakStatement or $s/self::ContinueStatement) then
+           if ($loop and not($s/@Label)) then (true(), false()) else (false(), true())
+         else if ($s/self::IfStatement) then
+           if ($runs($s/*[1])) then (false(), false())
+           else
+             let $then := $self($self, $s/*[2], $loop),
+                 $else := if ($s/*[3]) then $self($self, $s/*[3], $loop) else (true(), false()),
+                 $guard := exists($s/*[1][self::InstanceOfExpression or self::UnaryExpression[@Operator = '!']]
+                             /descendant-or-self::InstanceOfExpression[1]/*[1][self::VariableAccess][@Name = $caught]),
+                 $stopped := not($then[1] or $then[2]) or not($else[1] or $else[2])
+             return if ($guard and $stopped) then (false(), false())
+                    else ($then[1] or $else[1], $then[2] or $else[2])
+         else if ($s/self::DoStatement) then
+           let $f := $self($self, $s/*[1], true())
+           return if ($f[1] or $f[2]) then (true(), $f[2]) else (false(), false())
+         else if ($s/self::WhileStatement or $s/self::ForStatement or $s/self::ForeachStatement) then
+           (true(), $returns($s))
+         else if ($s/self::LabeledStatement) then $self($self, $s/*[last()], $loop)
+         else if ($s/self::SynchronizedStatement) then
+           if ($runs($s/*[1])) then (false(), false()) else $self($self, $s/Block, $loop)
+         else if ($s/self::TryStatement) then
+           let $all := fold-left(($s/Block, $s/CatchClause/Block), (false(), false()), function($any, $part) {
+                         let $f := $self($self, $part, $loop) return ($any[1] or $f[1], $any[2] or $f[2]) }),
+               $after := if ($s/FinallyClause) then $self($self, $s/FinallyClause/Block, $loop) else (true(), false())
+           return if ($after[1]) then $all else (false(), $after[2])
+         else if ($s/self::SwitchStatement) then
+           if ($s/SwitchArrowBranch and not($s/SwitchFallthroughBranch) and $s//SwitchLabel[@Default = true()]) then
+             fold-left($s/SwitchArrowBranch/*[2], (false(), false()), function($any, $part) {
+               let $f := $self($self, $part, $loop) return ($any[1] or $f[1], $any[2] or $f[2]) })
+           else (true(), $returns($s))
+         else if ($s/self::LocalClassStatement or $s/self::EmptyStatement) then (true(), false())
+         else (not($runs($s)), false())
+       },
+       $body := $flow($flow, Block, false()),
+       $after := if (../FinallyClause) then $flow($flow, ../FinallyClause/Block, false()) else (true(), false())
+   return if ($after[1]) then $body[1] or $body[2] else $after[2]]
 ]]></value>
       </property>
     </properties>

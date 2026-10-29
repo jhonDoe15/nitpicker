@@ -45,6 +45,18 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
     expect(located(reviewFindings(runs.maven))).toEqual(runs.markers);
   });
 
+  it('reports an empty catch of InterruptedException once, also when the catch spans lines', () => {
+    const onPauses = (findings) =>
+      findings
+        .filter(({ path: file }) => file.endsWith('/Pauses.java'))
+        .filter(({ rule }) => /EmptyCatch/u.test(rule) || rule === 'SwallowedInterrupt')
+        .map(({ tool, rule, location }) => `${String(location?.line)} ${tool}/${rule}`);
+
+    expect(onPauses(runs.gradle).filter((entry) => /EmptyCatch/u.test(entry))).toEqual([]);
+    expect(onPauses(runs.gradle)).toContain('32 pmd/SwallowedInterrupt');
+    expect(onPauses(runs.maven)).toEqual(onPauses(runs.gradle));
+  });
+
   it('names Awaitility for a fixed sleep, as the project has it, and calls join(ms) a timed wait', () => {
     const waits = runs.gradle.filter(({ rule }) => rule === 'FixedSleepInTest');
     const timed = waits.filter(({ message }) => message.startsWith('A timed wait, '));

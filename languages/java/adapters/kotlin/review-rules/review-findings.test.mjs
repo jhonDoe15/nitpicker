@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../../../core/diff/comparison/finding-schema.mjs';
 import { KOTLIN_EXCEPTION_RULES, validateKotlinOptions } from '../kotlin-options.mjs';
 import { readKotlinFacts } from './kotlin-facts.mjs';
+import { withoutCoveredFindings } from './review-finding.mjs';
 import { readKotlinReviewFindings } from './review-findings.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules.mjs';
 import { SPRING_RULES } from './spring/spring-messages.mjs';
@@ -238,5 +239,61 @@ describe('Kotlin exception rules for the review rules', () => {
     expect(() => {
       validateKotlinOptions(onKotlinSource('pmd/SpringFieldInjection'));
     }).toThrow('reported in .java files only: its paths name Kotlin sources');
+  });
+});
+
+describe('withoutCoveredFindings', () => {
+  const at = (tool, rule, line) => ({ tool, rule, path: 'A.kt', location: { line } });
+
+  it('keeps one finding when a Spring rule names the allowed form for the same client or loop', () => {
+    const findings = [
+      at('kotlin-source', 'HttpWithoutTimeout', 3),
+      at('pmd', 'SpringHttpClientPerCall', 3),
+      at('kotlin-source', 'HttpWithoutTimeout', 9),
+      at('kotlin-source', 'IoCallInLoop', 3),
+      at('kotlin-source', 'IoCallInLoop', 7),
+      at('pmd', 'SpringDataNoSaveInLoop', 7),
+    ];
+
+    expect(withoutCoveredFindings(findings)).toEqual([
+      findings[1],
+      findings[2],
+      findings[3],
+      findings[5],
+    ]);
+  });
+
+  it('keeps the Kotlin finding when an exception lifts the Spring finding on that line', () => {
+    const findings = [
+      at('kotlin-source', 'HttpWithoutTimeout', 3),
+      at('pmd', 'SpringHttpClientPerCall', 3),
+    ];
+    const exceptions = [{ rule: 'pmd/SpringHttpClientPerCall', glob: 'app/A.kt' }];
+
+    expect(withoutCoveredFindings(findings, { exceptions, modulePath: 'app' })).toEqual(findings);
+    expect(withoutCoveredFindings(findings, { exceptions, modulePath: 'other' })).toEqual(
+      findings.slice(1),
+    );
+  });
+
+  it('keeps one finding for a swallowed cancellation or interrupt and for a fixed sleep in a test', () => {
+    const findings = [
+      at('kotlin-source', 'CatchOnlyLogsOrReturnsDefault', 4),
+      at('pmd', 'SwallowedInterrupt', 4),
+      at('kotlin-source', 'CatchOnlyLogsOrReturnsDefault', 8),
+      at('pmd', 'SwallowedCancellation', 8),
+      at('kotlin-source', 'CatchOnlyLogsOrReturnsDefault', 12),
+      at('detekt', 'detekt.coroutines.SleepInsteadOfDelay', 15),
+      at('pmd', 'FixedSleepInTest', 15),
+      at('detekt', 'detekt.coroutines.SleepInsteadOfDelay', 20),
+    ];
+
+    expect(withoutCoveredFindings(findings)).toEqual([
+      findings[1],
+      findings[3],
+      findings[4],
+      findings[6],
+      findings[7],
+    ]);
   });
 });

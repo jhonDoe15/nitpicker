@@ -44,11 +44,10 @@ Before you change code other modules use, or fix a bug, read
 - Coroutines: no `GlobalScope`, no `runBlocking` (a call, however it is imported). Make the caller `suspend`
   (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`; a test uses `runTest`.
 - Do not wrap suspending work in `runCatching`: it captures cancellation. Call directly or catch
-  only an expected specific failure; a Result helper must immediately rethrow `CancellationException`.
-  Non-suspending `runCatching` is allowed.
-- A `catch` of `CancellationException` or `InterruptedException` ends in `throw e`, `ensureActive()` or
-  `Thread.currentThread().interrupt()`; logging or returning a default swallows it
-  (`pmd/SwallowedCancellation`, `pmd/SwallowedInterrupt`).
+  only an expected specific failure. Non-suspending `runCatching` is allowed.
+- In a suspend function or coroutine, a `catch` of `CancellationException` rethrows it (`throw e`) or calls
+  `ensureActive()`; a `catch` of `InterruptedException` rethrows or calls `Thread.currentThread().interrupt()`.
+  Logging or returning a default swallows it (`pmd/SwallowedCancellation`, `pmd/SwallowedInterrupt`).
 - Inject a dispatcher (`dispatcher: CoroutineDispatcher = Dispatchers.IO`) instead of naming `Dispatchers.IO`
   in main code; no `suspend` on a function that never suspends or returns a `Flow`; no `suspend`
   `CoroutineScope` extension; `delay`, never `Thread.sleep`, in a `suspend` function.
