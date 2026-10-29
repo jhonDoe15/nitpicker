@@ -160,6 +160,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/SpringUnusedContext',
       'pmd/ExhaustiveEnumPredicate',
       'pmd/StaticForwardingWrapper',
+      'pmd/ForwardingMethodAlias',
       'pmd/SingularAndPluralMember',
       ...SPRING_RULES.map((rule) => `pmd/${rule}`),
       'pmd/SpringQueryConcatenation',

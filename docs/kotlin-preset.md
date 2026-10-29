@@ -437,6 +437,7 @@ skipped with a note on stderr.
 | ---------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`         | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during` |
 | `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                        |
+| `ForwardingMethodAlias`                  | `review-rules/main/method-aliases.mjs`      | a member that only passes its parameters, in order, to another member of its class                                                                                     |
 | `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                           |
 | `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                           |
 | `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                   |
@@ -472,6 +473,17 @@ Limits, all chosen to flag less rather than guess:
   `unmodifiable*`, `synchronized*` and `checked*`; and functions in or below a class with a Spring
   stereotype (`@Component`, `@Service`, `@Repository`, `@Controller`, `@RestController`, `@ControllerAdvice`,
   `@Configuration`, `@SpringBootApplication`).
+- Method aliases (`ForwardingMethodAlias`, the member counterpart of the rule above): the body is one call
+  to a function of the same class, implicit or through `this`, that passes every parameter in order and
+  by name or position, and the target has the same parameter types, `suspend`ness and (when both declare
+  one) return type. The owner is a `class` or `enum class`; in an `object` or `companion` only the call
+  through `this` counts, since the call without a receiver is the static rule's. Skipped: interfaces and
+  local classes, overloaded names (the alias or the target declared twice), annotations (so a
+  `@Deprecated` alias passes), `override`, `operator`, `infix`, `inline`, `open`, `abstract`, `actual`
+  and `expect` members, receivers, type parameters, defaults, varargs, no parameters, calls with type
+  arguments, spread or lambda arguments, and the names `of`, `from`, `invoke` and `copy`. Spring
+  stereotype classes are checked like any other class. Generated sources are dropped for every Kotlin
+  review rule, and the finding identity is the rule and `Owner.name`, so moving lines keeps it baselined.
 - Singular and plural: both members must have the same element type (the plural a list, set,
   collection or array of it). Only the primary-constructor properties of a `data class` and the
   properties of a `@ConfigurationProperties` class are inspected.
