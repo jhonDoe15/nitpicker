@@ -1,6 +1,8 @@
 from pathlib import PurePosixPath
 
 from design.calls.references import module_references
+from design.resolve.lookup import base_entries
+from design.resolve.symbols import Klass
 from design.types.classes import classify, enum_cases
 from design.types.fields import class_fields, module_fields
 from design.types.published import is_published, public_name
@@ -14,6 +16,12 @@ def klass_exported(klass):
     if klass.owner is not None:
         return klass_exported(klass.owner) and not klass.name.startswith("_")
     return is_exported(klass.module, klass.name)
+
+
+def supertype_ids(index, klass):
+    bases = base_entries(index, klass)
+    ids = [base.id for base in bases if isinstance(base, Klass) and base is not klass]
+    return list(dict.fromkeys(ids))
 
 
 def module_type(index, module):
@@ -43,6 +51,9 @@ def class_type(index, klass):
         "kind": kind,
         "exported": klass_exported(klass),
     }
+    supertypes = supertype_ids(index, klass)
+    if supertypes:
+        fact["supertypes"] = supertypes
     if klass.owner is None and is_published(index, klass):
         fact["published"] = True
     if kind == "enum":

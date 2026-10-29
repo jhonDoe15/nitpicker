@@ -64,4 +64,5 @@ def build_facts(project, options):
         callables.extend(module_callables(index, module))
     modules.sort(key=lambda fact: fact["file"])
     keep_known(types + callables, "references", {fact["id"] for fact in callables})
+    keep_known(types, "supertypes", {fact["id"] for fact in types})
     return {"modules": modules, "types": types, "callables": callables}

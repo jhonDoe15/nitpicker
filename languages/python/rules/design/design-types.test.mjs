@@ -184,3 +184,20 @@ describe.skipIf(!pythonUsable())('the Python design producer export lists and la
     },
   );
 });
+
+describe.skipIf(!pythonUsable())('the Python design producer supertypes', () => {
+  const facts = designFacts('hierarchy');
+
+  it('lists the project bases of each class, Protocol and ABC bases included, without library bases', () => {
+    expect(
+      facts.types
+        .filter((entry) => entry.supertypes !== undefined)
+        .map(({ id, supertypes }) => [id, supertypes]),
+    ).toEqual([
+      ['store/impl.py#File', ['store/base.py#Closer', 'store/base.py#Store']],
+      ['store/impl.py#Logged', ['store/impl.py#File']],
+      ['store/impl.py#Boxes', ['store/base.py#Box', 'store/base.py#Store']],
+      ['store/impl.py#Outer.Inner', ['store/impl.py#File']],
+    ]);
+  });
+});
