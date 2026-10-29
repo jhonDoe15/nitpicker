@@ -1036,8 +1036,9 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `assertIsInstance(x, object)` and the like: asserts that cannot fail. `float-equality-in-test`
   reports a non-integral float literal (`0.3`, `-2.5`, `1e-3`) on one side of `==` or `!=` in an
   `assert`, in `assertTrue`/`assertFalse`, or in `assertEqual`, `assertNotEqual` and the typed
-  `assert*Equal` forms, also inside a list, tuple, set or dict literal. Integral literals (`1.0`)
-  and infinities are exact and stay allowed, and a side wrapped in `approx(...)` is not checked.
+  `assert*Equal` forms, also inside a list, tuple or dict literal (the forms `pytest.approx` takes).
+  Integral literals (`1.0`) and infinities are exact and stay allowed, and a side wrapped in
+  `approx(...)` is not checked.
 - A test function with no assertion is not checked here; the conventions work owns it, together
   with the detection of the project's own assertion helpers.
 - Touched code: a new finding is reported per site, and the rules in `touched-rules.mjs` (every
