@@ -290,6 +290,15 @@ describe('analyzing the import graph', () => {
       message:
         'base depends on less stable package other. Depend on an abstraction in a more stable package instead.',
       classification: 'enforceable',
+      cause: {
+        files: ['src/base/__init__.py', 'src/base/core.py'],
+        contributors: [
+          { file: 'src/feature/a.py', unit: 'package feature' },
+          { file: 'src/feature/b.py', unit: 'package feature' },
+          { file: 'src/other/__init__.py', unit: 'package other' },
+          { file: 'src/other/o.py', unit: 'package other' },
+        ],
+      },
     });
   });
 
