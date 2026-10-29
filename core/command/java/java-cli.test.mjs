@@ -12,6 +12,7 @@ import {
 } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { acceptedDigest } from '../test-support/accepted-digest.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const EMPTY_JDEPS = { 'jdeps/jdeps.txt': '', 'jdeps/jdeps-classes.txt': '' };
 const EXCEPTION_ENTRY = /\{"rule":"[^"]+","paths":\[[^\]]+\],"reason":"\.\.\."\}/u;
@@ -287,7 +288,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
           snapshot: 'base',
           rule: 'tests-failed',
           path: '.',
-          message: 'Tests fail on the base:\n  demo.ATest.works: expected: 1',
+          message: `Tests fail on the base:\n  demo.ATest.works: expected: 1\n${linkSentence('baseTestsFail')}`,
         },
       ]);
       expect(result.output.out.split('\n').filter((line) => line.startsWith('Note:'))).toEqual([
@@ -305,7 +306,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
 
         expect(result.exitCode, result.text).toBe(0);
         expect(result.json('notes.json').map(({ message }) => message)).toEqual([
-          'Tests fail on the base in core:\n  demo.ATest.works: expected: 1',
+          `Tests fail on the base in core:\n  demo.ATest.works: expected: 1\n${linkSentence('baseTestsFail')}`,
         ]);
       },
     );

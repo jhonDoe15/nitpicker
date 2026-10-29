@@ -371,12 +371,12 @@ quietly. It is a finding, not a tool error, so the exit code is 1.
 
 ### Tests fail
 
-**Symptom.** A tool error with the rule `tests-failed` (or, for the analyzers that depend on the tests,
-`tests-failed-skipped`) on `head`, listing the failing tests; the analyzers that need the tests
-(coverage, CRAP, console output, mutation testing) are skipped (`skipped (tests failed)`). Exit code 2
-when there is no new finding. On Java and Kotlin the message reads `Tests fail in the head snapshot
-(<project>); nitpicker needs a passing test suite for coverage and mutation testing:` followed by the
-failing tests.
+**Symptom.** A tool error on `head` that lists the failing tests: `1 test fails, so coverage, CRAP and
+mutation were skipped. Fix the tests and rerun:` with the rule `tests-failed` (or `tests-not-run` when a
+test file could not even load) on TypeScript, JavaScript and Python, or `Tests fail in <project>; nitpicker needs a passing test suite for coverage and mutation
+testing:` as the `gradle-failure` or `maven-failure` of Java and Kotlin. The analyzers that need the
+tests (coverage, CRAP, console output, mutation testing) are skipped (`skipped (tests failed)`). Exit
+code 2 when there is no new finding.
 
 **Cause.** Coverage, CRAP and mutation testing need the project's own test suite to pass, because
 their results come from running it. The suite failed on your checkout (a failing test, a test file
@@ -389,18 +389,25 @@ Python, the project's test runner under `coverage run`; for Java and Kotlin, `./
 
 ### Tests fail on the base
 
-**Symptom.** The same tool error as above, labeled `base` (on Java and Kotlin, `Tests fail in the base
-snapshot (<project>)`), or a message such as `mutation skipped: the base commit fails its own tests,
-so its mutants cannot be compared`.
+**Symptom.** A note, not a tool error: `Tests fail on the base:` (or `Tests fail on the base in
+<module>:`) followed by the failing tests, or `mutation skipped: the base commit fails its own tests, so
+its mutants are unknown there`. A base whose tests did not run is a tool error labeled `base`: a
+`tests-not-run` error such as `vitest exited 1 without naming a failing test` or `without a readable
+test report` on TypeScript, JavaScript and Python, or the `gradle-failure` or `maven-failure` of Java
+and Kotlin.
 
-**Cause.** The comparison needs a passing baseline: with the base's tests failing there is no coverage or
-mutation result to compare your change with. The merge base of your branch is already broken, for
-example because it was branched from a commit where the main branch was red, or a dependency it needs
-has changed since.
+**Cause.** The base is red: its tests ran and at least one named test failed. The results that need
+passing tests (coverage, CRAP, mutation testing, slow tests, test console output) are unknown on the
+base, so a finding of those checks on the head counts as new only in a file your change adds or on a
+line it adds, edits or deletes from. When the base tests did not run at all (a load, collection or
+compile failure, a non-zero exit that names no test, a timeout), there is nothing to compare with.
 
-**Fix.** Your change cannot repair the base. Rebase or merge the base branch once it is green, so that
-the merge base moves to a passing commit, or compare against a passing ref with `--base <ref>`. If the
-failure is flaky, rerun. To check your change on its own, `nitpicker --all` has no baseline.
+**Fix.** A red base does not block your change, but a finding of those checks in code you edit still
+fails, because there is no base result to hold it against: test that code or split it. A change that
+removes tests gets no help from the red base, and a `tests-removed` note says so. When the base tests
+did not run, rebase or merge the base branch once it is green, or compare against a passing ref with
+`--base <ref>`; if the failure is flaky, rerun. `nitpicker --all` has no baseline. See
+[A base whose tests fail](usage.md#a-base-whose-tests-fail).
 
 ### The test runner ran no tests
 

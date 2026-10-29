@@ -23,7 +23,7 @@ const MESSAGES_BUILT_ELSEWHERE = [
   'core/diff/reporting/review/policy-findings.mjs',
   'core/diff/sharding/aggregate-shards.mjs',
   'core/fix/run-fix.mjs',
-  'languages/typescript/adapters/typecheck/typescript-program.mjs',
+  'languages/java/adapters/red-base/tests-failed.mjs',
 ];
 const symptoms = new Map(pageEntries().map(({ slug, symptom }) => [slug, symptom]));
 

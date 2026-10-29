@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../tooling/tool-resolution.mjs';
 import { createTypescriptProject } from './test-support/typescript-project.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const enabled = process.env.NITPICKER_TS_RED_BASE === '1';
 
@@ -11,7 +12,7 @@ const ASSERTION = (expected) =>
   `test/greeter.test.ts > greets: AssertionError: expected '${expected}' to be 'Hi, Ada!' // Object.is equality`;
 const FAILURE_MESSAGE = (expected) =>
   `1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n  ${ASSERTION(expected)}`;
-const BASE_NOTE = `Tests fail on the base:\n  ${ASSERTION('Hello, Ada!')}`;
+const BASE_NOTE = `Tests fail on the base:\n  ${ASSERTION('Hello, Ada!')}\n${linkSentence('baseTestsFail')}`;
 const BRANCHY = (name) =>
   `export function ${name}(value: number): string {\n${[1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     .map((limit) => `  if (value === ${limit}) {\n    return '${limit}';\n  }\n`)
