@@ -50,6 +50,8 @@ end-to-end behaviour also needs that language's suite (`npm run test:java`, `tes
 `test:python`), which needs the language's toolchain. CI runs all three, in the `java-e2e`,
 `kotlin-e2e` and `python-e2e` workflows, which follow the same triggers as the `typescript` workflow
 below (pushes to `main` that touch the paths they list, a manual run, and the `run-ci` label).
+The TypeScript red-base test (`npm run test:typescript`, which runs real vitest through the CLI) is
+not in CI: run it after changing `core/diff/comparison/base-red/` or a test runner's failure report.
 
 The `platforms` workflow, which has the same triggers and is not a required check, runs the CLI on
 the sample projects in `scripts/platforms/samples.mjs` on Linux, macOS and Windows, and the
@@ -95,7 +97,7 @@ node scripts/test-shards/record-durations.mjs --maxWorkers=100%
 ```
 
 Java end-to-end CI uses 16 isolated runner shards and Kotlin uses 10, with files run serially in
-each shard. Independent behavior groups have separate fixture trees; the full 76 Java and 54
+each shard. Independent behavior groups have separate fixture trees; the full 95 Java and 92
 Kotlin cases remain selected. The final `java` or `kotlin` check passes only when all its shards
 pass. Reproduce a shard with `npm run test:java -- --shard=1/16` or
 `npm run test:kotlin -- --no-file-parallelism --shard=1/10`.
