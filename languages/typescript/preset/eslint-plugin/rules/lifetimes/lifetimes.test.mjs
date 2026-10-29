@@ -27,6 +27,8 @@ tester.run('no-task-outliving-resource', noTaskOutlivingResource, {
     using('const pending = work(db); queue.push(pending);'),
     using('items.forEach((item) => db.insert(item));'),
     using('await new Promise((resolve) => setTimeout(resolve, 10)); await db.query();'),
+    using('await new Promise((resolve) => setTimeout(() => { db.query(); resolve(); }, 10));'),
+    closed('return await new Promise((resolve) => setTimeout(() => resolve(db.query()), 10));'),
     using('function later() { return db.query(); } return await later();'),
     closed('await run(db);'),
     closed('void audit();'),
@@ -48,6 +50,11 @@ tester.run('no-task-outliving-resource', noTaskOutlivingResource, {
     invalid(using, 'globalThis.setInterval(function () { db.query(); }, 10);', 'deferred'),
     invalid(using, 'setTimeout(flush, 10, db);', 'deferred'),
     invalid(closed, 'setTimeout(() => db.query(), 10);', 'deferred'),
+    invalid(
+      using,
+      'const later = new Promise((resolve) => setTimeout(() => resolve(db.query()), 10));',
+      'deferred',
+    ),
     invalid(
       (body) => ({
         filename,
