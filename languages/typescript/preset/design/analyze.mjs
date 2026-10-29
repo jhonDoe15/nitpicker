@@ -6,7 +6,6 @@ import { createProjectProgram } from '../unused-api/program.mjs';
 import { loadPackages } from '../unused-api/workspace/packages.mjs';
 import { designFacts } from './facts.mjs';
 
-/** The design facts of the project: one type-checked program over its production sources. */
 export function projectDesignFacts({ projectRoot, configPath, environment }) {
   const layout = readLayout(environment);
   const packagesInfo = loadPackages(projectRoot, layout);
@@ -22,7 +21,6 @@ export function projectDesignFacts({ projectRoot, configPath, environment }) {
   return designFacts({ context, layout, packagesInfo, frameworks, projectRoot });
 }
 
-/** The deep-module design rules over the facts of the project's production sources. */
 export function analyzeDesignSignals({ projectRoot, configPath, analyzerName, environment }) {
   const layout = readLayout(environment);
   return sharedFactFindings(projectDesignFacts({ projectRoot, configPath, environment }), {

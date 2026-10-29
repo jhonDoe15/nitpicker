@@ -89,6 +89,14 @@ describe('the shared fact rules', () => {
       { layout: { featureRoots: [1] } },
       'policy.layout.featureRoots must be an array of folder globs',
     ],
+    ...[
+      [{ type: 'S', open: [], close: ['c'] }],
+      [{ type: 'S', open: ['o'], close: ['c'], steps: 'x' }],
+      [{ type: 'S', open: ['o'], close: ['c'], reason: '' }],
+    ].map((protocols) => [
+      { protocols },
+      'policy.protocols must be an array of { type, open, close, steps?, reason? } entries',
+    ]),
     [{ testConsole: 'x' }, 'policy.testConsole must be an object'],
     [{ layout: 'x' }, 'policy.layout must be an object'],
     [{ layout: [] }, 'policy.layout must be an object'],

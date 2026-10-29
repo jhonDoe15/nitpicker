@@ -29,10 +29,6 @@ function analyze(options, { linkName, analyze: run }) {
   }
 }
 
-/**
- * Runs an analyzer over a type-checked program of the project, built from the policy tsconfig. A
- * failure is a tool error of `rule`, so the analyzer's other findings still report.
- */
 export async function runProgramAnalysis(options, { rule, analyzer, linkName, exportName }) {
   try {
     const module = await importPolicyModule(options, analyzer);
