@@ -3,7 +3,7 @@ import { syntaxChildren } from '../syntax/children.mjs';
 import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 
 function isProductionSource(source, sourceRoot) {
   const relative = path.relative(sourceRoot, source.fileName);
