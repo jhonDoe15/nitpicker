@@ -67,7 +67,7 @@ public final class Lambdas {
     }
     Origins origins = new Origins(flow);
     for (int index = created + 1; index < flow.insns.length; index++) {
-      if (!(flow.insns[index] instanceof MethodInsnNode call) || call.name.equals("<init>")) {
+      if (!(flow.insns[index] instanceof MethodInsnNode call)) {
         continue;
       }
       List<SourceValue> operands = flow.operands(index);

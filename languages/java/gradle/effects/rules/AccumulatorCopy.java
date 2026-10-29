@@ -17,6 +17,7 @@ import nitpicker.effects.flow.Program;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
+import org.objectweb.asm.tree.JumpInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 import org.objectweb.asm.tree.VarInsnNode;
@@ -56,11 +57,15 @@ public final class AccumulatorCopy {
         continue;
       }
       for (Loop loop : program.loops(flow)) {
+        Set<Integer> reported = new HashSet<>();
         for (int index = loop.start(); index <= loop.end(); index++) {
-          if (flow.insns[index].getOpcode() == Opcodes.ASTORE) {
+          if (flow.insns[index].getOpcode() == Opcodes.ASTORE && !guarded(flow, loop, index)) {
             int slot = ((VarInsnNode) flow.insns[index]).var;
             Copy copy = copied(flow, top(flow, index), identity -> identity.slots().contains(slot));
-            report(flow, index, copy.slots(), "loop");
+            if (copy.slots().stream().noneMatch(reported::contains)) {
+              reported.addAll(copy.slots());
+              report(flow, index, copy.slots(), "loop");
+            }
           }
         }
       }
@@ -68,6 +73,18 @@ public final class AccumulatorCopy {
         reduceLambda(flow, use);
       }
     }
+  }
+
+  private static boolean guarded(MethodFlow flow, Loop loop, int store) {
+    for (int index = loop.start(); index < store; index++) {
+      if (flow.insns[index] instanceof JumpInsnNode jump && jump.getOpcode() != Opcodes.GOTO) {
+        int target = flow.index(jump.label);
+        if (target > store && target <= loop.end()) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   private void reduceLambda(MethodFlow flow, Lambdas.Use use) {

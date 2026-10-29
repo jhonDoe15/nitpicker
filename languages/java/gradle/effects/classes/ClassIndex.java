@@ -29,6 +29,9 @@ public final class ClassIndex {
   private final Map<String, ClassNode> project = new TreeMap<>();
   private final Map<String, Header> headers = new HashMap<>();
   private final Map<String, Set<String>> ancestors = new HashMap<>();
+  private final Map<String, ClassNode> libraries = new HashMap<>();
+  private Map<String, List<ClassNode>> implementors;
+  private int unreadable;
   private final ClassPath classPath;
 
   public ClassIndex(ClassPath classPath) {
@@ -36,6 +39,7 @@ public final class ClassIndex {
   }
 
   public void addProject(ClassNode node) {
+    implementors = null;
     project.put(node.name, node);
     headers.put(node.name, headerOf(node));
   }
@@ -96,14 +100,44 @@ public final class ClassIndex {
   }
 
   public List<ClassNode> implementations(String type) {
-    List<ClassNode> found = new ArrayList<>();
-    for (ClassNode node : project.values()) {
-      boolean concrete = (node.access & (Opcodes.ACC_INTERFACE | Opcodes.ACC_ABSTRACT)) == 0;
-      if (concrete && !node.name.equals(type) && isSubtype(node.name, type)) {
-        found.add(node);
+    if (implementors == null) {
+      implementors = new HashMap<>();
+      for (ClassNode node : project.values()) {
+        if ((node.access & (Opcodes.ACC_INTERFACE | Opcodes.ACC_ABSTRACT)) != 0) {
+          continue;
+        }
+        for (String parent : ancestors(node.name)) {
+          implementors.computeIfAbsent(parent, key -> new ArrayList<>()).add(node);
+        }
       }
     }
-    return found;
+    return implementors.getOrDefault(type, List.of());
+  }
+
+  public ClassNode library(String name) {
+    if (name == null || project.containsKey(name)) {
+      return node(name);
+    }
+    return libraries.computeIfAbsent(name, this::readLibrary);
+  }
+
+  private ClassNode readLibrary(String name) {
+    byte[] bytes = classPath.read(name);
+    if (bytes == null) {
+      return null;
+    }
+    try {
+      ClassNode node = new ClassNode();
+      new ClassReader(bytes).accept(node, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
+      return node;
+    } catch (RuntimeException failure) {
+      unreadable++;
+      return null;
+    }
+  }
+
+  public int unreadable() {
+    return unreadable;
   }
 
   public MethodNode declared(String owner, String name, String desc) {
@@ -146,7 +180,8 @@ public final class ClassIndex {
       HeaderReader reader = new HeaderReader();
       new ClassReader(bytes).accept(reader, ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES);
       return reader.header;
-    } catch (RuntimeException unreadable) {
+    } catch (RuntimeException failure) {
+      unreadable++;
       return MISSING;
     }
   }

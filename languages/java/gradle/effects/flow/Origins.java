@@ -104,7 +104,7 @@ public final class Origins {
     return List.copyOf(values);
   }
 
-  static boolean isLoad(AbstractInsnNode insn) {
+  public static boolean isLoad(AbstractInsnNode insn) {
     int opcode = insn.getOpcode();
     return insn instanceof VarInsnNode && opcode >= Opcodes.ILOAD && opcode <= Opcodes.ALOAD;
   }

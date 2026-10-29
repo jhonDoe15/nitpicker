@@ -14,32 +14,46 @@ public final class Lines {
   private final Map<Integer, Integer> callSites = new HashMap<>();
   private final Map<Integer, Integer> own = new HashMap<>();
   private final boolean mapped;
+  private int home = 1;
+  private String file;
 
-  private Lines(String smap) {
+  private Lines(String smap, String top) {
     mapped = smap != null && smap.startsWith("SMAP");
     if (!mapped) {
       return;
     }
     String stratum = "";
-    boolean lines = false;
-    for (String raw : smap.split("\n")) {
-      String line = raw.trim();
+    String section = "";
+    String[] rows = smap.split("\n");
+    for (int row = 0; row < rows.length; row++) {
+      String line = rows[row].trim();
       if (line.startsWith("*S ")) {
         stratum = line.substring(3).trim();
-        lines = false;
+        section = "";
       } else if (line.startsWith("*")) {
-        lines = line.equals("*L");
-      } else if (lines) {
-        read(line, stratum.equals("KotlinDebug") ? callSites : own, stratum.equals("KotlinDebug"));
+        section = line;
+      } else if (section.equals("*F") && stratum.equals("Kotlin") && line.startsWith("+ ") && row + 1 < rows.length
+          && rows[row + 1].trim().equals(top)) {
+        String[] parts = line.substring(2).trim().split(" ", 2);
+        home = Integer.parseInt(parts[0]);
+        file = home == 1 || parts.length < 2 ? null : parts[1];
+      } else if (section.equals("*L")) {
+        boolean debug = stratum.equals("KotlinDebug");
+        read(line, debug ? callSites : own, debug);
       }
     }
   }
 
   public static Lines of(ClassNode node) {
-    return new Lines(node.sourceDebug);
+    int dollar = node.name.indexOf('$', node.name.lastIndexOf('/') + 1);
+    return new Lines(node.sourceDebug, dollar < 0 ? node.name : node.name.substring(0, dollar));
   }
 
-  private static void read(String line, Map<Integer, Integer> target, boolean debug) {
+  public String file() {
+    return file;
+  }
+
+  private void read(String line, Map<Integer, Integer> target, boolean debug) {
     Matcher matcher = ENTRY.matcher(line);
     if (!matcher.matches()) {
       return;
@@ -49,7 +63,7 @@ public final class Lines {
     int repeat = matcher.group(3) == null ? 1 : Integer.parseInt(matcher.group(3));
     int output = Integer.parseInt(matcher.group(4));
     int increment = matcher.group(5) == null ? 1 : Integer.parseInt(matcher.group(5));
-    if (!debug && file != 1) {
+    if (!debug && file != home) {
       return;
     }
     for (int step = 0; step < repeat; step++) {
