@@ -19,7 +19,7 @@ import {
 
 const REVIEW_TOOLS = new Set(['pmd']);
 const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';
-const CATCH_ONLY_LOGS_LEFT = ['189'];
+const CATCH_ONLY_LOGS_LEFT = { cancellations: ['189'], interrupts: ['99'] };
 
 function reviewFindings(findings) {
   return findings
@@ -85,8 +85,12 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     const interrupts = on('/Interrupts.kt');
     const pacing = on('/HandlersTest.kt');
 
-    expect(lines(cancellations, 'CatchOnlyLogsOrReturnsDefault')).toEqual(CATCH_ONLY_LOGS_LEFT);
-    expect(lines(interrupts, 'CatchOnlyLogsOrReturnsDefault')).toEqual([]);
+    expect(lines(cancellations, 'CatchOnlyLogsOrReturnsDefault')).toEqual(
+      CATCH_ONLY_LOGS_LEFT.cancellations,
+    );
+    expect(lines(interrupts, 'CatchOnlyLogsOrReturnsDefault')).toEqual(
+      CATCH_ONLY_LOGS_LEFT.interrupts,
+    );
     expect(lines(interrupts, 'catch-log-without-exception')).toEqual([]);
     expect(lines(pacing, 'FixedSleepInTest')).toEqual(['10']);
     expect(lines(pacing, 'detekt.coroutines.SleepInsteadOfDelay')).toEqual([]);
