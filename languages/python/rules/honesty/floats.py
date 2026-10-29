@@ -34,7 +34,7 @@ def fractions_in(node):
         item = pending.pop()
         if is_fraction(item):
             found.append(item)
-        elif isinstance(item, (ast.List, ast.Tuple, ast.Set)):
+        elif isinstance(item, (ast.List, ast.Tuple)):
             pending.extend(item.elts)
         elif isinstance(item, ast.Dict):
             pending.extend(item.values)
