@@ -5,8 +5,13 @@ import {
   withHeadPolicyFile,
 } from '../preset/head-policy.mjs';
 import { resolveLayoutFor } from '../preset/layout.mjs';
-import { collectFixFiles, readBytes, rewrittenPaths } from '../../../core/fix/common/fix-files.mjs';
-import { linkNote } from '../../../core/fix/common/fix-notes.mjs';
+import {
+  collectFixFiles,
+  readBytes,
+  rewrittenPaths,
+  splitByEncoding,
+} from '../../../core/fix/common/fix-files.mjs';
+import { linkNote, undecodableNote } from '../../../core/fix/common/fix-notes.mjs';
 import {
   prettierExclusions,
   prettierExtensions,
@@ -45,21 +50,26 @@ function fixWithPolicy(settings) {
     accepts: (name) => !layout.isExcluded(name) && (isEslintFile(name) || isPrettierFile(name)),
   });
   const before = readBytes(projectRoot, files);
+  const { files: decodable, undecodable } = splitByEncoding(projectRoot, files);
   const steps = [
     eslintFixStep(
       settings,
-      files.filter(({ path: name }) => isEslintFile(name)),
+      decodable.filter(({ path: name }) => isEslintFile(name)),
     ),
     prettierFixStep(
       settings,
-      files.filter(({ path: name }) => isPrettierFile(name)),
+      decodable.filter(({ path: name }) => isPrettierFile(name)),
       comparison.mergeBaseSha,
     ),
   ];
   return {
     fixedFiles: rewrittenPaths(projectRoot, files, before),
     toolErrors: steps.flatMap(({ toolErrors }) => toolErrors),
-    notes: [...new Set([...steps.flatMap(({ notes }) => notes), ...linkNote(links)])],
+    notes: [
+      ...steps.flatMap(({ notes }) => notes),
+      ...undecodableNote(undecodable),
+      ...linkNote(links),
+    ],
   };
 }
 
