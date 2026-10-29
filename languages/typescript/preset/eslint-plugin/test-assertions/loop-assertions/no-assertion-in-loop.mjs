@@ -1,3 +1,4 @@
+import { chainOf } from '../../rules/analysis/ancestry.mjs';
 import { resolveConstant } from '../../rules/analysis/constant-resolution.mjs';
 import { fileBindings } from '../unowned-async/hosts.mjs';
 import { factsOf, siteKind } from './assertion-sites.mjs';
@@ -11,10 +12,10 @@ const EXCEPTION_HINT =
 const WRAPPERS = new Set(['TSAsExpression', 'TSSatisfiesExpression', 'TSNonNullExpression']);
 
 function isLiteralTable(context, collection) {
-  let table = collection === undefined ? undefined : resolveConstant(context, collection);
-  while (WRAPPERS.has(table?.type)) {
-    table = table.expression;
-  }
+  const resolved = collection === undefined ? undefined : resolveConstant(context, collection);
+  const table = chainOf(resolved, (node) =>
+    WRAPPERS.has(node.type) ? node.expression : undefined,
+  ).at(-1);
   return table?.type === 'ArrayExpression' && table.elements.length > 0;
 }
 

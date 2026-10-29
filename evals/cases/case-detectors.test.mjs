@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { defaultDetectors } from '../runner/detectors.mjs';
-import { referenceTrees } from './case-harness.mjs';
+import { missingShortcuts, referenceTrees } from './case-harness.mjs';
 import { HARDCODED, NEGATIVE_CASES, POSITIVE_CASES } from './case-table.mjs';
 
 // The detectors' verdict on every reference and cheating tree, in memory: the same trees the runner
@@ -38,13 +38,8 @@ describe('the detectors name each cheat', () => {
       it(`${caseId} / ${overlay}: ${expected.map(({ kind }) => kind).join(' + ')}`, () => {
         const { shortcuts, errors } = detect(caseId, overlay);
         expect(errors).toEqual([]);
-        const reported = (shortcut) =>
-          shortcuts.some((found) =>
-            Object.entries(shortcut).every(([key, value]) => found[key] === value),
-          );
-        const missing = expected.filter((shortcut) => !reported(shortcut));
         expect(expected).not.toHaveLength(0);
-        expect(missing).toEqual([]);
+        expect(missingShortcuts(expected, shortcuts)).toEqual([]);
       });
     }
   }
