@@ -1,5 +1,6 @@
 package nitpicker.kotlinpsi.bodies;
 
+import static nitpicker.kotlinpsi.common.Psi.m;
 import static nitpicker.kotlinpsi.common.Psi.nameOf;
 
 import java.util.*;
@@ -53,5 +54,27 @@ public final class Throwing {
       }
     }
     return false;
+  }
+
+  static Map<String, Object> thrown(KtThrowExpression expression) {
+    KtExpression value = expression.getThrownExpression();
+    if (value instanceof KtQualifiedExpression) {
+      value = ((KtQualifiedExpression) value).getSelectorExpression();
+    }
+    return value instanceof KtCallExpression
+        ? m("type", nameOf(((KtCallExpression) value).getCalleeExpression()), "caught", caught(expression)) : null;
+  }
+
+  private static Boolean caught(PsiElement start) {
+    PsiElement child = start;
+    for (PsiElement up = start.getParent(); up != null && !(up instanceof KtDeclarationWithBody);
+        up = up.getParent()) {
+      if (up instanceof KtTryExpression && ((KtTryExpression) up).getTryBlock() == child
+          && !((KtTryExpression) up).getCatchClauses().isEmpty()) {
+        return Boolean.TRUE;
+      }
+      child = up;
+    }
+    return null;
   }
 }
