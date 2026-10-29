@@ -1,5 +1,5 @@
 import { isPlainObject, listOf } from '../../../../../shared/config.mjs';
-import { DEPENDENCY_CRUISER_OWNED_OPTIONS, patternSource } from '../config-values.mjs';
+import { isDependencyCruiserOwnedOption, patternSource } from '../config-values.mjs';
 import { addsEntries, canonical, keyChanges, sortedEntries } from './applied-values.mjs';
 
 const RULE_LISTS = new Set(['forbidden', 'required']);
@@ -38,7 +38,7 @@ function appliedValue(key, value) {
   }
   if (
     key.startsWith(OPTION_PREFIX) &&
-    DEPENDENCY_CRUISER_OWNED_OPTIONS.has(key.slice(OPTION_PREFIX.length))
+    isDependencyCruiserOwnedOption(key.slice(OPTION_PREFIX.length))
   ) {
     return undefined;
   }

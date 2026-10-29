@@ -3,7 +3,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { TYPESCRIPT_CONFIG_ENVIRONMENT } from '../../../preset/dependency-graph/cruise.mjs';
-import { DEPENDENCY_CRUISER_OWNED_OPTIONS } from '../../../preset/project-tools/config-values.mjs';
+import { isDependencyCruiserOwnedOption } from '../../../preset/project-tools/config-values.mjs';
 import {
   layeredDependencyCruiserConfig,
   projectExcludePaths,
@@ -138,6 +138,6 @@ describe('layered dependency-cruiser config', () => {
       ...flags,
     ];
     expect(flags.toSorted()).toEqual(['exclude', 'includeOnly', 'outputType']);
-    expect(set.filter((option) => !DEPENDENCY_CRUISER_OWNED_OPTIONS.has(option))).toEqual([]);
+    expect(set.filter((option) => !isDependencyCruiserOwnedOption(option))).toEqual([]);
   });
 });
