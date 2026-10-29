@@ -5,7 +5,7 @@ import {
   FS_EXTRA_MODULES,
   FS_MODULES,
   ZLIB_MODULES,
-} from '../analysis/node-sync-modules.mjs';
+} from '../analysis/node/node-sync-modules.mjs';
 
 const ENDS_WITH_SYNC = /Sync$/u;
 const FS_PROMISES = '"node:fs/promises"';

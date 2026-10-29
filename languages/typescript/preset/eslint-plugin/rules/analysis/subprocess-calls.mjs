@@ -1,6 +1,6 @@
 import { depthFirst } from '../../../../../../shared/traversal.mjs';
 import { resolveConstant, stringValue } from './constant-resolution.mjs';
-import { CHILD_PROCESS_MODULES, EXECA_MODULES } from './node-sync-modules.mjs';
+import { CHILD_PROCESS_MODULES, EXECA_MODULES } from './node/node-sync-modules.mjs';
 
 const SUBPROCESS_MODULES = new Set([...CHILD_PROCESS_MODULES, ...EXECA_MODULES, 'cross-spawn']);
 const FILE_FORM_FUNCTIONS = new Set([

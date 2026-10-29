@@ -45,7 +45,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/type-identity/functional-plugin.mjs',
   'languages/typescript/preset/eslint-plugin/rules/analysis/ancestry.mjs',
   'languages/typescript/preset/eslint-plugin/rules/analysis/narrowing/instanceof-guards.mjs',
-  'languages/typescript/preset/eslint-plugin/rules/analysis/node-sync-modules.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/analysis/node/node-sync-modules.mjs',
   'languages/typescript/preset/eslint-plugin/rules/analysis/subprocess-calls.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/composition-root-files.mjs',
   'languages/typescript/preset/eslint-plugin/rules/boundaries/no-branch-in-composition-root.mjs',

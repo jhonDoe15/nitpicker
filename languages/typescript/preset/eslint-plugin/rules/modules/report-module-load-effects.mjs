@@ -1,6 +1,6 @@
 import { stylesheetSpecifier } from '../../../layout.mjs';
 import { ancestorsOf } from '../analysis/ancestry.mjs';
-import { SYNC_API_MODULES } from '../analysis/node-sync-modules.mjs';
+import { SYNC_API_MODULES } from '../analysis/node/node-sync-modules.mjs';
 import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
 import { guardedByMain, isMainGuard } from './entry/main-guard.mjs';
 
