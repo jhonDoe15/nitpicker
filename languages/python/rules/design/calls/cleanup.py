@@ -41,35 +41,45 @@ def unconditional_calls(function):
     return scope_calls
 
 
+def self_targets(scope, function):
+    inner = scope.index.scope_of(function)
+    if inner.self_name is None:
+        return []
+    resolved = [resolve_call(inner, call) for call in unconditional_calls(function)]
+    return [
+        resolution.target
+        for resolution in resolved
+        if resolution is not None
+        and isinstance(resolution.receiver, ast.Name)
+        and resolution.receiver.id == inner.self_name
+    ]
+
+
 def implied_targets(scope, exit_function):
     found = []
     pending = [(exit_function, 0)]
     for function, depth in pending:
-        inner = scope.index.scope_of(function)
-        if depth >= MAX_DEPTH or inner.self_name is None:
-            continue
-        for call in unconditional_calls(function):
-            resolution = resolve_call(inner, call)
-            on_self = (
-                resolution is not None
-                and isinstance(resolution.receiver, ast.Name)
-                and resolution.receiver.id == inner.self_name
-            )
-            if on_self and resolution.target not in found:
-                found.append(resolution.target)
-                pending.append((resolution.target, depth + 1))
+        targets = self_targets(scope, function) if depth < MAX_DEPTH else []
+        for target in (t for t in targets if t not in found):
+            found.append(target)
+            pending.append((target, depth + 1))
     return found
 
 
-def exit_receivers(scope, item, klass, asynchronous):
+def exit_receivers(scope, item, manager):
+    klass, asynchronous = manager
     keys = []
     key = receiver_key(scope, item.context_expr)
     if key is not None:
         keys.append(key)
     alias = item.optional_vars
-    if isinstance(alias, ast.Name) and scope.is_single(alias.id):
-        if enter_returns_self(scope, klass, asynchronous) and alias.id not in keys:
-            keys.append(alias.id)
+    named = isinstance(alias, ast.Name) and scope.is_single(alias.id)
+    if (
+        named
+        and alias.id not in keys
+        and enter_returns_self(scope, klass, asynchronous)
+    ):
+        keys.append(alias.id)
     return keys
 
 
@@ -96,15 +106,16 @@ def item_facts(scope, item, node):
     if exit_function is None:
         return []
     targets = implied_targets(scope, exit_function)
-    keys = exit_receivers(scope, item, klass, asynchronous)
+    keys = exit_receivers(scope, item, (klass, asynchronous))
     return [fact(target, key, node.lineno) for key in keys for target in targets]
 
 
-def fact(target, key, line, cleanup=True):
-    found = {"target": target.id, "line": line, "receiver": key}
-    if cleanup:
-        found["cleanup"] = True
-    return found
+def plain_fact(target, key, line):
+    return {"target": target.id, "line": line, "receiver": key}
+
+
+def fact(target, key, line):
+    return {**plain_fact(target, key, line), "cleanup": True}
 
 
 def item_enter_facts(scope, item, node):
@@ -118,8 +129,8 @@ def item_enter_facts(scope, item, node):
     if enter_function is None:
         return []
     targets = implied_targets(scope, enter_function)
-    keys = exit_receivers(scope, item, klass, asynchronous)
-    return [fact(target, key, node.lineno, False) for key in keys for target in targets]
+    keys = exit_receivers(scope, item, (klass, asynchronous))
+    return [plain_fact(target, key, node.lineno) for key in keys for target in targets]
 
 
 def enter_facts(scope, node):

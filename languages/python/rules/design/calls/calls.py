@@ -35,17 +35,21 @@ def resolve_call(scope, call):
     return scope.values[key]
 
 
+def dunder_resolution(scope, value, func):
+    if value[0] == "cls":
+        found = find_member(scope.index, value[1], "__init__")
+        return Resolution(found[0]) if found and found[0] else None
+    found = find_member(scope.index, value[1], "__call__")
+    return Resolution(found[0], func) if found and found[0] else None
+
+
 def compute_resolution(scope, call):
     func = call.func
     value = evaluate(scope, func)
     if value is None:
         return None
-    if value[0] == "cls":
-        found = find_member(scope.index, value[1], "__init__")
-        return Resolution(found[0]) if found and found[0] else None
-    if value[0] == "inst" and isinstance(value[1], Klass):
-        found = find_member(scope.index, value[1], "__call__")
-        return Resolution(found[0], func) if found and found[0] else None
+    if value[0] == "cls" or (value[0] == "inst" and isinstance(value[1], Klass)):
+        return dunder_resolution(scope, value, func)
     if value[0] != "func":
         return None
     function, receiver_type = value[1], value[2]
@@ -67,13 +71,12 @@ def unbound_shift(scope, func, function):
 
 def stores_of(scope):
     if not hasattr(scope, "stores"):
-        stores = set()
-        for node in all_nodes(scope.function.node):
-            if isinstance(node, ast.Attribute) and isinstance(node.ctx, STORE_CONTEXTS):
-                text = chain_text(node)
-                if text:
-                    stores.add(text)
-        scope.stores = stores
+        stored = [
+            node
+            for node in all_nodes(scope.function.node)
+            if isinstance(node, ast.Attribute) and isinstance(node.ctx, STORE_CONTEXTS)
+        ]
+        scope.stores = {chain_text(node) for node in stored} - {None}
     return scope.stores
 
 

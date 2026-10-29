@@ -1,6 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { pythonUsable } from '../../metrics/python-helpers.mjs';
-import { designFacts, factsById } from './test-support/design-harness.mjs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import {
+  designFacts,
+  designFactsIn,
+  factsById,
+  runProducerPython,
+} from './test-support/design-harness.mjs';
 
 const WEB = 'app/web.py';
 
@@ -106,5 +114,101 @@ describe.skipIf(!pythonUsable())('the Python design producer modules and roles',
 
     expect(byId.callable('serve.py#run').entry).toBe(true);
     expect(byId.callable('core.py#Engine.start').entry).toBeUndefined();
+  });
+});
+
+const FAILING_BUILD = [
+  'import json, os, tempfile',
+  'import design.report as report',
+  'def failing_build(project, options):',
+  '    raise ValueError("no facts")',
+  'report.build_facts = failing_build',
+  'folder = tempfile.mkdtemp()',
+  'report.write_design(None, {}, folder)',
+  'print(open(os.path.join(folder, "design-facts.json")).read())',
+].join('\n');
+
+function recursingCallable(root) {
+  return [
+    'import json, os',
+    'import design.facts as facts',
+    'from nitpicker_rules import build_project',
+    'built = facts.callable_fact',
+    'def deep_fact(index, function):',
+    '    if function.name == "deep":',
+    '        raise RecursionError("too deep")',
+    '    return built(index, function)',
+    'facts.callable_fact = deep_fact',
+    `os.chdir(${JSON.stringify(root)})`,
+    'project = build_project(["app.py"], {"sourceRoots": ["."]})',
+    'found = facts.build_facts(project, {"designFiles": ["app.py"]})',
+    'print(json.dumps(found["callables"]))',
+  ].join('\n');
+}
+
+describe.skipIf(!pythonUsable())('the Python design producer failures', () => {
+  let root;
+
+  beforeAll(() => {
+    root = mkdtempSync(path.join(tmpdir(), 'nitpicker-design-chain-'));
+    const chain = '.step()'.repeat(300);
+    writeFileSync(
+      path.join(root, 'app.py'),
+      [
+        'class Builder:',
+        '    def step(self) -> "Builder":',
+        '        return self',
+        '',
+        '',
+        'def deep(b: Builder) -> Builder:',
+        `    return b${chain}`,
+        '',
+      ].join('\n'),
+    );
+  });
+
+  afterAll(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('writes the error and where it was raised instead of facts when the producer fails', () => {
+    expect(runProducerPython(FAILING_BUILD)).toEqual({
+      error: 'ValueError: no facts (<string>:6)',
+    });
+  });
+
+  it('resolves every link of a 300-call chain without running out of stack', () => {
+    const { calls } = factsById(designFactsIn(root)).callable('app.py#deep');
+
+    expect(calls).toHaveLength(300);
+    expect(new Set(calls.map((call) => call.target))).toEqual(new Set(['app.py#Builder.step']));
+  });
+
+  it('keeps a callable whose facts recurse too deep with no calls, and the others whole', () => {
+    expect(runProducerPython(recursingCallable(root))).toEqual([
+      {
+        id: 'app.py#Builder.step',
+        file: 'app.py',
+        name: 'step',
+        line: 2,
+        kind: 'method',
+        exported: true,
+        owner: 'app.py#Builder',
+        params: [],
+        calls: [],
+        returns: 'app.py#Builder',
+      },
+      {
+        id: 'app.py#deep',
+        file: 'app.py',
+        name: 'deep',
+        line: 6,
+        kind: 'function',
+        exported: true,
+        owner: 'app.py',
+        params: [],
+        calls: [],
+      },
+    ]);
   });
 });

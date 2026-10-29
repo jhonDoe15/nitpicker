@@ -115,11 +115,11 @@ def run_check(module, context, step="check"):
 
 
 class Results:
-    def __init__(self, findings, allowances, support, project):
+    def __init__(self, findings, allowances, support):
         self.findings = findings
         self.allowances = allowances
         self.support = support
-        self.project = project
+        self.project = None
 
 
 def build_project(paths, options):
@@ -147,7 +147,9 @@ def check_all(paths, options, modules):
             findings.extend(found + failures + allowance_failures)
             allowances.extend(allowed)
     support = project.memo("security-support-files", support_files)
-    return Results(findings, allowances, sorted(support), project)
+    results = Results(findings, allowances, sorted(support))
+    results.project = project
+    return results
 
 
 def read_options(arguments):
@@ -169,6 +171,13 @@ def skipped(out_file):
     )
 
 
+def write_design_report(results, options, out_file):
+    if "designFiles" in options:
+        from design.report import write_design
+
+        write_design(results.project, options, os.path.dirname(out_file))
+
+
 def main(arguments):
     list_file, out_file = arguments[:2]
     if sys.version_info < MINIMUM_PYTHON:
@@ -178,6 +187,10 @@ def main(arguments):
     with open(list_file, encoding="utf-8") as handle:
         paths_to_check = [line.strip() for line in handle if line.strip()]
     results = check_all(paths_to_check, options, load_checks())
+    write_reports(results, options, out_file)
+
+
+def write_reports(results, options, out_file):
     results.findings.sort(
         key=lambda item: (item["path"], item["line"], item["rule"], item["subject"])
     )
@@ -187,10 +200,7 @@ def main(arguments):
     )
     allowances = {"supportFiles": results.support, "allowed": allowed}
     write_json(os.path.join(os.path.dirname(out_file), ALLOWANCES_REPORT), allowances)
-    if "designFiles" in options:
-        from design.report import write_design
-
-        write_design(results.project, options, os.path.dirname(out_file))
+    write_design_report(results, options, out_file)
 
 
 if __name__ == "__main__":

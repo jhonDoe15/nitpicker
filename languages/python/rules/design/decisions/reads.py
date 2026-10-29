@@ -56,26 +56,35 @@ def is_member_read(scope, typedef, attribute):
     return found is not None and (found[0] is None or found[0].is_property)
 
 
+def member_read(scope, node):
+    if not isinstance(node, ast.Attribute) or not isinstance(node.ctx, ast.Load):
+        return None
+    typedef = value_type(scope, node.value)
+    if typedef is None or not is_member_read(scope, typedef, node.attr):
+        return None
+    key = receiver_key(scope, node.value)
+    return (key, typedef) if key is not None else None
+
+
+def record_read(entries, found, decided):
+    (key, typedef), node = found
+    entry = entries.setdefault(
+        key, {"type": typedef.id, "fields": {}, "decided": {}, "line": node.lineno}
+    )
+    entry["line"] = min(entry["line"], node.lineno)
+    at = (node.lineno, node.col_offset)
+    entry["fields"][node.attr] = min(at, entry["fields"].get(node.attr, at))
+    if id(node) in decided:
+        entry["decided"].setdefault(node.attr, None)
+
+
 def reads(scope):
     decided = decided_ids(scope.function.node)
     entries = {}
     for node in all_nodes(scope.function.node):
-        if not isinstance(node, ast.Attribute) or not isinstance(node.ctx, ast.Load):
-            continue
-        typedef = value_type(scope, node.value)
-        if typedef is None or not is_member_read(scope, typedef, node.attr):
-            continue
-        key = receiver_key(scope, node.value)
-        if key is None:
-            continue
-        entry = entries.setdefault(
-            key, {"type": typedef.id, "fields": {}, "decided": {}, "line": node.lineno}
-        )
-        entry["line"] = min(entry["line"], node.lineno)
-        at = (node.lineno, node.col_offset)
-        entry["fields"][node.attr] = min(at, entry["fields"].get(node.attr, at))
-        if id(node) in decided:
-            entry["decided"].setdefault(node.attr, None)
+        read = member_read(scope, node)
+        if read is not None:
+            record_read(entries, (read, node), decided)
     return [
         entry_fact(entry) for entry in sorted(entries.values(), key=lambda e: e["line"])
     ]

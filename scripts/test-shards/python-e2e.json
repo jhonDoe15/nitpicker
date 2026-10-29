@@ -1,5 +1,6 @@
 {
   "languages/python/adapters/configuration/python-ruff-config.e2e.test.mjs": 1,
+  "languages/python/adapters/e2e/design/design-rules.e2e.test.mjs": 22,
   "languages/python/adapters/e2e/environments/python-base-environment.e2e.test.mjs": 9,
   "languages/python/adapters/e2e/python-preset-branch-coverage.e2e.test.mjs": 57,
   "languages/python/adapters/e2e/python-preset-errors-and-structure.e2e.test.mjs": 104,

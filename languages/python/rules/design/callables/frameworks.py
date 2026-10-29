@@ -168,8 +168,9 @@ FRAMEWORKS = [
 
 def framework_match(name, method):
     root, last = name.split(".")[0], name.rsplit(".", 1)[-1]
-    for roots, classes, members, prefixes in FRAMEWORKS:
-        if root in roots and last in classes:
-            if method in members or method.startswith(prefixes):
-                return True
-    return False
+    return any(
+        root in roots
+        and last in classes
+        and (method in members or method.startswith(prefixes))
+        for roots, classes, members, prefixes in FRAMEWORKS
+    )

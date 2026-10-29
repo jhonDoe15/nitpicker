@@ -58,24 +58,20 @@ class Scope:
             self.self_name = first[0].arg if first else None
 
     def site_type(self, site):
-        if site.kind in ("param", "annotated"):
-            if site.annotation is None:
-                return UNKNOWN
-            found = project_type(self.index, self.module, site.annotation, self.owner)
-            return found if found is not None else UNKNOWN
+        value = site.value
+        if site.kind == "assign" and isinstance(value, ast.Constant):
+            return NEUTRAL if value.value is None else UNKNOWN
+        found = self.site_value(site)
+        return found if found is not None else UNKNOWN
+
+    def site_value(self, site):
+        from design.resolve.evaluate import type_of, with_value_type
+
+        if site.kind in ("param", "annotated") and site.annotation is not None:
+            return project_type(self, site.annotation)
         if site.kind == "with":
-            from design.resolve.evaluate import with_value_type
-
-            found = with_value_type(self, site)
-            return found if found is not None else UNKNOWN
-        if site.kind == "assign":
-            if isinstance(site.value, ast.Constant) and site.value.value is None:
-                return NEUTRAL
-            from design.resolve.evaluate import type_of
-
-            found = type_of(self, site.value)
-            return found if found is not None else UNKNOWN
-        return UNKNOWN
+            return with_value_type(self, site)
+        return type_of(self, site.value) if site.kind == "assign" else None
 
     def local_type(self, name):
         if name in self.types:

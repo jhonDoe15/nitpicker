@@ -4,24 +4,33 @@ from design.resolve.symbols import build_module
 from design.support.attributes import attribute_sites, attribute_type
 from design.support.scope import Scope
 
+MEMOS = (
+    "claims",
+    "modules",
+    "scopes",
+    "base_memo",
+    "linear_memo",
+    "case_memo",
+    "kind_memo",
+    "attribute_site_memo",
+    "attribute_type_memo",
+    "variable_memo",
+)
+
 
 class Index:
     def __init__(self, project, contexts):
         self.project = project
-        self.claims = {}
-        self.modules = {}
-        self.base_memo = {}
-        self.linear_memo = {}
-        self.case_memo = {}
-        self.kind_memo = {}
-        self.attribute_site_memo = {}
-        self.attribute_type_memo = {}
-        self.variable_memo = {}
-        self.scopes = {}
+        for memo in MEMOS:
+            setattr(self, memo, {})
         self.callbacks = set()
         self.entry_files = set()
-        self.distributions = []
         self.prefixes = set()
+        self.distributions = []
+        self.reexported = None
+        self.load(contexts)
+
+    def load(self, contexts):
         for context in contexts:
             self.modules[context.path] = build_module(context, self.claim)
         for module in self.modules.values():
@@ -32,6 +41,10 @@ class Index:
         count = self.claims.get(base, 0) + 1
         self.claims[base] = count
         return base if count == 1 else f"{base}@{count}"
+
+    def module_path(self, dotted):
+        path = self.project.names.get(dotted)
+        return path if path in self.modules else None
 
     def add_prefixes(self, path):
         parts = self.project.module_name(path).split(".")
@@ -84,12 +97,12 @@ class Index:
         return found
 
     def statement_type(self, variable):
-        from design.resolve.annotations import project_type
+        from design.resolve.annotations import Place, project_type
         from design.resolve.evaluate import type_of
 
         statement = variable.statements[0]
         if getattr(statement, "annotation", None) is not None:
-            return project_type(self, variable.module, statement.annotation)
+            return project_type(Place(self, variable.module), statement.annotation)
         value = getattr(statement, "value", None)
         if value is None:
             return None

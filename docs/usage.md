@@ -1070,7 +1070,7 @@ enforceable findings fail. Exit codes, console summary, `new-findings.json`, `re
 `report.junit.xml` are the same as for TypeScript. If a tool fails on either snapshot (no
 environment, failing tests, a crashing tool), the failure is reported as a tool error of the
 analyzer that ran it, never thrown: `python` for `ruff-failed`, `format-failed`, `tests-failed`,
-`coverage-failed`, `types-failed`, `rules-failed`, `structure-failed` or a plain one when the environment is missing, and `mutation` for
+`coverage-failed`, `types-failed`, `rules-failed`, `structure-failed`, `design-failed` or a plain one when the environment is missing, and `mutation` for
 `mutation-failed` (exit 2 when there are no new findings). A mutation failure keeps the lint,
 format and coverage findings, and mutation testing is skipped when the `python` analyzer had a tool
 error.

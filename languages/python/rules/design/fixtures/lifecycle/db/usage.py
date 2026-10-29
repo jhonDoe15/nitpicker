@@ -90,3 +90,48 @@ class Unit:
 def opened(session: Session) -> Session:
     session.begin()
     return session
+
+
+from contextlib import ExitStack  # noqa: E402
+
+
+def stacked(session: Session):
+    with ExitStack() as stack:
+        stack.callback(session.commit)
+        session.begin()
+
+
+def entered(session: Managed):
+    with ExitStack() as stack:
+        stack.enter_context(session)
+        session.write(5)
+
+
+def unstacked(session: Session):
+    stack = ExitStack()
+    stack.callback(session.commit)
+    session.begin()
+
+
+def never_called(session: Session):
+    session.begin()
+
+    def later():
+        try:
+            session.write(6)
+        finally:
+            session.commit()
+
+    return later
+
+
+def called_helper(session: Session):
+    session.begin()
+
+    def finish():
+        try:
+            session.write(7)
+        finally:
+            session.commit()
+
+    finish()

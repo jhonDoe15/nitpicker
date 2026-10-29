@@ -53,6 +53,29 @@ function runDesignScript(projectRoot, { entryFiles = [] } = {}) {
   }
 }
 
+const RULES_ROOT = path.resolve(import.meta.dirname, '../../');
+
+export function runProducerPython(code) {
+  const prelude = `import sys\nsys.path.insert(0, ${JSON.stringify(RULES_ROOT)})\n`;
+  const result = spawnSync('python3', ['-I', '-c', prelude + code], {
+    encoding: 'utf8',
+    timeout: 60_000,
+  });
+  if (result.status !== 0) {
+    throw new Error(`producer script exited ${String(result.status)}: ${result.stderr}`);
+  }
+  return JSON.parse(result.stdout);
+}
+
+export function designFactsIn(projectRoot) {
+  const report = runDesignScript(projectRoot);
+  if (report.error !== undefined) {
+    throw new Error(`design producer failed: ${report.error}`);
+  }
+  validateFacts(report.facts);
+  return report.facts;
+}
+
 export function designFacts(fixture, options) {
   const report = runDesignScript(path.join(FIXTURES, fixture), options);
   if (report.error !== undefined) {

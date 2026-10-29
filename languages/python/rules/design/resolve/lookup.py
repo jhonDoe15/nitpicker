@@ -28,8 +28,12 @@ def is_public(name):
     return not name.startswith("_")
 
 
-def lookup(index, module, name, seen=None):
-    seen = set() if seen is None else seen
+def lookup(index, module, name):
+    return lookup_seen(index, (module, name), set())
+
+
+def lookup_seen(index, wanted, seen):
+    module, name = wanted
     key = (module.path, name)
     if key in seen:
         return None
@@ -43,17 +47,18 @@ def lookup(index, module, name, seen=None):
     binding = module.imports.get(name)
     if binding is not None:
         return resolve_binding(index, binding, seen)
-    return from_stars(index, module, name, seen)
+    return from_stars(index, wanted, seen)
 
 
-def from_stars(index, module, name, seen):
+def from_stars(index, wanted, seen):
+    module, name = wanted
     if not is_public(name):
         return None
     found = []
     for path in module.stars:
         target = index.modules[path]
         exported = target.exports is None or name in target.exports
-        entity = lookup(index, target, name, seen) if exported else None
+        entity = lookup_seen(index, (target, name), seen) if exported else None
         if entity is not None and entity not in found:
             found.append(entity)
     return found[0] if len(found) == 1 else None
@@ -74,7 +79,7 @@ def attribute_of(index, entity, name):
         )
     if isinstance(entity, PrefixRef):
         dotted = f"{entity.dotted}.{name}"
-        path = index.project.module_path(dotted)
+        path = index.module_path(dotted)
         if path in index.modules:
             return ModuleRef(path)
         return PrefixRef(dotted) if index.has_prefix(dotted) else None
@@ -129,13 +134,17 @@ def external_bases(index, klass):
     return [entry for entry in linear(index, klass) if not isinstance(entry, Klass)]
 
 
+def member_in(index, entry, name):
+    if name in entry.members:
+        return entry.members[name], entry
+    return (None, entry) if index.declares(entry, name) else None
+
+
 def find_member(index, klass, name):
     for entry in linear(index, klass):
-        if isinstance(entry, Klass):
-            if name in entry.members:
-                return entry.members[name], entry
-            if index.declares(entry, name):
-                return None, entry
-        elif entry not in TRANSPARENT_BASES:
+        if not isinstance(entry, Klass) and entry not in TRANSPARENT_BASES:
             return None
+        found = member_in(index, entry, name) if isinstance(entry, Klass) else None
+        if found is not None:
+            return found
     return None

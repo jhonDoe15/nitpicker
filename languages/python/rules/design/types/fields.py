@@ -77,30 +77,32 @@ def class_fields(index, klass):
     return facts
 
 
-def is_state(index, module, name, variable):
-    statement = variable.statements[0]
-    value = getattr(statement, "value", None)
-    if is_dunder(name) or name in module.literals:
+def is_typing_construct(module, value):
+    called = isinstance(value, ast.Call)
+    name = dotted_name(value.func, module.aliases) if called else None
+    return bool(name) and name.rsplit(".", 1)[-1] in TYPING_CONSTRUCTS
+
+
+def is_declaration(variable, value):
+    module, name = variable.module, variable.name
+    annotation = getattr(variable.statements[0], "annotation", None)
+    alias = annotation is not None and "TypeAlias" in ast.dump(annotation)
+    named = is_dunder(name) or name in module.literals
+    return named or alias or is_typing_construct(module, value)
+
+
+def is_state(index, variable):
+    value = getattr(variable.statements[0], "value", None)
+    if is_declaration(variable, value):
         return False
-    annotation = getattr(statement, "annotation", None)
-    if annotation is not None and "TypeAlias" in ast.dump(annotation):
-        return False
-    if isinstance(value, ast.Call) and dotted_name(value.func, module.aliases):
-        if (
-            dotted_name(value.func, module.aliases).rsplit(".", 1)[-1]
-            in TYPING_CONSTRUCTS
-        ):
-            return False
-    scope = index.module_scope(module)
+    scope = index.module_scope(variable.module)
     resolved = evaluate(scope, value) if value is not None else None
     return not (resolved is not None and resolved[0] == "cls")
 
 
 def module_field_names(index, module):
     return [
-        name
-        for name, variable in module.variables.items()
-        if is_state(index, module, name, variable)
+        name for name, variable in module.variables.items() if is_state(index, variable)
     ]
 
 
@@ -128,29 +130,29 @@ def owner_field_names(index, function):
     return set(type_field_names(index, owner)) if isinstance(owner, Klass) else set()
 
 
-def own_fields(scope, names):
-    found = {}
+def used_field(scope, node, names):
     if scope.owner is not None:
-        first = scope.self_name
-        for node in sorted(all_nodes(scope.function.node), key=position_key):
-            if is_member(node, first) and node.attr in names:
-                found.setdefault(node.attr, None)
-        return list(found)
-    declared = declared_globals(scope)
-    for node in sorted(all_nodes(scope.function.node), key=position_key):
-        if isinstance(node, ast.Name) and node.id in names:
-            if node.id not in scope.sites or node.id in declared:
-                found.setdefault(node.id, None)
-    return list(found)
+        member = is_member(node, scope.self_name) and node.attr in names
+        return node.attr if member else None
+    state = isinstance(node, ast.Name) and module_state(scope, node.id, names)
+    return node.id if state else None
+
+
+def own_fields(scope, names):
+    ordered = sorted(all_nodes(scope.function.node), key=position_key)
+    used = [used_field(scope, node, names) for node in ordered]
+    return list(dict.fromkeys(name for name in used if name is not None))
 
 
 def declared_globals(scope):
-    return {
-        name
-        for node in body_nodes(scope.function.node)
-        if isinstance(node, ast.Global)
-        for name in node.names
-    }
+    if not hasattr(scope, "declared_globals"):
+        scope.declared_globals = {
+            name
+            for node in body_nodes(scope.function.node)
+            if isinstance(node, ast.Global)
+            for name in node.names
+        }
+    return scope.declared_globals
 
 
 def position_key(node):
@@ -195,17 +197,34 @@ def returned_field(scope, names):
         for n in own_nodes(scope.function.node)
         if isinstance(n, ast.Return) and n.value
     ]
-    for node in sorted(returns, key=position_key):
-        for leaf in leaf_values(node.value):
-            name = field_of(scope, leaf, names)
-            if name is not None:
-                return name
+    leaves = [
+        leaf
+        for node in sorted(returns, key=position_key)
+        for leaf in leaf_values(node.value)
+    ]
+    found = (field_of(scope, leaf, names) for leaf in leaves)
+    return next((name for name in found if name is not None), None)
+
+
+def module_state(scope, name, names):
+    if name not in names:
+        return False
+    return name not in scope.sites or name in declared_globals(scope)
+
+
+def module_field_of(scope, node, names):
+    if not isinstance(node, ast.Name):
+        return None
+    if module_state(scope, node.id, names):
+        return node.id
+    sites = scope.sites.get(node.id, [])
+    alias = sites[0].value if len(sites) == 1 and sites[0].kind == "assign" else None
+    if isinstance(alias, ast.Name) and module_state(scope, alias.id, names):
+        return alias.id
     return None
 
 
 def field_of(scope, node, names):
     if scope.owner is not None:
         return owner_field_of(scope, node, names)
-    if isinstance(node, ast.Name) and node.id in names and node.id not in scope.sites:
-        return node.id
-    return None
+    return module_field_of(scope, node, names)

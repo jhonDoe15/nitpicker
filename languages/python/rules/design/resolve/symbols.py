@@ -1,6 +1,12 @@
 import ast
 
-from design.support.astutil import FUNCTIONS, constant_text
+from design.resolve.exports import module_exports
+from design.support.astutil import (
+    FUNCTIONS,
+    STORE_CONTEXTS,
+    constant_text,
+    own_nodes,
+)
 from design.support.decorators import (
     ABSTRACT,
     OVERLOADS,
@@ -23,14 +29,18 @@ def member_id(function, names):
     return f"{function.module.path}#{function.qualname}{suffix}"
 
 
+def qualified(node, owner):
+    return f"{owner.qualname}.{node.name}" if owner else node.name
+
+
 class Function:
-    def __init__(self, node, module, owner, claim):
+    def __init__(self, node, parent, claim):
         self.node = node
-        self.module = module
-        self.owner = owner
+        self.owner = parent if isinstance(parent, Klass) else None
+        self.module = parent.module if self.owner else parent
         self.name = node.name
-        self.qualname = f"{owner.qualname}.{node.name}" if owner else node.name
-        self.decorators = names = decorator_names(node, module.aliases)
+        self.qualname = qualified(node, self.owner)
+        self.decorators = names = decorator_names(node, self.module.aliases)
         self.overload = any(name in OVERLOADS for name in names)
         self.static = "staticmethod" in names
         self.classmethod = "classmethod" in names
@@ -43,28 +53,31 @@ class Function:
 
 
 class Klass:
-    def __init__(self, node, module, owner, claim):
+    def __init__(self, node, parent, claim):
         self.node = node
-        self.module = module
-        self.owner = owner
+        self.owner = parent if isinstance(parent, Klass) else None
+        self.module = parent.module if self.owner else parent
         self.name = node.name
-        self.qualname = f"{owner.qualname}.{node.name}" if owner else node.name
-        self.id = claim(f"{module.path}#{self.qualname}")
+        self.qualname = qualified(node, self.owner)
+        self.id = claim(f"{self.module.path}#{self.qualname}")
         self.functions = []
         self.members = {}
         self.nested = {}
+        self.collect(claim)
+
+    def collect(self, claim):
         counts = {}
-        for statement in node.body:
+        for statement in self.node.body:
             if isinstance(statement, FUNCTIONS):
                 self.add_function(statement, claim, counts)
             elif isinstance(statement, ast.ClassDef):
                 counts[statement.name] = counts.get(statement.name, 0) + 1
-                self.nested[statement.name] = Klass(statement, module, self, claim)
+                self.nested[statement.name] = Klass(statement, self, claim)
         self.nested = {n: k for n, k in self.nested.items() if counts[n] == 1}
         self.members = {n: f for n, f in self.members.items() if counts.get(n) == 1}
 
     def add_function(self, statement, claim, counts):
-        function = Function(statement, self.module, self, claim)
+        function = Function(statement, self, claim)
         if function.overload:
             return
         self.functions.append(function)
@@ -81,12 +94,10 @@ class Klass:
 
 
 class LiteralAlias:
-    def __init__(self, name, node, module, cases, claim):
-        self.name = name
-        self.node = node
+    def __init__(self, declaration, module, claim):
+        self.name, self.node, self.cases = declaration
         self.module = module
-        self.cases = cases
-        self.id = claim(f"{module.path}#{name}")
+        self.id = claim(f"{module.path}#{self.name}")
         self.owner = None
 
 
@@ -115,13 +126,10 @@ class Module:
         self.aliases = context.aliases
         self.parents = context.parents
         self.id = context.path
-        self.classes = {}
-        self.functions = {}
-        self.literals = {}
-        self.variables = {}
-        self.imports = {}
-        self.stars = []
+        for table in ("classes", "functions", "literals", "variables", "imports"):
+            setattr(self, table, {})
         self.counts = {}
+        self.stars = []
         self.exports = None
         self.rebound = set()
         self.has_main_guard = False
@@ -170,24 +178,15 @@ def assigned_names(statement):
     return []
 
 
-def export_names(statement):
-    value = getattr(statement, "value", None)
-    names = []
-    for element in getattr(value, "elts", []):
-        if isinstance(element, ast.Constant) and isinstance(element.value, str):
-            names.append(element.value)
-    return names
-
-
 def register_assignment(module, statement, claim):
     for name, value in assigned_names(statement):
         module.count(name)
         if name == "__all__":
-            module.exports = (module.exports or []) + export_names(statement)
             continue
         cases = literal_cases(value) if value is not None else None
         if cases is not None and name not in module.literals:
-            module.literals[name] = LiteralAlias(name, statement, module, cases, claim)
+            declaration = (name, statement, cases)
+            module.literals[name] = LiteralAlias(declaration, module, claim)
             continue
         module.variables.setdefault(name, Variable(name, module)).statements.append(
             statement
@@ -197,18 +196,13 @@ def register_assignment(module, statement, claim):
 def register_statement(module, statement, claim):
     if isinstance(statement, ast.ClassDef):
         module.count(statement.name)
-        module.classes[statement.name] = Klass(statement, module, None, claim)
+        module.classes[statement.name] = Klass(statement, module, claim)
     elif isinstance(statement, FUNCTIONS):
-        function = Function(statement, module, None, claim)
+        function = Function(statement, module, claim)
         if not function.overload:
             module.all_functions.append(function)
             module.count(statement.name)
             module.functions[statement.name] = function
-    elif (
-        isinstance(statement, ast.AugAssign)
-        and getattr(statement.target, "id", "") == "__all__"
-    ):
-        module.exports = (module.exports or []) + export_names(statement)
     else:
         register_assignment(module, statement, claim)
 
@@ -228,7 +222,22 @@ def build_module(context, claim):
     for statement in context.tree.body:
         register_statement(module, statement, claim)
         module.has_main_guard = module.has_main_guard or is_main_guard(statement)
-    for node in ast.walk(context.tree):
-        if isinstance(node, ast.Global):
-            module.rebound.update(node.names)
+    module.exports = module_exports(context.tree)
+    module.rebound = rebound_names(context.tree)
     return module
+
+
+def rebound_names(tree):
+    rebound = set()
+    for function in ast.walk(tree):
+        if not isinstance(function, FUNCTIONS):
+            continue
+        nodes = own_nodes(function)
+        declared = {n for g in nodes if isinstance(g, ast.Global) for n in g.names}
+        stored = {
+            node.id
+            for node in nodes
+            if isinstance(node, ast.Name) and isinstance(node.ctx, STORE_CONTEXTS)
+        }
+        rebound |= declared & stored
+    return rebound

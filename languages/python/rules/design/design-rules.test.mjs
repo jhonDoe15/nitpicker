@@ -52,17 +52,23 @@ describe.skipIf(!pythonUsable())('the shared design rules over Python facts', ()
   it('fails each caller that mutates a private field through a returned value', () => {
     expect(findingRows('mutation')).toEqual(
       [
-        ['aliased', 'lines', 'extend'],
-        ['attribute_assignment', 'lines', 'assign'],
-        ['awaited', 'fetch', 'append'],
-        ['direct', 'lines', 'append'],
-        ['first_change_wins', 'lines', 'sort'],
-        ['property_mutation', 'view', 'append'],
-        ['subscript_assignment', 'index', 'assign'],
-      ].map(([caller, member, change]) => [
+        ['aliased', 'Inventory.lines', 'extend'],
+        ['attribute_assignment', 'Inventory.lines', 'assign'],
+        ['augmented', 'Inventory.lines', '+='],
+        ['awaited', 'Inventory.fetch', 'append'],
+        ['class_state', 'Registry.known', 'append', 'registry.py'],
+        ['defaulted', 'Inventory.lines', 'append'],
+        ['direct', 'Inventory.lines', 'append'],
+        ['first_change_wins', 'Inventory.lines', 'sort'],
+        ['module_state', 'cache', 'append', 'cache.py'],
+        ['module_state', 'peek', 'append', 'cache.py'],
+        ['property_mutation', 'Inventory.view', 'append'],
+        ['subscript_assignment', 'Inventory.index', 'assign'],
+        ['walrus', 'Inventory.lines', 'append'],
+      ].map(([caller, member, change, file = 'inventory.py']) => [
         'mutable-state-escape',
         'client.py',
-        `client.py#${caller}>inventory.py#Inventory.${member}:${change}`,
+        `client.py#${caller}>${file}#${member}:${change}`,
         'enforceable',
       ]),
     );
@@ -70,7 +76,7 @@ describe.skipIf(!pythonUsable())('the shared design rules over Python facts', ()
 
   it('fails an unclosed protocol, not with blocks, an owner field or a returned session', () => {
     expect(findingRows('lifecycle', { protocols: [PROTOCOL] })).toEqual(
-      ['manual', 'not_cleanup'].map((caller) => [
+      ['manual', 'never_called', 'not_cleanup', 'unstacked'].map((caller) => [
         'protocol-contract',
         'db/usage.py',
         `db/usage.py#${caller}|session|unclosed:begin`,

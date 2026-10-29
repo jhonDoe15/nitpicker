@@ -61,13 +61,13 @@ describe('finding the distributions of the analysed files', () => {
     [
       'a root project without a build backend',
       { 'pyproject.toml': '[project]\nname = "x"\n[build-system]\nrequires = []\n' },
-      [{ root: '', published: false }],
+      [{ root: '', published: false, modules: ['x'] }],
     ],
     ['a project without a pyproject', {}, []],
     [
       'a published root project',
       { 'pyproject.toml': DISTRIBUTION },
-      [{ root: '', published: true }],
+      [{ root: '', published: true, modules: ['x'] }],
     ],
     [
       'a poetry project with the poetry build backend',
@@ -75,7 +75,7 @@ describe('finding the distributions of the analysed files', () => {
         'pyproject.toml':
           '[tool.poetry]\nname = "x"\n[build-system]\nbuild-backend = "poetry.core.masonry.api"\n',
       },
-      [{ root: '', published: true }],
+      [{ root: '', published: true, modules: ['x'] }],
     ],
     [
       'a project that classifies itself as private',
@@ -83,7 +83,7 @@ describe('finding the distributions of the analysed files', () => {
         'pyproject.toml':
           '[project]\nname = "x"\nclassifiers = ["Private :: Do Not Upload"]\n[build-system]\nbuild-backend = "hatchling.build"\n',
       },
-      [{ root: '', published: false }],
+      [{ root: '', published: false, modules: ['x'] }],
     ],
     [
       'a workspace of a published and an unpublished member',
@@ -93,9 +93,18 @@ describe('finding the distributions of the analysed files', () => {
         'tools/pyproject.toml': '[project]\nname = "tools"\n',
       },
       [
-        { root: 'app', published: true },
-        { root: 'tools', published: false },
+        { root: 'app', published: true, modules: ['x'] },
+        { root: 'tools', published: false, modules: ['tools'] },
       ],
+    ],
+    [
+      'the top-level modules a distribution declares',
+      {
+        'pyproject.toml':
+          '[project]\nname = "Six-Pack.x"\n[tool.setuptools]\npy-modules = ["six", "extra"]\n' +
+          '[tool.poetry]\npackages = [{ include = "helper" }]\n[build-system]\nbuild-backend = "setuptools.build_meta"\n',
+      },
+      [{ root: '', published: true, modules: ['six_pack_x', 'six', 'extra', 'helper'] }],
     ],
   ])('reads %s', (_label, manifests, expected) => {
     const projectRoot = project(manifests);

@@ -1,15 +1,13 @@
-import os
+from pathlib import PurePosixPath
 
 from design.calls.references import module_references
 from design.types.classes import classify, enum_cases
 from design.types.fields import class_fields, module_fields
-from design.types.published import is_published
+from design.types.published import is_published, public_name
 
 
 def is_exported(module, name):
-    return not name.startswith("_") or (
-        module.exports is not None and name in module.exports
-    )
+    return public_name(module, name)
 
 
 def klass_exported(klass):
@@ -19,7 +17,7 @@ def klass_exported(klass):
 
 
 def module_type(index, module):
-    stem = os.path.splitext(os.path.basename(module.path))[0]
+    stem = PurePosixPath(module.path).stem
     fact = {
         "id": module.id,
         "file": module.path,
@@ -45,7 +43,7 @@ def class_type(index, klass):
         "kind": kind,
         "exported": klass_exported(klass),
     }
-    if klass.owner is None and is_published(index, klass.module, klass.name):
+    if klass.owner is None and is_published(index, klass):
         fact["published"] = True
     if kind == "enum":
         fact["cases"] = enum_cases(index, klass)
@@ -64,7 +62,7 @@ def alias_type(index, alias):
         "exported": is_exported(alias.module, alias.name),
         "cases": alias.cases,
     }
-    if is_published(index, alias.module, alias.name):
+    if is_published(index, alias):
         fact["published"] = True
     return fact
 
