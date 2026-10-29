@@ -23,6 +23,7 @@ import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import {
   declarationUnits,
   functionLocator,
+  modulesFunctionLocator,
   sourceTextReader,
   structureFunctions,
 } from './function-locator.mjs';
@@ -89,7 +90,14 @@ export function readJavaFindings(projectRoot, options = {}) {
     ],
     { preset, javaStyle: options.javaStyle },
   );
-  return { findings: withJavaCountRatchets(findings) };
+  const locate = modulesFunctionLocator(
+    projectRoot,
+    modules.map((module) => ({
+      reportRoot: module.reportRoot,
+      kotlin: kotlinPreset && module.manifest.kotlin === true,
+    })),
+  );
+  return { findings: withJavaCountRatchets(findings, locate) };
 }
 
 function moduleContextFindings(projectRoot, module, { manifest, modules, options }) {

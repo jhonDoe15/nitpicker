@@ -145,6 +145,53 @@ describe('detekt count findings on a legacy function', () => {
     ).toEqual(['Parameters grew from 7 to 8']);
   });
 
+  it('keeps an untouched loop when a loop before it in the function loses its extra jumps', () => {
+    const LOOP =
+      'The loop contains more than one break or continue statement. The code should be refactored to avoid multiple exit points.';
+    const loops = (counts) => ({
+      results: counts.map(([line]) => result('style.LoopWithTooManyJumpStatements', LOOP, line)),
+      detektCounts: counts.map(([line, value]) => ({
+        file: FILE,
+        rule: 'LoopWithTooManyJumpStatements',
+        line,
+        column: 9,
+        value,
+      })),
+    });
+
+    const { newFindings, unchangedFindings } = compare(
+      loops([
+        [7, 2],
+        [12, 5],
+      ]),
+      loops([[12, 5]]),
+    );
+
+    expect(newFindings).toEqual([]);
+    expect(unchangedFindings.map(({ heldAtBase }) => heldAtBase)).toEqual([5]);
+  });
+
+  it('holds a file with too many functions although detekt prints its absolute path', () => {
+    const functions = (root, count) => ({
+      results: [
+        result(
+          'complexity.TooManyFunctions',
+          `File '${root}/src/main/kotlin/demo/Bad.kt' with '${String(count)}' functions detected. Defined threshold inside files is set to '11'`,
+          1,
+          1,
+        ),
+      ],
+    });
+
+    const { newFindings, resolvedFindings } = compare(
+      functions('/tmp/base', 14),
+      functions('/tmp/head', 13),
+    );
+
+    expect(newFindings).toEqual([]);
+    expect(resolvedFindings).toEqual([]);
+  });
+
   it.each([
     ['complexity.LongMethod', 'The function pick is too long (61). The maximum length is 60.', 61],
     [

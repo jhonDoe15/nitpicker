@@ -14,10 +14,16 @@ afterEach(removeTemporaryProjects);
 
 const FILE = 'src/main/java/demo/Legacy.java';
 
-function checkstyleOf(root, source, message) {
+function checkstyleOf(root, source, message, line = 4) {
   writeFileSync(
     path.join(rootReports(root), 'checkstyle.xml'),
-    `<checkstyle version="10.21.1"><file name="${path.join(root, FILE)}"><error line="4" severity="warning" message="${message}" source="com.puppycrawl.tools.checkstyle.checks.${source}"/></file></checkstyle>`,
+    `<checkstyle version="10.21.1"><file name="${path.join(root, FILE)}">${[message]
+      .flat()
+      .map(
+        (text, index) =>
+          `<error line="${String([line].flat()[index])}" severity="warning" message="${text}" source="com.puppycrawl.tools.checkstyle.checks.${source}"/>`,
+      )
+      .join('')}</file></checkstyle>`,
   );
 }
 
@@ -104,6 +110,46 @@ describe('Java count findings on legacy code', () => {
 
   it('fails a repeated PMD literal that is repeated more', () => {
     expect(compare(literal(4, 3), literal(5, 3)).newFindings).toHaveLength(1);
+  });
+
+  it('fails a method whose count grew after the method above it with the same message was removed', () => {
+    const complexity = (counts, lines) => (root) => {
+      writeFileSync(
+        path.join(rootReports(root), 'structure.json'),
+        JSON.stringify([
+          {
+            file: FILE,
+            name: 'Legacy.first',
+            start: 8,
+            end: 20,
+            lines: 13,
+            complexity: 20,
+            signature: 'Legacy.first()',
+          },
+          {
+            file: FILE,
+            name: 'Legacy.second',
+            start: 35,
+            end: 50,
+            lines: 16,
+            complexity: 11,
+            signature: 'Legacy.second()',
+          },
+        ]),
+      );
+      checkstyleOf(
+        root,
+        'metrics.CyclomaticComplexityCheck',
+        counts.map((count) => `Cyclomatic Complexity is ${String(count)} (max allowed is 10).`),
+        lines,
+      );
+    };
+
+    const { newFindings } = compare(complexity([20, 11], [10, 40]), complexity([15], [40]));
+
+    expect(newFindings.map(({ message }) => message.split('. ')[0])).toEqual([
+      'Cyclomatic complexity grew from 11 to 15',
+    ]);
   });
 
   it.each([
