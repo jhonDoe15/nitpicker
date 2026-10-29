@@ -81,7 +81,7 @@ describe('resolveLayout', () => {
       'dist/**',
       'generated/**',
       'lib/legacy/**',
-      'reports/**',
+      'reports/quality/**',
       'target/**',
     ]);
     expect(new RegExp(customLayout.excludePattern).test('lib/legacy/old.ts')).toBe(true);
@@ -164,7 +164,7 @@ describe('layout-aware tool configurations', () => {
       'dist/**',
       'generated/**',
       'lib/legacy/**',
-      'reports/**',
+      'reports/quality/**',
       'target/**',
     ]);
 
@@ -194,7 +194,7 @@ describe('layout-aware tool configurations', () => {
       'coverage/**',
       'lib/**/*.d.ts',
       'lib/legacy/**',
-      'reports/**',
+      'reports/quality/**',
     ]);
 
     const jscpd = layoutJscpdConfig(readDefault('jscpd.json'), customLayout);
@@ -208,7 +208,7 @@ describe('layout-aware tool configurations', () => {
       'dist/**',
       'generated/**',
       'lib/legacy/**',
-      'reports/**',
+      'reports/quality/**',
       'target/**',
     ]);
   });
