@@ -1,6 +1,7 @@
 import { spawnSync } from 'node:child_process';
 
-const ENV_PROGRAM = '/usr/bin/env';
+const ENV_PROGRAM = 'env';
+const MISSING_PROGRAM = 'ENOENT';
 const SCRUBBED_VARIABLES = [
   'GIT_DIR',
   'GIT_WORK_TREE',
@@ -13,12 +14,19 @@ const NEUTRAL_CONFIGURATION = ['-c', 'core.excludesFile=', '-c', 'safe.directory
 const NOT_A_REPOSITORY = /not a git repository/iu;
 const SUCCESS = 0;
 
+function spawnGit(directory, args) {
+  const options = { cwd: directory, encoding: 'utf8', maxBuffer: Number.POSITIVE_INFINITY };
+  const gitArgs = ['git', ...NEUTRAL_CONFIGURATION, ...args];
+  const scrubbed = spawnSync(ENV_PROGRAM, [...NEUTRAL_ENVIRONMENT, ...gitArgs], options);
+  if (scrubbed.error?.code !== MISSING_PROGRAM) {
+    return scrubbed;
+  }
+  const [program, ...rest] = gitArgs;
+  return spawnSync(program, rest, options);
+}
+
 export function neutralGit(directory, args, { accepted = [SUCCESS] } = {}) {
-  const result = spawnSync(
-    ENV_PROGRAM,
-    [...NEUTRAL_ENVIRONMENT, 'git', ...NEUTRAL_CONFIGURATION, ...args],
-    { cwd: directory, encoding: 'utf8', maxBuffer: Number.POSITIVE_INFINITY },
-  );
+  const result = spawnGit(directory, args);
   if (result.error !== undefined) {
     throw new Error(`Cannot run git in ${directory}: ${result.error.message}`, {
       cause: result.error,

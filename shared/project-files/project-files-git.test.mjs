@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fixtureGit } from '../../core/diff/git/test-support/git-repository.mjs';
@@ -89,9 +89,19 @@ describe('a Git failure that is not an absent repository', () => {
     const root = gitProject(SOURCES);
     vi.stubEnv('PATH', temporaryRoot());
 
-    expect(() => projectFilePaths(root)).toThrow(
-      /git rev-parse failed in .*No such file or directory/u,
-    );
+    expect(() => projectFilePaths(root)).toThrow(/Cannot run git in .*git ENOENT/u);
+  });
+
+  it('runs git directly when there is no env program', () => {
+    const root = gitProject(SOURCES);
+    const programs = temporaryRoot();
+    const git = process.env.PATH.split(path.delimiter)
+      .map((directory) => path.join(directory, 'git'))
+      .find((candidate) => existsSync(candidate));
+    symlinkSync(git, path.join(programs, 'git'));
+    vi.stubEnv('PATH', programs);
+
+    expect(projectFilePaths(root)).toEqual(['README.md', 'src/a.mjs', 'src/deep/b.mjs']);
   });
 });
 
