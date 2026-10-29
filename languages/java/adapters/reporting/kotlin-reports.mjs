@@ -109,6 +109,7 @@ export function kotlinGeneratedFilter({ reportRoot }) {
   } catch (error) {
     throw new Error(
       `${name} in ${reportRoot} is unusable (${error.message}); run the kotlin-psi program again`,
+      { cause: error },
     );
   }
 }

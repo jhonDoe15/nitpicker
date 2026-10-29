@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { EMPTY_MUTATION_FACTS } from '../test-support/kotlin-empty-reports.mjs';
+import { EMPTY_MUTATION_FACTS } from '../test-support/fake-gradle/kotlin-empty-reports.mjs';
 import { kotlinGeneratedFilter } from './kotlin-reports.mjs';
 
 const roots = [];
