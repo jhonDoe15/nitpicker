@@ -1,4 +1,5 @@
 import { constantInitializer } from '../analysis/ancestry.mjs';
+import { importedBindings } from '../security/imported-names.mjs';
 import { estreeCallView } from '../support/io/call-views.mjs';
 
 const DEFAULT = 'default';
@@ -8,22 +9,6 @@ const RETRY_FUNCTIONS = new Map([
   ['exponential-backoff', 'backOff'],
 ]);
 const POLICY_MODULE = 'cockatiel';
-
-function importedBindings(program) {
-  return new Map(
-    program.body
-      .filter((statement) => statement.type === 'ImportDeclaration')
-      .flatMap((statement) =>
-        statement.specifiers.map((specifier) => [
-          specifier.local.name,
-          {
-            module: statement.source.value,
-            name: specifier.type === 'ImportSpecifier' ? specifier.imported.name : DEFAULT,
-          },
-        ]),
-      ),
-  );
-}
 
 function isRetryFunction(binding) {
   return binding !== undefined && RETRY_FUNCTIONS.get(binding.module) === binding.name;
@@ -45,6 +30,9 @@ function isPolicyExecute(sourceCode, callee, bindings) {
 
 export function retryScope(call, sourceCode) {
   const bindings = importedBindings(sourceCode.ast);
+  if (bindings.size === 0) {
+    return undefined;
+  }
   const { callee } = call;
   const retries =
     (callee.type === 'Identifier' && isRetryFunction(bindings.get(callee.name))) ||

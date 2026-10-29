@@ -1,5 +1,6 @@
 import { callsWithin } from '../effects/held-scopes.mjs';
 import { enclosingLoop, isRetryAttempt } from '../loops/loop-shapes.mjs';
+import { isBindCall } from '../security/imported-names.mjs';
 import { callEffects, describePath, referenceEffects } from '../support/io-effects.mjs';
 import { retryScope } from './retry-scopes.mjs';
 
@@ -26,9 +27,10 @@ function checkScope(context, node, scope) {
     checkRetriedFunction(context, scope);
     return;
   }
-  const path = REFERENCES.has(retried?.type)
-    ? referenceEffects(retried, context).get(UNSAFE)
-    : undefined;
+  const path =
+    REFERENCES.has(retried?.type) || isBindCall(retried)
+      ? referenceEffects(retried, context).get(UNSAFE)
+      : undefined;
   if (path !== undefined) {
     report(context, { node, path, scope: scope.label });
   }
