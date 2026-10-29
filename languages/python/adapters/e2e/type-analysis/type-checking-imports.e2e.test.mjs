@@ -65,9 +65,12 @@ describe.skipIf(!pythonE2eEnabled)('Python imports under if TYPE_CHECKING end to
   it('leaves an import under if TYPE_CHECKING to the project contracts', () => {
     const broken = gate(project, 'contract');
     const unreviewed = gate(project, 'contract-excluded');
-    const digest = acceptedDigest(['import-linter project config changed: .importlinter'], {
-      '.importlinter': EXCLUDING_CONTRACTS,
-    });
+    const digest = acceptedDigest(
+      ['import-linter exclude_type_checking_imports: not set -> "True"'],
+      {
+        '.importlinter': EXCLUDING_CONTRACTS,
+      },
+    );
     const excluded = gate(project, 'contract-excluded', {
       environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: digest },
     });

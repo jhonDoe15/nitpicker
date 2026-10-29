@@ -1,3 +1,4 @@
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { readInside } from '../../../shared/conventions/read-inside.mjs';
 import { parseJsonc } from '../../../shared/jsonc/jsonc.mjs';
@@ -7,25 +8,19 @@ import {
   ruffConfigFiles,
 } from '../../../languages/python/adapters/formatting/project-format-config.mjs';
 import { readProjectPyright } from '../../../languages/python/adapters/project-tools/pyright/pyright-project-config.mjs';
-import { parseToml } from '../../../languages/python/adapters/project-tools/project-tool-layers.mjs';
+import { readCoverageSettings } from '../../../languages/python/adapters/configuration/coverage-config/python-coverage-config.mjs';
+import { readMypyConfig } from '../../../languages/python/adapters/configuration/mypy/mypy-config.mjs';
+import { readMutmutConfig } from '../../../languages/python/adapters/project-tools/mutmut/mutmut-config.mjs';
+import {
+  attempt,
+  parseToml,
+} from '../../../languages/python/adapters/project-tools/project-tool-layers.mjs';
 
-export const IMPORT_LINTER = 'import-linter';
-
-export const PYTHON_TOOLS = [
-  'ruff',
-  'black',
-  'pyright',
-  'mypy',
-  'mutmut',
-  'coverage',
-  IMPORT_LINTER,
-];
+export const PYTHON_TOOLS = ['ruff', 'black', 'pyright', 'mypy', 'mutmut', 'coverage'];
 const PYPROJECT = 'pyproject.toml';
 const SETUP_CFG = 'setup.cfg';
 const TOX_INI = 'tox.ini';
 const COVERAGERC = '.coveragerc';
-const IMPORT_LINTER_FILE = '.importlinter';
-const IMPORT_LINTER_SECTION = /^importlinter(?::|$)/u;
 const MYPY_FILES = ['mypy.ini', '.mypy.ini'];
 const PYRIGHT_CHECKERS = ['pyright', 'basedpyright'];
 const MYPY_SECTION = /^mypy(?:-|$)/u;
@@ -36,7 +31,6 @@ const TOML_TABLES = {
   mypy: ['mypy'],
   mutmut: ['mutmut'],
   coverage: ['coverage'],
-  [IMPORT_LINTER]: ['importlinter'],
 };
 const SHARED_INI_SECTIONS = {
   mypy: { matches: (name) => MYPY_SECTION.test(name), required: (names) => names.includes('mypy') },
@@ -45,15 +39,11 @@ const SHARED_INI_SECTIONS = {
     matches: (name) => name.startsWith('coverage:'),
     required: (names) => names.length > 0,
   },
-  [IMPORT_LINTER]: {
-    matches: (name) => IMPORT_LINTER_SECTION.test(name),
-    required: (names) => names.includes('importlinter'),
-  },
 };
-const FIRST_FILES = {
-  mypy: [...MYPY_FILES, PYPROJECT, SETUP_CFG],
-  mutmut: [PYPROJECT, SETUP_CFG],
-  coverage: [COVERAGERC, SETUP_CFG, TOX_INI, PYPROJECT],
+const RUNTIME_READERS = {
+  mypy: readMypyConfig,
+  mutmut: readMutmutConfig,
+  coverage: readCoverageSettings,
 };
 
 function sortedKeys(_key, value) {
@@ -93,7 +83,7 @@ function relevantPart(tool, file, text) {
   if (name === PYPROJECT) {
     return pyprojectPart(tool, text);
   }
-  if ([SETUP_CFG, TOX_INI, IMPORT_LINTER_FILE].includes(name)) {
+  if (name === SETUP_CFG || name === TOX_INI) {
     return sharedIniPart(tool, text);
   }
   if (MYPY_FILES.includes(name)) {
@@ -121,47 +111,46 @@ function pythonConfigText(tool, file, text) {
   return read.part === undefined ? undefined : JSON.stringify(read.part, sortedKeys);
 }
 
-function relativeTo(root, files) {
-  return files.map((file) => path.relative(root, file).split(path.sep).join('/'));
+function checkoutOf(root) {
+  const start = path.resolve(root);
+  const parts = start.split(path.sep);
+  const found = parts
+    .map((_, index) => parts.slice(0, parts.length - index).join(path.sep) || path.sep)
+    .find((directory) => existsSync(path.join(directory, '.git')));
+  return found ?? start;
 }
 
-function textOf(root, file) {
-  return readInside(root, file, 'utf8');
+function labelsOf(checkout, files) {
+  return files.map((file) => path.relative(checkout, file).split(path.sep).join('/'));
 }
 
-function firstConfigured(tool, root, names) {
-  const found = names.find((name) => {
-    const text = textOf(root, name);
-    return text !== undefined && pythonConfigText(tool, name, text) !== undefined;
-  });
-  return found === undefined ? [] : [found];
+function readFile(tool, root) {
+  const { value, error } = attempt(() => RUNTIME_READERS[tool](root));
+  const file = value?.file ?? error?.file;
+  return file === undefined ? [] : [path.join(root, file)];
 }
 
 function candidatesOf(tool, root) {
   if (tool === 'ruff') {
-    return relativeTo(root, ruffConfigFiles(root));
+    return ruffConfigFiles(root);
   }
   if (tool === 'black') {
-    return relativeTo(root, blackConfigFiles(root));
+    return blackConfigFiles(root);
   }
   if (tool === 'pyright') {
     const files = PYRIGHT_CHECKERS.flatMap(
       (checker) => readProjectPyright(root, checker, { upward: true })?.files ?? [],
     );
-    return relativeTo(root, [...new Set(files)]);
+    return [...new Set(files)];
   }
-  if (tool === IMPORT_LINTER) {
-    return [IMPORT_LINTER_FILE, SETUP_CFG, TOX_INI, PYPROJECT].filter(
-      (name) => firstConfigured(tool, root, [name]).length > 0,
-    );
-  }
-  return firstConfigured(tool, root, FIRST_FILES[tool]);
+  return readFile(tool, root);
 }
 
 export function pythonConfigEntries(tool, root) {
-  return candidatesOf(tool, root).flatMap((file) => {
-    const content = textOf(root, file);
+  const checkout = checkoutOf(root);
+  return labelsOf(checkout, candidatesOf(tool, root)).flatMap((file) => {
+    const content = readInside(checkout, file, 'utf8');
     const text = content === undefined ? undefined : pythonConfigText(tool, file, content);
-    return text === undefined ? [] : [[file, text]];
+    return text === undefined ? [] : [{ file, text, content }];
   });
 }

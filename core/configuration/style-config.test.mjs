@@ -210,7 +210,7 @@ describe('tool precedence of the formatters and detekt', () => {
     expect(() =>
       validateConfig({ preset: 'java', tools: { ktlint: { precedence: ['project'] } } }),
     ).toThrow(
-      '"tools" names unknown tool "ktlint". Supported tools with this preset: pmd, checkstyle',
+      '"tools" names unknown tool "ktlint". Supported tools with this preset: pmd, checkstyle, jscpd',
     );
     expect(() => validateConfig({ preset: 'python', tools: { ruff: { precedence: [] } } })).toThrow(
       '"tools.ruff.precedence" must list "project", "nitpicker" or both, each once',
@@ -228,7 +228,7 @@ describe('tool precedence of the formatters and detekt', () => {
     expect(() =>
       validateConfig({ preset: 'python', tools: { basedpyright: { precedence: ['project'] } } }),
     ).toThrow(
-      '"tools" names unknown tool "basedpyright". Supported tools with this preset: ruff, black, pyright, mypy, mutmut, coverage',
+      '"tools" names unknown tool "basedpyright". Supported tools with this preset: ruff, black, pyright, mypy, mutmut, coverage, jscpd',
     );
   });
 

@@ -4,10 +4,14 @@ import {
   PROJECT_TOOL_CONFIGS,
 } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { readInside } from '../../../shared/conventions/read-inside.mjs';
+import { JSCPD_PROJECT_FILE } from '../../../shared/conventions/tool-precedence.mjs';
+import { appliedJscpdConfig } from '../../tooling/jscpd/config.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
-import { IMPORT_LINTER, PYTHON_TOOLS, pythonConfigEntries } from './python-tool-configs.mjs';
+import { readImportLinterConfig } from '../../../languages/python/adapters/analysis/import-linter/import-linter-config.mjs';
+import { attempt } from '../../../languages/python/adapters/project-tools/project-tool-layers.mjs';
+import { PYTHON_TOOLS, pythonConfigEntries } from './python-tool-configs.mjs';
 
 const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
@@ -29,6 +33,10 @@ function fingerprintOf(tool, { projectRoot, file }, gitBlobId) {
   const content = readInside(projectRoot, file);
   if (content === undefined) {
     return undefined;
+  }
+  const applied = tool === 'jscpd' ? appliedJscpdConfig(content.toString('utf8')) : {};
+  if (applied.kind === 'applied') {
+    return gitBlobId(JSON.stringify(applied.config));
   }
   if (file !== PACKAGE_JSON) {
     return gitBlobId(toolConfigText(tool, file, content.toString('utf8')));
@@ -88,6 +96,9 @@ function candidates(tool, side) {
   if (tool === 'prettier') {
     return PRETTIER_PRESETS.has(config.preset) ? PRETTIER_PROJECT_FILES : [];
   }
+  if (tool === 'jscpd') {
+    return [JSCPD_PROJECT_FILE];
+  }
   const configured = PROJECT_TOOL_CONFIGS.get(tool);
   return GRADLE_PRESETS.includes(config.preset) && configured !== undefined
     ? rulesUnder(files, path.posix.dirname(configured))
@@ -97,8 +108,7 @@ function candidates(tool, side) {
 function isOptedIn(tool, config) {
   return (
     usesProjectConfig(config, tool) ||
-    (tool === 'detekt' && config.kotlin?.detektConfig !== undefined) ||
-    (tool === IMPORT_LINTER && config.python?.importLinter !== false)
+    (tool === 'detekt' && config.kotlin?.detektConfig !== undefined)
   );
 }
 
@@ -106,16 +116,72 @@ function sideFingerprints(tool, side, gitBlobId) {
   if (!PYTHON_TOOLS.includes(tool)) {
     return fingerprints(tool, { root: side.root, files: candidates(tool, side) }, gitBlobId);
   }
-  const entries = side.config.preset === 'python' ? pythonConfigEntries(tool, side.root) : [];
-  return new Map(entries.map(([file, text]) => [file, gitBlobId(text)]));
+  return new Map(pythonEntries(tool, side).map(({ file, text }) => [file, gitBlobId(text)]));
+}
+
+function pythonEntries(tool, side) {
+  return side.config.preset === 'python' ? pythonConfigEntries(tool, side.root) : [];
+}
+
+function evidenceOf(tool, head, gitBlobId) {
+  return PYTHON_TOOLS.includes(tool)
+    ? {
+        evidence: new Map(
+          pythonEntries(tool, head).map(({ file, content }) => [file, gitBlobId(content)]),
+        ),
+      }
+    : {};
+}
+
+function appliedSide(side, optedIn) {
+  if (!optedIn) {
+    return { kind: 'applied', config: {} };
+  }
+  const content = readInside(side.root, JSCPD_PROJECT_FILE);
+  return content === undefined
+    ? { kind: 'applied', config: {} }
+    : appliedJscpdConfig(content.toString('utf8'));
+}
+
+function appliedConfigs(base, head) {
+  const sides = [appliedSide(base, isOptedIn('jscpd', base.config)), appliedSide(head, true)];
+  return sides.every(({ kind }) => kind === 'applied')
+    ? { applied: { base: sides[0].config, head: sides[1].config } }
+    : {};
+}
+
+function importLinterOn(config) {
+  return config.preset === 'python' && config.python?.importLinter !== false;
+}
+
+function importLinterSide({ config, root }) {
+  return importLinterOn(config) ? attempt(() => readImportLinterConfig(root)).value : undefined;
+}
+
+function importLinterEntries(base, head) {
+  return importLinterOn(head.config)
+    ? [
+        {
+          tool: 'import-linter',
+          importLinter: { base: importLinterSide(base), head: importLinterSide(head) },
+        },
+      ]
+    : [];
 }
 
 export function readToolConfigs(base, head, gitBlobId) {
-  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier', ...PYTHON_TOOLS]
+  return [...toolEntries(base, head, gitBlobId), ...importLinterEntries(base, head)];
+}
+
+function toolEntries(base, head, gitBlobId) {
+  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier', 'jscpd', ...PYTHON_TOOLS]
     .filter((tool) => isOptedIn(tool, head.config))
     .map((tool) => ({
       tool,
+      optsIn: !isOptedIn(tool, base.config),
       base: isOptedIn(tool, base.config) ? sideFingerprints(tool, base, gitBlobId) : new Map(),
       head: sideFingerprints(tool, head, gitBlobId),
+      ...(tool === 'jscpd' ? appliedConfigs(base, head) : {}),
+      ...evidenceOf(tool, head, gitBlobId),
     }));
 }

@@ -195,7 +195,7 @@ describe('Python mutmut config of the project', () => {
 describe('Python coverage config of the project', () => {
   const fixed = `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n`;
   const notice = (what) =>
-    `Ignoring ${what} except omit, concurrency, patch and plugins; opt in with "tools": { "coverage": { "precedence": ["project", "nitpicker"] } }\n`;
+    `Ignoring ${what} except concurrency, patch and plugins, which the run needs; opt in with "tools": { "coverage": { "precedence": ["project", "nitpicker"] } }\n`;
 
   it('names the coverage settings that are ignored, until the project is listed', () => {
     const excluded = '[tool.coverage.report]\nexclude_also = ["def __repr__"]\n';
@@ -215,9 +215,13 @@ describe('Python coverage config of the project', () => {
   });
 
   it('says nothing when the config only holds what the run reads or never applies', () => {
-    const read = '[coverage:run]\nomit = gen/*\n\n[coverage:report]\nfail_under = 90\n';
+    const read = '[coverage:run]\nconcurrency = thread\n\n[coverage:report]\nfail_under = 90\n';
+    const omitted = '[coverage:run]\nomit = gen/*\n';
 
     expect(follow({ preset: 'python' }, { 'setup.cfg': read }).printed).toBe(fixed);
+    expect(follow({ preset: 'python' }, { 'setup.cfg': omitted }).printed).toBe(
+      fixed + notice('[coverage:*] in setup.cfg'),
+    );
   });
 });
 
