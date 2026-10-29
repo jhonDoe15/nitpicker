@@ -95,7 +95,9 @@ def wrapper_labels(project):
         while changed:
             changed = False
             for key, targets in callees.items():
-                inherited = next((labels[t] for t in targets if t in labels and t != key), None)
+                inherited = next(
+                    (labels[t] for t in targets if t in labels and t != key), None
+                )
                 if inherited and key not in labels:
                     labels[key] = inherited
                     changed = True

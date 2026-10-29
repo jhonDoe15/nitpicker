@@ -2,6 +2,9 @@ import ts from 'typescript';
 import { chainOf, depthFirst } from '../../../../../../../shared/traversal.mjs';
 import { syntaxChildren } from '../../../../syntax/children.mjs';
 import {
+  isFactoryHolderName,
+  isFactoryHolderSymbol,
+  isFactoryProperty,
   isRegistrationName,
   isRegistrationProperty,
   isRegistrationSymbol,
@@ -19,18 +22,52 @@ function propertyKey(name) {
   return ts.isIdentifier(name) || ts.isStringLiteralLike(name) ? name.text : undefined;
 }
 
+function calleeName(call) {
+  const callee = unwrapExpression(call.expression);
+  return ts.isIdentifier(callee) ? callee : memberNameNode(callee);
+}
+
+function symbolAt(checker, name) {
+  const symbol = checker.getSymbolAtLocation(name);
+  return symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
+    ? checker.getAliasedSymbol(symbol)
+    : symbol;
+}
+
 function isRegistrationCall(checker, call) {
-  const name = memberNameNode(unwrapExpression(call.expression));
+  const name = calleeName(call);
   return (
     name !== undefined &&
     isRegistrationName(name.text) &&
-    isRegistrationSymbol(checker.getSymbolAtLocation(name))
+    isRegistrationSymbol(symbolAt(checker, name))
+  );
+}
+
+function isFactoryHolderArgument(checker, literal) {
+  const call = literal.parent;
+  if (!ts.isCallExpression(call) || !call.arguments.includes(literal)) {
+    return false;
+  }
+  const name = calleeName(call);
+  return (
+    name !== undefined &&
+    isFactoryHolderName(name.text) &&
+    isFactoryHolderSymbol(symbolAt(checker, name))
+  );
+}
+
+function isRegistrationKey(checker, property) {
+  const key = propertyKey(property.name);
+  return (
+    ts.isObjectLiteralExpression(property.parent) &&
+    (isRegistrationProperty(key) ||
+      (isFactoryProperty(key) && isFactoryHolderArgument(checker, property.parent)))
   );
 }
 
 function isRegistrationPoint(checker, holder, child) {
   if (ts.isPropertyAssignment(holder)) {
-    return holder.initializer === child && isRegistrationProperty(propertyKey(holder.name));
+    return holder.initializer === child && isRegistrationKey(checker, holder);
   }
   return (
     ts.isCallExpression(holder) &&
@@ -65,16 +102,16 @@ function climbsToRegistration(checker, start) {
 
 function isRegisteredLiteral(checker, fn) {
   if (ts.isMethodDeclaration(fn) && ts.isObjectLiteralExpression(fn.parent)) {
-    return isRegistrationProperty(propertyKey(fn.name));
+    return isRegistrationKey(checker, fn);
   }
   return climbsToRegistration(checker, fn);
 }
 
 function registeredExpressions(checker, node) {
-  if (ts.isPropertyAssignment(node) && isRegistrationProperty(propertyKey(node.name))) {
+  if (ts.isPropertyAssignment(node) && isRegistrationKey(checker, node)) {
     return [node.initializer];
   }
-  if (ts.isShorthandPropertyAssignment(node) && isRegistrationProperty(node.name.text)) {
+  if (ts.isShorthandPropertyAssignment(node) && isRegistrationKey(checker, node)) {
     return [node];
   }
   return ts.isCallExpression(node) && isRegistrationCall(checker, node) ? [...node.arguments] : [];
@@ -130,14 +167,18 @@ function registeredFunctions(context) {
   return context.memo.get('registered');
 }
 
-export function isInRegistration(context, node) {
+function registeredSite(context, ancestor) {
   return (
-    ts.findAncestor(node.parent, (ancestor) => {
-      return (
-        ts.isFunctionLike(ancestor) &&
-        (isRegisteredLiteral(context.checker, ancestor) ||
-          registeredFunctions(context).has(ancestor))
-      );
-    }) !== undefined
+    (ts.isFunctionLike(ancestor) || ts.isClassLike(ancestor)) &&
+    (isRegisteredLiteral(context.checker, ancestor) || registeredFunctions(context).has(ancestor))
+  );
+}
+
+export function isInRegistration(context, node) {
+  const { parent } = node;
+  const start = ts.isCallExpression(parent) && parent.expression === node ? parent : node;
+  return (
+    climbsToRegistration(context.checker, start) ||
+    ts.findAncestor(node.parent, (ancestor) => registeredSite(context, ancestor)) !== undefined
   );
 }

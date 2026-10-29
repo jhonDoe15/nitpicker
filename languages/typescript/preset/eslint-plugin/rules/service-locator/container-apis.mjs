@@ -57,23 +57,36 @@ const CONTAINER_APIS = [
   },
 ];
 
-const REGISTRATION_CALLBACK_METHODS = new Set([
-  'toDynamicValue',
-  'toFactory',
-  'toProvider',
-  'onActivation',
-]);
-const REGISTRATION_PACKAGES = /^(?:inversify|@inversifyjs\/)/u;
+const REGISTRATION_CALLS = [
+  {
+    packages: /^(?:inversify|@inversifyjs\/)/u,
+    names: new Set(['toDynamicValue', 'toFactory', 'toProvider', 'onActivation']),
+  },
+  { packages: /^awilix$/u, names: new Set(['asFunction', 'asClass', 'asValue']) },
+];
+const FACTORY_HOLDERS = [{ packages: /^typedi$/u, names: new Set(['set', 'Service']) }];
 const LOOKUP_MEMBER_NAMES = new Set(CONTAINER_APIS.flatMap((api) => [...api.members]));
+const MODELED_PACKAGES = new Set(CONTAINER_APIS.flatMap((api) => api.packages));
+const MODELED_SCOPE = '@inversifyjs/';
 
-const REGISTRATION_CALLBACK_PROPERTIES = new Set(['useFactory']);
+export function isModeledPackage(specifier) {
+  return MODELED_PACKAGES.has(specifier) || specifier.startsWith(MODELED_SCOPE);
+}
 
 export function isRegistrationProperty(name) {
-  return REGISTRATION_CALLBACK_PROPERTIES.has(name);
+  return name === 'useFactory';
+}
+
+export function isFactoryProperty(name) {
+  return name === 'factory';
 }
 
 export function isRegistrationName(name) {
-  return REGISTRATION_CALLBACK_METHODS.has(name);
+  return REGISTRATION_CALLS.some((entry) => entry.names.has(name));
+}
+
+export function isFactoryHolderName(name) {
+  return FACTORY_HOLDERS.some((entry) => entry.names.has(name));
 }
 
 export function isLookupMemberName(name) {
@@ -100,17 +113,30 @@ export function containerApiOf(symbol) {
       (entry) => entry.owner === owner && entry.packages.includes(library),
     );
     if (api?.members.has(symbol.name) === true) {
-      return { library, owner, member: symbol.name };
+      return { library, owner, member: symbol.name, packages: api.packages };
     }
   }
   return undefined;
 }
 
-export function isRegistrationSymbol(symbol) {
-  return (
-    REGISTRATION_CALLBACK_METHODS.has(symbol?.name) &&
-    (symbol.declarations ?? []).some((declaration) =>
-      REGISTRATION_PACKAGES.test(packageOf(declaration.getSourceFile().fileName) ?? ''),
-    )
+function declaredIn(symbol, entries) {
+  return entries.some(
+    (entry) =>
+      entry.names.has(symbol?.name) &&
+      (symbol.declarations ?? []).some((declaration) =>
+        entry.packages.test(packageOf(declaration.getSourceFile().fileName) ?? ''),
+      ),
   );
+}
+
+export function isRegistrationSymbol(symbol) {
+  return declaredIn(symbol, REGISTRATION_CALLS);
+}
+
+export function isFactoryHolderSymbol(symbol) {
+  return declaredIn(symbol, FACTORY_HOLDERS);
+}
+
+export function displayedLibrary(found, imported) {
+  return imported.find((name) => found.packages.includes(name)) ?? found.library;
 }

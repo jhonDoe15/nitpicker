@@ -127,7 +127,10 @@ def bind_owner_attribute(node, add):
             pairs.append((node.target, ("value", node.value)))
     for target, entry in pairs:
         owner = getattr(target, "value", None)
-        if isinstance(target, ast.Attribute) and getattr(owner, "id", None) in OWNER_NAMES:
+        if (
+            isinstance(target, ast.Attribute)
+            and getattr(owner, "id", None) in OWNER_NAMES
+        ):
             add(target.attr, entry)
 
 

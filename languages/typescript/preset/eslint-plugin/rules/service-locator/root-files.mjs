@@ -1,6 +1,24 @@
 import path from 'node:path';
 import { compositionRootRegExp } from '../boundaries/composition-root-files.mjs';
 
+const ENTRY_STEMS = [
+  'main',
+  'server',
+  'composition-root',
+  'composition_root',
+  'manage',
+  'wsgi',
+  'asgi',
+  'cli',
+  'app',
+  'application',
+  'celery',
+  'bootstrap',
+  'worker',
+];
+const ENTRY_FILE = new RegExp(`(?:^|/)(?:${ENTRY_STEMS.join('|')})\\.[cm]?[jt]sx?$`, 'u');
+const DOMAIN_DIRECTORY = /(?:^|\/)domain\//u;
+
 export const rootFileOptionsSchema = [
   {
     type: 'object',
@@ -30,6 +48,7 @@ export function rootFileMatcher(options) {
     const normalized = fileName.replaceAll('\\', '/');
     return (
       pattern.test(normalized) ||
+      (ENTRY_FILE.test(normalized) && !DOMAIN_DIRECTORY.test(normalized)) ||
       entryPoints.some((glob) => path.posix.matchesGlob(normalized, `**/${glob}`))
     );
   };

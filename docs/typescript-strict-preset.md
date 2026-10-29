@@ -102,25 +102,38 @@ config file is an exception like any other.
   library, a parameter, `this.moduleRef`, `container.createChildContainer()`), and a method that is
   only named `get` or `resolve` on another type is not evidence. A lookup method read as a value
   counts too (`items.map(container.resolve)`, `container.resolve.bind(container)`,
-  `const { resolve } = container`, `const { cradle } = c`, `c['cradle']`). A call to a project
-  function whose body looks a service up counts as a lookup at its call sites, through helpers of
-  helpers, imports, namespace imports, re-exports and aliases (`const p = plain`); the helper may be
-  a function, an arrow (also `export default`, `as` or `satisfies`, or wrapped in a call such as
-  `once(() => ...)`), a method, a class property arrow (also `static`), a getter, a constructor
-  (`new Svc()`, with its field initializers) or a default parameter value, and it counts when passed
-  as a callback (`items.map(plain)`, `plain.call(...)`). A call through an interface method is not
-  followed, since an interface has no body. The message names the library and the call, and for a
-  helper also the helper and the project-relative file that does the lookup.
-  Allowed: lookups in the composition root (the files above, the `compositionRootPattern` option
-  and `layout.entryPoints`, which is where a Nest `main.ts` calls `app.get`), and inside a
-  registration factory: `useFactory` of a provider and inversify's `toDynamicValue`, `toFactory`,
-  `toProvider` and `onActivation` (resolved to inversify's binding types, so a same-named method of
-  another library is not one), also when the factory is wrapped in a call
-  (`instanceCachingFactory((c) => ...)`) or passed by name (`toDynamicValue(build)`). A helper
-  declared in a root file counts when it is called from outside the roots; the lookup inside the
-  root stays allowed. Tests are not checked. It needs the container library installed, since the
-  types come from it, and models the libraries above only: a project container of its own is not
-  found. An invalid `compositionRootPattern` fails with an error that names the option.
+  `const { resolve } = container`, `({ resolve } = container)`, `const { cradle } = c`,
+  `c['cradle']`). A project helper that looks up the token it is given (`resolve<T>(token)` calling
+  `container.resolve(token)`, or one that hands out the lookup method itself) counts as a lookup at
+  its call sites, through helpers of helpers that pass their own parameter on, imports, namespace
+  imports, re-exports and aliases (`const p = plain`); the helper may be a function, an arrow (also
+  `export default`, `as` or `satisfies`, or wrapped in a call such as `once((token) => ...)`), a
+  method, a class property arrow (also `static`), a getter, a constructor (`new Svc(token)`) or a
+  default parameter value, and it counts when passed as a callback (`items.map(plain)`,
+  `plain.call(...)`). A helper that looks up a fixed token (`() => container.resolve(Mailer)`) is
+  reported once, at its own lookup, and its callers are not, so one exception on that file covers
+  it. A call through an interface method is not followed, since an interface has no body. The
+  message names the library as the project imports it (`inversify` when it re-exports
+  `@inversifyjs/container`) and the call, and for a helper also the helper and the project-relative
+  file that does the lookup. Allowed: lookups in the composition root (the files above; any
+  `main`, `server`, `composition-root`, `app`, `application`, `cli`, `bootstrap`, `worker`, `manage`
+  and the other entry names the Python preset accepts, outside `domain/`; the
+  `compositionRootPattern` option; and `layout.entryPoints`, which is where a Nest `main.ts` calls
+  `app.get`), and inside a registration factory: `useFactory` of a provider, inversify's
+  `toDynamicValue`, `toFactory`, `toProvider` and `onActivation`, typedi's `factory` given to
+  `Container.set({ id, factory })` or `@Service({ factory })`, and awilix's `asFunction`, `asClass`
+  and `asValue` (each resolved to its library's declarations, so a same-named method of another
+  library, or a `factory` property elsewhere, is not one), also when the factory is wrapped in a
+  call (`instanceCachingFactory((c) => ...)`) or passed by name (`toDynamicValue(build)`,
+  `asClass(Orders)`). A helper declared in a root file counts when it is called from outside the
+  roots; the lookup inside the root stays allowed. Tests are not checked, and a program where no
+  file imports one of these libraries is skipped without building the call summaries. It needs the
+  container library installed, since the types come from it, and models the libraries above only:
+  a project container of its own is not found. An invalid `compositionRootPattern` fails with an
+  error that names the option. A Nest provider that must resolve a provider by a token known only
+  at run time (`this.moduleRef.resolve(token)` in `onModuleInit`, a request-scoped strategy) is a
+  real exception: add `{"rule":"nitpicker/no-service-locator","paths":["src/payments/strategies.ts"],"reason":"..."}`
+  to `exceptions` in `nitpicker.config.json` for that file, as the finding's message says.
 - `nitpicker/no-process-access-outside-composition-root`: environment variables (`process.env`,
   `import.meta.env`, `Deno.env`) are read only in the composition root, parsed once with a zod
   schema, and the typed config is passed down. `process.exit` is called only in the composition
