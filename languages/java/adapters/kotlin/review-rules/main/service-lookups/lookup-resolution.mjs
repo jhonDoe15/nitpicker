@@ -49,7 +49,7 @@ export function importedFunctions(file, name) {
 }
 
 function scopeIds(lookup) {
-  return (lookup.scopes ?? []).map(({ id }) => id).filter((id) => id !== undefined);
+  return (lookup.scopes ?? []).map(({ frameId }) => frameId).filter((id) => id !== undefined);
 }
 
 function scopeDepth(ids, { scope }) {

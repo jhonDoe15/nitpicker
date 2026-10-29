@@ -56,7 +56,7 @@ public final class FactsCollector {
 
   private void descend(PsiElement element, Frame outer, Frame inner) {
     if (inner != outer && inner != null) {
-      inner.data.put("id", ++frames);
+      inner.data.put("frameId", ++frames);
     }
     for (PsiElement child : element.getChildren()) {
       walk(child, inner);
