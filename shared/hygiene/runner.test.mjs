@@ -7,6 +7,7 @@ import { HEAD_POLICY_ENV } from '../head-policy.mjs';
 import { configurationFiles, createHygieneAnalyzers } from './analyzers.mjs';
 import { parseCheckArguments } from './cli.mjs';
 import { runHygieneCheck, runHygieneCli } from './runner.mjs';
+import { linkSentence } from '../messages/test-support/link-sentence.mjs';
 
 const temporaryDirectories = [];
 const { createGitRepository } = useGitFixtures();
@@ -125,7 +126,7 @@ describe('runHygieneCli', () => {
     expect(run(['--check', 'nope', '--project-root', '/'], {})).toEqual({
       status: 2,
       stdout: '',
-      stderr: 'Hygiene check failed: Unknown hygiene check: nope\n',
+      stderr: `Hygiene check failed: Unknown hygiene check: nope. ${linkSentence('analyzerCrashed')}\n`,
     });
   });
 });
@@ -166,7 +167,9 @@ describe('the hygiene configuration hash', () => {
       'hygiene/rules.mjs',
       'hygiene/runner.mjs',
       'hygiene/tracked-files.mjs',
+      'messages/docs-url.mjs',
       'messages/exception-sentence.mjs',
+      'messages/troubleshooting.mjs',
       'paths/glob.mjs',
       'project-rules/hygiene-rules.mjs',
       'traversal.mjs',
