@@ -109,7 +109,8 @@ If a rule flags code that is right, its message ends with the entry to add to
 `exceptions` in `nitpicker.config.json`: the rule, the paths and a reason a reviewer fills in. Review sees it, and every report lists
 it. If a rule flags right code often, [open an issue](https://github.com/jhonDoe15/nitpicker/issues):
 the fix is a narrower rule, not a rule that is off. [Mindset](docs/mindset.md) explains how rules
-are chosen, and the [rule reference](docs/rules/README.md) lists every rule with its allowed form.
+are chosen, and the [rule reference](docs/rules/README.md) lists every rule with its allowed form, or
+with a link to the tool's own page for the rule where the reference has no allowed form of its own.
 
 ## Documentation
 
@@ -118,7 +119,8 @@ are chosen, and the [rule reference](docs/rules/README.md) lists every rule with
   sharding in CI.
 - [Checks](spec/checks.md): every check and rule, and what fails.
 - [Rule reference](docs/rules/README.md): one entry for every rule any preset can report, with the
-  allowed form and the exception to add. `nitpicker explain <tool/rule>` prints one in the terminal.
+  allowed form (or the tool's own page for the rule) and the exception to add.
+  `nitpicker explain <tool/rule>` prints one in the terminal.
 
 ## Contributing
 

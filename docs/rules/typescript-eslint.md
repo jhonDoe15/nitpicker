@@ -4,6 +4,8 @@ The rules of ESLint itself and of typescript-eslint that the TypeScript and Java
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
+The summaries of the ESLint rules are the `meta.docs.description` of each rule, from ESLint, typescript-eslint and the plugins, all under the MIT License.
+
 Unless an entry says otherwise:
 
 - **Presets:** TypeScript and JavaScript
@@ -17,6 +19,7 @@ Disallow awaiting a value that is not a Thenable.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/await-thenable`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/await-thenable).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/await-thenable","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/await-thenable)
 
@@ -28,6 +31,7 @@ Disallow `@ts-<directive>` comments or require descriptions after directives.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/ban-ts-comment`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/ban-ts-comment).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/ban-ts-comment","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/ban-ts-comment)
 
@@ -41,6 +45,7 @@ Enforce consistent usage of type imports.
 - **Presets:** TypeScript
 - **Scope:** The TypeScript preset only.
 - **Why it is on:** Turned on by the preset on top of the ESLint and typescript-eslint rule sets.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/consistent-type-imports).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/consistent-type-imports","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/consistent-type-imports)
 
@@ -54,6 +59,7 @@ Require explicit return and argument types on exported functions' and classes' p
 - **Presets:** TypeScript
 - **Scope:** The TypeScript preset only.
 - **Why it is on:** Turned on by the preset on top of the ESLint and typescript-eslint rule sets.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/explicit-module-boundary-types).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/explicit-module-boundary-types","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/explicit-module-boundary-types)
 
@@ -65,6 +71,7 @@ Disallow generic `Array` constructors.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-array-constructor`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-array-constructor).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-array-constructor","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-array-constructor)
 
@@ -76,6 +83,7 @@ Disallow using the `delete` operator on array values.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-array-delete`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-array-delete).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-array-delete","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-array-delete)
 
@@ -87,6 +95,7 @@ Require `.toString()` and `.toLocaleString()` to only be called on objects which
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-base-to-string`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-base-to-string).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-base-to-string","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-base-to-string)
 
@@ -98,6 +107,7 @@ Require expressions of type void to appear in statement position.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-confusing-void-expression`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-confusing-void-expression).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-confusing-void-expression","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-confusing-void-expression)
 
@@ -109,6 +119,7 @@ Disallow using code marked as `@deprecated`.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-deprecated`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-deprecated).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-deprecated","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-deprecated)
 
@@ -120,6 +131,7 @@ Disallow duplicate enum member values.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-duplicate-enum-values`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-duplicate-enum-values).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-duplicate-enum-values","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-duplicate-enum-values)
 
@@ -131,6 +143,7 @@ Disallow duplicate constituents of union or intersection types.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-duplicate-type-constituents`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-duplicate-type-constituents).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-duplicate-type-constituents","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-duplicate-type-constituents)
 
@@ -142,6 +155,7 @@ Disallow using the `delete` operator on computed key expressions.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-dynamic-delete`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-dynamic-delete).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-dynamic-delete","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-dynamic-delete)
 
@@ -153,6 +167,7 @@ Disallow accidentally using the "empty object" type.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-empty-object-type`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-empty-object-type).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-empty-object-type","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-empty-object-type)
 
@@ -164,6 +179,7 @@ Disallow the `any` type.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-explicit-any`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-explicit-any).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-explicit-any","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-explicit-any)
 
@@ -175,6 +191,7 @@ Disallow extra non-null assertions.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-extra-non-null-assertion`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-extra-non-null-assertion).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-extra-non-null-assertion","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-extra-non-null-assertion)
 
@@ -186,6 +203,7 @@ Disallow classes used as namespaces.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-extraneous-class`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-extraneous-class).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-extraneous-class","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-extraneous-class)
 
@@ -197,6 +215,7 @@ Require Promise-like statements to be handled appropriately.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-floating-promises`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-floating-promises).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-floating-promises","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-floating-promises)
 
@@ -208,6 +227,7 @@ Disallow iterating over an array with a for-in loop.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-for-in-array`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-for-in-array).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-for-in-array","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-for-in-array)
 
@@ -219,6 +239,7 @@ Disallow the use of `eval()`-like functions.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-implied-eval`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-implied-eval).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-implied-eval","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-implied-eval)
 
@@ -230,6 +251,7 @@ Disallow `void` type outside of generic or return types.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-invalid-void-type`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-invalid-void-type).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-invalid-void-type","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-invalid-void-type)
 
@@ -241,6 +263,7 @@ Disallow the `void` operator except when used to discard a value.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-meaningless-void-operator`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-meaningless-void-operator).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-meaningless-void-operator","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-meaningless-void-operator)
 
@@ -252,6 +275,7 @@ Enforce valid definition of `new` and `constructor`.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-misused-new`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-misused-new).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-misused-new","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-misused-new)
 
@@ -263,6 +287,7 @@ Disallow Promises in places not designed to handle them.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-misused-promises`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-misused-promises).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-misused-promises","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-misused-promises)
 
@@ -274,6 +299,7 @@ Disallow using the spread operator when it might cause unexpected behavior.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-misused-spread`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-misused-spread).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-misused-spread","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-misused-spread)
 
@@ -285,6 +311,7 @@ Disallow enums from having both number and string members.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-mixed-enums`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-mixed-enums).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-mixed-enums","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-mixed-enums)
 
@@ -296,6 +323,7 @@ Disallow TypeScript namespaces.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-namespace`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-namespace).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-namespace","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-namespace)
 
@@ -307,6 +335,7 @@ Disallow non-null assertions in the left operand of a nullish coalescing operato
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-non-null-asserted-nullish-coalescing`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-non-null-asserted-nullish-coalescing).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-non-null-asserted-nullish-coalescing","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-non-null-asserted-nullish-coalescing)
 
@@ -318,6 +347,7 @@ Disallow non-null assertions after an optional chain expression.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-non-null-asserted-optional-chain`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-non-null-asserted-optional-chain).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-non-null-asserted-optional-chain","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-non-null-asserted-optional-chain)
 
@@ -329,6 +359,7 @@ Disallow non-null assertions using the `!` postfix operator.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-non-null-assertion`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-non-null-assertion).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-non-null-assertion","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-non-null-assertion)
 
@@ -340,6 +371,7 @@ Disallow members of unions and intersections that do nothing or override type in
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-redundant-type-constituents`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-redundant-type-constituents).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-redundant-type-constituents","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-redundant-type-constituents)
 
@@ -353,6 +385,7 @@ Disallow invocation of `require()`.
 - **Presets:** TypeScript
 - **Scope:** The TypeScript preset only.
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-require-imports).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-require-imports","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-require-imports)
 
@@ -364,6 +397,7 @@ Disallow aliasing `this`.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-this-alias`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-this-alias).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-this-alias","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-this-alias)
 
@@ -375,6 +409,7 @@ Disallow unnecessary equality comparisons against boolean literals.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unnecessary-boolean-literal-compare`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unnecessary-boolean-literal-compare).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unnecessary-boolean-literal-compare","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unnecessary-boolean-literal-compare)
 
@@ -386,6 +421,7 @@ Disallow conditionals where the type is always truthy or always falsy.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unnecessary-condition`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unnecessary-condition).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unnecessary-condition","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unnecessary-condition)
 
@@ -397,6 +433,7 @@ Disallow unnecessary template expressions.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unnecessary-template-expression`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unnecessary-template-expression).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unnecessary-template-expression","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unnecessary-template-expression)
 
@@ -408,6 +445,7 @@ Disallow type arguments that are equal to the default.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unnecessary-type-arguments`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unnecessary-type-arguments).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unnecessary-type-arguments","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unnecessary-type-arguments)
 
@@ -419,6 +457,7 @@ Disallow type assertions that do not change the type of an expression.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unnecessary-type-assertion`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unnecessary-type-assertion).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unnecessary-type-assertion","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unnecessary-type-assertion)
 
@@ -430,6 +469,7 @@ Disallow unnecessary constraints on generic types.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unnecessary-type-constraint`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unnecessary-type-constraint).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unnecessary-type-constraint","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unnecessary-type-constraint)
 
@@ -441,6 +481,7 @@ Disallow conversion idioms when they do not change the type or value of the expr
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unnecessary-type-conversion`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unnecessary-type-conversion).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unnecessary-type-conversion","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unnecessary-type-conversion)
 
@@ -452,6 +493,7 @@ Disallow type parameters that aren't used multiple times.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unnecessary-type-parameters`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unnecessary-type-parameters).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unnecessary-type-parameters","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unnecessary-type-parameters)
 
@@ -463,6 +505,7 @@ Disallow calling a function with a value with type `any`.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unsafe-argument`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-argument).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unsafe-argument","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-argument)
 
@@ -474,6 +517,7 @@ Disallow assigning a value with type `any` to variables and properties.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unsafe-assignment`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-assignment).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unsafe-assignment","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-assignment)
 
@@ -485,6 +529,7 @@ Disallow calling a value with type `any`.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unsafe-call`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-call).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unsafe-call","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-call)
 
@@ -496,6 +541,7 @@ Disallow unsafe declaration merging.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unsafe-declaration-merging`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-declaration-merging).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unsafe-declaration-merging","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-declaration-merging)
 
@@ -507,6 +553,7 @@ Disallow comparing an enum value with a non-enum value.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unsafe-enum-comparison`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-enum-comparison).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unsafe-enum-comparison","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-enum-comparison)
 
@@ -518,6 +565,7 @@ Disallow using the unsafe built-in Function type.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unsafe-function-type`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-function-type).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unsafe-function-type","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-function-type)
 
@@ -529,6 +577,7 @@ Disallow member access on a value with type `any`.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unsafe-member-access`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-member-access).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unsafe-member-access","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-member-access)
 
@@ -540,6 +589,7 @@ Disallow returning a value with type `any` from a function.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unsafe-return`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-return).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unsafe-return","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-return)
 
@@ -551,6 +601,7 @@ Require unary negation to take a number.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unsafe-unary-minus`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-unary-minus).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unsafe-unary-minus","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unsafe-unary-minus)
 
@@ -562,6 +613,7 @@ Disallow unused expressions.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unused-expressions`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unused-expressions).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unused-expressions","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unused-expressions)
 
@@ -573,6 +625,7 @@ Disallow unused variables.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-unused-vars`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-unused-vars).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-unused-vars","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-unused-vars)
 
@@ -584,6 +637,7 @@ Disallow unnecessary constructors.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-useless-constructor`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-useless-constructor).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-useless-constructor","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-useless-constructor)
 
@@ -595,6 +649,7 @@ Disallow default values that will never be used.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-useless-default-assignment`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-useless-default-assignment).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-useless-default-assignment","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-useless-default-assignment)
 
@@ -606,6 +661,7 @@ Disallow using confusing built-in primitive class wrappers.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/no-wrapper-object-types`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-wrapper-object-types).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/no-wrapper-object-types","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/no-wrapper-object-types)
 
@@ -617,6 +673,7 @@ Disallow throwing non-`Error` values as exceptions.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/only-throw-error`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/only-throw-error).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/only-throw-error","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/only-throw-error)
 
@@ -628,6 +685,7 @@ Enforce the use of `as const` over literal type.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/prefer-as-const`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/prefer-as-const).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/prefer-as-const","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/prefer-as-const)
 
@@ -639,6 +697,7 @@ Require all enum members to be literal values.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/prefer-literal-enum-member`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/prefer-literal-enum-member).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/prefer-literal-enum-member","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/prefer-literal-enum-member)
 
@@ -650,6 +709,7 @@ Require using `namespace` keyword over `module` keyword to declare custom TypeSc
 
 - **Printed as:** `eslint-lint/@typescript-eslint/prefer-namespace-keyword`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/prefer-namespace-keyword).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/prefer-namespace-keyword","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/prefer-namespace-keyword)
 
@@ -661,6 +721,7 @@ Require using Error objects as Promise rejection reasons.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/prefer-promise-reject-errors`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/prefer-promise-reject-errors).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/prefer-promise-reject-errors","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/prefer-promise-reject-errors)
 
@@ -672,6 +733,7 @@ Enforce using type parameter when calling `Array#reduce` instead of using a type
 
 - **Printed as:** `eslint-lint/@typescript-eslint/prefer-reduce-type-parameter`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/prefer-reduce-type-parameter).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/prefer-reduce-type-parameter","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/prefer-reduce-type-parameter)
 
@@ -683,6 +745,7 @@ Enforce that `this` is used when only `this` type is returned.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/prefer-return-this-type`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/prefer-return-this-type).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/prefer-return-this-type","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/prefer-return-this-type)
 
@@ -694,6 +757,7 @@ Enforce that `get()` types should be assignable to their equivalent `set()` type
 
 - **Printed as:** `eslint-lint/@typescript-eslint/related-getter-setter-pairs`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/related-getter-setter-pairs).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/related-getter-setter-pairs","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/related-getter-setter-pairs)
 
@@ -705,6 +769,7 @@ Disallow async functions which do not return promises and have no `await` expres
 
 - **Printed as:** `eslint-lint/@typescript-eslint/require-await`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/require-await).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/require-await","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/require-await)
 
@@ -716,6 +781,7 @@ Require both operands of addition to be the same type and be `bigint`, `number`,
 
 - **Printed as:** `eslint-lint/@typescript-eslint/restrict-plus-operands`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/restrict-plus-operands).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/restrict-plus-operands","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/restrict-plus-operands)
 
@@ -727,6 +793,7 @@ Enforce template literal expressions to be of `string` type.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/restrict-template-expressions`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/restrict-template-expressions).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/restrict-template-expressions","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/restrict-template-expressions)
 
@@ -738,6 +805,7 @@ Enforce consistent awaiting of returned promises.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/return-await`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/return-await).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/return-await","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/return-await)
 
@@ -749,6 +817,7 @@ Require switch-case statements to be exhaustive.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/switch-exhaustiveness-check`
 - **Why it is on:** Turned on by the preset on top of the ESLint and typescript-eslint rule sets.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/switch-exhaustiveness-check).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/switch-exhaustiveness-check","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/switch-exhaustiveness-check)
 
@@ -760,6 +829,7 @@ Disallow certain triple slash directives in favor of ES6-style import declaratio
 
 - **Printed as:** `eslint-lint/@typescript-eslint/triple-slash-reference`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/triple-slash-reference).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/triple-slash-reference","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/triple-slash-reference)
 
@@ -771,6 +841,7 @@ Enforce unbound methods are called with their expected scope.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/unbound-method`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/unbound-method).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/unbound-method","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/unbound-method)
 
@@ -782,6 +853,7 @@ Disallow two overloads that could be unified into one with a union or an optiona
 
 - **Printed as:** `eslint-lint/@typescript-eslint/unified-signatures`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/unified-signatures).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/unified-signatures","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/unified-signatures)
 
@@ -793,6 +865,7 @@ Enforce typing arguments in Promise rejection callbacks as `unknown`.
 
 - **Printed as:** `eslint-lint/@typescript-eslint/use-unknown-in-catch-callback-variable`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/use-unknown-in-catch-callback-variable).
 - **Exception:** If this is intended, add `{"rule":"@typescript-eslint/use-unknown-in-catch-callback-variable","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/use-unknown-in-catch-callback-variable)
 
@@ -806,6 +879,7 @@ Require `super()` calls in constructors.
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/constructor-super).
 - **Exception:** If this is intended, add `{"rule":"constructor-super","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/constructor-super)
 
@@ -817,6 +891,7 @@ Enforce consistent brace style for all control statements.
 
 - **Printed as:** `eslint-lint/curly`
 - **Why it is on:** Turned on by the preset on top of the ESLint and typescript-eslint rule sets.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/curly).
 - **Exception:** If this is intended, add `{"rule":"curly","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/curly)
 
@@ -828,6 +903,7 @@ Require the use of `===` and `!==`.
 
 - **Printed as:** `eslint-lint/eqeqeq`
 - **Why it is on:** Turned on by the preset on top of the ESLint and typescript-eslint rule sets.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/eqeqeq).
 - **Exception:** If this is intended, add `{"rule":"eqeqeq","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/eqeqeq)
 
@@ -839,6 +915,7 @@ Enforce `for` loop update clause moving the counter in the right direction.
 
 - **Printed as:** `eslint-lint/for-direction`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/for-direction).
 - **Exception:** If this is intended, add `{"rule":"for-direction","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/for-direction)
 
@@ -852,6 +929,7 @@ Enforce `return` statements in getters.
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/getter-return).
 - **Exception:** If this is intended, add `{"rule":"getter-return","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/getter-return)
 
@@ -863,6 +941,7 @@ Disallow using an async function as a Promise executor.
 
 - **Printed as:** `eslint-lint/no-async-promise-executor`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-async-promise-executor).
 - **Exception:** If this is intended, add `{"rule":"no-async-promise-executor","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-async-promise-executor)
 
@@ -874,6 +953,7 @@ Disallow lexical declarations in case clauses.
 
 - **Printed as:** `eslint-lint/no-case-declarations`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-case-declarations).
 - **Exception:** If this is intended, add `{"rule":"no-case-declarations","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-case-declarations)
 
@@ -887,6 +967,7 @@ Disallow reassigning class members.
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-class-assign).
 - **Exception:** If this is intended, add `{"rule":"no-class-assign","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-class-assign)
 
@@ -898,6 +979,7 @@ Disallow comparing against `-0`.
 
 - **Printed as:** `eslint-lint/no-compare-neg-zero`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-compare-neg-zero).
 - **Exception:** If this is intended, add `{"rule":"no-compare-neg-zero","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-compare-neg-zero)
 
@@ -909,6 +991,7 @@ Disallow assignment operators in conditional expressions.
 
 - **Printed as:** `eslint-lint/no-cond-assign`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-cond-assign).
 - **Exception:** If this is intended, add `{"rule":"no-cond-assign","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-cond-assign)
 
@@ -922,6 +1005,7 @@ Disallow reassigning `const`, `using`, and `await using` variables.
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-const-assign).
 - **Exception:** If this is intended, add `{"rule":"no-const-assign","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-const-assign)
 
@@ -933,6 +1017,7 @@ Disallow expressions where the operation doesn't affect the value.
 
 - **Printed as:** `eslint-lint/no-constant-binary-expression`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-constant-binary-expression).
 - **Exception:** If this is intended, add `{"rule":"no-constant-binary-expression","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-constant-binary-expression)
 
@@ -944,6 +1029,7 @@ Disallow constant expressions in conditions.
 
 - **Printed as:** `eslint-lint/no-constant-condition`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-constant-condition).
 - **Exception:** If this is intended, add `{"rule":"no-constant-condition","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-constant-condition)
 
@@ -955,6 +1041,7 @@ Disallow control characters in regular expressions.
 
 - **Printed as:** `eslint-lint/no-control-regex`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-control-regex).
 - **Exception:** If this is intended, add `{"rule":"no-control-regex","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-control-regex)
 
@@ -966,6 +1053,7 @@ Disallow the use of `debugger`.
 
 - **Printed as:** `eslint-lint/no-debugger`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-debugger).
 - **Exception:** If this is intended, add `{"rule":"no-debugger","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-debugger)
 
@@ -977,6 +1065,7 @@ Disallow deleting variables.
 
 - **Printed as:** `eslint-lint/no-delete-var`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-delete-var).
 - **Exception:** If this is intended, add `{"rule":"no-delete-var","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-delete-var)
 
@@ -990,6 +1079,7 @@ Disallow duplicate arguments in `function` definitions.
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-dupe-args).
 - **Exception:** If this is intended, add `{"rule":"no-dupe-args","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-dupe-args)
 
@@ -1003,6 +1093,7 @@ Disallow duplicate class members.
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-dupe-class-members).
 - **Exception:** If this is intended, add `{"rule":"no-dupe-class-members","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-dupe-class-members)
 
@@ -1014,6 +1105,7 @@ Disallow duplicate conditions in if-else-if chains.
 
 - **Printed as:** `eslint-lint/no-dupe-else-if`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-dupe-else-if).
 - **Exception:** If this is intended, add `{"rule":"no-dupe-else-if","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-dupe-else-if)
 
@@ -1027,6 +1119,7 @@ Disallow duplicate keys in object literals.
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-dupe-keys).
 - **Exception:** If this is intended, add `{"rule":"no-dupe-keys","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-dupe-keys)
 
@@ -1038,6 +1131,7 @@ Disallow duplicate case labels.
 
 - **Printed as:** `eslint-lint/no-duplicate-case`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-duplicate-case).
 - **Exception:** If this is intended, add `{"rule":"no-duplicate-case","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-duplicate-case)
 
@@ -1049,6 +1143,7 @@ Disallow duplicate module imports.
 
 - **Printed as:** `eslint-lint/no-duplicate-imports`
 - **Why it is on:** Turned on by the preset on top of the ESLint and typescript-eslint rule sets.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-duplicate-imports).
 - **Exception:** If this is intended, add `{"rule":"no-duplicate-imports","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-duplicate-imports)
 
@@ -1060,6 +1155,7 @@ Disallow empty block statements.
 
 - **Printed as:** `eslint-lint/no-empty`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-empty).
 - **Exception:** If this is intended, add `{"rule":"no-empty","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-empty)
 
@@ -1071,6 +1167,7 @@ Disallow empty character classes in regular expressions.
 
 - **Printed as:** `eslint-lint/no-empty-character-class`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-empty-character-class).
 - **Exception:** If this is intended, add `{"rule":"no-empty-character-class","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-empty-character-class)
 
@@ -1082,6 +1179,7 @@ Disallow empty destructuring patterns.
 
 - **Printed as:** `eslint-lint/no-empty-pattern`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-empty-pattern).
 - **Exception:** If this is intended, add `{"rule":"no-empty-pattern","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-empty-pattern)
 
@@ -1093,6 +1191,7 @@ Disallow empty static blocks.
 
 - **Printed as:** `eslint-lint/no-empty-static-block`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-empty-static-block).
 - **Exception:** If this is intended, add `{"rule":"no-empty-static-block","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-empty-static-block)
 
@@ -1104,6 +1203,7 @@ Disallow the use of `eval()`.
 
 - **Printed as:** `eslint-lint/no-eval`
 - **Why it is on:** Turned on by the preset on top of the ESLint and typescript-eslint rule sets.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-eval).
 - **Exception:** If this is intended, add `{"rule":"no-eval","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-eval)
 
@@ -1115,6 +1215,7 @@ Disallow reassigning exceptions in `catch` clauses.
 
 - **Printed as:** `eslint-lint/no-ex-assign`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-ex-assign).
 - **Exception:** If this is intended, add `{"rule":"no-ex-assign","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-ex-assign)
 
@@ -1126,6 +1227,7 @@ Disallow unnecessary boolean casts.
 
 - **Printed as:** `eslint-lint/no-extra-boolean-cast`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-extra-boolean-cast).
 - **Exception:** If this is intended, add `{"rule":"no-extra-boolean-cast","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-extra-boolean-cast)
 
@@ -1137,6 +1239,7 @@ Disallow fallthrough of `case` statements.
 
 - **Printed as:** `eslint-lint/no-fallthrough`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-fallthrough).
 - **Exception:** If this is intended, add `{"rule":"no-fallthrough","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-fallthrough)
 
@@ -1150,6 +1253,7 @@ Disallow reassigning `function` declarations.
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-func-assign).
 - **Exception:** If this is intended, add `{"rule":"no-func-assign","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-func-assign)
 
@@ -1161,6 +1265,7 @@ Disallow assignments to native objects or read-only global variables.
 
 - **Printed as:** `eslint-lint/no-global-assign`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-global-assign).
 - **Exception:** If this is intended, add `{"rule":"no-global-assign","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-global-assign)
 
@@ -1174,6 +1279,7 @@ Disallow assigning to imported bindings.
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-import-assign).
 - **Exception:** If this is intended, add `{"rule":"no-import-assign","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-import-assign)
 
@@ -1185,6 +1291,7 @@ Disallow invalid regular expression strings in `RegExp` constructors.
 
 - **Printed as:** `eslint-lint/no-invalid-regexp`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-invalid-regexp).
 - **Exception:** If this is intended, add `{"rule":"no-invalid-regexp","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-invalid-regexp)
 
@@ -1196,6 +1303,7 @@ Disallow irregular whitespace.
 
 - **Printed as:** `eslint-lint/no-irregular-whitespace`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-irregular-whitespace).
 - **Exception:** If this is intended, add `{"rule":"no-irregular-whitespace","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-irregular-whitespace)
 
@@ -1207,6 +1315,7 @@ Disallow literal numbers that lose precision.
 
 - **Printed as:** `eslint-lint/no-loss-of-precision`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-loss-of-precision).
 - **Exception:** If this is intended, add `{"rule":"no-loss-of-precision","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-loss-of-precision)
 
@@ -1218,6 +1327,7 @@ Disallow characters which are made with multiple code points in character class 
 
 - **Printed as:** `eslint-lint/no-misleading-character-class`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-misleading-character-class).
 - **Exception:** If this is intended, add `{"rule":"no-misleading-character-class","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-misleading-character-class)
 
@@ -1231,6 +1341,7 @@ Disallow `new` operators with global non-constructor functions.
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-new-native-nonconstructor).
 - **Exception:** If this is intended, add `{"rule":"no-new-native-nonconstructor","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-new-native-nonconstructor)
 
@@ -1242,6 +1353,7 @@ Disallow `\8` and `\9` escape sequences in string literals.
 
 - **Printed as:** `eslint-lint/no-nonoctal-decimal-escape`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-nonoctal-decimal-escape).
 - **Exception:** If this is intended, add `{"rule":"no-nonoctal-decimal-escape","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-nonoctal-decimal-escape)
 
@@ -1255,6 +1367,7 @@ Disallow calling global object properties as functions.
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-obj-calls).
 - **Exception:** If this is intended, add `{"rule":"no-obj-calls","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-obj-calls)
 
@@ -1266,6 +1379,7 @@ Disallow octal literals.
 
 - **Printed as:** `eslint-lint/no-octal`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-octal).
 - **Exception:** If this is intended, add `{"rule":"no-octal","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-octal)
 
@@ -1277,6 +1391,7 @@ Disallow reassigning function parameters.
 
 - **Printed as:** `eslint-lint/no-param-reassign`
 - **Why it is on:** Turned on by the preset on top of the ESLint and typescript-eslint rule sets.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-param-reassign).
 - **Exception:** If this is intended, add `{"rule":"no-param-reassign","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-param-reassign)
 
@@ -1288,6 +1403,7 @@ Disallow calling some `Object.prototype` methods directly on objects.
 
 - **Printed as:** `eslint-lint/no-prototype-builtins`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-prototype-builtins).
 - **Exception:** If this is intended, add `{"rule":"no-prototype-builtins","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-prototype-builtins)
 
@@ -1301,6 +1417,7 @@ Disallow variable redeclaration.
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-redeclare).
 - **Exception:** If this is intended, add `{"rule":"no-redeclare","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-redeclare)
 
@@ -1312,6 +1429,7 @@ Disallow multiple spaces in regular expressions.
 
 - **Printed as:** `eslint-lint/no-regex-spaces`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-regex-spaces).
 - **Exception:** If this is intended, add `{"rule":"no-regex-spaces","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-regex-spaces)
 
@@ -1323,6 +1441,7 @@ Disallow specified global variables.
 
 - **Printed as:** `eslint-lint/no-restricted-globals`
 - **Why it is on:** The presets list the forms they ban in the options of this rule. Each form has a message that names the allowed form.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-restricted-globals).
 - **Exception:** If this is intended, add `{"rule":"no-restricted-globals","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - `process`, `fetch`, `setTimeout`, `setInterval`, `setImmediate`, `queueMicrotask`, `performance`, `XMLHttpRequest`, `WebSocket`, `localStorage`, `sessionStorage`: domain/ code does no I/O and does not touch the process or timers: do it in adapters/ and pass the result in as a parameter. An exception fits only when it is deliberate.
@@ -1336,6 +1455,7 @@ Disallow certain properties on certain objects.
 
 - **Printed as:** `eslint-lint/no-restricted-properties`
 - **Why it is on:** The presets list the forms they ban in the options of this rule. Each form has a message that names the allowed form.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-restricted-properties).
 - **Exception:** If this is intended, add `{"rule":"no-restricted-properties","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - `Math.random`: Math.random() is predictable, so it must not make ids or tokens: use crypto.randomUUID() or crypto.randomInt(), or take the random value as a parameter. An exception fits only for a simulation or UI jitter.
@@ -1350,6 +1470,7 @@ Disallow specified syntax.
 
 - **Printed as:** `eslint-lint/no-restricted-syntax`
 - **Why it is on:** The presets list the forms they ban in the options of this rule. Each form has a message that names the allowed form.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-restricted-syntax).
 - **Exception:** If this is intended, add `{"rule":"no-restricted-syntax","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.
@@ -1402,6 +1523,7 @@ Disallow assignments where both sides are exactly the same.
 
 - **Printed as:** `eslint-lint/no-self-assign`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-self-assign).
 - **Exception:** If this is intended, add `{"rule":"no-self-assign","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-self-assign)
 
@@ -1415,6 +1537,7 @@ Disallow returning values from setters.
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-setter-return).
 - **Exception:** If this is intended, add `{"rule":"no-setter-return","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-setter-return)
 
@@ -1426,6 +1549,7 @@ Disallow identifiers from shadowing restricted names.
 
 - **Printed as:** `eslint-lint/no-shadow-restricted-names`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-shadow-restricted-names).
 - **Exception:** If this is intended, add `{"rule":"no-shadow-restricted-names","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-shadow-restricted-names)
 
@@ -1437,6 +1561,7 @@ Disallow sparse arrays.
 
 - **Printed as:** `eslint-lint/no-sparse-arrays`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-sparse-arrays).
 - **Exception:** If this is intended, add `{"rule":"no-sparse-arrays","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-sparse-arrays)
 
@@ -1450,6 +1575,7 @@ Disallow `this`/`super` before calling `super()` in constructors.
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-this-before-super).
 - **Exception:** If this is intended, add `{"rule":"no-this-before-super","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-this-before-super)
 
@@ -1461,6 +1587,7 @@ Disallow `let` or `var` variables that are read but never assigned.
 
 - **Printed as:** `eslint-lint/no-unassigned-vars`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-unassigned-vars).
 - **Exception:** If this is intended, add `{"rule":"no-unassigned-vars","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-unassigned-vars)
 
@@ -1474,6 +1601,7 @@ Disallow the use of undeclared variables unless mentioned in `/*global */` comme
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-undef).
 - **Exception:** If this is intended, add `{"rule":"no-undef","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-undef)
 
@@ -1485,6 +1613,7 @@ Disallow confusing multiline expressions.
 
 - **Printed as:** `eslint-lint/no-unexpected-multiline`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-unexpected-multiline).
 - **Exception:** If this is intended, add `{"rule":"no-unexpected-multiline","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-unexpected-multiline)
 
@@ -1498,6 +1627,7 @@ Disallow unreachable code after `return`, `throw`, `continue`, and `break` state
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-unreachable).
 - **Exception:** If this is intended, add `{"rule":"no-unreachable","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-unreachable)
 
@@ -1509,6 +1639,7 @@ Disallow control flow statements in `finally` blocks.
 
 - **Printed as:** `eslint-lint/no-unsafe-finally`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-unsafe-finally).
 - **Exception:** If this is intended, add `{"rule":"no-unsafe-finally","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-unsafe-finally)
 
@@ -1522,6 +1653,7 @@ Disallow negating the left operand of relational operators.
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-unsafe-negation).
 - **Exception:** If this is intended, add `{"rule":"no-unsafe-negation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-unsafe-negation)
 
@@ -1533,6 +1665,7 @@ Disallow use of optional chaining in contexts where the `undefined` value is not
 
 - **Printed as:** `eslint-lint/no-unsafe-optional-chaining`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-unsafe-optional-chaining).
 - **Exception:** If this is intended, add `{"rule":"no-unsafe-optional-chaining","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-unsafe-optional-chaining)
 
@@ -1544,6 +1677,7 @@ Disallow unused labels.
 
 - **Printed as:** `eslint-lint/no-unused-labels`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-unused-labels).
 - **Exception:** If this is intended, add `{"rule":"no-unused-labels","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-unused-labels)
 
@@ -1555,6 +1689,7 @@ Disallow unused private class members.
 
 - **Printed as:** `eslint-lint/no-unused-private-class-members`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-unused-private-class-members).
 - **Exception:** If this is intended, add `{"rule":"no-unused-private-class-members","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-unused-private-class-members)
 
@@ -1566,6 +1701,7 @@ Disallow variable assignments when the value is not used.
 
 - **Printed as:** `eslint-lint/no-useless-assignment`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-useless-assignment).
 - **Exception:** If this is intended, add `{"rule":"no-useless-assignment","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-useless-assignment)
 
@@ -1577,6 +1713,7 @@ Disallow useless backreferences in regular expressions.
 
 - **Printed as:** `eslint-lint/no-useless-backreference`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-useless-backreference).
 - **Exception:** If this is intended, add `{"rule":"no-useless-backreference","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-useless-backreference)
 
@@ -1588,6 +1725,7 @@ Disallow unnecessary `catch` clauses.
 
 - **Printed as:** `eslint-lint/no-useless-catch`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-useless-catch).
 - **Exception:** If this is intended, add `{"rule":"no-useless-catch","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-useless-catch)
 
@@ -1599,6 +1737,7 @@ Disallow unnecessary escape characters.
 
 - **Printed as:** `eslint-lint/no-useless-escape`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-useless-escape).
 - **Exception:** If this is intended, add `{"rule":"no-useless-escape","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-useless-escape)
 
@@ -1610,6 +1749,7 @@ Require `let` or `const` instead of `var`.
 
 - **Printed as:** `eslint-lint/no-var`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-var).
 - **Exception:** If this is intended, add `{"rule":"no-var","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-var)
 
@@ -1623,6 +1763,7 @@ Disallow `with` statements.
 - **Presets:** JavaScript
 - **Scope:** The JavaScript preset only.
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/no-with).
 - **Exception:** If this is intended, add `{"rule":"no-with","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/no-with)
 
@@ -1634,6 +1775,7 @@ Require `const` declarations for variables that are never reassigned after decla
 
 - **Printed as:** `eslint-lint/prefer-const`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/prefer-const).
 - **Exception:** If this is intended, add `{"rule":"prefer-const","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/prefer-const)
 
@@ -1645,6 +1787,7 @@ Require rest parameters instead of `arguments`.
 
 - **Printed as:** `eslint-lint/prefer-rest-params`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/prefer-rest-params).
 - **Exception:** If this is intended, add `{"rule":"prefer-rest-params","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/prefer-rest-params)
 
@@ -1656,6 +1799,7 @@ Require spread operators instead of `.apply()`.
 
 - **Printed as:** `eslint-lint/prefer-spread`
 - **Why it is on:** Part of typescript-eslint's strictTypeChecked rules, which the presets turn on in full (type-aware: the rule reads the project's types).
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/prefer-spread).
 - **Exception:** If this is intended, add `{"rule":"prefer-spread","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/prefer-spread)
 
@@ -1667,6 +1811,7 @@ Disallow losing originally caught error when re-throwing custom errors.
 
 - **Printed as:** `eslint-lint/preserve-caught-error`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/preserve-caught-error).
 - **Exception:** If this is intended, add `{"rule":"preserve-caught-error","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/preserve-caught-error)
 
@@ -1678,6 +1823,7 @@ Require generator functions to contain `yield`.
 
 - **Printed as:** `eslint-lint/require-yield`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/require-yield).
 - **Exception:** If this is intended, add `{"rule":"require-yield","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/require-yield)
 
@@ -1689,6 +1835,7 @@ Require calls to `isNaN()` when checking for `NaN`.
 
 - **Printed as:** `eslint-lint/use-isnan`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/use-isnan).
 - **Exception:** If this is intended, add `{"rule":"use-isnan","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/use-isnan)
 
@@ -1700,5 +1847,6 @@ Enforce comparing `typeof` expressions against valid strings.
 
 - **Printed as:** `eslint-lint/valid-typeof`
 - **Why it is on:** Part of ESLint's recommended rules, which the TypeScript and JavaScript presets turn on in full.
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/valid-typeof).
 - **Exception:** If this is intended, add `{"rule":"valid-typeof","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/valid-typeof)

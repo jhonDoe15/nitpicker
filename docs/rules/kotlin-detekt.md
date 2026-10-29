@@ -4,19 +4,24 @@ detekt's default rules and the one-way rules nitpicker pins on top of them (`det
 
 The guide for these rules: [docs/kotlin-preset.md#one-way-rules](../kotlin-preset.md#one-way-rules).
 
+The descriptions of detekt's rules are from detekt 1.23.8, under the Apache License 2.0.
+
+In the Kotlin preset, an entry of `exceptions` names a detekt rule as `detekt.<ruleset>.<Rule>`, one of these rules: `catch-log-without-exception`, `test-without-assertion`, `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`, `duplicate-clone`, `stability-direction`, `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`, `co-change`, `test-only-export`, `test-console-output`, `folder-depth-limit`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`, `test-runtime/slow-test`, `test-runtime/test-console-output`, `test-runtime/test-not-run`, `coupling/test-only-export`, `kotlin-source/GeneratedOnHandWrittenCode`, `kotlin-source/MutationIgnoreMarker`, `kotlin-source/CommentedOutCode`, `kotlin-source/MutableModuleState`, `kotlin-source/GenericTypeName`, `kotlin-source/GenericPackageName`, `kotlin-source/LogStringConcatenation`, `kotlin-source/ShellCommand`, `kotlin-source/IoCallInLoop`, `kotlin-source/CatchOnlyLogsOrReturnsDefault`, `kotlin-source/BooleanFlagParameter`, `kotlin-source/HardcodedSecret`, `kotlin-source/CredentialLiteral`, `kotlin-source/SecretInLog`, `kotlin-source/TestClassWithoutTestCases`, `kotlin-source/DetachedTestCase`, `kotlin-source/TestHelperInSource`, `kotlin-source/SqlStringBuilding`, `kotlin-source/WeakHash`, `kotlin-source/TlsVerificationOff`, `kotlin-source/HttpWithoutTimeout`, `kotlin-source/UnsafeDeserialization`, `kotlinc/deprecation`, `kotlinc/unchecked`, `kotlinc/cast`, `kotlinc/lint-not-run`, `pmd/FixedSleepInTest`, `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/AssertionInControlFlow`, `pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`, `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/SpringConstructorInjection`, `pmd/SpringImmutableBeans`, `pmd/SpringNoServiceLocator`, `pmd/SpringNoLazyInjection`, `pmd/SpringLiteConfiguration`, `pmd/SpringNoComponentScan`, `pmd/SpringBeanCollectionState`, `pmd/SpringHttpClientPerCall`, `pmd/SpringHttpClientTimeouts`, `pmd/SpringNoPostConstructIo`, `pmd/SpringTypedConfiguration`, `pmd/SpringValueSecretDefault`, `pmd/SpringProfileOnConfiguration`, `pmd/SpringProxyMethodVisibility`, `pmd/SpringProxySelfCall`, `pmd/SpringTransactionalAnnotation`, `pmd/SpringNoTransactionalController`, `pmd/SpringNoRequiresNew`, `pmd/SpringNoSwallowedTransactionException`, `pmd/SpringTransactionalCheckedRollback`, `pmd/SpringTransactionalReadOnlyWrite`, `pmd/SpringAsyncExecutor`, `pmd/SpringScheduledFixedDelay`, `pmd/SpringComposedMapping`, `pmd/SpringRestController`, `pmd/SpringValidRequestBody`, `pmd/SpringTypedResponse`, `pmd/SpringTypedRequestBody`, `pmd/SpringNoErrorLeak`, `pmd/SpringNoCrossOrigin`, `pmd/SpringCorsWildcard`, `pmd/SpringPasswordEncoder`, `pmd/SpringPermitAllAnyRequest`, `pmd/SpringCsrfDisabled`, `pmd/SpringHardcodedUser`, `pmd/JpaLazyFetching`, `pmd/JpaEntityClass`, `pmd/JpaManyToManyCascade`, `pmd/JpaManyToManySet`, `pmd/JpaVersion`, `pmd/JpaSequenceIds`, `pmd/JpaEnumString`, `pmd/JpaIdentityHashCode`, `pmd/SpringDataDerivedQuery`, `pmd/SpringDataNativeQuery`, `pmd/SpringDataModifyingQuery`, `pmd/SpringDataNoSaveInLoop`, `pmd/SpringDataNoFlush`, `pmd/SpringDataNamedParameters`, `pmd/SpringDataQueryTextBlock`, `pmd/SpringDataBatchOfOne`, `pmd/SpringDataRowWriteInLoop`, `pmd/SpringDataSaveInLoopHelper`, `pmd/SpringDataFilterInQuery`, `pmd/SpringQueryConcatenation` and `unused-option`, or, for the Java sources of the project, a finding as it prints, `<tool>/<rule>` with one of the tools `pmd`, `spotbugs`, `errorprone`, `archunit`, `google-java-format`, `palantir-java-format`, `jacoco`, `checkstyle`, `crap`, `duplicates`, `pit`, `structure`, `coupling`, `spring` and `test-runtime`.
+
 Unless an entry says otherwise:
 
 - **Presets:** Kotlin
 - **Analyzers:** `kotlin`
-- **Builds:** Gradle and Maven
-- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Builds:** Gradle
 
 <a id="detekt-detekt-complexity-complexcondition"></a>
 
 ### `detekt/detekt.complexity.ComplexCondition`
 
-Complex condition.
+Complex conditions should be simplified and extracted into well-named methods if necessary.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/complexity#complexcondition).
 - **Exception:** If this is intended, add `{"rule":"detekt.complexity.ComplexCondition","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/complexity#complexcondition)
 
@@ -24,8 +29,10 @@ Complex condition.
 
 ### `detekt/detekt.complexity.CyclomaticComplexMethod`
 
-Cyclomatic complex method.
+Prefer splitting up complex methods into smaller, easier to test methods.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/complexity#cyclomaticcomplexmethod).
 - **Exception:** If this is intended, add `{"rule":"detekt.complexity.CyclomaticComplexMethod","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/complexity#cyclomaticcomplexmethod)
 
@@ -33,8 +40,10 @@ Cyclomatic complex method.
 
 ### `detekt/detekt.complexity.LargeClass`
 
-Large class.
+One class should have one responsibility.
 
+- **Why it is on:** Large classes tend to handle many things at once. Split up large classes into smaller classes that are easier to understand. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/complexity#largeclass).
 - **Exception:** If this is intended, add `{"rule":"detekt.complexity.LargeClass","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/complexity#largeclass)
 
@@ -42,8 +51,10 @@ Large class.
 
 ### `detekt/detekt.complexity.LongMethod`
 
-Long method.
+One method should have one responsibility.
 
+- **Why it is on:** Long methods tend to handle many things at once. Prefer smaller methods to make them easier to understand. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/complexity#longmethod).
 - **Exception:** If this is intended, add `{"rule":"detekt.complexity.LongMethod","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/complexity#longmethod)
 
@@ -51,8 +62,10 @@ Long method.
 
 ### `detekt/detekt.complexity.LongParameterList`
 
-Long parameter list.
+The more parameters a function has the more complex it is.
 
+- **Why it is on:** Long parameter lists are often used to control complex algorithms and violate the Single Responsibility Principle. Prefer functions with short parameter lists. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/complexity#longparameterlist).
 - **Exception:** If this is intended, add `{"rule":"detekt.complexity.LongParameterList","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/complexity#longparameterlist)
 
@@ -60,8 +73,10 @@ Long parameter list.
 
 ### `detekt/detekt.complexity.NestedBlockDepth`
 
-Nested block depth.
+Excessive nesting leads to hidden complexity.
 
+- **Why it is on:** Prefer extracting code to make it easier to understand. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/complexity#nestedblockdepth).
 - **Exception:** If this is intended, add `{"rule":"detekt.complexity.NestedBlockDepth","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/complexity#nestedblockdepth)
 
@@ -69,9 +84,9 @@ Nested block depth.
 
 ### `detekt/detekt.complexity.StringLiteralDuplication`
 
-String literal duplication.
+Multiple occurrences of the same string literal within a single file detected.
 
-- **Why it is on:** A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Why it is on:** Prefer extracting the string literal into a property or constant. A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
 - **Allowed form:** Name it once as a constant (`private const val NAME = "..."`) and use the constant.
 - **Exception:** If this is intended, add `{"rule":"detekt.complexity.StringLiteralDuplication","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [detekt rule](https://detekt.dev/docs/rules/complexity#stringliteralduplication)
@@ -80,8 +95,10 @@ String literal duplication.
 
 ### `detekt/detekt.complexity.TooManyFunctions`
 
-Too many functions.
+Too many functions inside a/an file/class/object/interface always indicate a violation of the single responsibility principle.
 
+- **Why it is on:** Maybe the file/class/object/interface wants to manage too many things at once. Extract functionality which clearly belongs together. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/complexity#toomanyfunctions).
 - **Exception:** If this is intended, add `{"rule":"detekt.complexity.TooManyFunctions","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/complexity#toomanyfunctions)
 
@@ -89,9 +106,10 @@ Too many functions.
 
 ### `detekt/detekt.coroutines.GlobalCoroutineUsage`
 
-Global coroutine usage.
+The usage of the `GlobalScope` instance is highly discouraged.
 
 - **Why it is on:** A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/coroutines#globalcoroutineusage).
 - **Exception:** If this is intended, add `{"rule":"detekt.coroutines.GlobalCoroutineUsage","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [detekt rule](https://detekt.dev/docs/rules/coroutines#globalcoroutineusage)
 
@@ -99,8 +117,10 @@ Global coroutine usage.
 
 ### `detekt/detekt.coroutines.InjectDispatcher`
 
-Inject dispatcher.
+Don't hardcode dispatchers when creating new coroutines or calling `withContext`.
 
+- **Why it is on:** Use dependency injection for dispatchers to make testing easier. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/coroutines#injectdispatcher).
 - **Exception:** If this is intended, add `{"rule":"detekt.coroutines.InjectDispatcher","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/coroutines#injectdispatcher)
 
@@ -108,8 +128,10 @@ Inject dispatcher.
 
 ### `detekt/detekt.coroutines.RedundantSuspendModifier`
 
-Redundant suspend modifier.
+The `suspend` modifier is only needed for functions that contain suspending calls.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/coroutines#redundantsuspendmodifier).
 - **Exception:** If this is intended, add `{"rule":"detekt.coroutines.RedundantSuspendModifier","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/coroutines#redundantsuspendmodifier)
 
@@ -117,8 +139,10 @@ Redundant suspend modifier.
 
 ### `detekt/detekt.coroutines.SleepInsteadOfDelay`
 
-Sleep instead of delay.
+Usage of `Thread.sleep()` in coroutines can potentially halt multiple coroutines at once.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/coroutines#sleepinsteadofdelay).
 - **Exception:** If this is intended, add `{"rule":"detekt.coroutines.SleepInsteadOfDelay","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/coroutines#sleepinsteadofdelay)
 
@@ -126,8 +150,10 @@ Sleep instead of delay.
 
 ### `detekt/detekt.coroutines.SuspendFunWithFlowReturnType`
 
-Suspend fun with flow return type.
+The `suspend` modifier should not be used for functions that return a Coroutines Flow type.
 
+- **Why it is on:** Flows are cold streams and invoking a function that returns one should not produce any side effects. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/coroutines#suspendfunwithflowreturntype).
 - **Exception:** If this is intended, add `{"rule":"detekt.coroutines.SuspendFunWithFlowReturnType","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/coroutines#suspendfunwithflowreturntype)
 
@@ -135,8 +161,10 @@ Suspend fun with flow return type.
 
 ### `detekt/detekt.empty-blocks.EmptyCatchBlock`
 
-Empty catch block.
+Empty catch block detected.
 
+- **Why it is on:** Empty catch blocks indicate that an exception is ignored and not handled. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptycatchblock).
 - **Exception:** If this is intended, add `{"rule":"detekt.empty-blocks.EmptyCatchBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptycatchblock)
 
@@ -144,8 +172,10 @@ Empty catch block.
 
 ### `detekt/detekt.empty-blocks.EmptyClassBlock`
 
-Empty class block.
+Empty block of code detected.
 
+- **Why it is on:** As they serve no purpose they should be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptyclassblock).
 - **Exception:** If this is intended, add `{"rule":"detekt.empty-blocks.EmptyClassBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptyclassblock)
 
@@ -153,8 +183,10 @@ Empty class block.
 
 ### `detekt/detekt.empty-blocks.EmptyDefaultConstructor`
 
-Empty default constructor.
+Empty block of code detected.
 
+- **Why it is on:** As they serve no purpose they should be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptydefaultconstructor).
 - **Exception:** If this is intended, add `{"rule":"detekt.empty-blocks.EmptyDefaultConstructor","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptydefaultconstructor)
 
@@ -162,8 +194,10 @@ Empty default constructor.
 
 ### `detekt/detekt.empty-blocks.EmptyDoWhileBlock`
 
-Empty do while block.
+Empty block of code detected.
 
+- **Why it is on:** As they serve no purpose they should be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptydowhileblock).
 - **Exception:** If this is intended, add `{"rule":"detekt.empty-blocks.EmptyDoWhileBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptydowhileblock)
 
@@ -171,8 +205,10 @@ Empty do while block.
 
 ### `detekt/detekt.empty-blocks.EmptyElseBlock`
 
-Empty else block.
+Empty block of code detected.
 
+- **Why it is on:** As they serve no purpose they should be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptyelseblock).
 - **Exception:** If this is intended, add `{"rule":"detekt.empty-blocks.EmptyElseBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptyelseblock)
 
@@ -180,8 +216,10 @@ Empty else block.
 
 ### `detekt/detekt.empty-blocks.EmptyFinallyBlock`
 
-Empty finally block.
+Empty block of code detected.
 
+- **Why it is on:** As they serve no purpose they should be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptyfinallyblock).
 - **Exception:** If this is intended, add `{"rule":"detekt.empty-blocks.EmptyFinallyBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptyfinallyblock)
 
@@ -189,8 +227,10 @@ Empty finally block.
 
 ### `detekt/detekt.empty-blocks.EmptyForBlock`
 
-Empty for block.
+Empty block of code detected.
 
+- **Why it is on:** As they serve no purpose they should be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptyforblock).
 - **Exception:** If this is intended, add `{"rule":"detekt.empty-blocks.EmptyForBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptyforblock)
 
@@ -198,8 +238,10 @@ Empty for block.
 
 ### `detekt/detekt.empty-blocks.EmptyFunctionBlock`
 
-Empty function block.
+Empty block of code detected.
 
+- **Why it is on:** As they serve no purpose they should be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptyfunctionblock).
 - **Exception:** If this is intended, add `{"rule":"detekt.empty-blocks.EmptyFunctionBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptyfunctionblock)
 
@@ -207,8 +249,10 @@ Empty function block.
 
 ### `detekt/detekt.empty-blocks.EmptyIfBlock`
 
-Empty if block.
+Empty block of code detected.
 
+- **Why it is on:** As they serve no purpose they should be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptyifblock).
 - **Exception:** If this is intended, add `{"rule":"detekt.empty-blocks.EmptyIfBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptyifblock)
 
@@ -216,8 +260,10 @@ Empty if block.
 
 ### `detekt/detekt.empty-blocks.EmptyInitBlock`
 
-Empty init block.
+Empty block of code detected.
 
+- **Why it is on:** As they serve no purpose they should be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptyinitblock).
 - **Exception:** If this is intended, add `{"rule":"detekt.empty-blocks.EmptyInitBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptyinitblock)
 
@@ -225,8 +271,10 @@ Empty init block.
 
 ### `detekt/detekt.empty-blocks.EmptyKtFile`
 
-Empty kt file.
+Empty block of code detected.
 
+- **Why it is on:** As they serve no purpose they should be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptyktfile).
 - **Exception:** If this is intended, add `{"rule":"detekt.empty-blocks.EmptyKtFile","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptyktfile)
 
@@ -234,8 +282,10 @@ Empty kt file.
 
 ### `detekt/detekt.empty-blocks.EmptySecondaryConstructor`
 
-Empty secondary constructor.
+Empty block of code detected.
 
+- **Why it is on:** As they serve no purpose they should be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptysecondaryconstructor).
 - **Exception:** If this is intended, add `{"rule":"detekt.empty-blocks.EmptySecondaryConstructor","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptysecondaryconstructor)
 
@@ -243,8 +293,10 @@ Empty secondary constructor.
 
 ### `detekt/detekt.empty-blocks.EmptyTryBlock`
 
-Empty try block.
+Empty block of code detected.
 
+- **Why it is on:** As they serve no purpose they should be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptytryblock).
 - **Exception:** If this is intended, add `{"rule":"detekt.empty-blocks.EmptyTryBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptytryblock)
 
@@ -252,8 +304,10 @@ Empty try block.
 
 ### `detekt/detekt.empty-blocks.EmptyWhenBlock`
 
-Empty when block.
+Empty block of code detected.
 
+- **Why it is on:** As they serve no purpose they should be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptywhenblock).
 - **Exception:** If this is intended, add `{"rule":"detekt.empty-blocks.EmptyWhenBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptywhenblock)
 
@@ -261,8 +315,10 @@ Empty when block.
 
 ### `detekt/detekt.empty-blocks.EmptyWhileBlock`
 
-Empty while block.
+Empty block of code detected.
 
+- **Why it is on:** As they serve no purpose they should be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptywhileblock).
 - **Exception:** If this is intended, add `{"rule":"detekt.empty-blocks.EmptyWhileBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/empty-blocks#emptywhileblock)
 
@@ -270,8 +326,10 @@ Empty while block.
 
 ### `detekt/detekt.exceptions.ExceptionRaisedInUnexpectedLocation`
 
-Exception raised in unexpected location.
+This method is not expected to throw exceptions.
 
+- **Why it is on:** This can cause weird behavior. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/exceptions#exceptionraisedinunexpectedlocation).
 - **Exception:** If this is intended, add `{"rule":"detekt.exceptions.ExceptionRaisedInUnexpectedLocation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/exceptions#exceptionraisedinunexpectedlocation)
 
@@ -279,8 +337,10 @@ Exception raised in unexpected location.
 
 ### `detekt/detekt.exceptions.InstanceOfCheckForException`
 
-Instance of check for exception.
+Instead of catching for a general exception type and checking for a specific exception type, use multiple catch blocks.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/exceptions#instanceofcheckforexception).
 - **Exception:** If this is intended, add `{"rule":"detekt.exceptions.InstanceOfCheckForException","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/exceptions#instanceofcheckforexception)
 
@@ -288,8 +348,10 @@ Instance of check for exception.
 
 ### `detekt/detekt.exceptions.PrintStackTrace`
 
-Print stack trace.
+Do not print a stack trace.
 
+- **Why it is on:** These debug statements should be removed or replaced with a logger. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/exceptions#printstacktrace).
 - **Exception:** If this is intended, add `{"rule":"detekt.exceptions.PrintStackTrace","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/exceptions#printstacktrace)
 
@@ -297,8 +359,10 @@ Print stack trace.
 
 ### `detekt/detekt.exceptions.RethrowCaughtException`
 
-Rethrow caught exception.
+Do not rethrow a caught exception of the same type.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/exceptions#rethrowcaughtexception).
 - **Exception:** If this is intended, add `{"rule":"detekt.exceptions.RethrowCaughtException","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/exceptions#rethrowcaughtexception)
 
@@ -306,8 +370,10 @@ Rethrow caught exception.
 
 ### `detekt/detekt.exceptions.ReturnFromFinally`
 
-Return from finally.
+Do not return within a finally statement.
 
+- **Why it is on:** This can discard exceptions. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/exceptions#returnfromfinally).
 - **Exception:** If this is intended, add `{"rule":"detekt.exceptions.ReturnFromFinally","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/exceptions#returnfromfinally)
 
@@ -315,8 +381,10 @@ Return from finally.
 
 ### `detekt/detekt.exceptions.SwallowedException`
 
-Swallowed exception.
+The caught exception is swallowed.
 
+- **Why it is on:** The original exception could be lost. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/exceptions#swallowedexception).
 - **Exception:** If this is intended, add `{"rule":"detekt.exceptions.SwallowedException","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/exceptions#swallowedexception)
 
@@ -324,8 +392,10 @@ Swallowed exception.
 
 ### `detekt/detekt.exceptions.ThrowingExceptionFromFinally`
 
-Throwing exception from finally.
+Do not throw an exception within a finally statement.
 
+- **Why it is on:** This can discard exceptions and is confusing. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/exceptions#throwingexceptionfromfinally).
 - **Exception:** If this is intended, add `{"rule":"detekt.exceptions.ThrowingExceptionFromFinally","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/exceptions#throwingexceptionfromfinally)
 
@@ -333,8 +403,10 @@ Throwing exception from finally.
 
 ### `detekt/detekt.exceptions.ThrowingExceptionsWithoutMessageOrCause`
 
-Throwing exceptions without message or cause.
+A call to the default constructor of an exception was detected.
 
+- **Why it is on:** Instead one of the constructor overloads should be called. This allows to provide more meaningful exceptions. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/exceptions#throwingexceptionswithoutmessageorcause).
 - **Exception:** If this is intended, add `{"rule":"detekt.exceptions.ThrowingExceptionsWithoutMessageOrCause","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/exceptions#throwingexceptionswithoutmessageorcause)
 
@@ -342,8 +414,10 @@ Throwing exceptions without message or cause.
 
 ### `detekt/detekt.exceptions.ThrowingNewInstanceOfSameException`
 
-Throwing new instance of same exception.
+Avoid catch blocks that rethrow a caught exception wrapped inside a new instance of the same exception.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/exceptions#throwingnewinstanceofsameexception).
 - **Exception:** If this is intended, add `{"rule":"detekt.exceptions.ThrowingNewInstanceOfSameException","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/exceptions#throwingnewinstanceofsameexception)
 
@@ -351,9 +425,9 @@ Throwing new instance of same exception.
 
 ### `detekt/detekt.exceptions.TooGenericExceptionCaught`
 
-Too generic exception caught.
+The caught exception is too generic.
 
-- **Why it is on:** A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Why it is on:** Prefer catching specific exceptions to the case that is currently handled. A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
 - **Allowed form:** In a test, use `assertFailsWith`.
 - **Exception:** If this is intended, add `{"rule":"detekt.exceptions.TooGenericExceptionCaught","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [detekt rule](https://detekt.dev/docs/rules/exceptions#toogenericexceptioncaught)
@@ -362,8 +436,10 @@ Too generic exception caught.
 
 ### `detekt/detekt.exceptions.TooGenericExceptionThrown`
 
-Too generic exception thrown.
+The thrown exception is too generic.
 
+- **Why it is on:** Prefer throwing project specific exceptions to handle error cases. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/exceptions#toogenericexceptionthrown).
 - **Exception:** If this is intended, add `{"rule":"detekt.exceptions.TooGenericExceptionThrown","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/exceptions#toogenericexceptionthrown)
 
@@ -371,8 +447,10 @@ Too generic exception thrown.
 
 ### `detekt/detekt.naming.ClassNaming`
 
-Class naming.
+A class or object name should fit the naming pattern defined in the projects configuration.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/naming#classnaming).
 - **Exception:** If this is intended, add `{"rule":"detekt.naming.ClassNaming","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/naming#classnaming)
 
@@ -380,8 +458,10 @@ Class naming.
 
 ### `detekt/detekt.naming.ConstructorParameterNaming`
 
-Constructor parameter naming.
+Constructor parameter names should follow the naming convention set in the projects configuration.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/naming#constructorparameternaming).
 - **Exception:** If this is intended, add `{"rule":"detekt.naming.ConstructorParameterNaming","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/naming#constructorparameternaming)
 
@@ -389,8 +469,10 @@ Constructor parameter naming.
 
 ### `detekt/detekt.naming.EnumNaming`
 
-Enum naming.
+Enum names should follow the naming convention set in the projects configuration.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/naming#enumnaming).
 - **Exception:** If this is intended, add `{"rule":"detekt.naming.EnumNaming","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/naming#enumnaming)
 
@@ -398,8 +480,10 @@ Enum naming.
 
 ### `detekt/detekt.naming.FunctionNaming`
 
-Function naming.
+Function names should follow the naming convention set in the configuration.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/naming#functionnaming).
 - **Exception:** If this is intended, add `{"rule":"detekt.naming.FunctionNaming","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/naming#functionnaming)
 
@@ -407,8 +491,10 @@ Function naming.
 
 ### `detekt/detekt.naming.FunctionParameterNaming`
 
-Function parameter naming.
+Function parameter names should follow the naming convention set in the projects configuration.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/naming#functionparameternaming).
 - **Exception:** If this is intended, add `{"rule":"detekt.naming.FunctionParameterNaming","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/naming#functionparameternaming)
 
@@ -416,8 +502,10 @@ Function parameter naming.
 
 ### `detekt/detekt.naming.InvalidPackageDeclaration`
 
-Invalid package declaration.
+Kotlin source files should be stored in the directory corresponding to its package statement.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/naming#invalidpackagedeclaration).
 - **Exception:** If this is intended, add `{"rule":"detekt.naming.InvalidPackageDeclaration","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/naming#invalidpackagedeclaration)
 
@@ -425,8 +513,10 @@ Invalid package declaration.
 
 ### `detekt/detekt.naming.MatchingDeclarationName`
 
-Matching declaration name.
+If a source file contains only a single non-private top-level class or object, the file name should reflect the case-sensitive name plus the .kt extension.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/naming#matchingdeclarationname).
 - **Exception:** If this is intended, add `{"rule":"detekt.naming.MatchingDeclarationName","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/naming#matchingdeclarationname)
 
@@ -434,8 +524,10 @@ Matching declaration name.
 
 ### `detekt/detekt.naming.MemberNameEqualsClassName`
 
-Member name equals class name.
+A member should not be given the same name as its parent class or object.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/naming#membernameequalsclassname).
 - **Exception:** If this is intended, add `{"rule":"detekt.naming.MemberNameEqualsClassName","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/naming#membernameequalsclassname)
 
@@ -443,8 +535,10 @@ Member name equals class name.
 
 ### `detekt/detekt.naming.NoNameShadowing`
 
-No name shadowing.
+Disallow shadowing variable declarations.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/naming#nonameshadowing).
 - **Exception:** If this is intended, add `{"rule":"detekt.naming.NoNameShadowing","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/naming#nonameshadowing)
 
@@ -452,8 +546,10 @@ No name shadowing.
 
 ### `detekt/detekt.naming.ObjectPropertyNaming`
 
-Object property naming.
+Property names inside objects should follow the naming convention set in the projects configuration.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/naming#objectpropertynaming).
 - **Exception:** If this is intended, add `{"rule":"detekt.naming.ObjectPropertyNaming","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/naming#objectpropertynaming)
 
@@ -461,8 +557,10 @@ Object property naming.
 
 ### `detekt/detekt.naming.PackageNaming`
 
-Package naming.
+Package names should match the naming convention set in the configuration.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/naming#packagenaming).
 - **Exception:** If this is intended, add `{"rule":"detekt.naming.PackageNaming","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/naming#packagenaming)
 
@@ -470,8 +568,10 @@ Package naming.
 
 ### `detekt/detekt.naming.TopLevelPropertyNaming`
 
-Top level property naming.
+Top level property names should follow the naming convention set in the projects configuration.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/naming#toplevelpropertynaming).
 - **Exception:** If this is intended, add `{"rule":"detekt.naming.TopLevelPropertyNaming","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/naming#toplevelpropertynaming)
 
@@ -479,8 +579,10 @@ Top level property naming.
 
 ### `detekt/detekt.naming.VariableNaming`
 
-Variable naming.
+Variable names should follow the naming convention set in the projects configuration.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/naming#variablenaming).
 - **Exception:** If this is intended, add `{"rule":"detekt.naming.VariableNaming","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/naming#variablenaming)
 
@@ -488,8 +590,10 @@ Variable naming.
 
 ### `detekt/detekt.performance.ArrayPrimitive`
 
-Array primitive.
+Using `Array<Primitive>` leads to implicit boxing and a performance hit.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/performance#arrayprimitive).
 - **Exception:** If this is intended, add `{"rule":"detekt.performance.ArrayPrimitive","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/performance#arrayprimitive)
 
@@ -497,8 +601,10 @@ Array primitive.
 
 ### `detekt/detekt.performance.ForEachOnRange`
 
-For each on range.
+Using the forEach method on ranges has a heavy performance cost.
 
+- **Why it is on:** Prefer using simple for loops. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/performance#foreachonrange).
 - **Exception:** If this is intended, add `{"rule":"detekt.performance.ForEachOnRange","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/performance#foreachonrange)
 
@@ -506,8 +612,10 @@ For each on range.
 
 ### `detekt/detekt.performance.SpreadOperator`
 
-Spread operator.
+In most cases using a spread operator causes a full copy of the array to be created before calling a method.
 
+- **Why it is on:** This may result in a performance penalty. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/performance#spreadoperator).
 - **Exception:** If this is intended, add `{"rule":"detekt.performance.SpreadOperator","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/performance#spreadoperator)
 
@@ -515,8 +623,10 @@ Spread operator.
 
 ### `detekt/detekt.performance.UnnecessaryTemporaryInstantiation`
 
-Unnecessary temporary instantiation.
+Avoid temporary objects when converting primitive types to `String`.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/performance#unnecessarytemporaryinstantiation).
 - **Exception:** If this is intended, add `{"rule":"detekt.performance.UnnecessaryTemporaryInstantiation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/performance#unnecessarytemporaryinstantiation)
 
@@ -524,8 +634,10 @@ Unnecessary temporary instantiation.
 
 ### `detekt/detekt.potential-bugs.AvoidReferentialEquality`
 
-Avoid referential equality.
+Avoid using referential equality and prefer to use referential equality checks instead.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#avoidreferentialequality).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.AvoidReferentialEquality","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#avoidreferentialequality)
 
@@ -533,9 +645,10 @@ Avoid referential equality.
 
 ### `detekt/detekt.potential-bugs.CastNullableToNonNullableType`
 
-Cast nullable to non nullable type.
+Nullable type to non-null type cast is found.
 
-- **Why it is on:** A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Why it is on:** Consider using two assertions, `null` assertions and type cast A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#castnullabletononnullabletype).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.CastNullableToNonNullableType","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [detekt rule](https://detekt.dev/docs/rules/potential-bugs#castnullabletononnullabletype)
 
@@ -543,8 +656,10 @@ Cast nullable to non nullable type.
 
 ### `detekt/detekt.potential-bugs.DoubleMutabilityForCollection`
 
-Double mutability for collection.
+Using var with mutable collections or values leads to double mutability.
 
+- **Why it is on:** Consider using val or immutable collection or value types. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#doublemutabilityforcollection).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.DoubleMutabilityForCollection","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#doublemutabilityforcollection)
 
@@ -552,8 +667,10 @@ Double mutability for collection.
 
 ### `detekt/detekt.potential-bugs.EqualsAlwaysReturnsTrueOrFalse`
 
-Equals always returns true or false.
+Having an `equals()` method that always returns true or false is not a good idea.
 
+- **Why it is on:** It does not follow the contract of this method. Consider a good default implementation (e.g. `this == other`). One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#equalsalwaysreturnstrueorfalse).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.EqualsAlwaysReturnsTrueOrFalse","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#equalsalwaysreturnstrueorfalse)
 
@@ -561,8 +678,10 @@ Equals always returns true or false.
 
 ### `detekt/detekt.potential-bugs.EqualsWithHashCodeExist`
 
-Equals with hash code exist.
+Always override hashCode when you override equals.
 
+- **Why it is on:** All hash-based collections depend on objects meeting the equals-contract. Two equal objects must produce the same hashcode. When inheriting equals or hashcode, override the inherited and call the super method for clarification. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#equalswithhashcodeexist).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.EqualsWithHashCodeExist","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#equalswithhashcodeexist)
 
@@ -570,8 +689,10 @@ Equals with hash code exist.
 
 ### `detekt/detekt.potential-bugs.ExplicitGarbageCollectionCall`
 
-Explicit garbage collection call.
+Don't try to be smarter than the JVM.
 
+- **Why it is on:** Your code should work independently whether the garbage collector is disabled or not. If you face memory issues, try tuning the JVM options instead of relying on code itself. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#explicitgarbagecollectioncall).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.ExplicitGarbageCollectionCall","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#explicitgarbagecollectioncall)
 
@@ -579,8 +700,10 @@ Explicit garbage collection call.
 
 ### `detekt/detekt.potential-bugs.HasPlatformType`
 
-Has platform type.
+Platform types must be declared explicitly in public APIs.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#hasplatformtype).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.HasPlatformType","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#hasplatformtype)
 
@@ -588,8 +711,10 @@ Has platform type.
 
 ### `detekt/detekt.potential-bugs.IgnoredReturnValue`
 
-Ignored return value.
+This call returns a value which is ignored.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#ignoredreturnvalue).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.IgnoredReturnValue","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#ignoredreturnvalue)
 
@@ -597,8 +722,10 @@ Ignored return value.
 
 ### `detekt/detekt.potential-bugs.ImplicitDefaultLocale`
 
-Implicit default locale.
+Implicit default locale used for string processing.
 
+- **Why it is on:** Consider using explicit locale. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#implicitdefaultlocale).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.ImplicitDefaultLocale","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#implicitdefaultlocale)
 
@@ -606,8 +733,10 @@ Implicit default locale.
 
 ### `detekt/detekt.potential-bugs.InvalidRange`
 
-Invalid range.
+If a for loops condition is false before the first iteration, the loop will never get executed.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#invalidrange).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.InvalidRange","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#invalidrange)
 
@@ -615,8 +744,10 @@ Invalid range.
 
 ### `detekt/detekt.potential-bugs.IteratorHasNextCallsNextMethod`
 
-Iterator has next calls next method.
+The `hasNext()` method of an Iterator implementation should not call the `next()` method.
 
+- **Why it is on:** The state of the iterator should not be changed inside the `hasNext()` method. The `hasNext()` method is not supposed to have any side effects. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#iteratorhasnextcallsnextmethod).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.IteratorHasNextCallsNextMethod","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#iteratorhasnextcallsnextmethod)
 
@@ -624,8 +755,10 @@ Iterator has next calls next method.
 
 ### `detekt/detekt.potential-bugs.IteratorNotThrowingNoSuchElementException`
 
-Iterator not throwing no such element exception.
+The `next()` method of an `Iterator` implementation should throw a `NoSuchElementException` when there are no more elements to return.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#iteratornotthrowingnosuchelementexception).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.IteratorNotThrowingNoSuchElementException","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#iteratornotthrowingnosuchelementexception)
 
@@ -633,8 +766,10 @@ Iterator not throwing no such element exception.
 
 ### `detekt/detekt.potential-bugs.MapGetWithNotNullAssertionOperator`
 
-Map get with not null assertion operator.
+Map.get() with not-null assertion operator (!!) can result in a NullPointerException.
 
+- **Why it is on:** Consider usage of map.getValue(), map.getOrDefault() or map.getOrElse() instead. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#mapgetwithnotnullassertionoperator).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.MapGetWithNotNullAssertionOperator","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#mapgetwithnotnullassertionoperator)
 
@@ -642,8 +777,10 @@ Map get with not null assertion operator.
 
 ### `detekt/detekt.potential-bugs.UnnecessaryNotNullOperator`
 
-Unnecessary not null operator.
+Unnecessary not-null unary operator (!!) detected.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#unnecessarynotnulloperator).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.UnnecessaryNotNullOperator","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#unnecessarynotnulloperator)
 
@@ -651,8 +788,10 @@ Unnecessary not null operator.
 
 ### `detekt/detekt.potential-bugs.UnnecessarySafeCall`
 
-Unnecessary safe call.
+Unnecessary safe call operator detected.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#unnecessarysafecall).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.UnnecessarySafeCall","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#unnecessarysafecall)
 
@@ -660,8 +799,10 @@ Unnecessary safe call.
 
 ### `detekt/detekt.potential-bugs.UnreachableCatchBlock`
 
-Unreachable catch block.
+Unreachable catch block detected.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#unreachablecatchblock).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.UnreachableCatchBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#unreachablecatchblock)
 
@@ -669,8 +810,10 @@ Unreachable catch block.
 
 ### `detekt/detekt.potential-bugs.UnreachableCode`
 
-Unreachable code.
+Unreachable code detected.
 
+- **Why it is on:** This code should be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#unreachablecode).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.UnreachableCode","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#unreachablecode)
 
@@ -678,9 +821,9 @@ Unreachable code.
 
 ### `detekt/detekt.potential-bugs.UnsafeCallOnNullableType`
 
-Unsafe call on nullable type.
+Unsafe calls on nullable types detected.
 
-- **Why it is on:** A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Why it is on:** These calls will throw a NullPointerException in case the nullable value is null. A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
 - **Allowed form:** Handle null with `value ?: return`, `value?.let { ... }`, or `checkNotNull(value) { "why" }` when null is a bug.
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.UnsafeCallOnNullableType","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [detekt rule](https://detekt.dev/docs/rules/potential-bugs#unsafecallonnullabletype)
@@ -689,8 +832,10 @@ Unsafe call on nullable type.
 
 ### `detekt/detekt.potential-bugs.UnsafeCast`
 
-Unsafe cast.
+Cast operator throws an exception if the cast is not possible.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#unsafecast).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.UnsafeCast","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#unsafecast)
 
@@ -698,8 +843,10 @@ Unsafe cast.
 
 ### `detekt/detekt.potential-bugs.UnusedUnaryOperator`
 
-Unused unary operator.
+This unary operator is unused.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#unusedunaryoperator).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.UnusedUnaryOperator","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#unusedunaryoperator)
 
@@ -707,8 +854,10 @@ Unused unary operator.
 
 ### `detekt/detekt.potential-bugs.UselessPostfixExpression`
 
-Useless postfix expression.
+The incremented or decremented value is unused.
 
+- **Why it is on:** This value is replaced with the original value. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#uselesspostfixexpression).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.UselessPostfixExpression","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#uselesspostfixexpression)
 
@@ -716,8 +865,10 @@ Useless postfix expression.
 
 ### `detekt/detekt.potential-bugs.WrongEqualsTypeParameter`
 
-Wrong equals type parameter.
+Wrong parameter type for `equals()` method found.
 
+- **Why it is on:** To correctly override the `equals()` method use `Any?`. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/potential-bugs#wrongequalstypeparameter).
 - **Exception:** If this is intended, add `{"rule":"detekt.potential-bugs.WrongEqualsTypeParameter","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/potential-bugs#wrongequalstypeparameter)
 
@@ -725,7 +876,7 @@ Wrong equals type parameter.
 
 ### `detekt/detekt.style.DataClassShouldBeImmutable`
 
-Data class should be immutable.
+Data classes should mainly be immutable and should not have any side effects (To copy an object altering some of its properties use the copy function).
 
 - **Why it is on:** A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
 - **Allowed form:** Make the property a `val` and build a changed copy with `copy(...)`.
@@ -736,8 +887,10 @@ Data class should be immutable.
 
 ### `detekt/detekt.style.DestructuringDeclarationWithTooManyEntries`
 
-Destructuring declaration with too many entries.
+Too many entries in a destructuring declaration make the code hard to understand.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#destructuringdeclarationwithtoomanyentries).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.DestructuringDeclarationWithTooManyEntries","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#destructuringdeclarationwithtoomanyentries)
 
@@ -745,8 +898,10 @@ Destructuring declaration with too many entries.
 
 ### `detekt/detekt.style.EqualsNullCall`
 
-Equals null call.
+Equals() method is called with null as parameter.
 
+- **Why it is on:** Consider using == to compare to null. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#equalsnullcall).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.EqualsNullCall","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#equalsnullcall)
 
@@ -754,8 +909,10 @@ Equals null call.
 
 ### `detekt/detekt.style.ExplicitItLambdaParameter`
 
-Explicit it lambda parameter.
+Declaring lambda parameters as `it` is redundant.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#explicititlambdaparameter).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.ExplicitItLambdaParameter","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#explicititlambdaparameter)
 
@@ -763,9 +920,10 @@ Explicit it lambda parameter.
 
 ### `detekt/detekt.style.ForbiddenComment`
 
-Forbidden comment.
+Flags a forbidden comment.
 
 - **Why it is on:** A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#forbiddencomment).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.ForbiddenComment","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [detekt rule](https://detekt.dev/docs/rules/style#forbiddencomment)
 
@@ -773,9 +931,10 @@ Forbidden comment.
 
 ### `detekt/detekt.style.ForbiddenImport`
 
-Forbidden import.
+Mark forbidden imports.
 
-- **Why it is on:** A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Why it is on:** A forbidden import could be an import for an unstable / experimental api and hence you might want to mark it as forbidden in order to get warned about the usage. A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#forbiddenimport).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.ForbiddenImport","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [detekt rule](https://detekt.dev/docs/rules/style#forbiddenimport)
 
@@ -783,9 +942,10 @@ Forbidden import.
 
 ### `detekt/detekt.style.ForbiddenMethodCall`
 
-Forbidden method call.
+Mark forbidden methods.
 
-- **Why it is on:** A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Why it is on:** A forbidden method could be an invocation of an unstable / experimental method and hence you might want to mark it as forbidden in order to get warned about the usage. A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#forbiddenmethodcall).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.ForbiddenMethodCall","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [detekt rule](https://detekt.dev/docs/rules/style#forbiddenmethodcall)
 
@@ -793,8 +953,10 @@ Forbidden method call.
 
 ### `detekt/detekt.style.ForbiddenVoid`
 
-Forbidden void.
+`Unit` should be used instead of `Void`.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#forbiddenvoid).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.ForbiddenVoid","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#forbiddenvoid)
 
@@ -802,8 +964,10 @@ Forbidden void.
 
 ### `detekt/detekt.style.FunctionOnlyReturningConstant`
 
-Function only returning constant.
+A function that only returns a constant is misleading.
 
+- **Why it is on:** Consider declaring a constant instead. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#functiononlyreturningconstant).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.FunctionOnlyReturningConstant","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#functiononlyreturningconstant)
 
@@ -811,8 +975,10 @@ Function only returning constant.
 
 ### `detekt/detekt.style.LoopWithTooManyJumpStatements`
 
-Loop with too many jump statements.
+The loop contains more than one break or continue statement.
 
+- **Why it is on:** The code should be refactored to increase readability. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#loopwithtoomanyjumpstatements).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.LoopWithTooManyJumpStatements","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#loopwithtoomanyjumpstatements)
 
@@ -820,8 +986,10 @@ Loop with too many jump statements.
 
 ### `detekt/detekt.style.MagicNumber`
 
-Magic number.
+Report magic numbers.
 
+- **Why it is on:** Magic number is a numeric literal that is not defined as a constant and hence it's unclear what the purpose of this number is. It's better to declare such numbers as constants and give them a proper name. By default, -1, 0, 1, and 2 are not considered to be magic numbers. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#magicnumber).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.MagicNumber","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#magicnumber)
 
@@ -829,8 +997,10 @@ Magic number.
 
 ### `detekt/detekt.style.MaxLineLength`
 
-Max line length.
+Line detected, which is longer than the defined maximum line length in the code style.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#maxlinelength).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.MaxLineLength","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#maxlinelength)
 
@@ -838,8 +1008,10 @@ Max line length.
 
 ### `detekt/detekt.style.MayBeConst`
 
-May be const.
+Usage of `vals` that can be `const val` detected.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#maybeconst).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.MayBeConst","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#maybeconst)
 
@@ -847,8 +1019,10 @@ May be const.
 
 ### `detekt/detekt.style.ModifierOrder`
 
-Modifier order.
+Modifiers are not in the correct order.
 
+- **Why it is on:** Consider to reorder these modifiers. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#modifierorder).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.ModifierOrder","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#modifierorder)
 
@@ -856,8 +1030,10 @@ Modifier order.
 
 ### `detekt/detekt.style.NestedClassesVisibility`
 
-Nested classes visibility.
+The explicit public modifier still results in an internal nested class.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#nestedclassesvisibility).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.NestedClassesVisibility","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#nestedclassesvisibility)
 
@@ -865,8 +1041,10 @@ Nested classes visibility.
 
 ### `detekt/detekt.style.NewLineAtEndOfFile`
 
-New line at end of file.
+Checks whether files end with a line separator.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#newlineatendoffile).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.NewLineAtEndOfFile","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#newlineatendoffile)
 
@@ -874,8 +1052,10 @@ New line at end of file.
 
 ### `detekt/detekt.style.ObjectLiteralToLambda`
 
-Object literal to lambda.
+Report object literals that can be changed to lambdas.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#objectliteraltolambda).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.ObjectLiteralToLambda","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#objectliteraltolambda)
 
@@ -883,8 +1063,10 @@ Object literal to lambda.
 
 ### `detekt/detekt.style.OptionalAbstractKeyword`
 
-Optional abstract keyword.
+Unnecessary abstract modifier in interface detected.
 
+- **Why it is on:** This abstract modifier is unnecessary and thus can be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#optionalabstractkeyword).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.OptionalAbstractKeyword","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#optionalabstractkeyword)
 
@@ -892,8 +1074,10 @@ Optional abstract keyword.
 
 ### `detekt/detekt.style.ProtectedMemberInFinalClass`
 
-Protected member in final class.
+Member with protected visibility in final class is private.
 
+- **Why it is on:** Consider using private or internal as modifier. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#protectedmemberinfinalclass).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.ProtectedMemberInFinalClass","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#protectedmemberinfinalclass)
 
@@ -901,8 +1085,10 @@ Protected member in final class.
 
 ### `detekt/detekt.style.RedundantHigherOrderMapUsage`
 
-Redundant higher order map usage.
+Checks for redundant 'map' calls, which can be removed.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#redundanthigherordermapusage).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.RedundantHigherOrderMapUsage","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#redundanthigherordermapusage)
 
@@ -910,8 +1096,10 @@ Redundant higher order map usage.
 
 ### `detekt/detekt.style.ReturnCount`
 
-Return count.
+Restrict the number of return statements in methods.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#returncount).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.ReturnCount","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#returncount)
 
@@ -919,8 +1107,10 @@ Return count.
 
 ### `detekt/detekt.style.SafeCast`
 
-Safe cast.
+Prefer to use a safe cast instead of if-else-null.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#safecast).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.SafeCast","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#safecast)
 
@@ -928,8 +1118,10 @@ Safe cast.
 
 ### `detekt/detekt.style.SerialVersionUIDInSerializableClass`
 
-Serial version uid in serializable class.
+A class which implements the Serializable interface does not define a correct serialVersionUID field.
 
+- **Why it is on:** The serialVersionUID field should be a private constant long value inside a companion object. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#serialversionuidinserializableclass).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.SerialVersionUIDInSerializableClass","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#serialversionuidinserializableclass)
 
@@ -937,8 +1129,10 @@ Serial version uid in serializable class.
 
 ### `detekt/detekt.style.ThrowsCount`
 
-Throws count.
+Restrict the number of throw statements in methods.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#throwscount).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.ThrowsCount","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#throwscount)
 
@@ -946,8 +1140,10 @@ Throws count.
 
 ### `detekt/detekt.style.UnnecessaryAbstractClass`
 
-Unnecessary abstract class.
+An abstract class is unnecessary.
 
+- **Why it is on:** May be refactored to an interface or to a concrete class. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#unnecessaryabstractclass).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UnnecessaryAbstractClass","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#unnecessaryabstractclass)
 
@@ -955,7 +1151,7 @@ Unnecessary abstract class.
 
 ### `detekt/detekt.style.UnnecessaryApply`
 
-Unnecessary apply.
+The `apply` usage is unnecessary and can be removed.
 
 - **Why it is on:** A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
 - **Allowed form:** Remove `apply`; use it only to configure an object you just created.
@@ -966,8 +1162,10 @@ Unnecessary apply.
 
 ### `detekt/detekt.style.UnnecessaryFilter`
 
-Unnecessary filter.
+`filter()` with other collection operations may be simplified.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#unnecessaryfilter).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UnnecessaryFilter","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#unnecessaryfilter)
 
@@ -975,8 +1173,10 @@ Unnecessary filter.
 
 ### `detekt/detekt.style.UnnecessaryInheritance`
 
-Unnecessary inheritance.
+The extended super type is unnecessary.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#unnecessaryinheritance).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UnnecessaryInheritance","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#unnecessaryinheritance)
 
@@ -984,7 +1184,7 @@ Unnecessary inheritance.
 
 ### `detekt/detekt.style.UnnecessaryLet`
 
-Unnecessary let.
+The `let` usage is unnecessary.
 
 - **Why it is on:** A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
 - **Allowed form:** Call the member directly; `let` is for `value?.let { ... }`.
@@ -995,8 +1195,10 @@ Unnecessary let.
 
 ### `detekt/detekt.style.UnusedParameter`
 
-Unused parameter.
+Function parameter is unused and should be removed.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#unusedparameter).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UnusedParameter","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#unusedparameter)
 
@@ -1004,8 +1206,10 @@ Unused parameter.
 
 ### `detekt/detekt.style.UnusedPrivateClass`
 
-Unused private class.
+Private class is unused and should be removed.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#unusedprivateclass).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UnusedPrivateClass","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#unusedprivateclass)
 
@@ -1013,8 +1217,10 @@ Unused private class.
 
 ### `detekt/detekt.style.UnusedPrivateMember`
 
-Unused private member.
+Private function is unused and should be removed.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#unusedprivatemember).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UnusedPrivateMember","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#unusedprivatemember)
 
@@ -1022,8 +1228,10 @@ Unused private member.
 
 ### `detekt/detekt.style.UnusedPrivateProperty`
 
-Unused private property.
+Property is unused and should be removed.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#unusedprivateproperty).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UnusedPrivateProperty","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#unusedprivateproperty)
 
@@ -1031,8 +1239,10 @@ Unused private property.
 
 ### `detekt/detekt.style.UseAnyOrNoneInsteadOfFind`
 
-Use any or none instead of find.
+Use `any` or `none` instead of `find` and `null` checks.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#useanyornoneinsteadoffind).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UseAnyOrNoneInsteadOfFind","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#useanyornoneinsteadoffind)
 
@@ -1040,8 +1250,10 @@ Use any or none instead of find.
 
 ### `detekt/detekt.style.UseArrayLiteralsInAnnotations`
 
-Use array literals in annotations.
+Array literals [...] should be preferred as they are more readable than `arrayOf(...)` expressions.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#usearrayliteralsinannotations).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UseArrayLiteralsInAnnotations","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#usearrayliteralsinannotations)
 
@@ -1049,8 +1261,10 @@ Use array literals in annotations.
 
 ### `detekt/detekt.style.UseCheckNotNull`
 
-Use check not null.
+Use checkNotNull() instead of check() for checking not-null.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#usechecknotnull).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UseCheckNotNull","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#usechecknotnull)
 
@@ -1058,8 +1272,10 @@ Use check not null.
 
 ### `detekt/detekt.style.UseCheckOrError`
 
-Use check or error.
+Use check() or error() instead of throwing an IllegalStateException.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#usecheckorerror).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UseCheckOrError","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#usecheckorerror)
 
@@ -1067,9 +1283,10 @@ Use check or error.
 
 ### `detekt/detekt.style.UseDataClass`
 
-Use data class.
+Classes that do nothing but hold data should be replaced with a data class.
 
 - **Why it is on:** A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#usedataclass).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UseDataClass","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [detekt rule](https://detekt.dev/docs/rules/style#usedataclass)
 
@@ -1077,8 +1294,10 @@ Use data class.
 
 ### `detekt/detekt.style.UseIsNullOrEmpty`
 
-Use is null or empty.
+Use `isNullOrEmpty()` call instead of `x == null || x.isEmpty()`.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#useisnullorempty).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UseIsNullOrEmpty","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#useisnullorempty)
 
@@ -1086,8 +1305,10 @@ Use is null or empty.
 
 ### `detekt/detekt.style.UselessCallOnNotNull`
 
-Useless call on not null.
+This call on a non-null reference may be reduced or removed.
 
+- **Why it is on:** Some calls are intended to be called on nullable collection or text types (e.g. `String?`).When this call is used on a reference to a non-null type (e.g. `String`) it is redundant and will have no effect, so it can be removed. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#uselesscallonnotnull).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UselessCallOnNotNull","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#uselesscallonnotnull)
 
@@ -1095,9 +1316,10 @@ Useless call on not null.
 
 ### `detekt/detekt.style.UseLet`
 
-Use let.
+Use `?.let {}` instead of if/else with a null block when checking for nullable values.
 
 - **Why it is on:** A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#uselet).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UseLet","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [detekt rule](https://detekt.dev/docs/rules/style#uselet)
 
@@ -1105,8 +1327,10 @@ Use let.
 
 ### `detekt/detekt.style.UseOrEmpty`
 
-Use or empty.
+Use `orEmpty()` call instead of `?:` with empty collection factory methods.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#useorempty).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UseOrEmpty","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#useorempty)
 
@@ -1114,8 +1338,10 @@ Use or empty.
 
 ### `detekt/detekt.style.UseRequire`
 
-Use require.
+Use require() instead of throwing an IllegalArgumentException.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#userequire).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UseRequire","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#userequire)
 
@@ -1123,8 +1349,10 @@ Use require.
 
 ### `detekt/detekt.style.UseRequireNotNull`
 
-Use require not null.
+Use requireNotNull() instead of require() for checking not-null.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#userequirenotnull).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UseRequireNotNull","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#userequirenotnull)
 
@@ -1132,8 +1360,10 @@ Use require not null.
 
 ### `detekt/detekt.style.UtilityClassWithPublicConstructor`
 
-Utility class with public constructor.
+The class declaration is unnecessary because it only contains utility functions.
 
+- **Why it is on:** An object declaration should be used instead. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#utilityclasswithpublicconstructor).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.UtilityClassWithPublicConstructor","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#utilityclasswithpublicconstructor)
 
@@ -1141,8 +1371,10 @@ Utility class with public constructor.
 
 ### `detekt/detekt.style.VarCouldBeVal`
 
-Var could be val.
+Var declaration could be val.
 
+- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#varcouldbeval).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.VarCouldBeVal","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#varcouldbeval)
 
@@ -1150,7 +1382,9 @@ Var could be val.
 
 ### `detekt/detekt.style.WildcardImport`
 
-Wildcard import.
+Wildcard imports should be replaced with imports using fully qualified class names.
 
+- **Why it is on:** Wildcard imports can lead to naming conflicts. A library update can introduce naming clashes with your classes which results in compilation errors. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
+- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/style#wildcardimport).
 - **Exception:** If this is intended, add `{"rule":"detekt.style.WildcardImport","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/style#wildcardimport)

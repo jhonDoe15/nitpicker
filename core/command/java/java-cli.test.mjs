@@ -120,7 +120,7 @@ describe.each([
               "id": "pmd/UnusedPrivateField",
               "name": "UnusedPrivateField",
               "shortDescription": {
-                "text": "Unused private field"
+                "text": "Detects when a private field is declared and/or assigned a value, but not used."
               },
               "helpUri": ${JSON.stringify(UNUSED_FIELD_HELP_URI)}
             }
@@ -352,6 +352,8 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         'coupling/coupling . dependencies summary',
         'coupling/coupling . modules summary',
         'coupling/coupling . packages summary',
+        '',
+        `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
         '',
       ].join('\n'),
     );

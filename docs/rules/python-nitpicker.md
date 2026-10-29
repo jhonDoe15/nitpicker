@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 47 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 50 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -57,6 +57,15 @@ A package that is in a dependency cycle with other packages.
 
 - **Allowed form:** Name the expected exception: `contextlib.suppress(KeyError)`; or handle it or re-raise it with its cause. In a test, use `pytest.raises(SpecificError)` (`self.assertRaises` in unittest).
 - **Exception:** If this is intended, add `{"rule":"blind-suppress","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-cancellation-not-propagated"></a>
+
+### `python-rules/cancellation-not-propagated`
+
+`<name>` has a path that consumes cancellation or replaces it with another error.
+
+- **Allowed form:** After cleanup, use a bare `raise` or re-raise the unchanged caught cancellation. Keep intentional cancellation boundaries in the backend's timeout or cancellation scope; returning a failure result or chaining another error does not propagate cancellation.
+- **Exception:** If this is intended, add `{"rule":"cancellation-not-propagated","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-catch-log-without-exception"></a>
 
@@ -337,6 +346,15 @@ The string "\<name>" is repeated three times or more.
 - **Allowed form:** Re-raise it with its cause (`raise DomainError(...) from error`), return a failure result that carries the error (`return Rejected(str(error))`), or collect it for the caller (`errors.append(error)`); logging alone is not handling. `contextlib.suppress(SpecificError)` ignores one expected error. In a test, use `pytest.raises(SpecificError)` (`self.assertRaises` in unittest).
 - **Exception:** If this is intended, add `{"rule":"swallowed-exception","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
+<a id="python-rules-task-outlives-resource"></a>
+
+### `python-rules/task-outlives-resource`
+
+`<name>`: the resource closes when its `with` block ends, while the child task can still use it.
+
+- **Allowed form:** Open the resource around the whole task group, or inside the child task.
+- **Exception:** If this is intended, add `{"rule":"task-outlives-resource","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
 <a id="python-rules-tautological-assert"></a>
 
 ### `python-rules/tautological-assert`
@@ -408,6 +426,15 @@ The task marker `<name>` has no issue.
 
 - **Allowed form:** Resolve the path and check it stays inside the base before using it: `target = (base / name).resolve()`, then `if not target.is_relative_to(base.resolve()): raise ValueError(...)`.
 - **Exception:** If this is intended, add `{"rule":"unsafe-path-join","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-unshielded-cleanup-await"></a>
+
+### `python-rules/unshielded-cleanup-await`
+
+`<name>` can be cancelled before the cleanup finishes, so the resource may stay open.
+
+- **Allowed form:** Run the cleanup in a shielded scope with a deadline: `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()` (`anyio.CancelScope(deadline=anyio.current_time() + 5, shield=True)` in AnyIO; `move_on_after(5, shield=True)` needs Trio 0.27 or later). A shield without a deadline can hang shutdown.
+- **Exception:** If this is intended, add `{"rule":"unshielded-cleanup-await","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-weak-hmac"></a>
 

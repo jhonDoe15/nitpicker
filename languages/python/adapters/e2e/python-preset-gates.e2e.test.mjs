@@ -21,6 +21,7 @@ import {
   removeRepositories,
   summarize,
 } from './test-support/python-e2e-support.mjs';
+import { helpUriProblems } from '../../../../../shared/reference/test-support/help-uris.mjs';
 
 const enforceable = (result) =>
   summarize(
@@ -125,6 +126,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
       'ruff F401 bad.py',
       'ruff-format format bad.py',
     ]);
+    expect(helpUriProblems(result.json('new-findings.json'))).toEqual([]);
     const sarif = JSON.parse(readFileSync(path.join(result.reports, 'report.sarif'), 'utf8'));
     expect(sarif.runs[0].results.map(({ ruleId }) => ruleId)).toEqual([
       'coupling/module-coupling',

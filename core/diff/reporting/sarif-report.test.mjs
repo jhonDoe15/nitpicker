@@ -116,13 +116,15 @@ describe('renderSarifReport', () => {
       {
         id: 'pmd/UnusedLocalVariable',
         name: 'UnusedLocalVariable',
-        shortDescription: { text: 'Unused local variable' },
+        shortDescription: {
+          text: 'Detects when a local variable is declared and/or assigned, but not used.',
+        },
         helpUri: docsUrl('docs/rules/java-pmd.md', 'pmd-unusedlocalvariable'),
       },
       {
         id: 'eslint-lint/@typescript-eslint/no-explicit-any',
         name: '@typescript-eslint/no-explicit-any',
-        shortDescription: { text: 'Disallow the `any` type' },
+        shortDescription: { text: 'Disallow the any type' },
         helpUri: docsUrl(
           'docs/rules/typescript-eslint.md',
           'eslint-typescript-eslint-no-explicit-any',

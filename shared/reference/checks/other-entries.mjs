@@ -46,6 +46,7 @@ const CODING_STANDARDS_ROWS = [
     'Module roles keep the runtime dependencies and side effects of each layer in one direction. No role is declared by default, so the rules report only where a role is configured.',
     'Depend on the allowed module, move the call to a module whose role may make it, and write the specifier of a dynamic import as a string literal.',
     '^runtime-boundary/.+$',
+    'runtime-boundary/forbidden-runtime-call',
   ],
   [
     'callback-protocol/<rule>',
@@ -53,6 +54,7 @@ const CODING_STANDARDS_ROWS = [
     'Callbacks that belong together keep one owner for the state they publish and declare the input that correlates them. No contract is declared by default, so the rules report only where a callback contract is configured.',
     'Commit published state in its owner, read only bounded metadata or independent upstream snapshots in a loader, and declare the correlation input in the options.',
     '^callback-protocol/.+$',
+    'callback-protocol/source-loader-does-not-merge-published-state',
   ],
 ];
 
@@ -70,7 +72,7 @@ function deadCodeEntry([rule, summary, why, allowed, narrowing = {}]) {
   });
 }
 
-function codingStandardsEntry([rule, summary, why, allowed, pattern]) {
+function codingStandardsEntry([rule, summary, why, allowed, pattern, sample]) {
   return ruleEntry({
     tool: 'coding-standards',
     rule,
@@ -79,7 +81,9 @@ function codingStandardsEntry([rule, summary, why, allowed, pattern]) {
     summary,
     why,
     allowed,
-    ...(pattern === undefined ? {} : { pattern, barePattern: true }),
+    ...(pattern === undefined
+      ? {}
+      : { pattern, barePattern: true, samples: [`coding-standards/${sample}`] }),
     exception: { key: 'exceptions', rule },
     docs: CHECKS_DOCS,
   });

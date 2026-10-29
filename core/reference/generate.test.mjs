@@ -9,6 +9,7 @@ import { ruleEntry } from '../../shared/reference/entry.mjs';
 
 const REPOSITORY_ROOT = path.resolve(import.meta.dirname, '../..');
 const roots = [];
+const PAGE_LIMIT = 512 * 1024;
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -31,7 +32,7 @@ function entry(rule, fields = {}) {
 }
 
 describe('the generated rule reference', () => {
-  it('is up to date: the committed data files and pages equal what the catalogs generate', () => {
+  it('is up to date, and each page stays under the 512 KB GitHub renders: the committed data files and pages equal what the catalogs generate', () => {
     const generated = referenceFiles(REPOSITORY_ROOT);
 
     expect([...generated.keys()].toSorted()).toEqual(
@@ -42,6 +43,11 @@ describe('the generated rule reference', () => {
       ].toSorted(),
     );
     expect(staleReferenceFiles(REPOSITORY_ROOT, generated)).toEqual([]);
+    expect(
+      [...generated]
+        .filter(([file, text]) => file.endsWith('.md') && Buffer.byteLength(text) >= PAGE_LIMIT)
+        .map(([file]) => file),
+    ).toEqual([]);
   });
 });
 

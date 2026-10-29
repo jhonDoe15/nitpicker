@@ -3,6 +3,7 @@ import {
   anchorOf,
   entriesFrom,
   exceptionAdvice,
+  exceptionFor,
   exceptionSnippet,
   PRESET_TITLES,
   PRESETS,
@@ -61,19 +62,47 @@ describe('exceptionAdvice', () => {
     );
   });
 
-  it('names the config list, the preset keys and the note', () => {
-    const advice = exceptionAdvice({
-      exception: {
-        key: 'exceptions',
-        rule: 'structure/file-lines',
-        presetKeys: { python: 'python.exceptions' },
-        note: 'Name the function.',
+  it('names the config list, then the route of each preset that differs, the preset notes and the note', () => {
+    const advice = exceptionAdvice(
+      {
+        exception: {
+          key: 'exceptions',
+          rule: 'structure/file-lines',
+          presetKeys: { python: 'python.exceptions' },
+          presetRules: { typescript: 'nitpicker/file-lines' },
+          presetNotes: { kotlin: 'The Kotlin preset has no exception for it.' },
+          note: 'Name the function.',
+        },
       },
-    });
+      ['typescript', 'java', 'kotlin', 'python'],
+    );
 
     expect(advice).toBe(
-      'If this is intended, add `{"rule":"structure/file-lines","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. With the Python preset, add it to "python.exceptions" instead. Name the function.',
+      'If this is intended, add `{"rule":"structure/file-lines","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. ' +
+        'With the TypeScript preset: If this is intended, add `{"rule":"nitpicker/file-lines","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. ' +
+        'With the Python preset: If this is intended, add `{"rule":"structure/file-lines","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json. ' +
+        'With the Kotlin preset: The Kotlin preset has no exception for it. Name the function.',
     );
+  });
+});
+
+describe('exceptionFor', () => {
+  const entry = {
+    exception: {
+      key: 'exceptions',
+      rule: 'doc-comment-content',
+      presetKeys: { python: 'python.exceptions' },
+      presetRules: { typescript: 'nitpicker/no-comments' },
+      presetNotes: { kotlin: 'None in Kotlin.' },
+    },
+  };
+
+  it('gives the list and rule a preset takes, and none where the preset has a note', () => {
+    expect(exceptionFor(entry, 'java')).toEqual({ ...entry.exception });
+    expect(exceptionFor(entry, 'typescript').rule).toBe('nitpicker/no-comments');
+    expect(exceptionFor(entry, 'python').key).toBe('python.exceptions');
+    expect(exceptionFor(entry, 'kotlin')).toBeUndefined();
+    expect(exceptionFor({ exception: { note: 'No exception.' } }, 'java')).toBeUndefined();
   });
 });
 

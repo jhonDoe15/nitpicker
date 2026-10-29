@@ -1,90 +1,58 @@
-[
-  {
-    "id": "eslint/nitpicker/bounded-container-teardown",
-    "tool": "eslint",
-    "rule": "nitpicker/bounded-container-teardown",
-    "anchor": "eslint-nitpicker-bounded-container-teardown",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Stop containers through teardownContainer rather than directly in teardown hooks.",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+{
+  "fields": [
+    "tool",
+    "rule",
+    "findingTools",
+    "analyzers",
+    "summary",
+    "why",
+    "forms",
+    "docs",
+    "exception",
+    "scope",
+    "links"
+  ],
+  "values": [
+    "eslint",
+    "nitpicker/bounded-container-teardown",
+    ["eslint-lint"],
+    { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
+    "Stop containers through teardownContainer rather than directly in teardown hooks.",
+    "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
+    [
       {
         "message": "Stop containers through teardownContainer rather than directly in teardown hooks."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/bounded-container-teardown" }
-  },
-  {
-    "id": "eslint/nitpicker/cognitive-complexity",
-    "tool": "eslint",
-    "rule": "nitpicker/cognitive-complexity",
-    "anchor": "eslint-nitpicker-cognitive-complexity",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Limit how hard a function is to read: branches, loops and boolean chains cost more the deeper they nest",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
+    { "key": "exceptions", "rule": "nitpicker/bounded-container-teardown" },
+    "nitpicker/cognitive-complexity",
+    "Limit how hard a function is to read: branches, loops and boolean chains cost more the deeper they nest",
+    [
       {
         "message": "This function has a cognitive complexity of {{value}}; the limit is {{max}}. Move nested branches and conditions into smaller named functions."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/cognitive-complexity" }
-  },
-  {
-    "id": "eslint/nitpicker/container-pause-requires-finally-unpause",
-    "tool": "eslint",
-    "rule": "nitpicker/container-pause-requires-finally-unpause",
-    "anchor": "eslint-nitpicker-container-pause-requires-finally-unpause",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Pause a container inside a try block with a finally unpause, or use withPausedContainer.",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/cognitive-complexity" },
+    "nitpicker/container-pause-requires-finally-unpause",
+    "Pause a container inside a try block with a finally unpause, or use withPausedContainer.",
+    [
       {
         "message": "Pause a container inside a try block with a finally unpause, or use withPausedContainer."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": {
-      "key": "exceptions",
-      "rule": "nitpicker/container-pause-requires-finally-unpause"
-    }
-  },
-  {
-    "id": "eslint/nitpicker/exhaustive-union-predicate",
-    "tool": "eslint",
-    "rule": "nitpicker/exhaustive-union-predicate",
-    "anchor": "eslint-nitpicker-exhaustive-union-predicate",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Disallow classifying a union by listing only some of its members",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/container-pause-requires-finally-unpause" },
+    "nitpicker/exhaustive-union-predicate",
+    "Disallow classifying a union by listing only some of its members",
+    [
       {
         "message": "These comparisons list only some members of {{ union }}, so a member added later is silently classified as the default. Classify every member with a `switch` that has no `default`, or a `Record<Union, boolean>` lookup, so adding a member fails to compile."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/exhaustive-union-predicate" }
-  },
-  {
-    "id": "eslint/nitpicker/fake-timers-require-restore",
-    "tool": "eslint",
-    "rule": "nitpicker/fake-timers-require-restore",
-    "anchor": "eslint-nitpicker-fake-timers-require-restore",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Require fake timers, and stubs made in test files, to be restored",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/exhaustive-union-predicate" },
+    "nitpicker/fake-timers-require-restore",
+    "Require fake timers, and stubs made in test files, to be restored",
+    [
       {
         "message": "Fake timers stay on for the tests that follow. Restore them: `afterEach(() => { vi.useRealTimers(); });`."
       },
@@ -98,20 +66,10 @@
         "message": "This stubbed environment variable stays set for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllEnvs(); });`."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/fake-timers-require-restore" }
-  },
-  {
-    "id": "eslint/nitpicker/file-name-casing",
-    "tool": "eslint",
-    "rule": "nitpicker/file-name-casing",
-    "anchor": "eslint-nitpicker-file-name-casing",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Name files in the one casing the project's files already use",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/fake-timers-require-restore" },
+    "nitpicker/file-name-casing",
+    "Name files in the one casing the project's files already use",
+    [
       {
         "message": "File name \"{{name}}\" is not {{casing}}, which this project uses for file names. Rename it, pin a different casing with \"conventions\": { \"typescript.fileNames\": \"camelCase\" } in nitpicker.config.json. An exception fits only when the name is deliberate."
       },
@@ -119,79 +77,39 @@
         "message": "File name \"{{name}}\" is not {{casing}}, which most other files in this folder use. Rename it. An exception fits only when the name is deliberate."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/file-name-casing" }
-  },
-  {
-    "id": "eslint/nitpicker/hermetic-git-in-tests",
-    "tool": "eslint",
-    "rule": "nitpicker/hermetic-git-in-tests",
-    "anchor": "eslint-nitpicker-hermetic-git-in-tests",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Run git in tests with a hermetic environment: pass an `env` object, written in this file, that sets GIT_CONFIG_GLOBAL (for example to '/dev/null') and GIT_CONFIG_NOSYSTEM=1, so the developer's global git config (commit signing, hooks) does not apply.",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/file-name-casing" },
+    "nitpicker/hermetic-git-in-tests",
+    "Run git in tests with a hermetic environment: pass an `env` object, written in this file, that sets GIT_CONFIG_GLOBAL (for example to '/dev/null') and GIT_CONFIG_NOSYSTEM=1, so the developer's global git config (commit signing, hooks) does not apply.",
+    [
       {
         "message": "Run git in tests with a hermetic environment: pass an `env` object, written in this file, that sets GIT_CONFIG_GLOBAL (for example to '/dev/null') and GIT_CONFIG_NOSYSTEM=1, so the developer's global git config (commit signing, hooks) does not apply."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/hermetic-git-in-tests" }
-  },
-  {
-    "id": "eslint/nitpicker/hover-test-needs-keyboard",
-    "tool": "eslint",
-    "rule": "nitpicker/hover-test-needs-keyboard",
-    "anchor": "eslint-nitpicker-hover-test-needs-keyboard",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"] },
-    "summary": "Require a keyboard test in every component test file that hovers",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/hermetic-git-in-tests" },
+    "nitpicker/hover-test-needs-keyboard",
+    { "typescript": ["eslint-lint"] },
+    "Require a keyboard test in every component test file that hovers",
+    [
       {
         "message": "Every hover behavior needs a keyboard equivalent. Add a test that tabs to the element (`await user.tab()`) and asserts the same state."
       }
     ],
-    "docs": [
+    [
       {
         "label": "Strict preset guide",
         "path": "docs/typescript-strict-preset.md",
         "anchor": "react"
       }
     ],
-    "exception": { "key": "exceptions", "rule": "nitpicker/hover-test-needs-keyboard" }
-  },
-  {
-    "id": "eslint/nitpicker/integration-test-uses-approved-harness",
-    "tool": "eslint",
-    "rule": "nitpicker/integration-test-uses-approved-harness",
-    "anchor": "eslint-nitpicker-integration-test-uses-approved-harness",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Require integration tests to execute an approved production harness",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
-      { "message": "Exercise the application through an approved integration-test harness." }
-    ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/integration-test-uses-approved-harness" }
-  },
-  {
-    "id": "eslint/nitpicker/naming-convention",
-    "tool": "eslint",
-    "rule": "nitpicker/naming-convention",
-    "anchor": "eslint-nitpicker-naming-convention",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Enforce naming conventions for everything across a codebase",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/hover-test-needs-keyboard" },
+    "A TypeScript project with React: `react` in package.json or `react.enabled`.",
+    "nitpicker/integration-test-uses-approved-harness",
+    "Require integration tests to execute an approved production harness",
+    [{ "message": "Exercise the application through an approved integration-test harness." }],
+    { "key": "exceptions", "rule": "nitpicker/integration-test-uses-approved-harness" },
+    "nitpicker/naming-convention",
+    "Enforce naming conventions for everything across a codebase",
+    [
       {
         "message": "{{type}} name `{{name}}` must match one of the following formats: {{formats}}"
       },
@@ -205,44 +123,24 @@
       { "message": "{{type}} name `{{name}}` must {{regexMatch}} the RegExp: {{regex}}" },
       { "message": "{{type}} name `{{name}}` must not have a {{position}} underscore." }
     ],
-    "links": [
+    { "key": "exceptions", "rule": "nitpicker/naming-convention" },
+    [
       {
         "label": "Rule documentation",
         "url": "https://typescript-eslint.io/rules/naming-convention"
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/naming-convention" }
-  },
-  {
-    "id": "eslint/nitpicker/no-branch-in-composition-root",
-    "tool": "eslint",
-    "rule": "nitpicker/no-branch-in-composition-root",
-    "anchor": "eslint-nitpicker-no-branch-in-composition-root",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Keep branches out of composition roots, which only wire features together",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    "nitpicker/no-branch-in-composition-root",
+    "Keep branches out of composition roots, which only wire features together",
+    [
       {
         "message": "The composition root only wires features: it passes things in and does not branch, loop or default a missing value (`??`, `||`). Move this lookup or decision into the feature's adapters/ or domain/. A guard that only throws may stay: `const container = document.getElementById('root'); if (container === null) { throw new Error('#root is missing'); }` and then `createRoot(container)`. An exception fits only when this branch belongs here."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-branch-in-composition-root" }
-  },
-  {
-    "id": "eslint/nitpicker/no-comments",
-    "tool": "eslint",
-    "rule": "nitpicker/no-comments",
-    "anchor": "eslint-nitpicker-no-comments",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Allow only non-suppression tool directives as comments, plus doc comments on exported API",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-branch-in-composition-root" },
+    "nitpicker/no-comments",
+    "Allow only non-suppression tool directives as comments, plus doc comments on exported API",
+    [
       {
         "message": "Fix the type error or narrow the value; TypeScript suppression comments ({{directive}}) are not allowed. To test that a type rejects a value, assert `expectTypeOf(fn).parameter(0).not.toExtend<Value>()`."
       },
@@ -279,38 +177,18 @@
         "message": "Doc comments are allowed only on exported declarations and the members of exported types. Remove this one and put the intent in code: a descriptive identifier, a named function, or a type."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-comments" }
-  },
-  {
-    "id": "eslint/nitpicker/no-copy-pasted-tests",
-    "tool": "eslint",
-    "rule": "nitpicker/no-copy-pasted-tests",
-    "anchor": "eslint-nitpicker-no-copy-pasted-tests",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Require one it.each table instead of copies of a test",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-comments" },
+    "nitpicker/no-copy-pasted-tests",
+    "Require one it.each table instead of copies of a test",
+    [
       {
         "message": "This test repeats the body of {{count}} others and differs only in its literals. Write one `it.each` table with a row per case."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-copy-pasted-tests" }
-  },
-  {
-    "id": "eslint/nitpicker/no-default-export",
-    "tool": "eslint",
-    "rule": "nitpicker/no-default-export",
-    "anchor": "eslint-nitpicker-no-default-export",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Disallow default exports outside config files",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-copy-pasted-tests" },
+    "nitpicker/no-default-export",
+    "Disallow default exports outside config files",
+    [
       {
         "message": "Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files, `declare module` blocks and the framework files that need one (Next.js routes, Storybook stories, Expo Router screens). An exception fits only when a framework or library requires it."
       },
@@ -318,20 +196,10 @@
         "message": "Use a named export (`export { name }`). Default exports are only allowed in config files and in the framework files that need one (Next.js routes, Storybook stories, Expo Router screens). An exception fits only when a framework or library requires it."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-default-export" }
-  },
-  {
-    "id": "eslint/nitpicker/no-dev-dependency-in-production",
-    "tool": "eslint",
-    "rule": "nitpicker/no-dev-dependency-in-production",
-    "anchor": "eslint-nitpicker-no-dev-dependency-in-production",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Production code imports only packages listed in dependencies",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-default-export" },
+    "nitpicker/no-dev-dependency-in-production",
+    "Production code imports only packages listed in dependencies",
+    [
       {
         "message": "{{name}} is only a devDependency, but production code imports it. Move it to \"dependencies\" in package.json. {{hint}}"
       },
@@ -339,73 +207,33 @@
         "message": "{{manifest}} is not a JSON object, so imports cannot be checked against its dependencies. Fix the file."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-dev-dependency-in-production" }
-  },
-  {
-    "id": "eslint/nitpicker/no-disabled-tls-verification",
-    "tool": "eslint",
-    "rule": "nitpicker/no-disabled-tls-verification",
-    "anchor": "eslint-nitpicker-no-disabled-tls-verification",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Disallow turning off TLS certificate verification",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-dev-dependency-in-production" },
+    "nitpicker/no-disabled-tls-verification",
+    "Disallow turning off TLS certificate verification",
+    [
       {
         "message": "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-disabled-tls-verification" }
-  },
-  {
-    "id": "eslint/nitpicker/no-external-executables-in-unit-tests",
-    "tool": "eslint",
-    "rule": "nitpicker/no-external-executables-in-unit-tests",
-    "anchor": "eslint-nitpicker-no-external-executables-in-unit-tests",
-    "findingTools": ["eslint-lint", "coding-standards"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint", "coding-standards"] },
-    "summary": "Tests requiring external executables belong in the integration project.",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "scope": "The TypeScript preset only.",
-    "forms": [
-      { "message": "Tests requiring external executables belong in the integration project." }
-    ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-external-executables-in-unit-tests" }
-  },
-  {
-    "id": "eslint/nitpicker/no-first-test-charged-setup",
-    "tool": "eslint",
-    "rule": "nitpicker/no-first-test-charged-setup",
-    "anchor": "eslint-nitpicker-no-first-test-charged-setup",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "\"{{name}}\" is memoized lazily at module level and filled by a call, so whichever test runs first pays for its setup, reports show that test as slow, and test order starts to matter. Compute it once in beforeAll and let tests read it. An exception fits only when the setup is cheap or the lazy memo is intended.",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-disabled-tls-verification" },
+    "nitpicker/no-external-executables-in-unit-tests",
+    ["eslint-lint", "coding-standards"],
+    { "typescript": ["eslint-lint", "coding-standards"] },
+    "Tests requiring external executables belong in the integration project.",
+    [{ "message": "Tests requiring external executables belong in the integration project." }],
+    { "key": "exceptions", "rule": "nitpicker/no-external-executables-in-unit-tests" },
+    "The TypeScript preset only.",
+    "nitpicker/no-first-test-charged-setup",
+    "\"{{name}}\" is memoized lazily at module level and filled by a call, so whichever test runs first pays for its setup, reports show that test as slow, and test order starts to matter. Compute it once in beforeAll and let tests read it. An exception fits only when the setup is cheap or the lazy memo is intended.",
+    [
       {
         "message": "\"{{name}}\" is memoized lazily at module level and filled by a call, so whichever test runs first pays for its setup, reports show that test as slow, and test order starts to matter. Compute it once in beforeAll and let tests read it. An exception fits only when the setup is cheap or the lazy memo is intended."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-first-test-charged-setup" }
-  },
-  {
-    "id": "eslint/nitpicker/no-fixed-sleep-synchronization",
-    "tool": "eslint",
-    "rule": "nitpicker/no-fixed-sleep-synchronization",
-    "anchor": "eslint-nitpicker-no-fixed-sleep-synchronization",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Fixed sleeps are non-deterministic; wait on a condition with vi.waitFor or expect.poll. An exception fits only when a real wait is unavoidable.",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-first-test-charged-setup" },
+    "nitpicker/no-fixed-sleep-synchronization",
+    "Fixed sleeps are non-deterministic; wait on a condition with vi.waitFor or expect.poll. An exception fits only when a real wait is unavoidable.",
+    [
       {
         "message": "Fixed sleeps are non-deterministic; wait on a condition with vi.waitFor or expect.poll. An exception fits only when a real wait is unavoidable."
       },
@@ -419,20 +247,10 @@
         "message": "`cy.wait(<number>)` sleeps on wall-clock time. Wait on a request alias (`cy.wait('@request')`) or retry an assertion (`cy.get(selector).should('be.visible')`). An exception fits only when a real wait is unavoidable."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-fixed-sleep-synchronization" }
-  },
-  {
-    "id": "eslint/nitpicker/no-forwarding-wrapper",
-    "tool": "eslint",
-    "rule": "nitpicker/no-forwarding-wrapper",
-    "anchor": "eslint-nitpicker-no-forwarding-wrapper",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Disallow a function that only forwards its parameters to another function",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-fixed-sleep-synchronization" },
+    "nitpicker/no-forwarding-wrapper",
+    "Disallow a function that only forwards its parameters to another function",
+    [
       {
         "message": "`{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Delete it and export `{{ target }}` in its place with `export { {{ target }} as {{ exported }} }`, or call `{{ target }}` directly."
       },
@@ -440,38 +258,18 @@
         "message": "`{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Call `{{ target }}` directly where `{{ name }}` is used and delete the wrapper."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-forwarding-wrapper" }
-  },
-  {
-    "id": "eslint/nitpicker/no-git-repository-per-test",
-    "tool": "eslint",
-    "rule": "nitpicker/no-git-repository-per-test",
-    "anchor": "eslint-nitpicker-no-git-repository-per-test",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Do not create a git repository in each test or beforeEach. Build a template repository once in beforeAll and copy it per test with cpSync.",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-forwarding-wrapper" },
+    "nitpicker/no-git-repository-per-test",
+    "Do not create a git repository in each test or beforeEach. Build a template repository once in beforeAll and copy it per test with cpSync.",
+    [
       {
         "message": "Do not create a git repository in each test or beforeEach. Build a template repository once in beforeAll and copy it per test with cpSync."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-git-repository-per-test" }
-  },
-  {
-    "id": "eslint/nitpicker/no-handwritten-boundary-guard",
-    "tool": "eslint",
-    "rule": "nitpicker/no-handwritten-boundary-guard",
-    "anchor": "eslint-nitpicker-no-handwritten-boundary-guard",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Require external data in adapters to be parsed with a schema instead of a hand-written type guard",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-git-repository-per-test" },
+    "nitpicker/no-handwritten-boundary-guard",
+    "Require external data in adapters to be parsed with a schema instead of a hand-written type guard",
+    [
       {
         "message": "Do not hand-write a type guard for unknown input: parse it once at the boundary with {{phrase}} ({{example}}). A predicate over a union (`(result): result is Ok => result.kind === \"ok\"`) is fine. An exception fits only when the guard is genuinely needed."
       },
@@ -488,23 +286,14 @@
         "message": "Copy a value with `structuredClone(value)`, not `JSON.parse(JSON.stringify(value))`. An exception fits only when it is deliberate."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-handwritten-boundary-guard" }
-  },
-  {
-    "id": "eslint/nitpicker/no-internal-module-mocks",
-    "tool": "eslint",
-    "rule": "nitpicker/no-internal-module-mocks",
-    "anchor": "eslint-nitpicker-no-internal-module-mocks",
-    "findingTools": ["eslint-lint", "coding-standards"],
-    "page": "typescript-nitpicker",
-    "analyzers": {
+    { "key": "exceptions", "rule": "nitpicker/no-handwritten-boundary-guard" },
+    "nitpicker/no-internal-module-mocks",
+    {
       "typescript": ["eslint-lint", "coding-standards"],
       "javascript": ["eslint-lint", "coding-standards"]
     },
-    "summary": "Inject the dependency instead of replacing internal production module {{source}}. An exception fits only when injection is not possible.",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    "Inject the dependency instead of replacing internal production module {{source}}. An exception fits only when injection is not possible.",
+    [
       {
         "message": "Inject the dependency instead of replacing internal production module {{source}}. An exception fits only when injection is not possible."
       },
@@ -512,112 +301,52 @@
         "message": "Inject the dependency instead of replacing a function of internal production module {{source}} with `vi.spyOn`. An exception fits only when injection is not possible."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-internal-module-mocks" }
-  },
-  {
-    "id": "eslint/nitpicker/no-interval-polling-in-tests",
-    "tool": "eslint",
-    "rule": "nitpicker/no-interval-polling-in-tests",
-    "anchor": "eslint-nitpicker-no-interval-polling-in-tests",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Prefer vi.waitFor / expect.poll over setInterval polling in tests.",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [{ "message": "Prefer vi.waitFor / expect.poll over setInterval polling in tests." }],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-interval-polling-in-tests" }
-  },
-  {
-    "id": "eslint/nitpicker/no-magic-numbers",
-    "tool": "eslint",
-    "rule": "nitpicker/no-magic-numbers",
-    "anchor": "eslint-nitpicker-no-magic-numbers",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Disallow magic numbers",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-internal-module-mocks" },
+    "nitpicker/no-interval-polling-in-tests",
+    "Prefer vi.waitFor / expect.poll over setInterval polling in tests.",
+    [{ "message": "Prefer vi.waitFor / expect.poll over setInterval polling in tests." }],
+    { "key": "exceptions", "rule": "nitpicker/no-interval-polling-in-tests" },
+    "nitpicker/no-magic-numbers",
+    "Disallow magic numbers",
+    [
       { "message": "Number constants declarations must use 'const'." },
       {
         "message": "No magic number: {{raw}}. Name it with a module-level constant: `const SECONDS_PER_DAY = 24 * 60 * 60;` (-1, 0, 1, 2, 10, 100 and 1000, an HTTP status code such as `res.status(404)` and the digits of `toFixed(2)` are allowed). An exception fits only when the number is clear where it is."
       }
     ],
-    "links": [
+    { "key": "exceptions", "rule": "nitpicker/no-magic-numbers" },
+    [
       {
         "label": "Rule documentation",
         "url": "https://typescript-eslint.io/rules/no-magic-numbers"
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-magic-numbers" }
-  },
-  {
-    "id": "eslint/nitpicker/no-managed-resource-construction-outside-composition-roots",
-    "tool": "eslint",
-    "rule": "nitpicker/no-managed-resource-construction-outside-composition-roots",
-    "anchor": "eslint-nitpicker-no-managed-resource-construction-outside-composition-roots",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Keep managed resource construction in approved composition roots",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    "nitpicker/no-managed-resource-construction-outside-composition-roots",
+    "Keep managed resource construction in approved composition roots",
+    [
       {
         "message": "Construct {{name}} only in the composition root (src/main/composition-root.ts, main.ts or server.ts) and pass it in as a parameter. An exception fits only when it is a plain value, not a long-lived resource."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": {
+    {
       "key": "exceptions",
       "rule": "nitpicker/no-managed-resource-construction-outside-composition-roots"
-    }
-  },
-  {
-    "id": "eslint/nitpicker/no-mocking-subject-under-test",
-    "tool": "eslint",
-    "rule": "nitpicker/no-mocking-subject-under-test",
-    "anchor": "eslint-nitpicker-no-mocking-subject-under-test",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Prevent a test from mocking the production module it imports as its subject",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [{ "message": "Do not mock the production subject {{source}}." }],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-mocking-subject-under-test" }
-  },
-  {
-    "id": "eslint/nitpicker/no-module-level-let",
-    "tool": "eslint",
-    "rule": "nitpicker/no-module-level-let",
-    "anchor": "eslint-nitpicker-no-module-level-let",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Ban module-level let, which is hidden mutable module state",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    },
+    "nitpicker/no-mocking-subject-under-test",
+    "Prevent a test from mocking the production module it imports as its subject",
+    [{ "message": "Do not mock the production subject {{source}}." }],
+    { "key": "exceptions", "rule": "nitpicker/no-mocking-subject-under-test" },
+    "nitpicker/no-module-level-let",
+    "Ban module-level let, which is hidden mutable module state",
+    [
       {
         "message": "Use 'const' instead of module-level 'let'. Keep state in a parameter or in an object constructed in the composition root and passed in."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-module-level-let" }
-  },
-  {
-    "id": "eslint/nitpicker/no-module-level-mutable-state",
-    "tool": "eslint",
-    "rule": "nitpicker/no-module-level-mutable-state",
-    "anchor": "eslint-nitpicker-no-module-level-mutable-state",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Disallow module-level collections and objects that the module mutates",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-module-level-let" },
+    "nitpicker/no-module-level-mutable-state",
+    "Disallow module-level collections and objects that the module mutates",
+    [
       {
         "message": "Module-level '{{name}}' is mutated, which is hidden shared state. Build a lookup table inside a function and return it, create shared state in the composition root and pass it in, or return a new value instead of mutating. An exception fits only when it is a deliberate per-process singleton."
       },
@@ -625,56 +354,26 @@
         "message": "Module-level '{{name}}' is an exported mutable collection that any importer can change. If importers only read it, annotate it with a readonly type (`ReadonlySet<T>`, `ReadonlyMap<K, V>`, `readonly number[]`); otherwise build it inside a function and return it, or create it in the composition root and pass it in. An exception fits only when it is a deliberate per-process singleton."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-module-level-mutable-state" }
-  },
-  {
-    "id": "eslint/nitpicker/no-mutating-method-in-domain",
-    "tool": "eslint",
-    "rule": "nitpicker/no-mutating-method-in-domain",
-    "anchor": "eslint-nitpicker-no-mutating-method-in-domain",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Disallow mutating methods of arrays, Set, Map, Date, typed arrays, Buffer and URLSearchParams in domain code",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-module-level-mutable-state" },
+    "nitpicker/no-mutating-method-in-domain",
+    "Disallow mutating methods of arrays, Set, Map, Date, typed arrays, Buffer and URLSearchParams in domain code",
+    [
       {
         "message": "domain/ code does not mutate values, and {{owner}}.{{method}} changes the value it is called on: build a new value instead, e.g. new Set([...set, x]), new Map([...map, [key, value]]), new Map(xs.map((x) => [x.id, x] as const)) or new Date(ms + delta)."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-mutating-method-in-domain" }
-  },
-  {
-    "id": "eslint/nitpicker/no-node-process-per-test",
-    "tool": "eslint",
-    "rule": "nitpicker/no-node-process-per-test",
-    "anchor": "eslint-nitpicker-no-node-process-per-test",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Do not start a Node process (process.execPath, node, npx or a node_modules/.bin script) from a test or beforeEach. Import the function and call it in-process; start the application as a process only through the AppProcess harness in the test fixtures. An exception fits only when this test checks the process boundary itself (exit codes, signals, stdout).",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-mutating-method-in-domain" },
+    "nitpicker/no-node-process-per-test",
+    "Do not start a Node process (process.execPath, node, npx or a node_modules/.bin script) from a test or beforeEach. Import the function and call it in-process; start the application as a process only through the AppProcess harness in the test fixtures. An exception fits only when this test checks the process boundary itself (exit codes, signals, stdout).",
+    [
       {
         "message": "Do not start a Node process (process.execPath, node, npx or a node_modules/.bin script) from a test or beforeEach. Import the function and call it in-process; start the application as a process only through the AppProcess harness in the test fixtures. An exception fits only when this test checks the process boundary itself (exit codes, signals, stdout)."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-node-process-per-test" }
-  },
-  {
-    "id": "eslint/nitpicker/no-null",
-    "tool": "eslint",
-    "rule": "nitpicker/no-null",
-    "anchor": "eslint-nitpicker-no-null",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Disallow null outside the allowed library forms",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-node-process-per-test" },
+    "nitpicker/no-null",
+    "Disallow null outside the allowed library forms",
+    [
       {
         "message": "Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument. An exception fits only when a framework or library requires it."
       },
@@ -682,20 +381,10 @@
         "message": "Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument. An exception fits only when a framework or library requires it. Type it as optional with `undefined`."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-null" }
-  },
-  {
-    "id": "eslint/nitpicker/no-partial-output-assertion",
-    "tool": "eslint",
-    "rule": "nitpicker/no-partial-output-assertion",
-    "anchor": "eslint-nitpicker-no-partial-output-assertion",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Require tests to assert the whole output instead of a fragment of it",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-null" },
+    "nitpicker/no-partial-output-assertion",
+    "Require tests to assert the whole output instead of a fragment of it",
+    [
       {
         "message": "Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment (`toContain`, or `toMatch` with a pattern that is not anchored `^...$`): a fragment passes even when the rest is wrong. An exception fits only when the output is too large or unordered to pin."
       },
@@ -703,20 +392,10 @@
         "message": "Pass the whole expected value to `toEqual` instead of a partial match (`toMatchObject`, `expect.objectContaining`, `expect.stringContaining`, `expect.arrayContaining`): the rest of the value goes unchecked. Use `expect.any(Type)` for a field that varies. An exception fits only when the value is too large or unordered to pin."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-partial-output-assertion" }
-  },
-  {
-    "id": "eslint/nitpicker/no-process-access-outside-composition-root",
-    "tool": "eslint",
-    "rule": "nitpicker/no-process-access-outside-composition-root",
-    "anchor": "eslint-nitpicker-no-process-access-outside-composition-root",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Read environment variables and exit the process only in the composition root",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-partial-output-assertion" },
+    "nitpicker/no-process-access-outside-composition-root",
+    "Read environment variables and exit the process only in the composition root",
+    [
       {
         "message": "Read environment variables only in the composition root: parse the environment once with a zod schema there and pass the typed config down as a parameter. An exception fits only when this module is a config loader or a script."
       },
@@ -724,41 +403,20 @@
         "message": "process.exit stops the whole process from inside library code. Return a result or throw an Error subclass, and call process.exit only in the composition root or a main guard (`if (import.meta.main)`). An exception fits only when this module is an entry script."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": {
-      "key": "exceptions",
-      "rule": "nitpicker/no-process-access-outside-composition-root"
-    }
-  },
-  {
-    "id": "eslint/nitpicker/no-process-globals-outside-main-guard",
-    "tool": "eslint",
-    "rule": "nitpicker/no-process-globals-outside-main-guard",
-    "anchor": "eslint-nitpicker-no-process-globals-outside-main-guard",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "A test helper or fixture script may use process.{{member}} only inside a main guard such as `if (import.meta.main)`. Export a function that takes the arguments and returns the exit code, and call it from the main guard, so tests can import it instead of spawning it.",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-process-access-outside-composition-root" },
+    "nitpicker/no-process-globals-outside-main-guard",
+    "A test helper or fixture script may use process.{{member}} only inside a main guard such as `if (import.meta.main)`. Export a function that takes the arguments and returns the exit code, and call it from the main guard, so tests can import it instead of spawning it.",
+    [
       {
         "message": "A test helper or fixture script may use process.{{member}} only inside a main guard such as `if (import.meta.main)`. Export a function that takes the arguments and returns the exit code, and call it from the main guard, so tests can import it instead of spawning it."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-process-globals-outside-main-guard" }
-  },
-  {
-    "id": "eslint/nitpicker/no-production-console",
-    "tool": "eslint",
-    "rule": "nitpicker/no-production-console",
-    "anchor": "eslint-nitpicker-no-production-console",
-    "findingTools": ["eslint-logging"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-logging"], "javascript": ["eslint-logging"] },
-    "summary": "Keep production logging on the application logger path",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-process-globals-outside-main-guard" },
+    "nitpicker/no-production-console",
+    ["eslint-logging"],
+    { "typescript": ["eslint-logging"], "javascript": ["eslint-logging"] },
+    "Keep production logging on the application logger path",
+    [
       {
         "message": "Use the application logger instead of console.{{method}}(). An exception fits only when this module prints the program output."
       },
@@ -766,57 +424,26 @@
         "message": "Use the application logger instead of process.{{stream}}.write(). Program output is written in the composition root. An exception fits only when this module prints the program output."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-production-console" }
-  },
-  {
-    "id": "eslint/nitpicker/no-production-imports-in-setup-files",
-    "tool": "eslint",
-    "rule": "nitpicker/no-production-imports-in-setup-files",
-    "anchor": "eslint-nitpicker-no-production-imports-in-setup-files",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"] },
-    "summary": "Keep production code out of test setup files",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "scope": "The TypeScript preset only.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-production-console" },
+    "nitpicker/no-production-imports-in-setup-files",
+    "Keep production code out of test setup files",
+    [
       {
         "message": "A setup file runs before every test file, so production code imported here is covered without a test. Import {{source}} in the tests that need it."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-production-imports-in-setup-files" }
-  },
-  {
-    "id": "eslint/nitpicker/no-promise-chain",
-    "tool": "eslint",
-    "rule": "nitpicker/no-promise-chain",
-    "anchor": "eslint-nitpicker-no-promise-chain",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Disallow then, catch and finally promise chains",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-production-imports-in-setup-files" },
+    "nitpicker/no-promise-chain",
+    "Disallow then, catch and finally promise chains",
+    [
       {
         "message": "Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work. An exception fits only when a framework or library requires it."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-promise-chain" }
-  },
-  {
-    "id": "eslint/nitpicker/no-raised-test-timeout",
-    "tool": "eslint",
-    "rule": "nitpicker/no-raised-test-timeout",
-    "anchor": "eslint-nitpicker-no-raised-test-timeout",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Keep the {{kind}} timeout between 1 and {{ceiling}} ms for this test project. Make the test faster or configure its named project timeout in tools.tests.timeouts.",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-promise-chain" },
+    "nitpicker/no-raised-test-timeout",
+    "Keep the {{kind}} timeout between 1 and {{ceiling}} ms for this test project. Make the test faster or configure its named project timeout in tools.tests.timeouts.",
+    [
       {
         "message": "Keep the {{kind}} timeout between 1 and {{ceiling}} ms for this test project. Make the test faster or configure its named project timeout in tools.tests.timeouts."
       },
@@ -824,20 +451,10 @@
         "message": "Give the {{kind}} timeout as a number between 1 and {{ceiling}} ms written in this file, or keep the default."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-raised-test-timeout" }
-  },
-  {
-    "id": "eslint/nitpicker/no-real-time-random-or-network",
-    "tool": "eslint",
-    "rule": "nitpicker/no-real-time-random-or-network",
-    "anchor": "eslint-nitpicker-no-real-time-random-or-network",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Keep the real clock, randomness and network out of tests",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-raised-test-timeout" },
+    "nitpicker/no-real-time-random-or-network",
+    "Keep the real clock, randomness and network out of tests",
+    [
       {
         "message": "The real clock makes the test depend on when it runs. Pass the time in, or fake it with `vi.useFakeTimers()` and `vi.setSystemTime(...)`."
       },
@@ -846,45 +463,18 @@
       },
       { "message": "A unit test must not reach the network. Inject the client and fake it." }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-real-time-random-or-network" }
-  },
-  {
-    "id": "eslint/nitpicker/no-runtime-exclusive-props-check",
-    "tool": "eslint",
-    "rule": "nitpicker/no-runtime-exclusive-props-check",
-    "anchor": "eslint-nitpicker-no-runtime-exclusive-props-check",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"] },
-    "summary": "Disallow a runtime check that rejects a combination of props",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-real-time-random-or-network" },
+    "nitpicker/no-runtime-exclusive-props-check",
+    "Disallow a runtime check that rejects a combination of props",
+    [
       {
         "message": "Props {{ props }} are checked together at runtime. Make the props a discriminated union (`{ icon: Icon; image?: never } | { image: string; icon?: never }`) so the compiler rejects the combination."
       }
     ],
-    "docs": [
-      {
-        "label": "Strict preset guide",
-        "path": "docs/typescript-strict-preset.md",
-        "anchor": "react"
-      }
-    ],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-runtime-exclusive-props-check" }
-  },
-  {
-    "id": "eslint/nitpicker/no-self-recursion",
-    "tool": "eslint",
-    "rule": "nitpicker/no-self-recursion",
-    "anchor": "eslint-nitpicker-no-self-recursion",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Disallow a function that calls itself, directly or through another function",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-runtime-exclusive-props-check" },
+    "nitpicker/no-self-recursion",
+    "Disallow a function that calls itself, directly or through another function",
+    [
       {
         "message": "'{{name}}' calls itself. Retry or poll: loop with for...of over attempt numbers. Tree walk (directories, AST, JSON): for...of over a worklist, pushing each node's children onto it (for (const node of pending) { pending.push(...children) }). Flat data: map, filter, flatMap or Object.fromEntries. A component that renders itself in JSX is not reported. An exception fits only when the recursion is bounded and deliberate."
       },
@@ -895,56 +485,26 @@
         "message": "'{{name}}' and '{{other}}' call each other. Replace the cycle with a for...of loop over a worklist, or merge them into one function that loops. An exception fits only when the recursion is bounded and deliberate."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-self-recursion" }
-  },
-  {
-    "id": "eslint/nitpicker/no-server-or-worker-per-test",
-    "tool": "eslint",
-    "rule": "nitpicker/no-server-or-worker-per-test",
-    "anchor": "eslint-nitpicker-no-server-or-worker-per-test",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Do not start a server or worker thread in each test or beforeEach. Start it once in beforeAll and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh server.",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-self-recursion" },
+    "nitpicker/no-server-or-worker-per-test",
+    "Do not start a server or worker thread in each test or beforeEach. Start it once in beforeAll and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh server.",
+    [
       {
         "message": "Do not start a server or worker thread in each test or beforeEach. Start it once in beforeAll and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh server."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-server-or-worker-per-test" }
-  },
-  {
-    "id": "eslint/nitpicker/no-shared-test-state",
-    "tool": "eslint",
-    "rule": "nitpicker/no-shared-test-state",
-    "anchor": "eslint-nitpicker-no-shared-test-state",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Ban initialised let state shared by the tests of a file",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-server-or-worker-per-test" },
+    "nitpicker/no-shared-test-state",
+    "Ban initialised let state shared by the tests of a file",
+    [
       {
         "message": "Shared mutable state makes tests depend on their order. Keep `{{name}}` inside the test, or declare it without a value and set it in `beforeEach`."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-shared-test-state" }
-  },
-  {
-    "id": "eslint/nitpicker/no-shell-string-command",
-    "tool": "eslint",
-    "rule": "nitpicker/no-shell-string-command",
-    "anchor": "eslint-nitpicker-no-shell-string-command",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Disallow running a shell command built from a string",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-shared-test-state" },
+    "nitpicker/no-shell-string-command",
+    "Disallow running a shell command built from a string",
+    [
       {
         "message": "A shell command built from a variable or template is a command injection risk. Run the program with `execFile(program, [args])` or `spawn(program, [args])`, one argument per array entry. If the command is fixed and trusted, write it as a plain string literal."
       },
@@ -952,100 +512,45 @@
         "message": "`{{program}} {{flag}}` runs a command built from a variable or template through a shell, a command injection risk like `exec`. Run the program itself with `execFile(program, [args])`, one argument per array entry. If the command is fixed and trusted, write it as a plain string literal."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-shell-string-command" }
-  },
-  {
-    "id": "eslint/nitpicker/no-silent-catch",
-    "tool": "eslint",
-    "rule": "nitpicker/no-silent-catch",
-    "anchor": "eslint-nitpicker-no-silent-catch",
-    "findingTools": ["eslint-errors"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-errors"], "javascript": ["eslint-errors"] },
-    "summary": "Require a catch clause to use the caught value or return a failure result, not discard it",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-shell-string-command" },
+    "nitpicker/no-silent-catch",
+    ["eslint-errors"],
+    { "typescript": ["eslint-errors"], "javascript": ["eslint-errors"] },
+    "Require a catch clause to use the caught value or return a failure result, not discard it",
+    [
       {
         "message": "This catch discards the failure. Return a failure result (`return { kind: 'malformed-json' }`), or rethrow an Error subclass with `{ cause: error }`. An exception fits only when dropping it is intended."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-silent-catch" }
-  },
-  {
-    "id": "eslint/nitpicker/no-singular-and-plural-prop",
-    "tool": "eslint",
-    "rule": "nitpicker/no-singular-and-plural-prop",
-    "anchor": "eslint-nitpicker-no-singular-and-plural-prop",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"] },
-    "summary": "Disallow optional alternative props that take one item or a list of the same item",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-silent-catch" },
+    "nitpicker/no-singular-and-plural-prop",
+    "Disallow optional alternative props that take one item or a list of the same item",
+    [
       {
         "message": "Optional props `{{ singular }}` and `{{ plural }}` are two ways to pass the same data. Keep `{{ plural }}` and pass a single item as a one-element array."
       }
     ],
-    "docs": [
-      {
-        "label": "Strict preset guide",
-        "path": "docs/typescript-strict-preset.md",
-        "anchor": "react"
-      }
-    ],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-singular-and-plural-prop" }
-  },
-  {
-    "id": "eslint/nitpicker/no-sql-string-building",
-    "tool": "eslint",
-    "rule": "nitpicker/no-sql-string-building",
-    "anchor": "eslint-nitpicker-no-sql-string-building",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Disallow SQL text built from runtime values",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-singular-and-plural-prop" },
+    "nitpicker/no-sql-string-building",
+    "Disallow SQL text built from runtime values",
+    [
       {
         "message": "SQL text built by {{kind}} lets a runtime value change the statement (SQL injection). Use {{tagged}}bind parameters: `pool.query(\"SELECT * FROM users WHERE id = $1\", [id])` (pg), `?` with an array (mysql2, sqlite, knex.raw, knex.whereRaw), `:name` (sequelize, typeorm `.where(\"user.id = :id\", { id })`). Placeholder lists are built from placeholders alone: `ids.map(() => \"?\").join(\",\")`, rows as `rows.map(() => \"(?, ?)\").join(\", \")`, `$${i + 1}`, and optional filters as `conditions.push(\"name = ?\")` joined with `\" AND \"`. A table or column name comes from a fixed lookup (`const COLUMNS = { name: \"name\" } as const; COLUMNS[key]`) or a value typed as a union of literal names (`table: \"users\" | \"orders\"`). An exception fits only when the value is trusted and cannot be written that way."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-sql-string-building" }
-  },
-  {
-    "id": "eslint/nitpicker/no-switched-off-tests",
-    "tool": "eslint",
-    "rule": "nitpicker/no-switched-off-tests",
-    "anchor": "eslint-nitpicker-no-switched-off-tests",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Ban test forms that switch a test off",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-sql-string-building" },
+    "nitpicker/no-switched-off-tests",
+    "Ban test forms that switch a test off",
+    [
       { "message": "Do not leave a `todo` test: write the test, or delete the stub." },
       {
         "message": "A literal condition switches the test off for good. Delete the test or make it run; a real platform condition such as `process.platform === \"win32\"` is allowed."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-switched-off-tests" }
-  },
-  {
-    "id": "eslint/nitpicker/no-test-helpers-in-source",
-    "tool": "eslint",
-    "rule": "nitpicker/no-test-helpers-in-source",
-    "anchor": "eslint-nitpicker-no-test-helpers-in-source",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Keep test helpers and fixtures out of production source roots",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-switched-off-tests" },
+    "nitpicker/no-test-helpers-in-source",
+    "Keep test helpers and fixtures out of production source roots",
+    [
       {
         "message": "This looks like a test helper ({{name}}), but it sits in production source, so it is mutation-tested and shipped. Tests in this project live under {{testRoot}}/, so move it to a test-support/ folder there ({{testRoot}}/test-support/). An exception fits only when it is real production code."
       },
@@ -1053,38 +558,18 @@
         "message": "This looks like a test helper ({{name}}), but it sits in production source outside a test-support/ folder. Tests in this project sit next to the code, and test-only modules go in a test-support/ folder beside the code they serve: move it there. An exception fits only when it is real production code."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-test-helpers-in-source" }
-  },
-  {
-    "id": "eslint/nitpicker/no-throw",
-    "tool": "eslint",
-    "rule": "nitpicker/no-throw",
-    "anchor": "eslint-nitpicker-no-throw",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Disallow throw so expected failures are returned as discriminated unions",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-test-helpers-in-source" },
+    "nitpicker/no-throw",
+    "Disallow throw so expected failures are returned as discriminated unions",
+    [
       {
         "message": "Return a discriminated-union failure result (for example { kind: \"failed\", reason }) instead of throwing."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-throw" }
-  },
-  {
-    "id": "eslint/nitpicker/no-ui-framework-in-domain",
-    "tool": "eslint",
-    "rule": "nitpicker/no-ui-framework-in-domain",
-    "anchor": "eslint-nitpicker-no-ui-framework-in-domain",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Keep UI frameworks and UI state libraries out of domain/",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-throw" },
+    "nitpicker/no-ui-framework-in-domain",
+    "Keep UI frameworks and UI state libraries out of domain/",
+    [
       {
         "message": "domain/ does not import a UI framework or UI state library (`{{source}}`): components, hooks and stores live in adapters/ (or shared/ui) and call the logic in domain/, which takes and returns plain values. An exception fits only when a framework requires this file in domain/."
       },
@@ -1095,74 +580,34 @@
         "message": "domain/ does not import a UI framework or UI state library, here `{{framework}}` through `{{source}}`: components, hooks and stores live in adapters/ (or shared/ui) and call the logic in domain/, which takes and returns plain values. An exception fits only when a framework requires this file in domain/."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-ui-framework-in-domain" }
-  },
-  {
-    "id": "eslint/nitpicker/no-uncollected-tests",
-    "tool": "eslint",
-    "rule": "nitpicker/no-uncollected-tests",
-    "anchor": "eslint-nitpicker-no-uncollected-tests",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Report test calls in a file the test runner never collects",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-ui-framework-in-domain" },
+    "nitpicker/no-uncollected-tests",
+    "Report test calls in a file the test runner never collects",
+    [
       {
         "message": "This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-uncollected-tests" }
-  },
-  {
-    "id": "eslint/nitpicker/no-uninjectable-delay",
-    "tool": "eslint",
-    "rule": "nitpicker/no-uninjectable-delay",
-    "anchor": "eslint-nitpicker-no-uninjectable-delay",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "{{timer}} waits {{name}} ({{value}} ms), a module constant that exported \"{{owner}}\" cannot override, so a test must wait it out or fake timers. Accept the delay as an option with {{name}} as its default, for example \"{ delayMs = {{name}} } = {}\". An exception fits only when the delay is deliberately fixed.",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-uncollected-tests" },
+    "nitpicker/no-uninjectable-delay",
+    "{{timer}} waits {{name}} ({{value}} ms), a module constant that exported \"{{owner}}\" cannot override, so a test must wait it out or fake timers. Accept the delay as an option with {{name}} as its default, for example \"{ delayMs = {{name}} } = {}\". An exception fits only when the delay is deliberately fixed.",
+    [
       {
         "message": "{{timer}} waits {{name}} ({{value}} ms), a module constant that exported \"{{owner}}\" cannot override, so a test must wait it out or fake timers. Accept the delay as an option with {{name}} as its default, for example \"{ delayMs = {{name}} } = {}\". An exception fits only when the delay is deliberately fixed."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-uninjectable-delay" }
-  },
-  {
-    "id": "eslint/nitpicker/no-unknown-in-domain",
-    "tool": "eslint",
-    "rule": "nitpicker/no-unknown-in-domain",
-    "anchor": "eslint-nitpicker-no-unknown-in-domain",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Disallow the unknown type in parameter and property types of domain code",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-uninjectable-delay" },
+    "nitpicker/no-unknown-in-domain",
+    "Disallow the unknown type in parameter and property types of domain code",
+    [
       {
         "message": "domain/ code takes typed values, not unknown (also through a type alias). Write a readonly type for this value in domain/; adapters/ parses the input with {{phrase}} and passes the result in (the parsed value is assignable to a readonly type; do not import the schema type from adapters/). A caught error may be typed unknown as `cause` or `error`. An exception fits only when the value is genuinely opaque."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-unknown-in-domain" }
-  },
-  {
-    "id": "eslint/nitpicker/no-unknown-main-folder",
-    "tool": "eslint",
-    "rule": "nitpicker/no-unknown-main-folder",
-    "anchor": "eslint-nitpicker-no-unknown-main-folder",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Allow only features, shared and the composition root under src/main",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-unknown-in-domain" },
+    "nitpicker/no-unknown-main-folder",
+    "Allow only features, shared and the composition root under src/main",
+    [
       {
         "message": "'{{folder}}' sits directly in src/main/, which holds only features/, shared/ and the composition root (composition-root.ts, main.ts, server.ts) and index.ts. Move it into the feature that uses it, or into shared/ when several features need it. An exception fits only when the file is deliberate."
       },
@@ -1176,20 +621,10 @@
         "message": "'{{folder}}' sits directly in a feature folder, which holds only its public index.ts besides domain/ and adapters/ (and ui/ for components in a React project). Move it into domain/ if it is pure logic or adapters/ if it does I/O. An exception fits only when the file is deliberate."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-unknown-main-folder" }
-  },
-  {
-    "id": "eslint/nitpicker/no-unsafe-deserialization",
-    "tool": "eslint",
-    "rule": "nitpicker/no-unsafe-deserialization",
-    "anchor": "eslint-nitpicker-no-unsafe-deserialization",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Disallow rebuilding code or objects from untrusted data",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-unknown-main-folder" },
+    "nitpicker/no-unsafe-deserialization",
+    "Disallow rebuilding code or objects from untrusted data",
+    [
       {
         "message": "`{{name}}` rebuilds functions from the data it reads, so a crafted payload runs code. Read the data as JSON, `JSON.parse(text)`, and check it against a schema (zod, valibot) into a typed value. An exception fits only when this process alone writes and reads the data."
       },
@@ -1215,38 +650,18 @@
         "message": "`noent: true` expands external XML entities, so a crafted document can read local files (XXE). Leave it off, which is the default, and parse the XML as data. An exception fits only when the XML is produced by this process."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-unsafe-deserialization" }
-  },
-  {
-    "id": "eslint/nitpicker/no-unsafe-path-join",
-    "tool": "eslint",
-    "rule": "nitpicker/no-unsafe-path-join",
-    "anchor": "eslint-nitpicker-no-unsafe-path-join",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Require a containment check when a file path is built from a parameter",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-unsafe-deserialization" },
+    "nitpicker/no-unsafe-path-join",
+    "Require a containment check when a file path is built from a parameter",
+    [
       {
         "message": "A path built from a parameter can leave the base directory with `../`. Resolve it into a variable and check containment on that variable in an `if` that returns or throws: `const full = path.resolve(base, name); if (!full.startsWith(base + path.sep)) { return { kind: 'outside-base' }; }`. An exception fits only when the parameter is a fixed file name."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-unsafe-path-join" }
-  },
-  {
-    "id": "eslint/nitpicker/no-unused-dom-environment",
-    "tool": "eslint",
-    "rule": "nitpicker/no-unused-dom-environment",
-    "anchor": "eslint-nitpicker-no-unused-dom-environment",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "This test file declares {{environment}} but never uses the DOM. Change the directive to `{{directive}} node` or remove it. An exception fits only when the file uses the DOM in a way nitpicker cannot see.",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-unsafe-path-join" },
+    "nitpicker/no-unused-dom-environment",
+    "This test file declares {{environment}} but never uses the DOM. Change the directive to `{{directive}} node` or remove it. An exception fits only when the file uses the DOM in a way nitpicker cannot see.",
+    [
       {
         "message": "This test file declares {{environment}} but never uses the DOM. Change the directive to `{{directive}} node` or remove it. An exception fits only when the file uses the DOM in a way nitpicker cannot see."
       },
@@ -1257,20 +672,10 @@
         "message": "This test file runs in {{environment}}, the project default, but never uses the DOM. Add `/** @vitest-environment node */` here, or default to node and add `/** @vitest-environment {{environment}} */` to DOM tests. An exception fits only when the file uses the DOM in a way nitpicker cannot see."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-unused-dom-environment" }
-  },
-  {
-    "id": "eslint/nitpicker/no-unvalidated-schema-field",
-    "tool": "eslint",
-    "rule": "nitpicker/no-unvalidated-schema-field",
-    "anchor": "eslint-nitpicker-no-unvalidated-schema-field",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Disallow z.unknown() and z.any() as a field of a z.object schema",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-unused-dom-environment" },
+    "nitpicker/no-unvalidated-schema-field",
+    "Disallow z.unknown() and z.any() as a field of a z.object schema",
+    [
       {
         "message": "{{factory}}() as a field only checks that the key exists and hands the value on unchecked. Validate the field in the schema, e.g. z.string().trim().min(1) or z.email(). An exception fits only when the field is genuinely opaque."
       },
@@ -1281,41 +686,18 @@
         "message": "z.looseObject(), .loose() and .passthrough() let unknown keys through unvalidated, and .catchall(z.unknown()) does the same. Use z.object({...}), which drops unknown keys, or z.strictObject({...}) to reject them. An exception fits only when the extra keys are genuinely opaque."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-unvalidated-schema-field" }
-  },
-  {
-    "id": "eslint/nitpicker/no-wait-for-with-fake-timers",
-    "tool": "eslint",
-    "rule": "nitpicker/no-wait-for-with-fake-timers",
-    "anchor": "eslint-nitpicker-no-wait-for-with-fake-timers",
-    "findingTools": ["eslint-lint", "coding-standards"],
-    "page": "typescript-nitpicker",
-    "analyzers": {
-      "typescript": ["eslint-lint", "coding-standards"],
-      "javascript": ["eslint-lint", "coding-standards"]
-    },
-    "summary": "Use an explicit completion signal or advanceTimersByTimeAsync and a direct assertion; waitFor advances fake time.",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-unvalidated-schema-field" },
+    "nitpicker/no-wait-for-with-fake-timers",
+    "Use an explicit completion signal or advanceTimersByTimeAsync and a direct assertion; waitFor advances fake time.",
+    [
       {
         "message": "Use an explicit completion signal or advanceTimersByTimeAsync and a direct assertion; waitFor advances fake time."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-wait-for-with-fake-timers" }
-  },
-  {
-    "id": "eslint/nitpicker/no-weak-hash",
-    "tool": "eslint",
-    "rule": "nitpicker/no-weak-hash",
-    "anchor": "eslint-nitpicker-no-weak-hash",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Disallow MD5 and SHA-1 hashing",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-wait-for-with-fake-timers" },
+    "nitpicker/no-weak-hash",
+    "Disallow MD5 and SHA-1 hashing",
+    [
       {
         "message": "{{algorithm}} is a broken hash: collisions are cheap and brute force is fast. Hash with `createHash(\"sha256\")` (or sha384, sha512, sha3-256), sign with `createHmac(\"sha256\", key)`, and hash passwords with `scrypt` from node:crypto, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it (a legacy signature header, an ETag, a git object id)."
       },
@@ -1326,23 +708,10 @@
         "message": "`{{name}}` only computes MD5 or SHA-1, which are broken hashes. Use `createHash(\"sha256\")` from node:crypto (or sha384, sha512, sha3-256), and hash passwords with `scrypt`, argon2 or bcrypt. An exception fits only when a protocol you do not control requires it."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/no-weak-hash" }
-  },
-  {
-    "id": "eslint/nitpicker/preserve-error-cause",
-    "tool": "eslint",
-    "rule": "nitpicker/preserve-error-cause",
-    "anchor": "eslint-nitpicker-preserve-error-cause",
-    "findingTools": ["eslint-lint", "coding-standards"],
-    "page": "typescript-nitpicker",
-    "analyzers": {
-      "typescript": ["eslint-lint", "coding-standards"],
-      "javascript": ["eslint-lint", "coding-standards"]
-    },
-    "summary": "Preserve the original cause when wrapping a caught failure: `new AppError(message, { cause: error })`. An exception fits only when the original failure is deliberately dropped.",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/no-weak-hash" },
+    "nitpicker/preserve-error-cause",
+    "Preserve the original cause when wrapping a caught failure: `new AppError(message, { cause: error })`. An exception fits only when the original failure is deliberately dropped.",
+    [
       {
         "message": "Preserve the original cause when wrapping a caught failure: `new AppError(message, { cause: error })`. An exception fits only when the original failure is deliberately dropped."
       },
@@ -1350,21 +719,10 @@
         "message": "This catch has no binding, so the new failure loses the original cause. Bind it and pass it on: `catch (error) { throw new AppError(message, { cause: error }); }`. An exception fits only when the original failure is deliberately dropped."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/preserve-error-cause" }
-  },
-  {
-    "id": "eslint/nitpicker/react-controlled-input",
-    "tool": "eslint",
-    "rule": "nitpicker/react-controlled-input",
-    "anchor": "eslint-nitpicker-react-controlled-input",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"] },
-    "summary": "Disallow form fields that are both controlled and uncontrolled, or read-only by accident",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/preserve-error-cause" },
+    "nitpicker/react-controlled-input",
+    "Disallow form fields that are both controlled and uncontrolled, or read-only by accident",
+    [
       {
         "message": "Pass either `value` (controlled, with `onChange`) or `defaultValue` (uncontrolled), not both. An exception fits only when a form library needs both on this field."
       },
@@ -1372,77 +730,26 @@
         "message": "A field with `value` or `checked` and no `onChange` cannot be edited. Add `onChange`, use `defaultValue`, or mark it `readOnly`. An exception fits only when a form library handles the change events."
       }
     ],
-    "docs": [
-      {
-        "label": "Strict preset guide",
-        "path": "docs/typescript-strict-preset.md",
-        "anchor": "react"
-      }
-    ],
-    "exception": { "key": "exceptions", "rule": "nitpicker/react-controlled-input" }
-  },
-  {
-    "id": "eslint/nitpicker/react-field-has-label",
-    "tool": "eslint",
-    "rule": "nitpicker/react-field-has-label",
-    "anchor": "eslint-nitpicker-react-field-has-label",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"] },
-    "summary": "Require a label for form fields",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/react-controlled-input" },
+    "nitpicker/react-field-has-label",
+    "Require a label for form fields",
+    [
       {
         "message": "Label this field: wrap it in `<label>`, give it an `id` that a `<label htmlFor>` points to, or set `aria-label`. An exception fits only when a wrapper labels it elsewhere."
       }
     ],
-    "docs": [
-      {
-        "label": "Strict preset guide",
-        "path": "docs/typescript-strict-preset.md",
-        "anchor": "react"
-      }
-    ],
-    "exception": { "key": "exceptions", "rule": "nitpicker/react-field-has-label" }
-  },
-  {
-    "id": "eslint/nitpicker/react-no-direct-dom",
-    "tool": "eslint",
-    "rule": "nitpicker/react-no-direct-dom",
-    "anchor": "eslint-nitpicker-react-no-direct-dom",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"] },
-    "summary": "Disallow changing the DOM directly from a component",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/react-field-has-label" },
+    "nitpicker/react-no-direct-dom",
+    "Disallow changing the DOM directly from a component",
+    [
       {
         "message": "Do not query or change the page DOM directly: render the value from state or props, render into another node with `createPortal`, and reach an element through a ref (`ref.current.style`, focus, measuring); `document.documentElement` and `document.body` may change their class, style and attributes. An exception fits only for a third-party widget or a file download."
       }
     ],
-    "docs": [
-      {
-        "label": "Strict preset guide",
-        "path": "docs/typescript-strict-preset.md",
-        "anchor": "react"
-      }
-    ],
-    "exception": { "key": "exceptions", "rule": "nitpicker/react-no-direct-dom" }
-  },
-  {
-    "id": "eslint/nitpicker/react-no-effect-data-fetching",
-    "tool": "eslint",
-    "rule": "nitpicker/react-no-effect-data-fetching",
-    "anchor": "eslint-nitpicker-react-no-effect-data-fetching",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"] },
-    "summary": "Disallow fetching data inside useEffect",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/react-no-direct-dom" },
+    "nitpicker/react-no-effect-data-fetching",
+    "Disallow fetching data inside useEffect",
+    [
       {
         "message": "Do not fetch data in `useEffect`: it races and caches nothing. Use `useQuery` or a route loader. An exception fits only when this request is not data for rendering (an analytics beacon)."
       },
@@ -1450,27 +757,10 @@
         "message": "Do not load state asynchronously in `useEffect` (a state setter after `await` or in a `.then` callback): it races the render and nothing caches the result. Load data with `useQuery` or a route loader; run an action (a save, a clipboard write) in the event handler that causes it; redirect by rendering `<Navigate />`. An exception fits only when this effect only synchronizes with an external system."
       }
     ],
-    "docs": [
-      {
-        "label": "Strict preset guide",
-        "path": "docs/typescript-strict-preset.md",
-        "anchor": "react"
-      }
-    ],
-    "exception": { "key": "exceptions", "rule": "nitpicker/react-no-effect-data-fetching" }
-  },
-  {
-    "id": "eslint/nitpicker/react-no-effect-derived-state",
-    "tool": "eslint",
-    "rule": "nitpicker/react-no-effect-derived-state",
-    "anchor": "eslint-nitpicker-react-no-effect-derived-state",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"] },
-    "summary": "Disallow setting state from an effect body, which derives state from props or state",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/react-no-effect-data-fetching" },
+    "nitpicker/react-no-effect-derived-state",
+    "Disallow setting state from an effect body, which derives state from props or state",
+    [
       {
         "message": "Do not set state from an effect to mirror props or state. Compute the value during render (`const total = price * quantity;`). An exception fits only when this effect synchronizes with an external system."
       },
@@ -1481,102 +771,34 @@
         "message": "Do not copy browser storage into state from an effect: read it during render with `useSyncExternalStore(subscribe, () => localStorage.getItem(key))`, which also follows changes from other tabs. An exception fits only when this effect synchronizes with an external system."
       }
     ],
-    "docs": [
-      {
-        "label": "Strict preset guide",
-        "path": "docs/typescript-strict-preset.md",
-        "anchor": "react"
-      }
-    ],
-    "exception": { "key": "exceptions", "rule": "nitpicker/react-no-effect-derived-state" }
-  },
-  {
-    "id": "eslint/nitpicker/react-no-effect-event-handling",
-    "tool": "eslint",
-    "rule": "nitpicker/react-no-effect-event-handling",
-    "anchor": "eslint-nitpicker-react-no-effect-event-handling",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"] },
-    "summary": "Disallow calling a prop callback from an effect that reacts to a change",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/react-no-effect-derived-state" },
+    "nitpicker/react-no-effect-event-handling",
+    "Disallow calling a prop callback from an effect that reacts to a change",
+    [
       {
         "message": "Do not call `{{name}}` from an effect to react to a change: call it in the event handler that causes the change (`onSubmit` calls `onSave(value)`). An exception fits only when this effect synchronizes with an external system."
       }
     ],
-    "docs": [
-      {
-        "label": "Strict preset guide",
-        "path": "docs/typescript-strict-preset.md",
-        "anchor": "react"
-      }
-    ],
-    "exception": { "key": "exceptions", "rule": "nitpicker/react-no-effect-event-handling" }
-  },
-  {
-    "id": "eslint/nitpicker/react-no-hardcoded-colors",
-    "tool": "eslint",
-    "rule": "nitpicker/react-no-hardcoded-colors",
-    "anchor": "eslint-nitpicker-react-no-hardcoded-colors",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"] },
-    "summary": "Take colors from the theme or palette, not from literals",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/react-no-effect-event-handling" },
+    "nitpicker/react-no-hardcoded-colors",
+    "Take colors from the theme or palette, not from literals",
+    [
       {
         "message": "Take the color from the theme or design-system palette (a theme token, a CSS variable, or currentColor) instead of the literal {{color}}. A file that defines the palette, or a theme or palette folder, takes one glob exception (for example `src/theme/**`)."
       }
     ],
-    "docs": [
-      {
-        "label": "Strict preset guide",
-        "path": "docs/typescript-strict-preset.md",
-        "anchor": "react"
-      }
-    ],
-    "exception": { "key": "exceptions", "rule": "nitpicker/react-no-hardcoded-colors" }
-  },
-  {
-    "id": "eslint/nitpicker/react-no-random-key",
-    "tool": "eslint",
-    "rule": "nitpicker/react-no-random-key",
-    "anchor": "eslint-nitpicker-react-no-random-key",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"] },
-    "summary": "Disallow keys generated from randomness or the clock",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/react-no-hardcoded-colors" },
+    "nitpicker/react-no-random-key",
+    "Disallow keys generated from randomness or the clock",
+    [
       {
         "message": "Do not build a `key` from `{{call}}()`: it changes on every render and remounts the row. Use a stable id from the item (`key={todo.id}`) and generate ids when the item is created. An exception fits only when remounting on every render is intended."
       }
     ],
-    "docs": [
-      {
-        "label": "Strict preset guide",
-        "path": "docs/typescript-strict-preset.md",
-        "anchor": "react"
-      }
-    ],
-    "exception": { "key": "exceptions", "rule": "nitpicker/react-no-random-key" }
-  },
-  {
-    "id": "eslint/nitpicker/react-single-styling-approach",
-    "tool": "eslint",
-    "rule": "nitpicker/react-single-styling-approach",
-    "anchor": "eslint-nitpicker-react-single-styling-approach",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"] },
-    "summary": "Allow one styling approach per project",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/react-no-random-key" },
+    "nitpicker/react-single-styling-approach",
+    "Allow one styling approach per project",
+    [
       {
         "message": "Style with {{allowed}}, not an inline `style` object of fixed values: {{form}}. A `style` object stays for values computed at runtime, such as `{ width: progress }`. An exception fits only for a one-off."
       },
@@ -1587,27 +809,10 @@
         "message": "This project styles with {{allowed}}, not with {{found}}. To change the approach set \"styling\" under \"react\" in nitpicker.config.json."
       }
     ],
-    "docs": [
-      {
-        "label": "Strict preset guide",
-        "path": "docs/typescript-strict-preset.md",
-        "anchor": "react"
-      }
-    ],
-    "exception": { "key": "exceptions", "rule": "nitpicker/react-single-styling-approach" }
-  },
-  {
-    "id": "eslint/nitpicker/react-test-no-implementation-details",
-    "tool": "eslint",
-    "rule": "nitpicker/react-test-no-implementation-details",
-    "anchor": "eslint-nitpicker-react-test-no-implementation-details",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"] },
-    "summary": "Disallow React component tests that depend on component or hook internals",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "scope": "A TypeScript project with React: `react` in package.json or `react.enabled`.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/react-single-styling-approach" },
+    "nitpicker/react-test-no-implementation-details",
+    "Disallow React component tests that depend on component or hook internals",
+    [
       {
         "message": "Do not use component state or instances ({{ name }}). Assert what the user sees with `screen.getByRole(...)`."
       },
@@ -1621,29 +826,12 @@
         "message": "Do not spy on the React hook `{{ name }}`. Assert what the user sees with `screen.getByRole(...)`, or test a custom hook with `renderHook`."
       }
     ],
-    "docs": [
-      {
-        "label": "Strict preset guide",
-        "path": "docs/typescript-strict-preset.md",
-        "anchor": "react"
-      }
-    ],
-    "exception": { "key": "exceptions", "rule": "nitpicker/react-test-no-implementation-details" }
-  },
-  {
-    "id": "eslint/nitpicker/report-module-load-effects",
-    "tool": "eslint",
-    "rule": "nitpicker/report-module-load-effects",
-    "anchor": "eslint-nitpicker-report-module-load-effects",
-    "findingTools": ["eslint-module-effects"],
-    "page": "typescript-nitpicker",
-    "analyzers": {
-      "typescript": ["eslint-module-effects"],
-      "javascript": ["eslint-module-effects"]
-    },
-    "summary": "Report statements that execute observable work while a module is imported",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/react-test-no-implementation-details" },
+    "nitpicker/report-module-load-effects",
+    ["eslint-module-effects"],
+    { "typescript": ["eslint-module-effects"], "javascript": ["eslint-module-effects"] },
+    "Report statements that execute observable work while a module is imported",
+    [
       {
         "message": "Side-effect-only import executes code during module loading. Move the work into a function that the app entry calls. The entry (the module script in Vite's index.html, else src/main.tsx) is detected; for another entry file, list it under `layout.entryPoints` in nitpicker.config.json."
       },
@@ -1661,59 +849,31 @@
         "message": "`{{call}}` runs when the module is imported. Move it into a function and call that from the composition root, passing the result in. An exception fits only when it must run at import."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/report-module-load-effects" }
-  },
-  {
-    "id": "eslint/nitpicker/require-http-timeout",
-    "tool": "eslint",
-    "rule": "nitpicker/require-http-timeout",
-    "anchor": "eslint-nitpicker-require-http-timeout",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Require a timeout on outbound HTTP calls",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/report-module-load-effects" },
+    "nitpicker/require-http-timeout",
+    "Require a timeout on outbound HTTP calls",
+    [
       {
         "message": "{{call}} has no timeout, so a server that never answers hangs this code for good. Give it a deadline: `fetch(url, { signal: AbortSignal.timeout(10_000) })`, `axios.get(url, { timeout: 10_000 })` or `{ signal: AbortSignal.timeout(10_000) }`, `https.get(url, { timeout: 10_000 })`, `got(url, { timeout: { request: 10_000 } })`; or set it once for the client: `axios.create({ timeout: 10_000 })`, `axios.defaults.timeout = 10_000`, `got.extend({ timeout: { request: 10_000 } })`, undici `setGlobalDispatcher(new Agent({ headersTimeout: 10_000, bodyTimeout: 10_000 }))`. An exception fits only when this call is meant to wait without a limit."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/require-http-timeout" }
-  },
-  {
-    "id": "eslint/nitpicker/require-test-process-timeout",
-    "tool": "eslint",
-    "rule": "nitpicker/require-test-process-timeout",
-    "anchor": "eslint-nitpicker-require-test-process-timeout",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Require a timeout on synchronous test subprocesses",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/require-http-timeout" },
+    "nitpicker/require-test-process-timeout",
+    "Require a timeout on synchronous test subprocesses",
+    [
       {
         "message": "Give {{method}} a positive subprocess timeout, such as { timeout: 10_000 }. A test runner timeout cannot interrupt a synchronous child process, so a stuck command can hang the suite. An exception fits only when this process must wait without a deadline."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/require-test-process-timeout" }
-  },
-  {
-    "id": "eslint/nitpicker/structured-catch-logging",
-    "tool": "eslint",
-    "rule": "nitpicker/structured-catch-logging",
-    "anchor": "eslint-nitpicker-structured-catch-logging",
-    "findingTools": ["eslint-logging", "coding-standards"],
-    "page": "typescript-nitpicker",
-    "analyzers": {
+    { "key": "exceptions", "rule": "nitpicker/require-test-process-timeout" },
+    "nitpicker/structured-catch-logging",
+    ["eslint-logging", "coding-standards"],
+    {
       "typescript": ["eslint-logging", "coding-standards"],
       "javascript": ["eslint-logging", "coding-standards"]
     },
-    "summary": "Keep a caught error on the logger call in the shape the project logger reads",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    "Keep a caught error on the logger call in the shape the project logger reads",
+    [
       { "message": "Log a caught value as logger.<level>({ err: error, ...context }, message)." },
       {
         "message": "Pass the caught value itself to the logger, for example logger.error('message', error), not its message or a template string."
@@ -1722,43 +882,103 @@
         "message": "Log a caught value as logger.<level>({ err: error, ...context }, message), or pass the caught value itself, for example logger.error('message', error)."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/structured-catch-logging" }
-  },
-  {
-    "id": "eslint/nitpicker/test-must-use-production-runtime",
-    "tool": "eslint",
-    "rule": "nitpicker/test-must-use-production-runtime",
-    "anchor": "eslint-nitpicker-test-must-use-production-runtime",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "Require tests to execute a production runtime dependency",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/structured-catch-logging" },
+    "nitpicker/test-must-use-production-runtime",
+    "Require tests to execute a production runtime dependency",
+    [
       {
         "message": "This test imports no production code at runtime (only types, libraries, or helpers that import none). Import the code under test from the source root, directly or through a helper such as a render function that imports it. Shared helpers belong in a file not named *.test.* or *.spec.*."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/test-must-use-production-runtime" }
-  },
-  {
-    "id": "eslint/nitpicker/test-tsconfig-pins-lib-and-types",
-    "tool": "eslint",
-    "rule": "nitpicker/test-tsconfig-pins-lib-and-types",
-    "anchor": "eslint-nitpicker-test-tsconfig-pins-lib-and-types",
-    "findingTools": ["eslint-lint"],
-    "page": "typescript-nitpicker",
-    "analyzers": { "typescript": ["eslint-lint"], "javascript": ["eslint-lint"] },
-    "summary": "A tsconfig a test writes must set compilerOptions.types and compilerOptions.lib (or noLib), for example types: [] and lib: ['ES2022'], so tsc does not load every @types package and the full default lib.",
-    "why": "One of nitpicker's own ESLint rules. Each names one allowed form of something TypeScript allows several ways, or a defect, and its message says how to fix it.",
-    "forms": [
+    { "key": "exceptions", "rule": "nitpicker/test-must-use-production-runtime" },
+    "nitpicker/test-tsconfig-pins-lib-and-types",
+    "A tsconfig a test writes must set compilerOptions.types and compilerOptions.lib (or noLib), for example types: [] and lib: ['ES2022'], so tsc does not load every @types package and the full default lib.",
+    [
       {
         "message": "A tsconfig a test writes must set compilerOptions.types and compilerOptions.lib (or noLib), for example types: [] and lib: ['ES2022'], so tsc does not load every @types package and the full default lib."
       }
     ],
-    "docs": [{ "label": "Strict preset guide", "path": "docs/typescript-strict-preset.md" }],
-    "exception": { "key": "exceptions", "rule": "nitpicker/test-tsconfig-pins-lib-and-types" }
-  }
-]
+    { "key": "exceptions", "rule": "nitpicker/test-tsconfig-pins-lib-and-types" }
+  ],
+  "entries": [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, -1, -1],
+    [0, 9, 2, 3, 10, 5, 11, 7, 12, -1, -1],
+    [0, 13, 2, 3, 14, 5, 15, 7, 16, -1, -1],
+    [0, 17, 2, 3, 18, 5, 19, 7, 20, -1, -1],
+    [0, 21, 2, 3, 22, 5, 23, 7, 24, -1, -1],
+    [0, 25, 2, 3, 26, 5, 27, 7, 28, -1, -1],
+    [0, 29, 2, 3, 30, 5, 31, 7, 32, -1, -1],
+    [0, 33, 2, 34, 35, 5, 36, 37, 38, 39, -1],
+    [0, 40, 2, 3, 41, 5, 42, 7, 43, -1, -1],
+    [0, 44, 2, 3, 45, 5, 46, 7, 47, -1, 48],
+    [0, 49, 2, 3, 50, 5, 51, 7, 52, -1, -1],
+    [0, 53, 2, 3, 54, 5, 55, 7, 56, -1, -1],
+    [0, 57, 2, 3, 58, 5, 59, 7, 60, -1, -1],
+    [0, 61, 2, 3, 62, 5, 63, 7, 64, -1, -1],
+    [0, 65, 2, 3, 66, 5, 67, 7, 68, -1, -1],
+    [0, 69, 2, 3, 70, 5, 71, 7, 72, -1, -1],
+    [0, 73, 74, 75, 76, 5, 77, 7, 78, 79, -1],
+    [0, 80, 2, 3, 81, 5, 82, 7, 83, -1, -1],
+    [0, 84, 2, 3, 85, 5, 86, 7, 87, -1, -1],
+    [0, 88, 2, 3, 89, 5, 90, 7, 91, -1, -1],
+    [0, 92, 2, 3, 93, 5, 94, 7, 95, -1, -1],
+    [0, 96, 2, 3, 97, 5, 98, 7, 99, -1, -1],
+    [0, 100, 74, 101, 102, 5, 103, 7, 104, -1, -1],
+    [0, 105, 2, 3, 106, 5, 107, 7, 108, -1, -1],
+    [0, 109, 2, 3, 110, 5, 111, 7, 112, -1, 113],
+    [0, 114, 2, 3, 115, 5, 116, 7, 117, -1, -1],
+    [0, 118, 2, 3, 119, 5, 120, 7, 121, -1, -1],
+    [0, 122, 2, 3, 123, 5, 124, 7, 125, -1, -1],
+    [0, 126, 2, 3, 127, 5, 128, 7, 129, -1, -1],
+    [0, 130, 2, 3, 131, 5, 132, 7, 133, -1, -1],
+    [0, 134, 2, 3, 135, 5, 136, 7, 137, -1, -1],
+    [0, 138, 2, 3, 139, 5, 140, 7, 141, -1, -1],
+    [0, 142, 2, 3, 143, 5, 144, 7, 145, -1, -1],
+    [0, 146, 2, 3, 147, 5, 148, 7, 149, -1, -1],
+    [0, 150, 2, 3, 151, 5, 152, 7, 153, -1, -1],
+    [0, 154, 155, 156, 157, 5, 158, 7, 159, -1, -1],
+    [0, 160, 2, 34, 161, 5, 162, 7, 163, 79, -1],
+    [0, 164, 2, 3, 165, 5, 166, 7, 167, -1, -1],
+    [0, 168, 2, 3, 169, 5, 170, 7, 171, -1, -1],
+    [0, 172, 2, 3, 173, 5, 174, 7, 175, -1, -1],
+    [0, 176, 2, 34, 177, 5, 178, 37, 179, 39, -1],
+    [0, 180, 2, 3, 181, 5, 182, 7, 183, -1, -1],
+    [0, 184, 2, 3, 185, 5, 186, 7, 187, -1, -1],
+    [0, 188, 2, 3, 189, 5, 190, 7, 191, -1, -1],
+    [0, 192, 2, 3, 193, 5, 194, 7, 195, -1, -1],
+    [0, 196, 197, 198, 199, 5, 200, 7, 201, -1, -1],
+    [0, 202, 2, 34, 203, 5, 204, 37, 205, 39, -1],
+    [0, 206, 2, 3, 207, 5, 208, 7, 209, -1, -1],
+    [0, 210, 2, 3, 211, 5, 212, 7, 213, -1, -1],
+    [0, 214, 2, 3, 215, 5, 216, 7, 217, -1, -1],
+    [0, 218, 2, 3, 219, 5, 220, 7, 221, -1, -1],
+    [0, 222, 2, 3, 223, 5, 224, 7, 225, -1, -1],
+    [0, 226, 2, 3, 227, 5, 228, 7, 229, -1, -1],
+    [0, 230, 2, 3, 231, 5, 232, 7, 233, -1, -1],
+    [0, 234, 2, 3, 235, 5, 236, 7, 237, -1, -1],
+    [0, 238, 2, 3, 239, 5, 240, 7, 241, -1, -1],
+    [0, 242, 2, 3, 243, 5, 244, 7, 245, -1, -1],
+    [0, 246, 2, 3, 247, 5, 248, 7, 249, -1, -1],
+    [0, 250, 2, 3, 251, 5, 252, 7, 253, -1, -1],
+    [0, 254, 2, 3, 255, 5, 256, 7, 257, -1, -1],
+    [0, 258, 74, 101, 259, 5, 260, 7, 261, -1, -1],
+    [0, 262, 2, 3, 263, 5, 264, 7, 265, -1, -1],
+    [0, 266, 74, 101, 267, 5, 268, 7, 269, -1, -1],
+    [0, 270, 2, 34, 271, 5, 272, 37, 273, 39, -1],
+    [0, 274, 2, 34, 275, 5, 276, 37, 277, 39, -1],
+    [0, 278, 2, 34, 279, 5, 280, 37, 281, 39, -1],
+    [0, 282, 2, 34, 283, 5, 284, 37, 285, 39, -1],
+    [0, 286, 2, 34, 287, 5, 288, 37, 289, 39, -1],
+    [0, 290, 2, 34, 291, 5, 292, 37, 293, 39, -1],
+    [0, 294, 2, 34, 295, 5, 296, 37, 297, 39, -1],
+    [0, 298, 2, 34, 299, 5, 300, 37, 301, 39, -1],
+    [0, 302, 2, 34, 303, 5, 304, 37, 305, 39, -1],
+    [0, 306, 2, 34, 307, 5, 308, 37, 309, 39, -1],
+    [0, 310, 311, 312, 313, 5, 314, 7, 315, -1, -1],
+    [0, 316, 2, 3, 317, 5, 318, 7, 319, -1, -1],
+    [0, 320, 2, 3, 321, 5, 322, 7, 323, -1, -1],
+    [0, 324, 325, 326, 327, 5, 328, 7, 329, -1, -1],
+    [0, 330, 2, 3, 331, 5, 332, 7, 333, -1, -1],
+    [0, 334, 2, 3, 335, 5, 336, 7, 337, -1, -1]
+  ]
+}

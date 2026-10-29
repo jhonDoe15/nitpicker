@@ -6,18 +6,36 @@ const PYTHON = { python: ['python'] };
 const PYTHON_EXCEPTIONS = 'python.exceptions';
 const PYRIGHT_RULE = '^(?:report[A-Z]\\w*|type-error)$';
 const TYPE_CHECKERS = [
-  { tool: 'mypy', pattern: '^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$', placeholder: '<error code>' },
-  { tool: 'pyright', pattern: PYRIGHT_RULE, placeholder: '<rule>', barePattern: true },
-  { tool: 'basedpyright', pattern: PYRIGHT_RULE, placeholder: '<rule>', barePattern: true },
+  {
+    tool: 'mypy',
+    pattern: '^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$',
+    placeholder: '<error code>',
+    sample: 'arg-type',
+  },
+  {
+    tool: 'pyright',
+    pattern: PYRIGHT_RULE,
+    placeholder: '<rule>',
+    barePattern: true,
+    sample: 'reportOptionalMemberAccess',
+  },
+  {
+    tool: 'basedpyright',
+    pattern: PYRIGHT_RULE,
+    placeholder: '<rule>',
+    barePattern: true,
+    sample: 'reportAny',
+  },
 ];
 const TYPE_CHECKER_ALLOWED = 'Fix the type; inline ignores are banned.';
 const TYPES_DOCS = [{ label: 'Python preset guide', path: 'docs/python-preset.md' }];
 
-function typeCheckerFamily({ tool, pattern, placeholder, barePattern }) {
+function typeCheckerFamily({ tool, pattern, placeholder, barePattern, sample }) {
   return ruleEntry({
     tool,
     rule: placeholder,
     pattern,
+    samples: [`${tool}/${sample}`],
     ...(barePattern ? { barePattern } : {}),
     page: 'python-types',
     analyzers: PYTHON,

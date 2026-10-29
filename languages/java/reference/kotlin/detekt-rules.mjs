@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
+import { JVM_BUILDS } from '../catalog-rules.mjs';
 import { ruleEntry } from '../../../../shared/reference/entry.mjs';
-import { wordsOfCamelCase } from '../../../../shared/reference/words.mjs';
+import { flatText, splitFirstSentence } from '../../../../shared/reference/build/text.mjs';
+import { readToolText } from '../tool-text/tool-text.mjs';
 import { ONE_WAY_RULES } from '../../adapters/kotlin/rules/kotlin-rules.mjs';
 
 const DEFAULTS_FILE = new URL('../../detekt/detekt-default-rules.json', import.meta.url);
@@ -25,16 +27,25 @@ export function nitpickerDetektRules() {
   );
 }
 
-function detektEntry({ ruleset, rule }, oneWay) {
+function detektText(ruleset, rule, texts) {
+  const text = texts.rules[`${ruleset}.${rule}`];
+  if (text === undefined) {
+    throw new Error(`The detekt ${texts.version} snapshot has no rule ${ruleset}.${rule}`);
+  }
+  return splitFirstSentence(flatText(text.description));
+}
+
+function detektEntry({ ruleset, rule }, oneWay, texts) {
   const hint = ONE_WAY_RULES.find((candidate) => candidate.id === `detekt.${ruleset}.${rule}`);
+  const { first, rest } = detektText(ruleset, rule, texts);
   return ruleEntry({
     tool: 'detekt',
     rule: `detekt.${ruleset}.${rule}`,
     page: 'kotlin-detekt',
     analyzers: { kotlin: ['kotlin'] },
-    builds: ['gradle', 'maven'],
-    summary: wordsOfCamelCase(rule),
-    why: oneWay ? ONE_WAY_WHY : DEFAULT_WHY,
+    builds: JVM_BUILDS,
+    summary: first,
+    why: [rest, oneWay ? ONE_WAY_WHY : DEFAULT_WHY].filter(Boolean).join(' '),
     ...(hint?.allowed === undefined ? {} : { allowed: hint.allowed }),
     links: [{ label: 'detekt rule', url: `${DETEKT_RULES_URL}/${ruleset}#${rule.toLowerCase()}` }],
     docs: [oneWay ? { ...GUIDE, anchor: 'one-way-rules' } : GUIDE],
@@ -45,13 +56,14 @@ function detektEntry({ ruleset, rule }, oneWay) {
 /** The entries of the detekt rules the Kotlin preset runs: detekt's defaults and nitpicker's one-way rules. */
 export function detektEntries() {
   const defaults = JSON.parse(readFileSync(DEFAULTS_FILE, 'utf8'));
+  const texts = readToolText('detekt');
   const pinned = nitpickerDetektRules();
   const pinnedIds = new Set(pinned.map(({ ruleset, rule }) => `${ruleset}.${rule}`));
   const byDefault = Object.entries(defaults.active)
     .flatMap(([ruleset, rules]) => rules.map((rule) => ({ ruleset, rule })))
     .filter(({ ruleset, rule }) => !pinnedIds.has(`${ruleset}.${rule}`));
   return [
-    ...byDefault.map((rule) => detektEntry(rule, false)),
-    ...pinned.map((rule) => detektEntry(rule, true)),
+    ...byDefault.map((rule) => detektEntry(rule, false, texts)),
+    ...pinned.map((rule) => detektEntry(rule, true, texts)),
   ];
 }

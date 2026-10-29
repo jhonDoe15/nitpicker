@@ -1,10 +1,7 @@
 import { createHash } from 'node:crypto';
 import { comparisonKey } from '../comparison/fingerprint.mjs';
-import {
-  entryForFinding,
-  readReferenceIndex,
-  referenceUrl,
-} from '../../../shared/reference/store.mjs';
+import { plainText } from '../../../shared/reference/facts.mjs';
+import { entryForFinding, referenceLinks, referenceUrl } from '../../../shared/reference/store.mjs';
 import { heldFindingsOf } from './report-model.mjs';
 import { joinRepositoryPath, repositoryPath } from '../git/paths.mjs';
 
@@ -47,30 +44,31 @@ function toSarifResult({ finding, baselineState }, projectPath) {
   };
 }
 
-function sarifRule(finding, index) {
-  const entry = index === undefined ? undefined : entryForFinding(index, finding);
+function sarifRule(finding, reference) {
+  const entry = entryForFinding(reference.index(), finding);
+  const helpUri = entry === undefined ? undefined : referenceUrl(entry, reference.root());
   return {
     id: `${finding.tool}/${finding.rule}`,
     name: finding.rule,
     ...(entry === undefined
       ? {}
-      : { shortDescription: { text: entry.summary }, helpUri: referenceUrl(entry) }),
+      : { shortDescription: { text: plainText(entry.summary, reference.root()) } }),
+    ...(helpUri === undefined ? {} : { helpUri }),
   };
 }
 
-function collectSarifRules(findings) {
-  const index = findings.length === 0 ? undefined : readReferenceIndex();
+function collectSarifRules(findings, reference) {
   const rules = new Map();
   for (const finding of findings) {
     const ruleId = `${finding.tool}/${finding.rule}`;
     if (!rules.has(ruleId)) {
-      rules.set(ruleId, sarifRule(finding, index));
+      rules.set(ruleId, sarifRule(finding, reference));
     }
   }
   return [...rules.values()];
 }
 
-function renderSarifLog({ entries, toolErrors, projectPath }) {
+function renderSarifLog({ entries, toolErrors, projectPath, reference = referenceLinks() }) {
   const log = {
     $schema: SARIF_SCHEMA_URL,
     version: '2.1.0',
@@ -80,7 +78,10 @@ function renderSarifLog({ entries, toolErrors, projectPath }) {
           driver: {
             name: 'nitpicker',
             informationUri: 'https://github.com/jhonDoe15/nitpicker',
-            rules: collectSarifRules(entries.map(({ finding }) => finding)),
+            rules: collectSarifRules(
+              entries.map(({ finding }) => finding),
+              reference,
+            ),
           },
         },
         columnKind: COLUMN_KIND,
@@ -104,15 +105,16 @@ function newEntries(report) {
   return report.newFindings.map((finding) => ({ finding, baselineState: 'new' }));
 }
 
-export function renderSarifReport(report, { projectPath } = {}) {
+export function renderSarifReport(report, { projectPath, reference } = {}) {
   return renderSarifLog({
     entries: newEntries(report),
     toolErrors: report.toolErrors,
     projectPath,
+    reference,
   });
 }
 
-export function renderBaselineSarifReport(report, { projectPath } = {}) {
+export function renderBaselineSarifReport(report, { projectPath, reference } = {}) {
   return renderSarifLog({
     entries: [
       ...newEntries(report),
@@ -120,13 +122,15 @@ export function renderBaselineSarifReport(report, { projectPath } = {}) {
     ],
     toolErrors: report.toolErrors,
     projectPath,
+    reference,
   });
 }
 
-export function renderSnapshotSarifReport(report, { projectPath } = {}) {
+export function renderSnapshotSarifReport(report, { projectPath, reference } = {}) {
   return renderSarifLog({
     entries: report.findings.map((finding) => ({ finding })),
     toolErrors: report.toolErrors,
     projectPath,
+    reference,
   });
 }

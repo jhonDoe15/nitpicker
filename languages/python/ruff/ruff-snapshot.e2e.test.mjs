@@ -10,10 +10,14 @@ function identities(rules) {
 }
 
 describe.skipIf(!enabled)('the ruff rule snapshot of the rule reference', () => {
-  const snapshot = identities(
-    JSON.parse(readFileSync(new URL('./ruff-rules.json', import.meta.url), 'utf8')),
-  );
-  const installed = identities(installedRuffRules(process.env.NITPICKER_RUFF ?? 'ruff'));
+  const committed = JSON.parse(readFileSync(new URL('./ruff-rules.json', import.meta.url), 'utf8'));
+  const live = installedRuffRules(process.env.NITPICKER_RUFF ?? 'ruff');
+  const snapshot = identities(committed.rules);
+  const installed = identities(live.rules);
+
+  it('comes from the ruff the e2e job installs', () => {
+    expect(live.version).toBe(committed.version);
+  });
 
   it('has every rule of the installed ruff that the preset selects (run npm run gen:rules -- --refresh-ruff)', () => {
     expect(installed.size).toBeGreaterThan(0);

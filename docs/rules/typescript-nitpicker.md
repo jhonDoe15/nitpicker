@@ -123,6 +123,7 @@ Require integration tests to execute an approved production harness.
 Enforce naming conventions for everything across a codebase.
 
 - **Printed as:** `eslint-lint/nitpicker/naming-convention`
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/naming-convention).
 - **Exception:** If this is intended, add `{"rule":"nitpicker/naming-convention","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - {{type}} name `{{name}}` must match one of the following formats: {{formats}}
@@ -321,6 +322,7 @@ Prefer vi.waitFor / expect.poll over setInterval polling in tests.
 Disallow magic numbers.
 
 - **Printed as:** `eslint-lint/nitpicker/no-magic-numbers`
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://typescript-eslint.io/rules/no-magic-numbers).
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-magic-numbers","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - Number constants declarations must use 'const'.

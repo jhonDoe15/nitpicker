@@ -6,6 +6,7 @@ import { captureOutput } from '../../diff/reporting/test-support/output-capture.
 import { useCliFixtures } from '../test-support/cli-harness.mjs';
 import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 import { readReferenceEntries } from '../../../shared/reference/store.mjs';
+import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
 
 const { makeTemporaryRoot, runCli } = useCliFixtures(nitpickerCli);
 
@@ -51,10 +52,13 @@ const listedIds = (stdout) =>
 const samplesIn = (ids) => SAMPLES.filter((id) => ids.includes(id));
 
 function idsReportedBy(preset, disabled = []) {
+  const enabled = presetAnalyzers({ preset })
+    .map(({ name }) => name)
+    .filter((name) => !disabled.includes(name));
   return ENTRIES.filter(({ analyzers }) => {
     const names = analyzers[preset];
     return (
-      names !== undefined && (names.length === 0 || names.some((name) => !disabled.includes(name)))
+      names !== undefined && (names.length === 0 || names.some((name) => enabled.includes(name)))
     );
   }).map(({ id }) => id);
 }
@@ -69,11 +73,11 @@ describe('nitpicker explain', () => {
         'A function longer than the limit.',
         '',
         'Presets: TypeScript, JavaScript, Java, Kotlin and Python',
-        'Analyzers: `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)',
+        'Analyzers: structure (TypeScript and JavaScript); java (Java); kotlin (Kotlin); python (Python)',
         'Why it is on: Long functions hide several jobs in one place; agents grow them instead of splitting them.',
         'Allowed form: Split it into functions named for what each part does and put new code in a new function. A function, file or class already over its limit may be edited as long as the change does not make it worse.',
         'Threshold: more than 50 lines',
-        'Exception: If this is intended, add `{"rule":"function-lines-limit","paths":["<path>"],"function":"<function>","reason":"..."}` to "exceptions" in nitpicker.config.json.',
+        'Exception: If this is intended, add {"rule":"function-lines-limit","paths":["<path>"],"function":"<function>","reason":"..."} to "exceptions" in nitpicker.config.json.',
         `Checks catalog: ${docsUrl('spec/checks.md')}`,
         `Reference: ${docsUrl('docs/rules/checks.md', 'structure-function-lines-limit')}`,
         '',
@@ -86,35 +90,35 @@ describe('nitpicker explain', () => {
       'eslint-lint/@typescript-eslint/no-explicit-any',
       'eslint/@typescript-eslint/no-explicit-any',
       'TypeScript and JavaScript',
-      '{"rule":"@typescript-eslint/no-explicit-any","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.',
+      '{"rule":"@typescript-eslint/no-explicit-any","paths":["<path>"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       ['typescript-eslint', 'eslint-typescript-eslint-no-explicit-any'],
     ],
     [
       'eslint/no-undef',
       'eslint/no-undef',
       'JavaScript',
-      '{"rule":"no-undef","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.',
+      '{"rule":"no-undef","paths":["<path>"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       ['typescript-eslint', 'eslint-no-undef'],
     ],
     [
       'pmd/UnusedLocalVariable',
       'pmd/UnusedLocalVariable',
       'Java and Kotlin',
-      '{"rule":"pmd/UnusedLocalVariable","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.',
+      '{"rule":"pmd/UnusedLocalVariable","paths":["<path>"],"reason":"..."} to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.',
       ['java-pmd', 'pmd-unusedlocalvariable'],
     ],
     [
       'detekt/detekt.style.MagicNumber',
       'detekt/detekt.style.MagicNumber',
       'Kotlin',
-      '{"rule":"detekt.style.MagicNumber","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.',
+      '{"rule":"detekt.style.MagicNumber","paths":["<path>"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       ['kotlin-detekt', 'detekt-detekt-style-magicnumber'],
     ],
     [
       'ruff/F401',
       'ruff/F401',
       'Python',
-      '{"rule":"F401","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.',
+      '{"rule":"F401","paths":["<path>"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       ['python-ruff', 'ruff-f401'],
     ],
   ])('describes %s for its preset', (name, id, presets, exception, [page, anchor]) => {
@@ -126,7 +130,8 @@ describe('nitpicker explain', () => {
       firstLine: id,
     });
     expect(lineOf(stdout, 'Presets')).toBe(`Presets: ${presets}`);
-    expect(lineOf(stdout, 'Exception')).toBe(`Exception: If this is intended, add \`${exception}`);
+    expect(lineOf(stdout, 'Exception')).toBe(`Exception: If this is intended, add ${exception}`);
+    expect(stdout.split('\n').filter((line) => line.includes('`'))).toEqual([]);
     expect(lineOf(stdout, 'Reference')).toBe(
       `Reference: ${docsUrl(`docs/rules/${page}.md`, anchor)}`,
     );
@@ -135,7 +140,33 @@ describe('nitpicker explain', () => {
   it('describes a rule named without its tool and a family of rules by the name a finding prints', () => {
     expect(run(['explain', 'F401']).stdout.split('\n')[0]).toBe('ruff/F401');
     expect(run(['explain', 'mypy/attr-defined']).stdout.split('\n')[0]).toBe('mypy/<error code>');
+    expect(run(['explain', 'MagicNumber']).stdout.split('\n')[0]).toBe(
+      'detekt/detekt.style.MagicNumber',
+    );
   });
+
+  it.each(['coverage', 'mutation', 'duplicates'])(
+    'explains the %s check by listing its rules',
+    (check) => {
+      const { exitCode, stdout } = run(['explain', check]);
+      const rules = ENTRIES.filter(({ page, tool }) => page === 'checks' && tool === check);
+
+      expect(exitCode).toBe(0);
+      expect(stdout.split('\n').slice(0, 2)).toEqual([
+        check,
+        'A check nitpicker runs itself. Its rules (nitpicker explain <rule> describes one):',
+      ]);
+      expect(
+        stdout
+          .split('\n')
+          .filter((line) => line.startsWith('  '))
+          .map((line) => line.trim().split('  ')[0]),
+      ).toEqual(rules.map(({ id }) => id));
+      expect(lineOf(stdout, 'Checks catalog')).toBe(
+        `Checks catalog: ${docsUrl('spec/checks.md', 'quality-area-checks')}`,
+      );
+    },
+  );
 
   it('describes each rule named, with a blank line between entries', () => {
     const both = run(['explain', 'ruff/F401', 'pmd/UnusedLocalVariable']);
@@ -191,7 +222,7 @@ describe('nitpicker rules', () => {
       stdout
         .split('\n')
         .find((line) => line.startsWith('eslint/@typescript-eslint/no-explicit-any ')),
-    ).toBe('eslint/@typescript-eslint/no-explicit-any  Disallow the `any` type');
+    ).toBe('eslint/@typescript-eslint/no-explicit-any  Disallow the any type');
   });
 
   it.each([
@@ -277,8 +308,13 @@ describe('nitpicker rules', () => {
     expect(run(['rules', '--preset', 'cobol'])).toEqual({
       exitCode: 2,
       stdout: '',
-      stderr:
-        'nitpicker failed: nitpicker.config.json: unknown preset "cobol". Presets: typescript, javascript, java, kotlin, python\n',
+      stderr: `nitpicker: --preset got "cobol". Presets: typescript, javascript, java, kotlin, python.\n${RULES_USAGE}`,
+    });
+    expect(listedIds(run(['rules', '--preset=java']).stdout)).toEqual(idsReportedBy('java'));
+    expect(run(['rules', '--preset='])).toEqual({
+      exitCode: 2,
+      stdout: '',
+      stderr: `nitpicker: --preset requires a value.\n${RULES_USAGE}`,
     });
     expect(run(['rules', '--preset'])).toEqual({
       exitCode: 2,

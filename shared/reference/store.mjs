@@ -1,20 +1,61 @@
 import { readFileSync } from 'node:fs';
-import { docsUrl } from '../messages/docs-url.mjs';
+import { docsRootUrl, docsUrl } from '../messages/docs-url.mjs';
+import { ruleEntry } from './entry.mjs';
 import { PAGE_IDS } from './pages.mjs';
 
 /** Where the entries are kept, one JSON file per page, relative to the repository root. */
 export const REFERENCE_DATA_DIRECTORY = 'shared/reference/rules';
 const REFERENCE_DATA = new URL('./rules/', import.meta.url);
+const DERIVED_FIELDS = ['id', 'anchor', 'page'];
+const ABSENT = -1;
 
 const FIRST_RESULTS = 5;
 const MINIMUM_DISTANCE = 3;
 const DISTANCE_DIVISOR = 3;
 const MINIMUM_KEY = 6;
 
+/**
+ * The data file of a page: each distinct field value once, in `values`, the field names, in
+ * `fields`, and each entry as a row of value indexes, one per field, -1 where the entry has none.
+ * The fields that follow from the others (`id`, `anchor`, `page`) are left out.
+ */
+export function encodePage(entries) {
+  const values = [];
+  const indexes = new Map();
+  const indexOf = (value) => {
+    const key = JSON.stringify(value);
+    if (!indexes.has(key)) {
+      indexes.set(key, values.length);
+      values.push(value);
+    }
+    return indexes.get(key);
+  };
+  const fields = [...new Set(entries.flatMap(Object.keys))].filter(
+    (field) => !DERIVED_FIELDS.includes(field),
+  );
+  return {
+    fields,
+    values,
+    entries: entries.map((entry) =>
+      fields.map((field) => (entry[field] === undefined ? ABSENT : indexOf(entry[field]))),
+    ),
+  };
+}
+
+/** The entries of a page's data file. */
+export function decodePage(page, { fields, values, entries }) {
+  return entries.map((row) => {
+    const present = fields.flatMap((field, column) =>
+      row[column] === ABSENT ? [] : [[field, values[row[column]]]],
+    );
+    return { ...ruleEntry(Object.fromEntries(present)), page };
+  });
+}
+
 /** The committed entries, read from the data file of each page, sorted by id. */
 export function readReferenceEntries() {
   return PAGE_IDS.flatMap((page) =>
-    JSON.parse(readFileSync(new URL(`${page}.json`, REFERENCE_DATA), 'utf8')),
+    decodePage(page, JSON.parse(readFileSync(new URL(`${page}.json`, REFERENCE_DATA), 'utf8'))),
   ).toSorted((a, b) => a.id.localeCompare(b.id));
 }
 
@@ -23,6 +64,9 @@ function keysOf(entry) {
   return [
     ...tools.map((tool) => `${tool}/${entry.rule}`),
     ...(entry.pattern === undefined ? [entry.rule] : []),
+    ...(entry.pattern === undefined && entry.rule.includes('.')
+      ? [entry.rule.split('.').at(-1)]
+      : []),
   ];
 }
 
@@ -120,30 +164,44 @@ export function closestIds(index, query, limit = FIRST_RESULTS) {
   return scored.slice(0, limit).map(({ id }) => id);
 }
 
-/** The link to a rule's entry in the reference on GitHub. */
-export function referenceUrl(entry) {
-  return docsUrl(`docs/rules/${entry.page}.md`, entry.anchor);
+/** The link to a rule's entry in the reference on GitHub, under `root` (see `docsRootUrl`). */
+export function referenceUrl(entry, root = docsRootUrl()) {
+  return docsUrl(`docs/rules/${entry.page}.md`, entry.anchor, root);
 }
 
-/** The index over the committed entries. */
-export function readReferenceIndex() {
-  return indexEntries(readReferenceEntries());
+/**
+ * The rule reference as one run uses it: `index()` over the committed entries and the `root()` of
+ * its links, each read on first use and kept for the later calls on this object.
+ */
+export function referenceLinks() {
+  const loaded = {};
+  return {
+    index() {
+      loaded.index ??= indexEntries(readReferenceEntries());
+      return loaded.index;
+    },
+    root() {
+      if (!Object.hasOwn(loaded, 'root')) {
+        loaded.root = docsRootUrl();
+      }
+      return loaded.root;
+    },
+  };
 }
 
 /** The link to the reference entry of the rule a finding prints, or undefined when there is none. */
-export function helpUriFor(index, finding) {
-  const entry = entryForFinding(index, finding);
-  return entry === undefined ? undefined : referenceUrl(entry);
+export function helpUriFor(links, finding) {
+  const entry = entryForFinding(links.index(), finding);
+  return entry === undefined ? undefined : referenceUrl(entry, links.root());
 }
 
 /** `findings` with a `helpUri` on each one that has none and whose rule the reference knows. */
-export function withHelpUris(findings) {
+export function withHelpUris(findings, links = referenceLinks()) {
   if (findings.length === 0) {
     return findings;
   }
-  const index = readReferenceIndex();
   return findings.map((finding) => {
-    const helpUri = finding.helpUri ?? helpUriFor(index, finding);
+    const helpUri = finding.helpUri ?? helpUriFor(links, finding);
     return helpUri === undefined ? finding : { ...finding, helpUri };
   });
 }

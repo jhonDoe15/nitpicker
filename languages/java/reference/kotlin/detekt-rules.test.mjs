@@ -39,10 +39,10 @@ describe('detektEntries', () => {
     const byRule = new Map(detektEntries().map((entry) => [entry.rule, entry]));
 
     expect(byRule.get(`detekt.${pinned.ruleset}.${pinned.rule}`).why).toMatch(
-      /^A one-way rule: .*$/u,
+      /^(?:.+ )?A one-way rule: .+$/u,
     );
     expect(byRule.get('detekt.style.MagicNumber').why).toMatch(
-      /^One of detekt's default rules\. .*$/u,
+      /^(?:.+ )?One of detekt's default rules\. .+$/u,
     );
   });
 });

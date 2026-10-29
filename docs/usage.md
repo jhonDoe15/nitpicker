@@ -266,26 +266,34 @@ nitpicker rules [--preset <name>] [--tool <name>]
 - `nitpicker explain <tool/rule>...`: print what the [rule reference](rules/README.md) says about
   each rule: the presets and analyzers that report it, why it is on, the allowed form and the
   `nitpicker.config.json` entry that accepts it. Name a rule as a finding prints it
-  (`eslint-lint/no-undef`, `pmd/UnusedLocalVariable`) or by its bare name (`F401`). A name the
-  reference does not know is reported with the closest rules and exits 1.
+  (`eslint-lint/no-undef`, `pmd/UnusedLocalVariable`), by its bare name (`F401`, or `MagicNumber`
+  for detekt's `detekt.style.MagicNumber`), or name a check (`coverage`, `mutation`, `duplicates`)
+  to list its rules. A name the reference does not know is reported with the closest rules and
+  exits 1.
 - `nitpicker rules [--preset <name>] [--tool <name>]`: list the rules, one line each. It lists the
   preset of the project's `nitpicker.config.json` (`typescript` without a config) and leaves out the
-  rules of analyzers listed in `disable`; `--preset` lists another preset in full, and `--tool`
-  keeps one tool.
+  rules of analyzers listed in `disable`; `--preset` (or `--preset=<name>`) lists another preset in
+  full, and `--tool` keeps one tool.
 
 ### Rule reference
 
 [docs/rules](rules/README.md) has one entry for every rule that can fail the gate, for all presets:
 the tool and rule id, the presets that report it, why it is on, the allowed form and the exact
-`exceptions` entry that accepts it. The pages are generated from the rule catalogs with
-`npm run gen:rules`, and a test fails when they are stale. Report-only measurements and tool errors
-are not rules and have no entry.
+`exceptions` entry that accepts it. Where the reference has no allowed form of its own, the entry
+links to the page the tool keeps for the rule (or to the guide that describes it). The summaries,
+reasons and examples of PMD, Error Prone, detekt, ruff and ESLint rules are those tools' own text,
+taken from the versions nitpicker pins; SpotBugs and Checkstyle are under the LGPL, so their entries
+name the rule and its category and link to the tool's description. The pages are generated from the
+rule catalogs with `npm run gen:rules`, and a test fails when they are stale. Report-only
+measurements and tool errors are not rules and have no entry.
 
 Each entry has a stable anchor, and the places that show a finding link to it: the SARIF report
-sets `helpUri` (and a `shortDescription`) on each rule it lists, `new-findings.json` carries an
-optional `helpUri` on each finding whose rule has an entry, and `report.txt` ends its new findings
-with a link to the reference. The links point at the `main` branch of the repository named in
-`package.json`.
+sets `helpUri` (and a `shortDescription`) on each rule it lists, `new-findings.json`,
+`held-findings.json`, `resolved-findings.json` and, with `--all`, `findings.json` carry an optional
+`helpUri` on each finding whose rule has an entry, and `report.txt` ends its findings with a link to
+the reference when one of them has an entry. In an installed package the links point at the
+release tag of its version (`v<version>`) in the repository named in `package.json`, so they match
+the rules that version reports; in a git checkout of nitpicker they point at `main`.
 
 ### Findings cache
 

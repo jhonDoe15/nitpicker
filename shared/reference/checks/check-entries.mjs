@@ -2,12 +2,18 @@ import {
   COMMON_EXCEPTION_RULES,
   FUNCTION_EXCEPTION_RULES,
   FUNCTION_REQUIRED_RULES,
+  MESSAGES,
   NAME_EXCEPTION_RULES,
   RULE_IDS,
   RULES,
 } from '../../policy.mjs';
 import { toolsOf } from '../../exceptions/rule-tools.mjs';
-import { PACKAGE_EXCEPTION_RULES } from '../../project-rules/hygiene-rules.mjs';
+import { CO_CHANGE_ADVICE } from '../../history/co-change/findings.mjs';
+import { REPOSITORY_HYGIENE_TOOL } from '../../hygiene/files/repository-files.mjs';
+import {
+  CHANGE_HISTORY_TOOL,
+  PACKAGE_EXCEPTION_RULES,
+} from '../../project-rules/hygiene-rules.mjs';
 import { PYTHON_SIZE_RULES } from '../../project-rules/size-rules.mjs';
 import { PRESETS, ruleEntry } from '../entry.mjs';
 import { QUALITY_NOTES } from './quality-notes.mjs';
@@ -21,12 +27,75 @@ const OTHER_TOOLS = {
   [RULE_IDS.baselineExpansion]: ['java', 'kotlin', 'python'],
   [RULE_IDS.testConsoleOutput]: ['test-runtime'],
 };
+const PROJECT_ANALYZERS = new Set([REPOSITORY_HYGIENE_TOOL, CHANGE_HISTORY_TOOL]);
+const WHOLE_MESSAGES = new Set(['redefinedLibraryComponent']);
 const NUMBER = /\d/u;
+const PLACEHOLDER = /\{(\w+)\}/gu;
+const TEMPLATE_ROUTE =
+  /\s*If this is intended, add \{exception\} to "[\w.]+" in nitpicker\.config\.json\.$/u;
+const SENTENCES = /(?<=[.!?])\s+(?=[A-Z])/u;
 const PARTIAL_JAVASCRIPT = 'The JavaScript preset enforces this check only in part.';
+const REPORT_ONLY = 'Report-only: it never fails the gate.';
 const NO_EXCEPTION_NOTE =
   'It has no exception: fix the sites instead of raising the allowance of the legacy inventory.';
+const NATIVE_RULES = {
+  [RULE_IDS.docCommentContent]: {
+    typescript: 'nitpicker/no-comments',
+    javascript: 'nitpicker/no-comments',
+  },
+};
+
+const MESSAGE_KEYS = {
+  [RULE_IDS.functionStatements]: ['functionStatements'],
+  [RULE_IDS.functionControlNesting]: ['functionControlNesting'],
+  [RULE_IDS.crapScoreLimit]: ['crapScoreLimit', 'crapScoreLimitCovered'],
+  [RULE_IDS.crapCoverageUnknown]: ['crapCoverageUnknown', 'crapCoverageUnknownJava'],
+  [RULE_IDS.unusedProp]: ['unusedProp'],
+  [RULE_IDS.unusedOption]: ['unusedOption'],
+  [RULE_IDS.testOnlyExport]: [
+    'testOnlyExport',
+    'testOnlyReexport',
+    'testOnlyModule',
+    'testOnlyDeclaration',
+    'testOnlyFile',
+  ],
+  [RULE_IDS.docCommentContent]: ['restatingDocComment', 'longDocComment'],
+  [RULE_IDS.sharedUsedByOneFeature]: ['sharedUsedByOneFeature'],
+  [RULE_IDS.siblingCopyEdit]: ['siblingCopyEdit'],
+  [RULE_IDS.redefinedLibraryComponent]: ['redefinedLibraryComponent'],
+  [RULE_IDS.newIconAsset]: ['newIconAsset'],
+  [RULE_IDS.testConsoleOutput]: ['testConsoleOutput'],
+  [RULE_IDS.fileLines]: ['fileLines'],
+  [RULE_IDS.lineLength]: ['lineLength'],
+  [RULE_IDS.folderFiles]: ['folderFiles'],
+  [RULE_IDS.classMethods]: ['classMethods'],
+  [RULE_IDS.classFields]: ['classFields'],
+  [RULE_IDS.inheritanceDepth]: ['inheritanceDepth'],
+  [RULE_IDS.componentStoryMissing]: ['componentStoryMissing', 'componentStoryMissingUnenforced'],
+  [RULE_IDS.javascriptInTypescriptProject]: ['javascriptInTypescriptProject'],
+};
+
+function templateAdvice(key) {
+  const text = MESSAGES[key].replace(TEMPLATE_ROUTE, '').replaceAll(PLACEHOLDER, '<$1>');
+  const sentences = text.split(SENTENCES);
+  return sentences.length > 1 && !WHOLE_MESSAGES.has(key) ? sentences.slice(1).join(' ') : text;
+}
+
+function messageAdvice(id) {
+  const keys = MESSAGE_KEYS[id];
+  if (keys === undefined) {
+    return id === CHANGE_HISTORY_TOOL || id === 'co-change' ? { allowed: CO_CHANGE_ADVICE } : {};
+  }
+  const advice = [...new Set(keys.map((key) => templateAdvice(key)))];
+  return advice.length === 1
+    ? { allowed: advice[0] }
+    : { forms: keys.map((key) => ({ label: key, message: templateAdvice(key) })) };
+}
 
 function analyzerOf(preset, check) {
+  if (PROJECT_ANALYZERS.has(check)) {
+    return check;
+  }
   if (preset === 'java' || preset === 'kotlin') {
     return preset;
   }
@@ -38,12 +107,7 @@ function analyzerOf(preset, check) {
 
 function analyzersOf(check, enforcedBy) {
   const enforcing = PRESETS.filter((preset) => enforcedBy[preset] !== false);
-  return Object.fromEntries(
-    enforcing.map((preset) => [
-      preset,
-      check === 'repository-hygiene' ? [check] : [analyzerOf(preset, check)],
-    ]),
-  );
+  return Object.fromEntries(enforcing.map((preset) => [preset, [analyzerOf(preset, check)]]));
 }
 
 function exceptionOf({ id, enforcedBy }) {
@@ -60,6 +124,7 @@ function exceptionOf({ id, enforcedBy }) {
     ...(enforcedBy.python !== false && !PYTHON_TOP_LEVEL.includes(id)
       ? { presetKeys: { python: 'python.exceptions' } }
       : {}),
+    ...(NATIVE_RULES[id] === undefined ? {} : { presetRules: NATIVE_RULES[id] }),
   };
 }
 
@@ -68,9 +133,22 @@ function findingToolsOf(id, check) {
   return [...new Set(tools)].filter((tool) => tool !== check);
 }
 
+function scopeOf({ enforcedBy }) {
+  if (Object.values(enforcedBy).every((value) => value === 'reported' || value === false)) {
+    return REPORT_ONLY;
+  }
+  return enforcedBy.javascript === 'partial' ? PARTIAL_JAVASCRIPT : undefined;
+}
+
 function checkEntry(rule) {
-  const [summary, why, allowed] = NOTES[rule.id];
+  const notes = NOTES[rule.id];
+  if (notes === undefined) {
+    throw new Error(`The rule reference has no text for the shared rule ${rule.id}`);
+  }
+  const [summary, why, allowed] = notes;
   const tools = findingToolsOf(rule.id, rule.check);
+  const scope = scopeOf(rule);
+  const advice = messageAdvice(rule.id);
   return ruleEntry({
     tool: rule.check,
     rule: rule.id,
@@ -79,9 +157,9 @@ function checkEntry(rule) {
     analyzers: analyzersOf(rule.check, rule.enforcedBy),
     summary,
     why,
-    allowed,
+    ...(advice.allowed === undefined && advice.forms === undefined ? { allowed } : advice),
     ...(NUMBER.test(rule.limit ?? '') ? { limit: rule.limit } : {}),
-    ...(rule.enforcedBy.javascript === 'partial' ? { scope: PARTIAL_JAVASCRIPT } : {}),
+    ...(scope === undefined ? {} : { scope }),
     exception: exceptionOf(rule),
     docs: [{ label: 'Checks catalog', path: 'spec/checks.md' }],
   });

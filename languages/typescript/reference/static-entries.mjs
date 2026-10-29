@@ -1,5 +1,5 @@
 import { ruleEntry } from '../../../shared/reference/entry.mjs';
-import { wordsOfKebab } from '../../../shared/reference/words.mjs';
+import { wordsOfKebab } from '../../../shared/reference/build/words.mjs';
 import dependencyCruiser from '../preset/defaults/dependency-cruiser.config.mjs';
 
 const GUIDE = 'docs/typescript-strict-preset.md';

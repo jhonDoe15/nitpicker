@@ -1,15 +1,40 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 
-const DOCS_BRANCH = 'main';
+const MAIN_BRANCH = 'main';
 const REPOSITORY_URL = /^(?:git\+)?(.*?)(?:\.git)?$/u;
+const PACKAGE_ROOT = new URL('../../', import.meta.url);
 
-function docsRootUrl() {
-  const manifest = JSON.parse(readFileSync(new URL('../../package.json', import.meta.url), 'utf8'));
-  return `${REPOSITORY_URL.exec(manifest.repository.url)[1]}/blob/${DOCS_BRANCH}`;
+/**
+ * The git ref the links of a copy of nitpicker point at: the release tag `v<version>` for an
+ * installed package, which is always a released version, and `main` for a checkout of the
+ * repository, whose code may be ahead of every tag.
+ */
+export function docsRef({ version, checkout }) {
+  return checkout ? MAIN_BRANCH : `v${version}`;
 }
 
-/** The GitHub URL of a file of this repository, with `anchor` as its fragment when given. */
-export function docsUrl(relativePath, anchor) {
-  const url = `${docsRootUrl()}/${relativePath}`;
+/** The GitHub URL the documentation links start with, or undefined when package.json is unreadable. */
+export function docsRootUrl() {
+  try {
+    const manifest = JSON.parse(readFileSync(new URL('package.json', PACKAGE_ROOT), 'utf8'));
+    const ref = docsRef({
+      version: manifest.version,
+      checkout: existsSync(new URL('.git', PACKAGE_ROOT)),
+    });
+    return `${REPOSITORY_URL.exec(manifest.repository.url)[1]}/blob/${ref}`;
+  } catch {
+    return undefined;
+  }
+}
+
+/**
+ * The GitHub URL of a file of this repository, with `anchor` as its fragment when given, or
+ * undefined when `root` is. Pass `root` from one `docsRootUrl()` call to build many links.
+ */
+export function docsUrl(relativePath, anchor, root = docsRootUrl()) {
+  if (root === undefined) {
+    return undefined;
+  }
+  const url = `${root}/${relativePath}`;
   return anchor === undefined || anchor === '' ? url : `${url}#${anchor}`;
 }

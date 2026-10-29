@@ -1,7 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { ruleEntry } from '../../../shared/reference/entry.mjs';
-import { wordsOfCamelCase } from '../../../shared/reference/words.mjs';
 import { JVM_ANALYZERS, JVM_BUILDS } from './catalog-rules.mjs';
+import { readToolText } from './tool-text/tool-text.mjs';
+import { flatText } from '../../../shared/reference/build/text.mjs';
 
 const CHECKS_FILE = new URL('../gradle/errorprone/checks.json', import.meta.url);
 const BUG_PATTERNS_URL = 'https://errorprone.info/bugpattern';
@@ -11,8 +12,14 @@ const GUIDE = {
   anchor: 'error-prone-and-nullaway',
 };
 
-const WHY =
-  'Error Prone compiles the main and test sources a second time and reports this check. It is on because it catches a bug class or names one allowed form; the checks that are off are listed in the Java preset guide.';
+const SEVERITY_WHY = {
+  ERROR:
+    'Error Prone rates this check an error: the code it flags is almost certainly a bug. The preset compiles the main and test sources a second time with Error Prone and reports it.',
+  WARNING:
+    'Error Prone rates this check a warning: the code it flags is likely a mistake or has a clearer form. The preset compiles the main and test sources a second time with Error Prone and reports it.',
+  SUGGESTION:
+    'Error Prone rates this check a suggestion: it names a clearer form. The preset compiles the main and test sources a second time with Error Prone and reports it.',
+};
 const TURNED_ON = ' Error Prone has it off by default; nitpicker turns it on.';
 const CERTAIN_BUG =
   'The message of a finding in main sources gives no exception route, because the flagged code is a bug; an entry still lifts it if a reviewer agrees. A finding in test sources keeps the route.';
@@ -32,18 +39,27 @@ function scopeOf(name, checks) {
   return notes.length === 0 ? undefined : notes.join(' ');
 }
 
-function checkEntry(name, checks) {
+function checkText(name, texts) {
+  const text = texts.rules[name];
+  if (text === undefined) {
+    throw new Error(`The Error Prone ${texts.version} snapshot has no check ${name}`);
+  }
+  return text;
+}
+
+function checkEntry(name, checks, texts) {
   const scope = scopeOf(name, checks);
+  const text = checkText(name, texts);
   return ruleEntry({
     tool: 'errorprone',
     rule: name,
     page: 'java-errorprone',
     analyzers: JVM_ANALYZERS,
     builds: JVM_BUILDS,
-    summary: wordsOfCamelCase(name),
-    why: checks.enable.includes(name) ? `${WHY}${TURNED_ON}` : WHY,
+    summary: flatText(text.summary),
+    why: `${SEVERITY_WHY[text.severity]}${checks.enable.includes(name) ? TURNED_ON : ''}`,
     ...(scope === undefined ? {} : { scope }),
-    links: [{ label: 'Error Prone bug pattern', url: `${BUG_PATTERNS_URL}/${name}` }],
+    links: [{ label: 'Error Prone bug pattern', url: text.url || `${BUG_PATTERNS_URL}/${name}` }],
     docs: [GUIDE],
     exception: {
       key: 'exceptions',
@@ -60,7 +76,7 @@ function nullAwayEntry() {
     page: 'java-errorprone',
     analyzers: JVM_ANALYZERS,
     builds: JVM_BUILDS,
-    summary: 'Null safety',
+    summary: flatText(readToolText('errorprone').rules.NullAway.summary),
     why: 'NullAway is an Error Prone plugin: the main packages of the project are non-null unless marked, so a null that reaches a place that does not allow it is a finding.',
     allowed: NULLAWAY_ALLOWED,
     scope: 'Main sources only; off in a project without main classes in a named package.',
@@ -73,11 +89,12 @@ function nullAwayEntry() {
 /** The entries of the Error Prone checks the preset reports, and of NullAway. */
 export function errorProneEntries() {
   const checks = readChecks();
+  const texts = readToolText('errorprone');
   const off = new Set([...checks.disable, ...checks.defaultOff]);
   return [
     ...checks.reviewedChecks
       .filter((name) => !off.has(name))
-      .map((name) => checkEntry(name, checks)),
+      .map((name) => checkEntry(name, checks, texts)),
     nullAwayEntry(),
   ];
 }
