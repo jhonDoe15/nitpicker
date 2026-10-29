@@ -36,6 +36,11 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
 - `report-baseline.sarif` holds the unchanged findings next to `report.sarif`, which keeps only the
   new ones, and `--all` writes `report.sarif` too (#517).
 - Every finding that can be intended ends with the exact `exceptions` entry to add (#396).
+- A base whose tests fail no longer blocks the comparison: it becomes a note, and the results that
+  need passing tests are judged only in the code the change touches (#390).
+- Projects whose only TypeScript is TypeScript 7 run with a bundled JavaScript API (#490).
+- `tools.jscpd.precedence` lets a project's `.jscpd.json` set the duplicate detection options, in
+  every preset (#379).
 - `nitpicker changelog [<version>]` prints a version's entry from this changelog, which now ships in
   the package (#555).
 - [Troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md) explains
@@ -66,6 +71,7 @@ Stricter rules, which can fail code that passed before:
 - TypeScript, JavaScript and React: dev dependencies in production code, unused, unlisted and
   unresolved dependencies, hidden test-only exports, and more React mistakes (#226, #267, #268,
   #289).
+- TypeScript and JavaScript tests: an assertion in a callback the test does not wait for (#491).
 - Python: the one-way rules of the other presets, swallowed errors, logged errors without a
   traceback, tests without an assertion, and the security rules (#228, #273, #277, #283).
 - Python: async cancellation that is swallowed or replaced, resources closed while a child task can
@@ -83,6 +89,10 @@ Stricter rules, which can fail code that passed before:
   a service, and a singleton that takes a request or session scoped bean without a proxy (#486).
 - Java and Kotlin projects on jMolecules: an aggregate that holds another aggregate's root or entity,
   and a value object that holds an entity (#498).
+- Java and Kotlin Spring projects: request data stored in a singleton or static field (#542).
+- Java and Kotlin: external effects that run while a class or file loads (#518).
+- Python: domain purity follows effects through project helpers, and effects at import time fail
+  (#503).
 - Kotlin: the security, logging and review checks of the other presets, lint for Kotlin tests, and
   coroutine test rules such as `delay` on a real dispatcher inside `runTest` (#250, #380, #382,
   #489).
