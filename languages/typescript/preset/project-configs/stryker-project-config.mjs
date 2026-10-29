@@ -1,6 +1,5 @@
-import { existsSync } from 'node:fs';
 import { isPlainObject, isStringList } from '../../../../shared/config.mjs';
-import { resolveInside } from '../../../../shared/conventions/read-inside.mjs';
+import { isRegularFile, resolveInside } from '../../../../shared/conventions/read-inside.mjs';
 import {
   missingProjectConfig,
   precedenceLayers,
@@ -30,28 +29,42 @@ const RANKED_KEYS = [
 const ADDED_KEYS = ['testRunnerNodeArgs', 'checkerNodeArgs'];
 const IGNORE_PATTERNS = 'ignorePatterns';
 const LIST_KEYS = [...ADDED_KEYS, IGNORE_PATTERNS];
+const TIMEOUT_FLOORS = { timeoutMS: 5000, timeoutFactor: 1.5, dryRunTimeoutMinutes: 5 };
 const STATIC_IGNORED = 'Static mutant (and "ignoreStatic" was enabled)';
+
+export function mutationDisabled(config) {
+  return (config.disable ?? []).includes('mutation');
+}
 
 export function strykerProjectFile(projectRoot) {
   return STRYKER_PROJECT_FILES.find((name) => {
     const file = resolveInside(projectRoot, name);
-    return file !== undefined && existsSync(file);
+    return file !== undefined && isRegularFile(file);
   });
 }
 
-function checkedTypes(config, name) {
-  const lists = [
-    ...LIST_KEYS.filter((key) => config[key] !== undefined).map((key) => [key, config[key]]),
-    ...(config.mutator?.excludedMutations === undefined
-      ? []
-      : [['mutator.excludedMutations', config.mutator.excludedMutations]]),
-  ];
-  const malformed = lists.find(([, value]) => !isStringList(value));
-  if (malformed !== undefined) {
-    throw new Error(`${name}: "${malformed[0]}" must be an array of strings`);
-  }
+function malformedKey(config) {
   if (config.mutator !== undefined && !isPlainObject(config.mutator)) {
-    throw new Error(`${name}: "mutator" must be an object`);
+    return ['mutator', 'an object'];
+  }
+  const lists = [
+    ...LIST_KEYS.map((key) => [key, config[key]]),
+    ['mutator.excludedMutations', config.mutator?.excludedMutations],
+  ];
+  const list = lists.find(([, value]) => value !== undefined && !isStringList(value));
+  const timeout = Object.keys(TIMEOUT_FLOORS).find(
+    (key) => config[key] !== undefined && !(Number.isFinite(config[key]) && config[key] >= 0),
+  );
+  if (list !== undefined) {
+    return [list[0], 'an array of strings'];
+  }
+  return timeout === undefined ? undefined : [timeout, 'a number of 0 or more'];
+}
+
+function checkedTypes(config, name) {
+  const malformed = malformedKey(config);
+  if (malformed !== undefined) {
+    throw new Error(`${name}: "${malformed[0]}" must be ${malformed[1]}`);
   }
   return config;
 }
@@ -69,6 +82,23 @@ export function readStrykerProjectConfig(projectRoot) {
   );
 }
 
+export function appliedStrykerConfig(projectRoot) {
+  const file = strykerProjectFile(projectRoot);
+  if (file === undefined) {
+    return { values: {} };
+  }
+  const { mutator = {}, ...values } = readStrykerProjectConfig(projectRoot);
+  return {
+    file,
+    values: {
+      ...values,
+      ...Object.fromEntries(
+        Object.entries(mutator).map(([key, value]) => [`mutator.${key}`, value]),
+      ),
+    },
+  };
+}
+
 function projectStrykerConfig(settings) {
   if (!precedenceLayers(settings?.precedence).usesProject) {
     return undefined;
@@ -82,16 +112,28 @@ function projectStrykerConfig(settings) {
   return settings.projectConfig;
 }
 
+function flooredTimeouts(config, ranked) {
+  return Object.fromEntries(
+    Object.entries(TIMEOUT_FLOORS)
+      .filter(([key]) => ranked[key] !== undefined)
+      .map(([key, floor]) => [key, Math.max(ranked[key], config[key] ?? floor)]),
+  );
+}
+
 export function layeredStrykerConfig(config, settings = readHeadPolicyFile().tools?.stryker) {
   const project = projectStrykerConfig(settings);
   if (project === undefined) {
     return config;
   }
   const { nitpickerFirst } = precedenceLayers(settings.precedence);
-  const ranked = RANKED_KEYS.filter((key) => !nitpickerFirst || config[key] === undefined);
+  const ranked = pickedKeys(
+    project,
+    RANKED_KEYS.filter((key) => !nitpickerFirst || config[key] === undefined),
+  );
   return {
     ...config,
-    ...pickedKeys(project, ranked),
+    ...ranked,
+    ...flooredTimeouts(config, ranked),
     ...Object.fromEntries(
       ADDED_KEYS.filter((key) => project[key] !== undefined).map((key) => [
         key,
@@ -102,25 +144,20 @@ export function layeredStrykerConfig(config, settings = readHeadPolicyFile().too
   };
 }
 
-function ignoredByProject(project) {
-  const excluded = new Set(project.mutator?.excludedMutations ?? []);
-  return (mutant) =>
-    mutant.status === 'Ignored' &&
-    (excluded.has(mutant.mutatorName) ||
-      (project.ignoreStatic === true &&
-        mutant.static === true &&
-        mutant.statusReason === STATIC_IGNORED));
+function ignoredByProject(config) {
+  const reasons = new Set(
+    (config.mutator?.excludedMutations ?? []).map(
+      (name) => `Ignored because of excluded mutation "${name}"`,
+    ),
+  );
+  if (config.ignoreStatic === true) {
+    reasons.add(STATIC_IGNORED);
+  }
+  return (mutant) => mutant.status === 'Ignored' && reasons.has(mutant.statusReason);
 }
 
-export function withoutProjectIgnoredMutants(
-  report,
-  settings = readHeadPolicyFile().tools?.stryker,
-) {
-  const project = projectStrykerConfig(settings);
-  if (project === undefined) {
-    return report;
-  }
-  const ignored = ignoredByProject(project);
+export function withoutProjectIgnoredMutants(report, appliedConfig) {
+  const ignored = ignoredByProject(appliedConfig);
   return {
     ...report,
     files: Object.fromEntries(

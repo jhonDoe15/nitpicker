@@ -9,6 +9,10 @@ function typescriptCompiler() {
   return createRequire(import.meta.url)(TYPESCRIPT_API.file);
 }
 
+export function typescriptVersion() {
+  return typescriptCompiler().version;
+}
+
 export function readJsonc(file) {
   const typescript = typescriptCompiler();
   const { config } = typescript.readConfigFile(file, typescript.sys.readFile);
