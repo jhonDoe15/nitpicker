@@ -2,9 +2,9 @@ import ast
 from collections import namedtuple
 
 from checks.common import dotted_name
-from concurrency.functions import enclosing
+from checks.loop_scope import COMPREHENSIONS, enclosing_loop
+from concurrency.functions import DEFINITIONS, enclosing, is_limiter
 from concurrency.remote import is_task_call, remote_of, text_of
-from smells.loops import COMPREHENSIONS, enclosing_loop
 
 Site = namedtuple("Site", "anchor combinator collection work")
 
@@ -80,12 +80,17 @@ def task_work(call, context):
 
 
 def draining(loop, context):
+    function = enclosing(loop, context.parents, DEFINITIONS)
     for node in ast.walk(loop):
         if not isinstance(node, ast.Call):
             continue
         if dotted_name(node.func, context.aliases) in COMBINATORS:
             return True
-        if isinstance(node.func, ast.Attribute) and node.func.attr == "acquire":
+        if (
+            isinstance(node.func, ast.Attribute)
+            and node.func.attr == "acquire"
+            and is_limiter(node.func.value, function, context, {})
+        ):
             return True
     return False
 

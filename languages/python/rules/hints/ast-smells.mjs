@@ -72,23 +72,25 @@ function uncollectedAllowed(subject = '') {
   );
 }
 
+export const FAN_OUT_SEPARATOR = '\u001f';
+
 function fanOutParts(subject = '') {
   const [combinator = '', collection = '', operation = '', via = '', kind = ''] =
-    subject.split('|');
+    subject.split(FAN_OUT_SEPARATOR);
   return { combinator, collection, operation, via, kind };
 }
 
-function fanOutDescription(subject) {
+export function fanOutDescription(subject) {
   const { combinator, collection, operation, via, kind } = fanOutParts(subject);
   const verb = kind === 'message' ? 'publishes through' : 'calls';
   const through = via === '' ? '' : ` (which ${verb} \`${via}\`)`;
-  return `\`${combinator}\` starts \`${operation}\`${through} for every element of \`${collection}\` at once, with no bound on how many run together`;
+  return `\`${combinator}\` starts \`${operation}\`${through} for every element of \`${collection}\` at once`;
 }
 
-function fanOutAllowed(subject) {
-  const { collection, kind } = fanOutParts(subject);
-  const target = kind === 'message' ? 'the broker' : 'the remote service';
-  return `Every element becomes a call in flight, so a large \`${collection}\` exhausts connections, rate limits or ${target}. Bound it: share one \`asyncio.Semaphore(8)\` (or an anyio/trio \`CapacityLimiter\`) created outside the task and \`async with limit:\` around the call in the task body, or work through fixed-size chunks (\`for chunk in batched(items, 20): await asyncio.gather(...)\`), or send one batch request when the API has one. A semaphore created inside the task, or a limit constant that nothing acquires, bounds nothing.`;
+export function fanOutAllowed(subject) {
+  const { kind } = fanOutParts(subject);
+  const target = kind === 'message' ? "the broker's" : "the remote service's";
+  return `A large collection exhausts ${target} connections or rate limit. Hold one \`asyncio.Semaphore(8)\` created outside the tasks with \`async with limit:\` around each call, gather fixed-size slices (\`items[i : i + 20]\`), or make one batch call when the API has one.`;
 }
 
 export const SMELL_HINTS = [
