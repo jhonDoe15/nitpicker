@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { layerEntries } from '../../adapters/lint-engine/project-layer.mjs';
 import { replacedOptionRules } from '../../adapters/lint-engine/project-rules.mjs';
 import { RULE_EXCEPTION_ENTRY } from '../eslint-config/exceptions.mjs';
-import { readLayout } from '../head-policy.mjs';
+import { headPolicyEnvironment, readLayout } from '../head-policy.mjs';
 import { createQualityChecks } from '../quality-checks.mjs';
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
@@ -22,7 +22,11 @@ async function replacedRules(projectConfig) {
   return [...rules].toSorted();
 }
 
-const [projectConfig, reportFile] = process.argv.slice(2);
+const [projectConfig, reportFile, policyFile, projectRoot] = process.argv.slice(2);
+Object.assign(process.env, {
+  ...headPolicyEnvironment(policyFile),
+  NITPICKER_DIFF_ESLINT_PROJECT_ROOT: projectRoot,
+});
 
 async function report() {
   try {

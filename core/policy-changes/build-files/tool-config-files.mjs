@@ -4,7 +4,10 @@ import {
   PROJECT_TOOL_CONFIGS,
 } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { readInside } from '../../../shared/conventions/read-inside.mjs';
-import { JSCPD_PROJECT_FILE } from '../../../shared/conventions/tool-precedence.mjs';
+import {
+  JSCPD_PROJECT_FILE,
+  precedenceLayers,
+} from '../../../shared/conventions/tool-precedence.mjs';
 import { appliedJscpdConfig } from '../../tooling/jscpd/config.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
@@ -13,7 +16,6 @@ import {
   readEslintConfigFile,
 } from '../../../languages/typescript/preset/eslint-project/project-config.mjs';
 import { replacedEslintOptions } from '../../../languages/typescript/adapters/lint-engine/replaced-options.mjs';
-import { precedenceLayers } from '../../../shared/conventions/tool-precedence.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
 
 const PACKAGE_JSON = 'package.json';

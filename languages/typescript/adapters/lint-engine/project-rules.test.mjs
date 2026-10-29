@@ -37,7 +37,7 @@ async function layered(policy, projectText, { precedence = PROJECT_FIRST, addsRu
   return {
     root,
     eslint,
-    async rules(file, ruleIds) {
+    rules: async (file, ruleIds) => {
       const config = await eslint.calculateConfigForFile(file);
       return Object.fromEntries(ruleIds.map((ruleId) => [ruleId, config?.rules?.[ruleId]]));
     },

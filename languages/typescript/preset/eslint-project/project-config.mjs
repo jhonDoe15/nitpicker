@@ -15,7 +15,8 @@ export const ESLINT_PROJECT_FILES = [
 const MODULE_EXTENSIONS = ['.js', '.mjs', '.cjs', '.ts', '.mts', '.cts', '.json'];
 const SCRIPT_SPECIFIER = /\.([cm]?)js$/u;
 const LOCAL_SPECIFIER = /^\.\.?\//u;
-const PATH_LITERAL = /^[\w@.\-/]*[./][\w@.\-/]*$/u;
+const PATH_LITERAL = /^[\w@.\-/]+$/u;
+const PATH_SEPARATOR = /[./]/u;
 const UNTRACKED_DATA = /(?:^|\/)(?:package\.json|tsconfig[\w.-]*\.json)$/u;
 
 function typescript() {
@@ -43,14 +44,17 @@ function moduleCandidates(relative) {
 
 function stringLiterals(ts, file, text) {
   const literals = [];
-  const visit = (node) => {
+  function visit(node) {
     if (ts.isStringLiteral(node) || ts.isNoSubstitutionTemplateLiteral(node)) {
       literals.push(node.text);
     }
     ts.forEachChild(node, visit);
-  };
+  }
   visit(ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true));
-  return literals.filter((literal) => PATH_LITERAL.test(literal) && !literal.startsWith('/'));
+  return literals.filter(
+    (literal) =>
+      PATH_LITERAL.test(literal) && PATH_SEPARATOR.test(literal) && !literal.startsWith('/'),
+  );
 }
 
 function scanned(file, full) {

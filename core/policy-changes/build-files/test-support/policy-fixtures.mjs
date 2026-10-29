@@ -7,14 +7,16 @@ import { readPolicyScope } from '../../policy-scope.mjs';
 const { createGitRepository } = useGitFixtures();
 const JAVA = { preset: 'java' };
 
-const NO_REPLACED_OPTIONS = () => ({ rules: [] });
+function noReplacedOptions() {
+  return { rules: [] };
+}
 
 export function between({
   base,
   head,
   config = JAVA,
   baseConfig = config,
-  replacedOptions = NO_REPLACED_OPTIONS,
+  replacedOptions = noReplacedOptions,
 }) {
   const scope = readPolicyScope({
     baseConfig,
