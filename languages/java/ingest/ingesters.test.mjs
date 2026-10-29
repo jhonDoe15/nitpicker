@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
-import { comparisonKey } from '../../../core/diff/comparison/fingerprint.mjs';
+import { baseMoves, comparisonKey } from '../../../core/diff/comparison/fingerprint.mjs';
 import { ingestArchunit } from './archunit.mjs';
 import { ingestCheckstyle } from './formatting/checkstyle.mjs';
 import { decodeEntities, parseXml } from '../../../shared/ingest/common.mjs';
@@ -276,7 +276,7 @@ describe('pit', () => {
     const keys = (packageName, renames) =>
       ingestPit(report(packageName), { resolvePath: resolveJavaPath })
         .findings.filter((finding) => finding.rule === 'mutant-nocoverage')
-        .map((finding) => comparisonKey(finding, renames));
+        .map((finding) => comparisonKey(finding, renames && baseMoves(renames)));
     const moved = 'src/main/java/shop/audit/AuditService.java';
 
     expect(
