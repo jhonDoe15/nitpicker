@@ -75,6 +75,10 @@ export function createScripts({ hidden = [] } = {}) {
     );
   }
 
+  function reportsOf(files, settings) {
+    return rawFindingsOf(roots, files, { settings, hidden });
+  }
+
   function verdicts(cases, settings) {
     const found = rawFindingsOf(roots, caseFiles(cases), { settings, hidden });
     return verdictsFrom(found, Object.keys(cases));
@@ -90,5 +94,5 @@ export function createScripts({ hidden = [] } = {}) {
     return findingsOf({ [file]: code });
   }
 
-  return { cleanup, outcomes, findingsOf, single, verdicts };
+  return { cleanup, outcomes, findingsOf, reportsOf, single, verdicts };
 }

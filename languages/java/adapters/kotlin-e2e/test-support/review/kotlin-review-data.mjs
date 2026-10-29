@@ -45,6 +45,10 @@ class Cart {
 
     @Deprecated("Use sum")
     fun legacy(items: List<Int>): Int = sum(items)
+
+    private fun hidden(items: List<Int>): Int = items.size
+
+    fun visible(items: List<Int>): Int = hidden(items)
 }
 
 data class Query(val tag: String, val tags: List<String>)
@@ -170,6 +174,7 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'FixedSleepInTest WaitingTest.sleeps',
   'FixedSleepInTest WaitingTest.sleeps',
   'ForwardingMethodAlias Cart.count',
+  'ForwardingMethodAlias Cart.visible',
   'SingularAndPluralMember Query.tags',
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',

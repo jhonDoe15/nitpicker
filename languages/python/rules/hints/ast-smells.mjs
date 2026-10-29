@@ -1,5 +1,7 @@
 import { RULES_TOOL } from './tool.mjs';
 
+const methodName = (subject) => subject.split('.').pop();
+
 const EXPECTED_FAILURES = /xfail|expectedFailure/u;
 
 function skipDescription(subject = '') {
@@ -186,10 +188,15 @@ export const SMELL_HINTS = [
   {
     tool: RULES_TOOL,
     rules: ['forwarding-method-alias'],
-    describe: (subject) => {
-      const [name, target] = subject.split(' -> ');
-      return `\`${name}\` only forwards its parameters to \`${target}\` and has the same signature`;
+    describe: (subject = '', _libraries, detail) =>
+      `\`${methodName(subject)}\` only forwards its parameters to \`${detail?.target}\` and has the same signature`,
+    allowed: (subject = '', _libraries, detail) => {
+      if (detail === undefined) {
+        return 'Call the target method directly and delete the alias.';
+      }
+      return detail.rename === true
+        ? `Rename \`${detail.target}\` to \`${methodName(subject)}\` and delete the alias.`
+        : `Call \`${detail.target}\` directly and delete the alias.`;
     },
-    allowed: (subject) => `Call \`${subject.split(' -> ')[1]}\` directly and delete the alias.`,
   },
 ];

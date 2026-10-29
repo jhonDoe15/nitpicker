@@ -537,10 +537,17 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   predicates, getters, setters and constructors, default or destructured parameters, calls with
   type arguments, optional calls, `async` wrappers around a callee that is not `async`, a target
   inherited from a base class, class properties holding an arrow function (they bind `this`), class
-  expressions and object literal methods. A method whose name exists on a base class or an
-  implemented interface is an override or implementation and passes, and so does every method of a
-  class whose base class or interface the compiler cannot resolve. The message says to call the
-  target directly and delete the alias; add an exception for a public alias that must stay.
+  expressions and object literal methods. Also not flagged: a parameter decorator, a bare call in
+  an `async` method (a floating promise), an `abstract` target, and a name that a merged
+  interface declares. A method whose name exists on a base class or an implemented interface is an
+  override or implementation and passes, and so does every method of a class whose base class or
+  interface the compiler cannot resolve (a structural interface the class does not declare with
+  `implements` cannot be seen; a base-class alias that subclasses override is reported). Callback
+  parameters count as equal when their function types are mutually assignable, and string-literal
+  keys are matched by name. When two methods forward to each other only the later is reported.
+  The message says to call the target directly and delete the alias; when the target is `private`,
+  `protected` or `#private` and the alias is more visible it says to rename the target to the alias
+  name instead. Add an exception for a public alias that must stay.
 - No `as`, `any`, or non-null assertions.
 - `undefined` only for absent values. `null` only where a library or JSON requires it.
 - No comments, except doc comments (`/** ... */`) on exported declarations and the members of
