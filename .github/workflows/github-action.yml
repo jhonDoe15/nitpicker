@@ -65,8 +65,11 @@ jobs:
         env:
           EXIT_CODE: ${{ steps.nitpicker.outputs.exit-code }}
           REPORT_DIRECTORY: ${{ steps.nitpicker.outputs.report-directory }}
+          BASE: ${{ steps.seed.outputs.base }}
         run: |
           test "$EXIT_CODE" = 1
+          test "$REPORT_DIRECTORY" = "$GITHUB_WORKSPACE/.github/sample-project/reports/quality/diff"
+          test "$(node -p "require('$REPORT_DIRECTORY/summary.json').requestedBaseRef")" = "$BASE"
           grep -q 'eslint-lint/no-var' "$REPORT_DIRECTORY/report.txt"
           test -s "$REPORT_DIRECTORY/report.sarif"
           grep -q '"path": ".github/sample-project/src/' "$REPORT_DIRECTORY/codequality.json"
@@ -109,14 +112,23 @@ jobs:
         with:
           working-directory: .github/sample-python
           base-ref: ${{ steps.seed.outputs.base }}
+          arguments: |
+            --analyzer
+            python
           install-command: none
           package: ${{ steps.pack.outputs.tarball }}
+          report-directory: reports/nitpicker
           artifact-name: nitpicker-sample-python-report
       - name: The action reported the seeded finding
         env:
           EXIT_CODE: ${{ steps.nitpicker.outputs.exit-code }}
           REPORT_DIRECTORY: ${{ steps.nitpicker.outputs.report-directory }}
+          BASE: ${{ steps.seed.outputs.base }}
         run: |
           test "$EXIT_CODE" = 1
+          test "$REPORT_DIRECTORY" = "$GITHUB_WORKSPACE/.github/sample-python/reports/nitpicker"
+          summary="$REPORT_DIRECTORY/summary.json"
+          test "$(node -p "require('$summary').requestedBaseRef")" = "$BASE"
+          test "$(node -p "require('$summary').tools.map((tool) => tool.name).join()")" = python
           grep -q 'ruff/F401' "$REPORT_DIRECTORY/report.txt"
           grep -q '"path": ".github/sample-python/src/greeting/shout.py"' "$REPORT_DIRECTORY/codequality.json"

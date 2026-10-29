@@ -5,7 +5,13 @@ import { parse } from 'yaml';
 
 const repositoryRoot = path.join(import.meta.dirname, '../../../../../..');
 
-export const ACTION = parse(readFileSync(path.join(repositoryRoot, 'action.yml'), 'utf8'));
+const EXECUTABLE_MODE = 0o755;
+
+const STEP_TIMEOUT_MS = 120_000;
+
+export function readAction() {
+  return parse(readFileSync(path.join(repositoryRoot, 'action.yml'), 'utf8'));
+}
 
 const FAKE_NPX = `#!/usr/bin/env bash
 printf '%s\\n' "npx $*" >> "$FAKE_LOG"
@@ -23,8 +29,8 @@ const FAKE_COMMAND = `#!/usr/bin/env bash
 printf '%s\\n' "$(basename "$0") $* (in $PWD)" >> "$FAKE_LOG"
 `;
 
-export function runStep(name) {
-  const step = ACTION.runs.steps.find(
+export function actionStep(name) {
+  const step = readAction().runs.steps.find(
     (candidate) => candidate.id === name || candidate.name === name,
   );
   if (step?.run === undefined) {
@@ -42,7 +48,7 @@ function parseOutputs(text) {
   );
 }
 
-export function prepareRunner(root) {
+function prepareRunner(root) {
   const bin = path.join(root, 'fake-bin');
   mkdirSync(bin, { recursive: true });
   for (const [name, text] of [
@@ -53,14 +59,14 @@ export function prepareRunner(root) {
     ['corepack', FAKE_COMMAND],
   ]) {
     writeFileSync(path.join(bin, name), text);
-    chmodSync(path.join(bin, name), 0o755);
+    chmodSync(path.join(bin, name), EXECUTABLE_MODE);
   }
   return bin;
 }
 
-export function executeStep({ name, step = runStep(name), root, cwd, environment }) {
+export function executeStep({ step, root, cwd, environment, searchPath }) {
   const bin = prepareRunner(root);
-  const outputFile = path.join(root, `output-${name.replaceAll(' ', '-')}.txt`);
+  const outputFile = path.join(root, 'github-output.txt');
   const log = path.join(root, 'commands.log');
   writeFileSync(outputFile, '');
   writeFileSync(log, '');
@@ -69,6 +75,7 @@ export function executeStep({ name, step = runStep(name), root, cwd, environment
   const result = spawnSync('bash', ['--noprofile', '--norc', '-eo', 'pipefail', script], {
     cwd,
     encoding: 'utf8',
+    timeout: STEP_TIMEOUT_MS,
     env: {
       HOME: root,
       GITHUB_OUTPUT: outputFile,
@@ -78,7 +85,7 @@ export function executeStep({ name, step = runStep(name), root, cwd, environment
       GIT_CONFIG_GLOBAL: '/dev/null',
       GIT_CONFIG_NOSYSTEM: '1',
       ...environment,
-      PATH: `${bin}:${environment.PATH ?? process.env.PATH}`,
+      PATH: `${bin}:${searchPath}`,
     },
   });
   return {
