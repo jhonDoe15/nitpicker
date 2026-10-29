@@ -1,5 +1,5 @@
-import { isPlainObject } from '../../../../../shared/config.mjs';
-import { listOf, shownValue } from '../config-values.mjs';
+import { isPlainObject, listOf } from '../../../../../shared/config.mjs';
+import { shownValue } from '../config-values.mjs';
 
 export function canonical(value) {
   return JSON.stringify(value, (_key, item) =>

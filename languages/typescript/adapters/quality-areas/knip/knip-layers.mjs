@@ -1,6 +1,5 @@
-import { picked } from '../../../../../shared/config.mjs';
+import { listOf, picked } from '../../../../../shared/config.mjs';
 import { precedenceLayers } from '../../../../../shared/conventions/tool-precedence.mjs';
-import { listOf } from '../../../preset/project-tools/config-values.mjs';
 
 const ADDED_LISTS = [
   'ignore',

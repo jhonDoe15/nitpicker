@@ -1,5 +1,4 @@
-import { isPlainObject } from '../../../../../shared/config.mjs';
-import { listOf } from '../config-values.mjs';
+import { isPlainObject, listOf } from '../../../../../shared/config.mjs';
 import { addsEntries, canonical, keyChanges, sortedEntries } from './applied-values.mjs';
 
 const NITPICKER_KEYS = new Set([
