@@ -1,5 +1,5 @@
 export const HOLDER = String.raw`(?:[\w.]+\.)?(?:Assertions|Assert)\s*\.\s*|kotlin\.test\.`;
-export const NUMBER = String.raw`\d[\d_]*(?:\.\d[\d_]*)?(?:[eE][+-]?\d[\d_]*)?[fF]?`;
+export const NUMBER = String.raw`(?:\d[\d_]*(?:\.\d[\d_]*)?|\.\d[\d_]*)(?:[eE][+-]?\d[\d_]*)?[fF]?`;
 
 const LITERAL = new RegExp(String.raw`^\(*[-+]?(${NUMBER})\)*$`, 'u');
 const RIGHT_OPERAND = new RegExp(
@@ -7,7 +7,7 @@ const RIGHT_OPERAND = new RegExp(
   'gu',
 );
 const LEFT_OPERAND = new RegExp(
-  String.raw`(?<![\w.)\]}+*/%-][ \t]*)([-+]?${NUMBER})[ \t]*(?:===?|!==?)(?!=)`,
+  String.raw`(?<![\w.)\]}+*/%-][ \t]{0,16})([-+]?${NUMBER})[ \t]*(?:===?|!==?)(?!=)`,
   'gu',
 );
 const ARITHMETIC_TAIL = /^\s*[-+*/%]/u;

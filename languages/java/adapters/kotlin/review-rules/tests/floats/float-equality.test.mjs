@@ -240,3 +240,81 @@ class MathTest {
     expect(reportedLines('assertThat(total == 0.1).isTrue()')).toEqual([]);
   });
 });
+
+describe('Kotlin float literal edge cases', () => {
+  const spec = (...lines) =>
+    `${KOTEST_HEAD}class MathSpec : FunSpec({\n    test("adds") {\n${lines.map((line) => `        ${line}`).join('\n')}\n    }\n})\n`;
+  const specLines = (...lines) => floats(spec(...lines)).map((entry) => entry.split('@')[1]);
+
+  it('does not report a parenthesised literal that is followed by more expression', () => {
+    expect(
+      specLines(
+        'x shouldBe (0.5) * y',
+        'x shouldBe (0.1).toBigDecimal()',
+        'x shouldBe (2.5).pow(2)',
+        'x shouldBe (0.5) + 1',
+        'x shouldBe 0.5?.let { it }',
+        'x shouldBe (0.5',
+      ),
+    ).toEqual([]);
+  });
+
+  it('reports a parenthesised literal that ends the expression', () => {
+    expect(specLines('x shouldBe (0.5)', 'foo(x shouldBe (0.5))', 'x shouldBe -.5')).toEqual([
+      '9',
+      '10',
+      '11',
+    ]);
+  });
+
+  it('skips a literal whose expression continues on the next line', () => {
+    expect(
+      specLines(
+        'x shouldBe 0.1\n            .plus(1)',
+        'x shouldBe 0.1\n            ?.plus(1)',
+        'x shouldBe 0.1\n            && ready',
+        'x shouldBe 0.2',
+        'x shouldBe 0.3\n        y shouldBe 1',
+      ),
+    ).toEqual(['15', '16']);
+  });
+
+  it('reports a literal without an integer part and ignores a member access', () => {
+    expect(
+      reportedLines(
+        'assertEquals(.5, x)',
+        'assertEquals(x, -.5f)',
+        'assertTrue(x == .5)',
+        'assertTrue(.5 != x)',
+        'assertEquals(a.5, x)',
+        'assertTrue(x.5 == y)',
+      ),
+    ).toEqual(['12', '13', '14', '15']);
+    expect(specLines('x shouldBe .5', 'x shouldBe a.5')).toEqual(['9']);
+  });
+
+  it('allows AssertJ with a comparator in the chain', () => {
+    const text = `${JUNIT_HEAD}import org.assertj.core.api.Assertions.assertThat
+
+class MathTest {
+    @Test
+    fun adds() {
+        assertThat(total).usingComparator(Double::compare).isEqualTo(0.5)
+        assertThat(total).usingComparator(DoubleComparator(0.01)).as("total").isNotEqualTo(0.5)
+        assertThat(total).usingDefaultComparator().isEqualTo(0.5)
+        assertThat(total).isEqualTo(0.5)
+    }
+}
+`;
+
+    expect(floats(text)).toEqual(['MathTest.adds@17']);
+  });
+
+  it('scans a long run of spaces before shouldBe quickly', () => {
+    const padded = spec(`x${' '.repeat(50_000)}shouldBe 0.5`);
+    const started = performance.now();
+
+    expect(floats(padded)).toEqual([]);
+    expect(performance.now() - started).toBeLessThan(2000);
+  });
+});

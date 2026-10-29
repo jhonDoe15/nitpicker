@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import org.assertj.core.util.DoubleComparator;
 import org.junit.jupiter.api.Test;
 
 class FloatEqualityTest {
@@ -38,6 +39,8 @@ class FloatEqualityTest {
     assertFalse(total != 0.75, "total"); // violation: FloatEqualityInTest
     assertTrue(-0.75 != total); // violation: FloatEqualityInTest
     assertTrue(Double.compare(total, 0.75) == 0); // violation: FloatEqualityInTest
+    assertEquals((double) 0.75, total); // violation: FloatEqualityInTest
+    assertTrue(total == (double) 0.75f); // violation: FloatEqualityInTest
     assertThat(total == 0.75).isTrue(); // violation: FloatEqualityInTest
     assertThat(total != 0.75).as("total").isFalse(); // violation: FloatEqualityInTest
   }
@@ -70,6 +73,10 @@ class FloatEqualityTest {
     assertTrue(Double.compare(total, one) < 0);
     assertThat(total > 0.5).isTrue();
     assertThat(one == 1.0).isTrue();
+    assertEquals(0, (int) 0.75);
+    assertEquals((double) 1.0, one);
+    assertThat(total).usingComparator(Double::compare).isEqualTo(0.75);
+    assertThat(total).usingComparator(new DoubleComparator(0.01)).isEqualTo(0.755);
     org.hamcrest.MatcherAssert.assertThat(one, is(1.0));
     assertEquals("0.75", String.valueOf(total));
   }

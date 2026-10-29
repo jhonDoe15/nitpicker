@@ -3,6 +3,7 @@ import { classesOf } from '../discovery/declarations.mjs';
 import { functionOwners, functionsOf } from '../discovery/functions.mjs';
 import { testBodies } from '../discovery/test-units.mjs';
 import { HOLDER, isFractional, NUMBER } from './fractional-literal.mjs';
+import { usesComparator } from './call-chain.mjs';
 import { truthHits } from './truth-assertions.mjs';
 
 export const FLOAT_EQUALITY_RULE = 'FloatEqualityInTest';
@@ -15,8 +16,11 @@ const EQUALS_CALL = new RegExp(
 );
 const SHOULD_CALL = /(?<=\.)(shouldBe|shouldNotBe)\s*\(/gu;
 const ASSERTJ_CALL = /(?<=\.)(isEqualTo|isNotEqualTo)\s*\(/gu;
+const LITERAL_OPERAND = String.raw`(?:[-+]?${NUMBER}|\([-+]?${NUMBER}\))`;
+const CONTINUATION = String.raw`[ \t]*(?:\.|\?\.|\?:|&&|\|\|)`;
 const SHOULD_INFIX = new RegExp(
-  String.raw`(?<=[\w)\]"}][ \t]+)(shouldBe|shouldNotBe)[ \t]+(\(?[-+]?${NUMBER}\)?)(?=[ \t]*(?:[\n\r)};,]|$))`,
+  String.raw`(?<=[\w)\]"}][ \t]{1,16})(shouldBe|shouldNotBe)[ \t]+(${LITERAL_OPERAND})` +
+    String.raw`(?=[ \t]*(?:[)};,]|\r?\n(?!${CONTINUATION})|$))`,
   'gu',
 );
 const ASSERTJ_IMPORT = /\borg\.assertj\b/u;
@@ -55,7 +59,7 @@ function isExactComparison(args) {
 function callHits(scanned, pattern, isExact) {
   return [...scanned.code.matchAll(pattern)].flatMap((match) => {
     const open = match.index + match[0].length - 1;
-    return isExact(argumentsOf(scanned, open))
+    return isExact(argumentsOf(scanned, open), match)
       ? [{ name: match[1], offset: match.index + match[0].indexOf(match[1]) }]
       : [];
   });
@@ -73,10 +77,13 @@ function infixHits(scanned) {
 
 function hitsIn(scanned) {
   const assertj = ASSERTJ_IMPORT.test(scanned.code);
+  function plainAssertion(args, match) {
+    return isSingleFraction(args) && !usesComparator(scanned, match.index - 1);
+  }
   return [
     ...callHits(scanned, EQUALS_CALL, isExactComparison),
     ...callHits(scanned, SHOULD_CALL, isSingleFraction),
-    ...(assertj ? callHits(scanned, ASSERTJ_CALL, isSingleFraction) : []),
+    ...(assertj ? callHits(scanned, ASSERTJ_CALL, plainAssertion) : []),
     ...infixHits(scanned),
     ...truthHits(scanned, assertj),
   ];

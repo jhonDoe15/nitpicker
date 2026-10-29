@@ -97,12 +97,19 @@
      or pmd-java:matchesSig('org.testng.Assert#assertNotEquals(_,_)')
      or pmd-java:matchesSig('org.testng.Assert#assertNotEquals(_,_,java.lang.String)')
      or pmd-java:matchesSig('org.testng.Assert#assertNotEquals(java.lang.String,_,_)')]
-    [ArgumentList/(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral)
+    [ArgumentList/(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral
+       | CastExpression[pmd-java:typeIs('double') or pmd-java:typeIs('float')
+                        or pmd-java:typeIs('java.lang.Double') or pmd-java:typeIs('java.lang.Float')]
+         /(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral))
        [@DoubleLiteral or @FloatLiteral][@ValueAsDouble != floor(@ValueAsDouble)]]
   | //MethodCall[@MethodName = ('isEqualTo', 'isNotEqualTo')]
       [*[1][pmd-java:typeIs('org.assertj.core.api.AbstractDoubleAssert')
             or pmd-java:typeIs('org.assertj.core.api.AbstractFloatAssert')]]
-      [ArgumentList[count(*) = 1]/(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral)
+      [not(*[1]/descendant-or-self::MethodCall[starts-with(@MethodName, 'using')])]
+      [ArgumentList[count(*) = 1]/(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral
+       | CastExpression[pmd-java:typeIs('double') or pmd-java:typeIs('float')
+                        or pmd-java:typeIs('java.lang.Double') or pmd-java:typeIs('java.lang.Float')]
+         /(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral))
          [@DoubleLiteral or @FloatLiteral][@ValueAsDouble != floor(@ValueAsDouble)]]
   | //MethodCall
       [pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertTrue(_*)')
@@ -112,21 +119,36 @@
        or pmd-java:matchesSig('org.testng.Assert#assertTrue(_*)')
        or pmd-java:matchesSig('org.testng.Assert#assertFalse(_*)')]
       [ArgumentList/descendant::InfixExpression[@Operator = ('==', '!=')]
-         [(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral)
+         [(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral
+       | CastExpression[pmd-java:typeIs('double') or pmd-java:typeIs('float')
+                        or pmd-java:typeIs('java.lang.Double') or pmd-java:typeIs('java.lang.Float')]
+         /(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral))
          [@DoubleLiteral or @FloatLiteral][@ValueAsDouble != floor(@ValueAsDouble)]
           or MethodCall[pmd-java:matchesSig('java.lang.Double#compare(double,double)')
-                        or pmd-java:matchesSig('java.lang.Float#compare(float,float)')]/ArgumentList/(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral)
+                        or pmd-java:matchesSig('java.lang.Float#compare(float,float)')]/ArgumentList/(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral
+       | CastExpression[pmd-java:typeIs('double') or pmd-java:typeIs('float')
+                        or pmd-java:typeIs('java.lang.Double') or pmd-java:typeIs('java.lang.Float')]
+         /(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral))
          [@DoubleLiteral or @FloatLiteral][@ValueAsDouble != floor(@ValueAsDouble)]]]
   | //MethodCall[@MethodName = ('isTrue', 'isFalse')]
       [*[1][pmd-java:typeIs('org.assertj.core.api.AbstractBooleanAssert')]]
       [*[1]/descendant::InfixExpression[@Operator = ('==', '!=')]
-         [(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral)
+         [(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral
+       | CastExpression[pmd-java:typeIs('double') or pmd-java:typeIs('float')
+                        or pmd-java:typeIs('java.lang.Double') or pmd-java:typeIs('java.lang.Float')]
+         /(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral))
          [@DoubleLiteral or @FloatLiteral][@ValueAsDouble != floor(@ValueAsDouble)]
           or MethodCall[pmd-java:matchesSig('java.lang.Double#compare(double,double)')
-                        or pmd-java:matchesSig('java.lang.Float#compare(float,float)')]/ArgumentList/(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral)
+                        or pmd-java:matchesSig('java.lang.Float#compare(float,float)')]/ArgumentList/(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral
+       | CastExpression[pmd-java:typeIs('double') or pmd-java:typeIs('float')
+                        or pmd-java:typeIs('java.lang.Double') or pmd-java:typeIs('java.lang.Float')]
+         /(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral))
          [@DoubleLiteral or @FloatLiteral][@ValueAsDouble != floor(@ValueAsDouble)]]]
   | //MethodCall[@MethodName = ('is', 'equalTo')]
-      [ArgumentList[count(*) = 1]/(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral)
+      [ArgumentList[count(*) = 1]/(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral
+       | CastExpression[pmd-java:typeIs('double') or pmd-java:typeIs('float')
+                        or pmd-java:typeIs('java.lang.Double') or pmd-java:typeIs('java.lang.Float')]
+         /(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral))
          [@DoubleLiteral or @FloatLiteral][@ValueAsDouble != floor(@ValueAsDouble)]]
       [pmd-java:matchesSig('org.hamcrest.Matchers#is(_)')
        or pmd-java:matchesSig('org.hamcrest.CoreMatchers#is(_)')

@@ -1,11 +1,5 @@
-import {
-  closeOf,
-  matchingOpen,
-  nextSignificant,
-  repeatUntil,
-  trimmedEnd,
-  wordBefore,
-} from '../discovery/text-scan.mjs';
+import { closeOf, matchingOpen, nextSignificant } from '../discovery/text-scan.mjs';
+import { receiverCalls } from './call-chain.mjs';
 import { HOLDER, hasFractionalEquality } from './fractional-literal.mjs';
 
 const TRUTH_CALL = new RegExp(
@@ -15,7 +9,6 @@ const TRUTH_CALL = new RegExp(
 const KOTEST_TRUTH =
   /\)\s*(?:(?:shouldBe|shouldNotBe)[ \t]+(?:true|false)\b|\.\s*(?:shouldBeTrue|shouldBeFalse)\b)/gu;
 const ASSERTJ_TRUTH = /\.\s*(isTrue|isFalse)\s*\(/gu;
-const MAX_CHAIN = 16;
 
 function callText(scanned, open) {
   const { code } = scanned;
@@ -44,28 +37,11 @@ function kotestCalls(scanned) {
     .map((match) => ({ name: 'shouldBe', offset: match.index }));
 }
 
-function receiverArguments(scanned, dot) {
-  const found = [];
-  let end = trimmedEnd(scanned, dot);
-  repeatUntil(MAX_CHAIN, () => {
-    const open = scanned.code[end - 1] === ')' ? matchingOpen(scanned, end - 1) : -1;
-    if (open < 0) {
-      return true;
-    }
-    found.push(scanned.code.slice(open + 1, end - 1));
-    end = trimmedEnd(scanned, wordBefore(scanned, open).start);
-    if (scanned.code[end - 1] !== '.') {
-      return true;
-    }
-    end = trimmedEnd(scanned, end - 1);
-    return false;
-  });
-  return found;
-}
-
 function assertjCalls(scanned) {
   return [...scanned.code.matchAll(ASSERTJ_TRUTH)]
-    .filter((match) => receiverArguments(scanned, match.index).some(hasFractionalEquality))
+    .filter((match) =>
+      receiverCalls(scanned, match.index).some(({ inner }) => hasFractionalEquality(inner)),
+    )
     .map((match) => ({ name: match[1], offset: match.index }));
 }
 
