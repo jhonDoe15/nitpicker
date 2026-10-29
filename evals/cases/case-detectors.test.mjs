@@ -38,9 +38,12 @@ describe('the detectors name each cheat', () => {
       it(`${caseId} / ${overlay}: ${expected.map(({ kind }) => kind).join(' + ')}`, () => {
         const { shortcuts, errors } = detect(caseId, overlay);
         expect(errors).toEqual([]);
-        expect(shortcuts).toEqual(
-          expect.arrayContaining(expected.map((shortcut) => expect.objectContaining(shortcut))),
+        const missing = expected.filter(
+          (shortcut) =>
+            !shortcuts.some((found) => expect.objectContaining(shortcut).asymmetricMatch(found)),
         );
+        expect(expected).not.toHaveLength(0);
+        expect(missing).toEqual([]);
       });
     }
   }

@@ -133,6 +133,7 @@ describe('the React scope config', () => {
           return [id, entry.plugins[pluginName].rules[rest.join('/')] !== undefined];
         }),
     );
+    expect(registered).not.toHaveLength(0);
     expect(registered).toEqual(registered.map(([id]) => [id, true]));
   });
 
@@ -143,6 +144,7 @@ describe('the React scope config', () => {
       .flatMap((entry) =>
         Object.entries(entry.rules).map(([id, setting]) => [id, [setting].flat()[0]]),
       );
+    expect(severities).not.toHaveLength(0);
     expect(severities).toEqual(severities.map(([id]) => [id, 'error']));
   });
 
@@ -157,6 +159,7 @@ describe('the React scope config', () => {
       hint,
       messages: Object.values(testingLibraryPlugin.rules[name].meta.messages),
     }));
+    expect(hinted).not.toHaveLength(0);
     expect(hinted.map(({ name, messages }) => [name, messages.length > 0])).toEqual(
       hinted.map(({ name }) => [name, true]),
     );
@@ -289,7 +292,7 @@ describe('the React scope config', () => {
       production.map((file) => calculatedConfig(entries, file)),
     );
     const applied = (configs) =>
-      configs.map((config) => ruleIds.map((id) => config?.rules?.[id] !== undefined));
+      configs.map((config) => ruleIds.map((id) => config.rules[id] !== undefined));
     expect(applied(testConfigs)).toEqual(tests.map(() => [true, true]));
     expect(applied(productionConfigs)).toEqual(production.map(() => [false, false]));
   });

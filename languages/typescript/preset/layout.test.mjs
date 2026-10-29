@@ -46,10 +46,12 @@ describe('common layout', () => {
     );
     expect(outputGlobs(JSON.parse(read('jscpd.json')).ignore).sort()).toEqual(builtIn);
     const knipGlobs = outputGlobs(JSON.parse(read('knip.json')).ignore);
+    expect(knipGlobs).not.toHaveLength(0);
     expect(knipGlobs.filter((glob) => !builtIn.includes(glob))).toEqual([]);
     const vitestGlobs = [...read('vitest.quality.config.ts').matchAll(/'(\w+\/\*\*)'/gu)].map(
       ([, glob]) => glob,
     );
+    expect(vitestGlobs).not.toHaveLength(0);
     expect(vitestGlobs.filter((glob) => !builtIn.includes(glob))).toEqual([]);
   });
   it('selects both conventional source and test locations without treating colocated tests as source', () => {

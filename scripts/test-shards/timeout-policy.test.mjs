@@ -13,6 +13,7 @@ describe('repository JVM suite deadlines', () => {
       const files = Object.keys(
         JSON.parse(readFileSync(new URL(`./${language}-e2e.json`, import.meta.url), 'utf8')),
       );
+      expect(files).not.toHaveLength(0);
       expect(files.map((file) => resolveTestTimeouts(config, { file }))).toEqual(
         files.map(() => ({
           project: `${language}-e2e`,

@@ -114,6 +114,7 @@ describe('quality diff temporary worktrees and reports', () => {
     });
 
     expect(exitCode).toBe(2);
+    expect(REPORT_FILE_NAMES).not.toHaveLength(0);
     expect(
       REPORT_FILE_NAMES.map((name) => existsSync(path.join(repository.outputRoot, name))),
     ).toEqual(REPORT_FILE_NAMES.map(() => false));
@@ -161,6 +162,7 @@ describe('quality diff temporary worktrees and reports', () => {
 
     expect(report.summary.overallStatus).toBe('completed');
     expect(worktreePaths(repository.root)).toEqual([repository.root]);
+    expect(REPORT_FILE_NAMES).not.toHaveLength(0);
     expect(
       REPORT_FILE_NAMES.map((name) => existsSync(path.join(repository.outputRoot, name))),
     ).toEqual(REPORT_FILE_NAMES.map(() => true));

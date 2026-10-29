@@ -57,13 +57,11 @@ describe('SARIF reports of a project in a repository subfolder', () => {
 
     expect(exitCode).toBe(1);
     expect(readdirSync(outputRoot).toSorted()).toEqual(REPORT_FILE_NAMES.toSorted());
-    const logs = ['report.sarif', 'report-baseline.sarif'].map((name) =>
-      readSarif(outputRoot, name),
-    );
-    expect(logs).toHaveLength(2);
-    for (const log of logs) {
-      expectValidSarif(log);
-    }
+    const current = readSarif(outputRoot, 'report.sarif');
+    const baseline = readSarif(outputRoot, 'report-baseline.sarif');
+    const logs = [current, baseline];
+    expectValidSarif(current);
+    expectValidSarif(baseline);
     expect(logs.map((log) => log.runs[0].originalUriBaseIds)).toEqual(logs.map(() => undefined));
     expect(logs.map(locations)).toEqual(
       logs.map(() => [['new', { uri: 'packages/my%20app/src/new.ts', uriBaseId: '%SRCROOT%' }]]),

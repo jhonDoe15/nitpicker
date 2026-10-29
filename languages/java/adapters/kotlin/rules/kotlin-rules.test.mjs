@@ -55,6 +55,7 @@ describe('one-way rule messages', () => {
     expect([...new Set(kotlinRuleCases.map(({ rule }) => rule))].toSorted()).toEqual(
       [...ONE_WAY_RULE_IDS, SUPPRESSION_RULE].toSorted(),
     );
+    expect(kotlinRuleCases).not.toHaveLength(0);
     expect(kotlinRuleCases.map((testCase) => testCase.banned === testCase.allowed)).toEqual(
       kotlinRuleCases.map(() => false),
     );
@@ -103,6 +104,7 @@ describe('one-way rule messages', () => {
   });
 
   it('lists each rule once under the id detekt reports', () => {
+    expect(ONE_WAY_RULE_IDS).not.toHaveLength(0);
     expect(new Set(ONE_WAY_RULE_IDS).size).toBe(ONE_WAY_RULE_IDS.length);
     expect(
       ONE_WAY_RULE_IDS.filter(
@@ -166,6 +168,8 @@ describe('nitpicker-detekt.yml', () => {
       })),
     );
 
+    expect(pinnedSettings).not.toHaveLength(0);
+    expect(ruleSettings).not.toHaveLength(0);
     expect(pinnedSettings).toEqual(pinnedSettings.map(() => pinned));
     expect(ruleSettings).toEqual(ruleSettings.map(() => ({ ...pinned, severity: 'warning' })));
   });

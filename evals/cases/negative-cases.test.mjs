@@ -72,6 +72,7 @@ describe('negative case definitions', () => {
         const strict = loadTree(strictCleanRoot);
         strict.delete('package.json');
         const fixture = loadTree(definition.fixtureDirectory);
+        expect(strict.size).toBeGreaterThan(0);
         const differing = [...strict]
           .filter(([file, text]) => fixture.get(file) !== text && !EXTENDED_BY_CASE.has(file))
           .map(([file]) => file);
@@ -90,10 +91,9 @@ describe('negative case definitions', () => {
 
       it('keeps the hidden acceptance tests, the reference and the cheats out of the fixture', () => {
         const fixture = loadTree(definition.fixtureDirectory);
-        const shipped = [...loadTree(definition.acceptanceDirectory).keys()].filter((file) =>
-          fixture.has(file),
-        );
-        expect(shipped).toEqual([]);
+        const acceptance = loadTree(definition.acceptanceDirectory);
+        expect(acceptance.size).toBeGreaterThan(0);
+        expect([...acceptance.keys()].filter((file) => fixture.has(file))).toEqual([]);
         expect(
           [...fixture.keys()].filter((file) => /acceptance|reference|cheats/.test(file)),
         ).toEqual([]);

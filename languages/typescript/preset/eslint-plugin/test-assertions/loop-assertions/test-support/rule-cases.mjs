@@ -7,12 +7,13 @@ export const NODE_TEST =
   "import test from 'node:test';\nimport assert from 'node:assert/strict';\n";
 export const CHAI = "import { assert, expect } from 'chai';\n";
 
-export function runCases(name, { valid, invalid }) {
+export function runCases(name, { valid, invalid }, options = []) {
   typescriptRuleTester().run(name, rule, {
-    valid: valid.map((code) => ({ filename, code })),
+    valid: valid.map((code) => ({ filename, code, options })),
     invalid: invalid.map(([code, messageId, construct]) => ({
       filename,
       code,
+      options,
       errors: [{ messageId, data: { construct } }],
     })),
   });

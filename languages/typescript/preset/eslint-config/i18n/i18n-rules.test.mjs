@@ -174,6 +174,7 @@ describe('the plugin wrapper', () => {
     expect(rules.map(({ name, texts }) => [name, texts.length > 0])).toEqual(
       rules.map(({ name }) => [name, true]),
     );
+    expect(messages).not.toHaveLength(0);
     expect(messages.filter(({ text, hint }) => !text.endsWith(hint))).toEqual([]);
     expect(
       messages.filter(({ text, hint }) => !/[^\s.]\.?$/u.test(text.slice(0, -hint.length))),
@@ -183,6 +184,7 @@ describe('the plugin wrapper', () => {
 
   it('keeps each hint to one sentence and one example', () => {
     const hints = Object.entries(i18nRules);
+    expect(hints).not.toHaveLength(0);
     expect(hints.filter(([, { hint }]) => hint.length >= 200).map(([name]) => name)).toEqual([]);
   });
 });
