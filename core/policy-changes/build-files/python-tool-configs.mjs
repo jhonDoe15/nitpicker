@@ -56,18 +56,14 @@ const FIRST_FILES = {
   coverage: [COVERAGERC, SETUP_CFG, TOX_INI, PYPROJECT],
 };
 
-function sortedKeys(value) {
-  if (Array.isArray(value)) {
-    return value.map(sortedKeys);
-  }
-  if (value !== null && typeof value === 'object' && !(value instanceof Date)) {
-    return Object.fromEntries(
-      Object.keys(value)
-        .toSorted()
-        .map((key) => [key, sortedKeys(value[key])]),
-    );
-  }
-  return value;
+function sortedKeys(_key, value) {
+  return value !== null && typeof value === 'object' && !Array.isArray(value)
+    ? Object.fromEntries(
+        Object.keys(value)
+          .toSorted()
+          .map((key) => [key, value[key]]),
+      )
+    : value;
 }
 
 function iniSections(text, matches) {
@@ -109,13 +105,20 @@ function relevantPart(tool, file, text) {
   return name.endsWith('.json') ? parseJsonc(text) : parseToml(text);
 }
 
-export function pythonConfigText(tool, file, text) {
+function readPart(tool, file, text) {
   try {
-    const part = relevantPart(tool, file, text);
-    return part === undefined ? undefined : JSON.stringify(sortedKeys(part));
-  } catch {
+    return { kind: 'read', part: relevantPart(tool, file, text) };
+  } catch (error) {
+    return { kind: 'unreadable', error };
+  }
+}
+
+function pythonConfigText(tool, file, text) {
+  const read = readPart(tool, file, text);
+  if (read.kind === 'unreadable') {
     return text;
   }
+  return read.part === undefined ? undefined : JSON.stringify(read.part, sortedKeys);
 }
 
 function relativeTo(root, files) {

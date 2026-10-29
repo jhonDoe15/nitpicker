@@ -112,10 +112,10 @@ function sideFingerprints(tool, side, gitBlobId) {
 
 export function readToolConfigs(base, head, gitBlobId) {
   return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier', ...PYTHON_TOOLS]
-    .filter((tool) => isOptedIn(tool, base.config) && isOptedIn(tool, head.config))
+    .filter((tool) => isOptedIn(tool, head.config))
     .map((tool) => ({
       tool,
-      base: sideFingerprints(tool, base, gitBlobId),
+      base: isOptedIn(tool, base.config) ? sideFingerprints(tool, base, gitBlobId) : new Map(),
       head: sideFingerprints(tool, head, gitBlobId),
     }));
 }
