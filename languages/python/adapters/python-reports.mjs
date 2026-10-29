@@ -147,6 +147,7 @@ const RUFF_CODE = /^[A-Z]+\d+$/u;
 
 function ownerSurvives(exceptions) {
   return ({ owner, path: file, line }) =>
+    owner === undefined ||
     applyPythonExceptions(
       [
         {

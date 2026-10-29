@@ -145,8 +145,10 @@ describe('sites the rules script allowed', () => {
     );
   });
 
-  it('drop a site without an owner whatever the exceptions say', () => {
-    expect(withoutAllowedForms([at('S303', 4)], { allowed, keepsOwner: () => false })).toEqual([]);
+  it('leave the decision on a site without an owner to keepsOwner', () => {
+    const keepsOwner = (site) => site.owner !== 'clock-now';
+
+    expect(withoutAllowedForms([at('S303', 4)], { allowed, keepsOwner })).toEqual([]);
   });
 });
 
