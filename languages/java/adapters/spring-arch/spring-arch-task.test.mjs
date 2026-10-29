@@ -28,14 +28,14 @@ describe('nitpickerSpringArch in the init script', () => {
     ]);
   });
 
-  it('runs only for Spring projects, so other projects skip it', () => {
+  it('runs only for Spring or jMolecules projects, so other projects skip it', () => {
     expect(/onlyIf \{[^}]*\}/.exec(taskBody('nitpickerSpringArch'))[0]).toBe(
-      'onlyIf { usesSpring() }',
+      'onlyIf { runsArchRules() }',
     );
   });
 
   it('tells the reader through the manifest that the rules ran', () => {
-    expect(/springArch\s*: ([^,\n]+)/.exec(taskBody('nitpickerJava'))[1]).toBe('usesSpring()');
+    expect(/springArch\s*: ([^,\n]+)/.exec(taskBody('nitpickerJava'))[1]).toBe('runsArchRules()');
   });
 
   it('resolves the pinned ArchUnit version', () => {
