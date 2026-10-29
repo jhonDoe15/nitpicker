@@ -8,6 +8,7 @@ import {
 import { ingestSarif, prepareSarif } from '../../../../../shared/ingest/sarif.mjs';
 import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../../messages/wait-advice.mjs';
 import { dropSleepsInFakes } from '../../../messages/latency-fakes.mjs';
+import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 const ALIAS_RULE = 'ForwardingMethodAlias';
@@ -43,8 +44,11 @@ function withOneAliasRule(log) {
 export function sarifFindings(context) {
   const { allSourceRoots, projectRoot } = context;
   const pmd = withOneAliasRule(
-    preparedReport('pmd.sarif', context, (result) =>
-      result.message?.text?.replace(LINE_NUMBER, 'line'),
+    withLoadEffectSubjects(
+      preparedReport('pmd.sarif', context, (result) =>
+        result.message?.text?.replace(LINE_NUMBER, 'line'),
+      ),
+      { projectRoot },
     ),
   );
   const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);

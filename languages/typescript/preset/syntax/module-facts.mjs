@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { fileNodes } from './references.mjs';
 
 function importedNames(clause) {
