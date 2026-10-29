@@ -5,7 +5,7 @@ import { enumPredicateFindings } from './main/enum-predicates.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
 import { loadEffectFindings } from './main/load-effects.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
-import { timeoutFindings } from './main/timeouts.mjs';
+import { timeoutFindings } from './main/timeouts/timeouts.mjs';
 import { unusedOptionFindings } from './main/unused-options.mjs';
 import { readKotlinFacts } from './kotlin-facts.mjs';
 import { productionTypeResolver } from './production-types.mjs';
