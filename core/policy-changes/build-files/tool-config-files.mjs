@@ -8,7 +8,10 @@ import { JSCPD_PROJECT_FILE } from '../../../shared/conventions/tool-precedence.
 import { appliedJscpdConfig } from '../../tooling/jscpd/config.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
-import { STRYKER_PROJECT_FILES } from '../../../languages/typescript/preset/project-configs/stryker-project-config.mjs';
+import {
+  appliedStrykerConfig,
+  STRYKER_PROJECT_FILES,
+} from '../../../languages/typescript/preset/project-configs/stryker-project-config.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
 
 const PACKAGE_JSON = 'package.json';
@@ -114,21 +117,44 @@ function isOptedIn(tool, config) {
   );
 }
 
-function appliedSide(side, optedIn) {
-  if (!optedIn) {
-    return { kind: 'applied', config: {} };
-  }
-  const content = readInside(side.root, JSCPD_PROJECT_FILE);
+function jscpdSide(side, optedIn) {
+  const content = optedIn ? readInside(side.root, JSCPD_PROJECT_FILE) : undefined;
   return content === undefined
     ? { kind: 'applied', config: {} }
     : appliedJscpdConfig(content.toString('utf8'));
 }
 
-function appliedConfigs(base, head) {
-  const sides = [appliedSide(base, isOptedIn('jscpd', base.config)), appliedSide(head, true)];
-  return sides.every(({ kind }) => kind === 'applied')
-    ? { applied: { base: sides[0].config, head: sides[1].config } }
-    : {};
+function strykerSide(side, optedIn) {
+  try {
+    const { values, file } = optedIn ? appliedStrykerConfig(side.root) : { values: {} };
+    return { kind: 'applied', config: values, file };
+  } catch {
+    return { kind: 'rejected' };
+  }
+}
+
+const APPLIED_SIDES = new Map([
+  ['jscpd', jscpdSide],
+  ['stryker', strykerSide],
+]);
+
+function appliedConfigs(tool, base, head) {
+  const read = APPLIED_SIDES.get(tool);
+  if (read === undefined) {
+    return {};
+  }
+  const sides = [read(base, isOptedIn(tool, base.config)), read(head, true)];
+  if (!sides.every(({ kind }) => kind === 'applied')) {
+    return {};
+  }
+  const files = sides.map(({ file }) => file);
+  return {
+    applied: {
+      base: sides[0].config,
+      head: sides[1].config,
+      ...(tool === 'stryker' ? { files } : {}),
+    },
+  };
 }
 
 export function readToolConfigs(base, head, gitBlobId) {
@@ -142,6 +168,6 @@ export function readToolConfigs(base, head, gitBlobId) {
         gitBlobId,
       ),
       head: fingerprints(tool, { root: head.root, files: candidates(tool, head) }, gitBlobId),
-      ...(tool === 'jscpd' ? appliedConfigs(base, head) : {}),
+      ...appliedConfigs(tool, base, head),
     }));
 }

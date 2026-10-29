@@ -1365,7 +1365,8 @@ sets the precedence for that tool. It lists `"project"` and `"nitpicker"`, highe
 | `["nitpicker", "project"]` | both merged; nitpicker's value wins where both set the same option   |
 
 A change that adds the opt-in is a policy change, and the project config files it starts reading are
-listed with it (each option for `jscpd`), so the person who accepts it sees what the config loosens.
+listed with it (each option for `jscpd` and `stryker`), so the person who accepts it sees what the config
+loosens. Stryker's config has its own section, [Mutation testing config](#mutation-testing-config-typescript-and-javascript-presets).
 
 For Prettier, "the project's config" is what Prettier itself resolves for each file
 (`.prettierrc*`, `prettier.config.*`, the `prettier` key in `package.json`, and `.editorconfig`),
@@ -1536,32 +1537,50 @@ ignores.
 #### Mutation testing config (typescript and javascript presets)
 
 Stryker runs with nitpicker's config, and the project's `stryker.config.*` or `.stryker.conf.*` is not
-read. While `mutation` runs, a project that has one gets the notice `Ignoring stryker.config.json; opt
-in with "tools": { "stryker": { "precedence": ["project", "nitpicker"] } }` at the start of the run.
-With the opt-in, nitpicker reads the first file Stryker itself would find (`stryker.conf.json`, `.js`,
-`.mjs` and `.cjs`, then `stryker.config.*`, then the same names with a leading dot); a JavaScript
-config is imported once with Node in the head checkout, and only its JSON values are kept. The merge is
-shallow, key by key:
+read. Unless `mutation` is in `disable`, a project that has one gets the notice `Ignoring
+stryker.config.json; opt in with "tools": { "stryker": { "precedence": ["project", "nitpicker"] } }` at
+the start of the run. With the opt-in, nitpicker reads the first regular file Stryker itself would find
+(`stryker.conf.json`, `.js`, `.mjs` and `.cjs`, then `stryker.config.*`, then the same names with a
+leading dot; a directory with such a name is skipped). A JavaScript config is imported once with Node in
+the head checkout, in a child process that is stopped after 30 seconds, whose output is capped at
+10 MB, and that does not get the CI job summary variable; only the JSON values of its default export are
+kept, and whatever the config prints is ignored. While `mutation` is in `disable`, the head policy
+does not read it. The merge is shallow, key by key:
 
-| Stryker option                                                                                                                                                                                                                                                                                                                  | With the opt-in                                                                                                                |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `mutator` (`excludedMutations`, `plugins`), `ignoreStatic`, `timeoutMS`, `timeoutFactor`, `dryRunTimeoutMinutes`, `concurrency`, `maxTestRunnerReuse`, `disableBail`, `warnings`                                                                                                                                                | the project's value; with `["nitpicker", "project"]` nitpicker's where it sets one (`timeoutMS` and `timeoutFactor` with Jest) |
-| `testRunnerNodeArgs`, `checkerNodeArgs`                                                                                                                                                                                                                                                                                         | added after nitpicker's                                                                                                        |
-| `ignorePatterns`                                                                                                                                                                                                                                                                                                                | added before nitpicker's, so nitpicker's own entries still apply                                                               |
-| `mutate`, `testRunner` and the runner options, `checkers`, `tsconfigFile`, `typescriptChecker`, `disableTypeChecks`, `coverageAnalysis`, `plugins`, `appendPlugins`, `ignorers`, `reporters` and the reporter options, `thresholds`, `tempDirName`, `inPlace`, `incremental`, `buildCommand`, `logLevel` and every other option | nitpicker's; the project's value is ignored                                                                                    |
+| Stryker option                                                                                                                                                                                                                                                                                                                  | With the opt-in                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `mutator` (`excludedMutations`, `plugins`), `ignoreStatic`, `timeoutMS`, `timeoutFactor`, `dryRunTimeoutMinutes`, `concurrency`, `maxTestRunnerReuse`, `disableBail`, `warnings`                                                                                                                                                | the project's value; with `["nitpicker", "project"]` nitpicker's where it sets one (`timeoutMS` and `timeoutFactor` with Jest); a `timeoutMS`, `timeoutFactor` or `dryRunTimeoutMinutes` is never lower than nitpicker's value, or Stryker's default (5000, 1.5 and 5) where nitpicker sets none |
+| `testRunnerNodeArgs`, `checkerNodeArgs`                                                                                                                                                                                                                                                                                         | added after nitpicker's                                                                                                                                                                                                                                                                          |
+| `ignorePatterns`                                                                                                                                                                                                                                                                                                                | added before nitpicker's, so nitpicker's own entries still apply                                                                                                                                                                                                                                 |
+| `mutate`, `testRunner` and the runner options, `checkers`, `tsconfigFile`, `typescriptChecker`, `disableTypeChecks`, `coverageAnalysis`, `plugins`, `appendPlugins`, `ignorers`, `reporters` and the reporter options, `thresholds`, `tempDirName`, `inPlace`, `incremental`, `buildCommand`, `logLevel` and every other option | nitpicker's; the project's value is ignored                                                                                                                                                                                                                                                      |
 
 Everything Stryker needs to run and to report stays nitpicker's, so `["project"]` and
-`["project", "nitpicker"]` are the same. The mutants the project's `mutator.excludedMutations` hides,
-and with `ignoreStatic` the static mutants Stryker skips, are left out of the findings; a mutant a
-`Stryker disable` comment hides is still an enforceable `mutant-ignored` finding. The project's
-`thresholds` never fail the run: the gate fails for surviving mutants in changed code, not for a score.
-`ignorers` and plugins are not read because the reason an ignorer gives cannot be told apart from an
-ignore comment's, and `buildCommand` is not because the coverage run does not build either. The file is
-read from the head checkout and applies to both sides of the comparison; the keys nitpicker reads are
-part of the head policy, so editing them invalidates cached results, and an edit of the file is a
-policy change. Naming `"project"` without a config, or with one that cannot be read (invalid JSON, a
-module that throws or does not export an object, a list option that is not a list of strings, a file
-that links outside the project), is a tool error of the `mutation` analyzer.
+`["project", "nitpicker"]` are the same. A project cannot lower a timeout, because a short one turns
+survivors into `Timeout` results that count as caught. The mutants the project's
+`mutator.excludedMutations` hides, and with `ignoreStatic` the static mutants Stryker skips, are left
+out of the findings, using the config Stryker was actually given, and only when the mutant's reason is
+Stryker's own (`Ignored because of excluded mutation "<mutator>"` or the static one); a mutant a
+`Stryker disable` comment hides is still an enforceable `mutant-ignored` finding, even when its mutator
+is excluded. The project's `thresholds` never fail the run: the gate fails for surviving mutants in
+changed code, not for a score. `ignorers` and plugins are not read because the reason an ignorer gives
+cannot be told apart from an ignore comment's, and `buildCommand` is not because the coverage run does
+not build either. The file is read from the head checkout and applies to both sides of the comparison,
+and when the head drops the opt-in the base is run with nitpicker's settings too; the keys nitpicker
+reads are part of the head policy, so editing them invalidates cached results. Naming `"project"`
+without a config, or with one that cannot be read (invalid JSON, a module that throws, ends the process,
+does not finish loading or does not export an object, a list option that is not a list of strings, a
+timeout that is not a number of 0 or more, a `mutator` that is not an object, a file that links outside
+the project), is a tool error of the `mutation` analyzer.
+
+An edit of the config is a policy change, judged on the values nitpicker applies, not on the file's
+text, and listed per key (`stryker stryker.config.mjs mutator.excludedMutations: [] -> ["StringLiteral"]`,
+with `mutator` listed as `mutator.<option>`). The config is loaded on both sides, so an edit of a file
+it imports, a computed value, or the deletion of the config that wins so that a lower-ranked one takes
+over all show up, while an edit of an option nitpicker does not read, a comment or the layout shows
+nothing. It needs a person's acceptance when `mutator.excludedMutations`, `ignorePatterns`,
+`testRunnerNodeArgs` or `checkerNodeArgs` gain an entry, `ignoreStatic` becomes `true`, or any other
+`mutator` option changes; every other change is only listed. When a side cannot be loaded, the text of
+the file is compared instead (`stryker project config changed: stryker.config.mjs`).
 
 ### Lint engine
 

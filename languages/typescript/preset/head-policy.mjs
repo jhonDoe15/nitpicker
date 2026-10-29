@@ -26,7 +26,10 @@ import { detectLibraries } from './libraries/project-libraries.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { hasPrettierConventions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
-import { headToolConfigFacts, withHeadToolConfigs } from './project-configs/head-tool-configs.mjs';
+import {
+  headProjectConfigFacts,
+  withHeadToolConfigs,
+} from './project-configs/head-tool-configs.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -80,7 +83,7 @@ function withProjectFacts(policy, config, projectRoot) {
     policy.tools === undefined
       ? undefined
       : {
-          ...withHeadToolConfigs(policy.tools, projectRoot),
+          ...withHeadToolConfigs(policy.tools, config, projectRoot),
           ...(jscpd === undefined ? {} : { jscpd }),
         };
   return {
@@ -178,6 +181,9 @@ function headToolFacts(policy, headPolicy) {
   if (usesProjectConfig(tools.jscpd?.precedence ?? [])) {
     tools.jscpd = headJscpdFacts(tools.jscpd, headPolicy.tools?.jscpd);
   }
+  if (usesProjectConfig(tools.stryker?.precedence ?? [])) {
+    tools.stryker = headProjectConfigFacts(tools.stryker, headPolicy.tools?.stryker);
+  }
   return policy.tools === undefined ? {} : { tools };
 }
 
@@ -187,11 +193,7 @@ function headTestPlacement(policy, headPolicy) {
     : {};
 }
 
-export function withHeadCheckoutFacts(basePolicy, headPolicy = {}) {
-  const policy =
-    basePolicy.tools === undefined
-      ? basePolicy
-      : { ...basePolicy, tools: headToolConfigFacts(basePolicy.tools, headPolicy.tools) };
+export function withHeadCheckoutFacts(policy, headPolicy = {}) {
   return {
     ...policy,
     ...headTestPlacement(policy, headPolicy),
