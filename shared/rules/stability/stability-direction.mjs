@@ -1,5 +1,6 @@
 import { MESSAGES, renderMessage } from '../../policy.mjs';
 import { causeIndex } from './stability-cause.mjs';
+import { addTo, remembered } from './graph-maps.mjs';
 
 const OTHER = { kind: 'other' };
 const WIRING = 'wiring';
@@ -11,22 +12,6 @@ export function rounded(value) {
 
 function unitInstabilityOf(fanIn, fanOut) {
   return fanIn + fanOut === 0 ? undefined : rounded(fanOut / (fanIn + fanOut));
-}
-
-function remembered(compute) {
-  const cache = new Map();
-  return (key) => {
-    if (!cache.has(key)) {
-      cache.set(key, compute(key));
-    }
-    return cache.get(key);
-  };
-}
-
-function addTo(map, key, value) {
-  const values = map.get(key) ?? new Set();
-  values.add(value);
-  map.set(key, values);
 }
 
 function graphContext({ modules, packageOf, groupOf = packageOf, roleOf, ...naming }) {

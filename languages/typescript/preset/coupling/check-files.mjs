@@ -10,4 +10,5 @@ export const COUPLING_CHECK_FILES = [
   'shared/rules/features/feature-roles.mjs',
   'shared/rules/stability/stability-direction.mjs',
   'shared/rules/stability/stability-cause.mjs',
+  'shared/rules/stability/graph-maps.mjs',
 ];

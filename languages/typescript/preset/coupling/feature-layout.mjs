@@ -16,13 +16,10 @@ const COMPOSITION_ROOT_FILE = /^composition-root\.[cm]?[jt]sx?$/u;
 
 function sharedFolderOf(file, sharedRoots) {
   const parts = file.split('/');
-  for (let length = 1; length < parts.length; length += 1) {
-    const folder = parts.slice(0, length).join('/');
-    if (sharedRoots.some((root) => root.test(folder))) {
-      return folder;
-    }
-  }
-  return undefined;
+  return parts
+    .slice(1)
+    .map((_, index) => parts.slice(0, index + 1).join('/'))
+    .find((folder) => sharedRoots.some((root) => root.test(folder)));
 }
 
 function placeUnder(root, file) {

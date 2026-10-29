@@ -4,13 +4,9 @@ import {
   insertBeforeRoute,
 } from '../../messages/exception-sentence.mjs';
 import { MESSAGES, renderMessage } from '../../policy.mjs';
+import { folderOf } from './graph-maps.mjs';
 
 const LISTED_FILES = 3;
-
-function folderOf(file) {
-  const index = file.lastIndexOf('/');
-  return index < 0 ? '.' : file.slice(0, index);
-}
 
 function changedIn(folders, changedFiles) {
   const inside = new Set(folders);
