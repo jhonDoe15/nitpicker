@@ -88,9 +88,7 @@ export function withoutAllowedForms(
   const context = {
     testFiles: new Set(testFiles),
     supportFiles: new Set(supportFiles),
-    sites: new Set(
-      allowed.filter((site) => site.owner === undefined || keepsOwner(site)).map(siteKey),
-    ),
+    sites: new Set(allowed.filter((site) => keepsOwner(site)).map(siteKey)),
     owners: owningSites(findings, keepsOwner),
     lineOf,
   };
