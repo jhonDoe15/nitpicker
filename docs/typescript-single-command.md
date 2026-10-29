@@ -204,13 +204,9 @@ Not yet addressed: ESLint plugin versions are not part of the policy hash.
 Status: implemented for the base side only. The head side always runs, because it changes with every
 edit; the base is a committed tree and cannot change under its key.
 
-- Key, one entry per analyzer: the code fingerprint, merge-base SHA, project path relative to the
-  repository, analyzer name, analyzer (tool) version, the analyzer's configuration hash taken from
-  the head policy, the config-file overrides, the head policy and the legacy inventory path. The
-  code fingerprint is a hash of nitpicker's own `package.json` and every file its `files` list
-  ships (in a git checkout of nitpicker, the tracked and untracked files git does not ignore),
-  taken once per run, so a base analyzed by other nitpicker code (a checkout with local edits, an
-  unreleased tarball, a prerelease that kept its version) is a miss. The configuration hash covers the check's `configurationFiles` in
+- Key, one entry per analyzer: merge-base SHA, project path relative to the repository, analyzer
+  name, analyzer (tool) version, the analyzer's configuration hash taken from the head policy, and
+  the config-file overrides. The configuration hash covers the check's `configurationFiles` in
   `languages/typescript/preset/quality-checks.mjs`, which list only the logical policy (the tool config plus the rules
   and shared policy it loads), and each dial adds its own adapter files on top, so a change to how
   one dial invokes a tool invalidates only that dial's baseline. The value is the analyzer's
@@ -222,9 +218,7 @@ edit; the base is a committed tree and cannot change under its key.
   cache-directory lookup.
 - Only clean reports are stored: nothing is cached for an analyzer with a tool error or a
   `tool-error` finding. An analyzer that depends on an uncached one is rerun together with it.
-- Opt out with `--no-cache`. A run that reuses cached base findings says so on stderr and names
-  where they came from, the directory or `NITPICKER_CACHE_URL` (both when some came from each):
-  `nitpicker: base 5 analyzers cached from NITPICKER_CACHE_URL (--no-cache analyzes it again)`.
+- Opt out with `--no-cache`.
 - Limit: the key covers the analyzer version and configuration hash, not project files that only
   feed the head policy (for example a `tsconfig.json` change on the head branch). Use `--no-cache`
   or clear the directory after changing such files.
@@ -252,6 +246,4 @@ never throwing). Backends: a local directory (above) and plain HTTP.
   `HEAD`'s own policy and uploads one entry per clean analyzer, under the key a later branch uses
   when `HEAD` is its merge base. Exit 0 when everything was uploaded, 2 when an analysis failed or
   an upload was refused, and it requires `NITPICKER_CACHE_URL`. Branches whose head policy differs
-  from `main`'s miss and analyze the base themselves, and so does a run whose nitpicker build is
-  not the one that published (another version, or the same version with other shipped files): its
-  code fingerprint differs.
+  from `main`'s miss and analyze the base themselves.

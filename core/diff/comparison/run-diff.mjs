@@ -238,8 +238,10 @@ function runBaseSide(context) {
     }),
     analyzers: baseSetup.analyzers,
     run: (baseAnalyzers) => runBaseAnalyzers(context, baseAnalyzers),
-    onCached: (count, sources) =>
-      settings.progress?.write(cachedLine({ label: 'base', count, sources })),
+    onCached: (count) =>
+      settings.progress?.write(
+        cachedLine({ label: 'base', count, directory: settings.cacheStore.directory }),
+      ),
     resolveContext: {
       liveProjectRoot: settings.headProjectRoot,
       policyRoot: roots.headSnapshotRoot,

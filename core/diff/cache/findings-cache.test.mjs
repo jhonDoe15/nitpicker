@@ -47,7 +47,6 @@ describe('cache key', () => {
     ['head policy thresholds', { headPolicy: { thresholds: { crapLimit: 10 } } }],
     ['head policy exceptions', { headPolicy: { exceptions: [{ rule: 'x' }] } }],
     ['legacy inventory path', { analyzer: { ...analyzer, legacyInventory: 'legacy.json' } }],
-    ['code that produced the findings', { codeFingerprint: 'other-code' }],
   ])('changes with the %s', (_label, change) => {
     expect(cacheKey({ ...key, ...change })).not.toBe(cacheKey(key));
   });
@@ -68,21 +67,6 @@ describe('cache directory', () => {
 });
 
 describe('findings cache', () => {
-  it('misses a base analyzed by other nitpicker code', () => {
-    const directory = path.join(temporaryRoot(), 'cache');
-    const cacheOf = (codeFingerprint) =>
-      createFindingsCache({
-        directory,
-        mergeBaseSha: 'abc',
-        projectRelativePath: '.',
-        codeFingerprint,
-      });
-    cacheOf('built-from-a').write(analyzer, { findings: [finding] });
-
-    expect(cacheOf('built-from-a').read(analyzer)).toEqual({ findings: [finding] });
-    expect(cacheOf('built-from-b').read(analyzer)).toBeUndefined();
-  });
-
   it('round-trips a report and treats corrupt entries as misses', () => {
     const directory = path.join(temporaryRoot(), 'cache');
     const cache = createFindingsCache({ directory, mergeBaseSha: 'abc', projectRelativePath: '.' });
@@ -128,23 +112,6 @@ describe('findings cache', () => {
 
     runBaseWithCache({ cache, analyzers, run, resolveContext });
     expect(ran[1]).toEqual(['broken']);
-  });
-
-  it('reports how many analyzers it read from the cache, and from where', () => {
-    const directory = path.join(temporaryRoot(), 'cache');
-    const cache = createFindingsCache({ directory, mergeBaseSha: 'abc', projectRelativePath: '.' });
-    cache.write(analyzer, { findings: [finding] });
-    const cachedLines = [];
-
-    runBaseWithCache({
-      cache,
-      analyzers: [analyzer],
-      run: () => ({ reports: new Map(), timings: new Map(), toolErrors: [] }),
-      resolveContext: { liveProjectRoot: '.', policyRoot: '.' },
-      onCached: (count, sources) => cachedLines.push({ count, sources }),
-    });
-
-    expect(cachedLines).toEqual([{ count: 1, sources: [directory] }]);
   });
 
   it('does not store a report built on a dependency that reported a tool error', () => {

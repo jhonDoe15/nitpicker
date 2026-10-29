@@ -20,9 +20,9 @@ export function startLine({ label, total }) {
   return `nitpicker: ${label}: running ${countAnalyzers(total)}\n`;
 }
 
-export function cachedLine({ label, count, sources = [] }) {
-  const from = sources.length === 0 ? '' : ` from ${sources.join(' and ')}`;
-  return `nitpicker: ${label} ${countAnalyzers(count)} cached${from} (--no-cache analyzes it again)\n`;
+export function cachedLine({ label, count, directory }) {
+  const location = directory === undefined ? 'remote cache' : directory;
+  return `nitpicker: ${label} ${countAnalyzers(count)} cached (${location}; use --no-cache to rerun)\n`;
 }
 
 const QUIET_BELOW_MS = 10_000;
