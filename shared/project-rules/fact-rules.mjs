@@ -12,7 +12,7 @@ export const FACT_RULE_LANGUAGES = {
   'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT },
   'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT },
   'test-only-export': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
-  'doc-comment-content': { ...TYPESCRIPT_AND_JAVASCRIPT },
+  'doc-comment-content': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
   'test-console-output': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
 };
 
