@@ -175,6 +175,19 @@ export const SPRING_CLIENT_FACTORIES = group(
   inPackage(`${SPRING}.web.reactive.function.client`, 'WebClient'),
 );
 export const JDK_HTTP_CLIENT = group(['java.net.http.HttpClient']);
+export const HTTP_REQUEST = group(['java.net.http.HttpRequest']);
+export const REST_OPERATIONS = group(
+  inPackage(`${SPRING}.web.client`, 'RestTemplate', 'RestOperations'),
+);
+export const SPRING_CLIENT_BUILDERS = group(
+  inPackage(`${SPRING}.web.client`, 'RestClient.Builder'),
+  inPackage(`${SPRING}.web.reactive.function.client`, 'WebClient.Builder'),
+  [...REST_TEMPLATE_BUILDER],
+);
+export const REDIRECT_VIEW = group(
+  inPackage(`${SPRING}.web.servlet.view`, 'RedirectView'),
+  inPackage(`${SPRING}.web.reactive.result.view`, 'RedirectView'),
+);
 export const REACTOR_HTTP_CLIENT = group(['reactor.netty.http.client.HttpClient']);
 export const REQUEST_FACTORIES = group(
   inPackage(

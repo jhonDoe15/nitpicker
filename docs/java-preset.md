@@ -1771,8 +1771,7 @@ the `rule` of a config exception.
 
 **Kotlin.** PMD reads Java sources only, so every rule in this table checks the Java files of a
 project, on Gradle and Maven alike. In a kotlin-preset project every rule of the table except
-`SpringQueryConcatenation` (covered there by `kotlin-source/SqlStringBuilding`), `SpringOutboundUrl`
-and `SpringOpenRedirect` also runs on the main
+`SpringQueryConcatenation` (covered there by `kotlin-source/SqlStringBuilding`) also runs on the main
 Kotlin sources, under the same ids and exception route, from the Kotlin syntax facts (see
 [Kotlin preset: Spring rules](kotlin-preset.md#spring-rules)). Kotlin classes of a Java-preset project (a mixed module)
 get none of these rules. The Spring configuration file checks

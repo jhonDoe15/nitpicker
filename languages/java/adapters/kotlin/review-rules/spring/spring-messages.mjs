@@ -66,6 +66,10 @@ const ALLOWED = {
     'Name the public paths in requestMatchers(...).permitAll() (authorize("/public/**", permitAll) in the Kotlin DSL), or pathMatchers(...).permitAll() on WebFlux, and end with anyRequest().authenticated() (authorize(anyRequest, authenticated)), or anyExchange().authenticated(), so a new endpoint is protected by default.',
   SpringCsrfDisabled:
     'Keep CSRF protection on for session-based security. Turn it off only for a stateless API, in the same filter chain: SessionCreationPolicy.STATELESS or a NullSecurityContextRepository on servlet security, NoOpServerSecurityContextRepository on WebFlux, or oauth2ResourceServer with jwt or opaqueToken and every login form disabled.',
+  SpringOutboundUrl:
+    'Keep the host of an outgoing request fixed: a base URL from a @ConfigurationProperties class, with the changing parts as URI template variables, such as client.get().uri("/rates/{currency}", currency). A URL built from a function parameter, also through a string template such as "https://$host/rates", can reach any host.',
+  SpringOpenRedirect:
+    'Redirect to a fixed route, or check the target against an allow-list of paths; a fixed path with a changing last segment, such as "redirect:/orders/$id", is fine. A "redirect:$next" or RedirectView(next) built from a request value can send users to any site.',
   SpringHardcodedUser:
     'Load users from a UserDetailsService backed by the database, with passwords hashed by the delegating encoder. Do not put a user password in source code.',
   JpaLazyFetching:

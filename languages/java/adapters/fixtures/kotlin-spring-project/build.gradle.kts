@@ -19,6 +19,7 @@ dependencies {
     compileOnly("org.springframework:spring-tx:6.2.10")
     compileOnly("org.springframework:spring-web:6.2.10")
     compileOnly("org.springframework:spring-webflux:6.2.10")
+    compileOnly("org.springframework:spring-webmvc:6.2.10")
     compileOnly("org.springframework:spring-jdbc:6.2.10")
     compileOnly("org.springframework.data:spring-data-jpa:3.5.3")
     compileOnly("org.springframework.boot:spring-boot:3.5.5")
