@@ -68,7 +68,8 @@ public final class LoadCalls {
 
   private void binding(KtProperty property) {
     KtExpression initializer = property.getInitializer();
-    if (property.getName() == null || (property.getTypeReference() == null && initializer == null)) {
+    if (property.getName() == null || (property.getTypeReference() == null && initializer == null)
+        || (property.isLocal() && time.contextOf(property) == null)) {
       return;
     }
     bindings.add(
@@ -85,7 +86,9 @@ public final class LoadCalls {
       segments.addFirst(segment(((KtQualifiedExpression) current).getSelectorExpression()));
       current = KtPsiUtil.safeDeparenthesize(((KtQualifiedExpression) current).getReceiverExpression());
     }
-    segments.addFirst(segment(current));
+    if (!(current instanceof KtThisExpression && ((KtThisExpression) current).getLabelName() == null)) {
+      segments.addFirst(segment(current));
+    }
     return segments;
   }
 

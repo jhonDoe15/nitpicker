@@ -1,87 +1,26 @@
-const REST_OPERATIONS = [
-  'getForObject',
-  'getForEntity',
-  'headForHeaders',
-  'postForLocation',
-  'postForObject',
-  'postForEntity',
-  'put',
-  'patchForObject',
-  'delete',
-  'optionsForAllow',
-  'exchange',
-  'execute',
-];
-const BLOCKING = ['block', 'blockOptional', 'blockFirst', 'blockLast', 'subscribe', 'toFuture'];
-const SUBMIT = [
-  'submit',
-  'execute',
-  'invokeAll',
-  'invokeAny',
-  'schedule',
-  'scheduleAtFixedRate',
-  'scheduleWithFixedDelay',
-];
-const FILE_IO = [
-  'readText',
-  'readLines',
-  'readBytes',
-  'writeText',
-  'writeLines',
-  'writeBytes',
-  'appendText',
-  'appendLines',
-  'appendBytes',
-  'forEachLine',
-  'useLines',
-  'bufferedReader',
-  'bufferedWriter',
-  'inputStream',
-  'outputStream',
-  'reader',
-  'writer',
-  'printWriter',
-  'copyTo',
-  'copyRecursively',
-  'deleteRecursively',
-  'walk',
-  'walkTopDown',
-  'walkBottomUp',
-];
-const FILE_METHODS = [
-  'createNewFile',
-  'delete',
-  'deleteOnExit',
-  'mkdir',
-  'mkdirs',
-  'renameTo',
-  'list',
-  'listFiles',
-  'exists',
-  'isFile',
-  'isDirectory',
-  'length',
-  'lastModified',
-  'canRead',
-  'canWrite',
-];
-const PATH_METHODS = [
-  'exists',
-  'notExists',
-  'isRegularFile',
-  'isDirectory',
-  'createFile',
-  'createDirectory',
-  'createDirectories',
-  'createParentDirectories',
-  'deleteExisting',
-  'deleteIfExists',
-  'moveTo',
-  'listDirectoryEntries',
-  'fileSize',
-  'getLastModifiedTime',
-  'readAttributes',
-];
+const words = (text) => text.trim().split(/\s+/u);
+
+const REST_OPERATIONS = words(`
+  getForObject getForEntity headForHeaders postForLocation postForObject postForEntity put
+  patchForObject delete optionsForAllow exchange execute
+`);
+const BLOCKING = words('block blockOptional blockFirst blockLast subscribe toFuture');
+const SUBMIT = words('submit execute invokeAll invokeAny');
+const SCHEDULE = [...SUBMIT, ...words('schedule scheduleAtFixedRate scheduleWithFixedDelay')];
+const FILE_IO = words(`
+  readText readLines readBytes writeText writeLines writeBytes appendText appendLines appendBytes
+  forEachLine useLines bufferedReader bufferedWriter inputStream outputStream reader writer
+  printWriter copyTo copyRecursively deleteRecursively walk walkTopDown walkBottomUp
+`);
+const FILE_METHODS = words(`
+  createNewFile delete deleteOnExit mkdir mkdirs renameTo list listFiles exists isFile isDirectory
+  length lastModified canRead canWrite
+`);
+const PATH_METHODS = words(`
+  exists notExists isRegularFile isDirectory createFile createDirectory createDirectories
+  createParentDirectories deleteExisting deleteIfExists moveTo listDirectoryEntries fileSize
+  getLastModifiedTime readAttributes
+`);
 
 const STATIC_EFFECTS = new Map([
   ['java.sql.DriverManager', ['getConnection']],
@@ -102,7 +41,11 @@ const STATIC_EFFECTS = new Map([
     ['setProperty', 'setProperties', 'clearProperty', 'setOut', 'setErr', 'setIn', 'exit'],
   ],
   ['java.util.Locale', ['setDefault']],
+  ['java.util.TimeZone', ['setDefault']],
+  ['java.lang.ProcessBuilder', ['startPipeline']],
 ]);
+
+const IMPORT_BANNED = new Set(['java.util.TimeZone']);
 
 const INSTANCE_EFFECTS = new Map([
   ['javax.sql.DataSource', ['getConnection']],
@@ -113,12 +56,21 @@ const INSTANCE_EFFECTS = new Map([
   ['java.lang.ProcessBuilder', ['start']],
   ['java.lang.Runtime', ['addShutdownHook', 'exit', 'halt']],
   ['java.lang.Thread.Builder', ['start']],
+  ['java.util.concurrent.Executor', ['execute']],
   ['java.util.concurrent.ExecutorService', SUBMIT],
+  ['java.util.concurrent.ScheduledExecutorService', SCHEDULE],
+  ['java.util.concurrent.ForkJoinPool', [...SUBMIT, 'invoke']],
   ['java.util.Timer', ['schedule', 'scheduleAtFixedRate']],
   ['java.io.File', [...FILE_METHODS, ...FILE_IO]],
   ['java.nio.file.Path', [...PATH_METHODS, ...FILE_IO]],
   ['io.lettuce.core.RedisClient', ['connect']],
   ['io.lettuce.core.cluster.RedisClusterClient', ['connect']],
+  ['okhttp3.Call', ['execute', 'enqueue']],
+  ['retrofit2.Call', ['execute', 'enqueue']],
+  ['org.apache.http.client.HttpClient', ['execute']],
+  ['org.apache.hc.client5.http.classic.HttpClient', ['execute']],
+  ['org.apache.hc.client5.http.async.HttpAsyncClient', ['execute']],
+  ['org.springframework.web.client.RestOperations', REST_OPERATIONS],
   ['kotlinx.coroutines.CoroutineScope', ['launch', 'async', 'produce']],
 ]);
 
@@ -174,7 +126,13 @@ const FACTORIES = new Map([
   ['java.io.File#resolve', 'java.io.File'],
   ['java.net.URI#create', 'java.net.URI'],
   ['java.net.URI#toURL', 'java.net.URL'],
+  [
+    'java.util.concurrent.Executors#newSingleThreadScheduledExecutor',
+    'java.util.concurrent.ScheduledExecutorService',
+  ],
+  ['java.util.concurrent.Executors#newScheduled*', 'java.util.concurrent.ScheduledExecutorService'],
   ['java.util.concurrent.Executors#new*', 'java.util.concurrent.ExecutorService'],
+  ['java.util.concurrent.ForkJoinPool#commonPool', 'java.util.concurrent.ForkJoinPool'],
   ['java.lang.Thread#ofVirtual', 'java.lang.Thread.Builder'],
   ['java.lang.Thread#ofPlatform', 'java.lang.Thread.Builder'],
   ['io.lettuce.core.RedisClient#create', 'io.lettuce.core.RedisClient'],
@@ -257,8 +215,15 @@ export function isKnownType(name) {
   return KNOWN_TYPES.has(name);
 }
 
-export function knownTypes() {
-  return [...KNOWN_TYPES];
+export function kotlinPairs() {
+  const tables = [STATIC_EFFECTS, INSTANCE_EFFECTS, CHAIN_EFFECTS];
+  return [
+    ...tables.flatMap((table) =>
+      [...table].flatMap(([type, methods]) => methods.map((method) => `${type}#${method}`)),
+    ),
+    ...[...CONSTRUCTOR_EFFECTS.keys()].map((type) => `${type}#new`),
+    ...[...TOP_LEVEL_EFFECTS].map((name) => name.replace(/\.(?=[^.]+$)/u, '#')),
+  ];
 }
 
 export function isTopLevelEffect(name) {
@@ -271,4 +236,17 @@ export function constructorKind(type) {
 
 export function createdType(type) {
   return FACTORIES.get(type) ?? type;
+}
+
+export function isImportBanned(type) {
+  return IMPORT_BANNED.has(type);
+}
+
+export function kotlinCovers(type, method) {
+  if (method === 'new') {
+    return CONSTRUCTOR_EFFECTS.has(type);
+  }
+  return [STATIC_EFFECTS, INSTANCE_EFFECTS, CHAIN_EFFECTS].some((table) =>
+    matchesMethod(table.get(type), method, 1),
+  );
 }

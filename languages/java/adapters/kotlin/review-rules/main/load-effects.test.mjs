@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
   argument,
@@ -13,10 +11,8 @@ import {
   segment,
   testFile,
 } from '../test-support/facts.mjs';
-import { knownTypes } from './load-effect-types.mjs';
 import { loadEffectFindings } from './load-effects.mjs';
 
-const RULESET = path.resolve(import.meta.dirname, '../../../../gradle/pmd-main-ruleset.xml');
 const imports = (...paths) =>
   paths.map((target) =>
     target.endsWith('.*')
@@ -41,7 +37,7 @@ const expected = (callText, place) =>
       `or defer it with by lazy: \`${callText}\` runs while ${place},`,
       'so it connects, starts threads or touches files in whatever order classes load,',
       'and in every test that touches it. Constants, loggers, Regex and collections can stay,',
-      'and a file with fun main is not checked.',
+      'and the top-level code of a file with fun main is not checked.',
     ].join(' '),
     'ClassLoadEffect',
   );
@@ -60,7 +56,7 @@ describe('class-load effects in Kotlin: what is reported', () => {
 
     expect(lines(findings)).toEqual(['database 3']);
     expect(findings[0].message).toBe(
-      expected('DriverManager.getConnection(...)', 'Sample.kt loads (top-level database)'),
+      expected('DriverManager.getConnection(...)', 'Sample.kt loads (in top-level database)'),
     );
     expect(routeOf(findings[0].message)).toBe(
       'If this is intended, add {"rule":"pmd/ClassLoadEffect","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
@@ -120,6 +116,49 @@ describe('class-load effects in Kotlin: what is reported', () => {
       ['java.net.http.HttpClient'],
       call('send', [segment('HttpClient'), segment('newBuilder', true), segment('build', true)]),
     ],
+    [
+      'a top-level timer written in full',
+      [],
+      call(
+        'fixedRateTimer',
+        ['kotlin', 'concurrent'].map((name) => segment(name)),
+      ),
+    ],
+    [
+      'an exit written in full',
+      [],
+      call(
+        'exitProcess',
+        ['kotlin', 'system'].map((name) => segment(name)),
+      ),
+    ],
+    [
+      'a time zone change written in full, which no import ban sees',
+      [],
+      call(
+        'setDefault',
+        ['java', 'util', 'TimeZone'].map((name) => segment(name)),
+      ),
+    ],
+    ['a process pipeline', [], call('startPipeline', [segment('ProcessBuilder')])],
+    [
+      'a task the common pool runs',
+      ['java.util.concurrent.ForkJoinPool'],
+      call('submit', [segment('ForkJoinPool'), segment('commonPool', true)]),
+    ],
+    [
+      'a task a scheduled pool schedules',
+      ['java.util.concurrent.Executors'],
+      call('schedule', [segment('Executors'), segment('newScheduledThreadPool', true)]),
+    ],
+    [
+      'a task a single scheduled executor schedules',
+      ['java.util.concurrent.Executors'],
+      call('scheduleAtFixedRate', [
+        segment('Executors'),
+        segment('newSingleThreadScheduledExecutor', true),
+      ]),
+    ],
   ])('reports %s', (_, paths, item) => {
     expect(findingsOf({ imports: imports(...paths), loads: [item] })).toHaveLength(1);
   });
@@ -156,15 +195,39 @@ describe('class-load effects in Kotlin: what is reported', () => {
   });
 
   it.each([
-    [{ kind: 'object', owner: 'Store', member: 'init' }, 'object Store loads (init)'],
+    ['java.util.concurrent.Executor', 'execute'],
+    ['java.util.concurrent.ScheduledExecutorService', 'scheduleAtFixedRate'],
+    ['java.util.concurrent.ForkJoinPool', 'invoke'],
+    ['okhttp3.Call', 'execute'],
+    ['retrofit2.Call', 'enqueue'],
+    ['org.apache.hc.client5.http.async.HttpAsyncClient', 'execute'],
+    ['org.springframework.web.client.RestOperations', 'getForObject'],
+  ])('follows a property declared as %s', (qualified, method) => {
+    const context = { kind: 'object', owner: 'Jobs', member: 'init' };
+    const type = qualified.split('.').at(-1);
+    const findings = findingsOf({
+      imports: imports(qualified),
+      bindings: [{ name: 'jobs', owner: 'Jobs', local: false, type }],
+      loads: [call(method, [segment('jobs')], { context, arguments: args('task') })],
+    });
+
+    expect(lines(findings)).toEqual(['Jobs.init 3']);
+  });
+
+  it.each([
+    [{ kind: 'object', owner: 'Store', member: 'init' }, 'object Store loads (in init)'],
     [
       { kind: 'companion', owner: 'Repo.Companion', member: 'shared' },
-      'the companion object of Repo loads (shared)',
+      'the companion object of Repo loads (in shared)',
     ],
-    [{ kind: 'enum', owner: 'Mode', member: 'FAST' }, 'enum class Mode loads (FAST)'],
+    [{ kind: 'enum', owner: 'Mode', member: 'FAST' }, 'enum class Mode loads (in FAST)'],
     [
       { kind: 'singleton', owner: 'Registry', member: 'connection' },
-      'the companion object of Registry loads and creates a Registry (connection)',
+      'the companion object of Registry loads and creates a Registry (in connection)',
+    ],
+    [
+      { kind: 'object', owner: 'Cfg', member: 'read()', site: 'text' },
+      'object Cfg loads (in read(), which text calls)',
     ],
   ])('names the place that loads for %o', (context, place) => {
     const findings = findingsOf({
@@ -207,6 +270,11 @@ describe('class-load effects in Kotlin: what is left alone', () => {
     ],
     ['an unknown receiver', [], call('readText', [segment('settings')])],
     ['a class without an import', [], call('getConnection', [segment('DriverManager')])],
+    [
+      'an imported time zone change, which detekt bans at the import',
+      ['java.util.TimeZone'],
+      call('setDefault', [segment('TimeZone')]),
+    ],
   ])('leaves %s alone', (_, paths, item) => {
     expect(findingsOf({ imports: imports(...paths), loads: [item] })).toEqual([]);
   });
@@ -246,38 +314,5 @@ describe('class-load effects in Kotlin: what is left alone', () => {
     const tests = testFile({ imports: imports('java.sql.DriverManager'), loads });
 
     expect(run(loadEffectFindings, [tests])).toEqual([]);
-  });
-});
-
-describe('class-load effects in Kotlin and Java', () => {
-  const xml = readFileSync(RULESET, 'utf8');
-  const rule = xml.slice(xml.indexOf('<rule name="ClassLoadEffect"'));
-  const javaTypes = new Set(
-    [...rule.matchAll(/'((?:[a-z]\w*\.)+[A-Z][\w.]*?)(?:#|')/gu)].map((match) => match[1]),
-  );
-  const JAVA_ONLY = new Map([
-    ['java.util.TimeZone', 'detekt ForbiddenImport bans java.util.TimeZone in Kotlin'],
-    ['java.util.concurrent.Executor', 'Kotlin types every executor as ExecutorService'],
-    ['java.util.concurrent.ScheduledExecutorService', 'the same'],
-    ['org.springframework.web.client.RestOperations', 'Kotlin follows RestTemplate'],
-    ['org.springframework.web.client.RestClient.RequestHeadersSpec', 'Kotlin follows RestClient'],
-    ['org.reactivestreams.Publisher', 'Kotlin follows WebClient'],
-    ['okhttp3.Call', 'Kotlin follows OkHttpClient'],
-    ['retrofit2.Call', 'Kotlin follows Retrofit'],
-    ['org.apache.http.client.HttpClient', 'Kotlin follows CloseableHttpClient'],
-    ['org.apache.hc.client5.http.classic.HttpClient', 'the same'],
-    ['org.apache.hc.client5.http.async.HttpAsyncClient', 'not followed in Kotlin'],
-    ['java.lang.String', 'an argument type, which Kotlin reads from the argument text'],
-  ]);
-
-  it('knows every type the PMD rule knows, or says why not', () => {
-    const known = new Set(knownTypes());
-    const missing = [...javaTypes].filter((type) => !known.has(type) && !JAVA_ONLY.has(type));
-
-    const stale = [...JAVA_ONLY.keys()].filter((type) => known.has(type) || !javaTypes.has(type));
-
-    expect(javaTypes.size).toBeGreaterThan(30);
-    expect(missing).toEqual([]);
-    expect(stale).toEqual([]);
   });
 });
