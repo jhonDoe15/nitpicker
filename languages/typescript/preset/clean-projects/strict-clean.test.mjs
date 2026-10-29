@@ -1,4 +1,4 @@
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { appendFileSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
@@ -26,6 +26,21 @@ const BANNED_FORM_OUTPUT = [
   '',
 ].join('\n');
 const FIXTURE_TIMEOUT_MS = 300_000;
+const SCHEMA_ANALYZERS = ['eslint-lint', 'prettier-format', 'structure', 'dead-code', 'duplicates'];
+const STATEMENTS = Array.from({ length: 20 }, (_, index) => `  total += ${String(index + 3)};`);
+const REFUSED_CODE = [
+  '',
+  'export function widen(value: unknown): string {',
+  '      return value as string;',
+  '}',
+  '',
+  'export function long(start: number): number {',
+  '  let total = start;',
+  ...STATEMENTS,
+  '  return total;',
+  '}',
+  '',
+].join('\n');
 
 describe('the strict-clean fixture project', () => {
   const temporaryRoots = [];
@@ -92,6 +107,36 @@ describe('the strict-clean fixture project', () => {
     expect(exitCode).toBe(1);
     expect(stdoutText).toBe(BANNED_FORM_OUTPUT);
   });
+
+  it(
+    'writes new findings that match spec/findings.schema.json, with every kind of field it fills in',
+    () => {
+      const root = createProject();
+      appendFileSync(path.join(root, 'src/main/features/greeting/domain/greet.ts'), REFUSED_CODE);
+      git(root, 'add', '-A');
+      git(root, 'commit', '-q', '-m', 'add code the gate refuses');
+      runNitpicker(root, [
+        '--base',
+        'HEAD~1',
+        ...SCHEMA_ANALYZERS.flatMap((name) => ['--analyzer', name]),
+        '--no-cache',
+        '--output',
+        path.join(root, 'reports/diff'),
+      ]);
+      const newFindings = readReport(root, 'reports/diff/new-findings.json');
+      const fields = new Set(newFindings.flatMap((finding) => Object.keys(finding)));
+      const located = new Set(newFindings.flatMap(({ location = {} }) => Object.keys(location)));
+
+      expect(findingsSchemaErrors(newFindings)).toEqual([]);
+      expect(
+        ['allowedForm', 'exception', 'exceptionList', 'ratchet'].filter(
+          (field) => !fields.has(field),
+        ),
+      ).toEqual([]);
+      expect(located.has('endLine')).toBe(true);
+    },
+    FIXTURE_TIMEOUT_MS,
+  );
 
   describe('strict rules in touched code', () => {
     const legacy = [
