@@ -381,7 +381,7 @@ it('fails on purpose', () => {
 
     it('fails when the edit touches the line of a legacy violation', () => {
       const { exitCode, stdoutText } = runDifference('touched', (text) =>
-        text.replace('empty = null', 'empty  =  null'),
+        text.replace('empty = null', 'unset = null'),
       );
 
       expect(stdoutText).toBe(

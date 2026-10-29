@@ -34,7 +34,7 @@ describe('changed-branch-coverage with "preset": "python"', () => {
     }));
   it('fails an uncovered branch whose line the change touches', () => {
     const root = branchyRepository();
-    writeFiles(root, { 'src/demo/a.py': BRANCHY.replace('if x:', 'if  x:') });
+    writeFiles(root, { 'src/demo/a.py': BRANCHY.replace('if x:', 'if x:  # checked') });
     commit(root, 'touch the branch line');
 
     const result = run(root);
