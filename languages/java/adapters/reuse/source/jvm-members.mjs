@@ -66,7 +66,7 @@ export function bracketPairs(tokens) {
   return close;
 }
 
-export function skipNested(close, index) {
+function skipNested(close, index) {
   return close[index] > index ? close[index] : index;
 }
 
