@@ -148,14 +148,4 @@ export const kotlinGuardCases = [
     allowed:
       '// TODO(#12) split this, FIXME(#13) second marker\nfun round(value: Double): Long = Math.round(value)\n',
   },
-  {
-    id: 'repeatedLiteral',
-    rule: 'detekt.complexity.StringLiteralDuplication',
-    message:
-      'Multiple occurrences of the same string literal within a single file detected. Prefer extracting the string literal into a property or constant.',
-    allowedForm: 'private const val',
-    banned: 'fun labels(): List<String> = listOf("shipping", "shipping", "shipping")\n',
-    allowed:
-      'private const val SHIPPING = "shipping"\n\nfun labels(): List<String> = listOf(SHIPPING, SHIPPING, SHIPPING)\n',
-  },
 ];

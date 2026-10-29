@@ -199,7 +199,7 @@
   },
   {
     "primary": ["errorprone/DoNotCall"],
-    "secondary": ["spotbugs/RU_INVOKE_RUN"],
+    "secondary": ["spotbugs/RU_INVOKE_RUN", "pmd/DontCallThreadRun"],
     "scope": "line"
   },
   {
@@ -404,6 +404,11 @@
     "scope": "line"
   },
   {
+    "primary": ["pmd/ClassLoadEffect"],
+    "secondary": ["spotbugs/SC_START_IN_CTOR"],
+    "scope": "line"
+  },
+  {
     "primary": ["errorprone/CatchAndPrintStackTrace"],
     "secondary": ["pmd/AvoidPrintStackTrace", "errorprone/SystemOut"],
     "scope": "line"
@@ -491,7 +496,8 @@
     "secondary": [
       "pmd/ReplaceEnumerationWithIterator",
       "pmd/ReplaceHashtableWithMap",
-      "pmd/ReplaceVectorWithList"
+      "pmd/ReplaceVectorWithList",
+      "pmd/UseArrayListInsteadOfVector"
     ],
     "scope": "line"
   },
@@ -636,5 +642,46 @@
     "primary": ["errorprone/NullAway"],
     "secondary": ["spotbugs/NP_UNWRITTEN_FIELD", "spotbugs/UWF_UNWRITTEN_FIELD"],
     "scope": "field"
+  },
+  {
+    "primary": ["errorprone/DoubleCheckedLocking"],
+    "secondary": ["pmd/DoubleCheckedLocking"],
+    "scope": "member"
+  },
+  {
+    "primary": ["pmd/StringInstantiation"],
+    "secondary": ["spotbugs/DM_STRING_CTOR", "spotbugs/DM_STRING_VOID_CTOR"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/UseStringBufferForStringAppends"],
+    "secondary": ["spotbugs/SBSC_USE_STRINGBUFFER_CONCATENATION"],
+    "scope": "line"
+  },
+  {
+    "primary": ["pmd/UnsynchronizedStaticFormatter"],
+    "secondary": ["spotbugs/STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/DateFormatConstant"],
+    "secondary": [
+      "pmd/UnsynchronizedStaticFormatter",
+      "spotbugs/STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE"
+    ],
+    "scope": "class"
+  },
+  {
+    "primary": ["errorprone/DateFormatConstant"],
+    "secondary": ["spotbugs/STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE"],
+    "scope": "field"
+  },
+  {
+    "primary": ["pmd/NonThreadSafeSingleton"],
+    "secondary": [
+      "spotbugs/LI_LAZY_INIT_STATIC",
+      "spotbugs/SING_SINGLETON_GETTER_NOT_SYNCHRONIZED"
+    ],
+    "scope": "line"
   }
 ]

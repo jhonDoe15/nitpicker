@@ -42,6 +42,7 @@ const BANNED_GUARDS = {
   'Casts.kt': `${PACKAGE}@Deprecated("Use next")\nfun old(): Int = 1\n\nfun next(): Int = old()\n\n@Suppress("unused")\nfun names(value: Any): List<String> = value as List<String>\n\nfun same(value: String): String = value as String\n`,
   'Wide.kt': `${PACKAGE}class Wide {\n${methods.join('\n')}\n}\n`,
   'Deep.kt': `${PACKAGE}open class Failure : Exception()\n\nopen class OrderFailure : Failure()\n\nopen class PaymentFailure : OrderFailure()\n\nclass CardFailure : PaymentFailure()\n`,
+  'Literals.kt': `${PACKAGE}fun labels(): List<String> = listOf("shipping", "shipping", "shipping")\n`,
   'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
 };
 
@@ -63,11 +64,12 @@ const ALLOWED_GUARDS = {
   'StringTrimming.kt': `${PACKAGE}fun trimmed(text: String): String = text.trim()\n`,
   'Marked.kt': `${PACKAGE}fun keep(): Int = 1\n`,
   'Casts.kt': `${PACKAGE}fun next(): Int = 1\n\nfun names(value: Any): List<String> = (value as? List<*>).orEmpty().filterIsInstance<String>()\n\nfun same(value: String): String = value\n`,
+  'Literals.kt': `${PACKAGE}private const val SHIPPING = "shipping"\n\nfun labels(): List<String> = listOf(SHIPPING, SHIPPING, SHIPPING)\n\nfun kind(text: String): Int = when (text) {\n    "shipping-pending" -> 1\n    "shipping-sent", "shipping-pending" -> 2\n    else -> 3\n}\n\nfun more(): Map<String, Int> = mapOf("shipping-pending" to 1)\n`,
   'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
 };
 
 const ALLOWED_TESTS = {
-  'OrderTest.kt': `${PACKAGE}import kotlin.test.Test\nimport kotlin.test.assertEquals\n\nclass OrderTest {\n    @Test\n    fun totals() {\n        assertEquals(1, subtotal())\n    }\n}\n`,
+  'OrderTest.kt': `${PACKAGE}import kotlin.test.Test\nimport kotlin.test.assertEquals\n\nclass OrderTest {\n    @Test\n    fun totals() {\n        assertEquals(1, subtotal())\n        assertEquals("shipping", "shipping")\n        assertEquals("shipping", "shipping")\n    }\n}\n`,
 };
 
 function guardFiles(sources, tests) {
@@ -93,6 +95,7 @@ const EXPECTED_BANNED = [
   'kotlin-source/CommentedOutCode Commented.kt',
   'kotlin-source/GenericFileName StringUtils.kt',
   'kotlin-source/CommentedOutCode StaleTest.kt',
+  'kotlin-source/RepeatedStringLiteral Literals.kt',
   'kotlin-source/GeneratedOnHandWrittenCode Marked.kt',
   'kotlin-source/TestClassWithoutTestCases EmptyTest.kt',
   'kotlinc/deprecation Casts.kt',
