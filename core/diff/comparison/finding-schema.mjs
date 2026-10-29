@@ -134,6 +134,15 @@ const RATCHET_PARTS = [
 ];
 const RATCHET_FLAGS = ['existingCodeOnly', 'pathIsFolder'];
 
+function ratchetTexts(value, context) {
+  return Object.fromEntries(
+    RATCHET_TEXT_FIELDS.filter((name) => value[name] !== undefined).map((name) => [
+      name,
+      requiredString(value[name], `${context}.${name}`),
+    ]),
+  );
+}
+
 function checkRatchetParts(ratchet, context) {
   for (const [part, whole] of RATCHET_PARTS) {
     if (ratchet[part] !== undefined && !(ratchet[whole] ?? '').includes(ratchet[part])) {
@@ -153,11 +162,7 @@ function parseRatchet(value, context) {
   if (value.folderFiles !== undefined) {
     ratchet.folderFiles = positiveInteger(value.folderFiles, `${context}.folderFiles`);
   }
-  for (const name of RATCHET_TEXT_FIELDS) {
-    if (value[name] !== undefined) {
-      ratchet[name] = requiredString(value[name], `${context}.${name}`);
-    }
-  }
+  Object.assign(ratchet, ratchetTexts(value, context));
   checkRatchetParts(ratchet, context);
   for (const name of RATCHET_FLAGS.filter((flag) => value[flag] !== undefined)) {
     if (typeof value[name] !== 'boolean') {
