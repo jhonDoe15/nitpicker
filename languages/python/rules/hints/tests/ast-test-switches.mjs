@@ -1,4 +1,4 @@
-import { RULES_TOOL } from './tool.mjs';
+import { RULES_TOOL } from '../tool.mjs';
 
 const CONSTRUCTS = {
   if: 'an `if` branch or conditional expression',
