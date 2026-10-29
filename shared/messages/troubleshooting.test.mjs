@@ -14,6 +14,7 @@ import {
   withUsageLink,
   withoutTroubleshooting,
 } from './troubleshooting.mjs';
+import { docsRef } from './docs-url.mjs';
 
 const root = path.resolve(import.meta.dirname, '../..');
 const DOC_URL = 'https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md';
@@ -188,6 +189,12 @@ describe('the message helpers', () => {
     expect(TROUBLESHOOTING_FILE).toBe('docs/troubleshooting.md');
     expect(troubleshootingUrl('no-merge-base')).toBe(`${DOC_URL}#no-merge-base`);
     expect(troubleshootingSentence('no-merge-base')).toBe(`See ${DOC_URL}#no-merge-base`);
+  });
+
+  it('links an installed package to the page at its release tag and a checkout to main', () => {
+    expect(docsRef({ version: '1.4.0', checkout: false })).toBe('v1.4.0');
+    expect(docsRef({ version: '1.5.0-rc.2', checkout: false })).toBe('v1.5.0-rc.2');
+    expect(docsRef({ version: '1.4.0', checkout: true })).toBe('main');
   });
 
   it('adds the link after the sentence of a one-line message', () => {

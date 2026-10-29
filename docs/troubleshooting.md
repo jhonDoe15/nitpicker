@@ -3,8 +3,9 @@
 This page covers the failures that are not findings about your code: a run that exits 2, a tool that
 cannot start, a base that cannot be analyzed. Each entry gives the symptom, the cause and the fix. The
 messages nitpicker prints for these failures end with a link to the entry that explains them, so the
-usual way in is to follow that link. Findings about your code are explained in [Usage](usage.md) and
-the preset guides instead.
+usual way in is to follow that link. The link follows the version you run: an installed package links
+to this page as it was at its release tag (`blob/v<version>`), and a checkout of the repository links
+to `main`. Findings about your code are explained in [Usage](usage.md) and the preset guides instead.
 
 - [Reading a failed run](#reading-a-failed-run)
 - [Arguments, configuration and project](#arguments-configuration-and-project)
