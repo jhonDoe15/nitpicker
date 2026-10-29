@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { projectFilesUnder } from '../../../../../shared/project-files/project-files.mjs';
 import { existingRoots } from '../../layout.mjs';
 import { isNonProductionFolder, isReuseProductionPath } from './reuse-paths.mjs';
