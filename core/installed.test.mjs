@@ -194,6 +194,7 @@ suite('packed nitpicker in a separate consumer', () => {
     const analyzers = 'typescript-typecheck eslint-lint structure dependency-architecture'.split(
       ' ',
     );
+    const mergeFile = 'src/main/merge.ts';
     let root;
     const runs = {};
     const output = (name) => path.join(root, 'reports', name);
@@ -209,10 +210,16 @@ suite('packed nitpicker in a separate consumer', () => {
       ]);
     const report = (name) =>
       JSON.parse(readFileSync(path.join(output(name), 'summary.json'), 'utf8'));
+    const findings = (name) =>
+      JSON.parse(readFileSync(path.join(output(name), 'new-findings.json'), 'utf8'));
     const added = (name) =>
-      JSON.parse(readFileSync(path.join(output(name), 'new-findings.json'), 'utf8')).map(
-        ({ tool, rule }) => `${tool}/${rule}`,
-      );
+      findings(name)
+        .filter(({ path: file }) => file !== mergeFile)
+        .map(({ tool, rule }) => `${tool}/${rule}`);
+    const spreads = (name) =>
+      findings(name)
+        .filter(({ rule }) => rule === 'nitpicker/no-accumulating-spread')
+        .map(({ path: file, location }) => `${file}:${location.line}`);
 
     beforeAll(() => {
       root = mkdtempSync(path.join(tmpdir(), 'nitpicker consumer-ts7-'));
@@ -257,6 +264,13 @@ suite('packed nitpicker in a separate consumer', () => {
         'src/main/cycle.ts',
         `import { example } from './example.js';\n\n${twiceSource('value * example()')}`,
       );
+      write(
+        root,
+        mergeFile,
+        'export function merge(parts: readonly object[]): object {\n  let merged = {};\n' +
+          '  for (const part of parts) {\n    merged = { ...merged, ...part };\n  }\n' +
+          '  return merged;\n}\n',
+      );
       runs.native = gate('native');
       write(
         root,
@@ -277,6 +291,7 @@ suite('packed nitpicker in a separate consumer', () => {
         'eslint-lint/@typescript-eslint/no-unused-vars',
         'typescript-typecheck/TS2322',
       ]);
+      expect(spreads('native')).toEqual([`${mergeFile}:2`]);
       expect(report('native').tools.find(({ name }) => name === 'eslint-lint').version).toBe(
         expectedEslintVersion(`js-api-${jsApi}`),
       );
@@ -286,6 +301,7 @@ suite('packed nitpicker in a separate consumer', () => {
       expect(runs.project.status, runs.project.output).toBe(1);
       expect(report('project').overallStatus).toBe('completed');
       expect(added('project')).toEqual(added('native'));
+      expect(spreads('project')).toEqual(spreads('native'));
     });
   });
 
