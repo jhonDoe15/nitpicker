@@ -1,5 +1,5 @@
-import { chainOf } from './ancestry.mjs';
-import { findVariable, stringValue } from './constant-resolution.mjs';
+import { chainOf } from '../ancestry.mjs';
+import { findVariable, stringValue } from '../constant-resolution.mjs';
 
 const PROCESS_MODULES = new Set(['process', 'node:process']);
 const GLOBAL_OBJECTS = ['globalThis', 'global', 'window', 'self'];
@@ -17,7 +17,7 @@ export function isProcessModule(source) {
 
 export function wrapperTop(node) {
   return chainOf(node, (current) =>
-    WRAPPERS.has(current.parent?.type) ? current.parent : null,
+    WRAPPERS.has(current.parent?.type) ? current.parent : undefined,
   ).at(-1);
 }
 
@@ -44,8 +44,12 @@ function constantInit(context, node) {
 }
 
 function nextInChain(context, node) {
-  if (WRAPPERS.has(node.type)) return node.expression;
-  if (node.type === 'AwaitExpression') return node.argument;
+  if (WRAPPERS.has(node.type)) {
+    return node.expression;
+  }
+  if (node.type === 'AwaitExpression') {
+    return node.argument;
+  }
   return constantInit(context, node);
 }
 
@@ -53,13 +57,17 @@ function valueChain(context, node) {
   const chain = [node];
   for (const current of chain) {
     const next = chain.length < MAX_CHAIN_LENGTH ? nextInChain(context, current) : undefined;
-    if (next !== undefined) chain.push(next);
+    if (next !== undefined) {
+      chain.push(next);
+    }
   }
   return chain;
 }
 
 function isGlobalNamed(context, node, names) {
-  if (node.type !== 'Identifier' || !names.includes(node.name)) return false;
+  if (node.type !== 'Identifier' || !names.includes(node.name)) {
+    return false;
+  }
   const variable = findVariable(context, node, node.name);
   return variable === undefined || variable.defs.length === 0;
 }
