@@ -78,8 +78,38 @@ describe('validation annotations on Kotlin constructor properties', () => {
     ],
     ['a Kotlin annotation', [member([annotation('JvmField')])], []],
     ['no annotations', [member(undefined)], [CONSTRAINTS]],
+    [
+      'another annotation next to a star import of constraints',
+      [member([annotation('JsonProperty'), annotation('JvmField')])],
+      [
+        { path: 'jakarta.validation.constraints', all: true },
+        { path: 'com.fasterxml.jackson.annotation', all: true },
+      ],
+    ],
+    [
+      'a constraint that also has a field: target',
+      [member([annotation('NotBlank', 'param'), annotation('NotBlank', 'field')])],
+      [CONSTRAINTS],
+    ],
+    [
+      'a backticked constraint with a field: target',
+      [member([annotation('NotBlank', 'field', '`NotBlank`')])],
+      [CONSTRAINTS],
+    ],
   ])('allows %s', (_name, parameters, imports) => {
     expect(findingsFor(parameters, imports)).toEqual([]);
+  });
+
+  it('leaves a project annotation of the same name alone, as Kotlin prefers it to a star import', () => {
+    const own = klass('NotBlank', { kind: 'annotation' });
+    const files = [
+      file({
+        imports: [{ path: 'jakarta.validation.constraints', all: true }],
+        classes: [own, request([member([annotation('NotBlank')])])],
+      }),
+    ];
+
+    expect(run(validationTargetFindings, files)).toEqual([]);
   });
 
   it('leaves test sources alone', () => {
