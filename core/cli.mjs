@@ -34,6 +34,7 @@ import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
+import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 
 const CHECK_COMMANDS = { hygiene: runHygieneCli, history: runHistoryCli };
 
@@ -67,6 +68,7 @@ export function runCli(options = {}) {
     });
   }
   try {
+    redirectToBundledTypeScriptApi(cli.environment);
     return runCommand(cli);
   } catch (error) {
     cli.stderr.write(

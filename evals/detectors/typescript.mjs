@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../languages/typescript/typescript-api/typescript-api.mjs';
 
 export { ts };
 

@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { chainOf } from '../../../../shared/traversal.mjs';
 export function commentAt(text, position, endPosition) {
   const isLine = text.startsWith('//', position);
