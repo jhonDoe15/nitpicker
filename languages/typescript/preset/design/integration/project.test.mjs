@@ -205,12 +205,12 @@ describe('the design rules over the facts of a fixture project', () => {
   it('enforces a protocols contract at the open that is never closed', () => {
     const root = project({ fixture: 'signals' });
     const protocolFindings = findingsOf(root, SESSION_CONTRACT).filter(
-      ({ rule }) => rule === 'caller-protocol',
+      ({ rule }) => rule === 'caller-protocol' || rule === 'protocol-contract',
     );
 
     expect(summaryOf(protocolFindings)).toEqual([
-      { rule: 'caller-protocol', classification: 'enforceable', path: 'src/jobs/export-job.ts' },
       { rule: 'caller-protocol', classification: 'descriptive', path: 'src/jobs/export-job.ts' },
+      { rule: 'protocol-contract', classification: 'enforceable', path: 'src/jobs/export-job.ts' },
     ]);
   });
 
