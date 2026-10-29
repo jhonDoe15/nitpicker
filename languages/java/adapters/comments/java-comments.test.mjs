@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
+import { taskMarkerCases } from '../../../../shared/naming/test-support/task-marker-cases.mjs';
 import { commentFindings, readCommentFindings } from './java-comments.mjs';
 
 const TODO_MESSAGE =
@@ -30,8 +31,24 @@ describe('TODO comments', () => {
     ['// Phone numbers are formatted as XXX-XXX-XXXX.', []],
     ['// Drop the column after the migration, TODO: issue', ['TodoWithoutIssue:1']],
     ['// TODO SHA-256 hashing', ['TodoWithoutIssue:1']],
+    ['// TODO(#12): split it, FIXME: rename it', ['TodoWithoutIssue:1']],
+    ['// TODO(#12): split it, FIXME(#13): rename it', []],
+    ['// Reads the TODO list of the user', []],
   ])('%s', (source, expected) => {
     expect(summary(`${source}\nclass A {}`)).toEqual(expected);
+  });
+
+  it.each(
+    [true, false].flatMap((reported) =>
+      taskMarkerCases('java', reported).map((row) => [row.name, row.text, reported]),
+    ),
+  )('judges %s as the shared task marker table does', (_name, text, reported) => {
+    const comments = text
+      .split('\n')
+      .map((line) => `// ${line}`)
+      .join('\n');
+
+    expect(summary(`${comments}\nclass A {}`).length > 0).toBe(reported);
   });
 
   it('ignores a TODO inside a string or a text block', () => {

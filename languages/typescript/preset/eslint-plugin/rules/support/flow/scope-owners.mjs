@@ -1,5 +1,5 @@
 import { findVariable } from '../../analysis/constant-resolution.mjs';
-import { wordsOf } from '../identifier-words.mjs';
+import { wordsOf } from '../../../../../../../shared/naming/secret-words.mjs';
 import { calleeOrigin } from '../io-effects.mjs';
 import { isDatabasePackage } from '../io/packages.mjs';
 

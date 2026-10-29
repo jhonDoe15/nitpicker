@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { fileFindings } from '../java-suppressions.mjs';
 import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
@@ -65,5 +66,27 @@ describe('Error Prone escapes that are annotations', () => {
       ],
       [],
     ]);
+  });
+});
+
+describe('an Error Prone check name in @SuppressWarnings', () => {
+  const CHECKS = JSON.parse(
+    readFileSync(new URL('../../../gradle/errorprone/checks.json', import.meta.url), 'utf8'),
+  );
+  const suppressedBy = (name) =>
+    fileFindings(`class A {\n  @SuppressWarnings("${name}") void a() {}\n}\n`, 'A.java').map(
+      ({ tool }) => tool,
+    );
+
+  it('is reported for every check Error Prone runs, so the suppression cannot hide its finding', () => {
+    expect(CHECKS.suppressible.filter((name) => suppressedBy(name).length !== 1)).toEqual([]);
+  });
+
+  it('is reported for UnusedMethod, which runs, and hides nothing for UnusedVariable, which is off', () => {
+    expect({
+      method: suppressedBy('UnusedMethod'),
+      variable: suppressedBy('UnusedVariable'),
+      variableOff: CHECKS.disable.includes('UnusedVariable'),
+    }).toEqual({ method: ['errorprone'], variable: [], variableOff: true });
   });
 });
