@@ -26,6 +26,7 @@ function fn(file, name, line, extra = {}) {
 
 const MODELS = 'shop/models.py';
 const GATEWAY = 'gateway.py';
+const MEMBERS = 'app/members.py';
 
 describe.skipIf(!pythonUsable())('the Python design producer callable facts', () => {
   describe('kinds, ownership and fields', () => {
@@ -129,9 +130,75 @@ describe.skipIf(!pythonUsable())('the Python design producer callable facts', ()
       );
     });
 
-    it('names the id of the first definition and suffixes later redefinitions with the line', () => {
+    it('names the id of the first definition and numbers later redefinitions by ordinal', () => {
       expect(byId.callable('app/helpers.py#twice').line).toBe(5);
-      expect(byId.callable('app/helpers.py#twice@9').line).toBe(9);
+      expect(byId.callable('app/helpers.py#twice@2').line).toBe(9);
+    });
+  });
+
+  describe('member ids, return types and abstract targets', () => {
+    const byId = factsById(designFacts('resolution'));
+    const SINK = `${MEMBERS}#Sink`;
+    const GAUGE = `${MEMBERS}#Gauge`;
+
+    it.each([
+      [
+        'an overloaded method keeps the plain id for its implementation',
+        callable(MEMBERS, 'Gauge.read', 27, { params: [{ name: 'unit' }] }),
+      ],
+      [
+        'a property setter has its own id without a position, and calls a Protocol method',
+        callable(MEMBERS, 'Gauge.level', 35, {
+          id: `${GAUGE}.level(setter)`,
+          params: [{ name: 'value', type: 'int' }],
+          returns: 'None',
+          forward: { target: `${SINK}.write`, arguments: [0], returned: false },
+          calls: [{ target: `${SINK}.write`, line: 36, receiver: 'self.sink' }],
+          ownFields: ['sink'],
+        }),
+      ],
+      [
+        'a property deleter has its own id without a position',
+        callable(MEMBERS, 'Gauge.level', 39, { id: `${GAUGE}.level(deleter)`, returns: 'None' }),
+      ],
+      [
+        'a property getter calls an abstract method through a field typed as the ABC',
+        callable(MEMBERS, 'Gauge.level', 31, {
+          kind: 'accessor',
+          returns: 'int',
+          calls: [{ target: `${MEMBERS}#Engine.run`, line: 32, receiver: 'self.engine' }],
+          ownFields: ['engine'],
+        }),
+      ],
+      [
+        'a Protocol method is a callable site without body facts',
+        callable(MEMBERS, 'Sink.write', 6, {
+          params: [{ name: 'value', type: 'int' }],
+          returns: 'None',
+        }),
+      ],
+      [
+        'an underscore method is not exported',
+        callable(MEMBERS, 'Gauge._reset', 42, { exported: false, returns: 'None' }),
+      ],
+      [
+        'a quoted optional return of a project type is its type id',
+        fn(MEMBERS, 'find_gauge', 50, { params: [{ name: 'name', type: 'str' }], returns: GAUGE }),
+      ],
+    ])('%s', (_label, expected) => {
+      expect(byId.callable(expected.id)).toEqual(expected);
+    });
+
+    it('returns the project type id of an annotated return, normalised like a parameter', () => {
+      expect(byId.callable(`${MEMBERS}#make_gauge`).returns).toBe(GAUGE);
+    });
+
+    it('marks an underscore field private', () => {
+      expect(byId.type(GAUGE).fields).toEqual([
+        { name: 'sink' },
+        { name: 'engine' },
+        { name: '_history', mutable: true, private: true },
+      ]);
     });
   });
 

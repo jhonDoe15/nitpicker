@@ -12,6 +12,17 @@ from design.support.decorators import (
 TYPE_ALIAS = getattr(ast, "TypeAlias", None)
 
 
+def accessor_role(names):
+    roles = [n.rsplit(".", 1)[1] for n in names if n.endswith((".setter", ".deleter"))]
+    return roles[0] if roles else None
+
+
+def member_id(function, names):
+    role = accessor_role(names)
+    suffix = f"({role})" if role else ""
+    return f"{function.module.path}#{function.qualname}{suffix}"
+
+
 class Function:
     def __init__(self, node, module, owner, claim):
         self.node = node
@@ -19,18 +30,16 @@ class Function:
         self.owner = owner
         self.name = node.name
         self.qualname = f"{owner.qualname}.{node.name}" if owner else node.name
-        self.id = claim(f"{module.path}#{self.qualname}", node.lineno)
-        names = decorator_names(node, module.aliases)
-        self.decorators = names
+        self.decorators = names = decorator_names(node, module.aliases)
+        self.overload = any(name in OVERLOADS for name in names)
         self.static = "staticmethod" in names
         self.classmethod = "classmethod" in names
         self.is_property = any(name in PROPERTY_NAMES for name in names)
-        self.is_accessor_pair = any(
-            name.endswith((".setter", ".deleter")) for name in names
-        )
+        self.is_accessor_pair = accessor_role(names) is not None
         self.is_abstract = any(name in ABSTRACT for name in names)
         self.is_async = isinstance(node, ast.AsyncFunctionDef)
         self.plain = has_only_neutral(names)
+        self.id = None if self.overload else claim(member_id(self, names))
 
 
 class Klass:
@@ -40,7 +49,7 @@ class Klass:
         self.owner = owner
         self.name = node.name
         self.qualname = f"{owner.qualname}.{node.name}" if owner else node.name
-        self.id = claim(f"{module.path}#{self.qualname}", node.lineno)
+        self.id = claim(f"{module.path}#{self.qualname}")
         self.functions = []
         self.members = {}
         self.nested = {}
@@ -56,7 +65,7 @@ class Klass:
 
     def add_function(self, statement, claim, counts):
         function = Function(statement, self.module, self, claim)
-        if any(name in OVERLOADS for name in function.decorators):
+        if function.overload:
             return
         self.functions.append(function)
         if function.is_accessor_pair:
@@ -77,7 +86,7 @@ class LiteralAlias:
         self.node = node
         self.module = module
         self.cases = cases
-        self.id = claim(f"{module.path}#{name}", node.lineno)
+        self.id = claim(f"{module.path}#{name}")
         self.owner = None
 
 
@@ -191,7 +200,7 @@ def register_statement(module, statement, claim):
         module.classes[statement.name] = Klass(statement, module, None, claim)
     elif isinstance(statement, FUNCTIONS):
         function = Function(statement, module, None, claim)
-        if not any(name in OVERLOADS for name in function.decorators):
+        if not function.overload:
             module.all_functions.append(function)
             module.count(statement.name)
             module.functions[statement.name] = function

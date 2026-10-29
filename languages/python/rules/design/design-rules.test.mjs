@@ -68,7 +68,7 @@ describe.skipIf(!pythonUsable())('the shared design rules over Python facts', ()
     );
   });
 
-  it('fails a protocol opened without a close that always runs, and passes with blocks', () => {
+  it('fails an unclosed protocol, not with blocks, an owner field or a returned session', () => {
     expect(findingRows('lifecycle', { protocols: [PROTOCOL] })).toEqual(
       ['manual', 'not_cleanup'].map((caller) => [
         'protocol-contract',

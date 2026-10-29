@@ -77,3 +77,16 @@ def closing_resource(resource: Resource):
 def external_context():
     with open("data") as handle:
         handle.read()
+
+
+class Unit:
+    def __init__(self, session: Session):
+        self.session = session
+
+    def start(self):
+        self.session.begin()
+
+
+def opened(session: Session) -> Session:
+    session.begin()
+    return session
