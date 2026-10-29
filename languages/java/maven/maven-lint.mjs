@@ -18,7 +18,6 @@ import { layerCheckstyle } from '../adapters/tool-config/checkstyle/checkstyle-l
 import { unformattedCheckstyle } from '../adapters/tool-config/checkstyle/unformatted-checks.mjs';
 import { NITPICKER_RULESET } from '../adapters/tool-config/layer-files.mjs';
 
-const REACTOR_JAR = /^reactor-core-.*\.jar$/u;
 const LAYOUT_SUPPRESSIONS = 'checkstyle-suppressions.xml';
 const UNFORMATTED_SUPPRESSIONS = 'checkstyle-suppressions-unformatted.xml';
 const EMPTY_SARIF = '{"version":"2.1.0","runs":[]}';
@@ -49,7 +48,8 @@ function writeAuxClasspath({ module, reportDir, classpaths }) {
   return file;
 }
 
-export function runPmd({ module, reportDir, tools, classpaths, configs, spring, spawn }) {
+export function runPmd(options) {
+  const { module, reportDir, tools, classpaths, configs, spring, reactor, spawn } = options;
   const report = path.join(reportDir, 'pmd.sarif');
   const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
     existsSync(root),
@@ -64,7 +64,7 @@ export function runPmd({ module, reportDir, tools, classpaths, configs, spring, 
     reportDir,
     configs,
     spring,
-    reactor: classpaths.mainCompile.some((entry) => REACTOR_JAR.test(path.basename(entry))),
+    reactor,
   });
   const rulesets = [
     layers.nitpicker ?? NITPICKER_RULESET,

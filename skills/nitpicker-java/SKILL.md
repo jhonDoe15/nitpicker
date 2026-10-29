@@ -139,8 +139,8 @@ Before you change code other modules use, or fix a bug, read
   slice instead of `@SpringBootTest`.
 - In a Reactor chain (`reactor-core` on the classpath), no blocking call (`Files.*`, JDBC, `Future.get()`,
   `Thread.sleep`, `block()`) inside `map`, `flatMap`, `doOnNext` and the other operators: wrap it as
-  `Mono.fromCallable(() -> blocking()).subscribeOn(Schedulers.boundedElastic())` or use
-  `publishOn(Schedulers.boundedElastic())`; a method returning a `Mono` or `Flux` never calls `block()`
+  `Mono.fromCallable(() -> blocking()).subscribeOn(Schedulers.boundedElastic())` or put
+  `publishOn(Schedulers.boundedElastic())` before the operator (a `publishOn` after it does not move it); a method returning a `Mono` or `Flux` never calls `block()`
   (`ReactorBlockingInOperator`, `ReactorBlockInReactiveMethod`).
 - Never wait a fixed time (`FixedSleepInTest`): wait on the condition with Awaitility when the
   tests use it (`await().atMost(Duration.ofSeconds(5)).until(...)`), otherwise in a loop against a

@@ -1,7 +1,12 @@
 package shop;
 
+import java.io.BufferedReader;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.StringReader;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.concurrent.CompletableFuture;
@@ -114,5 +119,47 @@ public final class ReactiveOrders {
 
   Mono<String> blocksInASourceSupplier(Mono<String> other) {
     return Mono.fromSupplier(() -> other.block());
+  }
+
+  Mono<Boolean> publishesOnBoundedElasticOnlyAfterTheCheck() {
+    return paths().map(path -> Files.exists(path)).publishOn(Schedulers.boundedElastic()); // violation: ReactorBlockingInOperator
+  }
+
+  Mono<Boolean> theNearestPublishOnDecides() {
+    return paths()
+        .publishOn(Schedulers.boundedElastic())
+        .publishOn(Schedulers.parallel())
+        .map(path -> Files.exists(path)); // violation: ReactorBlockingInOperator
+  }
+
+  Mono<Boolean> reuseOfALocalPublisherThatIsNotOffloaded() {
+    Mono<Path> local = paths();
+    return local.map(path -> Files.exists(path)); // violation: ReactorBlockingInOperator
+  }
+
+  Mono<Boolean> wrapsTheCheckWithoutMovingIt() {
+    return paths().flatMap(path -> Mono.fromCallable(() -> Files.exists(path))); // violation: ReactorBlockingInOperator
+  }
+
+  Mono<Boolean> checksAFile() {
+    return paths().map(path -> path.toFile().isFile()); // violation: ReactorBlockingInOperator
+  }
+
+  Mono<Integer> readsInMemoryStreams() {
+    return names()
+        .map(
+            name -> {
+              ByteArrayOutputStream out = new ByteArrayOutputStream();
+              out.write(new ByteArrayInputStream(name.getBytes()).read());
+              try {
+                return out.size() + new BufferedReader(new StringReader(name)).readLine().length();
+              } catch (IOException e) {
+                throw new UncheckedIOException(e);
+              }
+            });
+  }
+
+  Mono<Boolean> checksAParameterPublisher(Mono<Path> source) {
+    return source.map(path -> Files.exists(path));
   }
 }
