@@ -2,7 +2,7 @@ import {
   importedNamespaces,
   isProcessObject,
   keyText,
-  PROCESS_MODULES,
+  isProcessModule,
   propertyText,
   readsOf,
 } from '../guards/no-process-access-outside-composition-root.mjs';
@@ -46,11 +46,11 @@ function streamNamed(name) {
 function patternSource(pattern) {
   const { parent } = pattern;
   if (parent.type === 'VariableDeclarator' && parent.id === pattern) {
-    return parent.init;
+    return parent.init ?? undefined;
   }
   const isAssignment =
     parent.type === 'AssignmentExpression' || parent.type === 'AssignmentPattern';
-  return isAssignment && parent.left === pattern ? parent.right : null;
+  return isAssignment && parent.left === pattern ? parent.right : undefined;
 }
 
 function destructuredStreams(pattern) {
@@ -95,13 +95,11 @@ export const rule = {
   create(context) {
     const inRoot = isCompositionRootFile(context);
     const state = { namespaces: new Set() };
-    const reportStreams = (found) => {
-      if (!inRoot) {
-        found.forEach(({ node, stream }) =>
-          context.report({ node, messageId: 'streamOutsideRoot', data: { stream } }),
-        );
+    function reportStreams(found) {
+      for (const { node, stream } of inRoot ? [] : found) {
+        context.report({ node, messageId: 'streamOutsideRoot', data: { stream } });
       }
-    };
+    }
     return {
       Program(node) {
         state.namespaces = importedNamespaces(node);
@@ -120,12 +118,12 @@ export const rule = {
       },
       ObjectPattern(node) {
         const source = patternSource(node);
-        if (source !== null && isProcessObject(source, state.namespaces)) {
+        if (source !== undefined && isProcessObject(source, state.namespaces)) {
           reportStreams(destructuredStreams(node));
         }
       },
       ImportDeclaration(node) {
-        if (PROCESS_MODULES.has(node.source.value)) {
+        if (isProcessModule(node.source.value)) {
           reportStreams(importedStreams(node));
         }
       },

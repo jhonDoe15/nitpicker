@@ -13,6 +13,7 @@ tester.run('no-production-console', rule, {
     { filename: root, code: 'process.stdout.write("done");' },
     { code: 'out.write("x"); process.stdin.write("x");' },
     { filename: adapter, code: 'export function show(out) { out.write("x"); }' },
+    { filename: adapter, code: 'for (const { stdout } of streams) { stdout.write("x"); }' },
     {
       filename: adapter,
       code: 'import { stdin } from "node:process"; export const input = stdin;',
