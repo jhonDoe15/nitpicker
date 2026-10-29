@@ -192,7 +192,7 @@ describe('test-runtime rule on neutral findings', () => {
       rule: 'no-production-runtime',
       path: 'test/AT.java',
       identity: 'test:test/AT.java:source:h1',
-      message: 'Test has no production runtime',
+      message: 'Test runs no production code: nothing it imports or references, directly or through test helpers, is production code. Test the production code it is about, or delete the test',
     });
     expect(failures[1].identity).toMatch(/^test:test\/BT\.java:source:[0-9a-f]{24}$/);
   });
