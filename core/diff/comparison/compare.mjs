@@ -1,3 +1,4 @@
+import { changedByDiff } from './base-red/unknown-base.mjs';
 import { comparisonKey } from './fingerprint.mjs';
 import { matchSimilarFindings } from './similar/match.mjs';
 import { normalizeGitPath } from '../git/normalize.mjs';
@@ -12,6 +13,7 @@ export function compareFindings({
   baseToHeadRenames = new Map(),
   baseToHeadDirectories = new Map(),
   touchedCode,
+  unknownOnBase,
 }) {
   const { baseByKey, headByKey } = indexSnapshots({
     baseFindings,
@@ -20,7 +22,7 @@ export function compareFindings({
     directories: baseToHeadDirectories,
     touchedCode,
   });
-  const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode });
+  const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode, unknownOnBase });
   const withoutExactMatch = [...baseByKey]
     .filter(([key]) => !headByKey.has(key))
     .map(([, baseFinding]) => baseFinding);
@@ -64,16 +66,23 @@ function indexSnapshots({ baseFindings, headFindings, renames, directories, touc
   };
 }
 
-function classifyHeadFindings({ headByKey, baseByKey, touchedCode }) {
+function classifyHeadFindings({ headByKey, baseByKey, touchedCode, unknownOnBase }) {
   const buckets = { newFindings: [], unchangedFindings: [], changedMetrics: [] };
   for (const [key, headFinding] of headByKey) {
-    const { bucket, entry } = classify(headFinding, baseByKey.get(key), touchedCode);
+    const { bucket, entry } = classify(headFinding, baseByKey.get(key), {
+      touchedCode,
+      isUnknown: unknownOnBase?.(headFinding) === true,
+    });
     buckets[bucket].push(entry);
   }
   return buckets;
 }
 
-function classify(headFinding, baseFinding, touchedCode) {
+function classify(headFinding, baseFinding, { touchedCode, isUnknown }) {
+  if (baseFinding === undefined && isUnknown) {
+    const bucket = changedByDiff(headFinding, touchedCode) ? 'newFindings' : 'unchangedFindings';
+    return { bucket, entry: headFinding };
+  }
   if (baseFinding === undefined) {
     return { bucket: 'newFindings', entry: headFinding };
   }

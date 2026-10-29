@@ -26,6 +26,9 @@ const installer = 'npm@11';
 const cleanSource = 'export function example() {\n  return 1;\n}\n';
 const violation = 'export function example(){\n  debugger;\n  return 1\n}\n';
 
+const debuggerMessage =
+  '`debugger` statement is not allowed. If this is intended, add {"rule":"no-debugger",' +
+  '"paths":["src/main/example.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
 const expectedDirtyFindings = [
   {
     tool: 'eslint-lint',
@@ -33,7 +36,7 @@ const expectedDirtyFindings = [
     path: 'src/main/example.ts',
     identity:
       'message:`debugger` statement is not allowed|node:LastStatement|syntax:3e60f1dc2469d9ea675d7a1c|occurrence:1',
-    message: '`debugger` statement is not allowed',
+    message: debuggerMessage,
     classification: 'enforceable',
     symbol: 'example',
     location: { line: 2, column: 3 },
@@ -87,13 +90,35 @@ function expectedDirtyOutput(root) {
 Quality gate summary
 ✖ 3 new enforceable violations
   eslint-lint/no-debugger src/main/example.ts:2
-    \`debugger\` statement is not allowed
+    ${debuggerMessage}
   prettier-format/prettier/prettier src/main/example.ts (2 times, lines 1, 3)
     Format these lines with Prettier
 Full diagnostics: ${root}/reports/dirty/report.txt
 nitpicker: base 2 analyzers cached from ${root}/node_modules/.cache/nitpicker (--no-cache analyzes it again)
 nitpicker: head: running 2 analyzers
 `;
+}
+
+function expectedEslintVersion(typeScriptVersion) {
+  const plugins = [
+    '@eslint/js',
+    '@vitest/eslint-plugin',
+    'eslint-plugin-formatjs',
+    'eslint-plugin-functional',
+    'eslint-plugin-jsx-a11y-x',
+    'eslint-plugin-react-dom',
+    'eslint-plugin-react-hooks',
+    'eslint-plugin-react-web-api',
+    'eslint-plugin-react-x',
+    'eslint-plugin-regexp',
+    'eslint-plugin-testing-library',
+    'typescript-eslint',
+  ].map((name) => `${name}@${manifest.dependencies[name]}`);
+  return (
+    `eslint@${manifest.dependencies.eslint};typescript@${typeScriptVersion};` +
+    `plugins:${[...plugins, `nitpicker-plugin@${manifest.version}`].join(',')};` +
+    `oxlint@${manifest.dependencies.oxlint},oxlint-tsgolint@${manifest.dependencies['oxlint-tsgolint']}`
+  );
 }
 
 function command(cwd, executable, args) {
@@ -159,6 +184,109 @@ suite('packed nitpicker in a separate consumer', () => {
   }, 180_000);
   afterAll(() => {
     if (packRoot) rmSync(packRoot, { recursive: true, force: true });
+  });
+
+  describe('a consumer on TypeScript 7', () => {
+    const typeScript7 = manifest.dependencies['typescript-native'].replace('npm:typescript@', '');
+    const jsApi = manifest.dependencies['typescript-js-api'].replace('npm:typescript@', '');
+    const twiceSource = (expression) =>
+      `export function twice(value: number): number {\n  return ${expression};\n}\n`;
+    const analyzers = 'typescript-typecheck eslint-lint structure dependency-architecture'.split(
+      ' ',
+    );
+    let root;
+    const runs = {};
+    const output = (name) => path.join(root, 'reports', name);
+    const gate = (name) =>
+      command(root, 'npx', [
+        '--no-install',
+        'nitpicker',
+        '--base',
+        'main',
+        ...analyzers.flatMap((analyzer) => ['--analyzer', analyzer]),
+        '--output',
+        output(name),
+      ]);
+    const report = (name) =>
+      JSON.parse(readFileSync(path.join(output(name), 'summary.json'), 'utf8'));
+    const added = (name) =>
+      JSON.parse(readFileSync(path.join(output(name), 'new-findings.json'), 'utf8')).map(
+        ({ tool, rule }) => `${tool}/${rule}`,
+      );
+
+    beforeAll(() => {
+      root = mkdtempSync(path.join(tmpdir(), 'nitpicker consumer-ts7-'));
+      checked(root, 'git', ['init', '-b', 'main']);
+      write(root, '.gitignore', 'node_modules/\nreports/\n');
+      write(
+        root,
+        'package.json',
+        JSON.stringify({
+          name: 'nitpicker-installed-ts7-consumer',
+          private: true,
+          type: 'module',
+          devDependencies: {
+            nitpicker: `file:${tarball}`,
+            vitest: manifest.devDependencies.vitest,
+            typescript: typeScript7,
+          },
+        }),
+      );
+      write(root, 'src/main/example.ts', cleanSource);
+      write(root, 'src/main/cycle.ts', twiceSource('value * 2'));
+      checked(root, 'npx', ['--yes', installer, 'install', '--no-audit', '--no-fund']);
+      checked(root, 'git', ['add', '.']);
+      checked(root, 'git', [
+        '-c',
+        'user.name=Installed Test',
+        '-c',
+        'user.email=test@example.invalid',
+        'commit',
+        '-m',
+        'clean baseline',
+      ]);
+      checked(root, 'git', ['switch', '-c', 'feature']);
+      write(
+        root,
+        'src/main/example.ts',
+        "import { twice } from './cycle.js';\n\nexport function example(): number {\n" +
+          '  const unused = twice(1);\n  return "1";\n}\n',
+      );
+      write(
+        root,
+        'src/main/cycle.ts',
+        `import { example } from './example.js';\n\n${twiceSource('value * example()')}`,
+      );
+      runs.native = gate('native');
+      write(
+        root,
+        'nitpicker.config.json',
+        '{ "tools": { "typescript": { "engine": "project" } } }\n',
+      );
+      runs.project = gate('project');
+    }, 900_000);
+    afterAll(() => {
+      if (root) rmSync(root, { recursive: true, force: true });
+    }, 120_000);
+
+    it('type checks, lints and follows imports with no tool error', () => {
+      expect(runs.native.status, runs.native.output).toBe(1);
+      expect(report('native').overallStatus).toBe('completed');
+      expect(added('native')).toEqual([
+        'dependency-architecture/no-production-cycles',
+        'eslint-lint/@typescript-eslint/no-unused-vars',
+        'typescript-typecheck/TS2322',
+      ]);
+      expect(report('native').tools.find(({ name }) => name === 'eslint-lint').version).toBe(
+        expectedEslintVersion(`js-api-${jsApi}`),
+      );
+    });
+
+    it('reports the same findings when it type checks with the project compiler', () => {
+      expect(runs.project.status, runs.project.output).toBe(1);
+      expect(report('project').overallStatus).toBe('completed');
+      expect(added('project')).toEqual(added('native'));
+    });
   });
 
   for (const strategy of layouts) {
@@ -330,24 +458,8 @@ suite('packed nitpicker in a separate consumer', () => {
           summary('dirty').tools.map(({ name, version }) => [name, version]),
         );
         expect(versions['prettier-format']).toBe(manifest.dependencies.prettier);
-        const plugins = [
-          '@eslint/js',
-          '@vitest/eslint-plugin',
-          'eslint-plugin-formatjs',
-          'eslint-plugin-functional',
-          'eslint-plugin-jsx-a11y-x',
-          'eslint-plugin-react-dom',
-          'eslint-plugin-react-hooks',
-          'eslint-plugin-react-web-api',
-          'eslint-plugin-react-x',
-          'eslint-plugin-regexp',
-          'eslint-plugin-testing-library',
-          'typescript-eslint',
-        ].map((name) => `${name}@${manifest.dependencies[name]}`);
         expect(versions['eslint-lint']).toBe(
-          `eslint@${manifest.dependencies.eslint};typescript@${manifest.devDependencies.typescript};` +
-            `plugins:${[...plugins, `nitpicker-plugin@${manifest.version}`].join(',')};` +
-            `oxlint@${manifest.dependencies.oxlint},oxlint-tsgolint@${manifest.dependencies['oxlint-tsgolint']}`,
+          expectedEslintVersion(manifest.devDependencies.typescript),
         );
         for (const peer of ['typescript', 'vitest', '@vitest/coverage-v8']) {
           const installed = JSON.parse(

@@ -1,9 +1,9 @@
 import { createHash } from 'node:crypto';
-import ts from 'typescript';
 import {
   formatAgnosticTokens,
   sourceLanguage,
 } from '../../../../shared/source-text/format-tokens.mjs';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { chainOf } from '../../../../shared/traversal.mjs';
 export function commentAt(text, position, endPosition) {
   const isLine = text.startsWith('//', position);
