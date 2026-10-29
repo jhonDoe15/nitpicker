@@ -38,8 +38,8 @@ A full run takes minutes and prints a progress line to stderr for each slow, fai
 not start a second run or kill it. A second run in the same project exits 2 at once with `another run is in progress`.
 
 Exit 2 is not a pass. Tool errors are listed and recorded even when the exit is 1. Read the tool errors, fix the cause (a missing peer such as `vitest` or
-`typescript`, a bad `nitpicker.config.json`, a wrong `--base`) and rerun. Most tool errors end with a link
-to their entry in [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), which gives the cause and the fix.
+`typescript`, a bad `nitpicker.config.json`, a wrong `--base`) and rerun. When the message links to
+[troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
 
 ### Read the report
 

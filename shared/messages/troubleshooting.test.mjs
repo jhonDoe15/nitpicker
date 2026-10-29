@@ -1,80 +1,58 @@
-import { readFileSync, readdirSync } from 'node:fs';
+import { copyFileSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import {
   TROUBLESHOOTING_ANCHORS,
   TROUBLESHOOTING_FILE,
+  explainedError,
+  failureText,
+  isExplainedError,
   testsFailAnchor,
+  testsFailError,
+  toolErrorHelpLine,
   troubleshootingError,
   troubleshootingLinkOf,
   troubleshootingSentence,
   troubleshootingUrl,
-  usageError,
   withTroubleshooting,
-  withUsageLink,
   withoutTroubleshooting,
 } from './troubleshooting.mjs';
-import { docsRef } from './docs-url.mjs';
+import {
+  anchorsLinkedFrom,
+  files,
+  headingsOf,
+  pageEntries,
+  productionSources,
+  read,
+  root,
+} from './test-support/troubleshooting-page.mjs';
 
-const root = path.resolve(import.meta.dirname, '../..');
 const DOC_URL = 'https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md';
-const SOURCE_FOLDERS = ['core', 'shared', 'languages'];
-const SKIPPED_FOLDERS = new Set(['node_modules', 'fixtures', 'test-support', '__tests__']);
-const ANCHOR_LINK = /troubleshooting\.md#([a-z0-9-]+)/gu;
-
-function read(relative) {
-  return readFileSync(path.join(root, relative), 'utf8');
-}
-
-function files(directory, accepts) {
-  return readdirSync(path.join(root, directory), { withFileTypes: true }).flatMap((entry) => {
-    const relative = `${directory}/${entry.name}`;
-    if (entry.isDirectory()) {
-      return SKIPPED_FOLDERS.has(entry.name) ? [] : files(relative, accepts);
-    }
-    return accepts(entry.name) ? [relative] : [];
-  });
-}
-
-function productionSources() {
-  return SOURCE_FOLDERS.flatMap((folder) =>
-    files(folder, (name) => name.endsWith('.mjs') && !name.endsWith('.test.mjs')),
-  );
-}
-
-function slugOf(heading) {
-  return heading
-    .replaceAll('`', '')
-    .trim()
-    .toLowerCase()
-    .replaceAll(/[^\p{L}\p{N} _-]/gu, '')
-    .replaceAll(' ', '-');
-}
-
-function headingsOf(markdown) {
-  let fenced = false;
-  const headings = [];
-  for (const line of markdown.split('\n')) {
-    if (line.startsWith('```')) {
-      fenced = !fenced;
-    }
-    const match = fenced ? null : /^(#{1,6}) (.+)$/u.exec(line);
-    if (match !== null) {
-      headings.push({ level: match[1].length, text: match[2], slug: slugOf(match[2]) });
-    }
-  }
-  return headings;
-}
-
-function anchorsLinkedFrom(files_) {
-  return files_.flatMap((file) =>
-    [...read(file).matchAll(ANCHOR_LINK)].map((match) => ({ file, anchor: match[1] })),
-  );
-}
+const ANCHOR_REFERENCE = /TROUBLESHOOTING_ANCHORS\.([A-Za-z0-9]+)/gu;
+const DOCS_INDEX = [
+  'docs/usage.md',
+  ...files('docs', (name) => name.endsWith('-preset.md') || name.endsWith('-strict-preset.md')),
+];
 
 const headings = headingsOf(read(TROUBLESHOOTING_FILE));
-const entrySlugs = headings.filter(({ level }) => level === 3).map(({ slug }) => slug);
+const entrySlugs = pageEntries().map(({ slug }) => slug);
 const registered = Object.entries(TROUBLESHOOTING_ANCHORS);
+
+async function helpersWithoutRepository() {
+  const copy = mkdtempSync(path.join(tmpdir(), 'troubleshooting-'));
+  for (const file of ['messages/troubleshooting.mjs', 'messages/docs-url.mjs', 'paths/glob.mjs']) {
+    mkdirSync(path.dirname(path.join(copy, 'shared', file)), { recursive: true });
+    copyFileSync(path.join(root, 'shared', file), path.join(copy, 'shared', file));
+  }
+  writeFileSync(path.join(copy, 'package.json'), JSON.stringify({ version: '1.0.0' }));
+  try {
+    return await import(pathToFileURL(path.join(copy, 'shared/messages/troubleshooting.mjs')).href);
+  } finally {
+    rmSync(copy, { recursive: true, force: true });
+  }
+}
 
 describe('the troubleshooting page', () => {
   it('has no two headings with the same anchor', () => {
@@ -87,100 +65,54 @@ describe('the troubleshooting page', () => {
     expect(entrySlugs).toContain(anchor);
   });
 
-  it('has no entry that no message links to', () => {
-    expect(
-      entrySlugs.filter((slug) => !Object.values(TROUBLESHOOTING_ANCHORS).includes(slug)),
-    ).toEqual([]);
+  it('reaches every entry from a message or from the usage guide and the preset guides', () => {
+    const linked = new Set([
+      ...Object.values(TROUBLESHOOTING_ANCHORS),
+      ...anchorsLinkedFrom(DOCS_INDEX).map(({ anchor }) => anchor),
+    ]);
+
+    expect(entrySlugs.filter((slug) => !linked.has(slug))).toEqual([]);
   });
 
   it('gives every entry a symptom, a cause and a fix', () => {
-    const text = read(TROUBLESHOOTING_FILE);
-    const entries = text.split(/^### /mu).slice(1);
-
-    const missing = entries.flatMap((entry) =>
+    const missing = pageEntries().flatMap((entry) =>
       ['Symptom', 'Cause', 'Fix']
-        .filter((label) => !entry.includes(`**${label}.**`))
-        .map((label) => `${entry.split('\n')[0]}: ${label}`),
+        .filter((label) => !entry.text.includes(`**${label}.**`))
+        .map((label) => `${entry.slug}: ${label}`),
     );
 
-    expect(entries).toHaveLength(entrySlugs.length);
+    expect(entrySlugs).toHaveLength(headings.filter(({ level }) => level === 3).length);
     expect(missing).toEqual([]);
   });
 
   it('registers unique, well-formed anchors', () => {
-    expect(new Set(Object.values(TROUBLESHOOTING_ANCHORS)).size).toBe(registered.length);
-    for (const [, anchor] of registered) {
-      expect(anchor).toMatch(/^[a-z0-9]+(?:-[a-z0-9]+)*$/u);
-    }
+    const anchors = Object.values(TROUBLESHOOTING_ANCHORS);
+
+    expect(new Set(anchors).size).toBe(registered.length);
+    expect(anchors.filter((anchor) => !/^[a-z0-9]+(?:-[a-z0-9]+)*$/u.test(anchor))).toEqual([]);
   });
 });
 
 describe('the anchors that the code links to', () => {
   const sources = productionSources();
-  const text = sources.map(read).join('\n');
+  const named = sources.flatMap((file) =>
+    [...read(file).matchAll(ANCHOR_REFERENCE)].map(([, key]) => ({ file, key })),
+  );
 
   it('uses every anchor in a message', () => {
-    const unused = registered
-      .map(([key]) => key)
-      .filter((key) => !text.includes(`TROUBLESHOOTING_ANCHORS.${key}`));
+    const used = new Set(named.map(({ key }) => key));
 
-    expect(unused).toEqual([]);
+    expect(registered.map(([key]) => key).filter((key) => !used.has(key))).toEqual([]);
+  });
+
+  it('names only registered anchors, so no link is lost to a missing key', () => {
+    expect(named.filter(({ key }) => TROUBLESHOOTING_ANCHORS[key] === undefined)).toEqual([]);
   });
 
   it('names the page in one module only, so every link goes through the helpers', () => {
     const naming = sources.filter((file) => read(file).includes('troubleshooting.md'));
 
     expect(naming).toEqual(['shared/messages/troubleshooting.mjs']);
-  });
-});
-
-describe('the links to the page from the documentation', () => {
-  const documents = [
-    'README.md',
-    'CHANGELOG.md',
-    ...files('docs', (name) => name.endsWith('.md')),
-    ...files('skills', (name) => name.endsWith('.md')),
-  ];
-
-  it('point at headings that exist', () => {
-    const linked = anchorsLinkedFrom(documents);
-
-    expect(linked.length).toBeGreaterThan(20);
-    expect(linked.filter(({ anchor }) => !entrySlugs.includes(anchor))).toEqual([]);
-  });
-
-  it('is linked from the README, the usage guide, the agent snippet and the changelog', () => {
-    const unlinked = [
-      'README.md',
-      'docs/usage.md',
-      'docs/agents-snippet.md',
-      'CHANGELOG.md',
-    ].filter((file) => !read(file).includes('troubleshooting.md'));
-
-    expect(unlinked).toEqual([]);
-  });
-
-  it('is linked from a troubleshooting section of every preset guide', () => {
-    const guides = [
-      'docs/typescript-strict-preset.md',
-      'docs/python-preset.md',
-      'docs/java-preset.md',
-      'docs/kotlin-preset.md',
-    ];
-    const unlinked = guides.filter((file) => {
-      const section = read(file).split(/^## Troubleshooting$/mu)[1] ?? '';
-      return !section.includes('](troubleshooting.md#');
-    });
-
-    expect(unlinked).toEqual([]);
-  });
-
-  it('is linked by its full URL from every skill', () => {
-    const unlinked = readdirSync(path.join(root, 'skills')).filter(
-      (skill) => !read(`skills/${skill}/SKILL.md`).includes(`(${DOC_URL})`),
-    );
-
-    expect(unlinked).toEqual([]);
   });
 });
 
@@ -191,18 +123,15 @@ describe('the message helpers', () => {
     expect(troubleshootingSentence('no-merge-base')).toBe(`See ${DOC_URL}#no-merge-base`);
   });
 
-  it('links an installed package to the page at its release tag and a checkout to main', () => {
-    expect(docsRef({ version: '1.4.0', checkout: false })).toBe('v1.4.0');
-    expect(docsRef({ version: '1.5.0-rc.2', checkout: false })).toBe('v1.5.0-rc.2');
-    expect(docsRef({ version: '1.4.0', checkout: true })).toBe('main');
-  });
-
   it('adds the link after the sentence of a one-line message', () => {
     expect(withTroubleshooting('Tests fail.', 'tests-fail')).toBe(
       `Tests fail. See ${DOC_URL}#tests-fail`,
     );
     expect(withTroubleshooting('Tests fail', 'tests-fail')).toBe(
       `Tests fail. See ${DOC_URL}#tests-fail`,
+    );
+    expect(withTroubleshooting('The base install failed:', 'tests-fail')).toBe(
+      `The base install failed. See ${DOC_URL}#tests-fail`,
     );
   });
 
@@ -212,9 +141,12 @@ describe('the message helpers', () => {
     );
   });
 
-  it('keeps the link a message already has', () => {
+  it('keeps the message as it is without an anchor or with a link it already has', () => {
     const linked = withTroubleshooting('Tests fail', 'tests-fail');
 
+    expect(withTroubleshooting('Run `npm install` first.', undefined)).toBe(
+      'Run `npm install` first.',
+    );
     expect(withTroubleshooting(linked, 'no-merge-base')).toBe(linked);
     expect(troubleshootingLinkOf(linked)).toBe(`See ${DOC_URL}#tests-fail`);
     expect(troubleshootingLinkOf('Tests fail')).toBeUndefined();
@@ -232,24 +164,56 @@ describe('the message helpers', () => {
 
   it('wraps a message in an error that keeps its cause', () => {
     const cause = new Error('inner');
-    const error = troubleshootingError('Cannot go on', 'no-base-could-be-determined', { cause });
+    const error = troubleshootingError('Cannot go on', 'an-analyzer-crashes', { cause });
 
-    expect(error.message).toBe(`Cannot go on. See ${DOC_URL}#no-base-could-be-determined`);
+    expect(error.message).toBe(`Cannot go on. See ${DOC_URL}#an-analyzer-crashes`);
     expect(error.cause).toBe(cause);
   });
 
-  it('links invalid usage to the arguments entry', () => {
-    expect(usageError('Unknown argument: --x').message).toBe(
-      `Unknown argument: --x. See ${DOC_URL}#invalid-arguments`,
+  it('leaves an error that explains itself without the link of a catch-all', () => {
+    const explained = explainedError('Gradle did not finish within 15 minutes', { cause: 'x' });
+
+    expect(isExplainedError(explained)).toBe(true);
+    expect(isExplainedError(new Error('x'))).toBe(false);
+    expect(explained.cause).toBe('x');
+    expect(failureText(explained, 'the-gradle-build-fails')).toBe(
+      'Gradle did not finish within 15 minutes',
     );
-    expect(withUsageLink('--x requires a value')).toBe(
-      `--x requires a value. See ${DOC_URL}#invalid-arguments`,
+    expect(failureText(new Error('Build failed'), 'the-gradle-build-fails')).toBe(
+      `Build failed. See ${DOC_URL}#the-gradle-build-fails`,
     );
+    expect(failureText('Build failed', undefined)).toBe('Build failed');
   });
 
-  it('tells a failure of the base from a failure of the head', () => {
+  it('links a test failure on the base only, since a head failure names its own fix', () => {
     expect(testsFailAnchor('base')).toBe('tests-fail-on-the-base');
-    expect(testsFailAnchor('head')).toBe('tests-fail');
-    expect(testsFailAnchor(undefined)).toBe('tests-fail');
+    expect(testsFailAnchor('head')).toBeUndefined();
+    expect(testsFailAnchor(undefined)).toBeUndefined();
+    expect(testsFailError('Tests fail', 'base').message).toBe(
+      `Tests fail. See ${DOC_URL}#tests-fail-on-the-base`,
+    );
+    expect(isExplainedError(testsFailError('Tests fail', 'head'))).toBe(true);
+    expect(testsFailError('Tests fail', 'head').message).toBe('Tests fail');
+  });
+
+  it('points at the tool errors entry once when a listed tool error has no link', () => {
+    const linked = withTroubleshooting('Build failed', 'the-gradle-build-fails');
+
+    expect(toolErrorHelpLine([linked, 'Run `npm install` first.'])).toBe(
+      `Help with tool errors: ${DOC_URL}#exit-code-2-and-tool-errors`,
+    );
+    expect(toolErrorHelpLine([linked])).toBeUndefined();
+    expect(toolErrorHelpLine([])).toBeUndefined();
+  });
+
+  it('prints messages without links when package.json names no repository', async () => {
+    const helpers = await helpersWithoutRepository();
+
+    expect(helpers.withTroubleshooting('Tests fail', 'tests-fail')).toBe('Tests fail');
+    expect(helpers.troubleshootingError('Build failed', 'the-gradle-build-fails').message).toBe(
+      'Build failed',
+    );
+    expect(helpers.troubleshootingSentence('tests-fail')).toBeUndefined();
+    expect(helpers.toolErrorHelpLine(['Build failed'])).toBeUndefined();
   });
 });
