@@ -49,7 +49,25 @@ export function suiteNameOf(report) {
   return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
 }
 
-export function collectTestResults({ module, reportDir, since, isArchunit }) {
+function testOutcome({ module, moduleName, failures, testsRan, tolerateFailures }) {
+  if (failures.length === 0) {
+    return { testsRan, failure: undefined };
+  }
+  const failure = { module: moduleName, tests: failures };
+  if (tolerateFailures === true) {
+    return { testsRan, failure };
+  }
+  throw failingTestsError(module.basedir, [failure]);
+}
+
+export function collectTestResults({
+  module,
+  reportDir,
+  since,
+  isArchunit,
+  tolerateFailures,
+  moduleName = '.',
+}) {
   const reports = testReportDirectories(module).flatMap(([, directory]) =>
     freshReports(directory, since),
   );
@@ -64,10 +82,13 @@ export function collectTestResults({ module, reportDir, since, isArchunit }) {
     }
   }
   requireArchunitRun(module, reports, isArchunit);
-  if (failures.length > 0) {
-    throw failingTestsError(module.basedir, failures);
-  }
-  return reports.length > 0;
+  return testOutcome({
+    module,
+    moduleName,
+    failures,
+    testsRan: reports.length > 0,
+    tolerateFailures,
+  });
 }
 
 function requireArchunitRun(module, reports, isArchunit) {

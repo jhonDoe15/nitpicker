@@ -96,6 +96,7 @@ function parseFileSection(section, projectRelativePath) {
     added: /^new file mode/m.test(header),
     ranges: [],
     inserted: [],
+    deletions: [],
   };
   const read = hunks.map((hunk) => recordHunk(file, hunk));
   const added = read.flatMap((hunk) => hunk.added);
@@ -124,6 +125,8 @@ function recordHunk(file, hunkText) {
   const count = hunk[3] === undefined ? 1 : Number(hunk[3]);
   if (count > 0) {
     file.ranges.push([start, start + count - 1]);
+  } else {
+    file.deletions.push(start);
   }
   const removed = body.filter((line) => line.startsWith('-')).map((line) => line.slice(1));
   const added = body.filter((line) => line.startsWith('+')).map((line) => line.slice(1));
