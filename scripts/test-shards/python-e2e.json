@@ -46,6 +46,7 @@
   "languages/python/rules/e2e/security/tls/tls.e2e.test.mjs": 1,
   "languages/python/rules/e2e/smells/accumulator-copy.e2e.test.mjs": 2,
   "languages/python/rules/e2e/smells/io-in-loop.e2e.test.mjs": 2,
+  "languages/python/rules/e2e/smells/lazy-relation-helpers.e2e.test.mjs": 2,
   "languages/python/rules/e2e/smells/lazy-relation-in-loop.e2e.test.mjs": 3,
   "languages/python/rules/e2e/smells/remote-scopes.e2e.test.mjs": 2,
   "languages/python/rules/e2e/smells/smells.e2e.test.mjs": 2,
