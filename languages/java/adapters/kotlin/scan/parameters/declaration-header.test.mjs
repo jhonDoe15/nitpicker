@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { withFrameworkAllowances } from './framework-allowances.mjs';
-import { scanKotlinSource } from './kotlin-source.mjs';
+import { withFrameworkAllowances } from '../framework-allowances.mjs';
+import { scanKotlinSource } from '../kotlin-source.mjs';
 import { hasCallbackAnnotation } from './declaration-header.mjs';
 
 function skipped(source, line) {
