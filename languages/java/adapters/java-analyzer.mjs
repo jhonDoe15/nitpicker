@@ -66,21 +66,17 @@ function javaSources(directory, entries) {
     .map((entry) => `${directory}/${entry.replaceAll(path.sep, '/')}`);
 }
 
-function sourcesUnder(directory) {
-  return javaSources(
-    directory,
-    readdirSync(path.join(packageRoot, directory), { recursive: true }),
-  );
-}
-
 function configurationContents() {
+  const kotlinPsi = readdirSync(path.join(packageRoot, KOTLIN_PSI_DIRECTORY), { recursive: true });
+  const archunit = readdirSync(path.join(packageRoot, ARCHUNIT_DIRECTORY), { recursive: true });
+  const effects = readdirSync(path.join(packageRoot, EFFECTS_DIRECTORY), { recursive: true });
   return importClosure(
     [
       ...ENTRY_FILES,
       ...RESOURCE_FILES,
-      ...sourcesUnder(KOTLIN_PSI_DIRECTORY),
-      ...sourcesUnder(ARCHUNIT_DIRECTORY),
-      ...sourcesUnder(EFFECTS_DIRECTORY),
+      ...javaSources(KOTLIN_PSI_DIRECTORY, kotlinPsi),
+      ...javaSources(ARCHUNIT_DIRECTORY, archunit),
+      ...javaSources(EFFECTS_DIRECTORY, effects),
     ],
     packageRoot,
   );

@@ -3,16 +3,16 @@ import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:f
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { loadConfig } from '../../../../core/configuration/config.mjs';
-import { INIT_SCRIPT } from '../../builds/java-build.mjs';
-import { collectJavaFindings } from '../java-diff.mjs';
-import { readEffectsFindings } from '../effects/effects-findings.mjs';
-import { sourceFileOf, sourceLocator } from '../reporting/kotlin-reports.mjs';
+import { loadConfig } from '../../../../../core/configuration/config.mjs';
+import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
+import { collectJavaFindings } from '../../java-diff.mjs';
+import { readEffectsFindings } from '../../effects/effects-findings.mjs';
+import { sourceFileOf, sourceLocator } from '../../reporting/kotlin-reports.mjs';
 import {
   effectsSummary,
   KOTLIN_EFFECTS,
   KOTLIN_EFFECTS_FIXTURE,
-} from '../effects/test-support/effects-projects.mjs';
+} from '../../effects/test-support/effects-projects.mjs';
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -112,11 +112,13 @@ describe.skipIf(!enabled)('the effects engine in the Kotlin preset', () => {
     }
   });
 
-  it('reads the old kotlin-source key as an effects exception and lifts the loop findings it names', () => {
+  it('reads the old kotlin-source key as an effects exception and leaves the Spring Data line to PMD', () => {
     expect(config.exceptions.map(({ rule }) => rule)).toEqual(['effects/IoCallInLoop']);
     expect(
-      findings.filter((finding) => finding.path === LOOPS && LOOP_RULES.test(finding.rule)),
-    ).toEqual([]);
+      findings
+        .filter((finding) => finding.path === LOOPS && LOOP_RULES.test(finding.rule))
+        .map(({ tool, rule, location }) => `${tool}/${rule} ${String(location.line)}`),
+    ).toEqual(['pmd/SpringDataNoSaveInLoop 14']);
     expect(
       findings.filter(
         (finding) => finding.tool === 'kotlin-source' && LOOP_RULES.test(finding.rule),
