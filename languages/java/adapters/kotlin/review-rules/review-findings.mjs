@@ -1,6 +1,7 @@
 import { hasAwaitility } from '../../../messages/wait-advice.mjs';
 import { enumPredicateFindings } from './main/enum-predicates.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
+import { loadEffectFindings } from './main/load-effects.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
 import { unusedOptionFindings } from './main/unused-options.mjs';
 import { buildViews, javaMentions } from './build-view.mjs';
@@ -62,6 +63,7 @@ export function readKotlinReviewFindings(context) {
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
     ...singularPluralFindings(own, { finding }),
+    ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...unusedOptionFindings(own, {
       finding,
       build,
