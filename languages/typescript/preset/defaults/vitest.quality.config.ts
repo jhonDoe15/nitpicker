@@ -1,9 +1,21 @@
 import { existsSync, globSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import { loadConfigFromFile, type Plugin } from 'vite';
+import { pathToFileURL } from 'node:url';
+import type * as Vite from 'vite';
 import { configDefaults, defineConfig, type TestProjectConfiguration } from 'vitest/config';
 
-const policyFile = process.env.NITPICKER_POLICY;
+function isVite(module: unknown): module is typeof Vite {
+  return typeof module === 'object' && module !== null && 'loadConfigFromFile' in module;
+}
+async function loadConfigFromFile(file: string) {
+  const fromVitest = createRequire(createRequire(import.meta.url).resolve('vitest/package.json'));
+  const vite: unknown = await import(pathToFileURL(fromVitest.resolve('vite')).href);
+  if (!isVite(vite)) {
+    throw new Error('nitpicker found no Vite next to the Vitest this project installs.');
+  }
+  return vite.loadConfigFromFile({ command: 'serve', mode: 'test' }, file);
+}
 type NitpickerPolicy = {
   layout?: { sourceRoots?: string[]; testRoots?: string[]; colocatedTests?: boolean };
   exclude?: string[];
@@ -12,13 +24,10 @@ function isPolicy(value: unknown): value is NitpickerPolicy {
   return typeof value === 'object' && value !== null;
 }
 function readPolicy(file: string | undefined): NitpickerPolicy {
-  if (!file) {
-    return {};
-  }
-  const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'));
+  const parsed: unknown = file ? JSON.parse(readFileSync(file, 'utf8')) : {};
   return isPolicy(parsed) ? parsed : {};
 }
-const policy = readPolicy(policyFile);
+const policy = readPolicy(process.env.NITPICKER_POLICY);
 const sourceRoots: string[] = policy.layout?.sourceRoots ?? ['src'];
 const testRoots: string[] = policy.layout?.testRoots ?? ['test', 'tests', '__tests__'];
 const exclude: string[] = policy.exclude ?? [];
@@ -34,18 +43,9 @@ const PROJECT_CONFIG_NAMES = ['vitest', 'vite'].flatMap((name) =>
   ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs'].map((extension) => `${name}.config.${extension}`),
 );
 
-function projectConfigInWorkingDirectory() {
-  return PROJECT_CONFIG_NAMES.find((name) => existsSync(name));
-}
-
-const perProjectPins = {
-  retry: 0,
-  allowOnly: false,
-  restoreMocks: true,
-};
+const perProjectPins = { retry: 0, allowOnly: false, restoreMocks: true };
 
 const MINIMUM_TIMEOUT = 10_000;
-
 type Timeouts = { testTimeout?: number; hookTimeout?: number };
 
 function timeoutPins(test: Timeouts | undefined) {
@@ -66,7 +66,7 @@ const globalPins = {
 const coverageIgnoreHint =
   /\/\*\s*(?:v8|c8|istanbul)\s+ignore\b[\s\S]*?\*\/|\/\/\s*(?:v8|c8|istanbul)\s+ignore\b[^\n]*/gu;
 
-const stripCoverageIgnoreHints: Plugin = {
+const stripCoverageIgnoreHints: Vite.Plugin = {
   name: 'nitpicker-strip-coverage-ignore-hints',
   enforce: 'pre',
   transform(code, id) {
@@ -107,7 +107,7 @@ async function projectAt(projectPath: string): Promise<InlineProject> {
   if (configFile === undefined) {
     return pinnedInline({ root });
   }
-  const loaded = await loadConfigFromFile({ command: 'serve', mode: 'test' }, configFile);
+  const loaded = await loadConfigFromFile(configFile);
   return pinnedInline({ extends: configFile, root }, loaded?.config.test);
 }
 
@@ -204,7 +204,7 @@ const configWithoutProjectConfig = {
 };
 
 async function layeredOnProjectConfig(projectConfigFile: string) {
-  const loaded = await loadConfigFromFile({ command: 'serve', mode: 'test' }, projectConfigFile);
+  const loaded = await loadConfigFromFile(projectConfigFile);
   const project = loaded?.config ?? {};
   return {
     ...project,
@@ -272,7 +272,7 @@ function timeoutSettings<T extends object>(test: T) {
 }
 
 export default defineConfig(async () => {
-  const projectConfigFile = projectConfigInWorkingDirectory();
+  const projectConfigFile = PROJECT_CONFIG_NAMES.find((name) => existsSync(name));
   const config =
     projectConfigFile === undefined
       ? configWithoutProjectConfig
