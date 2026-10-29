@@ -1764,6 +1764,7 @@
                             "kotlin-source/TlsVerificationOff",
                             "kotlin-source/HttpWithoutTimeout",
                             "kotlin-source/UnsafeDeserialization",
+                            "kotlin-source/RepeatedStringLiteral",
                             "kotlinc/deprecation",
                             "kotlinc/unchecked",
                             "kotlinc/cast",

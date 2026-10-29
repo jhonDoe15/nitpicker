@@ -2,6 +2,7 @@ import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
 import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import { definedField } from '../../../../shared/messages/messages.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
+import { UNUSED_PARAMETER_HINT } from '../../preset/eslint-config/policy/unused-parameters.mjs';
 import { immutableTypesParts } from './immutable-types-hint.mjs';
 import { withStatedForm } from './stated-form.mjs';
 import { restrictedMatchers } from '../../preset/eslint-config/test-honesty/restricted-matchers.mjs';
@@ -61,6 +62,9 @@ const DISABLED_TEST_TAIL =
 
 const DISABLED_TEST_HINT =
   '. Make it pass, or delete it together with the code it tests: do not skip it or mark it `todo`.';
+
+const UNUSED_PARAMETER_TAIL =
+  /\s*(?:Allowed unused args must match [^\s]+|Unused parameters should start with a '_')\.$/u;
 
 const BACKTICKED_MATCHER = /`([\w.]+)`/u;
 
@@ -197,6 +201,12 @@ function boundaryTypesMessage({ text }) {
     : hinted(text.replace(/\.?$/u, '.'), ARGUMENT_TYPE_HINT);
 }
 
+function unusedVariableMessage({ text }) {
+  return UNUSED_PARAMETER_TAIL.test(text)
+    ? hinted(text.replace(UNUSED_PARAMETER_TAIL, ''), UNUSED_PARAMETER_HINT)
+    : hinted(text, UNUSED_VARIABLE_HINT);
+}
+
 function appendHint(hint) {
   return ({ text }) => hinted(text, hint);
 }
@@ -229,12 +239,12 @@ const MESSAGE_REWRITERS = new Map([
   ['@typescript-eslint/explicit-module-boundary-types', boundaryTypesMessage],
   ['no-eval', () => directive(EVAL_MESSAGE)],
   ['no-param-reassign', appendHint(PARAM_REASSIGN_HINT)],
+  ['@typescript-eslint/no-unused-vars', unusedVariableMessage],
   ['curly', appendHint(CURLY_HINT)],
   ['no-duplicate-imports', appendHint(DUPLICATE_IMPORT_HINT)],
   ['regexp/no-super-linear-backtracking', appendHint(REGEXP_HINT)],
   ['@typescript-eslint/no-deprecated', appendHint(DEPRECATED_HINT)],
-  ['@typescript-eslint/no-unused-vars', appendHint(UNUSED_VARIABLE_HINT)],
-  ['no-unused-vars', appendHint(UNUSED_VARIABLE_HINT)],
+  ['no-unused-vars', unusedVariableMessage],
 ]);
 
 const NO_ROUTE_RULES = new Set([

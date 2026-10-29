@@ -35,6 +35,6 @@ const gate = spawnSync('nitpicker-gate', { stdio: 'inherit' });
 
 writeFileSync(
   process.env.NITPICKER_EVAL_RESULT_FILE,
-  JSON.stringify({ costUsd: 0, inputTokens: 0, outputTokens: 0, turns: 0 }),
+  JSON.stringify({ costUsd: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0, turns: 0 }),
 );
 process.exit(gate.status === 0 ? 0 : 1);
