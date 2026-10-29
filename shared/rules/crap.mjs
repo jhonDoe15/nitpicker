@@ -9,7 +9,8 @@ import {
 import { positiveInteger } from './finding-helpers.mjs';
 import { exceptionRoute, normalizeFunctionName } from '../exceptions/rule-names.mjs';
 
-// Neutral input: one entry per function, `{ path, name, identity, ratchetKey?, line?, crap? }`.
+// Neutral input: one entry per function,
+// `{ path, name, identity, ratchetKey?, declarationKey?, anchor?, line?, crap? }`.
 // `crap` is the function's CRAP score, or anything that is not a finite number when its coverage is
 // unknown. The adapter computes the score and the identity (both are language-specific; the
 // identity includes the function's source hash); this rule decides:
@@ -18,6 +19,8 @@ import { exceptionRoute, normalizeFunctionName } from '../exceptions/rule-names.
 // `ratchetKey` names the function without its source hash. With it, a function that was already
 // over the limit on the base and was edited fails only when its score rose (see the ratchet in
 // core/diff/comparison/compare.mjs); without it, every edit of an over-limit function is a new finding.
+// `declarationKey` names it by its signature, so an overload added above it does not take its place;
+// `anchor` is the digest of its text without its name, so a renamed function keeps its findings.
 
 export function crapFindings(
   functions,
@@ -51,6 +54,7 @@ export function crapFindings(
       } ${route}`,
       classification: 'enforceable',
       symbol: fn.name,
+      ...(fn.anchor === undefined ? {} : { anchor: { key: fn.anchor } }),
       ...locationOf(fn),
     };
     findings.push(
@@ -78,6 +82,7 @@ function withRatchet({ finding, fn, limit, route, shown }) {
     ...finding,
     ratchet: {
       key: fn.ratchetKey,
+      ...(fn.declarationKey === undefined ? {} : { declarationKey: fn.declarationKey }),
       value: crap,
       worseMessage: `${renderMessage(GREW_MESSAGES.crap, {
         name: shown,

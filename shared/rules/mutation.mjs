@@ -3,7 +3,9 @@ import { exceptionHint } from './exceptions.mjs';
 import { positiveInteger } from './finding-helpers.mjs';
 
 // Neutral input: one entry per non-killed mutant,
-// `{ path, identity, status, label, line?, column?, symbol?, original?, replacement? }`.
+// `{ path, identity, status, label, line?, column?, symbol?, original?, replacement?, anchor? }`.
+// `anchor` names the mutant without its function (the mutation and the text of its line): on an
+// unchanged line it keeps the finding when the function is renamed or its signature changes.
 // `status` is the Stryker-style status name (`Survived`, `NoCoverage`, `Timeout`, ...); `label` is
 // the adapter's description of the mutation and is appended to the status in the message (Stryker
 // gives the mutator name, PIT the mutator and its description). `Survived` and `NoCoverage` are
@@ -28,6 +30,9 @@ export function mutantFindings(mutants, { tool, wayOut = EQUIVALENT_MUTANT_WAY_O
         ? 'enforceable'
         : 'descriptive',
     ...(mutant.symbol === undefined ? {} : { symbol: mutant.symbol }),
+    ...(mutant.anchor === undefined
+      ? {}
+      : { anchor: { key: `mutant:${mutant.anchor}`, requireUnchangedLine: true } }),
     ...mutantLocation(mutant),
   }));
 }

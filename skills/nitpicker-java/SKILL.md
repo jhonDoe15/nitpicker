@@ -174,7 +174,7 @@ Before you change code other modules use, or fix a bug, read
 - A line you touch must have its branches covered, even if it was uncovered before.
 - Existing PMD, SpotBugs, Error Prone and Checkstyle findings stay baselined while their message is
   unchanged; adding another of the same kind in the file is new. Don't rename or move a file that
-  has findings: Checkstyle and CRAP findings don't follow renames and would count as new.
+  has Checkstyle findings: they don't follow renames and would count as new.
 
 ## Repository files
 

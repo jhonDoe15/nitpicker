@@ -3,7 +3,7 @@ import path from 'node:path';
 import { ingestCrapFunctions } from '../../ingest/crap.mjs';
 import { ownRange } from '../../ingest/units/unit-coverage.mjs';
 import { MESSAGES, RULE_IDS } from '../../../../shared/policy.mjs';
-import { hash, repeatsInSource } from '../../../../shared/rules/finding-helpers.mjs';
+import { repeatsInSource } from '../../../../shared/rules/finding-helpers.mjs';
 import { methodText, structureFindings } from '../../../../shared/ingest/structure-report.mjs';
 
 const METRICS_REPORT = 'kotlin-metrics.json';
@@ -85,9 +85,9 @@ export function readKotlinCrapFindings(metrics, { projectRoot, jacoco, crapLimit
     limit: crapLimit,
     unknownMessage: MESSAGES.crapCoverageUnknownPlain,
     selectMethods: selectKotlinMethods,
-    sourceHash: (entry) =>
+    sourceText: (entry) =>
       existsSync(path.join(projectRoot, entry.file))
-        ? hash(methodText(sources, projectRoot, entry))
+        ? methodText(sources, projectRoot, entry)
         : undefined,
   }).findings;
 }

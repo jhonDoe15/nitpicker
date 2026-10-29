@@ -64,6 +64,9 @@ function parseOptionalFields(value, classification, context) {
   if (value.tokens !== undefined) {
     fields.tokens = parseTokens(value.tokens, `${context}.tokens`);
   }
+  if (value.anchor !== undefined) {
+    fields.anchor = parseAnchor(value.anchor, `${context}.anchor`);
+  }
 
   return fields;
 }
@@ -97,7 +100,21 @@ function parseMetric(value, context) {
   };
 }
 
-const RATCHET_TEXT_FIELDS = ['worseMessage', 'growthAdvice', 'heldMessage'];
+function parseAnchor(value, context) {
+  if (!isRecord(value)) {
+    throw new TypeError(`${context} must be an object`);
+  }
+  const anchor = { key: requiredString(value.key, `${context}.key`) };
+  if (value.requireUnchangedLine !== undefined) {
+    if (typeof value.requireUnchangedLine !== 'boolean') {
+      throw new TypeError(`${context}.requireUnchangedLine must be a boolean`);
+    }
+    anchor.requireUnchangedLine = value.requireUnchangedLine;
+  }
+  return anchor;
+}
+
+const RATCHET_TEXT_FIELDS = ['declarationKey', 'worseMessage', 'growthAdvice', 'heldMessage'];
 const RATCHET_FLAGS = ['existingCodeOnly', 'pathIsFolder'];
 
 function parseRatchet(value, context) {

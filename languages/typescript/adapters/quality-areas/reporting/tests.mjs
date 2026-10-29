@@ -137,6 +137,12 @@ function addCrapFunction(
           name: entry.function,
           identity: violationIdentity,
           ratchetKey: `function:${entry.function}:occurrence:${String(violationOccurrence)}:crap`,
+          ...(entry.anchorHash === undefined
+            ? {}
+            : {
+                anchor: `function:crap:text:${entry.anchorHash}`,
+                declarationKey: `function:${entry.function}:declaration:${entry.declarationHash}:crap`,
+              }),
           line: entry.lines?.start,
           endLine: entry.lines?.end,
           crap: entry.crap,
@@ -209,6 +215,7 @@ function neutralMutant(mutant, { filePath, status, occurrences }) {
   return {
     path: filePath,
     identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
+    ...(mutant.sourceHash === undefined ? {} : { anchor: semanticIdentity }),
     status,
     ...(status === 'Ignored' ? { hiddenByComment: true } : {}),
     label: mutant.mutatorName ?? 'mutant',
