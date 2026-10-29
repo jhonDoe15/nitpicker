@@ -26,22 +26,13 @@ export function isStableRule(rule) {
   );
 }
 
-export function listRuffRules(context) {
+function installedRules(context) {
   const result = execute(context, ['ruff', 'rule', '--all', '--output-format', 'json']);
   const parsed = result.error === undefined && result.status === 0 ? parseRules(result.stdout) : {};
   if (parsed.kind !== 'rules' || !Array.isArray(parsed.rules)) {
     return undefined;
   }
-  return parsed.rules
-    .filter((rule) => typeof rule.code === 'string' && rule.status?.Removed === undefined)
-    .map((rule) => ({ code: rule.code, preview: !isStableRule(rule) }));
-}
-
-function installedRules(context) {
-  const rules = listRuffRules(context);
-  return rules === undefined
-    ? undefined
-    : new Set(rules.filter((rule) => !rule.preview).map((rule) => rule.code));
+  return new Set(parsed.rules.filter(isStableRule).map((rule) => rule.code));
 }
 
 function isKnown(known, code) {

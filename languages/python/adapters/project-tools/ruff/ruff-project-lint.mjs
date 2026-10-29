@@ -30,6 +30,7 @@ const GLOBAL_KEYS = new Set([
 ]);
 const CARRIED_GLOBALS = ['builtins', 'indent-width', 'line-length', 'preview', 'target-version'];
 const PATH_GLOBALS = ['src', 'namespace-packages'];
+const LAYOUT_GLOBALS = new Set([...PATH_GLOBALS, 'indent-width']);
 const DROPPED_LINT_KEYS = new Set([
   'select',
   'extend-select',
@@ -70,33 +71,6 @@ function layerOf({ file, table }, { policyRoot, projectRoot }) {
   const directory = path.resolve(projectRoot, offset).split(path.sep).join('/');
   const view = lintView(table);
   return { directory, table, view };
-}
-
-function selectionOf({ view }) {
-  return {
-    select: Array.isArray(view.select) ? listOf(view.select) : undefined,
-    extendSelect: listOf(view['extend-select']),
-    ignore: [...listOf(view.ignore), ...listOf(view['extend-ignore'])],
-  };
-}
-
-function ignoresOf(table, directory) {
-  return isTable(table)
-    ? Object.entries(table).map(([pattern, selectors]) => ({
-        pattern: patternIn(directory, pattern),
-        selectors: listOf(selectors),
-      }))
-    : [];
-}
-
-function perFileIgnores(layers) {
-  const owner = layers.findLast(({ view }) => view['per-file-ignores'] !== undefined);
-  return [
-    ...(owner === undefined ? [] : ignoresOf(owner.view['per-file-ignores'], owner.directory)),
-    ...layers.flatMap(({ view, directory }) =>
-      ignoresOf(view['extend-per-file-ignores'], directory),
-    ),
-  ];
 }
 
 function mergedValue(value, current, joinLists) {
@@ -168,19 +142,15 @@ function patternsOf(layers, read) {
   );
 }
 
+export function layoutGlobals(globals) {
+  return Object.fromEntries(Object.entries(globals).filter(([key]) => LAYOUT_GLOBALS.has(key)));
+}
+
 export function projectLint(chain, roots) {
   const layers = chain.toReversed().map((link) => layerOf(link, roots));
-  const options = optionsOf(layers);
-  const globals = globalsOf(layers);
   return {
-    selection: layers.map(selectionOf),
-    preview: {
-      enabled: (options.preview ?? globals.preview) === true,
-      explicit: options['explicit-preview-rules'] === true,
-    },
-    options,
-    globals,
-    perFileIgnores: perFileIgnores(layers),
+    options: optionsOf(layers),
+    globals: globalsOf(layers),
     exclude: [
       ...patternsOf(layers, ({ table }) => table.exclude),
       ...patternsOf(layers, ({ table }) => table['extend-exclude']),
