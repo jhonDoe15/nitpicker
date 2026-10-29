@@ -9,6 +9,9 @@ import { SUMMARY_FILE } from './combined-summary.mjs';
 const SARIF_FILES = ['report.sarif', 'report-baseline.sarif'];
 const JUNIT_FILE = 'report.junit.xml';
 const TESTSUITE = /<testsuite\b[\s\S]*?<\/testsuite>/u;
+const FINDING_CASE = /(classname="quality\.diff\.new-findings" name="[^" ]+ )/gu;
+const REPOSITORY_CATEGORY = 'nitpicker-repository/';
+const REPOSITORY_SUITE = '(repository policy)';
 
 function insideOutput(outputRoot, folder) {
   const full = path.resolve(outputRoot, folder);
@@ -26,8 +29,8 @@ function readInside(outputRoot, ...segments) {
   return existsSync(full) ? readFileSync(full, 'utf8') : undefined;
 }
 
-function relocatedRun(run, id) {
-  return { ...run, automationDetails: { id: `nitpicker/${id}/` } };
+function relocatedRun(run, category) {
+  return { ...run, automationDetails: { id: category } };
 }
 
 function repositoryReport(repository) {
@@ -36,7 +39,7 @@ function repositoryReport(repository) {
     newFindings: repository?.findings ?? [],
     resolvedFindings: [],
     unchangedFindings: [],
-    toolErrors: [],
+    toolErrors: repository?.toolErrors ?? [],
   };
 }
 
@@ -45,7 +48,7 @@ function projectRuns(outputRoot, projects, file) {
     const text = readInside(outputRoot, reportFolder(project.path), file);
     return text === undefined
       ? []
-      : JSON.parse(text).runs.map((run) => relocatedRun(run, project.path));
+      : JSON.parse(text).runs.map((run) => relocatedRun(run, `nitpicker/${project.path}/`));
   });
 }
 
@@ -60,29 +63,54 @@ function combinedSarif({ outputRoot, plan, repository }, file) {
     return undefined;
   }
   const log = JSON.parse(renderSarifReport(repositoryReport(undefined), options));
-  const repositoryRuns = policy.map((run) => relocatedRun(run, 'repository'));
+  const repositoryRuns = policy.map((run) => relocatedRun(run, REPOSITORY_CATEGORY));
   return `${JSON.stringify({ ...log, runs: [...runs, ...repositoryRuns] }, null, 2)}\n`;
+}
+
+function escapedXml(value) {
+  return value
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&apos;');
 }
 
 function renamedSuite(text, label) {
   return TESTSUITE.exec(text)?.[0].replace(
     / name="([^"]*)"/u,
-    (_match, name) => ` name="${name} ${label}"`,
+    (_match, name) => ` name="${name} ${escapedXml(label)}"`,
   );
 }
 
-function combinedJunit({ outputRoot, plan, repository }) {
-  const suites = plan.projects.flatMap((project) => {
+function fromRepositoryRoot(suite, repoPath) {
+  return repoPath === '.'
+    ? suite
+    : suite.replaceAll(FINDING_CASE, (start) => `${start}${escapedXml(repoPath)}/`);
+}
+
+function projectSuites(outputRoot, projects) {
+  return projects.flatMap((project) => {
     const text = readInside(outputRoot, reportFolder(project.path), JUNIT_FILE);
-    return text === undefined ? [] : [renamedSuite(text, project.path)];
+    const suite = text === undefined ? undefined : renamedSuite(text, project.path);
+    return suite === undefined ? [] : [fromRepositoryRoot(suite, project.repoPath)];
   });
-  if (suites.length === 0) {
-    return undefined;
-  }
+}
+
+function combinedJunit({ outputRoot, plan, repository }) {
+  const suites = projectSuites(outputRoot, plan.projects);
   const policy =
     repository === undefined
       ? []
-      : [renamedSuite(renderJunitReport(repositoryReport(repository)), 'repository')];
+      : [
+          fromRepositoryRoot(
+            renamedSuite(renderJunitReport(repositoryReport(repository)), REPOSITORY_SUITE),
+            plan.prefix,
+          ),
+        ];
+  if (suites.length === 0 && policy.length === 0) {
+    return undefined;
+  }
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
     '<testsuites>',

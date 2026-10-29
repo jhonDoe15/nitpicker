@@ -32,6 +32,13 @@ describe('exitCodeOf', () => {
     expect(exitCodeOf(summaryOf(['passed'], { accepted: true }))).toBe(0);
   });
 
+  it('reports a repository policy that could not be checked as incomplete', () => {
+    const incomplete = { accepted: true, toolErrors: [{ tool: 'nitpicker-projects' }] };
+    expect(exitCodeOf(summaryOf(['passed'], incomplete))).toBe(2);
+    expect(exitCodeOf(summaryOf(['passed'], incomplete), { deferExit: true })).toBe(2);
+    expect(exitCodeOf(summaryOf(['failed'], incomplete))).toBe(1);
+  });
+
   it('defers findings but still reports a run that did not complete', () => {
     expect(exitCodeOf(summaryOf(['failed'], { accepted: false }), { deferExit: true })).toBe(0);
     expect(exitCodeOf(summaryOf(['failed', 'error']), { deferExit: true })).toBe(2);

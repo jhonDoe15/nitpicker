@@ -51,7 +51,10 @@ describe('oneProjectScope', () => {
       [],
       'py/src',
     );
-    expect(inside.scope).toEqual({ currentProjectRoot: `${inside.root}/py` });
+    expect(inside.scope).toEqual({
+      currentProjectRoot: `${inside.root}/py`,
+      configOverlay: { inherits: '..' },
+    });
   });
 
   it('lets help through', () => {

@@ -3,7 +3,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../../../../core/diff/git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../../../core/diff/git/test-support/fixture-files.mjs';
-import { detectPackageManager, managerRoot } from './detect.mjs';
+import { detectPackageManager, installedDependencies, managerRoot } from './detect.mjs';
+import { missingDependenciesMessage } from './install.mjs';
 
 const { temporaryRoot } = useGitFixtures();
 
@@ -171,5 +172,30 @@ describe('workspace root lookup', () => {
     writeFiles(repository, { '.git/HEAD': 'ref: refs/heads/main\n' });
 
     expect(managerRoot(member)).toBe(member);
+  });
+
+  it('names the workspace root of a workspace that has no lockfile yet', () => {
+    const { repository, member } = workspaceWith({
+      'package.json': JSON.stringify({ name: 'root', workspaces: ['packages/*'] }),
+    });
+    const packageManager = detectPackageManager(member);
+
+    expect(managerRoot(member)).toBe(repository);
+    expect(missingDependenciesMessage(packageManager, path.join(repository, 'node_modules'))).toBe(
+      `Dependencies are not installed: ${repository}/node_modules is missing. ` +
+        `Run \`npm install\` in ${repository} first.`,
+    );
+  });
+
+  it('finds dependencies hoisted to the workspace root, and a member folder of its own first', () => {
+    const { repository, member } = workspaceWith({
+      'package.json': manifest(),
+      'package-lock.json': '{}',
+      'node_modules/eslint/package.json': '{}',
+    });
+
+    expect(installedDependencies(member)).toBe(path.join(repository, 'node_modules'));
+    writeFiles(member, { 'node_modules/eslint/package.json': '{}' });
+    expect(installedDependencies(member)).toBe(path.join(member, 'node_modules'));
   });
 });

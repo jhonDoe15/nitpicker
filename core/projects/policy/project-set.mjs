@@ -34,7 +34,13 @@ function splitLoosening(basePlan, files) {
   ];
 }
 
-export function projectSetLoosenings({ basePlan, headPlan, root, headFiles }) {
+export function projectSetLoosenings({
+  basePlan,
+  headPlan,
+  root,
+  headFiles,
+  reappeared = new Set(),
+}) {
   if (basePlan === undefined) {
     return [];
   }
@@ -45,7 +51,10 @@ export function projectSetLoosenings({ basePlan, headPlan, root, headFiles }) {
   const current = new Set(headPlan.projects.map(({ path: folder }) => folder));
   return basePlan.projects
     .filter(({ path: folder }) => !current.has(folder))
-    .filter(({ path: folder }) => headFiles.some((file) => isInside(file, folder)))
+    .filter(
+      ({ path: folder }) =>
+        reappeared.has(folder) || headFiles.some((file) => isInside(file, folder)),
+    )
     .map(({ path: folder }) => ({
       text:
         `project ${folder} is no longer one of the projects of the monorepo, ` +
@@ -53,6 +62,15 @@ export function projectSetLoosenings({ basePlan, headPlan, root, headFiles }) {
       key: `projects: removed ${folder}`,
       files,
     }));
+}
+
+export function projectsToolError(error) {
+  const message = error instanceof Error ? error.message : String(error);
+  return {
+    tool: 'nitpicker-projects',
+    snapshot: 'base',
+    message: `the projects of the base could not be read, so a change to them is not checked: ${message}`,
+  };
 }
 
 export function asProjectLoosenings(loosenings, root) {
@@ -67,10 +85,7 @@ export function asProjectLoosenings(loosenings, root) {
   }));
 }
 
-export function repositoryPolicy({ loosenings, root, acceptedDigest }) {
-  if (loosenings.length === 0) {
-    return undefined;
-  }
+function checkedPolicy({ loosenings, root, acceptedDigest }) {
   const files = [...new Set(loosenings.flatMap((entry) => entry.files))].toSorted();
   const digest = policyDigest({
     loosenings: loosenings.map(({ key }) => key),
@@ -84,4 +99,15 @@ export function repositoryPolicy({ loosenings, root, acceptedDigest }) {
     accepted: findings.length === 0,
     findings,
   };
+}
+
+export function repositoryPolicy({ loosenings, root, acceptedDigest, toolErrors = [] }) {
+  if (loosenings.length === 0 && toolErrors.length === 0) {
+    return undefined;
+  }
+  const checked =
+    loosenings.length === 0
+      ? { policyLoosenings: [], accepted: true, findings: [] }
+      : checkedPolicy({ loosenings, root, acceptedDigest });
+  return toolErrors.length === 0 ? checked : { ...checked, toolErrors };
 }

@@ -16,7 +16,7 @@ function rootClaims(projects, file, rootConfigFiles) {
     : [];
 }
 
-function claimsOn(projects, file, rootConfigFiles) {
+function claimsOn({ projects, prefix, rootConfigFiles }, file) {
   const owner = ownerOf(projects, file);
   const shared = projects
     .filter(({ sharedFiles }) => sharedFiles.includes(file))
@@ -24,7 +24,7 @@ function claimsOn(projects, file, rootConfigFiles) {
   const toolchain =
     owner === undefined
       ? projects
-          .filter(({ preset }) => isToolchainFileFor(preset, file))
+          .filter(({ preset }) => isToolchainFileFor(preset, file, prefix))
           .map(({ path: project }) => ({ project, reason: `${file} changed` }))
       : [];
   const own = owner === undefined ? [] : [{ project: owner.path, own: true }];
@@ -39,7 +39,7 @@ function touchedBy({ projects, changed, prefix, rootConfigFiles }) {
   const touched = new Map();
   const outside = [];
   for (const file of changed) {
-    const claims = claimsOn(projects, file, rootConfigFiles);
+    const claims = claimsOn({ projects, prefix, rootConfigFiles }, file);
     if (claims.length === 0 && isInside(file, prefix)) {
       outside.push(file);
     }

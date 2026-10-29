@@ -16,15 +16,15 @@ function declaredEntries(root) {
   return projects === undefined ? undefined : validateProjects(projects, SUPPORTED_PRESETS);
 }
 
-function detectionConfig(root) {
+function detectionConfig(root, repositoryRoot) {
   try {
-    return { config: readLayeredConfig(root) };
+    return { config: readLayeredConfig(root, { repositoryRoot }) };
   } catch (error) {
     return { config: {}, error };
   }
 }
 
-function entriesOf({ root, files }) {
+function entriesOf({ root, files, repositoryRoot }) {
   const declared = declaredEntries(root);
   if (declared !== undefined) {
     return declared.length === 0
@@ -34,13 +34,13 @@ function entriesOf({ root, files }) {
           entries: resolveDeclaredProjects({ root, entries: declared, files }),
         };
   }
-  const detected = detectProjects({ root, rootConfig: detectionConfig(root).config, files });
+  const rootConfig = detectionConfig(root, repositoryRoot).config;
+  const detected = detectProjects({ root, rootConfig, files });
   return detected.multiple ? { source: 'detected', entries: detected.entries } : {};
 }
 
-function monorepoPlan({ root, files, found }) {
-  const rootConfig = readLayeredConfig(root);
-  const repositoryRoot = repositoryRootOf(root);
+function monorepoPlan({ root, files, found, repositoryRoot = repositoryRootOf(root) }) {
+  const rootConfig = readLayeredConfig(root, { repositoryRoot });
   const prefix = path.relative(repositoryRoot, root).split(path.sep).join('/') || '.';
   rejectReportFolderClash(found.entries);
   const allPaths = found.entries.map((entry) => entry.path);
@@ -57,16 +57,15 @@ function monorepoPlan({ root, files, found }) {
   };
 }
 
-export function inspectRepository({ root }) {
-  const files = listRepositoryFiles(root);
-  const found = entriesOf({ root, files });
+export function inspectRepository({ root, files = listRepositoryFiles(root), repositoryRoot }) {
+  const found = entriesOf({ root, files, repositoryRoot });
   if (found.entries === undefined) {
     return {
       files,
       undeclared: found.optedOut === true ? [] : undeclaredProjects({ root, files, projects: [] }),
     };
   }
-  return { files, plan: monorepoPlan({ root, files, found }) };
+  return { files, plan: monorepoPlan({ root, files, found, repositoryRoot }) };
 }
 
 export function planMonorepo({ root }) {

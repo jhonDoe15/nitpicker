@@ -78,9 +78,15 @@ function repositoryLines(repository) {
   }
   const mark = repository.accepted ? '✓' : '✖';
   const state = repository.accepted ? 'accepted' : 'not accepted';
-  return repository.policyLoosenings.map(
-    (text) => `  ${mark} repository policy (${state}, digest ${repository.policyDigest}): ${text}`,
-  );
+  return [
+    ...repository.policyLoosenings.map(
+      (text) =>
+        `  ${mark} repository policy (${state}, digest ${repository.policyDigest}): ${text}`,
+    ),
+    ...(repository.toolErrors ?? []).map(
+      ({ message }) => `  ! repository policy, the run is incomplete: ${message}`,
+    ),
+  ];
 }
 
 function acceptanceLine(projects, repository) {

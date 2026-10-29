@@ -248,6 +248,7 @@ export function readPolicyScope({
   baseProjectRoot,
   headProjectRoot,
   moves,
+  inherits,
 }) {
   const files = listedFiles(headProjectRoot);
   const baseFiles = listedFiles(baseProjectRoot);
@@ -264,7 +265,7 @@ export function readPolicyScope({
     headConfig,
     moves,
     presetRequired: presetToDeclare(headConfig, headProjectRoot) !== undefined,
-    configLayers: configLayersOf(baseProjectRoot, headProjectRoot, gitBlobId),
+    configLayers: configLayersOf(baseProjectRoot, headProjectRoot, { blobId: gitBlobId, inherits }),
     tsconfigs: isTypescriptPreset(headConfig)
       ? {
           base: tsconfigsOf(baseProjectRoot, baseFiles, baseConfig),

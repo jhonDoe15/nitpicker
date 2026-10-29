@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
+import { uvWorkspaceOf } from './uv-workspace.mjs';
 
 export const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
 const manifest = readManifest(path.join(PACKAGE_ROOT, 'package.json'));
@@ -87,11 +88,8 @@ export function toolNameForPath(relativeToolPath) {
 
 const PROJECT_MARKERS = ['package.json', CONFIG_FILE_NAME];
 
-const UV_WORKSPACE_TABLE = /^\s*\[tool\.uv\.workspace\]/mu;
-
 function isUvWorkspaceRoot(directory) {
-  const pyproject = path.join(directory, 'pyproject.toml');
-  return existsSync(pyproject) && UV_WORKSPACE_TABLE.test(readFileSync(pyproject, 'utf8'));
+  return uvWorkspaceOf(directory) !== undefined;
 }
 
 export function resolveProjectRoot(cwd = process.cwd()) {

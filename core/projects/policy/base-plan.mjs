@@ -1,12 +1,12 @@
-import { existsSync, realpathSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { parse as parseYaml } from 'yaml';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import { runGit } from '../../diff/git/repository/command.mjs';
-import { withTemporaryWorktree } from '../../diff/git/repository/worktree.mjs';
+import { declaresUvWorkspace } from '../../tooling/uv-workspace.mjs';
 import { inspectRepository } from '../plan/inspect.mjs';
+import { canChangePlan, isPlanInput, withBaseTree } from './base-tree.mjs';
 
-const UV_WORKSPACE_TABLE = /^\s*\[tool\.uv\.workspace\]/mu;
 export const DECLARATION_FILES = [
   CONFIG_FILE_NAME,
   'package.json',
@@ -14,36 +14,15 @@ export const DECLARATION_FILES = [
   'pyproject.toml',
 ];
 
-function inspectedPlan(root) {
+function inspectedPlan(inspection) {
   try {
-    return { plan: inspectRepository({ root: realpathSync(root) }).plan };
+    return { plan: inspectRepository(inspection).plan };
   } catch (error) {
     return { plan: undefined, error };
   }
 }
 
-const PLAN_INPUT_NAMES = new Set(['Pipfile', 'setup.py', 'setup.cfg', 'requirements.txt']);
-const PLAN_INPUT_EXTENSIONS = new Set([
-  '.json',
-  '.toml',
-  '.yaml',
-  '.yml',
-  '.gradle',
-  '.kts',
-  '.xml',
-]);
-
-function isPlanInput(file) {
-  return (
-    PLAN_INPUT_NAMES.has(path.posix.basename(file)) ||
-    PLAN_INPUT_EXTENSIONS.has(path.posix.extname(file))
-  );
-}
-
-export function planInputsChanged({ repositoryRoot, mergeBaseSha, changed }) {
-  if (changed.some(isPlanInput)) {
-    return true;
-  }
+function changedOnDisk(repositoryRoot, mergeBaseSha) {
   const untracked = runGit(repositoryRoot, ['ls-files', '--others', '--exclude-standard']);
   const addedOrDeleted = runGit(repositoryRoot, [
     'diff',
@@ -52,24 +31,43 @@ export function planInputsChanged({ repositoryRoot, mergeBaseSha, changed }) {
     '--diff-filter=AD',
     mergeBaseSha,
   ]);
-  return untracked.trim() !== '' || addedOrDeleted.trim() !== '';
+  return `${untracked}\n${addedOrDeleted}`.split('\n').filter(Boolean);
 }
 
-function baseRootOf(worktree, prefix) {
+export function planInputsChanged({ repositoryRoot, mergeBaseSha, changed }) {
+  return (
+    changed.some(isPlanInput) || changedOnDisk(repositoryRoot, mergeBaseSha).some(canChangePlan)
+  );
+}
+
+function atRepository(error, { tree, repositoryRoot }) {
+  const message = error instanceof Error ? error.message : String(error);
+  return new Error(message.replaceAll(tree, repositoryRoot), { cause: error });
+}
+
+function underPrefix(files, prefix) {
   if (prefix === '.') {
-    return worktree;
+    return files;
   }
-  const full = path.resolve(worktree, prefix);
-  if (!full.startsWith(worktree + path.sep)) {
-    return undefined;
-  }
-  return full;
+  return files
+    .filter((file) => file.startsWith(`${prefix}/`))
+    .map((file) => file.slice(prefix.length + 1));
 }
 
 export function basePlanOf({ repositoryRoot, prefix, mergeBaseSha }) {
-  return withTemporaryWorktree(repositoryRoot, mergeBaseSha, (worktree) => {
-    const root = baseRootOf(worktree, prefix);
-    return root !== undefined && existsSync(root) ? inspectedPlan(root).plan : undefined;
+  return withBaseTree({ repositoryRoot, mergeBaseSha }, ({ root: tree, files }) => {
+    const root = prefix === '.' ? tree : path.resolve(tree, prefix);
+    if ((root !== tree && !root.startsWith(tree + path.sep)) || !existsSync(root)) {
+      return { plan: undefined };
+    }
+    const inspected = inspectedPlan({
+      root,
+      files: underPrefix(files, prefix),
+      repositoryRoot: tree,
+    });
+    return inspected.error === undefined
+      ? inspected
+      : { plan: undefined, error: atRepository(inspected.error, { tree, repositoryRoot }) };
   });
 }
 
@@ -99,15 +97,11 @@ function listsPackages(text) {
   return Array.isArray(parsed(parseYaml, text).value?.packages);
 }
 
-function hasUvWorkspace(text) {
-  return UV_WORKSPACE_TABLE.test(text);
-}
-
 const DECLARES = {
   [CONFIG_FILE_NAME]: listsProjects,
   'package.json': hasWorkspaces,
   'pnpm-workspace.yaml': listsPackages,
-  'pyproject.toml': hasUvWorkspace,
+  'pyproject.toml': declaresUvWorkspace,
 };
 
 export function baseDeclaresProjects({ repositoryRoot, prefix, mergeBaseSha }) {

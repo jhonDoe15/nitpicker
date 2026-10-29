@@ -9,15 +9,22 @@ function repositoryFailed(repository) {
   return repository !== undefined && !repository.accepted;
 }
 
+function repositoryIncomplete(repository) {
+  return (repository?.toolErrors ?? []).length > 0;
+}
+
 export function exitCodeOf(summary, { deferExit = false } = {}) {
   const { projects, repositoryPolicy } = summary;
+  const incomplete = repositoryIncomplete(repositoryPolicy);
   if (deferExit) {
-    return projects.some(({ overallStatus }) => overallStatus === 'tool-error') ? 2 : 0;
+    return incomplete || projects.some(({ overallStatus }) => overallStatus === 'tool-error')
+      ? 2
+      : 0;
   }
   if (repositoryFailed(repositoryPolicy) || projects.some(({ status }) => status === 'failed')) {
     return 1;
   }
-  return projects.some(({ status }) => status === 'error') ? 2 : 0;
+  return incomplete || projects.some(({ status }) => status === 'error') ? 2 : 0;
 }
 
 function countOf(results, status) {
@@ -65,7 +72,8 @@ export function combinedSummary({ plan, results, outside, notices, repository, e
   );
   return {
     source: plan.source,
-    overallStatus: incomplete.length > 0 ? 'tool-error' : 'completed',
+    overallStatus:
+      incomplete.length > 0 || repositoryIncomplete(repository) ? 'tool-error' : 'completed',
     newEnforceableFindings: ownFindings + (repository?.findings.length ?? 0),
     counts: {
       projects: projects.length,

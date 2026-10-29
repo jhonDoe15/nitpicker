@@ -1,5 +1,5 @@
 import { isPlainObject } from '../../../../shared/config.mjs';
-import { readPyproject } from '../../discovery/python-projects.mjs';
+import { readPyproject } from '../../../tooling/uv-workspace.mjs';
 
 function pythonName(name) {
   return `pypi:${name.toLowerCase().replaceAll(/[-_.]+/gu, '-')}`;

@@ -1,5 +1,7 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { findPackageJSON } from 'node:module';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { codeExtensions } from '../layout.mjs';
 import { readJsonc } from '../modules/tsconfig-files.mjs';
 import { projectConfigFile } from '../test-environment/config-files.mjs';
@@ -171,10 +173,17 @@ export function hasScopePackage(projectRoot, scope) {
   return scopePackage(projectRoot, scope) !== undefined;
 }
 
+function installedManifest(projectRoot, name) {
+  try {
+    const file = findPackageJSON(name, pathToFileURL(path.join(projectRoot, 'package.json')).href);
+    return file === undefined ? undefined : readJsonc(file);
+  } catch (error) {
+    return { version: undefined, error };
+  }
+}
+
 export function packageMajorOf(projectRoot, name) {
-  const installed = readJsonc(
-    path.join(projectRoot, 'node_modules', name, 'package.json'),
-  )?.version;
+  const installed = installedManifest(projectRoot, name)?.version;
   const manifest = readManifest(projectRoot);
   const declared = manifest?.dependencies?.[name] ?? manifest?.devDependencies?.[name];
   const major = /\d+/u.exec(typeof installed === 'string' ? installed : String(declared ?? ''));

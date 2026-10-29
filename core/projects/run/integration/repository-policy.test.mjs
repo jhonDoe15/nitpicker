@@ -1,14 +1,18 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { crashingAnalyzer, fakeAnalyzer } from '../../../command/test-support/cli-harness.mjs';
 import { writeFiles } from '../../../diff/git/test-support/fixture-files.mjs';
+import { fixtureGit } from '../../../diff/git/test-support/git-repository.mjs';
 import { projectFiles, useMonorepoFixtures, violation } from '../test-support/monorepo-harness.mjs';
 
 const { repository, run } = useMonorepoFixtures();
 
 const REMOVED =
   'project api is no longer one of the projects of the monorepo, so nothing gates it with its own config';
+const SPLIT =
+  'the repository is no longer split into projects: web, api were gated as projects of their own ' +
+  'and are now part of one project';
 
 function typescriptProject(folder) {
   return projectFiles(folder, {
@@ -60,7 +64,7 @@ describe('the set of projects', () => {
         ]),
     ).toEqual([
       ['nitpicker/web/', []],
-      ['nitpicker/repository/', ['nitpicker.config.json']],
+      ['nitpicker-repository/', ['nitpicker.config.json']],
     ]);
   });
 
@@ -71,9 +75,99 @@ describe('the set of projects', () => {
     const result = run(root);
 
     expect(result.exitCode).toBe(1);
-    expect(result.json('summary.json').policyLoosenings).toEqual([
-      'the repository is no longer split into projects: web, api were gated as projects of their own ' +
-        'and are now part of one project',
+    expect(result.json('summary.json').policyLoosenings).toEqual([SPLIT]);
+  });
+
+  it('reports the end of the split in a run that takes its base from the config', () => {
+    const root = repository({
+      'nitpicker.config.json': JSON.stringify({
+        base: 'comparison-base',
+        projects: ['web', 'api'],
+      }),
+      ...typescriptProject('web'),
+      ...typescriptProject('api'),
+    });
+    writeFiles(root, { 'nitpicker.config.json': JSON.stringify({ base: 'comparison-base' }) });
+
+    const result = run(root, [], { withoutBase: true });
+
+    expect([result.exitCode, result.json('summary.json').policyLoosenings]).toEqual([1, [SPLIT]]);
+  });
+
+  it('fails closed when the projects of the base cannot be read', () => {
+    const root = repository({
+      'nitpicker.config.json': JSON.stringify({ projects: ['web', 'gone'] }),
+      ...projectFiles('.'),
+      ...typescriptProject('web'),
+    });
+    writeFiles(root, { 'nitpicker.config.json': '{}' });
+
+    const result = run(root);
+
+    expect(result.exitCode).toBe(2);
+    expect(result.json('tool-errors.json').map(({ tool, snapshot }) => [tool, snapshot])).toEqual([
+      ['nitpicker-projects', 'base'],
+    ]);
+  });
+
+  it('fails closed in a monorepo run when the projects of the base cannot be read', () => {
+    const root = repository({
+      'nitpicker.config.json': JSON.stringify({ projects: ['web', 'gone'] }),
+      ...typescriptProject('web'),
+    });
+    writeFiles(root, { 'nitpicker.config.json': JSON.stringify({ projects: ['web'] }) });
+
+    const result = run(root);
+    const { overallStatus, repositoryPolicy } = result.json('summary.json');
+
+    expect([result.exitCode, overallStatus]).toEqual([2, 'tool-error']);
+    expect(repositoryPolicy.toolErrors.map(({ tool }) => tool)).toEqual(['nitpicker-projects']);
+    expect(result.summary.split('\n')[2]).toBe(
+      '  ! repository policy, the run is incomplete: the projects of the base could not be read, ' +
+        'so a change to them is not checked: nitpicker.config.json: "projects" lists gone, ' +
+        `which is not a folder under ${root}`,
+    );
+  });
+
+  it('reports a project moved out of the folders "projects" matches', () => {
+    const root = repository({
+      'nitpicker.config.json': JSON.stringify({ projects: ['packages/*'] }),
+      ...typescriptProject('packages/a'),
+      ...typescriptProject('packages/b'),
+    });
+    mkdirSync(path.join(root, 'legacy'));
+    fixtureGit(root, ['mv', 'packages/b', 'legacy/b']);
+
+    const result = run(root);
+    const summary = result.json('summary.json');
+    const junit = readFileSync(path.join(result.reports, 'report.junit.xml'), 'utf8');
+
+    expect([result.exitCode, summary.repositoryPolicy.policyLoosenings]).toEqual([
+      1,
+      [
+        'project packages/b is no longer one of the projects of the monorepo, ' +
+          'so nothing gates it with its own config',
+      ],
+    ]);
+    expect(summary.projects.map(({ status }) => status)).toEqual(['skipped']);
+    expect(junit.match(/<testsuite name="[^"]*"/gu)).toEqual([
+      '<testsuite name="quality.diff (repository policy)"',
+    ]);
+  });
+
+  it('keeps the repository policy apart from a project named repository', () => {
+    const root = repository({
+      'nitpicker.config.json': JSON.stringify({ projects: ['repository', 'api'] }),
+      ...typescriptProject('repository'),
+      ...typescriptProject('api'),
+    });
+    writeFiles(root, { 'nitpicker.config.json': JSON.stringify({ projects: ['repository'] }) });
+
+    const result = run(root);
+
+    expect(result.json('report.sarif').runs.map((entry) => entry.automationDetails.id)).toEqual([
+      'nitpicker/repository/',
+      'nitpicker-repository/',
     ]);
   });
 
@@ -89,7 +183,7 @@ describe('the set of projects', () => {
 
     expect(result.exitCode).toBe(1);
     expect(result.json('web/summary.json').policyLoosenings).toEqual([
-      'preset: "typescript" -> "javascript"',
+      'preset: "typescript" -> "javascript" (from ../nitpicker.config.json)',
     ]);
     expect(result.plan.split('\n').slice(1)).toEqual([
       '  run  web (javascript): root config nitpicker.config.json changed',
@@ -168,6 +262,10 @@ describe('the combined machine reports', () => {
     expect(junit.match(/<testsuite name="[^"]*"/gu)).toEqual([
       '<testsuite name="quality.diff web"',
       '<testsuite name="quality.diff api"',
+    ]);
+    expect(junit.match(/name="fake-quality-analyzer\/fixture-rule [^"]*"/gu)).toEqual([
+      'name="fake-quality-analyzer/fixture-rule web/src/a.ts:1"',
+      'name="fake-quality-analyzer/fixture-rule api/src/a.ts:1"',
     ]);
   });
 });

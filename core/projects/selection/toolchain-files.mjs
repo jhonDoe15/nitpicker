@@ -1,20 +1,22 @@
 function fileNamed(names, extra) {
-  const named = `(?:^|/)(?:${names.join('|')})$`;
+  const named = `^(?:${names.join('|')})$`;
   return new RegExp(extra === undefined ? named : `${named}|${extra}`, 'u');
 }
 
-const JAVASCRIPT = fileNamed([
-  'package\\.json',
-  'package-lock\\.json',
-  'npm-shrinkwrap\\.json',
-  'yarn\\.lock',
-  'pnpm-lock\\.yaml',
-  'pnpm-workspace\\.yaml',
-  'bun\\.lockb?',
-  'tsconfig[^/]*\\.json',
-  '\\.npmrc',
-  '\\.yarnrc(?:\\.yml)?',
-]);
+const JAVASCRIPT = fileNamed(
+  [
+    'package\\.json',
+    'package-lock\\.json',
+    'npm-shrinkwrap\\.json',
+    'yarn\\.lock',
+    'pnpm-lock\\.yaml',
+    'pnpm-workspace\\.yaml',
+    'bun\\.lockb?',
+    '\\.npmrc',
+    '\\.yarnrc(?:\\.yml)?',
+  ],
+  '(?:^|/)tsconfig[^/]*\\.json$',
+);
 const PYTHON = fileNamed([
   'pyproject\\.toml',
   'uv\\.lock',
@@ -43,6 +45,16 @@ const BY_PRESET = new Map([
   ['kotlin', JVM],
 ]);
 
-export function isToolchainFileFor(preset, file) {
-  return (BY_PRESET.get(preset ?? 'typescript') ?? JAVASCRIPT).test(file);
+function fromRoot(file, prefix) {
+  if (prefix === '.') {
+    return file;
+  }
+  return file.startsWith(`${prefix}/`) ? file.slice(prefix.length + 1) : undefined;
+}
+
+export function isToolchainFileFor(preset, file, prefix = '.') {
+  const relative = fromRoot(file, prefix);
+  return (
+    relative !== undefined && (BY_PRESET.get(preset ?? 'typescript') ?? JAVASCRIPT).test(relative)
+  );
 }
