@@ -6,15 +6,7 @@ import { catalogFileOf, isKotlinPath, mentionsRule, ruleEmitters } from './rule-
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 
-const REPORT_ONLY_KOTLIN_MUTANTS = {
-  file: 'languages/java/adapters/reporting/kotlin-reports.mjs',
-  evidence: /reportOnlyKotlinMutants/u,
-};
 const NOT_ENFORCED_ALTHOUGH_EMITTED = {
-  kotlin: {
-    'mutant-survived': REPORT_ONLY_KOTLIN_MUTANTS,
-    'mutant-nocoverage': REPORT_ONLY_KOTLIN_MUTANTS,
-  },
   javascript: {
     'unused-prop': {
       file: 'languages/typescript/preset/unused-api/analyze.mjs',

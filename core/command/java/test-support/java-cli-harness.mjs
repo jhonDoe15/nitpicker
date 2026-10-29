@@ -2,13 +2,13 @@ import { tmpdir } from 'node:os';
 import { afterEach, beforeEach, expect, vi } from 'vitest';
 import { exactText } from '../../../diff/reporting/test-support/output-expectations.mjs';
 import {
+  EMPTY_MUTATION_FACTS,
   fakeGradle,
   fakeGradleRun,
   spawnFakeGradle,
 } from '../../../../languages/java/adapters/test-support/in-process-gradle.mjs';
 import { runTasksInProcess } from '../../../diff/execution/test-support/in-process-analyzers.mjs';
 import { usePresetFixtures } from '../../test-support/preset-fixtures.mjs';
-import { EMPTY_MUTATION_FACTS } from '../../../../languages/java/adapters/test-support/kotlin-empty-reports.mjs';
 import { readCatalog } from '../../../../languages/java/messages/rule-messages.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { fakeMavenRun, spawnFakeMaven } from './in-process-maven.mjs';
