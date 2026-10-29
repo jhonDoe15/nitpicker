@@ -142,6 +142,30 @@ describe('the Mocha console tracking', () => {
     ]);
   });
 
+  it('gives the running test of a later file a call whose async work a spec file root hook started', async () => {
+    const { mocha, runner, place } = tracked();
+    const root = suite('', { root: true });
+    const api = suite('api', { file: '/p/test/b.test.js', parent: root });
+    const fromFile = { parent: root };
+
+    mocha.suite.emit('pre-require', {}, '/p/test/a.test.js');
+    mocha.suite.emit('beforeAll', fromFile);
+    mocha.suite.emit('post-require', {}, '/p/test/a.test.js');
+    runner.emit('hook', fromFile);
+    const inRootHook = place();
+    const handled = new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(place());
+      }, 5);
+    });
+    runner.emit('test', test('reports a broken route', api));
+
+    expect([inRootHook, await handled]).toEqual([
+      { file: '/p/test/a.test.js', test: '' },
+      { file: '/p/test/b.test.js', test: 'api > reports a broken route' },
+    ]);
+  });
+
   it('captures nothing without the lines file or a Mocha to find', async () => {
     const target = { error() {}, warn() {} };
 
