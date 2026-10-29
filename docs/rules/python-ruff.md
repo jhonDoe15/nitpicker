@@ -1,6 +1,6 @@
 # Python: ruff rules
 
-The ruff rules in nitpicker's own ruff config, by rule code. This page lists 364 rules. [All pages](README.md).
+The ruff rules in nitpicker's own ruff config, by rule code. This page lists 362 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -2213,28 +2213,6 @@ Checks for `raise` statements that raise `NotImplemented`.
 
 - **Exception:** If this is intended, add `{"rule":"F901","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 - **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/raise-not-implemented/)
-
-<a id="ruff-fbt001"></a>
-
-### `ruff/FBT001`
-
-Checks for the use of boolean positional arguments in function definitions, as determined by the presence of a type hint containing `bool` as an evident subtype - e.g. `bool`, `bool | int`, `typing.Optionalbool`, etc.
-
-- **Why it is on:** Calling a function with boolean positional arguments is confusing as the meaning of the boolean value is not clear to the caller and to future readers of the code. The use of a boolean will also limit the function to only two possible behaviors, which makes the function difficult to extend in the future. Selected in the ruff config of the Python preset, with the flake8-boolean-trap rules (`boolean-type-hint-positional-argument`).
-- **Allowed form:** See the tool's documentation: [Ruff rule documentation](https://docs.astral.sh/ruff/rules/boolean-type-hint-positional-argument/).
-- **Exception:** If this is intended, add `{"rule":"FBT001","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
-- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/boolean-type-hint-positional-argument/)
-
-<a id="ruff-fbt002"></a>
-
-### `ruff/FBT002`
-
-Checks for the use of boolean positional arguments in function definitions, as determined by the presence of a boolean default value.
-
-- **Why it is on:** Calling a function with boolean positional arguments is confusing as the meaning of the boolean value is not clear to the caller and to future readers of the code. The use of a boolean will also limit the function to only two possible behaviors, which makes the function difficult to extend in the future. Selected in the ruff config of the Python preset, with the flake8-boolean-trap rules (`boolean-default-value-positional-argument`).
-- **Allowed form:** See the tool's documentation: [Ruff rule documentation](https://docs.astral.sh/ruff/rules/boolean-default-value-positional-argument/).
-- **Exception:** If this is intended, add `{"rule":"FBT002","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
-- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/boolean-default-value-positional-argument/)
 
 <a id="ruff-fly002"></a>
 

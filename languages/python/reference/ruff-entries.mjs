@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { ruleEntry } from '../../../shared/reference/entry.mjs';
 import { hintFor } from '../rules/rule-hints.mjs';
 import { allowedOf } from './hint-text.mjs';
+import { isPresetRule } from './ruff-selection.mjs';
 
 export const RUFF_RULES_FILE = new URL('../ruff/ruff-rules.json', import.meta.url);
 
@@ -32,5 +33,7 @@ export function readRuffSnapshot() {
 
 /** The entries of the ruff rules the Python preset selects, from the committed snapshot. */
 export function ruffEntries() {
-  return readRuffSnapshot().rules.map(ruffEntry);
+  return readRuffSnapshot()
+    .rules.filter(({ code }) => isPresetRule(code))
+    .map(ruffEntry);
 }
