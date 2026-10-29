@@ -37,7 +37,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     removeProject(project);
   });
 
-  it('fails the sleeps, enum predicates, wrapper, plural member, unused option and unused context, and spares the allowed forms', () => {
+  it('fails the sleeps, enum predicates, wrapper, plural member, unused option, unused context, blocking coroutine calls and timeout blocks, and spares the allowed forms', () => {
     const result = diffOf(project, 'review-rules');
 
     expect(result.failed).toBe(true);
@@ -51,6 +51,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
         exceptions: [
           { rule: 'pmd/FixedSleepInTest', glob: ORDERS_TESTS },
           { rule: 'pmd/SpringUnusedContext', glob: ORDERS_TESTS },
+          { rule: 'pmd/BlockingCallInCoroutine', glob: 'src/main/kotlin/demo/orders/Archive.kt' },
           { rule: 'unused-option', glob: 'src/main/kotlin/demo/orders/*' },
         ],
       },
@@ -64,6 +65,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
       'SingularAndPluralMember Query.tags',
       'StaticForwardingWrapper absOf',
       'StaticForwardingWrapper total',
+      'TimeoutWithoutSuspension timesOutBlockingWork.withTimeout',
     ]);
   });
 
