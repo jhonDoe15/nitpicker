@@ -81,8 +81,13 @@ describe('progress lines', () => {
     expect(cachedLine({ label: 'base', count: 7 })).toBe(
       'nitpicker: base 7 analyzers cached (--no-cache analyzes it again)\n',
     );
-    expect(cachedLine({ label: 'base', count: 1, location: '/tmp/cache' })).toBe(
+    expect(cachedLine({ label: 'base', count: 1, sources: ['/tmp/cache'] })).toBe(
       'nitpicker: base 1 analyzer cached from /tmp/cache (--no-cache analyzes it again)\n',
+    );
+    expect(
+      cachedLine({ label: 'base', count: 2, sources: ['/tmp/cache', 'NITPICKER_CACHE_URL'] }),
+    ).toBe(
+      'nitpicker: base 2 analyzers cached from /tmp/cache and NITPICKER_CACHE_URL (--no-cache analyzes it again)\n',
     );
   });
 });
