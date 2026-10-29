@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { ruleEntry } from '../../../shared/reference/entry.mjs';
-import { asSentence, splitFirstSentence } from '../../../shared/reference/build/text.mjs';
+import { asSentence } from '../../../shared/reference/build/text.mjs';
 import { guideCell, optionalGuideCell } from '../../../shared/reference/build/guide-tables.mjs';
 import { springMessage } from '../adapters/kotlin/review-rules/spring/spring-messages.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../adapters/kotlin/review-rules/review-rules.mjs';
@@ -55,13 +55,17 @@ const OWN_RULE = /<rule\s+name="(\w+)"[^>]*?\smessage="([^"]*)"/gu;
 const ENTITIES = { '&quot;': '"', '&lt;': '<', '&gt;': '>', '&apos;': "'", '&amp;': '&' };
 const ENTITY = /&(?:quot|lt|gt|apos|amp);/gu;
 const QUOTED_BRACE = /'(\{|\})'/gu;
+const DOUBLED_QUOTE = /''/gu;
 
 function readRuleset(file) {
   return readFileSync(new URL(file, GRADLE_DIRECTORY), 'utf8');
 }
 
 function messageText(raw) {
-  return raw.replaceAll(ENTITY, (entity) => ENTITIES[entity]).replaceAll(QUOTED_BRACE, '$1');
+  return raw
+    .replaceAll(ENTITY, (entity) => ENTITIES[entity])
+    .replaceAll(QUOTED_BRACE, '$1')
+    .replaceAll(DOUBLED_QUOTE, "'");
 }
 
 function matchesOf(expression, text) {
@@ -96,7 +100,6 @@ export function ownPmdRules() {
 
 /** The entry of a rule nitpicker defines in its PMD rulesets. */
 export function ownPmdEntry({ rule, scope, spring, message }) {
-  const { first, rest } = splitFirstSentence(message);
   const flags = optionalGuideCell(JAVA_GUIDE, `pmd/${rule}`, 'flags');
   return ruleEntry({
     tool: 'pmd',
@@ -104,12 +107,14 @@ export function ownPmdEntry({ rule, scope, spring, message }) {
     page: 'java-pmd',
     analyzers: JVM_ANALYZERS,
     builds: JVM_BUILDS,
-    summary: flags === undefined ? first : asSentence(flags),
+    summary: flags === undefined ? message : asSentence(flags),
     why: spring
       ? "One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath."
       : 'A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.',
-    allowed: flags === undefined ? (rest ?? message) : message,
-    ...(springMessage(rule) === undefined ? {} : { allowedIn: { kotlin: springMessage(rule) } }),
+    ...(flags === undefined ? {} : { allowed: message }),
+    ...(springMessage(rule) === undefined
+      ? {}
+      : { [flags === undefined ? 'messageIn' : 'allowedIn']: { kotlin: springMessage(rule) } }),
     scope,
     exception: { key: 'exceptions', rule: `pmd/${rule}` },
   });
