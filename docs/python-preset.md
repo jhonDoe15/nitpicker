@@ -415,7 +415,7 @@ through the real tools.
   `swallowed-exception` reports what they did, and more, once and under one id. The shared
   one-way rules add the groups `G` (logging calls), `N` (PEP 8 naming), `ERA` (commented-out
   code), `ARG` (unused arguments), `PT` (pytest style), `S` (security) and `TRY` (exceptions), and
-  the single rules `PLR2004`, `PLW0602`, `PLW0603`, `FBT001` and `FBT002`; the last section of this
+  the single rules `PLR2004`, `PLW0602` and `PLW0603`; the last section of this
   slice lists each one with its allowed form and the rules of those groups that are left off.
   The groups `RUF`, `G`, `N`, `PT`, `S` and `TRY` are selected by listing their stable codes, not
   by prefix, so a later ruff cannot add a rule (or a preview rule) to the gate. `ruffConfigFor`
@@ -425,7 +425,7 @@ through the real tools.
   a prefix such as `E4` or `T20` stays when a known rule starts with it. Test files are the ones
   pytest collects (the `python_files` patterns, `testpaths`, `conftest.py`, any `tests` or `test`
   folder, `test_*.py`, `*_test.py`, and the Django names in a Django project, see
-  [runner parity](#runner-parity)): ruff's `ARG`, `FBT`, `PLR2004` and `S` findings in them are
+  [runner parity](#runner-parity)): ruff's `ARG`, `PLR2004` and `S` findings in them are
   dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`). Security findings (ruff `S` and the
   `sql-string-formatting`, `tls-verification-off`, `weak-hmac`, `http-without-timeout` and
   `unsafe-deserialization` rules) are also dropped in test support that pytest does not collect, as in the
@@ -605,10 +605,10 @@ are listed at the end.
 | Deserialization          | `yaml.safe_load`, `torch.load(path, weights_only=True)`, `numpy.load` without `allow_pickle`                                                     | ruff `S506`, `unsafe-deserialization` (script)                                                                                                       |
 | Deprecated APIs          | the replacement the deprecation notice names                                                                                                     | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                       |
 | Repeated strings         | a constant or enum member                                                                                                                        | `repeated-string-literal` (script)                                                                                                                   |
-| Unused arguments         | remove the argument, or prefix it with `_` when the signature is fixed                                                                           | ruff `ARG001`-`ARG005`                                                                                                                               |
+| Unused arguments         | remove the argument; `@override` on an override; a `_` prefix when a callback signature is fixed                                                 | ruff `ARG001`-`ARG005`                                                                                                                               |
 | Generic names            | a name for the job (`price_rounding.py`, `OrderRepository`)                                                                                      | `generic-name` (script)                                                                                                                              |
 | Secrets                  | read from the environment; log only that a secret is set                                                                                         | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
-| Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                                                             | ruff `FBT001`, `FBT002`                                                                                                                              |
+| Boolean flags            | keyword-only (`def send(message, *, urgent=False)`), two functions or an enum                                                                    | `boolean-flag-parameter` (script)                                                                                                                    |
 | Input or output per item | one batch call, or `asyncio.gather`                                                                                                              | `io-in-loop` (script)                                                                                                                                |
 | Task lifetimes           | open the resource around the whole task group, or inside the child; await the task first                                                         | `task-outlives-resource` (script)                                                                                                                    |
 | Trio/AnyIO cleanup       | `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()`                                                  | `unshielded-cleanup-await` (script)                                                                                                                  |
@@ -927,12 +927,44 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `tomllib` parsing, `.json()` or an `Any` parameter, and `TypeGuard` or `TypeIs` functions over
   `Any` or `object`. `pydantic-any-field` and `pydantic-extra-allow` look at classes deriving from
   `BaseModel`, `BaseSettings` or `RootModel` anywhere (v1 `Config` and `Extra.allow` too).
-- `repeated-string-literal` counts a string of five characters or more used three times or more in
-  a file (not tests) and reports it at its first use. Annotations, f-string parts, dictionary keys,
-  docstrings and bare strings, `Literal[...]` subscripts and translation calls are not counted.
+- `repeated-string-literal` counts a string of five characters or more (with a letter or digit) used
+  three times or more in a file (not tests, not generated migrations) and reports each use from the
+  third on. Not counted: annotations, f-string parts, keyword arguments (Kotlin exempts named
+  arguments the same way; TypeScript and Java have none), dictionary keys, the value under a
+  `type`/`kind`/`tag`/`variant` key, subscript keys, `match` patterns, docstrings and bare strings,
+  `Literal[...]` subscripts, `__all__` and class-body lists, the first argument of a translation or
+  message-key call, and idiomatic text (encodings, HTTP methods, argparse actions, MIME types, time
+  formats). The minimum length, the number of allowed uses and those lists are defined once in
+  [`shared/literals/repeated-literal-exemptions.mjs`](../shared/literals/repeated-literal-exemptions.mjs);
+  `literal-exemptions.test.mjs` fails when `literals.py` drifts from it. The message ends with the
+  `exceptions` route for the rule like every other Python rule.
 - `generic-name` reports a file, a folder or a top-level class whose last word is `util`, `utils`,
   `helper`, `helpers`, `manager`, `common`, `misc` and the like; a class that extends a type with the
   same ending (`class SessionManager(CacheManager)`) is not reported.
+- `boolean-flag-parameter` reports a positional `bool` parameter (annotated `bool` or
+  `Annotated[bool, ...]`, as a string too, or defaulted to `True` or `False`; `int | bool` is not one,
+  and a nullable `bool | None` is a tri-state, not a flag) of a public function or method that is a condition: the test of an
+  `if`, a conditional expression, a `while`, an `assert`, a comprehension filter, a `match`
+  subject or guard, also under `not`, `and` and `or`, as `flag is True` or `flag == False`, and
+  inside a nested lambda or closure. The flag is keyword-only (`def send(message, *, urgent=False)`),
+  two functions, or an enum. A name the code rebinds (a loop variable, a lambda parameter, an
+  assignment) is not the flag. Private names (a leading underscore, which covers `__init__` and
+  the other dunder methods), methods of a private class, nested functions, tests, methods named
+  `set_*` or `with_*`, `@classmethod` and `@staticmethod` factories named `from_*`, `of` or
+  `builder`, functions with `@override`, `@abstractmethod`, `@overload`, a property `setter`,
+  `getter` or `deleter`, or a pydantic `field_validator`, `validator` or `model_validator`, and a
+  flag that is only passed on or stored are not reported. A module function named `set_up_db` or
+  `from_config` is checked. A method that overrides a base class without `@override` is reported;
+  mark it `@override` (`typing_extensions.override` before Python 3.12). The finding names the
+  class: `Mailer.deliver(urgent)`. The [parameter rules table](internals.md#parameter-rules-across-presets)
+  compares the presets.
+- Unused arguments (ruff `ARG001`-`ARG005`) skip names that start with `_`, `*args` and `**kwargs`,
+  `@override` and `@abstractmethod` methods, `@overload`, dunder methods other than `__init__`,
+  `__new__` and `__call__`, and bodies that are only `...`, `pass`, a docstring or
+  `raise NotImplementedError`. A callback signature that fixes a parameter the body does not read
+  takes the `_` prefix (`def handler(event, _context)`); a parameter the framework passes by
+  keyword (a FastAPI path parameter, a pytest fixture requested for its effect) keeps its name and
+  the path gets an exception. Test files are skipped, as for the other `ARG` use.
 - `hardcoded-secret` reports a secret-looking string (six characters or more with letters and
   digits, or three character classes) assigned to a name ending in `password`, `token`, `secret`,
   `api_key`, `credentials` and similar, also as a parameter default, keyword argument, dictionary
@@ -1016,8 +1048,7 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   fixed URL), `S311` (`random` for non-crypto use, which the domain rule covers), `S601`, `S603`,
   `S606` and `S607` (see above), and `S110`/`S112` (replaced by `swallowed-exception`).
 - Other rules of the selected groups that are left off: `TRY003` (long messages in `raise`),
-  `TRY300` and `TRY301` (`else` after `try`, `raise` inside `try`), `FBT003` (a boolean argument at
-  the call site) and, for `PT`, `PT009` and `PT027` (`unittest` assertions, which `unittest`
+  `TRY300` and `TRY301` (`else` after `try`, `raise` inside `try`), and, for `PT`, `PT009` and `PT027` (`unittest` assertions, which `unittest`
   projects use by design). `PT011` and `PT030` ask for a `match` or a more specific class.
 - The advice follows the project when two forms are valid. Pytest style: the parentheses of
   `@pytest.fixture` (`PT001`) and marks (`PT023`) and the shape of `parametrize` (`PT006`,
@@ -1154,8 +1185,8 @@ backends.
   `SIM`, `PIE`, `RET`, `PERF`, a list of the stable `RUF` rules (without `RUF001`, `RUF002`,
   `RUF003` and `RUF012`: non-ASCII text and mutable class attributes, both common in correct
   code) and `T20` (no `print`), without `B008` (a call in an argument default, which the web
-  frameworks need). Slice 2 adds the shared one-way groups `G`, `N`, `ERA`, `ARG`, `PT`, `S`, `TRY`,
-  `PLR2004` and `FBT`. The target version follows the project's
+  frameworks need). Slice 2 adds the shared one-way groups `G`, `N`, `ERA`, `ARG`, `PT`, `S`, `TRY`
+  and `PLR2004`. The target version follows the project's
   `requires-python` (or poetry's `python`, or `python_requires`): its lowest version, never lower
   than 3.8, and 3.8 when none is declared, so a rule that exists only on newer versions (`B905`,
   `zip(strict=)`) cannot flag code that must run on an older one. The SARIF goes through the existing generic ingester; identity is the
@@ -1408,8 +1439,21 @@ or remove it if it can't happen. If this is intended, add
   `exclude_lines` does not list them and `partial_branches` is empty), and the project's own
   report settings are ignored, so the one measurement is the same everywhere. Only idioms that are
   never testable are excluded, with the same list on every coverage.py version: `if TYPE_CHECKING:`
-  (also `typing.TYPE_CHECKING`), `if __name__ == "__main__":`, `@overload` (also `typing.overload`)
-  and `raise NotImplementedError`. A branch of a function that legitimately cannot be tested is
+  (also `typing.TYPE_CHECKING`), `if __name__ == "__main__":`, `@overload` (also `typing.overload`),
+  `raise NotImplementedError`, a function whose body is `...` right after the colon of its
+  signature (a `Protocol` method, an `@abstractmethod` stub: `def write(self, text: str) -> object: ...`,
+  also with a wrapped signature or a `-> T` return; a `...` on the next line, a wrapped `if (`,
+  `except (` or `with (` header and a lambda are not stubs), and a `case _:` arm whose only
+  statement is `assert_never(name)` (also `typing.assert_never` and
+  `typing_extensions.assert_never`) on the line below it. That arm is the one allowed way to close a
+  `match` over every member of an enum or union: without a wildcard, coverage.py counts the jump out
+  of the `match` when no case matches, which no test can take, and the finding for it says to end
+  the `match` with `case _:` and `assert_never(subject)`. Nothing else is excluded: an
+  `assert_never` in an `else`, one inside a longer expression, `case _: assert_never(x)` on one
+  line, an argument that is not a name and a `case _:` arm with another statement are all counted.
+  The type checker reports an `assert_never` it cannot prove unreachable, so a missing case still
+  fails when the function is checked (mypy skips the body of an unannotated function), and an
+  untested `case _:` that does something else is still reported. A branch of a function that legitimately cannot be tested is
   accepted with an `exceptions` entry for `changed-branch-coverage` that names the function
   (`"function": "Service.wide"`), which keeps every other finding of the file. Only a branch in no
   function (module-level code) is lifted with `exclude` in `nitpicker.config.json` (a path glob),
@@ -1417,9 +1461,12 @@ or remove it if it can't happen. If this is intended, add
 - **Tests.** `languages/python/ingest/coverage-reports/coverage-branches.test.mjs` (the ingester on a recorded
   coverage.py report, identity stability, baselined / touched / added cases through
   `compareFindings`); `core/command/python/python-cli-*.test.mjs` (the CLI with fake tools); the gated e2e test adds
-  six cases on a real project (moved gap baselined, edited line fails, edited and tested passes,
+  twelve cases on a real project (moved gap baselined, edited line fails, edited and tested passes,
   new untested branch fails while the old gap stays baselined, a pragma hides nothing, new tested
-  branch passes).
+  branch passes, `Protocol` and abstract stubs pass, a `match` closed with `assert_never` passes,
+  one with no wildcard fails naming that form, an untested `case _:` default fails, a `case _:` arm
+  with a statement after `assert_never` fails, and a wrapped `if (` with a `...` body and an
+  `else: assert_never(x)` both stay counted).
 
 ## Slice 5: duplicates, coupling and import contracts
 
@@ -1532,7 +1579,8 @@ new `Survived` mutant fails as `mutant-survived`, a new `NoCoverage` mutant fail
 is a descriptive finding that never fails. A mutant is identified by its function (`Class.method`),
 the original and the mutated text and its occurrence among identical mutants of that status in the
 function, never by a line number, so edits above a survivor keep it baselined. The line is only the
-location.
+location: the line of the first token the mutant changes, so a mutant that removes a `case` arm is
+reported at the arm's `case` line, not at the end of the arm before it.
 
 - **Tool: mutmut 3.x**, in the project's environment like the other tools. This is the one
   supported range (developed and tested against 3.8): the major version is checked before the run,
@@ -1590,7 +1638,10 @@ location.
   patterns still count as `mutant-ignored`, listed or not); `["nitpicker", "project"]` is the
   unlisted behavior. A project listed without a table is a tool error.
 - **Equivalent mutants.** mutmut also mutates strings and logging, so some survivors cannot be
-  killed by any test. The ways out are an `exceptions` entry for `mutant-survived` or
+  killed by any test. Mutants that change nothing but the `case _:` arm that closes an exhaustive
+  `match` (the arm the coverage settings exclude, matched by the same pattern in
+  `languages/python/ingest/coverage-reports/exhaustive-match.mjs`) are left out: the type checker
+  proves that code unreachable. A mutant of any other `assert_never` line is reported. The ways out are an `exceptions` entry for `mutant-survived` or
   `mutant-nocoverage` (with `function` to name one function; the message prints the entry), a
   `python.exceptions` entry for `mutant-ignored` (below) with the path, or `exclude` (the mutants of
   the file are dropped).
