@@ -1,4 +1,5 @@
 import { expect } from 'vitest';
+import { expectMatchesSarifSchema } from './sarif-schema.mjs';
 
 const SARIF_LEVELS = new Set(['none', 'note', 'warning', 'error']);
 const XML_DECLARATION = '<?xml version="1.0" encoding="UTF-8"?>';
@@ -61,6 +62,7 @@ function expectValidRun(run) {
 }
 
 export function expectValidSarif(log) {
+  expectMatchesSarifSchema(log);
   expect(log.version).toBe('2.1.0');
   expect(typeof log.$schema).toBe('string');
   expect(Array.isArray(log.runs)).toBe(true);
