@@ -65,23 +65,20 @@ export const PYLINT_WARNING_HINTS = [
   },
   {
     tool: 'ruff',
-    rules: ['PLW0711'],
-    allowed: 'Catch several exceptions with a tuple: `except (ValueError, TypeError):`.',
-  },
-  {
-    tool: 'ruff',
     rules: ['PLW1501'],
-    allowed: 'Pass a valid `open` mode such as `"r"`, `"w"`, `"a"` or `"rb"`.',
+    allowed: 'Pass a valid mode: `path.open("r")`, `"w"`, `"a"` or `"rb"`.',
   },
   {
     tool: 'ruff',
     rules: ['PLW1507'],
-    allowed: 'Copy the environment with `os.environ.copy()`.',
+    allowed:
+      'Copy the environment with `os.environ.copy()`, in the composition root (`settings.py`).',
   },
   {
     tool: 'ruff',
     rules: ['PLW1508'],
-    allowed: 'Pass a `str` default and convert after: `int(os.getenv("PORT", "8080"))`.',
+    allowed:
+      'Pass a `str` default and convert after, in the composition root (`settings.py`): `int(os.getenv("PORT", "8080"))`.',
   },
   {
     tool: 'ruff',

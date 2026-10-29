@@ -6,15 +6,25 @@ export const DATETIME_HINTS = [
   },
   {
     tool: 'ruff',
-    rules: ['DTZ002', 'DTZ003', 'DTZ004'],
+    rules: ['DTZ002', 'DTZ003'],
     allowed:
-      'Read an aware time: `datetime.now(tz=timezone.utc)` in place of `today()` or `utcnow()`, and `datetime.fromtimestamp(value, tz=timezone.utc)` in place of `utcfromtimestamp(value)`.',
+      'Read an aware time: `datetime.now(tz=timezone.utc)` in place of `today()` or `utcnow()`.',
   },
   {
     tool: 'ruff',
-    rules: ['DTZ005', 'DTZ006'],
+    rules: ['DTZ004'],
     allowed:
-      'Pass the zone: `datetime.now(tz=timezone.utc)` or `datetime.fromtimestamp(value, tz=timezone.utc)`.',
+      'Convert to an aware time: `datetime.fromtimestamp(value, tz=timezone.utc)` in place of `utcfromtimestamp(value)`.',
+  },
+  {
+    tool: 'ruff',
+    rules: ['DTZ005'],
+    allowed: 'Pass the zone: `datetime.now(tz=timezone.utc)`.',
+  },
+  {
+    tool: 'ruff',
+    rules: ['DTZ006'],
+    allowed: 'Pass the zone: `datetime.fromtimestamp(value, tz=timezone.utc)`.',
   },
   {
     tool: 'ruff',
@@ -24,9 +34,15 @@ export const DATETIME_HINTS = [
   },
   {
     tool: 'ruff',
-    rules: ['DTZ011', 'DTZ012'],
+    rules: ['DTZ011'],
     allowed:
-      "Take the date in the zone it is meant in: `datetime.now(tz=zone).date()` or `datetime.fromtimestamp(value, tz=zone).date()`, with `zone` the user's `ZoneInfo(...)` or `timezone.utc`; `date` reads the server's local zone.",
+      "Take the date in the zone it is meant in: `datetime.now(tz=zone).date()`, with `zone` the user's `ZoneInfo(...)` or `timezone.utc`; `date.today()` reads the server's local zone.",
+  },
+  {
+    tool: 'ruff',
+    rules: ['DTZ012'],
+    allowed:
+      "Take the date in the zone it is meant in: `datetime.fromtimestamp(value, tz=zone).date()`, with `zone` the user's `ZoneInfo(...)` or `timezone.utc`; `date.fromtimestamp` reads the server's local zone.",
   },
   {
     tool: 'ruff',

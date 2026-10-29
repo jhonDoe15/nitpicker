@@ -31,6 +31,7 @@ def catch(run):
 
 def spawn():
     subprocess.Popen(["ls"], start_new_session=True)
+    subprocess.Popen(["ls"], process_group=0)
     subprocess.run(["git", "status"], check=True)
 
 

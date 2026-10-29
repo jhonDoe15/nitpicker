@@ -1,8 +1,9 @@
 import ast
 
-from checks.common import dotted_name, finding
+from checks.common import dotted_name, finding, overlap_sites
 from environment.roots import is_composition_root
 
+ENVIRONMENT_OVERLAPS = {"process-env-access": ("PLE1507", "PLW1507", "PLW1508")}
 ENVIRONMENT_NAMES = {
     "os.environ",
     "os.environb",
@@ -155,3 +156,7 @@ def check(context):
         if name and id(node) not in guarded:
             found.append(finding(context.path, "process-env-access", name, node))
     return found
+
+
+def allowances(context):
+    return overlap_sites(check(context), ENVIRONMENT_OVERLAPS)

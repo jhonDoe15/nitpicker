@@ -18,6 +18,18 @@ class Point:
     def __len__(self):
         return 0
 
+    def __bool__(self):
+        return True
+
+    def __index__(self):
+        return self.x
+
+    def __str__(self):
+        return f"{self.x:d}"
+
+    def __bytes__(self):
+        return str(self).encode()
+
     @classmethod
     def origin(cls):
         return cls(0)
@@ -27,8 +39,15 @@ def describe(count):
     return f"{count:d}"
 
 
-def trim(name: str):
-    return name.removeprefix("hello")
+def counter():
+    count = 0
+
+    def bump():
+        nonlocal count
+        count += 1
+        return count
+
+    return bump
 
 
 async def relay(source):
@@ -42,4 +61,4 @@ class Dispatch:
         return value
 
 
-ESCAPED = "a\u200bb"
+ESCAPED = ["\b", "\x1a", "\x1b", "\0", "\u200b"]

@@ -97,10 +97,7 @@ INTEGRATION_DIRECTORIES = {
     "smoke",
 }
 SLEEP_CALLS = {"time.sleep"}
-TEST_OVERLAPS = {
-    "real-clock-in-test": ("DTZ002", "DTZ003", "DTZ005", "DTZ011"),
-    "sleep-in-test": ("ASYNC251",),
-}
+CLOCK_OVERLAPS = {"real-clock-in-test": ("DTZ002", "DTZ003", "DTZ005", "DTZ011")}
 
 
 def is_random(name, node):
@@ -200,7 +197,12 @@ def check(context):
 
 def busy_wait_sites(context, sleeps):
     return [
-        {"rule": "ASYNC110", "path": context.path, "line": node.lineno}
+        {
+            "rule": "ASYNC110",
+            "path": context.path,
+            "line": node.lineno,
+            "owner": "sleep-in-test",
+        }
         for node in ast.walk(context.tree)
         if isinstance(node, ast.While)
         and any(statement.lineno in sleeps for statement in node.body)
@@ -210,4 +212,4 @@ def busy_wait_sites(context, sleeps):
 def allowances(context):
     found = check(context)
     sleeps = {item["line"] for item in found if item["rule"] == "sleep-in-test"}
-    return overlap_sites(found, TEST_OVERLAPS) + busy_wait_sites(context, sleeps)
+    return overlap_sites(found, CLOCK_OVERLAPS) + busy_wait_sites(context, sleeps)
