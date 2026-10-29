@@ -1,4 +1,4 @@
-import { isExceptionEntry, routeFields } from './exception-sentence.mjs';
+import { insertBeforeRoute, isExceptionEntry, routeFields } from './exception-sentence.mjs';
 
 const EXCEPTION_LISTS = ['exceptions', 'python.exceptions'];
 
@@ -61,4 +61,35 @@ export function withMessage(finding, { message, allowedForm }) {
     ...(allowedForm === undefined ? {} : { allowedForm }),
     ...routeFields(message),
   };
+}
+
+/** A ratcheted `finding` told with its `worseMessage`, for a value that grew past `baseValue`. */
+export function withWorseMessage(finding, baseValue) {
+  const { worseMessage, worseAllowedForm } = finding.ratchet;
+  if (worseMessage === undefined) {
+    return finding;
+  }
+  const message = worseMessage.replaceAll('{base}', String(baseValue));
+  const kept = finding.allowedForm !== undefined && message.includes(finding.allowedForm);
+  return withMessage(finding, {
+    message,
+    allowedForm:
+      worseAllowedForm?.replaceAll('{base}', String(baseValue)) ??
+      (kept ? finding.allowedForm : undefined),
+  });
+}
+
+/** A ratcheted `finding` with its `growthAdvice` added for the count `baseValue` it had at base. */
+export function withGrowthAdvice(finding, baseValue) {
+  const { growthAdvice, growthAllowedForm } = finding.ratchet;
+  return withMessage(finding, {
+    message: insertBeforeRoute(
+      finding.message,
+      growthAdvice.replaceAll('{base}', String(baseValue)),
+    ),
+    allowedForm:
+      growthAllowedForm === undefined
+        ? finding.allowedForm
+        : [finding.allowedForm, growthAllowedForm].filter((part) => part !== undefined).join(' '),
+  });
 }

@@ -5,10 +5,10 @@ import { describe, expect, it } from 'vitest';
 import { normalizeEslintResults } from '../eslint/normalize.mjs';
 import {
   eslintMessageWithHint,
-  growthAdviceFor,
   routedEslintFields,
   withoutFatalDirectives,
 } from './eslint-hints.mjs';
+import { growthAdviceFor } from './growth-advice.mjs';
 
 const IMMUTABLE = (kind) =>
   `${kind} should have an immutability of at least "ReadonlyDeep" (actual: "Mutable").`;
