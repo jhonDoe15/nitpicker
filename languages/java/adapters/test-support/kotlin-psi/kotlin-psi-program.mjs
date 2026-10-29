@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect } from 'vitest';
-import { INIT_SCRIPT } from '../../builds/java-build.mjs';
+import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 
 export function pinnedKotlinCompiler() {
   return /kotlinCompiler\s*:\s*'([^']+)'/.exec(readFileSync(INIT_SCRIPT, 'utf8'))[1];
@@ -16,7 +16,7 @@ function insideOf(base, name) {
   return full;
 }
 
-const PSI_SOURCES = path.resolve(import.meta.dirname, '../../gradle/kotlin-psi');
+const PSI_SOURCES = path.resolve(import.meta.dirname, '../../../gradle/kotlin-psi');
 
 const PRINT_CLASSPATH = `allprojects {
     plugins.withId('org.jetbrains.kotlin.jvm') {

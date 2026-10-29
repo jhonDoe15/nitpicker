@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { KOTLIN_REPORTS } from './reports/kotlin-report-names.mjs';
+import { KOTLIN_REPORTS } from './report-names/kotlin-report-names.mjs';
 import { ingestCrapFunctions } from '../../ingest/crap.mjs';
 import { ownRange } from '../../ingest/units/unit-coverage.mjs';
 import { MESSAGES, RULE_IDS } from '../../../../shared/policy.mjs';

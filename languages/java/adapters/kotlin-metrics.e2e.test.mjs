@@ -20,7 +20,7 @@ import {
   gradleClasspath,
   pinnedKotlinCompiler,
   writeSources,
-} from './test-support/kotlin-psi-program.mjs';
+} from './test-support/kotlin-psi/kotlin-psi-program.mjs';
 import {
   BOM,
   BROKEN,
