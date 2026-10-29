@@ -1,4 +1,5 @@
 import {
+  anchorAt,
   countInMessage,
   countPattern,
   REMEDIES,
@@ -58,6 +59,7 @@ const MEASURED_COUNTS = new Map([
 ]);
 
 const PARAMETER_PRINT = /\(.*\)(?= has too many parameters)/u;
+const FILE_PATH = /(?<=^File )'.*'(?= with)/u;
 
 function ruleName(finding) {
   return finding.tool === DETEKT_TOOL ? finding.rule.split('.').at(-1) : undefined;
@@ -87,21 +89,32 @@ function measuredValue(index, finding, rule) {
     .find((values) => values.length === 1)?.[0];
 }
 
-export function withDetektCountRatchets(findings, detektCounts = []) {
-  const index = measuredIndex(detektCounts);
-  return withCountRatchets(findings, (finding) => {
-    const rule = ruleName(finding);
-    const counted = MESSAGE_COUNTS.get(rule);
-    if (counted !== undefined) {
-      const count = countInMessage(finding.message, counted.pattern);
-      return count === undefined
-        ? undefined
-        : { ...count, unit: counted.unit, remedy: counted.remedy };
-    }
-    const measured = MEASURED_COUNTS.get(rule);
-    const value = measured === undefined ? undefined : measuredValue(index, finding, rule);
-    return value === undefined
+function countOf(index, finding) {
+  const rule = ruleName(finding);
+  const counted = MESSAGE_COUNTS.get(rule);
+  if (counted !== undefined) {
+    const count = countInMessage(finding.message, counted.pattern);
+    return count === undefined
       ? undefined
-      : { ...measured, value, subject: finding.message.replace(PARAMETER_PRINT, '(…)') };
-  });
+      : {
+          ...count,
+          subject: count.subject.replace(FILE_PATH, 'this file'),
+          unit: counted.unit,
+          remedy: counted.remedy,
+        };
+  }
+  const measured = MEASURED_COUNTS.get(rule);
+  const value = measured === undefined ? undefined : measuredValue(index, finding, rule);
+  return value === undefined
+    ? undefined
+    : { ...measured, value, subject: finding.message.replace(PARAMETER_PRINT, '(…)') };
+}
+
+export function withDetektCountRatchets(findings, detektCounts = [], locate = () => undefined) {
+  const index = measuredIndex(detektCounts);
+  return withCountRatchets(
+    findings,
+    (finding) => countOf(index, finding),
+    (finding) => anchorAt(finding, locate),
+  );
 }

@@ -50,9 +50,9 @@ describe('withCountRatchets', () => {
       returnCount,
     );
 
-    expect(counted.identity).toBe('fp:Function f has 3 return statements.|value:3');
+    expect(counted.identity).toBe('fp:Function f has 3 return statements.|in:|value:3');
     expect(counted.ratchet).toEqual({
-      key: 'count:return statements:Function f has # return statements.:occurrence:1',
+      key: 'count:return statements:Function f has # return statements.:in:',
       value: 3,
       worseMessage:
         'Return statements grew from {base} to 3. Put the new code in a new function. Function f has 3 return statements.',
@@ -73,16 +73,21 @@ describe('withCountRatchets', () => {
     expect(counted.ratchet.worseMessage.endsWith(route)).toBe(true);
   });
 
-  it('numbers findings of the same subject by line, whatever order they come in', () => {
+  it('keys a finding by the function around it, so a sibling never takes its place', () => {
     const counted = withCountRatchets(
-      [
-        finding('Constructor has 9 return statements.', 30),
-        finding('Constructor has 8 return statements.', 10),
-      ],
-      returnCount,
+      [finding('Cyclomatic complexity is 20.', 10), finding('Cyclomatic complexity is 11.', 40)],
+      (item) => ({ value: 1, subject: item.message, unit: 'complexity' }),
+      (item) => (item.location.line < 20 ? 'first' : 'second'),
     );
 
-    expect(counted.map(({ ratchet }) => ratchet.key.split(':').at(-1))).toEqual(['2', '1']);
+    expect(counted.map(({ ratchet }) => ratchet.key.split(':in:').at(-1))).toEqual([
+      'first',
+      'second',
+    ]);
+    expect(counted.map(({ identity }) => identity.split('|')[1])).toEqual([
+      'in:first',
+      'in:second',
+    ]);
   });
 
   it('keys the subject without the line numbers in it', () => {

@@ -1,4 +1,5 @@
 import {
+  anchorAt,
   countInMessage,
   countPattern,
   REMEDIES,
@@ -82,18 +83,20 @@ function countedRule(finding) {
   return finding.tool === 'pmd' ? PMD_COUNTS.get(name) : undefined;
 }
 
-export function withJavaCountRatchets(findings) {
-  return withCountRatchets(findings, (finding) => {
-    const counted = countedRule(finding);
-    const count =
-      counted === undefined ? undefined : countInMessage(finding.message, counted.pattern);
-    return count === undefined
-      ? undefined
-      : {
-          ...count,
-          subject: count.subject.replace(COUPLED_CLASSES, ' classes'),
-          unit: counted.unit,
-          remedy: counted.remedy,
-        };
-  });
+function countOf(finding) {
+  const counted = countedRule(finding);
+  const count =
+    counted === undefined ? undefined : countInMessage(finding.message, counted.pattern);
+  return count === undefined
+    ? undefined
+    : {
+        ...count,
+        subject: count.subject.replace(COUPLED_CLASSES, ' classes'),
+        unit: counted.unit,
+        remedy: counted.remedy,
+      };
+}
+
+export function withJavaCountRatchets(findings, locate = () => undefined) {
+  return withCountRatchets(findings, countOf, (finding) => anchorAt(finding, locate));
 }

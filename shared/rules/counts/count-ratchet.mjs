@@ -1,4 +1,3 @@
-import { nextOccurrence } from '../finding-helpers.mjs';
 import { withoutExceptionRoute } from '../../messages/exception-sentence.mjs';
 
 const COUNT = String.raw`(\d{1,3}(?:,\d{3})+|\d+)`;
@@ -29,31 +28,8 @@ export function countInMessage(message, pattern) {
   };
 }
 
-function byLine(left, right) {
-  return (left.location?.line ?? 0) - (right.location?.line ?? 0);
-}
-
 function capitalized(text) {
   return `${text.charAt(0).toUpperCase()}${text.slice(1)}`;
-}
-
-function ratchetKeys(counted) {
-  const occurrences = new Map();
-  const keys = new Map();
-  for (const { finding, count } of counted.toSorted((left, right) =>
-    byLine(left.finding, right.finding),
-  )) {
-    const subject = `${count.unit}:${count.subject.replaceAll(/\bline \d+\b/gu, 'line')}`;
-    const group = JSON.stringify([
-      finding.tool,
-      finding.rule,
-      finding.path,
-      finding.symbol ?? '',
-      subject,
-    ]);
-    keys.set(finding, `count:${subject}:occurrence:${String(nextOccurrence(occurrences, group))}`);
-  }
-  return keys;
 }
 
 function ratchetOf(finding, count, key) {
@@ -66,21 +42,23 @@ function ratchetOf(finding, count, key) {
   };
 }
 
-export function withCountRatchets(findings, countOf) {
-  const counted = findings
-    .filter((finding) => finding.ratchet === undefined)
-    .map((finding) => ({ finding, count: countOf(finding) }))
-    .filter(({ count }) => count !== undefined);
-  const keys = ratchetKeys(counted);
-  const counts = new Map(counted.map(({ finding, count }) => [finding, count]));
+export function anchorAt(finding, locate) {
+  const line = finding.location?.line;
+  return line === undefined ? undefined : locate(finding.path, line);
+}
+
+export function withCountRatchets(findings, countOf, anchorOf = () => undefined) {
   return findings.map((finding) => {
-    const count = counts.get(finding);
-    return count === undefined
-      ? finding
-      : {
-          ...finding,
-          identity: `${finding.identity}|value:${String(count.value)}`,
-          ratchet: ratchetOf(finding, count, keys.get(finding)),
-        };
+    const count = finding.ratchet === undefined ? countOf(finding) : undefined;
+    if (count === undefined) {
+      return finding;
+    }
+    const anchor = anchorOf(finding) ?? '';
+    const subject = `${count.unit}:${count.subject.replaceAll(/\bline \d+\b/gu, 'line')}`;
+    return {
+      ...finding,
+      identity: `${finding.identity}|in:${anchor}|value:${String(count.value)}`,
+      ratchet: ratchetOf(finding, count, `count:${subject}:in:${anchor}`),
+    };
   });
 }
