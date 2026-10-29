@@ -42,18 +42,22 @@ function anchoredPairs(group, file) {
 
 const MAX_NEAREST_CANDIDATES = 250_000;
 
+function inLineOrder(heads, bases) {
+  const ordered = bases.toSorted((left, right) => left.line - right.line);
+  return heads
+    .toSorted((left, right) => lineOf(left) - lineOf(right))
+    .slice(0, ordered.length)
+    .map((head, index) => ({ head, base: ordered[index].base }));
+}
+
 function nearestCandidates(heads, free, file) {
-  const bases = [...free];
+  const bases = [...free].map((base) => ({ base, line: headLineOf(file, lineOf(base)) }));
   if (heads.length * bases.length > MAX_NEAREST_CANDIDATES) {
-    return heads.slice(0, bases.length).map((head, index) => ({ head, base: bases[index] }));
+    return inLineOrder(heads, bases);
   }
   return heads
     .flatMap((head) =>
-      bases.map((base) => ({
-        head,
-        base,
-        distance: Math.abs(lineOf(head) - headLineOf(file, lineOf(base))),
-      })),
+      bases.map(({ base, line }) => ({ head, base, distance: Math.abs(lineOf(head) - line) })),
     )
     .toSorted((left, right) => left.distance - right.distance);
 }

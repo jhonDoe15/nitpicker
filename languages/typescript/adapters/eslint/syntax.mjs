@@ -1,6 +1,9 @@
 import { createHash } from 'node:crypto';
 import ts from 'typescript';
-import { parenthesesAroundArrowParameter } from '../../../../shared/source-text/format-tokens.mjs';
+import {
+  formatAgnosticTokens,
+  sourceLanguage,
+} from '../../../../shared/source-text/format-tokens.mjs';
 import { chainOf } from '../../../../shared/traversal.mjs';
 export function commentAt(text, position, endPosition) {
   const isLine = text.startsWith('//', position);
@@ -123,47 +126,17 @@ function fingerprintText(node) {
   return node.getText();
 }
 
-const ARROW_PARAMETER = [
-  ts.SyntaxKind.OpenParenToken,
-  ts.SyntaxKind.Identifier,
-  ts.SyntaxKind.CloseParenToken,
-  ts.SyntaxKind.EqualsGreaterThanToken,
-].map((kind) => (candidate) => candidate === kind);
+const SCRIPT = sourceLanguage('script.ts');
 
 export function syntaxFingerprint(node, nodeType) {
   if (nodeType === 'Program') {
     return 'program';
   }
-
-  const scanner = ts.createScanner(
-    ts.ScriptTarget.Latest,
-    true,
-    ts.LanguageVariant.Standard,
-    fingerprintText(node),
-  );
-  const tokens = [...scannedTokens(scanner)].filter(
-    (token) => token.kind !== ts.SyntaxKind.SemicolonToken,
-  );
-  const parentheses = parenthesesAroundArrowParameter(
-    tokens.map(({ kind }) => kind),
-    ARROW_PARAMETER,
-  );
-  const semanticTokens = tokens
-    .filter(
-      (token, index) =>
-        !(token.kind === ts.SyntaxKind.CommaToken && isClosingToken(tokens[index + 1]?.kind)) &&
-        !parentheses.has(index),
-    )
-    .map((token) => `${String(token.kind)}:${token.text}`);
-  return createHash('sha256').update(semanticTokens.join('\0')).digest('hex').slice(0, 24);
-}
-
-function isClosingToken(kind) {
-  return (
-    kind === ts.SyntaxKind.CloseBraceToken ||
-    kind === ts.SyntaxKind.CloseBracketToken ||
-    kind === ts.SyntaxKind.CloseParenToken
-  );
+  const semanticTokens = formatAgnosticTokens(fingerprintText(node), SCRIPT, { comments: false });
+  return createHash('sha256')
+    .update(semanticTokens.map(({ text }) => text).join('\0'))
+    .digest('hex')
+    .slice(0, 24);
 }
 
 export function normalizeMessageText(value) {
@@ -181,27 +154,4 @@ export function scriptKind(filePath) {
     return ts.ScriptKind.JS;
   }
   return ts.ScriptKind.TS;
-}
-
-function scannedTokens(scanner) {
-  return {
-    [Symbol.iterator]() {
-      return this;
-    },
-    next() {
-      const kind = scanner.scan();
-      return kind === ts.SyntaxKind.EndOfFileToken
-        ? { done: true }
-        : {
-            done: false,
-            value: {
-              kind,
-              text:
-                kind === ts.SyntaxKind.StringLiteral
-                  ? JSON.stringify(scanner.getTokenValue())
-                  : scanner.getTokenText(),
-            },
-          };
-    },
-  };
 }

@@ -102,7 +102,7 @@ function lineBranch(line, { path: filePath, lines: sourceLines }) {
   const suspension = kotlin ? suspensionCall(source) : undefined;
   return {
     path: filePath,
-    key: hashIdentity('branch-source', [formatAgnosticText(source, filePath)]),
+    key: hashIdentity('branch-source', [formatAgnosticText(sourceLines[lineNumber - 1], filePath)]),
     percent: (covered / total) * 100,
     line: lineNumber,
     ...(suspension === undefined ? {} : { arms: [suspensionArm(suspension)] }),

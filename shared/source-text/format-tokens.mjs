@@ -1,56 +1,180 @@
-const TOKEN = /"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|[\p{L}\p{N}_$]+|=>|\S/gu;
-const QUOTE_RESTYLING_FILE = /\.(?:py|pyi|[cm]?[jt]sx?|vue|svelte)$/u;
+import { NEWLINE, pythonLayout, statementLayout } from './layout-tokens.mjs';
+import { scanSource } from './scan-source.mjs';
+import { describeLines } from './scope-moves.mjs';
+import { sourceLanguage } from './source-languages.mjs';
+
+export { sourceLanguage } from './source-languages.mjs';
+
+const MAX_SOURCE_LENGTH = 1_000_000;
+const OPENERS = new Set(['(', '[', '{']);
 const CLOSERS = new Set([')', ']', '}']);
-const WORD = /^[\p{L}\p{N}_$]+$/u;
+const PYTHON_KEYWORDS = new Set([
+  'and',
+  'as',
+  'assert',
+  'async',
+  'await',
+  'case',
+  'del',
+  'elif',
+  'else',
+  'except',
+  'for',
+  'from',
+  'global',
+  'if',
+  'import',
+  'in',
+  'is',
+  'lambda',
+  'match',
+  'nonlocal',
+  'not',
+  'or',
+  'raise',
+  'return',
+  'while',
+  'with',
+  'yield',
+]);
+const JAVASCRIPT_STATEMENTS = {
+  restricted: new Set(['return', 'break', 'continue', 'throw', 'yield', 'async']),
+  statementWords: new Set([
+    ...['if', 'else', 'for', 'while', 'do', 'switch', 'case', 'default', 'try', 'catch'],
+    ...['finally', 'function', 'class', 'const', 'let', 'var', 'new', 'typeof', 'void'],
+    ...['delete', 'in', 'instanceof', 'extends', 'implements', 'import', 'export', 'await'],
+  ]),
+  operandEnds: new Set([')', ']', '}', '++', '--']),
+  continuation: new Set([
+    ...['(', '[', '{', ')', ']', '}', '.', '?.', ',', '=', '+', '-', '*', '/', '%', '**'],
+    ...['<', '>', '<=', '>=', '==', '!=', '===', '!==', '&&', '||', '??', '?', ':', '&'],
+    ...['|', '^', '<<', '>>', '>>>', '+=', '-=', '*=', '/=', '%=', '**=', '<<=', '>>='],
+    ...['>>>=', '&=', '|=', '^=', '&&=', '||=', '??=', '=>', 'in', 'instanceof', 'as'],
+    ...['satisfies', 'of', 'else', 'catch', 'finally', 'extends', 'implements'],
+  ]),
+  taggedTemplates: true,
+  headers: new Set(['if', 'for', 'while', 'with']),
+  emptyBodies: new Set(['else', 'do']),
+};
+const KOTLIN_STATEMENTS = {
+  restricted: new Set(['return', 'break', 'continue']),
+  statementWords: new Set([
+    ...['if', 'else', 'for', 'while', 'do', 'when', 'try', 'catch', 'finally', 'fun'],
+    ...['class', 'object', 'interface', 'val', 'var', 'import', 'package', 'in', 'is'],
+    ...['as', 'typealias', 'throw'],
+  ]),
+  operandEnds: new Set([')', ']', '}', '++', '--', '!!', '?']),
+  continuation: new Set([
+    ...['.', '?.', '::', '?:', '&&', '||', 'as', ':', '=', '->', 'else', 'catch'],
+    ...['finally', 'by', 'where', ')', ']', '}', ','],
+  ]),
+  taggedTemplates: false,
+  headers: new Set(['if', 'for', 'while', 'when', 'catch']),
+  emptyBodies: new Set(['else', 'do']),
+};
 
-export function changesQuoteStyle(filePath) {
-  return QUOTE_RESTYLING_FILE.test(filePath);
-}
-
-function tokenText(raw, quoteAgnostic) {
-  const quote = raw[0];
-  if (!quoteAgnostic || raw.length < 2 || (quote !== '"' && quote !== "'")) {
-    return raw;
+function laidOut(tokens, language, text) {
+  if (language.name === 'python') {
+    return pythonLayout(tokens, text.split('\n'));
   }
-  return `\0${raw.slice(1, -1).replaceAll(/\\(["'])/gu, '$1')}`;
+  if (language.name === 'java') {
+    return tokens;
+  }
+  return statementLayout(
+    tokens,
+    language.name === 'kotlin' ? KOTLIN_STATEMENTS : JAVASCRIPT_STATEMENTS,
+  );
 }
 
-export function lineTokens(text, { line, quoteAgnostic }) {
-  return [...text.matchAll(TOKEN)]
-    .map(([raw]) => ({ text: tokenText(raw, quoteAgnostic), line }))
-    .filter((token) => token.text !== ';');
+function isOp(token, texts) {
+  return token?.kind === 'op' && texts.has(token.text);
+}
+
+function pythonBracket(previous, opener) {
+  if (opener.text === '{') {
+    return 'display';
+  }
+  const afterOperand =
+    (previous?.kind === 'word' && !PYTHON_KEYWORDS.has(previous.text)) ||
+    previous?.kind === 'string' ||
+    isOp(previous, new Set([')', ']']));
+  if (opener.text === '(') {
+    return afterOperand ? 'call' : 'group';
+  }
+  return afterOperand ? 'subscript' : 'display';
+}
+
+function isFormattingComma(language, { previous, bracket }) {
+  if (language.name === 'python') {
+    return bracket === 'call' || bracket === 'display';
+  }
+  return previous !== undefined && !isOp(previous, OPENERS) && !isOp(previous, new Set([',']));
+}
+
+function droppedCommas(tokens, language) {
+  const code = tokens.filter((token) => token.kind !== 'comment');
+  const brackets = [];
+  const dropped = new Set();
+  for (const [index, token] of code.entries()) {
+    const previous = code[index - 1];
+    if (isOp(token, OPENERS)) {
+      brackets.push(pythonBracket(previous, token));
+    }
+    if (isOp(token, CLOSERS)) {
+      brackets.pop();
+    }
+    const trailing = isOp(token, new Set([','])) && isOp(code[index + 1], CLOSERS);
+    if (trailing && isFormattingComma(language, { previous, bracket: brackets.at(-1) })) {
+      dropped.add(token);
+    }
+  }
+  return dropped;
 }
 
 const ARROW_PARAMETER = [
-  (text) => text === '(',
-  (text) => WORD.test(text),
-  (text) => text === ')',
-  (text) => text === '=>',
+  (token) => isOp(token, new Set(['('])),
+  (token) => token?.kind === 'word',
+  (token) => isOp(token, new Set([')'])),
+  (token) => isOp(token, new Set(['=>'])),
 ];
 
-export function parenthesesAroundArrowParameter(texts, pattern) {
-  return new Set(
-    texts.flatMap((_, index) =>
-      pattern.every(
-        (matches, offset) => index + offset < texts.length && matches(texts[index + offset]),
-      )
-        ? [index, index + 2]
-        : [],
-    ),
+function arrowParameterParentheses(tokens, language) {
+  if (language.name !== 'javascript') {
+    return [];
+  }
+  return tokens.flatMap((_, index) =>
+    ARROW_PARAMETER.every((matches, offset) => matches(tokens[index + offset]))
+      ? [tokens[index], tokens[index + 2]]
+      : [],
   );
 }
 
-export function formattingFree(tokens) {
-  const texts = tokens.map(({ text }) => text);
-  const parentheses = parenthesesAroundArrowParameter(texts, ARROW_PARAMETER);
-  return tokens.filter(
-    (token, index) =>
-      !(token.text === ',' && CLOSERS.has(texts[index + 1])) && !parentheses.has(index),
-  );
+export function formatAgnosticTokens(text, language, { comments = true } = {}) {
+  const tokens = laidOut(scanSource(text, language), language, text);
+  const dropped = new Set([
+    ...droppedCommas(tokens, language),
+    ...arrowParameterParentheses(tokens, language),
+  ]);
+  return tokens.filter((token) => !dropped.has(token) && (comments || token.kind !== 'comment'));
+}
+
+export function sourceLines(text, language) {
+  return text.length > MAX_SOURCE_LENGTH
+    ? undefined
+    : describeLines(formatAgnosticTokens(text, language), language);
+}
+
+function inlineHeader(tokens) {
+  const body = tokens.findIndex((token) => token.inlineBody === true);
+  return body === -1 ? tokens : tokens.slice(0, body + 1);
 }
 
 export function formatAgnosticText(text, filePath) {
-  return formattingFree(lineTokens(text, { line: 0, quoteAgnostic: changesQuoteStyle(filePath) }))
-    .map((token) => token.text)
+  const language = sourceLanguage(filePath);
+  if (language === undefined) {
+    return text.trim().replaceAll(/\s+/gu, ' ');
+  }
+  return inlineHeader(formatAgnosticTokens(text.trim(), language, { comments: false }))
+    .map((token) => (token.text === NEWLINE ? '\n' : token.text))
     .join(' ');
 }

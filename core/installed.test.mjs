@@ -32,7 +32,7 @@ const expectedDirtyFindings = [
     rule: 'no-debugger',
     path: 'src/main/example.ts',
     identity:
-      'message:`debugger` statement is not allowed|node:LastStatement|syntax:e0b6e47576b16b4ac74e8631|occurrence:1',
+      'message:`debugger` statement is not allowed|node:LastStatement|syntax:3e60f1dc2469d9ea675d7a1c|occurrence:1',
     message: '`debugger` statement is not allowed',
     classification: 'enforceable',
     symbol: 'example',

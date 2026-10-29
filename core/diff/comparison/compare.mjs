@@ -81,7 +81,7 @@ function classify(headFinding, baseFinding, touchedCode) {
     return { bucket: 'changedMetrics', entry: changedMetricOf(baseFinding, headFinding) };
   }
   return isHeldOnTouchedLine(headFinding, touchedCode)
-    ? { bucket: 'newFindings', entry: withEditedLineReason(headFinding) }
+    ? { bucket: 'newFindings', entry: withEditedLineReason(headFinding, touchedCode) }
     : { bucket: 'unchangedFindings', entry: headFinding };
 }
 

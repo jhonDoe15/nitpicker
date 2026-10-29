@@ -122,6 +122,16 @@ describe('a finding anchored on a whole function is about its signature', () => 
     );
   });
 
+  it('tells an empty statement, a line break after return and a spaced operator from formatting', () => {
+    const block = (body) => `export function run() {${body}}\n`;
+    const identity = (body) => findingFor({ code: block(body), reported: `{${body}}` })[0].identity;
+
+    expect(identity('\n  if (ready); start();\n')).not.toBe(identity('\n  if (ready) start();\n'));
+    expect(identity('\n  return\n  value;\n')).not.toBe(identity('\n  return value;\n'));
+    expect(identity(' a + ++b ')).not.toBe(identity(' a++ + b '));
+    expect(identity(' start() ')).toBe(identity('\n  start();\n'));
+  });
+
   it('keeps a declaration without a body tied to its whole text', () => {
     const find = (code) => findingFor({ code, reported: code.trim() });
 
@@ -167,7 +177,7 @@ describe('a finding in an edited function stays baselined while the function has
       rule: SILENT,
       path: 'src/legacy.ts',
       identity:
-        'message:Reported text.|node:CatchClause|syntax:c3a22cec9ea0b8e31608ea14|occurrence:1',
+        'message:Reported text.|node:CatchClause|syntax:86f93298e288fc8cb445a744|occurrence:1',
       message:
         'Reported text. If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       location: { line: 4, column: 5 },
@@ -261,7 +271,7 @@ describe('a finding in an edited function stays baselined while the function has
         rule: 'nitpicker/no-silent-catch',
         path: 'src/legacy.ts',
         identity:
-          'message:Reported text.|node:CatchClause|syntax:c3a22cec9ea0b8e31608ea14|occurrence:1',
+          'message:Reported text.|node:CatchClause|syntax:86f93298e288fc8cb445a744|occurrence:1',
         message:
           'Reported text. If this is intended, add {"rule":"nitpicker/no-silent-catch","paths":["src/legacy.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         location: { line: 13, column: 5 },
