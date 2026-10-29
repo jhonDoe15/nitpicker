@@ -59,9 +59,11 @@ def lintBaseline = gradle.startParameter.projectProperties['nitpicker.lintBaseli
 tasks.register('nitpickerLint') {
     group = 'nitpicker'
     description = 'Runs the javac lint and reads the sealed permits from guards-plan.json.'
-    dependsOn tasks.named('classes')
+    dependsOn tasks.named('classes'), tasks.named('testClasses')
     doLast {
         def compile = tasks.named('compileJava').get()
+        def testCompile = tasks.named('compileTestJava').get()
+        def testGenerated = testCompile.options.generatedSourceOutputDirectory.asFile.orNull
         def javac = compile.javaCompiler.orNull?.executablePath?.asFile ?: new File(javaHome, 'bin/javac')
         def lintDirectory = layout.buildDirectory.dir('nitpicker-lint').get().asFile
         def generated = compile.options.generatedSourceOutputDirectory.asFile.orNull
@@ -81,6 +83,14 @@ tasks.register('nitpickerLint') {
                 compiler        : compilerOf(compile),
                 workDirectory   : new File(lintDirectory, 'work').absolutePath,
                 cacheDirectory  : lintDirectory.absolutePath,
+                test            : [
+                    sources         : pathsOf(sourceSets.test.allJava.files),
+                    generatedSources: testGenerated == null ? [] : [testGenerated.absolutePath],
+                    classDirectory  : testCompile.destinationDirectory.get().asFile.absolutePath,
+                    classpath       : pathsOf(testCompile.classpath.files),
+                    processorPath   : pathsOf(testCompile.options.annotationProcessorPath?.files ?: []),
+                    compiler        : compilerOf(testCompile),
+                ],
             ],
         ])
         runNode(guardsRunner, [reportDir.get().asFile.absolutePath] + (lintBaseline ? [lintBaseline.toString()] : []),

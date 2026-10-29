@@ -79,4 +79,12 @@ describe('moduleManifest', () => {
       expect([manifest.spring, manifest.springArch]).toEqual([spring, spring]);
     },
   );
+
+  it('runs the architecture rules, but not the Spring rules, for a module with jMolecules only', () => {
+    const classpaths = { mainCompile: ['/m2/jmolecules-ddd-2.0.1.jar'], testCompile: [] };
+
+    const manifest = moduleManifest({ module: singleModule(), classpaths, pinned: {} });
+
+    expect([manifest.spring, manifest.springArch]).toEqual([false, true]);
+  });
 });

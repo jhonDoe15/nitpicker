@@ -13,6 +13,7 @@ const ENTRY_FILES = [
   'languages/java/adapters/java-analyzer.mjs',
   'languages/java/adapters/java-runner.mjs',
 ];
+const ARCHUNIT_DIRECTORY = 'languages/java/gradle/archunit';
 const KOTLIN_PSI_DIRECTORY = 'languages/java/gradle/kotlin-psi';
 const EFFECTS_DIRECTORY = 'languages/java/gradle/effects';
 const RESOURCE_FILES = [
@@ -57,29 +58,32 @@ const RESOURCE_FILES = [
   'languages/java/messages/pmd.json',
   'languages/java/messages/checkstyle.json',
   'languages/java/messages/spotbugs.json',
-  'languages/java/gradle/archunit/ArchRules.java',
-  'languages/java/gradle/archunit/Found.java',
-  'languages/java/gradle/archunit/Layers.java',
-  'languages/java/gradle/archunit/Layout.java',
-  'languages/java/gradle/archunit/Spring.java',
-  'languages/java/gradle/archunit/TestRules.java',
 ];
 
-function javaSources(directory, root) {
-  return readdirSync(root, { recursive: true })
+function javaSources(directory, entries) {
+  return entries
     .filter((entry) => entry.endsWith('.java'))
     .map((entry) => `${directory}/${entry.replaceAll(path.sep, '/')}`);
 }
 
-function programFiles() {
-  return [
-    ...javaSources(KOTLIN_PSI_DIRECTORY, path.join(packageRoot, KOTLIN_PSI_DIRECTORY)),
-    ...javaSources(EFFECTS_DIRECTORY, path.join(packageRoot, EFFECTS_DIRECTORY)),
-  ];
+function sourcesUnder(directory) {
+  return javaSources(
+    directory,
+    readdirSync(path.join(packageRoot, directory), { recursive: true }),
+  );
 }
 
 function configurationContents() {
-  return importClosure([...ENTRY_FILES, ...RESOURCE_FILES, ...programFiles()], packageRoot);
+  return importClosure(
+    [
+      ...ENTRY_FILES,
+      ...RESOURCE_FILES,
+      ...sourcesUnder(KOTLIN_PSI_DIRECTORY),
+      ...sourcesUnder(ARCHUNIT_DIRECTORY),
+      ...sourcesUnder(EFFECTS_DIRECTORY),
+    ],
+    packageRoot,
+  );
 }
 
 export function configurationFiles() {

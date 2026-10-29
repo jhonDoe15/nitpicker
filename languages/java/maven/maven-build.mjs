@@ -6,15 +6,11 @@ import { runCheckstyle, runFormat, runSpotbugs, runPmd } from './maven-lint.mjs'
 import { runGuards } from './guards/maven-guards.mjs';
 import { runJdeps as runGuardJdeps } from './coupling/maven-jdeps.mjs';
 import { lifecycleArgs, readReactor } from './maven-project.mjs';
-import {
-  moduleClasspaths,
-  parseDependencyList,
-  usesSpring,
-} from './configuration/maven-classpaths.mjs';
+import { moduleClasspaths, parseDependencyList } from './configuration/maven-classpaths.mjs';
 import {
   archunitMatcher,
   collectTestResults,
-  junitLauncherVersion,
+  missingLauncherVersions,
   runJacocoReport,
   runPit,
 } from './maven-tests.mjs';
@@ -30,6 +26,8 @@ import {
 } from './maven-tools.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
 import { runEffects } from './effects/maven-effects.mjs';
+import { buildRunsArchRules, springFacts, withDeclaredSpring } from './spring/arch-rules-gate.mjs';
+import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { runJdepsMetrics, runStructure } from './metrics/maven-metrics.mjs';
@@ -97,7 +95,6 @@ function hasJar(classpath, jar) {
 }
 
 export function moduleManifest({ module, classpaths, pinned }) {
-  const spring = usesSpring(classpaths);
   return {
     versions: pinned,
     build: 'maven',
@@ -105,8 +102,7 @@ export function moduleManifest({ module, classpaths, pinned }) {
     kotlinSourceRoots: relativeRoots(module, module.kotlinSourceRoots ?? []),
     testSourceRoots: relativeRoots(module, module.testSourceRoots),
     resourceRoots: relativeRoots(module, module.resourceRoots),
-    spring,
-    springArch: spring,
+    ...springFacts(classpaths),
     effects: true,
     guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
     testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
@@ -126,11 +122,6 @@ function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
   requireTestngRun({ module, since, isArchunit, testRuntime });
   copyTestResults({ module, reportDir, since, isArchunit });
   return testsRan;
-}
-
-function withDeclaredSpring(manifest, declared) {
-  const spring = declared === true || manifest.spring;
-  return { ...manifest, spring, springArch: spring };
 }
 
 function analyzeSources(context, project) {
@@ -156,8 +147,8 @@ function analyzeSources(context, project) {
 }
 
 function analyzeTests(context, testsRan) {
-  const { module, reportDir, tools, classpaths, pinned, since, spring, isArchunit } = context;
-  const { spawn } = context;
+  const { module, reportDir, tools, classpaths, pinned, since, springArch, isArchunit } = context;
+  const { springRoles, spawn } = context;
   runJacocoReport({
     module,
     reportDir,
@@ -168,7 +159,16 @@ function analyzeTests(context, testsRan) {
     spawn,
   });
   runPit({ module, reportDir, tools, classpaths, isArchunit, spawn });
-  runSpringArch({ module, reportDir, tools, classpaths, pinned, spring, spawn });
+  runSpringArch({
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    pinned,
+    archRules: springArch,
+    springRoles,
+    spawn,
+  });
 }
 
 function analyzeModule({ project, ...options }) {
@@ -179,7 +179,8 @@ function analyzeModule({ project, ...options }) {
     moduleManifest({ module, classpaths, pinned }),
     options.spring,
   );
-  const context = { ...options, reportDir, isArchunit, spring: manifest.spring };
+  const { spring, springArch } = manifest;
+  const context = { ...options, reportDir, isArchunit, spring, springArch };
   const testRuntime = classpaths.testRuntime;
   const testsRan = readTestRuns({ module, reportDir, since, isArchunit, testRuntime });
   analyzeSources(context, project);
@@ -218,17 +219,11 @@ function readModules(run) {
   return modules;
 }
 
-function missingLauncherVersions(analyzed) {
-  const versions = analyzed.map(({ classpaths }) => junitLauncherVersion(classpaths.testRuntime));
-  return [...new Set(versions.filter((version) => version !== undefined))];
-}
-
 function extraTools({ modules, analyzed, policy, pinned }) {
-  const spring = analyzed.some(({ classpaths }) => usesSpring(classpaths));
   return [
     ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
     ...formatTool(policy.javaStyle, pinned),
-    ...archunitTool(spring, pinned),
+    ...archunitTool(buildRunsArchRules(policy, analyzed), pinned),
     ...effectsTool(pinned),
   ];
 }
@@ -274,6 +269,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
           indentation: checkstyleIndentation(policy.conventions),
         },
         spring: policy.spring,
+        springRoles: writeSpringRoles(policy.springRoles, work),
       });
     }
     return modules.map((module) => module.basedir);
