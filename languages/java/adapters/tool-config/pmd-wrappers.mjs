@@ -3,7 +3,7 @@ import path from 'node:path';
 import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { escapeXml } from './xml-write.mjs';
-import { pmdLayerFiles, TEST_RULESET } from './layer-files.mjs';
+import { MAIN_RULESET, pmdLayerFiles, TEST_RULESET } from './layer-files.mjs';
 
 function rulesetExcluding({ name, description, rules, roots }) {
   const excludes = roots.map(
@@ -22,6 +22,7 @@ function rulesetExcluding({ name, description, rules, roots }) {
 }
 
 export function writeRulesets({ module, reportDir, configs, spring }) {
+  const layers = pmdLayerFiles({ ...configs.pmd, directory: reportDir });
   const mainRuleset = path.join(reportDir, 'pmd-main.xml');
   writeFileSync(
     mainRuleset,
@@ -29,13 +30,12 @@ export function writeRulesets({ module, reportDir, configs, spring }) {
       name: 'nitpicker-main',
       description: "Nitpicker's main-only rules on main sources only.",
       rules: [
-        path.join(GRADLE_DIRECTORY, 'pmd-main-ruleset.xml'),
+        layers.main ?? MAIN_RULESET,
         ...(spring ? [path.join(GRADLE_DIRECTORY, 'spring-ruleset.xml')] : []),
       ],
       roots: module.testSourceRoots,
     }),
   );
-  const layers = pmdLayerFiles({ ...configs.pmd, directory: reportDir });
   const testsRuleset = path.join(reportDir, 'pmd-tests.xml');
   writeFileSync(
     testsRuleset,
