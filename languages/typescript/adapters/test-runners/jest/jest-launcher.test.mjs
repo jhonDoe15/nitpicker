@@ -68,13 +68,23 @@ afterEach(() => {
 });
 
 describe('the Jest command line', () => {
-  it('disables configured coverage when rerunning a slow test', () => {
+  it('disables configured coverage and project reporters when rerunning a slow test', () => {
     const root = projects.project({
       'package.json': {
         name: 'p',
         private: true,
-        jest: { collectCoverage: true, coverageProvider: 'babel', coverageReporters: ['json'] },
+        jest: {
+          collectCoverage: true,
+          coverageProvider: 'babel',
+          coverageReporters: ['json'],
+          reporters: ['<rootDir>/reporter.js'],
+        },
       },
+      'reporter.js': [
+        'module.exports = class {',
+        "  onRunComplete() { require('node:fs').writeFileSync(`${__dirname}/reported`, ''); }",
+        '};',
+      ].join('\n'),
       'src/value.js': 'exports.value = () => 42;',
       'test/value.test.js': [
         "const { value } = require('../src/value');",
@@ -93,9 +103,12 @@ describe('the Jest command line', () => {
       command(undefined, []),
     );
 
-    expect([run.failed, run.report.numTotalTests, existsSync(path.join(root, 'coverage'))]).toEqual(
-      [false, 1, false],
-    );
+    expect([
+      run.failed,
+      run.report.numTotalTests,
+      existsSync(path.join(root, 'coverage')),
+      existsSync(path.join(root, 'reported')),
+    ]).toEqual([false, 1, false, false]);
   });
 
   it('drops the options that narrow the run to some of the tests', () => {
@@ -142,7 +155,7 @@ describe('a Jest run that a Create React App script starts', () => {
           `--testTimeout=${String(testTimeoutMs())}`,
           '--restoreMocks',
         ],
-        ...['--silent=false', '--verbose=false', '--reporters=default'],
+        ...['--reporters=default', '--silent=false', '--verbose=false'],
         `--reporters=${consoleProducerPath(options, 'jest')}`,
         '--watchAll=false',
       ],
