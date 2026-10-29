@@ -40,6 +40,7 @@ describe('the go preset config', () => {
     ],
     [{ duplicates: { skippedFolders: [] } }, '"duplicates" is not supported with "preset": "go"'],
     [{ tools: { prettier: { precedence: ['project'] } } }, 'unknown tool "prettier"'],
+    [{ tools: { jscpd: { precedence: ['project'] } } }, 'unknown tool "jscpd"'],
     [
       { exceptions: [{ rule: 'staticcheck/SA1019', paths: ['a.go'], reason: 'not run yet' }] },
       'must name a finding as it is printed, "<tool>/<rule>" (for example "vet/printf")',
