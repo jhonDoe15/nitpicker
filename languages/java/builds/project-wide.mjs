@@ -98,7 +98,7 @@ function mergeProjects(projectRoot, projects, mergedRoot) {
   );
 }
 
-function couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin }) {
+function couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin, layout }) {
   const complete = projects
     .filter(({ reportRoot }) =>
       [JDEPS_REPORT, JDEPS_CLASSES].every((name) => existsSync(path.join(reportRoot, name))),
@@ -113,6 +113,7 @@ function couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin 
       projectRoot,
       sourceRoots: manifest.sourceRoots ?? [],
       kotlin: kotlin ? kotlinNodes([single]) : undefined,
+      layout,
     });
   }
   const files = mergeProjects(projectRoot, complete, mergedRoot);
@@ -121,6 +122,7 @@ function couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin 
     sourceRoots: manifest.sourceRoots ?? [],
     kotlin: kotlin ? kotlinNodes(complete) : undefined,
     files,
+    layout,
   });
 }
 
@@ -140,7 +142,13 @@ export function projectWideFindings(
         baselineRoot: policy.baselineRoot,
       },
     }),
-    ...couplingFindings(projectRoot, { projects, mergedRoot, manifest, kotlin }),
+    ...couplingFindings(projectRoot, {
+      projects,
+      mergedRoot,
+      manifest,
+      kotlin,
+      layout: policy.layout,
+    }),
     ...readTestOnlyClassFindings(projectRoot, { projects }),
   ];
 }

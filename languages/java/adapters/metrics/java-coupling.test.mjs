@@ -45,6 +45,17 @@ classes -> classes
 const fileOf = (name) => `src/main/java/${name.replaceAll('.', '/')}.java`;
 const analyze = () => analyzeJavaCoupling({ classes: CLASSES, edges: parseJdeps(JDEPS), fileOf });
 const packageOf = (report, name) => report.packages.find((entry) => entry.name === name);
+const javaFile = (name) => `src/main/java/${name}.java`;
+const STABLE_CAUSE = {
+  files: [javaFile('stable/S')],
+  contributors: [
+    { file: javaFile('churn/U'), unit: 'package churn' },
+    { file: javaFile('client/A'), unit: 'package client' },
+    { file: javaFile('client/B'), unit: 'package client' },
+    { file: javaFile('client/C'), unit: 'package client' },
+    { file: javaFile('leaf/L'), unit: 'package leaf' },
+  ],
+};
 
 describe('parseJdeps', () => {
   it('reads class edges and skips the headers', () => {
@@ -150,7 +161,7 @@ describe('analyzeJavaCoupling', () => {
 
   it('lists package edges that point at a less stable package', () => {
     expect(analyze().stabilityDirection).toEqual([
-      { source: 'stable', target: 'churn', delta: 0.1 },
+      { source: 'stable', target: 'churn', delta: 0.1, cause: STABLE_CAUSE },
     ]);
   });
 });
@@ -196,6 +207,7 @@ describe('readCouplingFindings', () => {
         identity: 'package-edge:stable->churn',
         message: 'stable depends on less stable package churn',
         classification: 'enforceable',
+        cause: STABLE_CAUSE,
       },
     ]);
     expect(findings.filter((finding) => finding.classification !== 'enforceable')).not.toHaveLength(
@@ -274,7 +286,20 @@ describe('Kotlin classes', () => {
 
   it('finds a stability direction violation between Kotlin packages', () => {
     expect(analyzeKotlin().stabilityDirection).toEqual([
-      { source: 'stable', target: 'churn', delta: 0.1667 },
+      {
+        source: 'stable',
+        target: 'churn',
+        delta: 0.1667,
+        cause: {
+          files: ['src/main/kotlin/stable/Core.kt'],
+          contributors: ['churn/Volatile', 'client/Orders', 'leaf/Leaf', 'other/Reports'].map(
+            (name) => ({
+              file: `src/main/kotlin/${name}.kt`,
+              unit: `package ${name.split('/')[0]}`,
+            }),
+          ),
+        },
+      },
     ]);
   });
 
