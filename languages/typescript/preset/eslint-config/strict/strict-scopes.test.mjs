@@ -29,7 +29,7 @@ describe('no-restricted-syntax lists are unified across scopes', () => {
 
     expect([...new Set(messages(`${asserted}\n${thenChain}\n`, file))].sort()).toEqual([
       'Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.',
-      'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work. An exception fits only when a framework or library requires it.',
+      'Use async/await (with try/catch) instead of promise chains, and Promise.all with a limiter for concurrent work. An exception fits only when a framework or library requires it.',
     ]);
     expect(messages(defaultExport, file)).toEqual([
       'Use a named export (`export function name() {}` or `export const name = ...`). Default exports are only allowed in config files, `declare module` blocks and the framework files that need one (Next.js routes, Storybook stories, Expo Router screens). An exception fits only when a framework or library requires it.',
@@ -42,7 +42,7 @@ describe('no-restricted-syntax lists are unified across scopes', () => {
         'for...of is the only loop; iterate the items with for...of.',
       ]);
       expect(messages(thenChain, file)).toEqual([
-        'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work. An exception fits only when a framework or library requires it.',
+        'Use async/await (with try/catch) instead of promise chains, and Promise.all with a limiter for concurrent work. An exception fits only when a framework or library requires it.',
       ]);
       expect(messages('export const same = a == b;', file)).toEqual([
         "Expected '===' and instead saw '=='.",
