@@ -151,6 +151,14 @@ export const SMELL_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['float-equality-in-test'],
+    describe: (subject) =>
+      `\`${subject}\` is compared exactly in a test, so rounding makes it fail`,
+    allowed:
+      'Compare with a tolerance: `assert total == pytest.approx(0.3)` (it also takes lists and dicts), `math.isclose(total, 0.3)`, or `self.assertAlmostEqual(total, 0.3)`.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['test-without-assertion'],
     describe: (subject) => `Test \`${subject}\` has no assertion`,
     allowed:

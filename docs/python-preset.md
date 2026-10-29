@@ -617,6 +617,7 @@ are listed at the end.
 | Signatures               | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                    | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                            |
 | Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                 | ruff `S113`, `http-without-timeout` (script)                                                                                                         |
 | Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                             | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
+| Float checks in tests    | `assert total == pytest.approx(0.3)`, `math.isclose`, `assertAlmostEqual`                                                                        | `float-equality-in-test` (script)                                                                                                                    |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                      | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
 
 Details that are decisions rather than the table:
@@ -1032,7 +1033,11 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `responses`, `respx`, `requests_mock` and similar or patch the client, and tests under
   `integration`, `e2e` and the like. `tautological-assert` covers `assert True`, `assert x == x`,
   `assert 1`, `assertTrue(True)`, `assertEqual(x, x)`, `assertGreaterEqual(x, x)`,
-  `assertIsInstance(x, object)` and the like: asserts that cannot fail.
+  `assertIsInstance(x, object)` and the like: asserts that cannot fail. `float-equality-in-test`
+  reports a non-integral float literal (`0.3`, `-2.5`, `1e-3`) on one side of `==` or `!=` in an
+  `assert`, in `assertTrue`/`assertFalse`, or in `assertEqual`, `assertNotEqual` and the typed
+  `assert*Equal` forms, also inside a list, tuple, set or dict literal. Integral literals (`1.0`)
+  and infinities are exact and stay allowed, and a side wrapped in `approx(...)` is not checked.
 - A test function with no assertion is not checked here; the conventions work owns it, together
   with the detection of the project's own assertion helpers.
 - Touched code: a new finding is reported per site, and the rules in `touched-rules.mjs` (every

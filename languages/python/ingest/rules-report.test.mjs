@@ -167,6 +167,11 @@ describe('rules script report', () => {
     ],
     ['sleep-in-test', 'time.sleep', '`time.sleep` waits for real time in a test'],
     ['tautological-assert', 'assert', '`assert` can never fail'],
+    [
+      'float-equality-in-test',
+      '0.3',
+      '`0.3` is compared exactly in a test, so rounding makes it fail',
+    ],
     ['real-clock-in-test', 'time.time', '`time.time()` reads the real clock in a test'],
     ['random-in-test', 'random.random', '`random.random()` draws random values in a test'],
     ['network-in-test', 'requests.get', '`requests.get` reaches the network in a unit test'],
