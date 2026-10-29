@@ -1,14 +1,15 @@
-import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { normalizeRequirementName } from '../../libraries/python-dependencies.mjs';
+import {
+  buildsExtensions,
+  declaredNames,
+  isCheckedFile,
+  isDeclared,
+  isGeneratedModule,
+} from './import-names.mjs';
+import { createModuleFiles } from './module-files.mjs';
 
 const UNRESOLVED_RULE = 'unresolved-import';
-const TOOL_RUN_FILES = new Set(['setup.py', 'noxfile.py', 'fabfile.py', 'dodo.py', 'pavement.py']);
 const ALWAYS_PRESENT = ['__future__', '__main__'];
-const MODULE_FILE = /\.(?:py|pyi|pyw|pyx|pxd|pyc|so|pyd)$/u;
-const PACKAGE_REWIRING = /__path__|sys\.modules|declare_namespace/u;
-const INIT = '__init__.py';
-const DECLARED_FORMS = ['*', '*-py', 'py*', 'py-*', 'python-*', '*-python'];
 
 function isChecked(statement) {
   return statement.typeOnly !== true && statement.guarded !== true;
@@ -31,10 +32,11 @@ export function probedTops(imports) {
 }
 
 function checkedFiles(imports) {
-  return [
-    ...imports.modules.filter(({ file }) => !TOOL_RUN_FILES.has(file)),
+  const entries = [
+    ...imports.modules,
     ...(imports.others ?? []).filter(({ kind }) => kind === 'test'),
-  ];
+  ].filter(isCheckedFile);
+  return [...new Map(entries.map((entry) => [entry.file, entry])).values()];
 }
 
 function projectNames(imports) {
@@ -49,53 +51,47 @@ function projectNames(imports) {
   );
 }
 
-function packageDirectories(imports) {
+function topDirectory({ file, module }) {
+  const parts = file.replace(/\.py$/u, '').split('/');
+  const segments = parts.at(-1) === '__init__' ? parts.slice(0, -1) : parts;
+  return segments.slice(0, segments.length - module.split('.').length + 1).join('/');
+}
+
+function packageDirectories(imports, files) {
   const directories = new Map();
-  for (const { file, module, isPackage } of imports.modules) {
-    if (isPackage && !module.includes('.')) {
-      directories.set(module, path.posix.dirname(file));
+  function add(top, directory) {
+    if (files.isRegularPackage(directory)) {
+      directories.set(top, new Set([...(directories.get(top) ?? []), directory]));
     }
   }
+  for (const entry of imports.modules) {
+    add(entry.module.split('.')[0], topDirectory(entry));
+  }
   for (const { file, module } of imports.others ?? []) {
-    if (file === `${module}/${INIT}` && !directories.has(module)) {
-      directories.set(module, module);
+    if (file === `${module}/__init__.py` && !directories.has(module)) {
+      add(module, module);
     }
   }
   return directories;
 }
 
-function isDirectory(absolute) {
-  return existsSync(absolute) && statSync(absolute).isDirectory();
-}
-
-function hasModule(projectRoot, directory, name, last) {
-  const absolute = path.join(projectRoot, directory);
-  if (isDirectory(path.join(absolute, name))) {
-    return true;
-  }
-  return (
-    last &&
-    readdirSync(absolute).some((entry) => entry.startsWith(`${name}.`) && MODULE_FILE.test(entry))
+function rewiredPackages(imports, files) {
+  return new Set(
+    imports.modules
+      .filter(({ file }) => files.rewires(file))
+      .map(({ module }) => module.split('.')[0]),
   );
 }
 
-function rewires(projectRoot, file) {
-  const absolute = path.join(projectRoot, file);
-  return existsSync(absolute) && PACKAGE_REWIRING.test(readFileSync(absolute, 'utf8'));
-}
-
-function existsUnder(projectRoot, start, parts) {
-  let directory = start;
-  for (const [index, part] of parts.entries()) {
-    if (rewires(projectRoot, path.posix.join(directory, INIT))) {
-      return true;
-    }
-    if (!hasModule(projectRoot, directory, part, index === parts.length - 1)) {
-      return rewires(projectRoot, path.posix.join(directory, `${part}.py`));
-    }
-    directory = path.posix.join(directory, part);
-  }
-  return true;
+function besideImporter(files, file, top) {
+  const parts = path.posix
+    .dirname(file)
+    .split('/')
+    .filter((part) => part !== '.');
+  return parts
+    .map((_, index) => parts.slice(0, parts.length - index).join('/'))
+    .concat('.')
+    .some((directory) => files.hasModule(directory, top));
 }
 
 function relativeStart(file, level) {
@@ -103,14 +99,17 @@ function relativeStart(file, level) {
     .dirname(file)
     .split('/')
     .filter((part) => part !== '.');
-  return level - 1 > parts.length
+  return level - 1 >= parts.length
     ? undefined
     : parts.slice(0, parts.length - (level - 1)).join('/');
 }
 
-function isDeclared(declaredNames, top) {
-  const name = normalizeRequirementName(top);
-  return DECLARED_FORMS.some((form) => declaredNames.has(form.replace('*', name)));
+function existsInProject(project, relative, parts) {
+  const missing = project.files.missingPart(relative, parts);
+  if (missing === -1 || isGeneratedModule(parts[missing])) {
+    return true;
+  }
+  return missing === parts.length - 1 && project.buildsExtensions;
 }
 
 function resolverOf({ projectRoot, imports, scan, declared }) {
@@ -121,30 +120,53 @@ function resolverOf({ projectRoot, imports, scan, declared }) {
     ...scan.importable,
     ...projectNames(imports),
   ]);
-  const declaredNames = new Set(declared.dependencies.map(({ normalized }) => normalized));
+  const environmentInstalled = Object.keys(scan.modules ?? {}).length > 0;
+  const names = declaredNames(projectRoot, declared);
   const stdlib = new Set(scan.stdlib ?? []);
-  const packages = packageDirectories(imports);
-  function absolute(name) {
+  const files = createModuleFiles(projectRoot);
+  const packages = packageDirectories(imports, files);
+  const rewired = rewiredPackages(imports, files);
+  const project = { files, buildsExtensions: buildsExtensions(projectRoot) };
+  function isKnownTop(file, top) {
+    return (
+      !environmentInstalled ||
+      known.has(top) ||
+      isDeclared(names, top) ||
+      besideImporter(files, file, top)
+    );
+  }
+  function absolute(file, name) {
     const [top, ...rest] = name.split('.');
-    if (!known.has(top) && !isDeclared(declaredNames, top)) {
+    if (!isKnownTop(file, top)) {
       return false;
     }
-    const directory = packages.get(top);
-    return directory === undefined || stdlib.has(top) || existsUnder(projectRoot, directory, rest);
+    const directories = packages.get(top);
+    return (
+      directories === undefined ||
+      stdlib.has(top) ||
+      rewired.has(top) ||
+      [...directories].some((directory) => existsInProject(project, directory, rest))
+    );
   }
   function relative(file, { level, module }) {
     const start = relativeStart(file, level);
-    return start === undefined || existsUnder(projectRoot, start || '.', module.split('.'));
+    return start === undefined || existsInProject(project, start, module.split('.'));
   }
-  return (file, statement, name) =>
-    statement.level === 0 ? absolute(name) : relative(file, statement);
+  const answers = new Map();
+  return (file, statement, name) => {
+    const key = `${String(statement.level)}|${path.posix.dirname(file)}|${name}`;
+    if (!answers.has(key)) {
+      answers.set(key, statement.level === 0 ? absolute(file, name) : relative(file, statement));
+    }
+    return answers.get(key);
+  };
 }
 
 function specifier(statement, name) {
   return `${'.'.repeat(statement.level)}${name}`;
 }
 
-function finding(file, statement, name, manifest) {
+function finding({ file, statement, name }, manifest) {
   const spec = specifier(statement, name);
   const fix =
     statement.level > 0
@@ -168,7 +190,9 @@ export function unresolvedImportFindings({ projectRoot, imports, scan, declared 
   const resolves = resolverOf({ projectRoot, imports, scan, declared });
   return checkedFiles(imports).flatMap(({ file, kind }) => {
     const seen = new Set();
-    const checked = (statement) => isChecked(statement) && !(kind === 'test' && statement.local);
+    function checked(statement) {
+      return isChecked(statement) && !(kind === 'test' && statement.local === true);
+    }
     return (imports.imports[file] ?? []).filter(checked).flatMap((statement) =>
       dottedNames(statement).flatMap((name) => {
         const spec = specifier(statement, name);
@@ -176,7 +200,7 @@ export function unresolvedImportFindings({ projectRoot, imports, scan, declared 
           return [];
         }
         seen.add(spec);
-        return [finding(file, statement, name, declared.manifest)];
+        return [finding({ file, statement, name }, declared.manifest)];
       }),
     );
   });

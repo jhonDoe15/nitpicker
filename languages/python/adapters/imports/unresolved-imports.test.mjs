@@ -61,12 +61,15 @@ const plain = (names, line = 1) => ({ level: 0, module: null, names, line });
 const from = (module, names = ['x'], line = 1) => ({ level: 0, module, names, line });
 const relative = (level, module, names = ['x'], line = 1) => ({ level, module, names, line });
 
-function findingsFor(imports, { files = FILES, scan = SCAN } = {}) {
+function findingsFor(
+  imports,
+  { files = FILES, scan = SCAN, modules = MODULES, others = OTHERS, declared = DECLARED } = {},
+) {
   return unresolvedImportFindings({
     projectRoot: directory(files),
-    imports: { modules: MODULES, others: OTHERS, imports },
+    imports: { modules, others, imports },
     scan,
-    declared: DECLARED,
+    declared,
   });
 }
 
@@ -198,5 +201,124 @@ describe('Python unresolved imports', () => {
         },
       }),
     ).toEqual(['b', 'os', 'requests']);
+  });
+  it('leaves test data, tool configuration and tool-run files alone', () => {
+    const others = [
+      ...OTHERS,
+      { file: 'tests/data/test_sample.py', module: 'tests.data.test_sample', kind: 'test' },
+      {
+        file: 'tests/fixtures/pkg/main_test.py',
+        module: 'tests.fixtures.pkg.main_test',
+        kind: 'test',
+      },
+    ];
+    const modules = [
+      ...MODULES,
+      { file: 'website/conf.py', module: 'website.conf', isPackage: false },
+      { file: 'hatch_build.py', module: 'hatch_build', isPackage: false },
+      { file: 'tasks.py', module: 'tasks', isPackage: false },
+    ];
+    const imports = Object.fromEntries(
+      [...others, ...modules].map(({ file }) => [file, [plain(['nowhere_to_be_found'])]]),
+    );
+
+    expect(summary(findingsFor(imports, { modules, others }))).toEqual([
+      ['src/app/__init__.py', 'unresolved:nowhere_to_be_found', 1],
+      ['src/app/orders.py', 'unresolved:nowhere_to_be_found', 1],
+      ['src/app/billing/__init__.py', 'unresolved:nowhere_to_be_found', 1],
+      ['src/app/billing/invoice.py', 'unresolved:nowhere_to_be_found', 1],
+      ['tests/test_orders.py', 'unresolved:nowhere_to_be_found', 1],
+    ]);
+  });
+  it('matches a declared or build requirement whose import name differs', () => {
+    const declared = {
+      manifest: 'pyproject.toml',
+      dependencies: ['pillow', 'opencv-python-headless', 'pywin32', 'django-environ'].map(
+        (name) => ({ name, normalized: name, group: 'optional' }),
+      ),
+    };
+    const files = {
+      ...FILES,
+      'pyproject.toml': '[build-system]\nrequires = ["hatchling>=1.20", "hatch-vcs"]\n',
+    };
+    const imports = {
+      'src/app/orders.py': [
+        plain(['PIL.Image', 'cv2', 'win32api', 'pywintypes', 'environ', 'hatchling']),
+        plain(['sklearn'], 2),
+      ],
+    };
+
+    expect(summary(findingsFor(imports, { files, declared }))).toEqual([
+      ['src/app/orders.py', 'unresolved:sklearn', 2],
+    ]);
+  });
+  it('trusts generated modules, and compiled modules when the project builds extensions', () => {
+    const imports = {
+      'src/app/orders.py': [
+        from('app._version'),
+        relative(1, '_version'),
+        from('app.billing.invoice_pb2'),
+        from('app._core', ['add'], 4),
+        from('app.native.missing.deep', ['x'], 5),
+      ],
+    };
+    const compiled = {
+      ...FILES,
+      'pyproject.toml': '[build-system]\nrequires = ["meson-python", "numpy"]\n',
+    };
+
+    expect(summary(findingsFor(imports))).toEqual([
+      ['src/app/orders.py', 'unresolved:app._core', 4],
+      ['src/app/orders.py', 'unresolved:app.native.missing.deep', 5],
+    ]);
+    expect(summary(findingsFor(imports, { files: compiled }))).toEqual([
+      ['src/app/orders.py', 'unresolved:app.native.missing.deep', 5],
+    ]);
+  });
+  it('finds a compiled module beside the importing file or above it', () => {
+    const files = { ...FILES, 'fast_ext.cpython-312-x86_64-linux-gnu.so': '' };
+
+    expect(findingsFor({ 'tests/test_orders.py': [plain(['fast_ext'])] }, { files })).toEqual([]);
+  });
+  it('resolves a package spread over several source roots', () => {
+    const files = {
+      'services/a/app/__init__.py': '',
+      'services/a/app/x.py': '',
+      'services/b/app/__init__.py': '',
+      'services/b/app/y.py': '',
+      'services/b/app/z.py': '',
+    };
+    const modules = [
+      { file: 'services/a/app/__init__.py', module: 'app', isPackage: true },
+      { file: 'services/a/app/x.py', module: 'app.x', isPackage: false },
+      { file: 'services/b/app/y.py', module: 'app.y', isPackage: false },
+      { file: 'services/b/app/z.py', module: 'app.z', isPackage: false },
+    ];
+    const imports = {
+      'services/b/app/y.py': [from('app.z'), from('app.x'), from('app.w', ['q'], 3)],
+    };
+
+    expect(summary(findingsFor(imports, { files, modules, others: [] }))).toEqual([
+      ['services/b/app/y.py', 'unresolved:app.w', 3],
+    ]);
+  });
+  it('checks only project modules in an environment with nothing installed', () => {
+    const scan = { ...SCAN, modules: {} };
+    const imports = { 'src/app/orders.py': [plain(['requests', 'app.gone'], 2)] };
+
+    expect(summary(findingsFor(imports, { scan }))).toEqual([
+      ['src/app/orders.py', 'unresolved:app.gone', 2],
+    ]);
+  });
+  it('reports a file listed twice once, and leaves a relative import above the top package alone', () => {
+    const modules = [
+      ...MODULES,
+      { file: 'src/app/orders.py', module: 'src.app.orders', isPackage: false },
+    ];
+    const imports = { 'src/app/orders.py': [plain(['reqeusts'], 2), relative(3, 'far', ['x'])] };
+
+    expect(summary(findingsFor(imports, { modules }))).toEqual([
+      ['src/app/orders.py', 'unresolved:reqeusts', 2],
+    ]);
   });
 });

@@ -137,6 +137,18 @@ describe.skipIf(!pythonE2eEnabled)('import scan of guarded imports', () => {
     ],
     ['if os.name == "nt":\n    import a\n', ['a true 2']],
     ['if PY2:\n    import a\n', ['a true 2']],
+    ['if not _HAS_NUMPY:\n    import a\n', ['a true 2']],
+    [
+      'from sys import platform\nif platform == "darwin":\n    import a\n',
+      ['platform false 1', 'a true 3'],
+    ],
+    ['if os.environ.get("X"):\n    import a\n', ['a true 2']],
+    ['is_windows = sys.platform == "win32"\nif is_windows:\n    import a\n', ['a true 3']],
+    ['limit = MAX_ROWS\nif limit:\n    import a\n', ['a false 3']],
+    [
+      'try:\n    result = go()\nexcept Exception:\n    result = None\nif result:\n    import a\n',
+      ['a false 6'],
+    ],
     ['if find_spec("a"):\n    import a\n', ['a true 2']],
     ['if debug:\n    import a\n', ['a false 2']],
     [

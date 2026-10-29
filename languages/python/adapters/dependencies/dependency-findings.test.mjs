@@ -174,12 +174,24 @@ describe('Python dependency findings', () => {
   });
   it('reports an unresolved import even when the declaration is incomplete', () => {
     const projectRoot = directory({ 'setup.py': 'setup()\n', 'src/app/a.py': '' });
-    const imports = { ...IMPORTS, imports: { 'src/app/a.py': [from('reqeusts'), from('app.a')] } };
+    const imports = {
+      ...IMPORTS,
+      imports: { 'src/app/a.py': [{ ...from('reqeusts'), line: 2 }, from('app.a')] },
+    };
 
     expect(
       readDependencyFindings(reports(projectRoot, { scan: { ...SCAN, importable: [] }, imports })),
     ).toEqual([
-      expect.objectContaining({ rule: 'unresolved-import', identity: 'unresolved:reqeusts' }),
+      {
+        tool: 'dependencies',
+        rule: 'unresolved-import',
+        path: 'src/app/a.py',
+        identity: 'unresolved:reqeusts',
+        classification: 'enforceable',
+        location: { line: 2 },
+        message:
+          'Import reqeusts resolves to no module or package. Fix the module name, or install the package and list it in pyproject.toml',
+      },
     ]);
   });
   it('leaves test imports alone when the project declares no dev dependencies', () => {
