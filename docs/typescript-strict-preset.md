@@ -113,6 +113,10 @@ config file is an exception like any other.
   (`architecture/strict-layout.mjs`), under every `layout.sourceRoots` entry; a feature of another
   source root is another feature. A module that is shared on purpose before a second feature uses it
   needs an exception for this rule in `nitpicker.config.json`.
+- `stability-direction` (the `coupling` check) measures each feature folder as one unit: `index.ts`
+  is its face, edges between the face and the feature's own folders do not count, and an edge
+  between two features, or between a feature and `shared/`, compares the whole features. See
+  [Stability direction](usage.md#stability-direction).
 - `nitpicker/no-branch-in-composition-root`: the composition root (`composition-root.ts`, `main.ts`,
   `server.ts`, plus the `compositionRootPattern` option shared with
   `no-managed-resource-construction-outside-composition-roots`) only wires features with named
