@@ -18,6 +18,7 @@ const DIFF_REPORTS = [
   { name: 'changed-metrics.json', render: (report) => json(report.changedMetrics) },
   { name: 'held-findings.json', render: (report) => json(heldFindingsOf(report)) },
   { name: 'tool-errors.json', render: (report) => json(report.toolErrors) },
+  { name: 'notes.json', render: (report) => json(report.notes ?? []) },
   { name: TEXT_REPORT_FILE_NAME, render: renderTextReport },
   { name: 'report.junit.xml', render: renderJunitReport },
   { name: 'report.sarif', render: renderSarifReport },

@@ -29,6 +29,8 @@ const DETEKT_RULESETS = new Set([
   'style',
 ]);
 
+const RULESET_QUALIFIED = new RegExp(`^(?:${[...DETEKT_RULESETS].join('|')})[.:]`);
+
 export const ONE_WAY_RULES = [
   {
     name: 'UnsafeCallOnNullableType',
@@ -66,21 +68,30 @@ export const ONE_WAY_RULES = [
     allowed: 'Remove `apply`; use it only to configure an object you just created.',
   },
   { name: 'UseLet', ruleset: 'style' },
+  {
+    name: 'UnusedParameter',
+    ruleset: 'style',
+    mainOnly: true,
+    allowed:
+      'Remove the parameter and update the callers, or use it. An override, `main`, a function with any annotation other than `@Deprecated`, `@Suppress`, `@Throws`, `@JvmStatic`, `@JvmOverloads` or `@JvmName` (`@GetMapping`, `@Bean`, `@Test`, `@Inject`, ...) and a name starting `ignored` or `unused` are skipped.',
+  },
   { name: 'UseDataClass', ruleset: 'style' },
   { name: 'ForbiddenImport', ruleset: 'style' },
   { name: 'ForbiddenComment', ruleset: 'style' },
-  {
-    name: 'StringLiteralDuplication',
-    ruleset: 'complexity',
-    mainOnly: true,
-    allowed: 'Name it once as a constant (`private const val NAME = "..."`) and use the constant.',
-  },
   {
     name: 'DataClassShouldBeImmutable',
     ruleset: 'style',
     allowed: 'Make the property a `val` and build a changed copy with `copy(...)`.',
   },
 ].map((rule) => ({ ...rule, id: `detekt.${rule.ruleset}.${rule.name}` }));
+
+const UNUSED_CODE_TOKENS = new Set(['unused', 'UNUSED_PARAMETER', 'UNUSED_VARIABLE']);
+
+export function isUnusedCodeSuppression(token) {
+  return UNUSED_CODE_TOKENS.has(token);
+}
+
+export const DISABLED_DETEKT_RULES = ['detekt.complexity.StringLiteralDuplication'];
 
 export const SUPPRESSION_RULE = 'inline-suppression';
 export const TEST_ASSERTION_RULE = 'test-without-assertion';
@@ -93,6 +104,7 @@ export function isBannedSuppression(token) {
   return (
     DETEKT_RULESETS.has(token) ||
     COMPILER_WARNINGS.has(token) ||
+    RULESET_QUALIFIED.test(token) ||
     BANNED_SUPPRESSIONS.some((banned) => banned.test(token))
   );
 }
