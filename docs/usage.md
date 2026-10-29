@@ -312,8 +312,8 @@ nitpicker rules [--preset <name>] [--tool <name>]
   cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits 0 when
   everything was uploaded and 2 otherwise.
 - `nitpicker explain <tool/rule>...`: print what the [rule reference](rules/README.md) says about
-  each rule: the presets and analyzers that report it, why it is on, the allowed form and the
-  `nitpicker.config.json` entry that accepts it. Name a rule as a finding prints it
+  each rule: the presets and analyzers that report it, why it is on, the allowed form where the
+  reference has one, and the `nitpicker.config.json` entry that accepts it. Name a rule as a finding prints it
   (`eslint-lint/no-undef`, `pmd/UnusedLocalVariable`), by its bare name (`F401`, or `MagicNumber`
   for detekt's `detekt.style.MagicNumber`), or name a check (`coverage`, `mutation`, `duplicates`)
   to list its rules. A name the reference does not know is reported with the closest rules and
@@ -326,9 +326,11 @@ nitpicker rules [--preset <name>] [--tool <name>]
 ### Rule reference
 
 [docs/rules](rules/README.md) has one entry for every rule that can fail the gate, for all presets:
-the tool and rule id, the presets that report it, why it is on, the allowed form and the exact
-`exceptions` entry that accepts it. Where the reference has no allowed form of its own, the entry
-links to the page the tool keeps for the rule (or to the guide that describes it). The summaries,
+the tool and rule id, the presets that report it, why it is on, the allowed form where it has one,
+and the exact `exceptions` entry that accepts it. Where the reference has no allowed form of its
+own, the entry links to the page the tool keeps for the rule (or to the guide that describes it);
+for nitpicker's own PMD rules that the guides do not describe, the entry quotes the message the
+finding prints, which names the form to use. The summaries,
 reasons and examples of PMD, Error Prone, detekt, ruff and ESLint rules are those tools' own text,
 taken from the versions nitpicker pins; SpotBugs and Checkstyle are under the LGPL, so their entries
 name the rule and its category and link to the tool's description. The pages are generated from the

@@ -1,10 +1,10 @@
 # Rule reference
 
-Every rule that nitpicker can report, one entry each, with the preset that reports it, why it is on, the allowed form and the `nitpicker.config.json` entry that accepts it. The pages are generated from the rule catalogs (`npm run gen:rules`) and a test fails when they are stale.
+Every rule that nitpicker can report, one entry each, with the preset that reports it, why it is on, the allowed form where it has one, and the `nitpicker.config.json` entry that accepts it. The pages are generated from the rule catalogs (`npm run gen:rules`) and a test fails when they are stale.
 
 From a terminal, `nitpicker explain <tool/rule>` prints one entry, and `nitpicker rules` lists the rules of the preset of the project. In the SARIF report and in the findings files (`new-findings.json`, `held-findings.json`, `resolved-findings.json`, and `findings.json` with `--all`), each finding whose rule has an entry here links to it with a `helpUri`, at the release tag of the installed version.
 
-Where an entry has no allowed form of its own, it links to the tool's page for the rule. PMD, Error Prone, NullAway, detekt, ruff and ESLint text is quoted from the pinned versions under their permissive licences; SpotBugs and Checkstyle are LGPL, so their entries name the rule and link to the tool's description.
+Where an entry has no allowed form of its own, it links to the tool's page for the rule, or quotes the message the finding prints. PMD, Error Prone, NullAway, detekt, ruff and ESLint text is quoted from the pinned versions under their permissive licences; SpotBugs and Checkstyle are LGPL, so their entries name the rule and link to the tool's description.
 
 The reference covers the rules that fail the gate. Report-only measurements (metrics and coverage figures) and tool errors (a tool that could not run) are not rules and have no entry.
 
