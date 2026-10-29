@@ -104,8 +104,9 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 
 - Wire clients, servers, pools and config in the composition root (`src/main/composition-root.ts`,
   `main.ts` or `server.ts`) and pass them into factories; read `process.env` only there.
-- Print through a `{ write(text: string): void }` parameter. Only the composition root names
-  `process.stdout` / `process.stderr` (it passes them in); `console.*` is a finding everywhere.
+- Print through a `{ write(text: string): void }` parameter. Only the composition root
+  (or a `layout.entryPoints` file) names `process.stdout` / `process.stderr` and passes them in;
+  `console.*` is a finding everywhere.
 - Parse untrusted input once with zod in `adapters/`; `domain/` takes readonly types it declares.
 - Run programs with `execFile(command, [args])`, never a command string.
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`

@@ -6,7 +6,7 @@ import {
   propertyName,
   staticName,
   wrapperTop,
-} from '../analysis/process-values.mjs';
+} from '../analysis/globals/process-values.mjs';
 import { isCompositionRootFile } from '../boundaries/composition-root-files.mjs';
 
 export function consoleMethodOf(call) {
@@ -97,6 +97,72 @@ function globalConsoleUses(sourceCode) {
     .filter((identifier) => !isTypeContext(identifier));
 }
 
+function reportStreams({ context, streamsAllowed }, found) {
+  for (const { node, stream } of streamsAllowed ? [] : found) {
+    context.report({ node, messageId: 'streamOutsideRoot', data: { stream } });
+  }
+}
+
+function reportConsole({ context }, node, reference) {
+  context.report({ node, messageId: 'consoleCall', data: { reference } });
+}
+
+function checkMember(state, node) {
+  const { context } = state;
+  const name = staticName(node);
+  if (name === 'console' && isGlobalObject(context, node.object)) {
+    const { node: reported, reference } = consoleReference(context.sourceCode, node);
+    reportConsole(state, reported, reference);
+  }
+  const stream = streamNamed(name);
+  if (stream !== undefined && isProcessValue(context, node.object)) {
+    reportStreams(state, [{ node, stream }]);
+  }
+}
+
+function checkPattern(state, pattern) {
+  const { context } = state;
+  const source = patternSource(pattern);
+  if (source === undefined) {
+    return;
+  }
+  const properties = pattern.properties.filter(({ type }) => type === 'Property');
+  if (isGlobalObject(context, source)) {
+    for (const property of properties.filter((entry) => propertyName(entry) === 'console')) {
+      reportConsole(state, property, 'console');
+    }
+  }
+  if (isProcessValue(context, source)) {
+    const destructured = properties.map((node) => ({
+      node,
+      stream: streamNamed(propertyName(node)),
+    }));
+    reportStreams(state, [
+      ...destructured.filter(({ stream }) => stream !== undefined),
+      ...restStreamReads(context, pattern),
+    ]);
+  }
+}
+
+function checkImport(state, declaration) {
+  if (isProcessModule(declaration.source.value) && !isTypeOnly(declaration)) {
+    const importedName = (specifier) => specifier.imported && nameText(specifier.imported);
+    reportStreams(state, namedStreams(declaration.specifiers, importedName));
+  }
+}
+
+function checkReexport(state, declaration) {
+  const { source } = declaration;
+  if (!source || !isProcessModule(source.value) || isTypeOnly(declaration)) {
+    return;
+  }
+  const found =
+    declaration.type === 'ExportAllDeclaration'
+      ? [{ node: declaration, stream: ALL_STREAMS }]
+      : namedStreams(declaration.specifiers, (specifier) => nameText(specifier.local));
+  reportStreams(state, found);
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -121,75 +187,23 @@ export const rule = {
     },
   },
   create(context) {
-    const { sourceCode } = context;
-    const streamsAllowed =
-      context.options[0]?.allowStandardStreams === true || isCompositionRootFile(context);
-    function reportStreams(found) {
-      for (const { node, stream } of streamsAllowed ? [] : found) {
-        context.report({ node, messageId: 'streamOutsideRoot', data: { stream } });
-      }
-    }
-    function reportConsole(node, reference) {
-      context.report({ node, messageId: 'consoleCall', data: { reference } });
-    }
+    const state = {
+      context,
+      streamsAllowed:
+        context.options[0]?.allowStandardStreams === true || isCompositionRootFile(context),
+    };
     return {
       Program() {
-        for (const use of globalConsoleUses(sourceCode)) {
-          const { node, reference } = consoleReference(sourceCode, use);
-          reportConsole(node, reference);
+        for (const use of globalConsoleUses(context.sourceCode)) {
+          const { node, reference } = consoleReference(context.sourceCode, use);
+          reportConsole(state, node, reference);
         }
       },
-      MemberExpression(node) {
-        const name = staticName(node);
-        if (name === 'console' && isGlobalObject(context, node.object)) {
-          const { node: reported, reference } = consoleReference(sourceCode, node);
-          reportConsole(reported, reference);
-        }
-        const stream = streamNamed(name);
-        if (stream !== undefined && isProcessValue(context, node.object)) {
-          reportStreams([{ node, stream }]);
-        }
-      },
-      ObjectPattern(node) {
-        const source = patternSource(node);
-        if (source === undefined) {
-          return;
-        }
-        const properties = node.properties.filter(({ type }) => type === 'Property');
-        if (isGlobalObject(context, source)) {
-          for (const property of properties.filter((entry) => propertyName(entry) === 'console')) {
-            reportConsole(property, 'console');
-          }
-        }
-        if (isProcessValue(context, source)) {
-          reportStreams(
-            properties
-              .map((property) => ({ node: property, stream: streamNamed(propertyName(property)) }))
-              .filter(({ stream }) => stream !== undefined),
-          );
-          reportStreams(restStreamReads(context, node));
-        }
-      },
-      ImportDeclaration(node) {
-        if (isProcessModule(node.source.value) && !isTypeOnly(node)) {
-          reportStreams(
-            namedStreams(
-              node.specifiers,
-              (specifier) => specifier.imported && nameText(specifier.imported),
-            ),
-          );
-        }
-      },
-      ExportNamedDeclaration(node) {
-        if (node.source && isProcessModule(node.source.value) && !isTypeOnly(node)) {
-          reportStreams(namedStreams(node.specifiers, (specifier) => nameText(specifier.local)));
-        }
-      },
-      ExportAllDeclaration(node) {
-        if (isProcessModule(node.source.value) && !isTypeOnly(node)) {
-          reportStreams([{ node, stream: ALL_STREAMS }]);
-        }
-      },
+      MemberExpression: (node) => checkMember(state, node),
+      ObjectPattern: (node) => checkPattern(state, node),
+      ImportDeclaration: (node) => checkImport(state, node),
+      ExportNamedDeclaration: (node) => checkReexport(state, node),
+      ExportAllDeclaration: (node) => checkReexport(state, node),
     };
   },
 };

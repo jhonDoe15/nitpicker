@@ -70,7 +70,8 @@ Before you change code other modules use or fix a bug, read
   functions. A new feature is a new directory, never a new `if`, `?:` or `??` in a shared entry
   point: lookups and their missing-value checks go in the feature's `adapters/`.
 - Print through a `@param {{ write(text: string): void }} out` parameter. Only the composition root
-  names `process.stdout` / `process.stderr` (it passes them in); `console.*` is a finding everywhere.
+  (or a `layout.entryPoints` file) names `process.stdout` / `process.stderr` and passes them in;
+  `console.*` is a finding everywhere.
 - Shared code lives in `src/main/shared/` and does not import features.
 - Export only what another module imports: an exported function or `@typedef` that nothing imports
   fails dead-code.
