@@ -5,11 +5,10 @@ import {
   categories,
   other,
   plain,
+  productionAt,
   relative,
-  CLIENT,
-  SERVICE,
+  scanned,
 } from './test-support/runtime-data.mjs';
-import { buildRuntimeGraph } from './runtime-graph.mjs';
 
 describe('reaching production code at runtime', () => {
   it('counts a direct import', () => {
@@ -63,89 +62,68 @@ describe('reaching production code at runtime', () => {
   });
 });
 
-describe('conftest.py and pytest_plugins', () => {
-  const others = [
-    other('tests/unit/test_a.py'),
-    other('tests/conftest.py'),
-    other('tests/api/conftest.py'),
-    other('tests/api/test_c.py'),
-  ];
-  const imports = {
-    'tests/unit/test_a.py': [],
-    'tests/api/test_c.py': [],
-    'tests/conftest.py': [absolute('app.service', 'run')],
-    'tests/api/conftest.py': [absolute('app.client', 'Client')],
-  };
+describe('imports from a test folder without __init__.py', () => {
+  const unit = [other('app/tests/test_m.py')];
 
-  it('reaches the conftest.py files above the test, and only those', () => {
-    const edges = buildRuntimeGraph({
-      modules: [SERVICE, CLIENT],
-      others,
-      imports,
-      loadsConftest: true,
+  it('does not link a test that imports only the standard library to the package around it', () => {
+    const report = analyze({
+      modules: [productionAt('app/__init__.py')],
+      others: unit,
+      imports: { 'app/tests/test_m.py': [plain('os')] },
     });
 
-    expect(edges.get('tests/unit/test_a.py')).toEqual([
-      { target: 'tests/conftest.py', kind: 'runtime', dynamic: undefined },
-    ]);
-    expect(edges.get('tests/api/test_c.py')).toEqual([
-      { target: 'tests/api/conftest.py', kind: 'runtime', dynamic: undefined },
-      { target: 'tests/conftest.py', kind: 'runtime', dynamic: undefined },
-    ]);
+    expect(categories(report)).toEqual({ 'app/tests/test_m.py': 'no-production-runtime' });
+    expect(report.findings).toHaveLength(1);
   });
 
-  it('reaches production through them', () => {
-    const report = analyze({ others, imports });
+  it('does not link a test below a package folder to that package through its __init__.py', () => {
+    const report = analyze({
+      modules: [productionAt('app/__init__.py')],
+      others: [other('tests/__init__.py', 'other'), other('tests/unit/test_m.py')],
+      imports: {
+        'tests/__init__.py': [plain('app')],
+        'tests/unit/test_m.py': [plain('os')],
+      },
+    });
+
+    expect(categories(report)).toEqual({ 'tests/unit/test_m.py': 'no-production-runtime' });
+  });
+
+  it('links a test to a module that exists beside it', () => {
+    const report = analyze({
+      modules: [productionAt('app/__init__.py')],
+      others: [...unit, other('app/tests/helpers.py')],
+      imports: {
+        'app/tests/test_m.py': [plain('helpers')],
+        'app/tests/helpers.py': [absolute('app', 'run')],
+      },
+    });
+
+    expect(categories(report)).toEqual({ 'app/tests/test_m.py': 'transitive-production-runtime' });
+  });
+
+  it('prefers a module beside the test to a production module of the same name', () => {
+    const modules = [productionAt('utils.py')];
+    const imports = { 'tests/test_a.py': [plain('utils')], 'tests/utils.py': [] };
 
     expect(
-      report.tests.map(({ test, runtimeProductionModules }) => [test, runtimeProductionModules]),
-    ).toEqual([
-      ['tests/api/test_c.py', ['src/app/client.py', 'src/app/service.py']],
-      ['tests/unit/test_a.py', ['src/app/service.py']],
-    ]);
+      categories(
+        analyze({ modules, others: [other('tests/test_a.py'), other('tests/utils.py')], imports }),
+      ),
+    ).toEqual({ 'tests/test_a.py': 'no-production-runtime' });
+    expect(categories(analyze({ modules, others: [other('tests/test_a.py')], imports }))).toEqual({
+      'tests/test_a.py': 'direct-production-runtime',
+    });
   });
 
-  it('reaches a conftest.py at the project root', () => {
+  it('keeps a from-import of a production module beside a sibling of another name', () => {
     const report = analyze({
-      others: [other('conftest.py'), other('tests/test_a.py')],
-      imports: { 'conftest.py': [absolute('app.service', 'run')], 'tests/test_a.py': [] },
+      modules: [productionAt('utils.py')],
+      others: [other('tests/test_a.py'), other('tests/helpers.py')],
+      imports: { 'tests/test_a.py': [absolute('utils', 'run')], 'tests/helpers.py': [] },
     });
 
-    expect(categories(report)).toEqual({ 'tests/test_a.py': 'transitive-production-runtime' });
-  });
-
-  it('loads no conftest.py when the project does not run pytest', () => {
-    const report = analyze({
-      others: [other('conftest.py'), other('tests/test_a.py')],
-      imports: { 'conftest.py': [absolute('app.service', 'run')], 'tests/test_a.py': [] },
-      runner: 'unittest',
-    });
-
-    expect(categories(report)).toEqual({ 'tests/test_a.py': 'no-production-runtime' });
-  });
-
-  it('follows a module a conftest.py names in pytest_plugins', () => {
-    const report = analyze({
-      others: [other('tests/test_a.py'), other('tests/conftest.py'), other('tests/plugin.py')],
-      imports: {
-        'tests/test_a.py': [],
-        'tests/conftest.py': [],
-        'tests/plugin.py': [absolute('app.client', 'Client')],
-      },
-      literals: { 'tests/conftest.py': { strings: [], plugins: ['tests.plugin'] } },
-    });
-
-    expect(categories(report)).toEqual({ 'tests/test_a.py': 'transitive-production-runtime' });
-  });
-
-  it('counts a production module named in pytest_plugins as a dynamic edge', () => {
-    const report = analyze({
-      others: [other('tests/test_a.py')],
-      imports: { 'tests/test_a.py': [] },
-      literals: { 'tests/test_a.py': { strings: [], plugins: ['app.client'] } },
-    });
-
-    expect(categories(report)).toEqual({ 'tests/test_a.py': 'dynamic-production-runtime' });
+    expect(categories(report)).toEqual({ 'tests/test_a.py': 'direct-production-runtime' });
   });
 });
 
@@ -155,8 +133,8 @@ describe('string literals that name a production module', () => {
       others: [other('tests/test_a.py'), other('tests/test_b.py')],
       imports: { 'tests/test_a.py': [], 'tests/test_b.py': [] },
       literals: {
-        'tests/test_a.py': { strings: ['app.client'], plugins: [] },
-        'tests/test_b.py': { strings: ['app.service.requests', 'os.path'], plugins: [] },
+        'tests/test_a.py': scanned({ strings: ['app.client'] }),
+        'tests/test_b.py': scanned({ strings: ['app.service.requests', 'os.path'] }),
       },
     });
 
@@ -171,7 +149,7 @@ describe('string literals that name a production module', () => {
     const report = analyze({
       others: [other('tests/test_a.py'), other('tests/helpers.py')],
       imports: { 'tests/test_a.py': [absolute('tests.helpers', 'load')], 'tests/helpers.py': [] },
-      literals: { 'tests/helpers.py': { strings: ['app.service'], plugins: [] } },
+      literals: { 'tests/helpers.py': scanned({ strings: ['app.service'] }) },
     });
 
     expect(categories(report)).toEqual({ 'tests/test_a.py': 'transitive-production-runtime' });
@@ -181,7 +159,7 @@ describe('string literals that name a production module', () => {
     const report = analyze({
       others: [other('tests/test_a.py')],
       imports: { 'tests/test_a.py': [plain('os')] },
-      literals: { 'tests/test_a.py': { strings: ['os.path', 'application.service'], plugins: [] } },
+      literals: { 'tests/test_a.py': scanned({ strings: ['os.path', 'application.service'] }) },
     });
 
     expect(categories(report)).toEqual({ 'tests/test_a.py': 'no-production-runtime' });

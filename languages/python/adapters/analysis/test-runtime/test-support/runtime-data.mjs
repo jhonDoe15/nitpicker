@@ -1,3 +1,4 @@
+import { evaluateTestRuntime } from '../../../../../../shared/rules/test-runtime/evaluate.mjs';
 import { analyzePythonTestRuntime } from '../python-test-runtime.mjs';
 
 const NO_MODULE = JSON.parse('null');
@@ -35,11 +36,30 @@ export function typeOnly(statement) {
 
 export const OPTIONS = { pythonFiles: ['test_*.py', '*_test.py'], testpaths: [], django: false };
 export const SERVICE = production('app.service');
-export const CLIENT = production('app.client');
+const CLIENT = production('app.client');
 
-export function analyze({ others, imports = {}, literals = {}, runner = 'pytest', options }) {
+export function productionAt(file) {
+  return { file, module: dotted(file), isPackage: file.endsWith('__init__.py') };
+}
+
+export function scanned(found = {}) {
+  return { strings: [], plugins: [], fixtures: [], requests: [], marks: [], ...found };
+}
+
+export function fixture(name, requests = [], autouse = false) {
+  return { name, autouse, requests };
+}
+
+export function analyze({
+  others,
+  modules = [SERVICE, CLIENT],
+  imports = {},
+  literals = {},
+  runner = 'pytest',
+  options,
+}) {
   return analyzePythonTestRuntime({
-    modules: [SERVICE, CLIENT],
+    modules,
     others,
     imports,
     literals,
@@ -50,4 +70,11 @@ export function analyze({ others, imports = {}, literals = {}, runner = 'pytest'
 
 export function categories(report) {
   return Object.fromEntries(report.tests.map(({ test, category }) => [test, category]));
+}
+
+export function messageOf(rule) {
+  return evaluateTestRuntime(
+    { findings: [{ test: 'any.py', category: rule }] },
+    'test-runtime',
+  ).find(({ classification }) => classification === 'enforceable').message;
 }
