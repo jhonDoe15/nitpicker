@@ -144,9 +144,16 @@ function checkPattern(state, pattern) {
   }
 }
 
+function importedName(specifier) {
+  return specifier.imported && nameText(specifier.imported);
+}
+
+function localName(specifier) {
+  return nameText(specifier.local);
+}
+
 function checkImport(state, declaration) {
   if (isProcessModule(declaration.source.value) && !isTypeOnly(declaration)) {
-    const importedName = (specifier) => specifier.imported && nameText(specifier.imported);
     reportStreams(state, namedStreams(declaration.specifiers, importedName));
   }
 }
@@ -159,7 +166,7 @@ function checkReexport(state, declaration) {
   const found =
     declaration.type === 'ExportAllDeclaration'
       ? [{ node: declaration, stream: ALL_STREAMS }]
-      : namedStreams(declaration.specifiers, (specifier) => nameText(specifier.local));
+      : namedStreams(declaration.specifiers, localName);
   reportStreams(state, found);
 }
 
@@ -199,11 +206,21 @@ export const rule = {
           reportConsole(state, node, reference);
         }
       },
-      MemberExpression: (node) => checkMember(state, node),
-      ObjectPattern: (node) => checkPattern(state, node),
-      ImportDeclaration: (node) => checkImport(state, node),
-      ExportNamedDeclaration: (node) => checkReexport(state, node),
-      ExportAllDeclaration: (node) => checkReexport(state, node),
+      MemberExpression(node) {
+        checkMember(state, node);
+      },
+      ObjectPattern(node) {
+        checkPattern(state, node);
+      },
+      ImportDeclaration(node) {
+        checkImport(state, node);
+      },
+      ExportNamedDeclaration(node) {
+        checkReexport(state, node);
+      },
+      ExportAllDeclaration(node) {
+        checkReexport(state, node);
+      },
     };
   },
 };
