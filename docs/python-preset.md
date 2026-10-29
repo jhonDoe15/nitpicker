@@ -606,7 +606,7 @@ are listed at the end.
 | Generic names            | a name for the job (`price_rounding.py`, `OrderRepository`)                                                                                      | `generic-name` (script)                                                                                                                              |
 | Secrets                  | read from the environment; log only that a secret is set                                                                                         | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
 | Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                                                             | ruff `FBT001`, `FBT002`                                                                                                                              |
-| Input or output per item | one batch call, or `asyncio.gather`                                                                                                              | `io-in-loop` (script)                                                                                                                                |
+| Input or output per item | one batch call, or `asyncio.gather` bounded by a shared `asyncio.Semaphore`                                                                      | `io-in-loop` (script)                                                                                                                                |
 | Concurrent remote calls  | `asyncio.Semaphore` acquired in the task, or chunks of fixed size, or one batch call                                                             | `unbounded-fan-out` (script)                                                                                                                         |
 | Task lifetimes           | open the resource around the whole task group, or inside the child; await the task first                                                         | `task-outlives-resource` (script)                                                                                                                    |
 | Trio/AnyIO cleanup       | `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()`                                                  | `unshielded-cleanup-await` (script)                                                                                                                  |
@@ -784,9 +784,11 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `secret-in-log` reports such a name passed to a logger call. Placeholders, environment variable
   names, header names and URLs are not secrets.
 - `io-in-loop` reports an HTTP, database or repository call once per item of a `for`, `while` or
-  comprehension; `asyncio.gather` over a comprehension, a task created for the call
-  (`create_task`, `ensure_future`), a paging loop (the condition reads a
-  variable the body assigns) and a retry (a `try` in the loop that returns on success) are not.
+  comprehension; `asyncio.gather` over a comprehension, a call that `unbounded-fan-out` reports
+  at the same site (so one remote call has one owner), a worker task started once per slot of a
+  count (`for _ in range(workers)`), a paging loop (the condition reads a variable the body
+  assigns) and a retry (a `try` in the loop that returns on success) are not. A remote call in a
+  task that is bounded or awaited one at a time keeps this finding, with the batching remedy.
 - `unbounded-fan-out` reports `asyncio.gather`, `asyncio.wait` and `asyncio.as_completed` over a
   generator, a list comprehension, `map(f, xs)`, a name bound to one, or a list filled by
   `append` in a `for` loop, and `asyncio.create_task`, `ensure_future`, `tg.create_task` and
@@ -794,21 +796,28 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   (`requests`, `httpx`, `aiohttp`, `urllib3`, `urllib.request.urlopen`, `boto3` clients, OpenAI and
   Anthropic clients) or publishes to a broker (`aiokafka`, `kafka`, `confluent_kafka`, `pika`,
   `aio_pika`, `redis` `publish`, `nats`, Pub/Sub, `paho.mqtt`, SQS, SNS, EventBridge and Kinesis
-  through `boto3`) and runs over a collection that is not fixed. The coroutine is resolved when it
-  is a client call, a nested or module-level `async def` of the project, a method of the same
-  class or an imported project function, up to three calls deep. A client is recognized from its
-  factory (`httpx.AsyncClient()` in an assignment or `async with`, also `self.x`), or from a
-  parameter, `self` attribute or variable annotated with the library type. Database calls are the
-  business of `io-in-loop`. Allowed: an `asyncio.Semaphore`, `BoundedSemaphore`, `Lock`, anyio or
-  trio `CapacityLimiter` or `Semaphore`, `aiolimiter.AsyncLimiter` created outside the task and
-  entered in the task body (`async with limit:`), a limiter passed in as a parameter, an
-  `await gate.acquire()` or a `gather` that drains a window inside the loop, a literal or constant
-  collection, `range(3)`, a slice or `islice` with an explicit size, and chunks from `batched`,
-  `chunked`, `chunks` or `partition_all` with a size. A semaphore created inside the task, or a
-  limit constant that nothing acquires, bounds nothing. Test files are exempt. Limits: an
-  unannotated `client` parameter and a library outside the list are not recognized, and a
-  collection that is small in practice but not by construction is reported; lift such a path with
-  a `python.exceptions` entry.
+  through `boto3`) and runs over a collection that is not fixed. The client factories are the ones
+  `io-in-loop` uses, from one table. The coroutine is resolved when it is a client call, a nested
+  or module-level `async def` of the project, a method of the same class or an imported project
+  function, up to three calls deep. A client is recognized from its factory (`httpx.AsyncClient()`
+  in an assignment or `async with`, also `self.x`), or from a parameter, `self` attribute or
+  variable annotated with the library type. Database calls are the business of `io-in-loop`.
+  Allowed: an `asyncio.Semaphore`, `BoundedSemaphore`, `Lock`, anyio or trio `CapacityLimiter` or
+  `Semaphore`, `aiolimiter.AsyncLimiter` created outside the task and entered in the task body
+  (`async with limit:`); a parameter annotated with one of those types, or one the caller passes a
+  limiter it created; a parameter or imported name whose name ends in `sem`, `semaphore`, `limit`,
+  `limiter`, `throttle`, `throttler`, `capacity` or `gate`; an `await gate.acquire()` on such a
+  limiter or a `gather` that drains a window inside the loop; a literal or constant collection,
+  the members of an `Enum` class of the project, a slice or `islice` with an explicit size, and
+  chunks from `batched`, `chunked`, `chunks` or `partition_all` with a size. A worker pool is
+  bounded by its count: `range(workers)` and `range(3)` pass, while `range(len(xs))` stays a
+  fan-out over `xs`. A semaphore created inside the task, or a limit constant that nothing
+  acquires, bounds nothing. `asyncio.to_thread` and `loop.run_in_executor(None, ...)` run on the
+  default thread pool, which has a fixed size, so they are not reported. Test files are exempt.
+  Limits: an unannotated `client` parameter, a callable wrapped in `functools.partial` and a
+  library outside the list are not recognized, a limiter is recognized from an unannotated
+  parameter or import by its name only, and a collection that is small in practice but not by
+  construction is reported; lift such a path with a `python.exceptions` entry.
 - `task-outlives-resource` reports a resource that a `with` or `async with` opened inside a task
   group closes while a child task can still use it. Task groups are `trio.open_nursery()`,
   `anyio.create_task_group()` and `asyncio.TaskGroup()` (also through import aliases and a group
