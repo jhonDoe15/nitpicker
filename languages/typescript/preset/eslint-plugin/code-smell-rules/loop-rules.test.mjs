@@ -61,6 +61,8 @@ ruleTester.run('no-io-in-loop', ioInLoop, {
     'chunks.forEach(async (part) => { await repository.saveAll(part); });',
     'for (let i = 0; i < rows.length; i += 500) { const part = rows.slice(i, i + 500); await repository.insertMany(part); }',
     "import knex from 'knex'; const query = knex('users'); for (const f of filters) { query.where(f); }",
+    'for (let i = 0; i < ids.length; i += 100) { await repository.findByIds(ids.slice(i, i + 100)); }',
+    "import { producer } from 'kafkajs'; for (const row of await outboxRepository.find()) { await producer.send(row); await outboxRepository.update(row.id, { sent: true }); }",
   ]),
   invalid: [
     ...[
@@ -88,6 +90,14 @@ ruleTester.run('no-io-in-loop', ioInLoop, {
       inLoop('await pool.query("select 1", [id]);'),
       "import knex from 'knex'; for (const id of ids) { await knex('users').where({ id }); }",
       'for (const part of chunk(rows, 500)) { for (const row of part) { await repository.save(row); } }',
+      'let row; let i = 0; do { row = await repository.findById(ids[i]); i += 1; } while (row);',
+      'let i = 0; let done = false; while (!done) { const row = await repository.findById(ids[i]); if (!row) break; i += 1; done = i >= ids.length; }',
+      'Array.from(ids, (id) => repository.findById(id));',
+      'ids.reduceRight(async (acc, id) => { await repository.save(id); return acc; }, 0);',
+      'for await (const id of ids) { await repository.findById(id); }',
+      'byId.forEach((value) => repository.save(value));',
+      'ids.some((id) => repository.findById(id));',
+      'for (const row of rows) { await repository.update(row.id, { done: true }); await producer.send(row); }',
     ].map((code) => ({ code, errors: [{ messageId: 'query' }] })),
     ...[inLoop('await redisClient.get(id);'), inMap('redis.get(id)')].map((code) => ({
       code,

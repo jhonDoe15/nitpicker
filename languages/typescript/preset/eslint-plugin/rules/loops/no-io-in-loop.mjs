@@ -1,7 +1,8 @@
 import { chainOuterCall, describePath, ioEffect, ioKind } from '../support/io-effects.mjs';
+import { isRelayMark } from '../writes/relays.mjs';
 import { passesChunk } from './chunked-loops.mjs';
 import { isPushedForConcurrency } from './concurrent-batches.mjs';
-import { enclosingLoop, isPagingLoop, isRetryAttempt } from './loop-shapes.mjs';
+import { enclosingLoop, isPagingCall, isRetryAttempt } from './loop-shapes.mjs';
 
 const BATCH_QUERY = [
   'Fetch or write them in one query: a batch method (`findByIds`, `findAllById`, `createMany`,',
@@ -27,7 +28,7 @@ function isLoopCall(node, found, context) {
   return (
     found !== undefined &&
     !isRetryAttempt(node, found.loop, visitorKeys) &&
-    !isPagingLoop(found.loop, visitorKeys)
+    !isPagingCall(node, found.loop, visitorKeys)
   );
 }
 
@@ -73,7 +74,12 @@ export const rule = {
       const { sourceCode } = context;
       const found = enclosingLoop(node, sourceCode);
       const effect = isLoopCall(node, found, context) ? ioEffect(node, context) : undefined;
-      if (effect === undefined || effect.kind === 'message' || passesChunk(node, found, context)) {
+      const exempt =
+        effect === undefined ||
+        effect.kind === 'message' ||
+        passesChunk(node, found, context) ||
+        isRelayMark(node, context);
+      if (exempt) {
         return;
       }
       const concurrent = found.concurrent === true || isPushedForConcurrency(node, sourceCode);
