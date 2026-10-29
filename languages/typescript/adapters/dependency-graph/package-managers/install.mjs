@@ -4,6 +4,7 @@ import { containedPath } from './contained-path.mjs';
 import { installInvocation, isBerry } from './commands.mjs';
 import {
   TROUBLESHOOTING_ANCHORS,
+  explainedError,
   troubleshootingError,
   withTroubleshooting,
 } from '../../../../../shared/messages/troubleshooting.mjs';
@@ -69,9 +70,8 @@ export function installDependencies(packageManager, platform = process.platform)
     timeout: INSTALL_TIMEOUT_MINUTES * MINUTE_MS,
   });
   if (result.status === COMMAND_NOT_FOUND_STATUS) {
-    throw troubleshootingError(
+    throw explainedError(
       `${FAILURE_PREFIX}: this project uses ${packageManager.name}, which is not installed. ${installHint}`,
-      TROUBLESHOOTING_ANCHORS.packageManagerMissing,
     );
   }
   return { ok: result.error === undefined && result.status === 0, detail: failureDetail(result) };
@@ -92,10 +92,7 @@ export function missingDependenciesMessage(packageManager, dependencyPath) {
       TROUBLESHOOTING_ANCHORS.unsupportedYarn,
     );
   }
-  return withTroubleshooting(
-    `Dependencies are not installed: ${dependencyPath} is missing. Run \`${packageManager.name} install\` in ${packageManager.root} first.`,
-    TROUBLESHOOTING_ANCHORS.dependenciesNotInstalled,
-  );
+  return `Dependencies are not installed: ${dependencyPath} is missing. Run \`${packageManager.name} install\` in ${packageManager.root} first.`;
 }
 
 export function ensureDependencyFolder(packageManager, dependencyPath) {

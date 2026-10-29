@@ -3,10 +3,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { javaCommand } from '../maven-command.mjs';
-import {
-  TROUBLESHOOTING_ANCHORS,
-  troubleshootingError,
-} from '../../../../shared/messages/troubleshooting.mjs';
+import { explainedError } from '../../../../shared/messages/troubleshooting.mjs';
 
 const ERROR_PRONE_JDK = 21;
 const VERSION = /version "(?:1\.)?(\d+)/u;
@@ -86,9 +83,8 @@ function describe(java, spawn) {
 export function errorProneJava({ preview, spawn = spawnSync }) {
   const project = describe(javaCommand('java'), spawn);
   if (project.missing) {
-    throw troubleshootingError(
+    throw explainedError(
       `java not found (${project.java}): set JAVA_HOME to a JDK, or put its bin directory on the PATH`,
-      TROUBLESHOOTING_ANCHORS.buildToolNotFound,
     );
   }
   if (project.feature === undefined) {
@@ -97,7 +93,7 @@ export function errorProneJava({ preview, spawn = spawnSync }) {
   const installed = jdkHomes().map((jdk) => describe(path.join(jdk, 'bin', 'java'), spawn));
   const { java, problem } = chooseErrorProneJdk({ project, preview, installed });
   if (problem !== undefined) {
-    throw troubleshootingError(problem, TROUBLESHOOTING_ANCHORS.errorProneJdk);
+    throw explainedError(problem);
   }
   return java;
 }

@@ -34,10 +34,6 @@ import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
-import {
-  TROUBLESHOOTING_ANCHORS,
-  withTroubleshooting,
-} from '../shared/messages/troubleshooting.mjs';
 
 const CHECK_COMMANDS = { hygiene: runHygieneCli, history: runHistoryCli };
 
@@ -65,14 +61,13 @@ export function runCli(options = {}) {
   try {
     return runCommand(cli);
   } catch (error) {
-    cli.stderr.write(`nitpicker failed: ${failureText(error)}\n`);
+    cli.stderr.write(`nitpicker failed: ${errorText(error)}\n`);
     return 2;
   }
 }
 
-function failureText(error) {
-  const message = error instanceof Error ? error.message : String(error);
-  return withTroubleshooting(message, TROUBLESHOOTING_ANCHORS.exitCode2);
+function errorText(error) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function isTerminal(stream) {

@@ -3,10 +3,7 @@ import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { wrapperTarget } from '../adapters/gradle-wrapper/gradle-command.mjs';
-import {
-  TROUBLESHOOTING_ANCHORS,
-  troubleshootingError,
-} from '../../../shared/messages/troubleshooting.mjs';
+import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 
 const MAVEN_TIMEOUT_MS = 15 * 60 * 1000;
 const TOOL_TIMEOUT_MS = 15 * 60 * 1000;
@@ -53,9 +50,8 @@ export function mavenErrorSummary(output) {
 
 function missingMaven(error, command) {
   return error.code === 'ENOENT'
-    ? troubleshootingError(
+    ? explainedError(
         `${command} was not found. Add the Maven wrapper (mvnw) to the project, put mvn on the PATH, or set NITPICKER_MAVEN`,
-        TROUBLESHOOTING_ANCHORS.buildToolNotFound,
       )
     : error;
 }
@@ -70,11 +66,10 @@ function spawnFailure(error, { command, projectRoot, timeoutMs }) {
   if (error.code !== 'ETIMEDOUT') {
     return missingMaven(error, command);
   }
-  return troubleshootingError(
+  return explainedError(
     `Maven did not finish in ${projectRoot} within ${duration(timeoutMs)} and was stopped. ` +
       'Its post-integration-test steps may not have run, so containers or servers the build ' +
       'started may still be running',
-    TROUBLESHOOTING_ANCHORS.buildTimeout,
   );
 }
 
@@ -144,9 +139,8 @@ export function runJava({
       timeout: TOOL_TIMEOUT_MS,
     });
     if (result.error?.code === 'ENOENT') {
-      throw troubleshootingError(
+      throw explainedError(
         `java not found (${java}): set JAVA_HOME to a JDK, or put its bin directory on the PATH`,
-        TROUBLESHOOTING_ANCHORS.buildToolNotFound,
       );
     }
     if (result.error !== undefined) {

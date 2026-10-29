@@ -1,5 +1,6 @@
 import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mjs';
 import { clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
+import { toolErrorHelpLine } from '../../shared/messages/troubleshooting.mjs';
 
 const SNAPSHOT_REPORTS = [
   { name: 'summary.json', render: (report) => json(report.summary) },
@@ -108,6 +109,10 @@ function appendToolErrorSection(lines, toolErrors) {
   lines.push('', 'Tool errors:');
   for (const error of toolErrors) {
     lines.push(`${error.tool} (${error.snapshot}): ${error.message}`);
+  }
+  const help = toolErrorHelpLine(toolErrors.map(({ message }) => message));
+  if (help !== undefined) {
+    lines.push(help);
   }
 }
 

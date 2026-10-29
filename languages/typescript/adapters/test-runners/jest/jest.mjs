@@ -165,7 +165,10 @@ export function runJest(options, command) {
         ...consoleArguments(options, testConsole),
       ],
     );
-    const report = readTestReport(reportPath, result, RUNNER_NAMES.jest);
+    const report = readTestReport(reportPath, result, {
+      runnerName: RUNNER_NAMES.jest,
+      snapshot: options.snapshot,
+    });
     const run = finishedRun({
       report,
       result: withoutForcedLateLogExit(result, { report, printsDirectly, testConsole }),

@@ -16,7 +16,6 @@ import { normalizeStructure } from './quality-areas/reporting/repository.mjs';
 import { normalizeCrap } from './quality-areas/reporting/tests.mjs';
 import { parseArguments } from './quality-areas/arguments.mjs';
 import { runQualityArea } from './quality-areas-runner.mjs';
-import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 import { TROUBLESHOOTING_ANCHORS } from '../../../shared/messages/troubleshooting.mjs';
 
 const temporaryRoots = [];
@@ -77,7 +76,7 @@ describe('crap runner without a coverage report', () => {
         rule: 'tests-failed-skipped',
         path: '.',
         identity: 'tests-failed-skipped',
-        message: `CRAP did not run: there is no coverage report, because the project tests fail. ${linkSentence('testsFail')}`,
+        message: `CRAP did not run: there is no coverage report, because the project tests fail.`,
         classification: 'tool-error',
       },
     ]);
@@ -322,7 +321,6 @@ describe('mutation testing that cannot start', () => {
     expect(mutationSkipFor(strykerMessage)).toEqual({
       rule: 'tests-failed-skipped',
       message: 'mutation skipped: tests fail (see coverage findings)',
-      anchor: TROUBLESHOOTING_ANCHORS.testsFail,
     });
   });
 

@@ -5,10 +5,6 @@ import { existsSync, readFileSync } from 'node:fs';
 import { validateConfig, KEYS } from './validate.mjs';
 import { rejectUnreadableSources } from './project-checks/project-config.mjs';
 import { rejectUndeclaredPreset } from './project-checks/preset-detection.mjs';
-import {
-  TROUBLESHOOTING_ANCHORS,
-  troubleshootingError,
-} from '../../shared/messages/troubleshooting.mjs';
 
 export function loadConfig(projectRoot) {
   const config = readConfigFile(projectRoot);
@@ -26,9 +22,8 @@ export function readConfigFile(projectRoot) {
   try {
     parsed = JSON.parse(readFileSync(configPath, 'utf8'));
   } catch (error) {
-    throw troubleshootingError(
+    throw new Error(
       `${CONFIG_FILE_NAME} is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
-      TROUBLESHOOTING_ANCHORS.invalidConfiguration,
       { cause: error },
     );
   }

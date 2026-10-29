@@ -4,6 +4,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { analyzeJavaSnapshot } from '../adapters/java-runner.mjs';
 import { mavenErrorSummary, mavenTarget, runMaven } from './maven-command.mjs';
+import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const roots = [];
@@ -91,8 +92,8 @@ describe.skipIf(process.platform === 'win32')('Maven failures', () => {
     expect(() =>
       runMaven({ projectRoot: root, maven: path.join(root, 'no-such-mvn'), args: ['test'] }),
     ).toThrow(
-      new Error(
-        `${path.join(root, 'no-such-mvn')} was not found. Add the Maven wrapper (mvnw) to the project, put mvn on the PATH, or set NITPICKER_MAVEN. ${linkSentence('buildToolNotFound')}`,
+      explainedError(
+        `${path.join(root, 'no-such-mvn')} was not found. Add the Maven wrapper (mvnw) to the project, put mvn on the PATH, or set NITPICKER_MAVEN`,
       ),
     );
   });
@@ -109,10 +110,9 @@ describe.skipIf(process.platform === 'win32')('Maven failures', () => {
         timeoutMs: 300,
       }),
     ).toThrow(
-      new Error(
+      explainedError(
         `Maven did not finish in ${root} within 0.3 s and was stopped. Its post-integration-test ` +
-          'steps may not have run, so containers or servers the build started may still be running. ' +
-          linkSentence('buildTimeout'),
+          'steps may not have run, so containers or servers the build started may still be running',
       ),
     );
   });

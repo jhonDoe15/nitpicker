@@ -5,38 +5,27 @@ export const TROUBLESHOOTING_FILE = 'docs/troubleshooting.md';
 
 export const TROUBLESHOOTING_ANCHORS = {
   exitCode2: 'exit-code-2-and-tool-errors',
-  invalidArguments: 'invalid-arguments',
-  invalidConfiguration: 'invalid-configuration',
   notAGitRepository: 'not-a-git-repository',
   noProjectFound: 'no-project-found',
-  noBase: 'no-base-could-be-determined',
-  baseRefNotFound: 'base-ref-not-found',
-  noMergeBase: 'no-merge-base',
-  testsFail: 'tests-fail',
   baseTestsFail: 'tests-fail-on-the-base',
   baseDoesNotTypeCheck: 'the-base-does-not-type-check',
-  noTestsRan: 'the-test-runner-ran-no-tests',
   testRunnerNotInstalled: 'a-test-runner-is-not-installed',
   jestNoCoverage: 'jest-collects-no-coverage',
   missingPeer: 'a-peer-tool-is-missing',
-  dependenciesNotInstalled: 'dependencies-are-not-installed',
   baseInstallFails: 'installing-the-base-dependencies-fails',
-  packageManagerMissing: 'the-package-manager-is-not-installed',
   unsupportedYarn: 'unsupported-yarn-setup',
   engineUnavailable: 'the-lint-or-type-check-engine-cannot-run',
   typescriptConfigUnreadable: 'the-typescript-config-cannot-be-read',
-  mutationUnsupportedRunner: 'mutation-testing-is-skipped-for-this-runner',
+  typescriptToolFails: 'a-typescript-or-javascript-tool-fails',
   testTimeoutsNeedVitest: 'test-timeouts-need-vitest',
   projectToolConfigMissing: 'a-project-tool-config-is-missing-or-broken',
   policyLoosened: 'a-policy-loosened-finding',
-  anotherRun: 'another-run-is-in-progress',
   staleCache: 'a-stale-or-shared-cache',
   cachePublishFails: 'cache-publish-fails',
   analyzerTimeout: 'an-analyzer-times-out',
   analyzerCrashed: 'an-analyzer-crashes',
   shardAggregationFails: 'shard-aggregation-fails',
   fixersFail: 'fixers-fail',
-  tooManyStyleFiles: 'too-many-style-files',
   windowsAndWsl: 'windows-and-wsl',
   pythonEnvironment: 'the-python-environment-cannot-be-found',
   pythonToolMissing: 'a-python-tool-is-missing',
@@ -45,9 +34,6 @@ export const TROUBLESHOOTING_ANCHORS = {
   mutmutFails: 'mutmut-fails',
   gradleFails: 'the-gradle-build-fails',
   mavenFails: 'the-maven-build-fails',
-  buildToolNotFound: 'gradle-maven-or-java-is-not-found',
-  buildTimeout: 'gradle-or-maven-times-out',
-  errorProneJdk: 'error-prone-cannot-find-a-jdk',
 };
 
 const LINK_SENTENCE = new RegExp(
@@ -69,34 +55,52 @@ export function withoutTroubleshooting(message) {
 }
 
 export function troubleshootingSentence(anchor) {
-  return `See ${troubleshootingUrl(anchor)}`;
+  const url = troubleshootingUrl(anchor);
+  return url === undefined ? undefined : `See ${url}`;
 }
 
 export function withTroubleshooting(message, anchor) {
-  if (troubleshootingLinkOf(message) !== undefined) {
+  if (anchor === undefined || troubleshootingLinkOf(message) !== undefined) {
     return message;
   }
   const sentence = troubleshootingSentence(anchor);
+  if (sentence === undefined) {
+    return message;
+  }
   if (message.includes('\n')) {
     return `${message.trimEnd()}\n${sentence}`;
   }
-  return `${message.replace(/\.?\s*$/u, '')}. ${sentence}`;
+  return `${message.replace(/[.:]?\s*$/u, '')}. ${sentence}`;
+}
+
+export function toolErrorHelpLine(messages) {
+  const url = troubleshootingUrl(TROUBLESHOOTING_ANCHORS.exitCode2);
+  const unlinked = messages.some((message) => troubleshootingLinkOf(String(message)) === undefined);
+  return unlinked && url !== undefined ? `Help with tool errors: ${url}` : undefined;
 }
 
 export function testsFailAnchor(snapshot) {
-  return snapshot === 'base'
-    ? TROUBLESHOOTING_ANCHORS.baseTestsFail
-    : TROUBLESHOOTING_ANCHORS.testsFail;
+  return snapshot === 'base' ? TROUBLESHOOTING_ANCHORS.baseTestsFail : undefined;
+}
+
+export function testsFailError(message, snapshot) {
+  const anchor = testsFailAnchor(snapshot);
+  return anchor === undefined ? explainedError(message) : troubleshootingError(message, anchor);
 }
 
 export function troubleshootingError(message, anchor, options) {
   return new Error(withTroubleshooting(message, anchor), options);
 }
 
-export function withUsageLink(message) {
-  return withTroubleshooting(message, TROUBLESHOOTING_ANCHORS.invalidArguments);
+export function explainedError(message, options) {
+  return Object.assign(new Error(message, options), { explained: true });
 }
 
-export function usageError(message) {
-  return new Error(withUsageLink(message));
+export function isExplainedError(error) {
+  return error instanceof Error && error.explained === true;
+}
+
+export function failureText(error, anchor) {
+  const message = error instanceof Error ? error.message : String(error);
+  return isExplainedError(error) ? message : withTroubleshooting(message, anchor);
 }

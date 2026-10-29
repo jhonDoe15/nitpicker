@@ -2,11 +2,6 @@ import { createHash } from 'node:crypto';
 import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { runGit } from '../diff/git/repository/command.mjs';
-import {
-  TROUBLESHOOTING_ANCHORS,
-  troubleshootingError,
-  withTroubleshooting,
-} from '../../shared/messages/troubleshooting.mjs';
 
 const ATTEMPTS = Array.from({ length: 5 }, (_, attempt) => attempt);
 const PARTIAL_READ_WAIT_MS = 20;
@@ -100,15 +95,12 @@ export function acquireRunLock(lockPath, { pid = process.pid, isAlive = isProces
       return { acquired: false, holder };
     }
   }
-  throw troubleshootingError(
-    `Could not take the run lock ${lockPath}`,
-    TROUBLESHOOTING_ANCHORS.anotherRun,
-  );
+  throw new Error(`Could not take the run lock ${lockPath}`);
 }
 
 export function describeRunInProgress(holder) {
   const message = `another run is in progress in this project (pid ${String(holder)}); wait for it to finish.`;
-  return `nitpicker: ${withTroubleshooting(message, TROUBLESHOOTING_ANCHORS.anotherRun)}\n`;
+  return `nitpicker: ${message}\n`;
 }
 
 export function withRunLock(

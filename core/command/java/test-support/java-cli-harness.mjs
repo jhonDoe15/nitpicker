@@ -81,7 +81,7 @@ export function useGradleFixtures(runNitpickerCli) {
         rule: 'gradle-failure',
         message: (binary) =>
           expect.stringMatching(
-            exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\n${binary} was not found. Add the Gradle wrapper (gradlew) to the project, put gradle on the PATH, or set NITPICKER_GRADLE. ${linkSentence('buildToolNotFound')}`,
+            exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\n${binary} was not found. Add the Gradle wrapper (gradlew) to the project, put gradle on the PATH, or set NITPICKER_GRADLE`,
           ),
       },
     },
@@ -124,7 +124,7 @@ export function useMavenFixtures(runNitpickerCli) {
         stub: (binary) => vi.stubEnv('NITPICKER_MAVEN', binary),
         rule: 'maven-failure',
         message: (binary) =>
-          `${binary} was not found. Add the Maven wrapper (mvnw) to the project, put mvn on the PATH, or set NITPICKER_MAVEN. ${linkSentence('buildToolNotFound')}`,
+          `${binary} was not found. Add the Maven wrapper (mvnw) to the project, put mvn on the PATH, or set NITPICKER_MAVEN`,
       },
     },
   };

@@ -1,7 +1,4 @@
-import {
-  TROUBLESHOOTING_ANCHORS,
-  troubleshootingError,
-} from '../../../../shared/messages/troubleshooting.mjs';
+import { explainedError } from '../../../../shared/messages/troubleshooting.mjs';
 
 const MINUTE_MS = 60_000;
 const DEFAULT_MINUTES = 15;
@@ -20,9 +17,8 @@ export function gradleBudget(environment = {}) {
     !Number.isInteger(minutes) ||
     minutes > MAX_MINUTES
   ) {
-    throw troubleshootingError(
+    throw explainedError(
       `NITPICKER_GRADLE_TIMEOUT_MINUTES must be a whole number from 1 to ${String(MAX_MINUTES)} (minutes)`,
-      TROUBLESHOOTING_ANCHORS.buildTimeout,
     );
   }
   const commandTimeoutMs = minutes * MINUTE_MS;

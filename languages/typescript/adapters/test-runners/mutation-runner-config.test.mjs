@@ -5,10 +5,6 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
 import {
-  TROUBLESHOOTING_ANCHORS,
-  troubleshootingSentence,
-} from '../../../../shared/messages/troubleshooting.mjs';
-import {
   CRACO_JEST_CONFIG,
   cracoJestConfigText,
   mutationRunnerConfig,
@@ -214,8 +210,7 @@ describe('the Stryker runner for each test runner', () => {
 
     expect(unsupportedMutationRunner({ projectRoot: root }, 'mocha')).toBe(
       "mutation skipped: Stryker's Mocha runner (@stryker-mutator/mocha-runner 10) supports Mocha up to 11, " +
-        'and this project uses Mocha 12. Coverage and CRAP still run; use Mocha 11 to get mutation testing. ' +
-        troubleshootingSentence(TROUBLESHOOTING_ANCHORS.mutationUnsupportedRunner),
+        'and this project uses Mocha 12. Coverage and CRAP still run; use Mocha 11 to get mutation testing.',
     );
     expect(unsupportedMutationRunner({ projectRoot: root }, 'jest')).toBeUndefined();
     expect(unsupportedMutationRunner({ projectRoot: project({}) }, 'mocha')).toBeUndefined();

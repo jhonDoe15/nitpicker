@@ -175,7 +175,6 @@ const SKIPS = {
     },
     tests: {
       message: 'mutation skipped: tests fail (see coverage findings)',
-      anchor: TROUBLESHOOTING_ANCHORS.testsFail,
     },
   },
   base: {

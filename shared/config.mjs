@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { FACT_RULE_SETTINGS, factRuleSettings } from './project-rules/fact-rules.mjs';
-import { TROUBLESHOOTING_ANCHORS, troubleshootingError } from './messages/troubleshooting.mjs';
+import { troubleshootingError } from './messages/troubleshooting.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 
@@ -39,7 +39,7 @@ export const FEATURE_LAYOUT_KEYS = ['sharedRoots', 'featureRoots'];
 
 export const TYPESCRIPT_ONLY_KEYS = ['exceptions', 'react', 'i18n', 'tools'];
 
-export function configError(message, anchor = TROUBLESHOOTING_ANCHORS.invalidConfiguration) {
+export function configError(message, anchor) {
   return troubleshootingError(`${CONFIG_FILE_NAME}: ${message}`, anchor);
 }
 

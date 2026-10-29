@@ -9,6 +9,7 @@ import {
   installFakeManagers,
   installOnlyEnv,
 } from './package-managers/test-support/fake-managers.mjs';
+import { explainedError } from '../../../../shared/messages/troubleshooting.mjs';
 import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const git = useGitFixtures();
@@ -190,9 +191,7 @@ describe('dependency hook install', () => {
     vi.stubEnv('PATH', installOnlyEnv(temporaryRoot('only-env-')));
     const projectRoot = projectWith(files);
 
-    expect(() => resolveDependencyHook().install(projectRoot)).toThrow(
-      new Error(`${message} ${linkSentence('packageManagerMissing')}`),
-    );
+    expect(() => resolveDependencyHook().install(projectRoot)).toThrow(explainedError(message));
   });
 
   it('explains a Yarn 2 install that left no dependency folder', () => {

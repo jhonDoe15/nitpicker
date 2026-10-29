@@ -69,14 +69,14 @@ export function readCoverageFindings(options, testReport) {
   );
 }
 
-export function readTestReport(reportPath, result, runnerName) {
+export function readTestReport(reportPath, result, { runnerName, snapshot }) {
   try {
     return JSON.parse(readFileSync(reportPath, 'utf8'));
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
     throw troubleshootingError(
       `${runnerName} exited ${String(result.status)} without a readable test report: ${reason}${formatProcessOutput(result)}`,
-      TROUBLESHOOTING_ANCHORS.testsFail,
+      testsFailAnchor(snapshot),
       { cause: error },
     );
   }

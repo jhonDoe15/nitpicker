@@ -39,7 +39,6 @@ describe('failingTestsOf', () => {
       [
         `Tests fail in ${root}; nitpicker needs a passing test suite for coverage and mutation testing:`,
         '  shop.CartTest.adds: expected: <4> but was: <3>',
-        linkSentence('testsFail'),
       ].join('\n'),
     );
   });

@@ -135,7 +135,7 @@ describe('running pytest', () => {
     expect(runPythonTools(context)).toEqual([
       {
         rule: 'environment-failed',
-        message: `pytest is used by this project but cannot be imported in the virtualenv environment: install it there, or set "python.testRunner" to "unittest". ${linkSentence('pythonEnvironment')}`,
+        message: `pytest is used by this project but cannot be imported in the virtualenv environment: install it there, or set "python.testRunner" to "unittest". ${linkSentence('pythonToolMissing')}`,
       },
     ]);
   });
@@ -164,7 +164,7 @@ describe('running the Django and nose2 runners', () => {
     expect(runPythonTools(contextFor(root, { testRunner }).context)).toEqual([
       {
         rule: 'environment-failed',
-        message: `${distribution} runs the tests of this project but is not installed in the virtualenv environment: install it there, or set "python.testRunner" to the runner the tests use. ${linkSentence('pythonEnvironment')}`,
+        message: `${distribution} runs the tests of this project but is not installed in the virtualenv environment: install it there, or set "python.testRunner" to the runner the tests use. ${linkSentence('pythonToolMissing')}`,
       },
     ]);
     expect(calls('coverage', 'run')).toEqual([]);
@@ -175,7 +175,7 @@ describe('running the Django and nose2 runners', () => {
     expect(runPythonTools(contextFor(root, { testRunner: 'django' }).context)).toEqual([
       {
         rule: 'environment-failed',
-        message: `the tests run with Django's manage.py test, but there is no manage.py at ${path.join(root, 'manage.py')} or one directory below it: add it there, or set "python.testRunner" to the runner the tests use. ${linkSentence('pythonEnvironment')}`,
+        message: `the tests run with Django's manage.py test, but there is no manage.py at ${path.join(root, 'manage.py')} or one directory below it: add it there, or set "python.testRunner" to the runner the tests use. ${linkSentence('pythonToolMissing')}`,
       },
     ]);
   });

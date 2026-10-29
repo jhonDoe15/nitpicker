@@ -3,9 +3,8 @@ import { consolePolicySummary } from './review/policy-changes.mjs';
 import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { singleLine } from './format/text.mjs';
 import {
-  TROUBLESHOOTING_ANCHORS,
+  toolErrorHelpLine,
   troubleshootingLinkOf,
-  troubleshootingUrl,
 } from '../../../shared/messages/troubleshooting.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
 import {
@@ -144,9 +143,6 @@ function appendToolErrorSummary(lines, toolErrors, color) {
       color,
     ),
   );
-  const unlinked = shown.some(
-    ({ message }) => troubleshootingLinkOf(String(message)) === undefined,
-  );
   for (const error of shown) {
     const label = error.snapshot === undefined ? error.tool : `${error.tool} (${error.snapshot})`;
     if (error.rule === undefined) {
@@ -159,14 +155,9 @@ function appendToolErrorSummary(lines, toolErrors, color) {
       ...rest.map((line) => `  ${line}`),
     );
   }
-  if (unlinked) {
-    lines.push(
-      style(
-        `Help with tool errors: ${troubleshootingUrl(TROUBLESHOOTING_ANCHORS.exitCode2)}`,
-        [ANSI.dim],
-        color,
-      ),
-    );
+  const help = toolErrorHelpLine(shown.map(({ message }) => message));
+  if (help !== undefined) {
+    lines.push(style(help, [ANSI.dim], color));
   }
 }
 

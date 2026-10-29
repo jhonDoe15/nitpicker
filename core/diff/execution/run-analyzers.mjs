@@ -9,7 +9,6 @@ import { fileURLToPath } from 'node:url';
 import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
-  usageError,
 } from '../../../shared/messages/troubleshooting.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -32,7 +31,7 @@ export function selectAnalyzers(analyzers, analyzerNames) {
       .map((analyzer) => analyzer.name)
       .sort()
       .join(', ');
-    throw usageError(
+    throw new Error(
       `Unknown --analyzer: ${unknownNames.join(', ')}. Known analyzers: ${knownNames}`,
     );
   }

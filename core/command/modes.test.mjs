@@ -341,7 +341,7 @@ describe('nitpicker CLI', () => {
       }),
     ).toBe(2);
     expect(unknown.stderrText).toEqual(
-      `nitpicker failed: Unknown --analyzer: unknown. Known analyzers: fake-quality-analyzer. ${linkSentence('invalidArguments')}\n`,
+      `nitpicker failed: Unknown --analyzer: unknown. Known analyzers: fake-quality-analyzer\n`,
     );
   });
   it('runs the packaged prettier preset against a consumer snapshot', () => {
