@@ -511,7 +511,9 @@ an exception.
   it, the other tool's finding for the line shows up with its own entry.
 - `duplicate-clone` and `stability-direction` take no `function` or `name`. Their `paths` are the
   file of the finding in TypeScript, JavaScript and Python, and the package name in Java and
-  Kotlin (`"paths": ["stable"]`, not `src/main/java/stable`).
+  Kotlin (`"paths": ["stable"]`, not `src/main/java/stable`). A `stability-direction` finding
+  between a feature and another unit names the feature folder instead (see
+  [Stability direction](#stability-direction)).
 - `function` or `name` on any other rule is a config error, and so is a blank one. Entries are
   listed in the report's config overrides and change the policy hash, so every accepted finding
   shows up in review. Removing or narrowing an exception in a change never turns the findings it
@@ -693,6 +695,38 @@ module is a folder, so two folders of one component show up as a pair and a flat
 modules. The analysis sees only the history it is given, so a squash-merge workflow yields few, large
 commits. The head side reads the merge base at the project's head path, so a project whose folder
 moved in the change has no head evidence until the move is merged.
+
+### Stability direction
+
+`stability-direction` (the `coupling` check, every preset) fails a new dependency of a package on a
+less stable one. Instability is `fanOut / (fanIn + fanOut)`, counting the distinct files on the
+other side of the package boundary.
+
+With feature folders (`layout.featureRoots`: `**/features` by default, `<sourceRoot>/main/features`
+in the TypeScript and JavaScript presets), a feature is one unit:
+
+- An edge between a feature's public face and its own internals does not count, in either
+  direction: a face that builds or re-exports its `adapters` and `domain`, and adapters that
+  implement interfaces the face declares. The face is `index.ts` in TypeScript and JavaScript, the
+  `__init__.py` and the public modules directly in the folder in Python, and the classes directly in
+  the feature package in Java and Kotlin. Its internal layering stays covered by the domain and
+  adapter rules.
+- An edge between two internal packages of one feature (`domain` to `adapters`) is checked per
+  package.
+- An edge between two features, or between a feature and code outside the features, is measured
+  between whole units: a feature's fan-in and fan-out count its files' dependencies across the
+  feature boundary, without the ones inside it. New dependents of one feature move only that
+  feature's numbers, and a new feature that reuses others through their face is the least stable
+  unit. The finding names both units and sits on the folder of the depending one:
+  `Feature loans (src/app/features/loans) depends on less stable feature fines (src/app/features/fines). Depend on the other side's public face, or move the code that joins them into the composition root.`
+  Its identity is `package-edge:<source>-><target>` with those folders, and its `exceptions` entry
+  names the folder.
+
+Without feature folders the rule is per package. Instability moves when other code changes, so a
+new finding can sit on files the change did not edit. Its message then says so, names the changed
+files that moved the numbers with their feature or package, and gives the fix:
+`The change edited none of its files: it moved the numbers through feature fines (src/app/features/fines/adapters/store.py). Depend on the other side's public face, or move the code that joins them into the composition root.`
+Each finding carries those files as `cause` (see `spec/findings.schema.json`).
 
 ### Console output from tests
 
