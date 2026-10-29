@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { SWALLOWED_CANCELLATIONS } from './test-support/review/kotlin-cancellation-data.mjs';
 import {
   EXPECTED_REVIEW_FINDINGS,
   REVIEW_RULE_FILES,
@@ -18,6 +19,7 @@ import {
 
 const REVIEW_TOOLS = new Set(['pmd']);
 const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';
+const CATCH_ONLY_LOGS_LEFT = ['189'];
 
 function reviewFindings(findings) {
   return findings
@@ -66,9 +68,28 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
       'SingularAndPluralMember Query.tags',
       'StaticForwardingWrapper absOf',
       'StaticForwardingWrapper total',
-      'SwallowedCancellation pollQuietly',
-      'SwallowedCancellation pollRenamed',
+      ...SWALLOWED_CANCELLATIONS,
     ]);
+  });
+
+  it('reports a swallowed catch and a sleep in a suspend test helper once', () => {
+    const result = diffOf(project, 'review-rules');
+    const on = (file) =>
+      result.newEnforceable
+        .filter(({ path: found }) => found.endsWith(file))
+        .map(({ rule, location }) => `${rule} ${String(location?.line)}`)
+        .toSorted();
+    const lines = (findings, rule) =>
+      findings.filter((entry) => entry.startsWith(`${rule} `)).map((entry) => entry.split(' ')[1]);
+    const cancellations = on('/Cancellations.kt');
+    const interrupts = on('/Interrupts.kt');
+    const pacing = on('/HandlersTest.kt');
+
+    expect(lines(cancellations, 'CatchOnlyLogsOrReturnsDefault')).toEqual(CATCH_ONLY_LOGS_LEFT);
+    expect(lines(interrupts, 'CatchOnlyLogsOrReturnsDefault')).toEqual([]);
+    expect(lines(interrupts, 'catch-log-without-exception')).toEqual([]);
+    expect(lines(pacing, 'FixedSleepInTest')).toEqual(['10']);
+    expect(lines(pacing, 'detekt.coroutines.SleepInsteadOfDelay')).toEqual([]);
   });
 
   it('skips data classes when a serialization library is only on the runtime classpath', () => {

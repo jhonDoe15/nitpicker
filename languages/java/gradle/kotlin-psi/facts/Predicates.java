@@ -18,7 +18,7 @@ final class Predicates {
     this.state = state;
   }
 
-  private String symbolAt(Frame frame, PsiElement at) {
+  static String symbolAt(Frame frame, PsiElement at) {
     Frame function = frame == null ? null : frame.nearest("fun");
     Frame owner = frame == null ? null : frame.nearest("class");
     List<String> parts = new ArrayList<>();
@@ -32,7 +32,7 @@ final class Predicates {
     return String.join(".", parts);
   }
 
-  private String propertyAround(PsiElement at) {
+  private static String propertyAround(PsiElement at) {
     for (PsiElement parent = at.getParent(); parent != null; parent = parent.getParent()) {
       if (parent instanceof KtClassOrObject || parent instanceof KtAnonymousInitializer) {
         return null;

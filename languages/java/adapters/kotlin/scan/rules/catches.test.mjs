@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { booleanFlags, catchOnlyLogs } from './catches.mjs';
+import { booleanFlags, catchOnlyLogs, swallowedCatchBlocks } from './catches.mjs';
 
 function found(check, source) {
   const scanned = scanKotlinSource(source);
@@ -32,7 +32,12 @@ describe('catchOnlyLogs', () => {
     ['the exception passed on', ['failures.add(e)']],
     ['an error response', ['return ResponseEntity.status(500).build<String>().toString()']],
     ['an empty catch, which detekt reports', []],
-    ['an interrupt', ['Thread.currentThread().interrupt()'], { type: 'InterruptedException' }],
+    [
+      'an interrupt, which SwallowedInterrupt reads',
+      ['log.warn("stop")'],
+      { type: 'InterruptedException' },
+    ],
+    ['a qualified interrupt type', ['return null'], { type: 'java.lang.InterruptedException' }],
   ])('passes a catch with %s', (_name, handler, options) => {
     expect(found(catchOnlyLogs, guarded(handler, options))).toEqual([]);
   });
@@ -48,6 +53,18 @@ describe('catchOnlyLogs', () => {
     const source = guarded(['log.error("e is broken: $e")', '// e', 'return null']);
 
     expect(found(catchOnlyLogs, source)).toEqual([['CatchOnlyLogsOrReturnsDefault', 4]]);
+  });
+});
+
+describe('swallowedCatchBlocks', () => {
+  it('holds every catch of InterruptedException, so its log calls are not reported a second time', () => {
+    const source = guarded(['Thread.currentThread().interrupt()', 'log.warn("stop")'], {
+      type: 'InterruptedException',
+    });
+
+    expect(swallowedCatchBlocks(scanKotlinSource(source).code)).toEqual(
+      new Set([source.indexOf('{', source.indexOf('catch'))]),
+    );
   });
 });
 

@@ -2,9 +2,9 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { file, klass, routeOf, run, summary, testFile } from '../test-support/facts.mjs';
-import { readCatalog } from '../../../../messages/rule-messages.mjs';
 import {
   INTERRUPT_MESSAGE,
+  INTERRUPT_PROBLEM,
   SWALLOWED_CANCELLATION_RULE,
   SWALLOWED_INTERRUPT_RULE,
   swallowedHandlerFindings,
@@ -136,10 +136,10 @@ describe('swallowed cancellation and interrupt in Kotlin', () => {
     const gradle = path.resolve(import.meta.dirname, '../../../../gradle/pmd-ruleset.xml');
     const xml = readFileSync(gradle, 'utf8');
     const javaMessage = /name="SwallowedInterrupt"[^>]*message="([^"]+)"/u.exec(xml)[1];
-    const fix = readCatalog('pmd').SwallowedInterrupt.fix;
 
-    expect(INTERRUPT_MESSAGE.replace(/ rethrow: throw e, or /u, ' rethrow: ')).toBe(
-      `${javaMessage} ${fix}`.replace('declare throws InterruptedException, or ', ''),
-    );
+    expect(javaMessage).toBe(INTERRUPT_PROBLEM);
+    expect(INTERRUPT_MESSAGE.startsWith(`${javaMessage} `)).toBe(true);
+    expect(INTERRUPT_MESSAGE).toContain('Thread.currentThread().interrupt()');
+    expect(INTERRUPT_MESSAGE).toContain('throw e');
   });
 });

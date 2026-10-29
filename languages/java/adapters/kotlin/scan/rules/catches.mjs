@@ -2,6 +2,7 @@ import { closingIndex, enclosingOpen, splitArguments } from '../kotlin-source.mj
 import { reportingCalls, withoutCalls } from '../log-calls.mjs';
 import { isRetry } from '../loops.mjs';
 
+const INTERRUPTED = /^\s*(?:java\.lang\.)?InterruptedException\??\s*$/;
 const CATCH = /\bcatch\s*\(\s*([A-Za-z_]\w*|`[^`]+`)\s*:([^)]*)\)\s*\{/g;
 const ERROR_CALLS = [
   'status',
@@ -40,11 +41,8 @@ function tryBlockBefore(code, catchIndex) {
   return /\btry\s*$/.test(code.slice(0, open)) ? { open, close } : undefined;
 }
 
-function handles(body, name, type) {
+function handles(body, name) {
   if (/\bthrow\b/.test(body) || ERROR_RESPONSE.test(body)) {
-    return true;
-  }
-  if (/InterruptedException/.test(type) && /\binterrupt\s*\(/.test(body)) {
     return true;
   }
   return name !== '_' && new RegExp(`(?<![\\w.])${name}\\b`).test(body);
@@ -52,14 +50,13 @@ function handles(body, name, type) {
 
 function onlyLogs(code, { index, open, close, name, type }, calls) {
   const tryBlock = tryBlockBefore(code, index);
-  return !(
-    code.slice(open + 1, close).trim() === '' ||
-    handles(
-      withoutCalls(code, { from: open + 1, to: close }, calls),
-      name.replaceAll('`', ''),
-      type,
-    ) ||
-    (tryBlock !== undefined && isRetry(code, tryBlock))
+  return (
+    INTERRUPTED.test(type) ||
+    !(
+      code.slice(open + 1, close).trim() === '' ||
+      handles(withoutCalls(code, { from: open + 1, to: close }, calls), name.replaceAll('`', '')) ||
+      (tryBlock !== undefined && isRetry(code, tryBlock))
+    )
   );
 }
 
@@ -84,10 +81,12 @@ export function swallowedCatchBlocks(code) {
 }
 
 export function catchOnlyLogs(scanned) {
-  return swallowingHandlers(scanned.code).map(({ index }) => ({
-    rule: 'CatchOnlyLogsOrReturnsDefault',
-    offset: index,
-  }));
+  return swallowingHandlers(scanned.code)
+    .filter(({ type }) => !INTERRUPTED.test(type))
+    .map(({ index }) => ({
+      rule: 'CatchOnlyLogsOrReturnsDefault',
+      offset: index,
+    }));
 }
 
 function bodyOf(code, close) {

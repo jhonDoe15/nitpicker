@@ -1,4 +1,4 @@
-import { writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
 import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
@@ -62,7 +62,7 @@ it('baselines cancellation findings across line movement in main and test source
     ]),
   ).toEqual(sources.map(() => [`fp:nitpicker/subject=${message}`, 'enforceable', 20]));
   expect(headFindings[0].message).toBe(
-    `${message} Use a direct suspend call or catch only the expected specific exception; a Result helper must rethrow CancellationException immediately. ${exceptionHint(rule, sources[0])}`,
+    `${message} Make a direct suspend call and catch only the specific exception you expect, so cancellation still reaches the coroutine. ${exceptionHint(rule, sources[0])}`,
   );
 });
 
@@ -75,4 +75,30 @@ it('lifts only the reviewed cancellation path while preserving other paths and r
       exceptions: [{ rule, glob: 'src/test/**', reason: 'Reviewed cancellation boundary' }],
     }),
   ).toEqual([findings[0], other]);
+});
+
+it('keeps a detekt run that wrote no report apart from a clean one', () => {
+  const root = projectWithKotlinReports();
+  const report = path.join(rootReports(root), 'detekt.sarif');
+  writeFileSync(
+    report,
+    JSON.stringify({ runs: [{ tool: { driver: { name: 'detekt' } }, results: [] }] }),
+  );
+
+  expect(kotlinFindings(root, 'detekt')).toEqual([]);
+  rmSync(report);
+  expect(() => kotlinFindings(root, 'detekt')).toThrow(/detekt\.sarif/u);
+});
+
+it('fails the build step when detekt, type resolution included, ends with an error instead of findings', () => {
+  const init = readFileSync(
+    path.resolve(import.meta.dirname, '../../../gradle/nitpicker.init.gradle'),
+    'utf8',
+  );
+
+  expect(init).toContain("'--classpath', typeResolutionClasspath");
+  expect(init).toContain(
+    'if (!(code in [0, 2]) || !report.get().asFile.exists()) {\n' +
+      '                            throw new GradleException("detekt failed with exit code ${code}',
+  );
 });

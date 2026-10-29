@@ -1,12 +1,14 @@
+import { readCatalog } from '../../../../messages/rule-messages.mjs';
 import { bareType } from '../kotlin-facts.mjs';
 
 export const SWALLOWED_INTERRUPT_RULE = 'SwallowedInterrupt';
 export const SWALLOWED_CANCELLATION_RULE = 'SwallowedCancellation';
 
-export const INTERRUPT_MESSAGE =
-  'This catch of InterruptedException neither rethrows it nor restores the interrupt, so the interrupt status of the thread is lost and work that was asked to stop keeps running. Call Thread.currentThread().interrupt() before leaving the handler, or rethrow: throw e, or throw a new exception with the cause.';
+export const INTERRUPT_PROBLEM =
+  'This catch of InterruptedException can complete without rethrowing it or restoring the interrupt, so the interrupt status of the thread is lost and work that was asked to stop keeps running.';
+export const INTERRUPT_MESSAGE = `${INTERRUPT_PROBLEM} ${readCatalog('pmd').SwallowedInterrupt.fix}`;
 const CANCELLATION_MESSAGE =
-  'This catch of CancellationException neither rethrows it nor checks that the coroutine is still active, so cancellation is consumed and the coroutine keeps running after its owner cancelled it. Rethrow it (throw e), call ensureActive() in the handler to rethrow only when this coroutine was itself cancelled, or catch only the specific failure you expect.';
+  'This catch of CancellationException in a suspend function or coroutine body can complete without rethrowing it or checking that the coroutine is still active, so cancellation is consumed and the coroutine keeps running after its owner cancelled it. Rethrow it (throw e), call ensureActive() in the handler to rethrow only when this coroutine was itself cancelled, or catch only the specific failure you expect.';
 
 const INTERRUPTED = 'java.lang.InterruptedException';
 const CANCELLATIONS = new Set([

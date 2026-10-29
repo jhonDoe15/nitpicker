@@ -47,7 +47,7 @@ export const ONE_WAY_RULES = [
     name: 'SuspendFunSwallowedCancellation',
     ruleset: 'coroutines',
     allowed:
-      'Use a direct suspend call or catch only the expected specific exception; a Result helper must rethrow CancellationException immediately.',
+      'Make a direct suspend call and catch only the specific exception you expect, so cancellation still reaches the coroutine.',
   },
   {
     name: 'InjectDispatcher',
