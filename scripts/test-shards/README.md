@@ -126,9 +126,16 @@ by no script. They are now in `test:python` with a weight of one second each: th
 installed ruff and black, and took under four seconds together locally.
 
 The three `--fix` files (`languages/python/fix/e2e/python-fix`, `java-e2e/fix/java-fix` and
-`kotlin-e2e/fix/kotlin-fix`) weigh 25, 99 and 153 seconds: their whole-file times, hooks included,
-measured locally with warm Maven and Gradle caches and rounded up. Most of it is the one case per
-language that runs the real gate after `--fix`: about 12 seconds per Python case (most of it
-installing coverage, pytest, ruff and black into a fresh virtualenv), 91 seconds for the Java
+`kotlin-e2e/fix/kotlin-fix`) weigh 73, 99 and 153 seconds: their whole-file times, hooks included,
+measured locally with warm Maven and Gradle caches and rounded up. Most of it is the cases that run
+the real gate after `--fix`: 14 to 30 seconds for each of the three Python cases (most of it
+installing coverage, pytest, ruff and black into a fresh virtualenv), about 90 seconds for the Java
 Gradle case and about 72 seconds for each Kotlin case. The other cases run the fake analyzer and
 take one to seven seconds.
+
+The integration-test cases (`java-e2e/integration/`) were one file with a planning weight of 290
+seconds and seven Gradle and Maven builds in its hooks; one local run of that file took 516 seconds,
+which put its shard over five minutes. They are now two files: `integration-checked` (the suites
+wired to `check`, Gradle against Failsafe, three builds) and `integration-unchecked` (an unwired
+suite, a skipped task and a failing one, four builds), measured locally at 159 and 185 seconds.
+Every assertion is unchanged; the fixture helpers moved to `java-e2e/test-support/`.

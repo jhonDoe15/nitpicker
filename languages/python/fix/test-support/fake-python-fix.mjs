@@ -9,11 +9,21 @@ const PARSE_FAILURES = {
   'black-fix': { status: 123, stderr: 'error: cannot format -: Cannot parse: 1:0: BROKEN\n' },
 };
 
+const JUPYTER_SKIP =
+  'Skipping .ipynb files as Jupyter dependencies are not installed.\nYou can fix this by running ``pip install "black[jupyter]"``\n';
+
 function squeezed(source) {
   return source.replaceAll(/ {2,}/g, ' ');
 }
 
-export function fakePythonTools({ lintStatus = 0, lintEdit, formatFailure } = {}) {
+export function fakePythonTools({
+  lintStatus = 0,
+  lintEdit,
+  formatFailure,
+  poetryEnvironment,
+  jupyterMissing = false,
+  missingFormatter = false,
+} = {}) {
   const calls = [];
   function lint(invocation) {
     const separator = invocation.args.indexOf('--');
@@ -27,6 +37,17 @@ export function fakePythonTools({ lintStatus = 0, lintEdit, formatFailure } = {}
     return { status: lintStatus, stdout: '', stderr: lintStatus === 0 ? '' : 'ruff exploded' };
   }
   function format(invocation) {
+    if (missingFormatter) {
+      return {
+        status: null,
+        stdout: '',
+        stderr: '',
+        error: Object.assign(new Error('spawn'), { code: 'ENOENT' }),
+      };
+    }
+    if (jupyterMissing && invocation.args.some((arg) => arg.endsWith('.ipynb'))) {
+      return { status: 0, stdout: invocation.input, stderr: JUPYTER_SKIP };
+    }
     if (formatFailure !== undefined) {
       return { status: 2, stdout: '', stderr: formatFailure };
     }
@@ -38,7 +59,9 @@ export function fakePythonTools({ lintStatus = 0, lintEdit, formatFailure } = {}
   function executeFixCommand(invocation) {
     calls.push(invocation);
     if (invocation.operation === 'python-probe') {
-      return { status: 1, stdout: '', stderr: '' };
+      return invocation.command === 'poetry' && poetryEnvironment !== undefined
+        ? { status: 0, stdout: `${poetryEnvironment}\n`, stderr: '' }
+        : { status: 1, stdout: '', stderr: '' };
     }
     return invocation.operation === 'ruff-fix' ? lint(invocation) : format(invocation);
   }

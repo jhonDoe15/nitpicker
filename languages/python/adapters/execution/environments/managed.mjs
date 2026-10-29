@@ -43,8 +43,8 @@ export function declaredManagedEnvironment(projectRoot) {
   return condaFile(projectRoot) === undefined ? undefined : 'conda';
 }
 
-function askManager(manager, args, { projectRoot }) {
-  const result = spawnSync(manager, args, {
+function askManager(manager, args, { projectRoot, spawn = spawnSync }) {
+  const result = spawn(manager, args, {
     cwd: projectRoot,
     encoding: 'utf8',
     timeout: MANAGER_TIMEOUT_MS,

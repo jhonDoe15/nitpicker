@@ -5,7 +5,7 @@ import {
   readBytes,
   rewrittenPaths,
 } from '../../../core/fix/common/fix-files.mjs';
-import { formatNotes } from '../../../core/fix/common/fix-notes.mjs';
+import { formatNotes, linkNote } from '../../../core/fix/common/fix-notes.mjs';
 import { rewriteFormatted } from '../../../core/fix/common/format-rewrite.mjs';
 import { toolPrecedenceOf } from '../../../core/fix/common/tool-precedence.mjs';
 import { isGeneratedJvm } from '../adapters/generated/generated-sources.mjs';
@@ -56,6 +56,7 @@ function kotlinStep(settings, files, pinned) {
     : {
         files,
         plan,
+        touchedLinesOnly: tools.formatter === 'ktlint',
         formatWith: (classpaths) =>
           kotlinFormat({
             formatter: tools.formatter,
@@ -97,6 +98,7 @@ function applyStep(step, classpaths, scope) {
         ...scope,
         files: step.files,
         format: step.formatWith(classpaths),
+        touchedLinesOnly: step.touchedLinesOnly === true,
       }),
     ),
   }));
@@ -136,7 +138,7 @@ export function fixJvm(settings) {
   const excluded = excludedBy(headPolicy.exclude);
   const withKotlin = config.preset === 'kotlin';
   const roots = declaredSourceRoots(projectRoot);
-  const { comparison, files } = collectFixFiles({
+  const { comparison, files, links } = collectFixFiles({
     repositoryRoot,
     projectRoot,
     baseRef,
@@ -147,7 +149,7 @@ export function fixJvm(settings) {
       !isGeneratedJvm(projectRoot, name),
   });
   if (files.length === 0) {
-    return { fixedFiles: [], toolErrors: [], notes: [] };
+    return { fixedFiles: [], toolErrors: [], notes: linkNote(links) };
   }
   const before = readBytes(projectRoot, files);
   const resolved = { ...settings, headPolicy, config };
@@ -155,6 +157,6 @@ export function fixJvm(settings) {
   return {
     fixedFiles: rewrittenPaths(projectRoot, files, before),
     toolErrors: outcomes.flatMap(({ toolErrors = [] }) => toolErrors),
-    notes: outcomes.flatMap(({ notes = [] }) => notes),
+    notes: [...outcomes.flatMap(({ notes = [] }) => notes), ...linkNote(links)],
   };
 }

@@ -1,7 +1,7 @@
-import { copyFileSync, mkdirSync, writeFileSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { containedPath } from '../../../../core/fix/common/contained-path.mjs';
-import { fixSpawn, runFixCommand } from '../../../../core/fix/common/fix-command.mjs';
+import { failureText, fixSpawn, runFixCommand } from '../../../../core/fix/common/fix-command.mjs';
 import { gradleTarget } from '../../adapters/gradle-wrapper/gradle-command.mjs';
 import { detectJavaBuild } from '../../builds/java-build.mjs';
 import {
@@ -12,9 +12,11 @@ import {
   resolveToolSet,
   toolsKey,
 } from '../../maven/maven-tools.mjs';
+import { resolutionSettings } from './project-repositories.mjs';
 
 export const FIX_TOOLS_BUILD = path.join(import.meta.dirname, 'fix-tools.build.gradle');
 const MARKER = 'nitpicker-fix-tool';
+const SETTINGS_FILES = ['settings.gradle', 'settings.gradle.kts'];
 const MILLISECONDS_PER_MINUTE = 60_000;
 export const TOOL_RESOLUTION_TIMEOUT_MS = 15 * MILLISECONDS_PER_MINUTE;
 
@@ -45,13 +47,28 @@ export function parseToolClasspaths(stdout) {
   );
 }
 
-function writeResolutionBuild(directory) {
+function writeResolutionBuild(projectRoot, directory) {
   mkdirSync(directory, { recursive: true });
-  writeFileSync(
-    containedPath(directory, 'settings.gradle'),
-    "rootProject.name = 'nitpicker-fix-tools'\n",
-  );
+  const settings = resolutionSettings(projectRoot);
+  for (const name of SETTINGS_FILES) {
+    rmSync(containedPath(directory, name), { force: true });
+  }
+  writeFileSync(containedPath(directory, settings.file), settings.text);
   copyFileSync(FIX_TOOLS_BUILD, containedPath(directory, 'build.gradle'));
+  const properties = containedPath(projectRoot, 'gradle.properties');
+  rmSync(containedPath(directory, 'gradle.properties'), { force: true });
+  if (existsSync(properties)) {
+    copyFileSync(properties, containedPath(directory, 'gradle.properties'));
+  }
+  return settings.sources;
+}
+
+function resolutionHint(directory, sources) {
+  const repositories =
+    sources.length === 0
+      ? 'Maven Central, since the project declares no repositories'
+      : `the repositories declared in ${sources.join(' and ')}`;
+  return `nitpicker resolves the formatter jars in its own build at ${directory}, from ${repositories}`;
 }
 
 function storeClasspaths(directory, classpaths) {
@@ -68,7 +85,7 @@ function resolveWithGradle({ projectRoot, tools, environment, executeFixCommand 
   if (missing(cached).length === 0) {
     return cached;
   }
-  writeResolutionBuild(directory);
+  const sources = writeResolutionBuild(projectRoot, directory);
   const target = gradleTarget({
     projectRoot,
     configured: environment.NITPICKER_GRADLE || undefined,
@@ -83,6 +100,7 @@ function resolveWithGradle({ projectRoot, tools, environment, executeFixCommand 
     shell: target.shell,
     timeout: TOOL_RESOLUTION_TIMEOUT_MS,
     executeFixCommand,
+    describe: (failed) => `${failureText(failed)} (${resolutionHint(directory, sources)})`,
   });
   const classpaths = parseToolClasspaths(result.stdout);
   storeClasspaths(directory, classpaths);

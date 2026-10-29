@@ -23,12 +23,26 @@ function messy(name, body = 'a+b') {
 }
 
 const FUNCTIONS = {
-  ktlint: '    fun add(\n        a: Int,\n        b: Int,\n    ): Int = a + b\n',
-  ktfmt: '    fun add(a: Int, b: Int): Int {\n        return a + b\n    }\n',
+  ktlint: (body) => `    fun add(\n        a: Int,\n        b: Int,\n    ): Int = ${body}\n`,
+  ktfmt: (body) => `    fun add(a: Int, b: Int): Int {\n        return ${body}\n    }\n`,
 };
+const MESSY_ADD = (body) => `    fun add( a:Int,b:Int ):Int { return ${body} }\n`;
 
 function formatted(name, formatter) {
-  return `package demo\n\nclass ${name} {\n${FUNCTIONS[formatter]}}\n`;
+  return `package demo\n\nclass ${name} {\n${FUNCTIONS[formatter]('a + b')}}\n`;
+}
+
+function legacy(add) {
+  return `package demo\n\nclass Legacy {\n${add}\n    fun mul(a: Int, b: Int): Int = a * b\n\n${MESSY_ADD('a-b').replace('add', 'sub')}}\n`;
+}
+
+const LEGACY_NOTES = {
+  ktlint: `ktlint formatted only the code around your change in ${SOURCES}/Legacy.kt: the rest was already unformatted before your change`,
+  ktfmt: `ktfmt left ${SOURCES}/Legacy.kt as is: already unformatted before your change`,
+};
+
+function windows(text) {
+  return text.replaceAll('\n', '\r\n');
 }
 
 function repository({ build, formatter }) {
@@ -38,13 +52,14 @@ function repository({ build, formatter }) {
       'nitpicker.config.json': `{ "preset": "kotlin", "kotlin": { "formatter": "${formatter}" } }\n`,
       '.editorconfig': 'root = true\n[*.kt]\nindent_size = 4\n',
       [`${SOURCES}/Changed.kt`]: FORMATTED,
-      [`${SOURCES}/Legacy.kt`]: messy('Legacy'),
+      [`${SOURCES}/Legacy.kt`]: legacy(MESSY_ADD('a+b')),
       [`${SOURCES}/Unchanged.kt`]: messy('Unchanged'),
     },
     changed: {
       [`${SOURCES}/Changed.kt`]: messy('Changed'),
       [`${SOURCES}/Fresh.kt`]: messy('Fresh'),
-      [`${SOURCES}/Legacy.kt`]: messy('Legacy', 'a+b+1'),
+      [`${SOURCES}/Legacy.kt`]: legacy(MESSY_ADD('a+b+1')),
+      [`${SOURCES}/Windows.kt`]: windows(messy('Windows')),
       'tools/Script.kt': messy('Script'),
     },
   };
@@ -53,7 +68,7 @@ function repository({ build, formatter }) {
 function gateFormatFindings(result) {
   return result
     .newFindings()
-    .filter(({ tool, path: file }) => FORMAT_TOOLS.has(tool) && !file.endsWith('Legacy.kt'))
+    .filter(({ tool }) => FORMAT_TOOLS.has(tool))
     .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`);
 }
 
@@ -65,6 +80,7 @@ function outcomeOf(result) {
       changed: result.read(`${SOURCES}/Changed.kt`),
       fresh: result.read(`${SOURCES}/Fresh.kt`),
       legacy: result.read(`${SOURCES}/Legacy.kt`),
+      windows: result.read(`${SOURCES}/Windows.kt`),
       unchanged: result.read(`${SOURCES}/Unchanged.kt`),
       outsideSourceSets: result.read('tools/Script.kt'),
     },
@@ -78,14 +94,16 @@ function expectedOutcome(formatter) {
     report: `Fixed files:
 ${SOURCES}/Changed.kt
 ${SOURCES}/Fresh.kt
+${formatter === 'ktlint' ? `${SOURCES}/Legacy.kt\n` : ''}${SOURCES}/Windows.kt
 Fix notes:
-  ${formatter} rewrote ${SOURCES}/Changed.kt, ${SOURCES}/Fresh.kt
-  ${formatter} left ${SOURCES}/Legacy.kt as is: already unformatted before your change
+  ${formatter} rewrote ${SOURCES}/Changed.kt, ${SOURCES}/Fresh.kt, ${SOURCES}/Windows.kt
+  ${LEGACY_NOTES[formatter]}
 `,
     files: {
       changed: formatted('Changed', formatter),
       fresh: formatted('Fresh', formatter),
-      legacy: messy('Legacy', 'a+b+1'),
+      legacy: legacy(formatter === 'ktlint' ? FUNCTIONS.ktlint('a + b + 1') : MESSY_ADD('a+b+1')),
+      windows: windows(formatted('Windows', formatter)),
       unchanged: messy('Unchanged'),
       outsideSourceSets: messy('Script'),
     },

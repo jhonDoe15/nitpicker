@@ -8,7 +8,7 @@ import {
   splitByEncoding,
 } from '../../../core/fix/common/fix-files.mjs';
 import { rewriteFormatted } from '../../../core/fix/common/format-rewrite.mjs';
-import { formatNotes, rewrittenNote } from '../../../core/fix/common/fix-notes.mjs';
+import { formatNotes, linkNote, rewrittenNote } from '../../../core/fix/common/fix-notes.mjs';
 import { failure } from '../adapters/execution/python-process.mjs';
 import { onlyUnparsableFiles } from '../adapters/python-tools.mjs';
 import {
@@ -19,21 +19,33 @@ import {
 import { commandRunner, withPythonFixContext } from './python-fix-session.mjs';
 
 const PYTHON_FILE = /\.(?:pyi?|ipynb)$/u;
-const NOTEBOOK = /\.ipynb$/u;
+const JUPYTER_MISSING = /Jupyter dependencies are not installed/u;
 const FORMATTERS = {
   ruff: { operation: 'ruff-format-fix', label: 'ruff format' },
   black: { operation: 'black-fix', label: 'black' },
 };
 
+function fixFailure(tool, error) {
+  return { ...fixerError(tool, error), rule: 'fix-failed' };
+}
+
 function attempt(tool, step) {
   try {
     return { toolErrors: [], notes: step() };
   } catch (error) {
-    return { toolErrors: [fixerError(tool, error)], notes: [] };
+    return { toolErrors: [fixFailure(tool, error)], notes: [] };
   }
 }
 
-function stdinFormatter(context, run) {
+function notebookNote(skipped) {
+  return skipped.size === 0
+    ? []
+    : [
+        `black left ${[...skipped].join(', ')} as is: Black formats notebooks only with its jupyter extra (black[jupyter]) installed`,
+      ];
+}
+
+function stdinFormatter(context, run, skipped) {
   const { formatter } = context.project;
   const { operation } = FORMATTERS[formatter];
   return function format(sources) {
@@ -47,7 +59,9 @@ function stdinFormatter(context, run) {
         acceptedStatuses: [0, FORMAT_FAILURE_STATUS[formatter]],
         input: source,
       });
-      if (result.status === 0) {
+      if (result.status === 0 && JUPYTER_MISSING.test(result.stderr ?? '')) {
+        skipped.add(file);
+      } else if (result.status === 0) {
         formatted.set(file, result.stdout);
       } else if (onlyUnparsableFiles(formatter, result)) {
         unformattable.push(file);
@@ -79,21 +93,18 @@ function lintStep({ context, run, projectRoot, files }) {
 
 function formatStep({ context, run, settings, files, mergeBaseSha }) {
   const { repositoryRoot, projectRoot } = settings;
-  const { formatter } = context.project;
-  const formatted =
-    formatter === 'black' ? files.filter(({ path: name }) => !NOTEBOOK.test(name)) : files;
-  return formatted.length === 0
-    ? []
-    : formatNotes(
-        FORMATTERS[formatter].label,
-        rewriteFormatted({
-          projectRoot,
-          repositoryRoot,
-          mergeBaseSha,
-          files: formatted,
-          format: stdinFormatter(context, run),
-        }),
-      );
+  const skipped = new Set();
+  const outcome = rewriteFormatted({
+    projectRoot,
+    repositoryRoot,
+    mergeBaseSha,
+    files,
+    format: stdinFormatter(context, run, skipped),
+  });
+  return [
+    ...formatNotes(FORMATTERS[context.project.formatter].label, outcome),
+    ...notebookNote(skipped),
+  ];
 }
 
 function runFixers(settings, files, mergeBaseSha) {
@@ -118,21 +129,21 @@ function runFixers(settings, files, mergeBaseSha) {
       };
     });
   } catch (error) {
-    return { toolErrors: [fixerError('python-fix', error)], notes: [] };
+    return { toolErrors: [fixFailure('python-fix', error)], notes: [] };
   }
 }
 
 export function fixPython(settings) {
   const { repositoryRoot, projectRoot, baseRef, headPolicy = {} } = settings;
   const excluded = excludedBy(headPolicy.exclude);
-  const { comparison, files } = collectFixFiles({
+  const { comparison, files, links } = collectFixFiles({
     repositoryRoot,
     projectRoot,
     baseRef,
     accepts: (name) => PYTHON_FILE.test(name) && !excluded(name),
   });
   if (files.length === 0) {
-    return { fixedFiles: [], toolErrors: [], notes: [] };
+    return { fixedFiles: [], toolErrors: [], notes: linkNote(links) };
   }
   const before = readBytes(projectRoot, files);
   const { toolErrors, notes } = runFixers(
@@ -140,5 +151,9 @@ export function fixPython(settings) {
     files,
     comparison.mergeBaseSha,
   );
-  return { fixedFiles: rewrittenPaths(projectRoot, files, before), toolErrors, notes };
+  return {
+    fixedFiles: rewrittenPaths(projectRoot, files, before),
+    toolErrors,
+    notes: [...notes, ...linkNote(links)],
+  };
 }

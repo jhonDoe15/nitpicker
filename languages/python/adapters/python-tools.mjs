@@ -70,6 +70,7 @@ export function createToolContext({
     projectRoot,
     liveRoot,
     setting: settings.environment,
+    spawn,
   });
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
   const pythonPath = [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]

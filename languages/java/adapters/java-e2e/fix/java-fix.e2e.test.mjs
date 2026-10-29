@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'vitest';
+import { mkdtempSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { fixReport, useFixProject } from '../../../../../core/fix/test-support/fix-project.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -40,8 +44,29 @@ function messy(name, body = 'a+b') {
   return `package demo;\n\npublic class ${name} {\n    public int  add( int a,int b ){ return ${body}; }\n}\n`;
 }
 
+function formattedAdd(body = 'a + b') {
+  return `  public int add(int a, int b) {\n    return ${body};\n  }\n`;
+}
+
 function formatted(name) {
-  return `package demo;\n\npublic class ${name} {\n  public int add(int a, int b) {\n    return a + b;\n  }\n}\n`;
+  return `package demo;\n\npublic class ${name} {\n${formattedAdd()}}\n`;
+}
+
+function messyAdd(body) {
+  return `    public int  add( int a,int b ){ return ${body}; }\n`;
+}
+
+function legacy(add) {
+  const multiply = '  public int mul(int a, int b) {\n    return a * b;\n  }\n';
+  return `package demo;\n\npublic class Legacy {\n${add}\n${multiply}\n${messyAdd('a-b').replace('add', 'sub')}}\n`;
+}
+
+function twoSpaced(text) {
+  return text.replaceAll('    public', '  public');
+}
+
+function windows(text) {
+  return text.replaceAll('\n', '\r\n');
 }
 
 function repository(build) {
@@ -50,13 +75,14 @@ function repository(build) {
       ...build,
       'nitpicker.config.json': '{ "preset": "java" }\n',
       [`${SOURCES}/Changed.java`]: FORMATTED,
-      [`${SOURCES}/Legacy.java`]: messy('Legacy'),
+      [`${SOURCES}/Legacy.java`]: legacy(messyAdd('a+b')),
       [`${SOURCES}/Unchanged.java`]: messy('Unchanged'),
     },
     changed: {
       [`${SOURCES}/Changed.java`]: messy('Changed'),
       [`${SOURCES}/Fresh.java`]: messy('Fresh'),
-      [`${SOURCES}/Legacy.java`]: messy('Legacy', 'a+b+1'),
+      [`${SOURCES}/Legacy.java`]: legacy(messyAdd('a+b+1')),
+      [`${SOURCES}/Windows.java`]: windows(messy('Windows')),
     },
   };
 }
@@ -69,6 +95,7 @@ function outcomeOf(result) {
       changed: result.read(`${SOURCES}/Changed.java`),
       fresh: result.read(`${SOURCES}/Fresh.java`),
       legacy: result.read(`${SOURCES}/Legacy.java`),
+      windows: result.read(`${SOURCES}/Windows.java`),
       unchanged: result.read(`${SOURCES}/Unchanged.java`),
     },
     base: result.baseSource(`${SOURCES}/Changed.java`),
@@ -80,14 +107,16 @@ const REWRITTEN = {
   report: `Fixed files:
 ${SOURCES}/Changed.java
 ${SOURCES}/Fresh.java
+${SOURCES}/Windows.java
 Fix notes:
-  google-java-format rewrote ${SOURCES}/Changed.java, ${SOURCES}/Fresh.java
+  google-java-format rewrote ${SOURCES}/Changed.java, ${SOURCES}/Fresh.java, ${SOURCES}/Windows.java
   google-java-format left ${SOURCES}/Legacy.java as is: already unformatted before your change
 `,
   files: {
     changed: formatted('Changed'),
     fresh: formatted('Fresh'),
-    legacy: messy('Legacy', 'a+b+1'),
+    legacy: legacy(messyAdd('a+b+1')),
+    windows: windows(formatted('Windows')),
     unchanged: messy('Unchanged'),
   },
   base: FORMATTED,
@@ -110,19 +139,17 @@ describe.skipIf(!enabled)('nitpicker --fix for Java', () => {
     expect(outcomeOf(result), result.stdout + result.stderr).toEqual(REWRITTEN);
   });
   it('formats with google-java-format when nothing names a formatter, so the gate finds no format finding', () => {
-    const debt =
-      'package demo;\n\npublic class Legacy {\n  public int  add( int a,int b ){ return a+b; }\n}\n';
     const result = fix({
       committed: {
         'build.gradle': PLAIN_GRADLE_BUILD,
         'settings.gradle': "rootProject.name = 'demo'\n",
         'nitpicker.config.json': '{ "preset": "java" }\n',
         [`${SOURCES}/Changed.java`]: FORMATTED,
-        [`${SOURCES}/Legacy.java`]: debt,
+        [`${SOURCES}/Legacy.java`]: twoSpaced(legacy(messyAdd('a+b'))),
       },
       changed: {
         [`${SOURCES}/Changed.java`]: messy('Changed'),
-        [`${SOURCES}/Legacy.java`]: debt.replace('a+b', 'a+b+1'),
+        [`${SOURCES}/Legacy.java`]: twoSpaced(legacy(messyAdd('a+b+1'))),
       },
       realAnalyzers: true,
     });
@@ -142,18 +169,18 @@ Fix notes:
   google-java-format left ${SOURCES}/Legacy.java as is: already unformatted before your change
 `,
       changed: formatted('Changed'),
-      legacy: debt.replace('a+b', 'a+b+1'),
+      legacy: twoSpaced(legacy(messyAdd('a+b+1'))),
     });
     expect(
       {
         toolErrors: result.toolErrors(),
-        formatFindings: result
+        layoutFindings: result
           .newFindings()
-          .filter(({ tool }) => FORMAT_TOOLS.has(tool))
-          .map(({ tool, path: file }) => `${tool} ${file}`),
+          .filter(({ tool }) => FORMAT_TOOLS.has(tool) || tool === 'checkstyle')
+          .map(({ tool, rule, path: file, line }) => `${tool} ${rule} ${file}:${line}`),
       },
       result.stdout + result.stderr,
-    ).toEqual({ toolErrors: [], formatFindings: [] });
+    ).toEqual({ toolErrors: [], layoutFindings: [] });
   });
   it('keeps every file when the project turns the Java formatter off', () => {
     const files = repository({ 'pom.xml': MAVEN_BUILD });
@@ -176,10 +203,93 @@ Fix notes:
       files: {
         changed: messy('Changed'),
         fresh: messy('Fresh'),
-        legacy: messy('Legacy', 'a+b+1'),
+        legacy: legacy(messyAdd('a+b+1')),
+        windows: windows(messy('Windows')),
         unchanged: messy('Unchanged'),
       },
       base: FORMATTED,
+    });
+  });
+});
+
+describe.skipIf(!enabled)('nitpicker --fix behind a company mirror', () => {
+  const temporary = [];
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    for (const directory of temporary.splice(0)) {
+      rmSync(directory, { recursive: true, force: true });
+    }
+  });
+
+  function directory(prefix) {
+    const created = mkdtempSync(path.join(tmpdir(), prefix));
+    temporary.push(created);
+    return created;
+  }
+
+  function fixBehind(url) {
+    vi.stubEnv('XDG_CACHE_HOME', directory('nitpicker-fix-mirror-cache-'));
+    return fix({
+      committed: {
+        'settings.gradle.kts': [
+          'rootProject.name = "demo"',
+          'dependencyResolutionManagement {',
+          '    repositories {',
+          `        maven { url = uri("${url}") }`,
+          '    }',
+          '}',
+          '',
+        ].join('\n'),
+        'build.gradle.kts': 'plugins { java }\n',
+        'nitpicker.config.json': '{ "preset": "java" }\n',
+        [`${SOURCES}/Changed.java`]: FORMATTED,
+      },
+      changed: { [`${SOURCES}/Changed.java`]: messy('Changed') },
+    });
+  }
+
+  it('resolves the formatter from the repository the settings declare', () => {
+    const result = fixBehind('https://repo.maven.apache.org/maven2/');
+
+    expect(
+      { report: fixReport(result.stdout), changed: result.read(`${SOURCES}/Changed.java`) },
+      result.stdout + result.stderr,
+    ).toEqual({
+      report: `Fixed files:
+${SOURCES}/Changed.java
+Fix notes:
+  google-java-format rewrote ${SOURCES}/Changed.java
+`,
+      changed: formatted('Changed'),
+    });
+  });
+  it('searches only that repository, and says where it resolved from when it fails', () => {
+    const mirror = pathToFileURL(directory('nitpicker-fix-empty-mirror-')).href;
+    const result = fixBehind(mirror);
+
+    const errors = result.toolErrors();
+    expect(
+      {
+        tools: errors.map(({ tool }) => tool),
+        searchedTheMirror: errors.some(({ message }) =>
+          message.includes(mirror.replace('file://', 'file:')),
+        ),
+        searchedMavenCentral: errors.some(({ message }) =>
+          message.includes('repo.maven.apache.org'),
+        ),
+        namedTheSource: errors.some(({ message }) =>
+          message.includes('from the repositories declared in settings.gradle.kts)'),
+        ),
+        changed: result.read(`${SOURCES}/Changed.java`),
+      },
+      result.stdout + result.stderr,
+    ).toEqual({
+      tools: ['fix-tools'],
+      searchedTheMirror: true,
+      searchedMavenCentral: false,
+      namedTheSource: true,
+      changed: messy('Changed'),
     });
   });
 });

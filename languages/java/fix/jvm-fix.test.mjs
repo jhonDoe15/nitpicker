@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -281,11 +281,17 @@ describe('--fix for Java', () => {
 
     const result = fix(repository, tools);
 
-    expect(result.toolErrors).toEqual([
+    expect(
+      result.toolErrors.map((error) => ({
+        ...error,
+        message: error.message.replace(/ at \S+\/gradle-tools-[0-9a-f]{16},/u, ' at <tools>,'),
+      })),
+    ).toEqual([
       {
         tool: 'fix-tools',
         snapshot: 'fix',
-        message: 'fix-tools failed: Could not resolve artifact',
+        message:
+          'fix-tools failed: Could not resolve artifact (nitpicker resolves the formatter jars in its own build at <tools>, from Maven Central, since the project declares no repositories)',
       },
     ]);
     expect(result.fixedFiles).toEqual([]);
@@ -295,6 +301,32 @@ describe('--fix for Java', () => {
 describe('--fix for Kotlin', () => {
   const kotlin = { preset: 'kotlin', kotlin: { formatter: 'ktlint' } };
 
+  it('formats with ktlint only the code around a change to a file that was unformatted before', () => {
+    const repository = topic(
+      {
+        ...GRADLE,
+        [`${JAVA}/Old.java`]: 'class Old {\nint  a;\n}\n',
+        [`${KT}/Old.kt`]: 'class Old {\nval  a = 1\n}\n',
+      },
+      {
+        [`${JAVA}/Old.java`]: 'class Old {\nint  a;\nint  b;\n}\n',
+        [`${KT}/Old.kt`]: 'class Old {\nval  a = 1\nval  b = 2\n}\n',
+      },
+    );
+    symlinkSync('Old.kt', path.join(repository.root, KT, 'Link.kt'));
+
+    const result = fix(repository, fakeJvmTools(), { config: kotlin });
+
+    expect(result.notes).toEqual([
+      `google-java-format left ${JAVA}/Old.java as is: already unformatted before your change`,
+      `ktlint formatted only the code around your change in ${KT}/Old.kt: the rest was already unformatted before your change`,
+      `--fix left ${KT}/Link.kt as is: symbolic links are not followed`,
+    ]);
+    expect([read(repository, `${JAVA}/Old.java`), read(repository, `${KT}/Old.kt`)]).toEqual([
+      'class Old {\nint  a;\nint  b;\n}\n',
+      'class Old {\nval  a = 1\nval b = 2\n}\n',
+    ]);
+  });
   it('formats changed Kotlin and Java files with one tool resolution', () => {
     const repository = topic(GRADLE, {
       [`${KT}/New.kt`]: 'class  New\n',
