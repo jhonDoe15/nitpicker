@@ -14,7 +14,7 @@ const GENERIC_PLACE =
 const MAX_CALL_LENGTH = 100;
 const OPENERS = new Set(['(', '[', '{']);
 const CLOSERS = new Set([')', ']', '}']);
-const CHAINED_LINE = /\s*\n\s*\./gu;
+const CHAINED_LINE = /[^\S\n]*\n\s*\./gu;
 const SITE_ORDER = { field: 0, 'static-block': 0, constant: 0, constructor: 1, initializer: 1 };
 
 function collapsedArguments(expression) {
