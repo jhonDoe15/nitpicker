@@ -115,6 +115,7 @@ describe.each([
           ]
         }
       },
+      "columnKind": "utf16CodeUnits",
       "invocations": [
         {
           "executionSuccessful": true,
@@ -125,6 +126,7 @@ describe.each([
         {
           "ruleId": "pmd/UnusedPrivateField",
           "level": "error",
+          "baselineState": "new",
           "message": {
             "text": ${JSON.stringify(addedField)}
           },
@@ -132,7 +134,8 @@ describe.each([
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/main/java/demo/A.java"
+                  "uri": "src/main/java/demo/A.java",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
                   "startLine": 4
@@ -260,6 +263,75 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         message: build.failure.error.message('base'),
       },
     ]);
+  });
+  describe('on a base whose tests fail', () => {
+    const failing = (name) =>
+      `<testsuite name="demo.ATest"><testcase classname="demo.ATest" name="${name}">` +
+      '<failure message="expected: 1"/></testcase></testsuite>';
+    const repaired = (root, { write = {}, remove = [] }) => {
+      if (remove.length > 0) {
+        fixtureGit(root, ['rm', '-q', ...remove]);
+      }
+      writeFiles(root, write);
+      commit(root, 'repair the tests');
+    };
+
+    it('records the failing base as a note and passes a change that repairs it', () => {
+      const root = repository(build.redBase.files(failing('works')));
+      repaired(root, build.redBase.repair);
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(0);
+      expect(result.json('tool-errors.json')).toEqual([]);
+      expect(result.json('notes.json')).toEqual([
+        {
+          tool: 'java',
+          snapshot: 'base',
+          rule: 'tests-failed',
+          path: '.',
+          message: 'Tests fail on the base:\n  demo.ATest.works: expected: 1',
+        },
+      ]);
+      expect(result.output.out.split('\n').filter((line) => line.startsWith('Note:'))).toEqual([
+        "Note: the project's tests fail on the base (java).",
+      ]);
+    });
+
+    it.runIf(build.redBase.modules !== undefined)(
+      'names the failing module of a multi-module build',
+      () => {
+        const root = repository(build.redBase.modules.files(failing('works')));
+        repaired(root, build.redBase.modules.repair);
+
+        const result = run(root);
+
+        expect(result.exitCode, result.text).toBe(0);
+        expect(result.json('notes.json').map(({ message }) => message)).toEqual([
+          'Tests fail on the base in core:\n  demo.ATest.works: expected: 1',
+        ]);
+      },
+    );
+
+    it('stays a tool error on both snapshots when the head tests fail too', () => {
+      const root = repository(build.redBase.files(failing('works')));
+      writeFiles(root, {
+        'src/main/java/demo/B.java': 'package demo;\n\npublic final class B {}\n',
+      });
+      commit(root, 'change something else');
+
+      const result = run(root);
+
+      expect({
+        exitCode: result.exitCode,
+        errors: result.json('tool-errors.json').map(({ snapshot, rule }) => `${snapshot} ${rule}`),
+        notes: result.json('notes.json'),
+      }).toEqual({
+        exitCode: 2,
+        errors: [`head ${build.redBase.headRule}`, 'base tests-failed'],
+        notes: [],
+      });
+    });
   });
   it('lets an exception entry for the rule and path allow a new finding', () => {
     const root = repository();

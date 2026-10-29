@@ -1,3 +1,4 @@
+import { changedByDiff } from './base-red/unknown-base.mjs';
 import { comparisonKey } from './fingerprint.mjs';
 import { matchSimilarFindings } from './similar/match.mjs';
 import { normalizeGitPath } from '../git/normalize.mjs';
@@ -10,6 +11,7 @@ export function compareFindings({
   baseToHeadRenames = new Map(),
   baseToHeadDirectories = new Map(),
   touchedCode,
+  unknownOnBase,
 }) {
   const baseByKey = indexFindings({
     findings: baseFindings,
@@ -18,7 +20,7 @@ export function compareFindings({
     snapshot: 'base',
   });
   const headByKey = indexFindings({ findings: headFindings, snapshot: 'head' });
-  const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode });
+  const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode, unknownOnBase });
   const withoutExactMatch = [...baseByKey]
     .filter(([key]) => !headByKey.has(key))
     .map(([, baseFinding]) => baseFinding);
@@ -54,16 +56,23 @@ export function compareFindings({
   };
 }
 
-function classifyHeadFindings({ headByKey, baseByKey, touchedCode }) {
+function classifyHeadFindings({ headByKey, baseByKey, touchedCode, unknownOnBase }) {
   const buckets = { newFindings: [], unchangedFindings: [], changedMetrics: [] };
   for (const [key, headFinding] of headByKey) {
-    const { bucket, entry } = classify(headFinding, baseByKey.get(key), touchedCode);
+    const { bucket, entry } = classify(headFinding, baseByKey.get(key), {
+      touchedCode,
+      isUnknown: unknownOnBase?.(headFinding) === true,
+    });
     buckets[bucket].push(entry);
   }
   return buckets;
 }
 
-function classify(headFinding, baseFinding, touchedCode) {
+function classify(headFinding, baseFinding, { touchedCode, isUnknown }) {
+  if (baseFinding === undefined && isUnknown) {
+    const bucket = changedByDiff(headFinding, touchedCode) ? 'newFindings' : 'unchangedFindings';
+    return { bucket, entry: headFinding };
+  }
   if (baseFinding === undefined) {
     return { bucket: 'newFindings', entry: headFinding };
   }
@@ -227,7 +236,7 @@ function isInTouchedCode(finding, touchedCode) {
   }
   if (
     finding.ratchet?.existingCodeOnly === true &&
-    touchedCode.mustMeetOnEditedLines?.(finding.rule) !== true
+    touchedCode.mustMeetOnEditedLines?.(finding.rule, finding) !== true
   ) {
     return false;
   }
