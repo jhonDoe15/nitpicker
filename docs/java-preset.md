@@ -402,8 +402,9 @@ classpath and its `test` task, and adds no test library to the project.
   init script and the Java adapter files, so a tool bump invalidates the base cache.
 - **Everything else is shared.** `nitpicker`, `--all`, `--base`, `--output`, `--defer-exit`,
   `cache publish` and `nitpicker aggregate` take the same path as for TypeScript, so the exit codes
-  (0 pass, 1 new enforceable findings, 2 tool error), the console summary, `new-findings.json`,
-  `summary.json`, `report.sarif` and `report.junit.xml` are the ones described in the CLI README.
+  (0 pass, 1 new enforceable findings, 2 tool error), the console summary and the report files
+  (`new-findings.json`, `summary.json`, `report.sarif`, `report.junit.xml` and the rest; `--all`
+  writes `findings.json`) are the ones described under [Reports](usage.md#reports).
 - **Gradle failure.** `languages/java/adapters/java-runner.mjs` catches any failure of the preset on a
   snapshot and returns one finding, `java/gradle-failure` (`java/maven-failure` on a Maven build) with
   classification `tool-error`, whose message is the build's diagnostic output. The comparison turns it into a tool error for that
@@ -1720,10 +1721,10 @@ the `rule` of a config exception.
 | Tests         | `SpringUnusedContext` (test sources only, from `spring-test-ruleset.xml`; see [Review rules](#review-rules))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 **Kotlin.** PMD reads Java sources only, so every rule in this table checks the Java files of a
-project, on Gradle and Maven alike. In a kotlin-preset project the Beans, Configuration, Proxies and
-Web rules also run on the main Kotlin sources, under the same ids and exception route, from the
-Kotlin syntax facts (see [Kotlin preset: Spring rules](kotlin-preset.md#spring-rules)); the JPA and
-Spring Data rules do not run on Kotlin yet. Kotlin classes of a Java-preset project (a mixed module)
+project, on Gradle and Maven alike. In a kotlin-preset project every rule of the table except
+`SpringQueryConcatenation` (covered there by `kotlin-source/SqlStringBuilding`) also runs on the main
+Kotlin sources, under the same ids and exception route, from the Kotlin syntax facts (see
+[Kotlin preset: Spring rules](kotlin-preset.md#spring-rules)). Kotlin classes of a Java-preset project (a mixed module)
 get none of these rules. The Spring configuration file checks
 ([below](#spring-configuration-files)) do not depend on the language and apply to Kotlin projects
 too, and `missing-enable` scans the Kotlin sources.
@@ -1953,7 +1954,7 @@ calls `EntityManager.clear()`, the JPA batch idiom.
 `Throwable`, `DataAccessException`, `TransactionException` or `PersistenceException`, not narrower
 exceptions such as `NumberFormatException`. `SpringQueryConcatenation` does not follow SQL that
 comes from a helper method, a parameter or a field. `SpringDataSaveInLoopHelper` follows one helper
-level, and `SpringNoPostConstructIo` follows private helpers two levels deep.
+level (matched by name and argument count, varargs-aware), and `SpringNoPostConstructIo` follows private helpers two levels deep.
 `JpaEnumString` sees an `autoApply` converter only in the same file; an enum converted by a
 converter in another file needs an exception. `SpringPermitAllAnyRequest` does not resolve a
 pattern held in a variable (`var all = "/**"`) or an `access(...)` that allows everyone.
