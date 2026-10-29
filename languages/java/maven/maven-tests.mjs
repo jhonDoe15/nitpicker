@@ -16,12 +16,15 @@ const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class
 const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
 const TESTNG_JAR = /^testng-\d.*\.jar$/u;
 
-export function archunitMatcher(includes = DEFAULT_ARCHUNIT_INCLUDES) {
-  const patterns = includes
+export function archunitPatterns(includes = DEFAULT_ARCHUNIT_INCLUDES) {
+  return includes
     .split(',')
     .map((pattern) => pattern.trim())
-    .filter(Boolean)
-    .map((pattern) => globMatcher(pattern));
+    .filter(Boolean);
+}
+
+export function archunitMatcher(includes = DEFAULT_ARCHUNIT_INCLUDES) {
+  const patterns = archunitPatterns(includes).map((pattern) => globMatcher(pattern));
   return (className) => {
     const file = `${className.replaceAll('.', '/').replace(/\$.*$/u, '')}.class`;
     return patterns.some((pattern) => pattern.test(file));
@@ -48,20 +51,30 @@ export function suiteNameOf(report) {
   return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
 }
 
-export function collectTestResults({ module, reportDir, since, isArchunit }) {
-  const reports = testReportDirectories(module).flatMap(([, directory]) =>
-    freshReports(directory, since),
-  );
+function freshTestReports(module, since) {
+  return testReportDirectories(module).flatMap(([, directory]) => freshReports(directory, since));
+}
+
+function copyArchunitReports(reports, reportDir, isArchunit) {
   const archunitDir = path.join(reportDir, 'archunit');
-  const failures = [];
-  for (const report of reports) {
-    if (isArchunit(suiteNameOf(report))) {
-      mkdirSync(archunitDir, { recursive: true });
-      copyFileSync(report, path.join(archunitDir, path.basename(report)));
-    } else {
-      failures.push(...failedCases(report));
-    }
+  for (const report of reports.filter((candidate) => isArchunit(suiteNameOf(candidate)))) {
+    mkdirSync(archunitDir, { recursive: true });
+    copyFileSync(report, path.join(archunitDir, path.basename(report)));
   }
+}
+
+export function collectArchunitResults({ module, reportDir, since, isArchunit }) {
+  const reports = freshTestReports(module, since);
+  copyArchunitReports(reports, reportDir, isArchunit);
+  requireArchunitRun(module, reports, isArchunit);
+}
+
+export function collectTestResults({ module, reportDir, since, isArchunit }) {
+  const reports = freshTestReports(module, since);
+  copyArchunitReports(reports, reportDir, isArchunit);
+  const failures = reports
+    .filter((report) => !isArchunit(suiteNameOf(report)))
+    .flatMap((report) => failedCases(report));
   requireArchunitRun(module, reports, isArchunit);
   if (failures.length > 0) {
     throw failingTestsError(module.basedir, failures);

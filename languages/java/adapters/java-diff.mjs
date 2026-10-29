@@ -70,7 +70,7 @@ function runJavaPreset(
       '--quiet',
       '--no-configuration-cache',
       `-Pnitpicker.reportDir=${reportBase}`,
-      ...(policy.quick ? ['-Pnitpicker.quick=true'] : []),
+      ...(policy.quick ? ['-Pnitpicker.quick=true', '--build-cache'] : []),
       ...kotlinArguments,
     ];
     const stages = gradleStages(common, { projectRoot, initScript, policy, directory });

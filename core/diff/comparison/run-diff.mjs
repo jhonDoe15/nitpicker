@@ -20,6 +20,7 @@ import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { combineAnalyzerReports } from './results.mjs';
 import { runBaseWithCache, createFindingsCache } from '../cache/findings-cache.mjs';
 import { cachedLine } from '../execution/progress.mjs';
+import { quickScoped, runQuickHead } from '../../quick/head-run.mjs';
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
@@ -154,20 +155,15 @@ function withBasePolicyFile({ basePolicy, headPolicy, headPolicyFile }, operatio
 }
 
 function runAndCombine(context) {
-  const { settings, comparison, layout, roots, startedAt, headPolicyFile } = context;
+  const { settings, comparison, layout, roots, startedAt } = context;
   const baseRun = runBaseSide(context);
   const headRun = withMovesFile(layout.moves.files, (baselineMovesFile) =>
-    runAnalyzers({
-      analyzers: settings.analyzers,
-      projectRoot: roots.headSnapshotRoot,
-      policyRoot: roots.headSnapshotRoot,
-      toolRoot: PACKAGE_ROOT,
-      liveProjectRoot: settings.headProjectRoot,
-      headPolicyFile,
-      snapshot: 'head',
-      baselineRoot: roots.baseProjectRoot,
-      baselineMovesFile,
-      runTasks: settings.runTasks,
+    runQuickHead({
+      settings,
+      comparison,
+      roots,
+      analyzers: quickScoped(settings, layout, settings.analyzers),
+      run: (headAnalyzers) => runHeadAnalyzers(context, { headAnalyzers, baselineMovesFile }),
     }),
   );
   return combineAnalyzerReports({
@@ -189,11 +185,28 @@ function runAndCombine(context) {
     policyAcceptanceSource: settings.policyAcceptanceSource,
     reportsPolicy: settings.reportsPolicy !== false,
     quick: settings.quick,
+    staged: settings.staged,
     notices:
       settings.describeNotices?.([...layout.touchedCode.changedLines.keys()], {
         mergeBaseSha: comparison.mergeBaseSha,
         touchedPaths: [...layout.touchedPaths],
       }) ?? [],
+  });
+}
+
+function runHeadAnalyzers(context, { headAnalyzers, baselineMovesFile }) {
+  const { settings, roots, headPolicyFile } = context;
+  return runAnalyzers({
+    analyzers: headAnalyzers,
+    projectRoot: roots.headSnapshotRoot,
+    policyRoot: roots.headSnapshotRoot,
+    toolRoot: PACKAGE_ROOT,
+    liveProjectRoot: settings.headProjectRoot,
+    headPolicyFile,
+    snapshot: 'head',
+    baselineRoot: roots.baseProjectRoot,
+    baselineMovesFile,
+    runTasks: settings.runTasks,
   });
 }
 
@@ -213,8 +226,9 @@ function runBaseAnalyzers(context, baseAnalyzers) {
 
 function runBaseSide(context) {
   const { settings, comparison, layout, roots, baseSetup } = context;
+  const analyzers = quickScoped(settings, layout, baseSetup.analyzers);
   if (settings.cacheStore === undefined) {
-    return runBaseAnalyzers(context, baseSetup.analyzers);
+    return runBaseAnalyzers(context, analyzers);
   }
   return runBaseWithCache({
     cache: createFindingsCache({
@@ -224,7 +238,7 @@ function runBaseSide(context) {
       configOverrides: baseSetup.configOverrides,
       headPolicy: baseSetup.headPolicy,
     }),
-    analyzers: baseSetup.analyzers,
+    analyzers,
     run: (baseAnalyzers) => runBaseAnalyzers(context, baseAnalyzers),
     onCached: (count) => settings.progress?.write(cachedLine({ label: 'base', count })),
     resolveContext: {

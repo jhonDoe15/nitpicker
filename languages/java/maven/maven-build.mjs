@@ -12,6 +12,7 @@ import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 import { writeJdepsReports } from '../builds/jdeps-reports.mjs';
+import { runToolsConcurrently } from './parallel/concurrent-tools.mjs';
 import {
   analyzeTests,
   buildGoals,
@@ -20,6 +21,8 @@ import {
 } from './quick/maven-test-phase.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
+const LINT_URL = new URL('maven-lint.mjs', import.meta.url).href;
+const ERRORPRONE_URL = new URL('errorprone/maven-errorprone.mjs', import.meta.url).href;
 const GUAVA_JAR = /^guava-\d.*\.jar$/u;
 const AWAITILITY_JAR = /^awaitility-\d.*\.jar$/u;
 const PROJECT_CHECKS_OFF = [
@@ -134,13 +137,18 @@ function readClasspaths(work, module) {
 
 function analyzeSources(options) {
   const { module, reportDir, classpaths, tools, pinned, configs, style, spring, spawn } = options;
-  runPmd({ module, reportDir, tools, classpaths, configs, spring, spawn });
-  runSpotbugs({ module, reportDir, tools, spawn });
-  runErrorProne({ module, reportDir, tools, classpaths, spawn });
-  runFormat({ module, reportDir, tools, javaStyle: style.javaStyle, spawn });
-  runCheckstyle({ module, reportDir, tools, configs, pinned, style, spawn });
-  runStructure(module, reportDir, spawn);
-  runJdeps(module, reportDir, spawn);
+  const tasks = [
+    [runPmd, LINT_URL, { module, reportDir, tools, classpaths, configs, spring }],
+    [runSpotbugs, LINT_URL, { module, reportDir, tools }],
+    [runErrorProne, ERRORPRONE_URL, { module, reportDir, tools, classpaths }],
+    [runFormat, LINT_URL, { module, reportDir, tools, javaStyle: style.javaStyle }],
+    [runCheckstyle, LINT_URL, { module, reportDir, tools, configs, pinned, style }],
+  ].map(([run, url, toolOptions]) => ({ run, url, name: run.name, options: toolOptions }));
+  const alongside = () => {
+    runStructure(module, reportDir, spawn);
+    runJdeps(module, reportDir, spawn);
+  };
+  runToolsConcurrently(tasks, { spawn, alongside, concurrent: options.quick === true });
 }
 
 function analyzeModule(options) {

@@ -32,14 +32,15 @@ import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { applyRunProfile } from './quick/profile.mjs';
-import { indexCapture } from './staged/capture-index.mjs';
+import { stagedLines } from './quick/summary.mjs';
+import { indexCapture, stagedRunNotice } from './staged/capture-index.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 
 const CHECK_COMMANDS = { hygiene: runHygieneCli, history: runHistoryCli };
 
 export function runCli(options = {}) {
-  const cli = withCliDefaults(options);
+  const cli = detachIndexFile(withCliDefaults(options));
   const checkCommand = CHECK_COMMANDS[cli.arguments_[0]];
   if (checkCommand !== undefined) {
     return checkCommand({
@@ -67,6 +68,12 @@ export function runCli(options = {}) {
     );
     return 2;
   }
+}
+
+function detachIndexFile(cli) {
+  const { GIT_INDEX_FILE: indexFile } = cli.environment;
+  delete process.env.GIT_INDEX_FILE;
+  return { ...cli, indexFile };
 }
 
 function isTerminal(stream) {
@@ -119,7 +126,7 @@ function runConfigured(cli) {
   const config = loadConfig(currentProjectRoot);
   const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
-  const captureHead = stagedCapture(cli);
+  const captureHead = stagedCapture(cli, currentProjectRoot);
   const { analyzers, quick } = applyRunProfile(
     configureAnalyzers(presetSet, config, headPolicy),
     options,
@@ -156,13 +163,12 @@ function runConfigured(cli) {
   });
 }
 
-function stagedCapture(cli) {
+function stagedCapture(cli, projectRoot) {
   if (!cli.options.staged) {
     return undefined;
   }
-  const { GIT_INDEX_FILE: indexFile } = cli.environment;
-  delete process.env.GIT_INDEX_FILE;
-  return indexCapture(indexFile);
+  cli.stderr.write(stagedRunNotice(projectRoot, cli.indexFile));
+  return indexCapture(cli.indexFile);
 }
 
 function runComparisonCli(cli) {
@@ -175,6 +181,7 @@ function runComparisonCli(cli) {
     explicitBase: options.baseRef,
     configuredBase: config.base,
     environment: cli.environment,
+    staged: options.staged,
   });
   const outputRoot =
     options.outputRoot === undefined
@@ -196,6 +203,7 @@ function runComparisonCli(cli) {
     includeWorkingTree: true,
     captureHead: cli.captureHead,
     quick: cli.quick,
+    staged: options.staged,
     additionalToolErrors: fixResult.toolErrors,
     configOverrides: describeConfigOverrides(config),
     headPolicy,
@@ -266,6 +274,11 @@ function selectComparisonAnalyzers({ options, analyzers }) {
 function writeComparisonOutcome({ cli, report, base, outputRoot }) {
   const { options, environment, stdout } = cli;
   stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
+  stdout.write(
+    stagedLines(report.summary)
+      .map((line) => `${line}\n`)
+      .join(''),
+  );
   stdout.write(
     renderConsoleSummary(report, {
       color: environment.NO_COLOR === undefined,

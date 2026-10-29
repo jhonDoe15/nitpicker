@@ -1,17 +1,10 @@
 import { createHash } from 'node:crypto';
+import { selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
 import { quickSummary } from './summary.mjs';
 
-const QUICK_SKIPPED_ANALYZERS = ['coverage', 'crap', 'mutation', 'test-runtime', 'test-console'];
+const QUICK_SKIPPED_ANALYZERS = ['coverage', 'crap', 'mutation', 'test-console'];
 
-const JVM_SKIPPED_TOOLS = [
-  'tests',
-  'jacoco',
-  'crap',
-  'pit',
-  'archunit',
-  'test-runtime',
-  'test-console',
-];
+const JVM_SKIPPED_TOOLS = ['tests', 'jacoco', 'crap', 'pit', 'test-runtime'];
 
 const QUICK_SKIPPED_TOOLS = new Map([
   ['python', ['tests', 'coverage', 'crap', 'test-runtime']],
@@ -59,15 +52,13 @@ function isSkipped(analyzer) {
   return analyzer.custom !== true && QUICK_SKIPPED_ANALYZERS.includes(analyzer.name);
 }
 
-function applyQuick(analyzers) {
-  const skipped = [
+function skippedChecks(analyzers) {
+  return [
     ...analyzers.filter(isSkipped).map(({ name }) => name),
-    ...analyzers.flatMap(({ name }) => QUICK_SKIPPED_TOOLS.get(name) ?? []),
+    ...analyzers
+      .filter((analyzer) => analyzer.custom !== true)
+      .flatMap(({ name }) => QUICK_SKIPPED_TOOLS.get(name) ?? []),
   ];
-  return {
-    analyzers: analyzers.filter((analyzer) => !isSkipped(analyzer)).map(quickAnalyzer),
-    skipped: [...new Set(skipped)],
-  };
 }
 
 function rejectSkippedSelection(analyzerNames, skipped) {
@@ -83,7 +74,11 @@ export function applyRunProfile(analyzers, options) {
   if (options.quick !== true) {
     return { analyzers, quick: undefined };
   }
-  const profile = applyQuick(analyzers);
-  rejectSkippedSelection(options.analyzerNames ?? [], profile.skipped);
-  return { analyzers: profile.analyzers, quick: quickSummary(profile.skipped) };
+  const analyzerNames = options.analyzerNames ?? [];
+  rejectSkippedSelection(analyzerNames, skippedChecks(analyzers));
+  const skipped = skippedChecks(selectAnalyzers(analyzers, analyzerNames));
+  return {
+    analyzers: analyzers.filter((analyzer) => !isSkipped(analyzer)).map(quickAnalyzer),
+    quick: quickSummary([...new Set(skipped)]),
+  };
 }

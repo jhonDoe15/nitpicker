@@ -142,7 +142,7 @@ function readModuleFindings(context, crapLimit) {
     ...formatFindings(context),
     ...checkstyleFindings(context),
     ...whenTested(context, () => jacocoFindings(context, jacoco)),
-    ...whenTested(context, () => archunitFindings(context)),
+    ...archunitFindings(context),
     ...springArchFindings(context),
     ...whenTested(context, () => crapFindings(context, jacoco, crapLimit)),
     ...whenTested(context, () => pitFindings(context)),

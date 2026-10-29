@@ -88,6 +88,42 @@ describe('nitpicker --staged', () => {
     expect(findingLines(outputRoot, 'new-findings.json')).toEqual(['src/main/staged.ts:1']);
   });
 
+  it('records the staged run in summary.json and under the base line of the console', () => {
+    const project = repository();
+    stage(project.root, { 'src/main/staged.ts': CLEAN });
+
+    const { exitCode, output, outputRoot } = run(project, ['--staged']);
+
+    expect(exitCode).toBe(0);
+    const summary = JSON.parse(readFileSync(path.join(outputRoot, 'summary.json'), 'utf8'));
+    expect([summary.mode, summary.staged]).toEqual(['full', true]);
+    expect(output.stdoutText.split('\n').slice(0, 2)).toEqual([
+      'Base: comparison-base (argument)',
+      'Staged run: the head is the index. Unstaged edits and untracked files are not judged.',
+    ]);
+    expect(output.stderrText).toBe('');
+  });
+
+  it('says when a config file in the working tree differs from the index', () => {
+    const project = repository();
+    stage(project.root, { 'src/main/staged.ts': CLEAN });
+    writeFiles(project.root, {
+      'package.json': '{ "name": "changed" }\n',
+      'tsconfig.json': '{}\n',
+      'src/main/other.ts': dirty('unstaged-finding'),
+    });
+
+    const { output } = run(project, ['--staged']);
+
+    expect(output.stderrText).toBe(
+      [
+        'nitpicker: --staged judges the index but reads the config from the working tree,',
+        ' and these files differ from the index: package.json, tsconfig.json.',
+        ' Stage them, or run nitpicker without --staged.\n',
+      ].join(''),
+    );
+  });
+
   it('passes when only unstaged and untracked changes are dirty', () => {
     const project = repository();
     writeFiles(project.root, {
@@ -120,6 +156,37 @@ describe('nitpicker --staged', () => {
 
     expect(exitCode).toBe(1);
     expect(process.env.GIT_INDEX_FILE).toBeUndefined();
+  });
+
+  it('keeps a hook index out of its git calls without --staged and judges the working tree', () => {
+    const project = repository();
+    writeFiles(project.root, { 'src/main/unstaged.ts': dirty('unstaged-finding') });
+    const indexFile = path.join(makeTemporaryRoot('nitpicker-hook-index-'), 'index');
+    process.env.GIT_INDEX_FILE = indexFile;
+
+    const { exitCode, outputRoot } = run(project, [], { GIT_INDEX_FILE: indexFile });
+
+    expect(exitCode).toBe(1);
+    expect(findingLines(outputRoot, 'new-findings.json')).toEqual(['src/main/unstaged.ts:1']);
+    expect(process.env.GIT_INDEX_FILE).toBeUndefined();
+  });
+
+  it('compares the index with HEAD when the clone has no remote base', () => {
+    const project = repository();
+    stage(project.root, { 'src/main/staged.ts': dirty('staged-finding') });
+    const output = captureOutput();
+
+    const exitCode = runCli({
+      arguments_: ['--staged', '--output', makeOutputRoot()],
+      environment: { NO_COLOR: '1' },
+      currentProjectRoot: project.root,
+      analyzers: [fakeAnalyzer()],
+      stdout: output.stdout,
+      stderr: output.stderr,
+    });
+
+    expect(exitCode).toBe(1);
+    expect(output.stdoutText.split('\n')[0]).toBe('Base: HEAD (staged, no remote base)');
   });
 
   it('says how to recover when the index cannot be read', () => {

@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { comparisonKey } from '../comparison/fingerprint.mjs';
+import { sarifRunProfile } from '../../quick/report-formats.mjs';
 
 const SARIF_SCHEMA_URL = 'https://json.schemastore.org/sarif-2.1.0.json';
 
@@ -36,6 +37,7 @@ function collectSarifRules(findings) {
 }
 
 export function renderSarifReport(report) {
+  const profile = sarifRunProfile(report.summary);
   const log = {
     $schema: SARIF_SCHEMA_URL,
     version: '2.1.0',
@@ -51,10 +53,16 @@ export function renderSarifReport(report) {
         invocations: [
           {
             executionSuccessful: report.toolErrors.length === 0,
-            toolExecutionNotifications: report.toolErrors.map((error) => ({
-              level: 'error',
-              message: { text: `${error.tool} (${error.snapshot}): ${error.message}` },
-            })),
+            toolExecutionNotifications: [
+              ...report.toolErrors.map((error) => ({
+                level: 'error',
+                message: { text: `${error.tool} (${error.snapshot}): ${error.message}` },
+              })),
+              ...profile.notifications,
+            ],
+            ...(Object.keys(profile.properties).length === 0
+              ? {}
+              : { properties: profile.properties }),
           },
         ],
         results: report.newFindings.map(toSarifResult),
