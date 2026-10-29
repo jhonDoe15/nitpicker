@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
 import { validateConfig } from '../validate.mjs';
-import { loosensSetting } from '../../policy-changes/loosenings.mjs';
+import { looseningKindOfSetting } from '../../policy-changes/loosenings.mjs';
 
 const session = { type: 'Session', open: ['begin'], close: ['commit', 'rollback'] };
 
@@ -36,12 +36,23 @@ describe('protocols config', () => {
     expect(resolveHeadPolicy({ protocols: [session] }).protocols).toEqual([session]);
   });
 
+  const withSteps = { ...session, steps: ['write', 'flush'] };
+
   it.each([
     [[session], [], true],
+    [[session], [{ ...session, type: 'Lock' }], true],
     [[session], [{ ...session, close: ['commit', 'rollback', 'abandon'] }], true],
+    [[{ ...session, open: ['begin', 'resume'] }], [session], true],
+    [[withSteps], [{ ...withSteps, steps: ['write'] }], true],
     [[], [session], false],
     [[session], [session, { ...session, type: 'Lock' }], false],
+    [[session], [{ ...session, close: ['commit'] }], false],
+    [[session], [{ ...session, open: ['begin', 'resume'] }], false],
+    [[session], [withSteps], false],
+    [[session], [{ ...session, reason: 'one owner' }], false],
+    [[session, { ...session, type: 'Lock' }], [{ ...session, type: 'Lock' }, session], false],
   ])('treats %j -> %j as a loosening: %s', (before, after, loosens) => {
-    expect(loosensSetting({ setting: 'protocols', before, after }, {})).toBe(loosens);
+    const kind = looseningKindOfSetting({ setting: 'protocols', before, after }, {});
+    expect(kind).toBe(loosens ? 'protocols-loosened' : undefined);
   });
 });
