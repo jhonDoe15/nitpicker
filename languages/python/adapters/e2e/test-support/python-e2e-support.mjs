@@ -64,19 +64,23 @@ export function write(root, files) {
   }
 }
 
-export function commitBranch(root, name, files) {
-  git(root, 'checkout', '-q', '-b', name, 'main');
+export function commitBranchFrom({ root, name, files, from }) {
+  git(root, 'checkout', '-q', '-b', name, from);
   write(root, files);
   git(root, 'add', '-A');
   git(root, 'commit', '-q', '-m', name);
 }
 
-export function gate(root, branch, { extra = [], environment = {} } = {}) {
+export function commitBranch(root, name, files) {
+  commitBranchFrom({ root, name, files, from: 'main' });
+}
+
+export function gate(root, branch, { extra = [], environment = {}, base = 'main' } = {}) {
   git(root, 'checkout', '-q', branch);
   const reports = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-out-'));
   const output = { text: '' };
   const exitCode = runCli({
-    arguments_: ['--base', 'main', '--output', reports, ...extra],
+    arguments_: ['--base', base, '--output', reports, ...extra],
     environment: { NO_COLOR: '1', ...environment },
     currentProjectRoot: root,
     stdout: {
@@ -92,7 +96,11 @@ export function gate(root, branch, { extra = [], environment = {} } = {}) {
     progress: { write: () => undefined },
   });
   function json(name) {
-    return JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
+    const file = path.resolve(reports, name);
+    if (!file.startsWith(reports + path.sep)) {
+      throw new Error(`${name} is outside the reports directory`);
+    }
+    return JSON.parse(readFileSync(file, 'utf8'));
   }
   return { exitCode, json, text: output.text, reports };
 }

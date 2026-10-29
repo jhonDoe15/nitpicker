@@ -1425,9 +1425,11 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   (`executed_branches`, `missing_branches`) those slices need, which is why it was chosen over lcov.
   Paths are made project-relative.
 - **Tool failures.** Anything that goes wrong on either snapshot becomes a `tool-error` finding with
-  the analyzer as tool (`python`, or `mutation` for `mutation-failed`) and path `.`, never a throw from the CLI: `ruff-failed`, `format-failed`, `tests-failed` (the test run
-  exited 1 without naming a failing test; failing tests themselves are the `tests/tests-failed`
-  error of [Runner parity](#runner-parity), which keeps the other findings), `coverage-failed`, `types-failed` and `rules-failed` (slice 2), `structure-failed`, `environment-failed`,
+  the analyzer as tool (`python`, or `mutation` for `mutation-failed`) and path `.`, never a throw from the CLI: `ruff-failed`, `format-failed`, `tests-failed` (failing tests the
+  runner names, the `tests/tests-failed` error of [Runner parity](#runner-parity), which keeps the other
+  findings; on the base alone it is a note, see [A base whose tests fail](usage.md#a-base-whose-tests-fail)),
+  `tests-not-run` (a test run that exits 1 without naming a failing test, or whose failures are all
+  collection or load errors, or exits with any other status; it stops the analyzer, also on the base), `coverage-failed`, `types-failed` and `rules-failed` (slice 2), `structure-failed`, `environment-failed`,
   `duplicates-failed`, `coupling-failed`, `import-linter-failed` (slice 5), `mutation-failed` (slice 6)
   and `python-failed` for anything unexpected. An environment that cannot be found at all (no
   `.venv` at the configured directory, no `uv sync`, poetry has none) is caught earlier, while the
@@ -1917,8 +1919,9 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   the analyzer. The static analyzers run as usual, coverage and CRAP come from the tests that ran,
   and the failing tests are one `tests/tests-failed` tool error per snapshot, listing up to 20 test
   ids, as Java's `tests/tests-failed` (`test-runs/test-failures.mjs`). unittest failures are read
-  from its `FAIL:`/`ERROR:` lines. A run that exits 1 without naming a test stays
-  `python/tests-failed`.
+  from its `FAIL:`/`ERROR:` lines. A run that exits 1 without naming a test, or whose
+  failures are only collection errors (pytest) or load errors (unittest's `_FailedTest`), is a
+  `python/tests-not-run` tool error on both snapshots.
 - **Slow tests.** `slow-test` (tool `test-runtime`; `test-runtime/slow-test` is accepted in
   `exceptions` as the same rule), as for Java, Kotlin and TypeScript, for pytest and unittest
   projects alike: a test the change adds or edits over 5 s, or 30 s for an integration test, from
@@ -2116,6 +2119,9 @@ and CRAP rules.
   (`languages/python/ingest/fixtures/mutmut-run.json`); the reuse check runs against real work trees
   of a repository and a real `python3` for the import scan; the fake `mutmut` writes a `mutants/`
   directory from a `mutants-data.json` in the project and logs which result files it found there.
+- `languages/python/adapters/e2e/red-base/python-preset-red-base.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
+  too. A base whose test fails and a head that repairs it passes with a note; a new violation or an
+  edited untested legacy function still fails next to the red base.
 - `languages/python/adapters/e2e/*.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
   (`npm run test:python`). Needs python3 3.10 or newer, uv, ruff, black, mypy, pyright, coverage and
   pytest on the `PATH` and network access to PyPI (it installs pytest, pytest-cov, pytest-xdist,
