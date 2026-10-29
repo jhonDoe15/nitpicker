@@ -1,5 +1,5 @@
 import { comparisonKey } from '../fingerprint.mjs';
-import { baseLineOf, headLineOf } from '../../git/unchanged-lines.mjs';
+import { lineMapOf } from '../../git/unchanged-lines.mjs';
 
 const NUMBERED = /#\d+$/u;
 const COUNTED = /([|:]occurrence:)\d+/u;
@@ -25,12 +25,12 @@ function lineOf(finding) {
   return finding.location?.line;
 }
 
-function anchoredPairs(group, file) {
+function anchoredPairs(group, lines) {
   const pairs = new Map();
   const free = new Set(group.base);
   const byLine = Map.groupBy(group.base, lineOf);
   for (const head of group.head) {
-    const baseLine = baseLineOf(file, lineOf(head));
+    const baseLine = lines.baseLineOf(lineOf(head));
     const base = (byLine.get(baseLine) ?? []).find((candidate) => free.has(candidate));
     if (base !== undefined) {
       pairs.set(head, base);
@@ -50,8 +50,8 @@ function inLineOrder(heads, bases) {
     .map((head, index) => ({ head, base: ordered[index].base }));
 }
 
-function nearestCandidates(heads, free, file) {
-  const bases = [...free].map((base) => ({ base, line: headLineOf(file, lineOf(base)) }));
+function nearestCandidates(heads, free, lines) {
+  const bases = [...free].map((base) => ({ base, line: lines.headLineOf(lineOf(base)) }));
   if (heads.length * bases.length > MAX_NEAREST_CANDIDATES) {
     return inLineOrder(heads, bases);
   }
@@ -62,10 +62,10 @@ function nearestCandidates(heads, free, file) {
     .toSorted((left, right) => left.distance - right.distance);
 }
 
-function pairByPosition(group, { file, renames, directories }) {
-  const { pairs, free } = anchoredPairs(group, file);
+function pairByPosition(group, { lines, renames, directories }) {
+  const { pairs, free } = anchoredPairs(group, lines);
   const heads = group.head.filter((head) => !pairs.has(head));
-  for (const { head, base } of nearestCandidates(heads, free, file)) {
+  for (const { head, base } of nearestCandidates(heads, free, lines)) {
     if (!pairs.has(head) && free.has(base)) {
       pairs.set(head, base);
       free.delete(base);
@@ -87,15 +87,18 @@ export function pairedKeys({ baseFindings, headFindings, renames, directories, t
   const groups = new Map();
   groupFindings(groups, baseFindings, { side: 'base', renames, directories });
   groupFindings(groups, headFindings, { side: 'head', renames: new Map(), directories: new Map() });
+  const paired = [...groups.values()].filter(
+    (group) => group.head.length > 0 && group.base.length > 0 && isPositioned(group),
+  );
+  const lineMaps = new Map(
+    [...new Set(paired.map((group) => group.head[0].path))].map((path) => [
+      path,
+      lineMapOf(touchedCode?.changedLines.get(path)),
+    ]),
+  );
   return new Map(
-    [...groups.values()]
-      .filter((group) => group.head.length > 0 && group.base.length > 0 && isPositioned(group))
-      .flatMap((group) =>
-        pairByPosition(group, {
-          file: touchedCode?.changedLines.get(group.head[0].path),
-          renames,
-          directories,
-        }),
-      ),
+    paired.flatMap((group) =>
+      pairByPosition(group, { lines: lineMaps.get(group.head[0].path), renames, directories }),
+    ),
   );
 }

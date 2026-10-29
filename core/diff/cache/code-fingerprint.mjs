@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
@@ -27,15 +27,24 @@ function checkoutFiles(packageRoot) {
     .filter((file) => file !== '');
 }
 
+function insidePackage(packageRoot, file) {
+  const full = path.resolve(packageRoot, file);
+  if (!full.startsWith(`${packageRoot}${path.sep}`) || !existsSync(full)) {
+    return undefined;
+  }
+  return full;
+}
+
 function walkedFiles(packageRoot, folders) {
-  return folders
-    .filter((folder) => existsSync(path.join(packageRoot, folder)))
-    .flatMap((folder) =>
-      readdirSync(path.join(packageRoot, folder), { withFileTypes: true, recursive: true })
-        .filter((entry) => entry.isFile())
-        .map((entry) => path.relative(packageRoot, path.join(entry.parentPath, entry.name))),
-    )
-    .map((file) => file.split(path.sep).join('/'));
+  return folders.flatMap((folder) => {
+    const directory = insidePackage(packageRoot, folder);
+    if (directory === undefined || !statSync(directory).isDirectory()) {
+      return [];
+    }
+    return readdirSync(directory, { recursive: true })
+      .map((name) => `${folder}/${String(name).split(path.sep).join('/')}`)
+      .filter((file) => statSync(insidePackage(packageRoot, file)).isFile());
+  });
 }
 
 function shippedFiles(packageRoot, patterns) {
@@ -45,20 +54,26 @@ function shippedFiles(packageRoot, patterns) {
   const excluding = excluded.map((pattern) => globMatcher(pattern.slice(1)));
   const folders = [...new Set(included.map((pattern) => pattern.split('/')[0]))];
   const candidates = checkoutFiles(packageRoot) ?? walkedFiles(packageRoot, folders);
-  return candidates.filter(
-    (file) =>
-      including.some((matcher) => matcher.test(file)) &&
-      !excluding.some((matcher) => matcher.test(file)) &&
-      existsSync(path.join(packageRoot, file)),
-  );
+  return candidates
+    .filter(
+      (file) =>
+        including.some((matcher) => matcher.test(file)) &&
+        !excluding.some((matcher) => matcher.test(file)),
+    )
+    .map((file) => ({ file, full: insidePackage(packageRoot, file) }))
+    .filter(({ full }) => full !== undefined && statSync(full).isFile());
 }
 
-export function computeCodeFingerprint(packageRoot) {
+export function computeCodeFingerprint(packageDirectory) {
+  const packageRoot = path.resolve(packageDirectory);
   const manifestText = readFileSync(path.join(packageRoot, 'package.json'));
   const hash = createHash('sha256').update(manifestText);
   const patterns = JSON.parse(manifestText.toString('utf8')).files ?? [];
-  for (const file of shippedFiles(packageRoot, patterns).toSorted()) {
-    hash.update(`\0${file}\0`).update(readFileSync(path.join(packageRoot, file)));
+  const files = shippedFiles(packageRoot, patterns).toSorted((left, right) =>
+    left.file < right.file ? -1 : Number(left.file > right.file),
+  );
+  for (const { file, full } of files) {
+    hash.update(`\0${file}\0`).update(readFileSync(full));
   }
   return hash.digest('hex');
 }

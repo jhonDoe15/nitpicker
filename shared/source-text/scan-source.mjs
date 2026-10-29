@@ -1,9 +1,11 @@
+import { whileHolds } from '../traversal.mjs';
+
 const SPACE = /[^\S\n]+/uy;
 const NUMBER = /(?:\d|\.\d)[\p{L}\p{N}_]*(?:(?:(?<=[eE])[+-]|\.)\d[\p{L}\p{N}_]*)*/uy;
 const WORD = /[\p{L}\p{N}_$]+/uy;
 const REGEX_LITERAL = /\/(?:[^\\/[\n]|\\.|\[(?:[^\\\]\n]|\\.)*\])+\/\p{L}*/uy;
 const CONTINUATION = /\\\r?\n/y;
-const COMMENT_MARKER = /^(\/\*\*?|\/\/+|#+)?([\s\S]*)$/u;
+const COMMENT_MARKER = /^(?:\/\*\*?|\/{2,}|#+)/u;
 const BEFORE_REGEX = new Set([
   'return',
   'typeof',
@@ -54,7 +56,10 @@ function readSpace(cursor) {
 }
 
 function readContinuation(cursor) {
-  const match = cursor.language.name === 'python' ? matchAt(CONTINUATION, cursor) : null;
+  if (cursor.language.name !== 'python') {
+    return false;
+  }
+  const match = matchAt(CONTINUATION, cursor);
   if (match === null) {
     return false;
   }
@@ -65,7 +70,9 @@ function readContinuation(cursor) {
 }
 
 function commentWords(lineText, continued) {
-  const [, marker = '', rest] = COMMENT_MARKER.exec(lineText.trim());
+  const trimmed = lineText.trim();
+  const marker = COMMENT_MARKER.exec(trimmed)?.[0] ?? '';
+  const rest = trimmed.slice(marker.length);
   const words = rest.split(/\s+/u).filter((word) => word !== '');
   if (continued && words[0]?.startsWith('*') && words[0] !== '*/') {
     words[0] = words[0].slice(1);
@@ -151,11 +158,11 @@ function insideStep(text, state, kind) {
   return false;
 }
 
-export function delimitedEnd(text, start, kind) {
+function delimitedEnd(text, start, kind) {
   const state = { at: start, depth: 0 };
-  while (state.at < text.length) {
-    const step = state.depth > 0 ? insideStep : outsideStep;
-    if (step(text, state, kind)) {
+  for (const current of whileHolds(state, ({ at }) => at < text.length)) {
+    const step = current.depth > 0 ? insideStep : outsideStep;
+    if (step(text, current, kind)) {
       return Math.min(state.at, text.length);
     }
   }
@@ -256,7 +263,10 @@ function readRegex(cursor) {
     cursor.language.regexLiterals === true &&
     cursor.text[cursor.at] === '/' &&
     regexAllowed(cursor.previous, cursor.line);
-  const match = allowed ? matchAt(REGEX_LITERAL, cursor) : null;
+  if (!allowed) {
+    return false;
+  }
+  const match = matchAt(REGEX_LITERAL, cursor);
   if (match === null) {
     return false;
   }
@@ -286,8 +296,8 @@ const READERS = [
 
 export function scanSource(text, language) {
   const cursor = { text, at: 0, line: 1, tokens: [], language, previous: undefined };
-  while (cursor.at < text.length) {
-    READERS.find((read) => read(cursor));
+  for (const current of whileHolds(cursor, ({ at }) => at < text.length)) {
+    READERS.find((read) => read(current));
   }
   return cursor.tokens;
 }

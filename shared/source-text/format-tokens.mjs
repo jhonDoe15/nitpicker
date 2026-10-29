@@ -1,4 +1,4 @@
-import { NEWLINE, pythonLayout, statementLayout } from './layout-tokens.mjs';
+import { isOp, NEWLINE, pythonLayout, statementLayout } from './layout-tokens.mjs';
 import { scanSource } from './scan-source.mjs';
 import { describeLines } from './scope-moves.mjs';
 import { sourceLanguage } from './source-languages.mjs';
@@ -84,10 +84,6 @@ function laidOut(tokens, language, text) {
     tokens,
     language.name === 'kotlin' ? KOTLIN_STATEMENTS : JAVASCRIPT_STATEMENTS,
   );
-}
-
-function isOp(token, texts) {
-  return token?.kind === 'op' && texts.has(token.text);
 }
 
 function pythonBracket(previous, opener) {

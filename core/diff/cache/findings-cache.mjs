@@ -34,6 +34,24 @@ export function cacheKey({
 
 export { resolveCacheDirectory };
 
+function readReport(backend, key, analyzer) {
+  const text = backend.get(key);
+  if (text === undefined) {
+    return undefined;
+  }
+  const entry = JSON.parse(text);
+  if (entry?.key !== key) {
+    return undefined;
+  }
+  const report = parseAnalyzerReport(entry, analyzer.name);
+  backend.keep?.(key, text);
+  return report;
+}
+
+function writeReport(backend, key, report) {
+  return backend.put(key, `${JSON.stringify({ key, findings: report.findings })}\n`);
+}
+
 export function createFindingsCache({
   store,
   directory,
@@ -54,31 +72,13 @@ export function createFindingsCache({
       codeFingerprint,
     });
   }
-  function readReport(analyzer) {
-    const key = keyFor(analyzer);
-    const text = backend.get(key);
-    if (text === undefined) {
-      return undefined;
-    }
-    const entry = JSON.parse(text);
-    if (entry?.key !== key) {
-      return undefined;
-    }
-    const report = parseAnalyzerReport(entry, analyzer.name);
-    backend.keep?.(key, text);
-    return report;
-  }
-  function writeReport(analyzer, report) {
-    const key = keyFor(analyzer);
-    return backend.put(key, `${JSON.stringify({ key, findings: report.findings })}\n`);
-  }
   return {
     read(analyzer) {
-      const outcome = attempt(() => readReport(analyzer));
+      const outcome = attempt(() => readReport(backend, keyFor(analyzer), analyzer));
       return outcome.kind === 'done' ? outcome.value : undefined;
     },
     write(analyzer, report) {
-      const outcome = attempt(() => writeReport(analyzer, report));
+      const outcome = attempt(() => writeReport(backend, keyFor(analyzer), report));
       return outcome.kind === 'done' ? outcome.value : false;
     },
     servedBy(analyzer) {

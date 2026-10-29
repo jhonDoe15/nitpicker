@@ -103,7 +103,7 @@ function sectionIsInside(section, projectRelativePath) {
 
 const HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 
-export function parseChangedLines(diffText, projectRelativePath = '.', readSources = undefined) {
+export function parseChangedLines(diffText, projectRelativePath = '.', readSources) {
   const sections = diffText
     .split(/^(?=diff --git )/m)
     .map(parseFileSection)
