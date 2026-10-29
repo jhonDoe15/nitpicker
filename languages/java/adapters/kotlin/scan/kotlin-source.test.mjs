@@ -3,6 +3,7 @@ import {
   braceDepths,
   closingIndex,
   enclosingOpen,
+  isCompositionRoot,
   lineOf,
   lineText,
   literalAt,
@@ -103,5 +104,23 @@ describe('position helpers', () => {
     expect(closingIndex(scanned.code, body)).toBe(source.lastIndexOf('}'));
     expect(enclosingOpen(scanned.code, source.indexOf('g('))).toBe(body);
     expect(braceDepths(scanned.code)[source.indexOf('g(')]).toBe(1);
+  });
+});
+
+describe('isCompositionRoot', () => {
+  it.each([
+    ['a main function', 'fun main() {\n}\n'],
+    ['a main with arguments', 'fun main(args: Array<String>) = run(args)\n'],
+    ['a Spring Boot application', '@SpringBootApplication\nclass ShopApplication\n'],
+    ['a Ktor module', 'fun Application.module() {\n}\n'],
+  ])('knows %s', (_name, source) => {
+    expect(isCompositionRoot(scanKotlinSource(source))).toBe(true);
+  });
+
+  it.each([
+    ['a member named main', 'class Shop {\n    fun main() {}\n}\n'],
+    ['a main in a comment', '// fun main() {}\nfun other() {}\n'],
+  ])('does not take %s for one', (_name, source) => {
+    expect(isCompositionRoot(scanKotlinSource(source))).toBe(false);
   });
 });
