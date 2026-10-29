@@ -70,7 +70,9 @@ Before you change code other modules use, or fix a bug, read
   `Throwable` (also in tests: `TooGenericExceptionCaught`), and pass the caught exception on as the cause (`SwallowedException`). Use
   `require(...)` and `check(...)` instead of throwing `IllegalArgumentException` and
   `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private
-  members and parameters.
+  members and parameters (an override, a function with a framework annotation and a name starting
+  `ignored` or `unused` are skipped). A public function's `Boolean` parameter that picks a behavior
+  becomes two functions or an enum (`BooleanFlagParameter`).
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
   declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`
