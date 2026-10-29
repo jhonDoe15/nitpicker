@@ -29,30 +29,33 @@ function typeFile(index, fqn, module) {
   return preferred(index.types.get(fqn) ?? [], module)?.file;
 }
 
+function addDefinition(index, { file, parsed, module }, { name, kind, owner }) {
+  if (owner !== undefined) {
+    index.members.add(`${file}\0${owner}.${name}`);
+    return;
+  }
+  const type = TYPE_KINDS.has(kind);
+  if (type) {
+    const fqn = qualified(parsed.packageName, name);
+    index.types.set(fqn, [...(index.types.get(fqn) ?? []), { file, module }]);
+  }
+  const declared = index.packages.get(parsed.packageName);
+  const targets = declared.get(name) ?? [];
+  if (!targets.some((target) => target.file === file)) {
+    declared.set(name, [...targets, { file, name, type, module }]);
+  }
+}
+
 export function projectIndex(files) {
-  const types = new Map();
-  const packages = new Map();
-  const members = new Set();
-  for (const { file, parsed, module } of files) {
-    const declared = packages.get(parsed.packageName) ?? new Map();
-    packages.set(parsed.packageName, declared);
-    for (const { name, kind, owner } of parsed.definitions) {
-      if (owner !== undefined) {
-        members.add(`${file}\0${owner}.${name}`);
-        continue;
-      }
-      const type = TYPE_KINDS.has(kind);
-      if (type) {
-        const fqn = qualified(parsed.packageName, name);
-        types.set(fqn, [...(types.get(fqn) ?? []), { file, module }]);
-      }
-      const targets = declared.get(name) ?? [];
-      if (!targets.some((target) => target.file === file)) {
-        declared.set(name, [...targets, { file, name, type, module }]);
-      }
+  const index = { types: new Map(), packages: new Map(), members: new Set() };
+  for (const entry of files) {
+    const { packageName } = entry.parsed;
+    index.packages.set(packageName, index.packages.get(packageName) ?? new Map());
+    for (const definition of entry.parsed.definitions) {
+      addDefinition(index, entry, definition);
     }
   }
-  return { types, packages, members };
+  return index;
 }
 
 function visibleTargets(targets, module) {
@@ -77,6 +80,14 @@ function packageBindings(index, { packageName, file, own, module }) {
     .filter(([, targets]) => targets.length > 0);
 }
 
+function memberImport(index, { parent, name, local, module }) {
+  if (!index.types.has(parent)) {
+    return [];
+  }
+  const owner = lastSegment(parent);
+  return [{ file: typeFile(index, parent, module), name: `${owner}.${name}`, alias: local }];
+}
+
 function explicitTargets(index, entry, module) {
   const name = lastSegment(entry.path);
   const local = entry.alias ?? name;
@@ -85,87 +96,79 @@ function explicitTargets(index, entry, module) {
     return [{ file: typeFile(index, entry.path, module), ...named(name, local), type: true }];
   }
   const topLevel = (index.packages.get(parent)?.get(name) ?? []).filter(({ type }) => !type);
-  if (topLevel.length > 0) {
-    return visibleTargets(topLevel, module).map(({ file }) => ({
-      file,
-      ...named(name, local),
-      type: false,
-    }));
+  if (topLevel.length === 0) {
+    return memberImport(index, { parent, name, local, module });
   }
-  return index.types.has(parent)
-    ? [
-        {
-          file: typeFile(index, parent, module),
-          name: `${lastSegment(parent)}.${name}`,
-          alias: local,
-          type: false,
-        },
-      ]
-    : [];
+  return visibleTargets(topLevel, module).map(({ file }) => ({ file, ...named(name, local) }));
 }
 
-export function fileBindings(index, { file, parsed, module }) {
+function implicitBindings(index, { file, parsed, module }) {
   const own = new Set(
     parsed.definitions.filter(({ owner }) => owner === undefined).map(({ name }) => name),
   );
-  const bindings = new Map();
-  const wildcards = parsed.imports.filter((entry) => entry.wildcard && !entry.static);
-  for (const entry of wildcards.toReversed()) {
-    const scope = { packageName: entry.path, file, own, module };
-    for (const [name, targets] of packageBindings(index, scope)) {
-      bindings.set(name, targets);
-    }
-  }
-  const ownPackage = { packageName: parsed.packageName, file, own, module };
-  for (const [name, targets] of packageBindings(index, ownPackage)) {
-    bindings.set(name, targets);
-  }
+  const wildcards = parsed.imports
+    .filter((entry) => entry.wildcard && !entry.static)
+    .map((entry) => entry.path);
+  return [...wildcards.toReversed(), parsed.packageName].flatMap((packageName) =>
+    packageBindings(index, { packageName, file, own, module }),
+  );
+}
+
+function explicitBindings(index, { parsed, module }) {
   const explicit = new Map();
   for (const entry of parsed.imports.filter(({ wildcard }) => !wildcard)) {
     const local = entry.alias ?? lastSegment(entry.path);
-    explicit.set(local, [...(explicit.get(local) ?? []), ...explicitTargets(index, entry, module)]);
+    const targets = explicitTargets(index, entry, module);
+    explicit.set(local, [...(explicit.get(local) ?? []), ...targets]);
   }
-  for (const [local, targets] of explicit) {
-    if (targets.length > 0) {
-      bindings.set(local, targets);
-    }
-  }
-  for (const name of parsed.declaredTypes) {
+  return [...explicit].filter(([, targets]) => targets.length > 0);
+}
+
+export function fileBindings(index, entry) {
+  const bindings = new Map([...implicitBindings(index, entry), ...explicitBindings(index, entry)]);
+  for (const name of entry.parsed.declaredTypes) {
     bindings.delete(name);
   }
   return bindings;
 }
 
 function chainAt(tokens, index) {
-  const chain = [tokens[index].text];
-  let end = index;
-  while (MEMBER_SEPARATORS.has(tokens[end + 1]?.text) && tokens[end + 2]?.kind === 'identifier') {
-    chain.push(tokens[end + 2].text);
-    end += 2;
+  const positions = [index];
+  for (const position of positions) {
+    const next = tokens[position + 2];
+    if (MEMBER_SEPARATORS.has(tokens[position + 1]?.text) && next?.kind === 'identifier') {
+      positions.push(position + 2);
+    }
   }
-  return chain;
+  return positions.map((position) => tokens[position].text);
+}
+
+function typeUses(index, { fqn, name, member, module }) {
+  const file = typeFile(index, fqn, module);
+  const usesMember = member !== undefined && index.members.has(`${file}\0${name}.${member}`);
+  return [
+    { file, name, alias: fqn },
+    ...(usesMember ? [{ file, name: `${name}.${member}`, alias: `${fqn}.${member}` }] : []),
+  ];
+}
+
+function prefixUses(index, { chain, length, module }) {
+  const fqn = chain.slice(0, length).join('.');
+  const name = chain[length - 1];
+  if (index.types.has(fqn)) {
+    return typeUses(index, { fqn, name, member: chain[length], module });
+  }
+  const packageName = chain.slice(0, length - 1).join('.');
+  const topLevel = (index.packages.get(packageName)?.get(name) ?? []).filter(({ type }) => !type);
+  return visibleTargets(topLevel, module).map(({ file }) => ({ file, name, alias: fqn }));
 }
 
 function qualifiedUses(index, chain, module) {
-  for (let length = chain.length; length >= 2; length -= 1) {
-    const fqn = chain.slice(0, length).join('.');
-    const name = chain[length - 1];
-    if (index.types.has(fqn)) {
-      const file = typeFile(index, fqn, module);
-      const member = chain[length];
-      return [
-        { file, name, alias: fqn },
-        ...(member !== undefined && index.members.has(`${file}\0${name}.${member}`)
-          ? [{ file, name: `${name}.${member}`, alias: `${fqn}.${member}` }]
-          : []),
-      ];
-    }
-    const topLevel = index.packages.get(chain.slice(0, length - 1).join('.'))?.get(name) ?? [];
-    if (topLevel.some(({ type }) => !type)) {
-      return visibleTargets(
-        topLevel.filter(({ type }) => !type),
-        module,
-      ).map(({ file }) => ({ file, name, alias: fqn }));
+  const lengths = chain.map((_, offset) => chain.length - offset).filter((length) => length >= 2);
+  for (const length of lengths) {
+    const uses = prefixUses(index, { chain, length, module });
+    if (uses.length > 0) {
+      return uses;
     }
   }
   return [];
@@ -183,27 +186,27 @@ function boundUses(index, { local, targets, member }) {
   });
 }
 
-function usesAt(context, index) {
+function identifierUses(context, index) {
   const { tokens, bindings, projectIndex: project, module } = context;
-  const token = tokens[index];
-  if (token.kind === 'string') {
-    return namesOf(token).flatMap((local) =>
-      boundUses(project, { local, targets: bindings.get(local) ?? [] }),
-    );
-  }
-  if (token.kind !== 'identifier') {
-    return [];
-  }
-  const targets = bindings.get(token.text) ?? [];
+  const local = tokens[index].text;
+  const targets = bindings.get(local) ?? [];
   if (CALL_SEPARATORS.has(tokens[index - 1]?.text)) {
-    const calls = targets.filter(({ type }) => !type);
-    return boundUses(project, { local: token.text, targets: calls });
+    return boundUses(project, { local, targets: targets.filter(({ type }) => !type) });
   }
   const chain = chainAt(tokens, index);
-  if (targets.length === 0) {
-    return qualifiedUses(project, chain, module);
+  return targets.length === 0
+    ? qualifiedUses(project, chain, module)
+    : boundUses(project, { local, targets, member: chain[1] });
+}
+
+function usesAt(context, index) {
+  const token = context.tokens[index];
+  if (token.kind === 'identifier') {
+    return identifierUses(context, index);
   }
-  return boundUses(project, { local: token.text, targets, member: chain[1] });
+  return namesOf(token).flatMap((local) =>
+    boundUses(context.projectIndex, { local, targets: context.bindings.get(local) ?? [] }),
+  );
 }
 
 function starImports(index, { parsed, module }) {
@@ -212,12 +215,7 @@ function starImports(index, { parsed, module }) {
     .map((entry) => ({ file: typeFile(index, entry.path, module), name: '*' }));
 }
 
-export function importFacts(index, { file, parsed, bindings, module }) {
-  const context = { tokens: parsed.tokens, bindings, projectIndex: index, module };
-  const uses = [...starImports(index, { parsed, module })];
-  for (let position = parsed.headerEnd; position < parsed.tokens.length; position += 1) {
-    uses.push(...usesAt(context, position));
-  }
+function groupedByTarget(file, uses) {
   const byTarget = new Map();
   for (const { file: to, name, alias } of uses.filter((use) => use.file !== file)) {
     const names = byTarget.get(to) ?? new Map();
@@ -225,6 +223,15 @@ export function importFacts(index, { file, parsed, bindings, module }) {
     byTarget.set(to, names);
   }
   return [...byTarget].map(([to, names]) => ({ from: file, to, names: [...names.values()] }));
+}
+
+export function importFacts(index, { file, parsed, bindings, module }) {
+  const context = { tokens: parsed.tokens, bindings, projectIndex: index, module };
+  const uses = parsed.tokens
+    .keys()
+    .filter((position) => position >= parsed.headerEnd)
+    .flatMap((position) => usesAt(context, position));
+  return groupedByTarget(file, [...starImports(index, { parsed, module }), ...uses]);
 }
 
 function localReference(local, { file, others, declaredTypes }) {
@@ -235,28 +242,24 @@ function localReference(local, { file, others, declaredTypes }) {
   return other !== undefined || declaredTypes.has(local) ? `${local}=${file}` : undefined;
 }
 
+function referenceOf(local, scope) {
+  const targets = scope.bindings.get(local);
+  if (targets !== undefined) {
+    return `${local}=${targets.map((target) => `${target.file}#${target.name}`).join('|')}`;
+  }
+  return local === scope.name ? undefined : localReference(local, scope);
+}
+
 export function definitionKey(definition, { file, parsed, bindings }) {
   const others = new Map(
     parsed.definitions.filter((other) => other !== definition).map((other) => [other.name, other]),
   );
-  const scope = { file, others, declaredTypes: parsed.declaredTypes };
-  const free = new Set();
-  for (let position = definition.start; position < definition.end; position += 1) {
-    if (CALL_SEPARATORS.has(parsed.tokens[position - 1]?.text)) {
-      continue;
-    }
-    for (const local of namesOf(parsed.tokens[position])) {
-      const targets = bindings.get(local);
-      const reference =
-        targets === undefined
-          ? local === definition.name
-            ? undefined
-            : localReference(local, scope)
-          : `${local}=${targets.map((target) => `${target.file}#${target.name}`).join('|')}`;
-      if (reference !== undefined) {
-        free.add(reference);
-      }
-    }
-  }
-  return hash(`${definition.text}|${[...free].sort().join(',')}`);
+  const { start, end, name } = definition;
+  const scope = { file, others, declaredTypes: parsed.declaredTypes, bindings, name };
+  const references = parsed.tokens
+    .slice(start, end)
+    .filter((_, offset) => !CALL_SEPARATORS.has(parsed.tokens[start + offset - 1]?.text))
+    .flatMap((token) => namesOf(token).map((local) => referenceOf(local, scope)))
+    .filter((reference) => reference !== undefined);
+  return hash(`${definition.text}|${[...new Set(references)].sort().join(',')}`);
 }

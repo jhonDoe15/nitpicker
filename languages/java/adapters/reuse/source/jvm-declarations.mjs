@@ -5,7 +5,7 @@ import {
   isKotlinModifier,
   javaMembers,
   kotlinMembers,
-  skipNested,
+  topLevelIndexes,
 } from './jvm-members.mjs';
 
 const JAVA_MODIFIERS = new Set([
@@ -37,6 +37,18 @@ const KOTLIN_TYPES = new Map([
   ['interface', 'interface'],
   ['typealias', 'type'],
 ]);
+const NAME_PARTS = new Set(['identifier']);
+const MAX_MODIFIERS = 16;
+const BODY_OPENERS = new Set(['{']);
+const ASSIGNMENT = new Set(['=']);
+const JAVA_MEMBER_MARKS = new Set(['(', '=', ';', '{']);
+const PROPERTY_MARKS = new Set([':', '=', 'by', 'get']);
+const FUNCTION_MARKS = new Set(['(', '{', '=']);
+const TYPE_MODIFIERS = ['enum', 'annotation'];
+const TYPE_MODIFIER_KINDS = new Map([
+  ['enum', 'enum'],
+  ['annotation', 'type'],
+]);
 const LITERAL_WORDS = new Set(['true', 'false', 'null']);
 const LITERAL_OPERATORS = new Set([
   '+',
@@ -54,17 +66,21 @@ const LITERAL_OPERATORS = new Set([
   '^',
 ]);
 
+function isNamePart(token) {
+  return NAME_PARTS.has(token?.kind) || token?.text === '*';
+}
+
 function dottedName(tokens, index) {
   const parts = [];
-  let position = index;
-  while (tokens[position]?.kind === 'identifier' || tokens[position]?.text === '*') {
-    parts.push(tokens[position].text);
-    if (tokens[position + 1]?.text !== '.') {
-      return { parts, end: position + 1 };
+  const positions = [index];
+  for (const position of positions) {
+    if (isNamePart(tokens[position])) {
+      parts.push(tokens[position].text);
+      positions.push(...(tokens[position + 1]?.text === '.' ? [position + 2] : []));
     }
-    position += 2;
   }
-  return { parts, end: position };
+  const last = positions.at(-1);
+  return { parts, end: isNamePart(tokens[last]) ? last + 1 : Math.max(index, last - 1) };
 }
 
 function importAt(tokens, index) {
@@ -83,62 +99,53 @@ function importAt(tokens, index) {
   };
 }
 
+function headerStep(tokens, header, index) {
+  const { text } = tokens[index] ?? {};
+  if (text === 'package') {
+    const { parts, end } = dottedName(tokens, index + 1);
+    header.packageName = parts.join('.');
+    return end;
+  }
+  if (text === 'import') {
+    const { entry, end } = importAt(tokens, index);
+    header.imports.push(entry);
+    return end;
+  }
+  return text === ';' ? index + 1 : undefined;
+}
+
 function readHeader(tokens, close) {
   const header = { packageName: '', imports: [], end: 0 };
-  let index = 0;
-  while (index < tokens.length) {
-    index = annotationsEnd(tokens, close, index);
-    const { text } = tokens[index] ?? {};
-    if (text === 'package') {
-      const { parts, end } = dottedName(tokens, index + 1);
-      header.packageName = parts.join('.');
-      index = end;
-    } else if (text === 'import') {
-      const { entry, end } = importAt(tokens, index);
-      header.imports.push(entry);
-      index = end;
-    } else if (text === ';') {
-      index += 1;
-    } else {
-      return { ...header, end: header.end };
+  const positions = [0];
+  for (const position of positions) {
+    const next = headerStep(tokens, header, annotationsEnd(tokens, close, position));
+    if (next !== undefined) {
+      header.end = next;
+      positions.push(next);
     }
-    header.end = index;
   }
   return header;
 }
 
 function firstAt(tokens, close, { from, to, texts }) {
-  for (let index = from; index < to; index += 1) {
-    if (texts.has(tokens[index].text)) {
-      return index;
-    }
-    index = skipNested(close, index);
-  }
-  return -1;
+  return topLevelIndexes(close, { from, to }).find((index) => texts.has(tokens[index].text)) ?? -1;
 }
 
 function lastIdentifierBefore(tokens, from, to) {
-  for (let index = to - 1; index >= from; index -= 1) {
-    if (tokens[index].kind === 'identifier') {
-      return index;
-    }
-  }
-  return -1;
+  const found = tokens.slice(from, to).findLastIndex(({ kind }) => kind === 'identifier');
+  return found === -1 ? -1 : from + found;
 }
 
 function bodyOf(tokens, close, { start, end }) {
-  const open = firstAt(tokens, close, { from: start, to: end, texts: new Set(['{']) });
+  const open = firstAt(tokens, close, { from: start, to: end, texts: BODY_OPENERS });
   return open === -1 ? undefined : { from: open + 1, to: Math.max(open + 1, close[open]) };
 }
 
 function modifiersOf(tokens, from, isModifier) {
-  const modifiers = new Set();
-  let index = from;
-  while (tokens[index] !== undefined && isModifier(tokens[index].text)) {
-    modifiers.add(tokens[index].text);
-    index += 1;
-  }
-  return { modifiers, index };
+  const window = tokens.slice(from, from + MAX_MODIFIERS);
+  const count = window.findIndex(({ text }) => !isModifier(text));
+  const index = from + (count === -1 ? window.length : count);
+  return { modifiers: new Set(tokens.slice(from, index).map(({ text }) => text)), index };
 }
 
 function isLiteral(tokens) {
@@ -156,7 +163,7 @@ function isLiteral(tokens) {
 }
 
 function initializer(tokens, close, { from, to }) {
-  const assign = firstAt(tokens, close, { from, to, texts: new Set(['=']) });
+  const assign = firstAt(tokens, close, { from, to, texts: ASSIGNMENT });
   const end = tokens[to - 1]?.text === ';' ? to - 1 : to;
   return assign === -1 ? [] : tokens.slice(assign + 1, end);
 }
@@ -171,11 +178,7 @@ function javaMember(tokens, close, member) {
   if (JAVA_TYPES.has(text)) {
     return { modifiers, kind: JAVA_TYPES.get(text), name: tokens[index + 1]?.text, type: true };
   }
-  const mark = firstAt(tokens, close, {
-    from: index,
-    to: member.end,
-    texts: new Set(['(', '=', ';', '{']),
-  });
+  const mark = firstAt(tokens, close, { from: index, to: member.end, texts: JAVA_MEMBER_MARKS });
   if (mark !== -1 && tokens[mark].text === '(') {
     return { modifiers, kind: 'function', name: tokens[mark - 1]?.text, paren: mark, from: index };
   }
@@ -183,37 +186,43 @@ function javaMember(tokens, close, member) {
   return { modifiers, kind: 'field', name: tokens[nameIndex]?.text };
 }
 
-function kotlinFunction(tokens, close, { from, to }) {
-  for (let index = from; index < to; index += 1) {
-    const previous = tokens[index - 1];
-    if (tokens[index].text === '(' && previous?.kind === 'identifier' && previous.text !== 'fun') {
-      return { kind: 'function', name: previous.text, paren: index };
-    }
-    if (tokens[index].text === '{' || tokens[index].text === '=') {
-      return undefined;
-    }
-    index = tokens[index].text === '(' ? skipNested(close, index) : index;
-  }
-  return undefined;
+function kotlinFunction(tokens, close, range) {
+  const stops = topLevelIndexes(close, range).filter((index) =>
+    FUNCTION_MARKS.has(tokens[index].text),
+  );
+  const paren = stops.find(
+    (index) =>
+      tokens[index].text === '(' &&
+      tokens[index - 1]?.kind === 'identifier' &&
+      tokens[index - 1].text !== 'fun',
+  );
+  const stop = stops.find((index) => tokens[index].text !== '(');
+  return paren === undefined || (stop !== undefined && stop < paren)
+    ? undefined
+    : { kind: 'function', name: tokens[paren - 1].text, paren };
 }
 
 function kotlinProperty(tokens, close, { from, to }) {
   if (tokens[from]?.text === '(') {
     return undefined;
   }
-  const mark = firstAt(tokens, close, { from, to, texts: new Set([':', '=', 'by', 'get']) });
+  const mark = firstAt(tokens, close, { from, to, texts: PROPERTY_MARKS });
   const nameIndex = lastIdentifierBefore(tokens, from, mark === -1 ? to : mark);
   return nameIndex === -1 ? undefined : { kind: 'field', name: tokens[nameIndex].text };
 }
 
+function kotlinTypeKind(modifiers, keyword) {
+  const marked = TYPE_MODIFIERS.find((modifier) => modifiers.has(modifier));
+  return marked === undefined ? KOTLIN_TYPES.get(keyword) : TYPE_MODIFIER_KINDS.get(marked);
+}
+
 function kotlinType(modifiers, keyword, nameToken) {
-  const kind = modifiers.has('enum')
-    ? 'enum'
-    : modifiers.has('annotation')
-      ? 'type'
-      : KOTLIN_TYPES.get(keyword);
   const named = nameToken?.kind === 'identifier' && !isKotlinModifier(nameToken.text);
-  return { kind, name: named ? nameToken.text : 'Companion', type: true };
+  return {
+    kind: kotlinTypeKind(modifiers, keyword),
+    name: named ? nameToken.text : 'Companion',
+    type: true,
+  };
 }
 
 function kotlinMember(tokens, close, member) {
@@ -227,14 +236,14 @@ function kotlinMember(tokens, close, member) {
   if (KOTLIN_TYPES.has(keyword)) {
     return { modifiers, keyword, ...kotlinType(modifiers, keyword, tokens[index + 1]) };
   }
-  const found =
-    keyword === 'fun'
-      ? kotlinFunction(tokens, close, range)
-      : keyword === 'val'
-        ? kotlinProperty(tokens, close, range)
-        : undefined;
+  const found = KOTLIN_MEMBER_READERS.get(keyword)?.(tokens, close, range);
   return found === undefined ? undefined : { modifiers, ...found, from: index };
 }
+
+const KOTLIN_MEMBER_READERS = new Map([
+  ['fun', kotlinFunction],
+  ['val', kotlinProperty],
+]);
 
 export const LANGUAGE_RULES = {
   java: { members: javaMembers, member: javaMember },

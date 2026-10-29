@@ -145,10 +145,21 @@ describe('readJvmDefinitions', () => {
   it('gives a static member the name other files use for it and keeps its whole text', () => {
     const [, currency] = readJvmDefinitions(JAVA).definitions;
 
-    expect(currency).toMatchObject({
+    expect(currency).toEqual({
+      name: 'CURRENCY',
+      kind: 'const',
+      owner: 'Money',
+      qualifier: 'Money.CURRENCY',
+      line: 9,
+      lines: 1,
+      exported: true,
       exportNames: ['Money.CURRENCY'],
       tokens: ['public', 'static', 'final', 'String', 'CURRENCY', '=', '"EUR"', ';'],
+      text: 'public static final String CURRENCY = "EUR" ;',
       usedLocally: true,
+      literal: true,
+      start: 36,
+      end: 44,
     });
   });
 

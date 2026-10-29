@@ -7,7 +7,7 @@ import { pathInside, sourceFilesUnder } from '../review-rules/java-sources.mjs';
 import { definitionKey, fileBindings, importFacts, projectIndex } from './jvm-references.mjs';
 import { readJvmDefinitions } from './source/jvm-definitions.mjs';
 
-export const REUSE_TOOL = 'structure';
+const REUSE_TOOL = 'structure';
 const REUSE_RULES = ['duplicate-definition', 'exported-name-collision', 'sibling-copy-edit'];
 const OUTSIDE_SOURCES = /^(?:\.\.(?:\/|$))|(?:^|\/)build(?:\/|$)/u;
 const JAVA_COLLISION_FIX = 'Rename one, or use both by their fully qualified names.';
@@ -20,21 +20,19 @@ function sourceRootsOf(project, kotlin) {
   ].filter((root) => root !== '' && !OUTSIDE_SOURCES.test(root));
 }
 
+function projectSources(projectRoot, { project, kotlin }) {
+  const extensions = kotlin ? ['.java', '.kt'] : ['.java'];
+  return [...new Set(sourceRootsOf(project, kotlin))]
+    .flatMap((root) => sourceFilesUnder(pathInside(projectRoot, root), extensions))
+    .map((full) => [path.relative(projectRoot, full).replaceAll('\\', '/'), project]);
+}
+
 function sourceFiles(projectRoot, { projects, kotlin, exclude = [] }) {
   const excluded = exclude.map((glob) => globMatcher(glob));
-  const extensions = kotlin ? ['.java', '.kt'] : ['.java'];
-  const files = new Map();
-  for (const project of projects) {
-    for (const root of new Set(sourceRootsOf(project, kotlin))) {
-      for (const full of sourceFilesUnder(pathInside(projectRoot, root), extensions)) {
-        const file = path.relative(projectRoot, full).replaceAll('\\', '/');
-        if (!files.has(file) && !excluded.some((matcher) => matcher.test(file))) {
-          files.set(file, project);
-        }
-      }
-    }
-  }
-  return files;
+  const found = projects
+    .flatMap((project) => projectSources(projectRoot, { project, kotlin }))
+    .filter(([file]) => !excluded.some((matcher) => matcher.test(file)));
+  return new Map(found.toReversed());
 }
 
 function parse(text, file) {
