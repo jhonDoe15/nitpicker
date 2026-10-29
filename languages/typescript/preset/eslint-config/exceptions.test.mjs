@@ -4,7 +4,11 @@ import { describe, expect, it } from 'vitest';
 import { resolveHeadPolicy } from '../head-policy.mjs';
 import presetConfig from '../defaults/eslint.config.mjs';
 import errorsConfig from './policies/errors.config.mjs';
-import { applyMatchingRuleExceptions, applyRuleExceptions } from './exceptions.mjs';
+import {
+  applyMatchingRuleExceptions,
+  applyRuleExceptions,
+  checkExceptionRules,
+} from './exceptions.mjs';
 
 const rule = 'nitpicker/preserve-error-cause';
 const exception = { rule, paths: ['src/legacy/**'], reason: 'Legacy rewrite' };
@@ -90,6 +94,20 @@ describe('strict rule exceptions', () => {
     expect(() =>
       applyRuleExceptions(presetConfig, [{ ...exception, rule: 'nitpicker/nope' }]),
     ).toThrow(/unknown rules: nitpicker\/nope/);
+  });
+
+  it('leaves a rule it does not know to the project layer when the project config may add it', () => {
+    const unknown = { ...exception, rule: 'no-alert' };
+    const config = applyRuleExceptions(presetConfig, [unknown], { projectRules: true });
+
+    expect(config.at(-1)).toEqual({
+      name: 'nitpicker/rule-exception',
+      files: ['src/legacy/**'],
+      rules: { 'no-alert': 'off' },
+    });
+    expect(() => checkExceptionRules(presetConfig, [config.at(-1)])).toThrow(
+      'nitpicker.config.json "exceptions" name unknown rules: no-alert.',
+    );
   });
 
   it('leaves the function-scoped nitpicker rules to the analyzers that report them', async () => {

@@ -100,9 +100,9 @@ function validateToolSettings(name, settings, toolSettingKeys) {
   }
   if (ENGINES.has(name)) {
     validateEngineSettings(name, settings);
-  }
-  if (ENGINES.has(name) && settings.precedence === undefined) {
-    return;
+    if (settings.precedence === undefined) {
+      return;
+    }
   }
   validatePrecedence(settings.precedence, name);
   validatePrecedenceOrder(settings.precedence, name);

@@ -53,6 +53,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/entry-points/analyze.mjs',
   'languages/typescript/preset/test-runtime/analyze.mjs',
   'languages/typescript/preset/eslint-config',
+  'languages/typescript/preset/eslint-project',
   'languages/typescript/preset/eslint-plugin/index.mjs',
   'languages/typescript/preset/eslint-plugin/rules',
   'languages/typescript/preset/eslint-plugin/test-assertions',

@@ -61,7 +61,7 @@ export default [
     plugins: { house, nitpicker: house },
     rules: {
       'max-params': ['error', { max: 3 }],
-      'no-console': 'off',
+      'no-console': ['warn', { allow: ['log'] }],
       'nitpicker/no-foo': ['off'],
       'nitpicker/no-baz': 'error',
       'house/no-bar': 'error',

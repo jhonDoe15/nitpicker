@@ -8,7 +8,12 @@ import { JSCPD_PROJECT_FILE } from '../../../shared/conventions/tool-precedence.
 import { appliedJscpdConfig } from '../../tooling/jscpd/config.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
-import { eslintConfigFiles } from '../../../languages/typescript/preset/eslint-project/project-config.mjs';
+import {
+  eslintConfigFiles,
+  readEslintConfigFile,
+} from '../../../languages/typescript/preset/eslint-project/project-config.mjs';
+import { replacedEslintOptions } from '../../../languages/typescript/adapters/lint-engine/replaced-options.mjs';
+import { precedenceLayers } from '../../../shared/conventions/tool-precedence.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
 
 const PACKAGE_JSON = 'package.json';
@@ -28,7 +33,8 @@ function prettierKey(content) {
 }
 
 function fingerprintOf(tool, { projectRoot, file }, gitBlobId) {
-  const content = readInside(projectRoot, file);
+  const content =
+    tool === 'eslint' ? readEslintConfigFile(projectRoot, file) : readInside(projectRoot, file);
   if (content === undefined) {
     return undefined;
   }
@@ -130,17 +136,43 @@ function appliedConfigs(base, head) {
     : {};
 }
 
-export function readToolConfigs(base, head, gitBlobId) {
+function sameFingerprints(base, head) {
+  return (
+    base.size === head.size &&
+    [...base].every(([file, fingerprint]) => head.get(file) === fingerprint)
+  );
+}
+
+function eslintReview(head, prints, replacedOptions) {
+  const layers = precedenceLayers(head.config.tools?.eslint?.precedence);
+  if (layers.nitpickerFirst || sameFingerprints(prints.base, prints.head)) {
+    return {};
+  }
+  return { replacedOptions: replacedOptions(head.config, head.root) };
+}
+
+export function readToolConfigs(
+  base,
+  head,
+  gitBlobId,
+  { replacedOptions = replacedEslintOptions } = {},
+) {
   return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier', 'jscpd', 'eslint']
     .filter((tool) => isOptedIn(tool, head.config))
-    .map((tool) => ({
-      tool,
-      base: fingerprints(
+    .map((tool) => {
+      const prints = {
+        base: fingerprints(
+          tool,
+          { root: base.root, files: isOptedIn(tool, base.config) ? candidates(tool, base) : [] },
+          gitBlobId,
+        ),
+        head: fingerprints(tool, { root: head.root, files: candidates(tool, head) }, gitBlobId),
+      };
+      return {
         tool,
-        { root: base.root, files: isOptedIn(tool, base.config) ? candidates(tool, base) : [] },
-        gitBlobId,
-      ),
-      head: fingerprints(tool, { root: head.root, files: candidates(tool, head) }, gitBlobId),
-      ...(tool === 'jscpd' ? appliedConfigs(base, head) : {}),
-    }));
+        ...prints,
+        ...(tool === 'jscpd' ? appliedConfigs(base, head) : {}),
+        ...(tool === 'eslint' ? eslintReview(head, prints, replacedOptions) : {}),
+      };
+    });
 }

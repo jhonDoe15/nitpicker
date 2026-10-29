@@ -1,21 +1,21 @@
-import { createRequire } from 'node:module';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
-import { defineConfig } from 'eslint/config';
 import {
   missingProjectConfig,
   precedenceLayers,
 } from '../../../../shared/conventions/tool-precedence.mjs';
-import { RULE_EXCEPTION_ENTRY } from '../../preset/eslint-config/exceptions.mjs';
+import {
+  checkExceptionRules,
+  RULE_EXCEPTION_ENTRY,
+} from '../../preset/eslint-config/exceptions.mjs';
 import { ESLINT_PROJECT_FILES } from '../../preset/eslint-project/project-config.mjs';
+import { projectEntries } from './project-loader.mjs';
+import { ownedPolicy, withProjectSettings } from './project-rules.mjs';
 
 export const PROJECT_LAYER_VARIABLE = 'NITPICKER_DIFF_ESLINT_PROJECT_LAYER';
 
 const NITPICKER_NAMESPACE = 'nitpicker';
-const TYPESCRIPT_CONFIG = /\.[cm]?ts$/u;
-const GLOBAL_IGNORE_KEYS = new Set(['name', 'basePath', 'ignores']);
-const SCOPE_KEYS = ['name', 'basePath', 'files', 'ignores'];
-const OFF_SEVERITIES = new Set([0, '0', 'off']);
+const GLOBAL_IGNORE_KEYS = new Set(['name', 'ignores']);
+const SCOPE_KEYS = ['name', 'files', 'ignores'];
 
 export function projectLayerValue(settings, { liveProjectRoot, addsRules }) {
   const layers = precedenceLayers(settings?.precedence);
@@ -39,77 +39,64 @@ export function projectLayerValue(settings, { liveProjectRoot, addsRules }) {
 
 export async function layeredPolicy(policyEntries, environment) {
   const layer = parsedLayer(environment[PROJECT_LAYER_VARIABLE]);
-  if (layer === undefined) {
-    return policyEntries;
-  }
-  const owned = ownedNames(policyEntries);
-  const applied = (await projectEntries(layer.config)).flatMap((entry) =>
-    appliedEntry(entry, owned, layer),
-  );
   const policy = policyEntries.filter((entry) => entry?.name !== RULE_EXCEPTION_ENTRY);
   const exceptions = policyEntries.filter((entry) => entry?.name === RULE_EXCEPTION_ENTRY);
-  const ordered = layer.nitpickerFirst ? [...applied, ...policy] : [...policy, ...applied];
+  const ordered = layer === undefined ? policy : await withProjectLayer(policy, layer);
+  checkExceptionRules(ordered, exceptions);
   return [...ordered, ...exceptions];
+}
+
+export async function layerEntries(file) {
+  return (await projectEntries(file)).map((entry) => withoutBasePath(entry, path.dirname(file)));
+}
+
+async function withProjectLayer(policy, layer) {
+  const project = await layerEntries(layer.config);
+  const owned = ownedPolicy(policy);
+  const applied = project.flatMap((entry) => appliedEntry(entry, owned, layer));
+  return layer.nitpickerFirst
+    ? [...applied, ...policy]
+    : [...withProjectSettings(policy, project), ...applied];
 }
 
 function parsedLayer(value) {
   return value === undefined || value.length === 0 ? undefined : JSON.parse(value);
 }
 
-function ownedNames(entries) {
+function underBase(base, pattern) {
+  if (typeof pattern !== 'string') {
+    return pattern;
+  }
+  return pattern.startsWith('!')
+    ? `!${path.posix.join(base, pattern.slice(1))}`
+    : path.posix.join(base, pattern);
+}
+
+function withoutBasePath(entry, configDirectory) {
+  if (entry.basePath === undefined) {
+    return entry;
+  }
+  const { basePath, ...rest } = entry;
+  const base = path
+    .relative(configDirectory, path.resolve(configDirectory, basePath))
+    .split(path.sep)
+    .join('/');
+  if (base === '') {
+    return rest;
+  }
+  const files = rest.files?.map((pattern) =>
+    Array.isArray(pattern)
+      ? pattern.map((part) => underBase(base, part))
+      : underBase(base, pattern),
+  );
   return {
-    rules: new Set(entries.flatMap((entry) => Object.keys(entry?.rules ?? {}))),
-    plugins: new Set(entries.flatMap((entry) => Object.keys(entry?.plugins ?? {}))),
+    ...rest,
+    ...(files !== undefined || isGlobalIgnores(rest) ? {} : { files: [`${base}/**`] }),
+    ...(files === undefined ? {} : { files }),
+    ...(rest.ignores === undefined
+      ? {}
+      : { ignores: rest.ignores.map((pattern) => underBase(base, pattern)) }),
   };
-}
-
-async function described(message, operation) {
-  try {
-    return await operation();
-  } catch (error) {
-    throw new Error(`${message}: ${error instanceof Error ? error.message : String(error)}`, {
-      cause: error,
-    });
-  }
-}
-
-async function projectEntries(file) {
-  const label = `ESLint config ${path.basename(file)}`;
-  const exported = await described(`${label} could not be loaded`, () => loadedConfig(file));
-  if (typeof exported !== 'object' || exported === null) {
-    throw new TypeError(`${label} must export a flat config array or object`);
-  }
-  return described(`${label} is not a valid flat config`, () => defineConfig(exported));
-}
-
-async function loadedConfig(file) {
-  const url = pathToFileURL(file).href;
-  if (!TYPESCRIPT_CONFIG.test(file)) {
-    const loaded = await import(url);
-    return loaded.default;
-  }
-  const loaded = await typescriptLoader(file).import(url);
-  return loaded?.default ?? loaded;
-}
-
-function typescriptLoader(file) {
-  const attempts = [file, import.meta.filename].map(jitiFrom);
-  const found = attempts.find(({ loader }) => loader !== undefined);
-  if (found === undefined) {
-    throw new Error(
-      "the 'jiti' library is required for loading TypeScript configuration files; install it in the project, as ESLint itself needs",
-      { cause: attempts[0].error },
-    );
-  }
-  return found.loader.createJiti(file, { moduleCache: false });
-}
-
-function jitiFrom(file) {
-  try {
-    return { loader: createRequire(file)('jiti') };
-  } catch (error) {
-    return { error };
-  }
 }
 
 function isGlobalIgnores(entry) {
@@ -130,13 +117,13 @@ function appliedEntry(entry, owned, layer) {
     return addedIgnores(entry);
   }
   const effects = Object.entries({
-    plugins: layer.addsRules ? unownedPlugins(entry.plugins, owned) : {},
+    plugins: layer.addsRules ? unowned(entry.plugins, (name) => owned.plugins.has(name)) : {},
     languageOptions:
       entry.languageOptions?.globals === undefined
         ? {}
         : { globals: entry.languageOptions.globals },
-    settings: entry.settings ?? {},
-    rules: appliedRules(entry.rules ?? {}, owned, layer),
+    settings: unowned(entry.settings, (key) => isOwnedSetting(key, owned)),
+    rules: layer.addsRules ? addedRules(entry.rules ?? {}, owned) : {},
   }).filter(([, value]) => Object.keys(value).length > 0);
   if (effects.length === 0) {
     return [];
@@ -148,9 +135,17 @@ function appliedEntry(entry, owned, layer) {
   return [Object.fromEntries([...scope, ...effects])];
 }
 
-function unownedPlugins(plugins, owned) {
-  return Object.fromEntries(
-    Object.entries(plugins ?? {}).filter(([name]) => !owned.plugins.has(name)),
+function unowned(values, isOwned) {
+  return Object.fromEntries(Object.entries(values ?? {}).filter(([key]) => !isOwned(key)));
+}
+
+function isOwnedSetting(key, owned) {
+  const namespace = key.split('/')[0];
+  return (
+    owned.settings.has(key) ||
+    key.startsWith(NITPICKER_NAMESPACE) ||
+    owned.plugins.has(key) ||
+    owned.plugins.has(namespace)
   );
 }
 
@@ -159,17 +154,10 @@ function namespaceOf(ruleId) {
   return separator === -1 ? '' : ruleId.slice(0, separator);
 }
 
-function isOff(setting) {
-  const severity = Array.isArray(setting) ? setting[0] : setting;
-  return OFF_SEVERITIES.has(typeof severity === 'string' ? severity.toLowerCase() : severity);
-}
-
-function appliedRules(rules, owned, layer) {
+function addedRules(rules, owned) {
   return Object.fromEntries(
-    Object.entries(rules).filter(([ruleId, setting]) =>
-      owned.rules.has(ruleId)
-        ? !layer.nitpickerFirst && !isOff(setting)
-        : layer.addsRules && namespaceOf(ruleId) !== NITPICKER_NAMESPACE,
+    Object.entries(rules).filter(
+      ([ruleId]) => !owned.enabled.has(ruleId) && namespaceOf(ruleId) !== NITPICKER_NAMESPACE,
     ),
   );
 }
