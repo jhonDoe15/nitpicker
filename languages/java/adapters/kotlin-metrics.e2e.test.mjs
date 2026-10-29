@@ -16,7 +16,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../builds/java-build.mjs';
 import { loadEffectFindings } from './kotlin/review-rules/main/load-effects.mjs';
 import { findingFactory } from './kotlin/review-rules/review-finding.mjs';
-import { prepareCompiler, runPsiProgram } from './test-support/kotlin-psi-program.mjs';
+import { prepareCompiler, runPsiProgram } from './test-support/kotlin/kotlin-psi-program.mjs';
 import {
   BOM,
   BROKEN,

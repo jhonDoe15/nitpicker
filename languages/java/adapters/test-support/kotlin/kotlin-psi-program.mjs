@@ -2,9 +2,9 @@ import { spawnSync } from 'node:child_process';
 import { readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { expect } from 'vitest';
-import { INIT_SCRIPT } from '../../builds/java-build.mjs';
+import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 
-const PSI_SOURCES = path.resolve(import.meta.dirname, '../../gradle/kotlin-psi');
+const PSI_SOURCES = path.resolve(import.meta.dirname, '../../../gradle/kotlin-psi');
 const CLASSPATH_VARIABLE = 'NITPICKER_KOTLIN_COMPILER_CLASSPATH';
 const PINNED = /kotlinCompiler\s*:\s*'([^']+)'/u;
 
