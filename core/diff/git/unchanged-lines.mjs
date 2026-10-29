@@ -1,6 +1,6 @@
-import { sourceLanguage, sourceLines } from '../../../../shared/source-text/format-tokens.mjs';
-import { movedLines } from '../../../../shared/source-text/scope-moves.mjs';
-import { alignSequences } from '../../../../shared/source-text/token-alignment.mjs';
+import { sourceLanguage, sourceLines } from '../../../shared/source-text/format-tokens.mjs';
+import { movedLines } from '../../../shared/source-text/scope-moves.mjs';
+import { alignSequences } from '../../../shared/source-text/token-alignment.mjs';
 
 const MAX_TOKEN_EDITS = 1000;
 const MAX_HUNK_TOKENS = 50_000;
