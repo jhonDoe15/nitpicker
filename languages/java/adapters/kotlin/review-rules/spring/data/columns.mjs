@@ -38,33 +38,56 @@ function autoApply(declared) {
   );
 }
 
-function inheritedArgument(classes, declared, base, depth) {
-  const inner = convertedType(classes, base, depth + 1);
+function directConverter(declared) {
+  return (declared.genericSupers ?? []).find((text) => simpleName(text) === 'AttributeConverter');
+}
+
+function basesOf(classes, declared) {
+  return (declared.supers ?? [])
+    .map((text) => classes.get(simpleName(text)))
+    .filter((base) => base !== undefined && base !== declared);
+}
+
+function passedDown(type, base, child) {
   const index =
-    inner === undefined
+    type === undefined
       ? -1
-      : (base.typeBounds ?? []).findIndex(({ name }) => name === typeName(inner));
+      : (base.typeBounds ?? []).findIndex(({ name }) => name === typeName(type));
   if (index < 0) {
-    return inner;
+    return type;
   }
-  const written = (declared.genericSupers ?? []).find(
+  const written = (child.genericSupers ?? []).find(
     (text) => simpleName(text) === simpleName(base.name),
   );
   return written === undefined ? undefined : typeArguments(written)[index];
 }
 
-function convertedType(classes, declared, depth = 0) {
-  const direct = (declared.genericSupers ?? []).find(
-    (text) => simpleName(text) === 'AttributeConverter',
-  );
-  if (direct !== undefined || depth > CONVERTER_DEPTH) {
-    return direct === undefined ? undefined : typeArguments(direct)[0];
+function typeAlong(path) {
+  return path
+    .slice(0, -1)
+    .reduceRight(
+      (type, child, index) => passedDown(type, path[index + 1], child),
+      typeArguments(directConverter(path.at(-1)))[0],
+    );
+}
+
+function convertedType(classes, declared) {
+  const paths = [[declared]];
+  for (const path of paths) {
+    const last = path.at(-1);
+    const type = directConverter(last) === undefined ? undefined : typeAlong(path);
+    if (type !== undefined) {
+      return type;
+    }
+    if (directConverter(last) === undefined && path.length <= CONVERTER_DEPTH) {
+      paths.push(
+        ...basesOf(classes, last)
+          .filter((base) => !path.includes(base))
+          .map((base) => [...path, base]),
+      );
+    }
   }
-  return (declared.supers ?? [])
-    .map((text) => classes.get(simpleName(text)))
-    .filter((base) => base !== undefined && base !== declared)
-    .map((base) => inheritedArgument(classes, declared, base, depth))
-    .find((type) => type !== undefined);
+  return undefined;
 }
 
 function autoApplied(view, projectFiles) {

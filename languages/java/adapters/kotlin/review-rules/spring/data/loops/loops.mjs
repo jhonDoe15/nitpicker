@@ -121,19 +121,33 @@ function returnsNothing(view, invocation) {
   return fn !== undefined && NOTHING.test(fn.returnType ?? 'Unit');
 }
 
-function discarded(view, invocation, depth = 0) {
+function dropped(invocation) {
+  return invocation.statement === true || invocation.branch === true;
+}
+
+function discarded(view, invocation) {
   if (
-    (invocation.statement !== true && invocation.branch !== true) ||
-    (depth === 0 && invocation.after !== undefined && !returnsNothing(view, invocation))
+    !dropped(invocation) ||
+    (invocation.after !== undefined && !returnsNothing(view, invocation))
   ) {
     return false;
   }
-  const [frame] = view.chain(invocation.scope);
-  if (invocation.result !== true || frame === undefined || IGNORED_RESULTS.has(frame.host)) {
-    return true;
+  const calls = [invocation];
+  for (const call of calls) {
+    const [frame] = view.chain(call.scope);
+    if (call.result !== true || frame === undefined || IGNORED_RESULTS.has(frame.host)) {
+      return true;
+    }
+    const host = hostOf(view, frame);
+    if (host === undefined || calls.length > RESULT_DEPTH) {
+      return true;
+    }
+    if (!dropped(host)) {
+      return false;
+    }
+    calls.push(host);
   }
-  const host = hostOf(view, frame);
-  return host === undefined || depth >= RESULT_DEPTH || discarded(view, host, depth + 1);
+  return true;
 }
 
 function rowWritesInLoop(view) {
