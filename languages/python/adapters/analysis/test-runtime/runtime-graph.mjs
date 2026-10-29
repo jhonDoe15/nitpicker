@@ -68,6 +68,15 @@ function namedEdges(others, literals, known) {
   );
 }
 
+function runtimeTargets(bySource) {
+  return new Map(
+    [...bySource].map(([source, edges]) => [
+      source,
+      edges.filter(({ kind }) => kind === EDGE_KINDS.RUNTIME).map(({ target }) => target),
+    ]),
+  );
+}
+
 export function buildRuntimeGraph({
   modules,
   others = [],
@@ -90,12 +99,7 @@ export function buildRuntimeGraph({
     target: fileOf.get(edge.target),
   }));
   const bySource = Map.groupBy(fileEdges, ({ source }) => source);
-  const importedFiles = new Map(
-    [...bySource].map(([source, edges]) => [
-      source,
-      edges.filter(({ kind }) => kind === EDGE_KINDS.RUNTIME).map(({ target }) => target),
-    ]),
-  );
+  const importedFiles = runtimeTargets(bySource);
   const helpers = new Set(others.map(({ file }) => file));
   const reach = createFixtureScope({
     files: others.map(({ file }) => file),
