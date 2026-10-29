@@ -84,6 +84,11 @@ JPA and Spring Data:
   for large inputs), also through a helper, `saveAll(List.of(x))` or a `@Modifying` update per row.
   The one loop allowed is the JPA batch loop that calls `persist`, then `flush` and `clear` on the
   `EntityManager`. No other `flush` or `saveAndFlush`.
+- Never read a lazy relationship on each element of a query result (`order.getCustomer().getName()`
+  in a loop, a stream step or a helper it calls; `effects/LazyRelationInLoop`): fetch it with the
+  query, `@EntityGraph(attributePaths = "customer")` on the repository method or `join fetch` in the
+  `@Query`, or batch the loads with `@BatchSize` or `hibernate.default_batch_fetch_size`, or select a
+  projection. Reading only its id (`getCustomer().getId()`) needs nothing.
 - Filter in the query, not with `findAll().stream()`. Query text is constant (a text block) and
   values are bind parameters, in JPQL and JDBC alike.
 - Native SQL only when JPQL can't express it, marked on that one method with

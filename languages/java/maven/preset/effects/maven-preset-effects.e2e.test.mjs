@@ -9,6 +9,8 @@ import {
   effectsSummary,
   JAVA_BATCHED_EFFECTS,
   JAVA_EFFECTS_FIXTURE,
+  JAVA_LOOP_LINES,
+  loopLines,
 } from '../../../adapters/effects/test-support/effects-projects.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -68,10 +70,8 @@ describe.skipIf(!enabled)('the effects engine on Maven builds', () => {
     });
     expect(readReport(mavenProject, 'target')).toEqual(readReport(gradleProject, 'build'));
     expect(effectsSummary(readReport(mavenProject, 'target'))).toEqual(JAVA_BATCHED_EFFECTS);
-    expect(
-      findings
-        .filter((finding) => finding.tool === 'effects' && finding.rule === 'IoCallInLoop')
-        .map((finding) => finding.location.line),
-    ).toEqual([26, 32, 36, 40, 46]);
+    expect(loopLines(findings, 'pmd', JAVA_LOOP_LINES.loops)).toEqual(JAVA_LOOP_LINES.pmd);
+    expect(loopLines(findings, 'effects', JAVA_LOOP_LINES.loops)).toEqual(JAVA_LOOP_LINES.effects);
+    expect(loopLines(findings, 'pmd', JAVA_LOOP_LINES.allowed)).toEqual([]);
   }, 180_000);
 });

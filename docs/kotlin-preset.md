@@ -243,7 +243,10 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 ```
 
 `rule` is the rule as the finding prints it: any `detekt.<ruleset>.<Rule>`, a
-`kotlin-source/<Rule>` of the [source checks](#source-checks), `kotlinc/deprecation`,
+`kotlin-source/<Rule>` of the [source checks](#source-checks), an `effects/<Rule>` of the
+[effects rules](#effects-rules) (`effects/IoCallInLoop`, `effects/AccumulatorCopyInLoop`,
+`effects/LazyRelationInLoop`, `effects/RemoteCallInTransaction`, `effects/RemoteCallUnderLock`,
+`effects/RetryWithoutIdempotency`, `effects/DualWriteWithoutOutbox`), `kotlinc/deprecation`,
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
 `pmd/NegativeWaitInTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
 `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `unused-option`), a class limit, a file
@@ -352,12 +355,21 @@ helpers by what they call ([#435](https://github.com/jhonDoe15/nitpicker/issues/
 | `AccumulatorCopyInLoop`   | `fold`, `reduce`, `runningFold` and loops whose step stores `acc + x` (`CollectionsKt.plus`, `SetsKt.plus`, `MapsKt.plus`, `toMutableList()` and the other copies) of the accumulator back into it, also `acc += x` on a `var` read-only collection ([#440](https://github.com/jhonDoe15/nitpicker/issues/440))                                                                                                                     | `map`, `flatMap`, `associate`, `groupBy`, `buildList`, or one mutable collection filled in the loop                                                                                                                             |
 | `LazyRelationInLoop`      | a lazy JPA relationship (a constructor property such as `@ManyToOne(fetch = FetchType.LAZY) val customer: Customer` or `@OneToMany val lines: List<Line>`) read on each element of a repository or `EntityManager` query result and then used, in a `for` loop, an inlined `map`/`forEach`/`sumOf` or a `Sequence` step (`invoices.findAll().map { it.customer.name }`) ([#314](https://github.com/jhonDoe15/nitpicker/issues/314)) | `@EntityGraph(attributePaths = ["customer"])` or a named entity graph on the repository method, `JOIN FETCH` in the query, `@BatchSize`, `@Fetch(FetchMode.SUBSELECT)` or `hibernate.default_batch_fetch_size`, or a projection |
 | `RemoteCallInTransaction` | a `remote` call, direct or through helpers, in a `@Transactional` function, a `transactionTemplate.execute { }` or `executeWithoutResult { }` block or an Exposed `transaction { }` that also uses the database ([#317](https://github.com/jhonDoe15/nitpicker/issues/317))                                                                                                                                                         | the remote call before the transaction or after it commits, or an outbox row sent by a worker                                                                                                                                   |
-| `RemoteCallUnderLock`     | a `remote` call, direct or through helpers, inside `lock.withLock { }`, `mutex.withLock { }`, `synchronized(lock) { }`, a `@Synchronized` function or between `lock()` and `unlock()` ([#317](https://github.com/jhonDoe15/nitpicker/issues/317))                                                                                                                                                                                   | read what the call needs under the lock, release it, call, and lock again to apply the result                                                                                                                                   |
+| `RemoteCallUnderLock`     | a `remote` call, direct or through helpers, inside `lock.withLock { }`, `mutex.withLock { }`, `synchronized(lock) { }`, a `@Synchronized` function, between `lock()` and the last `unlock()` of the same lock, or under a `Semaphore(1)` permit; an early `return` inside the block does not end it, and a `Semaphore` with more permits is a bound, not a lock ([#317](https://github.com/jhonDoe15/nitpicker/issues/317))         | read what the call needs under the lock, release it, call, and lock again to apply the result; a fill-once block (`if (cached != null) return cached` before the call that sets it) is allowed                                  |
 | `RetryWithoutIdempotency` | a Stripe `create` without an idempotency key, a `message` publish without a deduplication id, or a constant plain `INSERT`, direct or through helpers, in a `@Retryable` or `@Retry` function, a resilience4j or `RetryTemplate` block, or a `repeat(n) { try { ...; return } catch ... }` loop ([#318](https://github.com/jhonDoe15/nitpicker/issues/318))                                                                         | a stable idempotency key, a deduplication id, an upsert, or retrying only the read                                                                                                                                              |
 | `DualWriteWithoutOutbox`  | a function that writes to the database and, at another call, publishes a message, also through `publisher.publishEvent(...)` to an `@EventListener` or `@TransactionalEventListener` ([#322](https://github.com/jhonDoe15/nitpicker/issues/322))                                                                                                                                                                                    | an outbox row in the same transaction, published by a relay                                                                                                                                                                     |
 
-`IoCallInLoop` replaced the source check `kotlin-source/IoCallInLoop`: an exception written for
-that one now names `effects/IoCallInLoop`. Paging and polling loops, retries (`repeat(3) { try {
+`IoCallInLoop` replaced the source check `kotlin-source/IoCallInLoop`. An exception written for
+that one keeps working for now: nitpicker reads `kotlin-source/IoCallInLoop` in
+`nitpicker.config.json` as `effects/IoCallInLoop` and prints a notice asking to rename it. When a
+project first runs the effects rules, or upgrades to a release that names methods as the source
+does (`Outer.Companion.load`, a lambda by its enclosing function), its findings get new identities
+once; base and head are analyzed by the same release, so this creates no new findings in a review.
+Iterating callbacks include the `Sequence` steps, `sortedWith`, `compareBy`, and the `Flow`
+operators that run per element (`onEach`, `collect`, `collectLatest`, `mapLatest`, `flatMapConcat`,
+`flatMapLatest`, `scan` and the like); `flatMapMerge` is a concurrent form, like `async`. A
+`launch`, `Thread`, scheduled task or listener callback runs later and is not part of the loop.
+Paging and polling loops, retries (`repeat(3) { try {
 return ... } catch ... }`), batch methods, chunk calls (`ids.chunked(100).forEach {
 loader.forget(it) }`), file calls and `message` publishes are not reported, as in the Java preset;
 a line a Spring Data loop rule reports is not reported again. `LazyRelationInLoop` follows the

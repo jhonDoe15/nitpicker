@@ -51,4 +51,26 @@ public class HeldScopes {
       last = prices.priceOf(id);
     }
   }
+
+  public BigDecimal guardedUnderLock(Long id, boolean skip) {
+    lock.lock();
+    try {
+      if (skip) {
+        return last;
+      }
+      last = prices.priceOf(id);
+      return last;
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  public void guardedBlock(Long id) {
+    synchronized (this) {
+      if (id == null) {
+        return;
+      }
+      last = prices.priceOf(id);
+    }
+  }
 }

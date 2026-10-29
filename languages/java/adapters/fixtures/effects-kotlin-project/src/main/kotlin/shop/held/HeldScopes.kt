@@ -17,6 +17,7 @@ class HeldScopes(
 ) {
     private val lock = ReentrantLock()
     private val mutex = Mutex()
+    private var last: BigDecimal? = null
 
     @Transactional
     fun confirm(id: Long): BigDecimal? {
@@ -32,4 +33,20 @@ class HeldScopes(
     fun underLock(id: Long): BigDecimal? = lock.withLock { loader.price(id) }
 
     suspend fun underMutex(id: Long): BigDecimal? = mutex.withLock { loader.price(id) }
+
+    fun guardedUnderLock(id: Long, skip: Boolean): BigDecimal? = lock.withLock {
+        if (skip) return last
+        last = loader.price(id)
+        last
+    }
+
+    fun guardedBlock(id: Long?): BigDecimal? = synchronized(this) {
+        if (id == null) return null
+        loader.price(id)
+    }
+
+    suspend fun guardedMutex(id: Long, skip: Boolean): BigDecimal? = mutex.withLock {
+        if (skip) return null
+        loader.price(id)
+    }
 }
