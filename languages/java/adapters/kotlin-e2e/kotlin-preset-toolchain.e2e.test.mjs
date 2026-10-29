@@ -3,6 +3,7 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
+import { analyzeWithIncludedBuild } from '../test-support/gradle-e2e.mjs';
 import {
   commitBranch,
   copyJdkWithNativeImage,
@@ -15,7 +16,6 @@ import {
   removeProject,
   TOOLCHAIN_PROBE,
 } from './test-support/kotlin-e2e-project.mjs';
-import { analyzeWithIncludedBuild } from '../test-support/gradle-e2e.mjs';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset JDK selection end to end', () => {
   let project;
@@ -74,9 +74,7 @@ describe.skipIf(!kotlinE2eEnabled)(
           .filter((finding) => finding.rule === 'detekt.style.UnusedPrivateProperty')
           .map((finding) => finding.path),
       ).toEqual(['src/main/kotlin/demo/Counter.kt']);
-      expect(result.findings.filter((finding) => finding.path.startsWith('build-logic'))).toEqual(
-        [],
-      );
+      expect(result.nested).toEqual([]);
     }, 180_000);
   },
 );

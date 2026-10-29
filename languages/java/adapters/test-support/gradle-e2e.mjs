@@ -45,6 +45,7 @@ export function summarize(findings) {
     .sort();
 }
 
+const PLUGIN_BUILD = /^(?:build-logic|buildSrc)\//u;
 const CONFIGURATION_MUTATION = /Mutating a configuration|Cannot mutate|Cannot change dependencies/u;
 
 export function analyzeWithIncludedBuild(fixture, { gradle, policy }) {
@@ -57,11 +58,13 @@ export function analyzeWithIncludedBuild(fixture, { gradle, policy }) {
       { cwd: root, encoding: 'utf8', timeout: GRADLE_STEP_TIMEOUT_MS },
     );
     const output = `${help.stdout}${help.stderr}`;
+    const findings = collectJavaFindings(root, { gradle, policy });
     return {
       status: help.status,
       output,
       mutations: output.split('\n').filter((line) => CONFIGURATION_MUTATION.test(line)),
-      findings: collectJavaFindings(root, { gradle, policy }),
+      findings,
+      nested: findings.filter((finding) => PLUGIN_BUILD.test(finding.path ?? '')),
     };
   } finally {
     rmSync(root, { recursive: true, force: true });
