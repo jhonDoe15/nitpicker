@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 
 function firstResult(resolvers, ...inputs) {
   for (const resolve of resolvers) {
