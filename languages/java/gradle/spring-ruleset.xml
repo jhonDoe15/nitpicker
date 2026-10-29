@@ -890,16 +890,36 @@ return (
      $strings := $parameters[pmd-java:typeIs('java.lang.CharSequence') or pmd-java:typeIs('java.net.URI')
       or pmd-java:typeIs('java.net.URL')]/VariableId/@Name,
      $objects := $parameters/VariableId/@Name,
+     $requests := $parameters[pmd-java:typeIs('jakarta.servlet.ServletRequest') or pmd-java:typeIs('javax.servlet.ServletRequest')
+        or pmd-java:typeIs('org.springframework.web.context.request.WebRequest')]/VariableId/@Name,
+     $maps := $parameters[pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('org.springframework.util.MultiValueMap')]
+      /VariableId/@Name,
      $inTemplate := function($node) {
        exists($node/ancestor::ArgumentList[parent::MethodCall[@MethodName = ('buildAndExpand', 'expand', 'queryParam',
          'queryParams', 'replaceQueryParam', 'pathSegment', 'path', 'fragment')]])
      },
+     $sources := function($node) {
+       $node/descendant-or-self::MethodCall[
+         (empty(ArgumentList/*) and *[1][self::VariableAccess[@Name = $objects]]
+           and (pmd-java:typeIs('java.lang.CharSequence') or pmd-java:typeIs('java.net.URI') or pmd-java:typeIs('java.net.URL')
+             or matches(@MethodName, 'url|uri|href|host|endpoint|address|target|location|link|callback|origin', 'i')))
+         or (@MethodName = ('getParameter', 'getParameterValues', 'getHeader', 'getHeaders', 'getQueryString')
+           and *[1][self::VariableAccess[@Name = $requests]])
+         or (@MethodName = ('get', 'getFirst', 'getOrDefault') and *[1][self::VariableAccess[@Name = $maps]])]
+     },
+     $skipped := function($node) {
+       $node/descendant-or-self::*[
+         self::InfixExpression[@Operator = ('==', '!=', '<', '>', '<=', '>=', '&&', '||', 'instanceof')]
+         or self::UnaryExpression[@Operator = '!']
+         or self::SwitchLabel
+         or (parent::*[self::ConditionalExpression or self::SwitchExpression or self::SwitchStatement]
+           and . is ../*[1])
+         or (parent::ArgumentList[parent::MethodCall[@MethodName = ('get', 'getOrDefault', 'containsKey')]
+             [*[1][pmd-java:typeIs('java.util.Map')]]]
+           and . is ../*[1])]/descendant-or-self::*
+     },
      $reads := function($node, $names) {
-       exists($node/descendant-or-self::VariableAccess[@Name = $names][not($inTemplate(.))])
-       or exists($node/descendant-or-self::MethodCall[empty(ArgumentList/*)][*[1][self::VariableAccess[@Name = $objects]]]
-         [not($inTemplate(.))]
-         [pmd-java:typeIs('java.lang.CharSequence') or pmd-java:typeIs('java.net.URI') or pmd-java:typeIs('java.net.URL')
-           or matches(@MethodName, 'url|uri|href|host|endpoint|address|target|location|link|callback|origin', 'i')])
+       exists((($node/descendant-or-self::VariableAccess[@Name = $names] | $sources($node)) except $skipped($node))[not($inTemplate(.))])
      },
      $step := function($known) {
        distinct-values(($known,
@@ -940,21 +960,96 @@ return (
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 (//InfixExpression[@Operator = '+'][*[1][self::StringLiteral[matches(@ConstValue, '^(redirect|forward):((https?:)?//?)?$')]]]
-  | //ConstructorCall[pmd-java:typeIs('org.springframework.web.servlet.view.RedirectView')])
+  | //ConstructorCall[pmd-java:typeIs('org.springframework.web.servlet.view.RedirectView')]
+  | //MethodCall[
+      (@MethodName = 'sendRedirect'
+        and *[1][pmd-java:typeIs('jakarta.servlet.http.HttpServletResponse') or pmd-java:typeIs('javax.servlet.http.HttpServletResponse')])
+      or (@MethodName = 'location' and *[1][pmd-java:typeIs('org.springframework.http.ResponseEntity.HeadersBuilder')])
+      or (@MethodName = 'setLocation' and *[1][pmd-java:typeIs('org.springframework.http.HttpHeaders')])
+      or pmd-java:matchesSig('org.springframework.http.ResponseEntity#created(_)')
+      or (@MethodName = ('header', 'set', 'add', 'setHeader', 'addHeader')
+        and ArgumentList/*[1][self::StringLiteral[lower-case(@ConstValue) = 'location']
+          or (self::FieldAccess | self::VariableAccess)[@Name = 'LOCATION']])])
+[not(ancestor::ClassDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Configuration')]])]
+[not(ancestor::MethodDeclaration[1]/ModifierList/Annotation[pmd-java:typeIs('org.springframework.context.annotation.Bean')])]
 [let $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1],
-     $strings := $method/FormalParameters/FormalParameter[pmd-java:typeIs('java.lang.CharSequence')
-      or pmd-java:typeIs('java.net.URI')]/VariableId/@Name,
+     $parameters := $method[not(self::ConstructorDeclaration and ancestor::ClassDeclaration[1]/ModifierList/Annotation[
+        pmd-java:typeIs('org.springframework.stereotype.Component')
+        or pmd-java:typeIs('org.springframework.stereotype.Service')
+        or pmd-java:typeIs('org.springframework.stereotype.Repository')
+        or pmd-java:typeIs('org.springframework.stereotype.Controller')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.ControllerAdvice')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.RestControllerAdvice')])]
+      /FormalParameters/FormalParameter
+      [not(ModifierList/Annotation[pmd-java:typeIs('org.springframework.beans.factory.annotation.Value')])],
+     $strings := $parameters[pmd-java:typeIs('java.lang.CharSequence') or pmd-java:typeIs('java.net.URI')
+      or pmd-java:typeIs('java.net.URL')]/VariableId/@Name,
+     $objects := $parameters/VariableId/@Name,
+     $requests := $parameters[pmd-java:typeIs('jakarta.servlet.ServletRequest') or pmd-java:typeIs('javax.servlet.ServletRequest')
+        or pmd-java:typeIs('org.springframework.web.context.request.WebRequest')]/VariableId/@Name,
+     $maps := $parameters[pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('org.springframework.util.MultiValueMap')]
+      /VariableId/@Name,
+     $sources := function($node) {
+       $node/descendant-or-self::MethodCall[
+         (empty(ArgumentList/*) and *[1][self::VariableAccess[@Name = $objects]]
+           and (pmd-java:typeIs('java.lang.CharSequence') or pmd-java:typeIs('java.net.URI') or pmd-java:typeIs('java.net.URL')
+             or matches(@MethodName, 'url|uri|href|host|endpoint|address|target|location|link|callback|origin', 'i')))
+         or (@MethodName = ('getParameter', 'getParameterValues', 'getHeader', 'getHeaders', 'getQueryString')
+           and *[1][self::VariableAccess[@Name = $requests]])
+         or (@MethodName = ('get', 'getFirst', 'getOrDefault') and *[1][self::VariableAccess[@Name = $maps]])]
+     },
+     $skipped := function($node) {
+       $node/descendant-or-self::*[
+         self::InfixExpression[@Operator = ('==', '!=', '<', '>', '<=', '>=', '&&', '||', 'instanceof')]
+         or self::UnaryExpression[@Operator = '!']
+         or self::SwitchLabel
+         or (parent::*[self::ConditionalExpression or self::SwitchExpression or self::SwitchStatement]
+           and . is ../*[1])
+         or (parent::ArgumentList[parent::MethodCall[@MethodName = ('get', 'getOrDefault', 'containsKey')]
+             [*[1][pmd-java:typeIs('java.util.Map')]]]
+           and . is ../*[1])]/descendant-or-self::*
+     },
      $reads := function($node, $names) {
-       exists($node/descendant-or-self::VariableAccess[@Name = $names])
+       exists((($node/descendant-or-self::VariableAccess[@Name = $names] | $sources($node)) except $skipped($node)))
      },
      $step := function($known) {
        distinct-values(($known,
          $method//VariableDeclarator[*[2][$reads(., $known)]]/VariableId/@Name,
          $method//AssignmentExpression[$reads(*[2], $known)]/*[1][self::VariableAccess]/@Name))
      },
-     $derived := $step($step($step($strings)))
- return exists(self::InfixExpression/*[2][$reads(., $derived)])
-     or exists(self::ConstructorCall/ArgumentList/*[1][$reads(., $derived)])]
+     $derived := $step($step($step($step($strings)))),
+     $constantValue := function($value) {
+       empty($value/descendant-or-self::*[self::MethodCall or self::ConstructorCall
+         or self::VariableAccess[not(matches(@Name, '^[A-Z][A-Z0-9_]*$'))]
+         or self::FieldAccess[not(matches(@Name, '^[A-Z][A-Z0-9_]*$'))]])
+     },
+     $inputName := function($call, $name) {
+       let $caller := $call/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1],
+           $declarations := $caller//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name]
+       return not(exists($declarations)
+         and empty($caller//AssignmentExpression[*[1][self::VariableAccess][@Name = $name]])
+         and (every $declaration in $declarations satisfies
+           (exists($declaration/*[2]) and $constantValue($declaration/*[2]))))
+     },
+     $callers := $method/ancestor::*[self::ClassDeclaration or self::EnumDeclaration or self::RecordDeclaration][1]
+      //MethodCall[@MethodName = $method/@Name]
+        [count(ArgumentList/*) = count($method/FormalParameters/FormalParameter)]
+ return (not($method[pmd-java:modifiers() = 'private'])
+         or (some $call in $callers satisfies
+           (some $argument in $call/ArgumentList/* satisfies
+             exists($argument/descendant-or-self::VariableAccess
+               [@Name = $call/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]//VariableId/@Name]
+               [$inputName($call, string(@Name))]))))
+   and not(self::InfixExpression and (some $argument in ancestor-or-self::*[parent::ArgumentList[parent::MethodCall[
+           @MethodName = ('trace', 'debug', 'info', 'warn', 'error', 'log')]]]
+         satisfies (every $between in ancestor-or-self::*[(. >> $argument) or (. is $argument)]
+           satisfies $between[self::InfixExpression])))
+   and (let $values := if (self::InfixExpression) then *[2]
+            else if (self::MethodCall[@MethodName = ('header', 'set', 'add', 'setHeader', 'addHeader')])
+              then ArgumentList/*[position() > 1]
+            else ArgumentList/*[1]
+        return exists($values[$reads(., $derived)]))]
 ]]></value></property></properties>
   </rule>
 
