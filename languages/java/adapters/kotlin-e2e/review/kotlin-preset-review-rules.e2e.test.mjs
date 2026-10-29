@@ -5,12 +5,12 @@ import {
   EXPECTED_LOOKUP_FINDINGS,
   LOOKUP_FILES,
   lookupBuild,
-} from './test-support/review/kotlin-lookup-data.mjs';
+} from '../test-support/review/kotlin-lookup-data.mjs';
 import {
   EXPECTED_REVIEW_FINDINGS,
   REVIEW_RULE_FILES,
   runtimeSerializationFiles,
-} from './test-support/review/kotlin-review-data.mjs';
+} from '../test-support/review/kotlin-review-data.mjs';
 import {
   commitBranch,
   commitFromBranch,
@@ -19,7 +19,7 @@ import {
   kotlinE2eEnabled,
   kotlinPolicy,
   removeProject,
-} from './test-support/kotlin-e2e-project.mjs';
+} from '../test-support/kotlin-e2e-project.mjs';
 
 const REVIEW_TOOLS = new Set(['pmd']);
 const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';

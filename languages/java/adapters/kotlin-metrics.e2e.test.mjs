@@ -127,7 +127,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       path.join(project, 'build.gradle.kts'),
       `${readFileSync(path.join(project, 'build.gradle.kts'), 'utf8')}${FORCE_OTHER_KOTLIN}`,
     );
-    psi = prepareKotlinPsi(workspace, project);
+    psi = prepareKotlinPsi(workspace, project, gradle);
   });
 
   afterAll(() => {

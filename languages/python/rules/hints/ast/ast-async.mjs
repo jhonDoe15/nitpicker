@@ -1,4 +1,4 @@
-import { RULES_TOOL } from './tool.mjs';
+import { RULES_TOOL } from '../tool.mjs';
 
 const TASK_HANDLE = /passed to (asyncio\.)?(create_task|ensure_future)\b/u;
 

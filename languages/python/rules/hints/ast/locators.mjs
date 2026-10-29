@@ -1,4 +1,4 @@
-import { RULES_TOOL } from './tool.mjs';
+import { RULES_TOOL } from '../tool.mjs';
 
 const WRAPPED = /^(.+?) via (.+) in (\S+)$/u;
 const FAILURE =
