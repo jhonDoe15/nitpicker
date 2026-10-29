@@ -68,6 +68,7 @@ const REVIEW_RULES = new Set([
   'HttpWithoutTimeout',
   'WeakHmac',
   'TlsVerificationOff',
+  'ClassLoadEffect',
   'SpringUnusedContext',
   'TestClassWithoutTestCases',
   'test-only-export',

@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../../typescript-api/typescript-api.mjs';
 import { DOM_GLOBAL_NAMES } from './dom-globals.mjs';
 
 const DOM_PACKAGES = [
