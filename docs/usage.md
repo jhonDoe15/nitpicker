@@ -129,17 +129,78 @@ tool error carries the manager's message. Installing the base is not supported o
 
 ### Reports
 
-Reports are written to `reports/quality/diff/` (`reports/quality/snapshot/` for `--all`):
-`report.txt`, `report.junit.xml`, `summary.json`, `new-findings.json`, `resolved-findings.json`,
-`changed-metrics.json` and `tool-errors.json`. The summary records every config override, a
-policy hash, the `policyChanges` the head config makes against the base and any `notices`. A notice
-is information that never fails the run. Today there is one kind: changed code files that lie
-outside the roots the preset checks. For TypeScript those are `layout.sourceRoots` and
-`layout.testRoots` (move the files under a root or add their folder to `layout.sourceRoots`); for
-Python, `python.sourceRoots`; for Java and Kotlin, the build's source sets (`src/<set>/java` or
-`src/<set>/kotlin` of a module, or a directory the build file declares). To leave files unchecked,
-list them in `exclude`. Choose another directory
-with `--output <dir>`. Set `NO_COLOR` to disable colored console output.
+A comparison run writes these files to `reports/quality/diff/`:
+
+- `report.txt`: the readable report.
+- `summary.json`: totals, per-tool counts and the fields below.
+- `new-findings.json`: the new findings, the ones that count against the change.
+- `resolved-findings.json`: findings that were in the base and are gone.
+- `changed-metrics.json`: metrics that moved.
+- `held-findings.json`: findings that were already there and are no worse than at the base (for
+  example a file over a size limit that did not grow); they are allowed, and any increase fails.
+- `tool-errors.json`: the tool errors, whatever the exit code.
+- `report.junit.xml`: JUnit XML for CI test reports.
+- `report.sarif`: SARIF 2.1.0 with the new findings only, the file to upload to code scanning.
+- `report-baseline.sarif`: SARIF 2.1.0 with the new and the held findings, each marked with its
+  `baselineState`, for tools that read it.
+
+`--all` has no baseline, so it writes `reports/quality/snapshot/` with `report.txt`, `summary.json`,
+`findings.json` (every finding in the checkout), `tool-errors.json`, `report.junit.xml` and
+`report.sarif`.
+
+The summary records every config override, a policy hash, the `policyChanges` the head config makes
+against the base and any `notices`. A notice is information that never fails the run. Today there is
+one kind: changed code files that lie outside the roots the preset checks. For TypeScript those are
+`layout.sourceRoots` and `layout.testRoots` (move the files under a root or add their folder to
+`layout.sourceRoots`); for Python, `python.sourceRoots`; for Java and Kotlin, the build's source
+sets (`src/<set>/java` or `src/<set>/kotlin` of a module, or a directory the build file declares).
+To leave files unchecked, list them in `exclude`. Choose another directory with `--output <dir>`.
+Set `NO_COLOR` to disable colored console output.
+
+#### SARIF
+
+The SARIF files have one run with one result per finding. `ruleId` is `<tool>/<rule>`, `level` is
+`error` for an enforceable finding and `note` for a descriptive one, and
+`partialFingerprints["nitpickerIdentity/v1"]` is the hash of the finding's comparison key, so a
+consumer matches a finding across runs when its line moves. A tool error makes the run's invocation
+unsuccessful and adds a notification. Columns are counted in UTF-16 code units
+(`columnKind: "utf16CodeUnits"`).
+
+| File                    | Run        | Results                                      | `baselineState`    |
+| ----------------------- | ---------- | -------------------------------------------- | ------------------ |
+| `report.sarif`          | comparison | `new-findings.json`                          | `new`              |
+| `report-baseline.sarif` | comparison | `new-findings.json` and `held-findings.json` | `new`, `unchanged` |
+| `report.sarif`          | `--all`    | `findings.json`                              | not set            |
+
+GitHub code scanning does not read `baselineState`: every result it receives becomes an open alert.
+So `report.sarif` of a comparison holds only the new findings, and the held ones, which the change
+is allowed to keep, are only in `report-baseline.sarif`. Fixed findings (`resolved-findings.json`)
+are in neither file, since a result is read as a problem in the current code; findings that were in
+both snapshots and are not held are in no report file.
+
+A `uri` is relative to the root of the git repository: the folder of the project inside the
+repository, then the finding's path, percent-encoded, with `uriBaseId: "%SRCROOT%"` naming the
+repository root. A project in `packages/app` reports `packages/app/src/a.ts`, which is how code
+scanning matches a result to a file. The files hold no absolute path, so `originalUriBaseIds` is not
+written. When nitpicker cannot find the repository root (the `aggregate` command outside a git
+checkout), paths stay relative to the project and have no `uriBaseId`.
+
+Upload the comparison file in pull requests with `github/codeql-action/upload-sarif`:
+
+```yaml
+- run: npx nitpicker
+  working-directory: packages/app
+- uses: github/codeql-action/upload-sarif@v3
+  if: always()
+  with:
+    sarif_file: packages/app/reports/quality/diff/report.sarif
+    category: nitpicker-diff
+```
+
+Code scanning closes an open alert when a later upload in the same `category` no longer has it, so
+give each kind of run its own category: a `--all` upload on the default branch
+(`reports/quality/snapshot/report.sarif`) goes in another category, such as `nitpicker-all`, or the
+next comparison upload would close the alerts it opened.
 
 ## Exit codes
 
@@ -189,7 +250,8 @@ nitpicker cache publish [--analyzer <name>]...
 
 - `--no-cache`: do not read or write the findings cache for this run (local and remote).
 - `--accept-policy-change=<digest>`: accept the loosenings of `nitpicker.config.json` whose digest
-  the `nitpicker-config/policy-loosened` findings name (see [Configuration](#configuration)). It is
+  the console and the `nitpicker-config/policy-loosened` findings name (see
+  [Configuration](#configuration)). It is
   for the person reviewing the change, never for a coding agent, so it is honoured only at an
   interactive terminal (stdin and stdout both terminals); in CI, where `CI` is set, a person sets
   `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>` instead, and that variable is ignored anywhere else. An
@@ -228,12 +290,17 @@ both sides; a base config that does not load is ignored the same way, and the he
 compared with the defaults. Because the head controls its own config, every change to it is printed
 in the console summary and in `report.txt` as "Policy changed in this change" and listed in
 `summary.json` under `policyChanges`. A change that checks less fails the run with one
-`nitpicker-config/policy-loosened` finding per loosening. The finding names the allowed form first:
-keep the base's policy and change the code until it passes (new code under the source roots, findings
-fixed rather than excluded, excepted or reclassified). If the change is intended, a coding agent
-stops and asks a person reviewing the change, who accepts it with the `--accept-policy-change=<digest>`
-the finding names (in CI, `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>`). A project's first `nitpicker.config.json` is compared with the
-defaults. These changes are loosening:
+`nitpicker-config/policy-loosened` finding per loosening. The console groups those changes by kind:
+it lists the changes of a kind, then what that kind does to the checks and how to undo it, once
+(ten new entry points print the entry point guidance once), followed by the count, the digest and
+the acceptance command. `report.txt` and `new-findings.json` keep one finding per change, each with
+its guidance and the acceptance route. The first response is to undo the change and fix the code
+until it passes. If the change is intended, a coding agent stops and asks a person reviewing it, who
+accepts it by the digest (`--accept-policy-change=<digest>` or, in CI,
+`NITPICKER_ACCEPT_POLICY_CHANGE=<digest>`; the routes are described under
+[Command line](#command-line)). A local run and CI can print different digests, because CI may
+check the pull request merged into its target branch. A project's first `nitpicker.config.json` is
+compared with the defaults. These changes are loosening:
 
 - an added `exclude`, `layout.excludedGlobs`, `layout.entryPoints` or
   `exceptions` glob that covers a code file the base config did not already cover (every
@@ -243,7 +310,10 @@ defaults. These changes are loosening:
   and `layout.excludedGlobs` are one set: a glob respelled to cover the same files, or moved from
   one key to the other, is listed but does not fail. Files moved with `git mv` keep their base
   path, so updating a glob after a move is not loosening; a glob that covers no new code file is
-  listed but does not fail;
+  listed but does not fail. A `layout.entryPoints` entry makes the dead-code check treat the files
+  as used and allows module-load effects and process access in them, and a `python.entryPoints`
+  entry only exempts them from `process-env-access`; other checks still apply. A reviewer confirms
+  that a command or runtime loads each file without an import, and otherwise the entry is removed;
 - a removed `layout.sourceRoots`, `layout.testRoots` or `python.sourceRoots` entry that still has
   checked files under it (Python's detected default counts when the setting is absent), and an
   added `layout.testRoots` entry that turns production code the base checked into test code;
@@ -570,13 +640,17 @@ code importing a package that is only in `devDependencies`: move it to `dependen
 reads the nearest `package.json` that lists dependencies, skips an app a bundler builds (a Vite,
 webpack, Next.js, Rsbuild, Rspack, Astro, Nuxt, SvelteKit, Remix, Vue CLI, Parcel or Angular
 config, or a `build` script that runs one, and no `main`, `module`, `exports` or `bin`) and test
-support next to the code (`setupTests.*`, `test-utils`, `testing/`, `__mocks__/`, `*.stories.*`,
+support next to the code (`setupTests.*`, `test-utils`, `testing/`, `test-support/`, `__mocks__/`, `*.stories.*`,
 `.storybook/`), and reports a `package.json` that is not a JSON object. `nitpicker`,
 `vitest`, `@vitest/coverage-v8`, `typescript`, `@types/node`, `jsdom` and `happy-dom` are never
 reported as unused, because nitpicker or Vitest loads them by name. A tool that loads a package by
 name (a plugin in a config file) needs an `unused-dependency` exception for `package.json` that
 names the package:
 `{ "rule": "unused-dependency", "paths": ["package.json"], "packages": ["prettier-plugin-x"], "reason": "Loaded by .prettierrc" }`.
+
+The Python preset fails a new `unused-dependency` and `unlisted-dependency` the same way, reading the
+dependencies from `pyproject.toml`, `Pipfile`, `requirements*.txt` or `setup.cfg` (see
+[python-preset.md](python-preset.md)); the Java and Kotlin presets have neither rule.
 
 ### Change history
 

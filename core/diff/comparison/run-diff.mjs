@@ -34,7 +34,9 @@ export function runQualityDiff(options) {
     compareSnapshots({ settings, comparison, layout, roots, startedAt }),
   );
   report.summary.elapsedMs = Date.now() - startedAt;
-  report.text = writeDiffReports(settings.outputRoot, report);
+  report.text = writeDiffReports(settings.outputRoot, report, {
+    projectPath: settings.projectRelativePath,
+  });
   return report;
 }
 
@@ -182,6 +184,7 @@ function runAndCombine(context) {
     configOverrides: settings.configOverrides,
     policyChanges: context.baseSetup.policyChanges,
     policyLoosenings: context.baseSetup.policyLoosenings,
+    policyKinds: context.baseSetup.policyKinds,
     policyDigest: context.baseSetup.policyDigest,
     acceptPolicyChange: settings.acceptPolicyChange,
     policyAcceptanceSource: settings.policyAcceptanceSource,
