@@ -1,7 +1,7 @@
 # Editing existing code
 
-Read this when your change edits a function, class, module or package that existed before it. Everything in `SKILL.md` still
-applies to the lines you add.
+Read this when your change edits a function, class, module or package that existed before it.
+Everything in `SKILL.md` still applies to the lines you add.
 
 - A function already over a size limit (lines, statements, nesting, parameters) may be edited but
   must not grow: the gate prints `grew from 77 to 78 lines`. Add one call to a new function and
