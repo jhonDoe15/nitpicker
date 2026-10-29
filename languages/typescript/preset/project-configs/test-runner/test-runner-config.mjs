@@ -1,16 +1,16 @@
 import path from 'node:path';
-import { isCount } from '../../../../shared/config.mjs';
-import { readInside } from '../../../../shared/conventions/read-inside.mjs';
-import { readHeadPolicyFile } from '../../../../shared/head-policy.mjs';
+import { isCount } from '../../../../../shared/config.mjs';
+import { readInside } from '../../../../../shared/conventions/read-inside.mjs';
+import { readHeadPolicyFile } from '../../../../../shared/head-policy.mjs';
 import {
   missingProjectConfig,
   precedenceLayers,
-} from '../../../../shared/conventions/tool-precedence.mjs';
-import { PROJECT_CONFIG_NAMES, projectConfigFile } from '../test-environment/config-files.mjs';
-import { readConfigInChild } from '../test-environment/read-environment.mjs';
-import { testRunnerFor } from '../test-runner/detect-runner.mjs';
-import { MOCHA_RC_FILES, mochaConfigRetries } from '../test-runner/mocha-options.mjs';
-import { RUNNER_NAMES } from '../test-runner/runners.mjs';
+} from '../../../../../shared/conventions/tool-precedence.mjs';
+import { PROJECT_CONFIG_NAMES, projectConfigFile } from '../../test-environment/config-files.mjs';
+import { readConfigInChild } from '../../test-environment/read-environment.mjs';
+import { testRunnerFor } from '../../test-runner/detect-runner.mjs';
+import { MOCHA_RC_FILES, mochaConfigRetries } from '../../test-runner/mocha-options.mjs';
+import { RUNNER_NAMES } from '../../test-runner/runners.mjs';
 
 export const TESTS_TOOL = 'tests';
 export const TEST_RUNNER_PROJECT_FILES = [...PROJECT_CONFIG_NAMES, ...MOCHA_RC_FILES];

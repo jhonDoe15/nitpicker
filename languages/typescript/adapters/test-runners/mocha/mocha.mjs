@@ -15,7 +15,7 @@ import { loadFailureReport, reportFromMocha } from './mocha-report.mjs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { consoleProducerPath, startTestConsole } from '../test-console-run.mjs';
-import { projectTestRetry } from '../../../preset/project-configs/test-runner-config.mjs';
+import { projectTestRetry } from '../../../preset/project-configs/test-runner/test-runner-config.mjs';
 
 const UNIQUE_FILES = path.join(import.meta.dirname, 'mocha-files.config.mjs');
 

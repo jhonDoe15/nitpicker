@@ -1,15 +1,15 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { validateConfig } from '../../../../core/configuration/validate.mjs';
+import { validateConfig } from '../../../../../core/configuration/validate.mjs';
 import {
   PICK_SOURCE,
   createRunnerProjects,
   rulesOf,
   runArea,
-} from '../../adapters/test-runners/test-support/runner-project.mjs';
-import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mjs';
-import { ignoredScriptToolNotices } from './ignored-notices.mjs';
+} from '../../../adapters/test-runners/test-support/runner-project.mjs';
+import { resolveHeadPolicy, withHeadCheckoutFacts } from '../../head-policy.mjs';
+import { testsIgnoredNotices } from '../ignored-notices.mjs';
 import { projectTestRetry, vitestRetryArguments } from './test-runner-config.mjs';
 
 const projects = createRunnerProjects();
@@ -218,7 +218,7 @@ describe('the test runner config a project opts into', () => {
     const notice = (setting) =>
       `Ignoring ${setting}; opt in with "tools": { "tests": { "precedence": ["project", "nitpicker"] } }`;
 
-    expect(ignoredScriptToolNotices({ config: {}, projectRoot: root })).toEqual([
+    expect(testsIgnoredNotices({ config: {}, projectRoot: root })).toEqual([
       notice('test.retry in vitest.config.ts'),
       notice('retries in .mocharc.yml'),
       notice('retries in package.json "mocha"'),
@@ -227,8 +227,8 @@ describe('the test runner config a project opts into', () => {
       { tools: { tests: { precedence: ['project'] } } },
       { disable: ['coverage'] },
     ]) {
-      expect(ignoredScriptToolNotices({ config, projectRoot: root })).toEqual([]);
+      expect(testsIgnoredNotices({ config, projectRoot: root })).toEqual([]);
     }
-    expect(ignoredScriptToolNotices({ config: {}, projectRoot: vitestProject({}) })).toEqual([]);
+    expect(testsIgnoredNotices({ config: {}, projectRoot: vitestProject({}) })).toEqual([]);
   });
 });

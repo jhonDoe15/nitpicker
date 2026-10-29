@@ -1,10 +1,11 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { isPlainObject } from '../../../../shared/config.mjs';
+import { isPlainObject } from '../../../../../shared/config.mjs';
+import { staysInside } from '../../../../../shared/conventions/read-inside.mjs';
 import {
   missingProjectConfig,
   precedenceLayers,
-} from '../../../../shared/conventions/tool-precedence.mjs';
+} from '../../../../../shared/conventions/tool-precedence.mjs';
 import {
   PROJECT_TSCONFIG,
   isSolutionTsconfig,
@@ -13,8 +14,9 @@ import {
   tsconfigProblems,
   parsedTsconfig,
   tsconfigChain,
-} from '../modules/tsconfig-files.mjs';
-import { pickedKeys } from './config-module.mjs';
+  typescriptVersion,
+} from '../../modules/tsconfig-files.mjs';
+import { pickedKeys } from '../config-module.mjs';
 
 export const TYPESCRIPT_TOOL = 'typescript';
 
@@ -113,29 +115,70 @@ function lookedFor(layout) {
   return layout.javascript ? `${PROJECT_TSCONFIG} or ${PROJECT_JSCONFIG}` : PROJECT_TSCONFIG;
 }
 
-export function readTypescriptProjectConfig(projectRoot, layout) {
+function readProjectTsconfig(projectRoot, layout) {
   const extended = extendedProjectTsconfig(projectRoot, layout);
   if (extended === undefined) {
-    throw new Error(missingProjectConfig(TYPESCRIPT_TOOL, `a ${lookedFor(layout)}`));
+    return undefined;
   }
+  const name = extended.slice(2);
   const file = path.join(projectRoot, extended);
+  if (!staysInside(projectRoot, file)) {
+    throw new Error(`${name} must stay inside the project`);
+  }
   const problems = tsconfigProblems(file);
   if (problems.length > 0) {
-    throw new Error(`${extended.slice(2)} cannot be read: ${problems.join('; ')}`);
+    throw new Error(
+      `${name} cannot be read by TypeScript ${typescriptVersion()}: ${problems.join('; ')}`,
+    );
   }
+  return { name, options: parsedTsconfig(file).options };
+}
+
+export function readTypescriptProjectConfig(projectRoot, layout) {
+  const tsconfig = readProjectTsconfig(projectRoot, layout);
+  if (tsconfig === undefined) {
+    throw new Error(missingProjectConfig(TYPESCRIPT_TOOL, `a ${lookedFor(layout)}`));
+  }
+  return { compilerOptions: projectStrictValues(tsconfig.options, layout.javascript) };
+}
+
+export function relaxedStrictOptions(projectRoot, layout) {
+  const tsconfig = readProjectTsconfig(projectRoot, layout);
+  if (tsconfig === undefined) {
+    return { relaxed: [] };
+  }
+  const strict = strictCompilerOptions(layout.javascript);
   return {
-    compilerOptions: projectStrictValues(parsedTsconfig(file).options, layout.javascript),
+    file: tsconfig.name,
+    relaxed: Object.keys(strict)
+      .filter((key) => tsconfig.options[key] !== undefined && tsconfig.options[key] !== strict[key])
+      .map((key) => `${key}: ${String(tsconfig.options[key])}`),
   };
 }
 
 export function projectTsconfigFiles(projectRoot, layout) {
-  const extended = extendedProjectTsconfig(projectRoot, layout);
-  return extended === undefined ? [] : tsconfigChain(projectRoot, extended.slice(2));
+  const selected = extendedProjectTsconfig(projectRoot, layout);
+  if (selected === undefined) {
+    return [];
+  }
+  const root = `./${projectConfigName(projectRoot, layout)}`;
+  return [
+    ...new Set([selected, root].flatMap((config) => tsconfigChain(projectRoot, config.slice(2)))),
+  ];
+}
+
+export function appliedTypescriptOptions(projectRoot, layout) {
+  const { compilerOptions } = readTypescriptProjectConfig(projectRoot, layout);
+  return {
+    config: { ...strictCompilerOptions(layout.javascript), ...compilerOptions },
+    file: extendedProjectTsconfig(projectRoot, layout).slice(2),
+    files: projectTsconfigFiles(projectRoot, layout),
+  };
 }
 
 export function projectStrictOverrides(settings, keys) {
   const layers = precedenceLayers(settings?.precedence);
-  if (!layers.usesProject) {
+  if (!layers.usesProject || layers.nitpickerFirst) {
     return {};
   }
   if (settings.projectConfigError !== undefined) {
@@ -145,5 +188,5 @@ export function projectStrictOverrides(settings, keys) {
   if (!isPlainObject(options)) {
     throw new Error('The head policy is missing the project tsconfig compiler options');
   }
-  return layers.nitpickerFirst ? {} : pickedKeys(options, keys);
+  return pickedKeys(options, keys);
 }

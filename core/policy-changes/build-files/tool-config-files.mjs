@@ -4,16 +4,25 @@ import {
   PROJECT_TOOL_CONFIGS,
 } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { readInside } from '../../../shared/conventions/read-inside.mjs';
-import { JSCPD_PROJECT_FILE } from '../../../shared/conventions/tool-precedence.mjs';
+import {
+  JSCPD_PROJECT_FILE,
+  precedenceLayers,
+} from '../../../shared/conventions/tool-precedence.mjs';
 import { appliedJscpdConfig } from '../../tooling/jscpd/config.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
-import { STRYKER_PROJECT_FILES } from '../../../languages/typescript/preset/project-configs/stryker-project-config.mjs';
-import { projectTsconfigFiles } from '../../../languages/typescript/preset/project-configs/typescript-project-options.mjs';
+import {
+  appliedStrykerConfig,
+  STRYKER_PROJECT_FILES,
+} from '../../../languages/typescript/preset/project-configs/stryker-project-config.mjs';
+import {
+  appliedTypescriptOptions,
+  projectTsconfigFiles,
+} from '../../../languages/typescript/preset/project-configs/typescript/typescript-project-options.mjs';
 import {
   TESTS_TOOL,
   TEST_RUNNER_PROJECT_FILES,
-} from '../../../languages/typescript/preset/project-configs/test-runner-config.mjs';
+} from '../../../languages/typescript/preset/project-configs/test-runner/test-runner-config.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
 
@@ -32,7 +41,8 @@ const MANIFEST_KEYS = new Map([
 ]);
 
 function usesProjectConfig(config, tool) {
-  return (config.tools?.[tool]?.precedence ?? []).includes('project');
+  const layers = precedenceLayers(config.tools?.[tool]?.precedence);
+  return layers.usesProject && !(['typescript', TESTS_TOOL].includes(tool) && layers.nitpickerFirst);
 }
 
 function manifestKey(tool, content) {
@@ -126,21 +136,55 @@ function isOptedIn(tool, config) {
   );
 }
 
-function appliedSide(side, optedIn) {
-  if (!optedIn) {
-    return { kind: 'applied', config: {} };
-  }
-  const content = readInside(side.root, JSCPD_PROJECT_FILE);
+function jscpdSide(side, optedIn) {
+  const content = optedIn ? readInside(side.root, JSCPD_PROJECT_FILE) : undefined;
   return content === undefined
     ? { kind: 'applied', config: {} }
     : appliedJscpdConfig(content.toString('utf8'));
 }
 
-function appliedConfigs(base, head) {
-  const sides = [appliedSide(base, isOptedIn('jscpd', base.config)), appliedSide(head, true)];
-  return sides.every(({ kind }) => kind === 'applied')
-    ? { applied: { base: sides[0].config, head: sides[1].config } }
-    : {};
+function strykerSide(side, optedIn) {
+  try {
+    const { values, file } = optedIn ? appliedStrykerConfig(side.root) : { values: {} };
+    return { kind: 'applied', config: values, files: file === undefined ? [] : [file] };
+  } catch {
+    return { kind: 'rejected' };
+  }
+}
+
+function typescriptSide(side, optedIn) {
+  try {
+    return optedIn
+      ? { kind: 'applied', ...appliedTypescriptOptions(side.root, resolveLayoutFor(side.config)) }
+      : { kind: 'rejected' };
+  } catch {
+    return { kind: 'rejected' };
+  }
+}
+
+const APPLIED_SIDES = new Map([
+  ['jscpd', jscpdSide],
+  ['stryker', strykerSide],
+  ['typescript', typescriptSide],
+]);
+
+function appliedConfigs(tool, base, head) {
+  const read = APPLIED_SIDES.get(tool);
+  if (read === undefined) {
+    return {};
+  }
+  const sides = [read(base, isOptedIn(tool, base.config)), read(head, true)];
+  if (!sides.every(({ kind }) => kind === 'applied')) {
+    return {};
+  }
+  return {
+    applied: {
+      base: sides[0].config,
+      head: sides[1].config,
+      file: sides[1].file,
+      files: [...new Set(sides.flatMap(({ files = [] }) => files))],
+    },
+  };
 }
 
 export function readToolConfigs(base, head, gitBlobId) {
@@ -154,6 +198,6 @@ export function readToolConfigs(base, head, gitBlobId) {
         gitBlobId,
       ),
       head: fingerprints(tool, { root: head.root, files: candidates(tool, head) }, gitBlobId),
-      ...(tool === 'jscpd' ? appliedConfigs(base, head) : {}),
+      ...appliedConfigs(tool, base, head),
     }));
 }

@@ -124,8 +124,8 @@ Decision (proposed, pending owner review):
   (`languages/typescript/preset/tool-configs.mjs`); with the default layout the shipped file is linked as before. The
   vitest configs copied for coverage and mutation read `NITPICKER_POLICY` themselves.
 - When the project has a `tsconfig.json`, the tsconfig copies extend it instead
-  (`policyTransformFor`). `tsconfig.quality.json` adds the policy flags, `noEmit`, `skipLibCheck`
-  and the layout's include and exclude globs; `tsconfig.stryker.json` adds `skipLibCheck` and the same
+  (`policyTransformFor`). `tsconfig.quality.json` adds the policy flags, `noEmit`, `noCheck: false`,
+  `skipLibCheck` and the layout's include and exclude globs; `tsconfig.stryker.json` adds `noCheck: false`, `skipLibCheck` and the same
   policy flags, so mutants that break the policy's indexing or return checks are compile errors.
   The mutation runner first type-checks the project with that config and, if it fails, installs the
   copy without the policy flags (the shipped file without `noImplicitReturns`,

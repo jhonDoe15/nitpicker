@@ -424,7 +424,12 @@ compared with the defaults. These changes are loosening:
   `tools.prettier.precedence` lists `"project"` (the `prettier` key of `package.json` only, and in
   `.editorconfig` only the sections that match the files Prettier formats). An edit that only
   changes comments, blank lines or layout is not counted. Whether an edit is stricter or looser is
-  not judged, so a person reviews it; a removed file is listed;
+  not judged, so a person reviews it; a removed file is listed. The TypeScript compiler options are
+  judged per option while `tools.typescript.precedence` lists `"project"` first on both sides: each
+  strict option whose effective value moved is listed as `typescript tsconfig.json
+noUncheckedIndexedAccess: true -> false`, only one that goes from `true` to `false` needs a person,
+  and the files of the tsconfig chain (the selected config, the root `tsconfig.json` and what they
+  `extends` inside the project) are listed when the change adds the opt-in or a side cannot be read;
 - a newly disabled analyzer, a threshold above the base's (a removed threshold counts at its
   default), and a removed or changed custom analyzer (any change to its `command` or `args`);
 - a `preset` that checks less: an explicit preset changed to another one, or `javascript` set where
@@ -1247,7 +1252,7 @@ own tools do:
   `jsx`, `paths`, module resolution and other settings, and nitpicker adds its policy flags on top
   (`strict`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noUncheckedIndexedAccess`,
   `useUnknownInCatchVariables` and the
-  rest of the strict family) plus `noEmit` and `skipLibCheck`. Where the project's tsconfig sets one
+  rest of the strict family) plus `noEmit`, `noCheck: false` and `skipLibCheck`. Where the project's tsconfig sets one
   of these options itself, it wins only with `tools.typescript.precedence` listing `"project"` first
   (see [TypeScript compiler options](#typescript-compiler-options-typescript-and-javascript-presets)). TypeScript projects also get
   `exactOptionalPropertyTypes`, `noPropertyAccessFromIndexSignature` and `noUncheckedSideEffectImports`
@@ -1369,7 +1374,8 @@ sets the precedence for that tool. It lists `"project"` and `"nitpicker"`, highe
 | `["nitpicker", "project"]` | both merged; nitpicker's value wins where both set the same option   |
 
 A change that adds the opt-in is a policy change, and the project config files it starts reading are
-listed with it (each option for `jscpd`), so the person who accepts it sees what the config loosens.
+listed with it (each option for `jscpd` and `stryker`), so the person who accepts it sees what the config
+loosens. Stryker's config has its own section, [Mutation testing config](#mutation-testing-config-typescript-and-javascript-presets).
 
 For Prettier, "the project's config" is what Prettier itself resolves for each file
 (`.prettierrc*`, `prettier.config.*`, the `prettier` key in `package.json`, and `.editorconfig`),
@@ -1540,32 +1546,50 @@ ignores.
 #### Mutation testing config (typescript and javascript presets)
 
 Stryker runs with nitpicker's config, and the project's `stryker.config.*` or `.stryker.conf.*` is not
-read. While `mutation` runs, a project that has one gets the notice `Ignoring stryker.config.json; opt
-in with "tools": { "stryker": { "precedence": ["project", "nitpicker"] } }` at the start of the run.
-With the opt-in, nitpicker reads the first file Stryker itself would find (`stryker.conf.json`, `.js`,
-`.mjs` and `.cjs`, then `stryker.config.*`, then the same names with a leading dot); a JavaScript
-config is imported once with Node in the head checkout, and only its JSON values are kept. The merge is
-shallow, key by key:
+read. Unless `mutation` is in `disable`, a project that has one gets the notice `Ignoring
+stryker.config.json; opt in with "tools": { "stryker": { "precedence": ["project", "nitpicker"] } }` at
+the start of the run. With the opt-in, nitpicker reads the first regular file Stryker itself would find
+(`stryker.conf.json`, `.js`, `.mjs` and `.cjs`, then `stryker.config.*`, then the same names with a
+leading dot; a directory with such a name is skipped). A JavaScript config is imported once with Node in
+the head checkout, in a child process that is stopped after 30 seconds, whose output is capped at
+10 MB, and that does not get the CI job summary variable; only the JSON values of its default export are
+kept, and whatever the config prints is ignored. While `mutation` is in `disable`, the head policy
+does not read it. The merge is shallow, key by key:
 
-| Stryker option                                                                                                                                                                                                                                                                                                                  | With the opt-in                                                                                                                |
-| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `mutator` (`excludedMutations`, `plugins`), `ignoreStatic`, `timeoutMS`, `timeoutFactor`, `dryRunTimeoutMinutes`, `concurrency`, `maxTestRunnerReuse`, `disableBail`, `warnings`                                                                                                                                                | the project's value; with `["nitpicker", "project"]` nitpicker's where it sets one (`timeoutMS` and `timeoutFactor` with Jest) |
-| `testRunnerNodeArgs`, `checkerNodeArgs`                                                                                                                                                                                                                                                                                         | added after nitpicker's                                                                                                        |
-| `ignorePatterns`                                                                                                                                                                                                                                                                                                                | added before nitpicker's, so nitpicker's own entries still apply                                                               |
-| `mutate`, `testRunner` and the runner options, `checkers`, `tsconfigFile`, `typescriptChecker`, `disableTypeChecks`, `coverageAnalysis`, `plugins`, `appendPlugins`, `ignorers`, `reporters` and the reporter options, `thresholds`, `tempDirName`, `inPlace`, `incremental`, `buildCommand`, `logLevel` and every other option | nitpicker's; the project's value is ignored                                                                                    |
+| Stryker option                                                                                                                                                                                                                                                                                                                  | With the opt-in                                                                                                                                                                                                                                                                                  |
+| ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `mutator` (`excludedMutations`, `plugins`), `ignoreStatic`, `timeoutMS`, `timeoutFactor`, `dryRunTimeoutMinutes`, `concurrency`, `maxTestRunnerReuse`, `disableBail`, `warnings`                                                                                                                                                | the project's value; with `["nitpicker", "project"]` nitpicker's where it sets one (`timeoutMS` and `timeoutFactor` with Jest); a `timeoutMS`, `timeoutFactor` or `dryRunTimeoutMinutes` is never lower than nitpicker's value, or Stryker's default (5000, 1.5 and 5) where nitpicker sets none |
+| `testRunnerNodeArgs`, `checkerNodeArgs`                                                                                                                                                                                                                                                                                         | added after nitpicker's                                                                                                                                                                                                                                                                          |
+| `ignorePatterns`                                                                                                                                                                                                                                                                                                                | added before nitpicker's, so nitpicker's own entries still apply                                                                                                                                                                                                                                 |
+| `mutate`, `testRunner` and the runner options, `checkers`, `tsconfigFile`, `typescriptChecker`, `disableTypeChecks`, `coverageAnalysis`, `plugins`, `appendPlugins`, `ignorers`, `reporters` and the reporter options, `thresholds`, `tempDirName`, `inPlace`, `incremental`, `buildCommand`, `logLevel` and every other option | nitpicker's; the project's value is ignored                                                                                                                                                                                                                                                      |
 
 Everything Stryker needs to run and to report stays nitpicker's, so `["project"]` and
-`["project", "nitpicker"]` are the same. The mutants the project's `mutator.excludedMutations` hides,
-and with `ignoreStatic` the static mutants Stryker skips, are left out of the findings; a mutant a
-`Stryker disable` comment hides is still an enforceable `mutant-ignored` finding. The project's
-`thresholds` never fail the run: the gate fails for surviving mutants in changed code, not for a score.
-`ignorers` and plugins are not read because the reason an ignorer gives cannot be told apart from an
-ignore comment's, and `buildCommand` is not because the coverage run does not build either. The file is
-read from the head checkout and applies to both sides of the comparison; the keys nitpicker reads are
-part of the head policy, so editing them invalidates cached results, and an edit of the file is a
-policy change. Naming `"project"` without a config, or with one that cannot be read (invalid JSON, a
-module that throws or does not export an object, a list option that is not a list of strings, a file
-that links outside the project), is a tool error of the `mutation` analyzer.
+`["project", "nitpicker"]` are the same. A project cannot lower a timeout, because a short one turns
+survivors into `Timeout` results that count as caught. The mutants the project's
+`mutator.excludedMutations` hides, and with `ignoreStatic` the static mutants Stryker skips, are left
+out of the findings, using the config Stryker was actually given, and only when the mutant's reason is
+Stryker's own (`Ignored because of excluded mutation "<mutator>"` or the static one); a mutant a
+`Stryker disable` comment hides is still an enforceable `mutant-ignored` finding, even when its mutator
+is excluded. The project's `thresholds` never fail the run: the gate fails for surviving mutants in
+changed code, not for a score. `ignorers` and plugins are not read because the reason an ignorer gives
+cannot be told apart from an ignore comment's, and `buildCommand` is not because the coverage run does
+not build either. The file is read from the head checkout and applies to both sides of the comparison,
+and when the head drops the opt-in the base is run with nitpicker's settings too; the keys nitpicker
+reads are part of the head policy, so editing them invalidates cached results. Naming `"project"`
+without a config, or with one that cannot be read (invalid JSON, a module that throws, ends the process,
+does not finish loading or does not export an object, a list option that is not a list of strings, a
+timeout that is not a number of 0 or more, a `mutator` that is not an object, a file that links outside
+the project), is a tool error of the `mutation` analyzer.
+
+An edit of the config is a policy change, judged on the values nitpicker applies, not on the file's
+text, and listed per key (`stryker stryker.config.mjs mutator.excludedMutations: [] -> ["StringLiteral"]`,
+with `mutator` listed as `mutator.<option>`). The config is loaded on both sides, so an edit of a file
+it imports, a computed value, or the deletion of the config that wins so that a lower-ranked one takes
+over all show up, while an edit of an option nitpicker does not read, a comment or the layout shows
+nothing. It needs a person's acceptance when `mutator.excludedMutations`, `ignorePatterns`,
+`testRunnerNodeArgs` or `checkerNodeArgs` gain an entry, `ignoreStatic` becomes `true`, or any other
+`mutator` option changes; every other change is only listed. When a side cannot be loaded, the text of
+the file is compared instead (`stryker project config changed: stryker.config.mjs`).
 
 #### TypeScript compiler options (typescript and javascript presets)
 
@@ -1579,28 +1603,54 @@ opt-in. What `tools.typescript.precedence` decides is who wins for nitpicker's s
 `noUncheckedIndexedAccess`, `forceConsistentCasingInFileNames` and, with the TypeScript preset,
 `exactOptionalPropertyTypes`, `noPropertyAccessFromIndexSignature` and `noUncheckedSideEffectImports`.
 
-| `precedence`                                          | Strict options                                                                                             |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `["nitpicker"]` (default), `["nitpicker", "project"]` | nitpicker's values, whatever the tsconfig sets                                                             |
-| `["project"]`, `["project", "nitpicker"]`             | the value the tsconfig sets explicitly (following `extends`) wins; every option it leaves out stays strict |
+| `precedence`                              | Strict options                                                                                             |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `["nitpicker"]` (default)                 | nitpicker's values, whatever the tsconfig sets                                                             |
+| `["nitpicker", "project"]`                | nitpicker's values; the tsconfig is not read for them (see below)                                          |
+| `["project"]`, `["project", "nitpicker"]` | the value the tsconfig sets explicitly (following `extends`) wins; every option it leaves out stays strict |
 
 So a tsconfig that sets only `"noUncheckedIndexedAccess": false` is still checked with every other
 strict option. A `strict` the tsconfig sets also decides the members of its family that it leaves
 out, as in TypeScript (except `alwaysStrict`, which TypeScript deprecates turning off), and with `strictNullChecks` off `strictPropertyInitialization` and
 `exactOptionalPropertyTypes` are turned off too unless the tsconfig sets them, because TypeScript
-rejects them without it. `noEmit`, `skipLibCheck`, `allowJs` and `checkJs`, the files checked and the
-excludes stay nitpicker's. Both type check engines and the mutation checker's tsconfig use the same
+rejects them without it. `noEmit`, `noCheck`, `skipLibCheck`, `allowJs` and `checkJs`, the files
+checked and the excludes stay nitpicker's with every ordering: a tsconfig that sets `noCheck: true`,
+which would switch type checking off, is checked anyway, and `skipLibCheck` is on, which also covers
+`skipDefaultLibCheck`. Both type check engines and the mutation checker's tsconfig use the same
 values, and so do the type-aware lint rules, which read the same config. The values are read from the
 head checkout and apply to both sides of the comparison (a base whose tsconfig is still strict is
-checked with the head's values), they are part of the head policy, and an edit of the tsconfig or a
-file it `extends` inside the project is a policy change while `precedence` lists `"project"`.
-Naming `"project"` without a tsconfig, or with one TypeScript cannot read (invalid JSON, a missing
-`extends` target), is a tool error of the analyzers that use the type check config. Without the
-opt-in, a tsconfig that relaxes one of these options gets the notice `Ignoring strict: false,
-noUncheckedIndexedAccess: false in tsconfig.json; opt in with "tools": { "typescript": { "precedence":
-["project", "nitpicker"] } }`. `precedence` cannot be combined with `tools.typescript.project`, which
-already keeps the selected config's options as written (see
-[TypeScript project config](#typescript-project-config)).
+checked with the head's values), and they are part of the head policy.
+
+With `["nitpicker", "project"]` nitpicker wins every option the tsconfig could set here, so the
+tsconfig is not read for them: a missing or unreadable tsconfig is no error of this setting, and an
+edit of it is no policy change. Whichever ordering is used, the project's other options (`target`,
+`paths`, `lib`, `include` and so on) reach the type check through `extends`.
+
+With `"project"` first, naming it without a tsconfig, or with one TypeScript cannot read (invalid
+JSON, a missing `extends` target, an option the TypeScript version in use does not know), is a tool
+error of the analyzers that use the type check config. The message names the compiler, as in
+`tsconfig.json cannot be read by TypeScript 6.0.3: Cannot read file ...`, and a tsconfig that a
+symlink moves out of the project is rejected with `must stay inside the project`.
+
+Policy review loads the selected tsconfig on both sides and compares the value each strict option
+ends up with (nitpicker's, replaced by what the project sets), so a `strict` moved to `false`, a
+changed `extends`, the root solution `tsconfig.json` that picks another config, and an edit of a file
+`extends`ed from above the project root or from a package (`@org/config/tsconfig.json`,
+`@tsconfig/strictest`) all show up, while `paths`, `include`, comments and key order show nothing.
+Each option that moved is listed as `typescript tsconfig.json noUncheckedIndexedAccess: true ->
+false`, and a strict option that goes from `true` to `false` needs a person's acceptance; a move the
+other way is only listed. When the change adds the opt-in, or a side cannot be read, every file of
+the chain is listed instead as `typescript project config changed: tsconfig.json`: the selected
+config, the root `tsconfig.json`, and the files they `extends` inside the project (not one that a
+symlink moves out of it). A head that removes the opt-in is not judged, and the base follows the
+head.
+
+Without the opt-in (the default or an explicit `["nitpicker"]`), a tsconfig that relaxes one of these
+options gets the notice `Ignoring strict: false, noUncheckedIndexedAccess: false in tsconfig.json; opt
+in with "tools": { "typescript": { "precedence": ["project", "nitpicker"] } }`; when the tsconfig
+cannot be read the report says `Could not check the tsconfig for relaxed strict options: ...` instead.
+`precedence` cannot be combined with `tools.typescript.project`, which already keeps the selected
+config's options as written (see [TypeScript project config](#typescript-project-config)).
 
 #### Test runner configs (typescript and javascript presets)
 
@@ -1716,7 +1766,7 @@ TypeScript checker, explicitly select a config in `nitpicker.config.json`:
 The path must name a JSON config file inside the project, relative to its root. Nested configs
 and their `extends` are supported. Each snapshot reads its own copy of that config. Its options,
 `files`, `include` and `exclude` are retained; nitpicker adds its configured `exclude` patterns
-and sets `noEmit: true`. Imported files and explicit `files` entries follow TypeScript's usual
+and sets `noEmit: true` and `noCheck: false`. Imported files and explicit `files` entries follow TypeScript's usual
 exclusion semantics. The preset does not add strictness, JavaScript inputs or DOM libraries to
 an explicitly selected config. A missing config is an error, without a preset fallback. Because the
 selected config's options are used as written, `project` cannot be combined with
