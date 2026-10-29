@@ -18,3 +18,11 @@ export function keepingLineEndings(format) {
     };
   };
 }
+
+const LONE_LINE_FEED = /(?<!\r)\n/gu;
+
+export function withFixedLineEndingsOf(source, fixed) {
+  return source.includes('\r\n') && source.match(LONE_LINE_FEED) === null
+    ? fixed.replaceAll(LONE_LINE_FEED, '\r\n')
+    : fixed;
+}
