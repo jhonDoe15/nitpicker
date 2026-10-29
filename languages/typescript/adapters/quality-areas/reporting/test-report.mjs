@@ -1,6 +1,9 @@
-import { TESTS_FAILED_RULE } from '../../../../../shared/rules/finding-helpers.mjs';
 import {
-  TROUBLESHOOTING_ANCHORS,
+  TESTS_FAILED_RULE,
+  TESTS_NOT_RUN_RULE,
+  testsFailOnBase,
+} from '../../../../../shared/rules/finding-helpers.mjs';
+import {
   testsFailAnchor,
   troubleshootingError,
   withTroubleshooting,
@@ -26,16 +29,19 @@ import {
 } from './failure-lines.mjs';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 
+const COULD_NOT_RUN = 'could not run';
+
 export function coverageFailureFindings(
   options,
   { report, result, runnerName, precedingCommands },
 ) {
-  const [firstFailure] = testFailures(report, options.projectRoot);
+  const failures = testFailures(report, options.projectRoot);
+  const [firstFailure] = failures;
   const unhandled = unhandledErrors(result.stderr);
   if (firstFailure === undefined && unhandled.length > 0) {
     return [
       toolErrorFinding(options, {
-        rule: TESTS_FAILED_RULE,
+        rule: TESTS_NOT_RUN_RULE,
         path: unhandled[0].file === undefined ? '.' : findingPath(unhandled[0].file),
         message: unhandledErrorText(unhandled),
         anchor: testsFailAnchor(options.snapshot),
@@ -48,11 +54,16 @@ export function coverageFailureFindings(
       testsFailAnchor(options.snapshot),
     );
   }
+  const ran = failures.some(({ name }) => name !== COULD_NOT_RUN);
   return [
     toolErrorFinding(options, {
-      rule: TESTS_FAILED_RULE,
+      rule: ran ? TESTS_FAILED_RULE : TESTS_NOT_RUN_RULE,
       path: findingPath(firstFailure.file),
-      message: formatTestFailures(report, options.projectRoot, { runnerName, precedingCommands }),
+      message: formatTestFailures(report, options.projectRoot, {
+        runnerName,
+        precedingCommands,
+        snapshot: ran ? options.snapshot : undefined,
+      }),
       anchor: testsFailAnchor(options.snapshot),
     }),
   ];
@@ -115,7 +126,7 @@ function testFailures(report, projectRoot) {
       });
     }
     if (failedAssertions.length === 0 && testResult?.status === 'failed') {
-      failures.push({ file, name: 'could not run', assertion: firstLine(testResult.message) });
+      failures.push({ file, name: COULD_NOT_RUN, assertion: firstLine(testResult.message) });
     }
   }
   return failures;
@@ -145,7 +156,18 @@ function precedingNote(precedingCommands) {
   ];
 }
 
-export function formatTestFailures(report, projectRoot, { runnerName, precedingCommands } = {}) {
+function failureEntry({ file, name, assertion }) {
+  return `${file} > ${name}${assertion === '' ? '' : `: ${assertion}`}`;
+}
+
+export function formatTestFailures(
+  report,
+  projectRoot,
+  { runnerName, precedingCommands, snapshot } = {},
+) {
+  if (snapshot === 'base') {
+    return testsFailOnBase(testFailures(report, projectRoot).map(failureEntry));
+  }
   return [failureText(report, projectRoot, runnerName), ...precedingNote(precedingCommands)].join(
     '\n',
   );
@@ -162,10 +184,7 @@ function failureText(report, projectRoot, runnerName) {
   }
   const listed = failures
     .slice(0, MAX_LISTED_FAILURES)
-    .map(
-      ({ file, name, assertion }) =>
-        `  ${file} > ${name}${assertion === '' ? '' : `: ${assertion}`}`,
-    );
+    .map((failure) => `  ${failureEntry(failure)}`);
   const omitted = failures.length - listed.length;
   return [
     `${headline}:`,

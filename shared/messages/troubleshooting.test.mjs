@@ -10,7 +10,6 @@ import {
   failureText,
   isExplainedError,
   testsFailAnchor,
-  testsFailError,
   toolErrorHelpLine,
   troubleshootingError,
   troubleshootingLinkOf,
@@ -176,6 +175,7 @@ describe('the message helpers', () => {
     expect(isExplainedError(explained)).toBe(true);
     expect(isExplainedError(new Error('x'))).toBe(false);
     expect(explained.cause).toBe('x');
+    expect(explained).toEqual(new Error('Gradle did not finish within 15 minutes'));
     expect(failureText(explained, 'the-gradle-build-fails')).toBe(
       'Gradle did not finish within 15 minutes',
     );
@@ -189,11 +189,6 @@ describe('the message helpers', () => {
     expect(testsFailAnchor('base')).toBe('tests-fail-on-the-base');
     expect(testsFailAnchor('head')).toBeUndefined();
     expect(testsFailAnchor(undefined)).toBeUndefined();
-    expect(testsFailError('Tests fail', 'base').message).toBe(
-      `Tests fail. See ${DOC_URL}#tests-fail-on-the-base`,
-    );
-    expect(isExplainedError(testsFailError('Tests fail', 'head'))).toBe(true);
-    expect(testsFailError('Tests fail', 'head').message).toBe('Tests fail');
   });
 
   it('points at the tool errors entry once when a listed tool error has no link', () => {

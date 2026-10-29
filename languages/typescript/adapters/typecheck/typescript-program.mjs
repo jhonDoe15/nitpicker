@@ -1,32 +1,45 @@
-import { existsSync, realpathSync } from 'node:fs';
+import { realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { PACKAGE_ROOT, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
-import { nativeDiagnostics } from './native-diagnostics.mjs';
 import {
-  TROUBLESHOOTING_ANCHORS,
-  troubleshootingError,
-} from '../../../../shared/messages/troubleshooting.mjs';
+  isToolInstalled,
+  PACKAGE_ROOT,
+  resolveTool,
+} from '../../../../core/tooling/tool-resolution.mjs';
+import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
+import { packageHasJavaScriptApi } from '../../typescript-api/api-redirect.mjs';
+import { ts as selectedTypeScript } from '../../typescript-api/typescript-api.mjs';
+import { nativeDiagnostics } from './native-diagnostics.mjs';
 
 const NO_INPUTS_CODE = 18003;
-export function loadTypeScript(projectRoot = PACKAGE_ROOT) {
-  const root = resolveTool('typescript', { projectRoot }).root;
-  const libraryPath = path.join(root, 'lib/typescript.js');
-  if (!existsSync(libraryPath)) {
-    throw troubleshootingError(
-      `The type check reads source files with the project's typescript package, which must be 5.7 to 6.x: ` +
-        `${root} has no JavaScript API, which TypeScript 7 does not ship yet.`,
-      TROUBLESHOOTING_ANCHORS.missingPeer,
-    );
+
+export function projectTypeScript(projectRoot = PACKAGE_ROOT) {
+  if (!isToolInstalled('typescript', { projectRoot })) {
+    return { ts: selectedTypeScript };
   }
-  return createRequire(import.meta.url)(libraryPath);
+  const { root } = resolveTool('typescript', { projectRoot });
+  return packageHasJavaScriptApi(root)
+    ? { ts: createRequire(import.meta.url)(path.join(root, 'lib/typescript.js')) }
+    : { ts: selectedTypeScript, native: root };
 }
 
-export async function preEmitDiagnostics({ ts, engine, configPath, projectRoot }) {
+export function loadTypeScript(projectRoot = PACKAGE_ROOT) {
+  return projectTypeScript(projectRoot).ts;
+}
+
+export async function preEmitDiagnostics({ ts, engine, configPath, projectRoot, projectNative }) {
   if (engine === 'native') {
-    const native = await nativeDiagnostics({ ts, configPath, projectRoot });
+    const native = await nativeDiagnostics({
+      ts,
+      configPath,
+      projectRoot,
+      engineHint: projectNative === undefined,
+    });
     if (native.unsupported !== true) return native.diagnostics;
+  }
+  if (projectNative !== undefined) {
+    const own = await nativeDiagnostics({ ts, configPath, projectRoot, apiRoot: projectNative });
+    return own.diagnostics;
   }
   return projectDiagnostics(ts, configPath, projectRoot);
 }
@@ -34,10 +47,7 @@ export async function preEmitDiagnostics({ ts, engine, configPath, projectRoot }
 function projectDiagnostics(ts, configPath, projectRoot) {
   const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
   if (configFile.error !== undefined) {
-    throw troubleshootingError(
-      formatDiagnostic(ts, configFile.error),
-      TROUBLESHOOTING_ANCHORS.typescriptConfigUnreadable,
-    );
+    throw new Error(formatDiagnostic(ts, configFile.error));
   }
   const parsedConfig = ts.parseJsonConfigFileContent(
     configFile.config,
@@ -52,10 +62,7 @@ function projectDiagnostics(ts, configPath, projectRoot) {
   )
     return [];
   if (parsedConfig.errors.length > 0) {
-    throw troubleshootingError(
-      parsedConfig.errors.map((error) => formatDiagnostic(ts, error)).join('\n'),
-      TROUBLESHOOTING_ANCHORS.typescriptConfigUnreadable,
-    );
+    throw new Error(parsedConfig.errors.map((error) => formatDiagnostic(ts, error)).join('\n'));
   }
   const program = ts.createProgram({
     rootNames: parsedConfig.fileNames,

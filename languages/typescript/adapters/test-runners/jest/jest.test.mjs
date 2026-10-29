@@ -124,9 +124,9 @@ describe('coverage on a Jest project', () => {
     expect(findings).toEqual([
       {
         tool: 'coverage',
-        rule: 'tests-failed',
+        rule: 'tests-not-run',
         path: 'test/pick.test.ts',
-        identity: 'tests-failed',
+        identity: 'tests-not-run',
         message:
           'Jest ran no tests, but nitpicker sees test files such as test/pick.test.ts. ' +
           'Make the project\'s Jest config find them, or set "tools.tests.runner" in ' +
