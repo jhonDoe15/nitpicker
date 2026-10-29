@@ -121,6 +121,21 @@ describe('package-owned child configs', () => {
       rules: { 'nitpicker/report-module-load-effects': 'off' },
     });
   });
+  it('the logging policy lets entry points reference the standard streams', async () => {
+    const entryPolicy = {
+      ...policy,
+      layout: { ...policy.layout, entryPoints: ['lib/tools/run.mjs'] },
+    };
+    const config = await loadConfig('eslint-config/policies/logging.config.mjs', entryPolicy);
+
+    expect(config.at(-1)).toEqual({
+      files: ['lib/tools/run.mjs'],
+      rules: {
+        'nitpicker/report-module-load-effects': 'off',
+        'nitpicker/no-production-console': ['error', { allowStandardStreams: true }],
+      },
+    });
+  });
   it('production policy configs skip the module-load rule for the detected framework entry', async () => {
     const entryPolicy = {
       ...policy,
