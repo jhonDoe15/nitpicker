@@ -13,7 +13,14 @@ export function generatedMarkingChanges(scope) {
     return `generated-file markers added to checked code, which the checks now skip: ${listed(marked, limit)}`;
   }
   return {
-    loosened: [{ text: describe(LISTED_FILES), key: describe(marked.length), files: marked }],
+    loosened: [
+      {
+        text: describe(LISTED_FILES),
+        key: describe(marked.length),
+        kind: 'generated-marker',
+        files: marked,
+      },
+    ],
     changed: [],
   };
 }

@@ -8,9 +8,8 @@ import {
   moduleClasspaths,
   parseDependencyList,
   readReactor,
-  usesSpring,
 } from './maven-project.mjs';
-import { junitLauncherVersion } from './maven-tests.mjs';
+import { missingLauncherVersions } from './maven-tests.mjs';
 import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
 import {
   archunitTool,
@@ -19,6 +18,7 @@ import {
   MAVEN_PLUGINS,
   resolveTools,
 } from './maven-tools.mjs';
+import { buildRunsArchRules } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { processorTool } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
@@ -102,11 +102,6 @@ function readModules({ projectRoot, maven, work, spawn }) {
   return { modules, effectivePom };
 }
 
-function missingLauncherVersions(analyzed) {
-  const versions = analyzed.map(({ classpaths }) => junitLauncherVersion(classpaths.testRuntime));
-  return [...new Set(versions.filter((version) => version !== undefined))];
-}
-
 function analyzeAll({ analyzed, tools, pinned, configs, since, policy, kotlin, spawn, work }) {
   const springRoles = writeSpringRoles(policy.springRoles, work);
   for (const { module, classpaths } of analyzed) {
@@ -164,10 +159,7 @@ export function runMavenPreset(
         ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
         ...formatTool(policy.javaStyle, pinned),
         ...kotlin.extraTools,
-        ...archunitTool(
-          analyzed.some(({ classpaths }) => usesSpring(classpaths)),
-          pinned,
-        ),
+        ...archunitTool(buildRunsArchRules(policy, analyzed), pinned),
       ],
     });
     analyzeAll({ analyzed, tools, pinned, configs, since, policy, kotlin, spawn, work });

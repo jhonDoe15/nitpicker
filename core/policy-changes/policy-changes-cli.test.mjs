@@ -84,7 +84,7 @@ function runWithHeadConfig({ extraArguments = [], environment = {}, ...repositor
 
 const HEADING = 'Policy changed in this change (nitpicker.config.json, head against base):';
 const ACCEPTED_HEADING =
-  'Policy changed in this change (nitpicker.config.json, head against base; loosening accepted with --accept-policy-change):';
+  'Policy changed in this change (nitpicker.config.json, head against base; loosening accepted by exact digest):';
 
 function policyBlock(text, heading = HEADING) {
   const lines = text.split('\n');
@@ -120,6 +120,12 @@ describe('a change that loosens nitpicker.config.json', () => {
     'react.enabled: not set -> false',
   ];
 
+  const EXPECTED_KINDS = {
+    'exclude added: src/vendor/**': 'exclusion',
+    'threshold crapLimit raised from 9 to 20': 'threshold',
+    'react.enabled: not set -> false': 'react-disabled',
+  };
+
   it('fails with one finding per loosening and passes only once a person accepts its digest in CI', () => {
     const outsideCi = runWithHeadConfig({
       baseConfig,
@@ -140,7 +146,7 @@ describe('a change that loosens nitpicker.config.json', () => {
     ]);
     expect(policyFindings(outsideCi.newFindings)).toEqual([...expected].sort());
     expect(policyMessages(outsideCi.newFindings)).toEqual(
-      findingsFor(expected, outsideCi.summary.policyDigest)
+      findingsFor(expected, outsideCi.summary.policyDigest, { kinds: EXPECTED_KINDS })
         .map(({ message }) => message)
         .sort(),
     );
@@ -148,6 +154,26 @@ describe('a change that loosens nitpicker.config.json', () => {
       HEADING,
       ...expected.map((change) => `  ${change}`),
     ]);
+    expect(
+      outsideCi.newFindings
+        .filter(({ tool }) => tool === 'nitpicker-config')
+        .map(({ policyKind }) => policyKind)
+        .toSorted(),
+    ).toEqual(['exclusion', 'react-disabled', 'threshold']);
+    const { policyDigest } = outsideCi.summary;
+    const consoleLines = outsideCi.stdoutText.split('\n');
+    expect(consoleLines.filter((line) => line.includes('policy-loosened'))).toEqual([
+      '  Unapproved policy changes (nitpicker-config/policy-loosened): 3; ' +
+        'the gate fails until each is undone or a person accepts the digest.',
+    ]);
+    expect(consoleLines.filter((line) => line.includes(policyDigest))).toEqual([
+      '  Only a person may accept exactly these changes, after reviewing them: ' +
+        `--accept-policy-change=${policyDigest} at an interactive terminal, ` +
+        `or NITPICKER_ACCEPT_POLICY_CHANGE=${policyDigest} in CI.`,
+    ]);
+    expect(accepted.stdoutText.split('\n').filter((line) => line.includes('Unapproved'))).toEqual(
+      [],
+    );
     expect([accepted.exitCode, accepted.summary.policyChangeAccepted]).toEqual([0, true]);
     expect(policyBlock(accepted.stdoutText, ACCEPTED_HEADING)).toEqual([
       ACCEPTED_HEADING,

@@ -79,19 +79,11 @@ describe('moduleManifest', () => {
     },
   );
 
-  it.each([
-    [true, true],
-    [false, false],
-    [undefined, false],
-  ])('takes Spring declared by the build files as %j: %j', (declared, spring) => {
-    const classpaths = { mainCompile: [], testCompile: [] };
-    const manifest = moduleManifest({
-      module: singleModule(),
-      classpaths,
-      pinned: {},
-      spring: declared,
-    });
+  it('runs the architecture rules, but not the Spring rules, for a module with jMolecules only', () => {
+    const classpaths = { mainCompile: ['/m2/jmolecules-ddd-2.0.1.jar'], testCompile: [] };
 
-    expect(manifest.spring).toBe(spring);
+    const manifest = moduleManifest({ module: singleModule(), classpaths, pinned: {} });
+
+    expect([manifest.spring, manifest.springArch]).toEqual([false, true]);
   });
 });
