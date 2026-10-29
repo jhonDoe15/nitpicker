@@ -5,15 +5,12 @@ import {
   STANDARD_INPUT,
   STATIC_CALLS,
 } from './blocking-catalog.mjs';
+import { lastSegment } from './type-names.mjs';
 
 const TYPE_ALIASES = new Map([['java.nio.file.Path', ['kotlin.io.path.Path']]]);
 
 function covers(names, name) {
   return names === EVERY || names.includes(name);
-}
-
-function simpleName(name) {
-  return name.slice(name.lastIndexOf('.') + 1);
 }
 
 function isOneOf(resolver, name, qualified) {
@@ -34,7 +31,7 @@ function staticCall(call, resolver) {
     ) {
       return {
         subject: `${entry.label}.${call.name}`,
-        basis: `${simpleName(entry.owners[0])} is a blocking API`,
+        basis: `${lastSegment(entry.owners[0])} is a blocking API`,
       };
     }
   }
@@ -54,7 +51,7 @@ function memberCall(call, resolver) {
       (entry.requires ?? []).every((prefix) => resolver.importsFrom(prefix))
     ) {
       return {
-        subject: `${simpleName(matched)}.${call.name}`,
+        subject: `${lastSegment(matched)}.${call.name}`,
         basis: `the receiver is declared as ${matched}`,
       };
     }
@@ -88,7 +85,7 @@ function repositoryCall(call, project) {
   if (call.receiverType === undefined || call.qualifier === undefined) {
     return undefined;
   }
-  const type = simpleName(call.receiverType);
+  const type = lastSegment(call.receiverType);
   return project.repositories.has(type) && !project.suspending.has(call.name)
     ? { subject: `${type}.${call.name}`, basis: `${type} is a blocking Spring Data repository` }
     : undefined;

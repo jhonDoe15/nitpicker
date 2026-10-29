@@ -1,11 +1,7 @@
 import { BLOCKING_REPOSITORY_BASES } from './blocking-catalog.mjs';
-import { resolverFor } from './type-names.mjs';
+import { lastSegment, resolverFor } from './type-names.mjs';
 
 const SPRING_DATA = 'org.springframework.data.';
-
-function lastSegment(name) {
-  return name.slice(name.lastIndexOf('.') + 1);
-}
 
 function isDataBase(entry, { file, resolver }) {
   return (
