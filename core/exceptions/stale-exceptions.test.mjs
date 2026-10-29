@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
+import { nestedCheckout, useGitCheckouts } from '../diff/git/test-support/git-checkout.mjs';
 import { useGitFixtures } from '../diff/git/test-support/git-repository.mjs';
 import { staleExceptionLines } from './stale-exceptions.mjs';
 
 const { createGitRepository } = useGitFixtures();
+const { gitCheckout } = useGitCheckouts();
 
 function repository(files) {
   return createGitRepository(Object.fromEntries(files.map((file) => [file, '']))).root;
@@ -68,5 +70,24 @@ describe('staleExceptionLines', () => {
 
   it('has nothing to say without exceptions', () => {
     expect(staleExceptionLines({}, repository(['a.ts']))).toEqual([]);
+  });
+
+  it('does not count ignored folders, nested checkouts or deleted files as matches', () => {
+    const root = gitCheckout(
+      { 'src/a.ts': '', 'scratch/b.ts': '', ...nestedCheckout('agent', { 'c.ts': '' }) },
+      ['scratch/'],
+    );
+    const config = {
+      exceptions: [
+        entry('duplicate-clone', ['scratch/**']),
+        entry('duplicate-clone', ['agent/**']),
+        entry('duplicate-clone', ['src/**']),
+      ],
+    };
+
+    expect(staleExceptionLines(config, root)).toEqual([
+      'exceptions[0] (duplicate-clone) matches no file: scratch/**',
+      'exceptions[1] (duplicate-clone) matches no file: agent/**',
+    ]);
   });
 });

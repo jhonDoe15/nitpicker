@@ -3,6 +3,10 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
+import {
   djangoSettingsModule,
   djangoSubdirectory,
   pytestNamesDjangoSettings,
@@ -17,6 +21,7 @@ const DJANGO_MANAGE = [
   'os.environ.setdefault("DJANGO_SETTINGS_MODULE", "site.settings")',
   '',
 ].join('\n');
+const { gitCheckout } = useGitCheckouts();
 const roots = [];
 
 function project(files) {
@@ -114,6 +119,21 @@ describe('test runner detection', () => {
     ['test functions', { 'nose2.cfg': '', 'tests/test_a.py': 'def test_a():\n    pass\n' }],
   ])('chooses nose2 from %s', (_, files) => {
     expect(detectTestRunner(project(files))).toBe('nose2');
+  });
+
+  it('reads the test files of the Git checkout, not ignored folders or nested checkouts', () => {
+    const pytestStyle = 'def test_a():\n    pass\n';
+    const root = gitCheckout(
+      {
+        'tests/test_a.py': pytestStyle,
+        ...nestedCheckout('agent', { 'tests/test_b.py': pytestStyle }),
+      },
+      ['tests/'],
+    );
+    const tracked = gitCheckout({ 'tests/test_a.py': pytestStyle });
+
+    expect(detectTestRunner(root)).toBe('unittest');
+    expect(detectTestRunner(tracked)).toBe('pytest');
   });
 
   it('prefers the setting over every signal', () => {

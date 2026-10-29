@@ -157,4 +157,29 @@ describe('listing the sources of a project', () => {
 
     expect(sourceFilesUnder(root, ['src'], ['.kt'])).toEqual(['src/a.kt']);
   });
+
+  it('takes a root that is a file, in a Git checkout or outside of one', () => {
+    const files = { 'bin/cli.ts': '', 'bin/other.ts': '', 'src/a.ts': '' };
+    const checkout = gitCheckout(files);
+    const plain = project(files);
+
+    expect(sourceFilesUnder(checkout, ['bin/cli.ts'], ['.ts'])).toEqual(['bin/cli.ts']);
+    expect(sourceFilesUnder(plain, ['bin/cli.ts', 'src'], ['.ts'])).toEqual([
+      'bin/cli.ts',
+      'src/a.ts',
+    ]);
+  });
+
+  it('takes a root that is a glob, in a Git checkout or outside of one', () => {
+    const files = { 'src/a.ts': '', 'src/b.md': '', 'lib/c.ts': '', 'src/ignored/d.ts': '' };
+    const checkout = gitCheckout(files, ['src/ignored/']);
+    const plain = project(files);
+
+    expect(sourceFilesUnder(checkout, ['src/*.ts'], ['.ts'])).toEqual(['src/a.ts']);
+    expect(sourceFilesUnder(plain, ['*/*.ts'], ['.ts'])).toEqual([
+      'lib/c.ts',
+      'src/a.ts',
+      'src/ignored/d.ts',
+    ]);
+  });
 });

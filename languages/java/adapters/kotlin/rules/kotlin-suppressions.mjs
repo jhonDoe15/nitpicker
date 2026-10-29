@@ -1,9 +1,10 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
 import { createIdentityCounter } from '../../../../../shared/ingest/common.mjs';
 import { LITERAL_MARK, maskKotlinSource } from './kotlin-literals.mjs';
 import { compilerWarningRule, isBannedSuppression, SUPPRESSION_RULE } from './kotlin-rules.mjs';
+import { projectFilePaths } from '../../../../../shared/project-files/project-files.mjs';
 
 const SUPPRESS_ANNOTATION =
   /@\[?(?:\w+:)?(?:(?:kotlin|java\.lang)\.)?Suppress(?:Warnings)?\s*\(((?:"[^"]*"|[^")])*)\)/g;
@@ -16,12 +17,9 @@ export function suppressionTokens(source) {
 }
 
 export function kotlinFiles(projectRoot, sourceRoot) {
-  if (!existsSync(path.join(projectRoot, sourceRoot))) {
-    return [];
-  }
-  return readdirSync(path.join(projectRoot, sourceRoot), { recursive: true })
+  return projectFilePaths(path.join(projectRoot, sourceRoot))
     .filter((entry) => entry.endsWith('.kt'))
-    .map((entry) => path.posix.join(sourceRoot, entry.replaceAll('\\', '/')));
+    .map((entry) => path.posix.join(sourceRoot, entry));
 }
 
 function suppressionMessage(file, token) {

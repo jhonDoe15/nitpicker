@@ -17,6 +17,7 @@ import { writeRulesets } from '../adapters/tool-config/pmd-wrappers.mjs';
 import { layerCheckstyle } from '../adapters/tool-config/checkstyle/checkstyle-layers.mjs';
 import { unformattedCheckstyle } from '../adapters/tool-config/checkstyle/unformatted-checks.mjs';
 import { NITPICKER_RULESET } from '../adapters/tool-config/layer-files.mjs';
+import { projectFilesUnder } from '../../../shared/project-files/project-files.mjs';
 
 const LAYOUT_SUPPRESSIONS = 'checkstyle-suppressions.xml';
 const UNFORMATTED_SUPPRESSIONS = 'checkstyle-suppressions-unformatted.xml';
@@ -27,12 +28,7 @@ const JAVAC_EXPORTS = ['api', 'file', 'parser', 'tree', 'util', 'code'].map(
 
 export function javaFiles(roots) {
   return roots
-    .filter((root) => existsSync(root))
-    .flatMap((root) =>
-      readdirSync(root, { recursive: true, withFileTypes: true })
-        .filter((entry) => entry.isFile() && entry.name.endsWith('.java'))
-        .map((entry) => path.join(entry.parentPath, entry.name)),
-    )
+    .flatMap((root) => projectFilesUnder(root).filter((file) => file.endsWith('.java')))
     .sort();
 }
 

@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 
@@ -42,39 +42,9 @@ export function pathInside(base, relative) {
   return full;
 }
 
-function childrenOf(directory, extensions) {
-  const entries = readdirSync(directory, { withFileTypes: true });
-  return {
-    directories: entries
-      .filter((entry) => entry.isDirectory() && !SKIPPED_DIRECTORIES.has(entry.name))
-      .map((entry) => path.join(directory, entry.name)),
-    files: entries
-      .filter(
-        (entry) => entry.isFile() && extensions.some((extension) => entry.name.endsWith(extension)),
-      )
-      .map((entry) => path.join(directory, entry.name)),
-  };
-}
-
-export function sourceFilesUnder(root, extensions) {
-  if (!existsSync(root)) {
-    return [];
-  }
-  const files = [];
-  const pending = [root];
-  for (const directory of pending) {
-    const children = childrenOf(directory, extensions);
-    pending.push(...children.directories);
-    files.push(...children.files);
-  }
-  return files.sort();
-}
-
-export function projectSourceFilesUnder(root, extensions) {
-  if (!existsSync(root)) {
-    return [];
-  }
+export function sourceFilesUnder(root, extensions, options = {}) {
   return projectFilesUnder(root, {
+    ...options,
     skipDirectory: (_, entry) => SKIPPED_DIRECTORIES.has(entry.name),
   })
     .filter((file) => extensions.some((extension) => file.endsWith(extension)))
@@ -82,7 +52,7 @@ export function projectSourceFilesUnder(root, extensions) {
 }
 
 export function javaFilesUnder(root) {
-  return projectSourceFilesUnder(root, ['.java']);
+  return sourceFilesUnder(root, ['.java'], { includeIgnored: true });
 }
 
 export function readJavaSource(file) {

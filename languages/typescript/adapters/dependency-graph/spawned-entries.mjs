@@ -20,6 +20,7 @@ function isSkipped(absolute, entry, directory) {
 
 function sourceFiles(directory) {
   return projectFilesUnder(directory, {
+    includeIgnored: true,
     skipDirectory: (absolute, entry) => isSkipped(absolute, entry, directory),
   }).filter((file) => SOURCE_FILE.test(path.basename(file)));
 }

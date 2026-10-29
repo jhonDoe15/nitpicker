@@ -1,6 +1,10 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { ERROR_PRONE_MESSAGE } from './errorprone/errorprone-escapes.mjs';
 import {
@@ -10,6 +14,7 @@ import {
 } from './java-suppressions.mjs';
 
 const roots = [];
+const { gitCheckout } = useGitCheckouts();
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
@@ -361,5 +366,23 @@ describe('the Java skill', () => {
     expect(
       INLINE_SUPPRESSIBLE_RULES.map((marker) => rule.includes(`@SuppressWarnings("${marker}")`)),
     ).toStrictEqual(INLINE_SUPPRESSIBLE_RULES.map(() => true));
+  });
+});
+
+describe('readInlineSuppressionFindings in a Git checkout', () => {
+  it('reads the files of the checkout, not ignored folders or nested checkouts', () => {
+    const silenced = '@SuppressWarnings("PMD")\nclass A {}\n';
+    const root = gitCheckout(
+      {
+        'src/main/java/A.java': silenced,
+        'src/main/java/gen/G.java': silenced,
+        ...nestedCheckout('src/main/java/agent', { 'X.java': silenced }),
+      },
+      ['src/main/java/gen/'],
+    );
+
+    expect(
+      readInlineSuppressionFindings(root, ['src/main/java']).map(({ path: file }) => file),
+    ).toEqual(['src/main/java/A.java']);
   });
 });

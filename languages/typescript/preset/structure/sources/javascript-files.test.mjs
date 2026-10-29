@@ -1,17 +1,17 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
   nestedCheckout,
   useGitCheckouts,
 } from '../../../../../core/diff/git/test-support/git-checkout.mjs';
+import { useProjectFixtures } from '../../../../../core/diff/git/test-support/projects/project-fixtures.mjs';
 import { resolveLayout } from '../../layout.mjs';
 import { javascriptFileFindings } from './javascript-files.mjs';
 
 const { gitCheckout } = useGitCheckouts();
+const { outsideGit } = useProjectFixtures();
 
-const temporaryRoots = [];
 const TSCONFIG = { 'tsconfig.json': '{ "compilerOptions": { "strict": true } }\n' };
 const SCRIPTS = {
   'src/orders/parse.mjs': 'export const a = 1;\n',
@@ -22,20 +22,8 @@ const SCRIPTS = {
   'src/cli.cjs': 'module.exports = {};\n',
 };
 
-afterEach(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
 function project(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-javascript-files-'));
-  temporaryRoots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
+  return outsideGit(files);
 }
 
 const AGENT_TSCONFIG = { 'tsconfig.json': '{}' };

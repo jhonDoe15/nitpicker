@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { pathInside } from '../../../../shared/filesystem.mjs';
-import { gitProjectFiles } from '../../../../shared/project-files/project-files.mjs';
+import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
 import {
   fileHasGeneratorHeader,
   hasGeneratorMarker,
@@ -20,7 +20,5 @@ export function isMarkedGenerated(projectRoot, file) {
 }
 
 export function markedGeneratedFiles(projectRoot) {
-  return (gitProjectFiles(projectRoot) ?? []).filter((file) =>
-    isMarkedGenerated(projectRoot, file),
-  );
+  return projectFilePaths(projectRoot).filter((file) => isMarkedGenerated(projectRoot, file));
 }

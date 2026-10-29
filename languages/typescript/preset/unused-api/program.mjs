@@ -42,7 +42,7 @@ function rootConfigsAndScripts(projectRoot, layout) {
     .map((entry) => path.join(projectRoot, entry.name));
   const scripts = SCRIPT_DIRECTORIES.map((name) => path.join(projectRoot, name))
     .filter((directory) => existsSync(directory))
-    .flatMap((directory) => [...projectFilesUnder(directory)]);
+    .flatMap((directory) => projectFilesUnder(directory, { includeIgnored: true }));
   return [...configs, ...scripts].filter(
     (file) => isCodeFile(file) && !layout.isExcluded(path.relative(projectRoot, file)),
   );
@@ -61,6 +61,7 @@ export function codeFilesUnder(directories, layout, projectRoot) {
   return directories
     .flatMap((dir) => [
       ...projectFilesUnder(dir, {
+        includeIgnored: true,
         skipDirectory: (absolute, entry) => isSkippedDirectory(absolute, entry, walked),
       }),
     ])

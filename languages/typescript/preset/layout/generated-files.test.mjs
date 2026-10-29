@@ -1,9 +1,14 @@
 import { describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { useGitFixtures } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { hasGeneratorMarker } from '../../../../shared/conventions/generator-marker.mjs';
 import { markedGeneratedFiles } from './generated-files.mjs';
 
 const { createGitRepository } = useGitFixtures();
+const { gitCheckout } = useGitCheckouts();
 
 describe('hasGeneratorMarker', () => {
   it.each([
@@ -40,5 +45,23 @@ describe('markedGeneratedFiles', () => {
       'src/api/pets.ts',
       'src/proto/orders.ts',
     ]);
+  });
+
+  it('leaves out ignored folders and nested checkouts', () => {
+    const marked = '// @generated\nexport {};\n';
+    const root = gitCheckout(
+      {
+        'src/api.gen.ts': marked,
+        'scratch/other.gen.ts': marked,
+        ...nestedCheckout('.claude/worktrees/x', { 'src/nested.gen.ts': marked }),
+      },
+      ['scratch/'],
+    );
+
+    expect(markedGeneratedFiles(root)).toEqual(['src/api.gen.ts']);
+  });
+
+  it('lists nothing for a folder outside Git without files', () => {
+    expect(markedGeneratedFiles(gitCheckout({}))).toEqual([]);
   });
 });

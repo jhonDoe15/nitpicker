@@ -49,7 +49,7 @@ describe('spawnedEntryFiles', () => {
     expect(spawnedEntryFiles(project)).toEqual(['src/reports/worker.mjs']);
   });
 
-  it('reads only the files of a Git checkout, not ignored folders or nested checkouts', () => {
+  it('reads ignored generated folders of a Git checkout, but not nested checkouts or installed packages', () => {
     const spawn = "new URL('./worker.mjs', import.meta.url)";
     const project = gitCheckout(
       {
@@ -57,11 +57,13 @@ describe('spawnedEntryFiles', () => {
         'src/main.mjs': spawn,
         'scratch/worker.mjs': '',
         'scratch/main.mjs': spawn,
+        'node_modules/dep/worker.mjs': '',
+        'node_modules/dep/main.mjs': spawn,
         ...nestedCheckout('agent', { 'worker.mjs': '', 'main.mjs': spawn }),
       },
-      ['scratch/'],
+      ['scratch/', 'node_modules/'],
     );
 
-    expect(spawnedEntryFiles(project)).toEqual(['src/worker.mjs']);
+    expect(spawnedEntryFiles(project)).toEqual(['scratch/worker.mjs', 'src/worker.mjs']);
   });
 });

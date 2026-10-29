@@ -1,11 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import {
-  blankComments,
-  blankLiterals,
-  pathInside,
-  projectSourceFilesUnder,
-} from './java-sources.mjs';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
+import { blankComments, blankLiterals, pathInside, sourceFilesUnder } from './java-sources.mjs';
 
 const CODE_EXTENSIONS = new Set(['.java', '.kt']);
 const BINARY_EXTENSIONS = new Set([
@@ -42,14 +38,13 @@ const COMMENT_STYLES = new Map([
 ]);
 const MAX_TEXT_BYTES = 2 * 1024 * 1024;
 const WEBAPP_ROOT = 'src/main/webapp';
+const DEPENDENCY_DIRECTORY = 'node_modules';
 
 function filesUnder(directory) {
-  if (!existsSync(directory)) {
-    return [];
-  }
-  return readdirSync(directory, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile())
-    .map((entry) => path.join(entry.parentPath, entry.name));
+  return projectFilesUnder(directory, {
+    includeIgnored: true,
+    skipDirectory: (_, entry) => entry.name === DEPENDENCY_DIRECTORY,
+  });
 }
 
 function filesIn(directory) {
@@ -105,7 +100,7 @@ export function readProjectTexts(projectRoot, projects) {
     ...[...sourceRoots, ...resourceRoots].flatMap((root) => filesUnder(inProject(root))),
     ...directories.flatMap((directory) => filesUnder(inProject(path.join(directory, WEBAPP_ROOT)))),
     ...directories.flatMap((directory) => filesIn(inProject(directory || '.'))),
-    ...projectSourceFilesUnder(path.resolve(projectRoot), CONTAINER_FILES),
+    ...sourceFilesUnder(path.resolve(projectRoot), CONTAINER_FILES),
   ];
   return [...new Set(files)]
     .filter(isText)
