@@ -46,7 +46,7 @@ describe.each(['eslint', 'oxlint'])('the ESLint project config on %s', (engine) 
     const policy = headPolicyFor({ engine, precedence: PROJECT, liveProjectRoot: root });
 
     expect(() => lintLayered({ projectRoot: root, policy })).toThrow(
-      'Key "rules": Key "eqeqeq": Expected severity of "off", 0, "warn", 1, "error", or 2.',
+      /"eqeqeq".*Expected severity of "off", 0, "warn", 1, "error", or 2\./su,
     );
   });
 });
