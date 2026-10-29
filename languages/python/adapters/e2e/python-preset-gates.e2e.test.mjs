@@ -1,6 +1,7 @@
 import path from 'node:path';
 import { readdirSync, readFileSync } from 'node:fs';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { messageOf } from '../analysis/test-runtime/test-support/runtime-data.mjs';
 import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
 import {
   GREETER_HI,
@@ -253,14 +254,12 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
       {
         rule: 'type-only-production-dependency',
         path: 'tests/test_typed_only.py',
-        message:
-          'Test reaches production code only through type-only imports. Import and run the production code it is about, or delete the test. If this is intended, add {"rule":"type-only-production-dependency","paths":["tests/test_typed_only.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+        message: `${messageOf('type-only-production-dependency')}. If this is intended, add {"rule":"type-only-production-dependency","paths":["tests/test_typed_only.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.`,
       },
       {
         rule: 'no-production-runtime',
         path: 'tests/test_unlinked.py',
-        message:
-          'Test runs no production code: nothing it imports or references, directly or through test helpers, is production code. Test the production code it is about, or delete the test. If this is intended, add {"rule":"no-production-runtime","paths":["tests/test_unlinked.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+        message: `${messageOf('no-production-runtime')}. If this is intended, add {"rule":"no-production-runtime","paths":["tests/test_unlinked.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.`,
       },
     ]);
   });
