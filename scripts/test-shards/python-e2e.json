@@ -50,6 +50,7 @@
   "languages/python/rules/e2e/security/tls/tls-adoption.e2e.test.mjs": 1,
   "languages/python/rules/e2e/security/tls/tls-detection.e2e.test.mjs": 1,
   "languages/python/rules/e2e/security/tls/tls.e2e.test.mjs": 1,
+  "languages/python/rules/e2e/smells/boolean-flag.e2e.test.mjs": 1,
   "languages/python/rules/e2e/smells/smells.e2e.test.mjs": 2,
   "languages/python/rules/e2e/tasks/cleanup.e2e.test.mjs": 4,
   "languages/python/rules/e2e/tasks/lifetimes.e2e.test.mjs": 6,
