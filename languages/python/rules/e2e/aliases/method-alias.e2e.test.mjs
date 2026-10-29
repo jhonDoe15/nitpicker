@@ -10,11 +10,6 @@ afterEach(cleanup);
 const SUM = 'def _sum(self, items: list[int]) -> int:\n        return sum(items)\n';
 const ALIAS = 'def total(self, items: list[int]) -> int:\n        return self._sum(items)\n';
 const cart = (body, head = 'class Cart:') => `${head}\n    ${body}`;
-const members = (...parts) =>
-  parts
-    .map((part) => `    ${part}`)
-    .join('\n')
-    .trimStart();
 const withSum = (alias, head) => cart(`${SUM}\n    ${alias}`, head);
 const FLAGGED = 'forwarding-method-alias:5 Cart.total -> _sum';
 

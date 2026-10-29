@@ -89,10 +89,9 @@ describe('ForwardingMethodAlias findings', () => {
 
     expect(base.map(({ rule, tool }) => [tool, rule])).toEqual([['pmd', RULE]]);
     expect(moved.map(({ identity }) => identity)).toEqual(base.map(({ identity }) => identity));
-    expect(compareFindings({ baseFindings: base, headFindings: moved })).toMatchObject({
-      newFindings: [],
-      resolvedFindings: [],
-    });
+    const unchanged = compareFindings({ baseFindings: base, headFindings: moved });
+
+    expect([unchanged.newFindings, unchanged.resolvedFindings]).toEqual([[], []]);
     expect(compareFindings({ baseFindings: base, headFindings: added }).newFindings).toHaveLength(
       1,
     );
