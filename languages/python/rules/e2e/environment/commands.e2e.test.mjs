@@ -132,6 +132,13 @@ describe.skipIf(!enabled)('process-stream-access', () => {
         'import sys\n\nOUT = sys.modules["sys"].stderr\n',
         ['process-stream-access:3 sys.stderr'],
       ],
+      [
+        'a star import',
+        'from sys import *\n\nstdout.write("x")\n',
+        ['process-stream-access:1 from sys import *'],
+      ],
+      ['a parameter called sys', 'def run(sys):\n    sys.stdout.write("x")\n', []],
+      ['a class called sys', 'class sys:\n    stdout = 1\n\n\nOUT = sys.stdout\n', []],
       ['stdin', 'import sys\n\nTEXT = sys.stdin.read()\n', []],
       ['a stream parameter', 'def run(out):\n    out.write("x")\n', []],
       ['a TextIO parameter with print', 'def run(out):\n    print("x", file=out)\n', []],

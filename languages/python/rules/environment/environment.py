@@ -158,6 +158,17 @@ def access_name(node, context):
     )
 
 
+def root_name(node):
+    while isinstance(node, (ast.Attribute, ast.Subscript, ast.Call)):
+        node = node.func if isinstance(node, ast.Call) else node.value
+    return node.id if isinstance(node, ast.Name) else None
+
+
+def is_imported(node, aliases):
+    root = root_name(node)
+    return root in aliases[0] or root in aliases[1]
+
+
 def stream_attribute(node, context):
     if not isinstance(node, ast.Attribute) or node.attr not in STREAM_ATTRIBUTES:
         return None
@@ -174,10 +185,19 @@ def stream_getattr(node, context):
     ):
         return None
     key = node.args[1]
-    if dotted_name(node.args[0], context.aliases) != "sys":
+    owner = node.args[0]
+    if dotted_name(owner, context.aliases) != "sys" or not is_imported(
+        owner, context.aliases
+    ):
         return None
     is_stream = isinstance(key, ast.Constant) and key.value in STREAM_ATTRIBUTES
     return f"sys.{key.value}" if is_stream else None
+
+
+def star_import(node):
+    is_star = isinstance(node, ast.ImportFrom) and node.level == 0
+    is_star = is_star and node.module == "sys"
+    return "from sys import *" if is_star and node.names[0].name == "*" else None
 
 
 def stream_name(node, context):
@@ -185,9 +205,14 @@ def stream_name(node, context):
         isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
     )
     name = dotted_name(node, context.aliases) if reads else None
-    if name in STREAM_NAMES:
+    if name in STREAM_NAMES and is_imported(node, context.aliases):
         return name
-    return stream_attribute(node, context) or stream_getattr(node, context)
+    return (
+        star_import(node)
+        or stream_getattr(node, context)
+        or (is_imported(node, context.aliases) and stream_attribute(node, context))
+        or None
+    )
 
 
 def check(context):

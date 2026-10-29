@@ -152,7 +152,7 @@ export const STRUCTURE_HINTS = [
     rules: ['process-stream-access'],
     describe: (subject) => `\`${subject}\` reaches a standard stream outside the composition root`,
     allowed:
-      'Take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point (`main.py`, `cli.py`, a `[project.scripts]` target or the `if __name__ == "__main__":` block) passes `sys.stdout` or `sys.stderr`.',
+      'Take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point (`main.py`, `cli.py`, a `[project.scripts]` target or the `if __name__ == "__main__":` block) passes `sys.stdout` or `sys.stderr`. For an entry point the gate does not recognize, list its file in `python.entryPoints`.',
   },
   {
     tool: RULES_TOOL,
