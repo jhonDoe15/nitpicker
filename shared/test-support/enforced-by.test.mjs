@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { LANGUAGES, RULES } from '../policy.mjs';
+import { FACT_RULE_LANGUAGES } from '../project-rules/fact-rules.mjs';
 import { catalogFileOf, isKotlinPath, mentionsRule, ruleEmitters } from './rule-emitters.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
@@ -35,8 +36,13 @@ const emitters = Object.fromEntries(
   LANGUAGES.map((language) => [language, ruleEmitters(language)]),
 );
 
+const FACT_ENGINE = { file: 'shared/rules/facts/evaluate.mjs', evidence: /registeredFactRules/u };
+
 function documented(language, ruleId) {
-  return NOT_ENFORCED_ALTHOUGH_EMITTED[language]?.[ruleId];
+  return (
+    NOT_ENFORCED_ALTHOUGH_EMITTED[language]?.[ruleId] ??
+    (FACT_RULE_LANGUAGES[ruleId] === undefined ? undefined : FACT_ENGINE)
+  );
 }
 
 function fixFor(id) {
@@ -79,6 +85,11 @@ describe('the enforcedBy column of every catalogued rule', () => {
     ).map(({ id }) => id);
 
     expect(unused).toEqual([]);
+  });
+  it('leaves fact rules to the registry the fact engine runs them by', () => {
+    const { file, evidence } = FACT_ENGINE;
+
+    expect(readFileSync(path.join(repositoryRoot, file), 'utf8')).toMatch(evidence);
   });
   it('keeps every documented exception tied to code that still holds it', () => {
     for (const [language, rules] of Object.entries(NOT_ENFORCED_ALTHOUGH_EMITTED)) {
