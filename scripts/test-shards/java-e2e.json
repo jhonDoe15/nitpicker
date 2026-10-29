@@ -15,6 +15,7 @@
   "languages/java/adapters/java-e2e/preset/quality/java-preset-mutations.e2e.test.mjs": 110,
   "languages/java/adapters/java-e2e/preset/quality/java-preset-style-and-clones.e2e.test.mjs": 111,
   "languages/java/adapters/java-e2e/preset/quality/java-preset-violations.e2e.test.mjs": 110,
+  "languages/java/adapters/java-e2e/preset/quality/pmd-categories.e2e.test.mjs": 40,
   "languages/java/adapters/java-e2e/test-frameworks.e2e.test.mjs": 127,
   "languages/java/adapters/spring/e2e/java-spring-console.e2e.test.mjs": 150,
   "languages/java/adapters/spring/e2e/java-spring-review.e2e.test.mjs": 88,

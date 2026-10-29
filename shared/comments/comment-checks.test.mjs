@@ -4,6 +4,7 @@ import {
   firstCommentedOutCodeLine,
   unreferencedWorkTagLines,
 } from './comment-checks.mjs';
+import { taskMarkerCases } from '../naming/test-support/task-marker-cases.mjs';
 
 describe('bodyLines', () => {
   it('drops the leading asterisks of a block comment and trims each line', () => {
@@ -47,6 +48,14 @@ describe('unreferencedWorkTagLines', () => {
     ['nothing to do here', []],
   ])('%s', (line, expected) => {
     expect(unreferencedWorkTagLines([line])).toEqual(expected);
+  });
+
+  it.each(
+    [true, false].flatMap((reported) =>
+      taskMarkerCases('typescript', reported).map((row) => [row.name, row.text, reported]),
+    ),
+  )('judges %s as the shared task marker table does', (_name, text, reported) => {
+    expect(unreferencedWorkTagLines(text.split('\n')).length > 0).toBe(reported);
   });
 
   it('judges each line on its own', () => {

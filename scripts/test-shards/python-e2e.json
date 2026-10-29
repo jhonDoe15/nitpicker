@@ -28,6 +28,8 @@
   "languages/python/rules/e2e/effects/loop-forms.e2e.test.mjs": 3,
   "languages/python/rules/e2e/environment/commands.e2e.test.mjs": 1,
   "languages/python/rules/e2e/environment/environment.e2e.test.mjs": 8,
+  "languages/python/rules/e2e/errors/cancellation-scope.e2e.test.mjs": 5,
+  "languages/python/rules/e2e/errors/cancellation.e2e.test.mjs": 5,
   "languages/python/rules/e2e/errors/catch-logging.e2e.test.mjs": 9,
   "languages/python/rules/e2e/honesty/collection.e2e.test.mjs": 3,
   "languages/python/rules/e2e/honesty/honesty.e2e.test.mjs": 2,
@@ -53,6 +55,8 @@
   "languages/python/rules/e2e/writes/dual-write-without-outbox.e2e.test.mjs": 2,
   "languages/python/rules/e2e/writes/retry-forms.e2e.test.mjs": 2,
   "languages/python/rules/e2e/writes/retry-without-idempotency.e2e.test.mjs": 1,
+  "languages/python/rules/e2e/tasks/cleanup.e2e.test.mjs": 4,
+  "languages/python/rules/e2e/tasks/lifetimes.e2e.test.mjs": 6,
   "languages/python/rules/nitpicker-rules.e2e.test.mjs": 19,
   "languages/python/rules/rule-cases.e2e.test.mjs": 50,
   "languages/python/rules/swallowing.e2e.test.mjs": 19

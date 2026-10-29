@@ -29,6 +29,8 @@ ruleTester.run('no-duplicate-string-literals', duplicates, {
       "'use strict'; 'use strict'; 'use strict';",
       "const a = require('pkg'); const b = require('pkg'); const c = require('pkg');",
       "enum A { X = 'value' } enum B { X = 'value' } enum C { X = 'value' }",
+      "a['pending'] = 1; b['pending'] = 2; c?.['pending'];",
+      "declare module 'orders-api' {} declare module 'orders-api' {} declare module 'orders-api' {}",
     ]),
     ...cases([
       "t('orders.title'); t('orders.title'); t('orders.title');",
@@ -36,6 +38,11 @@ ruleTester.run('no-duplicate-string-literals', duplicates, {
       "translate('orders.title'); __('orders.title'); _t('orders.title');",
       "intl.formatMessage({ id: 'orders.title' }); intl.formatMessage({ id: 'orders.title' }); formatMessage({ id: 'orders.title' });",
       "useTranslation('checkout'); useTranslation('checkout'); getFixedT(null, 'checkout');",
+      "gettext('orders.title'); ngettext('orders.title'); bundle.getString('orders.title');",
+      repeated('utf-8', 3),
+      repeated('application/json', 3),
+      repeated('%Y-%m-%d %H:%M', 3),
+      repeated('DELETE', 3),
     ]),
     {
       code: 'const a = <input type="text" />; const b = <input type="text" />; const c = <input type="text" />;',
@@ -82,6 +89,14 @@ ruleTester.run('no-duplicate-string-literals', duplicates, {
       errors: [{ messageId: 'repeated', data: { text: 'shipped' } }],
     },
     {
+      code: "const PENDING = 'pending'; use('pending'); use('pending');",
+      errors: [{ messageId: 'repeated', data: { text: 'pending' }, line: 1 }],
+    },
+    {
+      code: repeated('2024-01-01', 3),
+      errors: [{ messageId: 'repeated', data: { text: '2024-01-01' } }],
+    },
+    {
       code: 'use(`pending`); use(`pending`); use(`pending`);',
       errors: [{ messageId: 'repeated', data: { text: 'pending' } }],
     },
@@ -111,8 +126,11 @@ ruleTester.run('no-boolean-flag-parameter', booleanFlag, {
     'export declare function render(loud: boolean): void;',
     'export function useToggle(initial: boolean) { return initial ? 1 : 0; }',
     'export function useFetch(url: string, enabled = true) { if (!enabled) return; load(url); }',
-    'export function setOpen(open: boolean) { if (open) show(); else hide(); }',
+    'export class Panel { setOpen(open: boolean) { if (open) show(); else hide(); } }',
+    'export class Query { withCache(cache: boolean) { return cache ? this.cached() : this; } }',
     'export function of(value: boolean) { return value ? YES : NO; }',
+    'export function valueOf(value: boolean) { return value ? YES : NO; }',
+    'export function builder(strict: boolean) { return strict ? STRICT : LOOSE; }',
     'export function isText(x: unknown, strict: boolean): x is string { return strict ? a(x) : b(x); }',
     'export class Panel { constructor(open: boolean) { if (open) show(); } }',
     'export class Panel { private draw(loud: boolean) { if (loud) shout(); } }',
@@ -163,6 +181,72 @@ ruleTester.run('no-boolean-flag-parameter', booleanFlag, {
     {
       code: 'export function render(a: boolean, b: boolean) { if (a) x(); return b ? 1 : 0; }',
       errors: [{ messageId: 'flag' }, { messageId: 'flag' }],
+    },
+    flagged('export function setOpen(open: boolean) { if (open) show(); }', 'open', 'setOpen'),
+    flagged('export function drain(all: boolean) { while (all) step(); }', 'all', 'drain'),
+    flagged('export function trim(once: boolean) { do step(); while (!once); }', 'once', 'trim'),
+    flagged(
+      'export function render(loud: boolean) { if (loud === true) shout(); }',
+      'loud',
+      'render',
+    ),
+    flagged(
+      'export function render(loud: boolean) { return false !== loud ? 1 : 0; }',
+      'loud',
+      'render',
+    ),
+    flagged(
+      'export function render(loud: boolean) { return () => (loud ? shout() : say()); }',
+      'loud',
+      'render',
+    ),
+    flagged(
+      'export function render(loud: boolean) { items.forEach(function () { if (loud) shout(); }); }',
+      'loud',
+      'render',
+    ),
+    {
+      ...flagged(
+        '/**\n * @param {string} name\n * @param {boolean} loud\n */\n' +
+          'export function render(name, loud) { return loud ? name : ""; }',
+        'loud',
+        'render',
+      ),
+      filename: 'render.js',
+    },
+    {
+      ...flagged('export function render(loud = false) { if (loud) shout(); }', 'loud', 'render'),
+      filename: 'render.js',
+    },
+  ],
+});
+
+ruleTester.run('no-boolean-flag-parameter on plain JavaScript', booleanFlag, {
+  valid: cases(
+    [
+      '/** @param {string} loud */\nexport function render(loud) { return loud ? 1 : 0; }',
+      'export function render(loud) { return loud ? 1 : 0; }',
+      '/** @param {boolean} loud */\nexport function useLoud(loud) { return loud ? 1 : 0; }',
+      'export function render(loud = "yes") { return loud ? 1 : 0; }',
+    ],
+    { filename: 'render.js' },
+  ),
+  invalid: [
+    {
+      ...flagged(
+        '/** @param {boolean=} loud */\nexport const render = (loud) => (loud ? 1 : 0);',
+        'loud',
+        'render',
+      ),
+      filename: 'render.js',
+    },
+    {
+      ...flagged(
+        'export class Panel {\n  /** @param {boolean} loud */\n  draw(loud) { if (loud) shout(); }\n}',
+        'loud',
+        'draw',
+      ),
+      filename: 'render.js',
     },
   ],
 });

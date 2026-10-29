@@ -245,7 +245,8 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `rule` is the rule as the finding prints it: any `detekt.<ruleset>.<Rule>`, a
 `kotlin-source/<Rule>` of the [source checks](#source-checks), `kotlinc/deprecation`,
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
-`pmd/NegativeWaitInTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
+`pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/AssertionInControlFlow`,
+`pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
 `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `unused-option`), a class limit, a file
 limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
 `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
@@ -412,9 +413,16 @@ with `fun main`, the `@SpringBootApplication` class or a Ktor module) may read `
 `SpreadOperator` findings in a Spring project; JPA and Spring Data entities are not asked to become
 data classes; parameters with an annotation (`@RequestParam`, `@PathVariable`) are not boolean flags.
 
+The Java preset's Spring architecture rules (feature layout, layering, bean lifetimes, and the
+jMolecules aggregate rules, which also run without Spring; "Spring architecture rules" in
+[java-preset.md](java-preset.md)) read compiled classes, so they check Kotlin classes the same way, with the same `archunit/<rule>` exceptions and the same `spring.roles` config
+key.
+
 ## Review rules
 
-Six checks that detekt has no rule for run on a syntax tree of the Kotlin sources. They use the rule
+Checks that detekt has no rule for, and in a Spring project the Java preset's Spring rules
+([Spring rules](#spring-rules)), run on a syntax tree of the Kotlin sources; the
+[test honesty](#test-honesty) rules run on the Kotlin test sources read as masked text. They use the rule
 ids and the exception route of the Java preset's PMD rules, so a finding reads the same in both
 languages and one `exceptions` entry style covers either.
 
@@ -430,14 +438,18 @@ declarations, across all modules of the build; a call that cannot be tied to one
 an unclear case is not flagged. A file nested deeper than even the large stack of that program allows is
 skipped with a note on stderr.
 
-| Rule id                                  | Where                                       | Flags                                                                                                                                                                  |
-| ---------------------------------------- | ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`         | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during` |
-| `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                        |
-| `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                           |
-| `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                           |
-| `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                   |
-| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a private or internal function or constructor that no call sets                                                                               |
+| Rule id                                  | Where                                       | Flags                                                                                                                                                                                                                                                             |
+| ---------------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`         | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during`                                                                                            |
+| `DisabledTest`                           | `review-rules/tests/honesty/`               | a skipped test: `@Disabled`, `@Ignore`, `@Ignored` (also aliased or carried by an annotation), Kotest `xtest`, `xcontext`, `xdescribe`, `xit`, `xshould`, `xgiven`, a `!` name prefix, a `.config(...)` that never runs, a constant false condition or assumption |
+| `FocusedTest`                            | `review-rules/tests/honesty/`               | a Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`                                                                                                                               |
+| `AssertionInControlFlow`                 | `review-rules/tests/honesty/`               | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                             |
+| `CoroutineEscapesTest`                   | `review-rules/tests/coroutines/`            | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                           |
+| `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                   |
+| `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                                                                                                                      |
+| `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                                      |
+| `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                              |
+| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                                                                                          |
 
 Limits, all chosen to flag less rather than guess:
 
@@ -449,7 +461,8 @@ Limits, all chosen to flag less rather than guess:
   (in any module of the build) is allowed. A sleep in an inline lambda (`run`, `let`, `also`, `apply`, `with`,
   `repeat`, `takeIf`, `takeUnless`, `use`, `synchronized`, `forEach`, `forEachIndexed`, `onEach`) is judged by
   the loop or body around that lambda. A `for` over a collection is not a polling loop, as in the Java rule.
-  `delay` is judged only inside `runBlocking`; `runTest` runs it in virtual time. Only test sources are
+  `delay` is judged inside `runBlocking`, and inside a block that leaves the test scheduler (see
+  [Test honesty](#test-honesty)); `runTest` runs it in virtual time. Only test sources are
   read: a sleep in main sources is `detekt.style.ForbiddenMethodCall` (see [One-way rules](#one-way-rules)).
 - Which calls are waits: `Thread.sleep`, `TimeUnit.X.sleep` and `LockSupport.parkNanos`, also through an
   import or an alias of an import (`import java.lang.Thread.sleep as nap`); `join(ms)` and `wait(ms)` on any
@@ -494,10 +507,198 @@ Limits, all chosen to flag less rather than guess:
   `org.jetbrains.kotlin.jvm` only), and source-set `exclude` patterns (every `.kt` file under a source
   directory is read, as for detekt and the other Kotlin steps).
 
+### Test honesty
+
+These rules read the Kotlin test source roots as text with comments and string bodies masked in place
+(`review-rules/tests/discovery/` finds the classes, the test functions and the Kotest registrations;
+`honesty/` and `coroutines/` hold the rules), so lines keep their numbers and a rule never matches inside a
+string or a comment. A finding is named after the test (`OrderTest.second`, or `OrderSpec > group > a`
+for Kotest), so a moved test is not a new finding. Files whose header says they are generated are skipped.
+The rules run even when the facts step reports nothing, a truncated or unbalanced file is read as far as it
+goes, and the time grows about linearly with the size of a file. Besides the test roots, the other Kotlin
+source roots of the build (main sources and the other modules, a shared `test-utils` module included) are
+read for the few facts that cross files: a class that calls `Dispatchers.setMain`, a Kotest `ProjectConfig`,
+annotations, type aliases and `const val` flags.
+
+Discovery: a JUnit 4, JUnit 5, kotlin.test, TestNG or Kotest `AnnotationSpec` function annotated `@Test`,
+`@ParameterizedTest`, `@RepeatedTest`, `@TestFactory`, `@TestTemplate`, `@Theory`, `@Property` or `@Example`
+in a class (a name in backticks may hold spaces and `(){}=`, and an expression body is a body); and the
+registrations of a class whose supertype is a Kotest spec style (a name ending in `Spec`: `FunSpec`,
+`StringSpec`, `ShouldSpec`, `DescribeSpec`, `BehaviorSpec`, `FreeSpec`, `WordSpec`, `FeatureSpec`,
+`ExpectSpec`) in its constructor lambda (`class S : FunSpec({ ... })`) or an `init` block: `test`,
+`context`, `describe`, `it`, `should`, `given`, `when`, `then`, `and`, `feature`, `scenario`, `expect`
+with a string literal and a lambda, with or without `.config(...)`, also through an import alias, the string
+forms (`"name" { }`, `"name" - { }`, `"name" should { }`) and `withData`. A registration whose lambda holds
+more registrations is a container; the others are the test bodies. Registrations are also found inside
+`run`, `with`, `apply`, `also`, `let`, `if`, `try` and loops (a registration in a loop is a generated case),
+inside an extension function of the same file on a spec, scope or context receiver that the spec calls, and
+inside a factory of the same file (`val shared = funSpec { }`, `fun shared() = funSpec { }`) that the spec
+`include`s. Not discovered: a member helper that is not an extension, a factory from another file, and a
+spec whose supertype is a project class that does not end in `Spec`; such a body is not judged, never
+guessed at.
+
+- `DisabledTest`: on a test or on a class (reported once, at the outermost disabled class): `@Disabled`,
+  `@Ignore`, `@Ignored`, also through an import alias, a `typealias` or an annotation class of the test
+  sources that carries one of them; a Kotest `xtest`, `xcontext`, `xdescribe`, `xit`, `xshould`, `xgiven` (or
+  an import alias of one) and a `!` name prefix; a Kotest `.config(...)` that can never run: `enabled = false`,
+  `enabled = !true`, `enabled` set to a `const val` that is `false`, `enabledIf = { false }`,
+  `enabledOrReasonIf` that returns `Enabled.disabled(...)`, `invocations = 0`; a condition that is constant
+  false: `@EnabledIf` naming a function of the test class or its companion object whose body is `false`
+  (`@DisabledIf`, `true`), or a Kotest condition class whose `enabled` override is constant (other members
+  do not count); and an assumption that can never hold (`assumeTrue(false)`, `assumeFalse(true)`,
+  `Assumptions.abort()`). `@EnabledOnOs`, `@EnabledIfSystemProperty`, `@DisabledIfEnvironmentVariable` and an
+  assumption on a real condition depend on the environment and are not reported. Allowed: run the test,
+  delete it, or limit it to the environment it needs.
+- `FocusedTest`: Kotest only (JUnit has no focus). Reported at the outermost focused registration.
+- `AssertionInControlFlow`: an assertion inside a construct that can skip it, in a JUnit test or a Kotest
+  test body: an `if` or `else`, a `when`, any loop (`for`, `while`, `do`, `repeat`, `forEach`,
+  `forEachIndexed`, `onEach` and the other iteration calls), a safe call (`?.let`, `?.also`, `?.run`,
+  `?.apply`), `takeIf` or `takeUnless`, the right side of `&&`, `||` or `?:`, a `try` whose `catch` swallows
+  the failure (`Throwable`, `Error`, `Exception`, `RuntimeException`, `AssertionError` without a rethrow), a
+  `runCatching` not followed by `getOrThrow`, and an `if` that returns early before the assertions. An
+  assertion is a call of a real assertion API: `assert*`, kotlin.test and Strikt `expect`, the Kotest
+  `should*` matchers, MockK and Mockito `verify` (when the file imports them), Spring `andExpect`, and `fail`,
+  `error` or `TODO`; a condition (`if (isValid(x))`) is not read as an assertion. Allowed: an `if`/`else` or a
+  `when` whose every branch asserts or fails (a `when` with an `else`, or over `is` types or the constants of
+  a sealed type), a check inside Kotest `checkAll`, `forAll`, `forNone`, `forOne`, `forSome` or JUnit
+  `assertAll`, `@Property` and `@Example` tests, and generated cases (`@TestFactory`, registrations in a
+  loop, `withData`). Allowed form: separate tests or `@ParameterizedTest` with `@MethodSource` or
+  `@CsvSource`, Kotest `withData`, one assertion on the whole collection, and `assertNotNull`, `assertIs` or
+  `?: fail(...)` to narrow a type instead of an `if` or a safe call. Unlike the Java guard, a loop over the
+  results of the code under test is reported too: an empty result checks nothing.
+- `CoroutineEscapesTest`: in a test body, a `launch`, `async` or `future`, and a `launchIn`,
+  `produceIn`, `stateIn` or `shareIn`, on a scope the test does not own: `CoroutineScope(...)`,
+  `MainScope()`, a name declared in the file as a `CoroutineScope` (a field, `lateinit var`, local or
+  constructor property; every declaration of the name must be one), a scope a function of the file returns
+  (`newScope()`), `lifecycleScope` and `viewModelScope` when no test Main dispatcher is set, `TestScope`
+  outside `runTest`, a `GlobalScope` imported under another name, and the same scopes as the receiver of
+  `with`, `run`, `apply` or `also` (`with(CoroutineScope(Job())) { launch { } }`). Allowed: structured launches
+  (`launch` without a receiver inside `runTest`, `runBlocking`, `coroutineScope`, `supervisorScope` or a
+  Kotest body, `backgroundScope`); a `Job` or `Deferred` that the test joins or awaits, alone or kept in a
+  collection (`job.join()`, a chained `.await()`, a leading-dot chain, `jobs.first().join()`,
+  `values.sumOf { it.await() }`, `joinAll`, `awaitAll`, `cancelAndJoin`, `cancel`); a scope that a teardown of
+  the same test class or its superclasses cancels or joins (`@After`, `@AfterEach`, `@AfterTest`, Kotest
+  `afterTest`, `afterSpec`, `afterEach`); a latch, a `CompletableDeferred` or a future that the launched block
+  completes and the test awaits after the launch, Awaitility and Kotest `eventually`; and a scope built on a
+  test dispatcher or on the test context and driven with `advanceUntilIdle`, `runCurrent`, `testScheduler` or
+  `runTest`. Plain `GlobalScope` is left to `detekt.coroutines.GlobalCoroutineUsage`, which already reports
+  it in tests, so a line is not reported twice. detekt's `CoroutineLaunchedInTestWithoutRunTest` is not in
+  the pinned detekt 1.23.8.
+- `FixedSleepInTest` for a real `delay` (the same rule id as the other fixed waits), in a test body or a test
+  helper: a `delay` in a `withContext` block whose context is `Dispatchers.Default`, `IO` or `Unconfined`,
+  `Dispatchers.Main` when no test dispatcher replaces it for the test class (`Dispatchers.setMain` in the
+  class, a superclass, a rule field or an extension that calls it), `newSingleThreadContext`,
+  `newFixedThreadPoolContext` or an executor's `asCoroutineDispatcher()`, also through a property, a local, a
+  constructor default or a later assignment that holds one; in a `launch` or `async` on such a dispatcher that
+  the test then joins or awaits; in `runTest(Dispatchers.IO)`; and in a Kotest test body outside `runTest`
+  (the body runs on a real dispatcher) unless `coroutineTestScope = true` is set on the spec, on the test's
+  `.config(...)` or in a `ProjectConfig`. In a context sum the right-hand dispatcher wins
+  (`testDispatcher + Dispatchers.IO` is real). `delay` is matched also through an import alias or the
+  qualified `kotlinx.coroutines.delay`, and is skipped where the file or its package defines its own `delay`.
+  A loop around the delay that does not wait for a condition (a counted `for`, `repeat`, `while (true)` with
+  an unconditional `break`, `do ... while (false)`) does not make it a polling loop. A `withContext` on the
+  test dispatcher, a `runTest` inside the real block, a context that is not resolved, background `launch`,
+  `async` and `flow` bodies the test does not wait for, polling loops (braced or not), test fakes and delays
+  inside `runBlocking` (judged by the runBlocking check above) are not reported.
+
+The Java preset gains guards with the same rule ids (`pmd/DisabledTest`, `pmd/AssertionInControlFlow`) in an
+open change; until it lands, these ids are Kotlin only. Its messages start the same way ("Fix or delete this
+test instead of disabling it", "Assert unconditionally"), and an `exceptions` entry for either id reads the same
+in both presets.
+
 Every message names the allowed form and ends with the exception route. For the pmd-id rules it is
 `exceptions` with `pmd/<RuleId>` and a path glob; for `unused-option` it is
 `exceptions` with `unused-option`, as in the TypeScript preset. Identities follow the symbol, not the
 line, so a moved block is not a new finding.
+
+### Spring rules
+
+In a Spring project (Spring on the compile classpath) the rules of the Java preset's
+`spring-ruleset.xml` that make sense in Kotlin run on the main Kotlin sources, with the same ids
+(`pmd/SpringProxySelfCall`), the same allowed form written the Kotlin way, and the same exception route.
+They live in `review-rules/spring/` and read the facts of [Review rules](#review-rules): annotations
+with their arguments, calls with their receiver, chain and scope, catch clauses, `return null`, and the
+uses of an `@ExceptionHandler`'s exception.
+
+| Area          | Rules and the Kotlin forms they flag                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Beans         | `SpringConstructorInjection` (`@Autowired`, `@Inject`, `@Resource` or `@Value` on a property, a `lateinit var` or a setter function, `@Autowired` on the only constructor or on a secondary constructor), `SpringImmutableBeans` (a `var` property or `var` constructor property of a stereotype bean or its `companion object`; `@PersistenceContext` is allowed), `SpringNoServiceLocator` (not in an `ApplicationContextInitializer` or `EnvironmentPostProcessor`, such as a bean-DSL initializer), `SpringNoLazyInjection`, `SpringLiteConfiguration`, `SpringNoComponentScan`, `SpringBeanCollectionState` (a `val` holding `HashMap()`, `mutableMapOf()`, `mutableListOf()`, ... of a singleton bean or its `companion object` changed outside startup and outside `synchronized`, `withLock`, `lock()` or `@Synchronized`, also through `map[key] = value`, `+=`, `cache.apply { put(k, v) }`, `with(cache) { ... }` and `cache.also { it.add(k) }`; a local or parameter of the same name is not the property), `SpringHttpClientPerCall`, `SpringHttpClientTimeouts` (an `apply { setConnectTimeout(...) }` on the construction's own chain, or a setter on its variable in the same function, counts as configured; a qualified `org.springframework.web.client.RestTemplate()` is a construction too), `SpringNoPostConstructIo` (repository, `EntityManager`, JDBC or HTTP calls in `@PostConstruct`, `afterPropertiesSet`, a `@Bean(initMethod = ...)` function, or a private helper only they call) |
+| Configuration | `SpringTypedConfiguration` (`@Value` outside `@Configuration` classes, `System.getProperty` of application keys outside `@Configuration`, `@SpringBootApplication`, `EnvironmentPostProcessor`, `ApplicationContextInitializer` and `main`, `Environment.getProperty`, `env["key"]` and `context.environment.getProperty` in beans), `SpringValueSecretDefault` (also `getProperty(key) ?: "default"` and a string-literal default of a secret-named constructor property of a `@ConfigurationProperties` class), `SpringProfileOnConfiguration`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| Proxies       | `SpringProxyMethodVisibility` (a proxied function that is `private`, `protected`, `final`, in an `object` or `companion object`, or in a class the compiler leaves final), `SpringProxySelfCall` (also `this::name` references and calls that leave out default arguments or pass several varargs; a call inside `other.run { }`, `with(other) { }` or `other.apply { }` goes to `other`), `SpringTransactionalAnnotation`, `SpringNoTransactionalController`, `SpringNoRequiresNew`, `SpringNoSwallowedTransactionException` (a broad or persistence `catch` (Spring `dao`, `transaction`, `orm` and `jdbc`, JPA and Hibernate exceptions) without a throw, or `runCatching` without a later `getOrThrow()` or a `getOrElse`, `onFailure`, `fold`, `recover` or `recoverCatching` whose lambda throws, in a `@Transactional` function or a private helper only it calls; `throw`, `error(...)`, `TODO(...)` and a call to a project function declared `: Nothing` all throw), `SpringTransactionalCheckedRollback` (`@Throws` of a checked exception, or an uncaught `throw` of one in the function, also a project exception extending one, without `rollbackFor`), `SpringTransactionalReadOnlyWrite`, `SpringAsyncExecutor` (also an expression body such as `= CompletableFuture.completedFuture(id)`), `SpringScheduledFixedDelay`                                                                                                                                                                           |
+| Web           | `SpringComposedMapping`, `SpringRestController`, `SpringValidRequestBody`, `SpringTypedResponse` (`Any`, `JsonNode`, `Map<String, Any>`, `ResponseEntity<*>`, a list, `Optional`, `Mono` or `Flux` of those, or `null`; without a declared return type, an expression body such as `= mapOf<String, Any>(...)` or one that returns a parameter gives the type), `SpringTypedRequestBody`, `SpringNoErrorLeak` (the stack trace, or the `message`, `localizedMessage` or `toString()` of a generic, JDK or persistence exception or its cause, in a template, concatenation or argument of the response, also through a local `val` and under an aliased `@ExceptionHandler` import; logging it is fine), `SpringNoCrossOrigin`, `SpringCorsWildcard`, `SpringPasswordEncoder`, `SpringPermitAllAnyRequest` (also `authorize(anyRequest, permitAll)` in the Kotlin DSL), `SpringCsrfDisabled` (also `csrf { disable() }`), `SpringHardcodedUser` (also a password held in a local `val` or a property with a string literal)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| JPA           | `JpaLazyFetching`, `JpaEntityClass` (a `data class` entity, or a final one: a class neither `open` nor opened by the all-open plugin, checked only when the build reports the plugin's options), `JpaManyToManyCascade`, `JpaManyToManySet` (a `List`, `MutableList` or `Collection` without `@OrderColumn`), `JpaVersion` (an entity without a superclass, or a class with its own `@Id`, and no `@Version`), `JpaSequenceIds`, `JpaEnumString` (a property of an enum declared in the project (nested enums and Java enums under the Java source roots included) or a JDK enum, without `@Enumerated(EnumType.STRING)`, also in an `@ElementCollection` and as map keys; an auto-applied `AttributeConverter` exempts its type; a computed property with a getter and no backing field, or a delegated one, is not a column), `JpaIdentityHashCode` (a `hashCode` reading the `@GeneratedValue` property, or a `data class` entity with a generated id in its constructor)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| Spring Data   | `SpringDataDerivedQuery`, `SpringDataNativeQuery` (also `EntityManager.createNativeQuery`; `@Suppress("PMD.SpringDataNativeQuery")` on the function or class allows it), `SpringDataModifyingQuery`, `SpringDataNamedParameters`, `SpringDataQueryTextBlock` (any `+` in `@Query` outside string literals, `const val` names joined too), `SpringDataNoSaveInLoop`, `SpringDataBatchOfOne` (`saveAll(listOf(x))` in a loop), `SpringDataRowWriteInLoop`, `SpringDataSaveInLoopHelper` (also `forEach(this::helper)` and calls that leave out default arguments or pass several varargs), `SpringDataNoFlush`, `SpringDataFilterInQuery` (`findAll()` followed by `filter`, `count`, `any`, `first`, `find`, `size`, `isEmpty` and the like, or by `stream()` and a stream filter)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  |
+
+Kotlin-specific choices:
+
+- Finality. Kotlin classes and functions are final unless `open`, and Spring cannot subclass a final
+  class to proxy it. The build tells which classes the compiler opens: the init script reads the
+  `allopen` options of `compileKotlin` (`kotlin("plugin.spring")` is the `spring` preset, which opens
+  classes annotated with `@Component` or an annotation built on it, such as `@Service`, `@Configuration`
+  or `@RestController`, and `@Async`, `@Transactional`, `@Cacheable`, `@SpringBootTest` or `@Validated`) into
+  `manifest.kotlinAllOpen` (`{ annotations, presets }`). A proxied function in a class neither `open` nor opened by the plugin is
+  flagged, as is an `open` class whose function is not `open`. An annotation the project declares
+  itself opens the class only when it carries, up to three levels deep, an annotation the plugin opens
+  (`@Service annotation class DomainService`). When the build does not report the
+  plugin's options (an older Kotlin Gradle plugin), finality is not checked at all.
+- Allowed idioms are not flagged: `data class` DTOs and `@ConfigurationProperties` data classes,
+  `runApplication<App>(*args)`, `ObjectProvider<T>`, `@Bean` function parameters, a `companion object`
+  factory of a client with timeouts, `HashMap` filled in `init` and then read only.
+- Startup and setup. A client built in a `@Bean` function, a constructor, an `init` block, a property
+  initializer, a top-level or `object` factory, or a private helper only those call (two levels deep) is
+  setup and is checked for timeouts; one built elsewhere is per call. `SpringBeanCollectionState` also
+  counts `afterSingletonsInstantiated()` as startup; `SpringNoPostConstructIo` does not, since every
+  singleton and proxy exists by then, as in Java.
+- Receivers. A call without a receiver inside `x.apply { }`, `x.run { }` or `with(x) { }` goes to `x`,
+  `it` inside `x.let { }`, `x.also { }`, `x.takeIf { }` or `x.takeUnless { }` is `x`, and inside an
+  extension function it goes to the extended type. Lambda and loop parameters, locals (by declared type,
+  constructor call or the name they copy), `Map` views (`values`, `keys`, `entries`) and
+  `x.environment` of an application context are typed from there.
+- Return types. Without a declared return type, an expression body that names a parameter, calls
+  `CompletableFuture.completedFuture`, `supplyAsync`, `runAsync` or `failedFuture`, or calls a
+  constructor or `mapOf`, `listOf`, ... with explicit type arguments gives the type.
+- Names are resolved from the file's imports (with aliases), qualified names, the file's package and the
+  Kotlin default imports, so `jakarta.*` and `javax.*` twins are both known. A star import of a
+  project package that declares the name wins; a Kotlin or `java.lang` builtin name such as
+  `NumberFormatException` resolves only to the default imports, so `import jakarta.persistence.*` does not turn `NumberFormatException` into a persistence
+  exception. A repository is an interface
+  that extends a Spring Data repository, directly or through the project's Kotlin interfaces or Java
+  interfaces read from the Java source roots.
+- One finding per site: `kotlin-source/HttpWithoutTimeout` is dropped where `SpringHttpClientTimeouts` or
+  `SpringHttpClientPerCall` reports the same line, since the Spring message names the Spring form. A
+  Spring finding lifted by an exception does not drop it.
+- Exceptions for `pmd/SpringQueryConcatenation` are accepted, since PMD still checks the Java sources of
+  a mixed project with it.
+- `System.getenv` is not part of `SpringTypedConfiguration` here: detekt's `ForbiddenMethodCall`
+  already bans it outside the composition root (see [One-way rules](#one-way-rules)).
+- Loops. A call is in a loop inside a `for`, `while` or `do` body, a `forEach`, `forEachIndexed`, `onEach`
+  or `repeat` lambda, or a `map`, `flatMap`, `mapNotNull`, `associate*` lambda on a value whose declared type
+  is a collection, sequence, array, map or stream (or a `listOf(...)` or a range). The value may be a
+  property chain (`batch.items`, `byId.values`) or a call chain whose head is one
+  (`items.filter { ... }.map { ... }`, `items.asSequence().map { ... }`). `map` on a `Mono`,
+  `Optional` or a value of unknown type is not a loop. A `for` or `while` body that also calls
+  `EntityManager.clear()` is a batch and is not flagged, as in the Java rules. Method references
+  (`items.forEach(repository::save)`, `items.forEach(this.repository::save)`) count as calls in the loop.
+  A repository receiver may be a local copy (`val r = repository`) or the extended type of an extension
+  function (`fun OrderRepository.saveEach(...)`).
+- Set-based writes. A repository call in a loop that passes a collection is one statement per batch,
+  not a row write: a parameter of a `chunked(n)` or `windowed(...)` lambda or `for` loop, a lambda
+  parameter declared as a collection, a destructured map value (`groups.forEach { (_, ids) -> ... }`,
+  also `for ((_, ids) in groups)`) or an element of `groups.values` of a declared `Map<K, List<V>>` or of
+  a local `val groups = items.groupBy { ... }`, and either side of a local
+  `val (open, closed) = items.partition { ... }` all count as collections. A `groups.keys` element or an
+  element of one grouped list is still one row.
+- One finding per site: `kotlin-source/IoCallInLoop` is dropped where `SpringDataNoSaveInLoop`,
+  `SpringDataBatchOfOne`, `SpringDataRowWriteInLoop` or `SpringDataSaveInLoopHelper` reports the same line.
+
+Not ported:
+
+- `SpringQueryConcatenation`: `kotlin-source/SqlStringBuilding` already flags SQL or JPQL built from runtime
+  values with templates, `+` or `format` when it reaches a JDBC, `JdbcTemplate`, JPA or R2DBC query call,
+  so a second rule would report the same line.
+- The Lombok part of `JpaIdentityHashCode`: Lombok does not process Kotlin; a `data class` entity is the
+  Kotlin form of `@Data` and is reported instead.
+- `SpringUnusedContext` runs on Kotlin tests already (see the table above).
 
 ## Format check: ktlint, ktfmt or none
 
@@ -904,7 +1105,8 @@ the comparison and exiting with 2. Nothing is silently skipped and nothing throw
 
 ## Config keys
 
-`base`, `disable`, `analyzers`, `thresholds`, `exclude`, `duplicates`, `legacyInventory` as for the Java preset
+`base`, `disable`, `analyzers`, `thresholds`, `exclude`, `duplicates`, `legacyInventory` and `history` (the opt-in
+[change history](usage.md#change-history) check) as for the Java preset
 (legacy inventory sources are the findings' `identity`, for example
 `fp:nitpicker/subject=This expression contains a magic number. ...`). `kotlin.formatter` and
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts any detekt rule,
@@ -915,10 +1117,12 @@ the [one-way rules](#one-way-rules), the [source checks](#source-checks), the
 `file-lines-limit` and `folder-files-limit`, `slow-test` (or `test-runtime/slow-test`),
 `test-runtime/test-not-run` (a test source set no test task runs, see
 [java-preset.md](java-preset.md#tests-that-never-run)), the
-[dependency and repository checks](usage.md#dependency-and-repository-checks), stability, and the
+[dependency and repository checks](usage.md#dependency-and-repository-checks), `co-change` of the
+[change history](usage.md#change-history) check (with a `<module>/**` glob), stability, and the
 mutants of Java classes per path, and the structure, CRAP and coverage rules per function. Java rule
-ids are accepted for the Java sources of the project. `layout` is a config error until the Kotlin
-preset runs the rule that reads it (`shared-used-by-one-feature`).
+ids are accepted for the Java sources of the project. `layout` takes only `featureRoots`, and only
+once `history.coChange` is on (it names the feature folders `co-change` reads); its other keys stay
+a config error until the Kotlin preset runs the rule that reads them (`shared-used-by-one-feature`).
 
 ## Slow tests
 
@@ -1010,6 +1214,13 @@ fails only when it grows, and a package folder moved to a new path is matched to
   exception sentence for the rule it prints, the config accepts that rule, and no Kotlin message
   file writes a route of its own except the suppression scan. `kotlin-compiler.test.mjs` and
   `kotlin-class-limits.test.mjs`: the kotlinc lint reader and the class limits.
+- `languages/java/adapters/kotlin/review-rules/spring/spring-findings.test.mjs`: the Spring rules on facts
+  recorded from `languages/java/adapters/fixtures/kotlin-spring-project` (`kotlin-spring-facts.json`): every
+  banned form in `bad/` is reported, nothing in `good/`, every ported rule has a banned case, the ids exist
+  in `spring-ruleset.xml` and accept an exception, finality only with the all-open options, and a
+  repository declared in Java. `kotlin-e2e/kotlin-spring-rules.e2e.test.mjs` runs the same project through
+  real Gradle, checks that the findings equal those of the recorded facts (so the recording stays
+  current and the all-open options reach the manifest), and lifts one rule with an exception.
 - `languages/java/adapters/kotlin-e2e/kotlin-preset-guards.e2e.test.mjs`: real Gradle on the source
   checks, the compiler warnings and the class limits, banned and allowed, with their exception route
   and an exception for one path.
