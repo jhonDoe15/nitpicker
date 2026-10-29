@@ -1369,28 +1369,57 @@ You can also relax the gate while you adopt it: `disable` analyzers you are not 
 sources are not under `src/`. Each
 of these is visible in the report. Remove them as the codebase improves.
 
-## Container image
+## Container images
 
-The repository's `Dockerfile` builds an image that runs the gate in any CI without installing Node
-on the host. It is Node 22 (slim) with Git, nitpicker installed from source as `nitpicker` (the
-entrypoint), and `/work` as the working directory. Build it from the repository root; no image is
-published yet.
+The repository's `Dockerfile` builds one image per preset family, so the gate runs in any CI without
+installing a toolchain on the host. Every image has Node 24, Git, nitpicker installed from source as
+`nitpicker` (the entrypoint), Corepack (pnpm and Yarn, downloaded on first use), Bun 1.4.2 for the
+base's dependency install, and `/work` as the working directory.
+
+| Image (target) | Presets                | Adds to the base                                                          | Size         |
+| -------------- | ---------------------- | ------------------------------------------------------------------------- | ------------ |
+| `typescript`   | typescript, javascript | nothing; the default target                                               | about 1.5 GB |
+| `jvm`          | java, kotlin           | Temurin JDK 21, Maven 3.9 and Gradle 8.14 (for projects without wrappers) | about 2.3 GB |
+| `python`       | python                 | uv, CPython 3.13 managed by uv, and Poetry                                | about 1.9 GB |
+| `all`          | every preset           | everything above                                                          | about 2.7 GB |
+
+Each release publishes them to GitHub Container Registry as
+`ghcr.io/jhondoe15/nitpicker:<version>-<target>` (for example `:0.2.0-jvm`); the TypeScript image is
+also `:<version>`, and a stable release moves `:latest-<target>` and `:latest`. To build one yourself,
+from the repository root:
 
 ```sh
-docker build -t nitpicker .
-docker run --rm -v "$PWD":/work nitpicker            # same as: npx nitpicker
-docker run --rm -v "$PWD":/work nitpicker --base origin/main --output reports/quality/diff
+docker build --target jvm -t nitpicker:jvm .
+docker run --rm -v "$PWD":/work nitpicker:jvm            # same as: npx nitpicker
+docker run --rm -v "$PWD":/work nitpicker:jvm --base origin/main --output reports/quality/diff
 ```
 
 Mount your project at `/work`. The image marks `/work` as a Git `safe.directory`, so a checkout
 owned by another user works. Arguments after the image name are nitpicker's arguments and the exit
-codes are the same (0, 1, 2). Your project must have its dependencies installed in `node_modules`
-(`vitest`, `@vitest/coverage-v8` and `typescript` are resolved from the project, as with `npx`), and
-its history must contain the merge base. Reports are written under the mount, owned by the
-container user; add `--user "$(id -u):$(id -g)"` to own them yourself, together with
-`-e HOME=/tmp` so that the package managers have a writable cache. The image carries Corepack
-(pnpm and Yarn, downloaded on first use) and Bun 1.4.2 for the base's dependency install; a project
-that pins another Bun needs its own image.
+codes are the same (0, 1, 2). The project's history must contain the merge base (`fetch-depth: 0` in
+`actions/checkout`), and `--base` names it as it does outside a container. Reports are written under
+the mount, owned by the container user; add `--user "$(id -u):$(id -g)"` to own them yourself (the
+image's home directory is writable for any user, so the package managers' caches work). Mount a
+volume at `/home/nitpicker` to keep the Gradle, Maven, uv and npm caches between runs.
+
+What each project provides:
+
+- **TypeScript and JavaScript.** Dependencies installed in `node_modules` (`vitest`,
+  `@vitest/coverage-v8` and `typescript` are resolved from the project, as with `npx`). Install them
+  on the host, or in the image:
+  `docker run --rm -v "$PWD":/work --entrypoint npm nitpicker:typescript ci`. A project that pins
+  another Bun than 1.4.2 needs its own image.
+- **Java and Kotlin.** A `nitpicker.config.json` with the preset. Gradle runs through the project's
+  `gradlew` and Maven through its `mvnw` when it has them, else through the image's `gradle` and
+  `mvn`; the JDK is `JAVA_HOME`. The tools are downloaded from Maven Central and the Gradle plugin
+  portal on first use, so the container needs network access.
+- **Python.** A `nitpicker.config.json` with the preset, and the project's environment created
+  before the gate runs, as the [Python preset](python-preset.md#the-projects-own-environment)
+  requires. Create it in the image, so that its interpreter exists there:
+  `docker run --rm -v "$PWD":/work --entrypoint uv nitpicker:python sync` (or `poetry install`
+  with `--entrypoint poetry`), then run the gate. The `.venv` it leaves points at the image's
+  Python, so the host cannot use it. pipenv, PDM, Hatch and conda are not in the image; build one
+  `FROM` it that installs the manager your project uses.
 
 GitHub Actions:
 
@@ -1403,13 +1432,13 @@ jobs:
         with:
           fetch-depth: 0
       - run: npm ci
-      - run: docker build -t nitpicker path/to/nitpicker
-      - run: docker run --rm -v "$PWD":/work -e CI -e GITHUB_BASE_REF -e NITPICKER_ACCEPT_POLICY_CHANGE nitpicker
+      - run: docker run --rm -v "$PWD":/work -e CI -e GITHUB_BASE_REF -e NITPICKER_ACCEPT_POLICY_CHANGE ghcr.io/jhondoe15/nitpicker:<version>
         env:
           NITPICKER_ACCEPT_POLICY_CHANGE: ${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
 ```
 
-`NITPICKER_ACCEPT_POLICY_CHANGE` comes from a repository variable that only an admin can set, so a
+Use the `-jvm` or `-python` tag, and drop `npm ci` for a project without `node_modules`, to gate those
+presets. `NITPICKER_ACCEPT_POLICY_CHANGE` comes from a repository variable that only an admin can set, so a
 person accepts a loosening of `nitpicker.config.json` by setting it to the digest the finding
 names; the container needs `CI` too, since the variable is honoured only in CI.
 
