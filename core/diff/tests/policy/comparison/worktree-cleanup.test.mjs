@@ -161,17 +161,7 @@ describe('quality diff temporary worktrees and reports', () => {
 
     expect(report.summary.overallStatus).toBe('completed');
     expect(worktreePaths(repository.root)).toEqual([repository.root]);
-    for (const reportName of [
-      'summary.json',
-      'new-findings.json',
-      'resolved-findings.json',
-      'changed-metrics.json',
-      'tool-errors.json',
-      'report.txt',
-      'report.junit.xml',
-      'report.sarif',
-      'codequality.json',
-    ]) {
+    for (const reportName of REPORT_FILE_NAMES) {
       expect(existsSync(path.join(repository.outputRoot, reportName))).toBe(true);
     }
   });

@@ -167,10 +167,9 @@ steps:
       artifact-name: nitpicker-report-api
 ```
 
-The annotations, the job summary and `codequality.json` name files from the repository root.
-`report.sarif` still names them from the project folder, so code scanning shows the results of a
-project in a subfolder on the wrong paths until SARIF paths from the repository root land
-([#408](https://github.com/jhonDoe15/nitpicker/issues/408)).
+The annotations, the job summary, `report.sarif` and `codequality.json` name files from the
+repository root, so the results of a project in a subfolder land on the right files (see
+[SARIF](usage.md#sarif)).
 
 ### Without the action
 
