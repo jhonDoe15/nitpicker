@@ -64,11 +64,7 @@ function isPrismaModel(symbol) {
 const PRISMA_PAYLOAD = /^\$(\w+)Payload$/u;
 
 function enclosingAlias(node) {
-  let current = node;
-  while (current !== undefined && !ts.isTypeAliasDeclaration(current)) {
-    current = current.parent;
-  }
-  return current;
+  return node === undefined ? undefined : ts.findAncestor(node, ts.isTypeAliasDeclaration);
 }
 
 function prismaPayloadModel(type) {

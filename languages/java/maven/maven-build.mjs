@@ -12,7 +12,7 @@ import {
 import {
   archunitMatcher,
   collectTestResults,
-  junitLauncherVersion,
+  missingLauncherVersions,
   runJacocoReport,
   runPit,
 } from './maven-tests.mjs';
@@ -241,11 +241,6 @@ function readModules(run) {
     mkdirSync(path.join(module.basedir, MAVEN_REPORT_DIRECTORY), { recursive: true });
   }
   return modules;
-}
-
-function missingLauncherVersions(analyzed) {
-  const versions = analyzed.map(({ classpaths }) => junitLauncherVersion(classpaths.testRuntime));
-  return [...new Set(versions.filter((version) => version !== undefined))];
 }
 
 function extraTools({ modules, analyzed, policy, pinned }) {

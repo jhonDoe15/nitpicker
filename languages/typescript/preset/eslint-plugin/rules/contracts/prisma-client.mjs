@@ -1,7 +1,9 @@
 import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { readStamped } from '../../../modules/stamped-file-cache.mjs';
 
 const SCHEMA = 'schema.prisma';
+const SCHEMA_FILES = [path.join('prisma', SCHEMA), SCHEMA];
 const SCHEMA_FOLDER = path.join('prisma', 'schema');
 const CLIENT_ENTRIES = ['index.d.ts', 'client.d.ts', 'client.ts'];
 const CLIENT_DEPTH = 2;
@@ -10,19 +12,16 @@ const GENERATOR = /generator\s+\w+\s*\{([^}]*)\}/gu;
 const PROVIDER = /provider\s*=\s*"([^"]+)"/u;
 const OUTPUT = /output\s*=\s*"([^"]+)"/u;
 
-const outputsByDirectory = new Map();
-const clientDirectories = new Map();
+const schemaOutputs = new Map();
+const splitSchemas = new Map();
 
-function schemaFiles(directory) {
-  const folder = path.join(directory, SCHEMA_FOLDER);
-  const split = existsSync(folder)
-    ? readdirSync(folder)
-        .filter((name) => name.endsWith('.prisma'))
-        .map((name) => path.join(folder, name))
-    : [];
-  return [path.join(directory, 'prisma', SCHEMA), path.join(directory, SCHEMA), ...split].filter(
-    (file) => existsSync(file),
-  );
+function childPath(directory, name) {
+  const base = path.resolve(directory);
+  const child = path.resolve(base, name);
+  if (!child.startsWith(`${base}${path.sep}`)) {
+    return undefined;
+  }
+  return child;
 }
 
 function generatorOutputs(file) {
@@ -37,31 +36,36 @@ function generatorOutputs(file) {
   return outputs;
 }
 
+function prismaFilesIn(folder) {
+  return readdirSync(folder)
+    .filter((name) => name.endsWith('.prisma'))
+    .map((name) => path.join(folder, name));
+}
+
+function schemaFiles(directory) {
+  const folder = childPath(directory, SCHEMA_FOLDER);
+  const split = folder === undefined ? undefined : readStamped(splitSchemas, folder, prismaFilesIn);
+  const single = SCHEMA_FILES.map((name) => childPath(directory, name));
+  return [...single, ...(split ?? [])].filter((file) => file !== undefined);
+}
+
 function outputsOf(directory) {
-  if (!outputsByDirectory.has(directory)) {
-    outputsByDirectory.set(directory, schemaFiles(directory).flatMap(generatorOutputs));
-  }
-  return outputsByDirectory.get(directory);
+  return schemaFiles(directory).flatMap(
+    (file) => readStamped(schemaOutputs, file, generatorOutputs) ?? [],
+  );
 }
 
 function isClientDirectory(directory) {
-  if (!clientDirectories.has(directory)) {
-    const generated =
-      existsSync(path.join(directory, SCHEMA)) &&
-      CLIENT_ENTRIES.some((entry) => existsSync(path.join(directory, entry)));
-    clientDirectories.set(directory, generated);
-  }
-  return clientDirectories.get(directory);
+  const exists = (name) => {
+    const file = childPath(directory, name);
+    return file !== undefined && existsSync(file);
+  };
+  return exists(SCHEMA) && CLIENT_ENTRIES.some(exists);
 }
 
 function ancestors(fileName) {
-  const found = [];
-  for (let directory = path.dirname(fileName); ; directory = path.dirname(directory)) {
-    found.push(directory);
-    if (path.dirname(directory) === directory) {
-      return found;
-    }
-  }
+  const parts = path.dirname(fileName).split(path.sep);
+  return parts.map((_, index) => parts.slice(0, index + 1).join(path.sep) || path.sep).reverse();
 }
 
 function inside(fileName, directory) {
