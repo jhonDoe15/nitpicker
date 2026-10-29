@@ -134,6 +134,14 @@ const RATCHET_PARTS = [
 ];
 const RATCHET_FLAGS = ['existingCodeOnly', 'pathIsFolder'];
 
+function checkRatchetParts(ratchet, context) {
+  for (const [part, whole] of RATCHET_PARTS) {
+    if (ratchet[part] !== undefined && !(ratchet[whole] ?? '').includes(ratchet[part])) {
+      throw new TypeError(`${context}.${part} is not part of ${whole}`);
+    }
+  }
+}
+
 function parseRatchet(value, context) {
   if (!isRecord(value)) {
     throw new TypeError(`${context} must be an object`);
@@ -150,11 +158,7 @@ function parseRatchet(value, context) {
       ratchet[name] = requiredString(value[name], `${context}.${name}`);
     }
   }
-  for (const [part, whole] of RATCHET_PARTS) {
-    if (ratchet[part] !== undefined && !(ratchet[whole] ?? '').includes(ratchet[part])) {
-      throw new TypeError(`${context}.${part} is not part of ${whole}`);
-    }
-  }
+  checkRatchetParts(ratchet, context);
   for (const name of RATCHET_FLAGS.filter((flag) => value[flag] !== undefined)) {
     if (typeof value[name] !== 'boolean') {
       throw new TypeError(`${context}.${name} must be a boolean`);

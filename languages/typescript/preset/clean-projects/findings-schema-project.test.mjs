@@ -1,6 +1,6 @@
 import { appendFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, describe, expect, it } from 'vitest';
 import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
 import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import {
@@ -29,15 +29,21 @@ const ADDED = [
 ].join('\n');
 
 describe('the findings a TypeScript run writes', () => {
-  let root;
-  let newFindings;
+  const temporaryRoots = [];
 
-  beforeAll(() => {
-    root = createCleanProject({
+  afterAll(() => {
+    for (const root of temporaryRoots.splice(0)) {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  function newFindingsOfRefusedCode() {
+    const root = createCleanProject({
       fixtureRoot,
       gitTemplateRoot: createGitTemplate(),
       name: 'findings-schema',
     });
+    temporaryRoots.push(root);
     appendFileSync(path.join(root, 'src/main/features/greeting/domain/greet.ts'), ADDED);
     git(root, 'add', '-A');
     git(root, 'commit', '-q', '-m', 'add code the gate refuses');
@@ -49,23 +55,24 @@ describe('the findings a TypeScript run writes', () => {
       '--output',
       path.join(root, 'reports/diff'),
     ]);
-    newFindings = readReport(root, 'reports/diff/new-findings.json');
-  }, RUN_TIMEOUT_MS);
+    return readReport(root, 'reports/diff/new-findings.json');
+  }
 
-  afterAll(() => {
-    rmSync(root, { recursive: true, force: true });
-  });
+  it(
+    'match spec/findings.schema.json, with every kind of field the run fills in',
+    () => {
+      const newFindings = newFindingsOfRefusedCode();
+      const fields = new Set(newFindings.flatMap((finding) => Object.keys(finding)));
+      const located = new Set(newFindings.flatMap(({ location = {} }) => Object.keys(location)));
 
-  it('match spec/findings.schema.json, with every kind of field the run fills in', () => {
-    const fields = new Set(newFindings.flatMap((finding) => Object.keys(finding)));
-    const located = new Set(newFindings.flatMap(({ location = {} }) => Object.keys(location)));
-
-    expect(findingsSchemaErrors(newFindings)).toEqual([]);
-    expect(
-      ['allowedForm', 'exception', 'exceptionList', 'ratchet'].filter(
-        (field) => !fields.has(field),
-      ),
-    ).toEqual([]);
-    expect(located.has('endLine')).toBe(true);
-  });
+      expect(findingsSchemaErrors(newFindings)).toEqual([]);
+      expect(
+        ['allowedForm', 'exception', 'exceptionList', 'ratchet'].filter(
+          (field) => !fields.has(field),
+        ),
+      ).toEqual([]);
+      expect(located.has('endLine')).toBe(true);
+    },
+    RUN_TIMEOUT_MS,
+  );
 });

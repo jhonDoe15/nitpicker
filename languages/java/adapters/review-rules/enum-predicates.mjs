@@ -8,6 +8,7 @@ import {
   readJavaSource,
   staticImportsOf,
 } from './java-sources.mjs';
+import { lazy } from '../../../../shared/rules/finding-helpers.mjs';
 
 export const ENUM_PREDICATE_RULE = 'ExhaustiveEnumPredicate';
 const GENERIC_ENUM = 'an enum of the project';
@@ -155,14 +156,6 @@ function partialEnum(finding, { projectRoot, enums }) {
     }
   }
   return undefined;
-}
-
-function lazy(read) {
-  let value;
-  return () => {
-    value ??= read();
-    return value;
-  };
 }
 
 function isKotlinFile(file) {
