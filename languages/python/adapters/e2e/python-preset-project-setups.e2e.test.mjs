@@ -145,8 +145,15 @@ describe.skipIf(!pythonE2eEnabled)(
           rule: 'policy-loosened',
           path: 'nitpicker.config.json',
           identity: EXCLUSION,
-          message: `${EXCLUSION}. Keep the base's policy and change the code until it passes: keep new code under the source roots, where the gate checks it, and fix findings instead of excluding, excepting or reclassifying the code. If the policy change is intended, stop and ask a person reviewing this change: only they accept exactly these loosenings, with --accept-policy-change=${digest} at an interactive terminal or NITPICKER_ACCEPT_POLICY_CHANGE=${digest} in CI.`,
+          message: [
+            `${EXCLUSION}. Removes matching files from the checks, so their findings are not reported.`,
+            'Remove the entry and fix the findings, or have a person confirm it.',
+            'If the policy change is intended, stop and ask a person reviewing this change:',
+            `only they accept exactly these loosenings, with --accept-policy-change=${digest}`,
+            `at an interactive terminal or NITPICKER_ACCEPT_POLICY_CHANGE=${digest} in CI.`,
+          ].join(' '),
           classification: 'enforceable',
+          policyKind: 'exclusion',
         },
       ]);
     });
