@@ -1,14 +1,16 @@
 import { bindingsOf, importedFunction } from '../security/imported-names.mjs';
-import { enclosingContext, routeHandlers, startupChecker } from './async-contexts.mjs';
+import { enclosingContext, isStartupFunction, routeHandlers } from './async-contexts.mjs';
 import { FRAMEWORK_MODULES, SYNC_FAMILIES, WORKER_MODULES } from './sync-node-apis.mjs';
 
+const WORKER_MODULE_NAMES = new Set(WORKER_MODULES);
+const FRAMEWORK_MODULE_NAMES = new Set(FRAMEWORK_MODULES);
 const WORKER_BINDINGS = new Set(['parentPort', 'workerData', 'isMainThread']);
 const WORKER_MEMBER = /\.(?:parentPort|workerData|isMainThread)\b/u;
 const NEST_MODULES = new Set(['@nestjs/common']);
 const CONTEXT_NAMES = { async: 'an async function', handler: 'a request handler' };
 
 function isWorkerFile(program, text) {
-  const bindings = bindingsOf(program, WORKER_MODULES);
+  const bindings = bindingsOf(program, WORKER_MODULE_NAMES);
   const named = [...bindings.named.values()].some((name) => WORKER_BINDINGS.has(name));
   return named || (bindings.namespaces.size > 0 && WORKER_MEMBER.test(text));
 }
@@ -25,6 +27,35 @@ function syncCall(context, families, call) {
     }
   }
   return undefined;
+}
+
+function fileScope(program, text) {
+  if (isWorkerFile(program, text) || text.startsWith('#!')) {
+    return undefined;
+  }
+  return {
+    families: SYNC_FAMILIES.map((family) => ({
+      family,
+      bindings: bindingsOf(program, family.modules),
+    })),
+    frameworks: hasBindings(bindingsOf(program, FRAMEWORK_MODULE_NAMES)),
+    nestBindings: bindingsOf(program, NEST_MODULES),
+  };
+}
+
+function reportCandidates(context, { candidates, calls, scope }) {
+  const handlers = routeHandlers(context, calls, scope.frameworks);
+  for (const { node, name, family } of candidates) {
+    const found = enclosingContext(node, { handlers, nestBindings: scope.nestBindings });
+    if (found === undefined || (found.kind === 'async' && isStartupFunction(context, found.fn))) {
+      continue;
+    }
+    context.report({
+      node,
+      messageId: 'blocking',
+      data: { api: name, context: CONTEXT_NAMES[found.kind], alternative: family.alternative },
+    });
+  }
 }
 
 export const rule = {
@@ -47,17 +78,7 @@ export const rule = {
 
     return {
       Program(program) {
-        const worker = isWorkerFile(program, sourceCode.text) || sourceCode.text.startsWith('#!');
-        scope = worker
-          ? undefined
-          : {
-              families: SYNC_FAMILIES.map((family) => ({
-                family,
-                bindings: bindingsOf(program, family.modules),
-              })),
-              frameworks: hasBindings(bindingsOf(program, FRAMEWORK_MODULES)),
-              nestBindings: bindingsOf(program, NEST_MODULES),
-            };
+        scope = fileScope(program, sourceCode.text);
       },
       CallExpression(node) {
         if (scope === undefined) {
@@ -70,24 +91,8 @@ export const rule = {
         }
       },
       'Program:exit'() {
-        if (scope === undefined || candidates.length === 0) {
-          return;
-        }
-        const handlers = routeHandlers(context, calls, scope.frameworks);
-        const isStartup = startupChecker(context);
-        for (const { node, name, family } of candidates) {
-          const found = enclosingContext(node, { handlers, nestBindings: scope.nestBindings });
-          if (found !== undefined && !(found.kind === 'async' && isStartup(found.fn))) {
-            context.report({
-              node,
-              messageId: 'blocking',
-              data: {
-                api: name,
-                context: CONTEXT_NAMES[found.kind],
-                alternative: family.alternative,
-              },
-            });
-          }
+        if (scope !== undefined && candidates.length > 0) {
+          reportCandidates(context, { candidates, calls, scope });
         }
       },
     };

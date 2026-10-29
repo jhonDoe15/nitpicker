@@ -1,6 +1,6 @@
 import { classifyBlocking } from './classify.mjs';
 import { projectIndex } from './project-index.mjs';
-import { TIMEOUT_RULE, timeoutFindings } from './timeouts.mjs';
+import { TIMEOUT_RULE, callKey, timeoutFindings } from './timeouts.mjs';
 import { resolverFor } from './type-names.mjs';
 
 export const BLOCKING_RULE = 'BlockingCallInCoroutine';
@@ -17,10 +17,7 @@ function blockingCallFindings(files, { finding, project, covered }) {
       const resolver = resolverFor(file);
       return (file.coroutines?.calls ?? []).flatMap((call) => {
         const blocking = classifyBlocking(call, resolver, project);
-        if (
-          blocking === undefined ||
-          covered.has(`${file.file}:${String(call.line)}:${call.name}`)
-        ) {
+        if (blocking === undefined || covered.has(callKey(file, call))) {
           return [];
         }
         return [

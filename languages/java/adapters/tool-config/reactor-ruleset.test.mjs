@@ -12,7 +12,9 @@ const rules = [...ruleset.matchAll(RULE)].map(({ groups }) => groups);
 
 describe('reactor-ruleset.xml', () => {
   it('is part of the Java analyzer cache key', () => {
-    expect(configurationFiles()).toContain('languages/java/gradle/reactor-ruleset.xml');
+    expect(configurationFiles().filter((file) => file.endsWith('reactor-ruleset.xml'))).toEqual([
+      'languages/java/gradle/reactor-ruleset.xml',
+    ]);
   });
 
   it('declares the two Reactor rules, each with a unique name', () => {
@@ -32,7 +34,10 @@ describe('reactor-ruleset.xml', () => {
   });
 
   it('names the offloading scheduler in the operator rule', () => {
-    expect(rules[0].message).toContain('Schedulers.boundedElastic()');
+    expect(rules.map(({ message }) => message.includes('Schedulers.boundedElastic()'))).toEqual([
+      true,
+      false,
+    ]);
   });
 
   it('lists every rule in the Java preset docs', () => {

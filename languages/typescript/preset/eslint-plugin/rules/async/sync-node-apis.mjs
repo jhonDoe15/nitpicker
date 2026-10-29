@@ -38,11 +38,9 @@ export const SYNC_FAMILIES = [
   },
 ];
 
-export const SYNC_MODULES = new Set(SYNC_FAMILIES.flatMap((family) => [...family.modules]));
+export const WORKER_MODULES = ['worker_threads', 'node:worker_threads'];
 
-export const WORKER_MODULES = new Set(['worker_threads', 'node:worker_threads']);
-
-export const FRAMEWORK_MODULES = new Set([
+export const FRAMEWORK_MODULES = [
   'express',
   'fastify',
   'koa',
@@ -55,9 +53,9 @@ export const FRAMEWORK_MODULES = new Set([
   'polka',
   'h3',
   'itty-router',
-]);
+];
 
-export const ROUTE_METHODS = new Set([
+export const ROUTE_METHODS = [
   'get',
   'post',
   'put',
@@ -68,20 +66,11 @@ export const ROUTE_METHODS = new Set([
   'options',
   'use',
   'route',
-]);
+];
 
-export const NEST_DECORATORS = new Set([
-  'Get',
-  'Post',
-  'Put',
-  'Patch',
-  'Delete',
-  'All',
-  'Head',
-  'Options',
-]);
+export const NEST_DECORATORS = ['Get', 'Post', 'Put', 'Patch', 'Delete', 'All', 'Head', 'Options'];
 
-export const SYNCHRONOUS_CALLBACK_METHODS = new Set([
+export const SYNCHRONOUS_CALLBACK_METHODS = [
   'map',
   'forEach',
   'filter',
@@ -96,4 +85,4 @@ export const SYNCHRONOUS_CALLBACK_METHODS = new Set([
   'flatMap',
   'sort',
   'toSorted',
-]);
+];

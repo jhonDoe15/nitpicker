@@ -4,6 +4,9 @@ import { memberName } from '../security/security-values.mjs';
 import { NEST_DECORATORS, ROUTE_METHODS, SYNCHRONOUS_CALLBACK_METHODS } from './sync-node-apis.mjs';
 
 const EXPORT_WRAPPERS = new Set(['ExportNamedDeclaration', 'ExportDefaultDeclaration']);
+const ROUTE_METHOD_NAMES = new Set(ROUTE_METHODS);
+const NEST_DECORATOR_NAMES = new Set(NEST_DECORATORS);
+const CALLBACK_METHOD_NAMES = new Set(SYNCHRONOUS_CALLBACK_METHODS);
 
 function nearestFunction(node) {
   return ancestorsOf(node).find(isFunctionNode);
@@ -32,9 +35,15 @@ function isNestHandler(fn, nestBindings) {
     method.value === fn &&
     (method.decorators ?? []).some((decorator) => {
       const imported = nestBindings.named.get(decoratorName(decorator));
-      return imported !== undefined && NEST_DECORATORS.has(imported);
+      return imported !== undefined && NEST_DECORATOR_NAMES.has(imported);
     })
   );
+}
+
+function handlersIn(context, argumentsList) {
+  return argumentsList
+    .map((argument) => (isFunctionNode(argument) ? argument : resolveFunction(context, argument)))
+    .filter((handler) => handler !== undefined);
 }
 
 export function routeHandlers(context, calls, frameworks) {
@@ -44,12 +53,9 @@ export function routeHandlers(context, calls, frameworks) {
   }
   for (const call of calls) {
     const route =
-      call.callee.type === 'MemberExpression' && ROUTE_METHODS.has(memberName(call.callee));
-    for (const argument of route ? call.arguments : []) {
-      const handler = isFunctionNode(argument) ? argument : resolveFunction(context, argument);
-      if (handler !== undefined) {
-        handlers.add(handler);
-      }
+      call.callee.type === 'MemberExpression' && ROUTE_METHOD_NAMES.has(memberName(call.callee));
+    for (const handler of route ? handlersIn(context, call.arguments) : []) {
+      handlers.add(handler);
     }
   }
   return handlers;
@@ -76,27 +82,34 @@ function isInvocation(reference) {
   return call?.type === 'CallExpression' && call.callee === reference.identifier;
 }
 
-export function startupChecker(context) {
-  const memo = new Map();
-  const isStartup = (fn) => {
-    if (memo.has(fn)) {
-      return memo.get(fn);
+function callSites(context, fn) {
+  const variable = boundVariable(context, fn);
+  const references = (variable?.references ?? []).filter((reference) => !reference.init);
+  const invokedOnly =
+    variable !== undefined &&
+    !isExported(fn) &&
+    references.length > 0 &&
+    references.every(isInvocation);
+  return invokedOnly
+    ? references.map((reference) => nearestFunction(reference.identifier))
+    : undefined;
+}
+
+export function isStartupFunction(context, fn) {
+  const seen = new Set();
+  const pending = [fn];
+  for (const current of pending) {
+    if (seen.has(current)) {
+      continue;
     }
-    memo.set(fn, true);
-    const variable = boundVariable(context, fn);
-    const references = (variable?.references ?? []).filter((reference) => !reference.init);
-    const result =
-      variable !== undefined &&
-      !isExported(fn) &&
-      references.length > 0 &&
-      references.every((reference) => {
-        const owner = nearestFunction(reference.identifier);
-        return isInvocation(reference) && (owner === undefined || isStartup(owner));
-      });
-    memo.set(fn, result);
-    return result;
-  };
-  return isStartup;
+    seen.add(current);
+    const owners = callSites(context, current);
+    if (owners === undefined) {
+      return false;
+    }
+    pending.push(...owners.filter((owner) => owner !== undefined));
+  }
+  return true;
 }
 
 export function enclosingContext(call, { handlers, nestBindings }) {
@@ -107,7 +120,7 @@ export function enclosingContext(call, { handlers, nestBindings }) {
     if (handlers.has(fn) || isNestHandler(fn, nestBindings)) {
       return { kind: 'handler', fn };
     }
-    if (!isCallbackOf(fn, SYNCHRONOUS_CALLBACK_METHODS)) {
+    if (!isCallbackOf(fn, CALLBACK_METHOD_NAMES)) {
       return undefined;
     }
   }

@@ -158,9 +158,9 @@ export const EVIDENCE_CALLS = [
   },
 ];
 
-export const STANDARD_INPUT = new Set(['readLine', 'readln', 'readlnOrNull']);
+export const STANDARD_INPUT = ['readLine', 'readln', 'readlnOrNull'];
 
-export const BLOCKING_REPOSITORY_BASES = new Set([
+export const BLOCKING_REPOSITORY_BASES = [
   'Repository',
   'CrudRepository',
   'ListCrudRepository',
@@ -169,9 +169,9 @@ export const BLOCKING_REPOSITORY_BASES = new Set([
   'JpaRepository',
   'MongoRepository',
   'QueryByExampleExecutor',
-]);
+];
 
-export const NON_SUSPENDING_STANDARD = new Set([
+export const NON_SUSPENDING_STANDARD = [
   'println',
   'print',
   'listOf',
@@ -200,6 +200,6 @@ export const NON_SUSPENDING_STANDARD = new Set([
   'joinToString',
   'toString',
   'repeat',
-]);
+];
 
 export const EVERY = EVERY_METHOD;
