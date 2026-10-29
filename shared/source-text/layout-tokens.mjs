@@ -11,6 +11,7 @@ const COLON = new Set([':']);
 const STEPS = new Set(['++', '--']);
 const STATEMENT_OPENERS = new Set([';', '{']);
 const CLOSING_BRACE = new Set(['}']);
+const OPENING_BRACE = new Set(['{']);
 const PARENTHESES = new Set(['(', '[']);
 const CLOSING_PARENTHESES = new Set([')', ']']);
 const TAB_WIDTH = 8;
@@ -210,11 +211,13 @@ function addSemicolon(state, token) {
   }
 }
 
-function dropNewlineBeforeBrace(state) {
+function endStatementBeforeBrace(state) {
   const index = state.out.findLastIndex((token) => token.kind !== 'comment');
-  if (index !== -1 && state.out[index].text === NEWLINE) {
-    state.out.splice(index, 1);
+  const last = state.out[index];
+  if (last === undefined || last.text === NEWLINE || isOp(last, OPENING_BRACE)) {
+    return;
   }
+  state.out.splice(index + 1, 0, { kind: 'layout', text: NEWLINE, line: last.line });
 }
 
 function addStatementToken(state, token) {
@@ -223,7 +226,7 @@ function addStatementToken(state, token) {
     return;
   }
   if (isOp(token, CLOSING_BRACE)) {
-    dropNewlineBeforeBrace(state);
+    endStatementBeforeBrace(state);
   }
   state.out.push(token);
 }

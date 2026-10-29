@@ -107,6 +107,11 @@ function isFormattingComma(language, { previous, bracket }) {
   return previous !== undefined && !isOp(previous, OPENERS) && !isOp(previous, new Set([',']));
 }
 
+function closerAfter(code, index) {
+  const next = code[index + 1];
+  return next?.text === NEWLINE ? code[index + 2] : next;
+}
+
 function droppedCommas(tokens, language) {
   const code = tokens.filter((token) => token.kind !== 'comment');
   const brackets = [];
@@ -119,7 +124,7 @@ function droppedCommas(tokens, language) {
     if (isOp(token, CLOSERS)) {
       brackets.pop();
     }
-    const trailing = isOp(token, new Set([','])) && isOp(code[index + 1], CLOSERS);
+    const trailing = isOp(token, new Set([','])) && isOp(closerAfter(code, index), CLOSERS);
     if (trailing && isFormattingComma(language, { previous, bracket: brackets.at(-1) })) {
       dropped.add(token);
     }

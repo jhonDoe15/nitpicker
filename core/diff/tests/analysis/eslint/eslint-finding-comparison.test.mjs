@@ -300,7 +300,7 @@ describe('ESLint finding comparison', () => {
         rule: 'no-new',
         path: 'src/main/source.ts',
         identity:
-          'message:noNewStatement|node:NewExpression|syntax:2ee18aa9a39dcea1b62a22ff|occurrence:1',
+          'message:noNewStatement|node:NewExpression|syntax:87fa148e84eadc58aa9b382c|occurrence:1',
         message:
           'Do not use \'new\' for side effects. If this is intended, add {"rule":"no-new","paths":["src/main/source.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
