@@ -42,8 +42,8 @@ export function formatTool(javaStyle, pinned) {
     : [{ name: formatter.classpath, coordinates: [formatter.coordinates(pinned)] }];
 }
 
-export function archunitTool(spring, pinned) {
-  return spring
+export function archunitTool(runsRules, pinned) {
+  return runsRules
     ? [{ name: 'archunit', coordinates: [`com.tngtech.archunit:archunit:${pinned.archunit}`] }]
     : [];
 }
