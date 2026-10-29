@@ -15,7 +15,9 @@ export function* depthFirst(root, children) {
   const pending = [root];
   for (const node of stackIterator(pending)) {
     yield node;
-    pending.push(...children(node).toReversed());
+    for (const child of children(node).toReversed()) {
+      pending.push(child);
+    }
   }
 }
 

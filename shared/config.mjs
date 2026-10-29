@@ -46,8 +46,18 @@ export function isNonEmptyString(value) {
   return typeof value === 'string' && value.length > 0;
 }
 
+export function isCount(value) {
+  return Number.isInteger(value) && value >= 0;
+}
+
 export function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function picked(source, keys) {
+  return Object.fromEntries(
+    keys.filter((key) => source[key] !== undefined).map((key) => [key, source[key]]),
+  );
 }
 
 export function validateStringArray(value, name) {

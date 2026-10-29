@@ -106,12 +106,12 @@ describe('knip project config precedence', () => {
     expect(javascript(['project', 'nitpicker'])).toEqual(['src/unused.js']);
   });
 
-  it('never applies the knip key in package.json without the opt-in', () => {
+  it('never applies the knip key in package.json without the opt-in (guard canary for knip bumps)', () => {
     const manifest = { ...MANIFEST, knip: { rules: { files: 'off', exports: 'off' } } };
     const root = createProject(SOURCES, manifest);
     expect(reported(deadCode(root, resolveHeadPolicy({}, root)))).toEqual([...NITPICKER_ONLY]);
     const optedIn = resolveHeadPolicy(knipConfig(['project', 'nitpicker']), root);
-    expect(optedIn.tools.knip.projectConfigFile).toBe('the "knip" key in package.json');
+    expect(optedIn.tools.knip.projectConfig).toEqual(manifest.knip);
     expect(reported(deadCode(root, optedIn))).toEqual([]);
   });
 
@@ -176,9 +176,22 @@ describe('knip project config precedence', () => {
     const head = createProject({ ...SOURCES, 'knip.json': JSON.stringify(PROJECT_KNIP) });
     const base = createProject({ ...SOURCES, 'knip.json': '{}' });
     const headPolicy = resolveHeadPolicy(knipConfig(['project', 'nitpicker']), head);
-    const basePolicy = withHeadCheckoutFacts(resolveHeadPolicy({}), headPolicy);
+    const basePolicy = withHeadCheckoutFacts(
+      resolveHeadPolicy(knipConfig(['project', 'nitpicker'])),
+      headPolicy,
+    );
     expect(basePolicy.tools.knip).toEqual(headPolicy.tools.knip);
     expect(reported(deadCode(base, basePolicy))).toEqual(['src/unused.ts']);
+    const notOptedIn = withHeadCheckoutFacts(resolveHeadPolicy({}), headPolicy);
+    expect(reported(deadCode(base, notOptedIn))).toEqual([...NITPICKER_ONLY]);
+  });
+
+  it('keeps the knip key out when the project root is reached through a symlink', () => {
+    const root = createProject(SOURCES, { ...MANIFEST, knip: { ignore: ['src/**'] } });
+    const linked = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-knip-link-')), 'app');
+    roots.push(path.dirname(linked));
+    symlinkSync(root, linked);
+    expect(reported(deadCode(linked, resolveHeadPolicy({}, linked)))).toEqual([...NITPICKER_ONLY]);
   });
 
   it('fails the dead-code check when the opted-in config is missing or malformed', () => {

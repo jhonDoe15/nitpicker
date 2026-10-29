@@ -106,33 +106,28 @@ describe('project tool configs the project opted into', () => {
   });
 
   it.each([undefined, 'javascript'])(
-    'counts an edit of the knip config a %s project opted into, and only its key in package.json',
+    'reads what an edit of the knip config a %s project opted into applies, imports included',
     (preset) => {
       const config = { ...(preset === undefined ? {} : { preset }), tools: { knip: PROJECT } };
       const at = (files) => ({ 'src/a.ts': 'export const a = 1;\n', ...files });
       const manifest = (extra) => JSON.stringify({ name: 'x', ...extra });
       const base = at({
-        'knip.ts': 'export default { ignore: [] };\n',
+        'knip.ts': "import ignore from './tools/ignore.js';\nexport default { ignore };\n",
+        'tools/ignore.js': 'export default [];\n',
         'package.json': manifest(),
       });
+      const edited = (files) => between({ base, head: at({ ...base, ...files }), config });
 
+      expect(changesOf(edited({ 'tools/ignore.js': "export default ['src/**'];\n" }))).toEqual({
+        policyLoosenings: ['knip knip.ts ignore: [] -> ["src/**"]'],
+        policyChanges: ['knip knip.ts ignore: [] -> ["src/**"]'],
+      });
+      expect(edited({ 'package.json': manifest({ version: '2.0.0' }) }).policyLoosenings).toEqual(
+        [],
+      );
       expect(
-        between({
-          base,
-          head: at({
-            'knip.ts': "export default { ignore: ['src/**'] };\n",
-            'package.json': manifest({ version: '2.0.0' }),
-          }),
-          config,
-        }).policyLoosenings,
-      ).toEqual(['knip project config changed: knip.ts']);
-      expect(
-        between({
-          base,
-          head: at({ ...base, 'package.json': manifest({ knip: { ignore: ['src/**'] } }) }),
-          config,
-        }).policyLoosenings,
-      ).toEqual(['knip project config changed: package.json']);
+        edited({ 'package.json': manifest({ knip: { entry: ['src/a.ts'] } }) }).policyLoosenings,
+      ).toEqual(['knip knip.ts and package.json entry: not set -> ["src/a.ts"]']);
       expect(
         between({
           base,
@@ -142,7 +137,32 @@ describe('project tool configs the project opted into', () => {
       ).toEqual([]);
     },
   );
+  it('reads a knip.jsonc edit per key, without comments, order or removed ignores loosening', () => {
+    const config = { preset: 'typescript', tools: { knip: PROJECT } };
+    const at = (knip) => ({ 'knip.jsonc': knip, 'src/a.ts': 'export const a = 1;\n' });
+    const base = at('{ "ignore": ["a/**", "b/**"], "entry": ["x.ts"] }');
+    const changes = (knip) => changesOf(between({ base, head: at(knip), config }));
 
+    expect(changes('// ours\n{ "entry": ["x.ts"], "ignore": ["b/**", "a/**"], }')).toEqual({
+      policyLoosenings: [],
+      policyChanges: [],
+    });
+    expect(changes('{ "ignore": ["a/**"], "entry": ["x.ts"] }')).toEqual({
+      policyLoosenings: [],
+      policyChanges: ['knip knip.jsonc ignore: ["a/**","b/**"] -> ["a/**"]'],
+    });
+    expect(changes('{ "ignore": ["a/**", "b/**"], "entry": ["x.ts"], "$schema": "x" }')).toEqual({
+      policyLoosenings: [],
+      policyChanges: [],
+    });
+  });
+  it('falls back to the files when a side of the knip config cannot be read', () => {
+    const config = { preset: 'typescript', tools: { knip: PROJECT } };
+    const at = (knip) => ({ 'knip.json': knip, 'src/a.ts': 'export const a = 1;\n' });
+    expect(
+      between({ base: at('{ "ignore": [] }'), head: at('{ "ignore": ['), config }).policyLoosenings,
+    ).toEqual(['knip project config changed: knip.json']);
+  });
   it.each([undefined, 'javascript'])(
     'counts an edit of the dependency-cruiser config a %s project opted into',
     (preset) => {
@@ -158,7 +178,6 @@ describe('project tool configs the project opted into', () => {
       expect(between({ base: at('{}'), head: at('{}'), config }).policyLoosenings).toEqual([]);
     },
   );
-
   it('shows the knip config a change opts into in the same change', () => {
     const files = { 'knip.json': '{"ignore":["src/**"]}', 'src/a.ts': 'export const a = 1;\n' };
     expect(
@@ -169,9 +188,87 @@ describe('project tool configs the project opted into', () => {
         config: { preset: 'typescript', tools: { knip: PROJECT } },
       }).policyLoosenings,
     ).toEqual([
-      'knip project config changed: knip.json',
+      'knip knip.json ignore: not set -> ["src/**"]',
       'tools.knip.precedence: not set -> ["project","nitpicker"]',
     ]);
+  });
+  it.each(['typescript', 'python', 'java', 'kotlin'])(
+    'counts an edit of the opted-in .jscpd.json with the %s preset, not a reformat',
+    (preset) => {
+      const at = (jscpd) => ({ '.jscpd.json': jscpd, 'README.md': 'x\n' });
+      const config = { preset, tools: { jscpd: PROJECT } };
+      const base = at('{"minTokens": 50}');
+
+      expect(between({ base, head: at('{"minTokens": 500}'), config }).policyLoosenings).toEqual([
+        'jscpd .jscpd.json minTokens: 50 -> 500',
+      ]);
+      expect(changesOf(between({ base, head: at('{"minTokens": 10}'), config }))).toEqual({
+        policyLoosenings: [],
+        policyChanges: ['jscpd .jscpd.json minTokens: 50 -> 10'],
+      });
+      expect(
+        between({ base, head: at('{\n  "minTokens": 50\n}\n'), config }).policyLoosenings,
+      ).toEqual([]);
+      expect(
+        between({ base, head: at('{"minTokens": 500}'), config: { preset } }).policyLoosenings,
+      ).toEqual([]);
+      expect(
+        between({ base, head: at('{"reporters": ["html"], "minTokens": 50}'), config })
+          .policyLoosenings,
+      ).toEqual([]);
+    },
+  );
+  it.each(['typescript', 'python', 'java', 'kotlin'])(
+    'shows the .jscpd.json a %s change opts into in the same change',
+    (preset) => {
+      const files = { '.jscpd.json': '{"minTokens": 5000}', 'README.md': 'x\n' };
+      expect(
+        between({
+          base: files,
+          head: files,
+          baseConfig: { preset },
+          config: { preset, tools: { jscpd: PROJECT } },
+        }).policyLoosenings,
+      ).toEqual([
+        'jscpd .jscpd.json minTokens: not set -> 5000',
+        'tools.jscpd.precedence: not set -> ["project","nitpicker"]',
+      ]);
+    },
+  );
+});
+
+describe('what an edit of .jscpd.json changes', () => {
+  const config = { preset: 'python', tools: { jscpd: PROJECT } };
+  const at = (jscpd) => ({ '.jscpd.json': JSON.stringify(jscpd), 'README.md': 'x\n' });
+
+  it.each([
+    [{ minLines: 5 }, { minLines: 9 }, 'loosened', 'minLines: 5 -> 9'],
+    [{}, { minLines: 3 }, 'changed', 'minLines: not set -> 3'],
+    [{}, { maxLines: 900 }, 'loosened', 'maxLines: not set -> 900'],
+    [{ maxLines: 900 }, { maxLines: 2000 }, 'changed', 'maxLines: 900 -> 2000'],
+    [{ maxSize: '1mb' }, { maxSize: '100kb' }, 'loosened', 'maxSize: "1mb" -> "100kb"'],
+    [{ maxSize: '100kb' }, {}, 'changed', 'maxSize: "100kb" -> not set'],
+    [{}, { mode: 'strict' }, 'loosened', 'mode: not set -> "strict"'],
+    [{}, { skipComments: true }, 'changed', 'mode: not set -> "weak"'],
+    [{ ignoreCase: true }, {}, 'loosened', 'ignoreCase: true -> not set'],
+    [{ ignore: ['a/**'] }, { ignore: ['b/**'] }, 'loosened', 'ignore: ["a/**"] -> ["b/**"]'],
+    [
+      { ignore: ['a/**', 'b/**'] },
+      { ignore: ['a/**'] },
+      'changed',
+      'ignore: ["a/**","b/**"] -> ["a/**"]',
+    ],
+    [{}, { ignorePattern: ['^import'] }, 'loosened', 'ignorePattern: not set -> ["^import"]'],
+  ])('reads %j -> %j as %s', (base, head, kind, text) => {
+    const { policyLoosenings, policyChanges } = between({ base: at(base), head: at(head), config });
+    expect(policyChanges).toEqual([`jscpd .jscpd.json ${text}`]);
+    expect(policyLoosenings).toEqual(kind === 'loosened' ? policyChanges : []);
+  });
+
+  it('falls back to the file when one side cannot be read', () => {
+    expect(
+      between({ base: at({ minTokens: 50 }), head: at({ minTokens: 0 }), config }).policyLoosenings,
+    ).toEqual(['jscpd project config changed: .jscpd.json']);
   });
 });
 

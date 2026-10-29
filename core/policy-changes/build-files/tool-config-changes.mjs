@@ -1,3 +1,6 @@
+import { jscpdConfigChanges } from '../../tooling/jscpd/config-changes.mjs';
+import { projectConfigChanges } from '../../../languages/typescript/preset/project-tools/changes/project-config-changes.mjs';
+
 function fileChange(tool, file, { base, head }) {
   if (base.get(file) === head.get(file)) {
     return undefined;
@@ -14,6 +17,11 @@ function fileChange(tool, file, { base, head }) {
 }
 
 function fileChanges(entry) {
+  if (entry.applied !== undefined) {
+    return entry.tool === 'jscpd'
+      ? jscpdConfigChanges(entry.applied)
+      : projectConfigChanges(entry.tool, entry.applied);
+  }
   const files = [...new Set([...entry.base.keys(), ...entry.head.keys()])].toSorted();
   return files.map((file) => fileChange(entry.tool, file, entry));
 }
