@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { blankLiterals, offsetOf, pathInside } from '../adapters/review-rules/java-sources.mjs';
-import { javaOutline, placeAt } from './java-members.mjs';
+import { blankLiterals, offsetOf, pathInside } from '../../adapters/review-rules/java-sources.mjs';
+import { javaOutline, placeAt } from '../java-members.mjs';
 import { fieldAt, holding, lockedWrites, typeSites } from './lock-sites.mjs';
 
 export const LOCK_ORDER_RULE = 'LockOrderInversion';

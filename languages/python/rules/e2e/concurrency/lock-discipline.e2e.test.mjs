@@ -37,7 +37,9 @@ describe.skipIf(!enabled)('lock-order-inversion', () => {
       ],
       [
         'one with statement with two items',
-        store(`${nested('one', 'self.a', 'self.b')}\ndef two(self):\n    with self.b, self.a:\n        self.n = 0`),
+        store(
+          `${nested('one', 'self.a', 'self.b')}\ndef two(self):\n    with self.b, self.a:\n        self.n = 0`,
+        ),
         [
           order(12, 'Store.one: self.a -> self.b', takes('one', 'self.b', 'self.a', '`two`')),
           order(16, 'Store.two: self.b -> self.a', takes('two', 'self.a', 'self.b', '`one`')),
@@ -97,7 +99,7 @@ describe.skipIf(!enabled)('lock-order-inversion', () => {
         store(`${nested('one', 'self.a', 'self.b')}\n${nested('two', 'self.a', 'self.b')}`),
         [],
       ],
-      ['a single lock', store(`${nested('one', 'self.a', 'self.a')}`), []],
+      ['a single lock', store(nested('one', 'self.a', 'self.a')), []],
       [
         'a lock passed in',
         store(
@@ -141,7 +143,9 @@ describe.skipIf(!enabled)('inconsistent-attribute-locking', () => {
     const [actual, expected] = outcomes([
       [
         'a threading lock',
-        store('def add(self):\n    with self.a:\n        self.n += 1\n\ndef reset(self):\n    self.n = 0'),
+        store(
+          'def add(self):\n    with self.a:\n        self.n += 1\n\ndef reset(self):\n    self.n = 0',
+        ),
         [
           field(
             15,
@@ -189,18 +193,28 @@ describe.skipIf(!enabled)('inconsistent-attribute-locking', () => {
     const [actual, expected] = outcomes([
       [
         'all writes locked',
-        store('def add(self):\n    with self.a:\n        self.n += 1\n\ndef reset(self):\n    with self.b:\n        self.n = 0'),
+        store(
+          'def add(self):\n    with self.a:\n        self.n += 1\n\ndef reset(self):\n    with self.b:\n        self.n = 0',
+        ),
         [],
       ],
-      ['all writes unlocked', store('def add(self):\n    self.n += 1\n\ndef reset(self):\n    self.n = 0'), []],
+      [
+        'all writes unlocked',
+        store('def add(self):\n    self.n += 1\n\ndef reset(self):\n    self.n = 0'),
+        [],
+      ],
       [
         'construction writes',
-        store('def __post_init__(self):\n    self.n = 2\n\ndef add(self):\n    with self.a:\n        self.n += 1'),
+        store(
+          'def __post_init__(self):\n    self.n = 2\n\ndef add(self):\n    with self.a:\n        self.n += 1',
+        ),
         [],
       ],
       [
         'a helper called under the lock',
-        store('def add(self):\n    with self.a:\n        self.bump()\n        self.n = 0\n\ndef bump(self):\n    self.n += 1'),
+        store(
+          'def add(self):\n    with self.a:\n        self.bump()\n        self.n = 0\n\ndef bump(self):\n    self.n += 1',
+        ),
         [],
       ],
       [

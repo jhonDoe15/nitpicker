@@ -1,8 +1,7 @@
 import { ENUM_PREDICATE_RULE } from '../../review-rules/enum-predicates.mjs';
 import { LOAD_EFFECT_RULE } from '../../../messages/load-effects.mjs';
 import { FORWARDING_RULE } from './main/forwarding-wrappers.mjs';
-import { FIELD_LOCKING_RULE } from './main/locking/field-locking.mjs';
-import { LOCK_ORDER_RULE } from './main/locking/lock-order.mjs';
+import { FIELD_LOCKING_RULE, LOCK_ORDER_RULE } from '../../../messages/locking/lock-evidence.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
 import { SUSPENDED_UPDATE_RULE } from './main/suspension/suspended-updates.mjs';
 import { UNUSED_OPTION_RULE } from './main/unused-options.mjs';

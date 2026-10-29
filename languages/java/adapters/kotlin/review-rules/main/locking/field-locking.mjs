@@ -1,9 +1,11 @@
 import { classView, enclosingClass, heldLocks, unitOf } from './lock-scopes.mjs';
+import { FIELD_LOCKING_RULE } from '../../../../../messages/locking/lock-evidence.mjs';
 
-export const FIELD_LOCKING_RULE = 'InconsistentFieldLocking';
-
-const CONCURRENT =
-  /^(?:[\w.]+\.)?(?:Atomic\w*|Concurrent\w*|CopyOnWrite\w*|(?:Long|Double)(?:Adder|Accumulator)|\w*Blocking(?:Queue|Deque))\b/u;
+const CONCURRENT_TYPE = String.raw`Atomic\w*|Concurrent\w*|CopyOnWrite\w*|(?:Long|Double)(?:Adder|Accumulator)`;
+const CONCURRENT = new RegExp(
+  String.raw`^(?:[\w.]+\.)?(?:${CONCURRENT_TYPE}|\w*Blocking(?:Queue|Deque))\b`,
+  'u',
+);
 
 function message({ member, name, locked }) {
   return `\`${member}\` writes \`${name}\` without a lock, while \`${locked.member}\` writes it holding \`${locked.lock}\`: a thread that writes here races with the locked writer, so an update is lost or another thread sees a stale value. Hold the same lock for every write of the property (\`synchronized(lock) { }\`, \`lock.withLock { }\` or \`@Synchronized\`), or make it an atomic or concurrent type (\`AtomicLong\`, \`LongAdder\`, \`ConcurrentHashMap\`).`;
