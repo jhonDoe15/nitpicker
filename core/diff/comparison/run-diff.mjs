@@ -21,7 +21,7 @@ import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { combineAnalyzerReports } from './results.mjs';
 import { runBaseWithCache, createFindingsCache } from '../cache/findings-cache.mjs';
 import { cachedLine } from '../execution/progress.mjs';
-import { quickScoped, runQuickHead } from '../../quick/head-run.mjs';
+import { quickScoped, runQuickHead } from './quick/head-run.mjs';
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
@@ -172,13 +172,9 @@ function runAndCombine(context) {
   const { settings, comparison, layout, roots, startedAt } = context;
   const baseRun = runBaseSide(context);
   const headRun = withMovesFile(layout.moves.files, (baselineMovesFile) =>
-    runQuickHead({
-      settings,
-      comparison,
-      roots,
-      analyzers: quickScoped(settings, layout, settings.analyzers),
-      run: (headAnalyzers) => runHeadAnalyzers(context, { headAnalyzers, baselineMovesFile }),
-    }),
+    runQuickHead(context, (headAnalyzers) =>
+      runHeadAnalyzers(context, { headAnalyzers, baselineMovesFile }),
+    ),
   );
   return combineAnalyzerReports({
     analyzers: settings.analyzers,
@@ -240,9 +236,8 @@ function runBaseAnalyzers(context, baseAnalyzers) {
 
 function runBaseSide(context) {
   const { settings, comparison, layout, roots, baseSetup } = context;
-  const analyzers = quickScoped(settings, layout, baseSetup.analyzers);
   if (settings.cacheStore === undefined) {
-    return runBaseAnalyzers(context, analyzers);
+    return runBaseAnalyzers(context, quickScoped(settings, layout, baseSetup.analyzers));
   }
   return runBaseWithCache({
     cache: createFindingsCache({
@@ -252,7 +247,7 @@ function runBaseSide(context) {
       configOverrides: baseSetup.configOverrides,
       headPolicy: baseSetup.headPolicy,
     }),
-    analyzers,
+    analyzers: quickScoped(settings, layout, baseSetup.analyzers),
     run: (baseAnalyzers) => runBaseAnalyzers(context, baseAnalyzers),
     onCached: (count) => settings.progress?.write(cachedLine({ label: 'base', count })),
     resolveContext: {

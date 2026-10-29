@@ -1,5 +1,4 @@
 import { createHash } from 'node:crypto';
-import { selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
 import { quickSummary } from './summary.mjs';
 
 const QUICK_SKIPPED_ANALYZERS = ['coverage', 'crap', 'mutation', 'test-console'];
@@ -61,6 +60,28 @@ function skippedChecks(analyzers) {
   ];
 }
 
+function withDependencies(analyzers, names) {
+  const byName = new Map(analyzers.map((analyzer) => [analyzer.name, analyzer]));
+  const selected = new Set();
+  function add(name) {
+    if (selected.has(name) || !byName.has(name)) {
+      return;
+    }
+    selected.add(name);
+    for (const dependency of byName.get(name).dependencies ?? []) {
+      add(dependency);
+    }
+  }
+  for (const name of names) {
+    add(name);
+  }
+  return analyzers.filter(({ name }) => selected.has(name));
+}
+
+function selectedAnalyzers(analyzers, names) {
+  return names.length === 0 ? analyzers : withDependencies(analyzers, names);
+}
+
 function rejectSkippedSelection(analyzerNames, skipped) {
   const rejected = analyzerNames.filter((name) => skipped.includes(name));
   if (rejected.length > 0) {
@@ -76,7 +97,7 @@ export function applyRunProfile(analyzers, options) {
   }
   const analyzerNames = options.analyzerNames ?? [];
   rejectSkippedSelection(analyzerNames, skippedChecks(analyzers));
-  const skipped = skippedChecks(selectAnalyzers(analyzers, analyzerNames));
+  const skipped = skippedChecks(selectedAnalyzers(analyzers, analyzerNames));
   return {
     analyzers: analyzers.filter((analyzer) => !isSkipped(analyzer)).map(quickAnalyzer),
     quick: quickSummary([...new Set(skipped)]),

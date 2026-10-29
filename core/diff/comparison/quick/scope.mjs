@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { globMatcher } from '../../shared/paths/glob.mjs';
+import { globMatcher } from '../../../../shared/paths/glob.mjs';
 
 const FILE_LOCAL_ANALYZERS = new Set([
   'prettier-format',
@@ -26,11 +26,19 @@ function withoutPatterns(args) {
   );
 }
 
+function existsInside(projectRoot, file) {
+  const root = path.resolve(projectRoot);
+  const full = path.resolve(root, file);
+  if (!full.startsWith(root + path.sep)) {
+    return false;
+  }
+  return existsSync(full);
+}
+
 function scopedInvocation(invocation, { projectRoot, paths }) {
   const matchers = patternsOf(invocation.args).map((pattern) => globMatcher(pattern));
   const files = paths.filter(
-    (file) =>
-      matchers.some((matcher) => matcher.test(file)) && existsSync(path.join(projectRoot, file)),
+    (file) => matchers.some((matcher) => matcher.test(file)) && existsInside(projectRoot, file),
   );
   if (files.length === 0) {
     return {

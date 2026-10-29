@@ -1,9 +1,8 @@
-import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+import { writeFiles } from '../../git/test-support/fixture-files.mjs';
 import { scopeToTouchedFiles } from './scope.mjs';
 
 const roots = [];
@@ -65,10 +64,16 @@ describe('scopeToTouchedFiles', () => {
     const [scoped] = scopeToTouchedFiles([analyzer('prettier-format')], new Set(['docs/b.md']));
 
     const invocation = scoped.createInvocation({ projectRoot });
-    const output = spawnSync(process.execPath, invocation.args, { encoding: 'utf8' });
 
-    expect(invocation.command).toBe('node');
-    expect(JSON.parse(output.stdout)).toEqual({ findings: [] });
+    expect(invocation).toEqual({
+      command: 'node',
+      args: [
+        '--input-type=module',
+        '--eval',
+        String.raw`process.stdout.write(JSON.stringify({ findings: [] }) + '\n');`,
+      ],
+      cwd: '.',
+    });
   });
 
   it('keys a scoped analyzer by the changed files', () => {

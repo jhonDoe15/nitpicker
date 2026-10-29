@@ -1,6 +1,6 @@
-import { runGit } from '../diff/git/repository/command.mjs';
-import { createFindingsCache, runBaseWithCache } from '../diff/cache/findings-cache.mjs';
-import { cachedLine } from '../diff/execution/progress.mjs';
+import { runGit } from '../../git/repository/command.mjs';
+import { createFindingsCache, runBaseWithCache } from '../../cache/findings-cache.mjs';
+import { cachedLine } from '../../execution/progress.mjs';
 import { scopeToTouchedFiles } from './scope.mjs';
 
 export function quickScoped(settings, layout, analyzers) {
@@ -9,7 +9,8 @@ export function quickScoped(settings, layout, analyzers) {
     : scopeToTouchedFiles(analyzers, layout.touchedPaths);
 }
 
-export function runQuickHead({ settings, comparison, roots, analyzers, run }) {
+export function runQuickHead({ settings, comparison, roots, layout }, run) {
+  const analyzers = quickScoped(settings, layout, settings.analyzers);
   if (settings.quick === undefined || settings.cacheStore === undefined) {
     return run(analyzers);
   }

@@ -32,8 +32,8 @@ import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { applyRunProfile } from './quick/profile.mjs';
-import { stagedLines } from './quick/summary.mjs';
-import { indexCapture, stagedRunNotice } from './staged/capture-index.mjs';
+import { stagedHeader } from './quick/summary.mjs';
+import { stagedCapture } from './staged/capture-index.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
@@ -128,7 +128,12 @@ function runConfigured(cli) {
   const config = loadConfig(currentProjectRoot);
   const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
-  const captureHead = stagedCapture(cli, currentProjectRoot);
+  const captureHead = stagedCapture({
+    staged: cli.options.staged,
+    indexFile: cli.indexFile,
+    projectRoot: currentProjectRoot,
+    stderr: cli.stderr,
+  });
   const { analyzers, quick } = applyRunProfile(
     configureAnalyzers(presetSet, config, headPolicy),
     options,
@@ -163,14 +168,6 @@ function runConfigured(cli) {
       headPolicy,
     });
   });
-}
-
-function stagedCapture(cli, projectRoot) {
-  if (!cli.options.staged) {
-    return undefined;
-  }
-  cli.stderr.write(stagedRunNotice(projectRoot, cli.indexFile));
-  return indexCapture(cli.indexFile);
 }
 
 function runComparisonCli(cli) {
@@ -275,12 +272,7 @@ function selectComparisonAnalyzers({ options, analyzers }) {
 
 function writeComparisonOutcome({ cli, report, base, outputRoot }) {
   const { options, environment, stdout } = cli;
-  stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
-  stdout.write(
-    stagedLines(report.summary)
-      .map((line) => `${line}\n`)
-      .join(''),
-  );
+  stdout.write(`Base: ${base.baseRef} (${base.source})\n${stagedHeader(report.summary)}`);
   stdout.write(
     renderConsoleSummary(report, {
       color: environment.NO_COLOR === undefined,
