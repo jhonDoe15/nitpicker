@@ -12,7 +12,7 @@ import {
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { ownedNativePlugins } from '../native/owned-native-rules.mjs';
 import { materializedDirectory } from './oxlint-inline-config.mjs';
 import { baseUrlFreeOptions } from './oxlint-paths.mjs';
