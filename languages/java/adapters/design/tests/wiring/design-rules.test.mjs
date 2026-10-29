@@ -113,7 +113,7 @@ describe('the shared design rules over the Java facts', () => {
     ).toEqual(expected);
   });
 
-  it('reports a protocols contract breach under protocol-contract, at the open of each unclosed session it does not return', () => {
+  it('reports a protocols contract breach under protocol-contract, at the open of each unclosed session it does not return and at a step before the open on the same path', () => {
     const protocols = [
       {
         type: 'Session',
@@ -138,12 +138,14 @@ describe('the shared design rules over the Java facts', () => {
       ]),
     ).toEqual(
       [
-        ['Client.deferred', 'session', 47],
-        ['Client.leaked', 'session', 32],
-        ['Client.siblings', 'session', 96],
-      ].map(([member, receiver, line]) => [
+        ['Client.chosen', 'unclosed:begin', 135],
+        ['Client.deferred', 'unclosed:begin', 47],
+        ['Client.leaked', 'unclosed:begin', 32],
+        ['Client.premature', 'early:write', 123],
+        ['Client.siblings', 'unclosed:begin', 96],
+      ].map(([member, violation, line]) => [
         'protocol-contract',
-        `${ref('life/Client.java', member)}|${receiver}|unclosed:begin`,
+        `${ref('life/Client.java', member)}|session|${violation}`,
         'enforceable',
         line,
       ]),

@@ -68,7 +68,14 @@ const CALLABLES_0 = [
     line: 29,
     params: [{ name: 'ready', type: 'boolean' }],
     returns: 'List',
-    calls: [{ target: ref('shop/model/Cart.java', 'Cart.copy'), line: 30, receiver: 'this' }],
+    calls: [
+      {
+        target: ref('shop/model/Cart.java', 'Cart.copy'),
+        line: 30,
+        receiver: 'this',
+        branch: ['0:else'],
+      },
+    ],
     ownFields: ['pending'],
     returnsField: 'pending',
   }),

@@ -105,4 +105,37 @@ public class Client {
       }
     }
   }
+
+  public void either(Session session, boolean ready) {
+    if (ready) {
+      session.write("g");
+    } else {
+      session.begin();
+      try {
+        session.write("h");
+      } finally {
+        session.close();
+      }
+    }
+  }
+
+  public void premature(Session session) {
+    session.write("i");
+    session.begin();
+    try {
+      session.commit();
+    } finally {
+      session.close();
+    }
+  }
+
+  public int chosen(Session session, int mode) {
+    return switch (mode) {
+      case 0 -> {
+        session.begin();
+        yield 0;
+      }
+      default -> mode > 1 ? 1 : 2;
+    };
+  }
 }

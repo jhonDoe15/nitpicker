@@ -10,6 +10,7 @@ public final class Body {
     public final String receiver;
     public final boolean cleanup;
     public final long position;
+    public List<String> branch = List.of();
     public String mutation;
 
     public CallFact(Call call) {
