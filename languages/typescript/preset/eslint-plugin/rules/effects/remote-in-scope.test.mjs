@@ -14,8 +14,11 @@ ruleTester.run('no-remote-call-in-transaction', inTransaction, {
     'await prisma.$transaction([prisma.order.create({}), prisma.user.create({})]); await fetch(url);',
     'await prisma.$transaction(async (tx) => { await tx.order.create({}); cache.set(id, 1); });',
     'await mutex.runExclusive(async () => { await fetch(url); });',
+    `${runner} try { await runner.manager.save(order); await runner.commitTransaction(); } catch { await runner.rollbackTransaction(); } await fetch(url);`,
   ]),
   invalid: [
+    'await prisma.$transaction(async (tx) => { await tx.order.create({}); if (!token) { token = await fetch(url); } });',
+    `${runner} if (!order) { await runner.rollbackTransaction(); return; } await runner.manager.save(order); await fetch(url); await runner.commitTransaction();`,
     'await prisma.$transaction(async (tx) => { await tx.order.create({}); await httpClient.post(url); });',
     "await knex.transaction(async (trx) => { await trx('orders').insert({}); await fetch(url); });",
     `${runner} await runner.manager.save(order); await axiosClient.post(url); await runner.commitTransaction();`,
@@ -30,6 +33,9 @@ ruleTester.run('no-remote-call-under-lock', underLock, {
     'await mutex.runExclusive(async () => { counter.increment(); });',
     "await queue.acquire('x', async () => fetch(url));",
     'await prisma.$transaction(async (tx) => { await tx.order.create({}); await fetch(url); });',
+    'await mutex.runExclusive(async () => { if (!token) { token = await fetch(url); } return token; });',
+    'await mutex.runExclusive(async () => { if (cache.has(key)) { return; } cache.set(key, await fetch(url)); });',
+    'await mutex.runExclusive(async () => { token ??= await fetch(url); });',
   ]),
   invalid: [
     'await mutex.runExclusive(async () => { await fetch(url); });',
@@ -37,6 +43,8 @@ ruleTester.run('no-remote-call-under-lock', underLock, {
     "await navigator.locks.request('x', async () => { await fetch(url); });",
     "await redlock.using(['a'], 1000, async () => { await apiClient.post(url); });",
     'const release = await mutex.acquire(); try { await fetch(url); } finally { release(); }',
+    'await mutex.runExclusive(async () => { if (closed) { return; } await fetch(url); });',
+    'const release = await mutex.acquire(); if (busy) { release(); return; } await fetch(url); release();',
   ].map((code) => ({ code, errors: [{ messageId: 'lock' }] })),
 });
 
