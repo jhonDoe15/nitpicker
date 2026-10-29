@@ -97,6 +97,8 @@ To learn why a rule is on and what form it allows before you write or change cod
   extract a function, also when the copy has other names and literals.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
+- Remove a parameter the body does not read. One that a callback or override signature requires
+  starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
 
