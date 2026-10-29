@@ -4,9 +4,7 @@ import {
   precedenceLayers,
 } from '../../../../shared/conventions/tool-precedence.mjs';
 
-export function parseToml(text) {
-  return createRequire(import.meta.url)('smol-toml').parse(text);
-}
+export { parseToml } from '../../../../core/tooling/uv-workspace.mjs';
 
 export function stringifyToml(value) {
   return createRequire(import.meta.url)('smol-toml').stringify(value);

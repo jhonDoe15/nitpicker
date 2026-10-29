@@ -219,15 +219,15 @@ function singleProjectLoosenings({ root, files, cli }) {
 
 function configuredBaseOf(root) {
   try {
-    return readLayeredConfig(root).base;
-  } catch {
-    return undefined;
+    return { base: readLayeredConfig(root).base };
+  } catch (error) {
+    return { base: undefined, error };
   }
 }
 
 function formerAt({ root, files, cli, repositoryRoot }) {
   const prefix = path.relative(repositoryRoot, root).split(path.sep).join('/') || '.';
-  const configuredBase = configuredBaseOf(root);
+  const configuredBase = configuredBaseOf(root).base;
   const { mergeBaseSha } = comparisonBase({ repositoryRoot, configuredBase, cli });
   if (!baseDeclaresProjects({ repositoryRoot, prefix, mergeBaseSha })) {
     return { loosenings: [], toolErrors: [] };

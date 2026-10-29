@@ -95,7 +95,10 @@ export function inheritedLayerFiles(projectRoot, inherits, { repositoryRoot } = 
     return [];
   }
   const rootFolder = path.resolve(projectRoot, inherits);
-  const configPath = path.join(rootFolder, CONFIG_FILE_NAME);
+  const configPath = path.resolve(rootFolder, CONFIG_FILE_NAME);
+  if (!configPath.startsWith(rootFolder + path.sep)) {
+    return [];
+  }
   if (rootFolder === path.resolve(projectRoot) || !existsSync(configPath)) {
     return [];
   }

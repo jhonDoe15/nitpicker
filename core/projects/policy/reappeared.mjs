@@ -19,7 +19,10 @@ function planRelative(prefix, file) {
 
 function contentOf(root, file) {
   const full = path.resolve(root, file);
-  if (!full.startsWith(root + path.sep) || !existsSync(full) || !statSync(full).isFile()) {
+  if (!full.startsWith(root + path.sep)) {
+    return undefined;
+  }
+  if (!existsSync(full) || !statSync(full).isFile()) {
     return undefined;
   }
   return gitBlobId(readFileSync(full));
