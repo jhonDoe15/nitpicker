@@ -4,13 +4,8 @@ import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import { baselinePathsOf } from '../../../../shared/rules/facts/baseline.mjs';
 import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
 import { pathInside, sourceFilesUnder } from '../review-rules/java-sources.mjs';
-import {
-  definitionKey,
-  fileBindings,
-  importFacts,
-  projectIndex,
-  referenceScope,
-} from './jvm-references.mjs';
+import { definitionKey } from './jvm-definition-keys.mjs';
+import { fileBindings, importFacts, projectIndex, referenceScope } from './jvm-references.mjs';
 import { readJvmDefinitions } from './source/jvm-definitions.mjs';
 
 const REUSE_TOOL = 'structure';
