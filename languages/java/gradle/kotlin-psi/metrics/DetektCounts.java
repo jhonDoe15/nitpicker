@@ -37,7 +37,7 @@ public final class DetektCounts {
     }
     for (KtFunction function : PsiTreeUtil.findChildrenOfType(file, KtFunction.class)) {
       KtParameterList parameters = function.getValueParameterList();
-      if (parameters != null && !parameters.getParameters().isEmpty()) {
+      if (parameters != null && parameters.getParameters().size() > 1) {
         counts.add("LongParameterList", parameters, parameters.getParameters().size());
       }
     }
@@ -59,7 +59,7 @@ public final class DetektCounts {
     }
     Depth depth = new Depth();
     function.accept(depth);
-    if (depth.max > 0) {
+    if (depth.max > 1) {
       add("NestedBlockDepth", named(function), depth.max);
     }
   }

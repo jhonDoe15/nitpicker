@@ -1,6 +1,7 @@
 import {
   countInMessage,
   countPattern,
+  REMEDIES,
   withCountRatchets,
 } from '../../../../../shared/rules/counts/count-ratchet.mjs';
 
@@ -17,25 +18,43 @@ const MESSAGE_COUNTS = new Map([
     'CognitiveComplexMethod',
     countPattern(String.raw`\(complexity: {count}\)`, 'cognitive complexity'),
   ],
-  ['ComplexCondition', countPattern(String.raw`too complex \({count}\)`, 'condition complexity')],
-  ['TooManyFunctions', countPattern("with '{count}' functions", 'functions')],
+  [
+    'ComplexCondition',
+    countPattern(String.raw`too complex \({count}\)`, 'conditions', REMEDIES.condition),
+  ],
+  ['TooManyFunctions', countPattern("with '{count}' functions", 'functions', REMEDIES.file)],
   [
     'NestedScopeFunctions',
-    countPattern(String.raw`nested too deeply \('{count}'\)`, 'scope function nesting'),
+    countPattern(
+      String.raw`nested too deeply \('{count}'\)`,
+      'scope function nesting',
+      REMEDIES.nesting,
+    ),
   ],
-  ['MethodOverloading', countPattern('overloaded {count} times', 'overloads')],
+  [
+    'MethodOverloading',
+    countPattern(
+      'overloaded {count} times',
+      'overloads',
+      'Give the new overload a name of its own.',
+    ),
+  ],
   [
     'DestructuringDeclarationWithTooManyEntries',
-    countPattern('contains {count} but', 'destructured entries'),
+    countPattern(
+      'contains {count} but',
+      'destructured entries',
+      'Destructure only the entries you use.',
+    ),
   ],
 ]);
 
 const MEASURED_COUNTS = new Map([
-  ['ThrowsCount', 'throw statements'],
-  ['NestedBlockDepth', 'nesting depth'],
-  ['LargeClass', 'lines of code'],
-  ['LoopWithTooManyJumpStatements', 'break and continue statements'],
-  ['LongParameterList', 'parameters'],
+  ['ThrowsCount', { unit: 'throw statements' }],
+  ['NestedBlockDepth', { unit: 'nesting levels', remedy: REMEDIES.nesting }],
+  ['LargeClass', { unit: 'lines of code', remedy: REMEDIES.class }],
+  ['LoopWithTooManyJumpStatements', { unit: 'break and continue statements' }],
+  ['LongParameterList', { unit: 'parameters', remedy: REMEDIES.parameters }],
 ]);
 
 const PARAMETER_PRINT = /\(.*\)(?= has too many parameters)/u;
@@ -75,12 +94,14 @@ export function withDetektCountRatchets(findings, detektCounts = []) {
     const counted = MESSAGE_COUNTS.get(rule);
     if (counted !== undefined) {
       const count = countInMessage(finding.message, counted.pattern);
-      return count === undefined ? undefined : { ...count, unit: counted.unit };
+      return count === undefined
+        ? undefined
+        : { ...count, unit: counted.unit, remedy: counted.remedy };
     }
-    const unit = MEASURED_COUNTS.get(rule);
-    const value = unit === undefined ? undefined : measuredValue(index, finding, rule);
+    const measured = MEASURED_COUNTS.get(rule);
+    const value = measured === undefined ? undefined : measuredValue(index, finding, rule);
     return value === undefined
       ? undefined
-      : { value, unit, subject: finding.message.replace(PARAMETER_PRINT, '(…)') };
+      : { ...measured, value, subject: finding.message.replace(PARAMETER_PRINT, '(…)') };
   });
 }
