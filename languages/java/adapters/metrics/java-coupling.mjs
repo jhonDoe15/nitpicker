@@ -35,13 +35,13 @@ function featurePackage(module, directory) {
   const name = packageOf(module);
   const qualifier = name.slice(0, name.lastIndexOf('/') + 1);
   const parts = name.slice(qualifier.length).split('.');
-  for (let length = parts.length; length > 0; length -= 1) {
-    const folder = parts.slice(0, length).join('/');
-    if (directory === folder || directory.endsWith(`/${folder}`)) {
-      return `${qualifier}${parts.slice(0, length).join('.')}`;
-    }
-  }
-  return directory;
+  const length = parts
+    .map((_, index) => parts.length - index)
+    .find((count) => {
+      const folder = parts.slice(0, count).join('/');
+      return directory === folder || directory.endsWith(`/${folder}`);
+    });
+  return length === undefined ? directory : `${qualifier}${parts.slice(0, length).join('.')}`;
 }
 
 function packageRoles(layout, fileOf) {

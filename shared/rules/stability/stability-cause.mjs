@@ -1,17 +1,8 @@
+import { addTo, folderOf, remembered } from './graph-maps.mjs';
+
 const SAMPLED_FILES = 3;
 const LISTED_FOLDERS = 10;
 const LISTED_UNITS = 10;
-
-function addTo(map, key, value) {
-  const values = map.get(key) ?? new Set();
-  values.add(value);
-  map.set(key, values);
-}
-
-function folderOf(file) {
-  const index = file.lastIndexOf('/');
-  return index < 0 ? '.' : file.slice(0, index);
-}
 
 function adjacencyOf(edges) {
   const adjacency = new Map();
@@ -28,16 +19,6 @@ function membersBy(modules, keyOf) {
     addTo(members, keyOf(module), module);
   }
   return members;
-}
-
-function remembered(compute) {
-  const cache = new Map();
-  return (key) => {
-    if (!cache.has(key)) {
-      cache.set(key, compute(key));
-    }
-    return cache.get(key);
-  };
 }
 
 function foldersOf(members, fileOf) {
