@@ -2,6 +2,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { codeExtensionNames } from '../../../languages/typescript/preset/layout.mjs';
+import { TYPESCRIPT_API } from '../../../languages/typescript/typescript-api/api-selection.mjs';
 
 const EDITORCONFIG = '.editorconfig';
 const KOTLIN_FILES = ['A.kt', 'A.kts'];
@@ -70,7 +71,7 @@ function scriptText(text) {
 }
 
 function printedScript(file, text) {
-  const ts = createRequire(import.meta.url)('typescript');
+  const ts = createRequire(import.meta.url)(TYPESCRIPT_API.file);
   const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, false);
   return ts.createPrinter({ removeComments: true }).printFile(source);
 }

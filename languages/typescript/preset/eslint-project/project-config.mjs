@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import { TYPESCRIPT_API } from '../../typescript-api/api-selection.mjs';
 import { contextOf, isBuiltin, located, packageFacts } from './config-paths.mjs';
 
 export const ESLINT_PROJECT_FILES = [
@@ -20,7 +21,7 @@ const PATH_SEPARATOR = /[./]/u;
 const UNTRACKED_DATA = /(?:^|\/)(?:package\.json|tsconfig[\w.-]*\.json)$/u;
 
 function typescript() {
-  return createRequire(import.meta.url)('typescript');
+  return createRequire(import.meta.url)(TYPESCRIPT_API.file);
 }
 
 export function projectEslintConfig(root) {
