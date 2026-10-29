@@ -1,6 +1,5 @@
 import { classView, enclosingClass, heldLocks, lockKey, unitOf } from './lock-scopes.mjs';
-
-export const LOCK_ORDER_RULE = 'LockOrderInversion';
+import { LOCK_ORDER_RULE } from '../../../../../messages/locking/lock-evidence.mjs';
 
 function memberName(unit) {
   return unit?.k === 'fun' ? unit.name : 'init';

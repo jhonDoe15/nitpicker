@@ -1,4 +1,5 @@
 import { readdirSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { configurationFiles } from '../adapters/java-analyzer.mjs';
 import {
@@ -146,9 +147,10 @@ describe('rule catalogs', () => {
   });
 
   it('are part of the configuration hash, with the code that applies them', () => {
-    const files = readdirSync(import.meta.dirname)
+    const files = readdirSync(import.meta.dirname, { recursive: true })
+      .filter((name) => name.endsWith('.mjs') || name.endsWith('.json'))
       .filter((name) => !name.includes('.test.'))
-      .map((name) => `languages/java/messages/${name}`)
+      .map((name) => `languages/java/messages/${name.replaceAll(path.sep, '/')}`)
       .sort();
 
     expect(configurationFiles().filter((file) => files.includes(file))).toEqual(files);

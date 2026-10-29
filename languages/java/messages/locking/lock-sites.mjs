@@ -1,4 +1,4 @@
-import { closingIndex } from '../source/brackets.mjs';
+import { closingIndex } from '../../source/brackets.mjs';
 
 const SYNCHRONIZED_BLOCK = /\bsynchronized\s*\(/gu;
 const LOCK_CALL =
@@ -10,7 +10,7 @@ const SPACES = /\s+/gu;
 const FIELD_START = /^(?:\+\+|--)?\s*(?:this\s*\.\s*)?([A-Za-z_$][\w$]*)/u;
 const BODY_MEMBERS = new Set(['method', 'constructor', 'initializer', 'static-block']);
 
-export function lockKey(expression, type) {
+function lockKey(expression, type) {
   const plain = expression.replaceAll(SPACES, '').replace(THIS_PREFIX, '');
   const own = `${type.name}.`;
   const qualified = plain.endsWith('.class') || plain.endsWith('.this');

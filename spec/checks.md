@@ -84,7 +84,7 @@ places, is keyed by the class and the lock pair or the field (no line number) an
 
 | Preset                    | Lock order                          | Field written with and without a lock         | Implementation                                                                                 |
 | ------------------------- | ----------------------------------- | --------------------------------------------- | ---------------------------------------------------------------------------------------------- |
-| Java                      | `pmd/LockOrderInversion`            | `pmd/InconsistentFieldLocking`                | XPath rules in `pmd-ruleset.xml`; `messages/lock-evidence.mjs` names both places               |
+| Java                      | `pmd/LockOrderInversion`            | `pmd/InconsistentFieldLocking`                | XPath rules in `pmd-ruleset.xml`; `messages/locking/lock-evidence.mjs` names both places       |
 | Kotlin                    | `pmd/LockOrderInversion`            | `pmd/InconsistentFieldLocking`                | `review-rules/main/locking/` over the `kotlin-psi` locking facts                               |
 | Python                    | `python-rules/lock-order-inversion` | `python-rules/inconsistent-attribute-locking` | `languages/python/rules/locking/`                                                              |
 | TypeScript and JavaScript | not applicable                      | not applicable                                | one thread runs the code between two `await`s; there is no lock to hold or to take in an order |

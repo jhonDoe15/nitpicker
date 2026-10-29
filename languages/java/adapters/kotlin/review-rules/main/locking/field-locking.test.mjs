@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { file, klass, parameter, property, run, summary } from '../../test-support/facts.mjs';
-import { FIELD_LOCKING_RULE, fieldLockingFindings } from './field-locking.mjs';
+import { FIELD_LOCKING_RULE } from '../../../../../messages/locking/lock-evidence.mjs';
+import { fieldLockingFindings } from './field-locking.mjs';
 
 const CLASS_SCOPE = {
   k: 'class',
@@ -80,9 +81,11 @@ describe('inconsistently locked properties in Kotlin', () => {
       `${FIELD_LOCKING_RULE} Counter.size in resize 10`,
       `${FIELD_LOCKING_RULE} Counter.hits in miss 14`,
     ]);
-    expect(findings[1].message).toMatch(
-      /^`resize` writes `size` without a lock, while `name` writes it holding `this`/u,
-    );
+    expect(findings.map(({ message }) => message.slice(0, message.indexOf(': ')))).toEqual([
+      '`bump` writes `count` without a lock, while `add` writes it holding `lock`',
+      '`resize` writes `size` without a lock, while `name` writes it holding `this`',
+      '`miss` writes `hits` without a lock, while `hit` writes it holding `lock`',
+    ]);
   });
 
   it.each([
