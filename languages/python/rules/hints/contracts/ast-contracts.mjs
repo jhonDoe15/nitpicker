@@ -1,4 +1,4 @@
-import { RULES_TOOL } from './tool.mjs';
+import { RULES_TOOL } from '../tool.mjs';
 
 function contractParts(subject) {
   const [member, kind, type] = subject.split('|');
