@@ -38,8 +38,21 @@ describe('policy change rendering', () => {
     ).toEqual([
       '',
       'Policy changed in this change (nitpicker.config.json, head against base; ' +
-        'loosening accepted with --accept-policy-change):',
+        'loosening accepted by exact digest):',
       '  exclude added: a/**',
+    ]);
+  });
+
+  it('keeps every change on one line without terminal escapes or forged lines', () => {
+    const forged =
+      'exception added: eslint/no-console for src/** (ok\n  Unapproved policy changes: 0\u001B[2K\u001B[31m)';
+    const section = policyChangeSection({ policyChanges: [forged, 'a\u0000b\rc'] });
+
+    expect(section).toEqual([
+      '',
+      HEADING,
+      '  exception added: eslint/no-console for src/** (ok Unapproved policy changes: 0)',
+      '  ab c',
     ]);
   });
 });

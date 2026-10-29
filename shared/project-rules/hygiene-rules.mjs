@@ -19,6 +19,7 @@ export const LARGE_FILE_BYTES = 1024 * 1024;
 
 const EVERY_LANGUAGE = { typescript: true, java: true, python: true, kotlin: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false, kotlin: false };
+const TYPESCRIPT_AND_PYTHON = { typescript: true, java: false, python: true, kotlin: false };
 
 export const HYGIENE_RULES = [
   {
@@ -55,19 +56,69 @@ export const HYGIENE_RULES = [
   {
     id: PACKAGE_RULE_IDS.unusedDependency,
     check: 'dead-code',
-    limit: 'a dependency in package.json that nothing imports or runs',
-    enforcedBy: TYPESCRIPT_ONLY,
+    limit:
+      "a dependency in package.json (Python: in the project's dependency files) that nothing imports or runs",
+    enforcedBy: TYPESCRIPT_AND_PYTHON,
   },
   {
     id: PACKAGE_RULE_IDS.unlistedDependency,
     check: 'dead-code',
-    limit: 'an import of a package that package.json does not list',
-    enforcedBy: TYPESCRIPT_ONLY,
+    limit:
+      "an import of a package that package.json (Python: the project's dependency files) does not list",
+    enforcedBy: TYPESCRIPT_AND_PYTHON,
   },
   {
     id: PACKAGE_RULE_IDS.unresolvedImport,
     check: 'dead-code',
     limit: 'an import that resolves to no file and no package',
     enforcedBy: TYPESCRIPT_ONLY,
+  },
+];
+
+export const CHANGE_HISTORY_TOOL = 'change-history';
+
+export const HISTORY_RULE_IDS = {
+  coChange: 'co-change',
+};
+
+export const HISTORY_EXCEPTION_RULES = Object.values(HISTORY_RULE_IDS);
+
+export const CO_CHANGE_DEFAULTS = {
+  commits: 300,
+  minSupport: 5,
+  minConfidence: 0.6,
+  maxCommitFiles: 30,
+};
+
+export const CO_CHANGE_LIMITS = {
+  maxCommits: 2000,
+  minHistory: 20,
+  minSupport: 2,
+  minCommitFiles: 2,
+  maxCommitFiles: 100,
+};
+
+export const CO_CHANGE_EXAMPLES = 3;
+
+const PERCENT = 100;
+const REPORTED_EVERYWHERE = Object.fromEntries(
+  ['typescript', 'javascript', 'java', 'python', 'kotlin'].map((language) => [
+    language,
+    'reported',
+  ]),
+);
+
+export const HISTORY_RULES = [
+  {
+    id: HISTORY_RULE_IDS.coChange,
+    check: CHANGE_HISTORY_TOOL,
+    limit: [
+      'two folders of production code that changed together in at least',
+      `${String(CO_CHANGE_DEFAULTS.minSupport)} of the last ${String(CO_CHANGE_DEFAULTS.commits)} commits`,
+      `and in at least ${String(CO_CHANGE_DEFAULTS.minConfidence * PERCENT)}% of the commits of the less-changed one`,
+      `(only edits of production code count, and commits of more than ${String(CO_CHANGE_DEFAULTS.maxCommitFiles)} files are ignored);`,
+      'opt-in with `history.coChange`, never fails',
+    ].join(' '),
+    enforcedBy: REPORTED_EVERYWHERE,
   },
 ];
