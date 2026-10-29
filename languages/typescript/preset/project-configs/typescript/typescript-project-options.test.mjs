@@ -2,16 +2,16 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { validateConfig } from '../../../../core/configuration/validate.mjs';
-import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { validateConfig } from '../../../../../core/configuration/validate.mjs';
+import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import {
   loadTypeScript,
   preEmitDiagnostics,
-} from '../../adapters/typecheck/typescript-program.mjs';
-import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mjs';
-import { resolveLayoutFor } from '../layout.mjs';
-import { layoutTransformFor } from '../tool-configs.mjs';
-import { ignoredScriptToolNotices } from './ignored-notices.mjs';
+} from '../../../adapters/typecheck/typescript-program.mjs';
+import { resolveHeadPolicy, withHeadCheckoutFacts } from '../../head-policy.mjs';
+import { resolveLayoutFor } from '../../layout.mjs';
+import { layoutTransformFor } from '../../tool-configs.mjs';
+import { typescriptIgnoredNotices } from '../ignored-notices.mjs';
 import { projectStrictValues } from './typescript-project-options.mjs';
 
 const roots = [];
@@ -212,7 +212,7 @@ describe('the TypeScript precedence setting', () => {
 
   it('prints a notice for the strict options the tsconfig relaxes while not opted in', () => {
     const root = relaxedProject();
-    const notices = (config) => ignoredScriptToolNotices({ config, projectRoot: root });
+    const notices = (config) => typescriptIgnoredNotices({ config, projectRoot: root });
 
     expect(notices({})).toEqual([
       'Ignoring strict: false, noUncheckedIndexedAccess: false in tsconfig.json; opt in with "tools": { "typescript": { "precedence": ["project", "nitpicker"] } }',
@@ -221,6 +221,6 @@ describe('the TypeScript precedence setting', () => {
       [],
     );
     expect(notices({ tools: { typescript: { project: 'tsconfig.json' } } })).toEqual([]);
-    expect(ignoredScriptToolNotices({ config: {}, projectRoot: relaxedProject('{}') })).toEqual([]);
+    expect(typescriptIgnoredNotices({ config: {}, projectRoot: relaxedProject('{}') })).toEqual([]);
   });
 });

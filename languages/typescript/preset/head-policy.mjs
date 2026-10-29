@@ -26,7 +26,10 @@ import { detectLibraries } from './libraries/project-libraries.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { hasPrettierConventions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
-import { headToolConfigFacts, withHeadToolConfigs } from './project-configs/head-tool-configs.mjs';
+import {
+  headProjectConfigFacts,
+  withHeadToolConfigs,
+} from './project-configs/head-tool-configs.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -80,7 +83,7 @@ function withProjectFacts(policy, config, projectRoot) {
     policy.tools === undefined
       ? undefined
       : {
-          ...withHeadToolConfigs(policy, projectRoot),
+          ...withHeadToolConfigs(policy, config, projectRoot),
           ...(jscpd === undefined ? {} : { jscpd }),
         };
   return {
@@ -149,6 +152,7 @@ const HEAD_CHECKOUT_FACTS = [
   'spring',
   'kotlin',
 ];
+const PROJECT_CONFIG_TOOLS = ['stryker', 'typescript'];
 const SCOPE_FACTS = [
   ['react', ['enabled', 'iconPackage', 'major', 'styling', 'autoCleanup']],
   ['i18n', ['enabled']],
@@ -178,6 +182,11 @@ function headToolFacts(policy, headPolicy) {
   if (usesProjectConfig(tools.jscpd?.precedence ?? [])) {
     tools.jscpd = headJscpdFacts(tools.jscpd, headPolicy.tools?.jscpd);
   }
+  for (const tool of PROJECT_CONFIG_TOOLS) {
+    if (usesProjectConfig(tools[tool]?.precedence ?? [])) {
+      tools[tool] = headProjectConfigFacts(tools[tool], headPolicy.tools?.[tool]);
+    }
+  }
   return policy.tools === undefined ? {} : { tools };
 }
 
@@ -187,11 +196,7 @@ function headTestPlacement(policy, headPolicy) {
     : {};
 }
 
-export function withHeadCheckoutFacts(basePolicy, headPolicy = {}) {
-  const policy =
-    basePolicy.tools === undefined
-      ? basePolicy
-      : { ...basePolicy, tools: headToolConfigFacts(basePolicy.tools, headPolicy.tools) };
+export function withHeadCheckoutFacts(policy, headPolicy = {}) {
   return {
     ...policy,
     ...headTestPlacement(policy, headPolicy),

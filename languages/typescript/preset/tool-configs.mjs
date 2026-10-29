@@ -17,7 +17,7 @@ import {
   extendedProjectTsconfig,
   projectStrictOverrides,
   strictCompilerOptions,
-} from './project-configs/typescript-project-options.mjs';
+} from './project-configs/typescript/typescript-project-options.mjs';
 import { selectedProjectTsconfig } from './modules/selected-project-tsconfig.mjs';
 import { END_TO_END_ROOT, sourceRoots, testRoots } from './layout.mjs';
 
