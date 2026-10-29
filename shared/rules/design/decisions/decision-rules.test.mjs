@@ -49,6 +49,17 @@ describe('repeated-policy-decision', () => {
     expect(designRun(facts, 'repeated-policy-decision')).toEqual([]);
   });
 
+  it('names the decision next to the type that already answers it', () => {
+    const facts = decisions([
+      decider('src/pay/method.ts', [['card', 'paypal']]),
+      decider('src/receipts/text.ts', [['paypal', 'card']]),
+    ]);
+    const [finding] = designRun(facts, 'repeated-policy-decision');
+    expect(finding.message.split(': ').at(-1).split('. If this')[0]).toBe(
+      'decide already answers it next to PaymentMethod; call it from the other places',
+    );
+  });
+
   it('passes the same grouping twice in one module', () => {
     const facts = decisions([decider('src/a.ts', [['card', 'paypal']])]);
     const twice = {

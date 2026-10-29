@@ -152,7 +152,8 @@ function isProtocol(entry) {
     isPlainObject(entry) &&
     typeof entry.type === 'string' &&
     [entry.open, entry.close].every((names) => isGlobs(names) && names.length > 0) &&
-    (entry.steps === undefined || isGlobs(entry.steps))
+    (entry.steps === undefined || isGlobs(entry.steps)) &&
+    (entry.reason === undefined || (typeof entry.reason === 'string' && entry.reason !== ''))
   );
 }
 
@@ -171,7 +172,7 @@ const POLICY_SHAPES = [
   [
     'policy.protocols',
     (policy) => isListOf(policy.protocols, isProtocol),
-    'an array of { type, open, close, steps? } entries',
+    'an array of { type, open, close, steps?, reason? } entries',
   ],
   [
     'policy.testConsole.allow',

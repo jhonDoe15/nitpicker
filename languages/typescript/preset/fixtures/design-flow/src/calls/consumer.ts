@@ -1,6 +1,6 @@
 import * as helpers from './forwards';
-import { publicTarget } from './index';
-import { forwards } from './index';
+import { publicTarget } from '../index';
+import { forwards } from '../index';
 import { target as renamed } from './forwards';
 import { overloaded } from './overloads';
 

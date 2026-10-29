@@ -1,4 +1,4 @@
-import { Cart } from './cart';
+import { Cart } from '../model/cart';
 
 export function target(a: string, b: number): string {
   return a + String(b);

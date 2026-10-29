@@ -4,12 +4,11 @@ import { nextOccurrence } from '../finding-helpers.mjs';
 
 export function designFindingFactory(context) {
   const occurrences = new Map();
-  return ({ rule, path, identity, symbol, line, message, enforceable }) => {
+  return ({ rule, path, identity, symbol, line, message }) => {
     if (context.isExcepted(rule, path)) {
       return [];
     }
     const occurrence = nextOccurrence(occurrences, `${rule}\0${path}\0${identity}`);
-    const reportOnly = enforceable !== true && REPORT_ONLY_DESIGN_RULES.includes(rule);
     return [
       {
         tool: context.analyzerName,
@@ -17,7 +16,7 @@ export function designFindingFactory(context) {
         path,
         identity: occurrence === 1 ? identity : `${identity}#${String(occurrence)}`,
         message: `${message} ${exceptionHint(rule, path)}`,
-        classification: reportOnly ? 'descriptive' : 'enforceable',
+        classification: REPORT_ONLY_DESIGN_RULES.includes(rule) ? 'descriptive' : 'enforceable',
         ...(symbol === undefined ? {} : { symbol }),
         ...(line === undefined ? {} : { location: { line } }),
       },

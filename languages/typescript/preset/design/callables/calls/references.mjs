@@ -135,13 +135,11 @@ export function indexConstants(files, registry) {
   }
 }
 
-/** The project callables a callable uses as values, directly or through a module-level constant. */
 export function referenceFacts(scope) {
   const sites = [...valueReferences(scope, scope.nodes), ...heldReferences(scope, scope.nodes)];
   return uniqueIds(sites, scope.site.id);
 }
 
-/** The project callables that module-level code of a file calls or uses as values. */
 export function moduleReferences(state, sourceFile) {
   const nodes = outsideClosures(sourceFile);
   const called = nodes
