@@ -382,7 +382,7 @@ describe('tool precedence', () => {
 
   it('rejects unknown tools, unknown keys and malformed precedence lists', () => {
     expect(() => validateConfig({ tools: { stylelint: { precedence: ['project'] } } })).toThrow(
-      '"tools" names unknown tool "stylelint". Supported tools with this preset: prettier, eslint, typescript, tests',
+      '"tools" names unknown tool "stylelint". Supported tools with this preset: prettier, jscpd, eslint, typescript, tests',
     );
     expect(() => validateConfig({ tools: { prettier: { config: 'project' } } })).toThrow(
       '"tools.prettier" has unknown key "config"',
@@ -420,7 +420,7 @@ describe('tool precedence', () => {
       expect(() =>
         validateConfig({ preset, tools: { prettier: { precedence: ['project'] } } }),
       ).toThrow(
-        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle, spotbugs, errorprone, pit${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}`,
+        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle, spotbugs, errorprone, pit${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}, jscpd`,
       );
     },
   );
@@ -429,12 +429,12 @@ describe('tool precedence', () => {
     const tools = { pmd: { precedence: ['project'] } };
     expect(() => validateConfig({ tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, eslint, typescript, tests',
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, jscpd, eslint, typescript, tests',
       ),
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut',
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut, jscpd',
       ),
     );
   });
