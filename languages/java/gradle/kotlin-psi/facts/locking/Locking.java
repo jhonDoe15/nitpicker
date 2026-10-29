@@ -21,6 +21,7 @@ public final class Locking {
   private static final Set<Object> ASSIGNMENTS = Set.of(KtTokens.EQ, KtTokens.PLUSEQ, KtTokens.MINUSEQ,
       KtTokens.MULTEQ, KtTokens.DIVEQ, KtTokens.PERCEQ);
   private static final Set<Object> STEPS = Set.of(KtTokens.PLUSPLUS, KtTokens.MINUSMINUS);
+  private static final Set<String> EXPLICIT_LOCKS = Set.of("lock", "tryLock", "lockInterruptibly");
 
   private final IntUnaryOperator lineOf;
   private final List<Object> acquisitions = new ArrayList<>();
@@ -123,17 +124,42 @@ public final class Locking {
     }
     writes.add(m("line", lineOf.applyAsInt(write.getTextRange().getStartOffset()), "target", name,
         "viaThis", viaThis, "operator", operator, "readsTarget", readsTarget(write, target, name),
-        "synchronizedFunction", synchronizedFunction(write), "locals", locals(write),
-        "scopes", frame == null ? List.of() : frame.chain()));
+        "synchronizedFunction", synchronizedFunction(write), "explicitLock", explicitLock(write),
+        "locals", locals(write), "scopes", frame == null ? List.of() : frame.chain()));
   }
 
   private static boolean readsTarget(KtExpression write, KtExpression target, String name) {
     if (!(write instanceof KtBinaryExpression) || ((KtBinaryExpression) write).getRight() == null) {
       return true;
     }
+    boolean shadowed = locals(write).contains(name);
     for (KtNameReferenceExpression reference : PsiTreeUtil.findChildrenOfType(
         ((KtBinaryExpression) write).getRight(), KtNameReferenceExpression.class)) {
-      if (name.equals(reference.getReferencedName())) {
+      if (name.equals(reference.getReferencedName()) && readsProperty(reference, shadowed)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean readsProperty(KtNameReferenceExpression reference, boolean shadowed) {
+    PsiElement parent = reference.getParent();
+    if (parent instanceof KtQualifiedExpression
+        && ((KtQualifiedExpression) parent).getSelectorExpression() == reference) {
+      return ((KtQualifiedExpression) parent).getReceiverExpression() instanceof KtThisExpression;
+    }
+    return !shadowed;
+  }
+
+  private static boolean explicitLock(PsiElement element) {
+    KtDeclarationWithBody owner = PsiTreeUtil.getParentOfType(
+        element, KtNamedFunction.class, KtPropertyAccessor.class);
+    if (owner == null) {
+      return false;
+    }
+    for (KtCallExpression call : PsiTreeUtil.findChildrenOfType(owner, KtCallExpression.class)) {
+      String name = nameOf(call.getCalleeExpression());
+      if (name != null && EXPLICIT_LOCKS.contains(name)) {
         return true;
       }
     }

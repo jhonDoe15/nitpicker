@@ -10,6 +10,7 @@ public final class Counters {
   private volatile int hits;
   private long total;
   private String label = "";
+  private volatile String owner = "";
 
   public void increment() {
     synchronized (lock) {
@@ -40,6 +41,36 @@ public final class Counters {
     total = 0; // violation: InconsistentFieldLocking
   }
 
+  public void addThenCount(long amount) {
+    guard.lock();
+    try {
+      total += amount;
+    } finally {
+      guard.unlock();
+    }
+    total -= 1; // violation: InconsistentFieldLocking
+  }
+
+  public void tryAdd(long amount) {
+    if (guard.tryLock()) {
+      try {
+        total += amount;
+      } finally {
+        guard.unlock();
+      }
+    }
+  }
+
+  public void claim(String owner) {
+    synchronized (lock) {
+      this.owner = owner + "!";
+    }
+  }
+
+  public void release(String owner) {
+    this.owner = owner;
+  }
+
   public synchronized void name(String value) {
     label = value;
   }
@@ -55,6 +86,6 @@ public final class Counters {
   }
 
   public String summary() {
-    return label + total;
+    return label + total + owner;
   }
 }

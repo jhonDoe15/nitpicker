@@ -26,6 +26,9 @@ function sitesOf(file, view) {
 }
 
 function inversion(entry, sites) {
+  if (entry.held.includes(entry.key)) {
+    return undefined;
+  }
   for (const outer of entry.held) {
     if (outer === '?' || outer === entry.key) {
       continue;
@@ -34,6 +37,7 @@ function inversion(entry, sites) {
       (candidate) =>
         candidate.klass.qualified === entry.klass.qualified &&
         candidate.key === outer &&
+        !candidate.held.includes(outer) &&
         candidate.held.includes(entry.key),
     );
     if (other !== undefined) {

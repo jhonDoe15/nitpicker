@@ -79,7 +79,7 @@ Two rules check how a class takes its locks. A lock-order inversion is two locks
 in opposite orders, so two threads that run both nestings can each hold one lock and wait forever for
 the other. Inconsistent locking is a field written while a lock is held in one place and with no lock
 in another, so the unlocked write races with the locked one. Every finding is enforceable, names both
-places, is keyed by the class and the lock pair or the field (no line number) and names a reviewed
+places, is keyed by the class, the method and the lock pair or the field (no line number) and names a reviewed
 `exceptions` entry.
 
 | Preset                    | Lock order                          | Field written with and without a lock         | Implementation                                                                                 |
@@ -98,8 +98,9 @@ What each recognizes:
 | Python | `with` and `async with` on `threading` and `asyncio` locks, `RLock`, `Condition` and a one-slot semaphore built once                     | a lock passed in, an object the analysis cannot identify, a nested function that may run later      |
 
 A write the analysis cannot place (in a constructor or initializer, in a lambda or nested function,
-in a method the class calls while it holds a lock, under a `with` it cannot identify) is never
-reported as unlocked. Java and Kotlin also skip a single write of a `volatile` field and fields of an
+in a method the class calls while it holds a lock, under a `with` it cannot identify; in Python
+also in a decorated method or one that calls `acquire()`) is never reported as unlocked. A lock taken
+again while the thread already holds it (a reentrant re-acquire) is not an inversion. Java and Kotlin also skip a single write of a `volatile` field and fields of an
 atomic or concurrent type.
 
 ## Entry points

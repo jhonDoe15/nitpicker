@@ -9,6 +9,23 @@ const THIS_PREFIX = /^this\s*\.\s*/u;
 const SPACES = /\s+/gu;
 const FIELD_START = /^(?:\+\+|--)?\s*(?:this\s*\.\s*)?([A-Za-z_$][\w$]*)/u;
 const BODY_MEMBERS = new Set(['method', 'constructor', 'initializer', 'static-block']);
+const NOT_TYPES = new Set(['return', 'throw', 'case', 'yield', 'else', 'do', 'assert', 'new']);
+const TYPE_BEFORE = /([\w$>\]]+)\s+$/u;
+const DECLARATION_REACH = 120;
+
+function declaredBefore(text, index) {
+  const token = TYPE_BEFORE.exec(text.slice(Math.max(0, index - DECLARATION_REACH), index))?.[1];
+  return token !== undefined && !NOT_TYPES.has(token);
+}
+
+function declaredIn(body, name) {
+  const declaration = new RegExp(String.raw`(?<![\w$.])${escaped(name)}\s*[=;,):]`, 'gu');
+  return [...body.matchAll(declaration)].some((match) => declaredBefore(body, match.index));
+}
+
+function ownKey(key, body) {
+  return key.includes('.') || key === 'this' || !declaredIn(body, key);
+}
 
 function lockKey(expression, type) {
   const plain = expression.replaceAll(SPACES, '').replace(THIS_PREFIX, '');
@@ -28,27 +45,31 @@ function blockSites(text, member, type) {
     const close = closingIndex(text, open);
     const brace = close < 0 ? -1 : text.indexOf('{', close);
     const end = brace < 0 ? -1 : closingIndex(text, brace);
-    return end < 0
-      ? []
-      : [{ key: lockKey(text.slice(open + 1, close), type), at: member.start + match.index, end }];
+    const key = lockKey(text.slice(open + 1, close), type);
+    return end < 0 || !ownKey(key, body) ? [] : [{ key, at: member.start + match.index, end }];
   });
 }
 
 function callSites(text, member, type) {
   const body = text.slice(member.start, member.end);
-  return [...body.matchAll(LOCK_CALL)].map((match) => {
+  return [...body.matchAll(LOCK_CALL)].flatMap((match) => {
     const key = lockKey(match[1], type);
+    if (!ownKey(key, body)) {
+      return [];
+    }
     const after = match.index + match[0].length;
     const unlock = new RegExp(
-      String.raw`(?:this\s*\.\s*)?${escaped(match[1])}\s*\.\s*unlock\s*\(`,
+      String.raw`(?<![\w$.])(?:this\s*\.\s*)?${escaped(match[1])}\s*\.\s*unlock\s*\(`,
       'u',
     );
     const found = unlock.exec(body.slice(after));
-    return {
-      key,
-      at: member.start + match.index,
-      end: found === null ? member.end : member.start + after + found.index,
-    };
+    return [
+      {
+        key,
+        at: member.start + match.index,
+        end: found === null ? member.end : member.start + after + found.index,
+      },
+    ];
   });
 }
 
@@ -96,6 +117,9 @@ function writePattern(name) {
 
 export function lockedWrites(text, { sites, name }) {
   return [...text.matchAll(writePattern(name))].flatMap((match) => {
+    if (declaredBefore(text, match.index)) {
+      return [];
+    }
     const lock = holding(sites, match.index)[0];
     return lock?.member.kind === 'method' ? [{ at: match.index, lock }] : [];
   });

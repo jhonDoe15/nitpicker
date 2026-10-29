@@ -88,6 +88,15 @@ describe.skipIf(!enabled)('lock-order-inversion', () => {
           ),
         ],
       ],
+      [
+        'locks built by a dataclass field and in __post_init__',
+        `import threading\nfrom dataclasses import dataclass, field\n\n\n@dataclass\nclass Store:\n    a: threading.Lock = field(default_factory=threading.Lock)\n\n    def __post_init__(self):\n        self.b = threading.RLock()\n\n${indented(`${nested('one', 'self.a', 'self.b')}\n${nested('two', 'self.b', 'self.a')}`)}\n`,
+        [
+          'frozen-dataclass:6 Store',
+          order(14, 'Store.one: self.a -> self.b', takes('one', 'self.b', 'self.a', '`two`')),
+          order(19, 'Store.two: self.b -> self.a', takes('two', 'self.a', 'self.b', '`one`')),
+        ],
+      ],
     ]);
     expect(actual).toEqual(expected);
   });
@@ -130,6 +139,24 @@ describe.skipIf(!enabled)('lock-order-inversion', () => {
           `${nested('one', 'self.a', 'self.b')}\n${nested('two', 'self.b', 'self.a')}`,
           'import threading\n\n\n',
           '        self.a = threading.Semaphore(2)\n',
+        ),
+        [],
+      ],
+      [
+        'a reentrant lock taken again inside another lock',
+        store(
+          'def one(self):\n    with self.a:\n        with self.b:\n            with self.a:\n                self.n += 1',
+          'import threading\n\n\n',
+          '        self.a = threading.RLock()\n',
+        ),
+        [],
+      ],
+      [
+        'a condition built on a lock of the class',
+        store(
+          `${nested('one', 'self.a', 'self.c')}\n${nested('two', 'self.c', 'self.a')}`,
+          'import threading\n\n\n',
+          '        self.a = threading.RLock()\n        self.c = threading.Condition(self.a)\n',
         ),
         [],
       ],
@@ -228,6 +255,14 @@ describe.skipIf(!enabled)('inconsistent-attribute-locking', () => {
         'another object and a class method',
         store(
           'def add(self, other):\n    with self.a:\n        self.n += 1\n    other.n = 0\n\n@classmethod\ndef build(cls):\n    cls.n = 0',
+        ),
+        [],
+      ],
+      [
+        'acquire and release, a decorated method and a bare annotation',
+        store(
+          'def add(self):\n    with self.a:\n        self.n += 1\n\ndef reset(self):\n    self.a.acquire()\n    try:\n        self.n = 0\n    finally:\n        self.a.release()\n\n@synchronized\ndef clear(self):\n    self.n = 0\n\ndef declare(self):\n    self.n: int',
+          'import threading\n\nfrom locks import synchronized\n\n\n',
         ),
         [],
       ],

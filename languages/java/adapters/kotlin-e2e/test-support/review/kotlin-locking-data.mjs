@@ -69,6 +69,8 @@ class Ordered {
     private val first = Any()
     private val second = Any()
     private val third = Any()
+    private val fourth = Any()
+    private val fifth = Any()
     private var count = 0
 
     fun add() {
@@ -107,6 +109,10 @@ class Ordered {
     fun third() {
         synchronized(third) { synchronized(first) { count += 5 } }
     }
+
+    fun reenter() {
+        synchronized(fourth) { synchronized(fifth) { synchronized(fourth) { count *= 3 } } }
+    }
 }
 `;
 
@@ -119,6 +125,7 @@ import kotlin.concurrent.withLock
 class Counters(var size: Int) {
     private val lock = Any()
     private val guard = ReentrantLock()
+    private val explicit = ReentrantLock()
     private var count = 0
     @Volatile private var hits = 0
     @Volatile private var running = false
@@ -127,6 +134,7 @@ class Counters(var size: Int) {
     private var helped = 0
     private var atomic = AtomicLong()
     private var spare = 0
+    @Volatile private var owner = ""
 
     init {
         count = 1
@@ -159,6 +167,23 @@ class Counters(var size: Int) {
 
     fun clear() {
         total = 0
+    }
+
+    fun addExplicit(amount: Long) {
+        explicit.lock()
+        try {
+            total += amount
+        } finally {
+            explicit.unlock()
+        }
+    }
+
+    fun claim(owner: String) {
+        synchronized(lock) { this.owner = owner + "!" }
+    }
+
+    fun release(owner: String) {
+        this.owner = owner
     }
 
     @Synchronized
@@ -197,7 +222,7 @@ class Counters(var size: Int) {
         spare = 0
     }
 
-    fun summary(): String = synchronized(lock) { "$label $total $helped $spare $size $count $hits $running $atomic" }
+    fun summary(): String = synchronized(lock) { "$label $total $helped $spare $size $count $hits $running $atomic $owner" }
 }
 `;
 
