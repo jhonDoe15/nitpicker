@@ -22,7 +22,7 @@ describe('signature rule messages', () => {
     [
       'compatibility-shim',
       '__getattr__',
-      'A module `__getattr__` resolves names that no longer exist',
+      'A module `__getattr__` keeps names that were removed or renamed working',
     ],
     [
       'compatibility-shim',
