@@ -4,7 +4,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { configurationFiles } from '../java-analyzer.mjs';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
-import { writePmdRulesets } from '../../builds/rulesets/pmd-rulesets.mjs';
+import { writeGuardRulesets } from '../../builds/rulesets/pmd-rulesets.mjs';
 import { expectedViolations } from '../test-support/code-smells/violation-markers.mjs';
 import { codeSmellRules } from '../test-support/code-smells/code-smell-rules.mjs';
 import { withRuleMessage } from '../../messages/rule-messages.mjs';
@@ -131,14 +131,15 @@ describe('the Java code smell ruleset', () => {
     });
   });
 
-  it('leaves to the Spring rules exactly the writes and flushes they report', () => {
+  it('leaves to the Spring rules exactly the writes, flushes and row writes they report', () => {
     const ioCallInLoop = xpathOf('IoCallInLoop');
     const flushes = xpathOf('SpringDataNoFlush', springRuleset);
 
     expect({
       writes: ioCallInLoop.includes(xpathOf('SpringDataNoSaveInLoop', springRuleset)),
       flushes: ioCallInLoop.includes(flushes.slice(0, flushes.indexOf(' [not('))),
-    }).toEqual({ writes: true, flushes: true });
+      rows: ioCallInLoop.includes(xpathOf('SpringDataRowWriteInLoop', springRuleset)),
+    }).toEqual({ writes: true, flushes: true, rows: true });
   });
 
   it.each(rules)('$name has a marked violation in the fixture', ({ name }) => {
@@ -154,18 +155,16 @@ describe('the Java code smell ruleset', () => {
     const test = path.join(root, 'src/test/java');
     mkdirSync(test, { recursive: true });
     const reportDir = path.join(root, 'report');
-    const rulesets = writePmdRulesets({
+    mkdirSync(reportDir);
+    const rulesets = writeGuardRulesets({
       reportDir,
       mainDirectories: [path.join(root, 'src/main/java')],
       testDirectories: [test],
       compiler: { target: '21', args: [] },
       spring: false,
-      nitpicker: true,
-      project: undefined,
     });
     const wrapperOf = (file) =>
       rulesets
-        .filter((ruleset) => ruleset.startsWith(reportDir))
         .map((ruleset) => readFileSync(ruleset, 'utf8'))
         .find((text) => text.includes(path.join(GRADLE_DIRECTORY, file)));
     const gradleFile = (file) =>
