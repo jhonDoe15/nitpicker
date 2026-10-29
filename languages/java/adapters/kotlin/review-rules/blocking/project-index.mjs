@@ -1,59 +1,36 @@
-import { BLOCKING_REPOSITORY_BASES } from './blocking-catalog.mjs';
-import { lastSegment, resolverFor } from './type-names.mjs';
+import { declaredNames, typeName } from '../spring/spring-names.mjs';
+import { projectContext, reachesType } from '../spring/view/project-types.mjs';
+import { BLOCKING_REPOSITORIES, REACTIVE_REPOSITORIES } from './blocking-catalog.mjs';
 
-const SPRING_DATA = 'org.springframework.data.';
+const REACTIVE_RESULTS = new Set(['Flow', 'Mono', 'Flux', 'Publisher', 'Deferred']);
 
-function isDataBase(entry, { file, resolver }) {
-  return (
-    BLOCKING_REPOSITORY_BASES.includes(lastSegment(entry)) &&
-    (entry.startsWith(SPRING_DATA) ||
-      resolver.importsFrom(SPRING_DATA) ||
-      file.imports.length === 0)
-  );
+function isNonBlocking({ modifiers, returnType }) {
+  const result = typeName(returnType ?? '')
+    .split('.')
+    .at(-1);
+  return modifiers.includes('suspend') || REACTIVE_RESULTS.has(result);
 }
 
-function derivesFromData(root, byName) {
-  const seen = new Set();
-  const pending = [root];
-  for (const current of pending) {
-    if (seen.has(current)) {
-      continue;
-    }
-    seen.add(current);
-    if (current.klass.supers.some((entry) => isDataBase(entry, current))) {
-      return true;
-    }
-    pending.push(...current.klass.supers.flatMap((entry) => byName.get(lastSegment(entry)) ?? []));
-  }
-  return false;
-}
-
-function repositoryNames(files) {
-  const classes = files.flatMap((file) => {
-    const resolver = resolverFor(file);
-    return file.classes.map((klass) => ({ klass, file, resolver }));
-  });
-  const byName = Map.groupBy(classes, ({ klass }) => klass.name);
-  return new Set(
-    classes.filter((entry) => derivesFromData(entry, byName)).map(({ klass }) => klass.name),
-  );
-}
-
-export function projectIndex(files) {
+export function projectIndex(files, { projectRoot, javaRoots = [] } = {}) {
   const production = files.filter(({ test }) => !test);
+  const declared = declaredNames(production);
+  const context = projectContext({ projectFiles: production, declared, projectRoot, javaRoots });
   const functions = production.flatMap((file) => file.functions);
-  const suspending = new Set(
-    functions.filter(({ modifiers }) => modifiers.includes('suspend')).map(({ name }) => name),
-  );
-  const plain = new Set(
-    functions.filter(({ modifiers }) => !modifiers.includes('suspend')).map(({ name }) => name),
-  );
-  const constructors = new Set(production.flatMap((file) => file.classes.map(({ name }) => name)));
+  const reaches = (resolver, type, targets) =>
+    reachesType(context, resolver.resolve, type, targets);
   return {
-    suspending,
-    plain,
-    constructors,
-    repositories: repositoryNames(production),
+    declared,
+    suspending: new Set(
+      functions.filter(({ modifiers }) => modifiers.includes('suspend')).map(({ name }) => name),
+    ),
+    plain: new Set(
+      functions.filter(({ modifiers }) => !modifiers.includes('suspend')).map(({ name }) => name),
+    ),
+    nonBlocking: new Set(functions.filter(isNonBlocking).map(({ name }) => name)),
+    constructors: new Set(production.flatMap((file) => file.classes.map(({ name }) => name))),
+    isBlockingRepository: (resolver, type) =>
+      reaches(resolver, type, BLOCKING_REPOSITORIES) &&
+      !reaches(resolver, type, REACTIVE_REPOSITORIES),
     declares: (name) => functions.some((fn) => fn.name === name),
   };
 }

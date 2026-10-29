@@ -1,17 +1,24 @@
 package nitpicker.kotlinpsi.coroutines;
 
-import static nitpicker.kotlinpsi.common.Psi.clip;
 import static nitpicker.kotlinpsi.common.Psi.nameOf;
 
 import java.util.Set;
-import java.util.regex.Pattern;
+import nitpicker.kotlinpsi.coroutines.Contexts.Kind;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
 
 final class CoroutineScopes {
-  record Scope(boolean coroutine, boolean offloaded, String function) {
-    static Scope none(String function) {
-      return new Scope(false, false, function);
+  record Scope(boolean coroutine, boolean offloaded, String owner, String function) {
+    static Scope none(String owner, String function) {
+      return new Scope(false, false, owner, function);
+    }
+
+    Scope none() {
+      return none(owner, function);
+    }
+
+    Scope running(boolean offloadedHere) {
+      return new Scope(true, offloadedHere, owner, function);
     }
   }
 
@@ -22,9 +29,6 @@ final class CoroutineScopes {
   private static final Set<String> NEW_COROUTINES = Set.of("launch", "async", "produce", "actor");
   private static final Set<String> INHERITING =
       Set.of("coroutineScope", "supervisorScope", "withTimeout", "withTimeoutOrNull");
-  private static final Pattern NON_BLOCKING =
-      Pattern.compile("^Dispatchers\\.(?:Default|Main|Unconfined)(?:\\.immediate)?(?:\\.limitedParallelism\\(.*\\))?$");
-  private static final Pattern BLOCKING = Pattern.compile("\\bIO\\b|Executor|ThreadPool|Thread\\b");
 
   private CoroutineScopes() {}
 
@@ -43,57 +47,61 @@ final class CoroutineScopes {
     return null;
   }
 
-  static Scope of(KtLambdaExpression lambda, Scope enclosing) {
+  static Scope of(KtLambdaExpression lambda, Scope enclosing, Set<String> flowBuilders) {
     KtCallExpression host = hostOf(lambda);
     String name = host == null ? null : nameOf(host.getCalleeExpression());
     if (name == null) {
-      return Scope.none(enclosing.function());
+      return enclosing.none();
     }
-    boolean explicitReceiver = host.getParent() instanceof KtQualifiedExpression qualified
-        && qualified.getSelectorExpression() == host;
-    if (TRANSPARENT.contains(name)) {
+    KtExpression receiver = receiverOf(host);
+    if (TRANSPARENT.contains(name) || InlineScopes.isInlineOperator(name, receiver)) {
       return enclosing;
     }
     if (INHERITING.contains(name)) {
-      return enclosing.coroutine() ? enclosing : Scope.none(enclosing.function());
+      return enclosing.coroutine() ? enclosing : enclosing.none();
     }
     if (name.equals("withContext")) {
-      return dispatched(host, enclosing, true);
+      return switched(host, enclosing);
     }
     if (name.equals("runInterruptible")) {
-      return new Scope(true, true, enclosing.function());
+      return enclosing.running(true);
     }
     if (NEW_COROUTINES.contains(name)) {
-      return launched(host, enclosing, explicitReceiver);
+      return launched(host, enclosing, receiver != null);
     }
-    return Scope.none(enclosing.function());
+    if (receiver == null && flowBuilders.contains(name)) {
+      return enclosing.running(InlineScopes.flowsOnOffloaded(host));
+    }
+    return enclosing.none();
+  }
+
+  static KtExpression receiverOf(KtCallExpression call) {
+    PsiElement parent = call.getParent();
+    return parent instanceof KtQualifiedExpression qualified && qualified.getSelectorExpression() == call
+        ? qualified.getReceiverExpression()
+        : null;
+  }
+
+  private static Scope switched(KtCallExpression host, Scope enclosing) {
+    Kind kind = Contexts.of(contextArgument(host));
+    if (kind == Kind.NONE) {
+      return enclosing.coroutine() ? enclosing : enclosing.none();
+    }
+    return enclosing.running(kind == Kind.OFFLOADED);
   }
 
   private static Scope launched(KtCallExpression host, Scope enclosing, boolean explicitReceiver) {
-    KtExpression context = contextArgument(host);
-    if (context != null) {
-      return dispatched(host, enclosing, false);
+    Kind kind = Contexts.of(contextArgument(host));
+    if (kind != Kind.NONE) {
+      return enclosing.running(kind == Kind.OFFLOADED);
     }
     if (explicitReceiver || !enclosing.coroutine()) {
-      return Scope.none(enclosing.function());
+      return enclosing.none();
     }
     return enclosing;
   }
 
-  private static Scope dispatched(KtCallExpression host, Scope enclosing, boolean required) {
-    KtExpression context = contextArgument(host);
-    String text = context == null ? "" : clip(context);
-    if (NON_BLOCKING.matcher(text).matches()) {
-      return new Scope(true, false, enclosing.function());
-    }
-    if (context == null && required) {
-      return Scope.none(enclosing.function());
-    }
-    boolean blocking = BLOCKING.matcher(text).find() || !text.contains("Dispatchers.");
-    return blocking ? new Scope(true, true, enclosing.function()) : new Scope(true, false, enclosing.function());
-  }
-
-  private static KtExpression contextArgument(KtCallExpression call) {
+  static KtExpression contextArgument(KtCallExpression call) {
     for (ValueArgument argument : call.getValueArguments()) {
       if (argument instanceof KtLambdaArgument) {
         continue;

@@ -63,34 +63,57 @@ import java.nio.file.Files
 import java.nio.file.Path
 import java.util.concurrent.Future
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runInterruptible
 import kotlinx.coroutines.withContext
 import kotlinx.coroutines.withTimeout
 
-class Archive(private val index: File, private val pending: Future<String>) {
+class Process(private val id: String) {
+    fun waitFor(): Int = id.length
+}
+
+class Archive(
+    private val index: File,
+    private val pending: Future<String>,
+    private val ioDispatcher: CoroutineDispatcher,
+) {
     suspend fun loadsOnTheCaller(path: Path): String = Files.readString(path)
 
     suspend fun waitsOnAFuture(): String = pending.get()
 
     suspend fun timesOutBlockingWork(path: Path): String = withTimeout(1.seconds) { Files.readString(path) }
 
-    suspend fun offloaded(path: Path): String = withContext(Dispatchers.IO) { Files.readString(path) }
+    suspend fun shieldsWithoutMoving(path: Path): String = withContext(NonCancellable) { Files.readString(path) }
 
-    suspend fun interruptible(): String = runInterruptible(Dispatchers.IO) { pending.get() }
+    suspend fun readsEach(paths: List<Path>): List<String> = paths.map { Files.readString(it) }
+
+    fun streamsOnTheCollector(path: Path): Flow<String> = flow { emit(Files.readString(path)) }
+
+    fun streamsOnTheInjectedDispatcher(path: Path): Flow<String> =
+        flow { emit(Files.readString(path)) }.flowOn(ioDispatcher)
+
+    suspend fun offloaded(path: Path): String = withContext(ioDispatcher) { Files.readString(path) }
+
+    suspend fun interruptible(): String = runInterruptible(ioDispatcher) { pending.get() }
 
     suspend fun timesOutOffloadedWork(path: Path): String =
-        withTimeout(1.seconds) { withContext(Dispatchers.IO) { Files.readString(path) } }
+        withTimeout(1.seconds) { withContext(ioDispatcher) { Files.readString(path) } }
 
     suspend fun timesOutAfterADelay(path: Path): Path = withTimeout(1.seconds) { delay(10); path }
 
+    suspend fun waitsForAProjectProcess(process: Process): Int = process.waitFor()
+
     fun readsOutsideACoroutine(path: Path): String = Files.readString(path)
 
-    fun launchesOnTheIoDispatcher(scope: CoroutineScope, path: Path) {
-        scope.launch(Dispatchers.IO) { Files.readString(path) }
+    fun launchesOnTheInjectedDispatcher(scope: CoroutineScope, path: Path) {
+        scope.launch(ioDispatcher) { Files.readString(path) }
     }
 
     fun sizeOfTheIndex(): Long = index.length()
@@ -180,12 +203,14 @@ class UsedContextTest {
 }
 `;
 
+export const ARCHIVE_FILE = `${MAIN}/Archive.kt`;
+
 export const REVIEW_RULE_FILES = {
   [`${MAIN}/Status.kt`]: STATUS,
   [`${MAIN}/Clock.kt`]: CLOCK,
   [`${MAIN}/Settlement.kt`]: SETTLEMENT,
   [`${MAIN}/Formatting.kt`]: FORMATTING,
-  [`${MAIN}/Archive.kt`]: ARCHIVE,
+  [ARCHIVE_FILE]: ARCHIVE,
   [`${TEST}/WaitingTest.kt`]: WAITING_TEST,
   [`${TEST}/ContextTest.kt`]: CONTEXT_TEST,
   [`${SPRING}/boot/test/context/SpringBootTest.kt`]: SPRING_BOOT_TEST,
@@ -193,8 +218,11 @@ export const REVIEW_RULE_FILES = {
 };
 
 export const EXPECTED_REVIEW_FINDINGS = [
-  'BlockingCallInCoroutine loadsOnTheCaller.Files.readString',
-  'BlockingCallInCoroutine waitsOnAFuture.Future.get',
+  'BlockingCallInCoroutine Archive.loadsOnTheCaller.Files.readString',
+  'BlockingCallInCoroutine Archive.readsEach.Files.readString',
+  'BlockingCallInCoroutine Archive.shieldsWithoutMoving.Files.readString',
+  'BlockingCallInCoroutine Archive.streamsOnTheCollector.Files.readString',
+  'BlockingCallInCoroutine Archive.waitsOnAFuture.Future.get',
   'ExhaustiveEnumPredicate isLive',
   'ExhaustiveEnumPredicate isOpen',
   'ExhaustiveEnumPredicate isSettled',
@@ -206,7 +234,7 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',
   'StaticForwardingWrapper total',
-  'TimeoutWithoutSuspension timesOutBlockingWork.withTimeout',
+  'TimeoutWithoutSuspension Archive.timesOutBlockingWork.withTimeout',
   'unused-option Envelope.retries',
   'unused-option Mailer.retries',
   'unused-option pad.width',

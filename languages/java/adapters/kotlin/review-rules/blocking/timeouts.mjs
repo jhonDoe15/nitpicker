@@ -1,3 +1,4 @@
+import { SOURCE_TOOL } from '../review-finding.mjs';
 import { NON_SUSPENDING_STANDARD } from './blocking-catalog.mjs';
 import { classifyBlocking } from './classify.mjs';
 import { resolverFor } from './type-names.mjs';
@@ -8,7 +9,11 @@ const COOPERATIVE_REFERENCES = new Set(['isActive', 'coroutineContext']);
 const COROUTINES_PACKAGE = 'kotlinx.coroutines.';
 
 export function timeoutMessage(builder, work) {
-  return `\`${builder}\` can only cancel its block at a suspension point, and this block has none: it runs \`${work}\` and no call that suspends, so the timeout never fires while the work runs and the caller waits for all of it. Move the blocking work into \`withContext(Dispatchers.IO) { ... }\` or \`runInterruptible(Dispatchers.IO) { ... }\` inside the block, or call \`ensureActive()\` or \`yield()\` in the loop that does the work.`;
+  return `\`${builder}\` can cancel its block only at a suspension point, and this block has none: \`${work}\` runs to the end before the timeout can fire. Run the work in \`withContext(ioDispatcher) { ... }\` or \`runInterruptible(ioDispatcher) { ... }\` inside the block, with an injected \`CoroutineDispatcher\`, or call \`ensureActive()\` in the loop that does it.`;
+}
+
+export function scopeName(file, entry) {
+  return [entry.owner, entry.function].filter(Boolean).join('.') || file.file;
 }
 
 function plainProjectCall(call, project) {
@@ -52,7 +57,7 @@ export function callKey(file, call) {
 }
 
 function fileTimeouts(file, { finding, project }) {
-  const resolver = resolverFor(file);
+  const resolver = resolverFor(file, project.declared);
   if (!resolver.importsFrom(COROUTINES_PACKAGE)) {
     return [];
   }
@@ -61,15 +66,17 @@ function fileTimeouts(file, { finding, project }) {
     if (work === undefined) {
       return [];
     }
+    const scope = scopeName(file, timeout);
     return [
       {
         keys: timeout.calls.map((call) => callKey(file, call)),
         finding: finding({
+          tool: SOURCE_TOOL,
           rule: TIMEOUT_RULE,
           file: file.file,
           line: timeout.line,
-          symbol: `${timeout.function ?? file.file}.${timeout.builder}`,
-          key: `${timeout.function}:${timeout.builder}:${work}`,
+          symbol: `${scope}.${timeout.builder}`,
+          key: `${scope}:${timeout.builder}:${work}`,
           message: timeoutMessage(timeout.builder, work),
         }),
       },

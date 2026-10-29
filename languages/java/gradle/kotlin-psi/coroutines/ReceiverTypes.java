@@ -3,6 +3,7 @@ package nitpicker.kotlinpsi.coroutines;
 import static nitpicker.kotlinpsi.common.Psi.nameOf;
 import static nitpicker.kotlinpsi.common.Psi.withoutTypeArguments;
 
+import java.util.List;
 import java.util.Map;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
@@ -81,6 +82,9 @@ final class ReceiverTypes {
   private static String ofName(KtNameReferenceExpression reference, int depth) {
     String name = reference.getReferencedName();
     for (PsiElement scope = reference.getParent(); scope != null; scope = scope.getParent()) {
+      if (scope instanceof KtFunctionLiteral literal && isElementParameter(literal, name)) {
+        return elementOf(literal);
+      }
       KtDeclaration found = declaration(scope, name, reference);
       if (found != null) {
         return declared(found, depth);
@@ -117,6 +121,33 @@ final class ReceiverTypes {
         if (member instanceof KtProperty property && name.equals(property.getName())) {
           return property;
         }
+      }
+    }
+    return null;
+  }
+
+  private static boolean isElementParameter(KtFunctionLiteral literal, String name) {
+    List<KtParameter> parameters = literal.getValueParameters();
+    if (parameters.isEmpty()) {
+      return name.equals("it");
+    }
+    return parameters.size() == 1 && name.equals(parameters.get(0).getName())
+        && parameters.get(0).getTypeReference() == null;
+  }
+
+  private static String elementOf(KtFunctionLiteral literal) {
+    KtCallExpression host = literal.getParent() instanceof KtLambdaExpression lambda
+        ? CoroutineScopes.hostOf(lambda) : null;
+    KtExpression receiver = host == null ? null : CoroutineScopes.receiverOf(host);
+    if (receiver == null || !(KtPsiUtil.safeDeparenthesize(receiver) instanceof KtNameReferenceExpression owner)
+        || !InlineScopes.passesElement(nameOf(host.getCalleeExpression()))) {
+      return null;
+    }
+    for (PsiElement scope = owner.getParent(); scope != null; scope = scope.getParent()) {
+      KtDeclaration found = declaration(scope, owner.getReferencedName(), owner);
+      if (found != null) {
+        KtTypeReference type = found instanceof KtCallableDeclaration callable ? callable.getTypeReference() : null;
+        return type == null ? null : InlineScopes.elementType(type.getText());
       }
     }
     return null;
