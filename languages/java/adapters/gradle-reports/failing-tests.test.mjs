@@ -3,7 +3,6 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { failingTestsOf } from './failing-tests.mjs';
-import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const roots = [];
 
@@ -13,60 +12,43 @@ afterEach(() => {
   }
 });
 
-function gradleRun({ suites }) {
+const FAILING = [
+  '<testsuite name="shop.CartTest"><testcase classname="shop.CartTest" name="adds">',
+  '<failure message="expected: &lt;4&gt; but was: &lt;3&gt;"/></testcase></testsuite>',
+].join('');
+const PASSING = '<testsuite name="shop.CartTest"><testcase name="adds"/></testsuite>';
+
+function gradleRun(modules) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-failing-tests-'));
   roots.push(root);
   const reportBase = path.join(root, 'reports');
-  const results = path.join(root, 'app/build/test-results/test');
   mkdirSync(reportBase, { recursive: true });
-  mkdirSync(results, { recursive: true });
-  writeFileSync(path.join(reportBase, 'test-results.json'), JSON.stringify([results]));
-  for (const [name, text] of Object.entries(suites)) {
-    writeFileSync(path.join(results, `TEST-${name}.xml`), text);
-  }
+  const listed = Object.entries(modules).map(([dir, suite]) => {
+    const results = path.join(root, dir, 'build/test-results/test');
+    mkdirSync(results, { recursive: true });
+    writeFileSync(path.join(results, 'TEST-shop.CartTest.xml'), suite);
+    return { dir, results: [results] };
+  });
+  writeFileSync(path.join(reportBase, 'test-results.json'), JSON.stringify(listed));
   return { root, reportBase };
 }
 
 describe('failingTestsOf', () => {
-  it('names the failing tests of a Gradle run like the Maven build does', () => {
-    const { root, reportBase } = gradleRun({
-      suites: {
-        'shop.CartTest': `<testsuite name="shop.CartTest"><testcase classname="shop.CartTest" name="adds"><failure message="expected: &lt;4&gt; but was: &lt;3&gt;"/></testcase></testsuite>`,
-      },
-    });
+  it('names the failing tests of each module like the Maven build does', () => {
+    const { reportBase } = gradleRun({ '': FAILING, core: FAILING, api: PASSING });
 
-    expect(failingTestsOf(root, { reportBase, since: 0 }).message).toBe(
-      [
-        `Tests fail in ${root}; nitpicker needs a passing test suite for coverage and mutation testing:`,
-        '  shop.CartTest.adds: expected: <4> but was: <3>',
-      ].join('\n'),
-    );
+    expect(failingTestsOf({ reportBase, since: 0 })).toEqual([
+      { module: '.', tests: ['shop.CartTest.adds: expected: <4> but was: <3>'] },
+      { module: 'core', tests: ['shop.CartTest.adds: expected: <4> but was: <3>'] },
+    ]);
   });
 
-  it('names the base snapshot when the base tests fail', () => {
-    const { root, reportBase } = gradleRun({
-      suites: {
-        'shop.CartTest': `<testsuite name="shop.CartTest"><testcase classname="shop.CartTest" name="adds"><failure message="no"/></testcase></testsuite>`,
-      },
-    });
+  it('is empty when no test failed or the run wrote no list', () => {
+    const { root, reportBase } = gradleRun({ core: PASSING });
 
-    expect(failingTestsOf(root, { reportBase, since: 0, snapshot: 'base' }).message).toBe(
-      [
-        `Tests fail in the base snapshot (${root}); nitpicker needs a passing test suite for coverage and mutation testing:`,
-        '  shop.CartTest.adds: no',
-        linkSentence('baseTestsFail'),
-      ].join('\n'),
-    );
-  });
-
-  it('leaves the build failure as it is when no test failed or the run wrote no list', () => {
-    const { root, reportBase } = gradleRun({
-      suites: {
-        'shop.CartTest': '<testsuite name="shop.CartTest"><testcase name="adds"/></testsuite>',
-      },
-    });
-
-    expect(failingTestsOf(root, { reportBase, since: 0 })).toBeUndefined();
-    expect(failingTestsOf(root, { reportBase: path.join(root, 'none'), since: 0 })).toBeUndefined();
+    expect([
+      failingTestsOf({ reportBase, since: 0 }),
+      failingTestsOf({ reportBase: path.join(root, 'none'), since: 0 }),
+    ]).toEqual([[], []]);
   });
 });

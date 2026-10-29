@@ -185,7 +185,7 @@ const SKIPS = {
     },
     tests: {
       message:
-        'mutation skipped: the base commit fails its own tests, so its mutants cannot be compared. Fix the base first.',
+        'mutation skipped: the base commit fails its own tests, so its mutants are unknown there.',
       anchor: TROUBLESHOOTING_ANCHORS.baseTestsFail,
     },
   },

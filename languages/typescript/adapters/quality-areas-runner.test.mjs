@@ -336,6 +336,18 @@ describe('mutation testing that cannot start', () => {
     });
   });
 
+  it('says the base commit fails its own tests when the base snapshot cannot start mutation', () => {
+    const strykerMessage =
+      'Error: There were failed tests in the initial test run. Fix the tests first.';
+
+    expect(mutationSkipFor(strykerMessage, 'base')).toEqual({
+      rule: 'tests-failed-skipped',
+      message:
+        'mutation skipped: the base commit fails its own tests, so its mutants are unknown there.',
+      anchor: TROUBLESHOOTING_ANCHORS.baseTestsFail,
+    });
+  });
+
   it('leaves any other Stryker failure to be reported as it is', () => {
     expect(mutationSkipFor('Error: Stryker crashed')).toBeUndefined();
   });

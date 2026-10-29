@@ -54,7 +54,7 @@ export function aggregateShardReports({
   );
   validateCommonSummaries(shardReports);
 
-  const { newFindings, resolvedFindings, changedMetrics, heldFindings, toolErrors } =
+  const { newFindings, resolvedFindings, changedMetrics, heldFindings, toolErrors, notes } =
     mergeShardEntries(shardReports, analyzerResolutionErrors);
   const summary = aggregateSummary({
     shardReports,
@@ -70,6 +70,7 @@ export function aggregateShardReports({
     unchangedFindings: sortByToolAndPath(heldFindings),
     changedMetrics: sortByToolAndPath(changedMetrics),
     toolErrors: sortByToolAndPath(toolErrors),
+    notes: sortByToolAndPath(notes),
   };
   report.text = writeDiffReports(outputRoot, report, {
     projectPath: projectPathOf(liveProjectRoot),
@@ -104,6 +105,7 @@ function mergeShardEntries(shardReports, analyzerResolutionErrors) {
     changedMetrics: mergeEntries(shardReports, 'changedMetrics'),
     heldFindings: mergeEntries(shardReports, 'heldFindings'),
     toolErrors,
+    notes: mergeEntries(shardReports, 'notes'),
   };
 }
 

@@ -21,7 +21,6 @@ import {
   runJacocoReport,
 } from './maven-tests.mjs';
 import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
-import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const roots = [];
 
@@ -225,30 +224,6 @@ describe('collectTestResults', () => {
     expect(run(`${surefire}/.`)).toThrow(failing('  shop.OrderTest.totals: no'));
   });
 
-  it('names the base snapshot when the base tests fail', () => {
-    const reports = tree({
-      'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals', 'no']]),
-    });
-
-    expect(() => {
-      collectTestResults({
-        module: { basedir: '/m', surefireReports: reports, failsafeReports: reports },
-        reportDir: tree({}),
-        since,
-        isArchunit: archunitMatcher(),
-        snapshot: 'base',
-      });
-    }).toThrow(
-      new Error(
-        [
-          'Tests fail in the base snapshot (/m); nitpicker needs a passing test suite for coverage and mutation testing:',
-          '  shop.OrderTest.totals: no',
-          linkSentence('baseTestsFail'),
-        ].join('\n'),
-      ),
-    );
-  });
-
   it('reports whether any test ran', () => {
     const run = (files) =>
       collectTestResults({
@@ -264,9 +239,29 @@ describe('collectTestResults', () => {
       });
 
     expect([
-      run({}),
-      run({ 'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals']]) }),
+      run({}).testsRan,
+      run({ 'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals']]) }).testsRan,
     ]).toEqual([false, true]);
+  });
+
+  it('lists the failing tests instead of failing when it is told to tolerate them', () => {
+    const reports = tree({
+      'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals', 'expected 3']]),
+    });
+
+    expect(
+      collectTestResults({
+        module: { basedir: '/m', surefireReports: reports, failsafeReports: tree({}) },
+        reportDir: tree({}),
+        since,
+        isArchunit: archunitMatcher(),
+        tolerateFailures: true,
+        moduleName: 'core',
+      }),
+    ).toEqual({
+      testsRan: true,
+      failure: { module: 'core', tests: ['shop.OrderTest.totals: expected 3'] },
+    });
   });
 
   it('fails when surefire ran none of the ArchUnit classes', () => {

@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import { builtinModules, createRequire } from 'node:module';
 import path from 'node:path';
+import { selectTypeScriptApi } from '../../typescript-api/api-selection.mjs';
 import { chainOf } from '../../../../shared/traversal.mjs';
 import { parsedTsconfig, readJsonc, referencedTsconfigs } from './tsconfig-files.mjs';
 
@@ -14,7 +15,7 @@ const DECLARATION_FILE = /\.d\.[cm]?ts$/u;
 const requireModule = createRequire(import.meta.url);
 
 function typescript() {
-  return requireModule('typescript');
+  return requireModule(selectTypeScriptApi().file);
 }
 
 function fixedOptions(ts) {

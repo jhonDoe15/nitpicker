@@ -1,8 +1,13 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { PACKAGE_ROOT, resolveTool } from '../../../core/tooling/tool-resolution.mjs';
+import {
+  isToolInstalled,
+  PACKAGE_ROOT,
+  resolveTool,
+} from '../../../core/tooling/tool-resolution.mjs';
 import { testRunnerFor } from './test-runner/detect-runner.mjs';
 import { RUNNER_PACKAGES } from './test-runner/runners.mjs';
+import { selectTypeScriptApi } from '../typescript-api/api-selection.mjs';
 
 const TOOL_BY_ANALYZER = {
   'entry-points': 'dependency-cruiser',
@@ -19,6 +24,7 @@ const TOOL_BY_ANALYZER = {
   crap: 'typescript',
 };
 const PACKAGE_ANALYZERS = new Set(['structure', 'crap']);
+const DEPENDENCY_GRAPH_ANALYZERS = new Set(['entry-points', 'dependency-architecture', 'coupling']);
 const TYPESCRIPT_CONSUMERS = new Set([
   'coding-standards',
   'test-runtime',
@@ -76,28 +82,54 @@ export function testRunnerAnalyzerVersion(
   return `${resolve('@stryker-mutator/core', { projectRoot: liveProjectRoot }).version};${runnerVersion}`;
 }
 
-export function resolveAnalyzerVersion(analyzerName, liveProjectRoot, resolve = resolveTool) {
+function typeScriptApiVersion(resolve, bundled) {
+  return bundled
+    ? `js-api-${resolve('typescript-js-api', { projectRoot: PACKAGE_ROOT }).version}`
+    : resolve('typescript', { projectRoot: PACKAGE_ROOT }).version;
+}
+
+export function resolveAnalyzerVersion(
+  analyzerName,
+  liveProjectRoot,
+  {
+    resolve = resolveTool,
+    bundled = selectTypeScriptApi().bundled,
+    installed = isToolInstalled,
+  } = {},
+) {
   if (['coverage', 'mutation', 'test-console'].includes(analyzerName)) {
     return testRunnerAnalyzerVersion(analyzerName, liveProjectRoot, { resolve });
+  }
+  if (analyzerName === 'typescript-typecheck') {
+    return typeCheckVersion(liveProjectRoot, { resolve, bundled, installed });
   }
   const toolName = analyzerName.startsWith('eslint-') ? 'eslint' : TOOL_BY_ANALYZER[analyzerName];
   if (toolName === undefined) {
     throw new Error(`No tool is configured for analyzer ${analyzerName}`);
   }
 
-  const toolRoot = PACKAGE_ANALYZERS.has(analyzerName) ? PACKAGE_ROOT : liveProjectRoot;
-  const version = resolve(toolName, { projectRoot: toolRoot }).version;
-  if (analyzerName === 'typescript-typecheck') {
-    return `${version};typescript-native@${resolve('typescript-native', { projectRoot: PACKAGE_ROOT }).version}`;
+  const version = PACKAGE_ANALYZERS.has(analyzerName)
+    ? typeScriptApiVersion(resolve, bundled)
+    : resolve(toolName, { projectRoot: liveProjectRoot }).version;
+  return withTypeScriptVersions({ analyzerName, toolName, version }, { resolve, bundled });
+}
+
+function typeCheckVersion(liveProjectRoot, { resolve, bundled, installed }) {
+  const project = installed('typescript', { projectRoot: liveProjectRoot })
+    ? resolve('typescript', { projectRoot: liveProjectRoot }).version
+    : 'none';
+  const native = resolve('typescript-native', { projectRoot: PACKAGE_ROOT }).version;
+  return `${project};typescript-native@${native};${typeScriptApiVersion(resolve, bundled)}`;
+}
+
+function withTypeScriptVersions({ analyzerName, toolName, version }, { resolve, bundled }) {
+  if (DEPENDENCY_GRAPH_ANALYZERS.has(analyzerName)) {
+    return `${version};typescript@${typeScriptApiVersion(resolve, bundled)}`;
   }
   if (!TYPESCRIPT_CONSUMERS.has(analyzerName)) {
     return version;
   }
-
-  const typeScriptVersion = resolve('typescript', {
-    projectRoot: PACKAGE_ROOT,
-  }).version;
-  const base = `${toolName}@${version};typescript@${typeScriptVersion};plugins:${resolveEslintPluginVersions(resolve)}`;
+  const base = `${toolName}@${version};typescript@${typeScriptApiVersion(resolve, bundled)};plugins:${resolveEslintPluginVersions(resolve)}`;
   return analyzerName.startsWith('eslint-') ? `${base};${resolveOxlintVersions(resolve)}` : base;
 }
 

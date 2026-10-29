@@ -83,17 +83,12 @@ export function testsFailAnchor(snapshot) {
   return snapshot === 'base' ? TROUBLESHOOTING_ANCHORS.baseTestsFail : undefined;
 }
 
-export function testsFailError(message, snapshot) {
-  const anchor = testsFailAnchor(snapshot);
-  return anchor === undefined ? explainedError(message) : troubleshootingError(message, anchor);
-}
-
 export function troubleshootingError(message, anchor, options) {
   return new Error(withTroubleshooting(message, anchor), options);
 }
 
 export function explainedError(message, options) {
-  return Object.assign(new Error(message, options), { explained: true });
+  return Object.defineProperty(new Error(message, options), 'explained', { value: true });
 }
 
 export function isExplainedError(error) {

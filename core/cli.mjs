@@ -34,6 +34,7 @@ import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
+import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 
 const CHECK_COMMANDS = { hygiene: runHygieneCli, history: runHistoryCli };
 
@@ -92,6 +93,14 @@ function withCliDefaults(options) {
 }
 
 function runCommand(cli) {
+  if (cli.arguments_[0] === 'changelog') {
+    return runChangelogCommand({
+      commandArguments: cli.arguments_.slice(1),
+      stdout: cli.stdout,
+      stderr: cli.stderr,
+    });
+  }
+  redirectToBundledTypeScriptApi(cli.environment);
   if (cli.arguments_[0] === 'cache') {
     return runCacheCommand({
       arguments_: cli.arguments_.slice(1),
@@ -101,13 +110,6 @@ function runCommand(cli) {
       stdout: cli.stdout,
       stderr: cli.stderr,
       runTasks: cli.runTasks,
-    });
-  }
-  if (cli.arguments_[0] === 'changelog') {
-    return runChangelogCommand({
-      commandArguments: cli.arguments_.slice(1),
-      stdout: cli.stdout,
-      stderr: cli.stderr,
     });
   }
   const options = parseArguments(cli.arguments_);

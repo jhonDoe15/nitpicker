@@ -347,10 +347,10 @@ describe('analyzing a Python snapshot', () => {
       },
       {
         tool: 'python',
-        rule: 'tests-failed',
+        rule: 'tests-not-run',
         path: '.',
-        identity: 'tests-failed',
-        message: `coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet`,
+        identity: 'tests-not-run',
+        message: 'coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet',
         classification: 'tool-error',
       },
       {

@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { syntaxChildren } from './children.mjs';
 import { isComponentName } from './component-names.mjs';
 

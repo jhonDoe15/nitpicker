@@ -1,10 +1,13 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
-import { testsFailError } from '../../../shared/messages/troubleshooting.mjs';
+import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 
 const MAX_LISTED_FAILURES = 10;
+const ROOT_MODULE = '.';
 const TEST_REPORT = /^TEST-.*\.xml$/u;
+const EXCEPTION_PREFIX = /^(?:[\w$]+\.)*[\w$]*(?:Error|Exception|Failure): /u;
+const PARAMETER_LIST = /\(\)$/u;
 
 export function failedCases(file) {
   const root = parseXml(readFileSync(file, 'utf8'));
@@ -20,8 +23,9 @@ export function failedCases(file) {
           ...childrenNamed(testCase, 'failure'),
           ...childrenNamed(testCase, 'error'),
         ][0];
-        const message = (problem.attrs.message ?? problem.attrs.type ?? '').split('\n')[0];
-        return `${testCase.attrs.classname ?? suite.attrs.name}.${testCase.attrs.name}: ${message}`;
+        const raw = (problem.attrs.message ?? problem.attrs.type ?? '').split('\n')[0];
+        const name = testCase.attrs.name.replace(PARAMETER_LIST, '');
+        return `${testCase.attrs.classname ?? suite.attrs.name}.${name}: ${raw.replace(EXCEPTION_PREFIX, '')}`;
       }),
   );
 }
@@ -35,22 +39,26 @@ export function freshReports(directory, since) {
     : [];
 }
 
-function failingPlace(where, snapshot) {
-  return snapshot === undefined ? where : `the ${snapshot} snapshot (${where})`;
+function listedFailures(failures) {
+  const lines = failures.flatMap(({ tests }) => tests);
+  const listed = lines.slice(0, MAX_LISTED_FAILURES).map((line) => `  ${line}`);
+  const more =
+    lines.length > MAX_LISTED_FAILURES
+      ? [`  and ${String(lines.length - MAX_LISTED_FAILURES)} more`]
+      : [];
+  return [...listed, ...more];
 }
 
-export function failingTestsError(where, failures, snapshot) {
-  const listed = failures.slice(0, MAX_LISTED_FAILURES).map((failure) => `  ${failure}`);
-  const more =
-    failures.length > MAX_LISTED_FAILURES
-      ? [`  and ${String(failures.length - MAX_LISTED_FAILURES)} more`]
-      : [];
-  return testsFailError(
+export function moduleName(directory) {
+  return directory === '' ? ROOT_MODULE : directory;
+}
+
+export function failingTestsError(where, failures) {
+  const error = explainedError(
     [
-      `Tests fail in ${failingPlace(where, snapshot)}; nitpicker needs a passing test suite for coverage and mutation testing:`,
-      ...listed,
-      ...more,
+      `Tests fail in ${where}; nitpicker needs a passing test suite for coverage and mutation testing:`,
+      ...listedFailures(failures),
     ].join('\n'),
-    snapshot,
   );
+  return Object.defineProperty(error, 'failures', { value: failures });
 }
