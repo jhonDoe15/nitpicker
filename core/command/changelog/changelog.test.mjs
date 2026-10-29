@@ -1,12 +1,12 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli } from '../cli.mjs';
-import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
-import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
+import { runCli } from '../../cli.mjs';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 import { changelogSection, changelogVersions } from './changelog.mjs';
 
-const root = path.resolve(import.meta.dirname, '../..');
+const root = path.resolve(import.meta.dirname, '../../..');
 const SAMPLE = [
   '# Changelog',
   '',

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import { PACKAGE_ROOT } from '../tooling/tool-resolution.mjs';
-import { usageError } from '../../shared/messages/troubleshooting.mjs';
+import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import { usageError } from '../../../shared/messages/troubleshooting.mjs';
 
 const HEADING = /^## \[([^\]]+)\]/u;
 const LINK_DEFINITION = /^\[[^\]]+\]: /u;
@@ -28,11 +28,19 @@ function installedVersion(packageRoot) {
   return JSON.parse(readFileSync(path.join(packageRoot, 'package.json'), 'utf8')).version;
 }
 
-export function runChangelogCommand({ arguments_, stdout, stderr, packageRoot = PACKAGE_ROOT }) {
-  if (arguments_.length > 1 || arguments_.some((argument) => argument.startsWith('-'))) {
+export function runChangelogCommand({
+  commandArguments,
+  stdout,
+  stderr,
+  packageRoot = PACKAGE_ROOT,
+}) {
+  if (
+    commandArguments.length > 1 ||
+    commandArguments.some((argument) => argument.startsWith('-'))
+  ) {
     throw usageError('Usage: nitpicker changelog [<version>]');
   }
-  const version = arguments_[0] ?? installedVersion(packageRoot);
+  const version = commandArguments[0] ?? installedVersion(packageRoot);
   const text = readFileSync(path.join(packageRoot, 'CHANGELOG.md'), 'utf8');
   const section = changelogSection(text, version);
   if (section === undefined || section === '') {

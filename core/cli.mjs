@@ -3,7 +3,7 @@ import { runAggregateCli } from './diff/sharding/aggregate-shards.mjs';
 import { reportingProgress } from './diff/execution/progress.mjs';
 import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
-import { runChangelogCommand } from './command/changelog.mjs';
+import { runChangelogCommand } from './command/changelog/changelog.mjs';
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
 import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
 import { realpathSync } from 'node:fs';
@@ -110,7 +110,7 @@ function runCommand(cli) {
   }
   if (cli.arguments_[0] === 'changelog') {
     return runChangelogCommand({
-      arguments_: cli.arguments_.slice(1),
+      commandArguments: cli.arguments_.slice(1),
       stdout: cli.stdout,
       stderr: cli.stderr,
     });
