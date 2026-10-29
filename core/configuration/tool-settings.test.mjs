@@ -24,11 +24,11 @@ describe('tool precedence', () => {
   });
 
   it.each([
-    ['eslint', ['oxlint', 'eslint'], 'biome'],
-    ['eslint', ['oxlint', 'eslint'], ''],
-    ['typescript', ['native', 'project'], 'tsgo'],
-    ['typescript', ['native', 'project'], ''],
-  ])('rejects the %s engine %j', (tool, engines, unknown) => {
+    ['eslint', 'biome', ['oxlint', 'eslint']],
+    ['eslint', '', ['oxlint', 'eslint']],
+    ['typescript', 'tsgo', ['native', 'project']],
+    ['typescript', '', ['native', 'project']],
+  ])('rejects the %s engine %j', (tool, unknown, engines) => {
     expect(() => validateConfig({ tools: { [tool]: { engine: unknown } } })).toThrow(
       `"tools.${tool}.engine" must be "${engines[0]}" or "${engines[1]}"`,
     );

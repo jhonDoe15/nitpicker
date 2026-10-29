@@ -118,6 +118,7 @@ describe('strict test rules', () => {
       Object.keys(entry.rules ?? {}),
     );
     const testRules = Object.keys({ ...strictTestRules, ...strictTestHelperRules });
+    expect(testRules).not.toHaveLength(0);
     expect(testRules.filter((rule) => !presetRules.includes(rule))).toEqual([]);
     expect(testRules.filter((rule) => !isStrictRule(rule))).toEqual([]);
   });

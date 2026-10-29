@@ -441,18 +441,24 @@ describe('coupling metrics on a neutral dependency graph', () => {
   });
 
   it('lists a package pair whose source is less stable than its target once', () => {
-    const result = computeCoupling({ modules, edges, packageOf });
-    const pairs = result.stabilityDirection.map((entry) => ({
-      source: result.packages.find((item) => item.name === entry.source),
-      target: result.packages.find((item) => item.name === entry.target),
-      delta: entry.delta,
-    }));
-    expect(pairs.map(({ source, target }) => source.instability < target.instability)).toEqual(
-      pairs.map(() => true),
-    );
-    expect(pairs.map(({ delta }) => delta > 0)).toEqual(pairs.map(() => true));
-    const keys = result.stabilityDirection.map((entry) => `${entry.source}>${entry.target}`);
-    expect(new Set(keys).size).toBe(keys.length);
+    const violatingModules = ['x/p', 'y/q', 'z/r', 's/a', 'v/b', 'v/d', 'w/c'];
+    const runtime = (source, target) => ({ source, target, kind: 'runtime' });
+    const result = computeCoupling({
+      modules: violatingModules,
+      edges: [
+        runtime('x/p', 's/a'),
+        runtime('y/q', 's/a'),
+        runtime('z/r', 's/a'),
+        runtime('s/a', 'v/b'),
+        runtime('s/a', 'v/d'),
+        runtime('v/b', 'w/c'),
+        runtime('v/d', 'w/c'),
+      ],
+      packageOf,
+    });
+    expect(result.stabilityDirection).toEqual([
+      { source: 's', target: 'v', sourceInstability: 0.4, targetInstability: 0.5, delta: 0.1 },
+    ]);
   });
 
   it('reports no instability for an isolated module and handles an empty graph', () => {

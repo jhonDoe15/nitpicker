@@ -201,20 +201,22 @@ describe('Gradle failure diagnostics', () => {
 
     expect(result.exitCode).toBe(2);
     expect(errors.map(({ snapshot }) => snapshot).sort()).toEqual(['base', 'head']);
-    const logs = errors.map((error) => {
-      const log = /Full Gradle log: ([^\n]+)/u.exec(error.message)?.[1];
+    const paths = errors.map((error) => /Full Gradle log: ([^\n]+)/u.exec(error.message)?.[1]);
+    expect(paths).toHaveLength(2);
+    expect(paths).not.toContain(undefined);
+    const texts = paths.map((log) => {
       try {
-        return { log, text: readFileSync(log, 'utf8') };
+        return readFileSync(log, 'utf8');
       } finally {
         rmSync(path.dirname(log), { recursive: true, force: true });
       }
     });
-    expect(logs.map(({ text }) => text)).toEqual(
-      errors.map(() => `=== stdout ===\nfull stdout marker\n=== stderr ===\n${failure}\n`),
+    expect(texts).toEqual(
+      paths.map(() => `=== stdout ===\nfull stdout marker\n=== stderr ===\n${failure}\n`),
     );
     expect(errors.map(({ message }) => message)).toEqual(
       errors.map((error, index) =>
-        expect.stringMatching(exactText`Full Gradle log: ${logs[index].log}
+        expect.stringMatching(exactText`Full Gradle log: ${paths[index]}
 Java preset failed in ${error.snapshot}: FAILURE: Build failed with an exception.
 * What went wrong:
 Execution failed for task ':test'.
@@ -223,6 +225,8 @@ Execution failed for task ':test'.
 ${/(?:warning: ordinary compiler noise\n)+warning: [a-z ]+/}`),
       ),
     );
-    expect(errors.map(({ message }) => message.length <= 4003)).toEqual(errors.map(() => true));
+    expect(errors.map(({ message }) => message.length).filter((length) => length > 4003)).toEqual(
+      [],
+    );
   });
 });

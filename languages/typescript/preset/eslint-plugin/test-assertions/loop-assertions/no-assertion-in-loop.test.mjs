@@ -2,6 +2,7 @@ import { runCases } from './test-support/rule-cases.mjs';
 
 runCases('no-assertion-in-loop in every loop and iterating callback', {
   valid: [
+    "it('x', () => { let i = 0; do { expect(list[i]).toBe(1); i += 1; } while (i < list.length); });",
     "it('x', () => { expect(run()).toBe(1); });",
     "it('x', () => { expect(orders).toEqual([{ paid: true }]); });",
     "it('x', () => { const ids = []; for (const o of orders) { ids.push(o.id); } expect(ids).toEqual([1, 2]); });",
@@ -41,11 +42,6 @@ runCases('no-assertion-in-loop in every loop and iterating callback', {
       "it('x', () => { let i = 0; while (i < list.length) { expect(list[i]).toBe(1); i += 1; } });",
       'loop',
       'while',
-    ],
-    [
-      "it('x', () => { let i = 0; do { expect(list[i]).toBe(1); i += 1; } while (i < list.length); });",
-      'loop',
-      'do...while',
     ],
     [
       "it('x', async () => { for await (const o of stream()) { expect(o).toBe(1); } });",

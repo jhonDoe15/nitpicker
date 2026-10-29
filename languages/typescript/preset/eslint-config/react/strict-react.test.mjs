@@ -179,6 +179,7 @@ describe('the preset config', () => {
   it('turns the React scope on when package.json lists react', async () => {
     const config = await presetConfigFor({ manifest: reactManifest });
 
+    expect([...reactRuleIds, ...reactTestRuleIds]).not.toHaveLength(0);
     expect(
       [...reactRuleIds, ...reactTestRuleIds].filter((id) => !ruleIdsOf(config).has(id)),
     ).toEqual([]);

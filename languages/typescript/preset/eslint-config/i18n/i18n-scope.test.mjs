@@ -133,6 +133,8 @@ describe('the rule decisions', () => {
   });
 
   it('holds every enabled rule to the strict gate without listing it among the always-on rules', () => {
+    expect(i18nRuleIds).not.toHaveLength(0);
+    expect(i18nOffRules).not.toHaveLength(0);
     expect(i18nRuleIds.filter((id) => !isStrictRule(id))).toEqual([]);
     expect(i18nRuleIds.filter((id) => strictEslintRuleIds.includes(id))).toEqual([]);
     expect(i18nOffRules.filter((name) => isStrictRule(`formatjs/${name}`))).toEqual([]);
@@ -140,6 +142,7 @@ describe('the rule decisions', () => {
 
   it('runs every rule as an error', () => {
     const rules = Object.entries(i18nRules);
+    expect(rules).not.toHaveLength(0);
     expect(rules.map(([name, { setting }]) => [name, [setting].flat()[0]])).toEqual(
       rules.map(([name]) => [name, 'error']),
     );
@@ -211,6 +214,7 @@ describe('the i18n scope config', () => {
     const repositoryRoot = path.resolve(import.meta.dirname, '../../../../..');
 
     const files = [...sources, 'languages/typescript/preset/eslint-config/scope-support.mjs'];
+    expect(sources).not.toHaveLength(0);
     expect(files.filter((file) => !POLICY_FILES.includes(file))).toEqual([]);
     expect(files.filter((file) => !existsSync(path.join(repositoryRoot, file)))).toEqual([]);
   });
@@ -257,6 +261,7 @@ describe('the preset config', () => {
   it('turns the i18n scope on when package.json lists react-intl', async () => {
     const config = await presetConfigFor({ manifest: intlManifest });
 
+    expect(i18nRuleIds).not.toHaveLength(0);
     expect(i18nRuleIds.filter((id) => !ruleIdsOf(config).has(id))).toEqual([]);
   });
 

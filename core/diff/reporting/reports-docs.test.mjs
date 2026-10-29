@@ -51,6 +51,7 @@ describe('report files in the docs', () => {
     const named = [reportsSection(), readDoc('agents-snippet.md')].flatMap((text) =>
       [...text.matchAll(REPORT_FILE_PATTERN)].map(([, name]) => name),
     );
+    expect(named).not.toHaveLength(0);
     expect(named.filter((name) => !REPORT_FILES.has(name))).toEqual([]);
   });
   it('names only files the CLI writes wherever the README and the guides mention a report', () => {

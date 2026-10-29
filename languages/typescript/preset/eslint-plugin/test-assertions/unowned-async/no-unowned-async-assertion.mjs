@@ -24,7 +24,7 @@ function assertsIn(env, callback) {
 
 function testHosts(env, test) {
   const { context, bindings } = env;
-  const nodes = nodesIn(context, test.body, (child) => !isNestedTest(child));
+  const nodes = nodesIn(context, test.body, (child) => !isNestedTest(context, child));
   const hosts = nodes
     .map((node) =>
       hostOf(context, node, { bindings, asserts: (callback) => assertsIn(env, callback) }),
@@ -49,7 +49,7 @@ function isOwned(env, host, test) {
 }
 
 function unownedHosts(env, call) {
-  const test = testCallback(call);
+  const test = testCallback(env.context, call);
   if (test === undefined || takesDone(env, test, call)) {
     return [];
   }

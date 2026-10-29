@@ -7,7 +7,14 @@ const LOOP_NAMES = new Map([
   ['ForInStatement', 'for...in'],
   ['ForOfStatement', 'for...of'],
   ['WhileStatement', 'while'],
-  ['DoWhileStatement', 'do...while'],
+]);
+const COMPARISONS = new Map([
+  ['<', (left, right) => left < right],
+  ['<=', (left, right) => left <= right],
+  ['>', (left, right) => left > right],
+  ['>=', (left, right) => left >= right],
+  ['!=', (left, right) => left !== right],
+  ['!==', (left, right) => left !== right],
 ]);
 const RUNS_ONCE = new Map([
   ['ForStatement', 'init'],
@@ -38,19 +45,59 @@ function isArrayFrom(callee) {
   );
 }
 
+function isPositiveNumber(node) {
+  return node?.type === 'Literal' && typeof node.value === 'number' && node.value > 0;
+}
+
+function isFixedLength(spec) {
+  return (
+    spec?.type === 'ObjectExpression' &&
+    spec.properties.some(
+      (property) =>
+        property.type === 'Property' &&
+        property.key.name === 'length' &&
+        isPositiveNumber(property.value),
+    )
+  );
+}
+
+function isFixedLengthArray(node) {
+  return (
+    node?.type === 'CallExpression' && isArrayFrom(node.callee) && isFixedLength(node.arguments[0])
+  );
+}
+
 function iterationOf(call, argument) {
   const { callee } = call;
   if (callee.type !== 'MemberExpression') {
     return undefined;
   }
   const name = propertyName(callee);
-  if (isArrayFrom(callee) && call.arguments.indexOf(argument) === ARRAY_FROM_MAPPER) {
-    return { node: call, name: 'Array.from', collection: call.arguments[0] };
+  if (isArrayFrom(callee)) {
+    const [spec] = call.arguments;
+    const isMapper = call.arguments.indexOf(argument) === ARRAY_FROM_MAPPER;
+    return isMapper && !isFixedLength(spec)
+      ? { node: call, name: 'Array.from', collection: spec }
+      : undefined;
   }
   if (ITERATING_METHODS.has(name) && call.arguments.includes(argument)) {
-    return { node: call, name, collection: callee.object };
+    return isFixedLengthArray(callee.object)
+      ? undefined
+      : { node: call, name, collection: callee.object };
   }
   return undefined;
+}
+
+function startsRunning(node) {
+  const [declaration] = node.init?.declarations ?? [];
+  const compare = COMPARISONS.get(node.test?.operator);
+  return (
+    compare !== undefined &&
+    declaration?.id.name === node.test.left.name &&
+    typeof declaration.init?.value === 'number' &&
+    typeof node.test.right.value === 'number' &&
+    compare(declaration.init.value, node.test.right.value)
+  );
 }
 
 function loopOf(node, child) {
@@ -58,12 +105,12 @@ function loopOf(node, child) {
   if (name === undefined || node[RUNS_ONCE.get(node.type)] === child) {
     return undefined;
   }
-  return {
-    node,
-    name: node.await === true ? 'for await...of' : name,
-    collection:
-      node.type === 'ForOfStatement' || node.type === 'ForInStatement' ? node.right : undefined,
-  };
+  const collection =
+    node.type === 'ForOfStatement' || node.type === 'ForInStatement' ? node.right : undefined;
+  if (isFixedLengthArray(collection) || (node.type === 'ForStatement' && startsRunning(node))) {
+    return undefined;
+  }
+  return { node, name: node.await === true ? 'for await...of' : name, collection };
 }
 
 function constructAt(node, child) {
@@ -73,10 +120,11 @@ function constructAt(node, child) {
   return loopOf(node, child);
 }
 
-function isInline(fn) {
+export function isInline(fn) {
   const { parent } = fn;
   return (
-    parent.type === 'CallExpression' && (parent.arguments.includes(fn) || parent.callee === fn)
+    (parent.type === 'CallExpression' || parent.type === 'NewExpression') &&
+    (parent.arguments.includes(fn) || parent.callee === fn)
   );
 }
 

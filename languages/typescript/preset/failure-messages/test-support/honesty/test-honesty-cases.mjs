@@ -91,6 +91,11 @@ const HONESTY_ROWS = [
     "`it.each([...])('name', (row) => { ... })`",
   ],
   [
+    'subtests registered over a collection name the literal table',
+    "import test from 'node:test';\ntest('x', async (t) => { for (const c of cases) { await t.test(c.name, () => { run(c); }); } });",
+    'Register them from a literal, non-empty table',
+  ],
+  [
     'skipIf(true) names the platform condition',
     "it.skipIf(true)('x', () => {});",
     'process.platform',
