@@ -306,9 +306,8 @@ a passing test suite ...`) instead of Gradle's own failure output. Projects with
   every report is read, so it is the same on Gradle and Maven): the method only hands the real
   standard streams to code that tests reach through a writer, so no test runs it. Only that method
   and only the not-covered status: a `main` that a test does run keeps its survived mutants, and
-  every other method is mutated as before. The same filter drops the changed-branch coverage
-  finding of a line in that body and the `errorprone/SystemOut` and `pmd/SystemPrintln` findings
-  of one (see [Error Prone and NullAway](#error-prone-and-nullaway)). The method is found with the
+  every other method is mutated as before. The same filter drops the `errorprone/SystemOut` and
+  `pmd/SystemPrintln` findings of a line in that body (see [Error Prone and NullAway](#error-prone-and-nullaway)). The method is found with the
   brace-depth scan the entry-point detection of the review rules uses (`mainMethodLines` in
   `review-rules/source-declarations.mjs`). Java files only: Kotlin sources have their own rules.
 - **Ingester.** `languages/java/ingest/pit.mjs` (`ingestPit`). PIT statuses map to the names the
@@ -784,8 +783,9 @@ resolved plus a new finding, as in the TypeScript check.
   the base had it. An uncovered branch on an unchanged line stays baselined. The library entry
   `runJavaDiff` passes the same `touchedCode` as the CLI path. The TypeScript check of the same
   rule name is unaffected (its identity keys on branch source; the predicate is tool-scoped).
-- **The `main` method.** An uncovered branch on a line inside the body of a `static void main(String[])`
-  method is not reported (see [Slice 7](#slice-7-mutation-with-pit)); other methods are judged as above.
+- **The `main` method.** Branch coverage is judged there as everywhere else: a `main` that only
+  passes `System.out` to the code it starts has no branch, and one with branches needs a test (the
+  `static void main` exemption of [Slice 7](#slice-7-mutation-with-pit) covers mutants, not branches).
 - **Identity.** A hash of the line's source text (trimmed, whitespace collapsed), `branch-source:<16 hex>`,
   with `#2`, `#3` for identical lines in one file, in order. No line number: inserting code above
   keeps the finding baselined (the lines around it are not in a changed range), and a renamed file
@@ -1476,7 +1476,7 @@ table:
 a `PrintStream`, `Writer` or `Appendable` parameter and writes to it, and only the body of a
 `static void main(String[])` method passes `System.out` / `System.err` (`new Cli(System.out).run(args)`,
 `System.out::print`). A finding of either rule on a line inside that body is dropped; the same
-method-level scan drops its `mutant-nocoverage` and changed-branch coverage findings. Nothing else
+method-level scan drops its `mutant-nocoverage` findings; branch coverage still applies. Nothing else
 in the class is spared. `SystemOut` also reports `printStackTrace()`, which Error Prone gives the
 same message as `System.out`; a line of the body that calls `printStackTrace()` stays a finding.
 
