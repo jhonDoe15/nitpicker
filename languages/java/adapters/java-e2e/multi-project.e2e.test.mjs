@@ -14,6 +14,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
 import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
+import { pathsOutsideProject } from './test-support/project-paths.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -43,6 +44,10 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
     if (root !== undefined) {
       rmSync(root, { recursive: true, force: true });
     }
+  });
+
+  it('names every finding by a file or folder relative to the build root', () => {
+    expect(pathsOutsideProject(root, findings)).toEqual([]);
   });
 
   it('reads each project with its folder in the path, including one without tests', () => {
