@@ -52,7 +52,7 @@ function isTimersPromisesCall(scope, node) {
 
 function isSignalTimeout(scope, node) {
   const target = unwrapped(resolveConstant(scope.context, unwrapped(node)));
-  return globalMemberCall(scope.context, target, 'AbortSignal', 'timeout');
+  return globalMemberCall(scope.context, target, 'AbortSignal.timeout');
 }
 
 function isEventsOnce(scope, node) {
@@ -138,15 +138,21 @@ function chainedBase(target) {
     : undefined;
 }
 
-export function timeoutOf(scope, entry, depth = 0) {
-  const target = unwrapped(resolveConstant(scope.context, unwrapped(entry)));
-  if (target === undefined || depth > MAX_DEPTH) {
-    return undefined;
+export function timeoutOf(scope, entry) {
+  const chain = [entry];
+  for (const current of chain) {
+    const target = unwrapped(resolveConstant(scope.context, unwrapped(current)));
+    const found =
+      target === undefined || chain.length > MAX_DEPTH + 1
+        ? undefined
+        : (directTimeout(scope, target) ?? helperTimeout(scope, target));
+    if (found !== undefined) {
+      return found;
+    }
+    const base = target === undefined ? undefined : chainedBase(target);
+    if (base !== undefined && chain.length <= MAX_DEPTH) {
+      chain.push(base);
+    }
   }
-  const base = chainedBase(target);
-  return (
-    directTimeout(scope, target) ??
-    helperTimeout(scope, target) ??
-    (base === undefined ? undefined : timeoutOf(scope, base, depth + 1))
-  );
+  return undefined;
 }
