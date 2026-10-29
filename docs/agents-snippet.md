@@ -44,8 +44,11 @@ an existing file.
 
 ### Read the report
 
-The console summary lists each new enforceable violation as `<tool>/<rule> <path>:<line>` followed
-by its message. Full reports are written to `reports/quality/diff/` (`reports/quality/snapshot/`
+The console summary lists each new code violation as `<tool>/<rule> <path>:<line>` followed
+by its message. A change to `nitpicker.config.json` that checks less is not listed that way: it
+appears under "Policy changed in this change", followed by `Unapproved policy changes
+(nitpicker-config/policy-loosened): N`, and fails the run. Full reports are written to
+`reports/quality/diff/` (`reports/quality/snapshot/`
 for `--all`):
 
 - `report.txt`: the readable report. Start here.
