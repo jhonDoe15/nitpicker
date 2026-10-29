@@ -131,6 +131,16 @@ describe('rules script report', () => {
       'place|order.save()|notify.delay()|on-commit',
       '`place` writes to the database with `order.save()` and publishes a message with `notify.delay()` in two separate steps: publishing after the commit avoids a message for a rolled-back change, but a crash right after the commit loses the message',
     ],
+    [
+      'task-outlives-resource',
+      'stream passed to nursery.start_soon',
+      '`stream passed to nursery.start_soon`: the resource closes when its `with` block ends, while the child task can still use it',
+    ],
+    [
+      'unshielded-cleanup-await',
+      'await stream.aclose() in finally',
+      '`await stream.aclose() in finally` can be cancelled before the cleanup finishes, so the resource may stay open',
+    ],
     ['todo-without-issue', 'TODO: later', 'The task marker `TODO: later` has no issue'],
     [
       'skipped-test-without-reason',

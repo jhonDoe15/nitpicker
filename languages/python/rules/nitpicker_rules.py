@@ -39,6 +39,7 @@ def load_checks():
     from silent_tests import unasserted
     from transactions import check as transactions
     from smells import literals, loops, names, secret_logs, secrets
+    from tasks import cleanup, lifetimes
 
     return [
         declarations,
@@ -72,6 +73,8 @@ def load_checks():
         isolation,
         uncollected,
         helpers,
+        lifetimes,
+        cleanup,
     ]
 
 

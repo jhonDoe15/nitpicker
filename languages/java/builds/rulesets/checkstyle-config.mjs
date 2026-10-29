@@ -10,6 +10,7 @@ const INLINE_CHECKSTYLE_FILTERS = [
   'SuppressionCommentFilter',
   'SuppressWithNearbyCommentFilter',
   'SuppressWithNearbyTextFilter',
+  'SuppressWithPlainTextCommentFilter',
   'SuppressionXpathFilter',
 ];
 const CAMEL_CASE_NAMES = ['MemberName', 'MethodName'];

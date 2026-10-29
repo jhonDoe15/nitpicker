@@ -41,7 +41,7 @@ export function reuseRules(ids, reactEnforcedBy) {
   ];
 }
 
-export function couplingRules(ids, { everyLanguage, javaOnly }) {
+export function couplingRules(ids, { everyLanguage, withoutTypescript }) {
   return [
     {
       id: ids.stabilityDirection,
@@ -54,7 +54,7 @@ export function couplingRules(ids, { everyLanguage, javaOnly }) {
       id: ids.packageCycle,
       check: COUPLING,
       limit: 'packages that depend on each other in a loop',
-      enforcedBy: javaOnly,
+      enforcedBy: withoutTypescript,
     },
   ];
 }

@@ -1,6 +1,11 @@
 import ast
 
 from checks.common import ScopedVisitor, dotted_name, finding, type_text
+from errors.cancellation.handlers import (
+    awaits_cancelled_task,
+    cancellation_finding,
+    suppress_finding,
+)
 from errors.handling import is_handled
 from errors.logged_errors import logged_findings
 
@@ -44,6 +49,12 @@ class Errors(ScopedVisitor):
         self.reported = set()
 
     def visit_ExceptHandler(self, node):
+        if awaits_cancelled_task(node, self.context):
+            return
+        cancellation = cancellation_finding(node, self.context)
+        if cancellation is not None:
+            self.findings.append(cancellation)
+            return
         optional_import = node.type is not None and is_optional_import(node)
         scope = self.chain[-1] if self.chain else self.context.tree
         if is_handled(node, self.context, scope, optional_import):
@@ -68,6 +79,9 @@ class Errors(ScopedVisitor):
 
     def visit_Call(self, node):
         aliases = self.context.aliases
+        cancelled = suppress_finding(node, self.context)
+        if cancelled is not None:
+            self.findings.append(cancelled)
         name = dotted_name(node.func, aliases)
         if name == "contextlib.suppress" and (
             not node.args
