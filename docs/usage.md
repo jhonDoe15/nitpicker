@@ -1695,7 +1695,7 @@ what Mocha resolves from the rc file it would use (`.mocharc.cjs`, `.js`, `.mjs`
 
 Jest has no retry option in its config (`jest.retryTimes` is called from test code) and `node:test` has no
 config file, so listing `"project"` first with either runner is a tool error that says to remove it. The
-value is read from the head checkout and applies to both sides of the comparison. The config is loaded in
+value is read from the head checkout and applies to both sides when the base opts in too. The config is loaded in
 a child process with a timeout (30 s) and an output cap (10 MB): a Vitest config is loaded with vite, a
 Mocha config with Mocha's own option loader, and a config that ends the process, prints too much or does
 not finish is a tool error of the test runs. Naming `"project"` without the runner's config, with one that
