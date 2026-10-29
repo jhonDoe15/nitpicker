@@ -1,7 +1,6 @@
 import { existsSync } from 'node:fs';
-import { builtinModules } from 'node:module';
+import { builtinModules, createRequire } from 'node:module';
 import path from 'node:path';
-import ts from 'typescript';
 import { chainOf } from '../../../../shared/traversal.mjs';
 import { parsedTsconfig, readJsonc, referencedTsconfigs } from './tsconfig-files.mjs';
 
@@ -12,12 +11,20 @@ const PACKAGE_SPECIFIER = /^(?:@[\w.-]+\/)?[\w.-]+(?:\/|$)/u;
 const BUILTINS = new Set(builtinModules);
 const IGNORED = Object.freeze({ kind: 'ignored' });
 const DECLARATION_FILE = /\.d\.[cm]?ts$/u;
-const FIXED_OPTIONS = {
-  allowJs: true,
-  resolveJsonModule: true,
-  module: ts.ModuleKind.ESNext,
-  moduleResolution: ts.ModuleResolutionKind.Bundler,
-};
+const requireModule = createRequire(import.meta.url);
+
+function typescript() {
+  return requireModule('typescript');
+}
+
+function fixedOptions(ts) {
+  return {
+    allowJs: true,
+    resolveJsonModule: true,
+    module: ts.ModuleKind.ESNext,
+    moduleResolution: ts.ModuleResolutionKind.Bundler,
+  };
+}
 
 const resolvers = new Map();
 
@@ -54,9 +61,10 @@ function configuredOptions(configFile) {
 }
 
 function createResolver(configFile, directory) {
+  const ts = typescript();
   const options = {
     ...(configFile === undefined ? {} : configuredOptions(configFile)),
-    ...FIXED_OPTIONS,
+    ...fixedOptions(ts),
   };
   const root = configFile === undefined ? directory : path.dirname(configFile);
   return {
@@ -103,6 +111,7 @@ function isPackageSpecifier(specifier) {
 }
 
 function resolvedModule(resolver, specifier, containingFile) {
+  const ts = typescript();
   return ts.resolveModuleName(specifier, containingFile, resolver.options, ts.sys, resolver.cache)
     .resolvedModule;
 }

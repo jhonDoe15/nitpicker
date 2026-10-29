@@ -73,17 +73,22 @@ Work from a clean checkout of `main` with full history.
    so no `--access` flag is needed.
 7. **Verify.** In an empty directory: `npm view nitpicker version`, then
    `npm install --save-dev nitpicker typescript @types/node && npx nitpicker --help`.
-8. **GitHub release.** From the tagged commit, create a release from the tag with the version's
-   `CHANGELOG.md` entry as its notes, and attach the packed tarball so the version can be installed without npm (see
-   [Install from a GitHub release](usage.md#from-a-github-release)):
+8. **GitHub release.** From the tagged commit, create a release from the tag and attach the packed
+   tarball so the version can be installed without npm (see
+   [Install from a GitHub release](usage.md#from-a-github-release)). The notes are the version's
+   `.github/release-notes/v<new-version>.md`, followed by its `CHANGELOG.md` entry with the heading and
+   date, as the workflow below builds them:
 
    ```sh
+   node core/cli.mjs changelog v<new-version> > changelog-entry.md
    rm -rf release-assets && mkdir release-assets && npm pack --pack-destination release-assets
    (cd release-assets && shasum -a 256 nitpicker-*.tgz > SHA256SUMS)
-   node core/cli.mjs changelog <new-version> > release-assets/notes.md
+   { cat .github/release-notes/v<new-version>.md; printf '\n'; cat changelog-entry.md; } > notes.md
    gh release create v<new-version> release-assets/nitpicker-*.tgz release-assets/SHA256SUMS \
-     --verify-tag --notes-file release-assets/notes.md
+     --verify-tag --notes-file notes.md
    ```
+
+   The first command exits 2 when the entry is missing or empty.
 
    Add `--prerelease` for a pre-release. A release can also go out on GitHub alone, before or
    without step 6: steps 1 to 5 still apply, and the tarball is the same file npm would publish.
@@ -91,12 +96,12 @@ Work from a clean checkout of `main` with full history.
    [Install from a GitHub release](usage.md#from-a-github-release) shows.
 
    The `github-release` workflow does the same from the Actions tab: run it with the full SHA of the
-   release commit on `main`. It creates the tag `v<version>` from that commit's `package.json`,
-   attaches the tarball and `SHA256SUMS`, and takes its notes from
-   `.github/release-notes/v<version>.md`, which must be on `main` first, followed by the version's
-   `CHANGELOG.md` entry under a "Changes" heading (`node core/cli.mjs changelog <version>` prints
-   it; the run fails when the entry is missing). Write the notes without personal names: generated
-   notes credit PR authors.
+   release commit on `main`. It differs in two ways: it creates the tag `v<version>` from that
+   commit's `package.json` instead of needing step 5, and it reads the release notes file from `main`
+   when the commit does not have it. It checks the `CHANGELOG.md` entry in a step of its own before
+   packing and stops with an error annotation when the entry is missing or empty.
+   `nitpicker changelog` loads no installed package, so the workflow needs no `npm ci`. Write the
+   notes without personal names: generated notes credit PR authors.
 
 ## Container image
 
