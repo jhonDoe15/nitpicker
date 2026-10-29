@@ -113,6 +113,13 @@ config file is an exception like any other.
   (`architecture/strict-layout.mjs`), under every `layout.sourceRoots` entry; a feature of another
   source root is another feature. A module that is shared on purpose before a second feature uses it
   needs an exception for this rule in `nitpicker.config.json`.
+- `stability-direction` (the `coupling` check) measures each feature folder as one unit: `index.ts`
+  is its face, edges between the face and the feature's own folders do not count, an edge between
+  two folders of one feature (`domain` to `adapters`) compares those folders, and an edge between
+  two features, or between a feature and `main/shared/`, compares the whole units. Outside the
+  features `main/shared/` is one unit and each other folder under `main/` is one, and the
+  composition root and `main.ts` are wiring that is never reported. See
+  [Stability direction](usage.md#stability-direction).
 - `nitpicker/no-branch-in-composition-root`: the composition root (`composition-root.ts`, `main.ts`,
   `server.ts`, plus the `compositionRootPattern` option shared with
   `no-managed-resource-construction-outside-composition-roots`) only wires features with named
@@ -208,7 +215,7 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   `devDependencies` is reported. Move the package to `dependencies` (zod included). Type-only imports
   are not reported. An app a bundler builds (a bundler config or `build` script, and no `main`,
   `module`, `exports` or `bin` in package.json) and test support files (`setupTests.*`,
-  `test-utils`, `testing/`, `__mocks__/`, stories) are skipped. The nearest package.json that lists
+  `test-utils`, `testing/`, `test-support/`, `__mocks__/`, stories) are skipped. The nearest package.json that lists
   dependencies is used; one that is not a JSON object is reported. Unlisted packages and unused dependencies are reported by the
   `dead-code` analyzer, see [Dependency and repository checks](usage.md#dependency-and-repository-checks).
 - `nitpicker/no-unvalidated-schema-field` (all production code): no `z.unknown()` or `z.any()`

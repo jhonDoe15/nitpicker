@@ -3,6 +3,10 @@ import { matchSimilarFindings } from './similar/match.mjs';
 import { normalizeGitPath } from '../git/normalize.mjs';
 import { folderMoves, mainDestination } from '../git/patches/renames.mjs';
 import { insertBeforeRoute } from '../../../shared/messages/exception-sentence.mjs';
+import {
+  withoutCauses,
+  withUntouchedCause,
+} from '../../../shared/rules/stability/untouched-cause.mjs';
 
 export function compareFindings({
   baseFindings,
@@ -37,21 +41,22 @@ export function compareFindings({
     directories: baseToHeadDirectories,
     touchedCode,
   });
-  present.newFindings = withGrowthAdvice({
+  const advised = withGrowthAdvice({
     findings: ratcheted.newFindings,
     baseFindings,
     renames: baseToHeadRenames,
     directories: baseToHeadDirectories,
   });
+  present.newFindings = withUntouchedCause(advised, touchedCode);
   present.unchangedFindings.push(...ratcheted.heldFindings);
   const resolvedFindings = unmatchedBase.filter((finding) => !ratcheted.matchedBase.has(finding));
 
-  return {
+  return withoutCauses({
     newFindings: sortFindings(present.newFindings),
     resolvedFindings: sortFindings(resolvedFindings),
     unchangedFindings: sortFindings(present.unchangedFindings),
     changedMetrics: present.changedMetrics.sort(compareDisplayOrder),
-  };
+  });
 }
 
 function classifyHeadFindings({ headByKey, baseByKey, touchedCode }) {

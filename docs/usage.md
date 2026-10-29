@@ -129,17 +129,78 @@ tool error carries the manager's message. Installing the base is not supported o
 
 ### Reports
 
-Reports are written to `reports/quality/diff/` (`reports/quality/snapshot/` for `--all`):
-`report.txt`, `report.junit.xml`, `summary.json`, `new-findings.json`, `resolved-findings.json`,
-`changed-metrics.json` and `tool-errors.json`. The summary records every config override, a
-policy hash, the `policyChanges` the head config makes against the base and any `notices`. A notice
-is information that never fails the run. Today there is one kind: changed code files that lie
-outside the roots the preset checks. For TypeScript those are `layout.sourceRoots` and
-`layout.testRoots` (move the files under a root or add their folder to `layout.sourceRoots`); for
-Python, `python.sourceRoots`; for Java and Kotlin, the build's source sets (`src/<set>/java` or
-`src/<set>/kotlin` of a module, or a directory the build file declares). To leave files unchecked,
-list them in `exclude`. Choose another directory
-with `--output <dir>`. Set `NO_COLOR` to disable colored console output.
+A comparison run writes these files to `reports/quality/diff/`:
+
+- `report.txt`: the readable report.
+- `summary.json`: totals, per-tool counts and the fields below.
+- `new-findings.json`: the new findings, the ones that count against the change.
+- `resolved-findings.json`: findings that were in the base and are gone.
+- `changed-metrics.json`: metrics that moved.
+- `held-findings.json`: findings that were already there and are no worse than at the base (for
+  example a file over a size limit that did not grow); they are allowed, and any increase fails.
+- `tool-errors.json`: the tool errors, whatever the exit code.
+- `report.junit.xml`: JUnit XML for CI test reports.
+- `report.sarif`: SARIF 2.1.0 with the new findings only, the file to upload to code scanning.
+- `report-baseline.sarif`: SARIF 2.1.0 with the new and the held findings, each marked with its
+  `baselineState`, for tools that read it.
+
+`--all` has no baseline, so it writes `reports/quality/snapshot/` with `report.txt`, `summary.json`,
+`findings.json` (every finding in the checkout), `tool-errors.json`, `report.junit.xml` and
+`report.sarif`.
+
+The summary records every config override, a policy hash, the `policyChanges` the head config makes
+against the base and any `notices`. A notice is information that never fails the run. Today there is
+one kind: changed code files that lie outside the roots the preset checks. For TypeScript those are
+`layout.sourceRoots` and `layout.testRoots` (move the files under a root or add their folder to
+`layout.sourceRoots`); for Python, `python.sourceRoots`; for Java and Kotlin, the build's source
+sets (`src/<set>/java` or `src/<set>/kotlin` of a module, or a directory the build file declares).
+To leave files unchecked, list them in `exclude`. Choose another directory with `--output <dir>`.
+Set `NO_COLOR` to disable colored console output.
+
+#### SARIF
+
+The SARIF files have one run with one result per finding. `ruleId` is `<tool>/<rule>`, `level` is
+`error` for an enforceable finding and `note` for a descriptive one, and
+`partialFingerprints["nitpickerIdentity/v1"]` is the hash of the finding's comparison key, so a
+consumer matches a finding across runs when its line moves. A tool error makes the run's invocation
+unsuccessful and adds a notification. Columns are counted in UTF-16 code units
+(`columnKind: "utf16CodeUnits"`).
+
+| File                    | Run        | Results                                      | `baselineState`    |
+| ----------------------- | ---------- | -------------------------------------------- | ------------------ |
+| `report.sarif`          | comparison | `new-findings.json`                          | `new`              |
+| `report-baseline.sarif` | comparison | `new-findings.json` and `held-findings.json` | `new`, `unchanged` |
+| `report.sarif`          | `--all`    | `findings.json`                              | not set            |
+
+GitHub code scanning does not read `baselineState`: every result it receives becomes an open alert.
+So `report.sarif` of a comparison holds only the new findings, and the held ones, which the change
+is allowed to keep, are only in `report-baseline.sarif`. Fixed findings (`resolved-findings.json`)
+are in neither file, since a result is read as a problem in the current code; findings that were in
+both snapshots and are not held are in no report file.
+
+A `uri` is relative to the root of the git repository: the folder of the project inside the
+repository, then the finding's path, percent-encoded, with `uriBaseId: "%SRCROOT%"` naming the
+repository root. A project in `packages/app` reports `packages/app/src/a.ts`, which is how code
+scanning matches a result to a file. The files hold no absolute path, so `originalUriBaseIds` is not
+written. When nitpicker cannot find the repository root (the `aggregate` command outside a git
+checkout), paths stay relative to the project and have no `uriBaseId`.
+
+Upload the comparison file in pull requests with `github/codeql-action/upload-sarif`:
+
+```yaml
+- run: npx nitpicker
+  working-directory: packages/app
+- uses: github/codeql-action/upload-sarif@v3
+  if: always()
+  with:
+    sarif_file: packages/app/reports/quality/diff/report.sarif
+    category: nitpicker-diff
+```
+
+Code scanning closes an open alert when a later upload in the same `category` no longer has it, so
+give each kind of run its own category: a `--all` upload on the default branch
+(`reports/quality/snapshot/report.sarif`) goes in another category, such as `nitpicker-all`, or the
+next comparison upload would close the alerts it opened.
 
 ## Exit codes
 
@@ -315,7 +376,9 @@ compared with the defaults. These changes are loosening:
 - a `layout.featureRoots` or `layout.sharedRoots` change, with a preset that runs the feature folder
   rules, that takes a code file out of the feature or shared folder it was in under the base
   config: the file ends up in no feature or shared folder, moves between a feature and a shared
-  folder, or joins a larger feature (a nested feature root removed). Each code file of the head
+  folder, or joins a larger feature (a nested feature root removed). With a preset that reads
+  `featureRoots` for `stability-direction` (every preset; Java and Kotlin with `history.coChange`
+  on), a file that moves into a feature folder from outside the features counts too. Each code file of the head
   is placed by both configs. A root that only adds folders, or splits a feature with a nested
   root, is listed but does not fail;
 - a newly disabled analyzer, a threshold above the base's (a removed threshold counts at its
@@ -510,8 +573,12 @@ an exception.
   the gate shows one of them. Each message names the entry for its own tool; once that entry lifts
   it, the other tool's finding for the line shows up with its own entry.
 - `duplicate-clone` and `stability-direction` take no `function` or `name`. Their `paths` are the
-  file of the finding in TypeScript, JavaScript and Python, and the package name in Java and
-  Kotlin (`"paths": ["stable"]`, not `src/main/java/stable`).
+  path of the finding: the file of a `duplicate-clone` finding in TypeScript, JavaScript and
+  Python, the package name in Java and Kotlin (`"paths": ["stable"]`, not
+  `src/main/java/stable`), and for `stability-direction` the folder in TypeScript and JavaScript
+  and the package's `__init__.py` in Python. A `stability-direction` finding on a feature names
+  the feature folder (the feature package in Java and Kotlin) instead (see
+  [Stability direction](#stability-direction)).
 - `function` or `name` on any other rule is a config error, and so is a blank one. Entries are
   listed in the report's config overrides and change the policy hash, so every accepted finding
   shows up in review. Removing or narrowing an exception in a change never turns the findings it
@@ -585,13 +652,17 @@ code importing a package that is only in `devDependencies`: move it to `dependen
 reads the nearest `package.json` that lists dependencies, skips an app a bundler builds (a Vite,
 webpack, Next.js, Rsbuild, Rspack, Astro, Nuxt, SvelteKit, Remix, Vue CLI, Parcel or Angular
 config, or a `build` script that runs one, and no `main`, `module`, `exports` or `bin`) and test
-support next to the code (`setupTests.*`, `test-utils`, `testing/`, `__mocks__/`, `*.stories.*`,
+support next to the code (`setupTests.*`, `test-utils`, `testing/`, `test-support/`, `__mocks__/`, `*.stories.*`,
 `.storybook/`), and reports a `package.json` that is not a JSON object. `nitpicker`,
 `vitest`, `@vitest/coverage-v8`, `typescript`, `@types/node`, `jsdom` and `happy-dom` are never
 reported as unused, because nitpicker or Vitest loads them by name. A tool that loads a package by
 name (a plugin in a config file) needs an `unused-dependency` exception for `package.json` that
 names the package:
 `{ "rule": "unused-dependency", "paths": ["package.json"], "packages": ["prettier-plugin-x"], "reason": "Loaded by .prettierrc" }`.
+
+The Python preset fails a new `unused-dependency` and `unlisted-dependency` the same way, reading the
+dependencies from `pyproject.toml`, `Pipfile`, `requirements*.txt` or `setup.cfg` (see
+[python-preset.md](python-preset.md)); the Java and Kotlin presets have neither rule.
 
 ### Change history
 
@@ -693,6 +764,60 @@ module is a folder, so two folders of one component show up as a pair and a flat
 modules. The analysis sees only the history it is given, so a squash-merge workflow yields few, large
 commits. The head side reads the merge base at the project's head path, so a project whose folder
 moved in the change has no head evidence until the move is merged.
+
+### Stability direction
+
+`stability-direction` (the `coupling` check, every preset) fails a new dependency of a package on a
+less stable one. Instability is `fanOut / (fanIn + fanOut)`, counting the distinct files on the
+other side of the package boundary. In TypeScript and JavaScript the unit outside the features is a
+folder, not every directory: a shared root (`<sourceRoot>/main/shared`, or each `layout.sharedRoots`
+folder) is one unit, and so is each folder directly under `<sourceRoot>/main` (or under the source
+root when there is no `main`), with every folder below it. The composition root
+(`composition-root.ts` or a `composition-root/` folder) and the entry files directly in `main` or in
+the source root (`main.ts`, `server.ts`) are wiring: their edges count toward the other side's
+fan-in but are never reported.
+
+With feature folders (`layout.featureRoots`: `**/features` by default, `<sourceRoot>/main/features`
+in the TypeScript and JavaScript presets), a feature is one unit:
+
+- An edge between a feature's public face and its own internals does not count, in either
+  direction: a face that builds or re-exports its `adapters` and `domain`, and adapters that
+  implement interfaces the face declares. The face is `index.ts` in TypeScript and JavaScript, the
+  `__init__.py` and the public modules directly in the folder in Python, and the classes directly in
+  the feature package in Java and Kotlin. Its internal layering stays covered by the domain and
+  adapter rules.
+- An edge between two internal parts of one feature (`domain` to `adapters`) is checked between
+  those parts: packages in Java, Kotlin and Python, and the folders directly under the feature
+  folder in TypeScript and JavaScript.
+- An edge between two features, or between a feature and code outside the features, is measured
+  between whole units: a feature's fan-in and fan-out count its files' dependencies across the
+  feature boundary, without the ones inside it. New dependents of one feature move only that
+  feature's numbers, and a new feature that reuses others through their face is the least stable
+  unit. The message names both units and their instabilities:
+  `Keep feature dependencies pointing at more stable units: feature src/app/features/loans (instability 0.5) depends on feature src/app/features/fines (instability 0.6667). Depend on the other side's public face, or move the code that joins them into the composition root.`
+  Its identity is `package-edge:<source>-><target>`, with the feature folder for a feature (the
+  package name in Java and Kotlin) and the package or folder for the other end.
+
+A finding sits on a path of the depending side: the feature folder for a feature, the package's
+`__init__.py` in Python, the folder relative to the project in TypeScript and JavaScript, and the
+package name in Java and Kotlin. That path is what its `exceptions` entry names. An existing
+per-file or per-package `stability-direction` exception for code inside a feature folder stops
+matching once the rule measures the feature as one unit: rename it to the feature folder (or the
+feature package in Java and Kotlin), or drop it if the feature no longer inverts.
+
+Without feature folders the rule is per package. Instability moves when other code changes, so a
+new finding can sit on files the change did not edit. Its message then names the changed files
+around it, with their feature or package (at most three of each):
+`The change edited none of its files: it moved the numbers through feature src/app/features/fines (src/app/features/fines/adapters/store.py).`
+When no changed file is next to it any more (the change removed dependents, or added files that
+reach it only through others), the message says the numbers moved through dependencies the change
+removed or files it added elsewhere. Neither form adds a second fix. The units around a finding are
+kept while the comparison runs (at most ten, the heaviest first, three sample files of each) and are
+not written to the report or the cache.
+
+Widening `layout.featureRoots` loosens this rule as well: a file that joins a feature folder, or a
+larger feature, is measured as part of a bigger unit, so the change is a policy loosening with every
+preset that runs `stability-direction` with features (see the loosening list above).
 
 ### Console output from tests
 

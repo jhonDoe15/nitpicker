@@ -3,6 +3,7 @@ import { globMatcher } from '../../paths/glob.mjs';
 const DEFAULT_FEATURE_LAYOUT = { sharedRoots: ['**/shared'], featureRoots: ['**/features'] };
 
 const INIT_MODULE = /^__init__\.pyi?$/u;
+const INDEX_MODULE = /^index\.[cm]?[jt]sx?$/u;
 
 export const PUBLIC_FACES = {
   python: {
@@ -13,6 +14,10 @@ export const PUBLIC_FACES = {
   jvm: {
     isPublic: () => true,
     describe: (directory) => `a class directly in ${directory}/`,
+  },
+  typescript: {
+    isPublic: (name) => INDEX_MODULE.test(name),
+    describe: (directory) => `${directory}/index.ts`,
   },
 };
 
@@ -83,7 +88,10 @@ export function featureRoleContract(layout, publicFace) {
       '"publicFace" must be { isPublic, describe }, such as PUBLIC_FACES.python (shared/rules/features/feature-roles.mjs): the feature boundary rules need to know which files a feature exposes',
     );
   }
-  const roleOf = featureRoles(featureLayout(layout));
+  return withPublicFace(featureRoles(featureLayout(layout)), publicFace);
+}
+
+export function withPublicFace(roleOf, publicFace) {
   return (file) => {
     const role = roleOf(file);
     if (role.kind !== 'feature') {

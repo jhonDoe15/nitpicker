@@ -197,12 +197,16 @@ function usedFactSettings(config) {
   ];
 }
 
-export function validateFactRuleSettings(config) {
-  const language = config.preset ?? 'typescript';
-  const accepted = [
-    ...factRuleSettings(language),
+export function acceptedFactSettings(config) {
+  return [
+    ...factRuleSettings(config.preset ?? 'typescript'),
     ...(config.history?.coChange === true ? ['layout.featureRoots'] : []),
   ];
+}
+
+export function validateFactRuleSettings(config) {
+  const language = config.preset ?? 'typescript';
+  const accepted = acceptedFactSettings(config);
   const unsupported = usedFactSettings(config).find((setting) => !accepted.includes(setting));
   if (unsupported === undefined) {
     return;

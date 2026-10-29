@@ -2,6 +2,10 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { RULE_IDS } from '../../../../shared/policy.mjs';
 import { buildCouplingReport, evaluateCoupling } from '../../../../shared/rules/coupling.mjs';
+import {
+  featureRoleContract,
+  PUBLIC_FACES,
+} from '../../../../shared/rules/features/feature-roles.mjs';
 import { listOtherModules, listProductionModules } from './python-sources.mjs';
 import { fileURLToPath } from 'node:url';
 
@@ -103,13 +107,15 @@ function packageOwner(entry) {
   return owner === '' ? ROOT_PACKAGE : owner;
 }
 
-export function analyzePythonCoupling({ modules, imports }) {
+export function analyzePythonCoupling({ modules, imports }, { layout } = {}) {
   const byName = new Map(modules.map((entry) => [entry.module, entry]));
+  const roleOfFile = featureRoleContract(layout, PUBLIC_FACES.python);
   return buildCouplingReport({
     modules: [...byName.keys()].sort(),
     edges: importEdges(modules, imports),
     packageOf: (name) => packageOwner(byName.get(name)),
     fileOf: (name) => byName.get(name).file,
+    roleOf: (name) => roleOfFile(byName.get(name).file),
   });
 }
 
@@ -127,23 +133,21 @@ function packageAnchors(modules) {
 function withStabilityAnchor(findings, { report, modules }) {
   const anchors = packageAnchors(modules);
   const sources = new Map(
-    report.stabilityDirection.map((direction) => [
-      `package-edge:${direction.source}->${direction.target}`,
-      direction.source,
-    ]),
+    report.stabilityDirection
+      .filter((direction) => direction.path === undefined)
+      .map((direction) => [`package-edge:${direction.source}->${direction.target}`, direction]),
   );
   return findings.map((finding) => {
-    const source =
+    const direction =
       finding.rule === RULE_IDS.stabilityDirection ? sources.get(finding.identity) : undefined;
-    if (source === undefined) {
+    if (direction === undefined) {
       return finding;
     }
-    const file = anchors.get(source);
-    return {
-      ...finding,
-      path: file,
-      message: `${finding.message}. Depend on an abstraction in a more stable package instead.`,
-    };
+    const message =
+      direction.message === undefined
+        ? `${finding.message}. Depend on an abstraction in a more stable package instead.`
+        : finding.message;
+    return { ...finding, path: anchors.get(direction.source), message };
   });
 }
 
@@ -151,9 +155,9 @@ export function readImportsReport(reportRoot) {
   return JSON.parse(readFileSync(path.join(reportRoot, IMPORTS_REPORT), 'utf8'));
 }
 
-export function readCouplingFindings(reportRoot) {
+export function readCouplingFindings(reportRoot, { layout } = {}) {
   const imports = readImportsReport(reportRoot);
-  const report = analyzePythonCoupling(imports);
+  const report = analyzePythonCoupling(imports, { layout });
   return withStabilityAnchor(evaluateCoupling(report, COUPLING_TOOL), {
     report,
     modules: imports.modules,
