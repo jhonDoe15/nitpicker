@@ -1659,7 +1659,9 @@ closing it with the calls its `__exit__` makes, so `protocols` can describe a li
 
 A `contextlib.ExitStack` (or `AsyncExitStack`) used in a `with` closes what you register on it:
 `stack.callback(x.close)` and `stack.enter_context(x)` count as closing `x`. A `finally` inside a
-nested function counts only when that function is called where it is defined.
+nested function counts only when that function is called where it is defined. A contract on a
+class, a `Protocol` or an ABC also covers its subclasses in the project, so an inherited `begin` and
+an overriding `commit` are one lifecycle.
 
 A folder with a `pyproject.toml` that names a `build-backend` and is not classified
 `Private :: Do Not Upload` is a published distribution. Its public names (module-level classes and

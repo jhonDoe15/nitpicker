@@ -84,4 +84,16 @@ describe.skipIf(!pythonUsable())('the shared design rules over Python facts', ()
       ]),
     );
   });
+
+  it('applies a contract on a Protocol to a subclass that inherits the open and overrides the close', () => {
+    const closer = { type: 'Closer', open: ['open'], close: ['close'] };
+    expect(findingRows('hierarchy', { protocols: [closer] })).toEqual([
+      [
+        'protocol-contract',
+        'store/impl.py',
+        'store/impl.py#leak|target|unclosed:open',
+        'enforceable',
+      ],
+    ]);
+  });
 });
