@@ -111,13 +111,20 @@ export function allowedText(entry) {
     : `See the guide: [${guide.label}](${guideTarget(guide)}).`;
 }
 
-function presetAllowedFacts(entry) {
-  const presets = presetsOf(entry).filter((preset) => entry.allowedIn?.[preset] !== undefined);
-  const groups = Map.groupBy(presets, (preset) => entry.allowedIn[preset]);
+function presetFacts(entry, field, label) {
+  const presets = presetsOf(entry).filter((preset) => entry[field]?.[preset] !== undefined);
+  const groups = Map.groupBy(presets, (preset) => entry[field][preset]);
   return [...groups].map(([text, group]) => ({
-    label: `Allowed form in ${joinedWords(group.map((preset) => PRESET_TITLES[preset]))}`,
+    label: `${label} in ${joinedWords(group.map((preset) => PRESET_TITLES[preset]))}`,
     text,
   }));
+}
+
+function presetAllowedFacts(entry) {
+  return [
+    ...presetFacts(entry, 'messageIn', 'Message'),
+    ...presetFacts(entry, 'allowedIn', 'Allowed form'),
+  ];
 }
 
 /**

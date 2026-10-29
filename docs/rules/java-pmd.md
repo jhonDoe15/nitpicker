@@ -909,11 +909,10 @@ Having a lot of control variables in a 'for' loop makes it harder to see what ra
 
 ### `pmd/GeneratedOnHandWrittenCode`
 
-JaCoCo and PIT skip code annotated @Generated, so this is not measured.
+JaCoCo and PIT skip code annotated @Generated, so this is not measured. Remove the annotation from hand-written code.
 
 - **Scope:** Main and test sources.
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
-- **Allowed form:** Remove the annotation from hand-written code.
 - **Exception:** If this is intended, add `{"rule":"pmd/GeneratedOnHandWrittenCode","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-guardlogstatement"></a>
@@ -1019,36 +1018,33 @@ Check for messages in slf4j and log4j2 (since 6.19.0) loggers with non matching 
 
 ### `pmd/JpaEntityClass`
 
-Make the entity a non-final class.
+Make the entity a non-final class. Records and final classes cannot be JPA entities; use records for DTOs.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Records and final classes cannot be JPA entities; use records for DTOs.
-- **Allowed form in Kotlin:** Make the entity an open class that is not a data class: apply the all-open plugin for @Entity, @MappedSuperclass and @Embeddable (allOpen { annotation("jakarta.persistence.Entity") ... } next to kotlin("plugin.jpa")), or write open class. Hibernate cannot proxy a final class, so lazy loading stops working, and a data class compares and hashes every property; use data classes for DTOs.
+- **Message in Kotlin:** Make the entity an open class that is not a data class: apply the all-open plugin for @Entity, @MappedSuperclass and @Embeddable (allOpen { annotation("jakarta.persistence.Entity") ... } next to kotlin("plugin.jpa")), or write open class. Hibernate cannot proxy a final class, so lazy loading stops working, and a data class compares and hashes every property; use data classes for DTOs.
 - **Exception:** If this is intended, add `{"rule":"pmd/JpaEntityClass","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-jpaenumstring"></a>
 
 ### `pmd/JpaEnumString`
 
-Write @Enumerated(EnumType.STRING) on this enum field or element collection, and @MapKeyEnumerated(EnumType.STRING) on a map with enum keys.
+Write @Enumerated(EnumType.STRING) on this enum field or element collection, and @MapKeyEnumerated(EnumType.STRING) on a map with enum keys. The default stores the ordinal, so adding or reordering constants silently corrupts stored rows.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** The default stores the ordinal, so adding or reordering constants silently corrupts stored rows.
-- **Allowed form in Kotlin:** Write @Enumerated(EnumType.STRING) on this enum property or element collection, and @MapKeyEnumerated(EnumType.STRING) on a map with enum keys. The default stores the ordinal, so adding or reordering constants silently corrupts stored rows.
+- **Message in Kotlin:** Write @Enumerated(EnumType.STRING) on this enum property or element collection, and @MapKeyEnumerated(EnumType.STRING) on a map with enum keys. The default stores the ordinal, so adding or reordering constants silently corrupts stored rows.
 - **Exception:** If this is intended, add `{"rule":"pmd/JpaEnumString","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-jpaidentityhashcode"></a>
 
 ### `pmd/JpaIdentityHashCode`
 
-Return getClass().hashCode() from the hashCode of an entity, or hash an immutable business key; with Lombok, write @EqualsAndHashCode(onlyExplicitlyIncluded = true) and mark that key with @EqualsAndHashCode.Include.
+Return getClass().hashCode() from the hashCode of an entity, or hash an immutable business key; with Lombok, write @EqualsAndHashCode(onlyExplicitlyIncluded = true) and mark that key with @EqualsAndHashCode.Include. A hash of the generated id or of every field changes when the entity is saved, and a hash set then loses it.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** A hash of the generated id or of every field changes when the entity is saved, and a hash set then loses it.
-- **Allowed form in Kotlin:** Return javaClass.hashCode() from the hashCode of an entity, or hash an immutable business key, and do not make an entity with a generated id a data class. A hash of the generated id or of every property changes when the entity is saved, and a hash set then loses it.
+- **Message in Kotlin:** Return javaClass.hashCode() from the hashCode of an entity, or hash an immutable business key, and do not make an entity with a generated id a data class. A hash of the generated id or of every property changes when the entity is saved, and a hash set then loses it.
 - **Exception:** If this is intended, add `{"rule":"pmd/JpaIdentityHashCode","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-jpalazyfetching"></a>
@@ -1059,8 +1055,7 @@ Write fetch = FetchType.LAZY on every @ManyToOne and @OneToOne (they are eager b
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Write fetch = FetchType.LAZY on every @ManyToOne and @OneToOne (they are eager by default) and never use EAGER; load what a query needs with join fetch.
-- **Allowed form in Kotlin:** Write fetch = FetchType.LAZY on every @ManyToOne and @OneToOne (they are eager by default) and never use EAGER; load what a query needs with join fetch.
+- **Message in Kotlin:** Write fetch = FetchType.LAZY on every @ManyToOne and @OneToOne (they are eager by default) and never use EAGER; load what a query needs with join fetch.
 - **Exception:** If this is intended, add `{"rule":"pmd/JpaLazyFetching","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-jpamanytomanycascade"></a>
@@ -1071,44 +1066,40 @@ Cascade only PERSIST and MERGE on @ManyToMany, never ALL or REMOVE: removing one
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Cascade only PERSIST and MERGE on @ManyToMany, never ALL or REMOVE: removing one parent deletes rows that other parents still share.
-- **Allowed form in Kotlin:** Cascade only PERSIST and MERGE on @ManyToMany, never ALL or REMOVE: removing one parent deletes rows that other parents still share.
+- **Message in Kotlin:** Cascade only PERSIST and MERGE on @ManyToMany, never ALL or REMOVE: removing one parent deletes rows that other parents still share.
 - **Exception:** If this is intended, add `{"rule":"pmd/JpaManyToManyCascade","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-jpamanytomanyset"></a>
 
 ### `pmd/JpaManyToManySet`
 
-Map @ManyToMany as a Set (or a List with @OrderColumn).
+Map @ManyToMany as a Set (or a List with @OrderColumn). A plain List makes Hibernate delete and re-insert every join row when one element is removed.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** A plain List makes Hibernate delete and re-insert every join row when one element is removed.
-- **Allowed form in Kotlin:** Map @ManyToMany as a MutableSet (or a MutableList with @OrderColumn). A plain list makes Hibernate delete and re-insert every join row when one element is removed.
+- **Message in Kotlin:** Map @ManyToMany as a MutableSet (or a MutableList with @OrderColumn). A plain list makes Hibernate delete and re-insert every join row when one element is removed.
 - **Exception:** If this is intended, add `{"rule":"pmd/JpaManyToManySet","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-jpasequenceids"></a>
 
 ### `pmd/JpaSequenceIds`
 
-Generate ids with GenerationType.SEQUENCE (or UUID).
+Generate ids with GenerationType.SEQUENCE (or UUID). IDENTITY and TABLE ids disable JDBC insert batching.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** IDENTITY and TABLE ids disable JDBC insert batching.
-- **Allowed form in Kotlin:** Generate ids with GenerationType.SEQUENCE (or UUID). IDENTITY and TABLE ids disable JDBC insert batching.
+- **Message in Kotlin:** Generate ids with GenerationType.SEQUENCE (or UUID). IDENTITY and TABLE ids disable JDBC insert batching.
 - **Exception:** If this is intended, add `{"rule":"pmd/JpaSequenceIds","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-jpaversion"></a>
 
 ### `pmd/JpaVersion`
 
-Add a @Version field next to the @Id, so concurrent updates fail instead of overwriting each other.
+Add a @Version field next to the @Id, so concurrent updates fail instead of overwriting each other. Mark entities that are never updated with @Immutable.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Mark entities that are never updated with @Immutable.
-- **Allowed form in Kotlin:** Add a @Version property next to the @Id, so concurrent updates fail instead of overwriting each other. Mark entities that are never updated with @Immutable.
+- **Message in Kotlin:** Add a @Version property next to the @Id, so concurrent updates fail instead of overwriting each other. Mark entities that are never updated with @Immutable.
 - **Exception:** If this is intended, add `{"rule":"pmd/JpaVersion","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-jumbledincrementer"></a>
@@ -1262,7 +1253,6 @@ Pass values as placeholders (LOG.info("user {}", user); {0} in System.Logger and
 
 - **Scope:** Main and test sources.
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
-- **Allowed form:** Pass values as placeholders (LOG.info("user {}", user); {0} in System.Logger and java.util.logging), not a message built with + or String.format.
 - **Exception:** If this is intended, add `{"rule":"pmd/LogStringConcatenation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-loosecoupling"></a>
@@ -1647,20 +1637,18 @@ Name a bounded executor bean, @Async("executorName"), and return CompletableFutu
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Name a bounded executor bean, @Async("executorName"), and return CompletableFuture so failures reach the caller.
-- **Allowed form in Kotlin:** Name a bounded executor bean, @Async("executorName"), and return CompletableFuture so failures reach the caller.
+- **Message in Kotlin:** Name a bounded executor bean, @Async("executorName"), and return CompletableFuture so failures reach the caller.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringAsyncExecutor","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springbeancollectionstate"></a>
 
 ### `pmd/SpringBeanCollectionState`
 
-Fill a plain collection of a shared singleton bean only at startup (the constructor, @PostConstruct or afterPropertiesSet) and keep it as Map.copyOf or List.copyOf, or use a ConcurrentHashMap or a cache (@Cacheable).
+Fill a plain collection of a shared singleton bean only at startup (the constructor, @PostConstruct or afterPropertiesSet) and keep it as Map.copyOf or List.copyOf, or use a ConcurrentHashMap or a cache (@Cacheable). Changed after startup, request threads would write to it at once.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Changed after startup, request threads would write to it at once.
-- **Allowed form in Kotlin:** Fill a plain collection of a shared singleton bean only at startup (the constructor, an init block, @PostConstruct or afterPropertiesSet) and keep it read-only (toMap(), toList()), or use a ConcurrentHashMap or a cache (@Cacheable). Changed after startup, request threads would write to it at once.
+- **Message in Kotlin:** Fill a plain collection of a shared singleton bean only at startup (the constructor, an init block, @PostConstruct or afterPropertiesSet) and keep it read-only (toMap(), toList()), or use a ConcurrentHashMap or a cache (@Cacheable). Changed after startup, request threads would write to it at once.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringBeanCollectionState","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springcomposedmapping"></a>
@@ -1671,20 +1659,18 @@ Use @GetMapping, @PostMapping, @PutMapping, @PatchMapping or @DeleteMapping on m
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Use @GetMapping, @PostMapping, @PutMapping, @PatchMapping or @DeleteMapping on methods. @RequestMapping belongs only on the class, for the path prefix.
-- **Allowed form in Kotlin:** Use @GetMapping, @PostMapping, @PutMapping, @PatchMapping or @DeleteMapping on functions. @RequestMapping belongs only on the class, for the path prefix.
+- **Message in Kotlin:** Use @GetMapping, @PostMapping, @PutMapping, @PatchMapping or @DeleteMapping on functions. @RequestMapping belongs only on the class, for the path prefix.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringComposedMapping","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springconstructorinjection"></a>
 
 ### `pmd/SpringConstructorInjection`
 
-Inject through the constructor into private final fields.
+Inject through the constructor into private final fields. Do not put @Autowired, @Inject, @Resource or @Value on fields or setters.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Do not put @Autowired, @Inject, @Resource or @Value on fields or setters.
-- **Allowed form in Kotlin:** Inject through the primary constructor into private val properties. Do not put @Autowired, @Inject, @Resource or @Value on properties, lateinit vars or setter functions, and drop @Autowired from the only constructor.
+- **Message in Kotlin:** Inject through the primary constructor into private val properties. Do not put @Autowired, @Inject, @Resource or @Value on properties, lateinit vars or setter functions, and drop @Autowired from the only constructor.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringConstructorInjection","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springcorswildcard"></a>
@@ -1695,32 +1681,29 @@ List the allowed origins from configuration instead of "\*" when credentials are
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** List the allowed origins from configuration instead of "\*" when credentials are allowed; any site could then call this API as the signed-in user.
-- **Allowed form in Kotlin:** List the allowed origins from configuration instead of "\*" when credentials are allowed; any site could then call this API as the signed-in user.
+- **Message in Kotlin:** List the allowed origins from configuration instead of "\*" when credentials are allowed; any site could then call this API as the signed-in user.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringCorsWildcard","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springcsrfdisabled"></a>
 
 ### `pmd/SpringCsrfDisabled`
 
-Keep CSRF protection on for session-based security.
+Keep CSRF protection on for session-based security. Turn it off only for a stateless API, in the same filter chain: SessionCreationPolicy.STATELESS or a NullSecurityContextRepository on servlet security, NoOpServerSecurityContextRepository on WebFlux, or oauth2ResourceServer with jwt or opaqueToken and every login form disabled.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Turn it off only for a stateless API, in the same filter chain: SessionCreationPolicy.STATELESS or a NullSecurityContextRepository on servlet security, NoOpServerSecurityContextRepository on WebFlux, or oauth2ResourceServer with jwt or opaqueToken and every login form disabled.
-- **Allowed form in Kotlin:** Keep CSRF protection on for session-based security. Turn it off only for a stateless API, in the same filter chain: SessionCreationPolicy.STATELESS or a NullSecurityContextRepository on servlet security, NoOpServerSecurityContextRepository on WebFlux, or oauth2ResourceServer with jwt or opaqueToken and every login form disabled.
+- **Message in Kotlin:** Keep CSRF protection on for session-based security. Turn it off only for a stateless API, in the same filter chain: SessionCreationPolicy.STATELESS or a NullSecurityContextRepository on servlet security, NoOpServerSecurityContextRepository on WebFlux, or oauth2ResourceServer with jwt or opaqueToken and every login form disabled.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringCsrfDisabled","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springdatabatchofone"></a>
 
 ### `pmd/SpringDataBatchOfOne`
 
-Collect the entities of the whole loop and call saveAll or deleteAll once.
+Collect the entities of the whole loop and call saveAll or deleteAll once. Calling it with a one-element list on each iteration is still one write per entity.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Calling it with a one-element list on each iteration is still one write per entity.
-- **Allowed form in Kotlin:** Collect the entities of the whole loop and call saveAll or deleteAll once. Calling it with a one-element list on each iteration is still one write per entity.
+- **Message in Kotlin:** Collect the entities of the whole loop and call saveAll or deleteAll once. Calling it with a one-element list on each iteration is still one write per entity.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringDataBatchOfOne","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springdataderivedquery"></a>
@@ -1731,8 +1714,7 @@ Write this repository method with @Query (JPQL in a text block for JPA), naming 
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Write this repository method with @Query (JPQL in a text block for JPA), naming the entity and every condition, instead of a query derived from the method name.
-- **Allowed form in Kotlin:** Write this repository function with @Query (JPQL in a raw string for JPA), naming the entity and every condition, instead of a query derived from the function name.
+- **Message in Kotlin:** Write this repository function with @Query (JPQL in a raw string for JPA), naming the entity and every condition, instead of a query derived from the function name.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringDataDerivedQuery","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springdatafilterinquery"></a>
@@ -1743,8 +1725,7 @@ Filter and count in the database, with an @Query that has a where clause, a coun
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Filter and count in the database, with an @Query that has a where clause, a count query or an exists query, instead of loading the whole table with findAll().
-- **Allowed form in Kotlin:** Filter and count in the database, with an @Query that has a where clause, a count query or an exists query, instead of loading the whole table with findAll().
+- **Message in Kotlin:** Filter and count in the database, with an @Query that has a where clause, a count query or an exists query, instead of loading the whole table with findAll().
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringDataFilterInQuery","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springdatamodifyingquery"></a>
@@ -1755,8 +1736,7 @@ Write @Modifying(clearAutomatically = true, flushAutomatically = true), so pendi
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Write @Modifying(clearAutomatically = true, flushAutomatically = true), so pending changes are flushed first and no stale entities stay in the persistence context.
-- **Allowed form in Kotlin:** Write @Modifying(clearAutomatically = true, flushAutomatically = true), so pending changes are flushed first and no stale entities stay in the persistence context.
+- **Message in Kotlin:** Write @Modifying(clearAutomatically = true, flushAutomatically = true), so pending changes are flushed first and no stale entities stay in the persistence context.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringDataModifyingQuery","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springdatanamedparameters"></a>
@@ -1767,20 +1747,18 @@ Bind query parameters by name (:email), not by position (?1); positions break si
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Bind query parameters by name (:email), not by position (?1); positions break silently when parameters are reordered.
-- **Allowed form in Kotlin:** Bind query parameters by name (:email), not by position (?1); positions break silently when parameters are reordered.
+- **Message in Kotlin:** Bind query parameters by name (:email), not by position (?1); positions break silently when parameters are reordered.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringDataNamedParameters","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springdatanativequery"></a>
 
 ### `pmd/SpringDataNativeQuery`
 
-Write the query in JPQL; native SQL is not checked at startup.
+Write the query in JPQL; native SQL is not checked at startup. If this one needs SQL, mark this method with @SuppressWarnings("PMD.SpringDataNativeQuery"), the only inline suppression nitpicker accepts.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** If this one needs SQL, mark this method with @SuppressWarnings("PMD.SpringDataNativeQuery"), the only inline suppression nitpicker accepts.
-- **Allowed form in Kotlin:** Write the query in JPQL; native SQL is not checked at startup. If this one needs SQL, mark this function with @Suppress("PMD.SpringDataNativeQuery"), the only inline suppression nitpicker accepts.
+- **Message in Kotlin:** Write the query in JPQL; native SQL is not checked at startup. If this one needs SQL, mark this function with @Suppress("PMD.SpringDataNativeQuery"), the only inline suppression nitpicker accepts.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringDataNativeQuery","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springdatanoflush"></a>
@@ -1791,8 +1769,7 @@ Let the transaction write changes at commit and remove this flush; an early flus
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Let the transaction write changes at commit and remove this flush; an early flush defeats JDBC batching and hides ordering bugs.
-- **Allowed form in Kotlin:** Let the transaction write changes at commit and remove this flush; an early flush defeats JDBC batching and hides ordering bugs.
+- **Message in Kotlin:** Let the transaction write changes at commit and remove this flush; an early flush defeats JDBC batching and hides ordering bugs.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringDataNoFlush","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springdatanosaveinloop"></a>
@@ -1803,8 +1780,7 @@ Collect the entities and call saveAll or deleteAll once, instead of saving or de
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Collect the entities and call saveAll or deleteAll once, instead of saving or deleting one entity per loop iteration.
-- **Allowed form in Kotlin:** Collect the entities and call saveAll or deleteAll once, instead of saving or deleting one entity per loop iteration.
+- **Message in Kotlin:** Collect the entities and call saveAll or deleteAll once, instead of saving or deleting one entity per loop iteration.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringDataNoSaveInLoop","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springdataquerytextblock"></a>
@@ -1815,8 +1791,7 @@ Write a multi-part query as one text block (""") instead of joining strings with
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Write a multi-part query as one text block (""") instead of joining strings with +.
-- **Allowed form in Kotlin:** Write a multi-part query as one raw string (""") instead of joining strings with +.
+- **Message in Kotlin:** Write a multi-part query as one raw string (""") instead of joining strings with +.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringDataQueryTextBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springdatarowwriteinloop"></a>
@@ -1827,68 +1802,62 @@ Write one set-based @Query that takes the whole list, for example where id in :i
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Write one set-based @Query that takes the whole list, for example where id in :ids, and call it once after the loop instead of one repository update or delete per iteration.
-- **Allowed form in Kotlin:** Write one set-based @Query that takes the whole list, for example where id in :ids, and call it once after the loop instead of one repository update or delete per iteration.
+- **Message in Kotlin:** Write one set-based @Query that takes the whole list, for example where id in :ids, and call it once after the loop instead of one repository update or delete per iteration.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringDataRowWriteInLoop","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springdatasaveinloophelper"></a>
 
 ### `pmd/SpringDataSaveInLoopHelper`
 
-Collect the entities and call saveAll or deleteAll once after the loop; when rows must fail one by one, call saveAll per batch and handle the error per batch.
+Collect the entities and call saveAll or deleteAll once after the loop; when rows must fail one by one, call saveAll per batch and handle the error per batch. This loop calls a method of this class that saves or deletes one entity, so it still writes once per iteration.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** This loop calls a method of this class that saves or deletes one entity, so it still writes once per iteration.
-- **Allowed form in Kotlin:** Collect the entities and call saveAll or deleteAll once after the loop; when rows must fail one by one, call saveAll per batch and handle the error per batch. This loop calls a function of this class that saves or deletes one entity, so it still writes once per iteration.
+- **Message in Kotlin:** Collect the entities and call saveAll or deleteAll once after the loop; when rows must fail one by one, call saveAll per batch and handle the error per batch. This loop calls a function of this class that saves or deletes one entity, so it still writes once per iteration.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringDataSaveInLoopHelper","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springhardcodeduser"></a>
 
 ### `pmd/SpringHardcodedUser`
 
-Load users from a UserDetailsService backed by the database, with passwords hashed by the delegating encoder.
+Load users from a UserDetailsService backed by the database, with passwords hashed by the delegating encoder. Do not put a user password in source code.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Do not put a user password in source code.
-- **Allowed form in Kotlin:** Load users from a UserDetailsService backed by the database, with passwords hashed by the delegating encoder. Do not put a user password in source code.
+- **Message in Kotlin:** Load users from a UserDetailsService backed by the database, with passwords hashed by the delegating encoder. Do not put a user password in source code.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringHardcodedUser","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springhttpclientpercall"></a>
 
 ### `pmd/SpringHttpClientPerCall`
 
-Build the HTTP client once, from the injected RestClient.Builder or RestTemplateBuilder, and keep it in a final field or a @Bean.
+Build the HTTP client once, from the injected RestClient.Builder or RestTemplateBuilder, and keep it in a final field or a @Bean. A client built in each call throws away its connection pool.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** A client built in each call throws away its connection pool.
-- **Allowed form in Kotlin:** Build the HTTP client once, from the injected RestClient.Builder or RestTemplateBuilder, and keep it in a private val or a @Bean. A client built in each call throws away its connection pool.
+- **Message in Kotlin:** Build the HTTP client once, from the injected RestClient.Builder or RestTemplateBuilder, and keep it in a private val or a @Bean. A client built in each call throws away its connection pool.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringHttpClientPerCall","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springhttpclienttimeouts"></a>
 
 ### `pmd/SpringHttpClientTimeouts`
 
-Build this HTTP client with connect and read timeouts, from the injected RestClient.Builder or RestTemplateBuilder (spring.http.client.\* properties), with a request factory or connector that sets them, or with connectTimeout and readTimeout on the builder; give a Reactor Netty HttpClient a responseTimeout.
+Build this HTTP client with connect and read timeouts, from the injected RestClient.Builder or RestTemplateBuilder (spring.http.client.\* properties), with a request factory or connector that sets them, or with connectTimeout and readTimeout on the builder; give a Reactor Netty HttpClient a responseTimeout. A client without timeouts waits forever for a slow server.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** A client without timeouts waits forever for a slow server.
-- **Allowed form in Kotlin:** Build this HTTP client with connect and read timeouts, from the injected RestClient.Builder or RestTemplateBuilder (spring.http.client.\* properties), with a request factory or connector that sets them, or with connectTimeout and readTimeout on the builder; give a Reactor Netty HttpClient a responseTimeout. A client without timeouts waits forever for a slow server.
+- **Message in Kotlin:** Build this HTTP client with connect and read timeouts, from the injected RestClient.Builder or RestTemplateBuilder (spring.http.client.\* properties), with a request factory or connector that sets them, or with connectTimeout and readTimeout on the builder; give a Reactor Netty HttpClient a responseTimeout. A client without timeouts waits forever for a slow server.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringHttpClientTimeouts","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springimmutablebeans"></a>
 
 ### `pmd/SpringImmutableBeans`
 
-Make this field of a bean final, static fields too.
+Make this field of a bean final, static fields too. Beans are shared singletons, so keep per-call state in locals.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Beans are shared singletons, so keep per-call state in locals.
-- **Allowed form in Kotlin:** Make this property of a bean a val. Beans are shared singletons, so keep per-call state in locals.
+- **Message in Kotlin:** Make this property of a bean a val. Beans are shared singletons, so keep per-call state in locals.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringImmutableBeans","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springliteconfiguration"></a>
@@ -1899,8 +1868,7 @@ Write @Configuration(proxyBeanMethods = false) and take dependencies as @Bean me
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Write @Configuration(proxyBeanMethods = false) and take dependencies as @Bean method parameters instead of calling other @Bean methods.
-- **Allowed form in Kotlin:** Write @Configuration(proxyBeanMethods = false) and take dependencies as @Bean function parameters instead of calling other @Bean functions.
+- **Message in Kotlin:** Write @Configuration(proxyBeanMethods = false) and take dependencies as @Bean function parameters instead of calling other @Bean functions.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringLiteConfiguration","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springnocomponentscan"></a>
@@ -1911,8 +1879,7 @@ Put the @SpringBootApplication class in the top package and let it scan its own 
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Put the @SpringBootApplication class in the top package and let it scan its own packages; do not add @ComponentScan or scanBasePackages.
-- **Allowed form in Kotlin:** Put the @SpringBootApplication class in the top package and let it scan its own packages; do not add @ComponentScan or scanBasePackages.
+- **Message in Kotlin:** Put the @SpringBootApplication class in the top package and let it scan its own packages; do not add @ComponentScan or scanBasePackages.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringNoComponentScan","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springnocrossorigin"></a>
@@ -1923,44 +1890,40 @@ Configure CORS once, in a CorsConfigurationSource bean with origins from configu
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Configure CORS once, in a CorsConfigurationSource bean with origins from configuration, instead of @CrossOrigin on controllers.
-- **Allowed form in Kotlin:** Configure CORS once, in a CorsConfigurationSource bean with origins from configuration, instead of @CrossOrigin on controllers.
+- **Message in Kotlin:** Configure CORS once, in a CorsConfigurationSource bean with origins from configuration, instead of @CrossOrigin on controllers.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringNoCrossOrigin","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springnoerrorleak"></a>
 
 ### `pmd/SpringNoErrorLeak`
 
-Log the exception and return a ProblemDetail with a fixed detail from this @ExceptionHandler.
+Log the exception and return a ProblemDetail with a fixed detail from this @ExceptionHandler. The message or stack trace of a generic, JDK or persistence exception exposes internals; messages of your own exception types are fine.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** The message or stack trace of a generic, JDK or persistence exception exposes internals; messages of your own exception types are fine.
-- **Allowed form in Kotlin:** Log the exception and return a ProblemDetail with a fixed detail from this @ExceptionHandler. The message or stack trace of a generic, JDK or persistence exception exposes internals; messages of your own exception types are fine.
+- **Message in Kotlin:** Log the exception and return a ProblemDetail with a fixed detail from this @ExceptionHandler. The message or stack trace of a generic, JDK or persistence exception exposes internals; messages of your own exception types are fine.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringNoErrorLeak","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springnolazyinjection"></a>
 
 ### `pmd/SpringNoLazyInjection`
 
-Remove @Lazy from this injection point.
+Remove @Lazy from this injection point. It hides a dependency cycle; break the cycle with a new component or an event instead.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** It hides a dependency cycle; break the cycle with a new component or an event instead.
-- **Allowed form in Kotlin:** Remove @Lazy from this injection point. It hides a dependency cycle; break the cycle with a new component or an event instead.
+- **Message in Kotlin:** Remove @Lazy from this injection point. It hides a dependency cycle; break the cycle with a new component or an event instead.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringNoLazyInjection","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springnopostconstructio"></a>
 
 ### `pmd/SpringNoPostConstructIo`
 
-Move startup work that calls a database or a remote service out of @PostConstruct, afterPropertiesSet or a @Bean initMethod (and the private helpers only they call) into an ApplicationRunner or an @EventListener(ApplicationReadyEvent).
+Move startup work that calls a database or a remote service out of @PostConstruct, afterPropertiesSet or a @Bean initMethod (and the private helpers only they call) into an ApplicationRunner or an @EventListener(ApplicationReadyEvent). These run before the context is ready: there is no transaction around this call, other beans may not be proxied yet, and a failure stops the application from starting.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** These run before the context is ready: there is no transaction around this call, other beans may not be proxied yet, and a failure stops the application from starting.
-- **Allowed form in Kotlin:** Move startup work that calls a database or a remote service out of @PostConstruct, afterPropertiesSet or a @Bean initMethod (and the private helpers only they call) into an ApplicationRunner or an @EventListener(ApplicationReadyEvent::class). These run before the context is ready: there is no transaction around this call, other beans may not be proxied yet, and a failure stops the application from starting.
+- **Message in Kotlin:** Move startup work that calls a database or a remote service out of @PostConstruct, afterPropertiesSet or a @Bean initMethod (and the private helpers only they call) into an ApplicationRunner or an @EventListener(ApplicationReadyEvent::class). These run before the context is ready: there is no transaction around this call, other beans may not be proxied yet, and a failure stops the application from starting.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringNoPostConstructIo","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springnorequiresnew"></a>
@@ -1971,32 +1934,29 @@ Keep the default REQUIRED propagation and drop Propagation.REQUIRES_NEW: each ne
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Keep the default REQUIRED propagation and drop Propagation.REQUIRES_NEW: each nested transaction holds a second connection and can exhaust the pool under load.
-- **Allowed form in Kotlin:** Keep the default REQUIRED propagation and drop Propagation.REQUIRES_NEW: each nested transaction holds a second connection and can exhaust the pool under load.
+- **Message in Kotlin:** Keep the default REQUIRED propagation and drop Propagation.REQUIRES_NEW: each nested transaction holds a second connection and can exhaust the pool under load.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringNoRequiresNew","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springnoservicelocator"></a>
 
 ### `pmd/SpringNoServiceLocator`
 
-Inject the bean you need through the constructor instead of looking it up in the ApplicationContext or BeanFactory.
+Inject the bean you need through the constructor instead of looking it up in the ApplicationContext or BeanFactory. Use ObjectProvider for optional or prototype beans.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Use ObjectProvider for optional or prototype beans.
-- **Allowed form in Kotlin:** Inject the bean you need through the constructor instead of looking it up in the ApplicationContext or BeanFactory. Use ObjectProvider for optional or prototype beans.
+- **Message in Kotlin:** Inject the bean you need through the constructor instead of looking it up in the ApplicationContext or BeanFactory. Use ObjectProvider for optional or prototype beans.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringNoServiceLocator","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springnoswallowedtransactionexception"></a>
 
 ### `pmd/SpringNoSwallowedTransactionException`
 
-Rethrow a broad or persistence exception caught inside a @Transactional method, or catch it in the caller.
+Rethrow a broad or persistence exception caught inside a @Transactional method, or catch it in the caller. Swallowed there, by a catch without throw, it leaves the transaction rollback-only, so the commit fails anyway.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Swallowed there, by a catch without throw, it leaves the transaction rollback-only, so the commit fails anyway.
-- **Allowed form in Kotlin:** Rethrow a broad or persistence exception caught inside a @Transactional function (throw, error(), getOrThrow(), or a getOrElse, onFailure or fold that throws), or catch it in the caller. Swallowed there, by a catch without throw or a runCatching that never rethrows, it leaves the transaction rollback-only, so the commit fails anyway.
+- **Message in Kotlin:** Rethrow a broad or persistence exception caught inside a @Transactional function (throw, error(), getOrThrow(), or a getOrElse, onFailure or fold that throws), or catch it in the caller. Swallowed there, by a catch without throw or a runCatching that never rethrows, it leaves the transaction rollback-only, so the commit fails anyway.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringNoSwallowedTransactionException","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springnotransactionalcontroller"></a>
@@ -2007,20 +1967,18 @@ Put @Transactional on a service method, not on a controller; a controller transa
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Put @Transactional on a service method, not on a controller; a controller transaction spans the whole request and response serialization.
-- **Allowed form in Kotlin:** Put @Transactional on a service function, not on a controller; a controller transaction spans the whole request and response serialization.
+- **Message in Kotlin:** Put @Transactional on a service function, not on a controller; a controller transaction spans the whole request and response serialization.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringNoTransactionalController","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springpasswordencoder"></a>
 
 ### `pmd/SpringPasswordEncoder`
 
-Hash passwords with PasswordEncoderFactories.createDelegatingPasswordEncoder().
+Hash passwords with PasswordEncoderFactories.createDelegatingPasswordEncoder(). NoOpPasswordEncoder stores them in plain text, and the MD4, message-digest, LDAP SHA and standard SHA-256 encoders and User.withDefaultPasswordEncoder() are not safe for passwords.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** NoOpPasswordEncoder stores them in plain text, and the MD4, message-digest, LDAP SHA and standard SHA-256 encoders and User.withDefaultPasswordEncoder() are not safe for passwords.
-- **Allowed form in Kotlin:** Hash passwords with PasswordEncoderFactories.createDelegatingPasswordEncoder(). NoOpPasswordEncoder stores them in plain text, and the MD4, message-digest, LDAP SHA and standard SHA-256 encoders and User.withDefaultPasswordEncoder() are not safe for passwords.
+- **Message in Kotlin:** Hash passwords with PasswordEncoderFactories.createDelegatingPasswordEncoder(). NoOpPasswordEncoder stores them in plain text, and the MD4, message-digest, LDAP SHA and standard SHA-256 encoders and User.withDefaultPasswordEncoder() are not safe for passwords.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringPasswordEncoder","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springpermitallanyrequest"></a>
@@ -2031,8 +1989,7 @@ Name the public paths in requestMatchers(...).permitAll(), or pathMatchers(...).
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Name the public paths in requestMatchers(...).permitAll(), or pathMatchers(...).permitAll() on WebFlux, and end with anyRequest().authenticated(), or anyExchange().authenticated(), so a new endpoint is protected by default.
-- **Allowed form in Kotlin:** Name the public paths in requestMatchers(...).permitAll() (authorize("/public/\*\*", permitAll) in the Kotlin DSL), or pathMatchers(...).permitAll() on WebFlux, and end with anyRequest().authenticated() (authorize(anyRequest, authenticated)), or anyExchange().authenticated(), so a new endpoint is protected by default.
+- **Message in Kotlin:** Name the public paths in requestMatchers(...).permitAll() (authorize("/public/\*\*", permitAll) in the Kotlin DSL), or pathMatchers(...).permitAll() on WebFlux, and end with anyRequest().authenticated() (authorize(anyRequest, authenticated)), or anyExchange().authenticated(), so a new endpoint is protected by default.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringPermitAllAnyRequest","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springprofileonconfiguration"></a>
@@ -2043,43 +2000,39 @@ Put @Profile only on a @Configuration class or a @Bean method, so profiles choos
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Put @Profile only on a @Configuration class or a @Bean method, so profiles choose beans and never branch business code.
-- **Allowed form in Kotlin:** Put @Profile only on a @Configuration class or a @Bean function, so profiles choose beans and never branch business code.
+- **Message in Kotlin:** Put @Profile only on a @Configuration class or a @Bean function, so profiles choose beans and never branch business code.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringProfileOnConfiguration","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springproxymethodvisibility"></a>
 
 ### `pmd/SpringProxyMethodVisibility`
 
-Make this proxied method public, non-final and non-static, in a non-final class.
+Make this proxied method public, non-final and non-static, in a non-final class. Spring never proxies final or static methods, and nitpicker keeps proxied methods public.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Spring never proxies final or static methods, and nitpicker keeps proxied methods public.
-- **Allowed form in Kotlin:** Make this proxied function public, and let Spring subclass it: apply the kotlin("plugin.spring") compiler plugin (or write open class and open fun), and keep it out of objects and companion objects. Spring never proxies private, final or static functions, and nitpicker keeps proxied functions public.
+- **Message in Kotlin:** Make this proxied function public, and let Spring subclass it: apply the kotlin("plugin.spring") compiler plugin (or write open class and open fun), and keep it out of objects and companion objects. Spring never proxies private, final or static functions, and nitpicker keeps proxied functions public.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringProxyMethodVisibility","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springproxyselfcall"></a>
 
 ### `pmd/SpringProxySelfCall`
 
-Move the annotated method to another bean and call it there.
+Move the annotated method to another bean and call it there. This call stays inside the class, so it skips the proxy and the called method's annotation does nothing.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** This call stays inside the class, so it skips the proxy and the called method''s annotation does nothing.
-- **Allowed form in Kotlin:** Move the annotated function to another bean and call it there. This call stays inside the class, so it skips the proxy and the called function's annotation does nothing.
+- **Message in Kotlin:** Move the annotated function to another bean and call it there. This call stays inside the class, so it skips the proxy and the called function's annotation does nothing.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringProxySelfCall","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springqueryconcatenation"></a>
 
 ### `pmd/SpringQueryConcatenation`
 
-Write the query as constant text (a text block) and pass values as bind parameters; for a list of values use NamedParameterJdbcTemplate or JdbcClient with in (:ids).
+Write the query as constant text (a text block) and pass values as bind parameters; for a list of values use NamedParameterJdbcTemplate or JdbcClient with in (:ids). Joining or formatting values into SQL or JPQL allows injection.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Joining or formatting values into SQL or JPQL allows injection.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringQueryConcatenation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springrestcontroller"></a>
@@ -2090,8 +2043,7 @@ Use @RestController for a JSON controller and drop @ResponseBody.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Use @RestController for a JSON controller and drop @ResponseBody.
-- **Allowed form in Kotlin:** Use @RestController for a JSON controller and drop @ResponseBody.
+- **Message in Kotlin:** Use @RestController for a JSON controller and drop @ResponseBody.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringRestController","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springscheduledfixeddelay"></a>
@@ -2102,32 +2054,29 @@ Use fixedDelay or cron instead of fixedRate, so a slow run never overlaps the ne
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Use fixedDelay or cron instead of fixedRate, so a slow run never overlaps the next one.
-- **Allowed form in Kotlin:** Use fixedDelay or cron instead of fixedRate, so a slow run never overlaps the next one.
+- **Message in Kotlin:** Use fixedDelay or cron instead of fixedRate, so a slow run never overlaps the next one.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringScheduledFixedDelay","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springtransactionalannotation"></a>
 
 ### `pmd/SpringTransactionalAnnotation`
 
-Use org.springframework.transaction.annotation.Transactional.
+Use org.springframework.transaction.annotation.Transactional. The jakarta and javax annotations have no readOnly or timeout and roll back on different exceptions.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** The jakarta and javax annotations have no readOnly or timeout and roll back on different exceptions.
-- **Allowed form in Kotlin:** Use org.springframework.transaction.annotation.Transactional. The jakarta and javax annotations have no readOnly or timeout and roll back on different exceptions.
+- **Message in Kotlin:** Use org.springframework.transaction.annotation.Transactional. The jakarta and javax annotations have no readOnly or timeout and roll back on different exceptions.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringTransactionalAnnotation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springtransactionalcheckedrollback"></a>
 
 ### `pmd/SpringTransactionalCheckedRollback`
 
-Add rollbackFor = Exception.class to this @Transactional, or throw an unchecked exception.
+Add rollbackFor = Exception.class to this @Transactional, or throw an unchecked exception. A checked exception commits the work done so far instead of rolling it back.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** A checked exception commits the work done so far instead of rolling it back.
-- **Allowed form in Kotlin:** Add rollbackFor = [Exception::class] to this @Transactional, or throw an unchecked exception. Kotlin lets any function throw a checked exception, and a checked exception commits the work done so far instead of rolling it back.
+- **Message in Kotlin:** Add rollbackFor = [Exception::class] to this @Transactional, or throw an unchecked exception. Kotlin lets any function throw a checked exception, and a checked exception commits the work done so far instead of rolling it back.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringTransactionalCheckedRollback","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springtransactionalreadonlywrite"></a>
@@ -2138,44 +2087,40 @@ Put @Transactional without readOnly on this method: a write inside a read-only t
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Put @Transactional without readOnly on this method: a write inside a read-only transaction is skipped or fails.
-- **Allowed form in Kotlin:** Put @Transactional without readOnly on this function: a write inside a read-only transaction is skipped or fails.
+- **Message in Kotlin:** Put @Transactional without readOnly on this function: a write inside a read-only transaction is skipped or fails.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringTransactionalReadOnlyWrite","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springtypedconfiguration"></a>
 
 ### `pmd/SpringTypedConfiguration`
 
-Read configuration through a @ConfigurationProperties record and pass the values in through constructors or parameters, not @Value, System.getenv, System.getProperty or Environment.getProperty.
+Read configuration through a @ConfigurationProperties record and pass the values in through constructors or parameters, not @Value, System.getenv, System.getProperty or Environment.getProperty. JVM properties such as java.\*, user.\*, javax.\*, jdk.\* and http.\* are fine.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** JVM properties such as java.\*, user.\*, javax.\*, jdk.\* and http.\* are fine.
-- **Allowed form in Kotlin:** Read configuration through a @ConfigurationProperties data class and pass the values in through constructors or parameters, not @Value, System.getProperty or Environment.getProperty. JVM properties such as java.\*, user.\*, javax.\*, jdk.\* and http.\* are fine.
+- **Message in Kotlin:** Read configuration through a @ConfigurationProperties data class and pass the values in through constructors or parameters, not @Value, System.getProperty or Environment.getProperty. JVM properties such as java.\*, user.\*, javax.\*, jdk.\* and http.\* are fine.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringTypedConfiguration","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springtypedrequestbody"></a>
 
 ### `pmd/SpringTypedRequestBody`
 
-Bind this @RequestBody to a record with validation annotations, not to Object, JsonNode, Map\<String, Object> or a list of those.
+Bind this @RequestBody to a record with validation annotations, not to Object, JsonNode, Map\<String, Object> or a list of those. Untyped payloads skip validation and allow mass assignment. A Map with typed values, such as Map\<String, String>, is fine.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Untyped payloads skip validation and allow mass assignment. A Map with typed values, such as Map\<String, String>, is fine.
-- **Allowed form in Kotlin:** Bind this @RequestBody to a data class with validation annotations, not to Any, JsonNode, Map\<String, Any> or a list of those. Untyped payloads skip validation and allow mass assignment. A Map with typed values, such as Map\<String, String>, is fine.
+- **Message in Kotlin:** Bind this @RequestBody to a data class with validation annotations, not to Any, JsonNode, Map\<String, Any> or a list of those. Untyped payloads skip validation and allow mass assignment. A Map with typed values, such as Map\<String, String>, is fine.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringTypedRequestBody","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springtypedresponse"></a>
 
 ### `pmd/SpringTypedResponse`
 
-Return a record or a specific type from this handler, never Object, JsonNode, Map\<String, Object>, ResponseEntity\<?>, a list or Optional of those, or null.
+Return a record or a specific type from this handler, never Object, JsonNode, Map\<String, Object>, ResponseEntity\<?>, a list or Optional of those, or null. For no body return void or ResponseEntity\<Void>, and for an error throw an exception that a @RestControllerAdvice maps to a ProblemDetail.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** For no body return void or ResponseEntity\<Void>, and for an error throw an exception that a @RestControllerAdvice maps to a ProblemDetail.
-- **Allowed form in Kotlin:** Return a data class or a specific type from this handler, never Any, JsonNode, Map\<String, Any>, ResponseEntity\<\*>, a list or Mono of those, or null. For no body return Unit or ResponseEntity\<Void>, and for an error throw an exception that a @RestControllerAdvice maps to a ProblemDetail.
+- **Message in Kotlin:** Return a data class or a specific type from this handler, never Any, JsonNode, Map\<String, Any>, ResponseEntity\<\*>, a list or Mono of those, or null. For no body return Unit or ResponseEntity\<Void>, and for an error throw an exception that a @RestControllerAdvice maps to a ProblemDetail.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringTypedResponse","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springunusedcontext"></a>
@@ -2193,12 +2138,11 @@ A `@SpringBootTest` class (no superclass, no `RANDOM_PORT` or `DEFINED_PORT`, al
 
 ### `pmd/SpringValidRequestBody`
 
-Add @Valid to this @RequestBody; without it the record''s constraints are never checked.
+Add @Valid to this @RequestBody; without it the record's constraints are never checked.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Add @Valid to this @RequestBody; without it the record''s constraints are never checked.
-- **Allowed form in Kotlin:** Add @Valid to this @RequestBody; without it the data class's constraints are never checked.
+- **Message in Kotlin:** Add @Valid to this @RequestBody; without it the data class's constraints are never checked.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringValidRequestBody","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springvaluesecretdefault"></a>
@@ -2209,8 +2153,7 @@ Read this secret without a default, so a missing value fails at startup; a secre
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** Read this secret without a default, so a missing value fails at startup; a secret with a built-in fallback ships to production unnoticed.
-- **Allowed form in Kotlin:** Read this secret without a default, so a missing value fails at startup; a secret with a built-in fallback ships to production unnoticed.
+- **Message in Kotlin:** Read this secret without a default, so a missing value fails at startup; a secret with a built-in fallback ships to production unnoticed.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringValueSecretDefault","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-staticejbfieldshouldbefinal"></a>
