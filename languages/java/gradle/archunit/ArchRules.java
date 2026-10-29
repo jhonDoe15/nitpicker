@@ -35,6 +35,7 @@ public final class ArchRules {
       Lifetimes.check(main, found);
       TestRules.check(unitTests, otherTests, found);
     }
+    Aggregates.check(main, found);
     Contracts.check(main, root, roles, found);
     String json =
         "{\"root\":" + (root == null ? "null" : "\"" + root + "\"") + ",\"violations\":["

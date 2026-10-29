@@ -319,7 +319,10 @@ allprojects {
         def usesSpring = {
             springDeclared || sourceSets.main.compileClasspath.files.any { it.name ==~ /spring-(context|boot)-.*\.jar/ }
         }
-        def runsArchRules = { usesSpring() || featureFoldersDeclared }
+        def usesJmolecules = {
+            sourceSets.main.compileClasspath.files.any { it.name ==~ /jmolecules-ddd-.*\.jar/ }
+        }
+        def runsArchRules = { usesSpring() || usesJmolecules() || featureFoldersDeclared }
         def hasGuava = { sourceSet -> sourceSet.compileClasspath.files.any { it.name ==~ /guava-\d.*\.jar/ } }
         def hasAwaitility = { sourceSets.test.compileClasspath.files.any { it.name ==~ /awaitility-\d.*\.jar/ } }
 

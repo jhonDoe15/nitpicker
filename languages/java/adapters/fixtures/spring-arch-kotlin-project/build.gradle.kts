@@ -18,6 +18,7 @@ dependencies {
     compileOnly("jakarta.ws.rs:jakarta.ws.rs-api:3.1.0")
     compileOnly("io.micronaut:micronaut-http:4.9.9")
     compileOnly("io.vertx:vertx-web:4.5.21")
+    compileOnly("org.jmolecules:jmolecules-ddd:2.0.1")
     testCompileOnly("org.springframework:spring-test:6.2.10")
     testCompileOnly("org.springframework.boot:spring-boot-test:3.5.5")
     testCompileOnly("org.springframework.boot:spring-boot-test-autoconfigure:3.5.5")
