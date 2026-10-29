@@ -29,6 +29,9 @@ function validateProtocol(entry, label) {
   for (const key of MEMBER_LISTS) {
     validateMembers(entry, key, label);
   }
+  if (entry.reason !== undefined && !isNonEmptyString(entry.reason)) {
+    throw configError(`"${label}.reason" must be a non-empty string`);
+  }
 }
 
 export function validateProtocols(protocols) {
@@ -36,7 +39,9 @@ export function validateProtocols(protocols) {
     return;
   }
   if (!Array.isArray(protocols)) {
-    throw configError('"protocols" must be an array of { type, open, close, steps? } entries');
+    throw configError(
+      '"protocols" must be an array of { type, open, close, steps?, reason? } entries',
+    );
   }
   for (const [index, entry] of protocols.entries()) {
     validateProtocol(entry, `protocols[${String(index)}]`);

@@ -24,6 +24,8 @@ describe('protocols config', () => {
       /"protocols\[0\].close" must be a non-empty/,
     ],
     [{ protocols: [{ ...session, steps: [''] }] }, /"protocols\[0\].steps" must be a non-empty/],
+    [{ protocols: [{ ...session, reason: '' }] }, /"protocols\[0\].reason" must be a non-empty/],
+    [{ protocols: [{ ...session, reason: 3 }] }, /"protocols\[0\].reason" must be a non-empty/],
     [
       { preset: 'python', protocols: [session] },
       /"protocols" is not supported with "preset": "python"/,

@@ -32,10 +32,6 @@ function publishedEntryFiles({ projectRoot, packagesInfo, layout }) {
   );
 }
 
-/**
- * What the entry points of a published package export, followed through re-exports: the public
- * surface `test-only-export` uses. A module that an entry exports whole is published as a module.
- */
 export function publicSurface({ checker, projectRoot, packagesInfo, layout }) {
   const entries = publishedEntryFiles({ projectRoot, packagesInfo, layout });
   if (entries.length === 0) {

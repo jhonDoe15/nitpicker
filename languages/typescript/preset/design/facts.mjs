@@ -93,7 +93,6 @@ function marked(fact, published) {
   return published ? { ...fact, published } : fact;
 }
 
-/** The `modules`, `types` and `callables` lists of the facts bundle for the owned production files. */
 export function designFacts({ context, layout, packagesInfo, frameworks, projectRoot }) {
   const files = ownedFiles(context, layout);
   const state = createState({ context, files, frameworks });
