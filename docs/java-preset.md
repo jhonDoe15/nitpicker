@@ -473,7 +473,7 @@ classpath and its `test` task, and adds no test library to the project.
     names the feature folders `co-change` reads), and `layout.sharedRoots` is accepted once the
     Java preset registers the rule that reads it (`shared-used-by-one-feature`) in
     `shared/project-rules/fact-rules.mjs`. `testConsole` is accepted because the registry lists Java and
-    Kotlin for `test-console-output`. `tools` takes `pmd`, `checkstyle`, `spotbugs` and `errorprone`.
+    Kotlin for `test-console-output`. `tools` takes `pmd`, `checkstyle`, `spotbugs`, `errorprone` and `pit`.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
@@ -618,6 +618,19 @@ lists are joined with nitpicker's, NullAway options that only add findings apply
 the `src/main` sources checked. The run names every flag
 it left out. Findings of the checks the project adds go through the same messages, exemptions and
 `exceptions` as nitpicker's.
+
+**The project's PIT settings.** With `tools.pit.precedence` listing `"project"`, nitpicker reads the
+`pitest { }` block of the `info.solidsoft.pitest` Gradle plugin or the configuration of `pitest-maven`
+from the head checkout and passes the settings to its own PIT run (`nitpickerPit<Task>` on Gradle,
+`runPit` on Maven, and the Kotlin preset's PIT run, whose Kotlin mutants stay descriptive). Excluded
+classes, methods and test classes, the calls to avoid (after PIT's own logging classes) and the JVM
+arguments are added under every ordering that lists `"project"`, like the SpotBugs exclude filter. A
+timeout longer than PIT's default applies under every ordering, a shorter one never (a timed-out
+mutant counts as killed). The project's mutators are added to PIT's default set, and its `threads`
+replace nitpicker's 2, only with the project first. PIT's `DEFAULTS` group differs from the set PIT
+uses when no mutator is named (it has `REMOVE_CONDITIONALS_*_ELSE` in place of `NEGATE_CONDITIONALS`), so nitpicker names the implicit set itself when it adds the project's
+mutators, and passes no `--mutators` otherwise. The targets, the test classes, `features`, groups,
+reports, thresholds and history stay nitpicker's; the run names what it left out.
 
 **PMD rules tuned by nitpicker.** These rules of the rule set allow a narrower form than PMD's
 default, and their messages name it:
