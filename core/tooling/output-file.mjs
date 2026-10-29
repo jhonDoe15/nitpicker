@@ -25,23 +25,16 @@ function removeDirectory(directory) {
   try {
     rmSync(directory, REMOVE_OPTIONS);
     untrackTemporaryPath(directory);
-    return true;
-  } catch {
-    return false;
+    return { removed: true };
+  } catch (error) {
+    return { removed: false, error };
   }
 }
 
 function readDescriptor(descriptor, limit) {
   const buffer = Buffer.alloc(Math.min(fstatSync(descriptor).size, limit));
-  let offset = 0;
-  while (offset < buffer.length) {
-    const read = readSync(descriptor, buffer, offset, buffer.length - offset, offset);
-    if (read === 0) {
-      return buffer.subarray(0, offset);
-    }
-    offset += read;
-  }
-  return buffer;
+  const read = buffer.length === 0 ? 0 : readSync(descriptor, buffer, 0, buffer.length, 0);
+  return buffer.subarray(0, read);
 }
 
 export function openOutputFile() {

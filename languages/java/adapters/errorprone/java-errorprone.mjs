@@ -10,6 +10,7 @@ import { sourceReader } from './lombok/source-text.mjs';
 
 const ERROR_PRONE_REPORT = 'errorprone.json';
 const SENTENCE_END = /[.?!:]$/u;
+const LISTED_OUTSIDE_FILES = 5;
 const CHECKS = JSON.parse(
   readFileSync(new URL('../../gradle/errorprone/checks.json', import.meta.url), 'utf8'),
 );
@@ -51,7 +52,7 @@ function unmappedError(outside, roots) {
   return toolError(
     'unmapped-path',
     `Error Prone reported ${String(files.length)} file(s) outside the project (${roots.join(', ')}), ` +
-      `so their findings cannot be placed: ${files.slice(0, 5).join(', ')}`,
+      `so their findings cannot be placed: ${files.slice(0, LISTED_OUTSIDE_FILES).join(', ')}`,
   );
 }
 
