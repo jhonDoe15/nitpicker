@@ -65,12 +65,23 @@ const reported = (tool, rule) => ({
 describe('overlaps on the probe project', () => {
   it('leave two tools on one line only where they report different issues', () => {
     expect(sharedLines(resolvedProbe())).toStrictEqual([
+      [
+        'Arrays1.java:5',
+        [
+          'errorprone/ArrayEquals',
+          'errorprone/ArrayHashCode',
+          'errorprone/ArrayToString',
+          'pmd/AddEmptyString',
+        ],
+      ],
       ['C1Arrays.java:8', ['errorprone/JavaUtilDate', 'pmd/AvoidFieldNameMatchingMethodName']],
+      ['C3Locks.java:15', ['errorprone/LockOnBoxedPrimitive', 'pmd/AvoidSynchronizedStatement']],
       [
         'C4Switches.java:6',
         ['errorprone/StatementSwitchToExpressionSwitch', 'pmd/NonExhaustiveSwitch'],
       ],
       ['C8Equals.java:4', ['checkstyle/MemberName', 'errorprone/FieldCanBeStatic']],
+      ['Encodings.java:9', ['errorprone/DefaultCharset', 'pmd/AvoidFileStream']],
       ['EqOnly.java:4', ['checkstyle/MemberName', 'errorprone/FieldCanBeStatic']],
       [
         'Fields.java:5',
@@ -85,6 +96,7 @@ describe('overlaps on the probe project', () => {
         ['errorprone/HidingField', 'spotbugs/URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD'],
       ],
       ['Hiding.java:5', ['errorprone/NullAway', 'pmd/AvoidFieldNameMatchingMethodName']],
+      ['Misc.java:23', ['errorprone/SynchronizeOnNonFinalField', 'pmd/AvoidSynchronizedStatement']],
       ['Numbers.java:9', ['errorprone/RandomModInteger', 'spotbugs/DMI_RANDOM_USED_ONLY_ONCE']],
       ['Obsolete.java:10', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
       ['Obsolete.java:11', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
