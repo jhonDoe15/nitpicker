@@ -20,11 +20,14 @@ const LAYOUT_KEYS = [
 
 const GLOB_LAYOUT_KEYS = ['excludedGlobs', 'entryPoints'];
 
-export function validateLayout(layout, preset) {
+export function validateLayout(layout, preset, history) {
   if (!isPlainObject(layout)) {
     throw configError('"layout" must be an object');
   }
-  const settings = factRuleSettings(preset ?? 'typescript');
+  const settings = [
+    ...factRuleSettings(preset ?? 'typescript'),
+    ...(history?.coChange === true ? ['layout.featureRoots'] : []),
+  ];
   const allowed = TYPESCRIPT_PRESETS.includes(preset)
     ? LAYOUT_KEYS
     : FEATURE_LAYOUT_KEYS.filter((key) => settings.includes(`layout.${key}`));
