@@ -3,6 +3,7 @@ package nitpicker.designfacts.model;
 import com.sun.source.tree.*;
 import java.util.*;
 import javax.lang.model.element.Modifier;
+import nitpicker.designfacts.Names;
 
 public final class MethodInfo {
   public final TypeInfo owner;
@@ -64,5 +65,27 @@ public final class MethodInfo {
 
   public String displayName() {
     return ctor ? owner.simple : name;
+  }
+
+  public boolean matchesParams(MethodInfo method) {
+    for (int index = 0; index < params.size(); index++) {
+      String written = Names.typeText(params.get(index).type);
+      if (!matchesParam(written, Names.typeText(method.params.get(index).type))) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private boolean matchesParam(String written, String given) {
+    String base = written.replace("[]", "");
+    if (typeVars.contains(base) || owner.typeVars.contains(base)) {
+      return given.endsWith(written.substring(base.length()));
+    }
+    return simpleName(written).equals(simpleName(given));
+  }
+
+  private static String simpleName(String written) {
+    return written.substring(written.lastIndexOf('.') + 1);
   }
 }
