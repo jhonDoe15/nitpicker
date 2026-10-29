@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -104,6 +104,31 @@ describe('the SpotBugs settings a run takes from the build', () => {
     expect(declaredToolDigest({ spotbugs: ['project'] }, projectWith({}))).toMatch(
       NOTHING_DECLARED,
     );
+  });
+
+  it('digests the same settings the same way wherever the project is checked out', () => {
+    expect(declaredToolDigest({ spotbugs: ['project'] }, projectWith(HEAD))).toBe(
+      declaredToolDigest({ spotbugs: ['project'] }, projectWith(HEAD)),
+    );
+  });
+
+  it('refuses a filter that links outside the project, and skips nested git work trees', () => {
+    const outside = projectWith({ 'exclude.xml': FILTER });
+    const linked = projectWith({ 'build.gradle': BUILD });
+    mkdirSync(path.join(linked, 'config/spotbugs'), { recursive: true });
+    symlinkSync(
+      path.join(outside, 'exclude.xml'),
+      path.join(linked, 'config/spotbugs/exclude.xml'),
+    );
+    const nested = projectWith({
+      'build.gradle': "spotbugs { effort = 'max' }\n",
+      'vendor/.git': 'gitdir: ../.git/modules/vendor\n',
+      'vendor/build.gradle': BUILD,
+      'vendor/config/spotbugs/exclude.xml': FILTER,
+    });
+
+    expect(() => choicesOf(linked, ['project'])).toThrow(/is missing/u);
+    expect(choicesOf(nested, ['project']).spotbugs.arguments).toEqual(['-effort:max', '-medium']);
   });
 });
 
