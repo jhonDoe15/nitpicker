@@ -1,43 +1,78 @@
 import { createHash } from 'node:crypto';
-import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { importClosure } from '../import-closure.mjs';
 import { REPOSITORY_HYGIENE_TOOL } from './files/repository-files.mjs';
 
 const sharedRoot = path.resolve(import.meta.dirname, '..');
-const runnerPath = path.join(import.meta.dirname, 'runner.mjs');
+const HYGIENE_RUNNER = 'hygiene/runner.mjs';
 const ANALYZER_VERSION = '1';
 
-export function configurationFiles() {
-  return [...importClosure([path.relative(sharedRoot, runnerPath)], sharedRoot).keys()].sort();
+export function configurationFiles(runner = HYGIENE_RUNNER) {
+  return [...importClosure([runner], sharedRoot).keys()].sort();
 }
 
-function hashConfiguration() {
+function hashConfiguration(runner) {
+  const sources = importClosure([runner], sharedRoot);
   const hash = createHash('sha256');
-  for (const file of configurationFiles()) {
+  for (const file of [...sources.keys()].sort()) {
     hash.update(`${file}\0`);
-    hash.update(readFileSync(path.join(sharedRoot, file)));
+    hash.update(sources.get(file));
   }
   return hash.digest('hex');
 }
 
-function createHygieneAnalyzer({ name, configurationHash, entryPath }) {
+function withEnvironmentToken(sourceHash, environmentToken) {
+  return environmentToken === undefined
+    ? {}
+    : {
+        resolveConfigurationHash(policyRoot) {
+          return createHash('sha256')
+            .update(`${sourceHash}\0${environmentToken(policyRoot)}`)
+            .digest('hex');
+        },
+      };
+}
+
+export function createCheckAnalyzer({
+  name,
+  command,
+  runner,
+  entryPath,
+  extraArguments = () => [],
+  environmentToken,
+}) {
+  const sourceHash = hashConfiguration(runner);
   return {
     name,
     version: ANALYZER_VERSION,
-    configurationHash,
+    configurationHash: sourceHash,
     exclusions: [],
-    createInvocation({ projectRoot, toolRoot }) {
+    ...withEnvironmentToken(sourceHash, environmentToken),
+    createInvocation(context) {
       return {
         command: process.execPath,
-        args: [entryPath, 'hygiene', '--check', name, '--project-root', projectRoot],
-        cwd: toolRoot,
+        args: [
+          entryPath,
+          command,
+          '--check',
+          name,
+          '--project-root',
+          context.projectRoot,
+          ...extraArguments(context),
+        ],
+        cwd: context.toolRoot,
       };
     },
   };
 }
 
 export function createHygieneAnalyzers(entryPath) {
-  const configurationHash = hashConfiguration();
-  return [createHygieneAnalyzer({ name: REPOSITORY_HYGIENE_TOOL, configurationHash, entryPath })];
+  return [
+    createCheckAnalyzer({
+      name: REPOSITORY_HYGIENE_TOOL,
+      command: 'hygiene',
+      runner: HYGIENE_RUNNER,
+      entryPath,
+    }),
+  ];
 }

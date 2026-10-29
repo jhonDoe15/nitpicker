@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { moduleClasspaths, parseDependencyList, usesSpring } from './maven-classpaths.mjs';
+import { moduleClasspaths, parseDependencyList } from './maven-classpaths.mjs';
 
 describe('parseDependencyList', () => {
   it('reads coordinates, scope and file, with classifiers, module names, optional markers and drive letters', () => {
@@ -67,23 +67,5 @@ describe('moduleClasspaths', () => {
         'system.jar',
       ],
     });
-  });
-});
-
-describe('usesSpring', () => {
-  const classpaths = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
-
-  it('is true for spring-context and spring-boot jars on the main compile classpath', () => {
-    expect([
-      usesSpring(classpaths('spring-context-6.2.10.jar')),
-      usesSpring(classpaths('guava.jar', 'spring-boot-3.5.5.jar')),
-    ]).toEqual([true, true]);
-  });
-
-  it('is false for other jars, other Spring modules and no jars', () => {
-    expect([
-      usesSpring(classpaths('spring-web-6.2.10.jar', 'spring-boot-starter.jar.sha1')),
-      usesSpring(classpaths()),
-    ]).toEqual([false, false]);
   });
 });
