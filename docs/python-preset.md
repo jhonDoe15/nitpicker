@@ -1713,6 +1713,25 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   finding says so and never fails the run; the same finding names a test file whose tests could
   not be read, and the other files are still checked. A failing test run reports `tests-failed`
   and no slow tests.
+- **Tests that run no production code.** `no-production-runtime` (tool `test-runtime`;
+  `test-runtime/no-production-runtime` is accepted in `python.exceptions` as the same rule), as for
+  the other presets: a test file whose imports, and the imports of the helpers and `conftest.py`
+  files it reaches, lead to no production module. `type-only-production-dependency` is the same
+  file when its only link to production is an import under `if TYPE_CHECKING:`. A file is judged
+  when pytest collects it (`python_files`, `*_test.py`, Django's `tests.py`; unittest and Django
+  runners also take `test*.py`), never `conftest.py` or a helper, and not under an `e2e`,
+  `end_to_end` or `contract` folder. Each test reaches the `conftest.py` files of its folder and
+  its parents when the runner is pytest, and the modules a `pytest_plugins` list names. A string
+  literal that is an argument of a call and names a production module, exactly or as a dotted
+  prefix (`importlib.import_module("app.x")`, `mock.patch("app.service.requests")`,
+  `"-m", "app.cli"`), counts as a dynamic import; a bare name counts only for `import_module` or
+  after `-m`. In a Django project a test that imports `django.test` or `rest_framework.test`, itself
+  or through a helper, reaches production through the URL configuration, and is accepted. Fix a
+  finding by testing the production code, or lift it with an entry of `python.exceptions` that the
+  message prints, `{"rule":"no-production-runtime","paths":["tests/test_schema.py"],"reason":"..."}`
+  (`type-only-production-dependency` the same way). The import scan
+  (`analysis/test-runtime/string-scan.py`) writes the literals next to `imports.json`; a test file
+  that does not parse is left out of the count.
 - **Pinned runner options.** Options that let a failing run pass are taken out of the project's
   pytest `addopts` (read from the first of `pytest.toml`, `.pytest.toml`, `pytest.ini`,
   `.pytest.ini`, `pyproject.toml`, `tox.ini`, `setup.cfg`, as pytest does) with `-o addopts=...`,
