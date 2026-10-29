@@ -21,9 +21,7 @@ def eligible_params(scope):
     for parameter in scope.params:
         if parameter.variadic or parameter.annotation is None:
             continue
-        typedef = project_type(
-            scope.index, scope.module, parameter.annotation, scope.owner
-        )
+        typedef = project_type(scope, parameter.annotation)
         usable = typedef is not None and not isinstance(typedef, LiteralAlias)
         if usable and classify(scope.index, typedef) in USE_KINDS:
             found.append((parameter, typedef))
@@ -158,7 +156,7 @@ def forward_target(scope):
     return value, returned
 
 
-def returns_nothing(scope, function):
+def returns_nothing(function):
     node = function.node.returns
     if node is not None:
         return isinstance(node, ast.Constant) and node.value is None
@@ -190,9 +188,9 @@ def argument_indexes(scope, call, target):
 
 
 def passed_index(scope, node, indexes):
-    if isinstance(node, ast.Name) and node.id in indexes:
-        if len(scope.sites.get(node.id, [])) == 1:
-            return indexes[node.id]
+    known = isinstance(node, ast.Name) and node.id in indexes
+    if known and len(scope.sites.get(node.id, [])) == 1:
+        return indexes[node.id]
     return -1
 
 
@@ -204,7 +202,7 @@ def forward_fact(scope):
     resolution = resolve_call(scope, call)
     if resolution is None or resolution.target.name == "__init__":
         return None
-    if not returned and not returns_nothing(scope, resolution.target):
+    if not returned and not returns_nothing(resolution.target):
         return None
     arguments = argument_indexes(scope, call, resolution.target)
     if arguments is None or all(index == -1 for index in arguments):

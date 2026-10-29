@@ -54,15 +54,18 @@ def is_member_name(name):
     )
 
 
+def statement_names(statement):
+    if isinstance(statement, ast.Assign):
+        return [t.id for t in statement.targets if isinstance(t, ast.Name)]
+    valued = isinstance(statement, ast.AnnAssign) and statement.value is not None
+    if valued and isinstance(statement.target, ast.Name):
+        return [statement.target.id]
+    return []
+
+
 def member_names(klass):
-    names = []
-    for statement in klass.node.body:
-        if isinstance(statement, ast.Assign):
-            names += [t.id for t in statement.targets if isinstance(t, ast.Name)]
-        elif isinstance(statement, ast.AnnAssign) and statement.value is not None:
-            if isinstance(statement.target, ast.Name):
-                names.append(statement.target.id)
-    return [n for n in dict.fromkeys(names)]
+    names = [n for statement in klass.node.body for n in statement_names(statement)]
+    return list(dict.fromkeys(names))
 
 
 def has_abc_metaclass(klass):
@@ -119,9 +122,4 @@ def kind_of(index, typedef):
 
 
 def field_names(index, klass):
-    names = []
-    for name, sites in attribute_sites(index, klass).items():
-        if is_dunder(name) or all(getattr(s, "class_variable", False) for s in sites):
-            continue
-        names.append(name)
-    return names
+    return [name for name in attribute_sites(index, klass) if not is_dunder(name)]

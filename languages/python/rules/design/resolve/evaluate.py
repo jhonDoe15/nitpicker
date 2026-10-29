@@ -1,6 +1,6 @@
 import ast
 
-from design.resolve.annotations import project_type
+from design.resolve.annotations import Place, project_type
 from design.resolve.imports import resolve_binding
 from design.resolve.lookup import (
     TRANSPARENT_BASES,
@@ -14,8 +14,12 @@ from design.support.astutil import first_parameter, own_nodes
 from design.support.scope import is_generator
 from design.types.classes import enum_cases
 
+CAST_ARGUMENTS = 2
 CAST_NAMES = {"typing.cast", "typing_extensions.cast"}
 CONTEXT_MANAGERS = {"contextlib.contextmanager", "contextlib.asynccontextmanager"}
+
+
+CHAIN_LINKS = (ast.Attribute, ast.Call, ast.Await, ast.Subscript)
 
 
 def typed_function(function):
@@ -31,7 +35,7 @@ def return_type(index, function, receiver=None):
     if node is None or not typed_function(function):
         return None
     owner = receiver if isinstance(receiver, Klass) else function.owner
-    return project_type(index, function.module, node, owner)
+    return project_type(Place(index, function.module, owner), node)
 
 
 def entity_value(scope, entity):
@@ -73,11 +77,10 @@ def name_value(scope, name):
 
 def super_member(scope, owner, name):
     for entry in linear(scope.index, owner)[1:]:
-        if isinstance(entry, Klass):
-            if name in entry.members:
-                return entry.members[name]
-        elif entry not in TRANSPARENT_BASES:
+        if not isinstance(entry, Klass) and entry not in TRANSPARENT_BASES:
             return None
+        if isinstance(entry, Klass) and name in entry.members:
+            return entry.members[name]
     return None
 
 
@@ -124,14 +127,14 @@ def cast_type(scope, call):
     from checks.common import dotted_name
 
     if (
-        len(call.args) != 2
+        len(call.args) != CAST_ARGUMENTS
         or dotted_name(call.func, scope.module.aliases) not in CAST_NAMES
     ):
         return None
-    return project_type(scope.index, scope.module, call.args[0], scope.owner)
+    return project_type(scope, call.args[0])
 
 
-def call_value(scope, call, awaited=False):
+def call_value(scope, call, *, awaited=False):
     cast = cast_type(scope, call)
     if cast is not None:
         return ("inst", cast)
@@ -154,12 +157,28 @@ def conditional_value(scope, node):
     return left if left is not None and left == right else None
 
 
-def evaluate(scope, node):
+def chain_links(node):
+    links = []
+    current = node
+    while isinstance(current, CHAIN_LINKS):
+        current = current.func if isinstance(current, ast.Call) else current.value
+        links.append(current)
+    return links
+
+
+def evaluate_once(scope, node):
     key = id(node)
     if key not in scope.values:
         scope.values[key] = None
         scope.values[key] = compute(scope, node)
     return scope.values[key]
+
+
+def evaluate(scope, node):
+    if id(node) not in scope.values:
+        for link in reversed(chain_links(node)):
+            evaluate_once(scope, link)
+    return evaluate_once(scope, node)
 
 
 def compute(scope, node):

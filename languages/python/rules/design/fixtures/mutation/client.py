@@ -60,3 +60,30 @@ async def awaited(inv: Inventory):
 async def not_awaited(inv: Inventory):
     rows = inv.fetch()
     rows.append(1)
+
+
+import cache  # noqa: E402
+from registry import Registry  # noqa: E402
+
+
+def augmented(inv: Inventory):
+    lines = inv.lines()
+    lines += [1]
+
+
+def walrus(inv: Inventory):
+    (lines := inv.lines()).append(1)
+
+
+def defaulted(inv: Inventory):
+    lines = inv.lines() or []
+    lines.append(1)
+
+
+def class_state(registry: Registry):
+    registry.known().append(1)
+
+
+def module_state():
+    cache.cache().append(1)
+    cache.peek().append(2)

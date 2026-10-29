@@ -23,6 +23,26 @@ function isPublished(table) {
   return buildable && !classifiersOf(table).includes(PRIVATE_CLASSIFIER);
 }
 
+function moduleName(name) {
+  return name.toLowerCase().replaceAll(/[-.]+/gu, '_');
+}
+
+function poetryIncludes(table) {
+  const packages = table.tool?.poetry?.packages;
+  return (Array.isArray(packages) ? packages : []).map((entry) => entry?.include);
+}
+
+function topModules(table) {
+  const pyModules = table.tool?.setuptools?.['py-modules'];
+  const names = [
+    table.project?.name,
+    table.tool?.poetry?.name,
+    ...(Array.isArray(pyModules) ? pyModules : []),
+    ...poetryIncludes(table),
+  ];
+  return [...new Set(names.filter((name) => typeof name === 'string').map(moduleName))];
+}
+
 function pyprojectName(root) {
   return root === '' ? 'pyproject.toml' : path.posix.join(root, 'pyproject.toml');
 }
@@ -33,7 +53,7 @@ export function designDistributions(projectRoot, files) {
   for (const root of roots) {
     const table = tomlTable(projectRoot, pyprojectName(root));
     if (table !== undefined && isDistribution(table)) {
-      distributions.push({ root, published: isPublished(table) });
+      distributions.push({ root, published: isPublished(table), modules: topModules(table) });
     }
   }
   return distributions;

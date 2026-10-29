@@ -29,77 +29,96 @@ MUTATORS = {
 def local_mutations(scope):
     if hasattr(scope, "mutations"):
         return scope.mutations
+    hits = [(node, mutation_at(scope, node)) for node in all_nodes(scope.function.node)]
     found = {}
-    for node in all_nodes(scope.function.node):
-        hit = mutation_at(scope, node)
-        if hit is not None:
-            name, kind = hit
-            current = found.get(name)
-            at = (node.lineno, node.col_offset)
-            if current is None or at < current[0]:
-                found[name] = (at, kind)
+    for node, (name, kind) in ((n, hit) for n, hit in hits if hit is not None):
+        at = (node.lineno, node.col_offset)
+        if name not in found or at < found[name][0]:
+            found[name] = (at, kind)
     scope.mutations = found
     return found
 
 
-def mutation_at(scope, node):
-    if isinstance(node, ast.Call) and isinstance(node.func, ast.Attribute):
-        owner = node.func.value
-        if node.func.attr in MUTATORS and isinstance(owner, ast.Name):
-            if resolve_call(scope, node) is None:
-                return owner.id, node.func.attr
-    if isinstance(node, (ast.Subscript, ast.Attribute)) and isinstance(
-        node.ctx, STORE_CONTEXTS
-    ):
-        if isinstance(node.value, ast.Name):
-            return node.value.id, "assign"
+def mutator_call(scope, node):
+    if not isinstance(node, ast.Call) or not isinstance(node.func, ast.Attribute):
+        return None
+    owner = node.func.value
+    mutates = node.func.attr in MUTATORS and isinstance(owner, ast.Name)
+    if mutates and resolve_call(scope, node) is None:
+        return owner.id, node.func.attr
     return None
+
+
+def mutation_at(scope, node):
+    if isinstance(node, ast.AugAssign) and isinstance(node.target, ast.Name):
+        return node.target.id, "+="
+    stored = isinstance(node, (ast.Subscript, ast.Attribute)) and isinstance(
+        node.ctx, STORE_CONTEXTS
+    )
+    if stored and isinstance(node.value, ast.Name):
+        return node.value.id, "assign"
+    return mutator_call(scope, node)
+
+
+def passes_through(parent, value):
+    if isinstance(parent, ast.IfExp):
+        return parent.test is not value
+    return isinstance(parent, (ast.BoolOp, ast.NamedExpr))
 
 
 def produced_value(scope, call, resolution):
-    if resolution is None:
-        return None, None
-    parent = scope.module.parents.get(id(call))
+    parents = scope.module.parents
+    value, parent = call, parents.get(id(call))
     if isinstance(parent, ast.Await):
-        return parent, scope.module.parents.get(id(parent))
-    if getattr(resolution.target, "is_async", False):
-        return None, None
-    return call, parent
+        value, parent = parent, parents.get(id(parent))
+    elif getattr(resolution.target, "is_async", False):
+        return None, None, []
+    names = []
+    while passes_through(parent, value):
+        if isinstance(parent, ast.NamedExpr):
+            names.append(parent.target.id)
+        value, parent = parent, parents.get(id(parent))
+    return value, parent, names
 
 
 def direct_mutation(scope, value, parent):
-    if isinstance(parent, ast.Attribute) and parent.value is value:
-        grand = scope.module.parents.get(id(parent))
-        if (
-            isinstance(grand, ast.Call)
-            and grand.func is parent
-            and parent.attr in MUTATORS
-        ):
-            return parent.attr if resolve_call(scope, grand) is None else None
-        if isinstance(parent.ctx, STORE_CONTEXTS):
-            return "assign"
     if isinstance(parent, ast.Subscript) and parent.value is value:
         return "assign" if isinstance(parent.ctx, STORE_CONTEXTS) else None
+    if not isinstance(parent, ast.Attribute) or parent.value is not value:
+        return None
+    if isinstance(parent.ctx, STORE_CONTEXTS):
+        return "assign"
+    grand = scope.module.parents.get(id(parent))
+    mutator = isinstance(grand, ast.Call) and grand.func is parent
+    if mutator and parent.attr in MUTATORS and resolve_call(scope, grand) is None:
+        return parent.attr
     return None
 
 
-def aliased_mutation(scope, value, parent):
-    if not isinstance(parent, (ast.Assign, ast.AnnAssign)) or parent.value is not value:
+def assigned_name(value, parent):
+    if isinstance(parent, ast.Assign) and parent.value is value:
+        targets = parent.targets
+    elif isinstance(parent, ast.AnnAssign) and parent.value is value:
+        targets = [parent.target]
+    else:
         return None
-    targets = parent.targets if isinstance(parent, ast.Assign) else [parent.target]
-    if len(targets) != 1 or not isinstance(targets[0], ast.Name):
-        return None
-    name = targets[0].id
-    if len(scope.sites.get(name, [])) != 1:
-        return None
-    hit = local_mutations(scope).get(name)
-    return hit[1] if hit else None
+    single = len(targets) == 1 and isinstance(targets[0], ast.Name)
+    return targets[0].id if single else None
+
+
+def aliased_mutation(scope, names):
+    for name in names:
+        bindings = [s for s in scope.sites.get(name, []) if s.kind != "aug"]
+        hit = local_mutations(scope).get(name) if len(bindings) == 1 else None
+        if hit:
+            return hit[1]
+    return None
 
 
 def mutation_of(scope, call, resolution):
-    value, parent = produced_value(scope, call, resolution)
+    value, parent, names = produced_value(scope, call, resolution)
     if value is None:
         return None
-    return direct_mutation(scope, value, parent) or aliased_mutation(
-        scope, value, parent
-    )
+    assigned = assigned_name(value, parent)
+    aliases = names + ([assigned] if assigned else [])
+    return direct_mutation(scope, value, parent) or aliased_mutation(scope, aliases)

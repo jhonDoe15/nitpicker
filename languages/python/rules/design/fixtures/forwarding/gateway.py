@@ -18,7 +18,7 @@ class Gateway:
         self.backend = backend
 
     def send(self, to, body):
-        """Sends a message."""
+        """A docstring before the forwarded call does not stop the forward."""
         return self.backend.send(to, body)
 
     def send_reordered(self, to, body):

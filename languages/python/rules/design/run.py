@@ -1,8 +1,8 @@
-import os
 import sys
+from pathlib import Path
 
 sys.dont_write_bytecode = True
-sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 
 def main(arguments):
@@ -11,9 +11,9 @@ def main(arguments):
 
     list_file, out_file = arguments[:2]
     options = read_options(arguments)
-    with open(list_file, encoding="utf-8") as handle:
-        paths = [line.strip() for line in handle if line.strip()]
-    write_design(build_project(paths, options), options, os.path.dirname(out_file))
+    lines = Path(list_file).read_text(encoding="utf-8").splitlines()
+    paths = [line.strip() for line in lines if line.strip()]
+    write_design(build_project(paths, options), options, Path(out_file).parent)
 
 
 if __name__ == "__main__":

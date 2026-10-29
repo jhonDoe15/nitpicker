@@ -1,4 +1,5 @@
 import ast
+from collections import namedtuple
 
 from design.support.astutil import CLOSURES, FUNCTIONS, body_nodes, closure_arguments
 
@@ -14,21 +15,10 @@ PATTERN_TYPES = tuple(
 IMPLICIT_SELF_FIRST = {"__new__", "__init_subclass__", "__class_getitem__"}
 
 
-class Parameter:
-    def __init__(self, name, annotation, index, optional, variadic):
-        self.name = name
-        self.annotation = annotation
-        self.index = index
-        self.optional = optional
-        self.variadic = variadic
-
-
-class Site:
-    def __init__(self, kind, value=None, annotation=None, asynchronous=False):
-        self.kind = kind
-        self.value = value
-        self.annotation = annotation
-        self.asynchronous = asynchronous
+Parameter = namedtuple("Parameter", "name annotation index optional variadic")
+Site = namedtuple(
+    "Site", "kind value annotation asynchronous", defaults=(None, None, False)
+)
 
 
 def skips_first(function):
@@ -43,11 +33,14 @@ def parameters(function):
     defaults = [False] * (len(positional) - len(arguments.defaults)) + [True] * len(
         arguments.defaults
     )
-    entries = [(a, d, False) for a, d in zip(positional, defaults)]
+    entries = [(a, d, False) for a, d in zip(positional, defaults, strict=True)]
     if arguments.vararg:
         entries.append((arguments.vararg, False, True))
     keyword_defaults = [d is not None for d in arguments.kw_defaults]
-    entries += [(a, d, False) for a, d in zip(arguments.kwonlyargs, keyword_defaults)]
+    entries += [
+        (a, d, False)
+        for a, d in zip(arguments.kwonlyargs, keyword_defaults, strict=True)
+    ]
     if arguments.kwarg:
         entries.append((arguments.kwarg, False, True))
     if skips_first(function) and positional:
@@ -72,58 +65,80 @@ def add_site(sites, name, site):
     sites.setdefault(name, []).append(site)
 
 
+def assigned_sites(node):
+    if isinstance(node, ast.AnnAssign):
+        site = Site("annotated", node.value, node.annotation)
+        return [(name, site) for name in target_names(node.target)]
+    if not isinstance(node, ast.Assign):
+        return []
+    found = []
+    for target in node.targets:
+        site = Site("assign" if isinstance(target, ast.Name) else "other", node.value)
+        found.extend((name, site) for name in target_names(target))
+    return found
+
+
 def assignment_sites(node, sites):
-    if isinstance(node, ast.Assign):
-        for target in node.targets:
-            for name in target_names(target):
-                direct = isinstance(target, ast.Name)
-                add_site(sites, name, Site("assign" if direct else "other", node.value))
-    elif isinstance(node, ast.AnnAssign):
-        for name in target_names(node.target):
-            add_site(sites, name, Site("annotated", node.value, node.annotation))
+    for name, site in assigned_sites(node):
+        add_site(sites, name, site)
+
+
+def pattern_names(node):
+    return [n for n in (getattr(node, "name", None), getattr(node, "rest", None)) if n]
+
+
+def import_names(node):
+    return [(a.asname or a.name).split(".")[0] for a in node.names if a.name != "*"]
+
+
+def deleted_names(node):
+    return [n for target in node.targets for n in target_names(target)]
+
+
+BINDERS = [
+    (
+        (ast.For, ast.AsyncFor, ast.comprehension, ast.NamedExpr),
+        lambda n: target_names(n.target),
+    ),
+    ((ast.ExceptHandler,), lambda n: [n.name] if n.name else []),
+    ((ast.Global, ast.Nonlocal), lambda n: list(n.names)),
+    ((ast.Delete,), deleted_names),
+    ((*FUNCTIONS, ast.ClassDef), lambda n: [n.name]),
+    (PATTERN_TYPES, pattern_names),
+    ((ast.Import, ast.ImportFrom), import_names),
+]
+
+
+def bound_names(node):
+    for types, names in BINDERS:
+        if types and isinstance(node, types):
+            return names(node)
+    return []
 
 
 def other_sites(node, sites):
-    names = []
     if isinstance(node, ast.AugAssign):
-        names = target_names(node.target)
-    elif isinstance(node, (ast.For, ast.AsyncFor, ast.comprehension)):
-        names = target_names(node.target)
-    elif isinstance(node, ast.ExceptHandler) and node.name:
-        names = [node.name]
-    elif isinstance(node, ast.NamedExpr):
-        names = target_names(node.target)
-    elif isinstance(node, (ast.Global, ast.Nonlocal)):
-        names = list(node.names)
-    elif isinstance(node, ast.Delete):
-        names = [n for target in node.targets for n in target_names(target)]
-    elif isinstance(node, FUNCTIONS + (ast.ClassDef,)):
-        names = [node.name]
-    elif PATTERN_TYPES and isinstance(node, PATTERN_TYPES):
-        names = [
-            n for n in (getattr(node, "name", None), getattr(node, "rest", None)) if n
-        ]
-    elif isinstance(node, (ast.Import, ast.ImportFrom)):
-        names = [
-            (a.asname or a.name).split(".")[0] for a in node.names if a.name != "*"
-        ]
-    for name in names:
+        for name in target_names(node.target):
+            add_site(sites, name, Site("aug"))
+    for name in bound_names(node):
         add_site(sites, name, Site("other"))
     if isinstance(node, (ast.With, ast.AsyncWith)):
         with_sites(node, sites)
 
 
+def with_item_sites(item, asynchronous):
+    variables = item.optional_vars
+    if isinstance(variables, ast.Name):
+        return [(variables.id, Site("with", item.context_expr, None, asynchronous))]
+    names = target_names(variables) if variables is not None else []
+    return [(name, Site("other")) for name in names]
+
+
 def with_sites(node, sites):
+    asynchronous = isinstance(node, ast.AsyncWith)
     for item in node.items:
-        variables = item.optional_vars
-        if isinstance(variables, ast.Name):
-            site = Site(
-                "with", item.context_expr, None, isinstance(node, ast.AsyncWith)
-            )
-            add_site(sites, variables.id, site)
-        elif variables is not None:
-            for name in target_names(variables):
-                add_site(sites, name, Site("other"))
+        for name, site in with_item_sites(item, asynchronous):
+            add_site(sites, name, site)
 
 
 def collect_sites(function, params):

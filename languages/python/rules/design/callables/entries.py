@@ -52,13 +52,9 @@ def is_entry(index, function):
 
 def callback_references(scope, call):
     values = list(call.args) + [keyword.value for keyword in call.keywords]
-    found = []
-    for value in values:
-        if isinstance(value, (ast.Name, ast.Attribute)):
-            resolved = evaluate(scope, value)
-            if resolved is not None and resolved[0] == "func":
-                found.append(resolved[1])
-    return found
+    named = [v for v in values if isinstance(v, (ast.Name, ast.Attribute))]
+    resolved = [evaluate(scope, value) for value in named]
+    return [entry[1] for entry in resolved if entry is not None and entry[0] == "func"]
 
 
 def is_builtin_call(scope, call):
@@ -70,30 +66,28 @@ def is_builtin_call(scope, call):
     )
 
 
+def module_functions(module):
+    functions = list(module.all_functions)
+    for klass in module.classes.values():
+        functions.extend(f for nested in klass.all_classes() for f in nested.functions)
+    return functions
+
+
 def scopes_to_scan(index):
     for module in index.modules.values():
         yield index.module_scope(module), module.tree
-        for function in module.all_functions:
+        for function in module_functions(module):
             yield index.scope_of(function), function.node
-        for klass in module.classes.values():
-            for nested in klass.all_classes():
-                for function in nested.functions:
-                    yield index.scope_of(function), function.node
 
 
 def main_guard_targets(index, module):
     scope = index.module_scope(module)
-    found = set()
-    for statement in module.tree.body:
-        if not is_main_guard(statement):
-            continue
-        for node in ast.walk(statement):
-            resolution = (
-                resolve_call(scope, node) if isinstance(node, ast.Call) else None
-            )
-            if resolution is not None and resolution.target.name != "__init__":
-                found.add(resolution.target.id)
-    return found
+    guards = [s for s in module.tree.body if is_main_guard(s)]
+    calls = [n for g in guards for n in ast.walk(g) if isinstance(n, ast.Call)]
+    resolved = [resolve_call(scope, call) for call in calls]
+    return {
+        r.target.id for r in resolved if r is not None and r.target.name != "__init__"
+    }
 
 
 def find_callbacks(index):
@@ -101,14 +95,20 @@ def find_callbacks(index):
     for module in index.modules.values():
         callbacks.update(main_guard_targets(index, module))
     for scope, root in scopes_to_scan(index):
-        nodes = own_nodes(root) if isinstance(root, ast.Module) else body_nodes(root)
-        for node in nodes:
-            if not isinstance(node, ast.Call) or is_builtin_call(scope, node):
-                continue
-            if resolve_call(scope, node) is None:
-                callbacks.update(
-                    f.id
-                    for f in callback_references(scope, node)
-                    if isinstance(f, Function)
-                )
+        for call in foreign_calls(scope, root):
+            callbacks.update(
+                f.id
+                for f in callback_references(scope, call)
+                if isinstance(f, Function)
+            )
     return callbacks
+
+
+def foreign_calls(scope, root):
+    nodes = own_nodes(root) if isinstance(root, ast.Module) else body_nodes(root)
+    calls = [n for n in nodes if isinstance(n, ast.Call)]
+    return [
+        call
+        for call in calls
+        if not is_builtin_call(scope, call) and resolve_call(scope, call) is None
+    ]

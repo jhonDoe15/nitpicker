@@ -2,7 +2,7 @@ import ast
 
 SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
 FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
-CLOSURES = FUNCTIONS + (ast.Lambda,)
+CLOSURES = (*FUNCTIONS, ast.Lambda)
 STORE_CONTEXTS = (ast.Store, ast.Del)
 
 
@@ -33,26 +33,24 @@ def constant_text(node):
     return value if isinstance(value, str) else None
 
 
+def nodes_within(root, boundary):
+    found = list(ast.iter_child_nodes(root))
+    for node in found:
+        if not isinstance(node, boundary):
+            found.extend(ast.iter_child_nodes(node))
+    return found
+
+
 def own_nodes(root):
-    cached = getattr(root, "own_cache", None)
-    if cached is None:
-        cached = list(ast.iter_child_nodes(root))
-        for node in cached:
-            if not isinstance(node, SCOPES):
-                cached.extend(ast.iter_child_nodes(node))
-        root.own_cache = cached
-    return cached
+    if getattr(root, "own_cache", None) is None:
+        root.own_cache = nodes_within(root, SCOPES)
+    return root.own_cache
 
 
 def body_nodes(root):
-    cached = getattr(root, "body_cache", None)
-    if cached is None:
-        cached = list(ast.iter_child_nodes(root))
-        for node in cached:
-            if not isinstance(node, ast.ClassDef):
-                cached.extend(ast.iter_child_nodes(node))
-        root.body_cache = cached
-    return cached
+    if getattr(root, "body_cache", None) is None:
+        root.body_cache = nodes_within(root, ast.ClassDef)
+    return root.body_cache
 
 
 def closure_arguments(node):

@@ -72,8 +72,8 @@ describe.skipIf(!pythonUsable())('the Python design producer callable facts', ()
         callable(MODELS, '_Hidden.run', 112, { exported: false }),
       ],
       [
-        'a method of a nested class is owned by the nested class',
-        callable(MODELS, 'Outer.Inner.run', 104),
+        'a method of a nested class is owned by the nested class, unexported outside __all__',
+        callable(MODELS, 'Outer.Inner.run', 104, { exported: false }),
       ],
     ])('%s', (_label, expected) => {
       expect(byId.callable(expected.id)).toEqual(expected);
@@ -217,7 +217,7 @@ describe.skipIf(!pythonUsable())('the Python design producer callable facts', ()
     const twoParams = [{ name: 'to' }, { name: 'body' }];
 
     it.each([
-      ['passes every argument on', 'send', 20, [0, 1], true, 22],
+      ['passes every argument on after a docstring', 'send', 20, [0, 1], true, 22],
       ['passes the arguments in another order', 'send_reordered', 24, [1, 0], true, 25],
       ['passes a literal as an unmapped slot', 'send_literal', 27, [0, -1], true, 28],
       ['passes keyword arguments by the callee position', 'send_keywords', 30, [0, 1], true, 31],

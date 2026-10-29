@@ -1,8 +1,11 @@
 import ast
+from collections import namedtuple
 
 from checks.common import dotted_name
 from design.resolve.lookup import entity_of
 from design.resolve.symbols import Klass, LiteralAlias
+
+Place = namedtuple("Place", "index module owner", defaults=(None,))
 
 WRAPPERS = {
     "Annotated",
@@ -65,38 +68,42 @@ def present_members(node):
     return [parse_string(m) for m in members if not is_none(parse_string(m))]
 
 
+def unwrap_once(node):
+    name = base_name(node.value) if isinstance(node, ast.Subscript) else None
+    if name in WRAPPERS or name == "Optional":
+        return subscript_arguments(node)[0]
+    if name == "Union" or isinstance(node, ast.BinOp):
+        members = present_members(node)
+        return members[0] if len(members) == 1 else None
+    return None
+
+
 def unwrap(node):
     for _ in range(8):
         node = parse_string(node)
-        name = base_name(node.value) if isinstance(node, ast.Subscript) else None
-        if name in WRAPPERS or name == "Optional":
-            node = subscript_arguments(node)[0]
-        elif name == "Union" or isinstance(node, ast.BinOp):
-            members = present_members(node)
-            if len(members) != 1:
-                return node
-            node = members[0]
-        else:
+        inner = unwrap_once(node)
+        if inner is None:
             return node
+        node = inner
     return node
 
 
-def project_type(index, module, node, owner=None):
+def project_type(place, node):
     node = unwrap(node)
-    if isinstance(node, ast.Name) and node.id == "Self" and owner is not None:
-        return owner
+    if isinstance(node, ast.Name) and node.id == "Self" and place.owner is not None:
+        return place.owner
     if isinstance(node, ast.Subscript) and base_name(node.value) in {"type", "Type"}:
         return None
-    entity = entity_of(index, module, node)
+    entity = entity_of(place.index, place.module, node)
     return entity if isinstance(entity, (Klass, LiteralAlias)) else None
 
 
-def is_project_node(index, module, node):
+def is_project_node(place, node):
     node = unwrap(node)
-    if project_type(index, module, node) is not None:
+    if project_type(place, node) is not None:
         return True
     return any(
-        is_project_node(index, module, child)
+        is_project_node(place, child)
         for child in ast.iter_child_nodes(node)
         if isinstance(child, ast.expr)
     )
@@ -135,11 +142,12 @@ def subscript_text(index, module, node):
     if name == "Union":
         return "|".join(type_text(index, module, a) for a in arguments)
     base = type_text(index, module, node.value)
-    if name == "Literal" or any(is_project_node(index, module, a) for a in arguments):
+    place = Place(index, module)
+    if name == "Literal" or any(is_project_node(place, a) for a in arguments):
         return base if name != "Literal" else f"{base}[{literal_text(arguments)}]"
     rendered = ",".join(type_text(index, module, a) for a in arguments)
     return f"{base}[{rendered}]"
 
 
 def literal_text(arguments):
-    return ",".join(repr(getattr(a, "value", "?")).replace(" ", "") for a in arguments)
+    return ",".join(ast.unparse(a).replace(" ", "") for a in arguments)

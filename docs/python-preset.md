@@ -1051,8 +1051,8 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   the analyzer as tool (`python`, or `mutation` for `mutation-failed`) and path `.`, never a throw from the CLI: `ruff-failed`, `format-failed`, `tests-failed` (the test run
   exited 1 without naming a failing test; failing tests themselves are the `tests/tests-failed`
   error of [Runner parity](#runner-parity), which keeps the other findings), `coverage-failed`, `types-failed` and `rules-failed` (slice 2), `structure-failed`, `environment-failed`,
-  `duplicates-failed`, `coupling-failed`, `import-linter-failed` (slice 5), `mutation-failed` (slice 6)
-  and `python-failed` for anything unexpected. An environment that cannot be found at all (no
+  `duplicates-failed`, `coupling-failed`, `import-linter-failed` (slice 5), `design-failed` (the design facts
+  producer, see [Design rules](#design-rules)), `mutation-failed` (slice 6) and `python-failed` for anything unexpected. An environment that cannot be found at all (no
   `.venv` at the configured directory, no `uv sync`, poetry has none) is caught earlier, while the
   tool versions are read, and is reported as a plain tool error of each analyzer for each snapshot. Every failing step is reported, with the end of the tool output. The CLI
   exits 2 when nothing new failed, and a snapshot with a tool error is not compared, as for Java; the other analyzer is.
@@ -1553,10 +1553,15 @@ closing it with the calls its `__exit__` makes, so `protocols` can describe a li
 { "protocols": [{ "type": "Session", "open": ["begin"], "close": ["commit", "rollback"] }] }
 ```
 
+A `contextlib.ExitStack` (or `AsyncExitStack`) used in a `with` closes what you register on it:
+`stack.callback(x.close)` and `stack.enter_context(x)` count as closing `x`. A `finally` inside a
+nested function counts only when that function is called where it is defined.
+
 A folder with a `pyproject.toml` that names a `build-backend` and is not classified
 `Private :: Do Not Upload` is a published distribution. Its public names (module-level classes and
-functions without a leading `_` in its packages, limited by `__all__` where a module has one) are
-not judged by the rules about an API's shape (`context-threading`, `disjoint-consumer-groups`,
+functions without a leading `_` in its packages, its single-file modules and the folders of a
+namespace package, limited by `__all__` where a module has one, plus what a public module of it
+re-exports) are not judged by the rules about an API's shape (`context-threading`, `disjoint-consumer-groups`,
 `data-clump`, the repeated sequences of `caller-protocol` and the head of a `forwarding-chain`),
 because their callers outside the project are unknown.
 

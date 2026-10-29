@@ -1,13 +1,9 @@
-from design.callables.callablefacts import callable_fact
-from design.callables.entries import find_callbacks
-from design.index import Index
+from design.callables.callablefacts import bare_fact, callable_fact
+from design.callables.entries import find_callbacks, module_functions
+from design.project_index import Index
 from design.types.typefacts import module_types
 
 DESIGN_REPORT = "design-facts.json"
-
-
-class DesignError(Exception):
-    pass
 
 
 def module_entry(module, options):
@@ -23,38 +19,43 @@ def module_entry(module, options):
 
 
 def module_callables(index, module):
-    functions = list(module.all_functions)
-    for klass in module.classes.values():
-        for nested in klass.all_classes():
-            functions.extend(nested.functions)
-    facts = []
-    for function in functions:
-        try:
-            facts.append(callable_fact(index, function))
-        except RecursionError as error:
-            raise DesignError(f"{function.id}: {type(error).__name__}") from error
+    facts = [guarded_fact(index, function) for function in module_functions(module)]
     return sorted(facts, key=lambda fact: (fact["line"], fact["id"]))
 
 
-def keep_known_references(facts, ids):
-    for fact in facts:
-        if "references" in fact:
-            fact["references"] = [i for i in fact["references"] if i in ids]
-            if not fact["references"]:
-                del fact["references"]
+def guarded_fact(index, function):
+    try:
+        return callable_fact(index, function)
+    except RecursionError:
+        return bare_fact(function)
 
 
-def build_facts(project, options):
-    paths = options.get("designFiles", [])
+def keep_known(facts, key, ids):
+    for fact in (fact for fact in facts if key in fact):
+        known = [i for i in fact[key] if i in ids]
+        if known:
+            fact[key] = known
+        else:
+            del fact[key]
+
+
+def project_index(project, options, contexts):
     tests = set(options.get("testFiles", []))
-    contexts = {
-        path: project.contexts[path] for path in paths if path in project.contexts
-    }
     production = [c for path, c in contexts.items() if path not in tests]
     index = Index(project, production)
     index.entry_files = set(options.get("entryFiles", []))
     index.distributions = options.get("distributions", [])
     index.callbacks = find_callbacks(index)
+    return index
+
+
+def build_facts(project, options):
+    paths = options.get("designFiles", [])
+    contexts = {
+        path: project.contexts[path] for path in paths if path in project.contexts
+    }
+    index = project_index(project, options, contexts)
+    tests = set(options.get("testFiles", []))
     modules = [{"file": p, "role": "test"} for p in contexts if p in tests]
     types, callables = [], []
     for module in index.modules.values():
@@ -62,5 +63,5 @@ def build_facts(project, options):
         types.extend(module_types(index, module))
         callables.extend(module_callables(index, module))
     modules.sort(key=lambda fact: fact["file"])
-    keep_known_references(types + callables, {fact["id"] for fact in callables})
+    keep_known(types + callables, "references", {fact["id"] for fact in callables})
     return {"modules": modules, "types": types, "callables": callables}

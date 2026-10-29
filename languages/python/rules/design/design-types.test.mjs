@@ -64,7 +64,12 @@ describe.skipIf(!pythonUsable())('the Python design producer type facts', () => 
   });
 
   it.each([
-    ['dataclass', 'Item', 32, [{ name: 'name' }, { name: 'tags', mutable: true }, { name: 'qty' }]],
+    [
+      'dataclass, ClassVar fields included,',
+      'Item',
+      32,
+      [{ name: 'name' }, { name: 'tags', mutable: true }, { name: 'qty' }, { name: 'kind' }],
+    ],
     ['NamedTuple', 'Point', 39, [{ name: 'x' }, { name: 'y' }]],
     ['TypedDict', 'Payload', 44, [{ name: 'body' }]],
     ['pydantic model', 'Customer', 48, [{ name: 'name' }, { name: 'history', mutable: true }]],
@@ -104,9 +109,9 @@ describe.skipIf(!pythonUsable())('the Python design producer type facts', () => 
     );
   });
 
-  it('keeps nested classes as their own types and marks underscore names unexported', () => {
+  it('keeps nested classes as their own types and marks names outside __all__ or with an underscore unexported', () => {
     expect(typeIn(facts, `${MODELS}#Outer.Inner`)).toEqual(
-      type('class', 'Inner', 103, { id: `${MODELS}#Outer.Inner`, fields: [] }),
+      type('class', 'Inner', 103, { id: `${MODELS}#Outer.Inner`, exported: false, fields: [] }),
     );
     expect(typeIn(facts, `${MODELS}#_Hidden`)).toEqual(
       type('class', '_Hidden', 111, { exported: false, fields: [] }),
@@ -136,4 +141,46 @@ describe.skipIf(!pythonUsable())('the Python design producer published surface',
   ])('does not mark %s', (_label, id) => {
     expect(factsById(facts).callable(id).published).toBeUndefined();
   });
+});
+
+describe.skipIf(!pythonUsable())('the Python design producer export lists and layouts', () => {
+  const facts = designFacts('surface');
+
+  function flags(list) {
+    return list
+      .filter((entry) => entry.kind !== 'module' && entry.kind !== 'method')
+      .map(({ id, exported, published }) => [id, exported, published === true]);
+  }
+
+  it('reads __all__ appends and extends, gives up on a computed or conditional __all__, and follows re-exports', () => {
+    expect(flags(facts.types)).toEqual([
+      ['pkg/_impl.py#Engine', true, true],
+      ['pkg/_impl.py#Internal', true, false],
+      ['pkg/conditional.py#Three', true, true],
+      ['pkg/dynamic.py#Extra', true, true],
+      ['pkg/listed.py#Shown', true, true],
+      ['pkg/listed.py#Added', true, true],
+      ['pkg/listed.py#More', true, true],
+      ['pkg/listed.py#Hidden', false, false],
+      ['six.py#Six', true, true],
+    ]);
+  });
+
+  it('publishes a single-file distribution and a module of a namespace package', () => {
+    expect(flags(facts.callables)).toEqual([
+      ['ns/loose.py#stray', true, false],
+      ['ns/sub/tool.py#run', true, true],
+      ['six.py#_private', false, false],
+    ]);
+  });
+
+  it.each([
+    ['pkg/listed.py', [{ name: 'STATE', mutable: true, private: true }]],
+    ['pkg/dynamic.py', [{ name: 'CACHE', mutable: true }]],
+  ])(
+    'marks the module state of %s private only when a known __all__ leaves it out',
+    (id, fields) => {
+      expect(facts.types.find((entry) => entry.id === id).fields).toEqual(fields);
+    },
+  );
 });

@@ -1,17 +1,14 @@
 import ast
+from collections import namedtuple
 
 from design.resolve.symbols import ModuleRef, PrefixRef
 
 TRY_TYPES = tuple(t for t in (ast.Try, getattr(ast, "TryStar", None)) if t is not None)
 
 
-class Binding:
-    def __init__(self, kind, path=None, name=None, directory=None, dotted=None):
-        self.kind = kind
-        self.path = path
-        self.name = name
-        self.directory = directory
-        self.dotted = dotted
+Binding = namedtuple(
+    "Binding", "kind path name directory dotted", defaults=(None, None, None, None)
+)
 
 
 def import_statements(tree):
@@ -53,9 +50,10 @@ def module_in(index, parts):
     return None
 
 
-def locate_module(index, importer, level, dotted):
+def locate_module(index, importer, node):
+    level, dotted = node.level, node.module
     if level == 0:
-        found = index.project.module_path(dotted) if dotted else None
+        found = index.module_path(dotted) if dotted else None
         return found if found in index.modules else None
     base = relative_directory(importer, level)
     if base is None:
@@ -70,18 +68,19 @@ def relative_target_directory(importer, level, dotted):
     return base + (dotted.split(".") if dotted else [])
 
 
-def bind_from(index, module, node):
-    base = locate_module(index, module.path, node.level, node.module)
-    directory = None
+def from_directory(importer, node, base):
     if node.level > 0:
-        directory = relative_target_directory(module.path, node.level, node.module)
-    elif base is not None and base.endswith("__init__.py"):
-        directory = base.split("/")[:-1]
-    for alias in node.names:
-        if alias.name == "*":
-            if base is not None:
-                module.stars.append(base)
-            continue
+        return relative_target_directory(importer, node.level, node.module)
+    package = base is not None and base.endswith("__init__.py")
+    return base.split("/")[:-1] if package else None
+
+
+def bind_from(index, module, node):
+    base = locate_module(index, module.path, node)
+    directory = from_directory(module.path, node, base)
+    if base is not None and any(alias.name == "*" for alias in node.names):
+        module.stars.append(base)
+    for alias in (alias for alias in node.names if alias.name != "*"):
         local = alias.asname or alias.name
         module.count(local)
         module.imports[local] = Binding(
@@ -91,7 +90,7 @@ def bind_from(index, module, node):
 
 def bind_import(index, module, node):
     for alias in node.names:
-        path = index.project.module_path(alias.name)
+        path = index.module_path(alias.name)
         path = path if path in index.modules else None
         if alias.asname:
             module.count(alias.asname)
@@ -99,7 +98,7 @@ def bind_import(index, module, node):
             continue
         root = alias.name.split(".")[0]
         module.count(root)
-        root_path = index.project.module_path(root)
+        root_path = index.module_path(root)
         root_path = root_path if root_path in index.modules else None
         module.imports[root] = Binding("prefix", root_path, dotted=root)
 
@@ -118,14 +117,14 @@ def submodule(index, binding, name):
         if found is not None:
             return ModuleRef(found)
     if binding.dotted and binding.directory is None:
-        path = index.project.module_path(f"{binding.dotted}.{name}")
+        path = index.module_path(f"{binding.dotted}.{name}")
         if path in index.modules:
             return ModuleRef(path)
     return None
 
 
 def resolve_binding(index, binding, seen):
-    from design.resolve.lookup import lookup
+    from design.resolve.lookup import lookup_seen
 
     if binding.kind == "module":
         if binding.path is None:
@@ -136,7 +135,7 @@ def resolve_binding(index, binding, seen):
             return ModuleRef(binding.path)
         return PrefixRef(binding.dotted)
     if binding.path is not None:
-        found = lookup(index, index.modules[binding.path], binding.name, seen)
+        found = lookup_seen(index, (index.modules[binding.path], binding.name), seen)
         if found is not None:
             return found
     return submodule(index, binding, binding.name)

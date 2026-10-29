@@ -1,43 +1,32 @@
 import ast
+from collections import namedtuple
 
-from design.resolve.annotations import base_name, project_type
+from design.resolve.annotations import Place, project_type
 from design.support.astutil import body_nodes
 
-
-class AttributeSite:
-    def __init__(self, kind, value=None, annotation=None, function=None):
-        self.kind = kind
-        self.value = value
-        self.annotation = annotation
-        self.function = function
-        self.class_variable = False
+AttributeSite = namedtuple(
+    "AttributeSite", "kind value annotation function", defaults=(None, None, None)
+)
 
 
 def is_dunder(name):
     return name.startswith("__") and name.endswith("__")
 
 
+def class_statement_sites(statement):
+    if isinstance(statement, ast.AnnAssign) and isinstance(statement.target, ast.Name):
+        site = AttributeSite("annotated", statement.value, statement.annotation)
+        return [(statement.target.id, site)]
+    if not isinstance(statement, ast.Assign):
+        return []
+    site = AttributeSite("assign", statement.value)
+    return [(t.id, site) for t in statement.targets if isinstance(t, ast.Name)]
+
+
 def class_level_sites(klass, sites):
     for statement in klass.node.body:
-        if isinstance(statement, ast.AnnAssign) and isinstance(
-            statement.target, ast.Name
-        ):
-            site = AttributeSite("annotated", statement.value, statement.annotation)
-            site.class_variable = (
-                base_name(unwrapped_base(statement.annotation)) == "ClassVar"
-            )
-            sites.setdefault(statement.target.id, []).append(site)
-        elif isinstance(statement, ast.Assign):
-            for target in statement.targets:
-                if isinstance(target, ast.Name):
-                    site = AttributeSite("assign", statement.value)
-                    sites.setdefault(target.id, []).append(site)
-
-
-def unwrapped_base(annotation):
-    if isinstance(annotation, ast.Subscript):
-        return annotation.value
-    return annotation
+        for name, site in class_statement_sites(statement):
+            sites.setdefault(name, []).append(site)
 
 
 def flat_targets(targets):
@@ -50,25 +39,44 @@ def flat_targets(targets):
             yield target, True
 
 
+ASSIGNMENT_KINDS = {
+    ast.Assign: "assign",
+    ast.AnnAssign: "annotated",
+    ast.AugAssign: "aug",
+}
+
+
+def assignment_targets(node):
+    if isinstance(node, ast.Assign):
+        return list(flat_targets(node.targets))
+    return [(node.target, True)]
+
+
+def node_sites(node, function):
+    kind = ASSIGNMENT_KINDS.get(type(node))
+    if kind is None:
+        return []
+    annotation = node.annotation if kind == "annotated" else None
+    return [
+        (
+            target,
+            AttributeSite(
+                kind if direct else "other", node.value, annotation, function
+            ),
+        )
+        for target, direct in assignment_targets(node)
+    ]
+
+
 def instance_sites(function, first, sites):
-    for node in body_nodes(function.node):
-        if isinstance(node, ast.Assign):
-            pairs = [(t, d, node.value) for t, d in flat_targets(node.targets)]
-            kind = "assign"
-        elif isinstance(node, ast.AnnAssign):
-            pairs = [(node.target, True, node.value)]
-            kind = "annotated"
-        elif isinstance(node, ast.AugAssign):
-            pairs = [(node.target, True, node.value)]
-            kind = "aug"
-        else:
-            continue
-        for target, direct, value in pairs:
-            if is_self_attribute(target, first):
-                site = AttributeSite(kind if direct else "other", value, None, function)
-                if kind == "annotated":
-                    site.annotation = node.annotation
-                sites.setdefault(target.attr, []).append(site)
+    found = [
+        pair
+        for node in body_nodes(function.node)
+        for pair in node_sites(node, function)
+    ]
+    for target, site in found:
+        if is_self_attribute(target, first):
+            sites.setdefault(target.attr, []).append(site)
 
 
 def is_self_attribute(target, first):
@@ -96,7 +104,8 @@ def attribute_sites(index, klass):
 
 def declared_type(index, klass, sites):
     annotated = [s for s in sites if s.kind == "annotated" and s.annotation is not None]
-    types = {project_type(index, klass.module, s.annotation, klass) for s in annotated}
+    place = Place(index, klass.module, klass)
+    types = {project_type(place, s.annotation) for s in annotated}
     return next(iter(types)) if len(types) == 1 else None
 
 

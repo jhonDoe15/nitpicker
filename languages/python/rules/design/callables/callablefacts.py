@@ -10,17 +10,17 @@ from design.types.published import is_published
 from design.types.typefacts import is_exported, klass_exported
 
 
-def type_reference(index, module, annotation, owner):
-    found = project_type(index, module, annotation, owner)
-    return found.id if found is not None else type_text(index, module, annotation)
+def type_reference(scope, annotation):
+    found = project_type(scope, annotation)
+    if found is not None:
+        return found.id
+    return type_text(scope.index, scope.module, annotation)
 
 
 def param_fact(scope, parameter):
     fact = {"name": parameter.name}
     if parameter.annotation is not None:
-        fact["type"] = type_reference(
-            scope.index, scope.module, parameter.annotation, scope.owner
-        )
+        fact["type"] = type_reference(scope, parameter.annotation)
     if parameter.variadic:
         fact["variadic"] = True
     if parameter.optional:
@@ -45,9 +45,8 @@ def callable_exported(function):
     return klass_exported(function.owner) and not private
 
 
-def callable_fact(index, function):
-    scope = index.scope_of(function)
-    fact = {
+def bare_fact(function):
+    return {
         "id": function.id,
         "file": function.module.path,
         "name": function.name,
@@ -55,16 +54,21 @@ def callable_fact(index, function):
         "kind": callable_kind(function),
         "exported": callable_exported(function),
         "owner": function.owner.id if function.owner else function.module.id,
+        "params": [],
+        "calls": [],
     }
+
+
+def callable_fact(index, function):
+    scope = index.scope_of(function)
+    fact = bare_fact(function)
     if is_entry(index, function):
         fact["entry"] = True
-    if function.owner is None and is_published(index, function.module, function.name):
+    if function.owner is None and is_published(index, function):
         fact["published"] = True
     fact["params"] = [param_fact(scope, p) for p in scope.params]
     if function.node.returns is not None:
-        fact["returns"] = type_reference(
-            index, function.module, function.node.returns, scope.owner
-        )
+        fact["returns"] = type_reference(scope, function.node.returns)
     forward = forward_fact(scope)
     if forward is not None:
         fact["forward"] = forward
@@ -94,11 +98,11 @@ def add_optional(fact, scope, function):
             fact[key] = found
 
 
+def unique(items):
+    return [item for at, item in enumerate(items) if item not in items[:at]]
+
+
 def dedupe_forwards(uses):
     for use in uses:
-        unique = []
-        for forward in use["forwards"]:
-            if forward not in unique:
-                unique.append(forward)
-        use["forwards"] = unique
+        use["forwards"] = unique(use["forwards"])
     return uses
