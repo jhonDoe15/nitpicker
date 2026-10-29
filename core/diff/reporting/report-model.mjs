@@ -52,3 +52,7 @@ export function analyzerMetadata(analyzer, property) {
     ? analyzer[property]
     : 'unknown';
 }
+
+export function heldFindingsOf(report) {
+  return report.unchangedFindings.filter((finding) => finding.heldAtBase !== undefined);
+}

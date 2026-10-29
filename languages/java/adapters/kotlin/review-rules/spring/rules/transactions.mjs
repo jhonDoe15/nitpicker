@@ -52,7 +52,7 @@ const WRITES = new Set([
   'merge',
   'remove',
 ]);
-const WRITE_VERB =
+export const WRITE_VERB =
   /^(?:update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)/u;
 const DEPTH = 8;
 

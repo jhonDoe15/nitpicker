@@ -13,6 +13,9 @@ const roots = [];
 const RULE_FILES = [
   'category/java/errorprone.xml',
   'category/java/bestpractices.xml',
+  'category/java/performance.xml',
+  'category/java/multithreading.xml',
+  'category/java/security.xml',
   'google_checks.xml',
   'findbugs.xml',
 ];
@@ -99,6 +102,9 @@ describe.skipIf(!enabled)('Java rule catalogs', () => {
       pmd: sorted([
         ...pmdRules(read('category/java/errorprone.xml')),
         ...pmdRules(read('category/java/bestpractices.xml')),
+        ...pmdRules(read('category/java/performance.xml')),
+        ...pmdRules(read('category/java/multithreading.xml')),
+        ...pmdRules(read('category/java/security.xml')),
         ...EXTRA_PMD_RULES,
       ]),
       checkstyle: sorted([
