@@ -193,6 +193,20 @@ const POLICY_SHAPES = [
     'an array of folder names',
   ],
   [
+    'policy.layout.notFeatureFolders',
+    (policy) =>
+      policy.layout?.notFeatureFolders === undefined || isGlobs(policy.layout.notFeatureFolders),
+    'an array of folders',
+  ],
+  [
+    'policy.layout.aliases',
+    (policy) =>
+      policy.layout?.aliases === undefined ||
+      (isPlainObject(policy.layout.aliases) &&
+        Object.values(policy.layout.aliases).every((folder) => typeof folder === 'string')),
+    'an object of folder to folder',
+  ],
+  [
     'policy.layout.featureRoots',
     (policy) => policy.layout?.featureRoots === undefined || isGlobs(policy.layout.featureRoots),
     'an array of folder globs',

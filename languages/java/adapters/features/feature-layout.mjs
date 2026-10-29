@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { RULE_IDS } from '../../../../shared/policy.mjs';
 import { SPRING_ARCH_REPORT } from '../spring-arch/spring-arch.mjs';
+import { featureUnits } from './feature-units.mjs';
 
 export const SPRING_LAYER_PACKAGES = [
   'controller',
@@ -53,7 +55,7 @@ export function readSpringReports(projects) {
     if (!existsSync(file)) {
       return [];
     }
-    const { root, violations } = JSON.parse(readFileSync(file, 'utf8'));
+    const { root, violations = [] } = JSON.parse(readFileSync(file, 'utf8'));
     return [{ qualifier: project.qualifier, root, violations }];
   });
 }
@@ -102,16 +104,24 @@ function coveredEdges(reports, resolve) {
 export function featurePlan(layout, reports, graph) {
   const roots = reports.map(({ root }) => root).filter((root) => typeof root === 'string');
   const folders = layout.featureRoots === undefined ? springRootFolders(roots, graph.classes) : [];
+  const covered = coveredEdges(reports, graph.resolve);
   if (folders.length > 0) {
-    return { layout: springLayout(folders, layout), boundaries: false, covered: new Set() };
+    return {
+      layout: featureUnits(springLayout(folders, layout), { classes: graph.classes, roots }),
+      boundaryRules: layout.sharedRoots === undefined ? [] : [RULE_IDS.sharedImportsFeature],
+      covered,
+    };
   }
   const { sharedRoots, featureRoots } = layout;
   return {
-    layout: {
-      ...(sharedRoots === undefined ? {} : { sharedRoots }),
-      ...(featureRoots === undefined ? {} : { featureRoots }),
-    },
-    boundaries: true,
-    covered: coveredEdges(reports, graph.resolve),
+    layout: featureUnits(
+      {
+        ...(sharedRoots === undefined ? {} : { sharedRoots }),
+        ...(featureRoots === undefined ? {} : { featureRoots }),
+      },
+      { classes: graph.classes },
+    ),
+    boundaryRules: [RULE_IDS.featureInternalImport, RULE_IDS.sharedImportsFeature],
+    covered,
   };
 }

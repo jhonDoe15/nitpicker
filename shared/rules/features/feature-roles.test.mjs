@@ -97,6 +97,28 @@ describe('the feature role contract', () => {
     expect(python('src/app/main.py')).toEqual({ kind: 'other' });
   });
 
+  it('gives an aliased feature folder the directory it names, and leaves excluded folders out', () => {
+    const roleOf = featureRoleContract(
+      {
+        featureRoots: ['**/features'],
+        aliases: { 'kt/features/orders': 'java/features/orders' },
+        notFeatureFolders: ['kt/features/lib'],
+      },
+      PUBLIC_FACES.jvm,
+    );
+
+    expect(roleOf('kt/features/orders/Rules.kt')).toEqual({
+      kind: 'feature',
+      directory: 'java/features/orders',
+      folder: 'kt/features/orders',
+      name: 'orders',
+      isPublic: true,
+      face: PUBLIC_FACES.jvm.describe('java/features/orders'),
+    });
+    expect(roleOf('kt/features/orders/internal/Ledger.kt').isPublic).toBe(false);
+    expect(roleOf('kt/features/lib/Util.kt')).toEqual({ kind: 'other' });
+  });
+
   it('defaults to the **/features and **/shared folders', () => {
     const roleOf = featureRoleContract(undefined, PUBLIC_FACES.python);
 

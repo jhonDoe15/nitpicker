@@ -8,7 +8,6 @@ import { packageCycleFindings } from './package-cycles.mjs';
 
 const COUPLING_TOOL = 'coupling';
 const GRAPH_RULES = [RULE_IDS.featureCycle, RULE_IDS.sharedUsedByOneFeature];
-const BOUNDARY_RULES = [RULE_IDS.featureInternalImport, RULE_IDS.sharedImportsFeature];
 
 function simpleName(className) {
   return className.slice(className.lastIndexOf('.') + 1);
@@ -40,6 +39,16 @@ function withoutEdges(facts, covered) {
   };
 }
 
+function handwritten({ classes, edges }, isGenerated) {
+  const generated = new Set(classes.map(({ file }) => file).filter(isGenerated));
+  return {
+    classes: classes.filter(({ file }) => !generated.has(file)),
+    edges: edges.filter(
+      ({ source, target }) => !generated.has(source.file) && !generated.has(target.file),
+    ),
+  };
+}
+
 function featureGraphFindings(graph, plan, { language, policy, isGenerated }) {
   const facts = featureFacts(graph, isGenerated);
   const options = {
@@ -49,10 +58,18 @@ function featureGraphFindings(graph, plan, { language, policy, isGenerated }) {
     publicFace: PUBLIC_FACES.jvm,
   };
   const analysis = featureFactAnalysis(facts, { ...options, rules: GRAPH_RULES });
-  const boundaries = plan.boundaries
-    ? featureFactAnalysis(withoutEdges(facts, plan.covered), { ...options, rules: BOUNDARY_RULES })
-    : { findings: [] };
-  return [...analysis.findings, ...boundaries.findings, ...packageCycleFindings(graph, analysis)];
+  const boundaries =
+    plan.boundaryRules.length === 0
+      ? { findings: [] }
+      : featureFactAnalysis(withoutEdges(facts, plan.covered), {
+          ...options,
+          rules: plan.boundaryRules,
+        });
+  return [
+    ...analysis.findings,
+    ...boundaries.findings,
+    ...packageCycleFindings(handwritten(graph, isGenerated), analysis),
+  ];
 }
 
 export function readFeatureGraph(projectRoot, { projects, kotlin, policy = {} }) {

@@ -1781,18 +1781,25 @@ counts is the package.
   shared (unless `layout.sharedRoots` says otherwise), so an ordinary package-by-feature app needs
   no configuration. `stability-direction` takes the same features as units, so a layer package
   such as `<root>.service` stays an ordinary package. The root folder is where the root package's
-  classes lie, so a Kotlin tree
-  that leaves out the root package's folders (`src/main/kotlin/billing/` for
-  `com.acme.shop.billing`) works too. ArchUnit's `spring-feature-boundary` and
-  `spring-shared-pure` already report the boundary edges there, so only `feature-cycle`,
-  `shared-used-by-one-feature` and `package-cycle` run. With `layout.featureRoots` set, all the
-  rules run, and an edge ArchUnit already reports (the same class file and dependency file in a
-  `spring-feature-boundary` or `spring-shared-pure` finding) is left out of
-  `feature-internal-import` and `shared-imports-feature`, so one dependency is one finding.
+  classes lie, so a Kotlin tree that leaves out the root package's folders
+  (`src/main/kotlin/billing/` for `com.acme.shop.billing`) works too; a folder there whose classes
+  all lie outside the root package (`src/main/kotlin/lib/` for `com.acme.lib`) is no feature.
+  ArchUnit's `spring-feature-boundary` and `spring-shared-pure` already report the boundary edges
+  there, so only `feature-cycle`, `shared-used-by-one-feature` and `package-cycle` run, and
+  `shared-imports-feature` too when `layout.sharedRoots` names shared roots that `spring-shared-pure`
+  does not check. With `layout.featureRoots` set, all the rules run. Either way an edge ArchUnit
+  already reports (the same class file and dependency file in a `spring-feature-boundary` or
+  `spring-shared-pure` finding) is left out of `feature-internal-import` and
+  `shared-imports-feature`, so one dependency is one finding.
+- **One feature across source roots.** A feature is its package: the feature folders of one
+  module that hold the same feature package (`src/main/java/.../orders` and
+  `src/main/kotlin/.../orders`) are one feature, named in messages and identities by the first of
+  them. Features in different modules stay apart, as their packages do in `stability-direction`.
 - **Cycles.** `feature-cycle` takes the features as nodes and every production dependency between
   files of two features as an edge; one finding per importing file and feature inside a cycle.
   `package-cycle` takes the Java packages (by name, so a package split across folders or modules
-  is one package) and reports each package of a strongly connected component on its first file,
+  is one package; generated classes are left out) and reports each package of a strongly connected
+  component on its first file,
   identity `cycle:<package>`, as Python does. A package cycle is left out only when a reported
   `feature-cycle` fully explains it: its packages lie in two or more features of that feature
   cycle, and removing the feature cycle's edges leaves no cycle among them. Any other package

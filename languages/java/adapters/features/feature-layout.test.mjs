@@ -81,6 +81,7 @@ describe('Spring package-by-feature roles', () => {
       featureRoots: [FOLDER],
       sharedRoots: [`${FOLDER}/shared`],
       notFeatures: ['shared', ...SPRING_LAYER_PACKAGES],
+      aliases: {},
     });
     expect(stability({ layout })).toEqual([
       `package-edge:${ROOT}.orders->${ROOT}.billing`,

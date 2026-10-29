@@ -124,6 +124,15 @@ describe('the shared fact rules', () => {
       { layout: { featureRoots: [1] } },
       'policy.layout.featureRoots must be an array of folder globs',
     ],
+    [
+      { layout: { notFeatureFolders: [1] } },
+      'policy.layout.notFeatureFolders must be an array of folders',
+    ],
+    [{ layout: { aliases: [] } }, 'policy.layout.aliases must be an object of folder to folder'],
+    [
+      { layout: { aliases: { a: 1 } } },
+      'policy.layout.aliases must be an object of folder to folder',
+    ],
     [{ testConsole: 'x' }, 'policy.testConsole must be an object'],
     [{ layout: 'x' }, 'policy.layout must be an object'],
     [{ layout: [] }, 'policy.layout must be an object'],
