@@ -21,11 +21,11 @@ export function encodedValue(value, at = 'config') {
     }
     return item;
   });
-  return text === undefined ? undefined : JSON.parse(text);
+  return JSON.parse(text);
 }
 
 export function hasEncodedRegExp(value) {
-  return JSON.stringify(value)?.includes(JSON.stringify(REGEXP_KEY)) === true;
+  return JSON.stringify(value).includes(JSON.stringify(REGEXP_KEY));
 }
 
 export function revivedExpression(value) {
