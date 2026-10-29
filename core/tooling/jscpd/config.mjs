@@ -137,9 +137,9 @@ export function layeredJscpdConfig(base, settings = readHeadPolicyFile().tools?.
   ];
   return {
     ...detectionKeys(base, false),
-    ...configs
-      .toReversed()
-      .reduce((config, layer) => ({ ...config, ...detectionKeys(layer, true) }), {}),
+    ...Object.fromEntries(
+      configs.toReversed().flatMap((layer) => Object.entries(detectionKeys(layer, true))),
+    ),
     ...(ignore.length === 0 ? {} : { ignore }),
   };
 }
