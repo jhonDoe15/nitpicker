@@ -5,7 +5,45 @@ const CONSTRAINT_PACKAGES = new Set([
   'javax.validation.constraints',
   'org.hibernate.validator.constraints',
 ]);
-const CASCADES = new Set(['jakarta.validation.Valid', 'javax.validation.Valid']);
+const CASCADE_PACKAGES = new Set(['jakarta.validation', 'javax.validation']);
+const CONSTRAINTS = new Set([
+  'AssertFalse',
+  'AssertTrue',
+  'DecimalMax',
+  'DecimalMin',
+  'Digits',
+  'Email',
+  'Future',
+  'FutureOrPresent',
+  'Max',
+  'Min',
+  'Negative',
+  'NegativeOrZero',
+  'NotBlank',
+  'NotEmpty',
+  'NotNull',
+  'Null',
+  'Past',
+  'PastOrPresent',
+  'Pattern',
+  'Positive',
+  'PositiveOrZero',
+  'Size',
+  'CodePointLength',
+  'CreditCardNumber',
+  'Currency',
+  'EAN',
+  'ISBN',
+  'Length',
+  'LuhnCheck',
+  'Mod10Check',
+  'Mod11Check',
+  'Normalized',
+  'Range',
+  'URL',
+  'UUID',
+  'UniqueElements',
+]);
 const VISIBLE_TARGETS = new Set(['field', 'get', 'all']);
 const QUALIFIED = /^[a-z_]\w*(?:\.\w+)+$/u;
 
@@ -13,41 +51,66 @@ function messageFor(name) {
   return `Write @field:${name} on this constructor property. Without a use-site target Kotlin puts the annotation on the constructor parameter, where Bean Validation does not look, so @Valid checks nothing.`;
 }
 
-function importResolver(file) {
+function packageOf(qualified) {
+  return qualified.split('.').slice(0, -1).join('.');
+}
+
+function isValidation(qualified) {
+  const name = qualified.split('.').at(-1);
+  return (
+    CONSTRAINT_PACKAGES.has(packageOf(qualified)) ||
+    (CASCADE_PACKAGES.has(packageOf(qualified)) && name === 'Valid')
+  );
+}
+
+function isStarredValidation(qualified) {
+  const name = qualified.split('.').at(-1);
+  return isValidation(qualified) && (name === 'Valid' || CONSTRAINTS.has(name));
+}
+
+function validationResolver(file, declared) {
   const explicit = new Map(
     file.imports
       .filter(({ all }) => !all)
       .map(({ path, alias }) => [alias ?? path.split('.').at(-1), path]),
   );
   const stars = file.imports.filter(({ all }) => all).map(({ path }) => path);
-  return (name) => {
+  return (text) => {
+    const name = text.replaceAll(/[@`\s]/gu, '');
     const [first, ...rest] = name.split('.');
     if (explicit.has(first)) {
-      return [[explicit.get(first), ...rest].join('.')];
+      return isValidation([explicit.get(first), ...rest].join('.'));
     }
-    return QUALIFIED.test(name) ? [name] : stars.map((prefix) => `${prefix}.${name}`);
+    if (QUALIFIED.test(name)) {
+      return isValidation(name);
+    }
+    return (
+      !declared.has([file.package, name].filter(Boolean).join('.')) &&
+      stars.some((prefix) => isStarredValidation(`${prefix}.${name}`))
+    );
   };
 }
 
-function isValidation(qualified) {
-  return (
-    CASCADES.has(qualified) || CONSTRAINT_PACKAGES.has(qualified.split('.').slice(0, -1).join('.'))
+function hiddenAnnotation(isValidationName, parameter) {
+  const entries = (parameter.annotationEntries ?? []).filter((entry) =>
+    isValidationName(entry.type ?? entry.name),
   );
-}
-
-function hiddenAnnotation(resolve, parameter) {
-  return (parameter.annotationEntries ?? []).find(
-    (entry) =>
-      !VISIBLE_TARGETS.has(entry.target) &&
-      resolve((entry.type ?? entry.name).replace(/^@/u, '')).some(isValidation),
+  const visible = new Set(
+    entries.filter(({ target }) => VISIBLE_TARGETS.has(target)).map(({ name }) => name),
   );
+  return entries.find(({ name, target }) => !VISIBLE_TARGETS.has(target) && !visible.has(name));
 }
 
 export function validationTargetFindings(files, { finding }) {
+  const declared = new Set(
+    files.flatMap((file) =>
+      file.classes.map(({ qualified }) => [file.package, qualified].filter(Boolean).join('.')),
+    ),
+  );
   return files
     .filter(({ test }) => !test)
     .flatMap((file) => {
-      const resolve = importResolver(file);
+      const resolve = validationResolver(file, declared);
       return file.classes.flatMap((klass) =>
         klass.primaryParameters
           .filter(({ property }) => property !== undefined)
