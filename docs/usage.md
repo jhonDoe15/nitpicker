@@ -324,7 +324,9 @@ config-file overrides and the head policy (`exclude`, `layout`, `exceptions`, `t
 legacy inventory path, so changing any of them is a miss. Only clean reports are stored.
 
 - `NITPICKER_CACHE_DIR`: local cache directory (relative to the project root). Default:
-  `node_modules/.cache/nitpicker`.
+  `node_modules/.cache/nitpicker`. A workspace member without a `node_modules` of its own uses the
+  one its dependencies are installed in, inside the repository, under
+  `node_modules/.cache/nitpicker/members/<member path>`.
 - `NITPICKER_CACHE_URL`: remote cache prefix; an entry is `GET`/`PUT` at `<url>/<key>.json`.
   Optional `NITPICKER_CACHE_AUTH_HEADER` and `NITPICKER_CACHE_TIMEOUT_MS`. Comparison runs only
   read the remote; give write credentials only to the job that runs `cache publish` on `main`.

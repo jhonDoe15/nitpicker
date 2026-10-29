@@ -2,19 +2,47 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { chainOf } from '../../../shared/traversal.mjs';
 
 const WORKER = fileURLToPath(new URL('./http-cache-worker.mjs', import.meta.url));
 const DEFAULT_TIMEOUT_MS = 5000;
 const MAX_ENTRY_BYTES = 32 * 1024 * 1024;
+
+const CACHE_FOLDER = 'node_modules/.cache/nitpicker';
+
+function dependenciesIn(directory) {
+  const full = path.resolve(directory, 'node_modules');
+  return full.startsWith(directory + path.sep) && existsSync(full);
+}
+
+function isRepositoryTop(directory) {
+  return existsSync(path.resolve(directory, '.git'));
+}
+
+function ancestorsToRepository(start) {
+  const ancestors = chainOf(start, (directory) => {
+    const parent = path.dirname(directory);
+    return isRepositoryTop(directory) || parent === directory ? undefined : parent;
+  });
+  return isRepositoryTop(ancestors.at(-1)) ? ancestors : [start];
+}
+
+function workspaceCacheDirectory(projectRoot) {
+  const holder = ancestorsToRepository(projectRoot).slice(1).find(dependenciesIn);
+  if (holder === undefined) {
+    return undefined;
+  }
+  const member = path.relative(holder, projectRoot).split(path.sep).join('/');
+  return path.join(holder, CACHE_FOLDER, 'members', encodeURIComponent(member));
+}
 
 export function resolveCacheDirectory({ projectRoot, environment = process.env }) {
   const configured = environment.NITPICKER_CACHE_DIR;
   if (typeof configured === 'string' && configured.length > 0) {
     return path.resolve(projectRoot, configured);
   }
-  return existsSync(path.join(projectRoot, 'node_modules'))
-    ? path.join(projectRoot, 'node_modules/.cache/nitpicker')
-    : undefined;
+  const root = path.resolve(projectRoot);
+  return dependenciesIn(root) ? path.join(root, CACHE_FOLDER) : workspaceCacheDirectory(root);
 }
 
 function readStoredFile(file) {
