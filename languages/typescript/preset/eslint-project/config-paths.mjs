@@ -6,16 +6,14 @@ import { resolveInside } from '../../../../shared/conventions/read-inside.mjs';
 const NODE_MODULES = `${path.sep}node_modules${path.sep}`;
 const BUILTINS = new Set(builtinModules);
 
+function ancestors(directory) {
+  const parent = path.dirname(directory);
+  return parent === directory ? [directory] : [directory, ...ancestors(parent)];
+}
+
 function repositoryRoot(projectRoot) {
-  let directory = path.resolve(projectRoot);
-  while (!existsSync(path.join(directory, '.git'))) {
-    const parent = path.dirname(directory);
-    if (parent === directory) {
-      return path.resolve(projectRoot);
-    }
-    directory = parent;
-  }
-  return directory;
+  const root = path.resolve(projectRoot);
+  return ancestors(root).find((directory) => existsSync(path.join(directory, '.git'))) ?? root;
 }
 
 export function contextOf(projectRoot) {
@@ -78,19 +76,19 @@ function resolvedEntry(full, specifier) {
   }
 }
 
-function packageDirectory(full, name) {
-  let directory = path.dirname(full);
-  for (;;) {
-    const candidate = path.join(directory, 'node_modules', ...name.split('/'));
-    if (existsSync(path.join(candidate, 'package.json'))) {
-      return candidate;
-    }
-    const parent = path.dirname(directory);
-    if (parent === directory) {
-      return undefined;
-    }
-    directory = parent;
+function installedPackage(directory, name) {
+  const modules = path.join(directory, 'node_modules');
+  const candidate = path.resolve(modules, name);
+  if (!candidate.startsWith(modules + path.sep)) {
+    return undefined;
   }
+  return existsSync(path.join(candidate, 'package.json')) ? candidate : undefined;
+}
+
+function packageDirectory(full, name) {
+  return ancestors(path.dirname(full))
+    .map((directory) => installedPackage(directory, name))
+    .find((candidate) => candidate !== undefined);
 }
 
 export function packageFacts(context, full, specifier) {

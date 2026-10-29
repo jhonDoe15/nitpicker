@@ -33,7 +33,7 @@ describe('the nitpicker rules whose options the project config replaces', () => 
     const root = projects.create({ 'eslint.config.mjs': 'export default [{ rules: {\n' });
 
     expect(replacedEslintOptions(CONFIG, root).error).toMatch(
-      /^ESLint config eslint\.config\.mjs could not be loaded: /u,
+      /^ESLint config eslint\.config\.mjs could not be loaded: .+$/su,
     );
   });
 });

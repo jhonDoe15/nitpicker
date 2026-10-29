@@ -105,9 +105,9 @@ describe('strict rule exceptions', () => {
       files: ['src/legacy/**'],
       rules: { 'no-alert': 'off' },
     });
-    expect(() => checkExceptionRules(presetConfig, [config.at(-1)])).toThrow(
-      'nitpicker.config.json "exceptions" name unknown rules: no-alert.',
-    );
+    expect(() => {
+      checkExceptionRules(presetConfig, [config.at(-1)]);
+    }).toThrow('nitpicker.config.json "exceptions" name unknown rules: no-alert.');
   });
 
   it('leaves the function-scoped nitpicker rules to the analyzers that report them', async () => {

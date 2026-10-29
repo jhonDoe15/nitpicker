@@ -1,11 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import {
-  headPolicyEnvironment,
-  resolveHeadPolicy,
-  withHeadPolicyFile,
-} from '../../preset/head-policy.mjs';
+import { resolveHeadPolicy, withHeadPolicyFile } from '../../preset/head-policy.mjs';
 
 const REPLACED_OPTIONS_REPORT = path.join(
   import.meta.dirname,
@@ -30,17 +26,10 @@ function spawned(policy, projectRoot) {
         REPLACED_OPTIONS_REPORT,
         path.join(projectRoot, policy.tools.eslint.projectConfigFile),
         reportFile,
+        policyFile,
+        projectRoot,
       ],
-      {
-        cwd: projectRoot,
-        encoding: 'utf8',
-        maxBuffer: MAX_OUTPUT_BYTES,
-        env: {
-          ...process.env,
-          ...headPolicyEnvironment(policyFile),
-          NITPICKER_DIFF_ESLINT_PROJECT_ROOT: projectRoot,
-        },
-      },
+      { cwd: projectRoot, encoding: 'utf8', maxBuffer: MAX_OUTPUT_BYTES },
     );
     return result.status === 0 && existsSync(reportFile)
       ? JSON.parse(readFileSync(reportFile, 'utf8'))
