@@ -245,7 +245,7 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
 `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/AssertionInControlFlow`,
 `pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
-`pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `unused-option`,
+`pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ClassLoadEffect`, `unused-option`,
 `kotlin-source/SuspendFunInFinallySection`, `kotlin-source/ChildCoroutineOutlivesResource`), a class limit, a file
 limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
 `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
@@ -433,7 +433,8 @@ once per module with the pinned Kotlin compiler's parser. Gradle must run on a J
 without `javac` the task fails and says so. One parse
 of the main and test source roots writes `kotlin-metrics.json` (main only: structure, CRAP, coupling) and
 `kotlin-facts.json` (main and test: classes, functions, properties, calls, type aliases, waits and
-comparison chains). The rules are evaluated in Node (`languages/java/adapters/kotlin/review-rules/`) from the
+comparison chains; for main sources also the calls that run while a file or object loads, and the type or
+initializer of each property). The rules are evaluated in Node (`languages/java/adapters/kotlin/review-rules/`) from the
 facts, so they have no type resolution. A name is matched through the file's imports and the project's own
 declarations, across all modules of the build; a call that cannot be tied to one declaration is left alone, so
 an unclear case is not flagged. A file nested deeper than even the large stack of that program allows is
@@ -451,6 +452,7 @@ skipped with a note on stderr.
 | `SpringUnusedContext`                                   | `review-rules/tests/spring-context.mjs`         | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                                      |
 | `ExhaustiveEnumPredicate`                               | `review-rules/main/enum-predicates.mjs`         | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                              |
 | `unused-option` (tool `structure`)                      | `review-rules/main/unused-options.mjs`          | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                                                                                          |
+| `ClassLoadEffect`                                       | `review-rules/main/load-effects.mjs`            | a call with an external effect (database, network, files, processes, threads and pools, JVM-wide settings) that runs while a file, `object`, companion object or enum class loads                                                                                 |
 | `SuspendFunInFinallySection` (tool `kotlin-source`)     | `review-rules/coroutines/suspend-cleanup.mjs`   | a suspending call in a `finally` block, or in a `catch (CancellationException)` block, outside `withContext(NonCancellable)`                                                                                                                                      |
 | `ChildCoroutineOutlivesResource` (tool `kotlin-source`) | `review-rules/coroutines/resource-lifetime.mjs` | `launch` or `async` in an outer scope inside `x.use { }`, reading the resource, when the launched job is not joined in the block                                                                                                                                  |
 
@@ -573,6 +575,50 @@ Limits, all chosen to flag less rather than guess:
   Data classes are skipped when the module has `jackson-module-kotlin`, `kotlinx-serialization` or
   `moshi-kotlin` on its main compile or runtime classpath (`runtimeOnly` counts), since a library may set the defaults; a library that does so
   without that jar (reflection in a framework) is not seen.
+- Class-load effects: load time is a top-level property initializer (it runs when the file's facade
+  class loads), the property initializers and `init` blocks of an `object` or companion object, an
+  enum entry's arguments and body and the enum class's own properties, `init` blocks and
+  constructors, and the members of a class whose companion object creates it in a property
+  initializer or `init` block (`companion object { val instance = Registry() }`), directly or through
+  a companion function it calls (`val INSTANCE = create()`, one level). A secondary constructor runs
+  only when the arguments of such a creation select it over the primary one (by count, names,
+  defaults and literal types: `Settings(emptyMap())` does not run `constructor(name: String)`) or
+  when a selected one delegates to it with `this(...)`. A function runs at load when one of those
+  calls it without a receiver or on `this`, it is a member of the enclosing class, object or
+  companion object or a top-level function of the same file (an `object` calling a private
+  top-level function counts), and the call's arguments fit it, so of `read(n: Int)` and
+  `read(path: String)` only `read(3)`'s overload is followed (one level). `by lazy { }`, getters
+  (`val x get() = ...`), functions, `lateinit` and lambdas run later and are allowed, also when they
+  create the class (`val instance by lazy { Holder() }`, `val fresh get() = A()`,
+  `val make = { C() }`, `::D`); a lambda passed to an inline scope or collection function (`run`,
+  `let`, `apply`, `also`, `with`, `use`, `forEach`, `map` and similar) runs at once and is followed,
+  unless the receiver is a sequence (`asSequence()`, `sequenceOf`, `generateSequence`,
+  `sequence { }`), whose `map` runs nothing. The effects are the Java rule's, with Kotlin's own forms
+  added (`File.readText` and the other `kotlin.io` and `kotlin.io.path` file calls, `URL.readText`,
+  `exitProcess`, `kotlin.concurrent.timer`, `launch` or `async` on a `CoroutineScope(...)` or
+  `MainScope()`, `System.exit`, `Runtime.exit` and `Runtime.halt`, which detekt does not ban), and a
+  test (`load-effect-parity.test.mjs`) compares the two rules call by call (`Type#method`), with a
+  reason for each pair one side leaves out. Calls detekt already bans in main sources are left to it,
+  so each is reported once: `Thread.start`, `Thread.sleep`, `thread { }`, `Runtime.exec`,
+  `runBlocking`, `GlobalScope`, `System.getenv` and an imported `TimeZone` (a fully qualified
+  `java.util.TimeZone.setDefault(...)`, which no import ban sees, is reported). Without type
+  resolution a call counts only when its receiver is known: a type name through an explicit import
+  (an alias too), the file's package, a star import or the default imports (in that order, as Kotlin
+  resolves them, so a project class named `Files` is not `java.nio.file.Files`), a fully qualified
+  name (`kotlin.concurrent.fixedRateTimer(...)` too), a constructor or known factory
+  (`HttpClient.newHttpClient()`, `Runtime.getRuntime()`, `Path.of`, `ForkJoinPool.commonPool()`,
+  `Executors.newScheduledThreadPool(1)`, a builder's `build()`), or a property of the same file or
+  object, read bare or through `this.`, whose declared type or initializer is one of those
+  (`private val ok = OkHttpClient.Builder().build()` makes `ok.newCall(request).execute()` a request;
+  `val jobs: ScheduledExecutorService` makes `jobs.schedule(...)` one). A local `val` counts only
+  inside load-time code. A receiver returned by a function, a parameter, a property of another class,
+  and the implicit receiver of `apply`, `with` or `run` (`pool.apply { submit(task) }`) are not
+  followed, nor is a helper in another file. The top-level code of a file with `fun main` and an
+  `object` or companion object with a `@JvmStatic fun main` are not checked; an `object` in the same
+  file as `fun main` is. The message names the call and where it runs
+  (`the companion object of Registry loads and creates a Registry (in load, which init calls)`), and
+  the identity is the owner, member and call name, with no line number. Kotlin builds with Maven are
+  not supported by the Kotlin preset; their Java files get the PMD rule through the Java preset.
 - Not covered: Android and Kotlin Multiplatform modules (the facts step is registered for
   `org.jetbrains.kotlin.jvm` only), and source-set `exclude` patterns (every `.kt` file under a source
   directory is read, as for detekt and the other Kotlin steps).
