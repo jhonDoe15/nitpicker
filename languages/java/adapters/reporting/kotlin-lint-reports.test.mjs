@@ -127,7 +127,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
       'Calling !! on a nullable type will throw. Handle null with `value ?: return`, `value?.let { ... }`, or `checkNotNull(value) { "why" }` when null is a bug. If this is intended, add {"rule":"detekt.potential-bugs.UnsafeCallOnNullableType","paths":["src/main/kotlin/demo/Bad.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
-  it('reports an inline suppression of a one-way rule in a Kotlin source file', () => {
+  it('reports an inline suppression of a one-way rule, and of `unused` on a function with parameters, in a Kotlin source file', () => {
     const root = projectWithKotlinReports();
     writeFileSync(
       path.join(root, bad),
@@ -146,6 +146,15 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
           'Suppressing "UnsafeCallOnNullableType" inline is not allowed. Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json. If this is intended, add {"rule":"inline-suppression","paths":["src/main/kotlin/demo/Bad.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         allowedForm:
           'Fix the code the rule flags; to skip generated code, add it to "exclude" in nitpicker.config.json.',
+        classification: 'enforceable',
+      },
+      {
+        tool: 'detekt',
+        rule: 'inline-suppression',
+        path: bad,
+        identity: 'suppress:unused',
+        message:
+          'Suppressing "unused" inline would hide an unused parameter. Remove the parameter, or use it; a name starting `ignored` or `unused` marks one a signature requires. When reflection or a framework calls it with that signature, remove the suppression and lift the rule for this path instead. If this is intended, add {"rule":"detekt.style.UnusedParameter","paths":["src/main/kotlin/demo/Bad.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
       },
     ]);
