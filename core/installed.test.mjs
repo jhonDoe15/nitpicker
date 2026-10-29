@@ -24,6 +24,9 @@ const layouts = [undefined, 'nested', 'linked'];
 // npm 10.9 crashes resolving vitest's optional peers ("reading 'edgesOut'"), so
 // the consumer install is pinned to a newer npm.
 const installer = 'npm@11';
+const DEBUGGER_HINT =
+  'If this is intended, add {"rule":"no-debugger","paths":["src/main/example.ts"],"reason":"..."} ' +
+  'to "exceptions" in nitpicker.config.json.';
 const cleanSource = 'export function example() {\n  return 1;\n}\n';
 const violation = 'export function example(){\n  debugger;\n  return 1\n}\n';
 
@@ -34,7 +37,7 @@ const expectedDirtyFindings = [
     path: 'src/main/example.ts',
     identity:
       'message:`debugger` statement is not allowed|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
-    message: '`debugger` statement is not allowed',
+    message: `\`debugger\` statement is not allowed. ${DEBUGGER_HINT}`,
     classification: 'enforceable',
     symbol: 'example',
     location: { line: 2, column: 3 },
@@ -88,13 +91,17 @@ function expectedDirtyOutput(root) {
 Quality gate summary
 ✖ 3 new enforceable violations
   eslint-lint/no-debugger src/main/example.ts:2
-    \`debugger\` statement is not allowed
+    \`debugger\` statement is not allowed. ${DEBUGGER_HINT}
   prettier-format/prettier/prettier src/main/example.ts (2 times, lines 1, 3)
     Format these lines with Prettier
 Full diagnostics: ${root}/reports/dirty/report.txt
 nitpicker: base 2 analyzers cached
 nitpicker: head: running 2 analyzers
 `;
+}
+
+function withoutSlowAnalyzerLines(output) {
+  return output.replaceAll(/^nitpicker: (?:base|head) [\w-]+ done \([^)]*\), \d+ of \d+\n/gmu, '');
 }
 
 function command(cwd, executable, args) {
@@ -326,7 +333,7 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(dirty.status, dirty.output).toBe(1);
         expect(summary('dirty').overallStatus).toBe('completed');
         expect(findings('dirty')).toEqual(expectedDirtyFindings);
-        expect(dirty.output).toEqual(expectedDirtyOutput(root));
+        expect(withoutSlowAnalyzerLines(dirty.output)).toEqual(expectedDirtyOutput(root));
       });
       it('records pinned owned tool versions and the installed TypeScript peer', () => {
         const versions = Object.fromEntries(
@@ -377,7 +384,7 @@ suite('packed nitpicker in a separate consumer', () => {
       });
       it('supports --all with the packed prettier analyzer', () => {
         expect(snapshot.status, snapshot.output).toBe(1);
-        expect(snapshot.output).toEqual(expectedSnapshotOutput);
+        expect(withoutSlowAnalyzerLines(snapshot.output)).toEqual(expectedSnapshotOutput);
       });
       it('sets the consumer up with init from the packed files', () => {
         expect(initialized.status, initialized.output).toBe(0);

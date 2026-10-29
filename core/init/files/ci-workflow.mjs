@@ -10,6 +10,7 @@ const WORKFLOWS = '.github/workflows';
 const TOKEN = /'\{\{(\w+)\}\}'/u;
 const PLAIN_SEGMENT = /^[a-z0-9]+(?:[._-][a-z0-9]+)*$/u;
 const SEGMENT_SEPARATOR = '--';
+const DIGEST_LENGTH = 8;
 
 function projectPath(projectRoot, repository) {
   return path.relative(repository, projectRoot).split(path.sep).join('/');
@@ -23,7 +24,7 @@ function segmentSlug(segment) {
     .toLowerCase()
     .replaceAll(/[^a-z0-9]+/gu, '-')
     .replaceAll(/^-|-$/gu, '');
-  const digest = createHash('sha256').update(segment).digest('hex').slice(0, 8);
+  const digest = createHash('sha256').update(segment).digest('hex').slice(0, DIGEST_LENGTH);
   return readable === '' ? digest : `${readable}-${digest}`;
 }
 

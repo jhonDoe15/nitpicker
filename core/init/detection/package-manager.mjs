@@ -88,11 +88,12 @@ function isWorkspaceMember(projectRoot, manager) {
   const patterns = workspacePatterns(manager.root, manager.name)
     .filter((pattern) => typeof pattern === 'string')
     .map((pattern) => pattern.replace(/^\.\//u, '').replace(/\/+$/u, ''));
-  const matching = (pattern) => globMatcher(pattern).test(relative);
-  const included = patterns.filter((pattern) => !pattern.startsWith('!')).some(matching);
+  const included = patterns
+    .filter((pattern) => !pattern.startsWith('!'))
+    .some((pattern) => globMatcher(pattern).test(relative));
   const excluded = patterns
     .filter((pattern) => pattern.startsWith('!'))
-    .some((pattern) => matching(pattern.slice(1)));
+    .some((pattern) => globMatcher(pattern.slice(1)).test(relative));
   return included && !excluded;
 }
 

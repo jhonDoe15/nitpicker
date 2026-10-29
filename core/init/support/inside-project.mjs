@@ -22,7 +22,7 @@ function blockingFile(root, relative) {
   const parts = relative.split(/[\\/]/u);
   const folders = parts.slice(0, -1).map((_part, index) => parts.slice(0, index + 1).join('/'));
   return folders.find((folder) => {
-    const entry = statSync(path.join(root, folder), { throwIfNoEntry: false });
+    const entry = statSync(insideProject(root, folder), { throwIfNoEntry: false });
     return entry !== undefined && !entry.isDirectory();
   });
 }
