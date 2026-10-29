@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import {
+  lambdaParts,
   lastSelector,
   normalized,
   parseSelector,
@@ -13,13 +14,13 @@ import { springViews } from './spring-view.mjs';
 const FIXTURES = path.resolve(import.meta.dirname, '../../../../fixtures');
 const { files } = JSON.parse(readFileSync(path.join(FIXTURES, 'kotlin-spring-facts.json'), 'utf8'));
 
-function typeAt(line, text) {
+function typeAt(line, text, source = 'good/Batches.kt') {
   const view = springViews({
     files,
     projectFiles: files,
     projectRoot: path.join(FIXTURES, 'kotlin-spring-project'),
     javaRoots: ['src/main/java'],
-  }).find(({ file }) => file.file.endsWith('good/Batches.kt'));
+  }).find(({ file }) => file.file.endsWith(source));
   const scopes = view.file.invocations
     .filter((entry) => entry.line === line)
     .map(({ scope }) => scope);
@@ -27,6 +28,17 @@ function typeAt(line, text) {
 }
 
 describe('Kotlin expression text', () => {
+  it('splits a lambda into its parameter names and its last expression', () => {
+    expect(lambdaParts('{ it.tags }')).toEqual({ params: ['it'], body: 'it.tags' });
+    expect(lambdaParts('{ a, _ -> a.tags }')).toEqual({ params: ['a', '_'], body: 'a.tags' });
+    expect(lambdaParts('{ o: Order -> log(o); o.items.map { i -> i }\n o.tags }')).toEqual({
+      params: ['o'],
+      body: 'o.tags',
+    });
+    expect(lambdaParts('{}')).toBeUndefined();
+    expect(lambdaParts('items')).toBeUndefined();
+  });
+
   it('splits the last member selector outside brackets, strings and lambdas', () => {
     expect(lastSelector('a.b(c.d, "x.y").e { it.f }')).toEqual({
       head: 'a.b(c.d, "x.y")',
@@ -81,5 +93,16 @@ describe('Kotlin local types through calls, map entries and pages', () => {
     [79, 'batch', 'List<Long>'],
   ])('types line %i %s as %s', (line, text, type) => {
     expect(typeAt(line, text)).toBe(type);
+  });
+});
+
+describe('Kotlin local types through the value of a mapping lambda', () => {
+  it.each([
+    [104, 'items.map { it.labels }', 'List<Set<String>>'],
+    [105, 'items.zip(others) { shelf, _ -> shelf.labels }', 'List<Set<String>>'],
+    [106, 'items.associateBy({ it.id }, { it.labels })', 'Map<Any,Set<String>>'],
+    [104, 'items.map { describe(it) }', 'List<Any>'],
+  ])('types line %i %s as %s', (line, text, type) => {
+    expect(typeAt(line, text, 'good/Rows.kt')).toBe(type);
   });
 });

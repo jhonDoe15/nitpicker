@@ -145,6 +145,11 @@ describe('Spring Data rules on the forms the regression review found', () => {
       'SpringDataSaveInLoopHelper',
     ],
     ['a flush inside the inner loop when only the outer loop clears', ['74'], 'SpringDataNoFlush'],
+    [
+      'a one-element list passed through filter, map or a cast, or a fresh list given one add',
+      ['93', '94', '95', '99', '104'],
+      'SpringDataBatchOfOne',
+    ],
   ])('reports %s', (_, expected, rule) => {
     expect(
       reportedIn('bad/Rows.kt')
@@ -153,7 +158,11 @@ describe('Spring Data rules on the forms the regression review found', () => {
     ).toEqual(expected);
   });
 
-  it('keeps a mapped value, a split or constant chunk update, a plain DAO and converted enums', () => {
+  it('still reports an executeUpdate that binds the loop variable beside a list parameter', () => {
+    expect(reportedIn('bad/Rows.kt')).toContain('66 SpringDataRowWriteInLoop');
+  });
+
+  it('keeps a mapped value, chunk updates, a plain DAO, converted enums and mapped collections', () => {
     expect(reportedIn('good/Rows.kt')).toEqual([]);
   });
 });

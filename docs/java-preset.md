@@ -1892,7 +1892,10 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   also covers `forEachRemaining(repository::save)` and a `Consumer` variable holding
   `repository::save` that a loop calls or a `forEach` receives. `SpringDataBatchOfOne` fires on
   `saveAll`/`deleteAll`/`deleteAllById` called in a loop with a one-element `List.of`, `Set.of`,
-  `Collections.singletonList` or `singleton`, inline or through a variable declared in the loop;
+  `Collections.singletonList` or `singleton`, inline or through a variable declared in the loop, also
+  through `stream()`, `filter`, `map`, `toList()`, `collect(...)` and the like or a cast
+  (`List.of(o).stream().filter(...).toList()`), or a fresh `new ArrayList<>()` (any empty `Collection`
+  constructor) given exactly one `add` of a single element in the loop body and no other change;
   `List.of(array)` with one `Object[]` argument holds the array's elements and is not reported,
   inline or in a variable.
   `SpringDataRowWriteInLoop` fires, in a loop, on any other repository call whose result is

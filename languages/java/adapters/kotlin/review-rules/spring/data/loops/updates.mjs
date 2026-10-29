@@ -1,5 +1,5 @@
 import { QUERY_TYPES } from '../data-types.mjs';
-import { lastSelector, parseSelector } from '../../view/expressions.mjs';
+import { lastSelector, parseSelector, unwrapped } from '../../view/expressions.mjs';
 import { chainOf, isCollection, loopFrames } from './loop-scopes.mjs';
 
 const QUALIFIER = /^[\w.]+$/u;
@@ -22,6 +22,26 @@ const ONE_ELEMENT = new Set([
   'java.util.Collections.singletonList',
   'java.util.Collections.singleton',
 ]);
+const NARROWING = new Set([
+  'filter',
+  'filterNot',
+  'filterNotNull',
+  'filterIsInstance',
+  'map',
+  'mapNotNull',
+  'distinct',
+  'sorted',
+  'sortedBy',
+  'onEach',
+  'take',
+  'drop',
+  'toList',
+  'toMutableList',
+  'toSet',
+  'toMutableSet',
+]);
+const CAST = /^([\s\S]+?)\s+as\??\s+[\p{L}_][\p{L}\p{N}_.<>?, ]*$/u;
+const SOURCE_DEPTH = 8;
 const QUERY_CREATORS = new Set(['createQuery', 'createNamedQuery', 'createNativeQuery']);
 const QUERY_BUILDERS = new Set([
   ...QUERY_CREATORS,
@@ -45,9 +65,35 @@ export function oneElementCall(invocation) {
   );
 }
 
-export function oneElement(text) {
-  const parts = lastSelector(text.trim());
-  const call = parseSelector(parts?.selector ?? text.trim());
+function sourceCollection(text) {
+  const steps = [text.trim()];
+  for (const current of steps) {
+    const inner = unwrapped(current) ?? CAST.exec(current)?.[1];
+    const parts = inner === undefined ? lastSelector(current) : undefined;
+    const call = parts === undefined ? undefined : parseSelector(parts.selector);
+    const next =
+      inner ?? (call?.call === true && NARROWING.has(call.name) ? parts.head : undefined);
+    if (next === undefined || steps.length > SOURCE_DEPTH) {
+      return current;
+    }
+    steps.push(next.trim());
+  }
+  return text.trim();
+}
+
+export function oneElementSource(view, invocation) {
+  const chain = chainOf(view, invocation);
+  return (
+    chain.length > 0 &&
+    chain.slice(0, -1).every(({ name }) => NARROWING.has(name)) &&
+    oneElementCall(chain.at(-1))
+  );
+}
+
+export function oneElement(raw) {
+  const text = sourceCollection(raw);
+  const parts = lastSelector(text);
+  const call = parseSelector(parts?.selector ?? text);
   const qualifier = parts === undefined || QUALIFIER.test(parts.head);
   return (
     qualifier &&

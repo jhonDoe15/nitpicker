@@ -105,6 +105,30 @@ public class ChunkedWrites {
     }
   }
 
+  @Transactional
+  @SuppressWarnings("unchecked")
+  public void narrowedBatches(List<Product> incoming, List<List<Product>> groups) {
+    for (Product product : incoming) {
+      products.saveAll(List.of(product).stream().filter(item -> item != null).toList()); // violation: SpringDataBatchOfOne
+      products.saveAll((List<Product>) (List<?>) List.of(product)); // violation: SpringDataBatchOfOne
+      List<Product> one = new ArrayList<>();
+      one.add(product);
+      products.saveAll(one); // violation: SpringDataBatchOfOne
+    }
+    for (List<Product> group : groups) {
+      List<Product> batch = new ArrayList<>();
+      for (Product product : group) {
+        batch.add(product);
+      }
+      products.saveAll(batch);
+      List<Product> merged = new ArrayList<>();
+      merged.add(group.get(0));
+      merged.addAll(group);
+      products.saveAll(merged);
+      products.saveAll(List.of(group.get(0)).stream().flatMap(first -> group.stream()).toList());
+    }
+  }
+
   private void forget(Long id, Object context) {
     products.deleteById(id);
   }

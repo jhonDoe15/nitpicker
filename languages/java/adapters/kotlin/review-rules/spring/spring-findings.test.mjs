@@ -207,6 +207,11 @@ const EXPECTED = [
   'bad/Rows.kt:69 SpringDataRowWriteInLoop CartonService.shipAll.ship',
   'bad/Rows.kt:74 SpringDataNoFlush CartonService.flushChunks.saveAndFlush',
   'bad/Rows.kt:74 SpringDataNoSaveInLoop CartonService.flushChunks.saveAndFlush',
+  'bad/Rows.kt:93 SpringDataBatchOfOne CartonBatches.saveEach.saveAll',
+  'bad/Rows.kt:94 SpringDataBatchOfOne CartonBatches.saveEach.saveAll',
+  'bad/Rows.kt:95 SpringDataBatchOfOne CartonBatches.saveEach.saveAll',
+  'bad/Rows.kt:99 SpringDataBatchOfOne CartonBatches.saveEach.saveAll',
+  'bad/Rows.kt:104 SpringDataBatchOfOne CartonBatches.saveEach.saveAll',
   'bad/Security.kt:18 SpringCsrfDisabled SecurityConfig.chain.csrf',
   'bad/Security.kt:21 SpringPermitAllAnyRequest SecurityConfig.chain.authorize',
   'bad/Security.kt:29 SpringPermitAllAnyRequest SecurityConfig.javaStyle.permitAll',
@@ -333,6 +338,7 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
       'good/Proxies.kt:47 SpringProxyMethodVisibility Audit.write',
       'good/Rows.kt:38 JpaEntityClass Crate',
       'good/Rows.kt:63 SpringProxyMethodVisibility CrateService.archive',
+      'good/Rows.kt:103 SpringProxyMethodVisibility ShelfService.tidy',
       'good/StarImports.kt:13 SpringProxyMethodVisibility Parser.parse',
     ]);
   });

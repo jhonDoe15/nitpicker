@@ -85,3 +85,23 @@ class CartonService(
         const val CHUNK = "update Carton c set c.version = 0 where c.id in :ids"
     }
 }
+
+@Service
+class CartonBatches(private val cartons: CartonRepository) {
+    @Transactional
+    fun saveEach(items: List<Carton>) {
+        for (item in items) cartons.saveAll(listOf(item).filter { it.id != null })
+        for (item in items) cartons.saveAll(listOf(item).map { it })
+        for (item in items) cartons.saveAll(listOf(item) as Collection<Carton>)
+        for (item in items) {
+            val one = mutableListOf<Carton>()
+            one += item
+            cartons.saveAll(one)
+        }
+        for (item in items) {
+            val one = ArrayList<Carton>()
+            one.add(item)
+            cartons.saveAll(one)
+        }
+    }
+}
