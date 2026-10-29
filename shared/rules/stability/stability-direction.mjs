@@ -46,7 +46,9 @@ function graphContext({ modules, packageOf, roleOf, fileOf = (module) => module 
 function unitInstabilities(edges, unitOf) {
   const fanIn = new Map();
   const fanOut = new Map();
-  for (const { source, target } of edges.filter((edge) => unitOf(edge.source) !== unitOf(edge.target))) {
+  for (const { source, target } of edges.filter(
+    (edge) => unitOf(edge.source) !== unitOf(edge.target),
+  )) {
     addTo(fanIn, unitOf(target), source);
     addTo(fanOut, unitOf(source), target);
   }
