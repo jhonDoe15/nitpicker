@@ -93,7 +93,7 @@ function attributed(entries, scope) {
   return entries.map(loosening).map((entry) => ({ ...entry, text: `${entry.text}${note}` }));
 }
 
-function describedEntries(baseConfig, headConfig, scope, extra = []) {
+function describedEntries(baseConfig, headConfig, scope) {
   const settings = changedSettings(baseConfig, headConfig).map((entry) => ({
     ...entry,
     kind: looseningKindOfSetting(entry, scope),
@@ -122,7 +122,7 @@ function describedEntries(baseConfig, headConfig, scope, extra = []) {
         settings.filter(({ kind }) => kind !== undefined).map(({ text, kind }) => ({ text, kind })),
         scope,
       ),
-      ...extra.map(loosening),
+      ...(scope.repositoryLoosenings ?? []).map(loosening),
     ],
     changed: [
       ...parts.flatMap((part) => part.changed),
@@ -144,8 +144,8 @@ function evidenceDigest(loosened, scope) {
   });
 }
 
-export function policyChangeFields(baseConfig, headConfig, scope, extra = []) {
-  const { loosened, changed } = describedEntries(baseConfig, headConfig, scope, extra);
+export function policyChangeFields(baseConfig, headConfig, scope) {
+  const { loosened, changed } = describedEntries(baseConfig, headConfig, scope);
   const texts = loosened.map(({ text }) => text);
   return {
     policyChanges: [...texts, ...changed],

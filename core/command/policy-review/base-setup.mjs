@@ -64,7 +64,7 @@ export function createBaseSetupResolver({
             injectedAnalyzers,
             analyzers,
           })),
-      ...policyChangeFields(compared, headConfig, scope, repositoryLoosenings),
+      ...policyChangeFields(compared, headConfig, { ...scope, repositoryLoosenings }),
     };
   };
 }

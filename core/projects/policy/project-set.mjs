@@ -5,8 +5,16 @@ import { gitBlobId } from '../../policy-changes/policy-scope.mjs';
 import { isInside } from '../discovery/repository-files.mjs';
 import { DECLARATION_FILES } from './base-plan.mjs';
 
+function inside(root, file) {
+  const full = path.resolve(root, file);
+  if (!full.startsWith(root + path.sep)) {
+    throw new Error(`${file} is outside ${root}`);
+  }
+  return full;
+}
+
 function declarationFiles(root) {
-  return DECLARATION_FILES.filter((file) => existsSync(path.join(root, file)));
+  return DECLARATION_FILES.filter((file) => existsSync(inside(root, file)));
 }
 
 function splitLoosening(basePlan, files) {
@@ -54,7 +62,7 @@ export function repositoryPolicy({ loosenings, root, acceptedDigest }) {
   const files = [...new Set(loosenings.flatMap((entry) => entry.files))].toSorted();
   const digest = policyDigest({
     loosenings: loosenings.map(({ key }) => key),
-    files: files.map((file) => [file, gitBlobId(readFileSync(path.join(root, file)))]),
+    files: files.map((file) => [file, gitBlobId(readFileSync(inside(root, file)))]),
   });
   const texts = loosenings.map(({ text }) => text);
   const findings = policyFindings(texts, digest, { acceptedDigest });

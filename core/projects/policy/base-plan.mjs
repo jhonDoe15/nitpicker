@@ -55,10 +55,21 @@ export function planInputsChanged({ repositoryRoot, mergeBaseSha, changed }) {
   return untracked.trim() !== '' || addedOrDeleted.trim() !== '';
 }
 
+function baseRootOf(worktree, prefix) {
+  if (prefix === '.') {
+    return worktree;
+  }
+  const full = path.resolve(worktree, prefix);
+  if (!full.startsWith(worktree + path.sep)) {
+    return undefined;
+  }
+  return full;
+}
+
 export function basePlanOf({ repositoryRoot, prefix, mergeBaseSha }) {
   return withTemporaryWorktree(repositoryRoot, mergeBaseSha, (worktree) => {
-    const root = path.join(worktree, prefix);
-    return existsSync(root) ? inspectedPlan(root).plan : undefined;
+    const root = baseRootOf(worktree, prefix);
+    return root !== undefined && existsSync(root) ? inspectedPlan(root).plan : undefined;
   });
 }
 

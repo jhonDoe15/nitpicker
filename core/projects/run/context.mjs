@@ -41,7 +41,7 @@ export function analyzersByProject(plan, cli) {
   if (unknown.length > 0) {
     throw new Error(
       `Unknown --analyzer: ${unknown.join(', ')}. Known analyzers of the projects in this monorepo: ` +
-        `${[...known].toSorted().join(', ')}`,
+        [...known].toSorted().join(', '),
     );
   }
   return new Map(

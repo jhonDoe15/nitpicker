@@ -88,11 +88,8 @@ function runSelected({ project, cli, runProject, reportRoot, extras }) {
   cli.stdout.write(projectHeading(project));
   clearReports(reportRoot);
   try {
-    const exitCode = runProject(
-      project,
-      { ...cli.options, ...extras.options, outputRoot: reportRoot },
-      extras.cli,
-    );
+    const options = { ...cli.options, ...extras.options, outputRoot: reportRoot };
+    const exitCode = runProject(options, extras.cli);
     return outcomeOf({ exitCode, reportRoot });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
@@ -107,7 +104,13 @@ function extrasOf(project, { comparison, analyzers }) {
   );
   return {
     options: analyzers.has(project.path) ? { analyzerNames: analyzers.get(project.path) } : {},
-    cli: { sharedBase: comparison.base, baseConfigOverlay: baseProject?.overlay },
+    cli: {
+      currentProjectRoot: project.absolute,
+      configOverlay: project.overlay,
+      singleProject: true,
+      sharedBase: comparison.base,
+      baseConfigOverlay: baseProject?.overlay,
+    },
   };
 }
 
@@ -146,8 +149,7 @@ function repositoryOf({ plan, files, comparison, cli }) {
   return repositoryPolicy({ loosenings, root: plan.root, acceptedDigest: acceptPolicyChange });
 }
 
-function execute({ plan, files, cli, runProject }) {
-  const startedAt = Date.now();
+function prepare({ plan, cli }) {
   const outputRoot = outputRootOf(plan.root, cli.options);
   const analyzers = analyzersByProject(plan, cli);
   clearStaleProjectReports({ outputRoot, plan, clearReports });
@@ -156,6 +158,20 @@ function execute({ plan, files, cli, runProject }) {
   const { selection, outside } = choose(plan, cli, comparison);
   const chosen = withAnalyzers(selection, analyzers);
   const rows = plan.projects.map((project, index) => ({ project, selection: chosen[index] }));
+  return { outputRoot, analyzers, comparison, outside, rows };
+}
+
+function finish({ plan, cli, outputRoot, summary, repository }) {
+  const text = renderSummary({ summary, summaryPath: path.join(outputRoot, 'summary.json') });
+  writeCombinedReports(outputRoot, summary, text);
+  writeCombinedMachineReports({ outputRoot, plan, repository });
+  cli.stdout.write(text);
+  return exitCodeOf(summary, cli.options);
+}
+
+function execute({ plan, files, cli, runProject }) {
+  const startedAt = Date.now();
+  const { outputRoot, analyzers, comparison, outside, rows } = prepare({ plan, cli });
   const notices = noticesOf(plan, comparison.changed, cli);
   cli.stdout.write(renderPlan({ plan, rows, outside }));
   const repository = repositoryOf({ plan, files, comparison, cli });
@@ -163,11 +179,7 @@ function execute({ plan, files, cli, runProject }) {
   const results = rows.map((row) => runRow(row, context));
   const elapsedMs = Date.now() - startedAt;
   const summary = combinedSummary({ plan, results, outside, notices, repository, elapsedMs });
-  const text = renderSummary({ summary, summaryPath: path.join(outputRoot, 'summary.json') });
-  writeCombinedReports(outputRoot, summary, text);
-  writeCombinedMachineReports({ outputRoot, plan, repository });
-  cli.stdout.write(text);
-  return exitCodeOf(summary, cli.options);
+  return finish({ plan, cli, outputRoot, summary, repository });
 }
 
 function formerProjectLoosenings(probe) {
@@ -195,7 +207,7 @@ function formerAt({ root, files, cli, repositoryRoot }) {
 function runMember({ plan, member, cli, runProject }) {
   const comparison = comparisonOf(plan, cli);
   const extras = extrasOf(member, { comparison, analyzers: new Map() });
-  return runProject(member, cli.options, extras.cli);
+  return runProject(cli.options, extras.cli);
 }
 
 function singleMode({ inspection, cli, currentProjectRoot }) {
@@ -209,7 +221,7 @@ function singleMode({ inspection, cli, currentProjectRoot }) {
     cli.stderr.write(`nitpicker: ${notice}\n`);
   }
   const probe = { root: currentProjectRoot, files: inspection.files, cli };
-  return { repositoryLoosenings: singleProjectLoosenings(probe) };
+  return { extraCli: { repositoryLoosenings: singleProjectLoosenings(probe) } };
 }
 
 export function runMonorepo({ cli, currentProjectRoot, runProject }) {

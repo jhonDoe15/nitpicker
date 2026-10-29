@@ -119,15 +119,7 @@ function runCommand(cli) {
 }
 
 function runProjectOf(cli) {
-  return (project, options, extraCli) =>
-    runConfigured({
-      ...cli,
-      ...extraCli,
-      options,
-      currentProjectRoot: project.absolute,
-      configOverlay: project.overlay,
-      singleProject: true,
-    });
+  return (options, extraCli) => runConfigured({ ...cli, ...extraCli, options });
 }
 
 function runConfigured(cli) {
@@ -139,10 +131,7 @@ function runConfigured(cli) {
   if (monorepo.exitCode !== undefined) {
     return monorepo.exitCode;
   }
-  return runSingle(
-    { ...cli, repositoryLoosenings: monorepo.repositoryLoosenings },
-    currentProjectRoot,
-  );
+  return runSingle({ ...cli, ...monorepo.extraCli }, currentProjectRoot);
 }
 
 function runSingle(cli, currentProjectRoot) {

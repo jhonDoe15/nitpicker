@@ -84,7 +84,7 @@ Contributor notes on formats and protocols that code and names cannot carry. Sou
 
 ### Monorepo summary
 
-The output folder holds `<project>/` with that project's usual reports (`_root/` for the project `.`), `report.txt`, a combined `summary.json`, and a combined `report.sarif` and `report.junit.xml` (`report/combined-files.mjs`: one SARIF run per project with `automationDetails.id` `nitpicker/<project>/` and uris from the repository root, one JUnit suite per project). Folders of projects the previous summary named and this plan does not are removed.
+The output folder holds `<project>/` with that project's usual reports (`_root/` for the project `.`), `report.txt`, a combined `summary.json`, and a combined `report.sarif`, `report-baseline.sarif` and `report.junit.xml` (`report/combined-files.mjs`: one SARIF run per project with `automationDetails.id` `nitpicker/<project>/` and the project's repository-root uris, plus a `nitpicker/repository/` run for the repository policy; one JUnit suite per project). Folders of projects the previous summary named and this plan does not are removed.
 
 ```json
 {

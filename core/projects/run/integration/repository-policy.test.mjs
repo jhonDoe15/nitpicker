@@ -49,6 +49,19 @@ describe('the set of projects', () => {
         `NITPICKER_ACCEPT_POLICY_CHANGE=${repositoryPolicy.policyDigest} in CI.`,
     ]);
     expect(accepted.exitCode).toBe(0);
+    expect(
+      result
+        .json('report.sarif')
+        .runs.map((entry) => [
+          entry.automationDetails.id,
+          entry.results.map(
+            (finding) => finding.locations[0].physicalLocation.artifactLocation.uri,
+          ),
+        ]),
+    ).toEqual([
+      ['nitpicker/web/', []],
+      ['nitpicker/repository/', ['nitpicker.config.json']],
+    ]);
   });
 
   it('reports an emptied list as a loosening when the repository is gated as one project', () => {
@@ -151,6 +164,7 @@ describe('the combined machine reports', () => {
       ['nitpicker/web/', ['web/src/a.ts']],
       ['nitpicker/api/', ['api/src/a.ts']],
     ]);
+    expect(result.json('report-baseline.sarif').runs).toHaveLength(2);
     expect(junit.match(/<testsuite name="[^"]*"/gu)).toEqual([
       '<testsuite name="quality.diff web"',
       '<testsuite name="quality.diff api"',
