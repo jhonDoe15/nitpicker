@@ -191,6 +191,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/StaticForwardingWrapper',
       'pmd/SingularAndPluralMember',
       'pmd/NonAtomicUpdateAcrossSuspension',
+      'pmd/ClassLoadEffect',
       ...SPRING_RULES.map((rule) => `pmd/${rule}`),
       'pmd/SpringQueryConcatenation',
       'unused-option',

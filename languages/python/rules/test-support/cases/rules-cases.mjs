@@ -15,6 +15,13 @@ export const RULES_CASES = [
   ...rulesCases('domain-clock', [['clock-now', 'datetime.now(tz=utc)']]),
   ...rulesCases('domain-random', [['random-in-domain', 'random.random']]),
   ...rulesCases('domain-io', [['io-in-domain', 'protocol']]),
+  ...rulesCases('domain-io-helper', [['io-in-domain', 'implement it in `adapters/`']]),
+  ...rulesCases('domain-id-library', [['random-in-domain', 'id factory']]),
+  ...rulesCases('domain-logger', [['logger-in-domain', 'let `adapters/`']]),
+  ...rulesCases('domain-module-state', [
+    ['module-state-in-domain', 'receive the state as a parameter'],
+  ]),
+  ...rulesCases('import-time-effect', [['import-time-effect', 'composition root']]),
   ...rulesCases('mutable-module-state', [['module-level-mutable-state', 'composition root']]),
   ...rulesCases('atomic-update', [['atomic-update-across-await', 'asyncio.Lock']]),
   ...rulesCases('path-join', [['unsafe-path-join', 'is_relative_to']]),

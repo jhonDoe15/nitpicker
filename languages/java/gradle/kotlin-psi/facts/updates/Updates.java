@@ -4,8 +4,8 @@ import static nitpicker.kotlinpsi.common.Psi.m;
 import static nitpicker.kotlinpsi.common.Psi.nameOf;
 
 import java.util.*;
+import java.util.function.IntUnaryOperator;
 import nitpicker.kotlinpsi.common.Frame;
-import nitpicker.kotlinpsi.common.Lines;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.*;
@@ -13,10 +13,10 @@ import org.jetbrains.kotlin.psi.*;
 public final class Updates {
   private static final Set<String> LOCKS = Set.of("withLock", "withPermit");
 
-  private final Lines lines;
+  private final IntUnaryOperator lineOf;
 
-  public Updates(String text) {
-    this.lines = new Lines(text);
+  public Updates(IntUnaryOperator lineOf) {
+    this.lineOf = lineOf;
   }
 
   public Map<String, Object> assignment(KtBinaryExpression assignment, Frame frame) {
@@ -48,7 +48,7 @@ public final class Updates {
       return null;
     }
     Map<String, Object> update = m(
-        "line", lines.index(assignment.getTextOffset()) + 1, "operator", assignment.getOperationReference().getText(),
+        "line", lineOf.applyAsInt(assignment.getTextOffset()), "operator", assignment.getOperationReference().getText(),
         "target", target, "viaThis", viaThis, "value", scan.items, "branching", scan.branching,
         "locals", locals(scope), "properties", properties, "scopes", frame == null ? List.of() : frame.chain());
     if (readsLocal && !properties.contains(target)) {
