@@ -1801,6 +1801,25 @@ EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` fold
   or `UploadFile`; Flask: `python-dotenv`; pydantic: `email-validator` with `EmailStr`); dynamic or `setup.py`-only
   dependencies switch the checks off. On Python before 3.10 the checks are one
   `dependencies/tool-skipped` tool error and the other analyzers still run.
+- **Unresolved imports.** `dependencies/unresolved-import` (`imports/unresolved-imports.mjs`), with
+  the TypeScript (knip) message, in production modules and test files (not `setup.py`,
+  `noxfile.py`, `fabfile.py`, `dodo.py` or `pavement.py`, which a tool outside the environment
+  runs). An absolute import is unresolved when its top-level name is not in the standard library,
+  not provided by an installed distribution, not found by `importlib.util.find_spec` in the
+  environment (editable installs, `.pth` paths), not the name of a folder or `.py` file of the
+  project and not a declared dependency (`markdown_it` matches `markdown-it-py`, `dateutil`
+  matches `python-dateutil`). Under a regular package of the project, and for a relative import
+  from the importing file's folder, each dotted part must exist on disk: a folder, or for the last
+  part a module file (`.py`, `.pyi`, `.pyx`, `.so`, `.pyd`, ...); `from pkg import name` checks
+  `pkg` only, since `name` can be an attribute. A package `__init__.py` or module that touches
+  `__path__`, `sys.modules` or `declare_namespace` is trusted. Not checked: imports under
+  `if TYPE_CHECKING:`, in a `try` that catches `ImportError`, `ModuleNotFoundError`, `Exception`
+  or everything (its body and handlers), in the `else` of any `try`, under
+  `with suppress(ImportError)`, under an `if` that tests the environment (`sys.*`, `os.name`,
+  `platform.*`, `find_spec`, an all-caps flag such as `PY2`, or a name a guarded `try` binds,
+  such as `has_simplejson`), and function-local imports in test files (tests that write a module
+  and then import it). mypy and pyright report missing imports too, but a project's
+  `ignore_missing_imports` silences them; TypeScript likewise reports both `tsc` and knip.
 - **Frameworks.** Django, FastAPI and Flask are detected from the dependencies or the production
   imports (`dependencies/python-frameworks.mjs`). Django settings modules (named `settings`, or
   named by `DJANGO_SETTINGS_MODULE` in `manage.py`, `wsgi.py` or `asgi.py`) may read the
