@@ -30,7 +30,7 @@ export function oneProjectScope(cli, command) {
   const member =
     cli.currentProjectRoot === undefined ? memberProjectOf(plan, cli.workingDirectory) : undefined;
   if (member !== undefined) {
-    return { currentProjectRoot: member.absolute };
+    return { currentProjectRoot: member.absolute, configOverlay: member.overlay };
   }
   cli.stderr.write(oneProjectCommandMessage(plan, command));
   return { exitCode: 2 };

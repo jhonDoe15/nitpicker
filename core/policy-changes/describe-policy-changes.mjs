@@ -140,7 +140,11 @@ function evidenceDigest(loosened, scope) {
   const files = [...new Set(loosened.flatMap((entry) => entry.files))].toSorted();
   return policyDigest({
     loosenings: loosened.map(({ key }) => key),
-    files: [...files.map((file) => [file, scope.blobOf(file)]), ...scope.sharedConfigs],
+    files: [
+      ...files.map((file) => [file, scope.blobOf(file)]),
+      ...scope.sharedConfigs,
+      ...loosened.flatMap(({ evidence = [] }) => evidence),
+    ],
   });
 }
 

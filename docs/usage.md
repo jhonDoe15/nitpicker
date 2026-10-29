@@ -925,7 +925,9 @@ Where you start the run matters:
   that project alone, with its own config, exactly as before.
 - Inside a member that has neither (a uv workspace member, or a listed folder with only a
   `pyproject.toml` or build file), nitpicker gates that member alone, with the preset the top gives
-  it and the base of the top config.
+  it and the base of the top config. A change to the set of projects (see below) is a loosening of
+  that run too. `nitpicker aggregate` and `nitpicker cache publish` started there work on that
+  member with the same preset and settings.
 
 ### Listing the projects
 

@@ -172,24 +172,72 @@ describe('the combined machine reports', () => {
   });
 });
 
+function pythonMember(name) {
+  return projectFiles(`libs/${name}`, {
+    'pyproject.toml': `[project]\nname = "${name}"\n`,
+    'src/m.py': 'M = 1\n',
+  });
+}
+
+function uvWorkspace() {
+  return repository({
+    'pyproject.toml': '[tool.uv.workspace]\nmembers = ["libs/*"]\n',
+    ...pythonMember('a'),
+    ...pythonMember('b'),
+  });
+}
+
 describe('a run inside a member of a workspace', () => {
   it('checks only that member', () => {
-    const python = (name) =>
-      projectFiles(`libs/${name}`, {
-        'pyproject.toml': `[project]\nname = "${name}"\n`,
-        'src/m.py': 'M = 1\n',
-      });
-    const root = repository({
-      'pyproject.toml': '[tool.uv.workspace]\nmembers = ["libs/*"]\n',
-      ...python('a'),
-      ...python('b'),
-    });
+    const root = uvWorkspace();
     writeFiles(root, { 'libs/a/src/m.py': 'M = 2\n', 'libs/b/src/m.py': 'M = 2\n' });
 
     const result = run(root, [], { workingDirectory: path.join(root, 'libs/a/src') });
 
     expect([result.exitCode, result.plan, result.headings]).toEqual([0, '', []]);
     expect(result.json('summary.json').configOverrides).toEqual(['preset: "python"']);
+  });
+
+  it('reports a shrunk workspace as a loosening of the member it runs', () => {
+    const root = uvWorkspace();
+    writeFiles(root, { 'pyproject.toml': '[tool.uv.workspace]\nmembers = ["libs/a"]\n' });
+    const inside = { workingDirectory: path.join(root, 'libs/a') };
+
+    const result = run(root, [], inside);
+    const { policyLoosenings, policyDigest } = result.json('summary.json');
+    const accepted = run(root, [], {
+      ...inside,
+      environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: policyDigest },
+    });
+
+    expect([result.exitCode, policyLoosenings]).toEqual([
+      1,
+      [
+        'project libs/b is no longer one of the projects of the monorepo, ' +
+          'so nothing gates it with its own config',
+      ],
+    ]);
+    expect(accepted.exitCode).toBe(0);
+  });
+
+  it('gives cache and aggregate the preset the workspace gives the member', () => {
+    const root = uvWorkspace();
+    const inside = { workingDirectory: path.join(root, 'libs/a/src') };
+
+    const cache = run(root, [], { ...inside, command: ['cache', 'publish'] });
+    const aggregate = run(root, [], {
+      ...inside,
+      command: ['aggregate', '--input-root', 'shards', '--shard-count', '2'],
+    });
+
+    expect([cache.exitCode, cache.err]).toEqual([
+      2,
+      'nitpicker failed: nitpicker cache publish requires NITPICKER_CACHE_URL\n',
+    ]);
+    expect([aggregate.exitCode, aggregate.err]).toEqual([
+      2,
+      'Quality shard aggregation failed: shardCount 2 exceeds 1 independent analyzer components\n',
+    ]);
   });
 });
 
