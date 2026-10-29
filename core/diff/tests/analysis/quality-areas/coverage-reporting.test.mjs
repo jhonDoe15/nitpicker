@@ -322,12 +322,33 @@ describe('coverage reporting in the quality-area analyzers', () => {
       '}',
     ].join('\n');
     const at = (line, column) => ({ start: { line, column } });
+    const loc = { start: { line: 1, column: 0 }, end: { line: 8, column: 1 } };
 
     expect(
-      describeUncoveredArms({ type: 'switch', locations: [at(2, 2), at(4, 2)] }, [0, 0], source),
+      describeUncoveredArms(
+        { type: 'switch', loc, locations: [at(2, 2), at(4, 2)] },
+        [0, 0],
+        source,
+      ),
     ).toEqual([
       'a switch case at 2:3',
       'the default case at 4:3 (a switch that lists every member of a union needs no default: switch-exhaustiveness-check proves it complete)',
+    ]);
+  });
+  it('tells to test a default case that is not the never check of a union', () => {
+    const source = [
+      'switch (code) {',
+      '  case 1:',
+      '    return 1;',
+      '  default:',
+      '    never(code);',
+      '    return 0;',
+      '}',
+    ].join('\n');
+    const location = { start: { line: 4, column: 2 }, end: { line: 6, column: 13 } };
+
+    expect(describeUncoveredArms({ type: 'switch', locations: [location] }, [0], source)).toEqual([
+      'the default case at 4:3 (pass a value that no case lists)',
     ]);
   });
   it('accepts exactly 95% branch coverage', () => {

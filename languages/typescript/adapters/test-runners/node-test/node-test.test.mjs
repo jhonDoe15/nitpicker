@@ -51,6 +51,18 @@ const COLORS = [
   '',
 ].join('\n');
 
+const CODES_JS = [
+  'export function label(code) {',
+  '  switch (code) {',
+  '    case 1:',
+  "      return 'one';",
+  '    default:',
+  "      return 'other';",
+  '  }',
+  '}',
+  '',
+].join('\n');
+
 const changedBranchMessages = (findings) =>
   findings.filter(({ rule }) => rule === 'changed-branch-coverage').map(({ message }) => message);
 
@@ -217,6 +229,17 @@ describe('coverage on a node:test project', () => {
 
     expect(changedBranchMessages(findings)).toEqual([
       'Branch coverage is 66.67%; minimum is 95%. Not taken: the default case at 8:5 (a switch that lists every member of a union needs no default: switch-exhaustiveness-check proves it complete). Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/colors.ts"],"function":"closed","reason":"..."} to "exceptions" in nitpicker.config.json.',
+    ]);
+  });
+  it('tells to test the default of a JavaScript switch that no test reaches', async () => {
+    const root = projects.project({
+      'package.json': { name: 'p', type: 'module', scripts: { test: 'node --test' } },
+      'src/main/codes.js': CODES_JS,
+      'test/codes.test.js': `${IMPORTS}import { label } from '../src/main/codes.js';\nit('names one', () => {\n  assert.equal(label(1), 'one');\n});\n`,
+    });
+    const findings = await runArea('coverage', root);
+    expect(changedBranchMessages(findings)).toEqual([
+      'Branch coverage is 50.00%; minimum is 95%. Not taken: the default case at 5:5 (pass a value that no case lists). Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/codes.js"],"function":"label","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
 });
