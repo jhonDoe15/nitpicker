@@ -46,6 +46,11 @@ const LOG_METHODS = new Set(['log', 'info', 'debug', 'warn', 'error', 'trace']);
 const WAIT_TYPES = new Set(['AwaitExpression', 'YieldExpression']);
 const CALL_TYPES = new Set(['CallExpression', 'NewExpression']);
 const WRITE_TYPES = new Set(['AssignmentExpression', 'UpdateExpression']);
+const DELAY_WAITS = new Set(['sleep', 'delay', 'wait', 'pause', 'waitForTimeout', 'setTimeout']);
+const POLLING_WAITS = new Set(['waitFor', 'waitUntil', 'poll', 'setImmediate']);
+const POLLING_FINDER = /^find(?:All)?By/u;
+const TIMER_SCHEDULERS = new Set(['setTimeout', 'setImmediate', 'setInterval']);
+const UNKNOWN_DELAY = Number.POSITIVE_INFINITY;
 
 function isClockReceiver(object) {
   const root = rootName(object);
@@ -114,9 +119,58 @@ function isWait(node, owners) {
   );
 }
 
+function calledName(callee) {
+  return callee.type === 'Identifier' ? callee.name : propertyName(callee);
+}
+
+function literalDelay(node, missing) {
+  if (node === undefined) {
+    return missing;
+  }
+  return node.type === 'Literal' && typeof node.value === 'number' ? node.value : UNKNOWN_DELAY;
+}
+
+function promiseTimerDelays(context, node) {
+  const executor = node.callee.name === 'Promise' ? node.arguments[0] : undefined;
+  if (executor === undefined || !isFunctionNode(executor)) {
+    return [];
+  }
+  return nodesIn(context, executor.body)
+    .filter((inner) => inner.type === 'CallExpression')
+    .filter((inner) => TIMER_SCHEDULERS.has(calledName(inner.callee)))
+    .map((inner) => literalDelay(inner.arguments[1], 0));
+}
+
+function drainDelays(context, node) {
+  if (node.type === 'NewExpression') {
+    return promiseTimerDelays(context, node);
+  }
+  const name = node.type === 'CallExpression' ? calledName(node.callee) : undefined;
+  if (DELAY_WAITS.has(name)) {
+    return [literalDelay(node.arguments[0], 0)];
+  }
+  return POLLING_WAITS.has(name) || POLLING_FINDER.test(name ?? '') ? [UNKNOWN_DELAY] : [];
+}
+
+function timerDrains(context, node, waits) {
+  const waited = waits && node.type !== 'ForOfStatement' ? node.argument : undefined;
+  if (waited === undefined || waited === null) {
+    return [];
+  }
+  return nodesIn(context, waited, (child) => !isFunctionNode(child)).flatMap((inner) =>
+    drainDelays(context, inner),
+  );
+}
+
 function nodeFacts(context, node, owners) {
   const calls = CALL_TYPES.has(node.type) ? callFacts(context, node) : {};
-  return { ...calls, waits: isWait(node, owners), writes: isMemberWrite(node) };
+  const waits = isWait(node, owners);
+  return {
+    ...calls,
+    waits,
+    drains: timerDrains(context, node, waits),
+    writes: isMemberWrite(node),
+  };
 }
 
 function runsInline({ context, bindings }, node) {
@@ -156,6 +210,7 @@ export function stepFacts(env, roots, owners) {
   const facts = reachableNodes(env, roots).map((node) => nodeFacts(env.context, node, owners));
   return {
     waits: facts.some((fact) => fact.waits),
+    drains: facts.flatMap((fact) => fact.drains),
     advances: facts.some((fact) => fact.advances),
     flushesMicrotasks: facts.some((fact) => fact.flushesMicrotasks),
     writes: facts.some((fact) => fact.writes),
@@ -220,9 +275,14 @@ export function ownerRoots(context, host, test) {
   return roots;
 }
 
+function hostDelay(host) {
+  const delay = host.name === 'setTimeout' ? literalDelay(host.node.arguments[1], 0) : 0;
+  return delay === UNKNOWN_DELAY ? 0 : delay;
+}
+
 export function isOwnedByLaterStep(host, facts) {
   if (host.kind === 'timer') {
-    return facts.waits || facts.advances;
+    return facts.advances || facts.drains.some((drain) => drain >= hostDelay(host));
   }
   if (host.kind === 'microtask') {
     return facts.waits || facts.flushesMicrotasks;
