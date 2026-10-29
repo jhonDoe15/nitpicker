@@ -3,6 +3,7 @@ import { hasAwaitility } from '../../../messages/wait-advice.mjs';
 import { pathInside, sourceFilesUnder } from '../../review-rules/java-sources.mjs';
 import { enumPredicateFindings } from './main/enum-predicates.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
+import { loadEffectFindings } from './main/load-effects.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
 import { unusedOptionFindings } from './main/unused-options.mjs';
 import { kotlinDesignFindings } from './design/kotlin-design.mjs';
@@ -81,6 +82,7 @@ export function readKotlinReviewFindings(context) {
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
     ...singularPluralFindings(own, { finding }),
+    ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...kotlinDesignFindings(reportRoot, { environment: context.environment }),
     ...unusedOptionFindings(own, {
       finding,

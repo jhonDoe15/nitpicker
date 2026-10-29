@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 
 function hasExportModifier(declaration) {
   return (ts.getCombinedModifierFlags(declaration) & ts.ModifierFlags.Export) !== 0;
