@@ -99,7 +99,7 @@ Quality gate summary
   prettier-format/prettier/prettier src/main/example.ts (2 times, lines 1, 3)
     Format these lines with Prettier
 Full diagnostics: ${root}/reports/dirty/report.txt
-nitpicker: base 2 analyzers cached
+nitpicker: base 2 analyzers cached (${root}/node_modules/.cache/nitpicker; use --no-cache to rerun)
 nitpicker: head: running 2 analyzers
 `;
 }
