@@ -815,8 +815,13 @@ hop, and type-only imports do not count.
   global: a function or variable of that name declared in scope is not a timer, and a bare
   `nextTick` counts only when imported from `node:process` (Vue's `nextTick` is not a timer):
   - timers: `setTimeout`, `setImmediate`, `requestAnimationFrame`, `requestIdleCallback`, also on
-    `globalThis`/`window` and imported from `node:timers` under any name. The test owns one when
-    a later step awaits anything, returns a value, or advances a fake clock (`vi.advanceTimersByTime`,
+    `globalThis`/`window` and imported from `node:timers` under any name. Awaiting an unrelated
+    promise only drains microtasks, so `await Promise.resolve()` or `await load()` does not own a
+    timer. The test owns one when a later step awaits or returns a timer wait at least as long as
+    the timer's literal delay (`sleep(n)`, `delay(n)`, `wait(n)`, `page.waitForTimeout(n)`,
+    `setTimeout(n)` from `node:timers/promises`, `new Promise((r) => setTimeout(r, n))`), awaits a
+    polling wait (`waitFor`, `vi.waitFor`, `waitUntil`, `expect.poll`, Testing Library `findBy*`),
+    or advances a fake clock (`vi.advanceTimersByTime`,
     `jest.runAllTimers`, `clock.tick`, `clock.next`, `jasmine.clock().tick`, `cy.tick`,
     `t.mock.timers.tick`, `page.clock.runFor`, ..., also inside a local helper the test calls, a
     function passed to another call such as `act(() => vi.advanceTimersByTime(10))`, or after

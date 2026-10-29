@@ -24,7 +24,7 @@ runCases('no-unowned-async-assertion owners inside nested statements and callbac
     "it('x', () => { setTimeout(() => expect(a).toBe(1), 10); return sleep(20); });",
     "it('x', () => { setTimeout(() => expect(a).toBe(1), 10); return new Promise((r) => setTimeout(r, 20)); });",
     "it('x', () => { queueMicrotask(() => expect(a).toBe(1)); return Promise.resolve(); });",
-    "it('x', async () => { setTimeout(() => expect(a).toBe(1), 10); await using lock = acquire(); });",
+    "it('x', async () => { queueMicrotask(() => expect(a).toBe(1)); await using lock = acquire(); });",
     "it('x', () => { const sync = () => { setTimeout(() => expect(a).toBe(1)); }; sync(); return sleep(5); });",
   ],
   invalid: [
