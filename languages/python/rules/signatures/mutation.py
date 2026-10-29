@@ -3,11 +3,14 @@ import ast
 from checks.common import dotted_name, finding
 from signatures.annotations import (
     FUNCTION_TYPES,
+    decorator_names,
     is_hook,
     members_of,
     parameters_of,
     qualified_name,
 )
+from signatures.copies import copy_positions
+from signatures.scopes import key_of, position, visible_nodes
 
 RULE = "parameter-mutation"
 CONTAINERS = {
@@ -86,6 +89,10 @@ MODULE_MUTATORS = {
 }
 
 
+FIXED_SIGNATURE_DECORATORS = {"override", "overload"}
+ANY_MUTATORS = set().union(*CONTAINERS.values())
+
+
 def container_kind(annotation):
     return next(
         (KIND_BY_NAME[name] for name in members_of(annotation) if name in KIND_BY_NAME),
@@ -101,98 +108,136 @@ def container_parameters(function):
     return {name: kind for name, kind in kinds.items() if kind is not None}
 
 
-def base_name(node):
+def root_key(node):
     while isinstance(node, ast.Subscript):
         node = node.value
-    return node.id if isinstance(node, ast.Name) else None
+    return key_of(node)
 
 
-def rebound_names(function):
-    augmented = {
-        id(node.target)
-        for node in ast.walk(function)
-        if isinstance(node, ast.AugAssign)
-    }
-    return {
-        node.id
-        for node in ast.walk(function)
-        if isinstance(node, ast.Name)
-        and isinstance(node.ctx, ast.Store)
-        and id(node) not in augmented
-    }
+def flattened(targets):
+    pending = list(targets)
+    for target in pending:
+        if isinstance(target, (ast.Tuple, ast.List)):
+            pending.extend(target.elts)
+        elif isinstance(target, ast.Starred):
+            pending.append(target.value)
+        else:
+            yield target
 
 
 def targets_of(node):
-    if isinstance(node, ast.Assign):
-        return node.targets
+    if isinstance(node, (ast.Assign, ast.Delete)):
+        return list(flattened(node.targets))
     if isinstance(node, (ast.AugAssign, ast.AnnAssign)):
-        return [node.target]
-    if isinstance(node, ast.Delete):
-        return node.targets
+        return list(flattened([node.target]))
     return []
 
 
-def item_label(node, names):
-    for target in targets_of(node):
-        if isinstance(target, ast.Subscript) and base_name(target) in names:
-            return f"{base_name(target)}[...]"
-    return None
+def item_labels(node, kinds):
+    return [
+        f"{root_key(target)}[...]"
+        for target in targets_of(node)
+        if isinstance(target, ast.Subscript) and root_key(target) in kinds
+    ]
 
 
-def augmented_label(node, kinds):
-    if isinstance(node, ast.AugAssign) and isinstance(node.target, ast.Name):
-        kind = kinds.get(node.target.id)
+def augmented_labels(node, kinds):
+    if isinstance(node, ast.AugAssign):
+        key = key_of(node.target)
+        kind = kinds.get(key)
         if kind and isinstance(node.op, IN_PLACE_OPERATORS[kind]):
-            return f"{node.target.id} {OPERATOR_SYMBOLS[type(node.op)]}"
-    return None
+            return [f"{key} {OPERATOR_SYMBOLS[type(node.op)]}"]
+    return []
 
 
-def call_label(node, kinds, context):
+def call_labels(node, kinds, context):
     if not isinstance(node, ast.Call):
-        return None
+        return []
     func = node.func
-    if (
-        isinstance(func, ast.Attribute)
-        and isinstance(func.value, ast.Name)
-        and func.value.id in kinds
-        and func.attr in CONTAINERS[kinds[func.value.id]]
-    ):
-        return f"{func.value.id}.{func.attr}"
+    if isinstance(func, ast.Attribute):
+        key = key_of(func.value)
+        if key in kinds and func.attr in CONTAINERS[kinds[key]]:
+            return [f"{key}.{func.attr}"]
+        if (
+            isinstance(func.value, ast.Subscript)
+            and root_key(func.value) in kinds
+            and func.attr in ANY_MUTATORS
+        ):
+            return [f"{root_key(func.value)}[...].{func.attr}"]
     first = node.args[0] if node.args else None
-    if (
-        dotted_name(func, context.aliases) in MODULE_MUTATORS
-        and isinstance(first, ast.Name)
-        and first.id in kinds
+    name = dotted_name(func, context.aliases)
+    if name in MODULE_MUTATORS and key_of(first) in kinds:
+        return [f"{name}({key_of(first)})"]
+    return []
+
+
+def mutation_labels(node, kinds, context):
+    return [
+        *item_labels(node, kinds),
+        *augmented_labels(node, kinds),
+        *call_labels(node, kinds, context),
+    ]
+
+
+def alias_keys(nodes, name):
+    keys = set()
+    for node in nodes:
+        if isinstance(node, ast.Assign) and key_of(node.value) == name:
+            keys.update(
+                key
+                for key in map(key_of, node.targets)
+                if key is not None and key != name
+            )
+    return keys
+
+
+def parameter_findings(function, name, kind, context):
+    nodes = visible_nodes(function, name)
+    kinds = dict.fromkeys({name, *alias_keys(nodes, name)}, kind)
+    events = [
+        (position(node), label, node)
+        for node in nodes
+        if hasattr(node, "lineno")
+        for label in mutation_labels(node, kinds, context)
+    ]
+    first = min((event[0] for event in events), default=None)
+    if first is None or any(
+        copied < first for copied in copy_positions(nodes, name, context)
     ):
-        return f"{dotted_name(func, context.aliases)}({first.id})"
-    return None
+        return []
+    reported, found = set(), []
+    for _, label, node in events:
+        if label not in reported:
+            reported.add(label)
+            subject = f"{label} ({qualified_name(function, context)})"
+            found.append(finding(context.path, RULE, subject, node))
+    return found
 
 
-def mutation_label(node, kinds, context):
-    return (
-        item_label(node, kinds)
-        or augmented_label(node, kinds)
-        or call_label(node, kinds, context)
-    )
+def enclosing_function(node, context):
+    parent = context.parents.get(id(node))
+    while parent is not None and not isinstance(parent, FUNCTION_TYPES):
+        parent = context.parents.get(id(parent))
+    return parent
+
+
+def is_private_helper(function, context):
+    private = function.name.startswith("_") and not function.name.startswith("__")
+    return private or enclosing_function(function, context) is not None
 
 
 def function_findings(function, context):
-    rebound = rebound_names(function)
-    kinds = {
-        name: kind
+    if (
+        is_hook(function)
+        or is_private_helper(function, context)
+        or decorator_names(function) & FIXED_SIGNATURE_DECORATORS
+    ):
+        return []
+    return [
+        item
         for name, kind in container_parameters(function).items()
-        if name not in rebound and not is_hook(function)
-    }
-    reported = set()
-    found = []
-    for node in ast.walk(function) if kinds else []:
-        label = mutation_label(node, kinds, context)
-        if label is None or label in reported:
-            continue
-        reported.add(label)
-        subject = f"{label} ({qualified_name(function, context)})"
-        found.append(finding(context.path, RULE, subject, node))
-    return found
+        for item in parameter_findings(function, name, kind, context)
+    ]
 
 
 def check(context):

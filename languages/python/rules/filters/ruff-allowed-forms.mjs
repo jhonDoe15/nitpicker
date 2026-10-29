@@ -8,6 +8,8 @@ const FIXED_COMMAND = /seems safe, but may be changed in the future/;
 const TEST_FILE_NOISE = /^(?:ARG|DTZ|FBT|PLR2004|S\d)/u;
 const COMMENT_LABEL = /^\s*#+\s*(?:[A-Z][A-Za-z]*(?: [A-Za-z]+){0,2}:\s+\S|e\.g\.|i\.e\.)/u;
 const COMMENTED_CODE_RULE = 'ERA001';
+const CALENDAR_PARSE_RULE = 'DTZ007';
+const CALENDAR_PARSE = /strptime\(.*\)\s*\.(?:date|time)\(\s*\)/u;
 
 function isAllowedNumber(message) {
   const text = MAGIC_VALUE.exec(message)?.[1];
@@ -19,6 +21,13 @@ function isLabelComment({ rule, path, location }, lineOf) {
     return false;
   }
   return COMMENT_LABEL.test(lineOf(path, location.line) ?? '');
+}
+
+function isCalendarParse({ rule, path, location }, lineOf) {
+  if (rule !== CALENDAR_PARSE_RULE || location?.line === undefined) {
+    return false;
+  }
+  return CALENDAR_PARSE.test(lineOf(path, location.line) ?? '');
 }
 
 function siteKey({ rule, path, line }) {
@@ -37,7 +46,7 @@ function isAllowedForm(finding, { testFiles, supportFiles, sites, lineOf }) {
   if (isSupportSecurityFinding(finding, supportFiles) || isAllowedSite(finding, sites)) {
     return true;
   }
-  if (isLabelComment(finding, lineOf)) {
+  if (isLabelComment(finding, lineOf) || isCalendarParse(finding, lineOf)) {
     return true;
   }
   if (rule === MAGIC_VALUE_RULE) {

@@ -16,6 +16,7 @@ TRANSPARENT_WRAPPERS = {
 }
 NONE_MEMBER = "None"
 HOOK_PREFIX = "pytest_"
+MAX_ANNOTATION_DEPTH = 24
 
 
 def subscript_arguments(annotation):
@@ -23,36 +24,40 @@ def subscript_arguments(annotation):
     return inner.elts if isinstance(inner, ast.Tuple) else [inner]
 
 
-def subscript_members(annotation):
+def subscript_members(annotation, depth):
     wrapper = last_name(annotation.value)
     arguments = subscript_arguments(annotation)
     if wrapper in UNION_WRAPPERS or wrapper in OPTIONAL_WRAPPERS:
-        members = [name for argument in arguments for name in members_of(argument)]
-        return members + [NONE_MEMBER] if wrapper in OPTIONAL_WRAPPERS else members
+        members = [
+            name for argument in arguments for name in members_of(argument, depth + 1)
+        ]
+        return [*members, NONE_MEMBER] if wrapper in OPTIONAL_WRAPPERS else members
     if wrapper in TRANSPARENT_WRAPPERS:
-        return members_of(arguments[0])
+        return members_of(arguments[0], depth + 1) if arguments else []
     return [wrapper] if wrapper else []
 
 
-def string_members(annotation):
+def string_members(annotation, depth):
     try:
         parsed = ast.parse(annotation.value.strip(), mode="eval").body
-    except SyntaxError:
+    except (SyntaxError, ValueError, RecursionError, MemoryError):
         return []
-    return members_of(parsed)
+    return members_of(parsed, depth + 1)
 
 
-def members_of(annotation):
-    if annotation is None:
+def members_of(annotation, depth=0):
+    if annotation is None or depth > MAX_ANNOTATION_DEPTH:
         return []
     if isinstance(annotation, ast.Constant):
         if isinstance(annotation.value, str):
-            return string_members(annotation)
+            return string_members(annotation, depth)
         return [NONE_MEMBER] if annotation.value is None else []
     if isinstance(annotation, ast.BinOp) and isinstance(annotation.op, ast.BitOr):
-        return members_of(annotation.left) + members_of(annotation.right)
+        return members_of(annotation.left, depth + 1) + members_of(
+            annotation.right, depth + 1
+        )
     if isinstance(annotation, ast.Subscript):
-        return subscript_members(annotation)
+        return subscript_members(annotation, depth)
     name = last_name(annotation)
     return [name] if name else []
 

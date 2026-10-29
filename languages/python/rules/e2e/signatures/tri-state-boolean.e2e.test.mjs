@@ -97,6 +97,31 @@ describe.skipIf(!enabled)('tri-state-boolean', () => {
       ],
       ['a type alias', 'Flag = bool | None\n', []],
       [
+        'a method of a class with a base from another module',
+        'from .base import Base\n\n\nclass Child(Base):\n    def check(self, flag: bool | None) -> bool | None:\n        return flag\n',
+        [],
+      ],
+      [
+        'a method that overrides a base of the module',
+        'class Base:\n    def check(self) -> None:\n        pass\n\n\nclass Child(Base):\n    def check(self, flag: bool | None = None) -> None:\n        pass\n',
+        [],
+      ],
+      [
+        'a protocol hook of asyncio',
+        'class Handler:\n    def eof_received(self) -> bool | None:\n        return None\n',
+        [],
+      ],
+      [
+        'fields of data mapped from outside',
+        'from sqlalchemy.orm import DeclarativeBase\nfrom sqlmodel import SQLModel\n\n\nclass Payload(SQLModel):\n    consent: bool | None = None\n\n\nclass Row(DeclarativeBase):\n    active: bool | None = None\n\n\nclass Detail(Payload):\n    flag: bool | None = None\n',
+        [],
+      ],
+      [
+        'an empty Annotated does not stop the run',
+        'from typing import Annotated\n\n\ndef f(a: Annotated[()]) -> None:\n    pass\n',
+        [],
+      ],
+      [
         'a test file',
         inFile('tests/test_mod.py', 'def helper(flag: bool | None = None) -> None:\n    pass\n'),
         [],

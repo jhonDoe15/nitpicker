@@ -131,4 +131,64 @@ describe.skipIf(!enabled)('parameter-mutation', () => {
     ]);
     expect(actual).toEqual(expected);
   });
+
+  it('follows aliases, nested subscripts and every target of a statement', () => {
+    const [actual, expected] = outcomes([
+      [
+        'an alias and a stored attribute',
+        'class Bag:\n    def put(self, items: list[int]) -> None:\n        alias = items\n        alias.append(1)\n\n    def keep(self, items: list[int]) -> None:\n        self.items = items\n        self.items.append(1)\n',
+        [
+          'parameter-mutation:4 alias.append (Bag.put)',
+          'parameter-mutation:8 self.items.append (Bag.keep)',
+        ],
+      ],
+      [
+        'a nested subscript call',
+        'def f(table: dict[str, list[int]]) -> None:\n    table["a"].append(1)\n',
+        ['parameter-mutation:2 table[...].append (f)'],
+      ],
+      [
+        'del and tuple targets',
+        'def f(a: list[int], b: dict[str, int]) -> None:\n    del a[0], b["k"]\n    a[0], b["x"] = 1, 2\n',
+        ['parameter-mutation:2 a[...] (f)', 'parameter-mutation:2 b[...] (f)'],
+      ],
+      [
+        'an empty default is not a copy of the caller value',
+        'def f(items: list[int] | None = None) -> None:\n    items = items or []\n    items.append(1)\n\n\ndef g(items: list[int] | None = None) -> None:\n    if items is None:\n        items = []\n    items.append(1)\n',
+        ['parameter-mutation:3 items.append (f)', 'parameter-mutation:9 items.append (g)'],
+      ],
+      [
+        'a copy made after the first mutation',
+        'def f(items: list[int]) -> list[int]:\n    items.append(1)\n    items = list(items)\n    return items\n',
+        ['parameter-mutation:2 items.append (f)'],
+      ],
+    ]);
+    expect(actual).toEqual(expected);
+  });
+
+  it('leaves copies of every kind, other scopes and private helpers alone', () => {
+    const [actual, expected] = outcomes([
+      [
+        'copies of every kind before the first mutation',
+        'import copy\n\n\ndef a(x: list[int]) -> None:\n    x = x.copy()\n    x.append(1)\n\n\ndef b(x: list[int]) -> None:\n    x = sorted(x)\n    x.append(1)\n\n\ndef c(x: list[int]) -> None:\n    x = copy.deepcopy(x)\n    x.append(1)\n\n\ndef d(x: list[int]) -> None:\n    x = x[:]\n    x.append(1)\n\n\ndef e(x: list[int]) -> None:\n    x = [*x]\n    x.append(1)\n',
+        [],
+      ],
+      [
+        'comprehension variables and lambda parameters are their own scope',
+        'def f(items: list[int]) -> list[list[int]]:\n    rows = [[1], [2]]\n    out = [items.append for items in rows]\n    run = lambda items: items.append(1)\n    return [row for row in out if run(row)]\n',
+        [],
+      ],
+      [
+        'a private helper and a nested helper',
+        'def _collect(out: list[int]) -> None:\n    out.append(1)\n\n\ndef run() -> None:\n    def inner(out: list[int]) -> None:\n        out.append(1)\n\n    inner([])\n',
+        [],
+      ],
+      [
+        'an overriding method',
+        'from typing import override\n\n\nclass A(B):\n    @override\n    def fill(self, out: list[int]) -> None:\n        out.append(1)\n',
+        [],
+      ],
+    ]);
+    expect(actual).toEqual(expected);
+  });
 });

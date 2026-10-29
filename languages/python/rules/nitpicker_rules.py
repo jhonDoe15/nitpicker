@@ -10,6 +10,7 @@ MINIMUM_PYTHON = (3, 10)
 SKIPPED_RULE = "rules-skipped"
 CHECK_FAILED_RULE = "rules-check-failed"
 ALLOWANCES_REPORT = "rules-allowances.json"
+GUARDED_PREFIXES = ("security.", "signatures.")
 
 
 def load_checks():
@@ -94,7 +95,7 @@ def parse_file(path):
 
 
 def is_guarded(module):
-    return module.__name__.startswith("security.")
+    return module.__name__.startswith(GUARDED_PREFIXES)
 
 
 def check_failure(module, context, error):

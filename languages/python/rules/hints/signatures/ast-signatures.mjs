@@ -12,7 +12,7 @@ function mutationDescription(subject = '') {
 
 function shimDescription(subject = '') {
   if (subject === '__getattr__') {
-    return 'A module `__getattr__` resolves names that no longer exist';
+    return 'A module `__getattr__` keeps names that were removed or renamed working';
   }
   if (subject.startsWith('warnings.warn')) {
     return 'A deprecation warning keeps an old call working next to its replacement';
@@ -32,7 +32,7 @@ export const SIGNATURE_HINTS = [
     rules: ['tri-state-boolean'],
     describe: (subject) => `\`${subject}\` is a boolean that can also be \`None\`, a third state`,
     allowed:
-      'Name the three states with an enum (`class Consent(Enum)` with `GRANTED`, `DENIED` and `UNKNOWN`), or take a plain `bool` with a default (`urgent: bool = False`) when `None` only means false.',
+      'Name the three states with an enum (`class Consent(Enum)` with `GRANTED`, `DENIED` and `UNKNOWN`), or take a keyword-only `bool` with a default (`*, urgent: bool = False`) when `None` only means false. A method that overrides a base class takes `@typing.override` and keeps the base signature.',
   },
   {
     tool: RULES_TOOL,
