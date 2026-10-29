@@ -194,8 +194,8 @@ describe('publishing a staged cache folder', () => {
   it('rethrows when the move fails and no target exists', () => {
     const { root } = staged('unused', '');
 
-    expect(() => publishDirectory(path.join(root, 'missing'), path.join(root, 'target'))).toThrow(
-      /ENOENT/u,
-    );
+    expect(() => {
+      publishDirectory(path.join(root, 'missing'), path.join(root, 'target'));
+    }).toThrow(/ENOENT/u);
   });
 });
