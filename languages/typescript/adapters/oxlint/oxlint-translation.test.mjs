@@ -55,6 +55,23 @@ describe('translateRule', () => {
     });
   });
 
+  it.each([
+    ['jest/expect-expect', 'js-jest', 'jest'],
+    ['node-test/no-focused-tests', 'js-node-test', 'node-test'],
+    ['mocha/no-identical-title', 'js-mocha', 'mocha'],
+  ])('bridges %s as the ESLint rule, never as an oxlint port', (ruleId, alias, namespace) => {
+    const withPorts = nativeRuleIndex([
+      { scope: 'jest', value: 'expect-expect', type_aware: false },
+      { scope: 'jest', value: 'no-focused-tests', type_aware: false },
+      { scope: 'mocha', value: 'no-identical-title', type_aware: false },
+    ]);
+
+    const translated = translateRule(ruleId, { nativeRules: withPorts });
+
+    expect(translated.name).toBe(`${alias}/${ruleId.split('/')[1]}`);
+    expect(translated.plugin).toEqual({ namespace, alias });
+  });
+
   it('loads a rule from its ESLint plugin when asked to, even if oxlint has a port', () => {
     const bridgedRules = new Set(['vitest/expect-expect']);
     expect(translateRule('vitest/expect-expect', { nativeRules, bridgedRules }).name).toBe(

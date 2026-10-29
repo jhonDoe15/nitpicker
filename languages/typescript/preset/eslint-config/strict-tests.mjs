@@ -46,7 +46,7 @@ export function strictTestConfigFor(layout = defaultResolvedLayout) {
     },
     {
       files: testAreaGlobsFor(layout),
-      ignores: [...layout.excludedGlobs, `**/*.{test,spec}.${codeExtensions}`],
+      ignores: [...layout.excludedGlobs, ...layout.runnableTestGlobs],
       plugins: { nitpicker: nitpickerRules },
       rules: strictTestHelperRules,
     },

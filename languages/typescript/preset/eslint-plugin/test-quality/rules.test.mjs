@@ -18,6 +18,7 @@ const tester = new RuleTester({
   languageOptions: { ecmaVersion: 'latest', sourceType: 'module', parser: tseslint.parser },
 });
 const lines = (...parts) => parts.join('\n');
+const EACH_CASE = 'give each case its own test with it.each';
 
 tester.run('no-shared-test-state', noSharedTestState, {
   valid: [
@@ -85,19 +86,19 @@ tester.run('no-copy-pasted-tests', noCopyPastedTests, {
   invalid: [
     {
       code: copies(3),
-      errors: [{ messageId: 'copiedTest', data: { count: '2' }, line: 3 }],
+      errors: [{ messageId: 'copiedTest', data: { count: '2', eachCase: EACH_CASE }, line: 3 }],
     },
     {
       code: copies(5),
       errors: [
-        { messageId: 'copiedTest', data: { count: '4' }, line: 3 },
-        { messageId: 'copiedTest', data: { count: '4' }, line: 4 },
-        { messageId: 'copiedTest', data: { count: '4' }, line: 5 },
+        { messageId: 'copiedTest', data: { count: '4', eachCase: EACH_CASE }, line: 3 },
+        { messageId: 'copiedTest', data: { count: '4', eachCase: EACH_CASE }, line: 4 },
+        { messageId: 'copiedTest', data: { count: '4', eachCase: EACH_CASE }, line: 5 },
       ],
     },
     {
       code: `describe('x', () => {\n${copies(3)}\n});`,
-      errors: [{ messageId: 'copiedTest', data: { count: '2' }, line: 4 }],
+      errors: [{ messageId: 'copiedTest', data: { count: '2', eachCase: EACH_CASE }, line: 4 }],
     },
     {
       code: lines(
@@ -105,7 +106,7 @@ tester.run('no-copy-pasted-tests', noCopyPastedTests, {
         "test('b', () => { expect(`id-${make('b')}`).toBe('y'); });",
         "test('c', () => { expect(`id-${make('c')}`).toBe('z'); });",
       ),
-      errors: [{ messageId: 'copiedTest', data: { count: '2' } }],
+      errors: [{ messageId: 'copiedTest', data: { count: '2', eachCase: EACH_CASE } }],
     },
   ],
 });
@@ -160,6 +161,96 @@ tester.run('fake-timers-require-restore', fakeTimersRequireRestore, {
       code: "it('a', () => { vi.stubGlobal('fetch', run); vi.stubEnv('MODE', 'x'); });",
       options: [{ globals: false, envs: true }],
       errors: [{ messageId: 'unrestoredEnv' }],
+    },
+  ],
+});
+
+tester.run('no-copy-pasted-tests names the table form of the runner', noCopyPastedTests, {
+  valid: [],
+  invalid: [
+    {
+      code: lines(
+        "it('a', () => { assert.equal(add(1), 2); });",
+        "it('b', () => { assert.equal(add(2), 3); });",
+        "it('c', () => { assert.equal(add(3), 4); });",
+      ),
+      options: [{ runner: 'node' }],
+      errors: [
+        {
+          messageId: 'copiedTest',
+          data: {
+            count: '2',
+            eachCase:
+              'give each case its own test: `for (const testCase of cases) { it(testCase.name, () => { ... }); }`',
+          },
+        },
+      ],
+    },
+  ],
+});
+
+tester.run('fake-timers-require-restore under every runner', fakeTimersRequireRestore, {
+  valid: [
+    "afterEach(() => { jest.useRealTimers(); }); it('a', () => { jest.useFakeTimers(); });",
+    "import { jest } from '@jest/globals'; afterAll(() => jest.useRealTimers()); jest.useFakeTimers();",
+    "import { mock } from 'node:test'; afterEach(() => { mock.timers.reset(); }); it('a', () => { mock.timers.enable(); });",
+    "import { mock } from 'node:test'; after(() => mock.reset()); before(() => { mock.timers.enable(); });",
+    "test('a', (t) => { t.mock.timers.enable({ apis: ['Date'] }); });",
+    'let clock; beforeEach(() => { clock = sinon.useFakeTimers(); }); afterEach(() => { clock.restore(); });',
+    "import sinon from 'sinon'; afterEach(() => sinon.restore()); it('a', () => { sinon.useFakeTimers(); });",
+    "import FakeTimers from '@sinonjs/fake-timers'; let clock; beforeEach(() => { clock = FakeTimers.install(); }); afterEach(() => clock.uninstall());",
+    "it('a', () => { jest.useFakeTimers(); try { run(); } finally { jest.useRealTimers(); } });",
+    'export const mochaHooks = { beforeEach() { this.clock = sinon.useFakeTimers(); }, afterEach() { this.clock.restore(); } };',
+    "import { useFakeTimers } from 'sinon'; let clock; beforeEach(() => { clock = useFakeTimers(); }); afterEach(() => clock.restore());",
+  ],
+  invalid: [
+    {
+      code: "import { useFakeTimers } from 'sinon'; beforeEach(() => { useFakeTimers(); });",
+      errors: [{ messageId: 'unrestored' }],
+    },
+    {
+      code: "import test from 'node:test'; test('a', () => { test.mock.timers.enable(); });",
+      errors: [{ messageId: 'unrestored' }],
+    },
+    {
+      code: "import * as nt from 'node:test'; nt.it('a', () => { nt.mock.timers.enable(); });",
+      errors: [{ messageId: 'unrestored' }],
+    },
+    {
+      code: "it('a', () => { jest.useFakeTimers(); run(); });",
+      errors: [
+        {
+          messageId: 'unrestored',
+          data: { restore: '`afterEach(() => { jest.useRealTimers(); });`' },
+        },
+      ],
+    },
+    {
+      code: "import { mock } from 'node:test'; afterEach(() => { mock.restoreAll(); }); it('a', () => { mock.timers.enable(); });",
+      errors: [{ messageId: 'unrestored' }],
+    },
+    {
+      code: "import sinon from 'sinon'; it('a', () => { const clock = sinon.useFakeTimers(); clock.tick(10); });",
+      errors: [{ messageId: 'unrestored' }],
+    },
+    {
+      code: "afterEach(() => { vi.useRealTimers(); }); it('a', () => { jest.useFakeTimers(); });",
+      errors: [{ messageId: 'unrestored' }],
+    },
+    {
+      code: lines(
+        "import userEvent from '@testing-library/user-event';",
+        "it('clicks', async () => { jest.useFakeTimers(); await userEvent.setup().click(button); });",
+      ),
+      errors: [
+        {
+          messageId: 'unrestoredWithUserEvent',
+          data: {
+            restore: '`afterEach(() => { jest.useRealTimers(); });`',
+            advance: 'jest.advanceTimersByTime',
+          },
+        },
+      ],
     },
   ],
 });

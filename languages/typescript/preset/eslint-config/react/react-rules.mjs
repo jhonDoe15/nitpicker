@@ -55,24 +55,26 @@ export const reactRuleIds = [
   ...accessibilityRuleNames.map((name) => `jsx-a11y/${name}`),
 ];
 
-export const testingLibraryHints = {
-  'await-async-events': `. Await the call: \`await user.<event>(...)\`. An exception fits only on user-event v13, whose calls are synchronous.`,
-  'await-async-queries': `. Await it: \`await screen.findByRole(...)\`.`,
-  'await-async-utils': `. Await it: \`await waitFor(...)\`.`,
-  'no-debugging-utils': `. Remove the debug output and assert what you were looking for: \`expect(screen.getByRole(...)).toBeVisible()\`.`,
-  'no-manual-cleanup': ` Testing Library unmounts after each test by itself in this project: remove the call.`,
-  'no-node-access': ` Use \`screen.getByRole(...)\` or \`within(...)\`, and \`toHaveFocus()\` for focus.`,
-  'no-test-id-queries': ` Use \`screen.getByRole('button', { name: 'Save' })\`.`,
-  'no-unnecessary-act': `: \`render\` and \`user\` events already run in \`act\`. Call them directly.`,
-  'prefer-presence-queries': `: \`expect(screen.getByText('Saved')).toBeInTheDocument()\`, \`expect(screen.queryByText('Error')).not.toBeInTheDocument()\`.`,
-  'prefer-screen-queries': `. For part of the page use \`within(element).getByRole(...)\`.`,
-  'prefer-user-event': `. Use \`await user.click(button)\`.`,
-  'prefer-user-event-setup': `, with \`import { userEvent } from '@testing-library/user-event'\`.`,
-};
+export function testingLibraryHintsFor({ assertVisible, assertFocus }) {
+  return {
+    'await-async-events': `. Await the call: \`await user.<event>(...)\`. An exception fits only on user-event v13, whose calls are synchronous.`,
+    'await-async-queries': `. Await it: \`await screen.findByRole(...)\`.`,
+    'await-async-utils': `. Await it: \`await waitFor(...)\`.`,
+    'no-debugging-utils': `. Remove the debug output and assert what you were looking for: ${assertVisible}.`,
+    'no-manual-cleanup': ` Testing Library unmounts after each test by itself in this project: remove the call.`,
+    'no-node-access': ` Use \`screen.getByRole(...)\` or \`within(...)\`, and ${assertFocus} for focus.`,
+    'no-test-id-queries': ` Use \`screen.getByRole('button', { name: 'Save' })\`.`,
+    'no-unnecessary-act': `: \`render\` and \`user\` events already run in \`act\`. Call them directly.`,
+    'prefer-presence-queries': `: \`expect(screen.getByText('Saved')).toBeInTheDocument()\`, \`expect(screen.queryByText('Error')).not.toBeInTheDocument()\`.`,
+    'prefer-screen-queries': `. For part of the page use \`within(element).getByRole(...)\`.`,
+    'prefer-user-event': `. Use \`await user.click(button)\`.`,
+    'prefer-user-event-setup': `, with \`import { userEvent } from '@testing-library/user-event'\`.`,
+  };
+}
 
-const testingLibraryRuleIds = Object.keys(testingLibraryHints).map(
-  (name) => `testing-library/${name}`,
-);
+const testingLibraryRuleIds = Object.keys(
+  testingLibraryHintsFor({ assertVisible: '', assertFocus: '' }),
+).map((name) => `testing-library/${name}`);
 
 export const reactTestRuleIds = [
   'nitpicker/hover-test-needs-keyboard',

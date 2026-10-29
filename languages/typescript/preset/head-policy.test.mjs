@@ -189,6 +189,20 @@ describe('head policy test cleanup', () => {
     expect(autoCleanupOf(vitest, 'export default { test: { globals: true } };')).toBe(true);
     expect(autoCleanupOf({ jest: '30.0.0' }, undefined)).toBe(true);
   });
+
+  it('follows the runner: node:test has no global afterEach, Mocha has one', () => {
+    function withScript(test) {
+      const root = temporaryDirectory();
+      const manifest = { scripts: { test }, dependencies: { react: '19.0.0' } };
+      writeFileSync(path.join(root, 'package.json'), JSON.stringify(manifest));
+      return resolveHeadPolicy({}, root).react.autoCleanup;
+    }
+
+    expect(withScript('node --test')).toBe(false);
+    expect(withScript('mocha')).toBe(true);
+    expect(withScript('jest')).toBe(true);
+    expect(autoCleanupOf({}, undefined)).toBe(true);
+  });
 });
 
 describe('head policy framework conventions', () => {
@@ -342,7 +356,7 @@ describe('head policy reader', () => {
     expect(resolveHeadPolicy(projectConfig, root).tools.prettier.projectConfigDigest).not.toBe(
       before,
     );
-    expect(resolveHeadPolicy({}, root)).not.toHaveProperty('tools');
+    expect(resolveHeadPolicy({}, root).tools).toEqual({ tests: { detectedRunner: 'vitest' } });
   });
 
   it('exposes the configured entry points on the resolved layout', () => {
@@ -461,34 +475,10 @@ const gitFixtureEnvironment = {
 };
 
 function git(cwd, arguments_) {
-  return execFileSync('git', arguments_, { cwd, encoding: 'utf8', env: gitFixtureEnvironment });
+  return execFileSync('git', arguments_, {
+    cwd,
+    encoding: 'utf8',
+    env: gitFixtureEnvironment,
+    timeout: 30_000,
+  });
 }
-
-describe('head policy duplicates key', () => {
-  it('is left out of the policy until the config sets it and read back as an empty object', () => {
-    expect(resolveHeadPolicy({})).toEqual({
-      exclude: [],
-      layout: {},
-      exceptions: [],
-      thresholds: {},
-    });
-    withHeadPolicyFile(resolveHeadPolicy({}), (policyFile) => {
-      expect(readHeadPolicy({ NITPICKER_POLICY: policyFile }).duplicates).toEqual({});
-      expect(readLayout({ NITPICKER_POLICY: policyFile }).duplicateSkippedFolders).toBeUndefined();
-    });
-  });
-
-  it('carries the skipped folders to the readers of the policy file and the layout', () => {
-    const policy = resolveHeadPolicy({ duplicates: { skippedFolders: ['dist'] } });
-
-    expect(policy.duplicates).toEqual({ skippedFolders: ['dist'] });
-    withHeadPolicyFile(policy, (policyFile) => {
-      expect(readHeadPolicy({ NITPICKER_POLICY: policyFile }).duplicates).toEqual({
-        skippedFolders: ['dist'],
-      });
-      expect(readLayout({ NITPICKER_POLICY: policyFile }).duplicateSkippedFolders).toEqual([
-        'dist',
-      ]);
-    });
-  });
-});

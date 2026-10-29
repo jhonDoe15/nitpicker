@@ -1,5 +1,11 @@
 import { chainOf } from '../../analysis/ancestry.mjs';
 import { isExpectCall, memberName } from '../../analysis/test-code-analysis.mjs';
+import {
+  isFragmentMatch,
+  isTextArgument,
+  runnerAssertionVerdict,
+} from '../../runner-apis/runner-assertions.mjs';
+import { RUNNER_OPTION_SCHEMA, vocabularyOf } from '../../runner-apis/runner-option.mjs';
 
 const PARTIAL_MATCHERS = new Set(['toContain', 'toContainEqual', 'toMatch']);
 const WHOLE_VALUE_MATCHERS = new Set(['toEqual', 'toStrictEqual']);
@@ -26,25 +32,6 @@ function startsFromExpect(callee) {
   return root !== undefined && isExpectCall(root);
 }
 
-function isTextArgument(node) {
-  return (
-    (node?.type === 'Literal' && typeof node.value === 'string') || node?.type === 'TemplateLiteral'
-  );
-}
-
-function isAnchoredPattern(node) {
-  const pattern = node.regex?.pattern;
-  return pattern?.startsWith('^') === true && pattern.endsWith('$') && !pattern.endsWith('\\$');
-}
-
-function isFragmentMatch(node) {
-  const argument = node.arguments[0];
-  if (argument?.type === 'Literal' && argument.regex !== undefined) {
-    return !isAnchoredPattern(argument);
-  }
-  return isTextArgument(argument);
-}
-
 function isPositiveExpectation(callee) {
   return startsFromExpect(callee) && !isNegatedExpectation(callee);
 }
@@ -61,7 +48,7 @@ function isPartialAssertion(node) {
   if (matcher === 'toContain' && !isTextArgument(node.arguments[0])) {
     return false;
   }
-  if (matcher === 'toMatch' && !isFragmentMatch(node)) {
+  if (matcher === 'toMatch' && !isFragmentMatch(node.arguments[0])) {
     return false;
   }
   return isPositiveExpectation(callee);
@@ -115,28 +102,45 @@ function isPartialMatcherAssertion(node) {
   return WHOLE_VALUE_MATCHERS.has(matcher) && node.arguments.some(containsPartialMatcher);
 }
 
+function verdictOf(node) {
+  if (isPartialAssertion(node)) {
+    return 'partialOutput';
+  }
+  return isPartialMatcherAssertion(node) ? 'partialMatcher' : runnerAssertionVerdict(node);
+}
+
+function reportedNode(node) {
+  return node.callee.type === 'MemberExpression' ? node.callee.property : node.callee;
+}
+
 export const rule = {
   meta: {
     type: 'problem',
     docs: {
       description: 'Require tests to assert the whole output instead of a fragment of it',
     },
-    schema: [],
+    schema: RUNNER_OPTION_SCHEMA,
     messages: {
       partialOutput:
-        'Assert the whole output with `toEqual` or `toBe` instead of checking that it contains a fragment (`toContain`, or `toMatch` with a pattern that is not anchored `^...$`): a fragment passes even when the rest is wrong. An exception fits only when the output is too large or unordered to pin.',
+        'Assert the whole output with {{wholeOutput}} instead of checking that it contains a fragment ({{fragmentForms}}): a fragment passes even when the rest is wrong. An exception fits only when the output is too large or unordered to pin.',
       partialMatcher:
-        'Pass the whole expected value to `toEqual` instead of a partial match (`toMatchObject`, `expect.objectContaining`, `expect.stringContaining`, `expect.arrayContaining`): the rest of the value goes unchecked. Use `expect.any(Type)` for a field that varies. An exception fits only when the value is too large or unordered to pin.',
+        'Pass the whole expected value to {{wholeValue}} instead of a partial match ({{partialForms}}): the rest of the value goes unchecked. {{variedField}} An exception fits only when the value is too large or unordered to pin.',
     },
   },
   create(context) {
     return {
       CallExpression(node) {
-        if (isPartialAssertion(node)) {
-          context.report({ node: node.callee.property, messageId: 'partialOutput' });
-        } else if (isPartialMatcherAssertion(node)) {
-          context.report({ node: node.callee.property, messageId: 'partialMatcher' });
+        const messageId = verdictOf(node);
+        if (messageId === undefined) {
+          return;
         }
+        const { wholeOutput, fragmentForms, wholeValue, partialForms, variedField } =
+          vocabularyOf(context);
+        context.report({
+          node: reportedNode(node),
+          messageId,
+          data: { wholeOutput, fragmentForms, wholeValue, partialForms, variedField },
+        });
       },
     };
   },

@@ -99,6 +99,8 @@ describe('test script commands', () => {
       ['--watchAll=false', '--env=jsdom'],
     ],
     ['craco test', 'craco', []],
+    ['react-app-rewired test --env=jsdom', 'react-app-rewired', ['--env=jsdom']],
+    ['rescripts test', 'rescripts', []],
   ])('reads %j as Jest started by its launcher', (command, launcher, tokens) => {
     expect(runnerCommand(command, 'jest')).toEqual({
       environment: {},

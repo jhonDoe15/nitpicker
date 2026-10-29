@@ -62,7 +62,7 @@ const HONESTY_ROWS = [
     [1, 2, 3]
       .map((n) => `it('t${String(n)}', () => { expect(run(${String(n)})).toBe(1); });`)
       .join('\n'),
-    'one `it.each` table',
+    'give each case its own test with it.each',
   ],
   ['todo tests name writing the test', "it.todo('later');", 'write the test'],
   [

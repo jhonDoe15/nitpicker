@@ -6,12 +6,12 @@ import {
 } from '../../../../modules/module-resolution.mjs';
 import { moduleReferencesOf, statementSources } from '../../../../modules/module-sources.mjs';
 import { isBrowserEndToEndTest } from '../../analysis/test-code-analysis.mjs';
+import { RUNNER_OPTION_PROPERTY, vocabularyOf } from '../../runner-apis/runner-option.mjs';
 
 const layout = readLayout();
 const { testRoots } = layout;
 
 const DEFAULT_EXEMPT_PATTERN = String.raw`/(?:${testRoots.join('|')})/contract/|\.policy\.test\.[cm]?[jt]s$`;
-const RUNNABLE_TEST = /\.(?:test|spec)\.[cm]?[jt]sx?$/;
 const TEST_SUPPORT = new RegExp(
   `(?:^|/)(?:__tests__|fixtures)(?:/|$)|^(?:${testRoots.join('|')})(?:/|$)|\\.(?:test|spec)\\.[cm]?[jt]sx?$`,
 );
@@ -79,10 +79,11 @@ function isProductionModule(filename, source) {
       : (resolveModule(filename, source) ?? '')
   ).replaceAll('\\', '/');
   const resolvedRoot = layout.sourceRootOf(`${resolved}/`);
-  return (
-    resolvedRoot !== undefined &&
-    !TEST_SUPPORT.test(resolved.slice(resolved.indexOf(`/${resolvedRoot}/`) + 1))
-  );
+  if (resolvedRoot === undefined) {
+    return false;
+  }
+  const rootRelative = resolved.slice(resolved.indexOf(`/${resolvedRoot}/`) + 1);
+  return !TEST_SUPPORT.test(rootRelative) && !layout.isTestFile(rootRelative);
 }
 
 function reachesProduction(filename, source) {
@@ -107,7 +108,7 @@ function isExemptTest(context, filename) {
   const exemptTest = new RegExp(context.options[0]?.exemptPattern ?? DEFAULT_EXEMPT_PATTERN);
   const projectFile = path.relative(context.cwd, filename).replaceAll('\\', '/');
   return (
-    !RUNNABLE_TEST.test(filename) ||
+    !(layout.isRunnerTestFile(projectFile) || layout.isRunnerTestFile(filename)) ||
     exemptTest.test(filename) ||
     isBrowserEndToEndTest({
       sources: context.sourceCode.ast.body.flatMap(statementSources),
@@ -127,6 +128,7 @@ export const rule = {
       {
         type: 'object',
         properties: {
+          ...RUNNER_OPTION_PROPERTY,
           exemptPattern: { type: 'string' },
         },
         additionalProperties: false,
@@ -134,7 +136,7 @@ export const rule = {
     ],
     messages: {
       missingRuntime:
-        'This test imports no production code at runtime (only types, libraries, or helpers that import none). Import the code under test from the source root, directly or through a helper such as a render function that imports it. Shared helpers belong in a file not named *.test.* or *.spec.*.',
+        'This test imports no production code at runtime (only types, libraries, or helpers that import none). Import the code under test from the source root, directly or through a helper such as a render function that imports it. Shared helpers belong in {{helperFile}}.',
     },
   },
   create(context) {
@@ -175,7 +177,11 @@ export const rule = {
       },
       'Program:exit'() {
         if (!hasProductionRuntime) {
-          context.report({ node: program, messageId: 'missingRuntime' });
+          context.report({
+            node: program,
+            messageId: 'missingRuntime',
+            data: { helperFile: vocabularyOf(context).helperFile },
+          });
         }
       },
     };

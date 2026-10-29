@@ -2,6 +2,8 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { cruiseInProcess as cruise } from '../dependency-graph/test-support/in-process-cruise.mjs';
 import { analyzeTestRuntime, loadModuleSources } from './analyze.mjs';
+import { resolveLayout } from '../layout.mjs';
+import { defaultTestFiles } from '../test-runner/test-files/test-file-patterns.mjs';
 
 const projectRoot = path.resolve(import.meta.dirname, '../../../..');
 const fixtureRoot = 'languages/typescript/preset/test-runtime/fixtures';
@@ -42,6 +44,32 @@ describe('resolved test runtime report', () => {
       ['type-only.test.ts', 'type-only-production-dependency'],
     ]);
     expect(report.exclusions).toEqual([`${fixtureRoot}/negative/tests/contract/contract.test.ts`]);
+  });
+
+  it.each([
+    ['jest', 'src/__tests__/format.js'],
+    ['node', 'test/format-test.js'],
+    ['mocha', 'test/format.js'],
+  ])('analyzes the files %s runs, whatever their names', (runner, test) => {
+    const graph = {
+      modules: [
+        { source: test, dependencies: [{ resolved: 'src/format.js', dependencyTypes: ['local'] }] },
+        { source: 'src/format.js', dependencies: [] },
+        { source: 'tests/helpers/format.js', dependencies: [] },
+      ],
+    };
+    const layout = resolveLayout({}, [], { testFiles: defaultTestFiles(runner) });
+
+    expect(analyzeTestRuntime(graph, { layout }).tests).toEqual([
+      {
+        test,
+        category: 'direct-production-runtime',
+        directProductionModules: ['src/format.js'],
+        runtimeProductionModules: ['src/format.js'],
+        typeOnlyProductionModules: [],
+        subprocessBridges: [],
+      },
+    ]);
   });
 
   it('fails visibly for a malformed analyzer graph', () => {

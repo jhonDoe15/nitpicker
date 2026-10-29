@@ -109,7 +109,7 @@ describe('test honesty rules', () => {
     const code = "it('ships express in 2 days', () => { expect(days('express')).toBe(2); });";
 
     expect(messages(code, 'test/orders-check.ts')).toEqual([
-      'This file defines tests but is not named like a test file, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose.',
+      'This file defines tests but the test runner does not collect it, so they never run. Rename it `*.test.ts` (or `*.spec.ts`). An exception fits only when another test file runs it on purpose.',
     ]);
     expect(messages(code, 'test/orders.test.ts')).toEqual([]);
   });
@@ -190,6 +190,144 @@ describe('setup files named by the project vitest config', () => {
     expect(
       setupFilesIn(projectWith({ 'vitest.config.ts': 'export default { test: {} };' })),
     ).toEqual([]);
+  });
+});
+
+describe('setup files named by the config of the other runners', () => {
+  it('reads Jest setup options from jest.config and package.json, without <rootDir>', () => {
+    const root = projectWith({
+      'jest.config.js':
+        "module.exports = { setupFilesAfterEnv: ['<rootDir>/test/dom.setup.ts'], globalSetup: './test/global.js' };",
+      'package.json': JSON.stringify({ jest: { setupFiles: ['./test/env.js'] } }),
+    });
+
+    expect(setupFilesIn(root, 'jest')).toEqual([
+      'test/dom.setup.ts',
+      'test/global.js',
+      'test/env.js',
+    ]);
+  });
+
+  it('reads Mocha require and file from a YAML .mocharc and the test script', () => {
+    const root = projectWith({
+      '.mocharc.yml': [
+        'require:',
+        '  - ./test/hooks.mjs',
+        '  - ts-node/register',
+        'file: test/setup.js',
+      ].join('\n'),
+      'package.json': JSON.stringify({ scripts: { test: 'mocha --require ./test/extra.cjs' } }),
+    });
+
+    expect(setupFilesIn(root, 'mocha')).toEqual([
+      'test/hooks.mjs',
+      'test/setup.js',
+      'test/extra.cjs',
+    ]);
+  });
+
+  it('reads the preloads of the node --test script', () => {
+    const root = projectWith({
+      'package.json': JSON.stringify({
+        scripts: {
+          test: "node --import ./test/setup.mjs --require=./test/env.cjs --test 'test/**'",
+        },
+      }),
+    });
+
+    expect(setupFilesIn(root, 'node')).toEqual(['test/setup.mjs', 'test/env.cjs']);
+  });
+});
+
+describe('setup files behind indirection, comments and other spellings', () => {
+  it.each([
+    [
+      'a test script that runs another script, and test:* scripts',
+      'node',
+      {
+        'package.json': JSON.stringify({
+          scripts: {
+            test: 'npm run test:unit',
+            'test:unit': 'node --import ./test/setup.mjs --test',
+            'test:e2e':
+              'NODE_OPTIONS="--import ./test/e2e.mjs" node --test-global-setup=./test/g.mjs --test',
+          },
+        }),
+      },
+      ['test/setup.mjs', 'test/e2e.mjs', 'test/g.mjs'],
+    ],
+    [
+      'mocha --file and a quoted --require path with a space',
+      'mocha',
+      {
+        'package.json': JSON.stringify({
+          scripts: { test: 'mocha --file ./test/hooks.js --require "./test/x y.cjs"' },
+        }),
+      },
+      ['test/hooks.js', 'test/x y.cjs'],
+    ],
+    [
+      'a YAML flow list and comments inside a YAML block list',
+      'mocha',
+      {
+        '.mocharc.yml': [
+          'require: [ts-node/register, test/setup.ts]',
+          'file:',
+          '  # the shared hooks',
+          '  - test/hooks.ts # root hooks',
+        ].join('\n'),
+      },
+      ['test/setup.ts', 'test/hooks.ts'],
+    ],
+    [
+      'extensionless entries that name a project file or folder',
+      'mocha',
+      {
+        '.mocharc.json': JSON.stringify({
+          require: ['test/setup', 'test/support', 'chai/register'],
+        }),
+        'test/setup.ts': '',
+        'test/support/index.js': '',
+      },
+      ['test/setup.ts', 'test/support/index.js'],
+    ],
+    [
+      'the Jest rootDir, and keys that are commented out',
+      'jest',
+      {
+        'jest.config.js': [
+          'module.exports = {',
+          "  rootDir: 'src',",
+          "  // setupFiles: ['nope.js'],",
+          "  /* globalSetup: 'old.js', */",
+          "  setupFilesAfterEnv: ['<rootDir>/setup.ts'],",
+          '};',
+        ].join('\n'),
+      },
+      ['src/setup.ts'],
+    ],
+    [
+      'the configs of Jest projects named by a glob',
+      'jest',
+      {
+        'jest.config.js': "module.exports = { projects: ['<rootDir>/packages/*'] };",
+        'packages/web/jest.config.js': "module.exports = { setupFiles: ['./test/env.js'] };",
+        'packages/api/package.json': JSON.stringify({ name: 'api' }),
+      },
+      ['packages/web/test/env.js'],
+    ],
+    [
+      'the configs of Vitest projects named by a glob',
+      'vitest',
+      {
+        'vitest.config.ts':
+          "export default { test: { projects: ['packages/*', '!packages/old'] } };",
+        'packages/web/vitest.config.ts': "export default { test: { setupFiles: ['./setup.ts'] } };",
+      },
+      ['packages/web/setup.ts'],
+    ],
+  ])('reads %s', (_name, runner, files, expected) => {
+    expect(setupFilesIn(projectWith(files), runner)).toEqual(expected);
   });
 });
 

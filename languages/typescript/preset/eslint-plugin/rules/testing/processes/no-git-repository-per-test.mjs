@@ -5,6 +5,7 @@ import {
   perTestVisitors,
   subprocessBindings,
 } from '../../analysis/test-code-analysis.mjs';
+import { vocabularyOf } from '../../runner-apis/runner-option.mjs';
 
 const REPOSITORY_CREATING_SUBCOMMANDS = new Set(['init', 'clone']);
 
@@ -21,10 +22,11 @@ export const rule = {
     schema: [],
     messages: {
       repositoryPerTest:
-        'Do not create a git repository in each test or beforeEach. Build a template repository once in beforeAll and copy it per test with cpSync.',
+        'Do not create a git repository in each test or beforeEach. Build a template repository once in {{sharedSetupHook}} and copy it per test with cpSync.',
     },
   },
   create(context) {
+    const data = { sharedSetupHook: vocabularyOf(context).sharedSetupHook };
     let bindings = { named: new Map(), namespaces: new Set() };
     return {
       Program(node) {
@@ -34,9 +36,9 @@ export const rule = {
         if (node.type !== 'CallExpression') return undefined;
         const direct = describeSubprocess(context, node, bindings);
         if (direct)
-          return createsRepository(direct) ? { messageId: 'repositoryPerTest' } : undefined;
+          return createsRepository(direct) ? { messageId: 'repositoryPerTest', data } : undefined;
         return createsRepository(describeWrapperCall(context, node, bindings))
-          ? { messageId: 'repositoryPerTest' }
+          ? { messageId: 'repositoryPerTest', data }
           : undefined;
       }),
     };

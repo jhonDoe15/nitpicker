@@ -1,14 +1,29 @@
 import vitest from '@vitest/eslint-plugin';
+import jest from 'eslint-plugin-jest';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import { codeExtensions } from '../../layout.mjs';
 import { escapeHatchLinterOptions } from '../strict/strict-escape-hatches.mjs';
 import { testAreaGlobsFor } from '../strict-tests.mjs';
 import { restrictedMatchers } from './restricted-matchers.mjs';
 
+const MATCHER_PLUGINS = { vitest: { vitest }, jest: { jest } };
+
+function matcherRules(runner) {
+  if (MATCHER_PLUGINS[runner] === undefined) {
+    return {};
+  }
+  return {
+    [`${runner}/no-restricted-matchers`]: ['error', restrictedMatchers],
+    [`${runner}/prefer-called-with`]: 'error',
+    [`${runner}/require-to-throw-message`]: 'error',
+  };
+}
+
 function unitTestGlobsFor(layout) {
   return [
     ...layout.unitTestGlobs,
     ...layout.testGlobs.filter((glob) => glob.includes('.{test,spec}.')),
+    ...(layout.runnerSourceTestGlobs ?? []),
   ];
 }
 
@@ -52,51 +67,68 @@ function testPlacementBlock(layout, { testAreaGlobs, testRootsOnDisk }) {
   };
 }
 
-export function testHonestyConfigFor(
-  layout,
-  { setupFiles = [], stubRestores = [], testRootsOnDisk = layout.testRoots } = {},
-) {
-  const files = testAreaGlobsFor(layout);
+function honestyRulesBlock(layout, files, runner) {
+  const runnerOption = { runner };
+  return {
+    files,
+    ignores: layout.excludedGlobs,
+    linterOptions: escapeHatchLinterOptions,
+    plugins: { nitpicker: nitpickerRules, ...MATCHER_PLUGINS[runner] },
+    rules: {
+      'nitpicker/no-comments': ['error', { suppressionsOnly: true }],
+      'nitpicker/no-shared-test-state': 'error',
+      'nitpicker/no-copy-pasted-tests': ['error', runnerOption],
+      'nitpicker/fake-timers-require-restore': 'error',
+      'nitpicker/no-real-time-random-or-network': ['error', runnerOption],
+      'nitpicker/no-switched-off-tests': 'error',
+      'nitpicker/no-unpinned-assertion': 'error',
+      ...matcherRules(runner),
+    },
+  };
+}
+
+function setupFileBlocks(setupFiles) {
+  if (setupFiles.length === 0) {
+    return [];
+  }
   return [
     {
-      files,
-      ignores: layout.excludedGlobs,
-      linterOptions: escapeHatchLinterOptions,
-      plugins: { nitpicker: nitpickerRules, vitest },
-      rules: {
-        'nitpicker/no-comments': ['error', { suppressionsOnly: true }],
-        'nitpicker/no-shared-test-state': 'error',
-        'nitpicker/no-copy-pasted-tests': 'error',
-        'nitpicker/fake-timers-require-restore': 'error',
-        'nitpicker/no-real-time-random-or-network': 'error',
-        'nitpicker/no-switched-off-tests': 'error',
-        'vitest/no-restricted-matchers': ['error', restrictedMatchers],
-        'vitest/prefer-called-with': 'error',
-        'vitest/require-to-throw-message': 'error',
-      },
+      files: setupFiles,
+      plugins: { nitpicker: nitpickerRules },
+      rules: { 'nitpicker/no-production-imports-in-setup-files': 'error' },
     },
+  ];
+}
+
+export function testHonestyConfigFor(
+  layout,
+  {
+    runner = 'vitest',
+    setupFiles = [],
+    stubRestores = [],
+    testRootsOnDisk = layout.testRoots,
+  } = {},
+) {
+  const files = testAreaGlobsFor(layout);
+  const runnerOption = { runner };
+  return [
+    honestyRulesBlock(layout, files, runner),
     {
       files: unitTestGlobsFor(layout),
       ignores: layout.excludedGlobs,
       plugins: { nitpicker: nitpickerRules },
-      rules: { 'nitpicker/no-real-time-random-or-network': ['error', { network: true }] },
+      rules: {
+        'nitpicker/no-real-time-random-or-network': ['error', { network: true, ...runnerOption }],
+      },
     },
     testPlacementBlock(layout, { testAreaGlobs: files, testRootsOnDisk }),
     ...stubRestoreConfigFor(layout, { setupFiles, stubRestores }),
     {
       files,
-      ignores: [...layout.excludedGlobs, `**/*.{test,spec,test-d,spec-d}.${codeExtensions}`],
+      ignores: layout.excludedGlobs,
       plugins: { nitpicker: nitpickerRules },
-      rules: { 'nitpicker/no-uncollected-tests': 'error' },
+      rules: { 'nitpicker/no-uncollected-tests': ['error', runnerOption] },
     },
-    ...(setupFiles.length === 0
-      ? []
-      : [
-          {
-            files: setupFiles,
-            plugins: { nitpicker: nitpickerRules },
-            rules: { 'nitpicker/no-production-imports-in-setup-files': 'error' },
-          },
-        ]),
+    ...setupFileBlocks(setupFiles),
   ];
 }

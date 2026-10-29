@@ -158,3 +158,100 @@ tester.run('no-uncollected-tests', noUncollectedTests, {
     },
   ],
 });
+
+const nodeTestFile = '/repo/src/orders.spec.ts';
+
+tester.run('no-uncollected-tests follows the runner', noUncollectedTests, {
+  valid: [
+    { filename: '/repo/test/orders.js', code: "it('x', () => {});", options: [{ runner: 'node' }] },
+    {
+      filename: '/repo/test/orders.js',
+      code: "it('x', () => {});",
+      options: [{ runner: 'mocha' }],
+    },
+    {
+      filename: '/repo/src/__tests__/orders.ts',
+      code: "it('x', () => {});",
+      options: [{ runner: 'jest' }],
+    },
+  ],
+  invalid: [
+    {
+      filename: nodeTestFile,
+      code: "it('x', () => {});",
+      options: [{ runner: 'node' }],
+      errors: [
+        {
+          messageId: 'neverRuns',
+          data: {
+            collectIt:
+              'Rename it `*.test.ts`, or name its folder in the patterns of the `node --test` script.',
+          },
+        },
+      ],
+    },
+    {
+      filename: '/repo/test/unit/orders.test.js',
+      code: "it('x', () => {});",
+      options: [{ runner: 'mocha' }],
+      errors: [{ messageId: 'neverRuns' }],
+    },
+    {
+      filename: '/repo/test/orders.test-d.ts',
+      code: "it('types', () => {});",
+      options: [{ runner: 'jest' }],
+      errors: [{ messageId: 'neverRuns' }],
+    },
+  ],
+});
+
+tester.run('no-real-time-random-or-network under every runner', noRealTimeRandomOrNetwork, {
+  valid: [
+    "it('x', () => { jest.useFakeTimers(); jest.setSystemTime(0); expect(Date.now()).toBe(0); });",
+    "import { mock } from 'node:test'; it('x', () => { mock.timers.enable({ apis: ['Date'] }); assert.equal(Date.now(), 0); });",
+    "it('x', () => { const clock = sinon.useFakeTimers(); assert.equal(Date.now(), 0); clock.restore(); });",
+    "import { mock } from 'node:test'; it('x', () => { mock.method(Math, 'random', () => 0.5); assert.equal(Math.random(), 0.5); });",
+    "it('x', () => { sinon.stub(Math, 'random').returns(0.5); assert.equal(Math.random(), 0.5); });",
+    "import { useFakeTimers } from 'sinon'; it('x', () => { const clock = useFakeTimers(0); assert.equal(Date.now(), 0); clock.restore(); });",
+    "import { stub } from 'sinon'; it('x', () => { stub(Math, 'random').returns(0.5); assert.equal(Math.random(), 0.5); });",
+    "const { install } = require('@sinonjs/fake-timers'); it('x', () => { install(); assert.equal(Date.now(), 0); });",
+    "import FakeTimers from '@sinonjs/fake-timers'; it('x', () => { FakeTimers.withGlobal(globalThis).install(); assert.equal(Date.now(), 0); });",
+    "import { mock } from 'node:test'; it('x', (t) => { t.mock.timers.setTime(5); assert.equal(Date.now(), 5); });",
+  ],
+  invalid: [
+    {
+      code: "it('x', () => { assert.equal(Date.now() > 0, true); });",
+      options: [{ runner: 'node' }],
+      errors: [
+        {
+          messageId: 'clock',
+          data: { fakeClock: "`mock.timers.enable({ apis: ['Date'], now: ... })`" },
+        },
+      ],
+    },
+    {
+      code: "it('x', () => { assert.equal(Math.random() < 1, true); });",
+      options: [{ runner: 'mocha' }],
+      errors: [{ messageId: 'random', data: { fixRandom: '`sinon.stub(Math, "random")`' } }],
+    },
+    {
+      code: "it('x', () => { store.setTime(5); assert.equal(Date.now(), 5); });",
+      options: [{ runner: 'node' }],
+      errors: [{ messageId: 'clock' }],
+    },
+    {
+      code: "import { mock } from 'node:test'; it('x', () => { mock.timers.enable({ apis: ['setTimeout'] }); assert.equal(Date.now(), 0); });",
+      options: [{ runner: 'node' }],
+      errors: [{ messageId: 'clock' }],
+    },
+    {
+      code: "it('x', () => { vi.useFakeTimers({ toFake: ['setTimeout'] }); expect(Date.now()).toBe(0); });",
+      errors: [{ messageId: 'clock' }],
+    },
+    {
+      code: "it('x', () => { jest.useFakeTimers({ doNotFake: ['Date'] }); expect(Date.now()).toBe(0); });",
+      options: [{ runner: 'jest' }],
+      errors: [{ messageId: 'clock' }],
+    },
+  ],
+});

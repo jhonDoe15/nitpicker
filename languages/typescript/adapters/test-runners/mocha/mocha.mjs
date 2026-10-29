@@ -16,6 +16,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { consoleProducerPath, startTestConsole } from '../test-console-run.mjs';
 
+export const RESTORE_SINON_PLUGIN = path.join(import.meta.dirname, 'restore-sinon.mjs');
 const UNIQUE_FILES = path.join(import.meta.dirname, 'mocha-files.config.mjs');
 
 const OPTIONS_NITPICKER_SETS = {
@@ -60,6 +61,8 @@ export async function runMocha(options, command) {
       environment: { ...coverage.environment, ...testConsole.environment },
       arguments_: [
         ...withoutOptions(command.arguments_, OPTIONS_NITPICKER_SETS),
+        '--require',
+        RESTORE_SINON_PLUGIN,
         '--require',
         UNIQUE_FILES,
         ...(testConsole.enabled ? ['--require', consoleProducerPath(options, 'mocha')] : []),
