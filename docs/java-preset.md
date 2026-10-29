@@ -74,6 +74,10 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
 - **Failure policy.** If Gradle fails on either snapshot (does not compile, tests fail, tool
   crashes, no `gradle` on the PATH, unreadable reports), nothing is silently skipped. `runJavaDiff`
   (the library entry) throws; the CLI path maps the failure to a `tool-error` finding, see slice 2.
+  The one exception is a base snapshot whose test reports name failing tests while the head passes:
+  that is a note and the run goes on (see [A base whose tests fail](usage.md#a-base-whose-tests-fail)).
+  A base that fails for another reason, or whose tests fail without a named failing test, still
+  fails.
 
 ## Maven builds
 
@@ -146,7 +150,12 @@ by field. Per snapshot:
 - **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
   `nitpicker.archunit.includes` property in the POM) become findings; any other failing test, from
   Surefire's or Failsafe's reports, is a `java/maven-failure` tool error that names up to ten
-  failing tests. Reports older than the build are ignored. Gradle runs the ArchUnit classes in their
+  failing tests. On the base snapshot the failing tests are listed instead of thrown: that module
+  skips JaCoCo and PIT, and the failure becomes a `tests-failed` tool error for that module that the
+  core reads as a red base, the same as a Gradle base whose tests fail. The other modules keep their
+  coverage, CRAP and mutation comparison with the base; a failing root module is unknown only for its
+  own source and test directories. Reports older than the build are ignored.
+  Gradle runs the ArchUnit classes in their
   own task, but Maven only has the Surefire and Failsafe results: when a module has ArchUnit classes
   and neither plugin ran any of them (Surefire's `<includes>` miss them, as they would `*Rules`, or
   the module skips tests), that is a tool error rather than a silent pass. ArchUnit reads bytecode
@@ -2517,7 +2526,7 @@ in it against the catalogs and Error Prone's check list.
   text, the exception route, and the shape of every catalog entry.
 - `languages/java/messages/rule-catalog.e2e.test.mjs`: gated like the other e2e tests. The catalogs
   name exactly the rules of the pinned tool versions.
-- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `spring/e2e/spring-arch.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs`, `languages/java/maven/maven-preset.e2e.test.mjs`, `languages/java/adapters/errorprone/error-prone.e2e.test.mjs`, the other Error Prone e2e tests and `rule-catalog.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle, Maven and network access to Maven Central; about 85 seconds
+- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `spring/e2e/spring-arch.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs`, `languages/java/maven/preset/red-base/maven-red-base.e2e.test.mjs`, `languages/java/adapters/errorprone/error-prone.e2e.test.mjs`, the other Error Prone e2e tests `rule-catalog.e2e.test.mjs` and `languages/java/adapters/java-e2e/red-base/java-red-base.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle, Maven and network access to Maven Central; about 85 seconds
   warm. `.github/workflows/java-e2e.yml` runs it (Temurin 21, Gradle 8.14.3, Maven 3.9.11) on a push to `main` that changes `languages/java/**`, `core/**`, `shared/**`, `package.json`, `package-lock.json`, `vitest.config.mts` or the workflow, by hand (`workflow_dispatch`), and on a pull request when the `run-ci` label is added. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset
