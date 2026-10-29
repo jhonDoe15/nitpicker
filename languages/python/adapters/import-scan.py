@@ -8,8 +8,8 @@ TYPE_CHECKING = "TYPE_CHECKING"
 TYPING_MODULES = {"typing", "typing_extensions"}
 IMPORT_ERRORS = {"ImportError", "ModuleNotFoundError", "Exception", "BaseException"}
 ENVIRONMENT_MODULES = {"sys", "platform"}
-ENVIRONMENT_NAMES = {"version_info", "find_spec"}
-FLAG = re.compile(r"^[A-Z][A-Z0-9_]*$")
+ENVIRONMENT_NAMES = {"version_info", "find_spec", "platform", "environ", "getenv"}
+FLAG = re.compile(r"^_*[A-Z][A-Z0-9_]*$")
 IMPORTS = (ast.Import, ast.ImportFrom)
 TRY_NODES = (ast.Try, getattr(ast, "TryStar", ast.Try))
 FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
@@ -114,22 +114,35 @@ def assigned(node):
     return set()
 
 
+def is_marker(node):
+    if isinstance(node, IMPORTS):
+        return True
+    value = getattr(node, "value", None)
+    return isinstance(node, (ast.Assign, ast.AnnAssign)) and isinstance(value, ast.Constant)
+
+
 def import_flags(tree):
     flags = set()
     for node in filter(guards_imports, ast.walk(tree)):
-        for part in node.body + node.handlers + node.orelse:
-            for inner in ast.walk(part):
+        for part in node.body + node.orelse:
+            for inner in filter(is_marker, ast.walk(part)):
                 flags |= assigned(inner)
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Assign, ast.AnnAssign)) and node.value is not None:
+            if tests_environment(node.value, set(), flag_names=False):
+                flags |= assigned(node)
     return flags
 
 
-def tests_environment(test, flags):
+def tests_environment(test, flags, flag_names=True):
     for part in ast.walk(test):
         if isinstance(part, ast.Attribute) and isinstance(part.value, ast.Name):
             if part.value.id in ENVIRONMENT_MODULES or (part.value.id, part.attr) == ("os", "name"):
                 return True
         found = names_in(part) if isinstance(part, (ast.Name, ast.Attribute)) else set()
-        if found & (ENVIRONMENT_NAMES | flags) or any(FLAG.match(name) for name in found):
+        if found & (ENVIRONMENT_NAMES | flags):
+            return True
+        if flag_names and any(FLAG.match(name) for name in found):
             return True
     return False
 
