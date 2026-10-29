@@ -28,7 +28,7 @@ const CONTINUATION = /^\s*(?:[.?:&|+\-*/%]|else\b|as\b)/;
 const BRACE = /[{}]/g;
 const HEADER_START = /[;{}]/g;
 const BOOLEAN_PARAMETER =
-  /^\s*(?:vararg\s+)?(?:(?:val|var)\s+)?([A-Za-z_]\w*)\s*:\s*Boolean\??\s*(?:=.*)?$/s;
+  /^\s*(?:vararg\s+)?(?:(?:val|var)\s+)?([A-Za-z_]\w*)\s*:\s*Boolean\s*(?:=.*)?$/s;
 
 export const CATCH_MESSAGES = {
   CatchOnlyLogsOrReturnsDefault:

@@ -9,7 +9,7 @@ def stop(message, force=False):
     return message
 
 
-def render(text: str, upper: bool | None) -> str:
+def render(text: str, upper: bool) -> str:
     if not upper:
         return text
     return text.upper()

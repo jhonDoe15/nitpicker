@@ -783,9 +783,9 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
 - `generic-name` reports a file, a folder or a top-level class whose last word is `util`, `utils`,
   `helper`, `helpers`, `manager`, `common`, `misc` and the like; a class that extends a type with the
   same ending (`class SessionManager(CacheManager)`) is not reported.
-- `boolean-flag-parameter` reports a positional `bool` parameter (annotated `bool`, `bool | None`,
-  `Optional[bool]` or `Annotated[bool, ...]`, as a string too, or defaulted to `True` or `False`;
-  `int | bool` is not one) of a public function or method that is a condition: the test of an
+- `boolean-flag-parameter` reports a positional `bool` parameter (annotated `bool` or
+  `Annotated[bool, ...]`, as a string too, or defaulted to `True` or `False`; `int | bool` is not one,
+  and a nullable `bool | None` is a tri-state, not a flag) of a public function or method that is a condition: the test of an
   `if`, a conditional expression, a `while`, an `assert`, a comprehension filter, a `match`
   subject or guard, also under `not`, `and` and `or`, as `flag is True` or `flag == False`, and
   inside a nested lambda or closure. The flag is keyword-only (`def send(message, *, urgent=False)`),

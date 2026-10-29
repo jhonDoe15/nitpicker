@@ -63,7 +63,7 @@ describe('booleanFlags', () => {
     ],
     [
       'a when on the flag',
-      'fun render(text: String, bold: Boolean?): String = when (bold) {\n    true -> "<b>$text</b>"\n    else -> text\n}\n',
+      'fun render(text: String, bold: Boolean): String = when (bold) {\n    true -> "<b>$text</b>"\n    else -> text\n}\n',
     ],
     [
       'a flag in a combined condition',
@@ -118,6 +118,10 @@ describe('booleanFlags', () => {
   });
 
   it.each([
+    [
+      'a nullable Boolean, which is a tri-state rather than a flag',
+      'fun render(text: String, bold: Boolean?): String = when (bold) {\n    true -> "<b>$text</b>"\n    else -> text\n}\n',
+    ],
     [
       'a private function',
       'private fun render(text: String, bold: Boolean): String {\n    if (bold) return text\n    return text\n}\n',
