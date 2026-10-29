@@ -29,7 +29,7 @@ describe.skipIf(!enabled)('a failing integration task wired to check', () => {
   it('fail the build naming the failing cases of a checked integration task', () => {
     expect(runs.failure).toEqual(
       'Tests fail in <project>; nitpicker needs a passing test suite for coverage and mutation testing:\n' +
-        '  demo.GreeterIT.saysGoodbye(): org.opentest4j.AssertionFailedError: expected: <Nope> but was: <Goodbye, Ada>',
+        '  demo.GreeterIT.saysGoodbye: expected: <Nope> but was: <Goodbye, Ada>',
     );
   });
 });
