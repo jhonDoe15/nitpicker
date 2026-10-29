@@ -61,11 +61,9 @@ export function reuseModules({ definitions = [], imports = [], modules = [], pac
   const imported = namesImportedFrom(imports);
   const byFile = new Map();
   for (const definition of definitions.filter(({ file }) => roleOf(file) !== 'test')) {
-    const packageRoot = packageOf(definition.file)?.root ?? '';
     const module = byFile.get(definition.file) ?? {
       path: definition.file,
-      packageRoot,
-      siblingRoot: definition.package ?? packageRoot,
+      packageRoot: definition.package ?? packageOf(definition.file)?.root ?? '',
       definitions: [],
     };
     module.definitions.push(

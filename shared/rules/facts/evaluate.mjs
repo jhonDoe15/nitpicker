@@ -31,8 +31,16 @@ function productionFiles(modules) {
   return modules.filter(({ role }) => role !== 'test').map(({ file }) => file);
 }
 
+function acrossPackages(modules) {
+  return modules.map((module) => ({ ...module, packageRoot: '' }));
+}
+
 const EVALUATORS = {
-  'duplicate-definition': ({ modules, context }) => duplicateDefinitionFindings(modules, context),
+  'duplicate-definition': ({ modules, context, options }) =>
+    duplicateDefinitionFindings(
+      options.duplicatesAcrossPackages === true ? acrossPackages(modules) : modules,
+      context,
+    ),
   'exported-name-collision': ({ facts, modules, context }) =>
     exportedNameCollisionFindings(modules, facts.imports, context),
   'sibling-copy-edit': ({ modules, context, options }) =>

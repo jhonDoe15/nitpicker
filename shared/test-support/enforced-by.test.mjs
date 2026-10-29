@@ -11,6 +11,12 @@ const REPORT_ONLY_KOTLIN_MUTANTS = {
   evidence: /reportOnlyKotlinMutants/u,
 };
 const NOT_ENFORCED_ALTHOUGH_EMITTED = {
+  python: {
+    'shared-used-by-one-feature': {
+      file: 'languages/python/adapters/facts/python-facts.mjs',
+      evidence: /registeredFactRules\('python'\)/u,
+    },
+  },
   kotlin: {
     'mutant-survived': REPORT_ONLY_KOTLIN_MUTANTS,
     'mutant-nocoverage': REPORT_ONLY_KOTLIN_MUTANTS,

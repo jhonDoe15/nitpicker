@@ -39,19 +39,27 @@ function isDjangoApplication(root, scanned, isTest) {
   );
 }
 
+function ancestorFolders(file) {
+  const folders = file.split('/').slice(0, -1);
+  return folders.map((_, index) => folders.slice(0, folders.length - index).join('/'));
+}
+
 function distributionLookup(root) {
-  const roots = new Map();
-  function rootOf(folder) {
-    if (folder === '.' || folder === '') {
-      return '';
+  const known = new Map();
+  function isDistribution(folder) {
+    if (!known.has(folder)) {
+      const full = path.resolve(root, folder);
+      if (!full.startsWith(root + path.sep)) {
+        return false;
+      }
+      known.set(
+        folder,
+        DISTRIBUTION_FILES.some((name) => existsSync(path.join(full, name))),
+      );
     }
-    if (!roots.has(folder)) {
-      const own = DISTRIBUTION_FILES.some((name) => existsSync(path.join(root, folder, name)));
-      roots.set(folder, own ? folder : rootOf(path.posix.dirname(folder)));
-    }
-    return roots.get(folder);
+    return known.get(folder);
   }
-  return (file) => rootOf(path.posix.dirname(file));
+  return (file) => ancestorFolders(file).find(isDistribution) ?? '';
 }
 
 function isMigration(file) {
@@ -120,6 +128,7 @@ export function readFactFindings(reportRoot, { exceptions = [], baselineMovesFil
     analyzerName: FACTS_TOOL,
     rules,
     policy: { exceptions },
+    duplicatesAcrossPackages: true,
     ...(baseFacts === undefined
       ? {}
       : { baseline: { facts: baseFacts, movesFile: baselineMovesFile } }),
