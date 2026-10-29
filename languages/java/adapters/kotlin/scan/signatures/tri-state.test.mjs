@@ -40,6 +40,14 @@ describe('triStateBooleans', () => {
     expect(found(source)).toEqual(expected);
   });
 
+  it('flags a property of a class that is not mapped', () => {
+    expect(
+      found(
+        '@Entity\nclass Row {\n    var seen: Boolean? = null\n}\nclass Plain {\n    var seen: Boolean? = null\n}\n',
+      ),
+    ).toEqual([['TriStateBoolean', 6, 'seen']]);
+  });
+
   it.each([
     ['a non-null Boolean', 'fun run(force: Boolean): Boolean = force\n'],
     ['an override parameter', 'class A : B {\n    override fun run(force: Boolean?) {}\n}\n'],
@@ -49,6 +57,21 @@ describe('triStateBooleans', () => {
     ['a function type', 'fun run(check: (Boolean?) -> Unit) {}\n'],
     ['another nullable type', 'fun run(name: String?, count: Int?) {}\n'],
     ['a name that ends in Boolean', 'fun run(force: MyBoolean?) {}\n'],
+    [
+      'an override on the line above',
+      'class A : B {\n    override\n    fun run(force: Boolean?) {}\n}\n',
+    ],
+    [
+      'a column property',
+      'class Row {\n    @Column(name = "seen")\n    var seen: Boolean? = null\n}\n',
+    ],
+    ['a serial name parameter', 'class Row(@SerialName("seen") val seen: Boolean?)\n'],
+    ['a json property parameter', 'fun run(@JsonProperty("force") force: Boolean?) {}\n'],
+    ['the properties of an entity', '@Entity\nclass Row {\n    var seen: Boolean? = null\n}\n'],
+    [
+      'the constructor properties of a serializable class',
+      '@Serializable\ndata class Row(val seen: Boolean?, val name: String)\n',
+    ],
   ])('passes %s', (_name, source) => {
     expect(found(source)).toEqual([]);
   });

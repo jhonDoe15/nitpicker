@@ -1,9 +1,11 @@
 import { closingIndex } from '../kotlin-source.mjs';
+import { hasModifier } from './declarations.mjs';
 
 const DECLARATION_WINDOW = 400;
 const DEPRECATED = /(?<![\w.])@(?:kotlin\.)?Deprecated\b/g;
 const DECLARATION_KEYWORD = /\b(?:fun|val|var|class|interface|object|typealias|constructor)\b/;
 const ALIAS = /(?<![\w.])typealias\s+([A-Z]\w*)\s*=\s*([A-Z]\w*)\s*$/gm;
+const TYPE_DECLARATION = /(?<![\w.])(?:class|interface|object|typealias)\s+(\w+)/g;
 
 export const COMPATIBILITY_SHIM_MESSAGES = {
   CompatibilityShim:
@@ -22,19 +24,18 @@ function annotatedDeclaration(code, match) {
 
 function deprecations(code) {
   return [...code.matchAll(DEPRECATED)]
-    .filter((match) => !/\boverride\b/.test(annotatedDeclaration(code, match)))
+    .filter(
+      (match) =>
+        !hasModifier(code, match.index, 'override') &&
+        !/\boverride\b/.test(annotatedDeclaration(code, match)),
+    )
     .map((match) => ({ rule: 'CompatibilityShim', offset: match.index, subject: '@Deprecated' }));
 }
 
 function aliases(code) {
+  const declared = new Set([...code.matchAll(TYPE_DECLARATION)].map((match) => match[1]));
   return [...code.matchAll(ALIAS)]
-    .filter(
-      ([, alias, target]) =>
-        alias !== target &&
-        new RegExp(String.raw`(?<![\w.])(?:class|interface|object|typealias)\s+${target}\b`).test(
-          code,
-        ),
-    )
+    .filter(([, alias, target]) => alias !== target && declared.has(target))
     .map((match) => ({
       rule: 'CompatibilityShim',
       offset: match.index,

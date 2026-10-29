@@ -63,7 +63,7 @@ describe('booleanFlags', () => {
     ],
     [
       'a when on the flag',
-      'fun render(text: String, bold: Boolean?): String = when (bold) {\n    true -> "<b>$text</b>"\n    else -> text\n}\n',
+      'fun render(text: String, bold: Boolean): String = when (bold) {\n    true -> "<b>$text</b>"\n    else -> text\n}\n',
     ],
     [
       'a flag in a combined condition',
@@ -90,6 +90,10 @@ describe('booleanFlags', () => {
     [
       'an annotated parameter',
       'fun render(@RequestParam bold: Boolean): String {\n    if (bold) return "b"\n    return ""\n}\n',
+    ],
+    [
+      'a nullable flag, left to TriStateBoolean',
+      'fun render(text: String, bold: Boolean?): String = when (bold) {\n    true -> "<b>$text</b>"\n    else -> text\n}\n',
     ],
     [
       'a flag passed on, not branched on',

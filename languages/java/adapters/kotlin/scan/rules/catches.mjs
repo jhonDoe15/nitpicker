@@ -22,7 +22,7 @@ const FUNCTION = /(?<![\w.])fun\s+(?:<[^>]*>\s*)?(?:[\w.<>?]+\.)?([A-Za-z_]\w*)\
 const HIDDEN = /\b(?:private|internal|protected|override)\b/;
 const BUILDER_NAME = /^(?:set|with)[A-Z]|^(?:of|from|valueOf|builder)$/;
 const BOOLEAN_PARAMETER =
-  /^\s*(?:vararg\s+)?(?:(?:val|var)\s+)?([A-Za-z_]\w*)\s*:\s*Boolean\??\s*(?:=.*)?$/s;
+  /^\s*(?:vararg\s+)?(?:(?:val|var)\s+)?([A-Za-z_]\w*)\s*:\s*Boolean\s*(?:=.*)?$/s;
 
 export const CATCH_MESSAGES = {
   CatchOnlyLogsOrReturnsDefault:
