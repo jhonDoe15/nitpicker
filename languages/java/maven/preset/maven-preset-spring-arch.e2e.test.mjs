@@ -6,8 +6,10 @@ import { collectJavaFindings } from '../../adapters/java-diff.mjs';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
 import {
   SPRING_ARCH_FIXTURE,
+  SPRING_ARCH_ROLES,
   SPRING_ARCH_VIOLATIONS,
 } from '../../adapters/spring/__tests__/spring-arch-project.mjs';
+import { writeSpringRoles } from '../../adapters/spring-arch/spring-roles.mjs';
 import {
   useMavenPresetProject,
   enabled,
@@ -17,6 +19,7 @@ import {
   copyOf,
 } from '../__tests__/maven-preset-project.mjs';
 
+const DDD_ONLY_FIXTURE = path.join(SPRING_ARCH_FIXTURE, '..', 'ddd-only-project');
 const SPRING_LAYOUT_FINDINGS = [
   'src/main/java/shop/Helper.java Helper',
   'src/main/java/shop/adapter/in/web/PaymentController.java PaymentController|adapter',
@@ -56,9 +59,17 @@ function readReport(root, directory, name) {
 }
 
 function runSpringArchTask(root) {
+  const roles = writeSpringRoles(SPRING_ARCH_ROLES, root);
   const result = spawnSync(
     gradle,
-    ['--console=plain', '--quiet', '-I', INIT_SCRIPT, 'nitpickerSpringArch'],
+    [
+      '--console=plain',
+      '--quiet',
+      '-I',
+      INIT_SCRIPT,
+      `-Pnitpicker.spring.roles=${roles}`,
+      'nitpickerSpringArch',
+    ],
     { cwd: root, encoding: 'utf8', timeout: 180_000 },
   );
   if (result.status !== 0) {
@@ -78,7 +89,10 @@ describe.skipIf(!enabled)('Spring architecture rules on Maven builds', () => {
       withoutRunnableTests(root);
     }
     runSpringArchTask(gradleProject);
-    const findings = collectJavaFindings(mavenProject, { maven, policy: {} });
+    const findings = collectJavaFindings(mavenProject, {
+      maven,
+      policy: { springRoles: SPRING_ARCH_ROLES },
+    });
     const fromMaven = readReport(mavenProject, 'target', 'spring-arch.json');
     const manifest = readReport(mavenProject, 'target', 'manifest.json');
 
@@ -100,6 +114,25 @@ describe.skipIf(!enabled)('Spring architecture rules on Maven builds', () => {
     expect(rulePaths(findings, 'spring-feature-boundary')).toEqual([
       'src/main/java/shop/billing/BillingService.java',
       'src/main/java/shop/billing/Invoices.java',
+    ]);
+  }, 180_000);
+
+  it('runs the aggregate rules on a jMolecules module without Spring, and no Spring rule', () => {
+    const mavenProject = copyOf(DDD_ONLY_FIXTURE, path.join(fixtures, 'ddd-only'));
+    for (const name of ['build.gradle', 'settings.gradle']) {
+      rmSync(path.join(mavenProject, name));
+    }
+    const findings = collectJavaFindings(mavenProject, { maven, policy: {} });
+    const manifest = readReport(mavenProject, 'target', 'manifest.json');
+
+    expect([manifest.spring, manifest.springArch]).toEqual([false, true]);
+    expect(
+      findings
+        .filter((finding) => finding.tool === 'archunit')
+        .map((finding) => `${finding.rule} ${finding.path} ${finding.identity}`),
+    ).toEqual([
+      'ddd-aggregate-reference src/main/java/sales/Order.java Order|Customer',
+      'ddd-aggregate-reference src/main/java/sales/Wishlist.java Wishlist|Product',
     ]);
   }, 180_000);
 });
