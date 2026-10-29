@@ -120,12 +120,20 @@ describe('blocking calls in Kotlin coroutine code', () => {
   });
 
   it('names an injected dispatcher, not Dispatchers.IO, as the allowed form', () => {
-    const message = blockingMessage('Files.readString', 'Files is a blocking API', 'Store.load');
-
-    expect(message).toContain('withContext(ioDispatcher)');
-    expect(message).toContain('injected `CoroutineDispatcher`');
-    expect(message).not.toContain('Dispatchers.IO');
-    expect(timeoutMessage('withTimeout', 'Files.readString')).not.toContain('Dispatchers.IO');
+    expect(blockingMessage('Files.readString', 'Files is a blocking API', 'Store.load')).toBe(
+      '`Files.readString` blocks the thread inside the coroutine code of `Store.load` (Files is a ' +
+        'blocking API), so the other coroutines on that thread wait and cancellation cannot ' +
+        'interrupt it. Run it in `withContext(ioDispatcher) { ... }` (`runInterruptible(ioDispatcher) ' +
+        '{ ... }` for an interruptible wait such as `Future.get()`) with an injected ' +
+        '`CoroutineDispatcher`, or call a suspending API instead.',
+    );
+    expect(timeoutMessage('withTimeout', 'Files.readString')).toBe(
+      '`withTimeout` can cancel its block only at a suspension point, and this block has none: ' +
+        '`Files.readString` runs to the end before the timeout can fire. Run the work in ' +
+        '`withContext(ioDispatcher) { ... }` or `runInterruptible(ioDispatcher) { ... }` inside ' +
+        'the block, with an injected `CoroutineDispatcher`, or call `ensureActive()` in the loop ' +
+        'that does it.',
+    );
   });
 
   it('keeps the owner in the identity, so two classes with a function of one name differ', () => {

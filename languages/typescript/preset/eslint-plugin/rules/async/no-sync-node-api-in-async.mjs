@@ -24,11 +24,14 @@ function isWorkerScript(bindings, text) {
 }
 
 function rootIdentifier(node) {
-  const target = unwrapped(node);
-  if (target?.type === 'MemberExpression') {
-    return rootIdentifier(target.object);
+  const chain = [unwrapped(node)];
+  for (const current of chain) {
+    if (current?.type === 'MemberExpression') {
+      chain.push(unwrapped(current.object));
+    }
   }
-  return target?.type === 'Identifier' ? target : undefined;
+  const root = chain.at(-1);
+  return root?.type === 'Identifier' ? root : undefined;
 }
 
 function isShadowed(context, callee) {

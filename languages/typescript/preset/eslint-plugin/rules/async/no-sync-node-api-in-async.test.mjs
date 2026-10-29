@@ -183,13 +183,19 @@ describe('the allowed form of each call', () => {
     expect(alternativeOf('node:fs', 'readFileSync')).toBe(
       '`await readFile()` from "node:fs/promises"',
     );
-    expect(alternativeOf('fs', 'existsSync')).toContain('`access` or `stat`');
-    expect(alternativeOf('fs', 'closeSync')).toContain('`FileHandle`');
+    expect(alternativeOf('fs', 'existsSync')).toBe(
+      '`access` or `stat` from "node:fs/promises" (`await access(path)` rejects when the path is missing)',
+    );
+    expect(alternativeOf('fs', 'closeSync')).toBe(
+      'a `FileHandle` from `open()` of "node:fs/promises" (`await handle.read()`, `await handle.close()`)',
+    );
     expect(alternativeOf('fs-extra', 'pathExistsSync')).toBe(
       '`await pathExists()` from "fs-extra"',
     );
     expect(alternativeOf('fs-extra', 'existsSync')).toBe('`await pathExists()` from "fs-extra"');
-    expect(alternativeOf('crypto', 'scryptSync')).toContain('promisify(scrypt)');
+    expect(alternativeOf('crypto', 'scryptSync')).toBe(
+      '`await promisify(scrypt)(...)` with `promisify` from "node:util"',
+    );
     expect(alternativeOf('execa', 'execaCommandSync')).toBe('`await execaCommand()`');
   });
 });

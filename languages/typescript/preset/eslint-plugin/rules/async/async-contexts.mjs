@@ -60,26 +60,26 @@ function handlersIn(context, argumentsList) {
 }
 
 export function frameworkNames(program, bindings) {
-  const names = new Set([...bindings.named.keys(), ...bindings.namespaces]);
-  for (const statement of program.body) {
-    if (
-      statement.type === 'ImportDeclaration' &&
-      FRAMEWORK_MODULE_NAMES.has(statement.source.value)
-    ) {
-      for (const specifier of statement.specifiers) {
-        names.add(specifier.local.name);
-      }
-    }
-  }
-  return names;
+  const imported = program.body
+    .filter(
+      (statement) =>
+        statement.type === 'ImportDeclaration' &&
+        FRAMEWORK_MODULE_NAMES.has(statement.source.value),
+    )
+    .flatMap((statement) => statement.specifiers.map((specifier) => specifier.local.name));
+  return new Set([...bindings.named.keys(), ...bindings.namespaces, ...imported]);
 }
 
 function chainRoot(node) {
-  let current = unwrapped(node);
-  while (CHAIN_STEPS[current?.type] !== undefined) {
-    current = unwrapped(CHAIN_STEPS[current.type](current));
+  const chain = [unwrapped(node)];
+  for (const current of chain) {
+    const step = CHAIN_STEPS[current?.type];
+    if (step !== undefined) {
+      chain.push(unwrapped(step(current)));
+    }
   }
-  return current?.type === 'Identifier' ? current : undefined;
+  const root = chain.at(-1);
+  return root?.type === 'Identifier' ? root : undefined;
 }
 
 function declaredType(identifier) {
