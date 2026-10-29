@@ -209,6 +209,7 @@ function createTask(analyzer, context) {
     concurrencyGroup: analyzer.concurrencyGroup,
     executionPriority: analyzer.executionPriority ?? 0,
     timeoutMs: analyzer.timeoutMs ?? DEFAULT_ANALYZER_TIMEOUT_MS,
+    configuredTimeout: analyzer.configuredTimeout === true,
     reportedTools: analyzer.reportedTools ?? [],
     acceptedExitCodes: [0, ...(analyzer.findingExitCodes ?? [])],
     invocation,

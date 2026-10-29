@@ -20,6 +20,7 @@ export function javaExecutionBudget(environment = process.env) {
   const budgets = configured.length === 0 ? [gradle] : configured;
   return {
     ...gradle,
+    mavenCommandTimeoutMs: maven.commandTimeoutMs,
     analyzerTimeoutMs: Math.max(...budgets.map((budget) => budget.analyzerTimeoutMs)),
   };
 }

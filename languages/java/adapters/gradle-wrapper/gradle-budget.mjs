@@ -1,8 +1,8 @@
 import {
-  commandTimeoutMs,
   MAX_TIMER_MS,
   MINUTE_MS,
   minutesSetting,
+  analyzerDeadlineMs,
 } from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 const DEFAULT_COMMAND_MS = 15 * MINUTE_MS;
@@ -14,7 +14,7 @@ const MAX_MINUTES = Math.floor(
 
 function buildBudget(environment, variable) {
   const commandMs = minutesSetting(environment, variable, {
-    fallbackMs: commandTimeoutMs(DEFAULT_COMMAND_MS, environment),
+    fallbackMs: analyzerDeadlineMs(environment) ?? DEFAULT_COMMAND_MS,
     maxMinutes: MAX_MINUTES,
   });
   return {

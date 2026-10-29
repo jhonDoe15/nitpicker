@@ -45,12 +45,13 @@ const PROJECT_CHECKS_OFF = [
   '-Dspotless.check.skip=true',
 ];
 
-function readEffectivePom({ projectRoot, maven, work, spawn }) {
+function readEffectivePom({ projectRoot, maven, work, spawn, timeoutMs }) {
   const output = path.join(work, 'effective-pom.xml');
   runMaven({
     projectRoot,
     maven,
     spawn,
+    timeoutMs,
     args: ['--quiet', `${MAVEN_PLUGINS.help}:effective-pom`, `-Doutput=${output}`],
   });
   return readFileSync(output, 'utf8');
@@ -61,11 +62,12 @@ function dependencyFile(work, module) {
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
 }
 
-function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn }) {
+function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn, timeoutMs }) {
   runMaven({
     projectRoot,
     maven,
     spawn,
+    timeoutMs,
     args: [
       '--quiet',
       `${jacocoPlugin(pinned)}:prepare-agent`,
@@ -83,7 +85,7 @@ function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn }) {
   });
 }
 
-function runStructure(module, reportDir, spawn) {
+function runStructure(module, reportDir, { spawn, timeoutMs }) {
   const roots = module.sourceRoots
     .filter((root) => existsSync(root))
     .map((root) => relativeTo(module.basedir, root));
@@ -99,6 +101,7 @@ function runStructure(module, reportDir, spawn) {
     cwd: module.basedir,
     accept: (result) => result.status === 0,
     spawn,
+    timeoutMs,
   });
 }
 
@@ -141,13 +144,14 @@ function readTestRuns(context) {
 
 function analyzeSources(options) {
   const { module, reportDir, classpaths, tools, pinned, configs, style, spring } = options;
-  const { springArch, springRoles, spawn } = options;
-  runPmd({ module, reportDir, tools, classpaths, configs, spring, spawn });
-  runSpotbugs({ module, reportDir, tools, spawn });
-  runErrorProne({ module, reportDir, tools, classpaths, spawn });
-  runFormat({ module, reportDir, tools, javaStyle: style.javaStyle, spawn });
-  runCheckstyle({ module, reportDir, tools, configs, pinned, style, spawn });
-  runStructure(module, reportDir, spawn);
+  const { springArch, springRoles, spawn, timeoutMs } = options;
+  const run = { spawn, timeoutMs };
+  runPmd({ module, reportDir, tools, classpaths, configs, spring, ...run });
+  runSpotbugs({ module, reportDir, tools, ...run });
+  runErrorProne({ module, reportDir, tools, classpaths, ...run });
+  runFormat({ module, reportDir, tools, javaStyle: style.javaStyle, ...run });
+  runCheckstyle({ module, reportDir, tools, configs, pinned, style, ...run });
+  runStructure(module, reportDir, run);
   runJdeps(module, reportDir, spawn);
   runSpringArch({
     module,
@@ -157,15 +161,16 @@ function analyzeSources(options) {
     pinned,
     archRules: springArch,
     springRoles,
-    spawn,
+    ...run,
   });
 }
 
 function runCoverageTools(options) {
-  const { module, reportDir, tools, classpaths, since, testsRan, isArchunit, spawn } = options;
+  const { module, reportDir, tools, classpaths, since, testsRan, isArchunit } = options;
+  const run = { spawn: options.spawn, timeoutMs: options.timeoutMs };
   const execFiles = jacocoExecFiles(module);
-  runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, spawn });
-  runPit({ module, reportDir, tools, classpaths, isArchunit, spawn });
+  runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, ...run });
+  runPit({ module, reportDir, tools, classpaths, isArchunit, ...run });
 }
 
 function analyzeModule(options) {
@@ -236,7 +241,7 @@ function extraTools({ modules, analyzed, policy, pinned }) {
   ];
 }
 
-export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn }) {
+export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn, timeoutMs }) {
   if (policy.preset === 'kotlin') {
     throw new Error(
       'The kotlin preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources',
@@ -245,9 +250,9 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
   const pinned = readPinnedTools();
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
   try {
-    const modules = readModules({ projectRoot, maven, work, spawn });
+    const modules = readModules({ projectRoot, maven, work, spawn, timeoutMs });
     const since = Date.now() - 2000;
-    buildAndTest({ projectRoot, maven, work, pinned, modules, spawn });
+    buildAndTest({ projectRoot, maven, work, pinned, modules, spawn, timeoutMs });
     const analyzed = modules.map((module) => ({
       module,
       classpaths: readClasspaths(work, module),
@@ -256,6 +261,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
       projectRoot,
       maven,
       spawn,
+      timeoutMs,
       pinned,
       launcherVersions: missingLauncherVersions(analyzed),
       extraTools: extraTools({ modules, analyzed, policy, pinned }),
@@ -273,6 +279,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
         configs,
         since,
         spawn,
+        timeoutMs,
         style,
         tolerateFailures: policy.snapshot === 'base',
         projectRoot,

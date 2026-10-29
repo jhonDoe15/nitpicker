@@ -2,9 +2,9 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { mavenBudget } from '../adapters/gradle-wrapper/gradle-budget.mjs';
 import { wrapperTarget } from '../adapters/gradle-wrapper/gradle-command.mjs';
 
+const MAVEN_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_ERROR_LINES = 40;
 const MILLISECONDS_PER_MINUTE = 60_000;
@@ -76,7 +76,7 @@ export function runMaven({
   projectRoot,
   maven,
   args,
-  timeoutMs = mavenBudget(process.env).commandTimeoutMs,
+  timeoutMs = MAVEN_TIMEOUT_MS,
   spawn = spawnSync,
 }) {
   const target = mavenTarget({ projectRoot, configured: maven, args: [...MAVEN_FLAGS, ...args] });
@@ -120,6 +120,7 @@ export function runJava({
   cwd,
   accept = () => true,
   spawn = spawnSync,
+  timeoutMs = MAVEN_TIMEOUT_MS,
 }) {
   const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-'));
   try {
@@ -135,7 +136,7 @@ export function runJava({
       cwd,
       encoding: 'utf8',
       maxBuffer: MAX_OUTPUT_BYTES,
-      timeout: mavenBudget(process.env).commandTimeoutMs,
+      timeout: timeoutMs,
     });
     if (result.error?.code === 'ENOENT') {
       throw new Error(
