@@ -15,15 +15,17 @@ public final class References {
     this.typer = typer;
   }
 
-  public MethodInfo resolve(MemberReferenceTree tree, Ctx c) {
-    TypeInfo type = qualifier(Names.unparen(tree.getQualifierExpression()), c);
+  public MethodInfo resolve(MemberReferenceTree tree, Ctx c, int arity) {
+    Tree base = Names.unparen(tree.getQualifierExpression());
+    TypeInfo type = qualifier(base, c);
     if (type == null) {
       return null;
     }
     if (tree.getMode() == MemberReferenceTree.ReferenceMode.NEW) {
-      return type.isInterface() ? null : typer.lookup.onlyConstructor(type);
+      return type.isInterface() ? null : typer.lookup.onlyConstructor(type, arity);
     }
-    return typer.lookup.onlyMethod(type, tree.getName().toString());
+    boolean unbound = typer.typeNameOf(base, c) != null;
+    return typer.lookup.onlyMethod(type, tree.getName().toString(), new Lookup.Shape(arity, unbound));
   }
 
   private TypeInfo qualifier(Tree base, Ctx c) {
@@ -54,7 +56,7 @@ public final class References {
 
       @Override
       public Void visitMemberReference(MemberReferenceTree tree, Void unused) {
-        add(resolve(tree, ctx));
+        add(resolve(tree, ctx, Arity.UNKNOWN));
         return super.visitMemberReference(tree, unused);
       }
 

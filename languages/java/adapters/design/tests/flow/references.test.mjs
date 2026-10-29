@@ -12,7 +12,7 @@ const TYPES_0 = [
   type({
     file: 'route/Router.java',
     symbol: 'Router',
-    line: 9,
+    line: 10,
     kind: 'class',
     fields: [{ name: 'prefix', private: true }],
   }),
@@ -61,10 +61,68 @@ const CALLABLES_0 = [
     returns: 'void',
   }),
   callable({
+    file: 'route/Handlers.java',
+    owner: 'Handlers',
+    member: 'pick(String)',
+    line: 24,
+    name: 'pick',
+    params: [{ name: 'text', type: 'String' }],
+    returns: 'void',
+  }),
+  callable({
+    file: 'route/Handlers.java',
+    owner: 'Handlers',
+    member: 'pick(String,int)',
+    line: 28,
+    name: 'pick',
+    params: [
+      { name: 'text', type: 'String' },
+      { name: 'times', type: 'int' },
+    ],
+    returns: 'void',
+  }),
+  callable({
+    file: 'route/Handlers.java',
+    owner: 'Handlers',
+    member: 'ping()',
+    line: 32,
+    name: 'ping',
+    returns: 'void',
+  }),
+  callable({
+    file: 'route/Handlers.java',
+    owner: 'Handlers',
+    member: 'ping(String)',
+    line: 36,
+    name: 'ping',
+    params: [{ name: 'text', type: 'String' }],
+    returns: 'void',
+  }),
+  callable({
+    file: 'route/Handlers.java',
+    owner: 'Handlers',
+    member: 'size()',
+    line: 40,
+    name: 'size',
+    returns: 'int',
+  }),
+  callable({
+    file: 'route/Handlers.java',
+    owner: 'Handlers',
+    member: 'size(int,int)',
+    line: 44,
+    name: 'size',
+    params: [
+      { name: 'width', type: 'int' },
+      { name: 'height', type: 'int' },
+    ],
+    returns: 'int',
+  }),
+  callable({
     file: 'route/Router.java',
     owner: 'Router',
     member: '<init>',
-    line: 16,
+    line: 17,
     name: 'Router',
     kind: 'constructor',
     params: [{ name: 'prefix', type: 'String' }],
@@ -74,11 +132,19 @@ const CALLABLES_0 = [
     file: 'route/Router.java',
     owner: 'Router',
     member: 'describe',
-    line: 46,
+    line: 47,
     kind: 'accessor',
     returns: 'String',
     ownFields: ['prefix'],
     returnsField: 'prefix',
+  }),
+  callable({
+    file: 'route/Router.java',
+    owner: 'Router',
+    member: 'register',
+    line: 59,
+    params: [{ name: 'action', type: 'Runnable' }],
+    returns: 'void',
   }),
 ];
 const CALLABLES_1 = [
@@ -86,7 +152,7 @@ const CALLABLES_1 = [
     file: 'route/Router.java',
     owner: 'Router',
     member: 'route',
-    line: 20,
+    line: 21,
     params: [{ name: 'key', type: 'String' }],
     returns: 'void',
     ownFields: ['prefix'],
@@ -99,7 +165,7 @@ const CALLABLES_1 = [
     file: 'route/Router.java',
     owner: 'Router',
     member: 'callback',
-    line: 24,
+    line: 25,
     returns: 'Consumer',
     references: [ref('route/Handlers.java', 'Handlers.onA')],
   }),
@@ -107,7 +173,7 @@ const CALLABLES_1 = [
     file: 'route/Router.java',
     owner: 'Router',
     member: 'bound',
-    line: 28,
+    line: 29,
     params: [{ name: 'handlers', type: ref('route/Handlers.java', 'Handlers') }],
     returns: 'Consumer',
     paramUses: [{ param: 0, fields: [], forwards: [], opaque: true }],
@@ -117,7 +183,7 @@ const CALLABLES_1 = [
     file: 'route/Router.java',
     owner: 'Router',
     member: 'factory',
-    line: 32,
+    line: 33,
     returns: 'Function',
     references: [ref('route/Router.java', 'Router.<init>')],
   }),
@@ -125,7 +191,7 @@ const CALLABLES_1 = [
     file: 'route/Router.java',
     owner: 'Router',
     member: 'own',
-    line: 36,
+    line: 37,
     returns: 'Supplier',
     references: [ref('route/Router.java', 'Router.describe')],
   }),
@@ -134,9 +200,32 @@ const CALLABLES_2 = [
   callable({
     file: 'route/Router.java',
     owner: 'Router',
-    member: 'leftOut',
-    line: 40,
+    member: 'picks',
+    line: 51,
     returns: 'Object',
+    calls: [{ target: ref('route/Router.java', 'Router.register'), line: 55, receiver: 'this' }],
+    references: [
+      ref('route/Handlers.java', 'Handlers.pick(String)'),
+      ref('route/Handlers.java', 'Handlers.pick(String,int)'),
+      ref('route/Handlers.java', 'Handlers.ping()'),
+      ref('route/Handlers.java', 'Handlers.size()'),
+    ],
+  }),
+];
+const CALLABLES_3 = [
+  callable({
+    file: 'route/Router.java',
+    owner: 'Router',
+    member: 'leftOut',
+    line: 41,
+    returns: 'Object',
+  }),
+  callable({
+    file: 'route/Router.java',
+    owner: 'Router',
+    member: 'unknown',
+    line: 63,
+    returns: 'Map',
   }),
 ];
 
@@ -156,6 +245,12 @@ describe('design facts: callables used as values without a call', () => {
       ref('route/Handlers.java', 'Handlers.onB'),
       ref('route/Handlers.java', 'Handlers.over(String)'),
       ref('route/Handlers.java', 'Handlers.over(int)'),
+      ref('route/Handlers.java', 'Handlers.pick(String)'),
+      ref('route/Handlers.java', 'Handlers.pick(String,int)'),
+      ref('route/Handlers.java', 'Handlers.ping()'),
+      ref('route/Handlers.java', 'Handlers.ping(String)'),
+      ref('route/Handlers.java', 'Handlers.size()'),
+      ref('route/Handlers.java', 'Handlers.size(int,int)'),
       ref('route/Router.java', 'Router.<init>'),
       ref('route/Router.java', 'Router.bound'),
       ref('route/Router.java', 'Router.callback'),
@@ -163,7 +258,10 @@ describe('design facts: callables used as values without a call', () => {
       ref('route/Router.java', 'Router.factory'),
       ref('route/Router.java', 'Router.leftOut'),
       ref('route/Router.java', 'Router.own'),
+      ref('route/Router.java', 'Router.picks'),
+      ref('route/Router.java', 'Router.register'),
       ref('route/Router.java', 'Router.route'),
+      ref('route/Router.java', 'Router.unknown'),
     ]);
   });
 
@@ -182,8 +280,12 @@ describe('design facts: callables used as values without a call', () => {
     },
   );
 
-  it.each(CALLABLES_2)(
-    'leaves out an overloaded or a library method reference: $id',
+  it.each(CALLABLES_2)('picks the overload whose arity the target type gives: $id', (expected) => {
+    expect(facts.callables.find(({ id }) => id === expected.id)).toEqual(expected);
+  });
+
+  it.each(CALLABLES_3)(
+    'leaves out an overload the target type does not decide, and a library method: $id',
     (expected) => {
       expect(facts.callables.find(({ id }) => id === expected.id)).toEqual(expected);
     },
