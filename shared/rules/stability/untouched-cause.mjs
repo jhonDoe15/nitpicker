@@ -1,4 +1,8 @@
-import { insertBeforeRoute } from '../../messages/exception-sentence.mjs';
+import {
+  appendSentence,
+  hasExceptionRoute,
+  insertBeforeRoute,
+} from '../../messages/exception-sentence.mjs';
 import { STABILITY_FIX } from './stability-direction.mjs';
 
 const LISTED_FILES = 3;
@@ -40,6 +44,9 @@ export function withUntouchedCause(findings, touchedCode) {
     }
     const fix = finding.message.includes(STABILITY_FIX) ? '' : ` ${STABILITY_FIX}`;
     const text = `${causeText(finding.cause, changedLines)}${fix}`;
-    return { ...finding, message: insertBeforeRoute(finding.message, text) };
+    const message = hasExceptionRoute(finding.message)
+      ? insertBeforeRoute(finding.message, text)
+      : appendSentence(finding.message, text);
+    return { ...finding, message };
   });
 }
