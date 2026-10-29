@@ -49,6 +49,7 @@ function crapRow(fn, filePath, { options, limit, resolve, counters, sameSourceBy
     identity: sourceHash === undefined ? key : `${key}:source:${sourceHash}`,
     ratchetKey: `${key}:crap`,
     line: fn.start,
+    endLine: fn.end,
     crap,
     covered: coverage !== undefined && coverage >= FULL_COVERAGE,
   };
