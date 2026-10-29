@@ -1,16 +1,16 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterEach, expect, it } from 'vitest';
-import { compareFindings } from '../../../../core/diff/comparison/compare.mjs';
-import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
-import { kotlinRuleCases } from '../kotlin/rules/test-support/kotlin-rule-cases.mjs';
+import { compareFindings } from '../../../../../core/diff/comparison/compare.mjs';
+import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
+import { applyFindingPolicy } from '../../../../../shared/findings/finding-policy.mjs';
+import { kotlinRuleCases } from '../../kotlin/rules/test-support/kotlin-rule-cases.mjs';
 import {
   kotlinFindings,
   projectWithKotlinReports,
   removeTemporaryProjects,
   rootReports,
-} from './test-support/kotlin-report-project.mjs';
+} from '../test-support/kotlin-report-project.mjs';
 
 const rule = 'detekt.coroutines.SuspendFunSwallowedCancellation';
 const message = kotlinRuleCases.find(({ id }) => id === 'suspendRunCatching').message;
