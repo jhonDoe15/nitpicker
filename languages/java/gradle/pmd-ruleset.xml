@@ -104,19 +104,65 @@
     </properties>
   </rule>
   <rule ref="category/java/performance.xml">
+    <exclude name="AvoidArrayLoops"/>
+    <exclude name="AvoidFileStream"/>
+    <exclude name="UseArraysAsList"/>
+    <!-- A loop that needs a distinct object per item is correct; hoisting changes it. -->
     <exclude name="AvoidInstantiatingObjectsInLoops"/>
-    <exclude name="InsufficientStringBufferDeclaration"/>
+    <!-- A small exhaustive switch is valid. -->
     <exclude name="TooFewBranchesForSwitch"/>
+    <!-- A capacity hint is a micro-optimization; asking for one only adds magic numbers. -->
+    <exclude name="InsufficientStringBufferDeclaration"/>
   </rule>
   <rule ref="category/java/multithreading.xml">
     <exclude name="AvoidSynchronizedAtMethodLevel"/>
+    <exclude name="DontCallThreadRun"/>
+    <!-- volatile is a valid visibility primitive. -->
     <exclude name="AvoidUsingVolatile"/>
+    <!-- The J2EE container restriction does not apply to most applications. -->
     <exclude name="DoNotUseThreads"/>
+    <!-- A Map declaration does not show concurrent access. -->
     <exclude name="UseConcurrentHashMap"/>
+  </rule>
+  <rule ref="category/java/performance.xml/AvoidArrayLoops">
+    <properties>
+      <!-- A loop that subtracts the loop variable in an index (a reversed copy) has no
+           System.arraycopy form. -->
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+.//AssignmentExpression/ArrayAccess/*[2]/descendant-or-self::InfixExpression[@Operator = '-']
+  /*[2]/descendant-or-self::VariableAccess[not(parent::FieldAccess)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule ref="category/java/performance.xml/AvoidFileStream">
+    <properties>
+      <!-- Files has no form that wraps a FileDescriptor such as FileDescriptor.in. -->
+      <property name="violationSuppressXPath"
+                value="..[ArgumentList/*[1][pmd-java:typeIs('java.io.FileDescriptor')]]"/>
+    </properties>
+  </rule>
+  <rule ref="category/java/performance.xml/UseArraysAsList">
+    <properties>
+      <!-- Only a loop that adds every element and does nothing else is a copy: a loop that
+           filters, or steps by more than one, stays. -->
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+.[count(../../*) > 1
+  or ../../..[self::ForStatement][not(ForUpdate/StatementExpressionList/UnaryExpression[@Operator = '++'])]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule ref="category/java/multithreading.xml/DontCallThreadRun">
+    <properties>
+      <!-- super.run() in a Thread subclass's run() runs the parent body on the same thread. -->
+      <property name="violationSuppressXPath" value=".[*[1][self::SuperExpression]]"/>
+    </properties>
   </rule>
   <rule ref="category/java/multithreading.xml/AvoidSynchronizedAtMethodLevel"
         message="Use a ReentrantLock, an atomic or a concurrent collection instead of a synchronized method."/>
-  <rule ref="category/java/security.xml"/>
   <rule ref="category/java/codestyle.xml/UnnecessaryImport"/>
   <rule name="NonFinalStaticField" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Make this static field final, or keep the state in an instance. Mutable static state is shared by every caller and every test.">

@@ -1,5 +1,5 @@
 import { hasArrayType } from '../support/checked-types.mjs';
-import { wordsOf } from '../support/identifier-words.mjs';
+import { wordsOf } from '../../../../../../shared/naming/secret-words.mjs';
 import { childrenOf, contains } from './loop-shapes.mjs';
 
 const CHUNK_WORDS = new Set(['chunk', 'chunks', 'chunked', 'batch', 'batches', 'batched']);

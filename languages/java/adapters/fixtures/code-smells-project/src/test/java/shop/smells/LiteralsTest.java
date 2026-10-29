@@ -15,7 +15,7 @@ class LiteralsTest {
 
   @Test
   void repeatsAnExpectedValue() {
-    assertEquals("shipped-order", shipped("shipped-order", 1)); // violation: AvoidDuplicateLiterals
+    assertEquals("shipped-order", shipped("shipped-order", 1));
     assertEquals("shipped-order", shipped("shipped-order", 2));
   }
 

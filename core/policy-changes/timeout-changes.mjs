@@ -5,6 +5,8 @@ import {
   validateTestTimeouts,
 } from '../../shared/test-timeouts/resolve.mjs';
 
+const TIMEOUT_KIND = 'test-timeout';
+
 function settingsOf(config) {
   return config.tools?.tests?.timeouts;
 }
@@ -33,7 +35,11 @@ function compareLimits(before, after, label) {
     const text = nativeChanged
       ? `test timeout ${label} ${key} changed from ${String(from ?? 'native')} to ${String(to ?? 'native')}`
       : `test timeout ${label} ${key} ${to > from ? 'raised' : 'lowered'} from ${String(from)} to ${String(to)}`;
-    result[nativeChanged || to > from ? 'loosened' : 'changed'].push(text);
+    if (nativeChanged || to > from) {
+      result.loosened.push({ text, kind: TIMEOUT_KIND });
+    } else {
+      result.changed.push(text);
+    }
   }
   return result;
 }
@@ -88,7 +94,13 @@ function addedProjectChanges(entry, { baseConfig, headConfig, baseProjects }) {
   return [
     {
       loosened: [
-        `test timeout project ${entry.name} membership added: ${JSON.stringify(added)} (${entry.project.language})`,
+        {
+          text: [
+            `test timeout project ${entry.name} membership added:`,
+            `${JSON.stringify(added)} (${entry.project.language})`,
+          ].join(' '),
+          kind: TIMEOUT_KIND,
+        },
       ],
       changed: [],
     },
@@ -132,7 +144,11 @@ function effectiveChanges(baseConfig, headConfig) {
     ),
   ];
   return {
-    loosened: [...new Set(parts.flatMap((part) => part.loosened))],
+    loosened: [
+      ...new Map(
+        parts.flatMap((part) => part.loosened).map((entry) => [entry.text, entry]),
+      ).values(),
+    ],
     changed: [...new Set(parts.flatMap((part) => part.changed))],
   };
 }
@@ -151,7 +167,12 @@ export function timeoutChanges(baseConfig, headConfig) {
     return effectiveChanges(baseConfig, headConfig);
   } catch (error) {
     return {
-      loosened: [`test timeout policy cannot be compared safely: ${error.message}`],
+      loosened: [
+        {
+          text: `test timeout policy cannot be compared safely: ${error.message}`,
+          kind: 'test-timeout-invalid',
+        },
+      ],
       changed: [],
     };
   }

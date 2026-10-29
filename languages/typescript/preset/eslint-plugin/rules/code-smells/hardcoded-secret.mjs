@@ -1,7 +1,11 @@
 import { isConcatenation } from '../analysis/static-shapes.mjs';
-import { isLogCall } from '../support/error-flow.mjs';
-import { joinedWords } from '../support/identifier-words.mjs';
-import { hasCredentialShape, isSecretAssignment, staticString } from './secret-values.mjs';
+import {
+  hasCredentialShape,
+  isHardcodedSecret,
+  isSecretName,
+} from '../../../../../../shared/naming/secret-words.mjs';
+import { loggedSecretNames } from './secret-logs.mjs';
+import { staticString } from './secret-values.mjs';
 
 const IDENTIFIER = 'Identifier';
 const MEMBER = 'MemberExpression';
@@ -9,24 +13,6 @@ const LITERAL = 'Literal';
 const DECLARATOR = 'VariableDeclarator';
 const STRING = 'string';
 const EXCEPTION_FIT = 'An exception fits only when this is not a real secret.';
-const SECRET_NAME = new RegExp(
-  `(?:${[
-    'password',
-    'passwd',
-    'pwd',
-    'passphrase',
-    'secret',
-    'token',
-    'credentials?',
-    'apikey',
-    'privatekey',
-    'accesskey',
-    'secretkey',
-    'authkey',
-    'signingkey',
-    'encryptionkey',
-  ].join('|')})$`,
-);
 const FALLBACK_OPERATORS = new Set(['||', '??']);
 
 function inStaticConcatenation(node) {
@@ -37,10 +23,6 @@ function inStaticConcatenation(node) {
     }
   }
   return chain.length > 1 && staticString(chain.at(-1)) !== undefined;
-}
-
-function isSecretName(name) {
-  return SECRET_NAME.test(joinedWords(name).replaceAll(/\d/g, ''));
 }
 
 function fallbackBranches(node) {
@@ -99,69 +81,6 @@ function valueOf(node) {
   return node.type === 'AssignmentExpression' ? node.right : node.value;
 }
 
-const CONSTANT_NAME = /^[A-Z][A-Z0-9_]*$/;
-const STATUS_KEY = /^(?:has|is)[A-Z_]/;
-const PASS_THROUGH = new Set([
-  'SpreadElement',
-  'TSAsExpression',
-  'TSNonNullExpression',
-  'ChainExpression',
-]);
-
-function ownNames(node) {
-  if (node.type === IDENTIFIER) {
-    return [node.name];
-  }
-  if (node.type === MEMBER && !node.computed) {
-    return [keyText(node.property) ?? ''];
-  }
-  const direct = node.type === 'Property' && [IDENTIFIER, MEMBER].includes(node.value.type);
-  const key = direct && !node.computed ? keyText(node.key) : undefined;
-  return key === undefined || STATUS_KEY.test(key) ? [] : [key];
-}
-
-function loggedChildren(node) {
-  if (Array.isArray(node)) {
-    return node;
-  }
-  switch (node?.type) {
-    case 'ObjectExpression':
-      return node.properties;
-    case 'Property':
-      return [node.value];
-    case 'TemplateLiteral':
-      return node.expressions;
-    case 'ArrayExpression':
-      return node.elements;
-    case 'LogicalExpression':
-      return [node.left, node.right];
-    case 'BinaryExpression':
-      return node.operator === '+' ? [node.left, node.right] : [];
-    default:
-      return PASS_THROUGH.has(node?.type) ? [node.argument ?? node.expression] : [];
-  }
-}
-
-function isNode(value) {
-  return value !== null && typeof value === 'object' && !Array.isArray(value);
-}
-
-function namesIn(start) {
-  const names = [];
-  const pending = [start];
-  for (const node of pending) {
-    if (isNode(node)) {
-      names.push(...ownNames(node));
-    }
-    pending.push(...loggedChildren(node));
-  }
-  return names;
-}
-
-function loggedSecretNames(call) {
-  return namesIn(call.arguments).filter((name) => isSecretName(name) && !CONSTANT_NAME.test(name));
-}
-
 export const rule = {
   meta: {
     type: 'problem',
@@ -193,7 +112,7 @@ export const rule = {
         return;
       }
       for (const { node: literal, text } of candidateStrings(valueOf(node))) {
-        if (isSecretAssignment(text, name)) {
+        if (isHardcodedSecret(text, name)) {
           context.report({ node: literal, messageId: 'hardcoded', data: { name } });
         }
       }
@@ -202,6 +121,11 @@ export const rule = {
       const text = staticString(node);
       if (text !== undefined && !inStaticConcatenation(node) && hasCredentialShape(text)) {
         context.report({ node, messageId: 'credentialShape' });
+      }
+    }
+    function checkSink(node) {
+      for (const name of loggedSecretNames(node)) {
+        context.report({ node, messageId: 'logged', data: { name } });
       }
     }
     return {
@@ -213,14 +137,8 @@ export const rule = {
       Literal: checkShape,
       TemplateLiteral: checkShape,
       'BinaryExpression[operator="+"]': checkShape,
-      CallExpression(node) {
-        if (!isLogCall(node)) {
-          return;
-        }
-        for (const name of new Set(loggedSecretNames(node))) {
-          context.report({ node, messageId: 'logged', data: { name } });
-        }
-      },
+      CallExpression: checkSink,
+      NewExpression: checkSink,
     };
   },
 };

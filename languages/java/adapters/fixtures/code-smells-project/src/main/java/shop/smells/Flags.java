@@ -23,4 +23,24 @@ public final class Flags {
   public boolean both(boolean other) {
     return enabled && other;
   }
+
+  public void drain(java.util.List<String> items, boolean all) { // violation: BooleanFlagParameter
+    while (all && !items.isEmpty()) {
+      items.remove(0);
+    }
+  }
+
+  public void trim(java.util.List<String> items, boolean once) { // violation: BooleanFlagParameter
+    do {
+      items.remove(0);
+    } while (once == false && !items.isEmpty());
+  }
+
+  public java.util.function.Supplier<String> later(String text, boolean upper) { // violation: BooleanFlagParameter
+    return () -> upper ? text.toUpperCase() : text;
+  }
+
+  public static Flags valueOf(boolean value) {
+    return value ? new Flags() : of(false);
+  }
 }

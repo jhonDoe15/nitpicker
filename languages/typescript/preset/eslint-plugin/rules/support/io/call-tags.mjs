@@ -1,5 +1,5 @@
 import { LOOSE_STATEMENT } from '../../../../../../../shared/rules/security/sql-text.mjs';
-import { wordsOf } from '../identifier-words.mjs';
+import { wordsOf } from '../../../../../../../shared/naming/secret-words.mjs';
 import { isCachePackage } from './packages.mjs';
 
 const DATABASE = 'database';

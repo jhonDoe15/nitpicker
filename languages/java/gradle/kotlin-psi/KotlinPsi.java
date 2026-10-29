@@ -13,6 +13,7 @@ import java.util.Set;
 import java.util.regex.PatternSyntaxException;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
+import nitpicker.kotlinpsi.bodies.Throwing;
 import nitpicker.kotlinpsi.common.Json;
 import nitpicker.kotlinpsi.facts.FactsCollector;
 import nitpicker.kotlinpsi.metrics.FileClasses;
@@ -86,18 +87,23 @@ public final class KotlinPsi {
     Disposable disposable = Disposer.newDisposable();
     try {
       PsiFileFactory factory = PsiFileFactory.getInstance(environment(disposable).getProject());
+      List<Source> sources = new ArrayList<>();
       for (Map.Entry<Path, Boolean> source : files.entrySet()) {
         Path file = source.getKey();
         boolean test = source.getValue();
         String relative = projectDir.relativize(file.toAbsolutePath().normalize()).toString().replace('\\', '/');
         String text = normalized(Files.readString(file, StandardCharsets.UTF_8));
-        KtFile parsed = parse(factory, file, text, relative, test);
-        if (!test) {
-          new MetricsCollector(parsed, text, relative, functions).collect();
-          classes.add(FileClasses.describe(parsed, relative, claimedFacades));
-          Types.collect(parsed, text, relative, types);
+        sources.add(new Source(parse(factory, file, text, relative, test), text, relative, test));
+      }
+      Set<String> nothing = Throwing.nothingFunctions(
+          sources.stream().filter(source -> !source.test()).map(Source::parsed).toList());
+      for (Source source : sources) {
+        if (!source.test()) {
+          new MetricsCollector(source.parsed(), source.text(), source.relative(), functions).collect();
+          classes.add(FileClasses.describe(source.parsed(), source.relative(), claimedFacades));
+          Types.collect(source.parsed(), source.text(), source.relative(), types);
         }
-        facts.add(factsOf(parsed, text, relative, test));
+        facts.add(factsOf(source, nothing));
       }
     } finally {
       Disposer.dispose(disposable);
@@ -110,18 +116,21 @@ public final class KotlinPsi {
     Files.writeString(factsOutput, Json.of(Map.of("files", facts)) + "\n", StandardCharsets.UTF_8);
   }
 
-  private static Object factsOf(KtFile parsed, String text, String relative, boolean test) {
+  private record Source(KtFile parsed, String text, String relative, boolean test) {}
+
+  private static Object factsOf(Source source, Set<String> nothing) {
     try {
-      FactsCollector collector = new FactsCollector(parsed, text, relative, test);
+      FactsCollector collector =
+          new FactsCollector(source.parsed(), source.text(), source.relative(), source.test(), nothing);
       collector.collect();
       return collector.result();
     } catch (StackOverflowError tooDeep) {
-      return skipped(relative, test);
+      return skipped(source.relative(), source.test());
     } catch (PatternSyntaxException failed) {
       if (!failed.getDescription().startsWith("Stack overflow")) {
         throw failed;
       }
-      return skipped(relative, test);
+      return skipped(source.relative(), source.test());
     }
   }
 
