@@ -208,14 +208,14 @@ describe('the shared files of a project', () => {
     const blobId = (content) => `blob:${content.length}`;
     const web = path.join(root, 'web');
 
-    expect(configLayersOf(path.join(root, 'api'), web, blobId)).toEqual({
+    expect(configLayersOf(path.join(root, 'api'), web, { blobId })).toEqual({
       shared: [
         ['base.json', 'blob:2'],
         ['team/shared.json', 'blob:26'],
       ],
       changed: ['base.json', 'team/shared.json', 'nitpicker.config.json'],
     });
-    expect(configLayersOf(web, web, blobId).changed).toEqual([]);
+    expect(configLayersOf(web, web, { blobId }).changed).toEqual([]);
   });
 
   it('reads no layers from a base config that is not valid JSON', () => {
@@ -225,7 +225,7 @@ describe('the shared files of a project', () => {
     });
     const blobId = (content) => `blob:${content.length}`;
 
-    expect(configLayersOf(path.join(root, 'old'), path.join(root, 'web'), blobId)).toEqual({
+    expect(configLayersOf(path.join(root, 'old'), path.join(root, 'web'), { blobId })).toEqual({
       shared: [],
       changed: ['nitpicker.config.json'],
     });

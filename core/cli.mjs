@@ -201,7 +201,7 @@ function runComparisonCli(cli) {
     analyzers,
     cacheStore,
     includeWorkingTree: true,
-    additionalToolErrors: fixResult.toolErrors,
+    additionalToolErrors: [...fixResult.toolErrors, ...(cli.repositoryToolErrors ?? [])],
     configOverrides: describeConfigOverrides(config),
     headPolicy,
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),

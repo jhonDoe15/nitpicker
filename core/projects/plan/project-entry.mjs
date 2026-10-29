@@ -54,15 +54,18 @@ function nestedExcludes(entry, allPaths) {
     });
 }
 
-function overlayOf(entry, absolute, excludes) {
+function overlayOf(entry, { absolute, root, excludes }) {
   const preset = entry.preset === undefined ? presetToDeclare({}, absolute)?.preset : entry.preset;
   const declared = entry.preset !== undefined;
-  if (preset === undefined && excludes.length === 0) {
+  const inherits =
+    entry.path === '.' ? undefined : path.relative(absolute, root).split(path.sep).join('/');
+  if (preset === undefined && excludes.length === 0 && inherits === undefined) {
     return undefined;
   }
   return {
     ...(preset === undefined ? {} : { preset, declared }),
     ...(excludes.length === 0 ? {} : { exclude: excludes }),
+    ...(inherits === undefined ? {} : { inherits }),
   };
 }
 
@@ -96,7 +99,7 @@ export function describeProject(entry, context) {
   const { root, repositoryRoot, prefix, rootConfig, allPaths } = context;
   rejectNestedProjects(entry, root);
   const absolute = entry.path === '.' ? root : path.join(root, entry.path);
-  const overlay = overlayOf(entry, absolute, nestedExcludes(entry, allPaths));
+  const overlay = overlayOf(entry, { absolute, root, excludes: nestedExcludes(entry, allPaths) });
   const loaded = loadSettings(absolute, overlay, repositoryRoot);
   rejectOtherBase(entry, loaded.config, rootConfig);
   return {

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { CONFIG_FILE_NAME, configError, isPlainObject } from '../../../shared/config.mjs';
 import { withCanonicalRules } from '../../../shared/exceptions/validation.mjs';
 import { SUPPORTED_PRESETS, validateConfig, validateKeys } from '../validate.mjs';
+import { inheritedLayers } from './inherited.mjs';
 import { readLayers } from './layers.mjs';
 import { mergeLayers, settingsOf } from './merge.mjs';
 import { validateProjects } from './settings.mjs';
@@ -65,20 +66,40 @@ function validateMerged(merged, layers) {
   try {
     return validateConfig(merged);
   } catch (error) {
-    const source = layers.length > 1 ? culprit(layers, merged) : undefined;
+    const source = layers.length > 0 ? culprit(layers, merged) : undefined;
     throw source === undefined ? error : relabel(error, source.label);
   }
 }
 
-export function readLayeredConfig(projectRoot, { overlay, repositoryRoot } = {}) {
+function ownLayers(projectRoot, repositoryRoot) {
   const configPath = path.join(projectRoot, CONFIG_FILE_NAME);
-  const layers = (existsSync(configPath) ? readLayers(configPath, { repositoryRoot }) : []).map(
-    (layer) => ({ ...layer, config: withCanonicalRules(layer.config) }),
-  );
-  for (const layer of layers) {
+  return existsSync(configPath) ? readLayers(configPath, { repositoryRoot }) : [];
+}
+
+function checkedLayers(layers) {
+  const canonical = layers.map((layer) => ({ ...layer, config: withCanonicalRules(layer.config) }));
+  for (const layer of canonical) {
     checkLayer(layer);
   }
-  const withSettings = layers.map((layer) => ({ ...layer, settings: settingsOf(layer.config) }));
-  const merged = mergeLayers(withSettings.map(({ settings }) => settings));
-  return validateMerged(withExcludes(withOverlay(merged, overlay), overlay), withSettings);
+  return canonical.map((layer) => ({ ...layer, settings: settingsOf(layer.config) }));
+}
+
+function withInheritedPreset(merged, preset) {
+  return merged.preset === undefined && preset !== undefined ? { ...merged, preset } : merged;
+}
+
+export function readLayeredConfig(projectRoot, { overlay, repositoryRoot } = {}) {
+  const own = checkedLayers(ownLayers(projectRoot, repositoryRoot));
+  const ownMerged = withOverlay(mergeLayers(own.map(({ settings }) => settings)), overlay);
+  const inherited = inheritedLayers(projectRoot, {
+    inherits: overlay?.inherits,
+    memberPreset: ownMerged.preset,
+    repositoryRoot,
+  });
+  const layers = [...checkedLayers(inherited.layers), ...own];
+  const merged = withOverlay(mergeLayers(layers.map(({ settings }) => settings)), overlay);
+  return validateMerged(
+    withExcludes(withInheritedPreset(merged, inherited.preset), overlay),
+    layers,
+  );
 }

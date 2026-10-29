@@ -12,8 +12,10 @@ import { baseDeclaresProjects, basePlanOf, planInputsChanged } from '../policy/b
 import {
   asProjectLoosenings,
   projectSetLoosenings,
+  projectsToolError,
   repositoryPolicy,
 } from '../policy/project-set.mjs';
+import { reappearedProjects } from '../policy/reappeared.mjs';
 import {
   clearStaleProjectReports,
   writeCombinedMachineReports,
@@ -55,10 +57,14 @@ function comparisonOf(plan, cli) {
     cli,
   });
   const changed = changedFiles({ repositoryRoot, mergeBaseSha });
-  const basePlan = planInputsChanged({ repositoryRoot, mergeBaseSha, changed })
+  const { plan: basePlan, error } = planInputsChanged({ repositoryRoot, mergeBaseSha, changed })
     ? basePlanOf({ ...plan, mergeBaseSha })
-    : plan;
-  return { base, mergeBaseSha, changed, basePlan };
+    : { plan };
+  return { base, mergeBaseSha, changed, basePlan, toolErrors: toolErrorsOf(error) };
+}
+
+function toolErrorsOf(error) {
+  return error === undefined ? [] : [projectsToolError(error)];
 }
 
 function choose(plan, cli, comparison) {
@@ -143,15 +149,25 @@ function noticesOf(plan, changed, cli) {
   return notices;
 }
 
-function repositoryOf({ plan, files, comparison, cli }) {
-  const loosenings = projectSetLoosenings({
+function headProjectSet({ plan, files, comparison }) {
+  return projectSetLoosenings({
     basePlan: comparison.basePlan,
     headPlan: plan,
     root: plan.root,
     headFiles: files,
+    reappeared: reappearedProjects({ plan, basePlan: comparison.basePlan, comparison }),
   });
+}
+
+function repositoryOf({ plan, files, comparison, cli }) {
+  const loosenings = headProjectSet({ plan, files, comparison });
   const { acceptPolicyChange } = policyAcceptance(cli.options, cli.environment, cli.interactive);
-  return repositoryPolicy({ loosenings, root: plan.root, acceptedDigest: acceptPolicyChange });
+  return repositoryPolicy({
+    loosenings,
+    root: plan.root,
+    acceptedDigest: acceptPolicyChange,
+    toolErrors: comparison.toolErrors ?? [],
+  });
 }
 
 function prepare({ plan, cli }) {
@@ -189,52 +205,52 @@ function execute({ plan, files, cli, runProject }) {
 
 function formerProjectLoosenings(probe) {
   try {
-    return { loosenings: formerAt({ ...probe, repositoryRoot: repositoryRootOf(probe.root) }) };
+    return formerAt({ ...probe, repositoryRoot: repositoryRootOf(probe.root) });
   } catch (error) {
-    return { loosenings: [], error };
+    return { loosenings: [], toolErrors: toolErrorsOf(error) };
   }
 }
 
 function singleProjectLoosenings({ root, files, cli }) {
-  return cli.options.all === true ? [] : formerProjectLoosenings({ root, files, cli }).loosenings;
+  return cli.options.all === true
+    ? { loosenings: [], toolErrors: [] }
+    : formerProjectLoosenings({ root, files, cli });
 }
 
 function configuredBaseOf(root) {
   try {
-    return { base: readLayeredConfig(root).base };
-  } catch (error) {
-    return { base: undefined, error };
+    return readLayeredConfig(root).base;
+  } catch {
+    return undefined;
   }
 }
 
 function formerAt({ root, files, cli, repositoryRoot }) {
   const prefix = path.relative(repositoryRoot, root).split(path.sep).join('/') || '.';
-  const configuredBase = configuredBaseOf(root).base;
+  const configuredBase = configuredBaseOf(root);
   const { mergeBaseSha } = comparisonBase({ repositoryRoot, configuredBase, cli });
   if (!baseDeclaresProjects({ repositoryRoot, prefix, mergeBaseSha })) {
-    return [];
+    return { loosenings: [], toolErrors: [] };
   }
-  const basePlan = basePlanOf({ repositoryRoot, prefix, mergeBaseSha });
+  const { plan: basePlan, error } = basePlanOf({ repositoryRoot, prefix, mergeBaseSha });
   const loosenings = projectSetLoosenings({
     basePlan,
     headPlan: undefined,
     root,
     headFiles: files,
   });
-  return asProjectLoosenings(loosenings, root);
+  return { loosenings: asProjectLoosenings(loosenings, root), toolErrors: toolErrorsOf(error) };
 }
 
 function runMember({ plan, files, member, cli, runProject }) {
   const comparison = comparisonOf(plan, cli);
   const extras = extrasOf(member, { comparison, analyzers: new Map() });
-  const loosenings = projectSetLoosenings({
-    basePlan: comparison.basePlan,
-    headPlan: plan,
-    root: plan.root,
-    headFiles: files,
+  const loosenings = headProjectSet({ plan, files, comparison });
+  return runProject(cli.options, {
+    ...extras.cli,
+    repositoryLoosenings: asProjectLoosenings(loosenings, plan.root),
+    repositoryToolErrors: comparison.toolErrors ?? [],
   });
-  const repositoryLoosenings = asProjectLoosenings(loosenings, plan.root);
-  return runProject(cli.options, { ...extras.cli, repositoryLoosenings });
 }
 
 function singleMode({ inspection, cli, currentProjectRoot }) {
@@ -248,7 +264,8 @@ function singleMode({ inspection, cli, currentProjectRoot }) {
     cli.stderr.write(`nitpicker: ${notice}\n`);
   }
   const probe = { root: currentProjectRoot, files: inspection.files, cli };
-  return { extraCli: { repositoryLoosenings: singleProjectLoosenings(probe) } };
+  const { loosenings, toolErrors } = singleProjectLoosenings(probe);
+  return { extraCli: { repositoryLoosenings: loosenings, repositoryToolErrors: toolErrors } };
 }
 
 export function runMonorepo({ cli, currentProjectRoot, runProject }) {

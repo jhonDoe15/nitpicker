@@ -30,6 +30,7 @@ export function baseSetupResolver(cli, headConfig, headPolicy) {
     headPolicy,
     injectedAnalyzers: cli.injectedAnalyzers,
     overlay: cli.baseConfigOverlay,
+    inherits: cli.configOverlay?.inherits,
     repositoryLoosenings: cli.repositoryLoosenings,
     warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
@@ -40,6 +41,7 @@ export function createBaseSetupResolver({
   headPolicy = {},
   injectedAnalyzers,
   overlay,
+  inherits,
   repositoryLoosenings = [],
   warn = () => undefined,
 }) {
@@ -52,6 +54,7 @@ export function createBaseSetupResolver({
       baseProjectRoot,
       headProjectRoot: headSnapshotRoot,
       moves,
+      inherits,
     });
     const unchanged = JSON.stringify(compared) === JSON.stringify(headConfig);
     return {

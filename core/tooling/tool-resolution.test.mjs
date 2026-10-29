@@ -233,6 +233,27 @@ describe('project root resolution', () => {
     gitTemplateRoot = createGitTemplate();
   });
 
+  it('finds a uv workspace declared in either form of its pyproject.toml', () => {
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-project-')));
+    temporaryRoots.push(root);
+    copyGitTemplate(gitTemplateRoot, root);
+    writeFileSync(path.join(root, 'package.json'), '{}');
+    const declarations = {
+      table: '[tool.uv.workspace]\nmembers = ["libs/*"]\n',
+      inline: '[tool.uv]\nworkspace = { members = ["libs/*"] }\n',
+      none: '[tool.uv]\npackage = false\n',
+    };
+    for (const [form, text] of Object.entries(declarations)) {
+      mkdirSync(path.join(root, form, 'libs/a/src'), { recursive: true });
+      writeFileSync(path.join(root, form, 'pyproject.toml'), text);
+    }
+    expect(
+      Object.keys(declarations).map((form) =>
+        resolveProjectRoot(path.join(root, form, 'libs/a/src')),
+      ),
+    ).toEqual([path.join(root, 'table'), path.join(root, 'inline'), root]);
+  });
+
   it('finds the nearest package or nitpicker config bounded by the git repository', () => {
     const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-project-')));
     temporaryRoots.push(root);

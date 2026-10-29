@@ -205,6 +205,10 @@ describe('toolchain files', () => {
   it.each([
     ['typescript', 'package.json', true],
     ['javascript', 'config/tsconfig.base.json', true],
+    ['typescript', 'tools/package.json', false],
+    ['typescript', 'tools/yarn.lock', false],
+    ['python', 'scripts/pyproject.toml', false],
+    ['java', 'samples/pom.xml', false],
     ['typescript', 'bun.lock', true],
     ['typescript', 'uv.lock', false],
     ['python', 'requirements-dev.txt', true],
@@ -218,5 +222,13 @@ describe('toolchain files', () => {
     [undefined, 'yarn.lock', true],
   ])('%s: %s -> %s', (preset, file, expected) => {
     expect(isToolchainFileFor(preset, file)).toBe(expected);
+  });
+
+  it('are read from the top of a monorepo that sits in a folder of the repository', () => {
+    expect(
+      ['apps/package.json', 'package.json', 'apps/tools/package.json'].map((file) =>
+        isToolchainFileFor('typescript', file, 'apps'),
+      ),
+    ).toEqual([true, false, false]);
   });
 });

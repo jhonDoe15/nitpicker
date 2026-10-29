@@ -15,6 +15,11 @@ import {
   removeDependencyLinks,
 } from './eslint/policy.mjs';
 import { validatedContainedFile } from './eslint/paths.mjs';
+import {
+  detectPackageManager,
+  installedDependencies,
+} from './dependency-graph/package-managers/detect.mjs';
+import { missingDependenciesMessage } from './dependency-graph/package-managers/install.mjs';
 import { normalizeEslintResults } from './eslint/normalize.mjs';
 import {
   testEnvironmentNotices,
@@ -73,7 +78,14 @@ export function runEslint(options) {
 }
 
 function prepareEslint(options, state) {
-  const dependencyRoot = realpathSync(path.join(options.liveProjectRoot, 'node_modules'));
+  const installed = installedDependencies(options.liveProjectRoot);
+  if (installed === undefined) {
+    const packageManager = detectPackageManager(options.liveProjectRoot);
+    throw new Error(
+      missingDependenciesMessage(packageManager, path.join(packageManager.root, 'node_modules')),
+    );
+  }
+  const dependencyRoot = realpathSync(installed);
   if (!statSync(dependencyRoot).isDirectory()) {
     throw new Error(`Installed ESLint dependencies are missing at ${dependencyRoot}`);
   }

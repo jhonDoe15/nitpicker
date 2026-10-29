@@ -61,13 +61,14 @@ function statuses(result) {
 
 const NPM_INSTALL_TIMEOUT_MS = 300_000;
 
-function installWebPackages(root) {
-  const result = spawnSync('npm', ['install', '--no-audit', '--no-fund'], {
-    cwd: path.join(root, 'web'),
+function installWebPackages(root, folder = 'web', manager = 'npm') {
+  const args = manager === 'npm' ? ['install', '--no-audit', '--no-fund'] : ['install'];
+  const result = spawnSync(manager, args, {
+    cwd: path.join(root, folder),
     encoding: 'utf8',
     timeout: NPM_INSTALL_TIMEOUT_MS,
   });
-  if (result.status !== 0 || !existsSync(path.join(root, 'web/node_modules'))) {
+  if (result.status !== 0 || !existsSync(path.join(root, folder, 'node_modules'))) {
     throw new Error(`npm install failed: ${result.stderr}${result.stdout}`);
   }
 }
@@ -171,6 +172,85 @@ describe.skipIf(!pythonE2eEnabled)(
 
       expect(statuses(result)).toEqual({ web: 'passed', api: 'skipped', svc: 'skipped' });
       expect(result.exitCode).toBe(0);
+    });
+  },
+);
+
+const MEMBER_CONFIG = JSON.stringify({
+  disable: ['typescript-typecheck', 'coverage', 'crap', 'mutation'],
+});
+
+function workspaceFiles(manager) {
+  return {
+    '.gitignore': 'node_modules/\n',
+    'package.json': JSON.stringify({
+      name: 'workspace',
+      version: '1.0.0',
+      private: true,
+      ...(manager === 'npm' ? { workspaces: ['packages/*'] } : {}),
+    }),
+    ...(manager === 'pnpm' ? { 'pnpm-workspace.yaml': "packages:\n  - 'packages/*'\n" } : {}),
+    'packages/a/package.json': JSON.stringify({
+      name: 'a',
+      version: '1.0.0',
+      private: true,
+      type: 'module',
+      devDependencies: { typescript: '6.0.3' },
+    }),
+    'packages/a/nitpicker.config.json': MEMBER_CONFIG,
+    'packages/a/src/greeting.ts': ROOT_FILES['web/src/greeting.ts'],
+  };
+}
+
+describe.skipIf(!pythonE2eEnabled)(
+  'a workspace with its dependencies installed at its root',
+  () => {
+    afterAll(() => {
+      removeRepositories();
+    });
+
+    it.each(['npm', 'pnpm'])('gates a member whose dependencies %s installed', (manager) => {
+      const root = repository();
+      write(root, workspaceFiles(manager));
+      installWebPackages(root, '.', manager);
+      initializeRepository(root, 'base');
+      commitBranch(root, 'member', {
+        'packages/a/src/greeting.ts':
+          'export function greeting(name: string): string {\n  return `Hi, ${name}!`;\n}\n',
+      });
+
+      const result = gate(root, 'member');
+
+      expect([statuses(result), summaryOf(result).overallStatus, result.exitCode]).toEqual([
+        { 'packages/a': 'passed' },
+        'completed',
+        0,
+      ]);
+      expect(result.json('packages/a/tool-errors.json')).toEqual([]);
+      expect(existsSync(path.join(root, 'packages/a/node_modules'))).toBe(manager === 'pnpm');
+    });
+
+    it('keeps applying the exclude of the root config to a member', () => {
+      const root = repository();
+      write(root, {
+        ...workspaceFiles('npm'),
+        'nitpicker.config.json': JSON.stringify({ exclude: ['packages/a/src/legacy/**'] }),
+        'packages/a/src/legacy/old.ts': 'export const old = 1;\n',
+      });
+      installWebPackages(root, '.', 'npm');
+      initializeRepository(root, 'base');
+      commitBranch(root, 'excluded', {
+        'packages/a/src/legacy/old.ts':
+          'export function old(name: string): string {\n  var unused = 1;\n  return `Hi, ${name}!`;\n}\n',
+      });
+
+      const result = gate(root, 'excluded');
+
+      expect([statuses(result), result.exitCode]).toEqual([{ 'packages/a': 'passed' }, 0]);
+      expect(result.json('packages/a/summary.json').configOverrides).toEqual([
+        'disable: ["typescript-typecheck","coverage","crap","mutation"]',
+        'exclude: ["src/legacy/**"]',
+      ]);
     });
   },
 );

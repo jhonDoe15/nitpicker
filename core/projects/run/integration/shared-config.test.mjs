@@ -198,3 +198,39 @@ describe('projects that extend a shared config', () => {
     ]);
   });
 });
+
+function workspaceWithRootConfig(rootConfig) {
+  return repository({
+    'nitpicker.config.json': JSON.stringify(rootConfig),
+    'package.json': '{"private":true,"workspaces":["packages/*"]}\n',
+    ...projectFiles('packages/a', {
+      'package.json': '{"name":"a"}\n',
+      'src/a.ts': 'export const a = 1;\n',
+    }),
+  });
+}
+
+describe('the root config of a workspace', () => {
+  it('still applies to each member, with its paths taken from the member', () => {
+    const root = workspaceWithRootConfig({ exclude: ['packages/a/src/**'] });
+    writeFiles(root, { 'packages/a/src/a.ts': violation('a') });
+
+    const result = run(root);
+
+    expect(reportOf(result, 'packages/a').summary.configOverrides).toEqual(['exclude: ["src/**"]']);
+  });
+
+  it('is policy of every member: loosening it is reported with the root config named', () => {
+    const root = workspaceWithRootConfig({ thresholds: { fileLines: 200 } });
+    writeFiles(root, {
+      'nitpicker.config.json': JSON.stringify({ thresholds: { fileLines: 400 } }),
+    });
+
+    const result = run(root);
+
+    expect(result.exitCode).toBe(1);
+    expect(loosenings(result, 'packages/a').map(({ identity }) => identity)).toEqual([
+      'threshold fileLines raised from 200 to 400 (from ../../nitpicker.config.json)',
+    ]);
+  });
+});

@@ -17,8 +17,9 @@ with `npx nitpicker`, `pnpm exec nitpicker`, `yarn nitpicker` or `bunx nitpicker
 
 Requirements: Node.js 22.14 or newer, a Git repository, and a project whose dependencies are
 installed in `node_modules` by npm, pnpm, Yarn (Yarn Plug'n'Play is not supported: set
-`nodeLinker: node-modules`) or Bun. The base's own install supports all four managers; nitpicker
-itself is tested end to end with npm projects. nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
+`nodeLinker: node-modules`) or Bun. In a workspace the `node_modules` of the workspace root serves
+every member that has none of its own, and a missing install names the workspace root. The base's
+own install supports all four managers; nitpicker itself is tested end to end with npm projects. nitpicker brings its own pinned ESLint, Prettier, dependency-cruiser, knip, jscpd,
 Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
 choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typescript` come from
 your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
@@ -900,7 +901,8 @@ A run fans out to several projects only when the repository says it holds severa
 
 - the `nitpicker.config.json` at the top lists `projects`, or
 - the top declares a workspace: `workspaces` in `package.json` (npm, Yarn, Bun),
-  `pnpm-workspace.yaml`, or `[tool.uv.workspace]` in `pyproject.toml`. Lerna, Nx, Turborepo and Rush
+  `pnpm-workspace.yaml`, or a uv workspace in `pyproject.toml` (`[tool.uv.workspace]`, or
+  `workspace = { ... }` under `[tool.uv]`). Lerna, Nx, Turborepo and Rush
   repositories use npm, pnpm or Yarn workspaces underneath, so they are found the same way.
 
 Folders that only look like projects do not make a monorepo. A `package.json` with an
@@ -920,9 +922,9 @@ Where you start the run matters:
 
 - At the top (the folder with `projects` or the workspace declaration), nitpicker gates every
   project. Nitpicker finds that top from a subfolder too: the nearest folder that holds a
-  `package.json`, a `nitpicker.config.json` or a `[tool.uv.workspace]` table.
+  `package.json`, a `nitpicker.config.json` or a uv workspace.
 - Inside a project folder that has its own `package.json` or `nitpicker.config.json`, nitpicker gates
-  that project alone, with its own config, exactly as before.
+  that project alone, with its own config only, exactly as before.
 - Inside a member that has neither (a uv workspace member, or a listed folder with only a
   `pyproject.toml` or build file), nitpicker gates that member alone, with the preset the top gives
   it and the base of the top config. A change to the set of projects (see below) is a loosening of
@@ -946,6 +948,14 @@ Where you start the run matters:
 - Each project reads its own `nitpicker.config.json`. A folder without one needs no file when its
   preset can be detected; the `preset` of an entry declares it. An entry's `preset` that disagrees
   with the project's own config is an error. Only the config at the top may set `projects`.
+- The config at the top is the base layer of every other project, merged like a file the project
+  `extends` (see below): `exclude`, `exceptions`, `disable`, `thresholds`, `analyzers` and the other
+  settings apply to each project unless its own config sets the same key. `projects`, `extends` and
+  `preset` are not passed on. Paths in it stay paths from the top: `"exclude":
+  ["packages/a/src/gen/**"]` reaches `packages/a` as `src/gen/**`, and a path in another project
+  is left out. A project of another language than the top (a Python project under a TypeScript
+  top) takes nothing from it. The top config is policy of every project: it is part of each
+  project's digest, and loosening it is a `policy-loosened` finding that names it.
 - A project may sit inside another one (`.` and `web`, or `web` and `web/sub`). The outer project's
   run leaves the inner folders out, so each file is gated once.
 - `"projects": []` keeps the repository one project, whatever it holds.
@@ -979,9 +989,10 @@ Nitpicker compares the files changed against the merge base (plus untracked file
 - every project that extends a shared config file that changed (see below);
 - every project, when the top `nitpicker.config.json` or a file it extends changed;
 - every project whose config has an error, so the error is reported;
-- every project of a toolchain whose root file changed outside any project: a lockfile or
-  `tsconfig` for JavaScript, `pyproject.toml` or `uv.lock` for Python, a settings or build file for
-  Java and Kotlin.
+- every project of a toolchain whose root file changed at the top of the monorepo: a lockfile or
+  `package.json` for JavaScript (and a `tsconfig` anywhere outside the projects), `pyproject.toml`
+  or `uv.lock` for Python, a settings or build file for Java and Kotlin. Such a file in a folder
+  that is not a project, such as `tools/package.json`, runs nothing.
 
 `--project <path>` (repeatable) runs exactly the named projects, changed or not. `--all` runs every
 project against the whole checkout. `--analyzer <name>` runs the projects that have that analyzer
@@ -1007,8 +1018,10 @@ longer listed are removed. The output folder also gets:
 
 - a combined `summary.json` ([format](internals.md#monorepo-summary)) and `report.txt`;
 - a combined `report.sarif` and `report-baseline.sarif` with one run per project (category
-  `nitpicker/<project>/`) and paths from the repository root, for one code scanning upload;
-- a combined `report.junit.xml` with one test suite per project.
+  `nitpicker/<project>/`; the repository policy has `nitpicker-repository/`) and paths from the
+  repository root, for one code scanning upload;
+- a combined `report.junit.xml` with one test suite per project and one for the repository policy,
+  with paths from the repository root.
 
 ```yaml
 - run: npx nitpicker --base origin/main
@@ -1066,10 +1079,13 @@ digests joined by commas, and the monorepo summary prints that line.
 ### The set of projects is policy
 
 Taking a project out of `projects`, emptying the list, or shrinking the workspace so a folder that
-was gated on its own no longer is, is a `policy-loosened` finding of the repository policy. So is a
-preset changed in a `projects` entry: the base side of each project uses the preset the base gave
-it. The repository policy has its own digest, printed in the summary and accepted like the others
-(add it to the comma list).
+was gated on its own no longer is, is a `policy-loosened` finding of the repository policy. So is
+moving a project to a folder that no project covers (`git mv packages/b legacy/b` when `projects`
+is `["packages/*"]`): its files show up outside every project. So is a preset changed in a
+`projects` entry: the base side of each project uses the preset the base gave it. The repository
+policy has its own digest, printed in the summary and accepted like the others (add it to the comma
+list). When the projects of the base cannot be read, the run fails closed with a tool error (exit
+code 2) instead of skipping the check.
 
 ### Not for the top of a monorepo
 

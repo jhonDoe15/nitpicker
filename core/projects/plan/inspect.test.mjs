@@ -44,21 +44,21 @@ describe('inspectRepository', () => {
       {
         p: 'web',
         preset: 'typescript',
-        overlay: undefined,
+        overlay: { inherits: '..' },
         sharedFiles: ['base.json'],
         repoPath: 'web',
       },
       {
         p: 'api',
         preset: 'python',
-        overlay: { preset: 'python', declared: true },
+        overlay: { preset: 'python', declared: true, inherits: '..' },
         sharedFiles: [],
         repoPath: 'api',
       },
       {
         p: 'svc',
         preset: 'java',
-        overlay: { preset: 'java', declared: false },
+        overlay: { preset: 'java', declared: false, inherits: '..' },
         sharedFiles: [],
         repoPath: 'svc',
       },
@@ -120,8 +120,8 @@ describe('inspectRepository', () => {
 
     expect(found.projects.map(({ overlay }) => overlay)).toEqual([
       { exclude: ['web/**', 'web/sub/**'] },
-      { exclude: ['sub/**'] },
-      undefined,
+      { exclude: ['sub/**'], inherits: '..' },
+      { inherits: '../..' },
     ]);
   });
 
