@@ -143,7 +143,9 @@ describe('TypeScript 7 on an older Node.js', () => {
       '^7.0.0 declared',
     ],
   ])('stops init when TypeScript 7 is %s and Node.js is below 22.19', (_name, files, found) => {
-    expect(() => assertTypeScriptNode(project(files), '22.18.1')).toThrow(
+    expect(() => {
+      assertTypeScriptNode(project(files), '22.18.1');
+    }).toThrow(
       `This project uses TypeScript 7 (${found}). nitpicker reads a TypeScript 7 project through its own TypeScript 6 API, which needs Node.js 22.19 or newer, and this is Node.js 22.18.1. Install Node.js 22.19 or newer, or use TypeScript 6 (typescript@^6), and run nitpicker init again.`,
     );
   });
@@ -158,7 +160,9 @@ describe('TypeScript 7 on an older Node.js', () => {
       '22.18.1',
     ],
   ])('lets %s through', (_name, files, nodeVersion) => {
-    expect(() => assertTypeScriptNode(project(files), nodeVersion)).not.toThrow();
+    expect(() => {
+      assertTypeScriptNode(project(files), nodeVersion);
+    }).not.toThrow();
   });
 
   it('judges the installed TypeScript over the declared range', () => {
@@ -167,7 +171,9 @@ describe('TypeScript 7 on an older Node.js', () => {
       ...installed('typescript', '6.0.3'),
     });
 
-    expect(() => assertTypeScriptNode(root, '22.18.1')).not.toThrow();
+    expect(() => {
+      assertTypeScriptNode(root, '22.18.1');
+    }).not.toThrow();
   });
 
   it('asks for TypeScript 6 when Node.js is too old for the TypeScript 7 that plain typescript installs', () => {
