@@ -4,7 +4,6 @@ import {
 } from '../../../../shared/conventions/tool-precedence.mjs';
 import { resolveLayoutFor } from '../layout.mjs';
 import { mutationDisabled, STRYKER_TOOL, strykerProjectFile } from './stryker-project-config.mjs';
-import { TESTS_TOOL, retryingConfigFiles } from './test-runner/test-runner-config.mjs';
 import { TYPESCRIPT_TOOL, relaxedStrictOptions } from './typescript/typescript-project-options.mjs';
 
 export function strykerIgnoredNotices({ config, projectRoot }) {
@@ -34,16 +33,4 @@ export function typescriptIgnoredNotices({ config, projectRoot }) {
   return precedenceLayers(settings?.precedence).usesProject || settings?.project !== undefined
     ? []
     : relaxedNotice(config, projectRoot);
-}
-
-export function testsIgnoredNotices({ config, projectRoot }) {
-  if (
-    (config.disable ?? []).includes('coverage') ||
-    precedenceLayers(config.tools?.[TESTS_TOOL]?.precedence).usesProject
-  ) {
-    return [];
-  }
-  return retryingConfigFiles(projectRoot).map(({ setting, file }) =>
-    ignoredConfigNotice(`${setting} in ${file}`, TESTS_TOOL),
-  );
 }

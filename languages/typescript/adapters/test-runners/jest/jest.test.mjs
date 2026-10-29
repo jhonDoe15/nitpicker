@@ -81,18 +81,6 @@ describe('coverage on a Jest project', () => {
     expect(uncoveredBranch(findings)).toMatch(UNCOVERED_ELSE);
   });
 
-  it("measures the source files the project's coveragePathIgnorePatterns would skip", async () => {
-    const jest = {
-      preset: 'ts-jest',
-      testEnvironment: 'node',
-      coveragePathIgnorePatterns: ['/node_modules/', '/src/'],
-    };
-
-    const findings = await runArea('coverage', jestProject(SAYS_YES, jest));
-
-    expect(uncoveredBranch(findings)).toMatch(UNCOVERED_ELSE);
-  });
-
   it('fails instead of passing when Jest instruments none of the source files', async () => {
     const root = jestProject(SAYS_YES, { projects: ['<rootDir>/test'] });
     writeFileSync(

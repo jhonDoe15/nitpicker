@@ -1,5 +1,9 @@
 import { MINUTE_MS, vitestVersion, crapVersion, strykerVersion } from './constants.mjs';
-import { JAVASCRIPT_PRESET_FILE, CRAP_CONFIGURATION_FILES } from './policy-files.mjs';
+import {
+  JAVASCRIPT_PRESET_FILE,
+  CRAP_CONFIGURATION_FILES,
+  TEST_RUNNER_CONFIGURATION_FILES,
+} from './policy-files.mjs';
 import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../shared/policy.mjs';
 import { testConsoleCheckFor } from './test-console.mjs';
 
@@ -10,7 +14,7 @@ const COVERAGE_CONFIGURATION_FILES = [
   'shared/policy.mjs',
   'languages/typescript/adapters/test-runners/v8-coverage/loaded-sources.cjs',
   'languages/typescript/adapters/test-runners/vitest/test-timeouts-setup.mjs',
-  'languages/typescript/preset/project-configs/test-runner/test-runner-config.mjs',
+  ...TEST_RUNNER_CONFIGURATION_FILES,
   'languages/typescript/preset/defaults/vitest.quality.config.ts',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',

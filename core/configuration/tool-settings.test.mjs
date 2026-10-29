@@ -28,9 +28,9 @@ describe('tool precedence', () => {
     }
   });
 
-  it.each(['eslint', 'tests'])('rejects a precedence for %s', (tool) => {
-    expect(() => validateConfig({ tools: { [tool]: { precedence: ['project'] } } })).toThrow(
-      `"tools.${tool}" has unknown key "precedence"`,
+  it('rejects a precedence for eslint', () => {
+    expect(() => validateConfig({ tools: { eslint: { precedence: ['project'] } } })).toThrow(
+      '"tools.eslint" has unknown key "precedence"',
     );
   });
 

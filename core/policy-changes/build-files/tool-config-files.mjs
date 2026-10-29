@@ -21,7 +21,8 @@ import {
 } from '../../../languages/typescript/preset/project-configs/typescript/typescript-project-options.mjs';
 import {
   TESTS_TOOL,
-  TEST_RUNNER_PROJECT_FILES,
+  appliedRunnerRetry,
+  testRunnerProjectFiles,
 } from '../../../languages/typescript/preset/project-configs/test-runner/test-runner-config.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
@@ -33,7 +34,7 @@ const SCRIPT_TOOL_FILES = new Map([
   ['prettier', () => PRETTIER_PROJECT_FILES],
   ['stryker', () => STRYKER_PROJECT_FILES],
   ['typescript', ({ config, root }) => projectTsconfigFiles(root, resolveLayoutFor(config))],
-  [TESTS_TOOL, () => [...TEST_RUNNER_PROJECT_FILES, PACKAGE_JSON]],
+  [TESTS_TOOL, ({ config, root }) => testRunnerProjectFiles(root, config)],
 ]);
 const MANIFEST_KEYS = new Map([
   ['prettier', 'prettier'],
@@ -42,7 +43,9 @@ const MANIFEST_KEYS = new Map([
 
 function usesProjectConfig(config, tool) {
   const layers = precedenceLayers(config.tools?.[tool]?.precedence);
-  return layers.usesProject && !(['typescript', TESTS_TOOL].includes(tool) && layers.nitpickerFirst);
+  return (
+    layers.usesProject && !(['typescript', TESTS_TOOL].includes(tool) && layers.nitpickerFirst)
+  );
 }
 
 function manifestKey(tool, content) {
@@ -162,10 +165,23 @@ function typescriptSide(side, optedIn) {
   }
 }
 
+function testsSide(side, optedIn) {
+  if (!optedIn) {
+    return { kind: 'rejected' };
+  }
+  try {
+    const { values, file, files } = appliedRunnerRetry(side);
+    return { kind: 'applied', config: values, file, files };
+  } catch {
+    return { kind: 'rejected' };
+  }
+}
+
 const APPLIED_SIDES = new Map([
   ['jscpd', jscpdSide],
   ['stryker', strykerSide],
   ['typescript', typescriptSide],
+  [TESTS_TOOL, testsSide],
 ]);
 
 function appliedConfigs(tool, base, head) {

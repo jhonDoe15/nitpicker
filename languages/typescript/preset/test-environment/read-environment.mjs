@@ -50,9 +50,28 @@ async function loadVite(roots) {
 }
 
 function serializedRetry(retry) {
-  return retry?.condition instanceof RegExp
-    ? { ...retry, condition: { source: retry.condition.source, flags: retry.condition.flags } }
-    : retry;
+  if (typeof retry !== 'object' || retry === null || retry.condition === undefined) {
+    return retry;
+  }
+  const { condition } = retry;
+  return {
+    ...retry,
+    condition:
+      condition instanceof RegExp
+        ? { source: condition.source, flags: condition.flags }
+        : { type: typeof condition },
+  };
+}
+
+function projectRetries(config) {
+  const entries = Array.isArray(config?.test?.projects) ? config.test.projects : [];
+  const retries = entries.flatMap((entry, index) => {
+    const retry = entry?.test?.retry;
+    return retry === undefined
+      ? []
+      : [{ name: entry.test.name ?? `#${String(index + 1)}`, retry: serializedRetry(retry) }];
+  });
+  return retries.length === 0 ? {} : { projectRetries: retries };
 }
 
 export async function readEnvironment({ configFile, projectRoot, resolveRoots }) {
@@ -67,6 +86,7 @@ export async function readEnvironment({ configFile, projectRoot, resolveRoots })
     ...environmentsFromConfig(config, projectRoot),
     aliases: aliasesFromConfig(config, projectRoot),
     retry: serializedRetry(config?.test?.retry),
+    ...projectRetries(config),
   };
 }
 
