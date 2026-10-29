@@ -293,12 +293,20 @@ describe('analyzing the import graph', () => {
         'base depends on less stable package other. Depend on an abstraction in a more stable package instead.',
       classification: 'enforceable',
       cause: {
-        files: ['src/base/__init__.py', 'src/base/core.py'],
-        contributors: [
-          { file: 'src/feature/a.py', unit: 'package feature' },
-          { file: 'src/feature/b.py', unit: 'package feature' },
-          { file: 'src/other/__init__.py', unit: 'package other' },
-          { file: 'src/other/o.py', unit: 'package other' },
+        folders: ['src/base'],
+        units: [
+          {
+            unit: 'package feature',
+            folders: ['src/feature'],
+            files: ['src/feature/a.py', 'src/feature/b.py'],
+            count: 2,
+          },
+          {
+            unit: 'package other',
+            folders: ['src/other'],
+            files: ['src/other/__init__.py', 'src/other/o.py'],
+            count: 2,
+          },
         ],
       },
     });
@@ -377,6 +385,34 @@ describe('a feature that reuses three others through their __init__.py', () => {
         (name) =>
           `src/app/features/${name}/__init__.py package-edge:app.features.${name}->app.features.${name}.adapters`,
       ),
+    );
+  });
+
+  it.each([
+    [
+      ['shared', 'members:face'],
+      'src/app/shared/__init__.py',
+      'package app.shared (instability 0.1111) depends on feature src/app/features/members (instability 0.2)',
+    ],
+    [
+      ['catalog:domain', 'fines:face'],
+      'src/app/features/catalog',
+      'feature src/app/features/catalog (instability 0.5) depends on feature src/app/features/fines (instability 0.6667)',
+    ],
+  ])('reports %j on a real project path with one fix', (extra, expectedPath, pair) => {
+    const reportRoot = temporaryRoot();
+    writeFileSync(
+      path.join(reportRoot, 'imports.json'),
+      JSON.stringify(libraryModules(features, [...uses, extra])),
+    );
+
+    const [finding] = readCouplingFindings(reportRoot).filter(
+      ({ classification }) => classification === 'enforceable',
+    );
+
+    expect(finding.path).toBe(expectedPath);
+    expect(finding.message).toBe(
+      `Keep feature dependencies pointing at more stable units: ${pair}. Depend on the other side's public face, or move the code that joins them into the composition root.`,
     );
   });
 });

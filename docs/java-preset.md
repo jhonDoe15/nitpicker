@@ -1697,8 +1697,10 @@ palantir-java-format, or neither for `none`).
   the classes directly in the feature package are its public face, an edge between them and the
   feature's sub-packages does not count in either direction, an edge between two sub-packages of
   one feature is checked per package, and an edge to or from another feature or package is
-  measured between whole units and reported on the feature folder
-  (`src/main/java/shop/features/loans`), which its `exceptions` entry names. The runner passes the
+  measured between whole units and reported on the feature package (`shop.features.loans`, keyed
+  by package so a feature split over `src/main/java` and `src/main/kotlin` stays one unit), which
+  its `exceptions` entry names. A top-package exception written before features were measured as
+  one unit keeps matching, since it names the same package. The runner passes the
   configured `layout` to `readCouplingFindings` through the project-wide step.
 - **Differences.** (1) Outside feature folders Java packages are flat: `a.b` and `a.b.c` are
   different packages; TypeScript groups by the top-level directory. The default package is `(root)`. (2) jdeps cannot tell type-only from

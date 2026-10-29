@@ -135,23 +135,19 @@ function withStabilityAnchor(findings, { report, modules }) {
   const sources = new Map(
     report.stabilityDirection
       .filter((direction) => direction.path === undefined)
-      .map((direction) => [
-        `package-edge:${direction.source}->${direction.target}`,
-        direction.source,
-      ]),
+      .map((direction) => [`package-edge:${direction.source}->${direction.target}`, direction]),
   );
   return findings.map((finding) => {
-    const source =
+    const direction =
       finding.rule === RULE_IDS.stabilityDirection ? sources.get(finding.identity) : undefined;
-    if (source === undefined) {
+    if (direction === undefined) {
       return finding;
     }
-    const file = anchors.get(source);
-    return {
-      ...finding,
-      path: file,
-      message: `${finding.message}. Depend on an abstraction in a more stable package instead.`,
-    };
+    const message =
+      direction.message === undefined
+        ? `${finding.message}. Depend on an abstraction in a more stable package instead.`
+        : finding.message;
+    return { ...finding, path: anchors.get(direction.source), message };
   });
 }
 

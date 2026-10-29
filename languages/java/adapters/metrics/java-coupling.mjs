@@ -31,8 +31,30 @@ function packageOf(className) {
   return index < 0 ? ROOT_PACKAGE : className.slice(0, index);
 }
 
-export function analyzeJavaCoupling({ classes, edges, fileOf, moduleOf = outerClass, layout }) {
+function featurePackage(module, directory) {
+  const name = packageOf(module);
+  const qualifier = name.slice(0, name.lastIndexOf('/') + 1);
+  const parts = name.slice(qualifier.length).split('.');
+  for (let length = parts.length; length > 0; length -= 1) {
+    const folder = parts.slice(0, length).join('/');
+    if (directory === folder || directory.endsWith(`/${folder}`)) {
+      return `${qualifier}${parts.slice(0, length).join('.')}`;
+    }
+  }
+  return directory;
+}
+
+function packageRoles(layout, fileOf) {
   const roleOfFile = featureRoleContract(layout ?? {}, PUBLIC_FACES.jvm);
+  return (module) => {
+    const role = roleOfFile(fileOf(module));
+    return role.kind === 'feature'
+      ? { ...role, directory: featurePackage(module, role.directory) }
+      : role;
+  };
+}
+
+export function analyzeJavaCoupling({ classes, edges, fileOf, moduleOf = outerClass, layout }) {
   return buildCouplingReport({
     modules: [...new Set(classes.map(moduleOf))].sort(),
     edges: edges.map((edge) => ({
@@ -41,7 +63,7 @@ export function analyzeJavaCoupling({ classes, edges, fileOf, moduleOf = outerCl
     })),
     packageOf,
     fileOf,
-    roleOf: (module) => roleOfFile(fileOf(module)),
+    roleOf: packageRoles(layout, fileOf),
   });
 }
 

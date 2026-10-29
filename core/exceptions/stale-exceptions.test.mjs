@@ -66,6 +66,26 @@ describe('staleExceptionLines', () => {
     ]);
   });
 
+  it('lets a stability-direction entry name a feature folder or a package file', () => {
+    const root = repository([
+      'src/app/features/fines/__init__.py',
+      'src/app/features/fines/adapters/store.py',
+      'src/app/shared/__init__.py',
+    ]);
+    const config = {
+      preset: 'python',
+      exceptions: [
+        entry('stability-direction', ['src/app/features/fines']),
+        entry('stability-direction', ['src/app/shared/__init__.py']),
+        entry('stability-direction', ['app.shared']),
+      ],
+    };
+
+    expect(staleExceptionLines(config, root)).toEqual([
+      'exceptions[2] (stability-direction) matches no file: app.shared',
+    ]);
+  });
+
   it('has nothing to say without exceptions', () => {
     expect(staleExceptionLines({}, repository(['a.ts']))).toEqual([]);
   });

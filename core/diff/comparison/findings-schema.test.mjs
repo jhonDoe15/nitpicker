@@ -399,7 +399,7 @@ describe('spec/findings.schema.json', () => {
     expect(validate({ findings: [empty] })).not.toEqual([]);
   });
 
-  it('accepts the files behind a finding and rejects a contributor without its unit', () => {
+  it('accepts the units around a finding, also outside the project, and rejects a unit without a count', () => {
     const finding = {
       tool: 'coupling',
       rule: 'stability-direction',
@@ -408,19 +408,24 @@ describe('spec/findings.schema.json', () => {
       message: 'message',
       classification: 'enforceable',
       cause: {
-        files: ['src/features/loans/index.ts'],
-        contributors: [{ file: 'src/features/fines/index.ts', unit: 'feature fines' }],
+        folders: ['src/features/loans'],
+        units: [
+          {
+            unit: 'feature src/features/fines',
+            folders: ['src/features/fines', '../generated/fines'],
+            files: ['src/features/fines/index.ts'],
+            count: 4,
+          },
+        ],
       },
     };
-    const unitless = { ...finding, cause: { ...finding.cause, contributors: [{ file: 'a.ts' }] } };
-    const outside = { ...finding, cause: { ...finding.cause, files: ['../a.ts'] } };
+    const [unit] = finding.cause.units;
+    const countless = { ...finding, cause: { ...finding.cause, units: [{ ...unit, count: 0 }] } };
 
     expect(parseFinding(finding)).toEqual(finding);
     expect(validate({ findings: [finding] })).toEqual([]);
-    expect(() => parseFinding(unitless)).toThrow(TypeError);
-    expect(validate({ findings: [unitless] })).not.toEqual([]);
-    expect(() => parseFinding(outside)).toThrow(TypeError);
-    expect(validate({ findings: [outside] })).not.toEqual([]);
+    expect(() => parseFinding(countless)).toThrow(TypeError);
+    expect(validate({ findings: [countless] })).not.toEqual([]);
   });
 
   it('accepts the number of files of a folder finding and rejects zero', () => {

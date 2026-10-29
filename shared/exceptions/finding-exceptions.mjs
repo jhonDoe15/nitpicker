@@ -43,6 +43,7 @@ const FOLDER_RULES = [
   RULE_IDS.folderFiles,
   SIZE_RULE_IDS.folderDepth,
   RULE_IDS.duplicateClone,
+  RULE_IDS.stabilityDirection,
   HYGIENE_RULE_IDS.committedBuildOutput,
 ];
 
