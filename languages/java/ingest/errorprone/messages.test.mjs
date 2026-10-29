@@ -98,6 +98,19 @@ describe('errorProneMessage', () => {
   });
 });
 
+describe('SystemOut', () => {
+  it('names the allowed stream form and the one place that may use System.out', () => {
+    const message = errorProneMessage({
+      check: 'SystemOut',
+      summary: 'Printing to standard output',
+    });
+
+    expect(message).toContain('take a PrintStream, Writer or Appendable parameter');
+    expect(message).toContain('only static void main passes System.out or System.err');
+    expect(message).toContain('new Cli(System.out).run(args) or System.out::print');
+  });
+});
+
 describe('the Java skill', () => {
   it('gives the null form the NullAway message gives', () => {
     const skill = readFileSync(

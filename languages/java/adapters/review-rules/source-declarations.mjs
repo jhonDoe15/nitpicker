@@ -12,6 +12,10 @@ const TOP_LEVEL_MEMBER = new RegExp(
   'gmu',
 );
 const JAVA_MAIN = /\bstatic\s+(?:final\s+)?void\s+main\s*\(/u;
+const JAVA_MAIN_METHOD = new RegExp(
+  String.raw`\bstatic\s+(?:final\s+)?void\s+main\s*\(\s*(?:final\s+)?String\b[^(),]*(?:\[|\.\.\.)[^(),]*\)`,
+  'gu',
+);
 const KOTLIN_STATIC_MAIN = /@JvmStatic\s+(?:\w+\s+)*fun\s+main\s*\(/u;
 const KOTLIN_MAIN = /^fun\s+main\s*\(/u;
 const JVM_NAME = /@file\s*:\s*JvmName\(\s*"([^"]+)"\s*\)/u;
@@ -27,16 +31,21 @@ function depthsOf(text) {
   return depths;
 }
 
-function bodyOf(text, depths, start) {
+function bodyRange(text, depths, start) {
   const depth = depths[start];
   const open = depths.findIndex(
     (value, index) => index >= start && value === depth && text[index] === '{',
   );
   if (open < 0) {
-    return '';
+    return undefined;
   }
   const close = depths.findIndex((value, index) => index > open && value === depth);
-  return text.slice(open, close < 0 ? text.length : close);
+  return { open, close: close < 0 ? text.length : close };
+}
+
+function bodyOf(text, depths, start) {
+  const range = bodyRange(text, depths, start);
+  return range === undefined ? '' : text.slice(range.open, range.close);
 }
 
 function lineAt(text, index) {
@@ -88,6 +97,15 @@ function declarationsIn(file) {
       },
     ]);
   return [...classes, ...(kotlin ? facadeOf(file, raw, { text, depths, qualify }) : [])];
+}
+
+export function mainMethodLines(raw) {
+  const text = blankLiterals(raw);
+  const depths = depthsOf(text);
+  return [...text.matchAll(JAVA_MAIN_METHOD)]
+    .map((match) => bodyRange(text, depths, match.index))
+    .filter((range) => range !== undefined)
+    .map(({ open, close }) => [lineAt(text, open), lineAt(text, close - 1)]);
 }
 
 export function readDeclarations(projectRoot, roots) {
