@@ -1,14 +1,18 @@
 import { ancestorsOf } from '../analysis/ancestry.mjs';
 import { childrenOf } from '../loops/loop-shapes.mjs';
-import { wordsOf } from '../support/identifier-words.mjs';
+import { isOwned } from '../support/flow/scope-owners.mjs';
+import { estreeRunsWithCaller } from '../support/flow/sync-callbacks.mjs';
 import { estreeCallView } from '../support/io/call-views.mjs';
+import { memoized } from '../support/memo.mjs';
 
 const FUNCTIONS = new Set(['ArrowFunctionExpression', 'FunctionExpression', 'FunctionDeclaration']);
 const CALL = 'CallExpression';
-const RUN_EXCLUSIVE = 'runExclusive';
-const ACQUIRE = 'acquire';
 const TRANSACTION = 'transaction';
-const LOCK_OWNERS = new Set(['lock', 'locks', 'mutex', 'semaphore', 'redlock']);
+const BEGINS = 'begins';
+const ENDS = 'ends';
+const SQL_METHODS = new Set(['query', 'execute', 'exec', 'raw', 'run']);
+const BEGIN_TEXT = /^\s*(?:BEGIN|START\s+TRANSACTION)\b/iu;
+const END_TEXT = /^\s*(?:COMMIT|ROLLBACK)\b/iu;
 const SCOPES = {
   transaction: {
     callbacks: new Set(['$transaction', TRANSACTION, 'transactional']),
@@ -16,11 +20,13 @@ const SCOPES = {
     ends: new Set(['commit', 'commitTransaction', 'rollback', 'rollbackTransaction']),
   },
   lock: {
-    callbacks: new Set([RUN_EXCLUSIVE, ACQUIRE, 'request', 'using']),
-    begins: new Set([ACQUIRE]),
+    callbacks: new Set(['runExclusive', 'acquire', 'request', 'using']),
+    begins: new Set(['acquire']),
     ends: new Set(['release', 'unlock', 'releaseLock']),
   },
 };
+const bodyIndexes = new WeakMap();
+const callbackScopes = new WeakMap();
 
 function isFunction(node) {
   return FUNCTIONS.has(node?.type);
@@ -30,30 +36,8 @@ function hasCallback(call) {
   return call.arguments.some(isFunction);
 }
 
-function isLockReceiver(view) {
-  return view.names.slice(0, -1).some((name) => LOCK_OWNERS.has(wordsOf(name).at(-1)));
-}
-
-function isOwned(kind, view) {
-  return kind === TRANSACTION || view.method === RUN_EXCLUSIVE || isLockReceiver(view);
-}
-
-function isCallbackOpener(kind, call, fn) {
-  if (call?.type !== CALL || !call.arguments.includes(fn)) {
-    return false;
-  }
-  const view = estreeCallView(call);
-  return SCOPES[kind].callbacks.has(view.method) && isOwned(kind, view);
-}
-
-function isMarker(kind, call, role) {
-  const view = estreeCallView(call);
-  const owned = role === 'ends' || isOwned(kind, view);
-  return SCOPES[kind][role].has(view.method) && !hasCallback(call) && owned;
-}
-
 function runsWithCaller(node) {
-  return !isFunction(node) || (node.parent.type === CALL && node.parent.arguments.includes(node));
+  return !isFunction(node) || estreeRunsWithCaller(node);
 }
 
 export function callsWithin(root, visitorKeys) {
@@ -68,39 +52,113 @@ export function callsWithin(root, visitorKeys) {
   return calls.toSorted((left, right) => left.range[0] - right.range[0]);
 }
 
-function callbackScope(kind, node, visitorKeys) {
-  const fn = ancestorsOf(node).find(
-    (ancestor) => isFunction(ancestor) && isCallbackOpener(kind, ancestor.parent, ancestor),
-  );
-  return fn === undefined
-    ? undefined
-    : { opener: fn.parent, calls: callsWithin(fn.body, visitorKeys), param: fn.params[0] };
+function calleeMethod(call) {
+  const { callee } = call;
+  if (callee.type === 'MemberExpression') {
+    return callee.computed ? undefined : callee.property.name;
+  }
+  return callee.type === 'Identifier' ? callee.name : undefined;
 }
 
-function rangeScope(kind, node, { calls }) {
-  const before = calls.filter((call) => call.range[1] <= node.range[0]);
-  const begin = before.findLast((call) => isMarker(kind, call, 'begins'));
-  const lastEnd = before.findLast((call) => isMarker(kind, call, 'ends'));
-  if (begin === undefined || (lastEnd !== undefined && lastEnd.range[0] > begin.range[0])) {
+function isCallbackOpener(kind, fn, context) {
+  const call = fn.parent;
+  const isOpenerCall =
+    call.type === CALL &&
+    call.arguments.includes(fn) &&
+    SCOPES[kind].callbacks.has(calleeMethod(call));
+  return (
+    isOpenerCall && isOwned(kind, { call, view: estreeCallView(call), role: 'callbacks' }, context)
+  );
+}
+
+function statementText(kind, view) {
+  const [first] = view.args;
+  const isSql = kind === TRANSACTION && SQL_METHODS.has(view.method) && first?.type === 'text';
+  return isSql ? first.text : '';
+}
+
+function isMarkerCandidate(kind, call) {
+  const method = calleeMethod(call);
+  const scope = SCOPES[kind];
+  return (
+    scope.ends.has(method) ||
+    scope.begins.has(method) ||
+    (kind === TRANSACTION && SQL_METHODS.has(method))
+  );
+}
+
+function markerRole(kind, call, context) {
+  if (call.type !== CALL || hasCallback(call) || !isMarkerCandidate(kind, call)) {
     return undefined;
   }
-  const after = calls.filter((call) => call.range[0] >= begin.range[1]);
-  const end = after.find((call) => isMarker(kind, call, 'ends'));
-  const inside = after.filter((call) => end === undefined || call.range[1] <= end.range[0]);
-  return { opener: begin, calls: inside, param: estreeCallView(begin).root };
+  const view = estreeCallView(call);
+  const text = statementText(kind, view);
+  if (SCOPES[kind].ends.has(view.method) || END_TEXT.test(text)) {
+    return ENDS;
+  }
+  const begins = SCOPES[kind].begins.has(view.method) || BEGIN_TEXT.test(text);
+  return begins && isOwned(kind, { call, view, role: BEGINS }, context) ? BEGINS : undefined;
 }
 
-export function heldScope(kind, node, { sourceCode, functionCalls }) {
-  const { visitorKeys } = sourceCode;
-  const callback = callbackScope(kind, node, visitorKeys);
+function bodyIndex(kind, body, context) {
+  const perBody = memoized(bodyIndexes, body, () => new Map());
+  return memoized(perBody, kind, () => {
+    const calls = callsWithin(body, context.sourceCode.visitorKeys);
+    const markers = calls
+      .map((call) => ({ call, role: markerRole(kind, call, context) }))
+      .filter(({ role }) => role !== undefined);
+    return { calls, markers, scopes: new Map() };
+  });
+}
+
+function openScope(index, begin) {
+  const end = index.markers.find(
+    ({ call, role }) => role === ENDS && call.range[0] >= begin.range[1],
+  )?.call;
+  const calls = index.calls.filter(
+    (call) =>
+      call.range[0] >= begin.range[1] && (end === undefined || call.range[1] <= end.range[0]),
+  );
+  return { opener: begin, calls, param: estreeCallView(begin).root, closing: end };
+}
+
+function rangeScope(index, node) {
+  const last = index.markers.filter(({ call }) => call.range[1] <= node.range[0]).at(-1);
+  return last?.role === BEGINS
+    ? memoized(index.scopes, last.call, () => openScope(index, last.call))
+    : undefined;
+}
+
+function callbackScope(kind, node, context) {
+  for (const fn of ancestorsOf(node).filter(isFunction)) {
+    if (isCallbackOpener(kind, fn, context)) {
+      return memoized(callbackScopes, fn, () => ({
+        opener: fn.parent,
+        calls: callsWithin(fn.body, context.sourceCode.visitorKeys),
+        param: fn.params[0],
+        closing: fn.parent.parent.type === 'AwaitExpression' ? fn.parent : undefined,
+      }));
+    }
+    if (!estreeRunsWithCaller(fn)) {
+      return undefined;
+    }
+  }
+  return undefined;
+}
+
+function unitBody(node, sourceCode) {
+  const fn = ancestorsOf(node)
+    .filter(isFunction)
+    .find((each) => !estreeRunsWithCaller(each));
+  return fn === undefined ? sourceCode.ast : fn.body;
+}
+
+export function heldScope(kind, node, context) {
+  const callback = callbackScope(kind, node, context);
   if (callback !== undefined) {
     return callback;
   }
-  const fn = ancestorsOf(node).find(isFunction);
-  const body = fn === undefined ? sourceCode.ast : fn.body;
-  const calls = functionCalls.get(body) ?? callsWithin(body, visitorKeys);
-  functionCalls.set(body, calls);
-  return rangeScope(kind, node, { calls });
+  return rangeScope(bodyIndex(kind, unitBody(node, context.sourceCode), context), node);
 }
 
 export function isOnParameter(call, param) {

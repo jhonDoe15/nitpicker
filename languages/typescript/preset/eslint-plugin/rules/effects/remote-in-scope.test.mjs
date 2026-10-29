@@ -53,11 +53,19 @@ const { tester, typed } = typedIoProject('remote-in-scope', STORE);
 const HEADER = [
   "import { PrismaClient } from '@prisma/client';",
   "import { DataSource } from 'typeorm';",
-  "import { Mutex } from 'async-mutex';",
+  "import { Mutex, Semaphore } from 'async-mutex';",
+  "import { Pool } from 'pg';",
+  "import axios from 'axios';",
   "import { notify, publish, format } from './store';",
   'const prisma = new PrismaClient();',
   'declare const dataSource: DataSource;',
   'const mutex = new Mutex();',
+  'const guard = new Mutex();',
+  'const limiter = new Semaphore(5);',
+  'const single = new Semaphore(1);',
+  'const pool = new Pool();',
+  'declare const apm: { startTransaction(name: string): { end(): void } };',
+  'declare const uow: { transaction<T>(work: (ctx: { log(text: string): void }) => Promise<T>): Promise<T> };',
   '',
 ].join('\n');
 
@@ -73,6 +81,13 @@ tester.run('no-remote-call-in-transaction with types', inTransaction, {
     run(`${prismaWrite} await publish(id); });`),
     run(`${prismaWrite} format(id); }); await notify(id);`),
     run('await prisma.$transaction(async () => { await notify(id); });'),
+    run(
+      "const t = apm.startTransaction('job'); await prisma.user.findMany(); await notify(id); t.end();",
+    ),
+    run("await uow.transaction(async (ctx) => { ctx.log('x'); await notify(id); });"),
+    run(
+      'await prisma.$transaction(async (db) => { await db.user.create({ data: { id } }); setTimeout(() => notify(id), 1); });',
+    ),
   ],
   invalid: [
     {
@@ -93,11 +108,19 @@ tester.run('no-remote-call-in-transaction with types', inTransaction, {
       ),
       errors: [{ messageId: 'transaction' }],
     },
+    ...[
+      'const runner = dataSource.createQueryRunner(); await runner.startTransaction(); await runner.manager.save({ id }); await Promise.all([1, 2].map(() => axios.post(id))); await runner.commitTransaction();',
+      "await pool.query('BEGIN'); await pool.query('UPDATE orders SET paid = true'); await notify(id); await pool.query('COMMIT');",
+      'await uow.transaction(async (ctx) => { await prisma.user.findMany(); await notify(id); });',
+    ].map((code) => ({ ...run(code), errors: [{ messageId: 'transaction' }] })),
   ],
 });
 
 tester.run('no-remote-call-under-lock with types', underLock, {
-  valid: [run('await mutex.runExclusive(async () => format(id));')],
+  valid: [
+    run('await mutex.runExclusive(async () => format(id));'),
+    run('await Promise.all([id].map((url) => limiter.runExclusive(() => axios.get(url))));'),
+  ],
   invalid: [
     {
       ...run('await mutex.runExclusive(async () => { await notify(id); });'),
@@ -108,5 +131,9 @@ tester.run('no-remote-call-under-lock with types', underLock, {
         },
       ],
     },
+    ...[
+      'const release = await guard.acquire(); try { await axios.get(id); } finally { release(); }',
+      'await single.runExclusive(() => axios.get(id));',
+    ].map((code) => ({ ...run(code), errors: [{ messageId: 'lock' }] })),
   ],
 });
