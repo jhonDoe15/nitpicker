@@ -20,6 +20,7 @@ public final class Bodies {
   private final List<Object> catches = new ArrayList<>();
   private final List<Object> literals = new ArrayList<>();
   private final List<Object> nullReturns = new ArrayList<>();
+  private final List<Object> returnValues = new ArrayList<>();
   private final List<Object> locals = new ArrayList<>();
   private final List<Object> throwsList = new ArrayList<>();
   private final ExceptionUses exceptionUses;
@@ -55,6 +56,9 @@ public final class Bodies {
     if (body instanceof KtConstantExpression && "null".equals(body.getText())) {
       nullReturns.add(m("line", lineOf(body), "scope", scopes.id(inner)));
     }
+    if (body != null && !(body instanceof KtBlockExpression)) {
+      returnValues.add(m("line", lineOf(body), "scope", scopes.id(inner), "text", clip(body)));
+    }
     if (annotationNames(function).stream().anyMatch(handlerNames::contains) && body != null) {
       exceptionUses.collect(function, scopes.id(inner));
     }
@@ -85,6 +89,9 @@ public final class Bodies {
           && "null".equals(value.getText())) {
         nullReturns.add(m("line", lineOf(returned), "scope", scopes.id(frame)));
       }
+      if (returned.getLabeledExpression() == null && value != null) {
+        returnValues.add(m("line", lineOf(returned), "scope", scopes.id(frame), "text", clip(value)));
+      }
     } else if (element instanceof KtCallableReferenceExpression) {
       KtCallableReferenceExpression reference = (KtCallableReferenceExpression) element;
       record(element, frame, m("name", reference.getCallableReference().getReferencedName(), "reference", true,
@@ -98,7 +105,7 @@ public final class Bodies {
     }
     locals.add(m("name", local.getName(), "scope", scopes.id(frame), "line", lineOf(local),
         "type", clip(local.getTypeReference()), "initializer", Initializers.callee(local),
-        "alias", Initializers.alias(local)));
+        "alias", Initializers.alias(local), "value", clip(local.getInitializer())));
   }
 
   private void destructured(KtDestructuringDeclaration declaration, Frame frame) {
@@ -258,8 +265,8 @@ public final class Bodies {
   public Map<String, Object> result() {
     return active
         ? m("scopes", scopes.entries(), "invocations", invocations, "catches", catches, "literals", literals,
-            "nullReturns", nullReturns, "exceptionUses", exceptionUses.uses(), "locals", locals,
-            "throws", throwsList)
+            "nullReturns", nullReturns, "returnValues", returnValues, "exceptionUses", exceptionUses.uses(),
+            "locals", locals, "throws", throwsList)
         : Map.of();
   }
 }

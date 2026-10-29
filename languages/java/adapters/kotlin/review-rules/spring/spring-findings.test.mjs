@@ -18,9 +18,6 @@ const ENTITY_ANNOTATIONS = ['Entity', 'MappedSuperclass', 'Embeddable'].map(
 );
 const BUILD_PLUGIN = { annotations: ENTITY_ANNOTATIONS, presets: ['spring'] };
 const SKIPPED = {
-  SpringOutboundUrl: 'the Kotlin review rules do not yet follow a parameter into an outgoing URL',
-  SpringOpenRedirect:
-    'the Kotlin review rules do not yet follow a parameter into a redirect target',
   SpringQueryConcatenation:
     'kotlin-source/SqlStringBuilding flags SQL built from runtime values on the same calls',
 };
@@ -152,6 +149,26 @@ const EXPECTED = [
   'bad/Handlers.kt:41 SpringHttpClientTimeouts FactoryConfig.bare.SimpleClientHttpRequestFactory',
   'bad/Handlers.kt:45 SpringHttpClientTimeouts FactoryConfig.named.SimpleClientHttpRequestFactory',
   'bad/Handlers.kt:50 SpringHttpClientTimeouts FactoryConfig.qualified.RestTemplate',
+  'bad/Outbound.kt:27 SpringOutboundUrl Outbound.template.getForObject',
+  'bad/Outbound.kt:28 SpringOutboundUrl Outbound.template.exchange',
+  'bad/Outbound.kt:29 SpringOutboundUrl Outbound.template.postForObject',
+  'bad/Outbound.kt:30 SpringOutboundUrl Outbound.template.getForObject',
+  'bad/Outbound.kt:32 SpringOutboundUrl Outbound.template.getForObject',
+  'bad/Outbound.kt:37 SpringOutboundUrl Outbound.clients.uri',
+  'bad/Outbound.kt:38 SpringOutboundUrl Outbound.clients.uri',
+  'bad/Outbound.kt:41 SpringHttpClientPerCall Outbound.created.create',
+  'bad/Outbound.kt:41 SpringOutboundUrl Outbound.created.create',
+  'bad/Outbound.kt:46 SpringOutboundUrl Outbound.chained.getForObject',
+  'bad/Outbound.kt:49 SpringOutboundUrl Outbound.chained.getForObject',
+  'bad/Outbound.kt:53 SpringOutboundUrl Outbound.accessors.uri',
+  'bad/Outbound.kt:58 SpringOutboundUrl Outbound.lambdas.host',
+  'bad/Outbound.kt:60 SpringOutboundUrl Outbound.jdk.newBuilder',
+  'bad/Outbound.kt:62 SpringOutboundUrl Outbound.jdkUri.uri',
+  'bad/Outbound.kt:66 SpringOutboundUrl Outbound.fetch.getForObject',
+  'bad/Outbound.kt:74 SpringOutboundUrl Webhook.baseUrl',
+  'bad/Outbound.kt:82 SpringOpenRedirect Redirects.next',
+  'bad/Outbound.kt:87 SpringOpenRedirect Redirects.view.RedirectView',
+  'bad/Outbound.kt:92 SpringOpenRedirect Redirects.joined',
   'bad/Proxies.kt:17 SpringProxySelfCall Billing.charge.record',
   'bad/Proxies.kt:18 SpringProxySelfCall Billing.charge.record',
   'bad/Proxies.kt:25 SpringNoSwallowedTransactionException Billing.record.e',

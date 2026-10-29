@@ -12,6 +12,7 @@ import { TRANSACTION_RULES } from './rules/transactions.mjs';
 import { springMessage } from './spring-messages.mjs';
 import { springViews } from './view/spring-view.mjs';
 import { ERROR_LEAK_RULES } from './web/error-leaks.mjs';
+import { OUTBOUND_RULES } from './web/outbound.mjs';
 import { SECURITY_RULES } from './web/security.mjs';
 import { WEB_RULES } from './web/web.mjs';
 
@@ -24,6 +25,7 @@ const RULES = [
   ...WEB_RULES,
   ...ERROR_LEAK_RULES,
   ...SECURITY_RULES,
+  ...OUTBOUND_RULES,
   ...ENTITY_RULES,
   ...COLUMN_RULES,
   ...QUERY_RULES,
