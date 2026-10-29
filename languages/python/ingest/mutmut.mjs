@@ -1,5 +1,6 @@
 import { addMetric } from '../../../shared/rules/finding-helpers.mjs';
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
+import { assertNeverArmLines } from './coverage-reports/exhaustive-match.mjs';
 
 export const SUPPORTED_MUTMUT = 'mutmut 3.x';
 
@@ -37,7 +38,6 @@ const TOKEN = new RegExp(TOKEN_PARTS.join('|'), 'gu');
 const NUMBER = /^\d[\w.]*$/u;
 const STRING = /^[a-z]{0,2}["']/iu;
 const OPERATOR = /^[^\w\s"']+$/u;
-const ASSERT_NEVER = /^(?:\w+\.)?assert_never\(/u;
 
 export function ingestMutmut(data, options = {}) {
   if (!Array.isArray(data?.files)) {
@@ -102,13 +102,12 @@ function describedMutants(file, mutants) {
   return mutants
     .filter((mutant) => mutant.status !== 'Killed')
     .sort((a, b) => a.number - b.number)
-    .map((mutant) => ({
-      path: file.path,
-      symbol: mutant.symbol,
-      status: mutant.status,
-      ...describeChange({ mutant, blocks, originalLines }),
-    }))
-    .filter((mutant) => !mutant.provenUnreachable);
+    .flatMap((mutant) => {
+      const change = describeChange({ mutant, blocks, originalLines });
+      return change === undefined
+        ? []
+        : [{ path: file.path, symbol: mutant.symbol, status: mutant.status, ...change }];
+    });
 }
 
 function parseKey(key) {
@@ -173,9 +172,11 @@ function describeChange({ mutant, blocks, originalLines }) {
   if (change === undefined) {
     return { label: 'mutation' };
   }
+  if (insideAssertNeverArm(original, change)) {
+    return undefined;
+  }
   const start = locate(originalLines, original);
   return {
-    ...(changesOnlyAssertNever(original, change) ? { provenUnreachable: true } : {}),
     original: change.original,
     replacement: change.replacement,
     label: labelOf(change),
@@ -205,13 +206,10 @@ function changedRegion(original, mutated) {
   };
 }
 
-function changesOnlyAssertNever(original, change) {
-  const lines = original
-    .slice(change.lineOffset, change.lineOffset + change.original.split('\n').length)
-    .map((line) => line.trim());
-  return (
-    lines.some((line) => ASSERT_NEVER.test(line)) &&
-    lines.every((line) => line === 'case _:' || ASSERT_NEVER.test(line))
+function insideAssertNeverArm(original, change) {
+  const last = change.lineOffset + change.original.split('\n').length - 1;
+  return assertNeverArmLines(original.join('\n')).some(
+    (arm) => arm.first <= change.lineOffset && last <= arm.last,
   );
 }
 
