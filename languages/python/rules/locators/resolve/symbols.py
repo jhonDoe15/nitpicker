@@ -79,8 +79,21 @@ def symbols(project):
     return project.memo("locator-symbols", build)
 
 
+def project_roots(project):
+    def build(_):
+        return {project.module_name(path).split(".")[0] for path in project.contexts}
+
+    return project.memo("locator-project-roots", build)
+
+
+def is_project_name(dotted, project):
+    return dotted.split(".")[0] in project_roots(project)
+
+
 def provider_library(node, context):
     dotted = dotted_name(node, context.aliases)
+    if not dotted or is_project_name(dotted, context.project):
+        return None
     for library, spec in PROVIDER_LIBRARIES.items():
         if dotted in spec["bases"]:
             return library
@@ -137,7 +150,8 @@ def container_classes(project):
             for member in ancestry(project, key):
                 context, node, _ = class_bases(project, member)
                 direct = next(
-                    filter(None, (provider_library(b, context) for b in node.bases)), None
+                    filter(None, (provider_library(b, context) for b in node.bases)),
+                    None,
                 )
                 if direct:
                     library = library or direct
@@ -152,12 +166,16 @@ def container_classes(project):
 def is_composition_class(klass, context):
     project = context.project
     key = (project.module_name(context.path), klass.name)
-    if any(dotted_name(base, context.aliases) in COMPOSITION_BASES for base in klass.bases):
+    if any(
+        dotted_name(base, context.aliases) in COMPOSITION_BASES for base in klass.bases
+    ):
         return True
     if key not in symbols(project)["classes"]:
         return False
     for member in ancestry(project, key):
         owner, node, _ = class_bases(project, member)
-        if any(dotted_name(base, owner.aliases) in COMPOSITION_BASES for base in node.bases):
+        if any(
+            dotted_name(base, owner.aliases) in COMPOSITION_BASES for base in node.bases
+        ):
             return True
     return False

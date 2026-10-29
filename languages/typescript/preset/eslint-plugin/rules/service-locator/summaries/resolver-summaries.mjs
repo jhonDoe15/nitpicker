@@ -1,4 +1,5 @@
 import path from 'node:path';
+import ts from 'typescript';
 import { chainOf, depthFirst } from '../../../../../../../shared/traversal.mjs';
 import { syntaxChildren } from '../../../../syntax/children.mjs';
 import { directLookup } from '../lookup-sites.mjs';
@@ -37,15 +38,68 @@ function resolvedCallees(context, node) {
   return callees.length === 0 || isInRegistration(context, node) ? [] : callees;
 }
 
+const FUNCTION_METHODS = new Set(['call', 'apply', 'bind']);
+
+function parameterDeclarations(fn) {
+  const owners = ts.isClassLike(fn) ? fn.members.filter(ts.isConstructorDeclaration) : [fn];
+  return new Set(owners.flatMap((owner) => [...(owner.parameters ?? [])]));
+}
+
+function refersToParameter(context, node, parameters) {
+  return [...depthFirst(node, syntaxChildren)].some((part) => {
+    const declaration = ts.isIdentifier(part)
+      ? context.checker.getSymbolAtLocation(part)?.valueDeclaration
+      : undefined;
+    const parameter =
+      declaration === undefined ? undefined : ts.findAncestor(declaration, ts.isParameter);
+    return parameter !== undefined && parameters.has(parameter);
+  });
+}
+
+function outermost(node) {
+  return chainOf(node, (current) =>
+    ts.isParenthesizedExpression(current.parent) || ts.isNonNullExpression(current.parent)
+      ? current.parent
+      : undefined,
+  ).at(-1);
+}
+
+function forwardsToLookup(context, node, parameters) {
+  if (ts.isBindingElement(node)) {
+    return true;
+  }
+  const site = outermost(node);
+  const { parent } = site;
+  if (ts.isCallExpression(parent) && parent.expression === site) {
+    return parent.arguments.some((argument) => refersToParameter(context, argument, parameters));
+  }
+  if (ts.isPropertyAccessExpression(parent) && parent.expression === site) {
+    return FUNCTION_METHODS.has(parent.name.text);
+  }
+  return ts.isElementAccessExpression(parent) && parent.expression === site
+    ? refersToParameter(context, parent.argumentExpression, parameters)
+    : true;
+}
+
+function forwardsToCallee(context, node, parameters) {
+  return referenceOf(node)?.mode !== 'call'
+    ? true
+    : (node.arguments ?? []).some((argument) => refersToParameter(context, argument, parameters));
+}
+
 function scanBody(context, fn) {
+  const parameters = parameterDeclarations(fn);
   const nodes = bodyParts(fn).flatMap((part) => [...depthFirst(part, syntaxChildren)]);
   const callees = [];
   for (const node of nodes) {
     const evidence = directEvidence(context, node);
-    if (evidence !== undefined) {
+    if (evidence !== undefined && forwardsToLookup(context, node, parameters)) {
       return { evidence, callees };
     }
-    callees.push(...resolvedCallees(context, node));
+    const found = evidence === undefined ? resolvedCallees(context, node) : [];
+    if (found.length > 0 && forwardsToCallee(context, node, parameters)) {
+      callees.push(...found);
+    }
   }
   return { callees };
 }

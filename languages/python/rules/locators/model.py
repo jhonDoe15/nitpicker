@@ -3,7 +3,7 @@ INSTANCE_LIBRARIES = {
         "display": "injector.Injector",
         "classes": ("injector.Injector",),
         "instances": (),
-        "methods": ("get", "create_object"),
+        "methods": ("get", "create_object", "call_with_injection"),
         "subscript": False,
     },
     "punq": {
@@ -79,7 +79,15 @@ SERVICE_PROVIDERS = {
 
 COMPOSITION_BASES = {"injector.Module", "injector.Provider"}
 
-REGISTRATION_METHODS = {"register", "define", "partial", "bind", "multibind", "factory", "singleton"}
+REGISTRATION_METHODS = {
+    "register",
+    "define",
+    "partial",
+    "bind",
+    "multibind",
+    "factory",
+    "singleton",
+}
 REGISTRATION_ATTRIBUTES = {"factories", "services", "binder"}
 UNION_WRAPPERS = {"Optional", "Union", "Annotated"}
 OWNER_NAMES = {"self", "cls"}

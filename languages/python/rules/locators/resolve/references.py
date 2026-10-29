@@ -1,7 +1,12 @@
 import ast
 
 from checks.common import dotted_name
-from locators.model import INSTANCE_LIBRARIES, OWNER_NAMES, PROVIDER_LIBRARIES, UNION_WRAPPERS
+from locators.model import (
+    INSTANCE_LIBRARIES,
+    OWNER_NAMES,
+    PROVIDER_LIBRARIES,
+    UNION_WRAPPERS,
+)
 from locators.resolve.scopes import (
     attribute_bindings,
     bindings,
@@ -9,27 +14,59 @@ from locators.resolve.scopes import (
     local_entries,
     name_entries,
 )
-from locators.resolve.symbols import ancestry, container_classes, resolve_in, symbols
+from locators.resolve.symbols import (
+    ancestry,
+    container_classes,
+    is_project_name,
+    resolve_in,
+    symbols,
+)
 
 LIBRARY_ROOTS = frozenset(INSTANCE_LIBRARIES) | frozenset(PROVIDER_LIBRARIES)
+
+
+def is_library_name(dotted, project):
+    return dotted.split(".")[0] in LIBRARY_ROOTS and not is_project_name(
+        dotted, project
+    )
+
+
+def star_libraries(context):
+    return [
+        node.module
+        for node in context.tree.body
+        if isinstance(node, ast.ImportFrom)
+        and node.level == 0
+        and node.module
+        and any(alias.name == "*" for alias in node.names)
+        and is_library_name(node.module, context.project)
+    ]
 
 
 def uses_containers(project):
     def build(_):
         return any(
-            dotted.split(".")[0] in LIBRARY_ROOTS
+            is_library_name(dotted, project)
             for context in project.contexts.values()
-            for imported in context.aliases[:2]
-            for dotted in imported.values()
+            for dotted in [
+                *(v for imported in context.aliases[:2] for v in imported.values()),
+                *star_libraries(context),
+            ]
         )
 
     return project.memo("locator-libraries", build)
 
 
-def library_of(dotted, field):
-    for library, spec in INSTANCE_LIBRARIES.items():
-        if dotted in spec[field]:
-            return library
+def library_of(dotted, field, context):
+    candidates = [dotted]
+    if "." not in dotted:
+        candidates += [f"{module}.{dotted}" for module in star_libraries(context)]
+    for candidate in candidates:
+        if not is_library_name(candidate, context.project):
+            continue
+        for library, spec in INSTANCE_LIBRARIES.items():
+            if candidate in spec[field]:
+                return library
     return None
 
 
@@ -48,7 +85,7 @@ def class_reference(dotted, context):
 
 
 def dotted_reference(dotted, context):
-    library = library_of(dotted, "instances")
+    library = library_of(dotted, "instances", context)
     if library:
         return ("instance", library)
     reference = class_reference(dotted, context)
@@ -98,7 +135,7 @@ def annotation_reference(annotation, context):
     if not isinstance(annotation, (ast.Name, ast.Attribute)):
         return None
     dotted = dotted_name(annotation, context.aliases)
-    library = library_of(dotted or "", "classes")
+    library = library_of(dotted or "", "classes", context)
     if library:
         return ("instance", library)
     return class_reference(dotted, context) if dotted else None
@@ -133,7 +170,7 @@ def call_reference(call, context):
     dotted = dotted_name(call.func, context.aliases)
     if not dotted:
         return None
-    library = library_of(dotted, "classes")
+    library = library_of(dotted, "classes", context)
     if library:
         return ("instance", library)
     return class_reference(dotted, context) or returned_reference(dotted, context)
@@ -147,7 +184,9 @@ def owner_reference(node, context):
     key = (project.module_name(context.path), klass.name)
     classes = symbols(project)["classes"]
     members = ancestry(project, key) if key in classes else []
-    for owner, node_class in [classes[member] for member in members] or [(context, klass)]:
+    for owner, node_class in [classes[member] for member in members] or [
+        (context, klass)
+    ]:
         entries = attribute_bindings(node_class, owner).get(node.attr)
         reference = entries_reference(entries, owner) if entries else None
         if reference:

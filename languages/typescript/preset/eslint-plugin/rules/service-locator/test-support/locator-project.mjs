@@ -18,9 +18,16 @@ const TSCONFIG = {
   include: ['src'],
 };
 const LIBRARIES = {
-  inversify: [
+  '@inversifyjs/container': [
+    'type Factory<T> = (context: { container: Container }) => T;',
+    'export interface Binding<T> {',
+    '  toDynamicValue(factory: Factory<T>): Binding<T>;',
+    '  toFactory(factory: Factory<() => T>): Binding<T>;',
+    '  toProvider(factory: Factory<() => Promise<T>>): Binding<T>;',
+    '  onActivation(handler: (context: { container: Container }, value: T) => T): Binding<T>;',
+    '}',
     'export declare class Container {',
-    '  bind<T>(id: unknown): { toDynamicValue(factory: (context: { container: Container }) => T): void };',
+    '  bind<T>(id: unknown): Binding<T>;',
     '  get<T>(id: unknown): T;',
     '  getAsync<T>(id: unknown): Promise<T>;',
     '  getAll<T>(id: unknown): T[];',
@@ -30,6 +37,7 @@ const LIBRARIES = {
     '  load(...modules: unknown[]): void;',
     '}',
   ],
+  inversify: ["export { Container } from '@inversifyjs/container';"],
   tsyringe: [
     'export interface DependencyContainer {',
     '  register<T>(token: unknown, provider: { useFactory: (container: DependencyContainer) => T }): DependencyContainer;',
@@ -50,7 +58,9 @@ const LIBRARIES = {
     '  static get<T>(id: unknown): T;',
     '  static getMany<T>(id: unknown): T[];',
     '  static of(id?: string): ContainerInstance;',
+    '  static set(options: { id: unknown; factory: () => unknown }): void;',
     '}',
+    'export declare function Service(options?: { factory: () => unknown }): ClassDecorator;',
   ],
   awilix: [
     'export interface AwilixContainer<Cradle extends object = {}> {',
@@ -59,6 +69,9 @@ const LIBRARIES = {
     '  createScope(): AwilixContainer<Cradle>;',
     '}',
     'export declare function createContainer(): AwilixContainer<any>;',
+    'export declare function asFunction<T>(fn: (...args: any[]) => T): { singleton(): unknown };',
+    'export declare function asClass<T>(type: new (...args: any[]) => T): { singleton(): unknown };',
+    'export declare function asValue<T>(value: T): unknown;',
   ],
   '@nestjs/common': [
     'export interface INestApplicationContext {',
@@ -90,13 +103,16 @@ const SOURCES = {
     "import { container } from 'tsyringe';",
     "import { Mailer } from '../mailer';",
     'export const resolveMailer = (): Mailer => container.resolve(Mailer);',
+    'export const resolveService = <T>(token: unknown): T => container.resolve<T>(token);',
     'export function noLookup(): number { return 1; }',
     '',
   ].join('\n'),
   'src/shared/two-levels.ts': [
-    "import { resolveMailer } from './mail';",
+    "import { resolveMailer, resolveService } from './mail';",
     'export function mailerOfTheDay() { return resolveMailer(); }',
-    'export const mailerAgain = () => mailerOfTheDay();',
+    'export function serviceOfTheDay(token: string) { return resolveService(token); }',
+    'export const serviceAgain = (token: string) => serviceOfTheDay(token);',
+    "export const fixedService = () => serviceOfTheDay('mailer');",
     '',
   ].join('\n'),
   'src/shared/cycle.ts': [
@@ -119,10 +135,12 @@ const SOURCES = {
     "import { container } from 'tsyringe';",
     "import { Mailer } from './mailer';",
     'export const rootMailer = () => container.resolve(Mailer);',
+    'export const rootService = (token: string) => container.resolve(token);',
     '',
   ].join('\n'),
   'src/mailer.ts': 'export class Mailer { send(): void {} }\n',
-  'src/shared/reexport.ts': "export { resolveMailer as lookupMailer } from './mail';\n",
+  'src/shared/reexport.ts':
+    "export { resolveMailer as lookupMailer, resolveService as lookupService } from './mail';\n",
   'src/shared/index.ts': "export * from './mail';\nexport * from './two-levels';\n",
 };
 

@@ -60,6 +60,12 @@ tester.run('no-service-locator', rule, {
       "import { container } from 'tsyringe';\nexport const reads = container.register;\nexport const own = container.isRegistered;",
     ),
     typed("import { lookupMailer } from '../shared/reexport';\nexport const m = [lookupMailer];"),
+    typed("import { rootMailer } from '../main';\nexport const mailer = rootMailer();"),
+    typed("import { resolveMailer } from '../shared/mail';\nexport const x = resolveMailer();"),
+    typed("import { lookupMailer } from '../shared/reexport';\nexport const x = lookupMailer();"),
+    typed(
+      "import { mailerOfTheDay, fixedService } from '../shared/two-levels';\nexport const x = [mailerOfTheDay(), fixedService()];",
+    ),
     typed("import { ping } from '../shared/cycle';\nexport const x = ping();"),
     typed(
       "import { registerMailer } from '../shared/registry';\nexport const x = registerMailer();",
@@ -70,8 +76,8 @@ tester.run('no-service-locator', rule, {
   ],
   invalid: [
     typed(
-      "import { rootMailer } from '../main';\nexport const mailer = rootMailer();",
-      wrapper('rootMailer', MAIL, 'src/main.ts'),
+      "import { rootService } from '../main';\nexport const mailer = rootService('mailer');",
+      wrapper('rootService', MAIL, 'src/main.ts'),
     ),
     typed(
       "import { container } from 'tsyringe';\nexport const x = container.resolve('a');",
@@ -159,43 +165,43 @@ tester.run('no-service-locator', rule, {
       lookup('@nestjs/common INestApplicationContext.get'),
     ),
     typed(
-      "import { resolveMailer } from '../shared/mail';\nexport const x = resolveMailer();",
-      wrapper('resolveMailer', MAIL, 'src/shared/mail.ts'),
+      "import { resolveService } from '../shared/mail';\nexport const x = resolveService('mailer');",
+      wrapper('resolveService', MAIL, 'src/shared/mail.ts'),
     ),
     typed(
-      "import * as shared from '../shared/mail';\nexport const x = shared.resolveMailer();",
-      wrapper('resolveMailer', MAIL, 'src/shared/mail.ts'),
+      "import * as shared from '../shared/mail';\nexport const x = shared.resolveService('mailer');",
+      wrapper('resolveService', MAIL, 'src/shared/mail.ts'),
     ),
     typed(
-      "import { resolveMailer } from '../shared';\nexport const x = resolveMailer();",
-      wrapper('resolveMailer', MAIL, 'src/shared/mail.ts'),
+      "import { resolveService } from '../shared';\nexport const x = resolveService('mailer');",
+      wrapper('resolveService', MAIL, 'src/shared/mail.ts'),
     ),
     typed(
-      "import { lookupMailer } from '../shared/reexport';\nexport const x = lookupMailer();",
-      wrapper('lookupMailer', MAIL, 'src/shared/mail.ts'),
+      "import { lookupService } from '../shared/reexport';\nexport const x = lookupService('mailer');",
+      wrapper('lookupService', MAIL, 'src/shared/mail.ts'),
     ),
     typed(
-      "import { mailerOfTheDay } from '../shared/two-levels';\nexport const x = mailerOfTheDay();",
-      wrapper('mailerOfTheDay', MAIL, 'src/shared/mail.ts'),
+      "import { serviceOfTheDay } from '../shared/two-levels';\nexport const x = serviceOfTheDay('mailer');",
+      wrapper('serviceOfTheDay', MAIL, 'src/shared/mail.ts'),
     ),
     typed(
-      "import { mailerAgain as again } from '../shared/two-levels';\nexport const x = again();",
+      "import { serviceAgain as again } from '../shared/two-levels';\nexport const x = again('mailer');",
       wrapper('again', MAIL, 'src/shared/mail.ts'),
     ),
     typed(
-      "import { resolveMailer } from '../shared/mail';\nexport const x = () => () => resolveMailer();",
-      wrapper('resolveMailer', MAIL, 'src/shared/mail.ts'),
+      "import { resolveService } from '../shared/mail';\nexport const x = () => () => resolveService('mailer');",
+      wrapper('resolveService', MAIL, 'src/shared/mail.ts'),
     ),
     typed(
-      "import { resolveMailer } from '../shared/mail';\nexport const x = [resolveMailer(), resolveMailer()];",
+      "import { resolveService } from '../shared/mail';\nexport const x = [resolveService('a'), resolveService('b')];",
       [
         {
           messageId: 'wrapper',
-          data: { name: 'resolveMailer', api: MAIL, file: 'src/shared/mail.ts' },
+          data: { name: 'resolveService', api: MAIL, file: 'src/shared/mail.ts' },
         },
         {
           messageId: 'wrapper',
-          data: { name: 'resolveMailer', api: MAIL, file: 'src/shared/mail.ts' },
+          data: { name: 'resolveService', api: MAIL, file: 'src/shared/mail.ts' },
         },
       ],
     ),
