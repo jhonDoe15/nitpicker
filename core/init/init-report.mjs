@@ -74,7 +74,7 @@ function agentsLines(agents, command, offered) {
   return [outcomes[agents.status]];
 }
 
-function ciLines(workflow, workflowFile, command, offered) {
+function ciLines(workflow, { workflowFile, command, offered }) {
   if (workflow === undefined) {
     return offered ? [`To write ${workflowFile}, run: ${command} init --ci github`] : [];
   }
@@ -90,7 +90,7 @@ export function renderReport({ project, peers, config, workflow, workflowFile, a
     skillLines(project),
     [
       ...agentsLines(agents, command, offers.agents),
-      ...ciLines(workflow, workflowFile, command, offers.workflow),
+      ...ciLines(workflow, { workflowFile, command, offered: offers.workflow }),
     ],
     [
       `Then run \`${command}\` to check a change, or \`${command} --all\` to survey the whole project.`,

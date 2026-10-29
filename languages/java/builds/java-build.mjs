@@ -27,7 +27,7 @@ export function readPinnedTools(initScript = INIT_SCRIPT) {
 
 const GRADLE_SCRIPT = /\.gradle(?:\.kts)?$/u;
 const KOTLIN_PLUGIN =
-  /\bkotlin\s*\(\s*["'](?:jvm|android|multiplatform)["']\s*\)|["']org\.jetbrains\.kotlin\.(?:jvm|android|multiplatform)["']|\bapply\s+plugin\s*:\s*["']kotlin(?:-android)?["']|\bid\s*\(?\s*["']kotlin["']/u;
+  /\bkotlin\s*\(\s*["'](?:jvm|android|multiplatform)["']\s*\)|["']org\.jetbrains\.kotlin\.(?:jvm|android|multiplatform)["']|\bapply\s+plugin\s*:\s*["']kotlin(?:-android)?["']|\bid(?:\s*\(\s*|\s+)["']kotlin["']/u;
 const SKIPPED_FOLDERS = new Set(['build', 'node_modules', 'out', 'target']);
 
 export function gradleAppliesKotlin(projectRoot) {
