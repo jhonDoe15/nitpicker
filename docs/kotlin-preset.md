@@ -1080,8 +1080,9 @@ class directory (the Java and the Kotlin one, so references in both directions b
 count) and the Nitpicker side builds the package graph as for Java (see the
 [Java preset](java-preset.md#coupling-and-stability-ticket-sh6)): a package depending on a less stable
 package fails with `stability-direction`, with the report-only coupling metrics beside it. A
-feature package is one unit, as in Java: adapters that implement interfaces declared in the
-feature's top package, and a top package that builds its adapters, are not an inversion (see
+feature package is one unit, as in Java (in a Spring app without `layout.featureRoots`, the root
+sub-packages other than `shared` and the layer names): adapters that implement interfaces declared
+in the feature's top package, and a top package that builds its adapters, are not an inversion (see
 [Stability direction](usage.md#stability-direction)).
 
 **Module and package (decisions).** A module is a source file, as in Java and TypeScript. The Kotlin

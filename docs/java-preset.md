@@ -1777,7 +1777,9 @@ counts is the package.
   and a project without `layout.featureRoots`, the features are the sub-packages of the root
   package other than `shared` and the layer names of `spring-layout`, and `<root>.shared` is
   shared (unless `layout.sharedRoots` says otherwise), so an ordinary package-by-feature app needs
-  no configuration. The root folder is where the root package's classes lie, so a Kotlin tree
+  no configuration. `stability-direction` takes the same features as units, so a layer package
+  such as `<root>.service` stays an ordinary package. The root folder is where the root package's
+  classes lie, so a Kotlin tree
   that leaves out the root package's folders (`src/main/kotlin/billing/` for
   `com.acme.shop.billing`) works too. ArchUnit's `spring-feature-boundary` and
   `spring-shared-pure` already report the boundary edges there, so only `feature-cycle`,

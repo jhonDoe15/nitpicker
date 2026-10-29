@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
-import { readFeatureGraphFindings } from './feature-findings.mjs';
+import { readFeatureGraph } from './feature-findings.mjs';
 import { featureProjects, javaSources, rows } from './test-support/feature-project.mjs';
 
 const { project: featureProject, remove } = featureProjects();
@@ -13,7 +13,7 @@ const FOLDER = 'src/main/java/com/acme/features';
 function findings(modules, { files, policy = {}, kotlin = false } = {}) {
   const classes = modules.flatMap((module) => module.classes);
   const project = featureProject({ files: files ?? javaSources(classes), modules });
-  return readFeatureGraphFindings(project.root, { ...project, kotlin, policy });
+  return readFeatureGraph(project.root, { ...project, kotlin, policy }).findings;
 }
 
 describe('feature boundaries on the class graph', () => {

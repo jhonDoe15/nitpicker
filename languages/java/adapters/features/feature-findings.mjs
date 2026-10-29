@@ -40,9 +40,8 @@ function withoutEdges(facts, covered) {
   };
 }
 
-function featureGraphFindings(graph, { language, policy, reports, isGenerated }) {
+function featureGraphFindings(graph, plan, { language, policy, isGenerated }) {
   const facts = featureFacts(graph, isGenerated);
-  const plan = featurePlan(policy.layout ?? {}, reports, graph);
   const options = {
     language,
     analyzerName: COUPLING_TOOL,
@@ -56,14 +55,18 @@ function featureGraphFindings(graph, { language, policy, reports, isGenerated })
   return [...analysis.findings, ...boundaries.findings, ...packageCycleFindings(graph, analysis)];
 }
 
-export function readFeatureGraphFindings(projectRoot, { projects, kotlin, policy = {} }) {
+export function readFeatureGraph(projectRoot, { projects, kotlin, policy = {} }) {
   const graph = readClassGraph(projectRoot, projects);
-  return graph.classes.length === 0
-    ? []
-    : featureGraphFindings(graph, {
-        language: kotlin ? 'kotlin' : 'java',
-        policy,
-        reports: readSpringReports(projects),
-        isGenerated: (file) => isGeneratedJvm(projectRoot, file),
-      });
+  const plan = featurePlan(policy.layout ?? {}, readSpringReports(projects), graph);
+  return {
+    layout: plan.layout,
+    findings:
+      graph.classes.length === 0
+        ? []
+        : featureGraphFindings(graph, plan, {
+            language: kotlin ? 'kotlin' : 'java',
+            policy,
+            isGenerated: (file) => isGeneratedJvm(projectRoot, file),
+          }),
+  };
 }

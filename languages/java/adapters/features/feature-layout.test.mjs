@@ -1,6 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { readCouplingFindings } from '../metrics/java-coupling.mjs';
 import { springRootFolders } from './feature-layout.mjs';
-import { readFeatureGraphFindings } from './feature-findings.mjs';
+import { readFeatureGraph } from './feature-findings.mjs';
 import { featureProjects, javaSources, rows } from './test-support/feature-project.mjs';
 
 const { project: featureProject, remove } = featureProjects();
@@ -41,11 +42,11 @@ function springFindings({ layout, violations = [BOUNDARY] } = {}) {
     modules: [{ classes: CLASSES, edges: EDGES, springArch: { root: ROOT, violations } }],
   });
   return rows(
-    readFeatureGraphFindings(project.root, {
+    readFeatureGraph(project.root, {
       ...project,
       kotlin: false,
       policy: layout === undefined ? {} : { layout },
-    }),
+    }).findings,
   );
 }
 
@@ -59,6 +60,31 @@ describe('Spring package-by-feature roles', () => {
       ['package-cycle', `${FOLDER}/billing/internal/Rates.java`, `cycle:${ROOT}.billing.internal`],
       ['package-cycle', `${FOLDER}/service/LegacyService.java`, `cycle:${ROOT}.service`],
     ]);
+  });
+
+  it('hands the Spring features to the stability rule as units, without the layer packages', () => {
+    const project = featureProject({
+      files: javaSources(CLASSES),
+      modules: [{ classes: CLASSES, edges: EDGES, springArch: { root: ROOT, violations: [] } }],
+    });
+    const { layout } = readFeatureGraph(project.root, { ...project, policy: {} });
+    const stability = (options) =>
+      readCouplingFindings(project.projects[0].reportRoot, {
+        projectRoot: project.root,
+        sourceRoots: ['src/main/java'],
+        ...options,
+      })
+        .filter(({ rule }) => rule === 'stability-direction')
+        .map(({ identity }) => identity);
+    expect(layout).toMatchObject({
+      featureRoots: [FOLDER],
+      notFeatures: expect.arrayContaining(['shared', 'service']),
+    });
+    expect(stability({ layout })).toEqual([
+      `package-edge:${ROOT}.orders->${ROOT}.billing`,
+      `package-edge:${ROOT}.service->${ROOT}.billing`,
+    ]);
+    expect(stability({})).toEqual([`package-edge:${ROOT}.service->${ROOT}.billing`]);
   });
 
   it('runs every rule with an explicit layout, without the edges ArchUnit already reports', () => {
@@ -102,7 +128,7 @@ describe('Spring package-by-feature roles', () => {
     });
 
     expect(
-      rows(readFeatureGraphFindings(project.root, { ...project, policy: {} })).map(
+      rows(readFeatureGraph(project.root, { ...project, policy: {} }).findings).map(
         ([rule]) => rule,
       ),
     ).toEqual(['feature-internal-import']);
