@@ -27,6 +27,7 @@ def load_checks():
     from signatures import defaults, mutation, shims, tri_state
     from silent_tests import unasserted
     from smells import literals, loops, names, secret_logs, secrets
+    from tasks import cleanup, lifetimes
 
     return [
         declarations,
@@ -55,6 +56,8 @@ def load_checks():
         isolation,
         uncollected,
         helpers,
+        lifetimes,
+        cleanup,
         tri_state,
         defaults,
         mutation,
