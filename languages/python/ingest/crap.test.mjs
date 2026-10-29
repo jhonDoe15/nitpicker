@@ -45,7 +45,7 @@ describe('ingestPythonCrap', () => {
       allowedForm: 'Test its uncovered branches, or split a branchy part into its own function.',
       classification: 'enforceable',
       symbol: 'B.go',
-      location: { line: 2 },
+      location: { line: 2, endLine: 5 },
       ratchet: {
         key: 'function:B.go:crap',
         value: 6,
@@ -99,7 +99,7 @@ describe('ingestPythonCrap', () => {
         allowedForm:
           'Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
         classification: 'enforceable',
-        location: { line: 1 },
+        location: { line: 1, endLine: 2 },
       },
     ]);
   });
@@ -120,7 +120,7 @@ describe('ingestPythonCrap', () => {
           'coro has CRAP 2.00; score must be below 2. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["never.py"],"function":"coro","reason":"..."} to "exceptions" in nitpicker.config.json.',
         allowedForm: 'Test its uncovered branches, or split a branchy part into its own function.',
         classification: 'enforceable',
-        location: { line: 8 },
+        location: { line: 8, endLine: 9 },
         ratchet: {
           key: 'function:coro:crap',
           value: 2,

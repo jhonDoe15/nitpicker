@@ -120,6 +120,30 @@ describe('readSpringArchFindings messages', () => {
       'Keep Svc free of web types: take and return plain values, throw a domain exception for errors, and map them to and from ServerWebExchange in the controller or a @ControllerAdvice.',
     ],
     [
+      violation(
+        'spring-request-state',
+        'com.shop.orders.OrderService',
+        'recent:add:OrderController.place(order)',
+      ),
+      'Pass the request data from OrderController.place(order) on through parameters and return values instead of passing it to OrderService.recent with add(): OrderService is a singleton that every request shares, so request data kept there leaks between users and races between threads. Per-request data belongs in a @RequestScope bean, and a cache needs a size and an expiry (Spring Cache, Caffeine).',
+    ],
+    [
+      violation(
+        'spring-request-state',
+        'com.shop.orders.Holder',
+        'attributes:=:RequestContextHolder.currentRequestAttributes()',
+      ),
+      'Pass the request data from RequestContextHolder.currentRequestAttributes() on through parameters and return values instead of assigning it to Holder.attributes: Holder is a singleton that every request shares, so request data kept there leaks between users and races between threads. Per-request data belongs in a @RequestScope bean, and a cache needs a size and an expiry (Spring Cache, Caffeine).',
+    ],
+    [
+      violation(
+        'spring-request-state',
+        'com.shop.orders.OrderController',
+        'OrderController.SEEN:[]:OrderController.place(id)',
+      ),
+      'Pass the request data from OrderController.place(id) on through parameters and return values instead of writing it into an element of the static field OrderController.SEEN: a static field is shared by every request, so request data kept there leaks between users and races between threads. Per-request data belongs in a @RequestScope bean, and a cache needs a size and an expiry (Spring Cache, Caffeine).',
+    ],
+    [
       violation('spring-test-placement', 'com.shop.orders.FlowTest'),
       'Test FlowTest with new and mocks, or run it as an integration test: name it FlowIT (Failsafe runs *IT on Maven) or put it in an integration test source set. Both keep its package, so package-private classes stay visible; a package named integration or it also counts.',
     ],
@@ -191,6 +215,17 @@ describe('readSpringArchFindings findings', () => {
     expect(withoutRouteFields(parseAnalyzerReport({ findings }, 'java').findings)).toEqual(
       findings,
     );
+  });
+
+  it('keys request state by its field, so another handler or operation reaching it keeps the finding', () => {
+    const identities = (detail) =>
+      read([
+        violation('spring-request-state', 'com.shop.orders.OrderService', detail),
+        violation('spring-request-state', 'com.shop.orders.OrderService', 'last:=:A.a(id)'),
+      ]).map((finding) => finding.identity);
+
+    expect(identities('recent:add:A.a(id)')).toEqual(['OrderService|recent', 'OrderService|last']);
+    expect(identities('recent:put:B.b(order)')).toEqual(identities('recent:add:A.a(id)'));
   });
 
   it('keeps the identity when the class and its dependency move to other packages', () => {

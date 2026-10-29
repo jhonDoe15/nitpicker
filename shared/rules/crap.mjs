@@ -54,7 +54,7 @@ export function crapFindings(
       ...allowedFormField(text.allowedForm),
       classification: 'enforceable',
       symbol: fn.name,
-      ...(positiveInteger(fn.line) === undefined ? {} : { location: { line: fn.line } }),
+      ...locationOf(fn),
     };
     findings.push(
       unknown || fn.ratchetKey === undefined
@@ -63,6 +63,15 @@ export function crapFindings(
     );
   }
   return findings;
+}
+
+function locationOf({ line, endLine }) {
+  if (positiveInteger(line) === undefined) {
+    return {};
+  }
+  return {
+    location: { line, ...(positiveInteger(endLine) === undefined ? {} : { endLine }) },
+  };
 }
 
 // The score is rounded to what the message shows, so noise below that never counts as a rise.
