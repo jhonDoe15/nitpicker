@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { readRuffSnapshot } from './ruff-entries.mjs';
-import { isOlderVersion } from './ruff-selection.mjs';
+import { isOlderVersion, isPresetRule } from './ruff-selection.mjs';
 
 const PINNED_RUFF = /^ruff==(\S+)$/mu;
 
@@ -13,6 +13,10 @@ describe('the ruff snapshot of the rule reference', () => {
     );
 
     expect(readRuffSnapshot().version).toBe(PINNED_RUFF.exec(constraints)[1]);
+  });
+
+  it('holds only rules the ruff config of the preset selects', () => {
+    expect(readRuffSnapshot().rules.filter(({ code }) => !isPresetRule(code))).toEqual([]);
   });
 });
 

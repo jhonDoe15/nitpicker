@@ -20,6 +20,11 @@ function isSelected(code) {
   });
 }
 
+/** Whether the ruff config of the Python preset selects the rule `code` and does not ignore it. */
+export function isPresetRule(code) {
+  return isSelected(code) && !RUFF_IGNORE.includes(code);
+}
+
 function sectionsOf(explanation) {
   const parts = explanation.split(SECTION).slice(1);
   return new Map(
@@ -50,10 +55,7 @@ function explained({ explanation = '' }) {
 function selectedRuffRules(rules) {
   return rules
     .filter(
-      (rule) =>
-        (isStableRule(rule) || RUFF_SELECT.includes(rule.code)) &&
-        isSelected(rule.code) &&
-        !RUFF_IGNORE.includes(rule.code),
+      (rule) => (isStableRule(rule) || RUFF_SELECT.includes(rule.code)) && isPresetRule(rule.code),
     )
     .map((rule) => ({
       code: rule.code,
