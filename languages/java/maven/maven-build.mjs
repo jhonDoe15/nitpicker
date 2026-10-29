@@ -35,6 +35,7 @@ import { writeJdepsReports } from '../builds/jdeps-reports.mjs';
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
 const GUAVA_JAR = /^guava-\d.*\.jar$/u;
+const REACTOR_JAR = /^reactor-core-.*\.jar$/u;
 const AWAITILITY_JAR = /^awaitility-\d.*\.jar$/u;
 const PROJECT_CHECKS_OFF = [
   '-Dcheckstyle.skip=true',
@@ -157,7 +158,8 @@ function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
 
 function analyzeSources(options) {
   const { module, reportDir, classpaths, tools, pinned, configs, style, spring, spawn } = options;
-  runPmd({ module, reportDir, tools, classpaths, configs, spring, spawn });
+  const reactor = hasJar(classpaths.mainCompile, REACTOR_JAR);
+  runPmd({ module, reportDir, tools, classpaths, configs, spring, reactor, spawn });
   runSpotbugs({ module, reportDir, tools, spawn });
   runErrorProne({ module, reportDir, tools, classpaths, spawn });
   runFormat({ module, reportDir, tools, javaStyle: style.javaStyle, spawn });
