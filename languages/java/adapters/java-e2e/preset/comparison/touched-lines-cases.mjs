@@ -3,6 +3,7 @@ import { expect, it } from 'vitest';
 import { EDITED_LINE_SENTENCE } from '../../../../../../core/diff/comparison/positions/touched-lines.mjs';
 
 const sources = 'src/main/java/demo';
+const EDITED_BRANCH_LINE = 5;
 
 function javaClass(name, ...members) {
   return `package demo;\n\npublic final class ${name} {\n${members.join('\n\n')}\n}\n`;
@@ -104,7 +105,7 @@ export function touchedLineCases(resultOf) {
     );
 
     expect(rest).toEqual([]);
-    expect(edited.location.line).toBe(5);
+    expect(edited.location.line).toBe(EDITED_BRANCH_LINE);
     expect(edited.message).toContain(EDITED_LINE_SENTENCE);
   });
 }

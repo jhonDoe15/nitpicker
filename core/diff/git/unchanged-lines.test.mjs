@@ -4,7 +4,6 @@ import { parseChangedLines } from './patches/changed-lines.mjs';
 import { lineMapOf } from './unchanged-lines.mjs';
 
 const repositories = changeRepositories();
-const { changesBetween } = repositories;
 
 afterAll(() => {
   repositories.remove();
@@ -41,7 +40,7 @@ describe('lines whose only change is formatting', () => {
   let changes;
 
   beforeAll(() => {
-    changes = changesBetween(FORMATTED);
+    changes = repositories.changesBetween(FORMATTED);
   });
 
   it('counts a quote and spacing restyle of a Python line as unchanged', () => {
@@ -137,7 +136,7 @@ describe('edits a formatter never makes', () => {
   let changes;
 
   beforeAll(() => {
-    changes = changesBetween(SEMANTIC);
+    changes = repositories.changesBetween(SEMANTIC);
   });
 
   it.each([
@@ -169,7 +168,7 @@ describe('files the alignment leaves to the line diff', () => {
   );
 
   beforeAll(() => {
-    changes = changesBetween({
+    changes = repositories.changesBetween({
       'web/app.min.js': [
         `var v="1.0.0";${statements.join('')}\n`,
         `var v="1.0.1";${statements.join('')}\n`,
