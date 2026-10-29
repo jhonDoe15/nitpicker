@@ -6,12 +6,15 @@ import {
   testRuntimeReport,
 } from '../../../../shared/rules/test-runtime/classify.mjs';
 import { evaluateTestRuntime } from '../../../../shared/rules/test-runtime/evaluate.mjs';
+import {
+  TEST_RUNTIME_ANALYZER,
+  isEndToEndPath,
+} from '../../../../shared/rules/test-runtime/scope.mjs';
 import { pathInside } from '../review-rules/java-sources.mjs';
 import { readDeclarations } from '../review-rules/source-declarations.mjs';
 import { readTestGraph } from './test-graph.mjs';
-import { isAbstract, isEndToEndPath } from './test-sources.mjs';
+import { isAbstract } from './test-sources.mjs';
 
-const TEST_RUNTIME_TOOL = 'test-runtime';
 const REPORTS = ['jdeps-classes.txt', 'jdeps-test.txt'];
 
 function testRoots(project) {
@@ -78,6 +81,6 @@ export function readTestRuntimeFindings(projectRoot, { projects }) {
   });
   return evaluateTestRuntime(
     { summary: report.summary, findings: findingsByFile(report, judged) },
-    TEST_RUNTIME_TOOL,
+    TEST_RUNTIME_ANALYZER,
   );
 }

@@ -12,9 +12,12 @@ import {
   absolute,
   analyze,
   categories,
+  fixture,
+  messageOf,
   other,
   OPTIONS,
   plain,
+  scanned,
   SERVICE,
   typeOnly,
 } from './test-support/runtime-data.mjs';
@@ -148,6 +151,40 @@ describe('tests that run no production code', () => {
       'tests/test_broken.py',
     ]);
   });
+
+  it.each([
+    'tests/E2E/test_a.py',
+    'tests/end_to_end/test_a.py',
+    'tests/EndToEnd/test_a.py',
+    'tests/contracts/test_a.py',
+    'tests/e2eTest/test_a.py',
+    'tests/endToEndTest/test_a.py',
+    'tests/contractTest/test_a.py',
+  ])('leaves out %s as an end-to-end or contract test', (file) => {
+    const report = analyze({ others: [other(file)], imports: { [file]: [] } });
+
+    expect(report.tests).toEqual([]);
+    expect(report.exclusions).toEqual([file]);
+  });
+
+  it('keeps a test whose file name, not its folder, mentions e2e', () => {
+    const report = analyze({
+      others: [other('tests/test_e2e_flags.py')],
+      imports: { 'tests/test_e2e_flags.py': [] },
+    });
+
+    expect(report.findings).toHaveLength(1);
+  });
+
+  it('never judges an __init__.py, even when pytest collects every .py file', () => {
+    const report = analyze({
+      others: [other('tests/__init__.py', 'other'), other('tests/test_a.py')],
+      imports: { 'tests/__init__.py': [], 'tests/test_a.py': [] },
+      options: { ...OPTIONS, pythonFiles: ['*.py'] },
+    });
+
+    expect(report.tests.map(({ test }) => test)).toEqual(['tests/test_a.py']);
+  });
 });
 
 describe('the Django framework bridge', () => {
@@ -182,17 +219,22 @@ describe('the Django framework bridge', () => {
     ]);
   });
 
-  it('counts django.test imported by a conftest.py', () => {
-    const report = analyze({
-      others: [other('conftest.py'), other('tests/test_a.py')],
-      imports: {
-        'conftest.py': [plain('rest_framework.test')],
-        'tests/test_a.py': [],
-      },
-      options: django,
-    });
+  it('counts django.test imported by a conftest.py only when the test uses a fixture there', () => {
+    const others = [other('conftest.py'), other('tests/test_a.py')];
+    const imports = { 'conftest.py': [plain('rest_framework.test')], 'tests/test_a.py': [] };
+    const conftest = scanned({ fixtures: [fixture('api')] });
+    const analyzed = (requests) =>
+      categories(
+        analyze({
+          others,
+          imports,
+          literals: { 'conftest.py': conftest, 'tests/test_a.py': scanned({ requests }) },
+          options: django,
+        }),
+      );
 
-    expect(categories(report)).toEqual({ 'tests/test_a.py': 'framework-production-runtime' });
+    expect(analyzed(['api'])).toEqual({ 'tests/test_a.py': 'framework-production-runtime' });
+    expect(analyzed([])).toEqual({ 'tests/test_a.py': 'no-production-runtime' });
   });
 
   it('gives a type-only import of django.test no bridge', () => {
@@ -246,8 +288,7 @@ describe('the findings', () => {
         rule: 'no-production-runtime',
         path: 'tests/test_a.py',
         identity: `test:tests/test_a.py:source:${hash('def test_a():\n    pass\n')}`,
-        message:
-          'Test runs no production code: nothing it imports or references, directly or through test helpers, is production code. Test the production code it is about, or delete the test',
+        message: messageOf('no-production-runtime'),
         classification: 'enforceable',
       },
     ]);
@@ -320,7 +361,7 @@ describe('exceptions', () => {
     const [hinted] = applyRuleHints([finding()]);
 
     expect(hinted.message).toBe(
-      'Test runs no production code: nothing it imports or references, directly or through test helpers, is production code. Test the production code it is about, or delete the test. If this is intended, add {"rule":"no-production-runtime","paths":["tests/test_a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+      `${messageOf('no-production-runtime')}. If this is intended, add {"rule":"no-production-runtime","paths":["tests/test_a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.`,
     );
   });
 });
@@ -348,7 +389,11 @@ describe('scanning the string literals', () => {
     expect(calls[0].command.slice(0, 2)).toEqual(['python', '-I']);
     expect(path.basename(calls[0].command[2])).toBe('string-scan.py');
     expect(calls[0].options).toEqual({ rule: 'test-runtime-failed' });
-    expect(calls[0].request).toEqual({ root: projectRoot, files: ['tests/test_a.py'] });
+    expect(calls[0].request).toEqual({
+      root: projectRoot,
+      files: ['tests/test_a.py'],
+      modules: { 'app.service': 'src/app/service.py' },
+    });
     expect(JSON.parse(readFileSync(path.join(reportRoot, 'string-literals.json'), 'utf8'))).toEqual(
       { 'tests/test_a.py': { strings: ['app.service'], plugins: [] } },
     );

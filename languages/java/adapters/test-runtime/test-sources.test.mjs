@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isAbstract, isEndToEndPath } from './test-sources.mjs';
+import { isAbstract } from './test-sources.mjs';
 
 describe('isAbstract', () => {
   it.each([
@@ -22,28 +22,5 @@ describe('isAbstract', () => {
       isAbstract(text, 'CartSpec'),
       isAbstract(text, 'CartSpec', { kotlinOpen: true }),
     ]).toEqual([false, true]);
-  });
-});
-
-describe('isEndToEndPath', () => {
-  it.each([
-    'src/test/java/e2e/CartTest.java',
-    'src/test/java/End_To_End/CartTest.java',
-    'src/endtoend/CartTest.java',
-    'src/e2eTest/java/CartTest.java',
-    'src/endToEndTest/kotlin/CartTest.kt',
-    'src/contractTest/java/CartTest.java',
-    'src/test/java/shop/Contracts/CartTest.java',
-  ])('is true for %s', (file) => {
-    expect(isEndToEndPath(file)).toBe(true);
-  });
-
-  it.each([
-    'src/test/java/shop/CartTest.java',
-    'src/test/java/shop/e2e.java',
-    'src/test/java/shop/ContractTest.java',
-    'src/integrationTest/java/shop/CartTest.java',
-  ])('is false for %s', (file) => {
-    expect(isEndToEndPath(file)).toBe(false);
   });
 });

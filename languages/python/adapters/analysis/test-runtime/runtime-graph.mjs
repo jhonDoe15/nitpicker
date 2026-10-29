@@ -1,16 +1,10 @@
 import path from 'node:path';
-import { importEdges, longestKnownPrefix } from '../python-coupling.mjs';
+import { importedModules, importEdges, longestKnownPrefix } from '../python-coupling.mjs';
+import { EDGE_KINDS } from '../../../../../shared/rules/test-runtime/classify.mjs';
+import { INIT } from './pytest/constants.mjs';
+import { ancestorDirectories, createFixtureScope } from './pytest/fixture-reach.mjs';
 
-const CONFTEST = 'conftest.py';
-const INIT = '__init__.py';
-const RUNTIME = 'runtime';
-
-function ancestorDirectories(file) {
-  const parts = path.posix.dirname(file).split('/');
-  return parts[0] === '.'
-    ? ['.']
-    : [...parts.map((_, index) => parts.slice(0, parts.length - index).join('/')), '.'];
-}
+const NO_FIXTURES = { files: [], unresolved: new Set(), marks: new Set() };
 
 function importRootPrefix(file, packages) {
   const root = ancestorDirectories(file).find((directory) => !packages.has(directory)) ?? '.';
@@ -23,81 +17,107 @@ function underPrefix(statement, prefix) {
     : { ...statement, module: `${prefix}.${statement.module}` };
 }
 
-function flatImports(others, imports, packages) {
-  return Object.fromEntries(
-    others.map(({ file }) => {
-      const prefix = importRootPrefix(file, packages);
-      const statements = prefix === '' ? [] : (imports[file] ?? []);
-      return [
-        file,
-        statements
-          .filter(({ level }) => level === 0)
-          .map((statement) => underPrefix(statement, prefix)),
-      ];
-    }),
+function resolvesBesideTest(entry, statement, { prefix, known }) {
+  return importedModules(entry, statement, known).some(
+    (target) => target?.startsWith(`${prefix}.`) === true,
   );
 }
 
-function statementEdges({ entries, others, imports }) {
+function siblingFirst(entry, statements, { prefix, known }) {
+  return statements.flatMap((statement) => {
+    if (statement.level !== 0) {
+      return [statement];
+    }
+    return statement.names.map((name) => {
+      const single = { ...statement, names: [name] };
+      const beside = underPrefix(single, prefix);
+      return resolvesBesideTest(entry, beside, { prefix, known }) ? beside : single;
+    });
+  });
+}
+
+function importsSeenByPytest(entries, imports) {
   const packages = new Set(
     entries
       .filter(({ file }) => path.posix.basename(file) === INIT)
       .map(({ file }) => path.posix.dirname(file)),
   );
-  return [
-    ...importEdges(entries, imports),
-    ...importEdges(entries, flatImports(others, imports, packages)),
-  ];
+  const known = new Set(entries.map(({ module }) => module));
+  return {
+    ...imports,
+    ...Object.fromEntries(
+      entries.flatMap((entry) => {
+        const prefix = importRootPrefix(entry.file, packages);
+        const statements = imports[entry.file];
+        return prefix === '' || statements === undefined || entry.production
+          ? []
+          : [[entry.file, siblingFirst(entry, statements, { prefix, known })]];
+      }),
+    ),
+  };
 }
 
 function namedEdges(others, literals, known) {
-  return others.flatMap(({ file, module }) => {
-    const { strings = [], plugins = [] } = literals[file] ?? {};
-    return [...strings, ...plugins].flatMap((name) => {
+  return others.flatMap(({ file, module }) =>
+    (literals[file]?.strings ?? []).flatMap((name) => {
       const target = longestKnownPrefix(name, known);
-      return target === undefined ? [] : [{ source: module, target, kind: RUNTIME, dynamic: true }];
-    });
-  });
-}
-
-function conftestEdges(others) {
-  const conftests = new Map(
-    others
-      .filter(({ file }) => path.posix.basename(file) === CONFTEST)
-      .map(({ file }) => [path.posix.dirname(file), file]),
+      return target === undefined
+        ? []
+        : [{ source: module, target, kind: EDGE_KINDS.RUNTIME, dynamic: true }];
+    }),
   );
-  return others
-    .filter(({ kind, file }) => kind === 'test' && path.posix.basename(file) !== CONFTEST)
-    .flatMap(({ file }) =>
-      ancestorDirectories(file)
-        .filter((directory) => conftests.has(directory))
-        .map((directory) => ({ source: file, target: conftests.get(directory), kind: RUNTIME })),
-    );
 }
 
-export function buildRuntimeGraph({ modules, others = [], imports, literals = {}, loadsConftest }) {
-  const entries = [...modules, ...others].map((entry) => ({
-    ...entry,
-    isPackage: path.posix.basename(entry.file) === INIT,
-  }));
+export function buildRuntimeGraph({
+  modules,
+  others = [],
+  imports,
+  literals = {},
+  fixtureTests = [],
+}) {
+  const entries = [
+    ...modules.map((entry) => ({ ...entry, production: true })),
+    ...others.map((entry) => ({ ...entry, production: false })),
+  ].map((entry) => ({ ...entry, isPackage: path.posix.basename(entry.file) === INIT }));
   const fileOf = new Map(entries.map(({ module, file }) => [module, file]).reverse());
   const known = new Set(fileOf.keys());
   const fileEdges = [
-    ...statementEdges({ entries, others, imports }),
+    ...importEdges(entries, importsSeenByPytest(entries, imports)),
     ...namedEdges(others, literals, known),
   ].map((edge) => ({
     ...edge,
     source: fileOf.get(edge.source),
     target: fileOf.get(edge.target),
   }));
-  const bySource = Map.groupBy(
-    [...fileEdges, ...(loadsConftest ? conftestEdges(others) : [])],
-    ({ source }) => source,
-  );
-  return new Map(
-    entries.map(({ file }) => [
-      file,
-      (bySource.get(file) ?? []).map(({ target, kind, dynamic }) => ({ target, kind, dynamic })),
+  const bySource = Map.groupBy(fileEdges, ({ source }) => source);
+  const importedFiles = new Map(
+    [...bySource].map(([source, edges]) => [
+      source,
+      edges.filter(({ kind }) => kind === EDGE_KINDS.RUNTIME).map(({ target }) => target),
     ]),
   );
+  const helpers = new Set(others.map(({ file }) => file));
+  const reach = createFixtureScope({
+    files: others.map(({ file }) => file),
+    literals,
+    fileOfModule: fileOf,
+    importedFiles,
+    isHelper: (file) => helpers.has(file),
+  });
+  const fixtures = new Map(fixtureTests.map((test) => [test, reach(test)]));
+  return {
+    fixtures: (test) => fixtures.get(test) ?? NO_FIXTURES,
+    edges: new Map(
+      entries.map(({ file }) => [
+        file,
+        [
+          ...(bySource.get(file) ?? []),
+          ...(fixtures.get(file)?.files ?? []).map((target) => ({
+            target,
+            kind: EDGE_KINDS.RUNTIME,
+          })),
+        ].map(({ target, kind, dynamic }) => ({ target, kind, dynamic })),
+      ]),
+    ),
+  };
 }
