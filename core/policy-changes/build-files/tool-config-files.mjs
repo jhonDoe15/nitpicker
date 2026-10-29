@@ -9,14 +9,17 @@ import { appliedJscpdConfig } from '../../tooling/jscpd/config.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
 import { STRYKER_PROJECT_FILES } from '../../../languages/typescript/preset/project-configs/stryker-project-config.mjs';
+import { projectTsconfigFiles } from '../../../languages/typescript/preset/project-configs/typescript-project-options.mjs';
+import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
 
 const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
 const SCRIPT_PRESETS = new Set([undefined, 'typescript', 'javascript']);
 const SCRIPT_TOOL_FILES = new Map([
-  ['prettier', PRETTIER_PROJECT_FILES],
-  ['stryker', STRYKER_PROJECT_FILES],
+  ['prettier', () => PRETTIER_PROJECT_FILES],
+  ['stryker', () => STRYKER_PROJECT_FILES],
+  ['typescript', ({ config, root }) => projectTsconfigFiles(root, resolveLayoutFor(config))],
 ]);
 
 function usesProjectConfig(config, tool) {
@@ -96,7 +99,7 @@ function candidates(tool, side) {
     return config.preset === 'kotlin' ? kotlinFiles(tool, side) : [];
   }
   if (SCRIPT_TOOL_FILES.has(tool)) {
-    return SCRIPT_PRESETS.has(config.preset) ? SCRIPT_TOOL_FILES.get(tool) : [];
+    return SCRIPT_PRESETS.has(config.preset) ? SCRIPT_TOOL_FILES.get(tool)(side) : [];
   }
   if (tool === 'jscpd') {
     return [JSCPD_PROJECT_FILE];

@@ -80,7 +80,7 @@ function withProjectFacts(policy, config, projectRoot) {
     policy.tools === undefined
       ? undefined
       : {
-          ...withHeadToolConfigs(policy.tools, projectRoot),
+          ...withHeadToolConfigs(policy, projectRoot),
           ...(jscpd === undefined ? {} : { jscpd }),
         };
   return {
