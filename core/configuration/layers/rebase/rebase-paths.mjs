@@ -23,22 +23,42 @@ function braceAt(pattern, start) {
   return undefined;
 }
 
-function expandedBraces(pattern) {
-  const start = [...pattern].findIndex(
-    (character, index) => character === '{' && pattern[index - 1] !== '\\',
-  );
-  const group = start === -1 ? undefined : braceAt(pattern, start);
-  if (group === undefined || !pattern.slice(start, group.end).includes('/')) {
-    return [pattern];
+function slashGroup(pattern) {
+  return [...pattern]
+    .map((character, index) => ({ character, index }))
+    .filter(({ character, index }) => character === '{' && pattern[index - 1] !== '\\')
+    .map(({ index }) => ({ start: index, group: braceAt(pattern, index) }))
+    .find(
+      ({ start, group }) => group !== undefined && pattern.slice(start, group.end).includes('/'),
+    );
+}
+
+function alternativesOf(pattern) {
+  const found = slashGroup(pattern);
+  if (found === undefined) {
+    return undefined;
   }
+  const { start, group } = found;
   const bounds = [start, ...group.commas, group.end];
   const prefix = pattern.slice(0, start);
   const suffix = pattern.slice(group.end + 1);
   return bounds
     .slice(1)
-    .flatMap((end, index) =>
-      expandedBraces(`${prefix}${pattern.slice(bounds[index] + 1, end)}${suffix}`),
-    );
+    .map((end, index) => `${prefix}${pattern.slice(bounds[index] + 1, end)}${suffix}`);
+}
+
+function expandedBraces(pattern) {
+  const pending = [pattern];
+  const expanded = [];
+  for (const current of pending) {
+    const alternatives = alternativesOf(current);
+    if (alternatives === undefined) {
+      expanded.push(current);
+    } else {
+      pending.push(...alternatives);
+    }
+  }
+  return expanded;
 }
 
 function rebasedOne(pattern, memberSegments) {
@@ -55,7 +75,7 @@ function rebasedOne(pattern, memberSegments) {
   return rest.join('/');
 }
 
-export function rebasedPatterns(pattern, memberSegments) {
+function rebasedPatterns(pattern, memberSegments) {
   const rebased = expandedBraces(pattern)
     .map((alternative) => rebasedOne(alternative, memberSegments))
     .filter((value) => value !== undefined);
