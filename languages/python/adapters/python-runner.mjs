@@ -19,6 +19,7 @@ import { ENVIRONMENT_FAILED_RULE } from './execution/environments/environment-er
 import {
   TESTS_FAILED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
+  TESTS_NOT_RUN_RULE,
 } from '../../../shared/rules/finding-helpers.mjs';
 import {
   TROUBLESHOOTING_ANCHORS,
@@ -43,8 +44,10 @@ function toolError({ rule, message }, part = PYTHON_ANALYZER_NAME) {
   };
 }
 
+const TEST_RULES = new Set([TESTS_FAILED_RULE, TESTS_FAILED_SKIPPED_RULE, TESTS_NOT_RUN_RULE]);
+
 function fixAnchor({ rule }, part, snapshot) {
-  if (rule === TESTS_FAILED_RULE || rule === TESTS_FAILED_SKIPPED_RULE) {
+  if (TEST_RULES.has(rule)) {
     return testsFailAnchor(snapshot);
   }
   if (rule === ENVIRONMENT_FAILED_RULE) {
