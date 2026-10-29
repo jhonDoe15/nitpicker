@@ -104,7 +104,9 @@ class WaitingTest {
 const LEDGER = `package demo.orders
 
 import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
 
 interface Balances {
     suspend fun fetch(): Int
@@ -112,6 +114,8 @@ interface Balances {
 
 class Ledger(private val balances: Balances) {
     private val mutex = Mutex()
+    private val single = Semaphore(1)
+    private val pair = Semaphore(2)
     var total = 0
 
     suspend fun add() {
@@ -125,6 +129,14 @@ class Ledger(private val balances: Balances) {
 
     suspend fun addSerialized() {
         mutex.withLock { total += balances.fetch() }
+    }
+
+    suspend fun addOneAtATime() {
+        single.withPermit { total += balances.fetch() }
+    }
+
+    suspend fun addTwoAtATime() {
+        pair.withPermit { total += balances.fetch() }
     }
 }
 `;
@@ -188,6 +200,7 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'FixedSleepInTest WaitingTest.sleeps',
   'FixedSleepInTest WaitingTest.sleeps',
   'NonAtomicUpdateAcrossSuspension Ledger.total in add',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addTwoAtATime',
   'SingularAndPluralMember Query.tags',
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',

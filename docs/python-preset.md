@@ -771,10 +771,15 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   object, a class), or a bare name declared `global` or `nonlocal`. awaiting into a local first, a local, a parameter object, in-place mutation (`self.items.append(await fetch())`), a
   read after the `await` (`self.total = await fetch() + self.total`), a check then set
   (`if key not in self.items: self.items[key] = await fetch()`) and a saved value restored after
-  the location was deliberately set (save `self.state`, set it, `await`, put the saved value back) pass. An update inside `async with` on a lock passes: a name assigned from
-  `asyncio.Lock`, `Semaphore`, `BoundedSemaphore`, `Condition`, or the `anyio` and `trio`
-  equivalents in the same file (import aliases followed), or any name containing `lock`, `mutex`,
-  `semaphore` or `limiter`; a read saved before the lock was taken is still stale. Source and test
+  the location was deliberately set (save `self.state`, set it, `await`, put the saved value back) pass. An update inside `async with` on a lock that admits one task at a time passes: a name
+  assigned in the same file (import aliases followed) from `asyncio.Lock` or `Condition`, `anyio.Lock` or
+  `Condition`, `trio.Lock`, `StrictFIFOLock` or `Condition`, or from a semaphore or capacity limiter
+  built with one slot (`asyncio.Semaphore()`, `asyncio.Semaphore(1)`, `BoundedSemaphore(value=1)`,
+  `anyio.Semaphore(1)`, `anyio.CapacityLimiter(1)`, the `trio` equivalents), or a name not assigned
+  there that contains `lock` or `mutex`. A semaphore or limiter with more than one slot, or a size the
+  file does not state as the literal `1`, lets two updates interleave and is reported, whatever its
+  name; so is a lock built in the `async with` itself (`async with asyncio.Lock():`), which no other
+  task shares. A read saved before the lock was taken is still stale. Source and test
   files are checked. Differences from the TypeScript `require-atomic-updates`: it follows `self`
   and `cls`, it does not treat a parameter object as shared, it needs the same location to be read
   (`req.user = await verify(req.headers.token)` is not a finding) and it ignores a lazy

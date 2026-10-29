@@ -175,4 +175,30 @@ describe('updates across a suspension in Kotlin', () => {
     expect(findingsFor([open])).toEqual([]);
     expect(findingsFor([closed])).toHaveLength(1);
   });
+
+  it('allows withPermit only on a semaphore of the class built with one permit', () => {
+    const gate = (initializer, argument, overrides = {}) =>
+      property('gate', 'Ledger', { var: false, initializer, argument, ...overrides });
+    const permitted = (qualifier = 'gate') =>
+      update([call('load')], {
+        scopes: scopes([{ k: 'lambda', host: 'withPermit', qualifier }]),
+      });
+    const withGate = (declared, entry = permitted()) =>
+      ledger({
+        properties: [property('total', 'Ledger', { var: true }), declared],
+        updates: [entry],
+      });
+    const reported = (files) => findingsFor(files).map(({ symbol }) => symbol);
+
+    expect(reported([withGate(gate('Semaphore', '1'))])).toEqual([]);
+    expect(reported([withGate(gate('Semaphore', '1'), permitted('this.gate'))])).toEqual([]);
+    expect(reported([withGate(gate('Semaphore', '2'))])).toEqual(['Ledger.total in add']);
+    expect(reported([withGate(gate('Semaphore', 'permits'))])).toEqual(['Ledger.total in add']);
+    expect(reported([withGate(gate('Semaphore', '1', { var: true }))])).toEqual([
+      'Ledger.total in add',
+    ]);
+    expect(reported([withGate(gate('Semaphore', '1'), permitted('other'))])).toEqual([
+      'Ledger.total in add',
+    ]);
+  });
 });
