@@ -679,14 +679,24 @@ and strings (including the implicit throwing `else`), default-argument bridges (
 three missed outcomes (the "call returned `COROUTINE_SUSPENDED`" arm no test can take): 9 lines in
 the fixture. It also leaves the branches of the `@InlineOnly` standard library functions, which the
 compiler copies into the caller under the caller's line (no SMAP entry, so JaCoCo's inline filter
-cannot see them): `text.orEmpty()` on a `String?` or a `List?` and `text.isNullOrBlank()` each
-report a missed null arm on a line with no branch of its own. `Array.orEmpty()`, `maxOf` and
-`minOf` on numbers and strings, `coerceIn` and `use { }` showed none on the same run.
+cannot see them). Measured on Kotlin 2.4.21 with JaCoCo 0.8.12, one function per line, the branch
+count (`mb + cb`) each call adds to its line is: `.orEmpty()` 2 on a `String?`, `List?`, `Set?`,
+`Collection?`, `Map?` or `Sequence?` and 0 on an `Array?`; `.isNullOrEmpty()` 4 on a `String?`,
+`CharSequence?`, `List?` or `Map?` and 6 on an `Array?`; `.isNullOrBlank()` 4. `maxOf` and `minOf`
+(two or three `Int`, `Long`, `Double` or `String` arguments), `coerceIn`, `coerceAtLeast`, `let`,
+`also` and `use { }` add none. What the author writes around a call adds its own: a negation
+(`!x.isNullOrBlank()`, `.not()`, `== false`) adds 2, an `if (x.isNullOrEmpty())` adds 2, and so do
+`runCatching { }.getOrNull()`, `repeat(n) { }`, a comparison and a lambda with a comparison.
 
-One filter removes them, in `kotlin-branches.mjs`, and it fails open: **a Kotlin line is dropped
-only when it calls a suspension function or an inlined library function whose arms run none of
-the author's code (`orEmpty`, `isNullOrEmpty`, `isNullOrBlank`, `maxOf`, `minOf` followed by `(`)
-and contains nothing else that can branch**. The suspension
+Two filters remove them, in `kotlin-branches.mjs`, and both fail open. **A Kotlin line is dropped
+when its branch count equals the sum of the counts of the library calls on it**: `.orEmpty()` 2,
+`.isNullOrEmpty()` 4 and `.isNullOrBlank()` 4, each called on a receiver with no arguments, in the
+code of the line (string literals and comments removed) and not the name of a `fun` the line
+declares. So `text.orEmpty().trim()`, `a.orEmpty() + b.orEmpty()` and `list.map { it.orEmpty() }`
+are dropped, and a line whose count is higher keeps every branch, wherever the rest comes from: the
+operand line of a wrapped `if (` or `while (` condition or of a trailing `&&`, a negation, a
+`getOrNull()`, a `repeat`. **A line with a suspension call is dropped when it contains nothing that
+can branch**. The suspension
 calls are `emit`, `emitAll`, `yield`, `yieldAll`, `delay`, `await`, `awaitAll`, `withContext`,
 `withTimeout`, `withTimeoutOrNull`, `coroutineScope`, `supervisorScope`, `flow`, `channelFlow`,
 `callbackFlow` and `sequence` followed by `(` or `{`. What can branch is `if`, `when`, `while`,
@@ -704,13 +714,17 @@ so a line the filter does not recognize is judged as written. On the fixture thi
 and an `else -> throw` no test reaches, two `in 90..100 ->` entries). The cost of failing open is a
 report of a generated outcome on a line that also branches. It is never a missed real branch.
 
-Limits. A line that branches and also suspends (`if (ready) emit(1)`, `for (n in 1..2) emit(n)`),
-or branches and calls one of those library functions (`if (name.isNullOrEmpty())`), counts the
-generated outcome too, so it can fail with every branch the author wrote taken. The
+Limits. A line that branches and also suspends (`if (ready) emit(1)`, `for (n in 1..2) emit(n)`)
+counts the generated outcome too, so it can fail with every branch the author wrote taken. The
 message then names the call (`Not taken: emit suspending (move the call to its own line if no
-branch of yours is untested)`, or `isNullOrEmpty inlined from the standard library (...)`); put
-the call on a line of its own, or, when that is not
-possible, accept the function with an `exceptions` entry for `changed-branch-coverage` that names it
+branch of yours is untested)`); put the call on a line of its own. A line that branches and calls
+one of the library functions (`if (!name.isNullOrBlank())`) counts the library's arms too, and its
+message says so: `Not taken: a branch of this line or of isNullOrBlank, which is inlined from the
+standard library (pass null to take its null arm)`. Those arms are real inputs (null, empty,
+blank), so a test that passes them covers the line. Two receiver types do not match the counts: an
+`Array?.isNullOrEmpty()` (6) is kept and reported on a line of its own, and an `Array?.orEmpty()`
+(0) beside exactly one two-way branch of the author's (`items.orEmpty().size > limit`) is dropped
+with it. When none of this is possible, accept the function with an `exceptions` entry for `changed-branch-coverage` that names it
 (`function` is required; the name is the one the structure findings print, from the Kotlin metrics,
 and only that function's branches are accepted), or `exclude` the file in `nitpicker.config.json`
 (path-level, so it also stops gating every other finding of that file). A line is judged as a whole, as for Java, and a
@@ -1038,9 +1052,14 @@ fails only when it grows, and a package folder moved to a new path is matched to
   (`fixtures/jacoco-kotlin.xml`, class elements dropped; the project is
   `fixtures/kotlin-measurement`) that yields exactly the real misses, and a recorded report of
   statements that span lines (`fixtures/jacoco-kotlin-multiline.xml` with its sources in
-  `fixtures/kotlin-multiline`), and a line that calls an inlined library function, dropped alone
-  and named when it also branches. The gated e2e test changes lines that call `orEmpty`,
-  `isNullOrBlank` and `maxOf` and expects only the untested `?:` beside them to fail.
+  `fixtures/kotlin-multiline`), and the measured branch counts of lines that call an inlined
+  library function: dropped when the count is the library's, kept with the null-arm hint
+  otherwise (negation, wrapped `if (` and `&&` operands, `getOrNull`, `repeat`, an `Array?`
+  receiver, a `fun` named like the call). The gated e2e test changes lines that call `orEmpty`,
+  `isNullOrBlank` and `maxOf` and expects only the untested `?:`, a `!isNullOrBlank()` and the
+  operand of a wrapped `if (` to fail; a second branch adds an `interface`, a `fun interface` and
+  exhaustive `when`s over a sealed interface and an enum, all tested, and expects no coverage
+  finding.
 - `languages/java/adapters/kotlin/kotlin-tools.test.mjs`: formatter and ktfmt style detection (Spotless
   blocks, comments, `.editorconfig`, the override), detekt config detection and the override, and
   the Gradle arguments (including `--no-configuration-cache`).

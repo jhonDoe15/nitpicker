@@ -8,6 +8,8 @@ import {
   LIBRARY_CALLS,
   LIBRARY_CALLS_TEST,
   OFFSET,
+  PORTS,
+  PORTS_TEST,
   SPREAD,
   SPREAD_TEST,
 } from '../test-support/kotlin-branch-coverage-data.mjs';
@@ -81,6 +83,10 @@ export function useKotlinCoverageProject() {
     commitBranch(project, 'library-branches', {
       [`${kotlinSources}/Library.kt`]: LIBRARY_CALLS,
       'src/test/kotlin/demo/LibraryTest.kt': LIBRARY_CALLS_TEST,
+    });
+    commitBranch(project, 'ports', {
+      [`${kotlinSources}/Ports.kt`]: PORTS,
+      'src/test/kotlin/demo/PortsTest.kt': PORTS_TEST,
     });
     commitBranch(project, 'generated-branches', {
       [`${kotlinSources}/Generated.kt`]: GENERATED,

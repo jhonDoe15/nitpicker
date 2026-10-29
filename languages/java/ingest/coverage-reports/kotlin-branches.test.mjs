@@ -4,7 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { ingestJacocoBranches } from './jacoco-branches.mjs';
 import {
   isCompilerGeneratedBranchLine,
-  libraryBranchCall,
+  libraryBranchCount,
+  libraryCalls,
   suspensionCall,
 } from './kotlin-branches.mjs';
 
@@ -39,12 +40,6 @@ describe('isCompilerGeneratedBranchLine', () => {
     'val numbers = flow<Int> {',
     'suspend fun io(x: Int): Int = withContext(Dispatchers.IO) { x + 1 }',
     'emit("a // b")',
-    'return name.orEmpty()',
-    'fun label(text: String?): String = text.orEmpty().trim()',
-    'fun items(list: List<Int>?): List<Int> = list.orEmpty().sorted()',
-    'val missing = name.isNullOrBlank()',
-    'fun widest(a: Long, b: Long): Long = maxOf(a, b)',
-    'emit(minOf(a, b))',
   ])('drops %s', (line) => {
     expect(isCompilerGeneratedBranchLine(line)).toBe(true);
   });
@@ -58,12 +53,8 @@ describe('isCompilerGeneratedBranchLine', () => {
     '.isNotEmpty()',
     'val kept = n.takeIf(::isEven)',
     'fun fallback(s: String): String = s.ifEmpty { "none" }',
+    'return name.orEmpty()',
     'return -v.length',
-    'fun nonBlank(text: String?): String = text.orEmpty() + if (text == null) "?" else "!"',
-    'val size = name?.orEmpty()?.length',
-    'val widest = maxOf(a, b) > limit',
-    'if (name.isNullOrEmpty()) return',
-    'val top = scores.maxOf { it.points }',
     '1 -> "one"',
     'is Shape.Circle -> 3.0 * shape.radius * shape.radius',
     'fun display(): String = nickname ?: name',
@@ -91,17 +82,23 @@ describe('suspensionCall', () => {
   });
 });
 
-describe('libraryBranchCall', () => {
+describe('libraryCalls', () => {
   it.each([
+    ['val both = t.orEmpty() + u?.orEmpty()', ['orEmpty', 'orEmpty'], 4],
     [
-      'fun nonBlank(text: String?): String = text.orEmpty() + if (text == null) "?" else "!"',
-      'orEmpty',
+      'if (!name.isNullOrBlank() && list.isNullOrEmpty()) return',
+      ['isNullOrBlank', 'isNullOrEmpty'],
+      8,
     ],
-    ['val widest = maxOf(a, b) > limit', 'maxOf'],
-    ['val top = scores.maxOf { it.points }', undefined],
-    ['println("orEmpty()")', undefined],
-  ])('names the inlined library call in %s', (line, call) => {
-    expect(libraryBranchCall(line)).toBe(call);
+    ['fun String?.orEmpty(): String = this ?: ""', [], 0],
+    ['fun orEmpty(text: String?) = text', [], 0],
+    ['fun maxOf(a: Int, b: Int, c: Int): Int = if (a > b) a else b', [], 0],
+    ['val widest = maxOf(a, b)', [], 0],
+    ['val name = cache.orEmpty(key)', [], 0],
+    ['println("t.orEmpty()") // t.isNullOrEmpty()', [], 0],
+  ])('finds the inlined library calls in %s', (line, calls, branches) => {
+    expect(libraryCalls(line)).toEqual(calls);
+    expect(libraryBranchCount(line)).toBe(branches);
   });
 });
 
@@ -148,27 +145,52 @@ describe('changed-branch-coverage on Kotlin sources', () => {
 });
 
 describe('changed-branch-coverage on Kotlin lines that call an inlined library function', () => {
-  it('drops a line whose only branches are the library call and names it on a line that also branches', () => {
-    const names = [
-      'package demo',
-      '',
-      'fun nonBlank(text: String?): String = text.orEmpty() + if (text == null) "?" else "!"',
-      '',
-      'fun label(text: String?): String = text.orEmpty().trim()',
-    ].join('\n');
-    const lines =
-      '<line nr="3" mi="0" ci="9" mb="2" cb="2"/><line nr="5" mi="0" ci="5" mb="1" cb="1"/>';
-    const findings = ingestJacocoBranches(
-      `<report name="r"><package name="demo"><sourcefile name="Names.kt">${lines}</sourcefile></package></report>`,
-      { sourceRoot: 'src/main/kotlin', sourceText: () => names },
-    ).findings;
+  const measured = [
+    ['fun a(t: String?): String = t.orEmpty()', 2],
+    ['fun b(t: List<Int>?): Boolean = t.isNullOrEmpty()', 4],
+    ['fun c(t: String?): Boolean = t.isNullOrBlank()', 4],
+    ['fun d(t: String?): Boolean = t.orEmpty() == "x"', 2],
+    ['fun e(t: String?, u: String?): String = t.orEmpty() + u.orEmpty()', 4],
+    ['fun f(a: List<String?>): List<String> = a.map { it.orEmpty() }', 2],
+    ['fun g(t: String?): Boolean = !t.isNullOrBlank()', 6],
+    ['fun h(t: String?): Int = if (t.isNullOrEmpty()) -1 else 1', 6],
+    ['t.isNullOrEmpty()', 6],
+    ['u.isNullOrBlank()', 6],
+    ['fun i(t: String?): Int? = runCatching { t.orEmpty().toInt() }.getOrNull()', 4],
+    ['fun j(t: String?): Boolean = t.orEmpty().length > 0', 4],
+    ["fun k(t: String?): String = t.orEmpty().filter { it > 'a' }", 4],
+    [
+      'fun l(t: String?, n: Int): Int { var c = 0; repeat(n) { c++ }; return c + t.orEmpty().length }',
+      4,
+    ],
+    ['fun m(t: Array<Int>?): Boolean = t.isNullOrEmpty()', 6],
+    ['fun String?.orEmpty(): String = this ?: ""', 2],
+  ];
+  const lines = measured
+    .map(
+      ([, total], index) =>
+        `<line nr="${String(index + 3)}" mi="0" ci="5" mb="1" cb="${String(total - 1)}"/>`,
+    )
+    .join('');
+  const findings = ingestJacocoBranches(
+    `<report name="r"><package name="demo"><sourcefile name="Names.kt">${lines}</sourcefile></package></report>`,
+    {
+      sourceRoot: 'src/main/kotlin',
+      sourceText: () => ['package demo', '', ...measured.map(([line]) => line)].join('\n'),
+    },
+  ).findings;
 
-    expect(findings.map(({ location, message }) => [location.line, message])).toEqual([
-      [
-        3,
-        'Branch coverage is 50.00%; minimum is 95%. Not taken: orEmpty inlined from the standard library (move the call to its own line if no branch of yours is untested). Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
-      ],
-    ]);
+  it('drops a line whose branch count is that of its library calls and keeps every other line', () => {
+    expect(findings.map(({ location }) => measured[location.line - 3][0])).toEqual(
+      measured.slice(6).map(([line]) => line),
+    );
+  });
+
+  it('says how to take the null arm of the library call on a line it keeps', () => {
+    expect(findings[0].message).toBe(
+      'Branch coverage is 83.33%; minimum is 95%. Not taken: a branch of this line or of isNullOrBlank, which is inlined from the standard library (pass null to take its null arm). Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
+    );
+    expect(findings.at(-1).message).not.toContain('inlined');
   });
 });
 

@@ -9,9 +9,13 @@ import {
 } from '../../../../shared/ingest/common.mjs';
 import {
   isCompilerGeneratedBranchLine,
-  libraryBranchCall,
+  libraryBranchCount,
+  libraryCalls,
   suspensionCall,
 } from './kotlin-branches.mjs';
+
+const INLINED_HINT =
+  ', which is inlined from the standard library (pass null to take its null arm)';
 
 export function ingestJacocoBranches(xml, options = {}) {
   const report = parseXml(xml);
@@ -99,7 +103,7 @@ function lineBranch(line, { path: filePath, lines: sourceLines }) {
     return undefined;
   }
   const kotlin = filePath.endsWith('.kt');
-  if (kotlin && isCompilerGeneratedBranchLine(source)) {
+  if (kotlin && (isCompilerGeneratedBranchLine(source) || libraryBranchCount(source) === total)) {
     return undefined;
   }
   const arm = kotlin ? generatedArm(source) : undefined;
@@ -114,13 +118,11 @@ function lineBranch(line, { path: filePath, lines: sourceLines }) {
 
 function generatedArm(source) {
   const suspension = suspensionCall(source);
-  const library = libraryBranchCall(source);
-  if (suspension === undefined && library === undefined) {
-    return undefined;
+  if (suspension !== undefined) {
+    return `${suspension} suspending (move the call to its own line if no branch of yours is untested)`;
   }
-  const origin =
-    suspension === undefined
-      ? `${library} inlined from the standard library`
-      : `${suspension} suspending`;
-  return `${origin} (move the call to its own line if no branch of yours is untested)`;
+  const [library] = libraryCalls(source);
+  return library === undefined
+    ? undefined
+    : `a branch of this line or of ${library}${INLINED_HINT}`;
 }
