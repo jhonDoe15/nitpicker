@@ -74,17 +74,16 @@ export function hintFor(finding) {
 
 const PYTHON_EXCEPTIONS_KEY = 'python.exceptions';
 
-export function describeRuleFinding(rule, subject, libraries = DEFAULT_LIBRARIES, detail) {
+export function describeRuleFinding(rule, subject, libraries = DEFAULT_LIBRARIES) {
   return RULE_HINTS.find((hint) => hint.tool === RULES_TOOL && hint.rules.includes(rule)).describe(
     subject,
     libraries,
-    detail,
   );
 }
 
 function allowedText(hint, finding, libraries) {
   return typeof hint.allowed === 'function'
-    ? hint.allowed(finding.subject, libraries, finding.path, finding.detail)
+    ? hint.allowed(finding.subject, libraries, finding.path)
     : hint.allowed;
 }
 
@@ -104,7 +103,7 @@ function canBeLifted(finding) {
 }
 
 export function withHint(finding, libraries = DEFAULT_LIBRARIES) {
-  const { subject, detail, ...rest } = finding;
+  const { subject, ...rest } = finding;
   const hint = hintFor(rest);
   if (hint === undefined && !canBeLifted(rest)) {
     return rest;
@@ -112,9 +111,7 @@ export function withHint(finding, libraries = DEFAULT_LIBRARIES) {
   const routed = hint?.exception === false || RULES_ROUTED_BY_A_SETTING.has(rest.rule);
   const sentences = [
     `${rest.message.replace(/\.$/, '')}.`,
-    ...(hint === undefined
-      ? []
-      : [allowedText(hint, { subject, detail, path: rest.path }, libraries)]),
+    ...(hint === undefined ? [] : [allowedText(hint, { subject, path: rest.path }, libraries)]),
     ...(routed
       ? []
       : [exceptionRoute({ rule: rest.rule, path: rest.path, key: PYTHON_EXCEPTIONS_KEY })]),

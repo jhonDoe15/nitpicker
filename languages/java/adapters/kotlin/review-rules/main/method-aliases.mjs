@@ -125,7 +125,7 @@ function aliasTarget(file, fn) {
     : undefined;
 }
 
-function isLaterOfMutual(file, fn, target, owners) {
+function isLaterOfMutual({ file, owners }, fn, target) {
   return (
     !(isAlias(file, target, owners) && target.forward.name === fn.name) || target.line < fn.line
   );
@@ -150,7 +150,9 @@ export function methodAliasFindings(files, { finding }) {
       return file.functions
         .filter((fn) => isCandidate(fn, owners) && passesInOrder(fn))
         .map((fn) => [fn, aliasTarget(file, fn)])
-        .filter(([fn, target]) => target !== undefined && isLaterOfMutual(file, fn, target, owners))
+        .filter(
+          ([fn, target]) => target !== undefined && isLaterOfMutual({ file, owners }, fn, target),
+        )
         .map(([fn, target]) =>
           finding({
             rule: METHOD_ALIAS_RULE,

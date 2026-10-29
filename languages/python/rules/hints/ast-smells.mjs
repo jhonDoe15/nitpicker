@@ -1,6 +1,15 @@
 import { RULES_TOOL } from './tool.mjs';
 
-const methodName = (subject) => subject.split('.').pop();
+function aliasParts(subject) {
+  return subject.split(' -> ');
+}
+
+function visibility(name) {
+  if (name.startsWith('__')) {
+    return 2;
+  }
+  return name.startsWith('_') ? 1 : 0;
+}
 
 const EXPECTED_FAILURES = /xfail|expectedFailure/u;
 
@@ -188,15 +197,18 @@ export const SMELL_HINTS = [
   {
     tool: RULES_TOOL,
     rules: ['forwarding-method-alias'],
-    describe: (subject = '', _libraries, detail) =>
-      `\`${methodName(subject)}\` only forwards its parameters to \`${detail?.target}\` and has the same signature`,
-    allowed: (subject = '', _libraries, _path, detail) => {
-      if (detail === undefined) {
+    describe: (subject = '') => {
+      const [name, target] = aliasParts(subject);
+      return `\`${name}\` only forwards its parameters to \`${target}\` and has the same signature`;
+    },
+    allowed: (subject = '') => {
+      const [name, target] = aliasParts(subject);
+      if (target === undefined) {
         return 'Call the target method directly and delete the alias.';
       }
-      return detail.rename === true
-        ? `Rename \`${detail.target}\` to \`${methodName(subject)}\` and delete the alias.`
-        : `Call \`${detail.target}\` directly and delete the alias.`;
+      return visibility(name) < visibility(target)
+        ? `Rename \`${target}\` to \`${name}\` and delete the alias.`
+        : `Call \`${target}\` directly and delete the alias.`;
     },
   },
 ];

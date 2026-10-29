@@ -22,7 +22,7 @@ function toolError({ rule, path, subject, error }) {
 
 export function ingestRulesReport(text, libraries) {
   const identify = createIdentities();
-  return JSON.parse(text).map(({ rule, path, subject, detail, line, error, via }) => {
+  return JSON.parse(text).map(({ rule, path, subject, line, error, via }) => {
     if (rule === CHECK_FAILED_RULE || rule === SKIPPED_RULE) {
       return toolError({ rule, path, subject, error });
     }
@@ -33,8 +33,7 @@ export function ingestRulesReport(text, libraries) {
       path,
       identity: identify({ path, rule, subject }),
       subject: shown,
-      detail,
-      message: describeRuleFinding(rule, shown, libraries, detail),
+      message: describeRuleFinding(rule, shown, libraries),
       classification: 'enforceable',
       location: { line },
     };
