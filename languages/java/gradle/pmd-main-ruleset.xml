@@ -139,7 +139,7 @@
     </properties>
   </rule>
   <rule name="ForwardingMethodAliasRename" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This method only passes its parameters, in order, to a less visible method of the same class. Rename that method to this method's name and delete the alias. Overrides, annotated methods (a deprecated alias) and factories named of or from are allowed.">
+        message="This method only passes its parameters, in order, to a less visible method of the same class. Rename that method to this method''s name and delete the alias. Overrides, annotated methods (a deprecated alias) and factories named of or from are allowed.">
     <priority>3</priority>
     <properties>
       <property name="xpath">
