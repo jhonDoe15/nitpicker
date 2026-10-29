@@ -105,6 +105,10 @@ function analyzerChanges(baseAnalyzers = [], headAnalyzers = []) {
   };
 }
 
+export function shownSetting(value) {
+  return value === undefined ? 'not set' : JSON.stringify(value);
+}
+
 export function listedChanges(baseConfig, headConfig) {
   const before = baseConfig.disable ?? [];
   const after = headConfig.disable ?? [];

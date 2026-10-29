@@ -32,9 +32,7 @@ describe('the import-linter config the contracts come from', () => {
       'setup.cfg',
     );
     expect(fileOf({ 'setup.cfg': '[metadata]\n', '.importlinter': INI })).toBe('.importlinter');
-    expect(fileOf({ '.importlinter': '[other]\n', 'pyproject.toml': TOML })).toBe(
-      'pyproject.toml',
-    );
+    expect(fileOf({ '.importlinter': '[other]\n', 'pyproject.toml': TOML })).toBe('pyproject.toml');
     expect(fileOf({ 'tox.ini': INI })).toBe(undefined);
   });
 
