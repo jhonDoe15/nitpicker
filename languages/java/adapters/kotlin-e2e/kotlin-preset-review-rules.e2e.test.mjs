@@ -65,6 +65,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
           { rule: 'pmd/SpringUnusedContext', glob: ORDERS_TESTS },
           { rule: 'kotlin-source/BlockingCallInCoroutine', glob: ARCHIVE_FILE },
           { rule: 'unused-option', glob: 'src/main/kotlin/demo/orders/*' },
+          { rule: 'pmd/ClassLoadEffect', glob: 'src/main/kotlin/demo/orders/Inventory.kt' },
         ],
       },
     });
