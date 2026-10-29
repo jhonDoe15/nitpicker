@@ -1,3 +1,5 @@
+import { whileHolds } from '../traversal.mjs';
+
 function startOfStep(frontier, diagonal, edits) {
   const fromAbove =
     diagonal === -edits ||
@@ -9,9 +11,12 @@ function startOfStep(frontier, diagonal, edits) {
 
 function followDiagonal(left, right, start) {
   const end = { x: start.x, y: start.y };
-  while (end.x < left.length && end.y < right.length && left[end.x] === right[end.y]) {
-    end.x += 1;
-    end.y += 1;
+  for (const current of whileHolds(
+    end,
+    ({ x, y }) => x < left.length && y < right.length && left[x] === right[y],
+  )) {
+    current.x += 1;
+    current.y += 1;
   }
   return end;
 }
@@ -39,10 +44,10 @@ function backtrack(trace, sides) {
     const { previous } = startOfStep(frontier, cursor.x - cursor.y, edits);
     const previousX = edits === 0 ? 0 : frontier.get(previous);
     const previousY = edits === 0 ? 0 : previousX - previous;
-    while (cursor.x > previousX && cursor.y > previousY) {
-      cursor.x -= 1;
-      cursor.y -= 1;
-      pairs.push([cursor.x, cursor.y]);
+    for (const current of whileHolds(cursor, ({ x, y }) => x > previousX && y > previousY)) {
+      current.x -= 1;
+      current.y -= 1;
+      pairs.push([current.x, current.y]);
     }
     Object.assign(cursor, { x: previousX, y: previousY });
   }
@@ -136,12 +141,18 @@ function alignLines(left, right, maxEdits) {
 function commonEnds(left, right) {
   const shorter = Math.min(left.length, right.length);
   const ends = { prefix: 0, suffix: 0 };
-  while (ends.prefix < shorter && left[ends.prefix].text === right[ends.prefix].text) {
-    ends.prefix += 1;
+  for (const current of whileHolds(
+    ends,
+    ({ prefix }) => prefix < shorter && left[prefix].text === right[prefix].text,
+  )) {
+    current.prefix += 1;
   }
   const room = shorter - ends.prefix;
-  while (ends.suffix < room && left.at(-1 - ends.suffix).text === right.at(-1 - ends.suffix).text) {
-    ends.suffix += 1;
+  for (const current of whileHolds(
+    ends,
+    ({ suffix }) => suffix < room && left.at(-1 - suffix).text === right.at(-1 - suffix).text,
+  )) {
+    current.suffix += 1;
   }
   return ends;
 }

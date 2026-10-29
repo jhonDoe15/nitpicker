@@ -1,6 +1,7 @@
 import { sourceLanguage, sourceLines } from '../../../shared/source-text/format-tokens.mjs';
 import { movedLines } from '../../../shared/source-text/scope-moves.mjs';
 import { alignSequences } from '../../../shared/source-text/token-alignment.mjs';
+import { chainOf } from '../../../shared/traversal.mjs';
 
 const MAX_TOKEN_EDITS = 1000;
 const MAX_HUNK_TOKENS = 50_000;
@@ -20,10 +21,7 @@ function hunkTokens(lines, side, moved) {
 }
 
 function rootOf(parent, node) {
-  const path = [node];
-  while (parent.has(path.at(-1))) {
-    path.push(parent.get(path.at(-1)));
-  }
+  const path = chainOf(node, (current) => parent.get(current));
   for (const visited of path.slice(0, -1)) {
     parent.set(visited, path.at(-1));
   }
@@ -140,25 +138,7 @@ function hunksOf(file) {
   }));
 }
 
-const lineMaps = new WeakMap();
-
-function lineMapOf(file) {
-  if (!lineMaps.has(file)) {
-    const carried = file.carried ?? [];
-    lineMaps.set(file, {
-      hunks: hunksOf(file),
-      headToBase: new Map(carried),
-      baseToHead: new Map(carried.toReversed().map(([head, base]) => [base, head])),
-    });
-  }
-  return lineMaps.get(file);
-}
-
-export function baseLineOf(file, line) {
-  if (file === undefined) {
-    return line;
-  }
-  const { hunks, headToBase } = lineMapOf(file);
+function baseLine({ hunks, headToBase }, line) {
   if (headToBase.has(line)) {
     return headToBase.get(line);
   }
@@ -167,13 +147,26 @@ export function baseLineOf(file, line) {
     : undefined;
 }
 
-export function headLineOf(file, line) {
-  if (file === undefined) {
-    return line;
-  }
-  const { hunks, baseToHead } = lineMapOf(file);
+function headLine({ hunks, baseToHead }, line) {
   if (baseToHead.has(line)) {
     return baseToHead.get(line);
   }
   return enclosingHunk(hunks, line, 'base')?.head.start ?? line + shiftBefore(hunks, line, 'base');
+}
+
+export function lineMapOf(file) {
+  const carried = file?.carried ?? [];
+  const map = {
+    hunks: hunksOf(file ?? {}),
+    headToBase: new Map(carried),
+    baseToHead: new Map(carried.toReversed().map(([head, base]) => [base, head])),
+  };
+  return {
+    baseLineOf(line) {
+      return baseLine(map, line);
+    },
+    headLineOf(line) {
+      return headLine(map, line);
+    },
+  };
 }

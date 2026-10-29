@@ -104,6 +104,10 @@ function splitAt(lines, anchors) {
   return gaps;
 }
 
+function keysOf(side, lines) {
+  return lines.map((line) => side[line].key);
+}
+
 function matchScope(moved, { baseLines, headLines, context }) {
   const { sides, inBase, inHead, anchorOf } = context;
   const inScope = new Set(headLines);
@@ -112,10 +116,9 @@ function matchScope(moved, { baseLines, headLines, context }) {
   for (const [index, gap] of splitAt(baseLines, new Set(anchors)).entries()) {
     const left = gap.filter((line) => inBase.has(line));
     const right = headGaps[index].filter((line) => inHead.has(line));
-    const keys = (side, lines) => lines.map((line) => sides[side][line].key);
     for (const [leftIndex, rightIndex] of alignTokens(
-      keys('base', left),
-      keys('head', right),
+      keysOf(sides.base, left),
+      keysOf(sides.head, right),
       MAX_LINE_EDITS,
     ) ?? []) {
       moved.set(right[rightIndex], left[leftIndex]);

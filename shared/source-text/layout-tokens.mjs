@@ -1,3 +1,5 @@
+import { whileHolds } from '../traversal.mjs';
+
 export const NEWLINE = '\u0002n';
 export const INDENT = '\u0002i';
 export const DEDENT = '\u0002d';
@@ -12,6 +14,7 @@ const CLOSING_BRACE = new Set(['}']);
 const PARENTHESES = new Set(['(', '[']);
 const CLOSING_PARENTHESES = new Set([')', ']']);
 const TAB_WIDTH = 8;
+const INLINE_BODY_INDENT = 0.5;
 const COMPOUND_STATEMENTS = new Set([
   'if',
   'elif',
@@ -29,7 +32,7 @@ const COMPOUND_STATEMENTS = new Set([
   'case',
 ]);
 
-function isOp(token, texts) {
+export function isOp(token, texts) {
   return token?.kind === 'op' && texts.has(token.text);
 }
 
@@ -60,8 +63,8 @@ function indentWidth(lineText = '') {
 function indentTokens(state, line) {
   const width = indentWidth(state.lines[line - 1]);
   const { stack, out } = state;
-  while (stack.length > 0 && width < stack.at(-1)) {
-    stack.pop();
+  for (const levels of whileHolds(stack, (open) => open.length > 0 && width < open.at(-1))) {
+    levels.pop();
     out.push({ kind: 'layout', text: DEDENT, line });
   }
   if (stack.length > 0 && width > stack.at(-1)) {
@@ -87,7 +90,7 @@ function openInlineBody(state, token) {
   if (state.colonLine === token.line) {
     emitNewline(state, token.line, true);
     state.out.push({ kind: 'layout', text: INDENT, line: token.line });
-    state.stack.push(state.stack.at(-1) + 0.5);
+    state.stack.push(state.stack.at(-1) + INLINE_BODY_INDENT);
   }
   state.colonLine = undefined;
 }

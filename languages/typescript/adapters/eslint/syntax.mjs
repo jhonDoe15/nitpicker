@@ -127,6 +127,7 @@ function fingerprintText(node) {
 }
 
 const SCRIPT = sourceLanguage('script.ts');
+const FINGERPRINT_LENGTH = 24;
 
 export function syntaxFingerprint(node, nodeType) {
   if (nodeType === 'Program') {
@@ -136,7 +137,7 @@ export function syntaxFingerprint(node, nodeType) {
   return createHash('sha256')
     .update(semanticTokens.map(({ text }) => text).join('\0'))
     .digest('hex')
-    .slice(0, 24);
+    .slice(0, FINGERPRINT_LENGTH);
 }
 
 export function normalizeMessageText(value) {

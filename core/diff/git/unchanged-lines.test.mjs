@@ -10,7 +10,7 @@ import {
   fixtureGit,
 } from './test-support/git-repository.mjs';
 import { parseChangedLines, readChangedLines } from './patches/changed-lines.mjs';
-import { baseLineOf, headLineOf } from './unchanged-lines.mjs';
+import { lineMapOf } from './unchanged-lines.mjs';
 
 const lines = (...text) => `${text.join('\n')}\n`;
 const gitTemplate = createGitTemplate();
@@ -180,14 +180,14 @@ describe('edits a formatter never makes', () => {
     ['steps.ts', 1],
     ['Gate.java', 3],
   ])('counts the edited line of %s as edited', (file, line) => {
-    expect(changes.get(file).ranges).toContainEqual([line, line]);
+    expect(changes.get(file).ranges).toEqual([[line, line]]);
   });
 
   it('does not let a deleted legacy line pass an identical line in new code elsewhere as unchanged', () => {
     const file = changes.get('launder.py');
 
-    expect(file.ranges).toContainEqual([5, 6]);
-    expect(baseLineOf(file, 6)).toBeUndefined();
+    expect(file.ranges).toEqual([[5, 6]]);
+    expect(lineMapOf(file).baseLineOf(6)).toBeUndefined();
   });
 });
 
@@ -280,7 +280,9 @@ describe('lines that moved within a file', () => {
       ],
     };
 
-    expect([2, 3, 4, 9, 10, 11].map((line) => baseLineOf(file, line))).toEqual([
+    const lineMap = lineMapOf(file);
+
+    expect([2, 3, 4, 9, 10, 11].map((line) => lineMap.baseLineOf(line))).toEqual([
       3,
       4,
       5,
@@ -288,11 +290,11 @@ describe('lines that moved within a file', () => {
       undefined,
       6,
     ]);
-    expect([1, 3, 6].map((line) => headLineOf(file, line))).toEqual([8, 2, 11]);
+    expect([1, 3, 6].map((line) => lineMap.headLineOf(line))).toEqual([8, 2, 11]);
   });
 
   it('maps lines one to one in a file the change left alone', () => {
-    expect(baseLineOf(undefined, 7)).toBe(7);
-    expect(headLineOf(undefined, 7)).toBe(7);
+    expect(lineMapOf(undefined).baseLineOf(7)).toBe(7);
+    expect(lineMapOf(undefined).headLineOf(7)).toBe(7);
   });
 });
