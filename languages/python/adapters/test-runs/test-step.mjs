@@ -1,6 +1,6 @@
 import { existsSync, readdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { TESTS_FAILED_RULE } from '../../../../shared/rules/finding-helpers.mjs';
+import { TESTS_NOT_RUN_RULE } from '../../../../shared/rules/finding-helpers.mjs';
 import { failure, run } from '../execution/python-process.mjs';
 import {
   NO_TESTS_EXIT,
@@ -38,10 +38,14 @@ function failuresOf(context, { command, result }) {
   }
   const failed =
     context.project.testRunner === 'pytest'
-      ? failedTests(readJunit(context.reportRoot)).map(({ id, file }) => ({ id, file }))
+      ? failedTests(readJunit(context.reportRoot)).map(({ id, file, name }) => ({
+          id,
+          file,
+          notRun: name === undefined,
+        }))
       : unittestFailures(result.stderr);
   if (failed.length === 0) {
-    throw failure({ context, command, result, rule: TESTS_FAILED_RULE });
+    throw failure({ context, command, result, rule: TESTS_NOT_RUN_RULE });
   }
   return failed;
 }
@@ -52,7 +56,7 @@ export function test(context, outcome) {
   const command = ['coverage', 'run', '--rcfile', config, ...testCommand(context)];
   const result = run(context, command, {
     accepted: [0, TESTS_FAILED_EXIT, NO_TESTS_EXIT],
-    rule: TESTS_FAILED_RULE,
+    rule: TESTS_NOT_RUN_RULE,
     env: testEnvironment(context),
     cwd: testDirectory(context),
   });
