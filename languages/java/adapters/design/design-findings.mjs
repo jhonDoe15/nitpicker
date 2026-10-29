@@ -19,7 +19,12 @@ function toolError(analyzerName, error) {
 }
 
 export function designPolicy(policy = {}, head = readHeadPolicyFile()) {
-  return { ...head, exceptions: policy.exceptions ?? head.exceptions ?? [] };
+  const protocols = policy.protocols ?? head.protocols;
+  return {
+    ...head,
+    ...(protocols === undefined ? {} : { protocols }),
+    exceptions: policy.exceptions ?? head.exceptions ?? [],
+  };
 }
 
 export function designFindings({
