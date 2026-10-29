@@ -3,7 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { detektEntries, nitpickerDetektRules } from './detekt-rules.mjs';
 
 const DEFAULTS = JSON.parse(
-  readFileSync(new URL('../../detekt/detekt-default-rules.json', import.meta.url), 'utf8'),
+  readFileSync(new URL('./detekt-default-rules.json', import.meta.url), 'utf8'),
 );
 const INIT_SCRIPT = readFileSync(
   new URL('../../gradle/nitpicker.init.gradle', import.meta.url),

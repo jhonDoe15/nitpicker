@@ -14,7 +14,6 @@ const GENERATOR_ONLY_PATH = new RegExp(
     '^shared/reference/(?:build|checks)/',
     '^languages/[^/]+/reference/',
     '^languages/python/ruff/ruff-rules\\.json$',
-    '^languages/java/detekt/detekt-default-rules\\.json$',
   ].join('|'),
   'u',
 );
@@ -93,7 +92,7 @@ describe('npm package contents', () => {
         'languages/java/reference/tool-text/pmd.json',
         'languages/typescript/reference/eslint-inventory.json',
         'languages/python/ruff/ruff-rules.json',
-        'languages/java/detekt/detekt-default-rules.json',
+        'languages/java/reference/kotlin/detekt-default-rules.json',
       ].filter(isNotShipped),
     ).toEqual([
       'core/cli.test.mjs',
@@ -108,7 +107,7 @@ describe('npm package contents', () => {
       'languages/java/reference/tool-text/pmd.json',
       'languages/typescript/reference/eslint-inventory.json',
       'languages/python/ruff/ruff-rules.json',
-      'languages/java/detekt/detekt-default-rules.json',
+      'languages/java/reference/kotlin/detekt-default-rules.json',
     ]);
   });
   it('ships the complete runtime tree without tests, fixtures, test support, bytecode or the lockfile', () => {
