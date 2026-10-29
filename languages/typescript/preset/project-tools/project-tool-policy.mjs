@@ -1,41 +1,98 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { isPlainObject } from '../../../../shared/config.mjs';
+import { withoutHostCiOutputs } from '../../../../core/tooling/host-environment.mjs';
+import { isPlainObject, picked } from '../../../../shared/config.mjs';
+import { realFileInside } from '../../../../shared/conventions/read-inside.mjs';
 import {
   missingProjectConfig,
   precedenceLayers,
 } from '../../../../shared/conventions/tool-precedence.mjs';
-import { encodedValue } from './config-values.mjs';
-import { isProjectConfigTool, lookedFor, projectConfigSources } from './project-config-files.mjs';
+import { parsedJsonc } from '../../../../shared/jsonc/jsonc.mjs';
+import { encodedValue, withoutKnipCompilers } from './config-values.mjs';
+import {
+  isJsonConfigFile,
+  isProjectConfigTool,
+  isProjectToolNeeded,
+  lookedFor,
+  packageJsonKey,
+  projectConfigSources,
+} from './project-config-files.mjs';
 
 const LOADER = pathToFileURL(path.join(import.meta.dirname, 'config-loader.mjs')).href;
 const LOADER_SOURCE = [
-  `const loader = await import(${JSON.stringify(LOADER)});`,
-  'const [tool, file] = process.argv.slice(1);',
-  'try {',
-  '  process.stdout.write(JSON.stringify(await loader.loadToolConfig(tool, file)));',
-  '} catch (error) {',
-  '  process.stderr.write(loader.failureText(error));',
-  '  process.exitCode = 1;',
-  '}',
+  `const { writeToolConfig } = await import(${JSON.stringify(LOADER)});`,
+  'const [tool, file, resultFile] = process.argv.slice(1);',
+  'await writeToolConfig({ tool, file, resultFile });',
+  'process.exit(0);',
 ].join('\n');
 const MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
+const CONFIG_LOAD_TIMEOUT_MS = 60_000;
+const CAPTURED_FACTS = ['projectConfig', 'projectConfigDigest', 'projectConfigError'];
+const NORMALIZED = new Map([['knip', withoutKnipCompilers]]);
 
-function loadedFile(tool, projectRoot, file) {
-  const result = spawnSync(
-    process.execPath,
-    ['--input-type=module', '-e', LOADER_SOURCE, tool, path.join(projectRoot, file)],
-    { cwd: projectRoot, encoding: 'utf8', maxBuffer: MAX_OUTPUT_BYTES },
-  );
+function normalized(tool, config) {
+  return (NORMALIZED.get(tool) ?? ((value) => value))(config);
+}
+
+function childFailure(result) {
+  const detail = result.stderr.trim();
+  if (detail.length > 0) {
+    return detail;
+  }
+  const ending = result.signal === null ? `code ${String(result.status)}` : result.signal;
+  return `the config exited (${ending}) before it finished loading`;
+}
+
+function childResult(result, resultFile, timeout) {
+  if (result.error?.code === 'ETIMEDOUT') {
+    throw new Error(`the config did not finish loading within ${String(timeout / 1000)} seconds`);
+  }
   if (result.error !== undefined) {
     throw result.error;
   }
-  if (result.status !== 0) {
-    throw new Error(result.stderr.trim() || `the loader exited with ${String(result.status)}`);
+  if (!existsSync(resultFile)) {
+    throw new Error(childFailure(result));
   }
-  return JSON.parse(result.stdout);
+  const loaded = JSON.parse(readFileSync(resultFile, 'utf8'));
+  if (loaded.failure !== undefined) {
+    throw new Error(loaded.failure);
+  }
+  return loaded.config;
+}
+
+function spawnedConfig(tool, projectRoot, { full, timeout }) {
+  const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-project-config-'));
+  const resultFile = path.join(directory, 'result.json');
+  try {
+    const result = spawnSync(
+      process.execPath,
+      ['--input-type=module', '-e', LOADER_SOURCE, tool, full, resultFile],
+      {
+        cwd: projectRoot,
+        env: withoutHostCiOutputs(process.env),
+        encoding: 'utf8',
+        stdio: ['ignore', 'ignore', 'pipe'],
+        timeout,
+        killSignal: 'SIGKILL',
+        maxBuffer: MAX_OUTPUT_BYTES,
+      },
+    );
+    return childResult(result, resultFile, timeout);
+  } finally {
+    rmSync(directory, { recursive: true, force: true });
+  }
+}
+
+function jsonConfig(tool, { full, file }) {
+  const parsed = parsedJsonc(readFileSync(full, 'utf8'));
+  if (parsed.kind !== 'json') {
+    throw new Error(`${file} is not valid JSON: ${parsed.reason}`);
+  }
+  return encodedValue(normalized(tool, parsed.value), file);
 }
 
 function objectConfig(value, label) {
@@ -45,64 +102,93 @@ function objectConfig(value, label) {
   return value;
 }
 
-function loadedConfig(tool, projectRoot, { file, section }) {
+function fileConfig(tool, projectRoot, { file, timeout }) {
+  const full = realFileInside(projectRoot, file);
+  if (full === undefined) {
+    throw new Error(`${file} must be a file inside the project`);
+  }
+  const config = isJsonConfigFile(file)
+    ? jsonConfig(tool, { full, file })
+    : spawnedConfig(tool, projectRoot, { full, timeout });
+  return objectConfig(config, file);
+}
+
+function sectionConfig(tool, section) {
+  if (section.kind !== 'json') {
+    throw new Error(`package.json is not valid JSON: ${section.reason}`);
+  }
+  if (section.value === undefined) {
+    return {};
+  }
+  const label = `the "${packageJsonKey(tool)}" key in package.json`;
+  return objectConfig(encodedValue(normalized(tool, section.value), 'package.json'), label);
+}
+
+function loadedConfig(tool, projectRoot, { sources, timeout }) {
   return {
-    ...(section === undefined
+    ...sectionConfig(tool, sources.section),
+    ...(sources.file === undefined
       ? {}
-      : objectConfig(encodedValue(section, 'package.json'), 'package.json')),
-    ...(file === undefined ? {} : objectConfig(loadedFile(tool, projectRoot, file), file)),
+      : fileConfig(tool, projectRoot, { file: sources.file, timeout })),
   };
 }
 
-function withDigest(capture) {
-  const digest = createHash('sha256').update(JSON.stringify(capture)).digest('hex');
-  return { ...capture, projectConfigDigest: digest };
-}
-
-function captured(tool, projectRoot) {
+export function evaluatedProjectConfig(tool, projectRoot, timeout = CONFIG_LOAD_TIMEOUT_MS) {
   const sources = projectConfigSources(tool, projectRoot);
   if (sources === undefined) {
-    return withDigest({ projectConfigError: missingProjectConfig(tool, lookedFor(tool)) });
+    return { kind: 'missing', message: missingProjectConfig(tool, lookedFor(tool)) };
   }
   try {
-    const projectConfig = loadedConfig(tool, projectRoot, sources);
-    return withDigest({ projectConfigFile: sources.label, projectConfig });
+    const config = loadedConfig(tool, projectRoot, { sources, timeout });
+    const files = [
+      ...(sources.file === undefined ? [] : [sources.file]),
+      ...(sources.section.value === undefined ? [] : ['package.json']),
+    ];
+    return { kind: 'config', config, files };
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    return withDigest({
-      projectConfigFile: sources.label,
-      projectConfigError: `Could not read the project's ${tool} config (${sources.label}): ${reason}`,
-    });
+    return {
+      kind: 'error',
+      message: `Could not read the project's ${tool} config (${sources.label}): ${reason}`,
+    };
   }
+}
+
+function captured(tool, projectRoot, timeout) {
+  const evaluated = evaluatedProjectConfig(tool, projectRoot, timeout);
+  const capture =
+    evaluated.kind === 'config'
+      ? { projectConfig: evaluated.config }
+      : { projectConfigError: evaluated.message };
+  const digest = createHash('sha256').update(JSON.stringify(capture)).digest('hex');
+  return { ...capture, projectConfigDigest: digest };
 }
 
 function usesProject(settings) {
   return precedenceLayers(settings?.precedence).usesProject;
 }
 
-export function withProjectToolConfigs(tools, projectRoot) {
+export function withProjectToolConfigs(tools, projectRoot, options = {}) {
   if (tools === undefined) {
     return undefined;
   }
+  const { disabled = [], timeout = CONFIG_LOAD_TIMEOUT_MS } = options;
   return Object.fromEntries(
     Object.entries(tools).map(([tool, settings]) => [
       tool,
-      isProjectConfigTool(tool) && usesProject(settings)
-        ? { ...settings, ...captured(tool, projectRoot) }
+      isProjectConfigTool(tool) && usesProject(settings) && isProjectToolNeeded(tool, disabled)
+        ? { ...settings, ...captured(tool, projectRoot, timeout) }
         : settings,
     ]),
   );
 }
 
-export function headProjectToolFacts(tools = {}, headTools = {}) {
-  return Object.fromEntries(
-    [...new Set([...Object.keys(tools), ...Object.keys(headTools)])].flatMap((tool) => {
-      if (!isProjectConfigTool(tool)) {
-        return tools[tool] === undefined ? [] : [[tool, tools[tool]]];
-      }
-      return headTools[tool] === undefined ? [] : [[tool, headTools[tool]]];
-    }),
-  );
+export function headCapturedFacts(settings, headSettings = {}) {
+  const facts = picked(headSettings, CAPTURED_FACTS);
+  if (facts.projectConfig === undefined && facts.projectConfigError === undefined) {
+    return { ...headSettings, precedence: headSettings.precedence ?? ['nitpicker'] };
+  }
+  return { ...settings, ...facts };
 }
 
 export function projectToolLayer(tool, settings) {

@@ -3,17 +3,22 @@ import {
   GRADLE_PRESETS,
   PROJECT_TOOL_CONFIGS,
 } from '../../../languages/java/adapters/gradle-presets.mjs';
-import { readInside } from '../../../shared/conventions/read-inside.mjs';
+import { readRealInside } from '../../../shared/conventions/read-inside.mjs';
 import { JSCPD_PROJECT_FILE } from '../../../shared/conventions/tool-precedence.mjs';
 import { appliedJscpdConfig } from '../../tooling/jscpd/config.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
 import {
   isProjectConfigTool,
+  manifestSection,
   packageJsonKey,
   projectConfigCandidates,
   projectConfigTools,
 } from '../../../languages/typescript/preset/project-tools/project-config-files.mjs';
+import {
+  appliedProjectConfigs,
+  hasProjectConfigChanges,
+} from '../../../languages/typescript/preset/project-tools/changes/project-config-changes.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
 
 const PACKAGE_JSON = 'package.json';
@@ -24,16 +29,8 @@ function usesProjectConfig(config, tool) {
   return (config.tools?.[tool]?.precedence ?? []).includes('project');
 }
 
-function packageKey(content, key) {
-  try {
-    return { section: JSON.parse(content.toString('utf8'))[key] };
-  } catch {
-    return { malformed: true };
-  }
-}
-
 function fingerprintOf(tool, { projectRoot, file }, gitBlobId) {
-  const content = readInside(projectRoot, file);
+  const content = readRealInside(projectRoot, file);
   if (content === undefined) {
     return undefined;
   }
@@ -44,11 +41,12 @@ function fingerprintOf(tool, { projectRoot, file }, gitBlobId) {
   if (file !== PACKAGE_JSON) {
     return gitBlobId(toolConfigText(tool, file, content.toString('utf8')));
   }
-  const key = packageKey(content, tool === 'prettier' ? 'prettier' : packageJsonKey(tool));
-  if (key.malformed === true) {
+  const key = tool === 'prettier' ? 'prettier' : packageJsonKey(tool);
+  const section = manifestSection(content.toString('utf8'), key);
+  if (section.kind !== 'json') {
     return gitBlobId(content);
   }
-  return key.section === undefined ? undefined : gitBlobId(JSON.stringify(key.section));
+  return section.value === undefined ? undefined : gitBlobId(JSON.stringify(section.value));
 }
 
 function fingerprints(tool, { root: projectRoot, files }, gitBlobId) {
@@ -122,7 +120,7 @@ function appliedSide(side, optedIn) {
   if (!optedIn) {
     return { kind: 'applied', config: {} };
   }
-  const content = readInside(side.root, JSCPD_PROJECT_FILE);
+  const content = readRealInside(side.root, JSCPD_PROJECT_FILE);
   return content === undefined
     ? { kind: 'applied', config: {} }
     : appliedJscpdConfig(content.toString('utf8'));
@@ -147,5 +145,8 @@ export function readToolConfigs(base, head, gitBlobId) {
       ),
       head: fingerprints(tool, { root: head.root, files: candidates(tool, head) }, gitBlobId),
       ...(tool === 'jscpd' ? appliedConfigs(base, head) : {}),
+      ...(hasProjectConfigChanges(tool) && SCRIPT_PRESETS.has(head.config.preset)
+        ? appliedProjectConfigs(tool, { base, head, baseOptedIn: isOptedIn(tool, base.config) })
+        : {}),
     }));
 }

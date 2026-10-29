@@ -1,3 +1,4 @@
+import { picked } from '../../../../../shared/config.mjs';
 import { precedenceLayers } from '../../../../../shared/conventions/tool-precedence.mjs';
 import { listOf } from '../../../preset/project-tools/config-values.mjs';
 
@@ -49,12 +50,6 @@ const ROOT_WORKSPACE = '.';
 
 function isNegated(pattern) {
   return typeof pattern === 'string' && pattern.startsWith('!');
-}
-
-function picked(config, keys) {
-  return Object.fromEntries(
-    keys.filter((key) => config[key] !== undefined).map((key) => [key, config[key]]),
-  );
 }
 
 function pluginsOf(config) {

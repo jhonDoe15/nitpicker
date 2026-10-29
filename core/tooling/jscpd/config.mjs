@@ -1,7 +1,8 @@
 import { createHash } from 'node:crypto';
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { isPlainObject } from '../../../shared/config.mjs';
+import { isRealPathInside } from '../../../shared/conventions/read-inside.mjs';
 import {
   JSCPD_PROJECT_FILE,
   missingProjectConfig,
@@ -50,8 +51,7 @@ function projectFile(projectRoot) {
   if (!existsSync(file)) {
     throw new Error(missingProjectConfig('jscpd', JSCPD_PROJECT_FILE));
   }
-  const relative = path.relative(realpathSync(projectRoot), realpathSync(file));
-  if (relative.startsWith(`..${path.sep}`) || relative === '..' || path.isAbsolute(relative)) {
+  if (!isRealPathInside(projectRoot, file)) {
     throw new Error(`${JSCPD_PROJECT_FILE} must stay inside the project`);
   }
   return file;

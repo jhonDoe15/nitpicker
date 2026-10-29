@@ -106,33 +106,28 @@ describe('project tool configs the project opted into', () => {
   });
 
   it.each([undefined, 'javascript'])(
-    'counts an edit of the knip config a %s project opted into, and only its key in package.json',
+    'reads what an edit of the knip config a %s project opted into applies, imports included',
     (preset) => {
       const config = { ...(preset === undefined ? {} : { preset }), tools: { knip: PROJECT } };
       const at = (files) => ({ 'src/a.ts': 'export const a = 1;\n', ...files });
       const manifest = (extra) => JSON.stringify({ name: 'x', ...extra });
       const base = at({
-        'knip.ts': 'export default { ignore: [] };\n',
+        'knip.ts': "import ignore from './tools/ignore.js';\nexport default { ignore };\n",
+        'tools/ignore.js': 'export default [];\n',
         'package.json': manifest(),
       });
+      const edited = (files) => between({ base, head: at({ ...base, ...files }), config });
 
+      expect(changesOf(edited({ 'tools/ignore.js': "export default ['src/**'];\n" }))).toEqual({
+        policyLoosenings: ['knip knip.ts ignore: [] -> ["src/**"]'],
+        policyChanges: ['knip knip.ts ignore: [] -> ["src/**"]'],
+      });
+      expect(edited({ 'package.json': manifest({ version: '2.0.0' }) }).policyLoosenings).toEqual(
+        [],
+      );
       expect(
-        between({
-          base,
-          head: at({
-            'knip.ts': "export default { ignore: ['src/**'] };\n",
-            'package.json': manifest({ version: '2.0.0' }),
-          }),
-          config,
-        }).policyLoosenings,
-      ).toEqual(['knip project config changed: knip.ts']);
-      expect(
-        between({
-          base,
-          head: at({ ...base, 'package.json': manifest({ knip: { ignore: ['src/**'] } }) }),
-          config,
-        }).policyLoosenings,
-      ).toEqual(['knip project config changed: package.json']);
+        edited({ 'package.json': manifest({ knip: { entry: ['src/a.ts'] } }) }).policyLoosenings,
+      ).toEqual(['knip knip.ts and package.json entry: not set -> ["src/a.ts"]']);
       expect(
         between({
           base,
@@ -142,6 +137,32 @@ describe('project tool configs the project opted into', () => {
       ).toEqual([]);
     },
   );
+  it('reads a knip.jsonc edit per key, without comments, order or removed ignores loosening', () => {
+    const config = { preset: 'typescript', tools: { knip: PROJECT } };
+    const at = (knip) => ({ 'knip.jsonc': knip, 'src/a.ts': 'export const a = 1;\n' });
+    const base = at('{ "ignore": ["a/**", "b/**"], "entry": ["x.ts"] }');
+    const changes = (knip) => changesOf(between({ base, head: at(knip), config }));
+
+    expect(changes('// ours\n{ "entry": ["x.ts"], "ignore": ["b/**", "a/**"], }')).toEqual({
+      policyLoosenings: [],
+      policyChanges: [],
+    });
+    expect(changes('{ "ignore": ["a/**"], "entry": ["x.ts"] }')).toEqual({
+      policyLoosenings: [],
+      policyChanges: ['knip knip.jsonc ignore: ["a/**","b/**"] -> ["a/**"]'],
+    });
+    expect(changes('{ "ignore": ["a/**", "b/**"], "entry": ["x.ts"], "$schema": "x" }')).toEqual({
+      policyLoosenings: [],
+      policyChanges: [],
+    });
+  });
+  it('falls back to the files when a side of the knip config cannot be read', () => {
+    const config = { preset: 'typescript', tools: { knip: PROJECT } };
+    const at = (knip) => ({ 'knip.json': knip, 'src/a.ts': 'export const a = 1;\n' });
+    expect(
+      between({ base: at('{ "ignore": [] }'), head: at('{ "ignore": ['), config }).policyLoosenings,
+    ).toEqual(['knip project config changed: knip.json']);
+  });
   it('shows the knip config a change opts into in the same change', () => {
     const files = { 'knip.json': '{"ignore":["src/**"]}', 'src/a.ts': 'export const a = 1;\n' };
     expect(
@@ -152,7 +173,7 @@ describe('project tool configs the project opted into', () => {
         config: { preset: 'typescript', tools: { knip: PROJECT } },
       }).policyLoosenings,
     ).toEqual([
-      'knip project config changed: knip.json',
+      'knip knip.json ignore: not set -> ["src/**"]',
       'tools.knip.precedence: not set -> ["project","nitpicker"]',
     ]);
   });
