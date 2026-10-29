@@ -485,14 +485,24 @@ Limits, all chosen to flag less rather than guess:
   collection or array of it). Only the primary-constructor properties of a `data class` and the
   properties of a `@ConfigurationProperties` class are inspected.
 - Update across a suspension (`pmd/NonAtomicUpdateAcrossSuspension`, the Kotlin form of the TypeScript
-  `require-atomic-updates` and the Python `atomic-update-across-await`; Kotlin has no `await`
-  expression, so the suspension is a suspend call in the value of an assignment). The target is a bare
-  name or `this.name` that is a `var` of the enclosing class (a body property or a `var` constructor
+  `nitpicker/require-atomic-updates` and the Python `atomic-update-across-await`; Kotlin has no `await`
+  expression, so the suspension is a recognized suspend call). The target is a bare name or
+  `this.name` that is a `var` of the enclosing class (a body property or a `var` constructor
   parameter, not delegated) or a top-level `var` of the same file, and not shadowed by a parameter or
   local of the function. `+=`, `-=`, `*=`, `/=` and `%=` read the property before the call, so any
   recognized suspend call in the value is a finding; with `=` the value must read the same property
   before the call (`total = total + load()`) and contain no `if`, `when`, `try`, `?:`, `&&` or `||`.
-  A suspend call is recognized only from the syntax tree, with no type resolution: an unqualified or
+- A read saved in a local is followed too:
+  `val current = total; val delta = load(); total = current + delta`,
+  `var current = total; current += load(); total = current`, and a local computed
+  from such a local. The local and the update must be in the same function or lambda (the
+  statements before the update in its block and in the blocks around it, and the conditions of the
+  `if`, `when`, `while` and `for` around it); a suspend call in any of those statements after the
+  read makes it stale, and so does entering a `withLock` or `withPermit` block, which suspends while
+  it waits. A local assigned again to a value that does not read the property, or assigned inside a
+  nested statement, is no longer followed. A read carried from one loop iteration to the next is not
+  followed.
+- A suspend call is recognized only from the syntax tree, with no type resolution: an unqualified or
   `this.` call to a function that the class declares `suspend` (every overload is `suspend`), or to a
   top-level `suspend` function of the same package from a class without supertypes; `withContext`,
   `withTimeout`, `withTimeoutOrNull`, `coroutineScope`, `supervisorScope` and `awaitAll` with an import
@@ -504,14 +514,23 @@ Limits, all chosen to flag less rather than guess:
   `last`, `count`, `fold`, `reduce`). Everything else is left alone: a call on a receiver whose type
   is inferred (`val repository = Repository()`), on a longer chain or on a type from outside the
   project, a function with a non-`suspend` overload, a local `var` shared by `launch` blocks, and an
-  update of a property of another object (`ledger.total += load()`). An update inside a `withLock` block passes,
-  and so does one inside `withPermit` on a `val` property of the class built as `Semaphore(1)`; a
-  semaphore with more permits, or one the class does not build with the literal `1`, lets two
-  updates interleave and is reported; a confined dispatcher (`limitedParallelism(1)`) or an actor is not
-  seen, so state that only one coroutine touches at a time takes a reviewed `exceptions` entry. Test
-  files are checked like main files. Java has no suspension inside an expression, so the Java preset
-  has no equivalent. detekt 1.23.8 (default config, including its `coroutines` rule set and its type
+  update of a property of another object (`ledger.total += load()`).
+- An update inside a `withLock` block passes unless the lock is a local of the function
+  (`val mutex = Mutex()` in the function itself serializes nothing). One inside `withPermit` passes
+  when the semaphore is a `val` built as `Semaphore(1)` with the literal `1`: a property of the
+  class, of its companion object or a top-level property of the same file; a semaphore with more
+  permits, a size that is not the literal `1`, a `var` or one built in the function lets two updates
+  interleave and is reported. A `launch` or `async` block inside the lock runs after the lock is
+  released, so it does not inherit it. A read saved before the lock was taken is still stale. A
+  confined dispatcher (`limitedParallelism(1)`) or an actor is not seen, so state that only one
+  coroutine touches at a time takes a reviewed `exceptions` entry. Test files are checked like main
+  files. detekt 1.23.8 (default config, including its `coroutines` rule set and its type
   resolution) has no rule for this hazard, and the Kotlin preset runs on Gradle only.
+- Parity with the other presets ([the matrix](../spec/checks.md#updates-across-a-suspension)): a
+  `this.` and bare member are followed, a saved local is followed, `Mutex.withLock` is recognized and
+  a semaphore only with one permit. Java has no suspension inside an expression; the nearest Java
+  hazard, a non-atomic update of a `volatile` field, is `errorprone/NonAtomicVolatileUpdate` in the
+  [Java preset](java-preset.md).
 - Spring context: any injected or mock bean, `MockMvc`, `WebTestClient`, `TestRestTemplate`,
   `CapturedOutput`, `ApplicationEvents`, `ApplicationContext` or a `webEnvironment` with a random or defined
   port counts as use.

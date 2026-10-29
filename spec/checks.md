@@ -45,18 +45,33 @@ number about a function (`nitpicker/cognitive-complexity`, `complexity`, `max-li
 ## Updates across a suspension
 
 A statement reads shared state, suspends, then writes a value derived from the stale read, so
-concurrent calls overwrite each other's updates. Each async preset checks it with its own tool and a
-reviewed `exceptions` entry for state that is already serialized.
+concurrent calls overwrite each other's updates. Each async preset checks it with a rule of its own
+analyzer, so the rule id differs per preset and the rule is not part of the generated
+[Custom rules](#custom-rules) table, which lists rules nitpicker emits under one id in several
+presets. Every finding is enforceable and names a reviewed `exceptions` entry for state that is
+already serialized.
 
-| Language                  | Rule                                      | Implementation                                                           | Status         |
-| ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------ | -------------- |
-| TypeScript and JavaScript | `eslint-lint` `require-atomic-updates`    | ESLint core rule with `allowProperties: false`, run by the Oxlint bridge | enforceable    |
-| Python                    | `python-rules/atomic-update-across-await` | `languages/python/rules/concurrency/atomic_updates.py`                   | enforceable    |
-| Kotlin                    | `pmd/NonAtomicUpdateAcrossSuspension`     | `review-rules/main/suspended-updates.mjs` over the `kotlin-psi` facts    | enforceable    |
-| Java                      | not applicable                            | a Java expression cannot suspend                                         | not applicable |
+| Preset                    | Rule                                      | Implementation                                                                                    |
+| ------------------------- | ----------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| TypeScript and JavaScript | `nitpicker/require-atomic-updates`        | ESLint's `require-atomic-updates` (`allowProperties: false`), reports narrowed, in `eslint-lint`  |
+| Python                    | `python-rules/atomic-update-across-await` | `languages/python/rules/concurrency/atomic_updates.py`                                            |
+| Kotlin                    | `pmd/NonAtomicUpdateAcrossSuspension`     | `review-rules/main/suspended-updates.mjs` over the `kotlin-psi` facts                             |
+| Java                      | not covered by this rule                  | nothing suspends inside a Java expression; see `errorprone/NonAtomicVolatileUpdate` in the preset |
 
-See [TypeScript](../docs/typescript-strict-preset.md), [Python](../docs/python-preset.md) and
-[Kotlin](../docs/kotlin-preset.md#review-rules) for what each recognizes and what it leaves alone.
+What each recognizes:
+
+| Preset                    | `this` / `self` state       | Saved local                                     | Lock recognized                         | Semaphore or limiter recognized               |
+| ------------------------- | --------------------------- | ----------------------------------------------- | --------------------------------------- | --------------------------------------------- |
+| TypeScript and JavaScript | no (`this` is not followed) | yes                                             | no: a reviewed exception                | no                                            |
+| Python                    | yes (`self`, `cls`)         | yes, through derived locals, branches and loops | yes, when built once outside the method | only with one slot, stated as the literal `1` |
+| Kotlin                    | yes (bare and `this.`)      | yes, within one function or lambda              | `withLock`, unless the mutex is a local | `withPermit` on a `val` `Semaphore(1)`        |
+
+A lazy initialization written as an operator (`cached ??= await load()`) is reported in TypeScript and
+JavaScript; Python and Kotlin have no such operator, and the checked form
+(`if cached is None: cached = await load()`) passes in every preset. See
+[TypeScript](../docs/typescript-strict-preset.md), [Python](../docs/python-preset.md),
+[Kotlin](../docs/kotlin-preset.md#review-rules) and [Java](../docs/java-preset.md#error-prone-and-nullaway)
+for what each leaves alone.
 
 ## Entry points
 

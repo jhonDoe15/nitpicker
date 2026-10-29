@@ -1,6 +1,6 @@
 import ast
 
-from checks.common import dotted_name
+from checks.common import dotted_name, parameter_names
 
 PARTIAL = "functools.partial"
 
@@ -14,12 +14,7 @@ def loaded_names(node):
 
 
 def local_names(node):
-    arguments = node.args
-    names = {
-        argument.arg
-        for argument in arguments.posonlyargs + arguments.args + arguments.kwonlyargs
-    }
-    names.update(a.arg for a in (arguments.vararg, arguments.kwarg) if a)
+    names = parameter_names(node)
     for part in ast.walk(node):
         if isinstance(part, ast.Name) and isinstance(part.ctx, (ast.Store, ast.Del)):
             names.add(part.id)

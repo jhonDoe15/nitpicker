@@ -1,58 +1,12 @@
-import { bareType, importsFrom, simpleTypeName } from '../kotlin-facts.mjs';
+import { suspendsAt, viewOf } from './suspend-calls.mjs';
 
 export const SUSPENDED_UPDATE_RULE = 'NonAtomicUpdateAcrossSuspension';
 
-const KOTLINX = 'kotlinx.coroutines';
-const KOTLINX_FUNCTIONS = new Set([
-  'withContext',
-  'withTimeout',
-  'withTimeoutOrNull',
-  'coroutineScope',
-  'supervisorScope',
-  'awaitAll',
-]);
-const KOTLINX_METHODS = new Map([
-  ['Deferred', new Set(['await'])],
-  ['CompletableDeferred', new Set(['await'])],
-  ['Channel', new Set(['receive'])],
-  ['ReceiveChannel', new Set(['receive'])],
-  ['Flow', new Set(['first', 'single', 'last', 'count', 'fold', 'reduce'])],
-  ['StateFlow', new Set(['first', 'single', 'last', 'count', 'fold', 'reduce'])],
-  ['SharedFlow', new Set(['first', 'single', 'last', 'count', 'fold', 'reduce'])],
-]);
-const SUSPEND = 'suspend';
+const LAUNCHERS = new Set(['launch', 'async']);
+const THIS_PREFIX = /^this\./u;
 
 function message(call, target) {
   return `\`${target}\` is updated from a value read before \`${call}()\` suspends: another coroutine can change it meanwhile, and this write then overwrites that change. Call \`${call}()\` into a local first (\`val delta = ${call}()\`, then update \`${target}\`), or hold one Mutex around the whole read-modify-write (\`mutex.withLock { ... }\`).`;
-}
-
-function allSuspend(functions) {
-  return functions.length > 0 && functions.every(({ modifiers }) => modifiers.includes(SUSPEND));
-}
-
-function importsKotlinx(file, name, subpackage = '') {
-  const prefix = `${KOTLINX}${subpackage}`;
-  return file.imports.some(
-    ({ path, all }) => path === `${prefix}.${name}` || (all && path === prefix),
-  );
-}
-
-function viewOf(files) {
-  const functions = files.flatMap((file) =>
-    file.functions.map((declared) => ({ ...declared, package: file.package })),
-  );
-  const classes = files.flatMap((file) => file.classes);
-  return {
-    functions,
-    classes,
-    members: (owner, name) =>
-      functions.filter((declared) => declared.owner === owner && declared.name === name),
-    named: (name) => functions.filter((declared) => declared.name === name),
-    classNamed: (name) => {
-      const matches = classes.filter((declared) => declared.name === name);
-      return matches.length === 1 ? matches[0] : undefined;
-    },
-  };
 }
 
 function enclosing(update) {
@@ -64,93 +18,54 @@ function enclosing(update) {
   };
 }
 
-function singlePermit(qualifier, { file, klass }) {
-  const name = qualifier?.replace(/^this\./, '');
-  const property = file.properties.find(
-    (declared) => declared.owner === (klass?.qualified ?? '') && declared.name === name,
+function isLocalProperty(qualifier, update) {
+  return qualifier !== undefined && (update.properties ?? []).includes(qualifier);
+}
+
+function companionsOf(klass, view) {
+  return view.classes
+    .filter(
+      ({ kind, qualified }) => kind === 'companion' && qualified.startsWith(`${klass.qualified}.`),
+    )
+    .map(({ qualified }) => qualified);
+}
+
+function gateProperty(qualifier, update, { file, view, klass }) {
+  const name = qualifier?.replace(THIS_PREFIX, '');
+  if (name === undefined || isLocalProperty(qualifier, update)) {
+    return undefined;
+  }
+  const owners = klass === undefined ? [] : [klass.qualified];
+  if (klass !== undefined && !THIS_PREFIX.test(qualifier)) {
+    owners.push(...companionsOf(klass, view));
+  }
+  const member = file.properties.find(
+    (declared) => owners.includes(declared.owner) && declared.name === name,
   );
+  if (member !== undefined || THIS_PREFIX.test(qualifier)) {
+    return member;
+  }
+  return (file.topLevelProperties ?? []).find((declared) => declared.name === name);
+}
+
+function singlePermit(qualifier, update, site) {
+  const property = gateProperty(qualifier, update, site);
   return property?.initializer === 'Semaphore' && !property.var && property.argument === '1';
 }
 
-function locked(lambdas, site) {
-  return lambdas.some(
-    ({ host, qualifier }) =>
-      host === 'withLock' || (host === 'withPermit' && singlePermit(qualifier, site)),
-  );
-}
-
-function declaredType(name, update, { file, view, klass }) {
-  const method = enclosing(update).method;
-  const parameters = view.functions
-    .filter((declared) => declared.name === method && declared.owner === (klass?.qualified ?? ''))
-    .flatMap((declared) => declared.parameters)
-    .filter((parameter) => parameter.name === name);
-  if (parameters.length > 0) {
-    return new Set(parameters.map(({ type }) => type)).size === 1 ? parameters[0].type : undefined;
-  }
-  if (update.locals.includes(name) || klass === undefined) {
-    return undefined;
-  }
-  const constructor = view.classes
-    .find(({ qualified }) => qualified === klass.qualified)
-    ?.primaryParameters.find((parameter) => parameter.name === name && parameter.property);
-  const property = file.properties.find(
-    (declared) => declared.owner === klass.qualified && declared.name === name,
-  );
-  return constructor?.type ?? property?.type;
-}
-
-function suspendsThroughType(call, type, { file, view }) {
-  const simple = simpleTypeName(type);
-  const projectClass = view.classNamed(simple);
-  if (projectClass !== undefined) {
-    return allSuspend(view.members(projectClass.qualified, call));
-  }
-  const methods = KOTLINX_METHODS.get(simple);
-  const subpackage = simple.endsWith('Flow') ? '.flow' : '';
-  return (
-    methods?.has(call) === true &&
-    (importsKotlinx(file, simple, subpackage) || importsFrom(file, `${KOTLINX}${subpackage}.`))
-  );
-}
-
-function suspendsWithoutReceiver(call, { file, view, klass }) {
-  const own = klass === undefined ? [] : view.members(klass.qualified, call);
-  if (own.length > 0) {
-    return allSuspend(own);
-  }
-  const named = view.named(call);
-  if (KOTLINX_FUNCTIONS.has(call)) {
-    return named.length === 0 && importsKotlinx(file, call);
-  }
-  const topLevel = named.filter(({ owner }) => owner === '');
-  const withoutSupertypes = klass === undefined || klass.supers.length === 0;
-  return (
-    withoutSupertypes &&
-    named.length === topLevel.length &&
-    topLevel.every(({ package: packageName }) => packageName === file.package) &&
-    allSuspend(topLevel)
-  );
-}
-
-function suspendingCalls(update, site) {
-  const { file, view } = site;
-  return update.value.filter((item) => {
-    if (item.k !== 'call') {
+function lockHeld(lambdas, update, site) {
+  for (const { host, qualifier } of lambdas) {
+    if (LAUNCHERS.has(host)) {
       return false;
     }
-    const { kind, name } = item.receiver;
-    if (kind === 'none' || kind === 'this') {
-      return suspendsWithoutReceiver(item.name, site);
+    if (host === 'withLock' && !isLocalProperty(qualifier, update)) {
+      return true;
     }
-    if (kind === 'async') {
-      return (
-        item.name === 'await' && importsKotlinx(file, 'async') && view.named('async').length === 0
-      );
+    if (host === 'withPermit' && singlePermit(qualifier, update, site)) {
+      return true;
     }
-    const type = kind === 'name' ? declaredType(name, update, site) : undefined;
-    return type !== undefined && suspendsThroughType(item.name, bareType(type), site);
-  });
+  }
+  return false;
 }
 
 function memberVariable(update, { file, view, klass }) {
@@ -177,7 +92,8 @@ function isSharedVariable(update, site) {
   if (member !== undefined) {
     return member;
   }
-  return !update.viaThis && (site.file.topLevelVars ?? []).includes(update.target);
+  const topLevel = (site.file.topLevelProperties ?? []).find(({ name }) => name === update.target);
+  return !update.viaThis && topLevel?.var === true && !topLevel.delegated;
 }
 
 function readsTargetBefore(update, calls) {
@@ -187,11 +103,104 @@ function readsTargetBefore(update, calls) {
     .some((item) => item.k === 'read' && item.name === update.target);
 }
 
-function staleUpdate(update, calls) {
-  if (update.operator !== '=') {
-    return true;
+function staleInside(update, calls) {
+  if (calls.length === 0) {
+    return false;
   }
-  return !update.branching && readsTargetBefore(update, calls);
+  return update.operator !== '=' || (!update.branching && readsTargetBefore(update, calls));
+}
+
+class SavedReads {
+  constructor(update, suspends) {
+    this.update = update;
+    this.suspends = suspends;
+    this.saved = new Map();
+    this.locked = false;
+  }
+
+  isLocal(item) {
+    return !item.viaThis && (this.update.properties ?? []).includes(item.name);
+  }
+
+  isShared(item) {
+    return item.viaThis || !this.update.locals.includes(item.name);
+  }
+
+  suspendAll(call) {
+    for (const [name, entry] of this.saved) {
+      this.saved.set(name, { ...entry, call: entry.call ?? call });
+    }
+  }
+
+  sourcesOf(value, calls) {
+    const reads = new Set();
+    let call;
+    value.forEach((item, index) => {
+      if (item.k !== 'read') {
+        return;
+      }
+      const entry = this.isLocal(item) ? this.saved.get(item.name) : undefined;
+      entry?.reads.forEach((name) => reads.add(name));
+      call ??= entry === undefined ? undefined : (entry.call ?? calls[0]?.name);
+      if (!this.isLocal(item) && this.isShared(item)) {
+        reads.add(item.name);
+        call ??= calls.find((found) => value.indexOf(found) > index)?.name;
+      }
+    });
+    return { reads, call, underLock: this.locked };
+  }
+
+  step(step) {
+    if (step.lock !== undefined) {
+      this.suspendAll(step.lock);
+      this.locked = true;
+      return;
+    }
+    const calls = step.value.filter(this.suspends);
+    const sources = this.sourcesOf(step.value, calls);
+    const previous = this.saved.get(step.assign);
+    if (calls.length > 0) {
+      this.suspendAll(calls[0].name);
+    }
+    for (const name of step.writes) {
+      this.saved.delete(name);
+    }
+    const name = step.local ?? step.assign;
+    if (name === undefined) {
+      return;
+    }
+    if (step.assign !== undefined && step.operator !== '=' && previous !== undefined) {
+      previous.reads.forEach((read) => sources.reads.add(read));
+      sources.call ??= previous.call ?? calls[0]?.name;
+    }
+    this.saved.set(name, sources);
+  }
+
+  staleCall(held) {
+    for (const step of this.update.steps ?? []) {
+      this.step(step);
+    }
+    const calls = this.update.value.filter(this.suspends);
+    for (const item of this.update.value) {
+      const entry = item.k === 'read' && this.isLocal(item) ? this.saved.get(item.name) : undefined;
+      if (entry?.reads.has(this.update.target) && !(held && entry.underLock)) {
+        const call = entry.call ?? calls[0]?.name;
+        if (call !== undefined) {
+          return call;
+        }
+      }
+    }
+    return undefined;
+  }
+}
+
+function staleCall(update, site, held) {
+  const suspends = (item) => suspendsAt(item, update, site);
+  const calls = update.value.filter(suspends);
+  if (!held && staleInside(update, calls)) {
+    return calls[0].name;
+  }
+  return new SavedReads(update, suspends).staleCall(held);
 }
 
 export function suspendedUpdateFindings(files, { finding, declaredIn }) {
@@ -200,22 +209,21 @@ export function suspendedUpdateFindings(files, { finding, declaredIn }) {
     (file.updates ?? []).flatMap((update) => {
       const { klass, method, lambdas } = enclosing(update);
       const site = { file, view, klass };
-      if (locked(lambdas, site) || !isSharedVariable(update, site)) {
+      if (!isSharedVariable(update, site)) {
         return [];
       }
-      const calls = suspendingCalls(update, site);
-      if (calls.length === 0 || !staleUpdate(update, calls)) {
+      const call = staleCall(update, site, lockHeld(lambdas, update, site));
+      if (call === undefined) {
         return [];
       }
-      const member = memberVariable(update, site) !== undefined;
-      const owner = member ? `${klass.qualified}.` : '';
+      const owner = memberVariable(update, site) === undefined ? '' : `${klass.qualified}.`;
       return [
         finding({
           rule: SUSPENDED_UPDATE_RULE,
           file: file.file,
           line: update.line,
           symbol: `${owner}${update.target} in ${method ?? '<init>'}`,
-          message: message(calls[0].name, update.target),
+          message: message(call, update.target),
         }),
       ];
     }),

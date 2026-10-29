@@ -7,7 +7,7 @@ import { defaultResolvedLayout, resolveLayout } from '../../layout.mjs';
 import { applyRuleExceptions } from '../exceptions.mjs';
 import { atomicUpdateConfigFor } from './atomic-updates.mjs';
 
-const rule = 'require-atomic-updates';
+const rule = 'nitpicker/require-atomic-updates';
 const parser = { languageOptions: { parser: tseslint.parser } };
 const config = [{ ...atomicUpdateConfigFor(defaultResolvedLayout), ...parser }];
 const javascriptLayout = resolveLayout({}, [], { javascript: true });
@@ -69,6 +69,76 @@ describe('atomic updates', () => {
     expect(messages(code)).toEqual([]);
   });
 
+  it.each([
+    [
+      'a saved binding',
+      'let total = 0; export async function update(load) { const current = total; const delta = await load(); total = current + delta; }',
+      'nonAtomicUpdate',
+    ],
+    [
+      'a saved local changed in place',
+      'let total = 0; export async function update(load) { let current = total; current += await load(); total = current; }',
+      'nonAtomicUpdate',
+    ],
+    [
+      'a property read through an alias',
+      'export async function update(state, load) { const view = state; const delta = await load(); state.total = view.total + delta; }',
+      'nonAtomicObjectUpdate',
+    ],
+    [
+      'a destructured property',
+      'export async function update(state, load) { const { total } = state; const delta = await load(); state.total = total + delta; }',
+      'nonAtomicObjectUpdate',
+    ],
+    [
+      'a spread of the written array',
+      'export async function update(state, load) { const before = state.items; const item = await load(); state.items = [...before, item]; }',
+      'nonAtomicObjectUpdate',
+    ],
+    [
+      'a lazy initialization written as an operator',
+      'let cached; export async function get(load) { cached ??= await load(); return cached; }',
+      'nonAtomicUpdate',
+    ],
+  ])('still reports %s', (_name, code, messageId) => {
+    expect(messages(code)).toEqual([{ ruleId: rule, messageId }]);
+  });
+
+  it.each([
+    [
+      'a property awaited into a local first',
+      'export async function update(req, verify) { const user = await verify(req.headers.token); req.user = user; }',
+    ],
+    [
+      'a property written from another property',
+      'export async function update(order, load) { const id = order.id; const items = await load(id); order.items = items; }',
+    ],
+    [
+      'a destructured other property',
+      'export async function update(order, load) { const { id } = order; const items = await load(id); order.items = items; }',
+    ],
+    [
+      'a binding awaited into a local first',
+      'let total = 0; export async function update(load) { const delta = await load(); total = delta; }',
+    ],
+    [
+      'a checked lazy initialization',
+      'let cached; export async function get(load) { if (cached === undefined) { const value = await load(); cached = value; } return cached; }',
+    ],
+    [
+      'a checked lazy initialization assigned directly',
+      'let cached; export async function get(load) { if (cached === undefined) { cached = await load(); } return cached; }',
+    ],
+  ])('allows the advised local-first form: %s', (_name, code) => {
+    expect(messages(code)).toEqual([]);
+  });
+
+  it('does not recognize a lock around the update', () => {
+    const locked =
+      'export async function update(state, mutex, load) { await mutex.runExclusive(async () => { state.total += await load(); }); }';
+    expect(messages(locked)).toEqual([{ ruleId: rule, messageId: 'nonAtomicObjectUpdate' }]);
+  });
+
   it('reports the same shapes in test files', () => {
     expect(messages(propertyUpdate, config, 'test/update.test.ts')).toEqual([
       { ruleId: rule, messageId: 'nonAtomicObjectUpdate' },
@@ -120,10 +190,12 @@ describe('atomic updates', () => {
     const message = routedEslintMessage({ ruleId: rule, text, relativePath: 'src/main/update.ts' });
     expect(message).toBe(
       `${text} Another call can change it during the \`await\`, and this write then overwrites that change. ` +
-        'Await the new value into a local first and read and write the shared state in one step with no ' +
-        '`await` between them, or serialize the whole operation with a lock or a queue. If this is intended, ' +
-        'add {"rule":"require-atomic-updates","paths":["src/main/update.ts"],"reason":"..."} to "exceptions" ' +
-        'in nitpicker.config.json.',
+        'Await the new value into a local first and then read and write the shared state in one step with no ' +
+        '`await` between them (`const delta = await load(); state.total += delta;`). A lock or a queue around ' +
+        'the update is not recognized: when the state is already serialized or confined to one task, add a ' +
+        'reviewed exception. If this is intended, add ' +
+        '{"rule":"nitpicker/require-atomic-updates","paths":["src/main/update.ts"],"reason":"..."} to ' +
+        '"exceptions" in nitpicker.config.json.',
     );
   });
 });

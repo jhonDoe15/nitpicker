@@ -14,10 +14,10 @@ export const POLICY_FILES = [
   JAVASCRIPT_PRESET_FILE,
   'languages/javascript/preset/documentation/jsdoc.mjs',
   'languages/javascript/preset/eslint-dialect.mjs',
+  'languages/typescript/preset/eslint-config/concurrency/atomic-updates.mjs',
   'languages/typescript/preset/eslint-config/exceptions.mjs',
   'languages/typescript/preset/eslint-config/policies/error-wrapping-policy.mjs',
   'languages/typescript/preset/eslint-config/strict.mjs',
-  'languages/typescript/preset/eslint-config/concurrency/atomic-updates.mjs',
   'languages/typescript/preset/eslint-config/strict/strict-control-flow.mjs',
   'languages/typescript/preset/eslint-config/policy/production-policy.mjs',
   'languages/typescript/preset/eslint-config/policy/security-facts.mjs',
@@ -135,6 +135,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/wrapped/no-magic-numbers.mjs',
   'languages/typescript/preset/eslint-plugin/rules/wrapped/naming-convention.mjs',
   'languages/typescript/preset/eslint-plugin/rules/wrapped/report-filter.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/wrapped/require-atomic-updates.mjs',
 ];
 
 export const DEPENDENCY_GRAPH_FILES = [

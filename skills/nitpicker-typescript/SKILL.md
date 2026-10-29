@@ -97,8 +97,9 @@ Before you change code other modules use, fix a bug, or add a UI state, read
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
 - Do not update shared state from a value read before an `await` (`state.total += await load()`):
-  await into a local first, then read and write the shared state with no `await` between them, or
-  serialize the whole update (`require-atomic-updates`).
+  await into a local first (`const delta = await load(); state.total += delta;`), then read and
+  write the shared state with no `await` between them. A lock or queue is not recognized; state
+  that is already serialized takes a reviewed exception (`nitpicker/require-atomic-updates`).
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
 
 ## Production rules
