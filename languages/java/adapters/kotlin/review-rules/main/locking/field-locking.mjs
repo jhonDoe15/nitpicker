@@ -41,7 +41,7 @@ function writesOf(file, view) {
     const site = { file, view };
     const volatile = properties(klass, site).get(write.target);
     const { held, opaque } = heldLocks(write, { klass, site });
-    return volatile === undefined || opaque
+    return volatile === undefined || opaque || write.explicitLock === true
       ? []
       : [{ write, klass, volatile, held, member: unit.name }];
   });

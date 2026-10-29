@@ -211,9 +211,11 @@ let $unitOf := function($n) {
             $l in $s/preceding-sibling::ExpressionStatement[MethodCall[$isLock(.)]]
         return let $k := $keyOf($l/MethodCall/*[1])
         return if (empty($k)) then '?'
-          else if (exists($s/preceding-sibling::ExpressionStatement[. >> $l]
-                     [MethodCall[@MethodName = 'unlock'][ArgumentList/@Size = 0][$keyOf(*[1]) = $k]])) then ()
-          else $k)
+          else if (exists($s/preceding-sibling::*[. >> $l]
+                     /(self::ExpressionStatement/MethodCall | self::TryStatement/FinallyClause//MethodCall)
+                     [@MethodName = 'unlock'][ArgumentList/@Size = 0][$keyOf(*[1]) = $k])) then ()
+          else $k,
+        $u[.//MethodCall[@MethodName = 'tryLock']]/'?')
     },
     $siteKey := function($s) {
       if ($s[self::SynchronizedStatement]) then $keyOf($s/*[1]) else $keyOf($s/MethodCall/*[1])
@@ -223,8 +225,9 @@ let $unitOf := function($n) {
     }
 return //(SynchronizedStatement | ExpressionStatement[MethodCall[$isLock(.)]])
   [let $k := $siteKey(.), $t := $typeOf(.)
-   return exists($k) and (some $h in $held(.)[. != '?'][. != $k] satisfies
-     (some $other in $sites($t) satisfies $siteKey($other) = $h and $held($other) = $k))]
+   return exists($k) and not($k = $held(.)) and (some $h in $held(.)[. != '?'] satisfies
+     (some $other in $sites($t) satisfies
+       $siteKey($other) = $h and not($h = $held($other)) and $held($other) = $k))]
 ]]></value>
       </property>
     </properties>
@@ -279,9 +282,11 @@ let $unitOf := function($n) {
             $l in $s/preceding-sibling::ExpressionStatement[MethodCall[$isLock(.)]]
         return let $k := $keyOf($l/MethodCall/*[1])
         return if (empty($k)) then '?'
-          else if (exists($s/preceding-sibling::ExpressionStatement[. >> $l]
-                     [MethodCall[@MethodName = 'unlock'][ArgumentList/@Size = 0][$keyOf(*[1]) = $k]])) then ()
-          else $k)
+          else if (exists($s/preceding-sibling::*[. >> $l]
+                     /(self::ExpressionStatement/MethodCall | self::TryStatement/FinallyClause//MethodCall)
+                     [@MethodName = 'unlock'][ArgumentList/@Size = 0][$keyOf(*[1]) = $k])) then ()
+          else $k,
+        $u[.//MethodCall[@MethodName = 'tryLock']]/'?')
     },
     $concurrent := '^(Atomic|Concurrent|CopyOnWrite|(Long|Double)(Adder|Accumulator)$)|Blocking(Queue|Deque)$',
     $eligible := function($t) {
@@ -304,7 +309,8 @@ let $unitOf := function($n) {
     $single := function($w, $name) as xs:boolean {
       $w[self::AssignmentExpression][@Operator = '=']
         and empty($w/*[2]/descendant-or-self::*
-          [self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression]]][@Name = $name])
+          [self::VariableAccess[empty($memberOf($w)//VariableId[@Name = $name])]
+            or self::FieldAccess[*[1][self::ThisExpression]]][@Name = $name])
     },
     $calledLocked := function($m, $t) as xs:boolean {
       some $c in $t//MethodCall[@MethodName = $m/@Name][*[1][self::ArgumentList or self::ThisExpression]]

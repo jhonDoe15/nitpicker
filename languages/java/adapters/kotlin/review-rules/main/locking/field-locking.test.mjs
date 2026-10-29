@@ -123,6 +123,10 @@ describe('inconsistently locked properties in Kotlin', () => {
       [write(4, 'a', [locked()]), write(6, 'b', [], { locals: ['count'] })],
     ],
     [
+      'a function that takes a lock with lock() or tryLock()',
+      [write(4, 'a', [locked()]), write(6, 'b', [], { explicitLock: true })],
+    ],
+    [
       'a write in a lambda that may run later',
       [
         write(4, 'a', [locked()]),

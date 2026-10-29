@@ -133,6 +133,10 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
         'fp:nitpicker/subject=Counters.clear(): total',
       ],
       [
+        'addThenCount() writes `total` without a lock, while add() writes it holding `guard`',
+        'fp:nitpicker/subject=Counters.addThenCount(): total',
+      ],
+      [
         'rename() writes `label` without a lock, while name() writes it holding `this`',
         'fp:nitpicker/subject=Counters.rename(): label',
       ],

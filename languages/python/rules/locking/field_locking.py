@@ -20,6 +20,7 @@ def unlocked_writes(context, sites):
             write.held
             or write.method in CONSTRUCTION
             or write.method in sites.locked_calls
+            or write.method in sites.opaque
         ):
             continue
         found = locked_write(write, sites)
