@@ -1,46 +1,30 @@
-import { globSync, readFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
+import { actionPinProblems } from './action-pins.mjs';
 
 const repositoryRoot = path.join(import.meta.dirname, '..');
-const fullVersionTag = /^[\w.-]+\/[\w./-]+@v\d+\.\d+\.\d+$/u;
-const yamlFence =
-  /^ {0,3}(`{3,}|~{3,})(?:yaml|yml)[^\S\r\n]*\r?\n([\s\S]*?)^ {0,3}\1[^\S\r\n]*$/gmu;
+const roots = [];
 
-function references(value) {
-  if (!value || typeof value !== 'object') return [];
-  return Object.entries(value).flatMap(([key, child]) =>
-    key === 'uses' ? [child] : references(child),
-  );
+afterEach(() => {
+  for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
+});
+
+function repository(files) {
+  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-action-pins-'));
+  roots.push(root);
+  for (const [file, text] of Object.entries(files)) {
+    mkdirSync(path.dirname(path.join(root, file)), { recursive: true });
+    writeFileSync(path.join(root, file), text);
+  }
+  return root;
 }
-
-function unpinnedActions(text) {
-  return references(parse(text)).filter(
-    (reference) =>
-      typeof reference !== 'string' ||
-      (!reference.startsWith('./') && !fullVersionTag.test(reference)),
-  );
-}
-
-function yamlDocuments(file, text) {
-  return file.endsWith('.md') ? [...text.matchAll(yamlFence)].map((match) => match[2]) : [text];
-}
-
-const files = [
-  ...new Set(
-    globSync(['**/*.{yml,yaml,md}', '.github/**/*.{yml,yaml,md}'], {
-      cwd: repositoryRoot,
-      exclude: ['**/node_modules/**', '.git/**', 'reports/**'],
-    }),
-  ),
-].sort();
 
 describe('repository action pins', () => {
-  it.each(files)('%s pins remote actions to full version tags', (file) => {
-    const text = readFileSync(path.join(repositoryRoot, file), 'utf8');
-
-    expect(yamlDocuments(file, text).flatMap(unpinnedActions)).toEqual([]);
+  it('pins remote actions in all YAML files and Markdown YAML examples to full tags', () => {
+    expect(actionPinProblems(repositoryRoot)).toEqual([]);
   });
 
   it.each(['java', 'kotlin'])('%s uses the MIT Gradle cache provider', (language) => {
@@ -62,47 +46,73 @@ describe('action reference validation', () => {
     'actions/checkout@v7',
     'actions/checkout@v7.0',
   ])('rejects %s, including quoted values and inline mappings', (reference) => {
-    expect(unpinnedActions(`jobs: { test: { steps: [{ uses: '${reference}' }] } }`)).toEqual([
-      reference,
+    const root = repository({
+      '.github/workflows/test.yml': `jobs: { test: { steps: [{ uses: '${reference}' }] } }`,
+    });
+
+    expect(actionPinProblems(root)).toEqual([
+      `.github/workflows/test.yml: pin ${reference} to a full version tag (vX.Y.Z)`,
     ]);
   });
 
   it('accepts full tags, action subpaths and local actions, without treating scripts as actions', () => {
-    expect(
-      unpinnedActions(`runs:
+    const root = repository({
+      'action.yml': `runs:
   steps:
     - uses: "actions/checkout@v7.0.1" # full tag
     - uses: gradle/actions/setup-gradle@v6.4.0
     - uses: ./
     - uses: ./.github/actions/local
     - run: 'echo uses: actions/checkout@main'
-`),
-    ).toEqual([]);
+`,
+    });
+
+    expect(actionPinProblems(root)).toEqual([]);
   });
 
-  it('also checks reusable workflow references', () => {
-    expect(
-      unpinnedActions('jobs: { test: { uses: owner/repo/.github/workflows/test.yml@main } }'),
-    ).toEqual(['owner/repo/.github/workflows/test.yml@main']);
+  it('checks reusable workflows and nested composite actions in both YAML extensions', () => {
+    const root = repository({
+      '.github/workflows/test.yml':
+        'jobs: { test: { uses: owner/repo/.github/workflows/test.yml@main } }',
+      '.github/actions/example/action.yaml': 'runs: { steps: [{ uses: actions/setup-node@v7 }] }',
+    });
+
+    expect(actionPinProblems(root)).toEqual([
+      '.github/actions/example/action.yaml: pin actions/setup-node@v7 to a full version tag (vX.Y.Z)',
+      '.github/workflows/test.yml: pin owner/repo/.github/workflows/test.yml@main to a full version tag (vX.Y.Z)',
+    ]);
   });
 
   it('checks every YAML fence in Markdown, including tilde fences, without parsing prose', () => {
-    const markdown = [
-      'The workflow uses: a full version.',
-      '```yaml',
-      '- uses: actions/checkout@v7',
-      '```',
-      '~~~yml',
-      '- uses: actions/setup-node@main',
-      '~~~',
-      '```sh',
-      'echo uses: a command',
-      '```',
-    ].join('\n');
+    const root = repository({
+      'docs/guide.md': [
+        'The workflow uses: a full version.',
+        '```yaml',
+        '- uses: actions/checkout@v7',
+        '```',
+        '~~~yml',
+        '- uses: actions/setup-node@main',
+        '~~~',
+        '```sh',
+        'echo uses: a command',
+        '```',
+      ].join('\n'),
+    });
 
-    expect(yamlDocuments('guide.md', markdown).flatMap(unpinnedActions)).toEqual([
-      'actions/checkout@v7',
-      'actions/setup-node@main',
+    expect(actionPinProblems(root)).toEqual([
+      'docs/guide.md: pin actions/checkout@v7 to a full version tag (vX.Y.Z)',
+      'docs/guide.md: pin actions/setup-node@main to a full version tag (vX.Y.Z)',
     ]);
+  });
+
+  it('ignores installed dependencies, Git internals and generated reports', () => {
+    const root = repository({
+      'node_modules/dependency/action.yml': 'uses: actions/checkout@main',
+      'packages/project/node_modules/dependency/action.yml': 'uses: actions/checkout@main',
+      '.git/workflows/test.yaml': 'uses: actions/checkout@main',
+      'reports/example.yaml': 'uses: actions/checkout@main',
+    });
+
+    expect(actionPinProblems(root)).toEqual([]);
   });
 });
