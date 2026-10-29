@@ -16,6 +16,7 @@ public final class BodyScanner extends ScopeScanner {
   private final Set<Tree> chainTails = Collections.newSetFromMap(new IdentityHashMap<>());
   private final Set<Tree> consumed = Collections.newSetFromMap(new IdentityHashMap<>());
   private final Deque<Integer> finallyDepths = new ArrayDeque<>();
+  private final Branches branches;
 
   public BodyScanner(Body body, Typer typer, Ctx ctx) {
     super(typer, ctx, new Usage(body, typer, ctx));
@@ -23,6 +24,7 @@ public final class BodyScanner extends ScopeScanner {
     this.method = ctx.method;
     this.decisions = new Decisions(typer, ctx);
     this.arity = new Arity(typer, ctx);
+    this.branches = new Branches(ctx.method.tree.getBody());
   }
 
   public void run() {
@@ -130,7 +132,9 @@ public final class BodyScanner extends ScopeScanner {
     if (close != null) {
       int line = ctx.unit.line(resource);
       Body.Call call = new Body.Call(close, line, key, true, ctx.unit.end(block));
-      body.calls.add(new Body.CallFact(call));
+      Body.CallFact fact = new Body.CallFact(call);
+      fact.branch = branches.of(getCurrentPath());
+      body.calls.add(fact);
     }
   }
 
@@ -196,6 +200,7 @@ public final class BodyScanner extends ScopeScanner {
     int line = ctx.unit.lineAt(position);
     Body.Call call = new Body.Call(resolved.target(), line, resolved.receiver(), cleanup, position);
     Body.CallFact fact = new Body.CallFact(call);
+    fact.branch = branches.of(getCurrentPath());
     mutations.register(tree, fact);
     body.calls.add(fact);
   }

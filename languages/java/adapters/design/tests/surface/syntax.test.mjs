@@ -103,11 +103,36 @@ const CALLABLES_0 = [
     returns: 'int',
     calls: [
       { target: ref('mix/Syntax.java', 'Syntax.Leaf.value'), line: 85, receiver: 'leaf' },
-      { target: ref('mix/Syntax.java', 'Syntax.Leaf.value'), line: 86, receiver: 'leaf' },
-      { target: ref('mix/Syntax.java', 'Syntax.patterns'), line: 90, receiver: 'this' },
-      { target: ref('mix/Syntax.java', 'Syntax.Branch.left'), line: 90, receiver: 'branch' },
-      { target: ref('mix/Syntax.java', 'Syntax.patterns'), line: 90, receiver: 'this' },
-      { target: ref('mix/Syntax.java', 'Syntax.Branch.right'), line: 90, receiver: 'branch' },
+      {
+        target: ref('mix/Syntax.java', 'Syntax.Leaf.value'),
+        line: 86,
+        receiver: 'leaf',
+        branch: ['0:then'],
+      },
+      {
+        target: ref('mix/Syntax.java', 'Syntax.patterns'),
+        line: 90,
+        receiver: 'this',
+        branch: ['1:1'],
+      },
+      {
+        target: ref('mix/Syntax.java', 'Syntax.Branch.left'),
+        line: 90,
+        receiver: 'branch',
+        branch: ['1:1'],
+      },
+      {
+        target: ref('mix/Syntax.java', 'Syntax.patterns'),
+        line: 90,
+        receiver: 'this',
+        branch: ['1:1'],
+      },
+      {
+        target: ref('mix/Syntax.java', 'Syntax.Branch.right'),
+        line: 90,
+        receiver: 'branch',
+        branch: ['1:1'],
+      },
     ],
     paramUses: [{ param: 0, fields: [], forwards: [], opaque: true }],
     reads: [

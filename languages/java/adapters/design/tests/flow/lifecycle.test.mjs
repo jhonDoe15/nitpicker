@@ -214,6 +214,98 @@ const CALLABLES_3 = [
 ];
 const CALLABLES_4 = [
   callable({
+    file: 'life/Client.java',
+    owner: 'Client',
+    member: 'either',
+    line: 109,
+    params: [
+      { name: 'session', type: ref('life/Session.java', 'Session') },
+      { name: 'ready', type: 'boolean' },
+    ],
+    returns: 'void',
+    calls: [
+      {
+        target: ref('life/Session.java', 'Session.write'),
+        line: 111,
+        receiver: 'session',
+        branch: ['0:then'],
+      },
+      {
+        target: ref('life/Session.java', 'Session.begin'),
+        line: 113,
+        receiver: 'session',
+        branch: ['0:else'],
+      },
+      {
+        target: ref('life/Session.java', 'Session.write'),
+        line: 115,
+        receiver: 'session',
+        branch: ['0:else'],
+      },
+      {
+        target: ref('life/Session.java', 'Session.close'),
+        line: 117,
+        receiver: 'session',
+        cleanup: true,
+        branch: ['0:else'],
+      },
+    ],
+    paramUses: [{ param: 0, fields: ['write', 'begin', 'close'], forwards: [] }],
+    reads: [
+      { type: ref('life/Session.java', 'Session'), fields: ['write', 'begin', 'close'], line: 111 },
+    ],
+  }),
+  callable({
+    file: 'life/Client.java',
+    owner: 'Client',
+    member: 'premature',
+    line: 122,
+    params: [{ name: 'session', type: ref('life/Session.java', 'Session') }],
+    returns: 'void',
+    calls: [
+      { target: ref('life/Session.java', 'Session.write'), line: 123, receiver: 'session' },
+      { target: ref('life/Session.java', 'Session.begin'), line: 124, receiver: 'session' },
+      { target: ref('life/Session.java', 'Session.commit'), line: 126, receiver: 'session' },
+      {
+        target: ref('life/Session.java', 'Session.close'),
+        line: 128,
+        receiver: 'session',
+        cleanup: true,
+      },
+    ],
+    paramUses: [{ param: 0, fields: ['write', 'begin', 'commit', 'close'], forwards: [] }],
+    reads: [
+      {
+        type: ref('life/Session.java', 'Session'),
+        fields: ['write', 'begin', 'commit', 'close'],
+        line: 123,
+      },
+    ],
+  }),
+  callable({
+    file: 'life/Client.java',
+    owner: 'Client',
+    member: 'chosen',
+    line: 132,
+    params: [
+      { name: 'session', type: ref('life/Session.java', 'Session') },
+      { name: 'mode', type: 'int' },
+    ],
+    returns: 'int',
+    calls: [
+      {
+        target: ref('life/Session.java', 'Session.begin'),
+        line: 135,
+        receiver: 'session',
+        branch: ['0:0'],
+      },
+    ],
+    paramUses: [{ param: 0, fields: ['begin'], forwards: [] }],
+    reads: [{ type: ref('life/Session.java', 'Session'), fields: ['begin'], line: 135 }],
+  }),
+];
+const CALLABLES_5 = [
+  callable({
     file: 'life/Session.java',
     owner: 'Session',
     member: 'begin',
@@ -264,13 +356,16 @@ describe('design facts: cleanup and release of opened resources', () => {
     ]);
     expect(facts.callables.map(({ id }) => id).toSorted()).toEqual([
       ref('life/Client.java', 'Client.anonymous'),
+      ref('life/Client.java', 'Client.chosen'),
       ref('life/Client.java', 'Client.deferred'),
+      ref('life/Client.java', 'Client.either'),
       ref('life/Client.java', 'Client.existing'),
       ref('life/Client.java', 'Client.field'),
       ref('life/Client.java', 'Client.guarded'),
       ref('life/Client.java', 'Client.inLambda'),
       ref('life/Client.java', 'Client.leaked'),
       ref('life/Client.java', 'Client.open'),
+      ref('life/Client.java', 'Client.premature'),
       ref('life/Client.java', 'Client.resource'),
       ref('life/Client.java', 'Client.siblings'),
       ref('life/Session.java', 'Session.begin'),
@@ -307,7 +402,11 @@ describe('design facts: cleanup and release of opened resources', () => {
     expect(facts.callables.find(({ id }) => id === expected.id)).toEqual(expected);
   });
 
-  it.each(CALLABLES_4)('describes the session methods: $id', (expected) => {
+  it.each(CALLABLES_4)('marks the arms of the conditionals a call sits in: $id', (expected) => {
+    expect(facts.callables.find(({ id }) => id === expected.id)).toEqual(expected);
+  });
+
+  it.each(CALLABLES_5)('describes the session methods: $id', (expected) => {
     expect(facts.callables.find(({ id }) => id === expected.id)).toEqual(expected);
   });
 });

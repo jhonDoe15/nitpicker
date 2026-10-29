@@ -164,6 +164,7 @@ public final class CallableFacts {
       map.put("line", fact.line);
       map.put("receiver", fact.receiver);
       map.put("cleanup", fact.cleanup ? Boolean.TRUE : null);
+      map.put("branch", fact.branch.isEmpty() ? null : fact.branch);
       map.put("mutation", fact.mutation);
       calls.add(map);
     }

@@ -236,7 +236,12 @@ const CALLABLES_1 = [
     returns: 'int',
     calls: [
       { target: ref('rules/Account.java', 'Account.premium'), line: 66, receiver: 'account' },
-      { target: ref('rules/Account.java', 'Account.level'), line: 67, receiver: 'account' },
+      {
+        target: ref('rules/Account.java', 'Account.level'),
+        line: 67,
+        receiver: 'account',
+        branch: ['0:then'],
+      },
       { target: ref('rules/Account.java', 'Account.getRegion'), line: 69, receiver: 'account' },
     ],
     paramUses: [{ param: 0, fields: ['premium', 'kind', 'level', 'region', 'tier'], forwards: [] }],
