@@ -22,6 +22,7 @@ export const JAVA_TOOL_LICENSES = {
   pitestJunit5: 'Apache-2.0',
   pitestTestng: 'Apache-2.0',
   archunit: 'Apache-2.0',
+  asm: 'BSD-3-Clause',
   detekt: 'Apache-2.0',
   detektKotlin: 'Apache-2.0',
   ktlint: 'MIT',
