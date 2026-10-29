@@ -3,6 +3,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { runGit } from './command.mjs';
 
+export const TEMPORARY_WORKTREE_PREFIX = 'nitpicker-diff-';
+
 function attempt(operation) {
   try {
     return { ok: true, value: operation() };
@@ -49,7 +51,7 @@ export function withNamedTemporaryWorktree(
   { commitSha, directoryName },
   operation,
 ) {
-  const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
+  const temporaryRoot = mkdtempSync(path.join(tmpdir(), TEMPORARY_WORKTREE_PREFIX));
   const worktreeRoot = path.join(temporaryRoot, directoryName);
   const added = attempt(() =>
     runGit(repositoryRoot, ['worktree', 'add', '--detach', worktreeRoot, commitSha]),
