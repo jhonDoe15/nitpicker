@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { docsUrl } from '../messages/docs-url.mjs';
+import { docsRootUrl, docsUrl } from '../messages/docs-url.mjs';
 import { ruleEntry } from './entry.mjs';
 import {
   closestIds,
@@ -99,7 +99,7 @@ describe('closestIds', () => {
 
 describe('referenceUrl', () => {
   it('links the page of the entry at its anchor', () => {
-    expect(referenceUrl(entries[0])).toBe(
+    expect(referenceUrl(entries[0], docsRootUrl())).toBe(
       docsUrl('docs/rules/java-pmd.md', 'pmd-unusedlocalvariable'),
     );
   });
@@ -120,6 +120,15 @@ describe('the committed reference', () => {
       docsUrl('docs/rules/checks.md', 'structure-function-lines-limit'),
     );
     expect(helpUriFor(links, { tool: 'nothing', rule: 'here' })).toBeUndefined();
+  });
+
+  it('gives no helpUri when the package gives no link root', () => {
+    const known = referenceLinks();
+    const links = { index: () => known.index(), root: () => undefined };
+    const findings = [{ tool: 'structure', rule: 'function-lines-limit' }];
+
+    expect(helpUriFor(links, findings[0])).toBeUndefined();
+    expect(withHelpUris(findings, links)).toEqual(findings);
   });
 
   it('reads the data and the link root once per referenceLinks object', () => {

@@ -8,6 +8,7 @@ import { renderTextReport } from './text.mjs';
 import { expectValidSarif, expectWellFormedXml } from './test-support/report-assertions.mjs';
 import { finding, report } from './test-support/report-builders.mjs';
 import { docsUrl } from '../../../shared/messages/docs-url.mjs';
+import { referenceLinks } from '../../../shared/reference/store.mjs';
 
 const temporaryRoots = [];
 const KNOWN_FINDING = finding({ tool: 'eslint-lint', rule: 'no-debugger' });
@@ -158,5 +159,14 @@ describe('renderTextReport', () => {
     expect(
       renderTextReport(report({ newFindings: [finding({ tool: 'custom', rule: 'text-file' })] })),
     ).not.toMatch(/Rule reference/u);
+  });
+
+  it('prints no rule reference line when the package gives no link root', () => {
+    const known = referenceLinks();
+    const reference = { index: () => known.index(), root: () => undefined };
+
+    expect(renderTextReport(report({ newFindings: [KNOWN_FINDING] }), { reference })).not.toMatch(
+      /Rule reference/u,
+    );
   });
 });

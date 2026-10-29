@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { liveToolText, readToolText, TOOL_TEXT_TOOLS } from '../reference/tool-text/tool-text.mjs';
+import {
+  liveToolText,
+  readToolText,
+  TOOL_TEXT_TOOLS,
+} from '../../../reference/tool-text/tool-text.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 

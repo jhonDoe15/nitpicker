@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { docsUrl } from '../messages/docs-url.mjs';
+import { docsRootUrl, docsUrl } from '../messages/docs-url.mjs';
 import { ruleEntry } from './entry.mjs';
 import {
   allowedText,
@@ -174,7 +174,8 @@ describe('entryLinks and linkUrl', () => {
     );
 
     expect(links.map(({ label }) => label)).toEqual(['Checks catalog', 'Rule documentation']);
-    expect(linkUrl(links[0])).toBe(docsUrl('spec/checks.md', 'structure'));
+    expect(linkUrl(links[0], docsRootUrl())).toBe(docsUrl('spec/checks.md', 'structure'));
     expect(linkUrl(links[1])).toBe('https://example.com/rule');
+    expect(linkUrl(links[0])).toBeUndefined();
   });
 });
