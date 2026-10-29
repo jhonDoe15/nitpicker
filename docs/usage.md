@@ -1138,7 +1138,7 @@ that is legitimately outside a rule is lifted with `python.exceptions`, the Pyth
 `rule` is the id printed in the finding; `exclude` drops every finding under a path instead. The rules most likely to flag code that is right for its place are `T201` (`print` in a command-line tool), `PERF203` (`try` in a loop) and `F401` (an `__init__.py` that re-exports). Inline `# pragma: no cover` and `# pragma: no branch` are not honored either. Changed-branch coverage (`coverage-py`, from the branch data of the same coverage.py
 run) fails an untested branch on a changed line, as for Java: `if`, `while`, `for` and `match`
 arms are judged, an untested `except` handler is not. Of the project's own coverage configuration
-only `omit`, `concurrency`, `patch` and `plugins` are read until `tools.coverage` opts it in (see
+only `concurrency`, `patch` and `plugins`, which the run needs, are read until `tools.coverage` opts it in (see
 [Type checker and mutation configs](#type-checker-and-mutation-configs-python-preset)): nitpicker's
 rcfile measures branches, skips test files and excludes only `if TYPE_CHECKING:`,
 `if __name__ == "__main__":`, `@overload` and `raise NotImplementedError`.
@@ -1515,12 +1515,12 @@ are nitpicker's, so a project config cannot weaken the gate. By default only wha
 find the code and the packages is read, and the run prints one line per ignored config, such as
 `Ignoring [tool.pyright] in pyproject.toml except its environment keys; opt in with "tools": { "pyright": { "precedence": ["project", "nitpicker"] } }`.
 
-| Tool       | Read without the opt-in                                                                                                                                                                                                                                                | Read when `precedence` lists `"project"`                                                                                                                                             |
-| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `pyright`  | `venv`, `venvPath`, `pythonVersion`, `pythonPlatform`, `stubPath`, `typeshedPath`, `extraPaths`, and the `root`, `extraPaths`, `pythonVersion` and `pythonPlatform` of `executionEnvironments`                                                                         | every key of `pyrightconfig.json` (or `[tool.pyright]`/`[tool.basedpyright]`, following `extends`) over nitpicker's strict settings                                                  |
-| `mypy`     | `plugins`, `mypy_path`, `python_version`, the namespace and typeshed options, and the `ignore_missing_imports` and `follow_imports` of sections for modules the project does not own (own: found under the source roots and `mypy_path`, as `.py`, `.pyi` or `-stubs`) | every option and per-module section of `mypy.ini`, `.mypy.ini`, `[tool.mypy]` or `setup.cfg`, over `strict = true`                                                                   |
-| `mutmut`   | `also_copy`, the process isolation options, and the source paths when `python.sourceRoots` is `.`; nitpicker writes `source_paths` and `do_not_mutate` (tests and `exclude`)                                                                                           | every key of `[tool.mutmut]` or `[mutmut]` over nitpicker's; the test files and the `exclude` globs stay in `do_not_mutate`                                                          |
-| `coverage` | `omit` of the run and report sections (added to nitpicker's), `concurrency`, `patch` and `plugins`; nitpicker writes `source`, `branch = True`, the test files in `omit`, its `exclude_lines` and an empty `partial_branches`                                          | `exclude_lines`, `exclude_also`, `partial_branches` and `partial_also` added to nitpicker's, and `timid`, `cover_pylib`, `dynamic_context`, `sigterm`, `disable_warnings` and `core` |
+| Tool       | Read without the opt-in                                                                                                                                                                                                                                                | Read when `precedence` lists `"project"`                                                                                                                                                                                        |
+| ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `pyright`  | `venv`, `venvPath`, `pythonVersion`, `pythonPlatform`, `stubPath`, `typeshedPath`, `extraPaths`, and the `root`, `extraPaths`, `pythonVersion` and `pythonPlatform` of `executionEnvironments`                                                                         | every key of `pyrightconfig.json` (or `[tool.pyright]`/`[tool.basedpyright]`, following `extends`) over nitpicker's strict settings                                                                                             |
+| `mypy`     | `plugins`, `mypy_path`, `python_version`, the namespace and typeshed options, and the `ignore_missing_imports` and `follow_imports` of sections for modules the project does not own (own: found under the source roots and `mypy_path`, as `.py`, `.pyi` or `-stubs`) | every option and per-module section of `mypy.ini`, `.mypy.ini`, `[tool.mypy]` or `setup.cfg`, over `strict = true`                                                                                                              |
+| `mutmut`   | `also_copy`, the process isolation options, and the source paths when `python.sourceRoots` is `.`; nitpicker writes `source_paths` and `do_not_mutate` (tests and `exclude`)                                                                                           | every key of `[tool.mutmut]` or `[mutmut]` over nitpicker's; the test files and the `exclude` globs stay in `do_not_mutate`                                                                                                     |
+| `coverage` | `concurrency`, `patch` and `plugins`, which the run needs; nitpicker writes `source`, `branch = True`, the test files in `omit`, its `exclude_lines` and an empty `partial_branches`                                                                                   | `exclude_lines`, `exclude_also`, `partial_branches`, `partial_also` and the `omit` of the run and report sections added to nitpicker's, and `timid`, `cover_pylib`, `dynamic_context`, `sigterm`, `disable_warnings` and `core` |
 
 `tools.pyright` covers `pyright` and `basedpyright` alike (there is no `tools.basedpyright`). With the
 opt-in a key the project sets overrides nitpicker's and every key it leaves out stays strict, so a
@@ -1542,10 +1542,14 @@ ignores.
 has coverage settings, the order coverage.py reads them in. `source`, `include`, `branch`,
 `parallel`, `data_file`, `relative_files`, `[paths]` and the report settings (`fail_under`,
 `show_missing`, the output sections) stay nitpicker's with any `precedence`. With the project listed
-first its exclusion regexes add to nitpicker's, so a project that lists `pragma: no cover` gets that
-pragma back (nitpicker's own list leaves it out); `["nitpicker", "project"]` takes only the run
-options in the right column and keeps nitpicker's exclusions. Its notice is printed only when the
-config sets one of the keys in the right column. The opted-in config is read from the head checkout
+first its exclusion regexes and `omit` patterns add to nitpicker's, so a project that lists
+`pragma: no cover` gets that pragma back (nitpicker's own list leaves it out);
+`["nitpicker", "project"]` takes only the run options in the right column and keeps nitpicker's
+exclusions and omits. The run options must be values coverage.py takes (`timid`, `cover_pylib` and
+`sigterm` true or false, `core` one of `ctrace`, `pytrace` and `sysmon`, `dynamic_context`
+`test_function`, `disable_warnings` warning names); any other value is a tool error, so a value
+cannot add lines to the rcfile nitpicker writes. Its notice is printed only when the config sets one
+of the keys in the right column, `omit` included. The opted-in config is read from the head checkout
 for both sides, with `omit` resolved against the checkout being checked.
 
 An edit of an opted-in config is a policy change a person reviews, with any `precedence` that lists

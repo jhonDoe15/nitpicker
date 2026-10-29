@@ -8,7 +8,13 @@ import {
   ruffConfigFiles,
 } from '../../../languages/python/adapters/formatting/project-format-config.mjs';
 import { readProjectPyright } from '../../../languages/python/adapters/project-tools/pyright/pyright-project-config.mjs';
-import { parseToml } from '../../../languages/python/adapters/project-tools/project-tool-layers.mjs';
+import { readCoverageSettings } from '../../../languages/python/adapters/configuration/coverage-config/python-coverage-config.mjs';
+import { readMypyConfig } from '../../../languages/python/adapters/configuration/mypy/mypy-config.mjs';
+import { readMutmutConfig } from '../../../languages/python/adapters/project-tools/mutmut/mutmut-config.mjs';
+import {
+  attempt,
+  parseToml,
+} from '../../../languages/python/adapters/project-tools/project-tool-layers.mjs';
 
 export const PYTHON_TOOLS = ['ruff', 'black', 'pyright', 'mypy', 'mutmut', 'coverage'];
 const PYPROJECT = 'pyproject.toml';
@@ -34,10 +40,10 @@ const SHARED_INI_SECTIONS = {
     required: (names) => names.length > 0,
   },
 };
-const FIRST_FILES = {
-  mypy: [...MYPY_FILES, PYPROJECT, SETUP_CFG],
-  mutmut: [PYPROJECT, SETUP_CFG],
-  coverage: [COVERAGERC, SETUP_CFG, TOX_INI, PYPROJECT],
+const RUNTIME_READERS = {
+  mypy: readMypyConfig,
+  mutmut: readMutmutConfig,
+  coverage: readCoverageSettings,
 };
 
 function sortedKeys(_key, value) {
@@ -118,12 +124,10 @@ function labelsOf(checkout, files) {
   return files.map((file) => path.relative(checkout, file).split(path.sep).join('/'));
 }
 
-function firstConfigured(tool, root, names) {
-  const found = names.find((name) => {
-    const text = readInside(root, name, 'utf8');
-    return text !== undefined && pythonConfigText(tool, name, text) !== undefined;
-  });
-  return found === undefined ? [] : [path.join(root, found)];
+function readFile(tool, root) {
+  const { value, error } = attempt(() => RUNTIME_READERS[tool](root));
+  const file = value?.file ?? error?.file;
+  return file === undefined ? [] : [path.join(root, file)];
 }
 
 function candidatesOf(tool, root) {
@@ -139,7 +143,7 @@ function candidatesOf(tool, root) {
     );
     return [...new Set(files)];
   }
-  return firstConfigured(tool, root, FIRST_FILES[tool]);
+  return readFile(tool, root);
 }
 
 export function pythonConfigEntries(tool, root) {

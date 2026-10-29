@@ -1132,20 +1132,22 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   (the first of `.coveragerc`, `setup.cfg` `[coverage:run]`, `tox.ini` `[coverage:run]` and
   `[tool.coverage.run]` that has coverage settings, the order coverage.py reads them in) the run
   settings that decide what code gets measured at all are kept: `concurrency` (multiprocessing,
-  gevent, eventlet, ...), `patch` (subprocesses), `plugins`, and the `omit` of the run and of the
-  report section (where projects often list `migrations/*`), added to the test files. Lists may run
-  over several lines with comments and blank lines in between, as coverage.py reads them; relative
-  `omit` patterns and the `source` paths are made absolute, so they match whatever directory the
-  tests run from.
+  gevent, eventlet, ...), `patch` (subprocesses) and `plugins`. Lists may run over several lines with
+  comments and blank lines in between, as coverage.py reads them; the `source` paths and, with the
+  opt-in, relative `omit` patterns are made absolute, so they match whatever directory the tests run
+  from.
   When they make coverage.py write one data file per process, the files are combined before the
   report. Its `exclude_lines`, `exclude_also`, `partial_branches`, `branch` and `source` are
   dropped, so the gate judges every project's code the same way, until
   `"tools": { "coverage": { "precedence": ["project", "nitpicker"] } }` opts the config in: then its
   `exclude_lines`, `exclude_also`, `partial_branches` and `partial_also` are added to nitpicker's
-  (a project that lists `pragma: no cover` gets its pragma back), and its `timid`, `cover_pylib`,
-  `dynamic_context`, `sigterm`, `disable_warnings` and `core` apply; `branch`, `parallel`,
+  (a project that lists `pragma: no cover` gets its pragma back), the `omit` of its run and report
+  sections (where projects often list `migrations/*`) is added to the test files, and its `timid`,
+  `cover_pylib`, `dynamic_context`, `sigterm`, `disable_warnings` and `core` apply, each checked to
+  be a value coverage.py takes; `branch`, `parallel`,
   `source`, `include`, `data_file`, `[paths]` and the report settings stay nitpicker's.
-  `["nitpicker", "project"]` takes only those run options and keeps nitpicker's exclusions. The
+  `["nitpicker", "project"]` takes only those run options and keeps nitpicker's exclusions and
+  omits. The
   opted-in config is read from the head checkout for both sides, and an edit of its coverage
   settings is a policy change a person reviews. Test files are not scored for
   CRAP either, and a source file the project omits has unknown coverage

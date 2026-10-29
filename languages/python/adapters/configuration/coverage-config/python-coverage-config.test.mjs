@@ -22,11 +22,6 @@ afterEach(() => {
   }
 });
 
-const settings = (root, { run = {}, omit = [], reportOmit = [] }) => ({
-  run,
-  omit: omit.map((pattern) => path.join(root, pattern)),
-  reportOmit: reportOmit.map((pattern) => path.join(root, pattern)),
-});
 const PROCESS_RUN = {
   concurrency: ['multiprocessing', 'thread'],
   plugins: ['django_coverage_plugin'],
@@ -50,31 +45,29 @@ describe('the coverage settings of the project', () => {
       'pyproject.toml',
       '[tool.coverage.run]\nbranch = false\nconcurrency = ["multiprocessing", "thread"]\nplugins = ["django_coverage_plugin"]\nomit = ["src/demo/generated.py"]\n[tool.coverage.report]\nomit = ["*/migrations/*"]\n',
     ],
-  ])('carries over concurrency, plugins and both omits from %s', (file, text) => {
-    const root = project({ [file]: text });
-
-    expect(readProjectCoverage(root)).toEqual({
-      run: PROCESS_RUN,
-      omit: [path.join(root, 'src/demo/generated.py')],
-      reportOmit: ['*/migrations/*'],
-    });
-  });
+  ])(
+    'carries over concurrency and plugins from %s, and leaves omit to the opt-in',
+    (file, text) => {
+      expect(readProjectCoverage(project({ [file]: text }))).toEqual(PROCESS_RUN);
+    },
+  );
 
   it('reads the subprocess patch and the [coverage:run] section of .coveragerc', () => {
     const root = project({ '.coveragerc': '[coverage:run]\npatch = subprocess\n' });
 
-    expect(readProjectCoverage(root)).toEqual(settings(root, { run: { patch: ['subprocess'] } }));
+    expect(readProjectCoverage(root)).toEqual({ patch: ['subprocess'] });
   });
 
   it('keeps reading a list across comment and blank lines, as configparser does', () => {
     const root = project({
       '.coveragerc':
-        '[run]\nomit =\n    a/*\n    # legacy\n\n    b/*\nconcurrency =\n # the workers\n    multiprocessing\n',
+        '[run]\nplugins =\n    a\n    # legacy\n\n    b\nconcurrency =\n # the workers\n    multiprocessing\n',
     });
 
-    expect(readProjectCoverage(root)).toEqual(
-      settings(root, { run: { concurrency: ['multiprocessing'] }, omit: ['a/*', 'b/*'] }),
-    );
+    expect(readProjectCoverage(root)).toEqual({
+      plugins: ['a', 'b'],
+      concurrency: ['multiprocessing'],
+    });
   });
 
   it.each([
@@ -107,7 +100,7 @@ describe('the coverage settings of the project', () => {
   ])('reads %s, the order coverage.py uses', (_, files, concurrency) => {
     const root = project(files);
 
-    expect(readProjectCoverage(root)).toEqual(settings(root, { run: { concurrency } }));
+    expect(readProjectCoverage(root)).toEqual({ concurrency });
   });
 
   it('stops at the first file with any coverage section, even without [run]', () => {
@@ -116,10 +109,8 @@ describe('the coverage settings of the project', () => {
       'pyproject.toml': '[tool.coverage.run]\nconcurrency = ["gevent"]\n',
     });
 
-    expect(readProjectCoverage(root)).toEqual(settings(root, {}));
-    expect(readProjectCoverage(project({ 'pyproject.toml': '[project]\n' }))).toEqual(
-      settings(root, {}),
-    );
+    expect(readProjectCoverage(root)).toEqual({});
+    expect(readProjectCoverage(project({ 'pyproject.toml': '[project]\n' }))).toEqual({});
   });
 
   it('writes the settings after its own, keeping the test files out of measurement', () => {
@@ -129,7 +120,10 @@ describe('the coverage settings of the project', () => {
     });
     const reportRoot = project({});
 
-    const config = writeCoverageConfig({ projectRoot: root, reportRoot }, ['src', 'lib']);
+    const config = writeCoverageConfig(
+      { projectRoot: root, reportRoot, toolPrecedence: { coverage: ['project', 'nitpicker'] } },
+      ['src', 'lib'],
+    );
 
     expect(config).toBe(path.join(reportRoot, 'coveragerc'));
     expect(readFileSync(config, 'utf8')).toBe(
@@ -220,10 +214,10 @@ describe('the project coverage config under tools.coverage', () => {
     return { text: readFileSync(writeCoverageConfig(context, ['src']), 'utf8'), projectRoot };
   }
 
-  it('reads only omit and the process options without the opt-in', () => {
+  it('reads only the process options without the opt-in', () => {
     const { text, projectRoot } = written(['nitpicker']);
 
-    expect(text).toBe(expected(projectRoot, { omit: [path.join(projectRoot, 'src/gen/*')] }));
+    expect(text).toBe(expected(projectRoot, {}));
   });
 
   it('adds the project exclusions and run options when the project is listed first', () => {
@@ -240,12 +234,36 @@ describe('the project coverage config under tools.coverage', () => {
     }
   });
 
-  it('keeps the nitpicker exclusions alone when nitpicker is listed first', () => {
+  it('keeps the nitpicker exclusions and omits alone when nitpicker is listed first', () => {
     const { text, projectRoot } = written(['nitpicker', 'project']);
 
-    expect(text).toBe(
-      expected(projectRoot, { omit: [path.join(projectRoot, 'src/gen/*')], run: ['timid = True'] }),
+    expect(text).toBe(expected(projectRoot, { run: ['timid = True'] }));
+  });
+
+  it('refuses a run value coverage does not take, so it cannot add lines to the config', () => {
+    const run = (line) => ({
+      files: { 'pyproject.toml': `[tool.coverage.run]\n${line}\n` },
+    });
+
+    expect(() =>
+      written(['project'], run('dynamic_context = "test_function\\n[run]\\nbranch = false"')),
+    ).toThrow(
+      /^The coverage config pyproject\.toml sets run dynamic_context = "test_function\\n\[run\]\\nbranch = false", but coverage takes test_function: fix it/,
     );
+    expect(() => written(['project'], run('core = "ctrace\\nsource = x"'))).toThrow(
+      /sets run core = .*, but coverage takes ctrace, pytrace, sysmon/,
+    );
+    expect(() => written(['project'], run('timid = "maybe"'))).toThrow(
+      /sets run timid = "maybe", but coverage takes true or false/,
+    );
+    expect(() => written(['project'], run('disable_warnings = ["a b"]'))).toThrow(
+      /sets run disable_warnings = "a b", but coverage takes warning names/,
+    );
+    const ini = written(['project'], {
+      files: { 'setup.cfg': '[coverage:run]\ntimid = yes\ncore = sysmon\n' },
+    });
+
+    expect(ini.text).toBe(expected(ini.projectRoot, { run: ['timid = True', 'core = sysmon'] }));
   });
 
   it('reads the config of the head checkout and resolves omit in the checked snapshot', () => {
