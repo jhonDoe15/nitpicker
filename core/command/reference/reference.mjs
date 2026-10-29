@@ -160,6 +160,25 @@ function listedEntries(preset, config, tool) {
     );
 }
 
+function rulesPreset(options, currentProjectRoot) {
+  const configRoot = configRootFrom(realpathSync(currentProjectRoot ?? process.cwd()));
+  const config = configRoot === undefined ? {} : readConfigFile(configRoot);
+  const preset = options.preset ?? config.preset ?? DEFAULT_PRESET;
+  if (!PRESETS.includes(preset)) {
+    throw configError(`unknown preset "${preset}". Presets: ${PRESETS.join(', ')}`);
+  }
+  return { preset, config };
+}
+
+function rulesText(preset, listed) {
+  const root = docsRootUrl();
+  return (
+    `${PRESET_TITLES[preset]} preset: ${String(listed.length)} rules. ` +
+    'nitpicker explain <tool/rule> describes one.\n' +
+    listed.map((entry) => `${summaryLine(entry, root)}\n`).join('')
+  );
+}
+
 /** Runs `nitpicker rules`: lists the rules the preset of the project reports, minus disabled analyzers. */
 export function runRulesCommand({ commandArguments, stdout, stderr, currentProjectRoot }) {
   if (commandArguments.includes('--help')) {
@@ -171,18 +190,8 @@ export function runRulesCommand({ commandArguments, stdout, stderr, currentProje
     stderr.write(error);
     return 2;
   }
-  const configRoot = configRootFrom(realpathSync(currentProjectRoot ?? process.cwd()));
-  const config = configRoot === undefined ? {} : readConfigFile(configRoot);
-  const preset = options.preset ?? config.preset ?? DEFAULT_PRESET;
-  if (!PRESETS.includes(preset)) {
-    throw configError(`unknown preset "${preset}". Presets: ${PRESETS.join(', ')}`);
-  }
+  const { preset, config } = rulesPreset(options, currentProjectRoot);
   const listed = listedEntries(preset, config, options.tool);
-  const root = docsRootUrl();
-  stdout.write(
-    `${PRESET_TITLES[preset]} preset: ${String(listed.length)} rules. ` +
-      'nitpicker explain <tool/rule> describes one.\n' +
-      listed.map((entry) => `${summaryLine(entry, root)}\n`).join(''),
-  );
+  stdout.write(rulesText(preset, listed));
   return 0;
 }

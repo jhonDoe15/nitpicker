@@ -6,11 +6,21 @@ import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 
 const root = PACKAGE_ROOT;
 
-const NOT_SHIPPED_PATH =
-  /(?:^|\/)(?:fixtures|test-support|__tests__|__pycache__)\/|\.test\.mjs$|\.pyc$|^core\/reference\/|^shared\/reference\/(?:build|checks)\/|^languages\/[^/]+\/reference\/|^languages\/python\/ruff\/ruff-rules\.json$|^languages\/java\/detekt\/detekt-default-rules\.json$/u;
+const TEST_ONLY_PATH =
+  /(?:^|\/)(?:fixtures|test-support|__tests__|__pycache__)\/|\.test\.mjs$|\.pyc$/u;
+const GENERATOR_ONLY_PATH = new RegExp(
+  [
+    '^core/reference/',
+    '^shared/reference/(?:build|checks)/',
+    '^languages/[^/]+/reference/',
+    '^languages/python/ruff/ruff-rules\\.json$',
+    '^languages/java/detekt/detekt-default-rules\\.json$',
+  ].join('|'),
+  'u',
+);
 
 function isNotShipped(relative) {
-  return NOT_SHIPPED_PATH.test(relative);
+  return TEST_ONLY_PATH.test(relative) || GENERATOR_ONLY_PATH.test(relative);
 }
 
 function sourceFiles(directory) {

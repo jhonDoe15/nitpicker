@@ -59,7 +59,12 @@ function allowedOf({ fix, layout }) {
 }
 
 const FENCE = /^\s*```/mu;
-const LEAD_IN = /(?:^|(?<=[.!?])\s+)[^.!?]*:$/u;
+const SENTENCE_BREAK = /(?<=[.!?])\s+/u;
+
+function withoutLeadIn(text) {
+  const sentences = text.split(SENTENCE_BREAK);
+  return sentences.at(-1).endsWith(':') ? sentences.slice(0, -1).join(' ') : text;
+}
 
 function pmdText(rule, texts) {
   const own = texts.rules[rule];
@@ -69,7 +74,7 @@ function pmdText(rule, texts) {
   }
   const [first, ...rest] = paragraphsOf(text.description.split(FENCE)[0]);
   const { first: summary, rest: more } = splitFirstSentence(first);
-  const why = [more, ...rest].filter(Boolean).join(' ').replace(LEAD_IN, '');
+  const why = withoutLeadIn([more, ...rest].filter(Boolean).join(' '));
   return {
     summary,
     why: why === '' ? PMD_WHY : why,
@@ -117,7 +122,7 @@ function spotbugsText(rule, texts) {
 
 const TOOL_TEXT = { pmd: pmdText, checkstyle: checkstyleText, spotbugs: spotbugsText };
 
-function entryOf(tool, rule, fields, texts) {
+function entryOf({ tool, rule, fields }, texts) {
   return ruleEntry({
     tool,
     rule,
@@ -139,7 +144,7 @@ export function catalogRuleEntries() {
   return CATALOG_TOOLS.flatMap((tool) => {
     const texts = readToolText(tool);
     return Object.entries(readCatalog(tool)).map(([rule, fields]) =>
-      entryOf(tool, rule, fields, texts),
+      entryOf({ tool, rule, fields }, texts),
     );
   });
 }

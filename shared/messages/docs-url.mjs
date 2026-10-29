@@ -13,18 +13,18 @@ export function docsRef({ version, checkout }) {
   return checkout ? MAIN_BRANCH : `v${version}`;
 }
 
-/** The GitHub URL the documentation links start with, or undefined when package.json is unreadable. */
+/** The GitHub URL the documentation links start with, or undefined when package.json is missing. */
 export function docsRootUrl() {
-  try {
-    const manifest = JSON.parse(readFileSync(new URL('package.json', PACKAGE_ROOT), 'utf8'));
-    const ref = docsRef({
-      version: manifest.version,
-      checkout: existsSync(new URL('.git', PACKAGE_ROOT)),
-    });
-    return `${REPOSITORY_URL.exec(manifest.repository.url)[1]}/blob/${ref}`;
-  } catch {
+  const manifestUrl = new URL('package.json', PACKAGE_ROOT);
+  if (!existsSync(manifestUrl)) {
     return undefined;
   }
+  const manifest = JSON.parse(readFileSync(manifestUrl, 'utf8'));
+  const ref = docsRef({
+    version: manifest.version,
+    checkout: existsSync(new URL('.git', PACKAGE_ROOT)),
+  });
+  return `${REPOSITORY_URL.exec(manifest.repository.url)[1]}/blob/${ref}`;
 }
 
 /**
