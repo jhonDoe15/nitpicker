@@ -5,6 +5,8 @@ import {
   UNUSED_OPTION_SCOPES,
 } from '../../../../../../shared/unused-api/unused-api-policy.mjs';
 import { append } from '../kotlin-facts.mjs';
+import { declaredNames } from '../spring/spring-names.mjs';
+import { callerNote, hiddenCallers } from './unused-option-gaps.mjs';
 import { limitedUnits, publicFunctionUnits } from './unused-option-units.mjs';
 
 export const UNUSED_OPTION_RULE = UNUSED_API_RULE_IDS.unusedOption;
@@ -110,47 +112,47 @@ function judge(units, { calls, references, mentionedInJava, finding, scope }) {
     });
 }
 
-function gapNote(unit, build, finding) {
-  if (build.notes.has(UNUSED_OPTION_RULE)) {
-    return [];
-  }
-  build.notes.add(UNUSED_OPTION_RULE);
-  const listed = build.gaps.slice(0, LISTED_GAPS).join(', ');
-  const more =
-    build.gaps.length > LISTED_GAPS ? ` and ${String(build.gaps.length - LISTED_GAPS)} more` : '';
-  const note = finding({
+function noteFinding(note, finding) {
+  const listed = note.gaps.slice(0, LISTED_GAPS).join(', ');
+  const extra = note.gaps.length - LISTED_GAPS;
+  const more = extra > 0 ? ` and ${String(extra)} more` : '';
+  const anchor = finding({
     tool: UNUSED_OPTION_TOOL,
     rule: UNUSED_OPTION_RULE,
-    file: unit.file,
-    line: unit.line,
+    file: note.unit.file,
+    line: note.unit.line,
     symbol: NOTE_SYMBOL,
     message: '',
   });
-  return [
-    {
-      ...note,
-      message:
-        'Public functions are not checked for unused options: the facts do not cover ' +
-        `${listed}${more}, so calls there are not seen.`,
-      classification: 'descriptive',
-    },
-  ];
+  return {
+    ...anchor,
+    message:
+      'Public functions are not checked for unused options where these can call them: the facts ' +
+      `do not cover ${listed}${more}.`,
+    classification: 'descriptive',
+  };
 }
 
-function publicFindings(own, { build, published = false, finding }) {
-  const units = own.filter(({ test }) => !test).flatMap(publicFunctionUnits);
-  if (units.length === 0 || build === undefined) {
+function publicFindings(own, { build, reportRoot, finding }) {
+  const module = build?.modules.find((entry) => entry.reportRoot === reportRoot);
+  if (module === undefined) {
     return [];
   }
-  if (build.gaps.length > 0) {
-    return gapNote(units[0], build, finding);
+  if (hiddenCallers(build, module).length > 0) {
+    const note = callerNote(build);
+    return note?.reportRoot === reportRoot ? [noteFinding(note, finding)] : [];
   }
+  const declared = build.memo('unused-option-declared', () => declaredNames(build.files));
+  const units = own
+    .filter(({ test }) => !test)
+    .flatMap((file) => publicFunctionUnits(file, declared));
   const production = build.memo('unused-option-calls', () =>
     callsByName(
       build.files.filter(({ test }) => !test),
       { aliases: false },
     ),
   );
+  const published = module.manifest.published === true;
   const tests = published
     ? callsByName(
         own.filter(({ test }) => test),

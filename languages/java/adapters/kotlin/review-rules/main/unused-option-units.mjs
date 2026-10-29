@@ -1,4 +1,4 @@
-import { ancestorsOf, hasSpringStereotype } from '../kotlin-facts.mjs';
+import { springManagedOwner } from '../spring/spring-names.mjs';
 
 const LIMITED = new Set(['private', 'internal']);
 const SKIPPED_MODIFIERS = new Set([
@@ -50,29 +50,27 @@ function limitedFunctionUnits(file, classes) {
     .map((fn) => unitOf(file, fn, true));
 }
 
-function isModuleLevel(owner, classes) {
+function isModuleLevel(owner, classes, managed) {
   if (owner === '') {
     return true;
   }
   const kind = classes.get(owner)?.kind;
   const depth = owner.split('.').length;
   return (
-    ((kind === 'object' && depth === 1) || (kind === 'companion' && depth === 2)) &&
-    !ancestorsOf(owner).some((qualified) =>
-      hasSpringStereotype(classes.get(qualified)?.annotations ?? []),
-    )
+    ((kind === 'object' && depth === 1) || (kind === 'companion' && depth === 2)) && !managed(owner)
   );
 }
 
-export function publicFunctionUnits(file) {
+export function publicFunctionUnits(file, declared) {
   const classes = new Map(file.classes.map((klass) => [klass.qualified, klass]));
+  const managed = springManagedOwner(file, declared);
   return file.functions
     .filter(
       (fn) =>
         fn.visibility === 'public' &&
         !fn.local &&
         plainFunction(fn) &&
-        isModuleLevel(fn.owner, classes),
+        isModuleLevel(fn.owner, classes, managed),
     )
     .map((fn) => unitOf(file, fn, false));
 }

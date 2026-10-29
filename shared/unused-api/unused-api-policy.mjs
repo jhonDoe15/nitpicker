@@ -4,13 +4,11 @@ export const UNUSED_API_RULE_IDS = {
   testOnlyExport: 'test-only-export',
 };
 
-export const UNUSED_API_SCOPES = {
-  private: 'tests and stories do not count',
-  published: 'tests, stories and examples of this package count',
-};
-
 export const UNUSED_OPTION_SCOPES = {
-  typescript: UNUSED_API_SCOPES,
+  typescript: {
+    private: 'tests and stories do not count',
+    published: 'tests, stories and examples of this package count',
+  },
   python: { private: 'tests do not count', published: "this package's own tests count" },
   kotlin: {
     private: 'tests do not count',
@@ -47,10 +45,10 @@ export const UNUSED_API_RULES = [
     id: UNUSED_API_RULE_IDS.unusedOption,
     check: 'structure',
     limit:
-      'an optional input no call sets, tests counting only in a published package or module: TypeScript, ' +
-      'a property of the options parameter of an exported function (a non-literal argument sets all); Kotlin, ' +
-      'a defaulted parameter of a public top-level or object function, or of a private or internal function ' +
-      'or constructor (callers all in its module, tests too)',
+      'an optional input no call sets, tests counting only when published: TypeScript, an options property ' +
+      'of an exported function; Kotlin, a defaulted parameter of a public top-level, object or companion ' +
+      'function (not members or constructors, built by reflection) or of a private or internal function or ' +
+      "constructor (its module's calls and tests)",
     enforcedBy: TYPESCRIPT_AND_KOTLIN,
   },
   {

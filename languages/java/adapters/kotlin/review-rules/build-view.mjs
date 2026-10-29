@@ -25,24 +25,13 @@ export function javaMentions(projectRoot, manifests) {
   };
 }
 
-function callerGaps(manifests, facts) {
-  const skipped = [...facts.values()].flatMap((entry) => entry.skipped ?? []);
-  return [
-    ...new Set([
-      ...manifests.flatMap((manifest) => manifest.kotlinCallerGaps ?? []),
-      ...skipped.map((file) => `the skipped file ${file}`),
-    ]),
-  ].sort();
-}
-
-export function factsView({ facts, manifests, mentionedInJava }) {
+export function factsView({ modules, mentionedInJava }) {
   const memos = new Map();
   return {
-    facts,
-    files: [...facts.values()].flatMap((entry) => entry.files),
-    gaps: callerGaps(manifests, facts),
+    modules,
+    facts: new Map(modules.map((module) => [module.reportRoot, module.facts])),
+    files: modules.flatMap((module) => module.facts.files),
     mentionedInJava,
-    notes: new Set(),
     memo(key, compute) {
       if (!memos.has(key)) {
         memos.set(key, compute());
@@ -56,11 +45,17 @@ function createView({ projectRoot, reportRoot, manifest, modules = [] }) {
   const listed = modules.some((module) => module.reportRoot === reportRoot)
     ? modules
     : [{ reportRoot, manifest }, ...modules];
-  const manifests = listed.map((module) => module.manifest ?? {});
   return factsView({
-    facts: new Map(listed.map((module) => [module.reportRoot, readKotlinFacts(module.reportRoot)])),
-    manifests,
-    mentionedInJava: javaMentions(projectRoot, manifests),
+    modules: listed.map((module) => ({
+      reportRoot: module.reportRoot,
+      path: module.path,
+      manifest: module.manifest ?? {},
+      facts: readKotlinFacts(module.reportRoot),
+    })),
+    mentionedInJava: javaMentions(
+      projectRoot,
+      listed.map((module) => module.manifest ?? {}),
+    ),
   });
 }
 

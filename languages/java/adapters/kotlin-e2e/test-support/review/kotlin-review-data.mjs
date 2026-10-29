@@ -239,3 +239,25 @@ publishing {
 `,
   };
 }
+
+export function integrationSuiteFiles(build) {
+  return {
+    'build.gradle.kts': `${build}
+testing {
+    suites {
+        register<JvmTestSuite>("integrationTest") {
+            dependencies {
+                implementation(project())
+            }
+        }
+    }
+}
+`,
+    'src/integrationTest/kotlin/demo/orders/PricingCheck.kt': `package demo.orders
+
+object PricingCheck {
+    fun discounted(): Int = price(100, 10)
+}
+`,
+  };
+}
