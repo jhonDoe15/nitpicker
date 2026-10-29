@@ -76,19 +76,13 @@ function mutmutNotices(projectRoot, config) {
     : [ignoredConfigNotice(`${MUTMUT_LABELS[found.file]}${MUTMUT_NOTE}`, MUTMUT_TOOL)];
 }
 
-const COVERAGE_LABELS = {
-  '.coveragerc': '.coveragerc',
-  'setup.cfg': '[coverage:*] in setup.cfg',
-  'tox.ini': '[coverage:*] in tox.ini',
-  'pyproject.toml': '[tool.coverage] in pyproject.toml',
-};
-const COVERAGE_NOTE = ' except omit, concurrency, patch and plugins';
+const COVERAGE_NOTE = ' except concurrency, patch and plugins, which the run needs';
 
 function coverageNotices(projectRoot, config) {
   const found = notOptedIn(config, COVERAGE_TOOL) ? readCoverageSettings(projectRoot) : undefined;
   return found === undefined || optInKeys(found).length === 0
     ? []
-    : [ignoredConfigNotice(`${COVERAGE_LABELS[found.file]}${COVERAGE_NOTE}`, COVERAGE_TOOL)];
+    : [ignoredConfigNotice(`${found.label}${COVERAGE_NOTE}`, COVERAGE_TOOL)];
 }
 
 export function ignoredProjectToolNotices({ config, projectRoot }) {

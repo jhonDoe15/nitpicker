@@ -5,6 +5,7 @@ import { toml } from '../../../libraries/project-files.mjs';
 import { parseIni } from '../ini-parser.mjs';
 import { coverageTestOmits } from '../../execution/python-test-files.mjs';
 import { isDjangoProject } from '../pytest/collection-options.mjs';
+import { checkedRunValue, warningNames } from './coverage-values.mjs';
 import {
   attempt,
   requireProjectConfig,
@@ -28,16 +29,17 @@ const OPTED_RUN_KEYS = [
   'core',
 ];
 const LIST_RUN_KEYS = new Set(['disable_warnings']);
+const OMIT = 'omit';
 const EXCLUDED_LINE_KEYS = ['exclude_lines', 'exclude_also'];
 const PARTIAL_BRANCH_KEYS = ['partial_branches', 'partial_also'];
 export const COVERAGE_TOOL = 'coverage';
 const LOOKED =
   'a coverage config (.coveragerc, or setup.cfg or tox.ini with a [coverage:run] or [coverage:report] section, or pyproject.toml with a [tool.coverage] table)';
 const PROJECT_FILES = [
-  { name: '.coveragerc', prefixes: ['coverage:', ''] },
-  { name: 'setup.cfg', prefixes: ['coverage:'] },
-  { name: 'tox.ini', prefixes: ['coverage:'] },
-  { name: 'pyproject.toml', prefixes: [] },
+  { name: '.coveragerc', prefixes: ['coverage:', ''], label: '.coveragerc' },
+  { name: 'setup.cfg', prefixes: ['coverage:'], label: '[coverage:*] in setup.cfg' },
+  { name: 'tox.ini', prefixes: ['coverage:'], label: '[coverage:*] in tox.ini' },
+  { name: 'pyproject.toml', prefixes: [], label: '[tool.coverage] in pyproject.toml' },
 ];
 const WILDCARD_START = /^[*?]/;
 
@@ -77,7 +79,13 @@ function tomlSettings(text) {
 
 function settingsOf([name, text]) {
   const candidate = PROJECT_FILES.find((file) => file.name === name);
-  return candidate.prefixes.length === 0 ? tomlSettings(text) : iniSettings(text, candidate);
+  const { value, error } = attempt(() =>
+    candidate.prefixes.length === 0 ? tomlSettings(text) : iniSettings(text, candidate),
+  );
+  if (error !== undefined) {
+    throw Object.assign(new Error(`${name}: ${error.message}`, { cause: error }), { file: name });
+  }
+  return value === undefined ? undefined : { label: candidate.label, ...value };
 }
 
 function absoluteOmits(projectRoot, value) {
@@ -101,24 +109,23 @@ export function readCoverageSettings(root) {
 
 export function optInKeys({ run, report }) {
   return [
-    ...OPTED_RUN_KEYS.filter((key) => run[key] !== undefined),
-    ...[...EXCLUDED_LINE_KEYS, ...PARTIAL_BRANCH_KEYS].filter((key) => report[key] !== undefined),
+    ...[...OPTED_RUN_KEYS, OMIT].filter((key) => run[key] !== undefined),
+    ...[...EXCLUDED_LINE_KEYS, ...PARTIAL_BRANCH_KEYS, OMIT].filter(
+      (key) => report[key] !== undefined,
+    ),
   ];
 }
 
-function carriedOf({ run = {}, report = {} }, projectRoot) {
-  const carried = CARRIED_KEYS.map((key) => [key, listValue(run[key] ?? [])]).filter(
-    ([, values]) => values.length > 0,
+function carriedOf({ run = {} }) {
+  return Object.fromEntries(
+    CARRIED_KEYS.map((key) => [key, listValue(run[key] ?? [])]).filter(
+      ([, values]) => values.length > 0,
+    ),
   );
-  return {
-    run: Object.fromEntries(carried),
-    omit: absoluteOmits(projectRoot, run.omit),
-    reportOmit: absoluteOmits(projectRoot, report.omit),
-  };
 }
 
-export function readProjectCoverage(configRoot, projectRoot = configRoot) {
-  return carriedOf(readCoverageSettings(configRoot) ?? {}, projectRoot);
+export function readProjectCoverage(configRoot) {
+  return carriedOf(readCoverageSettings(configRoot) ?? {});
 }
 
 function regexList(value) {
@@ -129,14 +136,10 @@ function regexList(value) {
     .filter((entry) => entry !== '');
 }
 
-function runValue(key, value) {
-  if (LIST_RUN_KEYS.has(key)) {
-    return listValue(value);
-  }
-  if (typeof value !== 'boolean') {
-    return String(value);
-  }
-  return value ? 'True' : 'False';
+function runValue(file, key, value) {
+  return LIST_RUN_KEYS.has(key)
+    ? warningNames(file, listValue(value))
+    : checkedRunValue(file, key, value);
 }
 
 function projectSettings(context) {
@@ -151,27 +154,34 @@ function projectSettings(context) {
     return { layers, found: value };
   }
   const found = requireProjectConfig(
-    error === undefined ? value : { file: 'pyproject.toml', unreadable: error.message },
+    error === undefined
+      ? value
+      : { file: error.file ?? 'pyproject.toml', unreadable: error.message },
     { tool: COVERAGE_TOOL, looked: LOOKED, configRoot: layers.configRoot },
   );
   return { layers, found };
 }
 
-function optedSettings({ layers, found }) {
+function optedSettings({ layers, found }, projectRoot) {
   if (!layers.optedIn) {
-    return { run: [], excluded: [], partial: [] };
+    return { run: [], excluded: [], partial: [], omit: [], reportOmit: [] };
   }
-  const { run, report } = found;
+  const { file, run, report } = found;
   function listed(keys) {
     return layers.nitpickerFirst ? [] : keys.flatMap((key) => regexList(report[key] ?? []));
+  }
+  function omits(value) {
+    return layers.nitpickerFirst ? [] : absoluteOmits(projectRoot, value);
   }
   return {
     run: OPTED_RUN_KEYS.filter((key) => run[key] !== undefined).map((key) => [
       key,
-      runValue(key, run[key]),
+      runValue(file, key, run[key]),
     ]),
     excluded: listed(EXCLUDED_LINE_KEYS),
     partial: listed(PARTIAL_BRANCH_KEYS),
+    omit: omits(run.omit),
+    reportOmit: omits(report.omit),
   };
 }
 
@@ -186,8 +196,9 @@ function listSetting(key, values) {
 function coverageConfig(context, sources) {
   const { projectRoot } = context;
   const settings = projectSettings(context);
-  const { run, omit, reportOmit } = carriedOf(settings.found ?? {}, projectRoot);
-  const opted = optedSettings(settings);
+  const run = carriedOf(settings.found ?? {});
+  const opted = optedSettings(settings, projectRoot);
+  const { omit, reportOmit } = opted;
   return [
     '[run]',
     'branch = True',
