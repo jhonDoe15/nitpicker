@@ -11,6 +11,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 public final class ArchRules {
+  private static final String SPRING_CONTEXT = "org.springframework.context.ApplicationContext";
+
   private ArchRules() {}
 
   public static void main(String[] args) throws IOException {
@@ -23,16 +25,29 @@ public final class ArchRules {
     JavaClasses unitTests = importDirectories(args[2]);
     JavaClasses otherTests = importDirectories(args.length == 4 ? args[3] : "");
     Set<Found> found = Found.newSet();
-    String root = Layout.rootPackage(main);
+    String root = usesSpring() ? Layout.rootPackage(main) : null;
     if (root != null) {
       Layout.check(main, root, found);
     }
-    Layers.check(main, found);
-    TestRules.check(unitTests, otherTests, found);
+    if (usesSpring()) {
+      Layers.check(main, Roles.load(), found);
+      Lifetimes.check(main, found);
+      TestRules.check(unitTests, otherTests, found);
+    }
+    Aggregates.check(main, found);
     String json =
         "{\"root\":" + (root == null ? "null" : "\"" + root + "\"") + ",\"violations\":["
             + found.stream().map(Found::toJson).collect(Collectors.joining(",")) + "]}\n";
     Files.writeString(Paths.get(args[0]), json, StandardCharsets.UTF_8);
+  }
+
+  private static boolean usesSpring() {
+    try {
+      Class.forName(SPRING_CONTEXT, false, ArchRules.class.getClassLoader());
+      return true;
+    } catch (ClassNotFoundException absent) {
+      return false;
+    }
   }
 
   private static JavaClasses importDirectories(String joined) {
