@@ -51,7 +51,7 @@ describe('shell commands', () => {
 describe('test files', () => {
   const inFile = (rule, path) => ({ ...finding(rule, 'm'), path });
 
-  it.each(['ARG001', 'FBT001', 'PLR2004', 'S105', 'S311', 'ASYNC251'])(
+  it.each(['ARG001', 'ARG002', 'PLR2004', 'S105', 'S311', 'ASYNC251'])(
     'drop %s in a file the project runs as tests',
     (rule) => {
       expect(
