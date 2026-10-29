@@ -1,4 +1,4 @@
-import { annotationNamed, append, compactType } from '../kotlin-facts.mjs';
+import { annotationNamed, append, compactType } from '../../kotlin-facts.mjs';
 
 export const FORWARDING_RULE = 'StaticForwardingWrapper';
 
