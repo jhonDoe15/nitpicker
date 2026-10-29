@@ -68,11 +68,14 @@ describe('reading a child report through a file instead of a pipe', () => {
   it('reports ENOBUFS with the stdout cut at maxBuffer, as spawnSync does', () => {
     const result = catBlob({ encoding: 'utf8', maxBuffer: 1024 });
 
-    expect(result.error).toMatchObject({
-      code: 'ENOBUFS',
-      syscall: 'spawnSync git',
-      path: 'git',
-    });
+    const { code, syscall, path: command, spawnargs } = result.error;
+
+    expect([code, syscall, command, spawnargs]).toEqual([
+      'ENOBUFS',
+      'spawnSync git',
+      'git',
+      ['cat-file', 'blob', blob],
+    ]);
     expect(result.error.errno).toBeLessThan(0);
     expect(result.stdout).toBe(report.slice(0, 1024));
   });

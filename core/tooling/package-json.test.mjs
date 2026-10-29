@@ -174,7 +174,9 @@ describe('choosing the findPackageJSON implementation', () => {
   });
 
   it('falls back to the walk on a runtime whose node:module lacks findPackageJSON', () => {
-    const { findPackageJSON: _native, ...withoutIt } = nodeModule;
+    const withoutIt = Object.fromEntries(
+      Object.entries(nodeModule).filter(([name]) => name !== 'findPackageJSON'),
+    );
 
     expect(selectFindPackageJson(withoutIt)).toBe(findPackageJsonByWalking);
   });
