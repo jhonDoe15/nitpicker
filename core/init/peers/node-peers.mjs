@@ -14,10 +14,8 @@ const RUNNER_PEERS = {
 const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies'];
 const TYPESCRIPT = 'typescript';
 const NITPICKER = 'nitpicker';
-const SUPPORTED_TYPESCRIPT = 'typescript@^6';
 const FIRST_VERSION = /(?<major>\d+)(?:\.(?<minor>\d+))?/u;
 const OLDEST_TYPESCRIPT = [5, 7];
-const NEWEST_TYPESCRIPT_MAJOR = 6;
 
 export function requiredNodePeers(testRunner) {
   return [NITPICKER, TYPESCRIPT, '@types/node', ...RUNNER_PEERS[testRunner]];
@@ -37,15 +35,16 @@ function declaredSpecifier(manifest, name) {
 }
 
 function isSupportedTypeScript(version) {
+  if (version === undefined) {
+    return false;
+  }
   const found = FIRST_VERSION.exec(String(version))?.groups;
   if (found === undefined) {
-    return false;
+    return true;
   }
   const [major, minor] = [Number(found.major), Number(found.minor ?? 0)];
   const [oldestMajor, oldestMinor] = OLDEST_TYPESCRIPT;
-  return major === oldestMajor
-    ? minor >= oldestMinor
-    : major > oldestMajor && major <= NEWEST_TYPESCRIPT_MAJOR;
+  return major === oldestMajor ? minor >= oldestMinor : major > oldestMajor;
 }
 
 function isPresent(projectRoot, manifest, name) {
@@ -63,7 +62,7 @@ function requirementOf(projectRoot, name) {
   if (name === NITPICKER) {
     return `${NITPICKER}@${packageVersion()}`;
   }
-  return name === TYPESCRIPT ? SUPPORTED_TYPESCRIPT : pinnedToVitest(projectRoot, name);
+  return pinnedToVitest(projectRoot, name);
 }
 
 function pinnedToVitest(projectRoot, name) {

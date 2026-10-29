@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 
 const NESTED_BOUNDARY_KINDS = new Set([
   ts.SyntaxKind.FunctionDeclaration,

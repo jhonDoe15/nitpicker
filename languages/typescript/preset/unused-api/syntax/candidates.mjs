@@ -1,5 +1,5 @@
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { chainOf } from '../../../../../shared/traversal.mjs';
 import { calleeName, unwrapExpression } from './passes.mjs';
 

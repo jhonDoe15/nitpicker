@@ -61,14 +61,15 @@ The messages name zod, the default validation library; in a project that depends
 
 ## Getting started
 
-nitpicker needs Node.js 22.14 or newer and a Git repository. In your project's folder, run
-`npx nitpicker init`. It detects the language, build tool, test runner and package manager, writes
-`nitpicker.config.json`, and prints the install command for the peers you are missing and the skill
-to add. `--agents-md` also appends the [agent snippet](docs/agents-snippet.md) to `AGENTS.md`, and
-`--ci github` writes a GitHub Actions workflow. Setting a TypeScript project up by hand:
+nitpicker needs Node.js 22.14 or newer (22.19 or newer on TypeScript 7) and a Git repository. In
+your project's folder, run `npx nitpicker init`. It detects the language, build tool, test runner
+and package manager, writes `nitpicker.config.json`, and prints the install command for the peers
+you are missing and the skill to add. `--agents-md` also appends the
+[agent snippet](docs/agents-snippet.md) to `AGENTS.md`, and `--ci github` writes a GitHub Actions
+workflow. Setting a TypeScript project up by hand:
 
 ```sh
-npm install --save-dev nitpicker 'typescript@^6' @types/node
+npm install --save-dev nitpicker typescript @types/node
 npx nitpicker
 ```
 
