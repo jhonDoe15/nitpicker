@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
@@ -11,15 +11,7 @@ const { createGitRepository } = useGitFixtures();
 const PYPROJECT = '[project]\nname = "demo"\nversion = "1"\nrequires-python = ">=3.9"\n';
 const BLACK_PYPROJECT = `${PYPROJECT}[tool.black]\nline-length = 88\n`;
 const RUFF_CONFIG = path.resolve(import.meta.dirname, '../ruff/nitpicker-ruff.toml');
-const LINT_OPTIONS = [
-  'check',
-  '--config',
-  RUFF_CONFIG,
-  '--target-version',
-  'py39',
-  '--ignore-noqa',
-  '--no-cache',
-];
+const LINT_OPTIONS = ['check', '--config', RUFF_CONFIG, '--target-version', 'py39', '--no-cache'];
 const FORMAT_STYLE = [
   '--config',
   'format.quote-style = "double"',
@@ -235,6 +227,7 @@ describe('--fix for Python', () => {
       {
         tool: 'ruff-fix',
         snapshot: 'fix',
+        rule: 'fix-failed',
         message: 'ruff-fix failed: ruff check exited 2 in the PATH environment:\nruff exploded',
       },
     ]);
@@ -250,6 +243,7 @@ describe('--fix for Python', () => {
       {
         tool: 'ruff-format-fix',
         snapshot: 'fix',
+        rule: 'fix-failed',
         message:
           'ruff-format-fix failed: ruff format exited 2 in the PATH environment:\nerror: invalid value for --line-length',
       },
@@ -267,6 +261,7 @@ describe('--fix for Python', () => {
       {
         tool: 'python-fix',
         snapshot: 'fix',
+        rule: 'fix-failed',
         message: `No Python environment at ${missing} (${path.join(missing, 'bin')} does not exist): create it, or set "python.environment"`,
       },
     ]);
@@ -314,7 +309,7 @@ describe('--fix for Python', () => {
       tools.callsOf('ruff-format-fix')[0].args.at(-2),
     ]).toEqual(['nb.ipynb', '--stdin-filename=nb.ipynb']);
   });
-  it('leaves notebooks to ruff check alone when the project formats with Black', () => {
+  it('hands notebooks to Black too, which formats them only when its jupyter extra is installed', () => {
     const repository = topic(
       { 'pyproject.toml': BLACK_PYPROJECT },
       { 'nb.ipynb': '{  "cells": []}\n', 'a.py': 'a  =  1\n' },
@@ -323,9 +318,54 @@ describe('--fix for Python', () => {
 
     const result = fix(repository, tools);
 
-    expect(result.notes).toEqual(['black rewrote a.py']);
-    expect(tools.callsOf('black-fix').map(({ input }) => input)).toEqual(['a  =  1\n']);
+    expect(result.notes).toEqual(['black rewrote a.py, nb.ipynb']);
+    expect(
+      tools.callsOf('black-fix').map(({ args }) => [args.includes('-q'), args.at(-2)]),
+    ).toEqual([
+      [true, '--stdin-filename=a.py'],
+      [false, '--stdin-filename=nb.ipynb'],
+    ]);
+  });
+  it('names the notebooks Black skipped because its jupyter extra is missing', () => {
+    const repository = topic(
+      { 'pyproject.toml': BLACK_PYPROJECT },
+      { 'nb.ipynb': '{  "cells": []}\n', 'a.py': 'a  =  1\n' },
+    );
+
+    const result = fix(repository, fakePythonTools({ jupyterMissing: true }));
+
+    expect(result).toEqual({
+      fixedFiles: ['a.py'],
+      toolErrors: [],
+      notes: [
+        'black rewrote a.py',
+        'black left nb.ipynb as is: Black formats notebooks only with its jupyter extra (black[jupyter]) installed',
+      ],
+    });
     expect(read(repository, 'nb.ipynb')).toBe('{  "cells": []}\n');
+  });
+  it('names the binary a fixer could not find, in a line the console prints whole', () => {
+    const repository = topic({}, { 'a.py': 'a  =  1\n' });
+    const tools = fakePythonTools({ missingFormatter: true });
+
+    expect(fix(repository, tools).toolErrors).toEqual([
+      {
+        tool: 'ruff-format-fix',
+        snapshot: 'fix',
+        rule: 'fix-failed',
+        message:
+          'ruff-format-fix failed: ruff was not found in the PATH environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it',
+      },
+    ]);
+  });
+  it('names changed Python paths that are symbolic links instead of following them', () => {
+    const repository = topic({}, { 'a.py': 'a  =  1\n' });
+    symlinkSync('a.py', path.join(repository.root, 'link.py'));
+
+    expect(fix(repository, fakePythonTools()).notes).toEqual([
+      'ruff format rewrote a.py',
+      '--fix left link.py as is: symbolic links are not followed',
+    ]);
   });
   it('leaves a file that is not UTF-8 text to both tools and says so', () => {
     const repository = topic({}, { 'a.py': 'a  =  1\n' });
@@ -354,6 +394,39 @@ describe('--fix for Python', () => {
       'uv',
       ['run', '--project', repository.root, '--no-sync', '--', 'ruff', 'check'],
     ]);
+  });
+  it('runs the tools from the environment poetry reports in a poetry project', () => {
+    const repository = topic({ 'poetry.lock': '', 'env/bin/ruff': '' }, { 'a.py': 'a  =  1\n' });
+    const environment = path.join(repository.root, 'env');
+    const tools = fakePythonTools({ poetryEnvironment: environment });
+
+    const result = fix(repository, tools);
+
+    const [poetry] = tools.callsOf('python-probe');
+    const [lint] = tools.callsOf('ruff-fix');
+    expect({
+      notes: result.notes,
+      poetry: [poetry.command, poetry.args, poetry.timeout],
+      lint: [lint.command, lint.environment.VIRTUAL_ENV],
+    }).toEqual({
+      notes: ['ruff format rewrote a.py'],
+      poetry: ['poetry', ['-C', repository.root, 'env', 'info', '--path'], 60_000],
+      lint: [path.join(environment, 'bin', 'ruff'), environment],
+    });
+  });
+  it('reports a poetry project without an environment as one tool error', () => {
+    const repository = topic({ 'poetry.lock': '' }, { 'a.py': 'a  =  1\n' });
+    const tools = fakePythonTools();
+
+    const result = fix(repository, tools);
+
+    expect({
+      errors: result.toolErrors.map(({ tool }) => tool),
+      operations: tools.operations(),
+    }).toEqual({
+      errors: ['python-fix'],
+      operations: ['python-probe'],
+    });
   });
   it('never touches the index or the base commit', () => {
     const repository = topic({ 'a.py': 'a = 1\n' }, { 'a.py': 'a  =  2\n' });

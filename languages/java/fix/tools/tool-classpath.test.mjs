@@ -110,7 +110,63 @@ describe('resolveToolClasspaths', () => {
       readFileSync(path.join(call.cwd, 'settings.gradle'), 'utf8'),
     ]).toEqual([
       readFileSync(FIX_TOOLS_BUILD, 'utf8'),
-      "rootProject.name = 'nitpicker-fix-tools'\n",
+      [
+        "rootProject.name = 'nitpicker-fix-tools'",
+        'dependencyResolutionManagement {',
+        '    repositories {',
+        '        mavenCentral()',
+        '    }',
+        '}',
+        '',
+      ].join('\n'),
+    ]);
+  });
+  it('resolves from the repositories and Gradle properties the project declares', () => {
+    const root = project([]);
+    writeFileSync(
+      path.join(root, 'settings.gradle.kts'),
+      [
+        'dependencyResolutionManagement {',
+        '    repositories {',
+        '        maven { url = uri("https://mirror.example/maven") } // company mirror',
+        '    }',
+        '}',
+        'include(":app")',
+        '',
+      ].join('\n'),
+    );
+    writeFileSync(path.join(root, 'gradle.properties'), 'systemProp.https.proxyHost=proxy\n');
+    const calls = [];
+
+    expect(() =>
+      resolveToolClasspaths({
+        projectRoot: root,
+        tools: TOOLS,
+        executeFixCommand: (invocation) => {
+          calls.push(invocation);
+          return { status: 1, stdout: '', stderr: 'Could not resolve com.google' };
+        },
+      }),
+    ).toThrow(
+      'fix-tools failed: Could not resolve com.google (nitpicker resolves the formatter jars in its own build at ',
+    );
+    const directory = calls[0].cwd;
+    expect([
+      readFileSync(path.join(directory, 'settings.gradle.kts'), 'utf8'),
+      existsSync(path.join(directory, 'settings.gradle')),
+      readFileSync(path.join(directory, 'gradle.properties'), 'utf8'),
+    ]).toEqual([
+      [
+        'rootProject.name = "nitpicker-fix-tools"',
+        'dependencyResolutionManagement {',
+        '    repositories {',
+        '        maven { url = uri("https://mirror.example/maven") }',
+        '    }',
+        '}',
+        '',
+      ].join('\n'),
+      false,
+      'systemProp.https.proxyHost=proxy\n',
     ]);
   });
   it('reuses the jars it resolved before while they still exist', () => {

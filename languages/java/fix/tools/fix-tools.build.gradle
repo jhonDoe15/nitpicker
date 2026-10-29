@@ -3,8 +3,6 @@ plugins { id 'java' }
 def specs = (findProperty('nitpicker.fix.tools') ?: '').toString()
     .split(',')*.trim().findAll { it }
 
-repositories { mavenCentral() }
-
 def toolConfigurations = specs.collect { spec ->
     def parts = spec.split('=', 2)
     def transitive = !parts[1].endsWith('!')

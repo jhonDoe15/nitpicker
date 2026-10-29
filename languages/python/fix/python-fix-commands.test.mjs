@@ -39,7 +39,6 @@ const RUFF_LINT_OPTIONS = [
   NITPICKER_RUFF_CONFIG,
   '--target-version',
   'py39',
-  '--ignore-noqa',
   '--no-cache',
 ];
 const RUFF_FORMAT_OPTIONS = [

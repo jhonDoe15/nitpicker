@@ -8,7 +8,8 @@ export const BLACK_DEFAULT_EXCLUDES =
   '/(\\.direnv|\\.eggs|\\.git|\\.hg|\\.ipynb_checkpoints|\\.mypy_cache|\\.nox|\\.pytest_cache|\\.ruff_cache|\\.tox|\\.svn|\\.venv|\\.vscode|__pypackages__|_build|buck-out|build|dist|venv)/';
 
 export function lintFixCommand(context, files) {
-  return ['ruff', 'check', ...lintOptions(context), '--force-exclude', '--fix', '--', ...files];
+  const options = lintOptions(context).filter((option) => option !== '--ignore-noqa');
+  return ['ruff', 'check', ...options, '--force-exclude', '--fix', '--', ...files];
 }
 
 function flagValues(options, flag) {
@@ -47,12 +48,14 @@ function withoutForceExclude(options) {
   );
 }
 
+const NOTEBOOK = /\.ipynb$/u;
+
 export function formatStdinCommand(context, file) {
   const { options } = contextFormatPlan(context);
   if (context.project.formatter === 'black') {
     return [
       'black',
-      '-q',
+      ...(NOTEBOOK.test(file) ? [] : ['-q']),
       ...withoutForceExclude(options),
       ...blackForceExclude(context, options),
       `--stdin-filename=${file}`,

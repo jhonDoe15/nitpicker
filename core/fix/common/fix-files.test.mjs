@@ -1,4 +1,4 @@
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
@@ -49,6 +49,22 @@ describe('collectFixFiles', () => {
 
     expect(files.map(({ path: name }) => name)).toEqual(['a.py', 'new/b.py']);
     expect(comparison.mergeBaseSha).toBe(repository.baseSha);
+  });
+  it('names the accepted changed paths that are symbolic links instead of following them', () => {
+    const repository = createGitRepository({ 'a.py': 'a\n' }, { baseRef: 'base' });
+    fixtureGit(repository.root, ['checkout', '-q', '-b', 'topic']);
+    symlinkSync('a.py', path.join(repository.root, 'inside.py'));
+    symlinkSync(path.resolve('/'), path.join(repository.root, 'outside.py'));
+    symlinkSync('a.py', path.join(repository.root, 'notes.md'));
+
+    const { files, links } = collectFixFiles({
+      repositoryRoot: repository.root,
+      projectRoot: repository.root,
+      baseRef: 'base',
+      accepts: (name) => name.endsWith('.py'),
+    });
+
+    expect([files, links]).toEqual([[], ['inside.py', 'outside.py']]);
   });
 });
 

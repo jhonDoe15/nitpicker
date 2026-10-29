@@ -10,12 +10,27 @@ const BLACK = `${PROJECT}[tool.black]\nline-length = 88\n`;
 const MISFORMATTED = 'value  =  1\n';
 const FORMATTED = 'value = 1\n';
 const UNUSED_IMPORT = 'import os\nvalue = 1\n';
+const SUPPRESSED = (value) => `import json  # noqa: F401\n\nx = ${value}\n`;
 const EDITED_LEGACY = 'value  =  2\n';
 
 const GATE_CONFIG = '{ "preset": "python", "disable": ["mutation"] }\n';
-const GATE_PACKAGES = ['coverage', 'pytest', 'ruff', 'black'];
+const GATE_PACKAGES = ['coverage', 'pytest', 'ruff'];
+const NOTEBOOK = `${JSON.stringify({
+  cells: [
+    {
+      cell_type: 'code',
+      execution_count: null,
+      metadata: {},
+      outputs: [],
+      source: ['value  =  1'],
+    },
+  ],
+  metadata: { language_info: { name: 'python' } },
+  nbformat: 4,
+  nbformat_minor: 5,
+})}\n`;
 
-function repository(pyproject) {
+function repository(pyproject, black = 'black') {
   return {
     committed: {
       '.gitignore': 'node_modules/\n.venv/\n',
@@ -30,9 +45,11 @@ function repository(pyproject) {
       'changed.py': MISFORMATTED,
       'added.py': MISFORMATTED,
       'dirty_base.py': EDITED_LEGACY,
+      'notebook.ipynb': NOTEBOOK,
+      'windows.py': 'value  =  1\r\n',
     },
     prepare: (root) => {
-      installPackages(root, GATE_PACKAGES);
+      installPackages(root, [...GATE_PACKAGES, black]);
     },
     realAnalyzers: true,
   };
@@ -54,20 +71,33 @@ function outcomeOf(result) {
       added: result.read('added.py'),
       untouched: result.read('untouched.py'),
       dirtyBase: result.read('dirty_base.py'),
+      notebook: result.read('notebook.ipynb') === NOTEBOOK ? 'as is' : 'formatted',
+      windows: result.read('windows.py'),
     },
     base: result.baseSource('changed.py'),
   };
 }
 
-function expectedOutcome(label) {
+const NOTEBOOK_SKIPPED =
+  '  black left notebook.ipynb as is: Black formats notebooks only with its jupyter extra (black[jupyter]) installed\n';
+
+function expectedOutcome(label, notebook) {
+  const rewritten = [
+    'added.py',
+    'changed.py',
+    ...(notebook ? ['notebook.ipynb'] : []),
+    'windows.py',
+  ];
   return {
     exitCode: 0,
-    report: `Fixed files:\nadded.py\nchanged.py\nFix notes:\n  ${label} rewrote added.py, changed.py\n  ${label} left dirty_base.py as is: already unformatted before your change\n`,
+    report: `Fixed files:\n${rewritten.join('\n')}\nFix notes:\n  ${label} rewrote ${rewritten.join(', ')}\n  ${label} left dirty_base.py as is: already unformatted before your change\n${notebook ? '' : NOTEBOOK_SKIPPED}`,
     files: {
       changed: FORMATTED,
       added: FORMATTED,
       untouched: MISFORMATTED,
       dirtyBase: EDITED_LEGACY,
+      notebook: notebook ? 'formatted' : 'as is',
+      windows: 'value = 1\r\n',
     },
     base: FORMATTED,
   };
@@ -75,36 +105,44 @@ function expectedOutcome(label) {
 
 describe.skipIf(!enabled)('nitpicker --fix for Python', () => {
   it.each([
-    ['ruff format', PROJECT],
-    ['black', BLACK],
+    { label: 'ruff format', pyproject: PROJECT, black: 'black', notebook: true },
+    { label: 'black', pyproject: BLACK, black: 'black', notebook: false },
+    { label: 'black', pyproject: BLACK, black: 'black[jupyter]', notebook: true },
   ])(
-    'rewrites the changed files with %s, leaves the others alone and passes the format check of the gate',
-    (label, pyproject) => {
-      const result = fix(repository(pyproject));
+    'rewrites the changed files with $label next to $black, leaves the others alone and passes the format check of the gate',
+    ({ label, pyproject, black, notebook }) => {
+      const result = fix(repository(pyproject, black));
 
       expect(
         { ...outcomeOf(result), gateFormatFindings: formatFindings(result) },
         result.stdout + result.stderr,
-      ).toEqual({ ...expectedOutcome(label), gateFormatFindings: [] });
+      ).toEqual({ ...expectedOutcome(label, notebook), gateFormatFindings: [] });
     },
   );
-  it('applies the safe ruff fixes for the rules nitpicker selects', () => {
+  it('applies the safe ruff fixes for the rules nitpicker selects and honours noqa comments', () => {
     const result = fix({
       committed: {
         'nitpicker.config.json': '{ "preset": "python" }\n',
         'pyproject.toml': PROJECT,
         'app.py': FORMATTED,
+        'suppressed.py': SUPPRESSED(1),
       },
-      changed: { 'app.py': UNUSED_IMPORT },
+      changed: { 'app.py': UNUSED_IMPORT, 'suppressed.py': SUPPRESSED(2) },
     });
 
     expect(
-      { exitCode: result.exitCode, report: fixReport(result.stdout), app: result.read('app.py') },
+      {
+        exitCode: result.exitCode,
+        report: fixReport(result.stdout),
+        app: result.read('app.py'),
+        suppressed: result.read('suppressed.py'),
+      },
       result.stdout + result.stderr,
     ).toEqual({
       exitCode: 0,
       report: 'Fixed files:\napp.py\nFix notes:\n  ruff check --fix rewrote app.py\n',
       app: FORMATTED,
+      suppressed: SUPPRESSED(2),
     });
   });
 });
