@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Smoke-tests a nitpicker image on the sample project of each named case (see cases/<name>):
+# Smoke-tests a nitpicker image on the sample project of each named case (cases/<name>/case.sh):
 #   run.sh <image> <case>...
 # The sample is copied to a temporary repository, prepared inside the image the way a user would,
 # then gated twice against main: a harmless change must exit 0 with no new enforceable finding, and
@@ -28,10 +28,14 @@ repository() {
   git -C "$work" -c user.name=smoke -c user.email=smoke@example.com "$@"
 }
 
-commit_overlay() {
+overlay() {
+  cp -R "$here/cases/$overlays/$1/." "$work/"
+}
+
+commit_change() {
   local branch=$1
   repository switch -q -c "$branch" main
-  cp -R "$here/cases/$overlays/$branch/." "$work/"
+  "$branch"
   repository add -A
   repository commit -q -m "$branch"
 }
@@ -60,9 +64,11 @@ smoke_case() {
   case=$1
   unset OVERLAYS PRESET
   prepare() { :; }
+  clean() { overlay clean; }
+  violation() { overlay violation; }
   SETUP=true
   # shellcheck disable=SC1090
-  . "$here/cases/$case/case.env"
+  . "$here/cases/$case/case.sh"
   overlays=${OVERLAYS:-$case}
   work=$(mktemp -d)
   home=${SMOKE_HOME:-$(mktemp -d)}
@@ -79,17 +85,17 @@ smoke_case() {
   repository init -q -b main
   repository add -A
   repository commit -q -m base
-  commit_overlay clean
+  commit_change clean
   repository switch -q main
-  commit_overlay violation
+  commit_change violation
   gate clean 0
   gate violation 1
   reports_violation || fail "$case: the violation change did not report $VIOLATION_RULE"
   echo "::endgroup::"
 }
 
-docker run --rm "${docker_args[@]}" "$image" --help | grep -q '^Usage: nitpicker' \
-  || fail "$image --help did not print the usage"
+usage=$(docker run --rm "${docker_args[@]}" "$image" --help)
+grep -q '^Usage: nitpicker' <<<"$usage" || fail "$image --help did not print the usage"
 for name in "$@"; do
   smoke_case "$name"
 done
