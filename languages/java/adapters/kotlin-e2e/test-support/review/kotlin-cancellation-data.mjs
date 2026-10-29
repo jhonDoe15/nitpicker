@@ -215,7 +215,7 @@ class HandlersTest {
     @Test
     fun waitsOrFails() {
         try {
-            Thread.sleep(1)
+            java.util.concurrent.CountDownLatch(0).await()
         } catch (error: InterruptedException) {
             fail("interrupted")
         }
