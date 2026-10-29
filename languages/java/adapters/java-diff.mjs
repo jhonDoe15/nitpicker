@@ -184,7 +184,7 @@ export function collectJavaFindings(root, options = {}) {
       readSource,
     ),
     { ...options.policy, inventoryTool: preset, routeRule: javaRouteRule },
-    (reported) => withoutOverlaps(reported, { readSource }),
+    options.resolveOverlaps ?? ((reported) => withoutOverlaps(reported, { readSource })),
   );
 }
 

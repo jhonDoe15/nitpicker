@@ -1322,12 +1322,28 @@ always stay.
 on the probe project those are, among others, `LooseCoupling` and `JdkObsolete` on a `Vector`
 field, `HidingField` and `URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD`, `RandomModInteger` and
 `DMI_RANDOM_USED_ONLY_ONCE`, `ClassNewInstance` and `REFLC_REFLECTION_MAY_INCREASE_ACCESSIBILITY_OF_CLASS`,
-`SelfAssignment` and `AvoidReassigningParameters`, and Checkstyle's `MemberName` with
-`FieldCanBeStatic`. `adapters/overlaps/resolved-overlaps.test.mjs` pins every cross-tool line left
+`SelfAssignment` and `AvoidReassigningParameters`. `adapters/overlaps/resolved-overlaps.test.mjs` pins every cross-tool line left
 on the probe's findings (`fixtures/probe-findings.json`, every enabled check with nothing turned off
-for overlap), the partial-coverage cases kept, and the policy order;
-`static-overlaps.test.mjs` checks each pair in its scope; a unit test checks that this list is the
-table:
+for overlap), the pairs that drop a secondary on those findings (a pair with no probe evidence yet is
+listed in the test, and the list must shrink as evidence is added), the partial-coverage cases kept,
+and the policy order; `static-overlaps.test.mjs` checks each pair in its scope; a unit test checks
+that this list is the table.
+
+`fixtures/probe-findings.json` holds the probe sources (`sources`) and the findings of a full Java
+preset run over them with overlap resolution off (`findings`: tool, rule, path, line, and the symbol
+of a SpotBugs finding), sorted so a run is reproducible. Do not edit the findings by hand after a
+tool upgrade or a new pair: `npm run gen:overlap-probe` (`-- --gradle=<command>` names another Gradle) copies the sources into a throwaway Gradle
+project (`adapters/fixtures/gradle-project` with JUnit 4 and JSpecify added), runs the Java preset
+with the pinned tools on it (`collectJavaFindings` with `resolveOverlaps` set to the identity;
+this needs a JDK 21 and Gradle, and takes several minutes) and rewrites the file. To probe a new
+case, add the source file to `sources` first and run the command. `node scripts/gen-overlap-probe.mjs
+--check` writes nothing and exits 1 with the added and removed findings when the committed file
+differs from a fresh run; `adapters/java-e2e/overlap-probe.e2e.test.mjs` runs the same check in the
+Java end-to-end suite (`npm run test:java`), so the Java CI job fails on drift. After a regeneration,
+review the diff: a disappearing finding is a rule turned off or changed in the preset, and every
+pair must still match (the pair test above).
+
+The pairs:
 
 - line: `errorprone/ArrayHashCode` over `spotbugs/DMI_INVOKING_HASHCODE_ON_ARRAY`
 - line: `errorprone/ArrayEquals` over `spotbugs/EC_BAD_ARRAY_COMPARE`
