@@ -53,6 +53,10 @@
       "role": "production"
     },
     {
+      "file": "src/shop/Resources.kt",
+      "role": "production"
+    },
+    {
       "file": "src/shop/Rules.kt",
       "role": "production"
     },
@@ -464,6 +468,61 @@
       "file": "src/shop/Registry.kt",
       "name": "Registry",
       "line": 19,
+      "kind": "module",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Resources.kt#Link",
+      "file": "src/shop/Resources.kt",
+      "name": "Link",
+      "line": 3,
+      "kind": "data",
+      "exported": true,
+      "fields": [
+        {
+          "name": "name"
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Resources.kt#Depot",
+      "file": "src/shop/Resources.kt",
+      "name": "Depot",
+      "line": 5,
+      "kind": "class",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Resources.kt#Lender",
+      "file": "src/shop/Resources.kt",
+      "name": "Lender",
+      "line": 15,
+      "kind": "interface",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Resources.kt#Gateway",
+      "file": "src/shop/Resources.kt",
+      "name": "Gateway",
+      "line": 19,
+      "kind": "class",
+      "exported": true,
+      "fields": [
+        {
+          "name": "depot",
+          "private": true
+        },
+        {
+          "name": "lender",
+          "private": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Resources.kt",
+      "file": "src/shop/Resources.kt",
+      "name": "Resources",
+      "line": 33,
       "kind": "module",
       "exported": true
     },
@@ -2933,6 +2992,435 @@
         {
           "target": "src/shop/Registry.kt#Registry.size",
           "line": 23
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Resources.kt#Link.<init>",
+      "file": "src/shop/Resources.kt",
+      "name": "Link",
+      "line": 3,
+      "kind": "constructor",
+      "owner": "src/shop/Resources.kt#Link",
+      "exported": true,
+      "params": [
+        {
+          "name": "name",
+          "type": "String"
+        }
+      ],
+      "ownFields": ["name"]
+    },
+    {
+      "id": "src/shop/Resources.kt#Depot.open",
+      "file": "src/shop/Resources.kt",
+      "name": "open",
+      "line": 6,
+      "kind": "method",
+      "owner": "src/shop/Resources.kt#Depot",
+      "exported": true,
+      "params": [
+        {
+          "name": "name",
+          "type": "String"
+        }
+      ],
+      "returns": "src/shop/Resources.kt#Link"
+    },
+    {
+      "id": "src/shop/Resources.kt#Depot.close",
+      "file": "src/shop/Resources.kt",
+      "name": "close",
+      "line": 8,
+      "kind": "method",
+      "owner": "src/shop/Resources.kt#Depot",
+      "exported": true,
+      "params": [
+        {
+          "name": "link",
+          "type": "src/shop/Resources.kt#Link"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Resources.kt#Depot.reopen",
+      "file": "src/shop/Resources.kt",
+      "name": "reopen",
+      "line": 12,
+      "kind": "method",
+      "owner": "src/shop/Resources.kt#Depot",
+      "exported": true,
+      "params": [
+        {
+          "name": "name",
+          "type": "String"
+        }
+      ],
+      "returns": "src/shop/Resources.kt#Link",
+      "forward": {
+        "target": "src/shop/Resources.kt#Depot.open",
+        "arguments": [0],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Resources.kt#Depot.open",
+          "line": 12,
+          "receiver": "this"
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Resources.kt#Lender.lend",
+      "file": "src/shop/Resources.kt",
+      "name": "lend",
+      "line": 16,
+      "kind": "method",
+      "owner": "src/shop/Resources.kt#Lender",
+      "exported": true,
+      "returns": "src/shop/Resources.kt#Link"
+    },
+    {
+      "id": "src/shop/Resources.kt#Gateway.<init>",
+      "file": "src/shop/Resources.kt",
+      "name": "Gateway",
+      "line": 19,
+      "kind": "constructor",
+      "owner": "src/shop/Resources.kt#Gateway",
+      "exported": true,
+      "params": [
+        {
+          "name": "depot",
+          "type": "src/shop/Resources.kt#Depot"
+        },
+        {
+          "name": "lender",
+          "type": "src/shop/Resources.kt#Lender"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        },
+        {
+          "param": 1,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        }
+      ],
+      "ownFields": ["depot", "lender"]
+    },
+    {
+      "id": "src/shop/Resources.kt#Gateway.connect",
+      "file": "src/shop/Resources.kt",
+      "name": "connect",
+      "line": 20,
+      "kind": "method",
+      "owner": "src/shop/Resources.kt#Gateway",
+      "exported": true,
+      "params": [
+        {
+          "name": "name",
+          "type": "String"
+        }
+      ],
+      "returns": "src/shop/Resources.kt#Link",
+      "forward": {
+        "target": "src/shop/Resources.kt#Depot.open",
+        "arguments": [0],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Resources.kt#Depot.open",
+          "line": 20,
+          "receiver": "this.depot"
+        }
+      ],
+      "ownFields": ["depot"]
+    },
+    {
+      "id": "src/shop/Resources.kt#Gateway.release",
+      "file": "src/shop/Resources.kt",
+      "name": "release",
+      "line": 22,
+      "kind": "method",
+      "owner": "src/shop/Resources.kt#Gateway",
+      "exported": true,
+      "params": [
+        {
+          "name": "link",
+          "type": "src/shop/Resources.kt#Link"
+        }
+      ],
+      "forward": {
+        "target": "src/shop/Resources.kt#Depot.close",
+        "arguments": [0],
+        "returned": false
+      },
+      "calls": [
+        {
+          "target": "src/shop/Resources.kt#Depot.close",
+          "line": 23,
+          "receiver": "this.depot"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [
+            {
+              "target": "src/shop/Resources.kt#Depot.close",
+              "position": 0
+            }
+          ]
+        }
+      ],
+      "ownFields": ["depot"]
+    },
+    {
+      "id": "src/shop/Resources.kt#Gateway.borrow",
+      "file": "src/shop/Resources.kt",
+      "name": "borrow",
+      "line": 26,
+      "kind": "method",
+      "owner": "src/shop/Resources.kt#Gateway",
+      "exported": true,
+      "returns": "src/shop/Resources.kt#Link",
+      "forward": {
+        "target": "src/shop/Resources.kt#Lender.lend",
+        "arguments": [],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Resources.kt#Lender.lend",
+          "line": 26,
+          "receiver": "this.lender"
+        }
+      ],
+      "ownFields": ["lender"]
+    },
+    {
+      "id": "src/shop/Resources.kt#Gateway.lendTo",
+      "file": "src/shop/Resources.kt",
+      "name": "lendTo",
+      "line": 28,
+      "kind": "method",
+      "owner": "src/shop/Resources.kt#Gateway",
+      "exported": true,
+      "params": [
+        {
+          "name": "other",
+          "type": "src/shop/Resources.kt#Gateway"
+        }
+      ],
+      "returns": "src/shop/Resources.kt#Link",
+      "forward": {
+        "target": "src/shop/Resources.kt#Lender.lend",
+        "arguments": [],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Resources.kt#Lender.lend",
+          "line": 28
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["lender"],
+          "forwards": []
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Resources.kt#Gateway",
+          "fields": ["lender"],
+          "line": 28
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Resources.kt#Gateway.capacity",
+      "file": "src/shop/Resources.kt",
+      "name": "capacity",
+      "line": 30,
+      "kind": "method",
+      "owner": "src/shop/Resources.kt#Gateway",
+      "exported": true,
+      "returns": "Int",
+      "ownFields": ["depot"],
+      "reads": [
+        {
+          "type": "src/shop/Resources.kt#Depot",
+          "fields": ["size"],
+          "line": 30
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Resources.kt#openVia",
+      "file": "src/shop/Resources.kt",
+      "name": "openVia",
+      "line": 33,
+      "kind": "function",
+      "owner": "src/shop/Resources.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "depot",
+          "type": "src/shop/Resources.kt#Depot"
+        },
+        {
+          "name": "name",
+          "type": "String"
+        }
+      ],
+      "returns": "src/shop/Resources.kt#Link",
+      "forward": {
+        "target": "src/shop/Resources.kt#Depot.open",
+        "arguments": [1],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Resources.kt#Depot.open",
+          "line": 33,
+          "receiver": "depot"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["open"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Resources.kt#closeVia",
+      "file": "src/shop/Resources.kt",
+      "name": "closeVia",
+      "line": 35,
+      "kind": "function",
+      "owner": "src/shop/Resources.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "depot",
+          "type": "src/shop/Resources.kt#Depot"
+        },
+        {
+          "name": "link",
+          "type": "src/shop/Resources.kt#Link"
+        }
+      ],
+      "forward": {
+        "target": "src/shop/Resources.kt#Depot.close",
+        "arguments": [1],
+        "returned": false
+      },
+      "calls": [
+        {
+          "target": "src/shop/Resources.kt#Depot.close",
+          "line": 36,
+          "receiver": "depot"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["close"],
+          "forwards": []
+        },
+        {
+          "param": 1,
+          "fields": [],
+          "forwards": [
+            {
+              "target": "src/shop/Resources.kt#Depot.close",
+              "position": 0
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Resources.kt#lendVia",
+      "file": "src/shop/Resources.kt",
+      "name": "lendVia",
+      "line": 39,
+      "kind": "function",
+      "owner": "src/shop/Resources.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "lender",
+          "type": "src/shop/Resources.kt#Lender"
+        }
+      ],
+      "returns": "src/shop/Resources.kt#Link",
+      "forward": {
+        "target": "src/shop/Resources.kt#Lender.lend",
+        "arguments": [],
+        "returned": true
+      },
+      "calls": [
+        {
+          "target": "src/shop/Resources.kt#Lender.lend",
+          "line": 39,
+          "receiver": "lender"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["lend"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Resources.kt#capacityOf",
+      "file": "src/shop/Resources.kt",
+      "name": "capacityOf",
+      "line": 41,
+      "kind": "function",
+      "owner": "src/shop/Resources.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "depot",
+          "type": "src/shop/Resources.kt#Depot"
+        }
+      ],
+      "returns": "Int",
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["size"],
+          "forwards": []
+        }
+      ],
+      "reads": [
+        {
+          "type": "src/shop/Resources.kt#Depot",
+          "fields": ["size"],
+          "line": 41
         }
       ]
     },

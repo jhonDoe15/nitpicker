@@ -1,22 +1,11 @@
-import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
+import { readKotlinReport } from './kotlin-report.mjs';
 
-const FACTS_REPORT = 'kotlin-facts.json';
 const NULLABLE = /\?$/u;
 const GENERIC_ARGUMENTS = /<.*$/u;
 
-function readReport(reportRoot) {
-  const report = path.join(reportRoot, FACTS_REPORT);
-  return existsSync(report) ? JSON.parse(readFileSync(report, 'utf8')) : { files: [] };
-}
-
 export function readKotlinFacts(reportRoot) {
-  const { files } = readReport(reportRoot);
+  const { files } = readKotlinReport(reportRoot);
   return { files: files.filter(({ skipped }) => skipped !== true) };
-}
-
-export function readKotlinDesign(reportRoot) {
-  return readReport(reportRoot).design;
 }
 
 export function append(map, key, value) {

@@ -1,7 +1,7 @@
 import { readHeadPolicyFile } from '../../../../../../shared/head-policy.mjs';
 import { DESIGN_RULES } from '../../../../../../shared/project-rules/design/design-rules.mjs';
 import { sharedFactFindings } from '../../../../../../shared/rules/facts/evaluate.mjs';
-import { readKotlinDesign } from '../kotlin-facts.mjs';
+import { readKotlinDesign } from '../kotlin-report.mjs';
 
 export const DESIGN_TOOL = 'structure';
 export const DESIGN_FAILURE_RULE = 'design-facts';

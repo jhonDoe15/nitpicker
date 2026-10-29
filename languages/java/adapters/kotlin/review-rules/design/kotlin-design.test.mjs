@@ -103,6 +103,81 @@ describe('the callables the recorded facts list as used as values', () => {
   });
 });
 
+const RES = 'src/shop/Resources.kt';
+const LINK = `${RES}#Link`;
+
+function callableNamed(id) {
+  return RECORDED.callables.find((item) => item.id === id);
+}
+
+describe('the types a callable returns in the recorded facts', () => {
+  it.each([
+    [`${RES}#Depot.open`, LINK],
+    [`${RES}#Lender.lend`, LINK],
+    [`${RES}#Gateway.connect`, LINK],
+    [`${RES}#openVia`, LINK],
+    [`${RES}#capacityOf`, 'Int'],
+  ])('are the project type id, or the written name outside the project: %s', (id, returns) => {
+    expect(callableNamed(id).returns).toEqual(returns);
+  });
+});
+
+describe('the calls on a field of the owner in the recorded facts', () => {
+  it.each([
+    [`${RES}#Gateway.connect`, [{ target: `${RES}#Depot.open`, line: 20, receiver: 'this.depot' }]],
+    [
+      `${RES}#Gateway.release`,
+      [{ target: `${RES}#Depot.close`, line: 23, receiver: 'this.depot' }],
+    ],
+    [
+      `${RES}#Gateway.borrow`,
+      [{ target: `${RES}#Lender.lend`, line: 26, receiver: 'this.lender' }],
+    ],
+    [`${RES}#Gateway.lendTo`, [{ target: `${RES}#Lender.lend`, line: 28 }]],
+    [`${RES}#Depot.reopen`, [{ target: `${RES}#Depot.open`, line: 12, receiver: 'this' }]],
+  ])('have the receiver this.<field> and no receiver for another object: %s', (id, calls) => {
+    expect(callableNamed(id).calls).toEqual(calls);
+  });
+});
+
+describe('the abstract and interface members in the recorded facts', () => {
+  it.each([
+    [`${RES}#Depot.open`, ['String']],
+    [`${RES}#Depot.close`, [LINK]],
+    [`${RES}#Lender.lend`, undefined],
+  ])('have a callable site without body facts: %s', (id, params) => {
+    const { kind, calls, params: found } = callableNamed(id);
+
+    expect([kind, found?.map(({ type }) => type), calls]).toEqual(['method', params, undefined]);
+  });
+
+  it.each([
+    [`${RES}#openVia`, `${RES}#Depot.open`, 'depot'],
+    [`${RES}#closeVia`, `${RES}#Depot.close`, 'depot'],
+    [`${RES}#lendVia`, `${RES}#Lender.lend`, 'lender'],
+  ])('are the targets of the calls through a receiver of that type: %s', (id, target, receiver) => {
+    expect(callableNamed(id).calls.map((call) => [call.target, call.receiver])).toEqual([
+      [target, receiver],
+    ]);
+  });
+
+  it('resolve a protocols contract on an abstract class to the callers of its members', () => {
+    const { root, reportRoot } = reportWith(JSON.stringify({ files: [], design: RECORDED }));
+    const protocols = [{ type: 'Depot', open: ['open'], close: ['close'] }];
+
+    const findings = kotlinDesignFindings(reportRoot, {
+      environment: policyFile(root, { protocols }),
+    });
+
+    expect(
+      findings
+        .filter(({ rule, path: file }) => rule === 'protocol-contract' && file === RES)
+        .map(({ symbol }) => symbol)
+        .filter((symbol) => symbol === 'openVia'),
+    ).toEqual(['openVia']);
+  });
+});
+
 describe('the recorded design facts of a published module', () => {
   it('pass the facts schema as the bundle the rules read', () => {
     expect(() => validateFacts(kotlinDesignBundle(RECORDED_PUBLISHED))).not.toThrow();
