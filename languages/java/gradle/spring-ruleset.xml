@@ -1248,8 +1248,8 @@ let $loop := function($node) {
 }
 return //MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
   [let $name := @MethodName, $arity := count(ArgumentList/*)
-   return exists(ancestor::ClassDeclaration[1]/ClassBody/MethodDeclaration[@Name = $name][@Arity = $arity]
-     //MethodCall[$entityWrite(.)])]
+   return exists(ancestor::ClassDeclaration[1]/ClassBody/MethodDeclaration[@Name = $name]
+     [@Arity = $arity or (@Varargs and $arity >= @Arity - 1)]//MethodCall[$entityWrite(.)])]
   [$loop(.)]
 |
 //MethodCall[@MethodName = ('forEach', 'forEachOrdered', 'forEachRemaining', 'map', 'peek', 'flatMap', 'mapToObj')]
