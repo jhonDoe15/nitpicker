@@ -170,7 +170,7 @@ waiting without stopping the work.
 | JavaScript | `nitpicker/timeout-abandons-operation`    | the same ESLint rule                                                                   | enforceable |
 | Python     | `python-rules/timeout-abandons-operation` | `languages/python/rules/waits/timeouts.py`                                             | enforceable |
 | Java       | `pmd/timeout-abandons-operation`          | `languages/java/gradle/pmd-main-ruleset.xml` (XPath, Gradle and Maven)                 | enforceable |
-| Kotlin     | `pmd/timeout-abandons-operation`          | `languages/java/adapters/kotlin/review-rules/main/timeouts.mjs`                        | enforceable |
+| Kotlin     | `pmd/timeout-abandons-operation`          | `languages/java/adapters/kotlin/review-rules/main/timeouts/timeouts.mjs`               | enforceable |
 
 TypeScript and JavaScript: `Promise.race` of an operation and a timer that rejects, where the
 operation gets no `AbortSignal`, cancelling owner or cleanup in the timeout path (HTTP clients that

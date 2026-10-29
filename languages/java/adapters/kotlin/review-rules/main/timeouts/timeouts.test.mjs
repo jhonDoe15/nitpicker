@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { file, run, summary, testFile } from '../test-support/facts.mjs';
+import { file, run, summary, testFile } from '../../test-support/facts.mjs';
 import { TIMEOUT_RULE, timeoutFindings } from './timeouts.mjs';
 
 const COROUTINES_IMPORT = { path: 'kotlinx.coroutines.withTimeout', all: false };
