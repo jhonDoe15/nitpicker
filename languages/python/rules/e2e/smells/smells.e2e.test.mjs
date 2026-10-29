@@ -70,6 +70,26 @@ describe.skipIf(!enabled)('repeated-string-literal', () => {
         [],
       ],
       ['translation calls', 'A = _("pending")\nB = _("pending")\nC = gettext("pending")\n', []],
+      [
+        'the translation calls of the other presets',
+        'A = translate("pending")\nB = formatMessage("pending")\nC = getMessage("pending", x)\n',
+        [],
+      ],
+      [
+        'a translation call only for its first argument',
+        'A = t("a", "pending")\nB = t("b", "pending")\nC = t("c", "pending")\n',
+        ['repeated-string-literal:3 pending'],
+      ],
+      [
+        'discriminant values',
+        'A = {"type": "order-placed"}\nB = {"type": "order-placed"}\nC = {"kind": "order-placed"}\n',
+        [],
+      ],
+      [
+        'other dictionary values',
+        'A = {"state": "order-placed"}\nB = {"state": "order-placed"}\nC = {"state": "order-placed"}\n',
+        ['repeated-string-literal:3 order-placed'],
+      ],
       ['a test file', inFile('tests/test_a.py', repeat('"pending"')), []],
     ]);
     expect(actual).toEqual(expected);
