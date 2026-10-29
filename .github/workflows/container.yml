@@ -1,8 +1,9 @@
 name: container
 
 # Builds each image variant of the Dockerfile and gates a sample project of every preset in it
-# (.github/container-smoke). The github-release workflow calls this one with publish: true to push
-# the same images to the registry named in env below. Not a required check.
+# (.github/container-smoke). The github-release workflow calls this one with publish: true, which
+# pushes each image from the job that tested it to the registry named in env below, then moves the
+# latest tags once every variant has passed. Not a required check.
 on:
   push:
     branches: [main]
@@ -12,12 +13,9 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - '.npmrc'
-      - 'languages/typescript/preset/fixtures/strict-clean/**'
-      - 'languages/javascript/preset/fixtures/js-clean/**'
-      - 'languages/java/adapters/fixtures/gradle-project/**'
-      - 'languages/java/adapters/fixtures/kotlin-project/**'
-      - 'languages/java/maven/fixtures/single/**'
-      - 'languages/python/adapters/fixtures/python-project/**'
+      - 'core/**'
+      - 'shared/**'
+      - 'languages/**'
       - '.github/container-smoke/**'
       - '.github/workflows/container.yml'
   pull_request:
@@ -46,7 +44,7 @@ permissions:
   contents: read
 
 # The registry and the image name under the repository owner. To publish elsewhere, change these and
-# the login step of the publish job (docs/releasing.md, "Container images").
+# the login steps (docs/releasing.md, "Container images").
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: nitpicker
@@ -58,31 +56,41 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # Each case runs as the host user with a home directory mounted, or as <case>@root, or as
+  # <case>@<uid>:<gid>, a user with no passwd entry and no home mount (.github/container-smoke/run.sh).
   image:
     name: image ${{ matrix.variant }}
     if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
     runs-on: ubuntu-latest
-    timeout-minutes: 60
+    timeout-minutes: 90
+    # packages: write is used only to push, when publish is set; the checkout keeps no credentials,
+    # so the smoke test never sees the token.
+    permissions:
+      contents: read
+      packages: write
     strategy:
       fail-fast: false
       matrix:
         include:
           - variant: typescript
-            cases: typescript javascript
+            cases: typescript javascript@root pnpm@12345:12345
           - variant: jvm
-            cases: java-gradle java-maven kotlin
+            cases: java-gradle java-maven@12345:12345 kotlin@root
           - variant: python
-            cases: python
+            cases: python@root poetry@12345:12345 python-pinned@12345:12345
           - variant: all
-            cases: typescript java-maven python
+            cases: typescript javascript@root java-maven kotlin@12345:12345 python poetry@12345:12345
     steps:
       - uses: actions/checkout@v4
         with:
           ref: ${{ inputs.commit }}
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version: 24
       - uses: docker/setup-buildx-action@v3
+      # Every run reads the layer cache; only main and releases write it, so pull requests cannot
+      # evict the cache that main builds from.
       - name: Build the image
         uses: docker/build-push-action@v6
         with:
@@ -91,63 +99,67 @@ jobs:
           load: true
           provenance: false
           tags: nitpicker:${{ matrix.variant }}
+          build-args: |
+            SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
+          labels: |
+            org.opencontainers.image.revision=${{ inputs.commit || github.sha }}
+            org.opencontainers.image.version=${{ inputs.version || 'dev' }}
           cache-from: type=gha,scope=${{ matrix.variant }}
-          cache-to: type=gha,scope=${{ matrix.variant }}
+          cache-to: >-
+            ${{ (github.ref == 'refs/heads/main' || inputs.publish)
+            && format('type=gha,scope={0}', matrix.variant) || '' }}
       - name: Report the image size
         run: |
           size=$(docker image inspect nitpicker:${{ matrix.variant }} --format '{{.Size}}')
           echo "${{ matrix.variant }}: $((size / 1000000)) MB" >> "$GITHUB_STEP_SUMMARY"
       - name: Gate the sample projects in the image
         run: .github/container-smoke/run.sh nitpicker:${{ matrix.variant }} ${{ matrix.cases }}
+      # The image pushed is the one the cases above just passed in, never a rebuild.
+      - name: Log in to the registry
+        if: ${{ inputs.publish }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # The registry path must be lower case, and the owner name may not be.
+      - name: Push the image
+        if: ${{ inputs.publish }}
+        env:
+          VERSION: ${{ inputs.version }}
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/${IMAGE_NAME}"
+          tags=("${image}:${VERSION}-${VARIANT}")
+          if [ "$VARIANT" = "typescript" ]; then tags+=("${image}:${VERSION}"); fi
+          for tag in "${tags[@]}"; do
+            docker tag "nitpicker:${VARIANT}" "$tag"
+            docker push "$tag"
+          done
 
-  publish:
-    name: publish ${{ matrix.variant }}
-    if: ${{ inputs.publish }}
+  # A stable release moves the latest tags only after every variant passed and was pushed, so they
+  # never point at a mix of versions. The manifests are copied in the registry, not rebuilt.
+  latest:
+    if: ${{ inputs.publish && inputs.latest }}
     needs: image
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     permissions:
       contents: read
       packages: write
-    strategy:
-      fail-fast: false
-      matrix:
-        variant: [typescript, jvm, python, all]
     steps:
-      - uses: actions/checkout@v4
-        with:
-          ref: ${{ inputs.commit }}
       - uses: docker/setup-buildx-action@v3
       - uses: docker/login-action@v3
         with:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      # The registry path must be lower case, and the owner name may not be.
-      - name: Name the tags
-        id: tags
+      - name: Move the latest tags
         env:
           VERSION: ${{ inputs.version }}
-          VARIANT: ${{ matrix.variant }}
-          LATEST: ${{ inputs.latest }}
         run: |
           image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/${IMAGE_NAME}"
-          tags="${image}:${VERSION}-${VARIANT}"
-          if [ "$LATEST" = "true" ]; then tags+=$'\n'"${image}:latest-${VARIANT}"; fi
-          if [ "$VARIANT" = "typescript" ]; then
-            tags+=$'\n'"${image}:${VERSION}"
-            if [ "$LATEST" = "true" ]; then tags+=$'\n'"${image}:latest"; fi
-          fi
-          { echo 'tags<<EOF'; echo "$tags"; echo 'EOF'; } >> "$GITHUB_OUTPUT"
-      # The layers come from the cache the image job filled, so the pushed image is the tested one.
-      - name: Push the image
-        uses: docker/build-push-action@v6
-        with:
-          context: .
-          target: ${{ matrix.variant }}
-          push: true
-          tags: ${{ steps.tags.outputs.tags }}
-          labels: |
-            org.opencontainers.image.version=${{ inputs.version }}
-            org.opencontainers.image.revision=${{ github.sha }}
-          cache-from: type=gha,scope=${{ matrix.variant }}
+          for variant in typescript jvm python all; do
+            docker buildx imagetools create --tag "${image}:latest-${variant}" "${image}:${VERSION}-${variant}"
+          done
+          docker buildx imagetools create --tag "${image}:latest" "${image}:${VERSION}"

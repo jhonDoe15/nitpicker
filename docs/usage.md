@@ -1552,7 +1552,9 @@ of these is visible in the report. Remove them as the codebase improves.
 The repository's `Dockerfile` builds one image per preset family, so the gate runs in any CI without
 installing a toolchain on the host. Every image has Node 24, Git, nitpicker installed from source as
 `nitpicker` (the entrypoint), Corepack (pnpm and Yarn, downloaded on first use), Bun 1.4.2 for the
-base's dependency install, and `/work` as the working directory.
+base's dependency install, and `/work` as the working directory. The images are built for
+`linux/amd64` only; arm64 images are tracked in
+[#562](https://github.com/jhonDoe15/nitpicker/issues/562).
 
 | Image (target) | Presets                | Adds to the base                                                          | Size         |
 | -------------- | ---------------------- | ------------------------------------------------------------------------- | ------------ |
@@ -1561,10 +1563,11 @@ base's dependency install, and `/work` as the working directory.
 | `python`       | python                 | uv, CPython 3.13 managed by uv, and Poetry                                | about 1.5 GB |
 | `all`          | every preset           | everything above                                                          | about 2.3 GB |
 
-Each release publishes them to GitHub Container Registry as
-`ghcr.io/jhondoe15/nitpicker:<version>-<target>` (for example `:0.2.0-jvm`); the TypeScript image is
-also `:<version>`, and a stable release moves `:latest-<target>` and `:latest`. To build one yourself,
-from the repository root:
+The first release after the images were added publishes them, and every release after it, to
+GitHub Container Registry as `ghcr.io/jhondoe15/nitpicker:<version>-<target>` (for example
+`:0.2.0-jvm`); the TypeScript image is also `:<version>`, and a stable release moves
+`:latest-<target>` and `:latest`. Until the package is made public they can be pulled only after
+`docker login ghcr.io`. To build one yourself, from the repository root:
 
 ```sh
 docker build --target jvm -t nitpicker:jvm .
@@ -1575,50 +1578,119 @@ docker run --rm -v "$PWD":/work nitpicker:jvm --base origin/main --output report
 Mount your project at `/work`. The image marks `/work` as a Git `safe.directory`, so a checkout
 owned by another user works. Arguments after the image name are nitpicker's arguments and the exit
 codes are the same (0, 1, 2). The project's history must contain the merge base (`fetch-depth: 0` in
-`actions/checkout`), and `--base` names it as it does outside a container. Reports are written under
-the mount, owned by the container user; add `--user "$(id -u):$(id -g)"` to own them yourself (the
-image's home directory is writable for any user, so the package managers' caches work). Mount a
-volume at `/home/nitpicker` to keep the Gradle, Maven, uv and npm caches between runs.
+`actions/checkout`), and `--base` names it as it does outside a container.
+
+Run the container as yourself with `--user "$(id -u):$(id -g)"`, so that the reports and anything
+the container installs in the checkout belong to you rather than to root. Any user works, with or
+without a passwd entry: the home directory (`/home/nitpicker`), the Corepack cache and the uv Python
+directory are writable for everyone, and Gradle and Maven keep their caches in that home directory
+whoever runs them. Mount a directory at `/home/nitpicker` to keep the npm, pnpm, Yarn, Bun, uv,
+Poetry, Gradle and Maven caches between runs; a host directory you own works with `--user`. The
+examples below leave out `--user` and the cache mount for brevity.
+
+The gate needs network access: the base's dependency install runs the project's package manager,
+and the Java and Kotlin tools come from Maven Central and the Gradle plugin portal on first use.
+Credentials for a private registry reach the container only if you pass them: environment variables
+that the project's `.npmrc` reads (`-e NODE_AUTH_TOKEN`), uv's and Poetry's index variables, or a
+file mounted into the home directory (`-v ~/.npmrc:/home/nitpicker/.npmrc:ro`,
+`/home/nitpicker/.m2/settings.xml`, `/home/nitpicker/.gradle/gradle.properties`).
+
+`--accept-policy-change` is honoured only at an interactive terminal, so a local run that accepts a
+policy change needs `docker run -it`.
 
 What each project provides:
 
 - **TypeScript and JavaScript.** Dependencies installed in `node_modules` (`vitest`,
   `@vitest/coverage-v8` and `typescript` are resolved from the project, as with `npx`). Install them
-  on the host, or in the image:
-  `docker run --rm -v "$PWD":/work --entrypoint npm nitpicker:typescript ci`. A project that pins
-  another Bun than 1.4.2 needs its own image.
+  in the image, with the package manager the project uses (`--user` makes them yours):
+
+  ```sh
+  docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/work --entrypoint npm nitpicker:typescript ci
+  # pnpm: --entrypoint pnpm nitpicker:typescript install --frozen-lockfile
+  # Yarn: --entrypoint yarn nitpicker:typescript install --immutable (Yarn 1: --frozen-lockfile)
+  # Bun:  --entrypoint bun nitpicker:typescript install --frozen-lockfile
+  ```
+
+  A `node_modules` installed on the host works only on a Linux x86-64 host: on macOS, Windows or an
+  arm64 machine its native packages (esbuild, Rollup, SWC) are built for the host and fail in the
+  container. A project that pins another Bun than 1.4.2 needs its own image.
+
 - **Java and Kotlin.** A `nitpicker.config.json` with the preset. Gradle runs through the project's
   `gradlew` and Maven through its `mvnw` when it has them, else through the image's `gradle` and
-  `mvn`; the JDK is `JAVA_HOME`. The tools are downloaded from Maven Central and the Gradle plugin
-  portal on first use, so the container needs network access.
+  `mvn`; the JDK is `JAVA_HOME`. The Gradle wrapper downloads its distribution from
+  `services.gradle.org` on first use, so allow that host too.
 - **Python.** A `nitpicker.config.json` with the preset, and the project's environment created
   before the gate runs, as the [Python preset](python-preset.md#the-projects-own-environment)
   requires. Create it in the image, so that its interpreter exists there:
-  `docker run --rm -v "$PWD":/work --entrypoint uv nitpicker:python sync` (or `poetry install`
-  with `--entrypoint poetry`), then run the gate. The `.venv` it leaves points at the image's
-  Python, so the host cannot use it. pipenv, PDM, Hatch and conda are not in the image; build one
-  `FROM` it that installs the manager your project uses.
+  `docker run --rm -v "$PWD":/work --entrypoint uv nitpicker:python sync`, or `poetry install`
+  with `--entrypoint poetry` (the image sets `POETRY_VIRTUALENVS_IN_PROJECT=true`, so Poetry keeps
+  the environment in the checkout's `.venv` instead of the container's home directory), then run the
+  gate. The `.venv` points at the image's Python, so the host cannot use it. A project that asks for
+  another Python than 3.13 (`.python-version`, `requires-python`) makes uv download it into
+  `/opt/python` inside the container, where it is gone when the container exits and the `.venv`
+  breaks. Then either create the environment and run the gate in one container
+  (`--entrypoint sh nitpicker:python -c 'uv sync && nitpicker'`), keep `/opt/python` in a volume
+  named after the image version for both runs (`-v nitpicker-python-<version>:/opt/python`; the
+  volume hides the image's own `/opt/python` once it exists, so do not reuse it across versions), or
+  build an image `FROM` this one that runs `uv python install <version>`. pipenv, PDM, Hatch and
+  conda are not in the image; build one `FROM` it that installs the manager your project uses.
 
-GitHub Actions:
+The images have no C compiler or build tools, so a dependency that builds native code at install
+time (an npm addon without a prebuilt binary, a Python package without a wheel for Linux x86-64)
+fails to install, and the JVM images have only JDK 21, so a Gradle or Maven toolchain that asks for
+another JDK fails. Build an image `FROM` the one you use that adds them, for example with
+`apt-get install build-essential`.
+
+GitHub Actions, for a TypeScript project:
 
 ```yaml
 jobs:
   nitpicker:
     runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/jhondoe15/nitpicker:<version>
+      NITPICKER_ACCEPT_POLICY_CHANGE: ${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      - run: npm ci
-      - run: docker run --rm -v "$PWD":/work -e CI -e GITHUB_BASE_REF -e NITPICKER_ACCEPT_POLICY_CHANGE ghcr.io/jhondoe15/nitpicker:<version>
-        env:
-          NITPICKER_ACCEPT_POLICY_CHANGE: ${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
+      - run: docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/work --entrypoint npm "$IMAGE" ci
+      - run: >-
+          docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/work
+          -e CI -e GITHUB_BASE_REF -e NITPICKER_ACCEPT_POLICY_CHANGE "$IMAGE"
 ```
 
-Use the `-jvm` or `-python` tag, and drop `npm ci` for a project without `node_modules`, to gate those
-presets. `NITPICKER_ACCEPT_POLICY_CHANGE` comes from a repository variable that only an admin can set, so a
-person accepts a loosening of `nitpicker.config.json` by setting it to the digest the finding
-names; the container needs `CI` too, since the variable is honoured only in CI.
+`--user` runs the container as the runner's user, so later steps (an artifact upload, a cache save)
+can read and remove what it wrote. `NITPICKER_ACCEPT_POLICY_CHANGE` comes from a repository variable
+that only an admin can set, so a person accepts a loosening of `nitpicker.config.json` by setting it
+to the digest the finding names; the container needs `CI` too, since the variable is honoured only
+in CI.
+
+For a Python project, create the environment and run the gate in one container (the `.venv` it
+leaves also serves a later run of the same image):
+
+```yaml
+- run: >-
+    docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/work
+    -e CI -e GITHUB_BASE_REF -e NITPICKER_ACCEPT_POLICY_CHANGE
+    --entrypoint sh ghcr.io/jhondoe15/nitpicker:<version>-python -c 'uv sync && nitpicker'
+```
+
+For a Java or Kotlin project, with the Gradle and Maven caches kept between runs in a host
+directory mounted as the home directory:
+
+```yaml
+- uses: actions/cache@v4
+  with:
+    path: ~/nitpicker-home
+    key: nitpicker-home-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties', '**/pom.xml') }}
+    restore-keys: nitpicker-home-
+- run: mkdir -p ~/nitpicker-home
+- run: >-
+    docker run --rm --user "$(id -u):$(id -g)" -v "$PWD":/work -v ~/nitpicker-home:/home/nitpicker
+    -e CI -e GITHUB_BASE_REF -e NITPICKER_ACCEPT_POLICY_CHANGE
+    ghcr.io/jhondoe15/nitpicker:<version>-jvm
+```
 
 ## Sharding in CI
 

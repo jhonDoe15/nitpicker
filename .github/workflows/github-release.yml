@@ -1,8 +1,8 @@
 name: github-release
 
-# Manual only: publishes a GitHub release for a commit on main, with the packed tarball and its
-# checksum attached, then builds, smoke-tests and pushes the container images of that commit to the
-# registry set in container.yml. It never publishes to npm.
+# Manual only: builds, smoke-tests and pushes the container images of a commit on main to the
+# registry set in container.yml, then publishes a GitHub release for that commit with the packed
+# tarball and its checksum attached. It never publishes to npm.
 on:
   workflow_dispatch:
     inputs:
@@ -22,9 +22,11 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  release:
+  version:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
+    permissions:
+      contents: read
     outputs:
       version: ${{ steps.version.outputs.version }}
     steps:
@@ -41,13 +43,41 @@ jobs:
           COMMIT: ${{ inputs.commit }}
         run: |
           git merge-base --is-ancestor "$COMMIT" origin/main
-          version=$(node -p "require('./package.json').version")
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "tag=v$version" >> "$GITHUB_OUTPUT"
+          echo "version=$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+
+  # Builds the images from the commit, gates the sample projects in them and pushes them tagged with
+  # the version; a stable release also moves the latest tags. The release below waits for them, so a
+  # failing image stops the release. Re-running after a later failure pushes the same tags again.
+  images:
+    needs: version
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/container.yml
+    with:
+      commit: ${{ inputs.commit }}
+      version: ${{ needs.version.outputs.version }}
+      publish: true
+      latest: ${{ !inputs.prerelease }}
+
+  release:
+    needs: [version, images]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    env:
+      TAG: v${{ needs.version.outputs.version }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
       # The notes come from .github/release-notes/<tag>.md on main, or from the released commit.
       - name: Pack the tarball and checksum
-        env:
-          TAG: ${{ steps.version.outputs.tag }}
         run: |
           mkdir release-assets
           npm pack --pack-destination release-assets
@@ -56,24 +86,9 @@ jobs:
       - name: Create the release
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.version.outputs.tag }}
           COMMIT: ${{ inputs.commit }}
           PRERELEASE: ${{ inputs.prerelease }}
         run: |
           flags=()
           if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
           gh release create "$TAG" release-assets/* --target "$COMMIT" --title "$TAG" --notes-file notes.md "${flags[@]}"
-
-  # Builds the images from the released commit, gates the sample projects in them and pushes them
-  # tagged with the version. A stable release also moves the latest tags.
-  images:
-    needs: release
-    permissions:
-      contents: read
-      packages: write
-    uses: ./.github/workflows/container.yml
-    with:
-      commit: ${{ inputs.commit }}
-      version: ${{ needs.release.outputs.version }}
-      publish: true
-      latest: ${{ !inputs.prerelease }}
