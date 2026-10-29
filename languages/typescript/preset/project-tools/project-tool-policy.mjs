@@ -4,7 +4,7 @@ import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-import { withoutHostCiOutputs } from '../../../../core/tooling/host-environment.mjs';
+import { HOST_CI_OUTPUT_VARIABLES } from '../../../../core/tooling/host-environment.mjs';
 import { isPlainObject, picked } from '../../../../shared/config.mjs';
 import { realFileInside } from '../../../../shared/conventions/read-inside.mjs';
 import {
@@ -28,6 +28,7 @@ import {
 
 const LOADER = pathToFileURL(path.join(import.meta.dirname, 'config-loader.mjs')).href;
 const LOADER_SOURCE = [
+  `for (const name of ${JSON.stringify(HOST_CI_OUTPUT_VARIABLES)}) delete process.env[name];`,
   `const { writeToolConfig } = await import(${JSON.stringify(LOADER)});`,
   'const [tool, file, resultFile] = process.argv.slice(1);',
   'await writeToolConfig({ tool, file, resultFile });',
@@ -80,7 +81,6 @@ function spawnedConfig(tool, projectRoot, { full, timeout }) {
       ['--input-type=module', '-e', LOADER_SOURCE, tool, full, resultFile],
       {
         cwd: projectRoot,
-        env: withoutHostCiOutputs(process.env),
         encoding: 'utf8',
         stdio: ['ignore', 'ignore', 'pipe'],
         timeout,
