@@ -1,3 +1,4 @@
+import { isUtf8 } from 'node:buffer';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { readBaseFiles } from '../changes.mjs';
 import { containedPath } from './contained-path.mjs';
@@ -12,12 +13,22 @@ function cleanAtBase(existing, baseSources, format) {
   return new Set(namesOf(existing).filter((name) => formatted.get(name) === bases.get(name)));
 }
 
-export function rewriteFormatted({ projectRoot, repositoryRoot, mergeBaseSha, files, format }) {
-  const live = new Map(
-    namesOf(files).map((name) => [name, readFileSync(containedPath(projectRoot, name), 'utf8')]),
+function liveSources(projectRoot, files) {
+  const bytes = new Map(
+    namesOf(files).map((name) => [name, readFileSync(containedPath(projectRoot, name))]),
   );
-  const first = format(live);
-  const differing = files.filter(({ path: name }) => {
+  const decodable = files.filter(({ path: name }) => isUtf8(bytes.get(name)));
+  return {
+    decodable,
+    undecodable: namesOf(files.filter((file) => !decodable.includes(file))),
+    live: new Map(namesOf(decodable).map((name) => [name, bytes.get(name).toString('utf8')])),
+  };
+}
+
+export function rewriteFormatted({ projectRoot, repositoryRoot, mergeBaseSha, files, format }) {
+  const { decodable, undecodable, live } = liveSources(projectRoot, files);
+  const first = decodable.length === 0 ? { formatted: new Map() } : format(live);
+  const differing = decodable.filter(({ path: name }) => {
     const formatted = first.formatted.get(name);
     return formatted !== undefined && formatted !== live.get(name);
   });
@@ -34,5 +45,6 @@ export function rewriteFormatted({ projectRoot, repositoryRoot, mergeBaseSha, fi
     rewritten: namesOf(writable),
     keptAsIs: namesOf(differing.filter((file) => !writable.includes(file))),
     unformattable: first.unformattable ?? [],
+    undecodable,
   };
 }

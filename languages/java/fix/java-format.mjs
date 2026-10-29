@@ -1,42 +1,27 @@
+import { containedPath } from '../../../core/fix/common/contained-path.mjs';
+import { failureText } from '../../../core/fix/common/fix-command.mjs';
+import { JAVA_FORMATTERS } from '../adapters/style/jvm-formatters.mjs';
 import { JAVAC_EXPORTS } from '../maven/maven-lint.mjs';
 import {
   readWorkspaceFile,
   runFormatterJar,
   withWorkspace,
-  workspaceFile,
   writeWorkspaceFile,
 } from './formatter-run.mjs';
 
-const GOOGLE_MAIN = 'com.google.googlejavaformat.java.Main';
-const FORMATTERS = {
-  google: { label: 'google-java-format', mainClass: GOOGLE_MAIN, flags: [] },
-  aosp: { label: 'google-java-format --aosp', mainClass: GOOGLE_MAIN, flags: ['--aosp'] },
-  palantir: {
-    label: 'palantir-java-format',
-    mainClass: 'com.palantir.javaformat.java.Main',
-    flags: ['--palantir'],
-  },
-};
-
-function coordinatesOf(style, pinned) {
-  return style === 'palantir'
-    ? `com.palantir.javaformat:palantir-java-format:${pinned.palantirJavaFormat}`
-    : `com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}`;
-}
-
 export function javaFormatterPlan(style, pinned) {
-  const formatter = FORMATTERS[style];
+  const formatter = JAVA_FORMATTERS[style];
   return formatter === undefined
     ? undefined
     : {
         label: formatter.label,
         operation: 'java-format-fix',
-        tools: { 'java-format': { coordinates: coordinatesOf(style, pinned), transitive: true } },
+        tools: { 'java-format': { coordinates: formatter.coordinates(pinned), transitive: true } },
       };
 }
 
 export function javaFormat({ style, classpath, executeFixCommand }) {
-  const { label, mainClass, flags } = FORMATTERS[style];
+  const { label, mainClass, flags } = JAVA_FORMATTERS[style];
   return function format(sources) {
     return withWorkspace((directory) => {
       const entries = [...sources.keys()].map((name, index) => ({
@@ -55,17 +40,17 @@ export function javaFormat({ style, classpath, executeFixCommand }) {
         args: [
           ...flags,
           '--replace',
-          ...entries.map(({ relative }) => workspaceFile(directory, relative)),
+          ...entries.map(({ relative }) => containedPath(directory, relative)),
         ],
         cwd: directory,
         acceptedStatuses: [0, 1],
         executeFixCommand,
       });
       const unformattable = entries
-        .filter(({ relative }) => result.stderr.includes(`${workspaceFile(directory, relative)}:`))
+        .filter(({ relative }) => result.stderr.includes(`${containedPath(directory, relative)}:`))
         .map(({ name }) => name);
       if (result.status !== 0 && unformattable.length === 0) {
-        throw new Error(`${label} failed: ${result.stderr.trim() || `exit ${result.status}`}`);
+        throw new Error(`${label} failed: ${failureText(result)}`);
       }
       return {
         formatted: new Map(

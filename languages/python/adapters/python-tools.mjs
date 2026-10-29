@@ -31,7 +31,7 @@ export const RUFF_REPORT = 'ruff.sarif';
 export const FORMAT_REPORT = 'format.txt';
 export const MANIFEST_REPORT = 'manifest.json';
 const COVERAGE_DATA = '.coverage';
-const FORMAT_FAILURE_STATUS = { black: 123, ruff: 2 };
+export const FORMAT_FAILURE_STATUS = { black: 123, ruff: 2 };
 const PARSE_ERROR = {
   black: /^error: cannot (?:format .+: cannot )?parse\b/i,
   ruff: /^error: Failed to parse /,

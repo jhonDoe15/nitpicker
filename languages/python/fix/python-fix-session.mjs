@@ -1,8 +1,7 @@
-import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { runFixCommand } from '../../../core/fix/common/fix-command.mjs';
+import { fixSpawn, runFixCommand } from '../../../core/fix/common/fix-command.mjs';
 import { toolPrecedenceOf } from '../../../core/fix/common/tool-precedence.mjs';
 import {
   trackTemporaryPath,
@@ -10,19 +9,6 @@ import {
 } from '../../../core/tooling/temporary-files.mjs';
 import { failure } from '../adapters/execution/python-process.mjs';
 import { createToolContext } from '../adapters/python-tools.mjs';
-
-function probeSpawn(executeFixCommand) {
-  return (command, args, options) =>
-    executeFixCommand?.({
-      operation: 'python-probe',
-      command,
-      args,
-      cwd: options.cwd,
-      acceptedStatuses: [0],
-      environment: options.env,
-      input: undefined,
-    }) ?? spawnSync(command, args, options);
-}
 
 export function withPythonFixContext({ projectRoot, config, headPolicy, executeFixCommand }, use) {
   const reportRoot = trackTemporaryPath(mkdtempSync(path.join(tmpdir(), 'nitpicker-python-fix-')));
@@ -37,7 +23,7 @@ export function withPythonFixContext({ projectRoot, config, headPolicy, executeF
         conventions: headPolicy.conventions ?? {},
         policyRoot: projectRoot,
         toolPrecedence: toolPrecedenceOf(headPolicy.tools),
-        spawn: probeSpawn(executeFixCommand),
+        spawn: fixSpawn({ operation: 'python-probe', executeFixCommand }),
       }),
     );
   } finally {

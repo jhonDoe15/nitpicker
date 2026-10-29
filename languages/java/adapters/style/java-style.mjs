@@ -4,28 +4,18 @@ import {
   JAVA_INDENTATION_ID,
   JAVA_LINE_LENGTH_ID,
 } from '../../conventions/java-conventions.mjs';
+import { JAVA_FORMATTERS, javaFormatterCommand } from './jvm-formatters.mjs';
 
 const DEFAULT_JAVA_STYLE = 'google';
 const DEFAULT_INDENTATION = '2';
 const STYLE_BY_INDENTATION = { 2: 'google', 4: 'aosp' };
 
-export const JAVA_FORMATTER_TOOLS = {
-  google: {
-    tool: 'google-java-format',
-    label: 'google-java-format',
-    command: 'google-java-format --replace <Java files>',
-  },
-  aosp: {
-    tool: 'google-java-format',
-    label: 'google-java-format --aosp',
-    command: 'google-java-format --aosp --replace <Java files>',
-  },
-  palantir: {
-    tool: 'palantir-java-format',
-    label: 'palantir-java-format',
-    command: 'palantir-java-format --palantir --replace <Java files>',
-  },
-};
+export const JAVA_FORMATTER_TOOLS = Object.fromEntries(
+  Object.entries(JAVA_FORMATTERS).map(([style, { tool, label }]) => [
+    style,
+    { tool, label, command: javaFormatterCommand(style) },
+  ]),
+);
 
 export const NOT_YOUR_JAVA_FORMATTER =
   'Not your formatter: pin "conventions.java.formatter" to "google", "palantir" or "none" in nitpicker.config.json.';

@@ -32,6 +32,8 @@ const MAVEN_BUILD = `<project xmlns="http://maven.apache.org/POM/4.0.0">
   </build>
 </project>
 `;
+const PLAIN_GRADLE_BUILD = "plugins { id 'java' }\nrepositories { mavenCentral() }\n";
+const FORMAT_TOOLS = new Set(['google-java-format', 'palantir-java-format']);
 const FORMATTED = 'package demo;\n\npublic class Changed {\n  int x = 1;\n}\n';
 
 function messy(name, body = 'a+b') {
@@ -106,6 +108,52 @@ describe.skipIf(!enabled)('nitpicker --fix for Java', () => {
     const result = fix(repository({ 'pom.xml': MAVEN_BUILD }));
 
     expect(outcomeOf(result), result.stdout + result.stderr).toEqual(REWRITTEN);
+  });
+  it('formats with google-java-format when nothing names a formatter, so the gate finds no format finding', () => {
+    const debt =
+      'package demo;\n\npublic class Legacy {\n  public int  add( int a,int b ){ return a+b; }\n}\n';
+    const result = fix({
+      committed: {
+        'build.gradle': PLAIN_GRADLE_BUILD,
+        'settings.gradle': "rootProject.name = 'demo'\n",
+        'nitpicker.config.json': '{ "preset": "java" }\n',
+        [`${SOURCES}/Changed.java`]: FORMATTED,
+        [`${SOURCES}/Legacy.java`]: debt,
+      },
+      changed: {
+        [`${SOURCES}/Changed.java`]: messy('Changed'),
+        [`${SOURCES}/Legacy.java`]: debt.replace('a+b', 'a+b+1'),
+      },
+      realAnalyzers: true,
+    });
+
+    expect(
+      {
+        report: fixReport(result.stdout),
+        changed: result.read(`${SOURCES}/Changed.java`),
+        legacy: result.read(`${SOURCES}/Legacy.java`),
+      },
+      result.stdout + result.stderr,
+    ).toEqual({
+      report: `Fixed files:
+${SOURCES}/Changed.java
+Fix notes:
+  google-java-format rewrote ${SOURCES}/Changed.java
+  google-java-format left ${SOURCES}/Legacy.java as is: already unformatted before your change
+`,
+      changed: formatted('Changed'),
+      legacy: debt.replace('a+b', 'a+b+1'),
+    });
+    expect(
+      {
+        toolErrors: result.toolErrors(),
+        formatFindings: result
+          .newFindings()
+          .filter(({ tool }) => FORMAT_TOOLS.has(tool))
+          .map(({ tool, path: file }) => `${tool} ${file}`),
+      },
+      result.stdout + result.stderr,
+    ).toEqual({ toolErrors: [], formatFindings: [] });
   });
   it('keeps every file when the project turns the Java formatter off', () => {
     const files = repository({ 'pom.xml': MAVEN_BUILD });

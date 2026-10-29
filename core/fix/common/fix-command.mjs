@@ -1,15 +1,11 @@
-const JVM_NOISE = /^(?:Picked up|NOTE: Picked up)/u;
+import { withoutJvmNoise } from '../../../shared/messages/jvm-noise.mjs';
 
 export function failureText(result) {
-  const detail = (result.stderr ?? '')
-    .split(/\r?\n/u)
-    .filter((line) => !JVM_NOISE.test(line))
-    .join('\n')
-    .trim();
+  const detail = withoutJvmNoise(result.stderr ?? '').trim();
   return result.error?.message ?? (detail || `exit ${result.status}`);
 }
 
-export function runFixCommand({
+function invocationOf({
   operation,
   command,
   args,
@@ -18,10 +14,9 @@ export function runFixCommand({
   environment = {},
   input,
   shell = false,
-  executeFixCommand,
-  describe = failureText,
+  timeout,
 }) {
-  const invocation = {
+  return {
     operation,
     command,
     args,
@@ -30,12 +25,33 @@ export function runFixCommand({
     environment,
     input,
     ...(shell ? { shell } : {}),
+    ...(timeout === undefined ? {} : { timeout }),
   };
-  const result = executeFixCommand(invocation);
-  if (result.error || !acceptedStatuses.includes(result.status)) {
-    throw new Error(`${operation} failed: ${describe(result)}`);
+}
+
+export function runFixCommand({ executeFixCommand, describe = failureText, ...command }) {
+  const result = executeFixCommand(invocationOf(command));
+  if (result.error || !command.acceptedStatuses.includes(result.status)) {
+    throw new Error(`${command.operation} failed: ${describe(result)}`);
   }
   return result;
+}
+
+export function fixSpawn({ operation, acceptedStatuses = [0], executeFixCommand }) {
+  return (command, args, options = {}) =>
+    executeFixCommand(
+      invocationOf({
+        operation,
+        command,
+        args,
+        cwd: options.cwd,
+        acceptedStatuses,
+        environment: options.env,
+        input: options.input,
+        shell: options.shell,
+        timeout: options.timeout,
+      }),
+    );
 }
 
 export function fixerError(tool, error) {

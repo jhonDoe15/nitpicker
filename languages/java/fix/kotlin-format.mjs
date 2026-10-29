@@ -1,8 +1,10 @@
+import { containedPath } from '../../../core/fix/common/contained-path.mjs';
+import { failureText } from '../../../core/fix/common/fix-command.mjs';
+import { KOTLIN_FORMATTERS } from '../adapters/style/jvm-formatters.mjs';
 import {
   readWorkspaceFile,
   runFormatterJar,
   withWorkspace,
-  workspaceFile,
   writeWorkspaceFile,
 } from './formatter-run.mjs';
 
@@ -10,53 +12,34 @@ const ROOT_EDITORCONFIG = { path: '.editorconfig', text: 'root = true\n' };
 const DEFAULTS_FILE = 'ktlint-defaults.editorconfig';
 const MIRROR = 'workspace';
 
-function ktlintInvocation({ style, directory }) {
+function ktlintInvocation({ style, directory, names }) {
   const defaults = style?.ktlintDefaults;
   if (defaults !== undefined) {
     writeWorkspaceFile(directory, DEFAULTS_FILE, defaults);
   }
-  return {
-    mainClass: 'com.pinterest.ktlint.Main',
-    options: [
-      '--format',
-      '--relative',
-      ...(defaults === undefined
-        ? []
-        : [`--editorconfig=${workspaceFile(directory, DEFAULTS_FILE)}`]),
-    ],
-  };
+  return [
+    '--format',
+    '--relative',
+    ...(defaults === undefined
+      ? []
+      : [`--editorconfig=${containedPath(directory, DEFAULTS_FILE)}`]),
+    '--',
+    ...names,
+  ];
 }
 
-function ktfmtInvocation({ tools }) {
-  return {
-    mainClass: 'com.facebook.ktfmt.cli.Main',
-    options: [
-      `--${tools.ktfmtStyle}-style`,
-      ...(tools.ktfmtMaxWidth === undefined ? [] : [`--max-width=${tools.ktfmtMaxWidth}`]),
-      ...(tools.ktfmtEditorconfig ? ['--enable-editorconfig'] : []),
-    ],
-  };
+function ktfmtInvocation({ tools, names }) {
+  return [
+    `--${tools.ktfmtStyle}-style`,
+    ...(tools.ktfmtMaxWidth === undefined ? [] : [`--max-width=${tools.ktfmtMaxWidth}`]),
+    ...(tools.ktfmtEditorconfig ? ['--enable-editorconfig'] : []),
+    ...names.map((name) => `./${name}`),
+  ];
 }
 
 const FORMATTERS = {
-  ktlint: {
-    label: 'ktlint',
-    operation: 'ktlint-fix',
-    invocation: ktlintInvocation,
-    tool: (pinned) => ({
-      coordinates: `com.pinterest.ktlint:ktlint-cli:${pinned.ktlint}:all`,
-      transitive: false,
-    }),
-  },
-  ktfmt: {
-    label: 'ktfmt',
-    operation: 'ktfmt-fix',
-    invocation: ktfmtInvocation,
-    tool: (pinned) => ({
-      coordinates: `com.facebook:ktfmt:${pinned.ktfmt}:with-dependencies`,
-      transitive: false,
-    }),
-  },
+  ktlint: { operation: 'ktlint-fix', invocation: ktlintInvocation, reported: (name) => name },
+  ktfmt: { operation: 'ktfmt-fix', invocation: ktfmtInvocation, reported: (name) => `./${name}` },
 };
 
 export function kotlinFormatterPlan(formatter, pinned) {
@@ -64,22 +47,39 @@ export function kotlinFormatterPlan(formatter, pinned) {
   return entry === undefined
     ? undefined
     : {
-        label: entry.label,
+        label: KOTLIN_FORMATTERS[formatter].label,
         operation: entry.operation,
-        tools: { [formatter]: entry.tool(pinned) },
+        tools: {
+          [formatter]: {
+            coordinates: KOTLIN_FORMATTERS[formatter].coordinates(pinned),
+            transitive: false,
+          },
+        },
       };
 }
 
 function mirrorRoot(directory, style) {
-  const root = workspaceFile(directory, MIRROR);
+  const root = containedPath(directory, MIRROR);
   for (const { path: relative, text } of style?.editorconfigs ?? [ROOT_EDITORCONFIG]) {
     writeWorkspaceFile(root, relative, text);
   }
-  return style?.offset ? workspaceFile(root, style.offset) : root;
+  return style?.offset ? containedPath(root, style.offset) : root;
+}
+
+function parseFailures(result, names, reported) {
+  const lines = `${result.stdout ?? ''}\n${result.stderr ?? ''}`.split(/\r?\n/u);
+  return names.filter((name) =>
+    lines.some(
+      (line) =>
+        line.startsWith(`${reported(name)}:`) &&
+        /^:\d+:\d+: (?:error:|Not a valid Kotlin file)/u.test(line.slice(reported(name).length)),
+    ),
+  );
 }
 
 export function kotlinFormat({ formatter, tools, style, classpath, executeFixCommand }) {
-  const { label, operation, invocation } = FORMATTERS[formatter];
+  const { operation, invocation, reported } = FORMATTERS[formatter];
+  const { label, mainClass } = KOTLIN_FORMATTERS[formatter];
   return function format(sources) {
     return withWorkspace((directory) => {
       const names = [...sources.keys()];
@@ -87,26 +87,19 @@ export function kotlinFormat({ formatter, tools, style, classpath, executeFixCom
       for (const name of names) {
         writeWorkspaceFile(root, name, sources.get(name));
       }
-      const { mainClass, options } = invocation({
-        tools,
-        style,
-        directory,
-      });
       const result = runFormatterJar({
         operation,
         tool: label,
         classpath,
         mainClass,
-        args: [...options, ...names],
+        args: invocation({ tools, style, directory, names }),
         cwd: root,
         acceptedStatuses: [0, 1],
         executeFixCommand,
       });
-      const unformattable = names.filter((name) =>
-        result.stderr.includes(`Error formatting ${name}`),
-      );
+      const unformattable = parseFailures(result, names, reported);
       if (formatter === 'ktfmt' && result.status !== 0 && unformattable.length === 0) {
-        throw new Error(`${label} failed: ${result.stderr.trim() || `exit ${result.status}`}`);
+        throw new Error(`${label} failed: ${failureText(result)}`);
       }
       return {
         formatted: new Map(names.map((name) => [name, readWorkspaceFile(root, name)])),

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { fixReport, useFixProject } from '../../../../core/fix/test-support/fix-project.mjs';
+import { installPackages } from '../../adapters/e2e/test-support/python-e2e-support.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const { fix } = useFixProject();
@@ -11,11 +12,16 @@ const FORMATTED = 'value = 1\n';
 const UNUSED_IMPORT = 'import os\nvalue = 1\n';
 const EDITED_LEGACY = 'value  =  2\n';
 
+const GATE_CONFIG = '{ "preset": "python", "disable": ["mutation"] }\n';
+const GATE_PACKAGES = ['coverage', 'pytest', 'ruff', 'black'];
+
 function repository(pyproject) {
   return {
     committed: {
-      'nitpicker.config.json': '{ "preset": "python" }\n',
+      '.gitignore': 'node_modules/\n.venv/\n',
+      'nitpicker.config.json': GATE_CONFIG,
       'pyproject.toml': pyproject,
+      'test_demo.py': 'def test_demo():\n    assert True\n',
       'changed.py': FORMATTED,
       'untouched.py': MISFORMATTED,
       'dirty_base.py': MISFORMATTED,
@@ -25,7 +31,18 @@ function repository(pyproject) {
       'added.py': MISFORMATTED,
       'dirty_base.py': EDITED_LEGACY,
     },
+    prepare: (root) => {
+      installPackages(root, GATE_PACKAGES);
+    },
+    realAnalyzers: true,
   };
+}
+
+function formatFindings(result) {
+  return result
+    .newFindings()
+    .filter(({ rule }) => rule === 'format')
+    .map(({ tool, path: file }) => `${tool} ${file}`);
 }
 
 function outcomeOf(result) {
@@ -60,11 +77,17 @@ describe.skipIf(!enabled)('nitpicker --fix for Python', () => {
   it.each([
     ['ruff format', PROJECT],
     ['black', BLACK],
-  ])('rewrites the changed files with %s and leaves the others alone', (label, pyproject) => {
-    const result = fix(repository(pyproject));
+  ])(
+    'rewrites the changed files with %s, leaves the others alone and passes the format check of the gate',
+    (label, pyproject) => {
+      const result = fix(repository(pyproject));
 
-    expect(outcomeOf(result), result.stdout + result.stderr).toEqual(expectedOutcome(label));
-  });
+      expect(
+        { ...outcomeOf(result), gateFormatFindings: formatFindings(result) },
+        result.stdout + result.stderr,
+      ).toEqual({ ...expectedOutcome(label), gateFormatFindings: [] });
+    },
+  );
   it('applies the safe ruff fixes for the rules nitpicker selects', () => {
     const result = fix({
       committed: {

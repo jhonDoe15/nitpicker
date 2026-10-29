@@ -21,8 +21,8 @@ function repository() {
   writeFiles(created.root, {
     'src/a.ts': 'export const a = 1;\n',
     'src/a.py': 'a  =  1\n',
-    'src/A.java': 'class  A {}\n',
-    'src/A.kt': 'class  A\n',
+    'src/main/java/A.java': 'class  A {}\n',
+    'src/main/kotlin/A.kt': 'class  A\n',
   });
   return created;
 }
@@ -71,13 +71,13 @@ describe('fixWorkingTree', () => {
     const { operations, result } = operationsFor({ preset: 'java' });
 
     expect(operations).toEqual(['fix-tools', 'java-format-fix']);
-    expect(result.fixedFiles).toEqual(['src/A.java']);
+    expect(result.fixedFiles).toEqual(['src/main/java/A.java']);
   });
   it('runs the Java and Kotlin fixers for the kotlin preset', () => {
     const { operations, result } = operationsFor({ preset: 'kotlin' });
 
     expect(operations).toEqual(['fix-tools', 'java-format-fix', 'ktlint-fix']);
-    expect(result.fixedFiles).toEqual(['src/A.java', 'src/A.kt']);
+    expect(result.fixedFiles).toEqual(['src/main/java/A.java', 'src/main/kotlin/A.kt']);
   });
 });
 
@@ -88,6 +88,17 @@ describe('spawnInvocation', () => {
     expect(spawnInvocation(base, {}).stdout.trim()).toBe(
       '63d8dbd40c23542e740659a7168a0ce3138ea748',
     );
+  });
+  it('passes the timeout and inherits the environment when nothing overrides it', () => {
+    const optionsOf = (command, args, options) => [options.timeout, options.env];
+
+    expect([
+      spawnInvocation({ ...base, timeout: 5 }, undefined, optionsOf),
+      spawnInvocation({ ...base, environment: { A: '1' } }, { B: '2' }, optionsOf),
+    ]).toEqual([
+      [5, undefined],
+      [undefined, { B: '2', A: '1' }],
+    ]);
   });
   it('asks for a shell only when the invocation says so', () => {
     const shellOf = (command, args, options) => options.shell;

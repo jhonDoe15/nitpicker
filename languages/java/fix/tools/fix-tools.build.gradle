@@ -1,0 +1,24 @@
+plugins { id 'java' }
+
+def specs = (findProperty('nitpicker.fix.tools') ?: '').toString()
+    .split(',')*.trim().findAll { it }
+
+repositories { mavenCentral() }
+
+def toolConfigurations = specs.collect { spec ->
+    def parts = spec.split('=', 2)
+    def transitive = !parts[1].endsWith('!')
+    def notation = transitive ? parts[1] : parts[1].substring(0, parts[1].length() - 1)
+    def dependency = dependencies.create(notation)
+    dependency.transitive = transitive
+    [parts[0], configurations.detachedConfiguration(dependency)]
+}
+
+tasks.register('nitpickerFixTools') {
+    doLast {
+        toolConfigurations.each { name, configuration ->
+            def files = configuration.resolve().collect { it.absolutePath }
+            println "nitpicker-fix-tool\t${name}\t${files.join(File.pathSeparator)}"
+        }
+    }
+}

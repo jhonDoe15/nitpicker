@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
@@ -58,6 +58,7 @@ describe('rewriteFormatted', () => {
       rewritten: ['clean.txt', 'new.txt'],
       keptAsIs: [],
       unformattable: [],
+      undecodable: [],
     });
     expect([read(repository, 'clean.txt'), read(repository, 'new.txt')]).toEqual(['a\nb\n', 'x\n']);
   });
@@ -66,7 +67,12 @@ describe('rewriteFormatted', () => {
 
     const outcome = run(repository, ['legacy.txt'], trimmer());
 
-    expect(outcome).toEqual({ rewritten: [], keptAsIs: ['legacy.txt'], unformattable: [] });
+    expect(outcome).toEqual({
+      rewritten: [],
+      keptAsIs: ['legacy.txt'],
+      unformattable: [],
+      undecodable: [],
+    });
     expect(read(repository, 'legacy.txt')).toBe('a  \nb  \n');
   });
   it('leaves a file alone that the formatter would not change, without reading the base', () => {
@@ -75,7 +81,7 @@ describe('rewriteFormatted', () => {
 
     const outcome = run(repository, ['ok.txt'], trimmer(calls));
 
-    expect(outcome).toEqual({ rewritten: [], keptAsIs: [], unformattable: [] });
+    expect(outcome).toEqual({ rewritten: [], keptAsIs: [], unformattable: [], undecodable: [] });
     expect(calls).toEqual([['ok.txt']]);
   });
   it('asks the formatter about the base only for files that would change and existed there', () => {
@@ -104,6 +110,7 @@ describe('rewriteFormatted', () => {
       rewritten: [],
       keptAsIs: [],
       unformattable: ['was-broken.txt', 'broken.txt'],
+      undecodable: [],
     });
     expect(read(repository, 'broken.txt')).toBe('BROKEN  \n');
   });
@@ -129,7 +136,33 @@ describe('rewriteFormatted', () => {
       rewritten: [],
       keptAsIs: [],
       unformattable: [],
+      undecodable: [],
     });
+  });
+  it('leaves a file that is not UTF-8 text alone without handing it to the formatter', () => {
+    const repository = topic({}, { 'ok.txt': 'a  \n' });
+    const latin1 = Buffer.from('caf\u00e9  \n', 'latin1');
+    writeFileSync(path.join(repository.root, 'latin1.txt'), latin1);
+    const calls = [];
+
+    const outcome = run(repository, ['latin1.txt', 'ok.txt'], trimmer(calls));
+
+    expect(outcome).toEqual({
+      rewritten: ['ok.txt'],
+      keptAsIs: [],
+      unformattable: [],
+      undecodable: ['latin1.txt'],
+    });
+    expect(calls).toEqual([['ok.txt']]);
+    expect(readFileSync(path.join(repository.root, 'latin1.txt'))).toEqual(latin1);
+  });
+  it('does not call the formatter when no file is UTF-8 text', () => {
+    const repository = topic({}, {});
+    writeFileSync(path.join(repository.root, 'latin1.txt'), Buffer.from([0xe9, 0x0a]));
+    const calls = [];
+
+    expect(run(repository, ['latin1.txt'], trimmer(calls)).undecodable).toEqual(['latin1.txt']);
+    expect(calls).toEqual([]);
   });
 });
 
@@ -140,11 +173,13 @@ describe('formatNotes', () => {
         rewritten: ['a.x', 'b.x'],
         keptAsIs: ['c.x'],
         unformattable: ['d.x'],
+        undecodable: ['e.x'],
       }),
     ).toEqual([
       'demo fmt rewrote a.x, b.x',
       'demo fmt left c.x as is: already unformatted before your change',
       'demo fmt could not parse d.x',
+      '--fix left e.x as is: not UTF-8 text',
     ]);
   });
   it('says nothing about an empty outcome', () => {

@@ -17,6 +17,7 @@ import { writeRulesets } from '../adapters/tool-config/pmd-wrappers.mjs';
 import { layerCheckstyle } from '../adapters/tool-config/checkstyle/checkstyle-layers.mjs';
 import { unformattedCheckstyle } from '../adapters/tool-config/checkstyle/unformatted-checks.mjs';
 import { NITPICKER_RULESET } from '../adapters/tool-config/layer-files.mjs';
+import { JAVA_FORMATTERS } from '../adapters/style/jvm-formatters.mjs';
 
 const LAYOUT_SUPPRESSIONS = 'checkstyle-suppressions.xml';
 const UNFORMATTED_SUPPRESSIONS = 'checkstyle-suppressions-unformatted.xml';
@@ -125,27 +126,10 @@ export function runSpotbugs({ module, reportDir, tools, spawn }) {
   });
 }
 
-const GOOGLE_FORMAT = {
-  tool: 'google-java-format',
-  classpath: 'format',
-  mainClass: 'com.google.googlejavaformat.java.Main',
-  flags: [],
-};
-const FORMATTERS = {
-  google: GOOGLE_FORMAT,
-  aosp: { ...GOOGLE_FORMAT, flags: ['--aosp'] },
-  palantir: {
-    tool: 'palantir-java-format',
-    classpath: 'format-palantir',
-    mainClass: 'com.palantir.javaformat.java.Main',
-    flags: ['--palantir'],
-  },
-};
-
 export function runFormat({ module, reportDir, tools, javaStyle = 'google', spawn }) {
   const report = path.join(reportDir, 'format.txt');
   const files = javaFiles([...module.sourceRoots, ...module.testSourceRoots]);
-  const formatter = FORMATTERS[javaStyle];
+  const formatter = JAVA_FORMATTERS[javaStyle];
   if (files.length === 0 || formatter === undefined) {
     writeFileSync(report, '');
     return;

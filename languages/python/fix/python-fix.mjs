@@ -5,6 +5,7 @@ import {
   readBytes,
   rewrittenBy,
   rewrittenPaths,
+  splitByEncoding,
 } from '../../../core/fix/common/fix-files.mjs';
 import { rewriteFormatted } from '../../../core/fix/common/format-rewrite.mjs';
 import { formatNotes, rewrittenNote } from '../../../core/fix/common/fix-notes.mjs';
@@ -17,7 +18,8 @@ import {
 } from './python-fix-commands.mjs';
 import { commandRunner, withPythonFixContext } from './python-fix-session.mjs';
 
-const PYTHON_FILE = /\.pyi?$/u;
+const PYTHON_FILE = /\.(?:pyi?|ipynb)$/u;
+const NOTEBOOK = /\.ipynb$/u;
 const FORMATTERS = {
   ruff: { operation: 'ruff-format-fix', label: 'ruff format' },
   black: { operation: 'black-fix', label: 'black' },
@@ -58,10 +60,14 @@ function stdinFormatter(context, run) {
 }
 
 function lintStep({ context, run, projectRoot, files }) {
-  const paths = files.map(({ path: name }) => name);
+  const decodable = splitByEncoding(projectRoot, files).files;
+  const paths = decodable.map(({ path: name }) => name);
+  if (paths.length === 0) {
+    return [];
+  }
   return rewrittenNote(
     'ruff check --fix',
-    rewrittenBy(projectRoot, files, () => {
+    rewrittenBy(projectRoot, decodable, () => {
       run({
         operation: 'ruff-fix',
         command: lintFixCommand(context, paths),
@@ -73,16 +79,21 @@ function lintStep({ context, run, projectRoot, files }) {
 
 function formatStep({ context, run, settings, files, mergeBaseSha }) {
   const { repositoryRoot, projectRoot } = settings;
-  return formatNotes(
-    FORMATTERS[context.project.formatter].label,
-    rewriteFormatted({
-      projectRoot,
-      repositoryRoot,
-      mergeBaseSha,
-      files,
-      format: stdinFormatter(context, run),
-    }),
-  );
+  const { formatter } = context.project;
+  const formatted =
+    formatter === 'black' ? files.filter(({ path: name }) => !NOTEBOOK.test(name)) : files;
+  return formatted.length === 0
+    ? []
+    : formatNotes(
+        FORMATTERS[formatter].label,
+        rewriteFormatted({
+          projectRoot,
+          repositoryRoot,
+          mergeBaseSha,
+          files: formatted,
+          format: stdinFormatter(context, run),
+        }),
+      );
 }
 
 function runFixers(settings, files, mergeBaseSha) {

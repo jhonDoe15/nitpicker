@@ -66,19 +66,19 @@ describe('withRuleMessage', () => {
       withRuleMessage(finding('checkstyle', source, message), options).message;
 
     expect(fix({ javaStyle: 'google' })).toBe(
-      `${message} Run google-java-format on the file; it fixes this layout. ${NOT_YOUR_FORMATTER}`,
+      `${message} Run nitpicker --fix or google-java-format on the file; either fixes this layout. ${NOT_YOUR_FORMATTER}`,
     );
     expect(fix({ javaStyle: 'aosp' })).toBe(
-      `${message} Run google-java-format --aosp on the file; it fixes this layout. ${NOT_YOUR_FORMATTER}`,
+      `${message} Run nitpicker --fix or google-java-format --aosp on the file; either fixes this layout. ${NOT_YOUR_FORMATTER}`,
     );
     expect(fix({ javaStyle: 'palantir' })).toBe(
-      `${message} Run palantir-java-format on the file; it fixes this layout. ${NOT_YOUR_FORMATTER}`,
+      `${message} Run nitpicker --fix or palantir-java-format on the file; either fixes this layout. ${NOT_YOUR_FORMATTER}`,
     );
     expect(fix({ javaStyle: 'none' })).toBe(
       `${message} Fix this layout by hand; no Java formatter runs.`,
     );
     expect(fix({})).toBe(
-      `${message} Run your Java formatter on the file; it fixes this layout. ${NOT_YOUR_FORMATTER}`,
+      `${message} Run nitpicker --fix or your Java formatter on the file; either fixes this layout. ${NOT_YOUR_FORMATTER}`,
     );
   });
 

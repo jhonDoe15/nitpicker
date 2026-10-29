@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixtureGit, useGitFixtures } from '../../../core/diff/git/test-support/git-repository.mjs';
@@ -26,8 +26,7 @@ const FORMAT_STYLE = [
   '--config',
   'indent-width = 4',
   '--force-exclude',
-  '--stdin-filename',
-  'a.py',
+  '--stdin-filename=a.py',
   '-',
 ];
 const ISOLATED_FORMAT = (lineLength) => [
@@ -165,8 +164,7 @@ describe('--fix for Python', () => {
         'py39',
         '--force-exclude',
         `(?:${BLACK_DEFAULT_EXCLUDES})`,
-        '--stdin-filename',
-        'a.py',
+        '--stdin-filename=a.py',
         '-',
       ],
     });
@@ -303,6 +301,59 @@ describe('--fix for Python', () => {
     fix(repository, tools, { headPolicy: { conventions: { 'python.lineLength': '100' } } });
 
     expect(tools.callsOf('ruff-format-fix')[0].args).toEqual(ISOLATED_FORMAT('100'));
+  });
+  it('fixes and formats notebooks with ruff, as the gate checks them', () => {
+    const repository = topic({}, { 'nb.ipynb': '{  "cells": []}\n' });
+    const tools = fakePythonTools();
+
+    const result = fix(repository, tools);
+
+    expect(result.notes).toEqual(['ruff format rewrote nb.ipynb']);
+    expect([
+      tools.callsOf('ruff-fix')[0].args.at(-1),
+      tools.callsOf('ruff-format-fix')[0].args.at(-2),
+    ]).toEqual(['nb.ipynb', '--stdin-filename=nb.ipynb']);
+  });
+  it('leaves notebooks to ruff check alone when the project formats with Black', () => {
+    const repository = topic(
+      { 'pyproject.toml': BLACK_PYPROJECT },
+      { 'nb.ipynb': '{  "cells": []}\n', 'a.py': 'a  =  1\n' },
+    );
+    const tools = fakePythonTools();
+
+    const result = fix(repository, tools);
+
+    expect(result.notes).toEqual(['black rewrote a.py']);
+    expect(tools.callsOf('black-fix').map(({ input }) => input)).toEqual(['a  =  1\n']);
+    expect(read(repository, 'nb.ipynb')).toBe('{  "cells": []}\n');
+  });
+  it('leaves a file that is not UTF-8 text to both tools and says so', () => {
+    const repository = topic({}, { 'a.py': 'a  =  1\n' });
+    const latin1 = Buffer.from('s  =  "caf\u00e9"\n', 'latin1');
+    writeFileSync(path.join(repository.root, 'latin.py'), latin1);
+    const tools = fakePythonTools();
+
+    const result = fix(repository, tools);
+
+    expect(result).toEqual({
+      fixedFiles: ['a.py'],
+      toolErrors: [],
+      notes: ['ruff format rewrote a.py', '--fix left latin.py as is: not UTF-8 text'],
+    });
+    expect(tools.callsOf('ruff-fix')[0].args.at(-1)).toBe('a.py');
+    expect(readFileSync(path.join(repository.root, 'latin.py'))).toEqual(latin1);
+  });
+  it('runs the tools through uv run in a uv project', () => {
+    const repository = topic({ 'uv.lock': '', '.venv/bin/.keep': '' }, { 'a.py': 'a  =  1\n' });
+    const tools = fakePythonTools();
+
+    fix(repository, tools);
+
+    const [lint] = tools.callsOf('ruff-fix');
+    expect([lint.command, lint.args.slice(0, 7)]).toEqual([
+      'uv',
+      ['run', '--project', repository.root, '--no-sync', '--', 'ruff', 'check'],
+    ]);
   });
   it('never touches the index or the base commit', () => {
     const repository = topic({ 'a.py': 'a = 1\n' }, { 'a.py': 'a  =  2\n' });

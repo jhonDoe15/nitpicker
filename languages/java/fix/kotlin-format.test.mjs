@@ -90,7 +90,7 @@ describe('kotlinFormat', () => {
         classpath: [],
         executeFixCommand: fakeJvmTools().executeFixCommand,
       })(SOURCES),
-    ).toThrow('../.editorconfig is outside the formatting workspace');
+    ).toThrow(/^\.\.\/\.editorconfig is outside \S+workspace$/u);
   });
   it('lets ktfmt read the editorconfig files when the project opted in', () => {
     const tools = fakeJvmTools();
@@ -103,7 +103,7 @@ describe('kotlinFormat', () => {
       executeFixCommand: tools.executeFixCommand,
     })(new Map([['A.kt', 'class  A\n']]));
 
-    expect(tools.launches[0].args).toEqual(['--google-style', '--enable-editorconfig', 'A.kt']);
+    expect(tools.launches[0].args).toEqual(['--google-style', '--enable-editorconfig', './A.kt']);
   });
   it('fails when ktfmt fails without naming a file it could not format', () => {
     const format = kotlinFormat({
@@ -115,5 +115,56 @@ describe('kotlinFormat', () => {
     });
 
     expect(() => format(new Map([['A.kt', 'class A\n']]))).toThrow('ktfmt failed: out of memory');
+  });
+  it('leaves the lines a JVM prints about its environment out of a failure', () => {
+    const format = kotlinFormat({
+      formatter: 'ktfmt',
+      tools: { ktfmtStyle: 'meta' },
+      style: undefined,
+      classpath: [],
+      executeFixCommand: () => ({
+        status: 1,
+        stdout: '',
+        stderr: 'Picked up JAVA_TOOL_OPTIONS: -Dx=1\nout of memory\n',
+      }),
+    });
+
+    expect(() => format(new Map([['A.kt', 'class A\n']]))).toThrow(
+      /^ktfmt failed: out of memory$/u,
+    );
+  });
+  it.each([
+    ['ktlint', '-A.kt:2:9: Not a valid Kotlin file (2:9 expecting a name) ()'],
+    ['ktfmt', './-A.kt:2:9: error: Expecting a name'],
+  ])('reads the files %s could not parse from its output', (formatter, line) => {
+    const format = kotlinFormat({
+      formatter,
+      tools: { ktfmtStyle: 'meta' },
+      style: undefined,
+      classpath: [],
+      executeFixCommand: () => ({ status: 1, stdout: `${line}\n`, stderr: '' }),
+    });
+
+    expect(
+      format(
+        new Map([
+          ['-A.kt', 'class A\n'],
+          ['B.kt', 'class B\n'],
+        ]),
+      ).unformattable,
+    ).toEqual(['-A.kt']);
+  });
+  it('passes the files to ktlint after the end of its options', () => {
+    const tools = fakeJvmTools();
+
+    kotlinFormat({
+      formatter: 'ktlint',
+      tools: {},
+      style: undefined,
+      classpath: [],
+      executeFixCommand: tools.executeFixCommand,
+    })(new Map([['-A.kt', 'class  A\n']]));
+
+    expect(tools.launches[0].args).toEqual(['--format', '--relative', '--', '-A.kt']);
   });
 });

@@ -69,9 +69,10 @@ export function kotlinSummary(tools, conventions) {
 
 export function kotlinFormatAdvice(tools) {
   return {
-    ktfmt: 'Format it with the "Format with ktfmt" command printed at the start of the run.',
+    ktfmt:
+      'Run nitpicker --fix, or format it with the "Format with ktfmt" command printed at the start of the run.',
     ktlint: (ruleSwitch) =>
-      `Lift this rule with ${ruleSwitch} = disabled in .editorconfig, which nitpicker reads only when ktlint lists "project" (see the start of the run).`,
+      `Run nitpicker --fix to apply the fixes ktlint has, or lift this rule with ${ruleSwitch} = disabled in .editorconfig, which nitpicker reads only when ktlint lists "project" (see the start of the run).`,
     detekt:
       tools.detektIgnored === undefined
         ? undefined

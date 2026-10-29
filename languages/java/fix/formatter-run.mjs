@@ -1,7 +1,9 @@
-import { spawnSync } from 'node:child_process';
+import { isUtf8 } from 'node:buffer';
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import { containedPath } from '../../../core/fix/common/contained-path.mjs';
+import { fixSpawn } from '../../../core/fix/common/fix-command.mjs';
 import {
   trackTemporaryPath,
   untrackTemporaryPath,
@@ -18,24 +20,19 @@ export function withWorkspace(use) {
   }
 }
 
-export function workspaceFile(root, relative) {
-  const base = path.resolve(root);
-  const full = path.resolve(base, relative);
-  if (!full.startsWith(base + path.sep)) {
-    throw new Error(`${relative} is outside the formatting workspace`);
-  }
-  return full;
-}
-
 export function writeWorkspaceFile(root, relative, content) {
-  const target = workspaceFile(root, relative);
+  const target = containedPath(root, relative);
   mkdirSync(path.dirname(target), { recursive: true });
   writeFileSync(target, content);
   return target;
 }
 
 export function readWorkspaceFile(root, relative) {
-  return readFileSync(workspaceFile(root, relative), 'utf8');
+  const bytes = readFileSync(containedPath(root, relative));
+  if (!isUtf8(bytes)) {
+    throw new Error(`The formatter wrote ${relative} in an encoding other than UTF-8`);
+  }
+  return bytes.toString('utf8');
 }
 
 export function runFormatterJar({
@@ -57,15 +54,6 @@ export function runFormatterJar({
     args,
     cwd,
     accept: (result) => acceptedStatuses.includes(result.status),
-    spawn: (command, spawnArguments, options) =>
-      executeFixCommand?.({
-        operation,
-        command,
-        args: spawnArguments,
-        cwd: options.cwd,
-        acceptedStatuses,
-        environment: {},
-        input: undefined,
-      }) ?? spawnSync(command, spawnArguments, options),
+    spawn: fixSpawn({ operation, acceptedStatuses, executeFixCommand }),
   });
 }

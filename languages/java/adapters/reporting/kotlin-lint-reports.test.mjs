@@ -256,7 +256,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
       },
     ]);
     expect(ktlint[0].message).toBe(
-      'Wildcard import. Lift this rule with ktlint_standard_no-wildcard-imports = disabled in .editorconfig, which nitpicker reads only when ktlint lists "project" (see the start of the run). Not your formatter: set kotlin.formatter',
+      'Wildcard import. Run nitpicker --fix to apply the fixes ktlint has, or lift this rule with ktlint_standard_no-wildcard-imports = disabled in .editorconfig, which nitpicker reads only when ktlint lists "project" (see the start of the run). Not your formatter: set kotlin.formatter',
     );
     expect(ktlint[0].message).not.toContain('--format');
   });
@@ -270,7 +270,7 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
         path: bad,
         identity: 'format',
         message:
-          'File is not formatted with ktfmt. Format it with the "Format with ktfmt" command printed at the start of the run. Not your formatter: set kotlin.formatter',
+          'File is not formatted with ktfmt. Run nitpicker --fix, or format it with the "Format with ktfmt" command printed at the start of the run. Not your formatter: set kotlin.formatter',
         classification: 'enforceable',
       },
     ]);
