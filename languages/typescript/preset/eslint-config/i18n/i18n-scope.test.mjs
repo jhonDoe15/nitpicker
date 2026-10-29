@@ -133,19 +133,16 @@ describe('the rule decisions', () => {
   });
 
   it('holds every enabled rule to the strict gate without listing it among the always-on rules', () => {
-    for (const id of i18nRuleIds) {
-      expect(isStrictRule(id), id).toBe(true);
-      expect(strictEslintRuleIds, id).not.toContain(id);
-    }
-    for (const name of i18nOffRules) {
-      expect(isStrictRule(`formatjs/${name}`), name).toBe(false);
-    }
+    expect(i18nRuleIds.filter((id) => !isStrictRule(id))).toEqual([]);
+    expect(i18nRuleIds.filter((id) => strictEslintRuleIds.includes(id))).toEqual([]);
+    expect(i18nOffRules.filter((name) => isStrictRule(`formatjs/${name}`))).toEqual([]);
   });
 
   it('runs every rule as an error', () => {
-    for (const [name, { setting }] of Object.entries(i18nRules)) {
-      expect([setting].flat()[0], name).toBe('error');
-    }
+    const rules = Object.entries(i18nRules);
+    expect(rules.map(([name, { setting }]) => [name, [setting].flat()[0]])).toEqual(
+      rules.map(([name]) => [name, 'error']),
+    );
   });
 });
 
@@ -169,23 +166,28 @@ describe('the i18n scope config', () => {
   it('applies to production source only, not to tests', async () => {
     const entries = await i18nScopeConfigFor(layout);
 
-    for (const file of ['src/ui/panel.tsx', 'src/ui/messages.ts']) {
-      const config = await calculatedConfig(entries, file);
-      expect(config.rules['formatjs/enforce-description'], file).toBeDefined();
-    }
-    for (const file of ['src/ui/panel.test.tsx', 'test/panel.tsx', 'src/ui/__tests__/panel.tsx']) {
-      const config = await calculatedConfig(entries, file);
-      expect(config?.rules?.['formatjs/enforce-description'], file).toBeUndefined();
-    }
+    const production = ['src/ui/panel.tsx', 'src/ui/messages.ts'];
+    const tests = ['src/ui/panel.test.tsx', 'test/panel.tsx', 'src/ui/__tests__/panel.tsx'];
+    const productionConfigs = await Promise.all(
+      production.map((file) => calculatedConfig(entries, file)),
+    );
+    const testConfigs = await Promise.all(tests.map((file) => calculatedConfig(entries, file)));
+    expect(
+      productionConfigs.map((config) => config.rules['formatjs/enforce-description'] !== undefined),
+    ).toEqual(production.map(() => true));
+    expect(testConfigs.map((config) => config?.rules?.['formatjs/enforce-description'])).toEqual(
+      tests.map(() => undefined),
+    );
   });
 
   it('skips story files, which hold literal arguments on purpose', async () => {
     const entries = await i18nScopeConfigFor(layout);
 
-    for (const file of ['src/ui/panel.stories.tsx', 'src/ui/panel.story.jsx']) {
-      const config = await calculatedConfig(entries, file);
-      expect(config?.rules?.['formatjs/enforce-description'], file).toBeUndefined();
-    }
+    const files = ['src/ui/panel.stories.tsx', 'src/ui/panel.story.jsx'];
+    const configs = await Promise.all(files.map((file) => calculatedConfig(entries, file)));
+    expect(configs.map((config) => config?.rules?.['formatjs/enforce-description'])).toEqual(
+      files.map(() => undefined),
+    );
   });
 
   it('hands the wrapper names to the plugin as settings, and nothing when unset', async () => {
@@ -208,13 +210,9 @@ describe('the i18n scope config', () => {
       .map((name) => `languages/typescript/preset/eslint-config/i18n/${name}`);
     const repositoryRoot = path.resolve(import.meta.dirname, '../../../../..');
 
-    for (const file of [
-      ...sources,
-      'languages/typescript/preset/eslint-config/scope-support.mjs',
-    ]) {
-      expect(POLICY_FILES, file).toContain(file);
-      expect(existsSync(path.join(repositoryRoot, file)), file).toBe(true);
-    }
+    const files = [...sources, 'languages/typescript/preset/eslint-config/scope-support.mjs'];
+    expect(files.filter((file) => !POLICY_FILES.includes(file))).toEqual([]);
+    expect(files.filter((file) => !existsSync(path.join(repositoryRoot, file)))).toEqual([]);
   });
 
   it('follows a custom layout', async () => {
@@ -259,9 +257,7 @@ describe('the preset config', () => {
   it('turns the i18n scope on when package.json lists react-intl', async () => {
     const config = await presetConfigFor({ manifest: intlManifest });
 
-    for (const id of i18nRuleIds) {
-      expect(ruleIdsOf(config).has(id), id).toBe(true);
-    }
+    expect(i18nRuleIds.filter((id) => !ruleIdsOf(config).has(id))).toEqual([]);
   });
 
   it('follows the config override over package.json in both directions', async () => {
@@ -321,14 +317,15 @@ describe('the preset config', () => {
     expect(ruleIdsOf(config).has('formatjs/enforce-description')).toBe(false);
   });
 
-  it('still rejects an exception that names an unknown or switched-off i18n rule', async () => {
-    for (const rule of ['formatjs/enforce-descripton', 'formatjs/no-emoji']) {
+  it.each(['formatjs/enforce-descripton', 'formatjs/no-emoji'])(
+    'still rejects an exception that names the unknown or switched-off i18n rule %s',
+    async (rule) => {
       await expect(
         presetConfigFor({
           manifest: intlManifest,
           policy: { exceptions: [{ rule, paths: ['src/**'], reason: 'Typo' }] },
         }),
       ).rejects.toThrow(`unknown rules: ${rule}`);
-    }
-  });
+    },
+  );
 });

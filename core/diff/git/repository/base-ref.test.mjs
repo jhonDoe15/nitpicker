@@ -93,16 +93,25 @@ describe('resolveBase', () => {
     ).toThrow(/compared with itself/);
   });
 
-  it('rejects a configured base that follows HEAD, and accepts a remote branch at HEAD', () => {
+  it.each(['HEAD~0', 'HEAD^0', '@{0}', 'main', 'refs/heads/main'])(
+    'rejects the configured base %s that follows HEAD',
+    (configuredBase) => {
+      const repositoryRoot = createRepository();
+      setRemoteBranch(repositoryRoot, 'origin', 'main');
+
+      expect(() => resolveBase({ repositoryRoot, configuredBase, environment: {} })).toThrow(
+        `"base" is ${configuredBase}, the commit you are on`,
+      );
+    },
+  );
+
+  it('accepts a remote branch at HEAD as the configured base', () => {
     const repositoryRoot = createRepository();
     setRemoteBranch(repositoryRoot, 'origin', 'main');
-    const resolve = (configuredBase) => () =>
-      resolveBase({ repositoryRoot, configuredBase, environment: {} });
 
-    for (const configuredBase of ['HEAD~0', 'HEAD^0', '@{0}', 'main', 'refs/heads/main']) {
-      expect(resolve(configuredBase)).toThrow(`"base" is ${configuredBase}, the commit you are on`);
-    }
-    expect(resolve('origin/main')()).toEqual({ baseRef: 'origin/main', source: 'config' });
+    expect(resolveBase({ repositoryRoot, configuredBase: 'origin/main', environment: {} })).toEqual(
+      { baseRef: 'origin/main', source: 'config' },
+    );
   });
 
   it('accepts a remote HEAD at the checked commit and rejects a reflog entry of HEAD', () => {

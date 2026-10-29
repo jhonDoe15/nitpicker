@@ -442,12 +442,15 @@ describe('coupling metrics on a neutral dependency graph', () => {
 
   it('lists a package pair whose source is less stable than its target once', () => {
     const result = computeCoupling({ modules, edges, packageOf });
-    for (const entry of result.stabilityDirection) {
-      const source = result.packages.find((item) => item.name === entry.source);
-      const target = result.packages.find((item) => item.name === entry.target);
-      expect(source.instability).toBeLessThan(target.instability);
-      expect(entry.delta).toBeGreaterThan(0);
-    }
+    const pairs = result.stabilityDirection.map((entry) => ({
+      source: result.packages.find((item) => item.name === entry.source),
+      target: result.packages.find((item) => item.name === entry.target),
+      delta: entry.delta,
+    }));
+    expect(pairs.map(({ source, target }) => source.instability < target.instability)).toEqual(
+      pairs.map(() => true),
+    );
+    expect(pairs.map(({ delta }) => delta > 0)).toEqual(pairs.map(() => true));
     const keys = result.stabilityDirection.map((entry) => `${entry.source}>${entry.target}`);
     expect(new Set(keys).size).toBe(keys.length);
   });

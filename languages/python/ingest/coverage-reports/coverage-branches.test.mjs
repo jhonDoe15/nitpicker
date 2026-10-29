@@ -174,9 +174,9 @@ describe('ingestCoverageBranches', () => {
       before.map((finding) => finding.identity),
     );
     expect(after[0].location.line).toBe(before[0].location.line + 2);
-    for (const finding of before) {
-      expect(finding.identity).toMatch(/^branch-source:[0-9a-f]{16}(#\d+)?$/);
-    }
+    expect(
+      before.filter((finding) => !/^branch-source:[0-9a-f]{16}(#\d+)?$/.test(finding.identity)),
+    ).toEqual([]);
   });
 
   it('numbers identical lines per enclosing scope, nested scopes included', () => {

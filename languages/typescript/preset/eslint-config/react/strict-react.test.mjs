@@ -38,17 +38,17 @@ describe('class components in the strict syntax rules', () => {
   it.each(['Component', 'PureComponent', 'React.Component', 'React.PureComponent'])(
     'leaves a class extending %s to the React rule in a React project',
     (superclass) => {
-      for (const file of [
+      const files = [
         'src/main/ui/panel.tsx',
         'src/main/features/x/adapters/panel.tsx',
         'src/main/features/x/domain/panel.tsx',
-      ]) {
-        const messages = classMessages(reactConfig, file, superclass);
-        expect(
-          messages.filter((message) => message === classBanMessage),
-          file,
-        ).toEqual([]);
-      }
+      ];
+      const banned = files.map((file) =>
+        classMessages(reactConfig, file, superclass).filter(
+          (message) => message === classBanMessage,
+        ),
+      );
+      expect(banned).toEqual(files.map(() => []));
     },
   );
 
@@ -64,17 +64,18 @@ describe('class components in the strict syntax rules', () => {
   it.each(['Base', 'ComponentBase', 'MyComponent', 'React.Base'])(
     'bans a class extending %s whether or not React is on',
     (superclass) => {
-      for (const config of [strictSyntaxConfig, reactConfig]) {
-        const messages = classMessages(config, 'src/main/ui/panel.tsx', superclass);
-        expect(messages).toEqual([classBanMessage]);
-      }
+      const configs = [strictSyntaxConfig, reactConfig];
+      expect(
+        configs.map((config) => classMessages(config, 'src/main/ui/panel.tsx', superclass)),
+      ).toEqual(configs.map(() => [classBanMessage]));
     },
   );
 
   it('keeps allowing Error subclasses', () => {
-    for (const config of [strictSyntaxConfig, reactConfig]) {
-      expect(classMessages(config, 'src/main/ui/panel.tsx', 'Error')).toEqual([]);
-    }
+    const configs = [strictSyntaxConfig, reactConfig];
+    expect(
+      configs.map((config) => classMessages(config, 'src/main/ui/panel.tsx', 'Error')),
+    ).toEqual(configs.map(() => []));
   });
 });
 
@@ -168,9 +169,7 @@ describe('the preset config', () => {
     );
 
     expect(reactRules).toEqual([]);
-    for (const name of reactPlugins) {
-      expect(pluginNamesOf(config).has(name), name).toBe(false);
-    }
+    expect(reactPlugins.filter((name) => pluginNamesOf(config).has(name))).toEqual([]);
     expect(
       sourceRestrictedSyntax(config).every((selector) => !selector.includes('Component')),
     ).toBe(true);
@@ -180,12 +179,10 @@ describe('the preset config', () => {
   it('turns the React scope on when package.json lists react', async () => {
     const config = await presetConfigFor({ manifest: reactManifest });
 
-    for (const id of [...reactRuleIds, ...reactTestRuleIds]) {
-      expect(ruleIdsOf(config).has(id), id).toBe(true);
-    }
-    for (const name of reactPlugins) {
-      expect(pluginNamesOf(config).has(name), name).toBe(true);
-    }
+    expect(
+      [...reactRuleIds, ...reactTestRuleIds].filter((id) => !ruleIdsOf(config).has(id)),
+    ).toEqual([]);
+    expect(reactPlugins.filter((name) => !pluginNamesOf(config).has(name))).toEqual([]);
     expect(sourceRestrictedSyntax(config).every((selector) => selector.includes('Component'))).toBe(
       true,
     );
@@ -346,8 +343,9 @@ describe('the preset config', () => {
     expect(ruleIdsOf(config).has('react-x/no-array-index-key')).toBe(false);
   });
 
-  it('still rejects an exception that names an unknown rule', async () => {
-    for (const manifest of [{}, reactManifest]) {
+  it.each([[{}], [reactManifest]])(
+    'still rejects an exception that names an unknown rule for the manifest %j',
+    async (manifest) => {
       await expect(
         presetConfigFor({
           manifest,
@@ -356,8 +354,8 @@ describe('the preset config', () => {
           },
         }),
       ).rejects.toThrow('unknown rules: react-hooks/exhaustive-dep');
-    }
-  });
+    },
+  );
 
   it('infers CSS-in-JS styling from the manifest unless the config sets it', async () => {
     const manifest = { dependencies: { react: '19.0.0', 'styled-components': '6.0.0' } };
