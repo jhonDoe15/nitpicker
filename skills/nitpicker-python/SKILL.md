@@ -55,7 +55,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   child task, never in a `with` inside the group that hands it to `start_soon`/`create_task`
   (`task-outlives-resource`). In Trio and AnyIO, an `await` in `finally:` or a cancellation handler
   needs `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True):` around it (`unshielded-cleanup-await`).
-- Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru), never `print`. A
+- Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru), never `print`;
+  a `domain` package returns a result instead and leaves logging to `adapters/`. A
   log in an `except` keeps the traceback (`logger.exception(...)` or `exc_info=True`); passing the
   error as an argument or `str(error)` drops it. Logging alone is not handling: also re-raise the
   error or return a failure that carries it.

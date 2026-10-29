@@ -16,6 +16,13 @@ LOG_METHODS = {
     "log",
 }
 ALIAS_PASSES = 3
+LOGGER_MODULES = {"logging", "structlog", "loguru"}
+LOGURU_LOGGER = "loguru.logger"
+TYPE_CHECKING_NAMES = {
+    "TYPE_CHECKING",
+    "typing.TYPE_CHECKING",
+    "typing_extensions.TYPE_CHECKING",
+}
 LOGGER_FACTORIES = {"getLogger", "get_logger", "LoggerAdapter", "wrap_logger"}
 LOG_OWNER = re.compile(
     r"^_*(?:log|logger|logging|LOG|LOGGER)$|_(?:log|logger|LOG|LOGGER)$|[a-z0-9](?:Logger|Log)$"
@@ -103,7 +110,7 @@ def logger_names(tree, names, modules):
             continue
         factory = value.func if isinstance(value, ast.Call) else value
         dotted = resolve_chain(factory, names, modules) or ""
-        if dotted.rsplit(".", 1)[-1] in LOGGER_FACTORIES or dotted == "loguru.logger":
+        if dotted.rsplit(".", 1)[-1] in LOGGER_FACTORIES or dotted == LOGURU_LOGGER:
             found.update(filter(None, (last_name(target) for target in targets)))
     return found
 
@@ -149,7 +156,7 @@ def is_log_owner(owner, aliases):
     return (
         LOG_OWNER.search(name) is not None
         or name in aliases[2]
-        or dotted_name(owner, aliases) == "loguru.logger"
+        or dotted_name(owner, aliases) == LOGURU_LOGGER
     )
 
 
@@ -194,3 +201,19 @@ def type_text(node):
     if isinstance(node, ast.Tuple):
         return "(" + ", ".join(type_text(element) for element in node.elts) + ")"
     return "expression"
+
+
+def is_type_checking(node, aliases):
+    return dotted_name(node, aliases) in TYPE_CHECKING_NAMES
+
+
+def is_type_checking_block(node, aliases):
+    return isinstance(node, ast.If) and is_type_checking(node.test, aliases)
+
+
+def type_checking_nodes(tree, aliases):
+    inside = set()
+    for node in ast.walk(tree):
+        if is_type_checking_block(node, aliases):
+            inside.update(id(child) for part in node.body for child in ast.walk(part))
+    return inside
