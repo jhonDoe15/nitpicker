@@ -239,20 +239,18 @@ describe('find-sec-bugs advice', () => {
     expect(new Set(listed).size).toBe(listed.length);
   });
 
-  it('names the allowed form and the exception route, briefly', () => {
+  it('names the allowed form briefly and leaves the exception route to the shared sentence', () => {
     for (const pattern of securityPatterns()) {
       const message = securityMessage(pattern);
 
-      expect(
-        message.endsWith(`add an exception for spotbugs/${pattern} in nitpicker.config.json.`),
-      ).toBe(true);
-      expect(message.length).toBeLessThan(330);
+      expect(message).not.toMatch(/nitpicker\.config|add an exception|"exceptions"/u);
+      expect(message.length).toBeLessThan(260);
     }
   });
 
   it('writes the SQL advice for the Spring and JPA cases', () => {
     expect(securityMessage('SQL_INJECTION_JPA')).toBe(
-      'Pass values as bind parameters (:name with JdbcClient or NamedParameterJdbcTemplate, setParameter in JPA; a list binds as in (:ids)) and never build query text from input. If it is right here, add an exception for spotbugs/SQL_INJECTION_JPA in nitpicker.config.json.',
+      'Pass values as bind parameters (:name with JdbcClient or NamedParameterJdbcTemplate, setParameter in JPA; a list binds as in (:ids)) and never build query text from input.',
     );
   });
 
@@ -261,7 +259,7 @@ describe('find-sec-bugs advice', () => {
 
     expect(openings.filter((word) => ['Do', 'Never', "Don't"].includes(word))).toEqual([]);
     expect(securityMessage('PERMISSIVE_CORS')).toBe(
-      'Allow * only on a public API that sends no credentials; when credentials are allowed, list the origins from configuration (CorsConfiguration.setAllowedOrigins) and echo only a matching Origin. If it is right here, add an exception for spotbugs/PERMISSIVE_CORS in nitpicker.config.json.',
+      'Allow * only on a public API that sends no credentials; when credentials are allowed, list the origins from configuration (CorsConfiguration.setAllowedOrigins) and echo only a matching Origin.',
     );
   });
 

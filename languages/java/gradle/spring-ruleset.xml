@@ -856,7 +856,7 @@ return (
   </rule>
 
   <rule name="SpringOutboundUrl" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Keep the host of an outgoing request fixed, a configured base URL, and pass the changing parts as URI template variables; a URL built from a method parameter can reach any host. If it is right here, add an exception for pmd/SpringOutboundUrl in nitpicker.config.json.">
+        message="Keep the host of an outgoing request fixed, a configured base URL, and pass the changing parts as URI template variables; a URL built from a method parameter can reach any host.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 //MethodCall[
@@ -936,7 +936,7 @@ return (
   </rule>
 
   <rule name="SpringOpenRedirect" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Redirect to a fixed route, or check the target against an allow-list of paths; a fixed path with a changing last segment, such as redirect:/orders/ plus an id, is fine. A redirect to a value taken from the request can send users to any site. If it is right here, add an exception for pmd/SpringOpenRedirect in nitpicker.config.json.">
+        message="Redirect to a fixed route, or check the target against an allow-list of paths; a fixed path with a changing last segment, such as redirect:/orders/ plus an id, is fine. A redirect to a value taken from the request can send users to any site.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
 (//InfixExpression[@Operator = '+'][*[1][self::StringLiteral[matches(@ConstValue, '^(redirect|forward):((https?:)?//?)?$')]]]

@@ -148,7 +148,7 @@ passes). `Public Domain`, which is not an SPDX id, is accepted for `jsonify@0.0.
 pinned Java tool means adding its license entry in the same change, after reading the license text,
 since a package's metadata can disagree with its LICENSE file.
 
-`languages/java/adapters/java-e2e/preset/quality/java-preset-tool-licenses.e2e.test.mjs` runs in the
+`languages/java/adapters/java-e2e/preset/security/java-preset-tool-licenses.e2e.test.mjs` runs in the
 Java end-to-end suite, since it needs
 Maven and the network. It resolves every tool nitpicker downloads with Maven, transitive
 dependencies included (the formatters and the Kotlin tools through the coordinates in the Gradle

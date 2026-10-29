@@ -693,6 +693,8 @@ Not ported:
 - `SpringQueryConcatenation`: `kotlin-source/SqlStringBuilding` already flags SQL or JPQL built from runtime
   values with templates, `+` or `format` when it reaches a JDBC, `JdbcTemplate`, JPA or R2DBC query call,
   so a second rule would report the same line.
+- `SpringOutboundUrl` and `SpringOpenRedirect`: the Kotlin review rules do not yet follow a method
+  parameter into an outgoing request URL or a redirect target, so these two check the Java sources only.
 - The Lombok part of `JpaIdentityHashCode`: Lombok does not process Kotlin; a `data class` entity is the
   Kotlin form of `@Data` and is reported instead.
 - `SpringUnusedContext` runs on Kotlin tests already (see the table above).

@@ -18,6 +18,9 @@ const ENTITY_ANNOTATIONS = ['Entity', 'MappedSuperclass', 'Embeddable'].map(
 );
 const BUILD_PLUGIN = { annotations: ENTITY_ANNOTATIONS, presets: ['spring'] };
 const SKIPPED = {
+  SpringOutboundUrl: 'the Kotlin review rules do not yet follow a parameter into an outgoing URL',
+  SpringOpenRedirect:
+    'the Kotlin review rules do not yet follow a parameter into a redirect target',
   SpringQueryConcatenation:
     'kotlin-source/SqlStringBuilding flags SQL built from runtime values on the same calls',
 };

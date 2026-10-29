@@ -1761,7 +1761,8 @@ the `rule` of a config exception.
 
 **Kotlin.** PMD reads Java sources only, so every rule in this table checks the Java files of a
 project, on Gradle and Maven alike. In a kotlin-preset project every rule of the table except
-`SpringQueryConcatenation` (covered there by `kotlin-source/SqlStringBuilding`) also runs on the main
+`SpringQueryConcatenation` (covered there by `kotlin-source/SqlStringBuilding`), `SpringOutboundUrl`
+and `SpringOpenRedirect` also runs on the main
 Kotlin sources, under the same ids and exception route, from the Kotlin syntax facts (see
 [Kotlin preset: Spring rules](kotlin-preset.md#spring-rules)). Kotlin classes of a Java-preset project (a mixed module)
 get none of these rules. The Spring configuration file checks
@@ -2024,9 +2025,9 @@ on a small project plus a taint analysis that grows with the code. Its findings 
 `spotbugs/<PATTERN>` (for example `spotbugs/SQL_INJECTION_SPRING_JDBC`), which is also the `rule` of a
 config exception.
 
-Every message is rewritten to the allowed form plus the exception route, for example: "Pass values
-as bind parameters (...) and never build query text from input. If it is right here, add an
-exception for spotbugs/SQL_INJECTION_JPA in nitpicker.config.json." The texts live in
+Every message is rewritten to the allowed form, for example: "Pass values as bind parameters (...)
+and never build query text from input."; the gate appends the shared exception sentence for
+`spotbugs/SQL_INJECTION_JPA`, as it does for every rule. The texts live in
 `languages/java/adapters/security/advice-groups.mjs`; a test requires one for every pattern of the
 pinned plugin version, so a plugin bump that adds a pattern fails until the pattern is either
 given advice or excluded with a reason. Identity is the sink plus the enclosing class and method
@@ -2055,7 +2056,7 @@ cost nothing. Rules that can flag correct code stay on and carry the exception r
 common cases are `PREDICTABLE_RANDOM` for `Random` or `ThreadLocalRandom` used for jitter or
 sampling, and `WEAK_MESSAGE_DIGEST_MD5` or `_SHA1` for an ETag or a legacy interface.
 
-`languages/java/adapters/java-e2e/preset/quality/java-preset-security.e2e.test.mjs` (gated like the
+`languages/java/adapters/java-e2e/preset/security/java-preset-security.e2e.test.mjs` (gated like the
 other Java e2e tests) runs the plugin through Gradle on the `gradle-project` fixture and expects
 exactly one `SQL_INJECTION_JPA` for a Jakarta `createQuery` built from a parameter, one
 `SQL_INJECTION_SPRING_JDBC` for each Spring JDBC call whose query text a helper builds from a
