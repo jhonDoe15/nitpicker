@@ -2,13 +2,13 @@ import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { noteSectionLines, noteSummaryLines } from './format/notes.mjs';
-import { renderJunitReport } from './junit.mjs';
-import { writeDiffReports } from './reporters.mjs';
-import { renderSarifReport } from './sarif.mjs';
-import { finding } from './test-support/report-builders.mjs';
-import { renderConsoleSummary } from './summary.mjs';
-import { renderTextReport } from './text.mjs';
+import { noteSectionLines, noteSummaryLines } from './notes.mjs';
+import { renderJunitReport } from '../junit.mjs';
+import { writeDiffReports } from '../reporters.mjs';
+import { renderSarifReport } from '../sarif.mjs';
+import { finding } from '../test-support/report-builders.mjs';
+import { renderConsoleSummary } from '../summary.mjs';
+import { renderTextReport } from '../text.mjs';
 
 const temporaryRoots = [];
 
