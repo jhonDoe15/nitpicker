@@ -1,7 +1,8 @@
 import { callsWithin } from '../effects/held-scopes.mjs';
 import { estreeRunsWithCaller } from '../support/flow/sync-callbacks.mjs';
 import { callEffects, describePath, mayPublish } from '../support/io-effects.mjs';
-import { isRelayPublish, publishesAfterCommit } from './write-sites.mjs';
+import { isRelayPublish } from './relays.mjs';
+import { publishesAfterCommit } from './write-sites.mjs';
 
 const WRITE = 'write';
 const MESSAGE = 'message';
