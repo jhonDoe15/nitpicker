@@ -234,11 +234,13 @@ tester.run('no-forwarding-method-alias', rule, {
   ],
 });
 
+const ALIAS_SOURCE = `type Item = { id: string };\nexport class Cart {\n${SUM}\n${TOTAL}\n}\n`;
+
 const linter = new Linter({ cwd: root });
 const LINTED_FILES = ['src/identity.ts', 'src/cart.ts', 'generated/client.ts', 'src/gen/client.ts'];
 
 for (const file of LINTED_FILES) {
-  writeFileSync(path.join(root, file), 'export {};\n');
+  writeFileSync(path.join(root, file), ALIAS_SOURCE);
 }
 
 function aliasMessages(code, file, config) {
@@ -251,8 +253,6 @@ function aliasMessages(code, file, config) {
       .filter(({ ruleId }) => ruleId === 'nitpicker/no-forwarding-method-alias'),
   };
 }
-
-const ALIAS_SOURCE = `type Item = { id: string };\nexport class Cart {\n${SUM}\n${TOTAL}\n}\n`;
 
 describe('stable identity', () => {
   const config = [
