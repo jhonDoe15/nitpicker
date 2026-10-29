@@ -2,7 +2,7 @@ import { isFunctionNode, resolveConstant } from '../../rules/analysis/constant-r
 import { testCallback } from '../../test-quality/test-calls.mjs';
 import { fileBindings } from '../unowned-async/hosts.mjs';
 import { nodesIn } from '../unowned-async/nodes.mjs';
-import { isAssertionSite } from './assertion-sites.mjs';
+import { isAssertionSite, referencedFunction } from './assertion-sites.mjs';
 import { loopsAround } from './loops.mjs';
 import { subtestCallback } from './subtests.mjs';
 
@@ -26,11 +26,33 @@ function isLiteralTable(context, collection) {
   return table?.type === 'ArrayExpression' && table.elements.length > 0;
 }
 
-function loopFindings(env, test) {
-  const nodes = nodesIn(env.context, test.body, (child) => !isTestFunction(child));
-  const sites = nodes
+function bodyNodes(env, fn) {
+  return nodesIn(env.context, fn.body, (child) => !isTestFunction(child));
+}
+
+function isInside(inner, outer) {
+  return inner.range[0] >= outer.range[0] && inner.range[1] <= outer.range[1];
+}
+
+function reachableHelpers(env, test) {
+  const seen = new Set();
+  const pending = [test];
+  for (const fn of pending) {
+    const callees = bodyNodes(env, fn)
+      .map((node) => referencedFunction(env.context, node))
+      .filter((callee) => callee !== undefined && !seen.has(callee) && !isInside(callee, test));
+    for (const callee of callees) {
+      seen.add(callee);
+      pending.push(callee);
+    }
+  }
+  return [...seen];
+}
+
+function loopFindings(env, fn) {
+  const sites = bodyNodes(env, fn)
     .filter((node) => isAssertionSite(env, node))
-    .map((site) => ({ site, loops: loopsAround(site, test) }))
+    .map((site) => ({ site, loops: loopsAround(site, fn) }))
     .filter(({ loops }) => loops.length > 0);
   return [...Map.groupBy(sites, ({ loops }) => loops.at(-1).node).values()].map((group) => ({
     site: group.map(({ site }) => site).toSorted((a, b) => a.range[0] - b.range[0])[0],
@@ -49,14 +71,26 @@ export const rule = {
     },
   },
   create(context) {
-    const env = { context, bindings: fileBindings(context.sourceCode.ast), helpers: new Map() };
+    const env = {
+      context,
+      bindings: fileBindings(context.sourceCode.ast),
+      helpers: new Map(),
+      reported: new Set(),
+    };
     return {
       CallExpression(call) {
         const test = testBody(call);
         if (test === undefined) {
           return;
         }
-        for (const { site, loop } of loopFindings(env, test)) {
+        const findings = [test, ...reachableHelpers(env, test)].flatMap((fn) =>
+          loopFindings(env, fn),
+        );
+        for (const { site, loop } of findings) {
+          if (env.reported.has(loop.node)) {
+            continue;
+          }
+          env.reported.add(loop.node);
           context.report({
             node: site,
             messageId: isLiteralTable(context, loop.collection) ? 'table' : 'loop',

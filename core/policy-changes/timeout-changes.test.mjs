@@ -15,9 +15,9 @@ const ceilings = (value) => ({ testDeclarationCeilingMs: value, hookDeclarationC
 
 function loosenedTexts(base, head) {
   const { loosened } = timeoutChanges(base, head);
-  for (const { text, kind } of loosened) {
-    expect(hasSpecificGuidance(kind), text).toBe(true);
-  }
+  expect(loosened.filter(({ kind }) => !hasSpecificGuidance(kind)).map(({ text }) => text)).toEqual(
+    [],
+  );
   return loosened.map(({ text }) => text);
 }
 
@@ -83,15 +83,18 @@ describe('timeout policy changes', () => {
     ]);
   });
 
-  it('allows shrinking a looser suite and detects shrinking a stricter suite', () => {
-    const includes = ['test/jvm/**', 'test/new/**'];
-    const loosened = [5_000, 20_000].map((value) => {
+  it.each([
+    [5_000, true],
+    [20_000, false],
+  ])(
+    'allows shrinking a looser suite and detects shrinking a stricter suite (%i ms)',
+    (value, detected) => {
+      const includes = ['test/jvm/**', 'test/new/**'];
       const base = config({ projects: { jvm: project(ceilings(value), includes) } });
       const head = config({ projects: { jvm: project(ceilings(value)) } });
-      return timeoutChanges(base, head).loosened.length > 0;
-    });
-    expect(loosened).toEqual([true, false]);
-  });
+      expect(loosenedTexts(base, head).length > 0).toBe(detected);
+    },
+  );
 
   it('reviews real execution increases and transitions to native hook deadlines', () => {
     const base = config({ defaults: { testTimeoutMs: 30_000, hookTimeoutMs: 30_000 } });
