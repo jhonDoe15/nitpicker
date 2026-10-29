@@ -2,7 +2,8 @@ import ts from 'typescript';
 import { chainOf } from '../../analysis/ancestry.mjs';
 import { tsCallee, tsCallView } from './call-views.mjs';
 import { directEffects, namedKind } from './call-tags.mjs';
-import { functionLike, implementationsOf, resolvedSymbol } from './implementations.mjs';
+import { isTerminalMethod, isTsConsumed } from '../flow/consumed.mjs';
+import { calleeDeclaration, functionLike, implementationsOf } from './implementations.mjs';
 import { libraryKind, packageFromPath } from './packages.mjs';
 
 function unwrapped(node) {
@@ -59,10 +60,16 @@ function isAsyncCall({ checker }, call) {
   );
 }
 
-function libraryEffects(state, { call, view }, declarations) {
-  function isAsync() {
-    return isAsyncCall(state, call);
-  }
+function asyncGate(state, { call, view }) {
+  return function isAsync(builder) {
+    const used = !builder || isTerminalMethod(view.method) || isTsConsumed(call);
+    return used && isAsyncCall(state, call);
+  };
+}
+
+function libraryEffects(state, site, declarations) {
+  const isAsync = asyncGate(state, site);
+  const { view } = site;
   const found = declarations
     .filter((declaration) => declaration !== undefined)
     .map((declaration) => declarationPackage(state, declaration))
@@ -96,10 +103,13 @@ function importedPackage({ checker }, root) {
     : requiredModule(declaration);
 }
 
-function namedEffects(state, view) {
+function namedEffects(state, site) {
+  const { view } = site;
   const pkg = importedPackage(state, view.root);
-  const kind = pkg === undefined ? undefined : libraryKind(pkg, view, () => true);
-  return directEffects(kind ?? namedKind(view), pkg, view);
+  const kind = pkg === undefined ? undefined : libraryKind(pkg, view, asyncGate(state, site));
+  return kind === undefined
+    ? { view, effects: directEffects(namedKind(view), pkg, view), guessed: true }
+    : { view, effects: directEffects(kind, pkg, view) };
 }
 
 function libraryCallEffects(state, site, declarations) {
@@ -112,17 +122,21 @@ function libraryCallEffects(state, site, declarations) {
 function projectCall(state, site, declaration) {
   const fn = functionLike(declaration);
   const targets = fn === undefined ? implementationsOf(state, declaration) : [fn];
-  return targets.length === 0
-    ? { view: site.view, effects: namedEffects(state, site.view) }
-    : { view: site.view, targets };
+  return targets.length === 0 ? namedEffects(state, site) : { view: site.view, targets };
 }
 
 export function resolveCall(state, call) {
   const site = { call, view: tsCallView(call) };
   const { callee, name, receiver } = calleeParts(call);
-  const declaration = resolvedSymbol(state.checker, name)?.declarations?.[0];
+  const declaration = calleeDeclaration(state.checker, name);
   if (declaration === undefined) {
-    return { view: site.view, effects: namedEffects(state, site.view) };
+    return namedEffects(state, site);
+  }
+  if (
+    functionLike(declaration) !== undefined &&
+    declarationPackage(state, declaration) === undefined
+  ) {
+    return { view: site.view, targets: [functionLike(declaration)] };
   }
   const receiverType = receiver && typeDeclaration(state, receiver);
   const calleeType = typeDeclaration(state, callee);
@@ -134,4 +148,18 @@ export function resolveCall(state, call) {
   return typed === undefined
     ? projectCall(state, site, declaration)
     : { view: site.view, effects: typed };
+}
+
+function containerName(declaration) {
+  const container = declaration.parent;
+  const named =
+    container !== undefined && (ts.isClassLike(container) || ts.isInterfaceDeclaration(container));
+  return named ? container.name?.text : undefined;
+}
+
+export function calleeOrigin(state, call) {
+  const declaration = calleeDeclaration(state.checker, calleeParts(call).name);
+  return declaration === undefined
+    ? undefined
+    : { pkg: declarationPackage(state, declaration), owner: containerName(declaration) };
 }

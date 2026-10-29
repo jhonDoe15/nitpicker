@@ -19,7 +19,8 @@ const TYPEORM = [
   '  createQueryBuilder(alias: string): SelectQueryBuilder<T>;',
   '}',
   'export declare class EntityManager {',
-  `  save<E>(entity: E): ${promise('E')};`,
+  `  save<E>(entity: E, value?: object): ${promise('E')};`,
+  `  find<T>(target: new () => T, options?: FindManyOptions): ${promise('T[]')};`,
   '  getRepository<T>(target: new () => T): Repository<T>;',
   '}',
   'export declare class QueryRunner {',
@@ -34,6 +35,8 @@ const TYPEORM = [
   '  createQueryRunner(): QueryRunner;',
   '}',
   'type RelationOptions = { lazy?: boolean; eager?: boolean };',
+  'export declare function In<T>(values: T[]): T[];',
+  'export declare class EntitySchema<T = any> { constructor(options: object); }',
   'export declare function Entity(): ClassDecorator;',
   'export declare function Column(): PropertyDecorator;',
   'export declare function ManyToOne(type: () => Function, options?: RelationOptions): PropertyDecorator;',
@@ -67,6 +70,8 @@ const PRISMA = [
   `  findUnique(args: object): ${promise('Row | null')};`,
   `  findMany(args?: object): ${promise('Row[]')};`,
   `  create(args: object): ${promise('Row')};`,
+  `  createMany(args: object): ${promise('{ count: number }')};`,
+  `  update(args: object): ${promise('Row')};`,
   '};',
   'export declare class PrismaClient {',
   '  user: Delegate;',
@@ -97,6 +102,29 @@ const STRIPE = [
   '  paymentIntents: Resource;',
   '}',
   'export default Stripe;',
+].join('\n');
+
+const MONGOOSE = [
+  'export interface Query<T> {',
+  '  where(path: string): Query<T>;',
+  '  equals(value: unknown): Query<T>;',
+  `  exec(): ${promise('T')};`,
+  `  then<R>(done: (value: T) => R): ${promise('R')};`,
+  '}',
+  'export interface Model<T> { find(filter?: object): Query<T[]>; }',
+  'export declare function model<T>(name: string): Model<T>;',
+].join('\n');
+
+const ASYNC_MUTEX = [
+  'export declare class Mutex {',
+  `  runExclusive<T>(work: () => ${promise('T')}): ${promise('T')};`,
+  `  acquire(): ${promise('() => void')};`,
+  '}',
+  'export declare class Semaphore {',
+  '  constructor(permits: number);',
+  `  runExclusive<T>(work: () => ${promise('T')}): ${promise('T')};`,
+  `  acquire(): ${promise('[number, () => void]')};`,
+  '}',
 ].join('\n');
 
 const KNEX = [
@@ -150,10 +178,13 @@ export const IO_PACKAGES = {
     '}',
   ].join('\n'),
   'p-retry': `export default function pRetry<T>(work: () => ${promise('T')}, options?: object): ${promise('T')};`,
-  'async-mutex': [
-    'export declare class Mutex {',
-    `  runExclusive<T>(work: () => ${promise('T')}): ${promise('T')};`,
-    `  acquire(): ${promise('() => void')};`,
+  'async-mutex': ASYNC_MUTEX,
+  mongoose: MONGOOSE,
+  ioredis: [
+    'declare class Redis {',
+    `  get(key: string): ${promise('string | null')};`,
+    `  mget(keys: string[]): ${promise('(string | null)[]')};`,
     '}',
+    'export default Redis;',
   ].join('\n'),
 };

@@ -1,4 +1,10 @@
+import path from 'node:path';
 import ts from 'typescript';
+import { readLayout } from '../../../../head-policy.mjs';
+
+const layout = readLayout();
+const TEST_PATH =
+  /(?:^|\/)(?:test|tests|__tests__|__mocks__|test-support|e2e|fixtures|__fixtures__)\/|\.(?:test|spec)\.[^/]+$/u;
 
 function unwrappedExpression(node) {
   const chain = [node];
@@ -35,11 +41,27 @@ export function functionLike(declaration) {
   return isFunctionWithBody(value) ? value : undefined;
 }
 
-export function resolvedSymbol(checker, node) {
-  const symbol = checker.getSymbolAtLocation(node);
+function aliased(checker, symbol) {
   return symbol !== undefined && (symbol.flags & ts.SymbolFlags.Alias) !== 0
     ? checker.getAliasedSymbol(symbol)
     : symbol;
+}
+
+export function resolvedSymbol(checker, node) {
+  return aliased(checker, checker.getSymbolAtLocation(node));
+}
+
+export function calleeDeclaration(checker, node) {
+  const symbol = resolvedSymbol(checker, node);
+  const shorthand = symbol?.declarations?.find(ts.isShorthandPropertyAssignment);
+  const target =
+    shorthand === undefined
+      ? symbol
+      : aliased(checker, checker.getShorthandAssignmentValueSymbol(shorthand));
+  const declarations = target?.declarations ?? [];
+  return (
+    declarations.find((declaration) => functionLike(declaration) !== undefined) ?? declarations[0]
+  );
 }
 
 function isBodiless(declaration) {
@@ -52,6 +74,9 @@ function isBodiless(declaration) {
 }
 
 function ownerName(container) {
+  if (container === undefined) {
+    return undefined;
+  }
   if (ts.isInterfaceDeclaration(container) || ts.isClassDeclaration(container)) {
     return container.name;
   }
@@ -87,6 +112,11 @@ function implementedTypes(node) {
   return ts.isFunctionLike(node) ? returnedObjects(node) : [];
 }
 
+function isTestSource(program, fileName) {
+  const relative = path.relative(program.getCurrentDirectory(), fileName).replaceAll('\\', '/');
+  return TEST_PATH.test(relative) || layout.isTestFile(relative);
+}
+
 function projectFiles(program) {
   return program
     .getSourceFiles()
@@ -94,7 +124,8 @@ function projectFiles(program) {
       (file) =>
         !file.isDeclarationFile &&
         !program.isSourceFileFromExternalLibrary(file) &&
-        !file.fileName.includes('/node_modules/'),
+        !file.fileName.includes('/node_modules/') &&
+        !isTestSource(program, file.fileName),
     );
 }
 
@@ -122,16 +153,30 @@ function memberNamed(implementation, name) {
   );
 }
 
+function inheritedFunction(checker, implementation, name) {
+  const property = checker.getPropertyOfType(checker.getTypeAtLocation(implementation), name);
+  const declaration = property?.declarations?.find((each) => functionLike(each) !== undefined);
+  return declaration && functionLike(declaration);
+}
+
 function memberFunction(checker, implementation, name) {
   const member = memberNamed(implementation, name);
-  if (member !== undefined && ts.isShorthandPropertyAssignment(member)) {
+  if (member === undefined) {
+    return ts.isObjectLiteralExpression(implementation)
+      ? undefined
+      : inheritedFunction(checker, implementation, name);
+  }
+  if (ts.isShorthandPropertyAssignment(member)) {
     const declaration = checker.getShorthandAssignmentValueSymbol(member)?.valueDeclaration;
     return declaration && functionLike(declaration);
   }
-  return member && functionLike(member);
+  return functionLike(member);
 }
 
 export function implementationsOf(state, declaration) {
+  if (ts.isSourceFile(declaration)) {
+    return [];
+  }
   const name = ownerName(declaration.parent);
   const member =
     declaration.name !== undefined && ts.isIdentifier(declaration.name)
