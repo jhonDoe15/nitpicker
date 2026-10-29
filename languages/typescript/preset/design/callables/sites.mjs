@@ -2,13 +2,18 @@ import ts from 'typescript';
 import { depthFirst } from '../../../../../shared/traversal.mjs';
 import { syntaxChildren } from '../../syntax/children.mjs';
 import { wrappedFunction } from '../syntax/function-values.mjs';
-import { columnOf, isClosure, lineOf, memberName, unwrap } from '../syntax/nodes.mjs';
+import { isClosure, lineOf, unwrap } from '../syntax/nodes.mjs';
+import { scopedStatements } from '../syntax/scopes.mjs';
+import { memberSite } from './member-sites.mjs';
 import { targetSite } from './calls/targets.mjs';
 
-function reserve(registry, candidates, node) {
-  const position = `${String(lineOf(node))}:${String(columnOf(node))}`;
-  const fallback = `${candidates.at(-1)}@${position}`;
-  const id = [...candidates, fallback].find((candidate) => !registry.siteIds.has(candidate));
+function reserve(registry, candidate) {
+  let id = candidate;
+  let ordinal = 1;
+  while (registry.siteIds.has(id)) {
+    ordinal += 1;
+    id = `${candidate}@${String(ordinal)}`;
+  }
   registry.siteIds.add(id);
   return id;
 }
@@ -30,8 +35,8 @@ function register(state, site) {
 }
 
 function topLevelSite(state, file, found) {
-  const { node, declaration, name } = found;
-  const id = reserve(state.registry, [`${file.path}#${name}`], node);
+  const { node, declaration, name, scope } = found;
+  const id = reserve(state.registry, `${file.path}#${scope.prefix}${name}`);
   register(state, {
     id,
     name,
@@ -40,7 +45,8 @@ function topLevelSite(state, file, found) {
     node,
     declaration,
     file,
-    exported: file.exported.has(declaration),
+    exported: scope.isExported(declaration),
+    anchor: scope.anchor,
     line: lineOf(declaration.name ?? node),
   });
 }
@@ -65,64 +71,15 @@ function statementSites(statement) {
   return node === undefined ? [] : [{ node, declaration: statement, name: 'default' }];
 }
 
-function memberKind(member) {
-  if (ts.isConstructorDeclaration(member)) {
-    return 'constructor';
-  }
-  return ts.isGetAccessorDeclaration(member) ? 'accessor' : 'method';
-}
-
-function memberFunction(member) {
-  if (ts.isPropertyDeclaration(member)) {
-    return wrappedFunction(member.initializer);
-  }
-  const isCallable =
-    ts.isMethodDeclaration(member) ||
-    ts.isConstructorDeclaration(member) ||
-    ts.isGetAccessorDeclaration(member);
-  return isCallable && member.body !== undefined ? member : undefined;
-}
-
-function isPrivateMember(member) {
-  return (
-    (member.name !== undefined && ts.isPrivateIdentifier(member.name)) ||
-    (ts.getEffectiveModifierFlags(member) & ts.ModifierFlags.Private) !== 0
-  );
-}
-
-function memberSite(entry, file, member) {
-  const node = memberFunction(member);
-  if (node === undefined) {
-    return undefined;
-  }
-  const name = ts.isConstructorDeclaration(member) ? 'constructor' : memberName(member);
-  return {
-    name,
-    kind: memberKind(member),
-    owner: entry.id,
-    node,
-    declaration: member,
-    member,
-    classEntry: entry,
-    isStatic: (ts.getEffectiveModifierFlags(member) & ts.ModifierFlags.Static) !== 0,
-    file,
-    exported: entry.exported && !isPrivateMember(member),
-    line: lineOf(member.name ?? member),
-  };
-}
-
-function classSites(state, file, entry) {
-  for (const member of entry.node.members) {
-    const site = memberSite(entry, file, member);
+function classSites(state, owner) {
+  const { entry, container } = owner;
+  for (const member of container.members) {
+    const site = memberSite(owner, member);
     if (site === undefined) {
       continue;
     }
     const base = `${entry.id}.${site.name}`;
-    const id = reserve(
-      state.registry,
-      site.isStatic ? [base, `${base}(static)`] : [base],
-      site.node,
-    );
+    const id = reserve(state.registry, site.isStatic ? `${base}(static)` : base);
     register(state, { ...site, id });
     if (site.kind === 'constructor') {
       state.registry.constructorByClass.set(entry.node, state.registry.siteByNode.get(site.node));
@@ -130,20 +87,26 @@ function classSites(state, file, entry) {
   }
 }
 
-function statementEntrySites(state, file, statement) {
+function hasMemberSites(statement, entry) {
+  const isContainer = ts.isClassDeclaration(statement) || ts.isInterfaceDeclaration(statement);
+  return isContainer && entry !== undefined && entry.node === statement;
+}
+
+function statementEntrySites(state, file, scope) {
+  const { statement } = scope;
   for (const found of statementSites(statement)) {
-    topLevelSite(state, file, found);
+    topLevelSite(state, file, { ...found, scope });
   }
   const entry = state.registry.typeByNode.get(statement);
-  if (entry !== undefined && ts.isClassDeclaration(statement)) {
-    classSites(state, file, entry);
+  if (hasMemberSites(statement, entry)) {
+    classSites(state, { entry, file, container: statement });
   }
 }
 
 export function collectNamedSites(files, state) {
   for (const file of files) {
-    for (const statement of file.sourceFile.statements) {
-      statementEntrySites(state, file, statement);
+    for (const scope of scopedStatements(file)) {
+      statementEntrySites(state, file, scope);
     }
   }
 }
@@ -161,7 +124,7 @@ function calleeName(call) {
   return ts.isIdentifier(callee) ? callee.text : 'callback';
 }
 
-function callbacksOf(state, file) {
+function callbackClosures(state, file) {
   return [...depthFirst(file.sourceFile, moduleLevelChildren)]
     .filter((node) => ts.isCallExpression(node) && targetSite(state, node) === undefined)
     .flatMap((call) =>
@@ -172,12 +135,20 @@ function callbacksOf(state, file) {
     );
 }
 
+function callbacksOf(state, file) {
+  const counts = new Map();
+  return callbackClosures(state, file).map((callback) => {
+    const ordinal = (counts.get(callback.name) ?? 0) + 1;
+    counts.set(callback.name, ordinal);
+    return { ...callback, ordinal };
+  });
+}
+
 export function collectCallbackSites(files, state) {
   for (const file of files) {
-    for (const { closure, name } of callbacksOf(state, file)) {
-      const position = `${String(lineOf(closure))}:${String(columnOf(closure))}`;
+    for (const { closure, name, ordinal } of callbacksOf(state, file)) {
       register(state, {
-        id: reserve(state.registry, [`${file.path}#${name}@${position}`], closure),
+        id: reserve(state.registry, `${file.path}#${name}@${String(ordinal)}`),
         name,
         kind: 'function',
         node: closure,

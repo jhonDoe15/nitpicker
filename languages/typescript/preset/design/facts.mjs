@@ -71,7 +71,7 @@ function isPublishedType(surface, entry) {
   if (entry.kind === 'module') {
     return surface.isWholeModule(entry.node);
   }
-  return entry.exported && surface.isPublished(entry.node);
+  return entry.exported && surface.isPublished(entry.anchor ?? entry.node);
 }
 
 function isPublishedCallable(surface, site) {
@@ -79,7 +79,7 @@ function isPublishedCallable(surface, site) {
     site.member === undefined &&
     site.callback !== true &&
     site.exported &&
-    surface.isPublished(site.declaration)
+    surface.isPublished(site.anchor ?? site.declaration)
   );
 }
 

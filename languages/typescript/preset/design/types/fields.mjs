@@ -30,7 +30,7 @@ function isPrivateMember(declaration) {
   const modifiers = ts.getEffectiveModifierFlags(declaration);
   return (
     (name !== undefined && ts.isPrivateIdentifier(name)) ||
-    (modifiers & ts.ModifierFlags.Private) !== 0
+    (modifiers & (ts.ModifierFlags.Private | ts.ModifierFlags.Protected)) !== 0
   );
 }
 

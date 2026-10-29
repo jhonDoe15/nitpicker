@@ -210,6 +210,16 @@ const CALLABLES = [
     returns: 'void',
   },
   {
+    id: 'src/priced.ts#Priced.price',
+    file: 'src/priced.ts',
+    name: 'price',
+    line: 2,
+    kind: 'method',
+    owner: 'src/priced.ts#Priced',
+    exported: true,
+    returns: 'number',
+  },
+  {
     id: 'src/state.ts#handler',
     file: 'src/state.ts',
     name: 'handler',

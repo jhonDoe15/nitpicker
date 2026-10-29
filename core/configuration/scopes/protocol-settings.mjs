@@ -43,7 +43,14 @@ export function validateProtocols(protocols) {
       '"protocols" must be an array of { type, open, close, steps?, reason? } entries',
     );
   }
+  const types = new Set();
   for (const [index, entry] of protocols.entries()) {
     validateProtocol(entry, `protocols[${String(index)}]`);
+    if (types.has(entry.type)) {
+      throw configError(
+        `"protocols[${String(index)}].type" repeats "${entry.type}": list each type's lifecycle once`,
+      );
+    }
+    types.add(entry.type);
   }
 }

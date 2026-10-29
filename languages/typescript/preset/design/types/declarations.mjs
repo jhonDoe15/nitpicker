@@ -2,6 +2,7 @@ import path from 'node:path';
 import ts from 'typescript';
 import { isFunctionValue } from '../syntax/function-values.mjs';
 import { lineOf } from '../syntax/nodes.mjs';
+import { scopedStatements } from '../syntax/scopes.mjs';
 import { enumMemberNames, literalCases } from './enum-cases.mjs';
 import { moduleFields, propertyFields } from './fields.mjs';
 import { entryOfSymbol } from './type-lookup.mjs';
@@ -36,16 +37,25 @@ function describeStatement(statement, checker) {
   return cases === undefined ? undefined : { kind: 'enum', cases };
 }
 
+function mergeEntry(known, entry) {
+  const exported = known.exported || entry.exported;
+  if (ts.isClassDeclaration(entry.node) && !ts.isClassDeclaration(known.node)) {
+    Object.assign(known, entry);
+  }
+  known.exported = exported;
+}
+
 function addEntry(state, file, entry) {
   const { registry } = state;
-  const id = `${file.path}#${entry.name}`;
+  const { prefix, ...described } = entry;
+  const id = `${file.path}#${prefix}${entry.name}`;
   const known = registry.typeIds.get(id);
   if (known !== undefined) {
+    mergeEntry(known, described);
     registry.typeByNode.set(entry.node, known);
     return;
   }
-  const exported = registry.exportedByFile.get(file.sourceFile.fileName);
-  const created = { ...entry, id, file: file.path, exported: exported.has(entry.node) };
+  const created = { ...described, id, file: file.path };
   registry.typeIds.set(id, created);
   registry.typeByNode.set(entry.node, created);
   registry.entries.push(created);
@@ -63,11 +73,20 @@ function addModule(state, file) {
 
 function addFileTypes(state, file) {
   addModule(state, file);
-  for (const statement of file.sourceFile.statements) {
+  for (const scope of scopedStatements(file)) {
+    const { statement } = scope;
     const described = describeStatement(statement, state.checker);
     if (described !== undefined) {
       const name = statement.name?.text ?? 'default';
-      addEntry(state, file, { node: statement, name, ...described });
+      const exported = scope.isExported(statement);
+      addEntry(state, file, {
+        node: statement,
+        name,
+        prefix: scope.prefix,
+        anchor: scope.anchor,
+        exported,
+        ...described,
+      });
     }
   }
 }

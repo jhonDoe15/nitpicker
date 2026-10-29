@@ -54,6 +54,13 @@ describe('forwarding-chain', () => {
     ],
     ['a changed return type', { find: { returns: 'OrderView' } }],
     ['an untyped parameter', { get: { params: [{ name: 'id' }, params[1]] } }],
+    [
+      'an any parameter',
+      {
+        get: { params: [{ name: 'id', type: 'any' }, params[1]] },
+        find: { params: [{ name: 'id', type: 'any' }, params[1]] },
+      },
+    ],
   ])('passes a single hop when the other is %s', (_, extra) => {
     expect(designRun(chain(extra), 'forwarding-chain')).toEqual([]);
   });
@@ -117,10 +124,10 @@ describe('caller-protocol', () => {
     expect(summaries(findings)).toEqual([
       {
         rule: 'caller-protocol',
-        path: 'src/a/save.ts',
+        path: 'src/db/session.ts',
         identity: 'src/db/session.ts#Session|begin>write>commit',
         classification: 'descriptive',
-        line: 2,
+        line: 1,
       },
     ]);
   });
@@ -140,6 +147,21 @@ describe('caller-protocol', () => {
     expect(identities.toSorted()).toEqual([
       'src/db/session.ts#Session|begin>write>rollback>commit',
       'src/db/session.ts#Session|commit>write>begin',
+    ]);
+  });
+
+  it('keeps shorter steps that more callers repeat than the longer ones', () => {
+    const long = [begin, write, rollback, commit].map(({ id }) => ({ target: id }));
+    const facts = sessionUsers([
+      caller('src/a/one.ts', 'one', long),
+      caller('src/a/two.ts', 'two', long),
+      caller('src/b/three.ts', 'three', long),
+      caller('src/c/four.ts', 'four', sequence),
+    ]);
+    const identities = designRun(facts, 'caller-protocol').map(({ identity }) => identity);
+    expect(identities.toSorted()).toEqual([
+      'src/db/session.ts#Session|begin>write>commit',
+      'src/db/session.ts#Session|begin>write>rollback>commit',
     ]);
   });
 
@@ -189,6 +211,7 @@ describe('caller-protocol', () => {
       ['src/a/save.ts#save|s|early:write'],
     ],
     ['no open call', [{ target: write.id }, { target: commit.id, cleanup: true }], []],
+    ['a receiver kept in a field', [{ target: begin.id, receiver: 'this.session' }], []],
     [
       'a close in finally',
       [{ target: begin.id }, { target: write.id }, { target: rollback.id, cleanup: true }],
@@ -201,5 +224,14 @@ describe('caller-protocol', () => {
       identities.map((identity) => [identity, 'enforceable']),
     );
     expect(designRun(facts, 'caller-protocol', { protocols: [contract] })).toEqual([]);
+  });
+
+  it('passes a function that opens the resource and returns it', () => {
+    const opener = fn(owner('src/a/open.ts'), 'opened', {
+      returns: session.id,
+      calls: [{ target: begin.id, receiver: 's', line: 3 }],
+    });
+    const facts = sessionUsers([opener]);
+    expect(designRun(facts, 'protocol-contract', { protocols: [contract] })).toEqual([]);
   });
 });
