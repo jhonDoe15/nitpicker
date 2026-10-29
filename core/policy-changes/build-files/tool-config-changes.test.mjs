@@ -268,6 +268,22 @@ describe('python tool configs the project opted into', () => {
     ).toEqual([]);
   });
 
+  it('shows the config a change opts into in the same change', () => {
+    const files = { ...SOURCE, 'mypy.ini': '[mypy]\ndisallow_untyped_defs = False\n' };
+
+    expect(
+      between({
+        base: files,
+        head: files,
+        baseConfig: { preset: 'python' },
+        config: python('mypy'),
+      }).policyLoosenings,
+    ).toEqual([
+      'mypy project config changed: mypy.ini',
+      'tools.mypy.precedence: not set -> ["project","nitpicker"]',
+    ]);
+  });
+
   it('stays quiet for a tool the project did not opt into and outside the python preset', () => {
     const base = { 'pyproject.toml': PYPROJECT };
     const head = { 'pyproject.toml': PYPROJECT.replace('["E", "F"]', '["F"]') };
