@@ -11,6 +11,7 @@ import {
   absoluteTextReportPath,
 } from '../reporting/reporters.mjs';
 import { parseArguments } from './arguments.mjs';
+import { GitCommandError, runGit } from '../git/repository/command.mjs';
 import { resolveProjectRoot } from '../../tooling/tool-resolution.mjs';
 import { pathToFileURL } from 'node:url';
 import { loadConfig, describeConfigOverrides } from '../../configuration/config.mjs';
@@ -18,7 +19,7 @@ import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs'
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
 import { renderConsoleSummary } from '../reporting/summary.mjs';
-import { projectPrefixOf, writeGithubOutput } from '../reporting/github/emit.mjs';
+import { writeGithubOutput } from '../reporting/github/emit.mjs';
 
 function resolvePolicyRoot({ policyRoot, optionsPolicyRoot, currentProjectRoot }) {
   if (policyRoot !== undefined) {
@@ -68,9 +69,23 @@ export function aggregateShardReports({
     toolErrors: sortByToolAndPath(toolErrors),
   };
   report.text = writeDiffReports(outputRoot, report, {
-    projectPath: liveProjectRoot === undefined ? undefined : projectPrefixOf(liveProjectRoot),
+    projectPath: projectPathOf(liveProjectRoot),
   });
   return report;
+}
+
+function projectPathOf(liveProjectRoot) {
+  if (liveProjectRoot === undefined) {
+    return undefined;
+  }
+  try {
+    return runGit(liveProjectRoot, ['rev-parse', '--show-prefix']).trim();
+  } catch (error) {
+    if (error instanceof GitCommandError) {
+      return undefined;
+    }
+    throw error;
+  }
 }
 
 function mergeShardEntries(shardReports, analyzerResolutionErrors) {

@@ -1,39 +1,33 @@
-import { mkdirSync, rmSync, writeFileSync } from 'node:fs';
-import path from 'node:path';
+import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mjs';
+import { clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
 import {
   CODE_QUALITY_REPORT_FILE_NAME,
   renderCodeQualityReport,
 } from '../diff/reporting/format/codequality.mjs';
 
-const REPORT_FILE_NAMES = [
-  'summary.json',
-  'findings.json',
-  'tool-errors.json',
-  'report.txt',
-  'report.junit.xml',
-  CODE_QUALITY_REPORT_FILE_NAME,
+const SNAPSHOT_REPORTS = [
+  { name: 'summary.json', render: (report) => json(report.summary) },
+  { name: 'findings.json', render: (report) => json(report.findings) },
+  { name: 'tool-errors.json', render: (report) => json(report.toolErrors) },
+  { name: 'report.txt', render: (report) => renderTextReport(report) },
+  { name: 'report.junit.xml', render: (report) => renderJunitReport(report) },
+  { name: 'report.sarif', render: renderSnapshotSarifReport },
+  {
+    name: CODE_QUALITY_REPORT_FILE_NAME,
+    render: (report, options) => renderCodeQualityReport(report.findings, options),
+  },
 ];
 
+export const SNAPSHOT_REPORT_FILE_NAMES = SNAPSHOT_REPORTS.map(({ name }) => name);
+
 export function clearSnapshotReports(outputRoot) {
-  for (const reportFileName of REPORT_FILE_NAMES) {
-    rmSync(path.join(outputRoot, reportFileName), { force: true });
-  }
+  clearReports(outputRoot, SNAPSHOT_REPORT_FILE_NAMES);
 }
 
 export function writeSnapshotReports(outputRoot, report, { projectPath } = {}) {
-  mkdirSync(outputRoot, { recursive: true });
-  writeJson(path.join(outputRoot, 'summary.json'), report.summary);
-  writeJson(path.join(outputRoot, 'findings.json'), report.findings);
-  writeJson(path.join(outputRoot, 'tool-errors.json'), report.toolErrors);
-
-  const text = renderTextReport(report);
-  writeFileSync(path.join(outputRoot, 'report.txt'), text);
-  writeFileSync(path.join(outputRoot, 'report.junit.xml'), renderJunitReport(report));
-  writeFileSync(
-    path.join(outputRoot, CODE_QUALITY_REPORT_FILE_NAME),
-    renderCodeQualityReport(report.findings, { projectPath }),
+  return writeReports(outputRoot, SNAPSHOT_REPORTS, { report, options: { projectPath } }).get(
+    'report.txt',
   );
-  return text;
 }
 
 function renderTextReport(report) {
@@ -123,10 +117,6 @@ function appendToolErrorSection(lines, toolErrors) {
   for (const error of toolErrors) {
     lines.push(`${error.tool} (${error.snapshot}): ${error.message}`);
   }
-}
-
-function writeJson(filePath, value) {
-  writeFileSync(filePath, `${JSON.stringify(value, null, 2)}\n`);
 }
 
 function escapeXml(value) {
