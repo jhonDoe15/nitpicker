@@ -139,7 +139,6 @@ describe('the findPackageJSON fallback for runtimes without node:module findPack
 
   it.each([
     ['a relative specifier to a missing file', './core/missing-module.mjs'],
-    ['a parent directory', '..'],
     ['the base directory', '.'],
     ['an absolute path that does not exist', '/nitpicker-missing/module.mjs'],
     ['a scope without a package name', '@scope'],
@@ -148,6 +147,17 @@ describe('the findPackageJSON fallback for runtimes without node:module findPack
     const { walked, native } = bothOutcomes(specifier, packageBase);
 
     expect(walked).toEqual(native);
+  });
+
+  it('finds no manifest for a parent directory without one, where Node 24 returns the directory itself', () => {
+    const empty = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-package-json-parent-')));
+    writeManifest(path.join(empty, 'child'), { name: 'child' });
+    const base = pathToFileURL(path.join(empty, 'child/package.json')).href;
+    const { walked, native } = bothOutcomes('..', base);
+    rmSync(empty, { recursive: true });
+
+    expect(walked).toEqual({ found: undefined });
+    expect([undefined, `${empty}${path.sep}`]).toContain(native.found);
   });
 
   it('reports an empty specifier as a missing module, as the native API does', () => {
