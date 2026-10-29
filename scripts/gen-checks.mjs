@@ -1,7 +1,6 @@
-// Regenerates the parts of the repository that come from shared/policy.mjs (the custom-rules table
-// in spec/checks.md and the jscpd mode in languages/typescript/preset/defaults/jscpd.json) and from
-// action.yml (the inputs and outputs in docs/ci.md). `--check` writes nothing and exits 1 when a
-// file is stale.
+// Regenerates the parts of the repository that come from shared/policy.mjs: the custom-rules table
+// in spec/checks.md and the jscpd mode in languages/typescript/preset/defaults/jscpd.json. `--check` writes nothing and
+// exits 1 when a file is stale.
 import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';

@@ -1,4 +1,3 @@
-// Renders the inputs and outputs of action.yml as the lists in docs/ci.md, between the markers.
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parse } from 'yaml';
@@ -11,7 +10,7 @@ export const ACTION_BLOCK_START = '<!-- generated:action-inputs begin (npm run g
 
 export const ACTION_BLOCK_END = '<!-- generated:action-inputs end -->';
 
-export function readAction() {
+function readAction() {
   return parse(readFileSync(path.join(repositoryRoot, 'action.yml'), 'utf8'));
 }
 

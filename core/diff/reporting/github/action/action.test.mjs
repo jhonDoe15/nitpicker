@@ -2,6 +2,9 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
+import { commit, fixtureGit, useGitFixtures } from '../../../git/test-support/git-repository.mjs';
+import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
+import { executeStep } from './test-support/action-steps.mjs';
 import { CI_TARGET_VARIABLES } from '../../../git/repository/base-ref.mjs';
 import { LISTED_FINDINGS, LISTED_TOOL_ERRORS } from '../markdown.mjs';
 import { MAX_ANNOTATIONS, MAX_TOOL_ERROR_ANNOTATIONS } from '../workflow-commands.mjs';
@@ -137,6 +140,22 @@ describe('the sample workflow', () => {
     ]);
   });
 
+  it('exercises the inputs a project sets most, across its jobs', () => {
+    const given = Object.values(workflow.jobs).flatMap((each) =>
+      each.steps.filter((step) => step.uses === './').flatMap((step) => Object.keys(step.with)),
+    );
+
+    expect([...new Set(given)].sort()).toEqual([
+      'arguments',
+      'artifact-name',
+      'base-ref',
+      'install-command',
+      'package',
+      'report-directory',
+      'working-directory',
+    ]);
+  });
+
   it('pins the actions it uses to full version tags', () => {
     const used = Object.values(workflow.jobs)
       .flatMap((each) => each.steps)
@@ -166,7 +185,10 @@ describe('docs/ci.md', () => {
 
     expect(others.filter(([, , version]) => !/^v\d+\.\d+\.\d+$/u.test(version))).toEqual([]);
     expect(new Set(own.map(([, , tag]) => tag))).toEqual(new Set([floatingTag(version)]));
-    expect(docs).toContain(`\`${floatingTag(version)}\` is a floating tag`);
+    const tag = floatingTag(version);
+    expect(docs.split('\n').find((line) => line.startsWith(`\`${tag}\` is`))).toBe(
+      `\`${tag}\` is a floating tag that moves to each stable ${tag.slice(1)}.x release (see`,
+    );
   });
 
   it('states the limits of the job summary and the annotations as the code sets them', () => {
@@ -183,7 +205,9 @@ describe('docs/ci.md', () => {
   it('lists the inputs and outputs of action.yml in wrapped lines between the markers', () => {
     const reference = renderActionReference(action);
 
-    expect(docs).toContain(`${ACTION_BLOCK_START}\n\n${reference}\n\n${ACTION_BLOCK_END}`);
+    const start = docs.indexOf(ACTION_BLOCK_START) + ACTION_BLOCK_START.length;
+
+    expect(docs.slice(start, docs.indexOf(ACTION_BLOCK_END))).toBe(`\n\n${reference}\n\n`);
     expect(reference.split('\n').filter((line) => line.length > 100)).toEqual([]);
   });
 });
@@ -203,5 +227,83 @@ describe('docs/usage.md', () => {
     expect(CI_TARGET_VARIABLES.filter((variable) => !usage.includes(`\`${variable}\``))).toEqual(
       [],
     );
+  });
+});
+
+const releaseWorkflow = parse(
+  readFileSync(path.join(repositoryRoot, '.github/workflows/github-release.yml'), 'utf8'),
+);
+
+const releaseStep = releaseWorkflow.jobs.release.steps.find(
+  ({ name }) => name === 'Move the floating tag',
+);
+
+const { createGitRepository, temporaryRoot } = useGitFixtures();
+
+function releaseClone() {
+  const remote = temporaryRoot('nitpicker-release-remote-');
+  fixtureGit(remote, ['init', '-q', '--bare']);
+  const clone = createGitRepository({ 'a.txt': 'a\n' }).root;
+  fixtureGit(clone, ['remote', 'add', 'origin', remote]);
+  return { remote, clone };
+}
+
+function release(clone, tag) {
+  writeFiles(clone, { 'release.txt': `${tag}\n` });
+  commit(clone, tag);
+  const sha = fixtureGit(clone, ['rev-parse', 'HEAD']).trim();
+  const result = executeStep({
+    step: releaseStep,
+    root: temporaryRoot('nitpicker-release-runner-'),
+    cwd: clone,
+    environment: { TAG: tag, COMMIT: sha },
+    searchPath: process.env.PATH,
+  });
+  return { ...result, sha };
+}
+
+function remoteTags(remote) {
+  return fixtureGit(remote, ['tag', '--list', '--format=%(refname:short) %(objectname)'])
+    .split('\n')
+    .filter(Boolean);
+}
+
+describe('the floating release tag', () => {
+  it('runs for stable releases only', () => {
+    expect(releaseStep.if).toBe('${{ !inputs.prerelease }}');
+  });
+
+  it('moves v0.<minor> before 1.0 and v<major> from 1.0', () => {
+    const { remote, clone } = releaseClone();
+    const first = release(clone, 'v0.1.0');
+    const patch = release(clone, 'v0.1.1');
+    const major = release(clone, 'v1.2.0');
+
+    expect([first.status, patch.status, major.status]).toEqual([0, 0, 0]);
+    expect(remoteTags(remote)).toEqual([`v0.1 ${patch.sha}`, `v1 ${major.sha}`]);
+  });
+
+  it('leaves the tags alone for a version with a pre-release suffix', () => {
+    const { remote, clone } = releaseClone();
+    const { status, stdout } = release(clone, 'v0.2.0-rc.1');
+
+    expect([status, stdout, remoteTags(remote)]).toEqual([
+      0,
+      '::notice::v0.2.0-rc.1 has a pre-release suffix; no floating tag moves.\n',
+      [],
+    ]);
+  });
+
+  it('refuses to move a tag back to a commit that does not contain it', () => {
+    const { remote, clone } = releaseClone();
+    const later = release(clone, 'v0.3.1');
+    fixtureGit(clone, ['checkout', '-q', '-b', 'old', 'HEAD~1']);
+    const { status, stdout } = release(clone, 'v0.3.0');
+
+    expect([status, stdout, remoteTags(remote)]).toEqual([
+      1,
+      '::error::v0.3 points at a commit that v0.3.0 does not contain; move it by hand if that is intended.\n',
+      [`v0.3 ${later.sha}`],
+    ]);
   });
 });

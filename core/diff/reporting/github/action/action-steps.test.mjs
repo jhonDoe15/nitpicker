@@ -3,7 +3,18 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { commit, fixtureGit, useGitFixtures } from '../../../git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
-import { ACTION, executeStep } from './test-support/action-steps.mjs';
+import { resolveBase } from '../../../git/repository/base-ref.mjs';
+import { actionStep, executeStep, readAction } from './test-support/action-steps.mjs';
+
+function runAt({ name, root, cwd, environment }) {
+  return executeStep({
+    step: actionStep(name),
+    root,
+    cwd,
+    environment,
+    searchPath: environment.PATH ?? process.env.PATH,
+  });
+}
 
 const { createGitRepository, temporaryRoot } = useGitFixtures();
 
@@ -43,7 +54,7 @@ function shallowCheckout(remote, branch) {
 }
 
 function prepare(checkout, environment) {
-  return executeStep({
+  return runAt({
     name: 'prepare',
     root: temporaryRoot('nitpicker-action-runner-'),
     cwd: checkout,
@@ -62,7 +73,7 @@ function prepare(checkout, environment) {
 
 function gate(environment) {
   const root = temporaryRoot('nitpicker-action-runner-');
-  const result = executeStep({
+  const result = runAt({
     name: 'gate',
     root,
     cwd: root,
@@ -80,7 +91,7 @@ function gate(environment) {
 
 describe('every run step of action.yml', () => {
   it('is covered here, so a new step gets a test', () => {
-    const runSteps = ACTION.runs.steps.filter((step) => step.run !== undefined);
+    const runSteps = readAction().runs.steps.filter((step) => step.run !== undefined);
 
     expect(runSteps.map((step) => step.id ?? step.name)).toEqual([
       INSTALL,
@@ -99,7 +110,7 @@ describe('the install step', () => {
     writeFiles(root, files);
     const project = path.join(root, 'app');
     mkdirSync(project, { recursive: true });
-    const result = executeStep({
+    const result = runAt({
       name: INSTALL,
       root,
       cwd: project,
@@ -177,6 +188,7 @@ describe('the prepare step', () => {
     });
 
     expect([status, outputs.base, outputs['base-sha']]).toEqual([0, 'origin/develop', forkPoint]);
+    expect(resolveBase({ repositoryRoot: checkout, environment: {} }).baseRef).toBe(outputs.base);
   });
 
   it('honours base in nitpicker.config.json and fetches it', () => {
@@ -295,7 +307,7 @@ describe('the gate step', () => {
 describe('the publish and fail steps', () => {
   function run(name, environment) {
     const root = temporaryRoot('nitpicker-action-runner-');
-    return executeStep({ name, root, cwd: root, environment });
+    return runAt({ name, root, cwd: root, environment });
   }
 
   it('publishes to the cache url, and only explains itself without one', () => {

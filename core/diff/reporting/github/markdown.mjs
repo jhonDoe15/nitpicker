@@ -126,11 +126,11 @@ export function findingList(findings, context, heading) {
   if (findings.length === 0) {
     return [];
   }
-  const renderFinding = (finding) => {
+  function renderFinding(finding) {
     const rule = code(`${finding.tool}/${finding.rule}`);
     const message = inlineText(withoutExceptionRoute(finding.message));
     return `${findingLocation(finding, context)} ${rule}: ${message}`;
-  };
+  }
   return [`### ${heading}`, '', ...cappedList(findings, renderFinding, LISTED_FINDINGS)];
 }
 
@@ -138,10 +138,10 @@ export function toolErrorList(toolErrors) {
   if (toolErrors.length === 0) {
     return [];
   }
-  const renderError = (error) => {
+  function renderError(error) {
     const label = error.snapshot === undefined ? error.tool : `${error.tool} (${error.snapshot})`;
     return `${code(label)}: ${inlineText(error.message)}`;
-  };
+  }
   return [
     `### ${pluralize(toolErrors.length, 'tool error')}`,
     '',

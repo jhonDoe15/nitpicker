@@ -5,9 +5,9 @@ import { runGit } from '../diff/git/repository/command.mjs';
 import { resolveProjectRoot } from '../tooling/tool-resolution.mjs';
 import { takeOptionValue } from '../diff/comparison/cli.mjs';
 
-function explicitBaseOf(arguments_) {
+function explicitBaseOf(commandArguments) {
   let explicitBase;
-  const remaining = arguments_.values();
+  const remaining = commandArguments.values();
   for (const argument of remaining) {
     if (argument !== '--base') {
       throw new Error(`Unknown argument: ${argument}. Usage: nitpicker base [--base <ref>]`);
@@ -17,8 +17,13 @@ function explicitBaseOf(arguments_) {
   return explicitBase;
 }
 
-export function runBaseCommand({ arguments_, currentProjectRoot, environment, stdout }) {
-  const explicitBase = explicitBaseOf(arguments_);
+export function runBaseCommand({
+  arguments_: commandArguments,
+  currentProjectRoot,
+  environment,
+  stdout,
+}) {
+  const explicitBase = explicitBaseOf(commandArguments);
   const projectRoot =
     currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot);
   const config = loadConfig(projectRoot);
