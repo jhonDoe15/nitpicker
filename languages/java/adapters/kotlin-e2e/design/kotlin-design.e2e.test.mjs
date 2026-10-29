@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { validateFacts } from '../../../../../shared/rules/facts/schema.mjs';
 import { kotlinDesignBundle } from '../../kotlin/review-rules/design/kotlin-design.mjs';
 import { DEEP_CHAIN } from '../../test-support/kotlin-metrics-sources.mjs';
-import { prepareCompiler, runPsiProgram } from '../../test-support/kotlin-psi-program.mjs';
+import { prepareCompiler, runPsiProgram } from '../../test-support/kotlin/kotlin-psi-program.mjs';
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -111,7 +111,9 @@ describe.skipIf(!enabled)('Kotlin design facts from the PSI program', () => {
     );
 
     expect(status, log).toBe(0);
-    expect(log).toContain('src/Deep.kt: nested is too deeply nested for design facts');
+    expect(log.split('\n').filter((line) => line.endsWith('for design facts'))).toEqual([
+      'src/Deep.kt: nested is too deeply nested for design facts',
+    ]);
     expect(facts.design.callables.map(({ id }) => id)).toEqual(['src/Small.kt#small']);
   });
 
@@ -128,7 +130,9 @@ describe.skipIf(!enabled)('Kotlin design facts from the PSI program', () => {
     );
 
     expect(status, log).toBe(0);
-    expect(log).toContain('design facts failed: java.lang.IllegalStateException');
+    expect(log.split('\n').filter((line) => line.startsWith('design facts failed'))).toEqual([
+      'design facts failed: java.lang.IllegalStateException: design facts were asked to fail',
+    ]);
     expect(metrics.functions.map(({ name }) => name)).toEqual(['small']);
     expect(facts.design).toEqual({
       error: 'java.lang.IllegalStateException: design facts were asked to fail',
