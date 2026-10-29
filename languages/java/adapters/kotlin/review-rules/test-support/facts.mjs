@@ -17,6 +17,8 @@ export function file(overrides = {}) {
     handlers: [],
     calls: [],
     references: [],
+    loads: [],
+    bindings: [],
     ...overrides,
   };
 }
@@ -94,6 +96,23 @@ export function argument(text, overrides = {}) {
 
 export function call(name, overrides = {}) {
   return { name, positional: 0, named: [], spread: false, lambda: false, ...overrides };
+}
+
+export function segment(name, call = false, args = []) {
+  return call ? { name, call, arguments: args } : { name, call };
+}
+
+export function loaded(text, context, overrides = {}) {
+  return {
+    line: 3,
+    name: text,
+    call: true,
+    receiver: [],
+    arguments: [],
+    text: `${text}()`,
+    context: { kind: 'file', owner: '', member: 'value', ...context },
+    ...overrides,
+  };
 }
 
 export function wait(name, overrides = {}) {

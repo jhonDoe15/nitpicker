@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { comparisonKey } from '../comparison/fingerprint.mjs';
+import { noteText } from './format/notes.mjs';
 import { heldFindingsOf } from './report-model.mjs';
 import { joinRepositoryPath, repositoryPath } from '../git/paths.mjs';
 
@@ -53,7 +54,7 @@ function collectSarifRules(findings) {
   return [...rules.values()];
 }
 
-function renderSarifLog({ entries, toolErrors, projectPath }) {
+function renderSarifLog({ entries, toolErrors, notes = [], projectPath }) {
   const log = {
     $schema: SARIF_SCHEMA_URL,
     version: '2.1.0',
@@ -70,10 +71,13 @@ function renderSarifLog({ entries, toolErrors, projectPath }) {
         invocations: [
           {
             executionSuccessful: toolErrors.length === 0,
-            toolExecutionNotifications: toolErrors.map((error) => ({
-              level: 'error',
-              message: { text: `${error.tool} (${error.snapshot}): ${error.message}` },
-            })),
+            toolExecutionNotifications: [
+              ...toolErrors.map((error) => ({
+                level: 'error',
+                message: { text: `${error.tool} (${error.snapshot}): ${error.message}` },
+              })),
+              ...notes.map((note) => ({ level: 'note', message: { text: noteText(note) } })),
+            ],
           },
         ],
         results: entries.map((entry) => toSarifResult(entry, projectPath)),
@@ -91,6 +95,7 @@ export function renderSarifReport(report, { projectPath } = {}) {
   return renderSarifLog({
     entries: newEntries(report),
     toolErrors: report.toolErrors,
+    notes: report.notes,
     projectPath,
   });
 }
@@ -102,6 +107,7 @@ export function renderBaselineSarifReport(report, { projectPath } = {}) {
       ...heldFindingsOf(report).map((finding) => ({ finding, baselineState: 'unchanged' })),
     ],
     toolErrors: report.toolErrors,
+    notes: report.notes,
     projectPath,
   });
 }

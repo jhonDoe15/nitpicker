@@ -38,12 +38,12 @@ function ruleSources(rulesDirectory) {
     .sort();
 }
 
-function cacheKey({ sources, archunit, spawn }) {
+function cacheKey({ sources, versions, spawn }) {
   const digest = createHash('sha256');
   for (const source of sources) {
     digest.update(readFileSync(source));
   }
-  digest.update(`${archunit}|${jdkIdentity(spawn)}`);
+  digest.update(`${versions}|${jdkIdentity(spawn)}`);
   return digest.digest('hex');
 }
 
@@ -125,7 +125,10 @@ export function runSpringArch(options) {
   const sources = ruleSources(options.rules ?? RULES_DIRECTORY);
   const root = cacheDirectory('spring-arch');
   mkdirSync(root, { recursive: true });
-  const classes = path.join(root, cacheKey({ sources, archunit: pinned.archunit, spawn }));
+  const classes = path.join(
+    root,
+    cacheKey({ sources, versions: `${pinned.archunit}|${pinned.asm}`, spawn }),
+  );
   const libraries = existing(tools.archunit);
   compileRules({ classes, sources, libraries, cwd: module.basedir, spawn });
   runRules({ module, classpaths, libraries, springRoles, locations: { classes, output }, spawn });

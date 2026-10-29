@@ -13,7 +13,9 @@ function fakeResolver(overrides = {}) {
 }
 
 function hashFor(overrides) {
-  const version = resolveAnalyzerVersion('coding-standards', '/project', fakeResolver(overrides));
+  const version = resolveAnalyzerVersion('coding-standards', '/project', {
+    resolve: fakeResolver(overrides),
+  });
   return policyHash([
     { name: 'coding-standards', version, configurationHash: 'config', exclusions: [] },
   ]);
@@ -21,7 +23,9 @@ function hashFor(overrides) {
 
 describe('ESLint analyzer versions', () => {
   it('records every ESLint plugin version and the nitpicker plugin version', () => {
-    const version = resolveAnalyzerVersion('coding-standards', '/project', fakeResolver());
+    const version = resolveAnalyzerVersion('coding-standards', '/project', {
+      resolve: fakeResolver(),
+    });
 
     const packageVersion = JSON.parse(readFileSync(`${PACKAGE_ROOT}/package.json`, 'utf8')).version;
     const plugins = ESLINT_PLUGIN_PACKAGES.map((plugin) => `${plugin}@1.0.0`);
@@ -39,17 +43,55 @@ describe('ESLint analyzer versions', () => {
   });
 
   it('leaves non-ESLint analyzer versions free of plugin versions', () => {
-    expect(resolveAnalyzerVersion('prettier-format', '/project', fakeResolver())).toBe('1.0.0');
+    expect(resolveAnalyzerVersion('prettier-format', '/project', { resolve: fakeResolver() })).toBe(
+      '1.0.0',
+    );
   });
 
-  it('records both TypeScript versions for the type check, whichever engine runs', () => {
+  it('records the project, native and source-reading TypeScript versions for the type check', () => {
+    const resolve = fakeResolver({ typescript: '5.9.3', 'typescript-native': '7.0.2' });
+
     expect(
-      resolveAnalyzerVersion(
-        'typescript-typecheck',
-        '/project',
-        fakeResolver({ typescript: '5.9.3', 'typescript-native': '7.0.2' }),
+      resolveAnalyzerVersion('typescript-typecheck', '/project', {
+        resolve,
+        bundled: false,
+        installed: () => true,
+      }),
+    ).toBe('5.9.3;typescript-native@7.0.2;5.9.3');
+    expect(
+      resolveAnalyzerVersion('typescript-typecheck', '/project', {
+        resolve,
+        bundled: false,
+        installed: () => false,
+      }),
+    ).toBe('none;typescript-native@7.0.2;5.9.3');
+  });
+
+  it('records the bundled TypeScript API when the installed typescript has none', () => {
+    const resolve = fakeResolver({ typescript: '7.0.2', 'typescript-js-api': '6.0.3' });
+
+    const bundled = { resolve, bundled: true };
+
+    expect(resolveAnalyzerVersion('structure', '/project', bundled)).toBe('js-api-6.0.3');
+    expect(resolveAnalyzerVersion('crap', '/project', { resolve, bundled: false })).toBe('7.0.2');
+    expect(
+      resolveAnalyzerVersion('typescript-typecheck', '/project', {
+        ...bundled,
+        installed: () => true,
+      }),
+    ).toBe('7.0.2;typescript-native@1.0.0;js-api-6.0.3');
+    expect(resolveAnalyzerVersion('coupling', '/project', bundled)).toBe(
+      '1.0.0;typescript@js-api-6.0.3',
+    );
+    expect(resolveAnalyzerVersion('entry-points', '/project', { resolve, bundled: false })).toBe(
+      '1.0.0;typescript@7.0.2',
+    );
+    expect(resolveAnalyzerVersion('eslint-lint', '/project', bundled)).toBe(
+      resolveAnalyzerVersion('eslint-lint', '/project', { resolve, bundled: false }).replace(
+        ';typescript@7.0.2;',
+        ';typescript@js-api-6.0.3;',
       ),
-    ).toBe('5.9.3;typescript-native@7.0.2');
+    );
   });
 
   it('names the test runner and its version for coverage, test console and mutation', () => {
@@ -59,8 +101,8 @@ describe('ESLint analyzer versions', () => {
       '@stryker-mutator/core': '10.0.0',
     });
 
-    expect(resolveAnalyzerVersion('coverage', '/project', resolve)).toBe('vitest@4.1.11');
-    expect(resolveAnalyzerVersion('test-console', '/project', resolve)).toBe('vitest@4.1.11');
+    expect(resolveAnalyzerVersion('coverage', '/project', { resolve })).toBe('vitest@4.1.11');
+    expect(resolveAnalyzerVersion('test-console', '/project', { resolve })).toBe('vitest@4.1.11');
     expect(
       testRunnerAnalyzerVersion('test-console', '/project', { resolve, configuredRunner: 'jest' }),
     ).toBe('jest@30.5.2');
@@ -83,7 +125,7 @@ describe('package-bundled analyzer versions', () => {
         return { version: '5.4.3' };
       };
 
-      expect(resolveAnalyzerVersion(analyzer, '/project', resolve)).toBe('5.4.3');
+      expect(resolveAnalyzerVersion(analyzer, '/project', { resolve })).toBe('5.4.3');
       expect(calls).toEqual([{ name: 'typescript', projectRoot: PACKAGE_ROOT }]);
     },
   );

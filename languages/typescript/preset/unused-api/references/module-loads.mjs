@@ -1,5 +1,5 @@
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { escapeModule } from './state.mjs';
 
 const GLOB_IMPORTS = new Set(['glob', 'globEager']);

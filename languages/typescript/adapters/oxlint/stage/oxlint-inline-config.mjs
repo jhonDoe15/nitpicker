@@ -1,6 +1,6 @@
 import { lstatSync, mkdirSync, readdirSync, symlinkSync, unlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 
 const TOGGLE_KEYWORD = String.raw`(?:eslint|oxlint)-(?:disable|enable)(?:-line|-next-line)?`;
 const LINE_DIRECTIVE = directivePattern(TOGGLE_KEYWORD);

@@ -1,0 +1,1 @@
+LIMITS = {"default": 10}

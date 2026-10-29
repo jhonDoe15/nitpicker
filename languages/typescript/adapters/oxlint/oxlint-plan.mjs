@@ -21,7 +21,7 @@ try {
 async function listedNativeRules() {
   const { stdout } = await promisify(execFile)(
     process.execPath,
-    [oxlintBinary(), '--rules', '--format', 'json'],
+    [oxlintBinary(), '--rules', '--format', 'json', import.meta.filename],
     { cwd: import.meta.dirname, maxBuffer: MAX_LISTING_BYTES },
   );
   return JSON.parse(stdout);

@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { parseChangedLines } from '../../../../../core/diff/git/patches/changed-lines.mjs';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { RULE_IDS, TEST_TIME_DEFAULTS } from '../../../../../shared/policy.mjs';

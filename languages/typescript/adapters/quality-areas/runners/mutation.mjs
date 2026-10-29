@@ -176,7 +176,7 @@ const SKIP_MESSAGES = {
     typecheck:
       'mutation skipped: the base commit does not type-check, so its mutants cannot be compared. Fix the base first; a missing @types/node is the usual cause.',
     tests:
-      'mutation skipped: the base commit fails its own tests, so its mutants cannot be compared. Fix the base first.',
+      'mutation skipped: the base commit fails its own tests, so its mutants are unknown there.',
   },
 };
 

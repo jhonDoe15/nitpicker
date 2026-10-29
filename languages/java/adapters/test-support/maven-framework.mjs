@@ -66,7 +66,7 @@ function measureFixture(context) {
     launcherVersions: launcher === undefined ? [] : [launcher],
   });
   const isArchunit = archunitMatcher(module.archunitIncludes);
-  const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
+  const { testsRan } = collectTestResults({ module, reportDir, since, isArchunit });
   copyTestResults({ module, reportDir, since, isArchunit });
   runJacocoReport({
     module,

@@ -2,7 +2,7 @@ import { depthFirst } from '../../../../shared/traversal.mjs';
 import { syntaxChildren } from '../syntax/children.mjs';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { RULE_IDS } from '../../../../shared/policy.mjs';
 import {
   isExcludedPath,

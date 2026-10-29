@@ -26,8 +26,8 @@ export function runGitIn(repository, ...args) {
   }
 }
 
-export function commitBranch(repository, name, files) {
-  runGitIn(repository, 'checkout', '-q', '-b', name, 'main');
+export function commitBranch(repository, name, files, from = 'main') {
+  runGitIn(repository, 'checkout', '-q', '-b', name, from);
   for (const [file, content] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(repository, file)), { recursive: true });
     writeFileSync(path.join(repository, file), content);
