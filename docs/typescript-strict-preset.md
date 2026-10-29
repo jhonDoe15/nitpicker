@@ -310,21 +310,29 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   of unknown depth moves to `adapters/`, which passes `domain/` the flat result.
 - `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
   `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
-- `nitpicker/no-accumulating-spread`: an accumulator is not spread into its own next value, in all
-  production code (not in tests). It reports `...acc` in the callback passed straight to `reduce`
-  or `reduceRight` when `acc` is the callback's first of exactly two parameters
+- `nitpicker/no-accumulating-spread`: an accumulator that grows is not spread into its own next
+  value, in all production code (not in tests). It reports `...acc` in the callback passed straight
+  to `reduce` or `reduceRight` when `acc` is the callback's first of exactly two parameters
   (`xs.reduce((acc, x) => ({ ...acc, [x.id]: x }), {})`, `xs.reduce((acc, x) => [...acc, x], [])`),
   and a `let` accumulator declared outside a loop whose first reassignment, inside the loop, spreads
   it into an array or object literal (`out = [...out, x]`). Each step copies everything collected so
-  far. Allowed forms, which `domain/` can use too: build the result in one pass with
-  `Object.fromEntries(xs.map((x) => [x.key, x.value]))`, `Object.groupBy`,
-  `new Map(xs.map((x) => [x.key, x]))`, `Object.assign({}, ...parts)`, `flatMap`, `map` or
-  `filter`; outside `domain/`, a `const` array or object declared before a `for...of` loop that the
-  loop pushes onto or sets keys of. A reducer passed by name (`xs.reduce(addInvoice, none)`), a
-  spread of the current element (`{ ...x, total }`), a spread inside a function nested in the reducer
-  and a callback with one or three parameters are not reported. In `domain/` the loop form is already reported by
-  the loop ban and `functional/no-let`, so this rule does not report it a second time. A spread in
-  `map` that adds a field (`items.map((item) => ({ ...item, done: true }))`) is the allowed immutable
+  far, so the work is quadratic. An accumulator that cannot grow is not reported: an object literal
+  whose other entries are all fixed keys (`({ ...acc, paid: acc.paid + x.v })`) and an array that is
+  cut back at once with literal bounds (`[...acc, x].slice(-3)`, `.slice(0, 3)`). Allowed forms:
+  build the result in one pass with `Object.fromEntries(xs.map((x) => [x.key, x.value]))`,
+  `new Map(xs.map((x) => [x.key, x]))`, `Object.fromEntries(parts.flatMap((p) => Object.entries(p)))`
+  (to merge objects), `Object.groupBy`, `flatMap`, `map` or `filter`; in `domain/` TypeScript writes
+  the entries `as const` (`[x.key, x.value] as const`) so the result keeps its key and value types;
+  outside `domain/`, a `const` array or object declared before a `for...of` loop that the loop
+  pushes onto or sets keys of. `Object.groupBy` and `Map.groupBy` need `lib` `ES2024`, which
+  TypeScript 5.7 and later accept. The message follows the file: in `domain/` it names only the
+  one-pass forms. An exception fits only when the input stays small. In `domain/` the loop form is
+  already reported by the loop ban and `functional/no-let`, so this rule does not report it a second
+  time. Known limit: the rule reads the inline callback, so a reducer passed by name
+  (`xs.reduce(addInvoice, none)`) is not checked, and the same spread there is just as quadratic. A
+  spread of the current element (`{ ...x, total }`), a spread inside a function nested in the
+  reducer and a callback with one or three parameters are not reported either. A spread in `map`
+  that adds a field (`items.map((item) => ({ ...item, done: true }))`) is the allowed immutable
   update and is not reported: copying one element per step is linear.
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
   left without being awaited (`@typescript-eslint/no-floating-promises`). Deliberate

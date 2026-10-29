@@ -34,6 +34,11 @@ tester.run('no-accumulating-spread', rule, {
     'var out = []; for (const x of xs) { out = [...out, x]; }',
     'let out = []; out = [...out, 1];',
     'let out = []; for (const x of xs) { other = [...out, x]; }',
+    'xs.reduce((acc, x) => ({ ...acc, paid: acc.paid + x.v }), { paid: 0, open: 0 })',
+    "xs.reduce((acc, x) => ({ ...acc, 'paid': 1, open() { return 0; } }), {})",
+    'xs.reduce((acc, x) => [...acc, x].slice(-3), [])',
+    'xs.reduce((acc, x) => [...acc, x].slice(0, 3), [])',
+    'let last = []; for (const x of xs) { last = [...last, x].slice(-3); }',
   ].map((code) => ({ filename, code })),
   invalid: [
     {
@@ -80,5 +85,45 @@ tester.run('no-accumulating-spread', rule, {
       code: 'let [out] = [[]];\nfor (const x of xs) {\n  xs.map(() => { out = [...out, x]; });\n}',
       errors: [at('loopArray', 1, 5, 10)],
     },
+    {
+      code: 'xs.reduce((acc, x) => ({ ...acc, [x.id]: x }), {})',
+      errors: [at('reduceObject', 1, 26, 32)],
+    },
+    {
+      code: 'xs.reduce((acc, x) => [...acc, x].slice(1), [])',
+      errors: [at('reduceArray', 1, 24, 30)],
+    },
+    {
+      code: 'xs.reduce((acc, x) => [...acc, x].slice(-n), [])',
+      errors: [at('reduceArray', 1, 24, 30)],
+    },
   ].map((testCase) => ({ filename, ...testCase })),
+});
+
+const domain = '/repo/src/main/features/billing/domain/totals.ts';
+
+tester.run('no-accumulating-spread in domain/', rule, {
+  valid: [{ filename: domain, code: 'xs.reduce((acc, x) => [...acc, x].slice(-3), [])' }],
+  invalid: [
+    {
+      code: 'xs.reduce((acc, x) => ({ ...acc, ...x }), {})',
+      errors: [at('domainReduceObject', 1, 26, 32)],
+    },
+    {
+      code: 'xs.reduce((acc, x) => [...acc, x], [])',
+      errors: [at('domainReduceArray', 1, 24, 30)],
+    },
+    {
+      code: 'xs.reduce((acc, x) => new Set([...acc, x]))',
+      errors: [at('domainReduce', 1, 32, 38)],
+    },
+    {
+      code: 'let out = {};\nfor (const x of xs) {\n  out = { ...out, ...x };\n}',
+      errors: [at('domainLoopObject', 1, 5, 8)],
+    },
+    {
+      code: 'let out = [];\nfor (const x of xs) {\n  out = [...out, x];\n}',
+      errors: [at('domainLoopArray', 1, 5, 8)],
+    },
+  ].map((testCase) => ({ filename: domain, ...testCase })),
 });
