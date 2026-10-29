@@ -1,7 +1,7 @@
 import { ENUM_PREDICATE_RULE } from '../../review-rules/enum-predicates.mjs';
 import { LOAD_EFFECT_RULE } from '../../../messages/load-effects.mjs';
-import { FORWARDING_RULE } from './main/forwarding-wrappers.mjs';
-import { METHOD_ALIAS_RULE } from './main/method-aliases.mjs';
+import { FORWARDING_RULE } from './main/forwarding/forwarding-wrappers.mjs';
+import { METHOD_ALIAS_RULE } from './main/forwarding/method-aliases.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
 import { UNUSED_OPTION_RULE } from './main/unused-options.mjs';
 import { REVIEW_TOOL } from './review-finding.mjs';

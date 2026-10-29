@@ -1,4 +1,4 @@
-import { compactType } from '../kotlin-facts.mjs';
+import { compactType } from '../../kotlin-facts.mjs';
 
 export const METHOD_ALIAS_RULE = 'ForwardingMethodAlias';
 

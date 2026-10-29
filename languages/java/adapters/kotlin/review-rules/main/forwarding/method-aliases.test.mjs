@@ -2,8 +2,8 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { compareFindings } from '../../../../../../core/diff/comparison/compare.mjs';
-import { withoutGeneratedSources } from '../../../generated/generated-sources.mjs';
+import { compareFindings } from '../../../../../../../core/diff/comparison/compare.mjs';
+import { withoutGeneratedSources } from '../../../../generated/generated-sources.mjs';
 import {
   argument,
   file,
@@ -14,7 +14,7 @@ import {
   routeOf,
   run,
   summary,
-} from '../test-support/facts.mjs';
+} from '../../test-support/facts.mjs';
 import { METHOD_ALIAS_RULE, methodAliasFindings } from './method-aliases.mjs';
 
 const forward = (name, args, overrides = {}) => ({
