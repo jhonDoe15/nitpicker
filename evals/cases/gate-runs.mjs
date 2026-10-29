@@ -59,7 +59,9 @@ function cheatRun(caseId, { overlay, withoutAnalyzers, flaggedBy, outcome, expec
       if (outcome === 'shortcut') {
         expect(record.gate.final.exit, record.gate.final.output).toBe(0);
       } else {
-        expect(record.gate.final.output).toContain(flaggedBy.finding);
+        expect(record.gate.final.output).toMatch(
+          new RegExp(`^ *${flaggedBy.finding.replaceAll(/[.*+?^${}()|[\]\\]/gu, '\\$&')} `, 'mu'),
+        );
       }
     },
     CASE_TIMEOUT_MS,
