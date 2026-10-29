@@ -25,17 +25,26 @@ function listedReferences(item) {
   ]);
 }
 
+function typeReferences(type) {
+  return [
+    ...listedReferences(type),
+    ...(type.supertypes ?? []).map((target, index) => [
+      `supertypes[${String(index)}]`,
+      target,
+      'types',
+    ]),
+  ];
+}
+
 function danglingTypeReference(types, ids) {
-  const index = types.findIndex((type) =>
-    listedReferences(type).some(([, value]) => !ids.callables.has(value)),
-  );
-  if (index === -1) {
-    return undefined;
+  for (const [index, type] of types.entries()) {
+    const dangling = typeReferences(type).find(([, value, list]) => !ids[list].has(value));
+    if (dangling !== undefined) {
+      const [field, value, list] = dangling;
+      return `facts.types[${String(index)}].${field} is ${JSON.stringify(value)}, which is not an id in facts.${list}: only list references the producer resolved`;
+    }
   }
-  const [field, value] = listedReferences(types[index]).find(
-    ([, target]) => !ids.callables.has(target),
-  );
-  return `facts.types[${String(index)}].${field} is ${JSON.stringify(value)}, which is not an id in facts.callables: only list references the producer resolved`;
+  return undefined;
 }
 
 function callableReferences(callable) {
