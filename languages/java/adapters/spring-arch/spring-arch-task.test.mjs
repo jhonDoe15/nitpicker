@@ -20,10 +20,10 @@ describe('nitpickerSpringArch in the init script', () => {
       'nitpickerSpotbugs',
       'nitpickerErrorProne',
       'nitpickerFormat',
+      'nitpickerArchunit',
       'nitpickerSpringArch',
       'nitpickerStructure',
       'nitpickerJacoco',
-      'nitpickerArchunit',
       'nitpickerPit',
     ]);
   });

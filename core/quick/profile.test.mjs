@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { configureAnalyzers } from '../configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from '../configuration/preset-analyzers.mjs';
 import { applyRunProfile } from './profile.mjs';
 
@@ -27,6 +28,7 @@ describe('quick profile analyzer selection per preset', () => {
     'dependency-architecture',
     'coding-standards',
     'coupling',
+    'test-runtime',
     'structure',
     'duplicates',
     'dead-code',
@@ -39,13 +41,7 @@ describe('quick profile analyzer selection per preset', () => {
       const { analyzers, quick } = quickRun(preset);
 
       expect(analyzers.map(({ name }) => name)).toEqual(FAST_TYPESCRIPT);
-      expect(quick.skipped).toEqual([
-        'test-runtime',
-        'coverage',
-        'test-console',
-        'crap',
-        'mutation',
-      ]);
+      expect(quick.skipped).toEqual(['coverage', 'test-console', 'crap', 'mutation']);
     },
   );
 
@@ -56,19 +52,33 @@ describe('quick profile analyzer selection per preset', () => {
     expect(quick.skipped).toEqual(['mutation', 'tests', 'coverage', 'crap', 'test-runtime']);
   });
 
+  it.each([
+    [
+      { preset: 'python', python: {}, disable: ['mutation'] },
+      ['tests', 'coverage', 'crap', 'test-runtime'],
+    ],
+    [{ preset: 'typescript', disable: ['coverage', 'mutation'] }, []],
+  ])('lists only the checks the configuration turns on for %j', (config, skipped) => {
+    const analyzers = configureAnalyzers(presetAnalyzers(config), config, {});
+
+    expect(applyRunProfile(analyzers, { quick: true, analyzerNames: [] }).quick.skipped).toEqual(
+      skipped,
+    );
+  });
+
+  it('lists only the checks of the analyzers that --analyzer selects', () => {
+    const analyzers = presetAnalyzers({ preset: 'python', python: {} });
+
+    expect(
+      applyRunProfile(analyzers, { quick: true, analyzerNames: ['python'] }).quick.skipped,
+    ).toEqual(['tests', 'coverage', 'crap', 'test-runtime']);
+  });
+
   it.each(['java', 'kotlin'])('lists the test tools inside the %s analyzer', (preset) => {
     const { analyzers, quick } = quickRun(preset);
 
     expect(analyzers.map(({ name }) => name)).toEqual([preset, 'repository-hygiene']);
-    expect(quick.skipped).toEqual([
-      'tests',
-      'jacoco',
-      'crap',
-      'pit',
-      'archunit',
-      'test-runtime',
-      'test-console',
-    ]);
+    expect(quick.skipped).toEqual(['tests', 'jacoco', 'crap', 'pit', 'test-runtime']);
   });
 });
 
@@ -128,6 +138,15 @@ describe('quick profile', () => {
     expect(quick.skipped).toEqual([]);
     expect(analyzers[0].createInvocation({}).env).toEqual({ A: '1', NITPICKER_QUICK: '1' });
     expect(analyzers[0].configurationHash).not.toBe(custom.configurationHash);
+  });
+
+  it('lists no runner tools for a custom analyzer named like a language analyzer', () => {
+    const custom = { ...namedAnalyzers('python')[0], custom: true };
+
+    const { analyzers, quick } = applyRunProfile([custom], { quick: true, analyzerNames: [] });
+
+    expect(quick.skipped).toEqual([]);
+    expect(analyzers[0].createInvocation({}).args).toEqual(['runner.mjs']);
   });
 
   it('adds the quick mode to a language runner and keys it apart from the full run', () => {

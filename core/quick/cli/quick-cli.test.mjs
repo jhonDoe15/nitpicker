@@ -76,6 +76,7 @@ describe('nitpicker --quick', () => {
     expect(output.stdoutText).toBe(consoleSummary(outputRoot, ADDED_FINDING));
     const summary = readSummary(outputRoot);
     expect(summary.tools.map(({ name }) => name)).toEqual(['structure']);
+    expect(summary.mode).toBe('quick');
     expect(summary.quick).toEqual({ skipped: ['coverage', 'crap'], message: QUICK_LINE });
     expect(readFileSync(path.join(outputRoot, 'report.txt'), 'utf8')).toContain(QUICK_LINE);
   });
@@ -97,6 +98,7 @@ describe('nitpicker --quick', () => {
 
     expect(output.stdoutText).not.toContain('Quick run');
     expect(readSummary(outputRoot).quick).toBeUndefined();
+    expect(readSummary(outputRoot).mode).toBe('full');
     expect(readSummary(outputRoot).tools.map(({ name }) => name)).toEqual([
       'structure',
       'coverage',
@@ -159,6 +161,7 @@ describe('nitpicker --quick', () => {
 
     expect(exitCode).toBe(1);
     expect(output.stdoutText).toContain(QUICK_LINE);
+    expect(readSummary(outputRoot).mode).toBe('quick');
     expect(readSummary(outputRoot).quick.skipped).toEqual(['coverage', 'crap']);
     expect(readSummary(outputRoot).tools.map(({ name }) => name)).toEqual(['structure']);
   });

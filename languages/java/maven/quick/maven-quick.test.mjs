@@ -1,4 +1,4 @@
-import { mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readdirSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -60,11 +60,14 @@ function buildArguments(quick) {
 }
 
 describe('the Maven build in a quick run', () => {
-  it('compiles the main and test sources instead of running the tests under the JaCoCo agent', () => {
+  it('runs only the ArchUnit test classes, without the JaCoCo agent', () => {
     const args = buildArguments(true);
 
     expect(args.filter((argument) => ['test-compile', 'test'].includes(argument))).toEqual([
-      'test-compile',
+      'test',
+    ]);
+    expect(args.filter((argument) => argument.startsWith('-Dtest='))).toEqual([
+      '-Dtest=**/*ArchTest,**/*ArchitectureTest',
     ]);
     expect(args.some((argument) => argument.includes('jacoco'))).toBe(false);
     expect(args.some((argument) => argument.includes('dependency-plugin'))).toBe(true);
@@ -80,7 +83,19 @@ describe('the Maven build in a quick run', () => {
   });
 
   it('plans the goals from the run mode', () => {
-    expect(buildGoals({ quick: true, pinned, modules: [] })).toEqual(['test-compile']);
+    expect(
+      buildGoals({
+        quick: true,
+        pinned,
+        modules: [{ archunitIncludes: '**/*Rules.class, **/*ArchTest.class' }, {}],
+      }),
+    ).toEqual([
+      'test',
+      '-Dtest=**/*Rules,**/*ArchTest,**/*ArchitectureTest',
+      '-Dsurefire.failIfNoSpecifiedTests=false',
+      '-DfailIfNoSpecifiedTests=false',
+      '-DfailIfNoTests=false',
+    ]);
     expect(buildGoals({ quick: false, pinned, modules: [{ runsFailsafe: false }] })).toEqual([
       `org.jacoco:jacoco-maven-plugin:${pinned.jacoco}:prepare-agent`,
       '-Djacoco.destFile=${project.build.directory}/nitpicker-jacoco.exec',
@@ -110,8 +125,38 @@ describe('the Maven build in a quick run', () => {
     ]);
   });
 
-  it('reads no test results', () => {
-    expect(readTestRuns({ quick: true })).toBe(false);
+  it('copies only the ArchUnit reports and reports that no other test ran', () => {
+    const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-quick-results-')));
+    roots.push(root);
+    const surefireReports = path.join(root, 'target/surefire-reports');
+    const reportDir = path.join(root, 'target/nitpicker');
+    mkdirSync(surefireReports, { recursive: true });
+    mkdirSync(path.join(root, 'target/test-classes'), { recursive: true });
+    for (const suite of ['demo.ArchitectureTest', 'demo.StaleTest']) {
+      writeFileSync(
+        path.join(surefireReports, `TEST-${suite}.xml`),
+        `<testsuite name="${suite}" tests="1" failures="0"><testcase name="t"/></testsuite>`,
+      );
+    }
+    const module = {
+      basedir: root,
+      surefireReports,
+      failsafeReports: surefireReports,
+      testOutputDirectory: path.join(root, 'target/test-classes'),
+    };
+
+    const testsRan = readTestRuns({
+      quick: true,
+      module,
+      reportDir,
+      since: 0,
+      isArchunit: (suite) => suite.endsWith('ArchitectureTest'),
+    });
+
+    expect(testsRan).toBe(false);
+    expect(readdirSync(path.join(reportDir, 'archunit'))).toEqual([
+      'TEST-demo.ArchitectureTest.xml',
+    ]);
   });
 
   it('runs neither the coverage report nor the mutation run', () => {

@@ -175,6 +175,7 @@ No new enforceable violations, but the run is incomplete:
       policyLoosenings: [],
       policyChangeAccepted: false,
       notices: [],
+      mode: 'full',
     });
     expect(JSON.parse(readFileSync(path.join(outputRoot, 'tool-errors.json'), 'utf8'))).toEqual([
       {

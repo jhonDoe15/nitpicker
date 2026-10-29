@@ -2,7 +2,7 @@ import { sumToolCount, formatSeconds } from './format/text.mjs';
 import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { noticeSection } from './review/notices.mjs';
 import { policyChangeSection } from './review/policy-changes.mjs';
-import { quickLines } from '../../quick/summary.mjs';
+import { quickLines, stagedLines } from '../../quick/summary.mjs';
 
 export function renderTextReport(report) {
   const lines = [
@@ -26,6 +26,7 @@ function summaryLines(report) {
     `Base ref: ${report.summary.requestedBaseRef}`,
     `Merge base: ${report.summary.mergeBaseSha}`,
     `Head: ${report.summary.headSha}`,
+    ...stagedLines(report.summary),
     `Status: ${report.summary.overallStatus}`,
     `New enforceable findings: ${String(report.summary.newEnforceableFindings)}`,
     `New findings: ${String(report.newFindings.length)}`,

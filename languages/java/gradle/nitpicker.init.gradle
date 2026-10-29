@@ -786,13 +786,13 @@ allprojects {
             description = 'Runs PMD, SpotBugs, Error Prone, the formatter check, JaCoCo, Checkstyle, ' +
                 'ArchUnit rule tests, structure metrics and PIT; reports go to build/nitpicker.'
             dependsOn 'nitpickerPmd', 'nitpickerSpotbugs', 'nitpickerErrorProne', 'nitpickerFormat',
-                'nitpickerSpringArch', 'nitpickerStructure'
+                'nitpickerArchunit', 'nitpickerSpringArch', 'nitpickerStructure'
             if (!quickRun) {
-                dependsOn 'nitpickerJacoco', 'nitpickerArchunit', 'nitpickerPit'
-                dependsOn {
-                    checkedTestTasks().findAll { it.name != 'test' }
-                        .collect { tasks.named("nitpickerArchunit${capitalized(it.name)}") }
-                }
+                dependsOn 'nitpickerJacoco', 'nitpickerPit'
+            }
+            dependsOn {
+                checkedTestTasks().findAll { it.name != 'test' }
+                    .collect { tasks.named("nitpickerArchunit${capitalized(it.name)}") }
             }
             dependsOn {
                 ([sourceSets.main] + testSourceSets())

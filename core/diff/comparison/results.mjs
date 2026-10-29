@@ -10,6 +10,7 @@ import {
   policyFindings,
 } from '../reporting/review/policy-findings.mjs';
 import { compareFindings } from './compare.mjs';
+import { runProfileSummary } from '../../quick/summary.mjs';
 
 export function combineAnalyzerReports(context) {
   const { analyzers, baseRun, headRun, additionalToolErrors } = context;
@@ -126,7 +127,7 @@ function buildReport(context) {
         ? {}
         : { policyAcceptanceSource: context.policyAcceptanceSource }),
       notices,
-      ...(context.quick === undefined ? {} : { quick: context.quick }),
+      ...runProfileSummary(context),
       tools: outcomes.map(({ tool }) => tool),
       exclusions: declaredExclusions(analyzers),
       renamedPaths: context.baseToHeadRenames.size,

@@ -45,7 +45,9 @@ function gradleArguments(root) {
 }
 
 function quickProperties(root) {
-  return gradleArguments(root).filter((argument) => argument.startsWith('-Pnitpicker.quick'));
+  return gradleArguments(root).filter(
+    (argument) => argument.startsWith('-Pnitpicker.quick') || argument === '--build-cache',
+  );
 }
 
 function toolsOf(findings) {
@@ -53,14 +55,14 @@ function toolsOf(findings) {
 }
 
 describe.each(['java', 'kotlin'])('the %s preset on a Gradle build', (preset) => {
-  it('passes the quick property to Gradle only for a quick run', () => {
+  it('passes the quick property and the build cache to Gradle only for a quick run', () => {
     const quick = project();
     const full = project();
 
     collect(quick, { preset, quick: true });
     collect(full, { preset });
 
-    expect(quickProperties(quick)).toEqual(['-Pnitpicker.quick=true']);
+    expect(quickProperties(quick)).toEqual(['-Pnitpicker.quick=true', '--build-cache']);
     expect(quickProperties(full)).toEqual([]);
   });
 

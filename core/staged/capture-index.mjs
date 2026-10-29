@@ -1,6 +1,19 @@
 import path from 'node:path';
 import { GitCommandError, runGit } from '../diff/git/repository/command.mjs';
 import { commitTreeOverHead } from '../diff/git/repository/git.mjs';
+import { stagedConfigDrift, stagedConfigNotice } from './config-drift.mjs';
+
+export function stagedRunNotice(projectRoot, indexFile) {
+  const repositoryRoot = runGit(projectRoot, ['rev-parse', '--show-toplevel']).trim();
+  try {
+    return stagedConfigNotice(stagedConfigDrift(repositoryRoot, indexFile));
+  } catch (error) {
+    if (error instanceof GitCommandError) {
+      return '';
+    }
+    throw error;
+  }
+}
 
 export function indexCapture(indexFile) {
   return function captureIndex(repositoryRoot, headSha) {
@@ -18,7 +31,10 @@ function writeIndexTree(repositoryRoot, environment) {
   } catch (error) {
     if (error instanceof GitCommandError) {
       throw new Error(
-        `Cannot read the staged changes: ${error.message}. Resolve the conflicts and stage the files, or run nitpicker without --staged.`,
+        [
+          `Cannot read the staged changes: ${error.message}.`,
+          ' Resolve the conflicts and stage the files, or run nitpicker without --staged.',
+        ].join(''),
         { cause: error },
       );
     }

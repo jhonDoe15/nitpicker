@@ -1,6 +1,6 @@
 - id: nitpicker
   name: nitpicker (quick, staged changes)
-  description: Quick differential quality gate on the staged changes. Skips tests, coverage, CRAP and mutation; run nitpicker without --quick before you finish.
+  description: Quick differential quality gate on the staged changes. Skips the tests and the checks built on them (the run prints the list); run nitpicker without --quick before you finish.
   entry: nitpicker --quick --staged
   language: node
   pass_filenames: false

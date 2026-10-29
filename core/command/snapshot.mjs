@@ -15,6 +15,7 @@ import { runQualitySnapshot } from '../snapshot/run-snapshot.mjs';
 import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
+import { runProfileSummary } from '../quick/summary.mjs';
 
 export function runSnapshotCli({
   options,
@@ -49,9 +50,7 @@ export function runSnapshotCli({
       runTasks,
     }),
   );
-  if (quick !== undefined) {
-    report.summary.quick = quick;
-  }
+  Object.assign(report.summary, runProfileSummary({ quick, staged: options.staged }));
   report.text = writeSnapshotReports(outputRoot, report);
   stdout.write(report.text);
   stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));

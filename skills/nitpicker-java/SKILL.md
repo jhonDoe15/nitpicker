@@ -12,8 +12,9 @@ forms below from the start; the gate is a backstop.
 
 ## Finish with the gate
 
-While you iterate, run `npx nitpicker --quick`: it skips the tests, coverage, CRAP and mutation
-and lists what it skipped. A quick run is never a pass; finish with the full run below.
+While you iterate, run `npx nitpicker --quick`: it skips the tests and the checks built on them;
+read the printed skipped list for what it left out. A quick run is never a pass; finish with the
+full run below.
 
 1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests or compile
    errors make the gate exit 2.
