@@ -615,11 +615,14 @@ guessed at.
   `x shouldNotBe 0.1` and the `x.shouldBe(0.1)` call form; AssertJ `isEqualTo` and `isNotEqualTo` with
   one such literal in a file that imports `org.assertj`; and a `==`, `!=`, `===` or `!==` with such a literal
   inside `assertTrue` / `assertFalse` (also the block form), `(x == 0.1) shouldBe true` and `.shouldBeTrue()`,
-  and `assertThat(x == 0.1).isTrue()` (AssertJ file). Allowed: ordering comparisons, `abs(x - 0.1) < tolerance`, a tolerance,
+  and `assertThat(x == 0.1).isTrue()` (AssertJ file). Literals may omit the integer part (`.5`).
+  Allowed: ordering comparisons, `abs(x - 0.1) < tolerance`, a tolerance, an AssertJ chain with a
+  `using...` call (`usingComparator(...)`),
   `x shouldBe (0.1 plusOrMinus 1e-9)`, `0.1.plusOrMinus(...)`, `isCloseTo(...)`, integral literals such as
   `1.0`, and literals in strings and comments. Only a literal written in the call counts: `0.1 + 0.2`, a
-  constant, a collection literal and a third argument that is not a string or a lambda (read as a delta)
-  are left alone. Hamcrest is not read in Kotlin.
+  constant, a collection literal, a literal followed by a call, an operator or a line that continues
+  the expression (`x shouldBe (0.5) * y`, `0.1` then `.plus(1)`), and a third argument that is not a
+  string or a lambda (read as a delta) are left alone. Hamcrest is not read in Kotlin.
 - `AssertionInControlFlow`: an assertion inside a construct that can skip it, in a JUnit test or a Kotest
   test body: an `if` or `else`, a `when`, any loop (`for`, `while`, `do`, `repeat`, `forEach`,
   `forEachIndexed`, `onEach` and the other iteration calls), a safe call (`?.let`, `?.also`, `?.run`,

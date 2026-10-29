@@ -2400,9 +2400,12 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   then says that `pollDelay(...).until(() -> true)` is a fixed sleep too.
 - `FloatEqualityInTest` matches by resolved type (`org.junit.jupiter.api.Assertions`,
   `org.junit.Assert`, `org.testng.Assert`, AssertJ's `AbstractDoubleAssert` and `AbstractFloatAssert`,
-  `org.hamcrest.Matchers`, `Double` and `Float`), so a project's own `assertEquals` is not flagged. Only a literal written in
-  the call counts: `0.1 + 0.2`, a constant or a cast is left alone, and so is a `List.of(0.1)`, since
-  JUnit has no single wrapper that compares a collection with a tolerance.
+  `org.hamcrest.Matchers`, `Double` and `Float`), so a project's own `assertEquals` is not flagged.
+  Only a literal written in the call counts, also negated or cast to `double`, `float` or their
+  boxes (`(double) 0.5`): `0.1 + 0.2` and a constant are left alone, and so is a `List.of(0.1)`,
+  since JUnit has no single wrapper that compares a collection with a tolerance. An AssertJ chain
+  with a `using...` call (`usingComparator(new DoubleComparator(0.01))`) compares with a
+  tolerance and is not flagged.
 - `ExhaustiveEnumPredicate` needs at least two comparisons with distinct constants of one enum on
   one subject. A condition in an `if` or a loop, or a predicate passed as an argument, is not a
   value and is not flagged. The Node side (`adapters/review-rules/enum-predicates.mjs`) then keeps

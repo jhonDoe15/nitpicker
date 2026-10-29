@@ -148,8 +148,10 @@ Before you change code other modules use, or fix a bug, read
 - Compare floating-point numbers with a tolerance (`pmd/FloatEqualityInTest`): no `assertEquals`,
   `assertNotEquals`, `shouldBe`, `shouldNotBe` or AssertJ `isEqualTo` against a fractional literal
   such as `0.1`. Use `assertEquals(expected, actual, absoluteTolerance = 1e-9)`, the JUnit delta
-  overload, `actual shouldBe (expected plusOrMinus 1e-9)` or `isCloseTo(expected, within(1e-9))`; the same goes for `assertTrue(x == 0.1)` and `(x == 0.1) shouldBe true`,
-  which need `abs(x - 0.1) < 1e-9`. An integral literal such as `1.0` is exact and fine.
+  overload, `actual shouldBe (expected plusOrMinus 1e-9)` or `isCloseTo(expected, within(1e-9))`;
+  the same goes for `assertTrue(x == 0.1)` and `(x == 0.1) shouldBe true`, which need
+  `abs(x - 0.1) < 1e-9`. An AssertJ `using...Comparator(...)` is fine. An integral literal such as
+  `1.0` is exact and fine.
 - Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion that can be skipped, inside an `if`,
   a `when`, any loop (also over results), a safe call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that
   swallows the failure, a `runCatching`, or after an early `return`. An `if`/`else` or `when` whose every
