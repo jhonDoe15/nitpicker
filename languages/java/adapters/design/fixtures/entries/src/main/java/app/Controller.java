@@ -31,4 +31,8 @@ public class Controller {
   public static void main(String[] args) {}
 
   private void hidden() {}
+
+  public String label(Marker marker) {
+    return marker.value();
+  }
 }

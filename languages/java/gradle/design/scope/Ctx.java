@@ -9,7 +9,9 @@ public final class Ctx {
   public final Unit unit;
   public final Set<String> typeVars;
   public MethodInfo method;
+  public int classDepth;
   private final Deque<Map<String, Local>> scopes = new ArrayDeque<>();
+  private final Map<String, Integer> declarations = new HashMap<>();
 
   public Ctx(TypeInfo owner, Set<String> typeVars) {
     this.owner = owner;
@@ -52,11 +54,13 @@ public final class Ctx {
 
   public Local declare(String name, Ty ty, int param) {
     Local existing = lookup(name);
-    if (existing != null && param < 0) {
+    if (existing != null && param < 0 && existing.classDepth == classDepth) {
       existing.ty = Ty.UNKNOWN;
       return existing;
     }
-    Local local = new Local(name, ty, param);
+    int ordinal = declarations.merge(name, 1, Integer::sum);
+    Local local = new Local(ordinal == 1 ? name : name + "#" + ordinal, ty, param);
+    local.classDepth = classDepth;
     scopes.peek().put(name, local);
     return local;
   }

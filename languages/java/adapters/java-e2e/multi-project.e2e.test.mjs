@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DESIGN_RULES } from '../../../../shared/project-rules/design/design-rules.mjs';
-import { writeEscape } from '../design/test-support/escape-sources.mjs';
+import { POOL_PROTOCOL, writeEscape, writePool } from '../design/test-support/escape-sources.mjs';
 import { collectJavaFindings } from '../java-diff.mjs';
 import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
 
@@ -137,21 +137,27 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
 });
 
 describe.skipIf(!enabled)('the design rules on a Gradle build of two projects', () => {
-  it('reports a caller in app that changes the private list of a lib class', () => {
+  it('reports a caller in app that changes the private list of a lib class or leaks a pool', () => {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-multi-design-'));
     try {
       cpSync(fixture, root, { recursive: true });
-      const expected = writeEscape(root, {
+      const sides = {
         owner: { root: 'lib', package: 'demo.lib' },
         caller: { root: 'app', package: 'demo.app' },
-      });
+      };
+      const expected = writeEscape(root, sides);
+      const leak = writePool(root, sides);
 
       const findings = collectJavaFindings(root, {
         gradle,
-        policy: { preset: 'java', testSeconds: { unitTestSeconds: -1 } },
+        policy: {
+          preset: 'java',
+          testSeconds: { unitTestSeconds: -1 },
+          protocols: [POOL_PROTOCOL],
+        },
       });
 
-      expect(findings.filter(({ rule }) => DESIGN_RULES.includes(rule))).toEqual([expected]);
+      expect(findings.filter(({ rule }) => DESIGN_RULES.includes(rule))).toEqual([expected, leak]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

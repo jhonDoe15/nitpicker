@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { callable, fixtureFacts, ref, type } from '../../test-support/design-facts-support.mjs';
+import {
+  accessor,
+  callable,
+  fixtureFacts,
+  ref,
+  type,
+} from '../../test-support/design-facts-support.mjs';
 
 const facts = fixtureFacts('syntax');
 
@@ -23,6 +29,7 @@ const TYPES_0 = [
     line: 18,
     kind: 'data',
     fields: [{ name: 'value', private: true }],
+    supertypes: [ref('mix/Syntax.java', 'Syntax.Node')],
   }),
   type({
     file: 'mix/Syntax.java',
@@ -33,6 +40,7 @@ const TYPES_0 = [
       { name: 'left', private: true },
       { name: 'right', private: true },
     ],
+    supertypes: [ref('mix/Syntax.java', 'Syntax.Node')],
   }),
   type({
     file: 'mix/Syntax.java',
@@ -62,6 +70,7 @@ const CALLABLES_0 = [
     line: 57,
     params: [{ name: 'leaf', type: ref('mix/Syntax.java', 'Syntax.Leaf') }],
     returns: 'void',
+    calls: [{ target: ref('mix/Syntax.java', 'Syntax.Leaf.value'), line: 62, receiver: 'leaf' }],
     paramUses: [{ param: 0, fields: [], forwards: [], opaque: true }],
     ownFields: ['names', 'title'],
   }),
@@ -72,6 +81,7 @@ const CALLABLES_0 = [
     line: 69,
     params: [{ name: 'leaf', type: ref('mix/Syntax.java', 'Syntax.Leaf') }],
     returns: 'void',
+    calls: [{ target: ref('mix/Syntax.java', 'Syntax.Leaf.value'), line: 72, receiver: 'leaf' }],
     paramUses: [{ param: 0, fields: [], forwards: [], opaque: true }],
   }),
   callable({
@@ -82,6 +92,7 @@ const CALLABLES_0 = [
     params: [{ name: 'leaves', type: 'List' }],
     returns: 'String',
     ownFields: ['names'],
+    references: [ref('mix/Syntax.java', 'Syntax.Leaf.value')],
   }),
   callable({
     file: 'mix/Syntax.java',
@@ -91,8 +102,12 @@ const CALLABLES_0 = [
     params: [{ name: 'node', type: ref('mix/Syntax.java', 'Syntax.Node') }],
     returns: 'int',
     calls: [
+      { target: ref('mix/Syntax.java', 'Syntax.Leaf.value'), line: 85, receiver: 'leaf' },
+      { target: ref('mix/Syntax.java', 'Syntax.Leaf.value'), line: 86, receiver: 'leaf' },
       { target: ref('mix/Syntax.java', 'Syntax.patterns'), line: 90, receiver: 'this' },
+      { target: ref('mix/Syntax.java', 'Syntax.Branch.left'), line: 90, receiver: 'branch' },
       { target: ref('mix/Syntax.java', 'Syntax.patterns'), line: 90, receiver: 'this' },
+      { target: ref('mix/Syntax.java', 'Syntax.Branch.right'), line: 90, receiver: 'branch' },
     ],
     paramUses: [{ param: 0, fields: [], forwards: [], opaque: true }],
     reads: [
@@ -147,6 +162,27 @@ const CALLABLES_0 = [
     kind: 'constructor',
     params: [{ name: 'value', type: 'String' }],
   }),
+  accessor({
+    file: 'mix/Syntax.java',
+    owner: 'Syntax.Leaf',
+    member: 'value',
+    line: 18,
+    returns: 'String',
+  }),
+  accessor({
+    file: 'mix/Syntax.java',
+    owner: 'Syntax.Branch',
+    member: 'left',
+    line: 26,
+    returns: ref('mix/Syntax.java', 'Syntax.Node'),
+  }),
+  accessor({
+    file: 'mix/Syntax.java',
+    owner: 'Syntax.Branch',
+    member: 'right',
+    line: 26,
+    returns: ref('mix/Syntax.java', 'Syntax.Node'),
+  }),
   callable({
     file: 'mix/Syntax.java',
     owner: 'Syntax.Mode',
@@ -189,7 +225,10 @@ describe('design facts: sources that use the less common syntax', () => {
       ref('mix/Syntax.java', 'Syntax.Visitor'),
     ]);
     expect(facts.callables.map(({ id }) => id).toSorted()).toEqual([
+      ref('mix/Syntax.java', 'Syntax.Branch.left'),
+      ref('mix/Syntax.java', 'Syntax.Branch.right'),
       ref('mix/Syntax.java', 'Syntax.Leaf.<init>'),
+      ref('mix/Syntax.java', 'Syntax.Leaf.value'),
       ref('mix/Syntax.java', 'Syntax.Mode.speed'),
       ref('mix/Syntax.java', 'Syntax.Visitor.hidden'),
       ref('mix/Syntax.java', 'Syntax.Visitor.visit'),

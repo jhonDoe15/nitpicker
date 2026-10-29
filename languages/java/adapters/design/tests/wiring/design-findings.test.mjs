@@ -4,7 +4,12 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DESIGN_RULES } from '../../../../../../shared/project-rules/design/design-rules.mjs';
 import { DESIGN_FACTS_FAILURE_RULE, designFindings, designPolicy } from '../../design-findings.mjs';
-import { designPackages, designSourceFiles, markPublished } from '../../producer/design-facts.mjs';
+import {
+  designPackages,
+  designSourceFiles,
+  markPublished,
+  produceDesignFacts,
+} from '../../producer/design-facts.mjs';
 import { fixtureRoot } from '../../test-support/design-facts-support.mjs';
 
 const MODULES = [
@@ -129,6 +134,18 @@ describe('design findings for Java', () => {
     ]);
     expect(findings[0].message.startsWith(`${FAILURE_PREFIX}DesignFacts`)).toBe(true);
     expect(calls).toEqual([]);
+  });
+
+  it('writes an empty bundle for modules without Java sources', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-design-test-'));
+    work.push(root);
+    const output = path.join(root, 'out/design-facts.json');
+    const empty = { modules: [], types: [], callables: [], packages: [] };
+
+    expect([
+      produceDesignFacts({ projectRoot: root, modules: SINGLE, output }),
+      JSON.parse(readFileSync(output, 'utf8')),
+    ]).toEqual([empty, empty]);
   });
 
   it('stays silent for the Kotlin preset', () => {

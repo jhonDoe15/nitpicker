@@ -2,7 +2,6 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { LANGUAGES, RULES } from '../policy.mjs';
-import { DESIGN_RULES } from '../project-rules/design/design-rules.mjs';
 import { catalogFileOf, isKotlinPath, mentionsRule, ruleEmitters } from './rule-emitters.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
@@ -11,28 +10,10 @@ const REPORT_ONLY_KOTLIN_MUTANTS = {
   file: 'languages/java/adapters/reporting/kotlin-reports.mjs',
   evidence: /reportOnlyKotlinMutants/u,
 };
-const JAVA_DESIGN_FINDINGS = 'languages/java/adapters/design/design-findings.mjs';
-const DESIGN_RULES_ONLY = { file: JAVA_DESIGN_FINDINGS, evidence: /rules: DESIGN_RULES/u };
-const JAVA_ANALYZER_ONLY = { file: JAVA_DESIGN_FINDINGS, evidence: /analyzerName !== 'java'/u };
-const FACT_RULES_OUTSIDE_DESIGN = [
-  'shared-used-by-one-feature',
-  'duplicate-definition',
-  'sibling-copy-edit',
-  'exported-name-collision',
-  'doc-comment-content',
-];
-
-function sameEvidence(ruleIds, evidence) {
-  return Object.fromEntries(ruleIds.map((ruleId) => [ruleId, evidence]));
-}
-
 const NOT_ENFORCED_ALTHOUGH_EMITTED = {
-  java: sameEvidence(FACT_RULES_OUTSIDE_DESIGN, DESIGN_RULES_ONLY),
   kotlin: {
     'mutant-survived': REPORT_ONLY_KOTLIN_MUTANTS,
     'mutant-nocoverage': REPORT_ONLY_KOTLIN_MUTANTS,
-    ...sameEvidence(FACT_RULES_OUTSIDE_DESIGN, DESIGN_RULES_ONLY),
-    ...sameEvidence(DESIGN_RULES, JAVA_ANALYZER_ONLY),
   },
   javascript: {
     'unused-prop': {
@@ -109,7 +90,7 @@ describe('the enforcedBy column of every catalogued rule', () => {
       }
     }
   });
-  it('finds the adapters that emit a rule in the language folders and the shared code they import', () => {
+  it('finds the adapters that emit a rule in the language folders and the shared code they import, and counts only the rules a call of the shared fact evaluator lists', () => {
     const found = (language, ruleId, file) => emitters[language].get(ruleId).includes(file);
 
     expect([
@@ -127,6 +108,15 @@ describe('the enforcedBy column of every catalogued rule', () => {
       found('python', 'committed-env-file', 'shared/hygiene/files/repository-files.mjs'),
     ]).toEqual([true, true, true, true]);
     expect(emitters.java.get('unused-option')).toEqual([]);
+    expect([
+      emitters.java.get('mutable-state-escape'),
+      emitters.java.get('duplicate-definition'),
+      found(
+        'typescript',
+        'duplicate-definition',
+        'languages/typescript/preset/structure/reuse/reuse-findings.mjs',
+      ),
+    ]).toEqual([['languages/java/adapters/design/design-findings.mjs'], [], true]);
     expect(emitters.kotlin.get('unused-option')).not.toEqual([]);
   });
   it('does not count a rule named only in a comment', () => {

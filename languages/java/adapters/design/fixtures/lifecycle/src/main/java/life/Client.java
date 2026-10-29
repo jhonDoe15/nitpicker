@@ -56,4 +56,53 @@ public class Client {
     created.begin();
     return created;
   }
+
+  public void inLambda() {
+    Runnable task =
+        () -> {
+          Session session = new Session();
+          session.begin();
+          try {
+            session.write("e");
+          } finally {
+            session.close();
+          }
+        };
+    task.run();
+  }
+
+  public void anonymous() {
+    Runnable task =
+        new Runnable() {
+          @Override
+          public void run() {
+            Session session = new Session();
+            session.begin();
+            try {
+              helper();
+            } finally {
+              session.close();
+            }
+          }
+
+          private void helper() {}
+        };
+    task.run();
+  }
+
+  public void siblings() {
+    {
+      Session session = new Session();
+      session.begin();
+    }
+    {
+      Session session = new Session();
+      session.begin();
+      try {
+        session.write("f");
+      } finally {
+        session.close();
+      }
+    }
+  }
 }

@@ -4,6 +4,7 @@ import com.sun.source.tree.*;
 import java.util.*;
 import java.util.regex.Pattern;
 import javax.lang.model.element.Modifier;
+import nitpicker.designfacts.Names;
 
 public final class TypeInfo {
   private static final Pattern VARARGS = Pattern.compile("\\.\\.\\.\\s*[\\w$]+\\s*$");
@@ -36,7 +37,7 @@ public final class TypeInfo {
     this.outer = outer;
     this.simple = tree.getSimpleName().toString();
     this.qualified = outer == null ? simple : outer.qualified + "." + simple;
-    this.fqn = outer == null ? (unit.pkg.isEmpty() ? simple : unit.pkg + "." + simple) : outer.fqn + "." + simple;
+    this.fqn = outer == null ? Names.qualify(unit.pkg, simple) : outer.fqn + "." + simple;
     this.id = unit.file + "#" + qualified;
     for (TypeParameterTree variable : tree.getTypeParameters()) {
       typeVars.add(variable.getName().toString());
@@ -59,13 +60,15 @@ public final class TypeInfo {
   }
 
   private void readField(VariableTree variable, List<ParamInfo> components) {
-    if (isEnum() && variable.getInitializer() instanceof NewClassTree
+    if (isEnum()
+        && variable.getInitializer() instanceof NewClassTree
         && variable.getType() != null
         && variable.getType().toString().equals(simple)) {
       cases.add(variable.getName().toString());
       return;
     }
-    boolean isStatic = variable.getModifiers().getFlags().contains(Modifier.STATIC) || isInterface();
+    boolean isStatic =
+        variable.getModifiers().getFlags().contains(Modifier.STATIC) || isInterface();
     fields.add(new FieldInfo(this, variable, isStatic));
     if (isRecord() && !isStatic) {
       components.add(new ParamInfo(variable.getName().toString(), variable.getType(), false));
@@ -75,11 +78,13 @@ public final class TypeInfo {
   private MethodInfo readMethod(MethodTree method, List<ParamInfo> components) {
     List<ParamInfo> params = new ArrayList<>();
     for (VariableTree parameter : method.getParameters()) {
-      params.add(new ParamInfo(parameter.getName().toString(), parameter.getType(), isVarargs(parameter)));
+      String name = parameter.getName().toString();
+      params.add(new ParamInfo(name, parameter.getType(), isVarargs(parameter)));
     }
     MethodInfo info = new MethodInfo(this, method, params);
     info.line = unit.line(method);
-    if (isRecord() && info.ctor && params.isEmpty() && !components.isEmpty() && !delegates(method)) {
+    boolean compactCtor = info.ctor && params.isEmpty() && !components.isEmpty();
+    if (isRecord() && compactCtor && !delegates(method)) {
       MethodInfo compact = new MethodInfo(this, method, List.copyOf(components));
       compact.compact = true;
       compact.line = info.line;
@@ -132,11 +137,17 @@ public final class TypeInfo {
     return !externalSupers.isEmpty();
   }
 
+  public boolean declaresGetter(String name) {
+    for (MethodInfo method : methods) {
+      if (method.name.equals(name) && method.params.isEmpty()) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   public boolean exported() {
     boolean visible = flags().contains(Modifier.PUBLIC);
-    if (outer == null) {
-      return flags().contains(Modifier.PUBLIC);
-    }
-    return outer.exported() && (visible || outer.isInterface());
+    return outer == null ? visible : outer.exported() && (visible || outer.isInterface());
   }
 }

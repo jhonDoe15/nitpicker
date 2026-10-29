@@ -38,12 +38,20 @@ public final class Typer {
     return switch (expression) {
       case IdentifierTree identifier -> identifierType(identifier.getName().toString(), c);
       case MemberSelectTree select -> selectType(select, c);
-      case MethodInvocationTree call -> returnType(calls.resolve(call, c).target(), c);
+      case MethodInvocationTree call -> returnType(calls.resolve(call, c).target());
       case NewClassTree creation -> tyOf(creation.getIdentifier(), c);
       case TypeCastTree cast -> tyOf(cast.getType(), c);
+      default -> valueType(expression, c);
+    };
+  }
+
+  private Ty valueType(Tree expression, Ctx c) {
+    return switch (expression) {
       case AssignmentTree assignment -> typeOf(assignment.getVariable(), c);
       case ConditionalExpressionTree conditional ->
-          same(typeOf(conditional.getTrueExpression(), c), typeOf(conditional.getFalseExpression(), c));
+          same(
+              typeOf(conditional.getTrueExpression(), c),
+              typeOf(conditional.getFalseExpression(), c));
       case LiteralTree literal ->
           literal.getValue() instanceof String ? Ty.text("String") : Ty.UNKNOWN;
       default -> Ty.UNKNOWN;
@@ -54,7 +62,7 @@ public final class Typer {
     return left.equals(right) ? left : Ty.UNKNOWN;
   }
 
-  private Ty returnType(MethodInfo target, Ctx c) {
+  private Ty returnType(MethodInfo target) {
     if (target == null || target.ctor || target.returnType == null) {
       return Ty.UNKNOWN;
     }
@@ -70,10 +78,7 @@ public final class Typer {
       return c.owner.superclass == null ? Ty.UNKNOWN : Ty.of(c.owner.superclass);
     }
     Local local = c.lookup(name);
-    if (local != null) {
-      return local.ty;
-    }
-    return fieldType(lookup.bareField(name, c.owner));
+    return local != null ? local.ty : fieldType(lookup.bareField(name, c.owner));
   }
 
   public Ty fieldType(FieldInfo field) {
@@ -83,18 +88,26 @@ public final class Typer {
   private Ty selectType(MemberSelectTree select, Ctx c) {
     String name = select.getIdentifier().toString();
     Tree base = Names.unparen(select.getExpression());
-    if (base instanceof IdentifierTree identifier && identifier.getName().contentEquals("this")) {
-      return fieldType(lookup.field(c.owner, name));
+    TypeInfo named = Names.isThis(base) ? null : typeNameOf(base, c);
+    if (named != null && named.isEnum() && named.cases.contains(name)) {
+      return Ty.of(named);
+    }
+    FieldInfo field = selectedField(select, c);
+    if (field != null) {
+      return fieldType(field);
+    }
+    return name.equals("length") && typeOf(base, c).isArray() ? Ty.text("int") : Ty.UNKNOWN;
+  }
+
+  private FieldInfo selectedField(MemberSelectTree select, Ctx c) {
+    String name = select.getIdentifier().toString();
+    Tree base = Names.unparen(select.getExpression());
+    if (Names.isThis(base)) {
+      return lookup.field(c.owner, name);
     }
     TypeInfo named = typeNameOf(base, c);
-    if (named != null) {
-      return named.isEnum() && named.cases.contains(name) ? Ty.of(named) : fieldType(lookup.field(named, name));
-    }
-    Ty baseType = typeOf(base, c);
-    if (baseType.type() != null) {
-      return fieldType(lookup.field(baseType.type(), name));
-    }
-    return name.equals("length") && baseType.isArray() ? Ty.text("int") : Ty.UNKNOWN;
+    TypeInfo owner = named != null ? named : typeOf(base, c).type();
+    return owner == null ? null : lookup.field(owner, name);
   }
 
   public TypeInfo typeNameOf(Tree tree, Ctx c) {
@@ -112,48 +125,43 @@ public final class Typer {
   public String keyOf(Tree tree, Ctx c) {
     Tree expression = Names.unwrap(tree);
     if (expression instanceof IdentifierTree identifier) {
-      String name = identifier.getName().toString();
-      if (name.equals("this") || name.equals("super")) {
-        return "this";
-      }
-      if (c.lookup(name) != null) {
-        return name;
-      }
-      FieldInfo field = lookup.bareField(name, c.owner);
-      return field != null && lookup.chain(c.owner).contains(field.owner) ? "this." + name : null;
+      return identifierKey(identifier.getName().toString(), c);
     }
-    if (expression instanceof MemberSelectTree select
-        && Names.unparen(select.getExpression()) instanceof IdentifierTree base
-        && base.getName().contentEquals("this")
-        && lookup.field(c.owner, select.getIdentifier().toString()) != null) {
-      return "this." + select.getIdentifier();
+    boolean ownField =
+        expression instanceof MemberSelectTree select
+            && Names.isThis(Names.unparen(select.getExpression()))
+            && lookup.field(c.owner, select.getIdentifier().toString()) != null;
+    return ownField ? "this." + ((MemberSelectTree) expression).getIdentifier() : null;
+  }
+
+  private String identifierKey(String name, Ctx c) {
+    if (name.equals("this") || name.equals("super")) {
+      return "this";
     }
-    return null;
+    Local local = c.lookup(name);
+    if (local != null) {
+      return local.key;
+    }
+    FieldInfo field = lookup.bareField(name, c.owner);
+    return field != null && lookup.chain(c.owner).contains(field.owner) ? "this." + name : null;
   }
 
   public FieldInfo fieldRef(Tree tree, Ctx c) {
-    Tree expression = Names.unparen(tree);
-    if (expression instanceof IdentifierTree identifier) {
-      String name = identifier.getName().toString();
-      return c.lookup(name) != null ? null : lookup.bareField(name, c.owner);
-    }
-    if (expression instanceof MethodInvocationTree call) {
-      MethodInfo target = calls.resolve(call, c).target();
-      return target == null || target.accessorField == null ? null : lookup.field(target.owner, target.accessorField);
-    }
-    if (!(expression instanceof MemberSelectTree select)) {
-      return null;
-    }
-    String name = select.getIdentifier().toString();
-    Tree base = Names.unparen(select.getExpression());
-    if (base instanceof IdentifierTree identifier && identifier.getName().contentEquals("this")) {
-      return lookup.field(c.owner, name);
-    }
-    TypeInfo named = typeNameOf(base, c);
-    if (named != null) {
-      return lookup.field(named, name);
-    }
-    Ty baseType = typeOf(base, c);
-    return baseType.type() == null ? null : lookup.field(baseType.type(), name);
+    return switch (Names.unparen(tree)) {
+      case IdentifierTree identifier -> bareField(identifier.getName().toString(), c);
+      case MethodInvocationTree call -> accessedField(call, c);
+      case MemberSelectTree select -> selectedField(select, c);
+      default -> null;
+    };
+  }
+
+  private FieldInfo bareField(String name, Ctx c) {
+    return c.lookup(name) != null ? null : lookup.bareField(name, c.owner);
+  }
+
+  private FieldInfo accessedField(MethodInvocationTree call, Ctx c) {
+    MethodInfo target = calls.resolve(call, c).target();
+    boolean accessor = target != null && target.accessorField != null;
+    return accessor ? lookup.field(target.owner, target.accessorField) : null;
   }
 }

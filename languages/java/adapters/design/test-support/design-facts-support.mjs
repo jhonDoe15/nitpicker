@@ -41,6 +41,10 @@ export function callable({ file, owner, member, line, name = member, root, ...re
   };
 }
 
+export function accessor({ member, returns, ...rest }) {
+  return callable({ member, kind: 'accessor', returns, returnsField: member, ...rest });
+}
+
 export function type({ file, symbol, line, kind, root, ...rest }) {
   return {
     id: ref(file, symbol, root),

@@ -12,24 +12,22 @@ public final class Arity {
   private static final Map<String, Integer> LIBRARY = new HashMap<>();
 
   static {
-    for (String name : List.of(
-        "Runnable", "Callable", "Supplier", "BooleanSupplier", "IntSupplier", "LongSupplier",
-        "DoubleSupplier")) {
-      LIBRARY.put(name, 0);
-    }
-    for (String name : List.of(
-        "Consumer", "Function", "Predicate", "UnaryOperator", "IntFunction", "IntPredicate", "IntConsumer",
-        "IntUnaryOperator", "LongFunction", "LongPredicate", "LongConsumer", "LongUnaryOperator",
-        "DoubleFunction", "DoublePredicate", "DoubleConsumer", "DoubleUnaryOperator", "ToIntFunction",
-        "ToLongFunction", "ToDoubleFunction", "IntToLongFunction", "IntToDoubleFunction", "LongToIntFunction",
-        "LongToDoubleFunction", "DoubleToIntFunction", "DoubleToLongFunction")) {
-      LIBRARY.put(name, 1);
-    }
-    for (String name : List.of(
-        "BiConsumer", "BiFunction", "BiPredicate", "BinaryOperator", "Comparator", "IntBinaryOperator",
-        "LongBinaryOperator", "DoubleBinaryOperator", "ToIntBiFunction", "ToLongBiFunction",
-        "ToDoubleBiFunction", "ObjIntConsumer", "ObjLongConsumer", "ObjDoubleConsumer")) {
-      LIBRARY.put(name, 2);
+    register(0, "Runnable Callable Supplier BooleanSupplier IntSupplier LongSupplier");
+    register(0, "DoubleSupplier");
+    register(1, "Consumer Function Predicate UnaryOperator IntFunction IntPredicate");
+    register(1, "IntConsumer IntUnaryOperator LongFunction LongPredicate LongConsumer");
+    register(1, "LongUnaryOperator DoubleFunction DoublePredicate DoubleConsumer");
+    register(1, "DoubleUnaryOperator ToIntFunction ToLongFunction ToDoubleFunction");
+    register(1, "IntToLongFunction IntToDoubleFunction LongToIntFunction LongToDoubleFunction");
+    register(1, "DoubleToIntFunction DoubleToLongFunction");
+    register(2, "BiConsumer BiFunction BiPredicate BinaryOperator Comparator IntBinaryOperator");
+    register(2, "LongBinaryOperator DoubleBinaryOperator ToIntBiFunction ToLongBiFunction");
+    register(2, "ToDoubleBiFunction ObjIntConsumer ObjLongConsumer ObjDoubleConsumer");
+  }
+
+  private static void register(int arity, String names) {
+    for (String name : names.split(" ")) {
+      LIBRARY.put(name, arity);
     }
   }
 
@@ -55,9 +53,7 @@ public final class Arity {
       case AssignmentTree assignment when assignment.getExpression() == leaf ->
           ofTy(typer.typeOf(assignment.getVariable(), ctx));
       case ReturnTree returned -> returned(parentPath);
-      case MethodInvocationTree call -> argument(call, call.getArguments().indexOf(leaf));
-      case NewClassTree creation -> argument(creation, creation.getArguments().indexOf(leaf));
-      default -> UNKNOWN;
+      default -> argument(parentPath.getLeaf(), leaf);
     };
   }
 
@@ -75,16 +71,20 @@ public final class Arity {
     return UNKNOWN;
   }
 
-  private int argument(Tree call, int index) {
+  private int argument(Tree call, Tree leaf) {
+    List<? extends ExpressionTree> arguments =
+        switch (call) {
+          case MethodInvocationTree invocation -> invocation.getArguments();
+          case NewClassTree creation -> creation.getArguments();
+          default -> List.of();
+        };
+    int index = arguments.indexOf(leaf);
     MethodInfo target = index < 0 ? null : typer.calls.resolve(call, ctx).target();
-    if (target == null || index >= target.params.size()) {
+    if (target == null || index >= target.params.size() || target.params.get(index).varargs) {
       return UNKNOWN;
     }
-    ParamInfo param = target.params.get(index);
-    if (param.varargs) {
-      return UNKNOWN;
-    }
-    return ofTy(typer.tyOf(param.type, new Ctx(target.owner, target.typeVars)));
+    Tree type = target.params.get(index).type;
+    return ofTy(typer.tyOf(type, new Ctx(target.owner, target.typeVars)));
   }
 
   private int ofTy(Ty ty) {
@@ -97,10 +97,16 @@ public final class Arity {
     }
     Map<String, MethodInfo> abstracts = new LinkedHashMap<>();
     for (TypeInfo member : typer.lookup.chain(type)) {
-      member.methods.stream()
-          .filter(method -> method.tree != null && !method.isStatic && method.tree.getBody() == null)
-          .forEach(method -> abstracts.putIfAbsent(method.name + "(" + Lookup.signature(method), method));
+      addAbstracts(member, abstracts);
     }
     return abstracts.size() == 1 ? abstracts.values().iterator().next().params.size() : UNKNOWN;
+  }
+
+  private static void addAbstracts(TypeInfo member, Map<String, MethodInfo> abstracts) {
+    for (MethodInfo method : member.methods) {
+      if (method.tree != null && !method.isStatic && method.tree.getBody() == null) {
+        abstracts.putIfAbsent(method.name + "(" + Lookup.signature(method), method);
+      }
+    }
   }
 }

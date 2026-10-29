@@ -70,7 +70,11 @@ public final class Lookup {
   }
 
   public Found method(TypeInfo type, String name, int argc) {
-    return select(members(type, method -> !method.ctor && method.name.equals(name) && method.accepts(argc)), argc);
+    return select(members(type, method -> named(method, name) && method.accepts(argc)), argc);
+  }
+
+  private static boolean named(MethodInfo method, String name) {
+    return !method.ctor && method.name.equals(name);
   }
 
   public Found constructor(TypeInfo type, int argc) {
@@ -97,17 +101,17 @@ public final class Lookup {
       return null;
     }
     Map<String, MethodInfo> bySignature = new LinkedHashMap<>();
-    List<MethodInfo> named = members(type, method -> !method.ctor && method.name.equals(name) && shape.fits(method));
-    for (MethodInfo method : named) {
+    for (MethodInfo method : members(type, method -> named(method, name) && shape.fits(method))) {
       bySignature.putIfAbsent(signature(method), method);
     }
     return bySignature.size() == 1 ? bySignature.values().iterator().next() : null;
   }
 
   public MethodInfo onlyConstructor(TypeInfo type, int arity) {
-    List<MethodInfo> found = type.methods.stream()
-        .filter(method -> method.ctor && (arity < 0 || method.params.size() == arity))
-        .toList();
+    List<MethodInfo> found =
+        type.methods.stream()
+            .filter(method -> method.ctor && (arity < 0 || method.params.size() == arity))
+            .toList();
     return found.size() == 1 ? found.get(0) : null;
   }
 
@@ -115,20 +119,34 @@ public final class Lookup {
     if (candidates.isEmpty()) {
       return Found.NONE;
     }
-    List<MethodInfo> exact = candidates.stream().filter(method -> method.params.size() == argc).toList();
-    List<MethodInfo> pool = exact.isEmpty() ? candidates : exact;
+    List<MethodInfo> exact =
+        candidates.stream().filter(method -> method.params.size() == argc).toList();
     Map<String, MethodInfo> bySignature = new LinkedHashMap<>();
-    for (MethodInfo method : pool) {
+    for (MethodInfo method : exact.isEmpty() ? candidates : exact) {
       bySignature.putIfAbsent(signature(method), method);
     }
-    if (bySignature.size() == 1) {
-      return new Found(pool.get(0), false);
-    }
     List<MethodInfo> distinct = new ArrayList<>(bySignature.values());
-    if (distinct.size() == 2 && overrides(distinct.get(0))) {
+    if (distinct.size() == 1) {
       return new Found(distinct.get(0), false);
     }
-    return Found.AMBIGUOUS;
+    MethodInfo overriding = distinct.size() == 2 ? overridingOf(distinct) : null;
+    return overriding == null ? Found.AMBIGUOUS : new Found(overriding, false);
+  }
+
+  private MethodInfo overridingOf(List<MethodInfo> pair) {
+    for (int index = 0; index < 2; index++) {
+      MethodInfo method = pair.get(index);
+      MethodInfo other = pair.get(1 - index);
+      if (overrides(method) && supertypesOf(method.owner).contains(other.owner)) {
+        return method;
+      }
+    }
+    return null;
+  }
+
+  private List<TypeInfo> supertypesOf(TypeInfo type) {
+    List<TypeInfo> chain = chain(type);
+    return chain.subList(1, chain.size());
   }
 
   private static boolean overrides(MethodInfo method) {
@@ -144,11 +162,15 @@ public final class Lookup {
   }
 
   public List<MethodInfo> overridden(MethodInfo method) {
-    List<TypeInfo> chain = chain(method.owner);
-    return chain.subList(1, chain.size()).stream()
+    return supertypesOf(method.owner).stream()
         .flatMap(member -> member.methods.stream())
-        .filter(candidate -> !candidate.ctor && !candidate.isStatic && candidate.name.equals(method.name)
-            && candidate.params.size() == method.params.size())
+        .filter(candidate -> sameShape(candidate, method))
         .toList();
+  }
+
+  private static boolean sameShape(MethodInfo candidate, MethodInfo method) {
+    return named(candidate, method.name)
+        && !candidate.isStatic
+        && candidate.params.size() == method.params.size();
   }
 }

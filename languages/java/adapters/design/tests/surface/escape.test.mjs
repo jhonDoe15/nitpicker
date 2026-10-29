@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { callable, fixtureFacts, ref, type } from '../../test-support/design-facts-support.mjs';
+import {
+  accessor,
+  callable,
+  fixtureFacts,
+  ref,
+  type,
+} from '../../test-support/design-facts-support.mjs';
 
 const facts = fixtureFacts('escape');
 
@@ -268,6 +274,22 @@ const CALLABLES_4 = [
     reads: [{ type: ref('shop/model/Cart.java', 'Cart'), fields: ['items'], line: 36 }],
   }),
 ];
+const CALLABLES_5 = [
+  accessor({
+    file: 'shop/model/Item.java',
+    owner: 'Item',
+    member: 'name',
+    line: 3,
+    returns: 'String',
+  }),
+  accessor({
+    file: 'shop/model/Item.java',
+    owner: 'Item',
+    member: 'price',
+    line: 3,
+    returns: 'int',
+  }),
+];
 
 describe('design facts: state that escapes through an accessor', () => {
   it('lists every parsed file as a production module', () => {
@@ -288,6 +310,8 @@ describe('design facts: state that escapes through an accessor', () => {
       ref('shop/model/Cart.java', 'Cart.owner'),
       ref('shop/model/Cart.java', 'Cart.queued'),
       ref('shop/model/Cart.java', 'Cart.view'),
+      ref('shop/model/Item.java', 'Item.name'),
+      ref('shop/model/Item.java', 'Item.price'),
       ref('shop/service/Checkout.java', 'Checkout.aliased'),
       ref('shop/service/Checkout.java', 'Checkout.copied'),
       ref('shop/service/Checkout.java', 'Checkout.direct'),
@@ -328,4 +352,8 @@ describe('design facts: state that escapes through an accessor', () => {
       expect(facts.callables.find(({ id }) => id === expected.id)).toEqual(expected);
     },
   );
+
+  it.each(CALLABLES_5)('answers record components through implicit accessors: $id', (expected) => {
+    expect(facts.callables.find(({ id }) => id === expected.id)).toEqual(expected);
+  });
 });

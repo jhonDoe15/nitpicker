@@ -102,28 +102,25 @@ public final class Project {
     if (site.typeVars().contains(name)) {
       return null;
     }
-    Unit unit = site.unit();
     for (TypeInfo type = site.owner(); type != null; type = type.outer) {
       if (type.typeVars.contains(name)) {
         return null;
       }
-      if (type.simple.equals(name)) {
-        return type;
-      }
-      TypeInfo member = memberType(type, name);
+      TypeInfo member = type.simple.equals(name) ? type : memberType(type, name);
       if (member != null) {
         return member;
       }
     }
-    String imported = unit.single.get(name);
-    if (imported != null) {
-      return find(imported);
+    return imported(name, site.unit());
+  }
+
+  private TypeInfo imported(String name, Unit unit) {
+    String single = unit.single.get(name);
+    if (single != null) {
+      return find(single);
     }
-    String samePackage = unit.pkg.isEmpty() ? name : unit.pkg + "." + name;
-    if (known(samePackage)) {
-      return find(samePackage);
-    }
-    return onDemand(name, unit);
+    String samePackage = Names.qualify(unit.pkg, name);
+    return known(samePackage) ? find(samePackage) : onDemand(name, unit);
   }
 
   private TypeInfo onDemand(String name, Unit unit) {

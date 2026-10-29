@@ -10,20 +10,54 @@ import nitpicker.designfacts.resolve.*;
 public final class Mutability {
   public static final Set<String> CREATED =
       Set.of(
-          "ArrayList", "LinkedList", "HashMap", "LinkedHashMap", "TreeMap", "HashSet",
-          "LinkedHashSet", "TreeSet", "ArrayDeque", "PriorityQueue", "Stack", "Vector",
-          "Hashtable", "IdentityHashMap", "WeakHashMap", "EnumMap", "ConcurrentHashMap",
-          "ConcurrentLinkedQueue", "ConcurrentLinkedDeque", "CopyOnWriteArrayList",
-          "CopyOnWriteArraySet", "ConcurrentSkipListMap", "ConcurrentSkipListSet",
-          "LinkedBlockingQueue", "ArrayBlockingQueue", "LinkedBlockingDeque", "StringBuilder",
-          "StringBuffer", "BitSet", "Properties");
+          "ArrayList",
+          "LinkedList",
+          "HashMap",
+          "LinkedHashMap",
+          "TreeMap",
+          "HashSet",
+          "LinkedHashSet",
+          "TreeSet",
+          "ArrayDeque",
+          "PriorityQueue",
+          "Stack",
+          "Vector",
+          "Hashtable",
+          "IdentityHashMap",
+          "WeakHashMap",
+          "EnumMap",
+          "ConcurrentHashMap",
+          "ConcurrentLinkedQueue",
+          "ConcurrentLinkedDeque",
+          "CopyOnWriteArrayList",
+          "CopyOnWriteArraySet",
+          "ConcurrentSkipListMap",
+          "ConcurrentSkipListSet",
+          "LinkedBlockingQueue",
+          "ArrayBlockingQueue",
+          "LinkedBlockingDeque",
+          "StringBuilder",
+          "StringBuffer",
+          "BitSet",
+          "Properties");
   public static final Set<String> RECEIVERS = new HashSet<>(CREATED);
 
   static {
     RECEIVERS.addAll(
         List.of(
-            "List", "Map", "Set", "Collection", "Deque", "Queue", "SortedMap", "SortedSet",
-            "NavigableMap", "NavigableSet", "BlockingQueue", "BlockingDeque", "ConcurrentMap"));
+            "List",
+            "Map",
+            "Set",
+            "Collection",
+            "Deque",
+            "Queue",
+            "SortedMap",
+            "SortedSet",
+            "NavigableMap",
+            "NavigableSet",
+            "BlockingQueue",
+            "BlockingDeque",
+            "ConcurrentMap"));
   }
 
   private final Typer typer;
@@ -48,7 +82,7 @@ public final class Mutability {
     while (top.outer != null) {
       top = top.outer;
     }
-    new Assignments(field.name, assigned).scan(top.tree, null);
+    new Assignments(field, assigned).scan(top.tree, null);
     return !assigned.isEmpty() && assigned.stream().allMatch(value -> fresh(value, type));
   }
 
@@ -61,18 +95,68 @@ public final class Mutability {
       String name = Names.typeText(creation.getIdentifier());
       Project.Site site = new Project.Site(type, type.unit, Set.of());
       TypeInfo project = typer.project.resolveTree(creation.getIdentifier(), site);
-      return project == null && name != null && CREATED.contains(name.substring(name.lastIndexOf('.') + 1));
+      String simple = name == null ? null : name.substring(name.lastIndexOf('.') + 1);
+      return project == null && simple != null && CREATED.contains(simple);
     }
     return false;
   }
 
   private static final class Assignments extends TreeScanner<Void, Void> {
     private final String name;
+    private final ClassTree owner;
     private final List<Tree> assigned;
+    private final Deque<ClassTree> classes = new ArrayDeque<>();
+    private final Deque<Boolean> shadowed = new ArrayDeque<>(List.of(false));
 
-    public Assignments(String name, List<Tree> assigned) {
-      this.name = name;
+    private Assignments(FieldInfo field, List<Tree> assigned) {
+      this.name = field.name;
+      this.owner = field.owner.tree;
       this.assigned = assigned;
+    }
+
+    @Override
+    public Void visitClass(ClassTree tree, Void unused) {
+      boolean hides = tree != owner && declaresField(tree);
+      classes.push(tree);
+      shadowed.push(tree != owner && (hides || shadowed.peek()));
+      super.visitClass(tree, unused);
+      shadowed.pop();
+      classes.pop();
+      return null;
+    }
+
+    private boolean declaresField(ClassTree tree) {
+      return tree.getMembers().stream()
+          .anyMatch(member -> member instanceof VariableTree variable && declares(variable));
+    }
+
+    private boolean declares(VariableTree variable) {
+      return variable.getName().contentEquals(name);
+    }
+
+    @Override
+    public Void visitMethod(MethodTree tree, Void unused) {
+      shadowed.push(shadowed.peek() || declaresLocal(tree));
+      super.visitMethod(tree, unused);
+      shadowed.pop();
+      return null;
+    }
+
+    private boolean declaresLocal(Tree tree) {
+      boolean[] found = {false};
+      new TreeScanner<Void, Void>() {
+        @Override
+        public Void visitVariable(VariableTree variable, Void unused) {
+          found[0] |= declares(variable);
+          return super.visitVariable(variable, unused);
+        }
+
+        @Override
+        public Void visitClass(ClassTree nested, Void unused) {
+          return null;
+        }
+      }.scan(tree, null);
+      return found[0];
     }
 
     @Override
@@ -92,12 +176,13 @@ public final class Mutability {
     }
 
     private boolean names(Tree variable) {
-      return switch (variable) {
-        case IdentifierTree identifier -> identifier.getName().contentEquals(name);
+      return switch (Names.unparen(variable)) {
+        case IdentifierTree identifier ->
+            identifier.getName().contentEquals(name) && !shadowed.peek();
         case MemberSelectTree select ->
             select.getIdentifier().contentEquals(name)
-                && select.getExpression() instanceof IdentifierTree base
-                && base.getName().contentEquals("this");
+                && Names.isThis(Names.unparen(select.getExpression()))
+                && classes.peek() == owner;
         default -> false;
       };
     }

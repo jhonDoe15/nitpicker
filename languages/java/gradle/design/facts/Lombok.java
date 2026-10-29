@@ -62,12 +62,14 @@ public final class Lombok {
       if (field.isStatic || Names.hasAnnotation(own, "Accessors") || !(annotated || wholeClass)) {
         continue;
       }
-      String level = annotated ? annotationText(own, "Getter") : annotationText(classModifiers, "Getter");
+      String level =
+          annotated ? annotationText(own, "Getter") : annotationText(classModifiers, "Getter");
       Set<Modifier> flags = flagsFor(level);
       String name = getterName(field);
-      if (flags != null && !declares(type, name)) {
+      if (flags != null && !type.declaresGetter(name)) {
         MethodInfo.Getter getter =
-            new MethodInfo.Getter(name, field.tree.getType(), field.name, flags, type.unit.line(field.tree));
+            new MethodInfo.Getter(
+                name, field.tree.getType(), field.name, flags, type.unit.line(field.tree));
         type.methods.add(new MethodInfo(type, getter));
       }
     }
@@ -80,22 +82,15 @@ public final class Lombok {
     return Set.of(level.contains("PROTECTED") ? Modifier.PROTECTED : Modifier.PUBLIC);
   }
 
-  private static boolean declares(TypeInfo type, String name) {
-    for (MethodInfo method : type.methods) {
-      if (method.name.equals(name) && method.params.isEmpty()) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   public static String getterName(FieldInfo field) {
     String name = field.name;
-    boolean primitive = field.tree.getType() != null && field.tree.getType().toString().equals("boolean");
+    boolean primitive =
+        field.tree.getType() != null && field.tree.getType().toString().equals("boolean");
     if (!primitive) {
       return "get" + Names.capitalize(name);
     }
-    boolean prefixed = name.length() > 2 && name.startsWith("is") && Character.isUpperCase(name.charAt(2));
+    boolean prefixed =
+        name.length() > 2 && name.startsWith("is") && Character.isUpperCase(name.charAt(2));
     return prefixed ? name : "is" + Names.capitalize(name);
   }
 

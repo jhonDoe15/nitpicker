@@ -2,7 +2,6 @@ package nitpicker.designfacts.model;
 
 import com.sun.source.tree.*;
 import java.util.*;
-import javax.lang.model.element.Modifier;
 
 public final class ParamInfo {
   public final String name;

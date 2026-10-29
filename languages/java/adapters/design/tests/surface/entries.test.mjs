@@ -19,7 +19,14 @@ const TYPES_0 = [
     kind: 'class',
     fields: [{ name: 'repo', private: true }],
   }),
-  type({ file: 'app/MemoryRepo.java', symbol: 'MemoryRepo', line: 3, kind: 'class' }),
+  type({ file: 'app/Marker.java', symbol: 'Marker', line: 3, kind: 'interface' }),
+  type({
+    file: 'app/MemoryRepo.java',
+    symbol: 'MemoryRepo',
+    line: 3,
+    kind: 'class',
+    supertypes: [ref('app/Repo.java', 'Repo')],
+  }),
   type({
     file: 'app/Point.java',
     symbol: 'Point',
@@ -146,6 +153,26 @@ const CALLABLES_1 = [
 ];
 const CALLABLES_2 = [
   callable({
+    file: 'app/Marker.java',
+    owner: 'Marker',
+    member: 'value',
+    line: 4,
+    returns: 'String',
+  }),
+  callable({
+    file: 'app/Controller.java',
+    owner: 'Controller',
+    member: 'label',
+    line: 35,
+    params: [{ name: 'marker', type: ref('app/Marker.java', 'Marker') }],
+    returns: 'String',
+    forward: { target: ref('app/Marker.java', 'Marker.value'), arguments: [], returned: true },
+    calls: [{ target: ref('app/Marker.java', 'Marker.value'), line: 36, receiver: 'marker' }],
+    paramUses: [{ param: 0, fields: ['value'], forwards: [] }],
+  }),
+];
+const CALLABLES_3 = [
+  callable({
     file: 'app/Point.java',
     owner: 'Point',
     member: 'getX',
@@ -210,7 +237,6 @@ const CALLABLES_2 = [
     owner: 'Ranked',
     member: 'compareTo',
     line: 6,
-    entry: true,
     params: [{ name: 'other', type: ref('app/Ranked.java', 'Ranked') }],
     returns: 'int',
     paramUses: [{ param: 0, fields: ['rank'], forwards: [] }],
@@ -222,7 +248,6 @@ const CALLABLES_2 = [
     owner: 'Ranked',
     member: 'other',
     line: 10,
-    entry: true,
     returns: 'void',
   }),
   callable({
@@ -244,6 +269,7 @@ describe('design facts: entry points and the exported surface', () => {
   it('lists exactly these types and callables', () => {
     expect(facts.types.map(({ id }) => id).toSorted()).toEqual([
       ref('app/Controller.java', 'Controller'),
+      ref('app/Marker.java', 'Marker'),
       ref('app/MemoryRepo.java', 'MemoryRepo'),
       ref('app/Point.java', 'Point'),
       ref('app/Ranked.java', 'Ranked'),
@@ -253,10 +279,12 @@ describe('design facts: entry points and the exported surface', () => {
       ref('app/Controller.java', 'Controller.<init>'),
       ref('app/Controller.java', 'Controller.hidden'),
       ref('app/Controller.java', 'Controller.index'),
+      ref('app/Controller.java', 'Controller.label'),
       ref('app/Controller.java', 'Controller.main'),
       ref('app/Controller.java', 'Controller.marked'),
       ref('app/Controller.java', 'Controller.maybe'),
       ref('app/Controller.java', 'Controller.quiet'),
+      ref('app/Marker.java', 'Marker.value'),
       ref('app/MemoryRepo.java', 'MemoryRepo.helper'),
       ref('app/MemoryRepo.java', 'MemoryRepo.load'),
       ref('app/MemoryRepo.java', 'MemoryRepo.save'),
@@ -287,7 +315,14 @@ describe('design facts: entry points and the exported surface', () => {
     expect(facts.callables.find(({ id }) => id === expected.id)).toEqual(expected);
   });
 
-  it.each(CALLABLES_2)('classifies accessors, object methods and comparisons: $id', (expected) => {
+  it.each(CALLABLES_2)(
+    'reads an annotation type as an interface with its elements: $id',
+    (expected) => {
+      expect(facts.callables.find(({ id }) => id === expected.id)).toEqual(expected);
+    },
+  );
+
+  it.each(CALLABLES_3)('classifies accessors, object methods and comparisons: $id', (expected) => {
     expect(facts.callables.find(({ id }) => id === expected.id)).toEqual(expected);
   });
 });

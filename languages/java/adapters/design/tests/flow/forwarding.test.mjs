@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { callable, fixtureFacts, ref, type } from '../../test-support/design-facts-support.mjs';
+import {
+  accessor,
+  callable,
+  fixtureFacts,
+  ref,
+  type,
+} from '../../test-support/design-facts-support.mjs';
 
 const facts = fixtureFacts('forwarding');
 
@@ -100,6 +106,7 @@ const CALLABLES_0 = [
       { name: 'id', type: 'String' },
     ],
     returns: 'String',
+    calls: [{ target: ref('fwd/Context.java', 'Context.name'), line: 27, receiver: 'context' }],
     paramUses: [{ param: 0, fields: ['name'], forwards: [] }],
     reads: [{ type: ref('fwd/Context.java', 'Context'), fields: ['name'], line: 27 }],
   }),
@@ -345,6 +352,10 @@ const CALLABLES_3 = [
     line: 55,
     params: [{ name: 'context', type: ref('fwd/Context.java', 'Context') }],
     returns: 'String',
+    calls: [
+      { target: ref('fwd/Context.java', 'Context.name'), line: 56, receiver: 'context' },
+      { target: ref('fwd/Context.java', 'Context.depth'), line: 56, receiver: 'context' },
+    ],
     paramUses: [{ param: 0, fields: ['name', 'depth'], forwards: [] }],
     reads: [{ type: ref('fwd/Context.java', 'Context'), fields: ['name', 'depth'], line: 56 }],
   }),
@@ -381,6 +392,43 @@ const CALLABLES_3 = [
     reads: [{ type: ref('fwd/Backend.java', 'Backend'), fields: ['render'], line: 72 }],
   }),
 ];
+const CALLABLES_4 = [
+  accessor({
+    file: 'fwd/Context.java',
+    owner: 'Context',
+    member: 'name',
+    line: 3,
+    returns: 'String',
+  }),
+  accessor({
+    file: 'fwd/Context.java',
+    owner: 'Context',
+    member: 'depth',
+    line: 3,
+    returns: 'int',
+  }),
+  accessor({
+    file: 'fwd/Context.java',
+    owner: 'Context',
+    member: 'region',
+    line: 3,
+    returns: 'String',
+  }),
+  accessor({
+    file: 'fwd/Context.java',
+    owner: 'Context',
+    member: 'user',
+    line: 3,
+    returns: 'String',
+  }),
+  accessor({
+    file: 'fwd/Context.java',
+    owner: 'Context',
+    member: 'debug',
+    line: 3,
+    returns: 'boolean',
+  }),
+];
 
 describe('design facts: calls that pass their parameters on', () => {
   it('lists every parsed file as a production module', () => {
@@ -401,6 +449,11 @@ describe('design facts: calls that pass their parameters on', () => {
       ref('fwd/Backend.java', 'Backend.render'),
       ref('fwd/Backend.java', 'Backend.send'),
       ref('fwd/Backend.java', 'Backend.size'),
+      ref('fwd/Context.java', 'Context.debug'),
+      ref('fwd/Context.java', 'Context.depth'),
+      ref('fwd/Context.java', 'Context.name'),
+      ref('fwd/Context.java', 'Context.region'),
+      ref('fwd/Context.java', 'Context.user'),
       ref('fwd/Gateway.java', 'Gateway.<init>'),
       ref('fwd/Gateway.java', 'Gateway.absent'),
       ref('fwd/Gateway.java', 'Gateway.ambiguous'),
@@ -438,6 +491,10 @@ describe('design facts: calls that pass their parameters on', () => {
   });
 
   it.each(CALLABLES_3)('covers the remaining parameter uses: $id', (expected) => {
+    expect(facts.callables.find(({ id }) => id === expected.id)).toEqual(expected);
+  });
+
+  it.each(CALLABLES_4)('answers record components through implicit accessors: $id', (expected) => {
     expect(facts.callables.find(({ id }) => id === expected.id)).toEqual(expected);
   });
 });

@@ -53,15 +53,19 @@ public final class JsonOut {
   private static void quote(StringBuilder out, String text) {
     out.append('"');
     for (char c : text.toCharArray()) {
-      switch (c) {
-        case '"' -> out.append("\\\"");
-        case '\\' -> out.append("\\\\");
-        case '\n' -> out.append("\\n");
-        case '\r' -> out.append("\\r");
-        case '\t' -> out.append("\\t");
-        default -> out.append(c < 0x20 ? String.format("\\u%04x", (int) c) : String.valueOf(c));
-      }
+      out.append(escape(c));
     }
     out.append('"');
+  }
+
+  private static String escape(char c) {
+    return switch (c) {
+      case '"' -> "\\\"";
+      case '\\' -> "\\\\";
+      case '\n' -> "\\n";
+      case '\r' -> "\\r";
+      case '\t' -> "\\t";
+      default -> c < 0x20 ? String.format("\\u%04x", (int) c) : String.valueOf(c);
+    };
   }
 }

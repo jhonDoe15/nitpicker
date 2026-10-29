@@ -1,3 +1,5 @@
 package app;
 
-public @interface Marker {}
+public @interface Marker {
+  String value() default "";
+}
