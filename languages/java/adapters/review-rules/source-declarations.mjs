@@ -13,7 +13,7 @@ const TOP_LEVEL_MEMBER = new RegExp(
 );
 const JAVA_MAIN = /\bstatic\s+(?:final\s+)?void\s+main\s*\(/u;
 const JAVA_MAIN_METHOD = new RegExp(
-  String.raw`\bstatic\s+(?:final\s+)?void\s+main\s*\(\s*(?:final\s+)?String\b[^(),]*(?:\[|\.\.\.)[^(),]*\)`,
+  String.raw`\bstatic\s+(?:final\s+)?void\s+main\s*\(\s*(?:final\s+)?String(?:\s*(?:\[\s*\]|\.\.\.)\s*\w+|\s+\w+\s*\[\s*\])\s*\)`,
   'gu',
 );
 const KOTLIN_STATIC_MAIN = /@JvmStatic\s+(?:\w+\s+)*fun\s+main\s*\(/u;

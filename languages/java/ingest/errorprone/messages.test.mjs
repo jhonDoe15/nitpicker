@@ -100,14 +100,11 @@ describe('errorProneMessage', () => {
 
 describe('SystemOut', () => {
   it('names the allowed stream form and the one place that may use System.out', () => {
-    const message = errorProneMessage({
-      check: 'SystemOut',
-      summary: 'Printing to standard output',
-    });
-
-    expect(message).toContain('take a PrintStream, Writer or Appendable parameter');
-    expect(message).toContain('only static void main passes System.out or System.err');
-    expect(message).toContain('new Cli(System.out).run(args) or System.out::print');
+    expect(errorProneMessage({ check: 'SystemOut', summary: 'Printing to standard output' })).toBe(
+      'Printing to standard output. Write through a logger, or take a PrintStream, Writer or Appendable ' +
+        'parameter and write to it; only static void main passes System.out or System.err, as in ' +
+        'new Cli(System.out).run(args) or System.out::print. Log an exception instead of calling printStackTrace().',
+    );
   });
 });
 
