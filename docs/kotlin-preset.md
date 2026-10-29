@@ -733,18 +733,32 @@ Kotlin-specific choices:
   element of one grouped list is still one row.
 - One finding per site: `kotlin-source/IoCallInLoop` is dropped where `SpringDataNoSaveInLoop`,
   `SpringDataBatchOfOne`, `SpringDataRowWriteInLoop` or `SpringDataSaveInLoopHelper` reports the same line.
-- Request values. `SpringOutboundUrl` and `SpringOpenRedirect` follow a function parameter of type
-  `String`, `CharSequence`, `URI` or `URL` (and, for outgoing URLs, a property of any other parameter
-  object, `target.url`) through locals, reassignments, `+` and string templates (`"https://$host/rates"`)
-  to the URL of a `RestTemplate`/`RestOperations` call, `uri(...)` on a `RestClient`, `WebClient` or
-  `HttpRequest` chain, `RestClient.create`, `WebClient.create`, `HttpRequest.newBuilder(uri)`,
-  `baseUrl(...)` of a client builder, or `host(...)` in a `uri { }` lambda; and to a
+- Request values. `SpringOutboundUrl` and `SpringOpenRedirect` share one set of request values: a
+  function or class parameter of type `String`, `CharSequence`, `URI` or `URL` (or a collection of
+  them), a member of another parameter object typed one of those or named like a URL (`form.next`,
+  `target.url`, `partner.host`), `getParameter`, `getHeader` and the like on a servlet request or
+  `WebRequest`, and `params["next"]` on a map of text values. They follow it, with Kotlin's scoping (a
+  shadowing lambda parameter or inner local is another value), through locals, destructuring, `=` and
+  `+=` reassignments, properties set from constructor parameters, `+` and string templates, scope
+  functions and lambdas (`?.let { }`, `also`, `run`, `with`, `apply`, `map`, `forEach`...), `for` loops
+  and lambda results, and into private, local, companion and top-level private functions and private
+  extensions that a caller passes it to, through any number of such helpers; an overloaded helper is
+  matched by argument count and types. Outgoing URLs: the URL of a `RestTemplate`/`RestOperations`
+  call, `uri(...)` on a `RestClient`, `WebClient` or `HttpRequest` chain (also a client whose type is
+  inferred, `val client = RestClient.builder().build()`, `private val rest = RestClient.create()`),
+  `RestClient.create`, `WebClient.create`, `HttpRequest.newBuilder(uri)`, `baseUrl(...)` of a client
+  builder, and `host`, `scheme`, `port`, `userInfo` or `uri` in a `uri { }` lambda. Redirects: a
   `"redirect:$next"`, `"redirect:" + next` or `RedirectView(next)` (a fixed path with a changing last
-  segment, `"redirect:/orders/$id"`, passes). Primary-constructor parameters count for property
-  initializers and `init` blocks. As in Java, `@Bean` functions, `@Configuration` classes, the
-  constructors of `@Component` and controller classes, `@Value` parameters, the arguments of
-  `buildAndExpand`, `path`, `queryParam` and the other URI template calls, and a private function that
-  only constant arguments reach are not judged.
+  segment, `"redirect:/orders/$id"`, passes, and so does a `redirect:` text only logged),
+  `response.sendRedirect(next)`, `ResponseEntity...location(uri)`, `ResponseEntity.created(uri)` and a
+  `Location` header (`header(HttpHeaders.LOCATION, next)`, `headers.location = uri`,
+  `response.setHeader("Location", next)`). A target chosen from constants is not reported: a `when` or
+  `if` whose branches are all constants (the subject and conditions carry nothing), and a map lookup
+  with a constant fallback (`ALLOWED[next] ?: "/"`, `ALLOWED.getOrDefault(next, "/")`). As in Java,
+  `@Bean` functions, `@Configuration` classes, the constructors of `@Component` and controller
+  classes, `@Value` parameters, the arguments of `buildAndExpand`, `path`, `queryParam`, `fragment` and
+  the other URI template calls, and a private function that only constant arguments reach are not
+  judged.
 
 Not ported:
 

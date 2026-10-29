@@ -1,4 +1,4 @@
-import { annotationIn, typeArguments, typeName } from '../spring-names.mjs';
+import { annotationIn, simpleTypeName, typeArguments, typeName } from '../spring-names.mjs';
 import { entriesOf, report } from '../spring-scopes.mjs';
 import {
   COLUMN_HOLDERS,
@@ -15,10 +15,6 @@ import { annotatedWith, membersOf } from './entities.mjs';
 const STRING = /\bSTRING\b/u;
 const MAPS = new Set(['Map', 'MutableMap', 'HashMap', 'LinkedHashMap', 'SortedMap', 'TreeMap']);
 const AUTO_APPLY = /^autoApply$/u;
-
-function simpleName(type) {
-  return typeName(type).split('.').at(-1);
-}
 
 function projectEnums(projectFiles) {
   return new Set(
@@ -37,15 +33,15 @@ function autoApplied(projectFiles) {
       .filter((declared) =>
         declared.annotations.some(
           (annotation) =>
-            simpleName(annotation.type ?? annotation.name) === 'Converter' &&
+            simpleTypeName(annotation.type ?? annotation.name) === 'Converter' &&
             annotation.arguments.some(
               ({ name, text }) => AUTO_APPLY.test(name ?? '') && text === 'true',
             ),
         ),
       )
       .flatMap((declared) => declared.genericSupers ?? [])
-      .filter((text) => simpleName(text) === 'AttributeConverter')
-      .map((text) => simpleName(typeArguments(text)[0])),
+      .filter((text) => simpleTypeName(text) === 'AttributeConverter')
+      .map((text) => simpleTypeName(typeArguments(text)[0])),
   );
 }
 
@@ -65,7 +61,7 @@ function enclosingCandidates(view, owner, name) {
 }
 
 function isEnumType(view, context, type) {
-  if (type === undefined || context.converted.has(simpleName(type))) {
+  if (type === undefined || context.converted.has(simpleTypeName(type))) {
     return false;
   }
   const name = typeName(type);
@@ -83,7 +79,7 @@ function enumColumns(view, member, context) {
     return isEnum(member.type) && !string ? ['value'] : [];
   }
   const [first, second] = typeArguments(member.type);
-  if (!MAPS.has(simpleName(member.type))) {
+  if (!MAPS.has(simpleTypeName(member.type))) {
     return isEnum(first) && !string ? ['value'] : [];
   }
   return [
