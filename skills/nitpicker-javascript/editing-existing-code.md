@@ -1,7 +1,7 @@
 # Editing existing code
 
-Read this when your change edits a function, file or folder that existed before it. Everything in `SKILL.md` still
-applies to the lines you add.
+Read this when your change edits a function, file or folder that existed before it.
+Everything in `SKILL.md` still applies to the lines you add.
 
 - A function already over a size limit may be edited but must not grow: add one call to a new
   function and put the new code there. To make room, extract the smallest existing block into a
