@@ -61,6 +61,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   parsed once; pass frozen dataclasses on from there.
 - Constants: a fixed set of strings is an `enum.StrEnum` (`class X(str, Enum)` before Python 3.11),
   not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
+- Concurrent remote calls: bound them (`asyncio.Semaphore` or `CapacityLimiter` inside the task, or
+  `ThreadPoolExecutor(max_workers=n)`); the checks do not verify the bound of a fan-out yet.
 - Every other rule (logging, naming, environment access, the domain, paths, secrets, shell and SQL,
   test honesty) reports the allowed form in its message: follow the form the message names.
 - Tests: use the project's runner (pytest, unittest, Django or nose2). Every test asserts something. Every branch you add needs a test, and a

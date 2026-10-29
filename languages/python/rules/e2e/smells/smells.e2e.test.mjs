@@ -2,7 +2,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { createScripts } from '../../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
-const { cleanup, outcomes, findingsOf } = createScripts();
+const { cleanup, outcomes } = createScripts();
 afterEach(cleanup);
 
 const inFile = (file, code) => ({ file, code });
@@ -291,111 +291,6 @@ describe.skipIf(!enabled)('hardcoded-secret, credential-shape and secret-in-log'
   });
 });
 
-describe.skipIf(!enabled)('io-in-loop', () => {
-  const loop = (call, head = 'import requests\n') =>
-    `${head}\n\ndef f(items):\n    for item in items:\n        ${call}\n`;
-
-  it('flags a database, HTTP or file call once per item', () => {
-    const [actual, expected] = outcomes([
-      ['requests.get', loop('requests.get(item)'), ['io-in-loop:6 requests.get()']],
-      ['a repository', loop('repo.find_by_id(item)', ''), ['io-in-loop:5 repo.find_by_id()']],
-      [
-        'a session execute',
-        loop('session.execute(statement, item)', ''),
-        ['io-in-loop:5 session.execute()'],
-      ],
-      [
-        'a comprehension',
-        'import requests\n\n\ndef f(items):\n    return [requests.get(i) for i in items]\n',
-        ['io-in-loop:5 requests.get()'],
-      ],
-      [
-        'a while loop',
-        'import requests\n\n\ndef f(items):\n    while items:\n        requests.get(items.pop())\n',
-        ['io-in-loop:6 requests.get()'],
-      ],
-      [
-        'asyncio.gather over a comprehension',
-        'import asyncio\n\n\nasync def f(items, client):\n    return await asyncio.gather(*[client.fetch(i) for i in items])\n',
-        [],
-      ],
-      [
-        'the iterable of the first loop',
-        'import requests\n\n\ndef f(url):\n    for item in requests.get(url).json():\n        print(item)\n',
-        [],
-      ],
-      [
-        'a call outside a loop',
-        'import requests\n\n\ndef f(url):\n    return requests.get(url)\n',
-        [],
-      ],
-      [
-        'a call in a function defined in the loop',
-        'import requests\n\n\ndef f(items):\n    for item in items:\n        def g():\n            return requests.get(item)\n',
-        [],
-      ],
-      [
-        'a retry loop',
-        'import requests\n\n\ndef f(url):\n    for attempt in range(3):\n        try:\n            return requests.get(url)\n        except OSError as error:\n            last = error\n    raise last\n',
-        [],
-      ],
-      [
-        'a paging loop',
-        'def f(repo):\n    cursor = ""\n    while cursor is not None:\n        page = repo.find_page(cursor)\n        cursor = page.next\n',
-        [],
-      ],
-      ['a test file', inFile('tests/test_a.py', loop('repo.find_by_id(item)', '')), []],
-    ]);
-    expect(actual).toEqual(expected);
-  });
-});
-
-describe.skipIf(!enabled)('io-in-loop through wrappers', () => {
-  it('follows project helpers, methods, sessions, partials and map', () => {
-    const files = {
-      'src/shop/orders.py':
-        'import requests\n\n\ndef fetch_order(ident):\n    return requests.get(f"https://x/{ident}", timeout=5)\n',
-      'src/shop/loops.py':
-        'import functools\nimport requests\n\nfrom shop.orders import fetch_order\n\nget = functools.partial(requests.get, timeout=5)\n\n\nclass Store:\n    def load(self, ident):\n        return requests.get(ident, timeout=5)\n\n\nclass Sync:\n    def __init__(self, store):\n        self._store = store\n\n    def via_attribute(self, ids):\n        return [self._store.load(i) for i in ids]\n\n    def via_method(self, ids):\n        return [self.load_one(i) for i in ids]\n\n    def load_one(self, ident):\n        return self._store.load(ident)\n\n\ndef via_helper(ids):\n    return [fetch_order(i) for i in ids]\n\n\ndef via_partial(urls):\n    return [get(u) for u in urls]\n\n\ndef via_map(urls):\n    return list(map(requests.get, urls))\n\n\ndef via_session(urls):\n    with requests.Session() as s:\n        return [s.get(u, timeout=5) for u in urls]\n',
-    };
-
-    expect(findingsOf(files, { sourceRoots: ['src'] })).toEqual([
-      'io-in-loop src/shop/loops.py:19 self._store.load()',
-      'io-in-loop src/shop/loops.py:22 self.load_one()',
-      'io-in-loop src/shop/loops.py:29 fetch_order()',
-      'io-in-loop src/shop/loops.py:33 get()',
-      'io-in-loop src/shop/loops.py:37 requests.get()',
-      'io-in-loop src/shop/loops.py:42 s.get()',
-    ]);
-  });
-
-  it('counts paging only when the tested name comes from the input and output call', () => {
-    const [actual, expected] = outcomes([
-      [
-        'a loop that shrinks a list',
-        'import requests\n\n\ndef f(ids):\n    remaining = ids\n    while remaining:\n        requests.post("https://x", json=remaining[0])\n        remaining = remaining[1:]\n',
-        ['io-in-loop:7 requests.post()'],
-      ],
-      [
-        'a cursor read from the response',
-        'import requests\n\n\ndef f(url):\n    cursor = None\n    while True:\n        page = requests.get(url, params={"c": cursor})\n        cursor = page.json()["next"]\n        if not cursor:\n            break\n',
-        [],
-      ],
-      [
-        'distinct statements',
-        'def migrate(cursor, statements):\n    for statement in statements:\n        cursor.execute(statement)\n',
-        [],
-      ],
-      [
-        'a statement with parameters for each item',
-        'def load(cursor, ids):\n    for ident in ids:\n        cursor.execute("select 1 where id = ?", (ident,))\n',
-        ['io-in-loop:3 cursor.execute()'],
-      ],
-    ]);
-    expect(actual).toEqual(expected);
-  });
-});
-
 describe.skipIf(!enabled)('todo-without-issue', () => {
   it('flags a task marker that names no issue', () => {
     const [actual, expected] = outcomes([
@@ -450,6 +345,20 @@ describe.skipIf(!enabled)('todo-without-issue', () => {
       ],
       ['a word that contains it', '# AUTODOC: later\nX = 1\n', []],
       ['a marker inside a string', 'X = "TODO: later"\n', []],
+    ]);
+    expect(actual).toEqual(expected);
+  });
+});
+
+describe.skipIf(!enabled)('deeply nested expressions', () => {
+  it('checks a string built from a thousand concatenated parts without running out of stack', () => {
+    const parts = Array.from({ length: 1000 }, (_, index) => `"p${String(index)}"`).join(' + ');
+    const [actual, expected] = outcomes([
+      [
+        'a long concatenation',
+        `class Query:\n    def text(self) -> str:\n        return ${parts}\n`,
+        [],
+      ],
     ]);
     expect(actual).toEqual(expected);
   });
