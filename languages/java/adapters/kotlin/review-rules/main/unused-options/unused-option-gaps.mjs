@@ -1,5 +1,6 @@
 import { limitedUnits, publicFunctionUnits } from './unused-option-units.mjs';
 import { declaredNames } from '../../spring/spring-names.mjs';
+import { compareText } from '../../../../../../../shared/paths/path-order.mjs';
 
 function skippedGaps(module) {
   return module.facts.skipped.map(({ file, test }) =>
@@ -36,13 +37,6 @@ export function hiddenCallers(build, module) {
 
 export function hiddenInternalCallers(build, module) {
   return sortedLabels(buildGaps(build).filter((gap) => gap.owner === module.path));
-}
-
-function compareText(left, right) {
-  if (left === right) {
-    return 0;
-  }
-  return left < right ? -1 : 1;
 }
 
 function byPlace(left, right) {

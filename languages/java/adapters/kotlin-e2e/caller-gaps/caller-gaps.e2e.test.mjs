@@ -36,7 +36,7 @@ describe.skipIf(!kotlinE2eEnabled)('caller gaps the init script records for unus
       { cwd: path.join(root, 'project'), stdio: 'pipe', timeout: GRADLE_STEP_TIMEOUT_MS },
     );
     facts = JSON.parse(readFileSync(output, 'utf8'));
-  }, GRADLE_STEP_TIMEOUT_MS);
+  }, 180_000);
 
   afterAll(() => {
     if (root !== undefined) {
