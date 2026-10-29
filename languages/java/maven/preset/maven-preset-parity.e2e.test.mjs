@@ -19,6 +19,7 @@ import {
 const MODE_TEST = `package demo;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
 
@@ -26,13 +27,33 @@ class ModeTest {
   @Test
   void runsWithTheJvmArgumentsOfTheBuild() {
     assertEquals("checked", System.getProperty("nitpicker.mode"));
+    assertEquals("a,b", System.getProperty("nitpicker.list"));
+    assertEquals("hello world", System.getProperty("nitpicker.spaced"));
+    assertEquals("say \\"hi\\"", System.getProperty("nitpicker.quote"));
+    assertEquals("yes", System.getProperty("nitpicker.provided"));
+    assertTrue(Runtime.getRuntime().maxMemory() <= 400L * 1024 * 1024);
   }
 }
 `;
-const SUREFIRE_ARG_LINE =
+const GRADLE_TEST_JVM = `
+class Provided implements CommandLineArgumentProvider {
+    Iterable<String> asArguments() { ['-Dnitpicker.provided=yes'] }
+}
+tasks.test {
+    jvmArgs '-Dnitpicker.mode=checked', '-Dnitpicker.list=a,b'
+    systemProperty 'nitpicker.spaced', 'hello world'
+    systemProperty 'nitpicker.quote', 'say "hi"'
+    maxHeapSize = '384m'
+    jvmArgumentProviders.add(new Provided())
+}
+`;
+const MAVEN_ARG_LINE =
+  '<argLine>-Dnitpicker.mode=checked -Dnitpicker.list=a,b "-Dnitpicker.spaced=hello world" -Xmx384m</argLine>';
+const MAVEN_SYSTEM_PROPERTIES =
   '<build><plugins><plugin><groupId>org.apache.maven.plugins</groupId>' +
   '<artifactId>maven-surefire-plugin</artifactId><version>3.5.2</version>' +
-  '<configuration><argLine>@{argLine} -Dnitpicker.mode=checked</argLine></configuration>' +
+  '<configuration><systemPropertyVariables><nitpicker.quote>say &quot;hi&quot;</nitpicker.quote>' +
+  '<nitpicker.provided>yes</nitpicker.provided></systemPropertyVariables></configuration>' +
   '</plugin></plugins></build>';
 
 function appendTo(file, text) {
@@ -70,14 +91,13 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
     for (const root of [gradleProject, mavenProject]) {
       writeFileSync(path.join(root, 'src/test/java/demo/ModeTest.java'), MODE_TEST);
     }
-    appendTo(
-      path.join(gradleProject, 'build.gradle'),
-      "\ntasks.test { jvmArgs '-Dnitpicker.mode=checked' }\n",
-    );
+    appendTo(path.join(gradleProject, 'build.gradle'), GRADLE_TEST_JVM);
     const pom = path.join(mavenProject, 'pom.xml');
     writeFileSync(
       pom,
-      readFileSync(pom, 'utf8').replace('</project>', `${SUREFIRE_ARG_LINE}</project>`),
+      readFileSync(pom, 'utf8')
+        .replace('</properties>', `${MAVEN_ARG_LINE}</properties>`)
+        .replace('</project>', `${MAVEN_SYSTEM_PROPERTIES}</project>`),
     );
     const fromGradle = collectJavaFindings(gradleProject, { gradle, policy: {} });
     const fromMaven = collectJavaFindings(mavenProject, { maven, policy: {} });
