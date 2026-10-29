@@ -136,6 +136,8 @@ line) is a finding.
   extract a function, also when the copy has other names and literals.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
+- Remove a parameter the body does not read. One that a callback or override signature requires
+  starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
 - A timeout does not stop the work it races: `Promise.race([op(), rejectAfter(ms)])` leaves `op` running
   (`timeout-abandons-operation`). Give `op` the `AbortSignal` the timeout aborts (`{ signal: controller.signal }`,
@@ -218,6 +220,9 @@ line) is a finding.
   Don't pin call order or messages just to kill it. If an input can kill it, add that test (a
   padded value for a `.trim()`, two bad fields for a `join`); never delete a schema rule to silence it.
 - No per-test git repos, child processes, servers, fixed sleeps, or raised timeouts.
+- Wait for every callback that asserts: `await once(emitter, 'ready')`, await a promise the
+  callback resolves, or advance fake timers in the test. An assertion in a timer, listener or
+  error-first callback the test does not wait for runs after it ends and its failure is lost.
 - Give synchronous `child_process` calls in integration tests and shared test helpers a positive
   subprocess `timeout`, such as `{ timeout: 10_000 }`. The runner's test timeout cannot interrupt
   `spawnSync`, `execSync` or `execFileSync` while they block the event loop.

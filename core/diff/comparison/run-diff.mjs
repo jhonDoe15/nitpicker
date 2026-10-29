@@ -12,6 +12,7 @@ import {
   readTouchedPaths,
 } from '../git/patches/project-moves.mjs';
 import { readChangedLines } from '../git/patches/changed-lines.mjs';
+import { readRemovesTests } from '../git/patches/test-removal.mjs';
 import { withTemporaryWorktree, withNamedTemporaryWorktree } from '../git/repository/worktree.mjs';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
 import { runAnalyzers } from '../execution/run-analyzers.mjs';
@@ -92,7 +93,18 @@ function readSnapshotLayout({ repositoryRoot, projectRelativePath }, comparison)
     baseProjectRelativePath,
     moves,
     touchedPaths,
-    touchedCode: { changedLines, isStrictRule, mustMeetOnEditedLines },
+    touchedCode: {
+      changedLines,
+      isStrictRule,
+      mustMeetOnEditedLines,
+      testsRemoved: readRemovesTests({
+        repositoryRoot,
+        mergeBaseSha,
+        headSha,
+        projectRelativePath,
+        baseProjectRelativePath,
+      }),
+    },
   };
 }
 
@@ -226,7 +238,10 @@ function runBaseSide(context) {
     }),
     analyzers: baseSetup.analyzers,
     run: (baseAnalyzers) => runBaseAnalyzers(context, baseAnalyzers),
-    onCached: (count) => settings.progress?.write(cachedLine({ label: 'base', count })),
+    onCached: (count) =>
+      settings.progress?.write(
+        cachedLine({ label: 'base', count, directory: settings.cacheStore.directory }),
+      ),
     resolveContext: {
       liveProjectRoot: settings.headProjectRoot,
       policyRoot: roots.headSnapshotRoot,
