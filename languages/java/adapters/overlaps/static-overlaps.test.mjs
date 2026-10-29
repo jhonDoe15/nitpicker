@@ -5,12 +5,17 @@ import { CATALOG_TOOLS, readCatalog } from '../../messages/rule-messages.mjs';
 import { OVERLAP_PAIRS, matchesRule, withoutOverlaps } from './static-overlaps.mjs';
 
 const CHECKS = path.resolve(import.meta.dirname, '../../gradle/errorprone/checks.json');
-const MAIN_RULESET = path.resolve(import.meta.dirname, '../../gradle/pmd-main-ruleset.xml');
+const NITPICKER_RULESETS = ['pmd-main-ruleset.xml', 'pmd-test-ruleset.xml', 'spring-ruleset.xml'];
+const nitpickerRules = NITPICKER_RULESETS.flatMap((file) =>
+  [
+    ...readFileSync(path.resolve(import.meta.dirname, '../../gradle', file), 'utf8').matchAll(
+      /<rule name="(\w+)"/gu,
+    ),
+  ].map(([, name]) => `pmd/${name}`),
+);
 const KNOWN_RULES = [
   'errorprone/NullAway',
-  ...[...readFileSync(MAIN_RULESET, 'utf8').matchAll(/<rule name="(\w+)"/gu)].map(
-    ([, rule]) => `pmd/${rule}`,
-  ),
+  ...nitpickerRules,
   ...JSON.parse(readFileSync(CHECKS, 'utf8')).suppressible.map((check) => `errorprone/${check}`),
   ...CATALOG_TOOLS.flatMap((tool) =>
     Object.keys(readCatalog(tool)).map((rule) => `${tool}/${rule}`),
@@ -96,7 +101,7 @@ describe('overlap pairs', () => {
     expect(rules.filter((rule) => reaches(rule, rule))).toStrictEqual([]);
   });
 
-  it('name rules as the findings print them: Checkstyle module ids, catalog rules, Error Prone checks', () => {
+  it('name rules as findings print them: Checkstyle module ids, catalog and own rules, Error Prone checks', () => {
     const rules = OVERLAP_PAIRS.flatMap(({ primary, secondary }) => [...primary, ...secondary]);
 
     expect(
