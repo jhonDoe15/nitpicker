@@ -1,4 +1,4 @@
-import { missingNodePeers } from './node-peers.mjs';
+import { assertTypeScriptNode, missingNodePeers } from './node-peers.mjs';
 import { pythonPeerStatus } from './python-peers.mjs';
 
 const PYTHON_INSTALLERS = {
@@ -31,8 +31,9 @@ export function installCommand(installer, requirements) {
   return `${installer} ${requirements.map(shellQuoted).join(' ')}`;
 }
 
-function nodePlan(projectRoot, project) {
-  const missing = missingNodePeers(projectRoot, project.testRunner);
+function nodePlan(projectRoot, project, nodeVersion) {
+  assertTypeScriptNode(projectRoot, nodeVersion);
+  const missing = missingNodePeers(projectRoot, project.testRunner, nodeVersion);
   return { ...NOTHING, missing, command: installCommand(project.packageManager.add, missing) };
 }
 
@@ -52,12 +53,14 @@ function pythonPlan(projectRoot, project) {
   };
 }
 
-export function planPeers(projectRoot, project) {
+export function planPeers(projectRoot, project, nodeVersion = process.versions.node) {
   if (project.family === 'jvm') {
     return { ...NOTHING, requirements: JVM_REQUIREMENTS };
   }
   const plan =
-    project.family === 'python' ? pythonPlan(projectRoot, project) : nodePlan(projectRoot, project);
+    project.family === 'python'
+      ? pythonPlan(projectRoot, project)
+      : nodePlan(projectRoot, project, nodeVersion);
   return plan.missing.length === 0
     ? { ...NOTHING, undeclared: plan.undeclared, installedOnly: plan.installedOnly }
     : plan;

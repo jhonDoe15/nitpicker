@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { init, readText, useProjects } from './test-support/projects.mjs';
+import { init, initWith, readText, useProjects } from './test-support/projects.mjs';
 
 const createProject = useProjects();
 const TYPESCRIPT = { 'package.json': '{}', 'src/index.ts': 'export const value = 1;\n' };
@@ -11,6 +11,21 @@ function project(files = TYPESCRIPT) {
 }
 
 describe('nitpicker init stops before writing anything', () => {
+  it('when the project is on TypeScript 7 and Node.js is older than 22.19', () => {
+    const root = project({
+      ...TYPESCRIPT,
+      'package.json': '{"devDependencies":{"typescript":"^7.0.0"}}',
+    });
+
+    expect(initWith({ currentProjectRoot: root, nodeVersion: '22.18.1' })).toEqual({
+      exitCode: 2,
+      stdoutText: '',
+      stderrText:
+        'nitpicker failed: This project uses TypeScript 7 (^7.0.0 declared). nitpicker reads a TypeScript 7 project through its own TypeScript 6 API, which needs Node.js 22.19 or newer, and this is Node.js 22.18.1. Install Node.js 22.19 or newer, or use TypeScript 6 (typescript@^6), and run nitpicker init again.\n',
+    });
+    expect(existsSync(path.join(root, 'nitpicker.config.json'))).toBe(false);
+  });
+
   it('when AGENTS.md is a folder', () => {
     const root = project();
     mkdirSync(path.join(root, 'AGENTS.md'));

@@ -17,11 +17,12 @@ export function runInitCommand(cli) {
     cli.stdout.write(INIT_USAGE_TEXT);
     return 0;
   }
-  assertSupportedNode(cli.nodeVersion ?? process.versions.node);
+  const nodeVersion = cli.nodeVersion ?? process.versions.node;
+  assertSupportedNode(nodeVersion);
   const projectRoot = realpathSync(cli.currentProjectRoot ?? process.cwd());
   const repository = requireRepository(projectRoot);
   const project = detectProject(projectRoot);
-  const peers = planPeers(projectRoot, project);
+  const peers = planPeers(projectRoot, project, nodeVersion);
   const files = placeFiles(projectRoot, options, { project, peers, repository });
   cli.stdout.write(renderReport({ project, peers, ...files }));
   return [files.config, files.workflow].some((result) => result?.status === 'differs') ? 1 : 0;

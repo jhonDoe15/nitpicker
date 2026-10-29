@@ -4,7 +4,10 @@ import { configError } from '../../../shared/config.mjs';
 import { filesUnder, pathInside } from '../../../shared/filesystem.mjs';
 import { sourceRoots as defaultSourceRoots } from '../../../languages/typescript/preset/layout.mjs';
 import { firstJsxFile } from './project-config.mjs';
-import { gradleAppliesKotlin } from '../../../languages/java/builds/java-build.mjs';
+import {
+  BUILD_LOGIC_FOLDERS,
+  gradleAppliesKotlin,
+} from '../../../languages/java/builds/gradle-scripts/kotlin-plugin.mjs';
 
 const PROJECT_MARKERS = [
   {
@@ -30,6 +33,7 @@ const KOTLIN_FILE = /\.kt$/u;
 const JAVA_FILE = /\.java$/u;
 const MINIFIED_FILE = /\.min\.[cm]?js$/u;
 const SKIPPED_FOLDERS = new Set(['node_modules', 'build', 'target', 'out']);
+const JVM_SKIPPED_FOLDERS = new Set([...SKIPPED_FOLDERS, ...BUILD_LOGIC_FOLDERS]);
 const ASSET_FOLDERS = new Set([
   ...SKIPPED_FOLDERS,
   'resources',
@@ -61,7 +65,7 @@ export function detectedPreset(projectRoot) {
   if (marker?.preset !== 'java') {
     return marker;
   }
-  const files = codeFiles(projectRoot);
+  const files = codeFiles(projectRoot, JVM_SKIPPED_FOLDERS);
   const kotlin = files.filter((name) => KOTLIN_FILE.test(name)).length;
   const java = files.filter((name) => JAVA_FILE.test(name)).length;
   const kotlinBuild = kotlin > 0 && (kotlin > java || gradleAppliesKotlin(projectRoot));

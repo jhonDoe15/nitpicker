@@ -1,6 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { filesUnder } from '../../../shared/filesystem.mjs';
 
 export const GRADLE_DIRECTORY = path.resolve(import.meta.dirname, '../gradle');
 export const INIT_SCRIPT = path.join(GRADLE_DIRECTORY, 'nitpicker.init.gradle');
@@ -23,21 +22,6 @@ export function readPinnedTools(initScript = INIT_SCRIPT) {
     throw new Error(`No pinned tool versions found in ${initScript}`);
   }
   return pinned;
-}
-
-const GRADLE_SCRIPT = /\.gradle(?:\.kts)?$/u;
-const KOTLIN_PLUGIN =
-  /\bkotlin\s*\(\s*["'](?:jvm|android|multiplatform)["']\s*\)|["']org\.jetbrains\.kotlin\.(?:jvm|android|multiplatform)["']|\bapply\s+plugin\s*:\s*["']kotlin(?:-android)?["']|\bid(?:\s*\(\s*|\s+)["']kotlin["']/u;
-const SKIPPED_FOLDERS = new Set(['build', 'node_modules', 'out', 'target']);
-
-export function gradleAppliesKotlin(projectRoot) {
-  const scripts = filesUnder(projectRoot, {
-    skipDirectory: (_absolute, entry) =>
-      entry.name.startsWith('.') || SKIPPED_FOLDERS.has(entry.name),
-  });
-  return [...scripts]
-    .filter((file) => GRADLE_SCRIPT.test(file))
-    .some((file) => KOTLIN_PLUGIN.test(readFileSync(file, 'utf8')));
 }
 
 export function buildRunsPreset(buildTool, preset) {

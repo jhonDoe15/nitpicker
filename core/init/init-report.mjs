@@ -78,7 +78,7 @@ function ciLines(workflow, { workflowFile, command, offered }) {
   if (workflow === undefined) {
     return offered ? [`To write ${workflowFile}, run: ${command} init --ci github`] : [];
   }
-  return fileLines(workflow);
+  return [...fileLines(workflow), ...(workflow.notes ?? [])];
 }
 
 export function renderReport({ project, peers, config, workflow, workflowFile, agents, offers }) {

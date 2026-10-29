@@ -47,6 +47,22 @@ describe('peer plan for Node projects', () => {
 
     expect(planPeers(root, nodeProject('npm install --save-dev', 'node'))).toEqual(NOTHING);
   });
+
+  it('asks for TypeScript 6 on a Node.js older than TypeScript 7 projects need', () => {
+    const root = project({ 'package.json': '{}' });
+
+    expect(planPeers(root, nodeProject('npm install --save-dev', 'node'), '22.18.1').command).toBe(
+      `npm install --save-dev ${NITPICKER} 'typescript@^6' @types/node`,
+    );
+  });
+
+  it('stops on a TypeScript 7 project when Node.js is older than 22.19', () => {
+    const root = project({ 'package.json': '{"devDependencies":{"typescript":"^7.0.0"}}' });
+
+    expect(() => planPeers(root, nodeProject('npm install --save-dev', 'node'), '22.18.1')).toThrow(
+      'This project uses TypeScript 7 (^7.0.0 declared).',
+    );
+  });
 });
 
 describe('peer plan for Python projects', () => {

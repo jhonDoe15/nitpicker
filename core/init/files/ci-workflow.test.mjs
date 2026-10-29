@@ -379,6 +379,18 @@ describe('workflow location', () => {
     });
   });
 
+  it('returns the notes on the Python version with the placed workflow', () => {
+    const root = project({ '.python-version': '3.9\n' }, { repository: true });
+
+    expect(placeWorkflow(root, pythonContext(root, 'pip'))).toEqual({
+      relative: ROOT_WORKFLOW,
+      status: 'created',
+      notes: [
+        '.python-version asks for Python 3.9, and the python-rules, mutmut and dependency checks need Python 3.10 or newer, so in CI they report that they were skipped. Raise .python-version to 3.10 or newer to run them.',
+      ],
+    });
+  });
+
   it('never overwrites a workflow of the same name, and returns the diff', () => {
     const existing = 'name: nitpicker\non: push\n';
     const root = project({ [ROOT_WORKFLOW]: existing }, { repository: true });

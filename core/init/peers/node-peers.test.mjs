@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { packageVersion } from '../../help/package-version.mjs';
 import { useProjects } from '../test-support/projects.mjs';
-import { missingNodePeers, requiredNodePeers } from './node-peers.mjs';
+import { assertTypeScriptNode, missingNodePeers, requiredNodePeers } from './node-peers.mjs';
 
 const project = useProjects();
 const NITPICKER = `nitpicker@${packageVersion()}`;
@@ -131,5 +131,50 @@ describe('missing Node peers', () => {
     });
 
     expect(missingNodePeers(root, 'node')).toEqual([NITPICKER, 'typescript', '@types/node']);
+  });
+});
+
+describe('TypeScript 7 on an older Node.js', () => {
+  it.each([
+    ['installed', installed('typescript', '7.0.2'), '7.0.2 installed'],
+    [
+      'declared',
+      { 'package.json': '{"devDependencies":{"typescript":"^7.0.0"}}' },
+      '^7.0.0 declared',
+    ],
+  ])('stops init when TypeScript 7 is %s and Node.js is below 22.19', (_name, files, found) => {
+    expect(() => assertTypeScriptNode(project(files), '22.18.1')).toThrow(
+      `This project uses TypeScript 7 (${found}). nitpicker reads a TypeScript 7 project through its own TypeScript 6 API, which needs Node.js 22.19 or newer, and this is Node.js 22.18.1. Install Node.js 22.19 or newer, or use TypeScript 6 (typescript@^6), and run nitpicker init again.`,
+    );
+  });
+
+  it.each([
+    ['TypeScript 7 on Node.js 22.19', installed('typescript', '7.0.2'), '22.19.0'],
+    ['TypeScript 6 on Node.js 22.18', installed('typescript', '6.0.3'), '22.18.1'],
+    ['no TypeScript on Node.js 22.18', { 'package.json': '{}' }, '22.18.1'],
+    [
+      'a declared latest TypeScript on Node.js 22.18',
+      { 'package.json': '{"devDependencies":{"typescript":"latest"}}' },
+      '22.18.1',
+    ],
+  ])('lets %s through', (_name, files, nodeVersion) => {
+    expect(() => assertTypeScriptNode(project(files), nodeVersion)).not.toThrow();
+  });
+
+  it('judges the installed TypeScript over the declared range', () => {
+    const root = project({
+      'package.json': '{"devDependencies":{"typescript":"^7.0.0"}}',
+      ...installed('typescript', '6.0.3'),
+    });
+
+    expect(() => assertTypeScriptNode(root, '22.18.1')).not.toThrow();
+  });
+
+  it('asks for TypeScript 6 when Node.js is too old for the TypeScript 7 that plain typescript installs', () => {
+    expect(missingNodePeers(project({ 'package.json': '{}' }), 'node', '22.18.1')).toEqual([
+      NITPICKER,
+      'typescript@^6',
+      '@types/node',
+    ]);
   });
 });
