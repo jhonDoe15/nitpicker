@@ -6,7 +6,7 @@ import { flatText, splitFirstSentence } from '../../../../shared/reference/build
 import { readToolText } from '../tool-text/tool-text.mjs';
 import { ONE_WAY_RULES } from '../../adapters/kotlin/rules/kotlin-rules.mjs';
 
-const DEFAULTS_FILE = new URL('../../detekt/detekt-default-rules.json', import.meta.url);
+const DEFAULTS_FILE = new URL('./detekt-default-rules.json', import.meta.url);
 const NITPICKER_CONFIG = new URL('../../detekt/nitpicker-detekt.yml', import.meta.url);
 const DETEKT_RULES_URL = 'https://detekt.dev/docs/rules';
 const GUIDE = { label: 'Kotlin preset guide', path: 'docs/kotlin-preset.md' };

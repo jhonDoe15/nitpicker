@@ -42,7 +42,7 @@ const ERRORPRONE_CHECKS = JSON.parse(
 );
 const DETEKT_DEFAULTS = JSON.parse(
   readFileSync(
-    new URL('../../languages/java/detekt/detekt-default-rules.json', import.meta.url),
+    new URL('../../languages/java/reference/kotlin/detekt-default-rules.json', import.meta.url),
     'utf8',
   ),
 );
