@@ -49,8 +49,8 @@ function wrapMethod(owner, name, before) {
   }
 }
 
-function isRootAllHook(hook) {
-  return hook.parent?.root === true && !isEachHook(hook);
+function isSharedRootHook(hook, loadedFileCounts) {
+  return (loadedFileCounts.get(hook.parent) ?? 0) > 1 && !isEachHook(hook);
 }
 
 function enter(tracking, place, origin = place) {
@@ -64,6 +64,7 @@ function watchLoading(tracking, { suite }) {
   }
   tracking.watched.add(suite);
   suite.on('pre-require', (_context, file) => {
+    tracking.loadedFileCounts.set(suite, (tracking.loadedFileCounts.get(suite) ?? 0) + 1);
     tracking.state.loading = absolute(file);
     enter(tracking, { file: tracking.state.loading, test: '' });
   });
@@ -85,7 +86,7 @@ function watchRunner(tracking, runner) {
   tracking.watched.add(runner);
   runner.on('hook', (hook) => {
     const place = hookPlace(hook, tracking.loadedHookFiles);
-    enter(tracking, place, isRootAllHook(hook) ? NO_PLACE : place);
+    enter(tracking, place, isSharedRootHook(hook, tracking.loadedFileCounts) ? NO_PLACE : place);
   });
   runner.on('test', (test) => {
     enter(tracking, testPlace(test));
@@ -100,6 +101,7 @@ export function trackMocha(mochaClass, storage = new AsyncLocalStorage()) {
     storage,
     state: { current: NO_PLACE, loading: '' },
     loadedHookFiles: new WeakMap(),
+    loadedFileCounts: new WeakMap(),
     watched: new WeakSet(),
   };
   wrapMethod(mochaClass.prototype, 'loadFiles', (mocha) => {

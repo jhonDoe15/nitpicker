@@ -142,15 +142,70 @@ describe('the Mocha console tracking', () => {
     ]);
   });
 
+  function laterFileCall({ runner, place }, hook, later) {
+    runner.emit('hook', hook);
+    const inHook = place();
+    const handled = new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(place());
+      }, 5);
+    });
+    runner.emit('test', later);
+    return Promise.all([inHook, handled]);
+  }
+
+  function loaded(mocha, files, hook) {
+    for (const file of files) {
+      mocha.suite.emit('pre-require', {}, file);
+      if (hook !== undefined && file === files[0]) {
+        mocha.suite.emit('beforeAll', hook);
+      }
+      mocha.suite.emit('post-require', {}, file);
+    }
+  }
+
+  it.each([
+    ['describe-level before hook', (root, first) => ({ parent: first, file: first.file }), 2],
+    ['root hook of the only file a parallel worker loaded', (root) => ({ parent: root }), 1],
+  ])(
+    'drops a call from work that a %s started once another file runs',
+    async (_name, hookIn, fileCount) => {
+      const tracking = tracked();
+      const root = tracking.mocha.suite;
+      Object.assign(root, { root: true, _beforeEach: [], _afterEach: [], titlePath: () => [] });
+      const first = suite('a', { file: '/p/test/a.test.js', parent: root });
+      const second = suite('b', { file: '/p/test/b.test.js', parent: root });
+      const hook = hookIn(root, first);
+      loaded(tracking.mocha, ['/p/test/a.test.js', '/p/test/b.test.js'].slice(0, fileCount), hook);
+
+      expect((await laterFileCall(tracking, hook, test('two', second)))[1]).toEqual(NO_PLACE);
+    },
+  );
+
+  it('keeps the test of a root beforeEach as the origin of the work it starts', async () => {
+    const tracking = tracked();
+    const root = tracking.mocha.suite;
+    Object.assign(root, { root: true, _beforeEach: [], _afterEach: [], titlePath: () => [] });
+    const first = suite('a', { file: '/p/test/a.test.js', parent: root });
+    const second = suite('b', { file: '/p/test/b.test.js', parent: root });
+    const eachHook = { parent: root, ctx: { currentTest: test('one', first) } };
+    root._beforeEach.push(eachHook);
+    loaded(tracking.mocha, ['/p/test/a.test.js', '/p/test/b.test.js']);
+
+    expect(await laterFileCall(tracking, eachHook, test('two', second))).toEqual([
+      { file: '/p/test/a.test.js', test: 'a > one' },
+      NO_PLACE,
+    ]);
+  });
+
   it('gives the running test of a later file a call whose async work a spec file root hook started', async () => {
     const { mocha, runner, place } = tracked();
-    const root = suite('', { root: true });
+    const root = mocha.suite;
+    Object.assign(root, { root: true, _beforeEach: [], _afterEach: [], titlePath: () => [] });
     const api = suite('api', { file: '/p/test/b.test.js', parent: root });
     const fromFile = { parent: root };
 
-    mocha.suite.emit('pre-require', {}, '/p/test/a.test.js');
-    mocha.suite.emit('beforeAll', fromFile);
-    mocha.suite.emit('post-require', {}, '/p/test/a.test.js');
+    loaded(mocha, ['/p/test/a.test.js', '/p/test/b.test.js'], fromFile);
     runner.emit('hook', fromFile);
     const inRootHook = place();
     const handled = new Promise((resolve) => {
