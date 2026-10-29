@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { fixtureGit } from '../git/test-support/git-repository.mjs';
-import { computeCodeFingerprint, currentCodeFingerprint } from './code-fingerprint.mjs';
+import { computeCodeFingerprint } from './code-fingerprint.mjs';
 
 const temporaryRoots = [];
 
@@ -52,15 +52,5 @@ describe('the fingerprint of the code that produced the findings', () => {
 
     write('languages/python/rules/new_rule.mjs', 'export const banned = ["exec"];\n');
     expect(computeCodeFingerprint(root)).not.toBe(before);
-  });
-
-  it('is computed once per process', () => {
-    const { root, write } = packageRoot();
-    const first = currentCodeFingerprint(root);
-
-    write('languages/python/rules/rule.mjs', 'export const banned = [];\n');
-
-    expect(currentCodeFingerprint(root)).toBe(first);
-    expect(computeCodeFingerprint(root)).not.toBe(first);
   });
 });

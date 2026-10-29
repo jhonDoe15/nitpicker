@@ -2,7 +2,8 @@ import { createHash } from 'node:crypto';
 import { createDirectoryStore, resolveCacheDirectory } from './cache-stores.mjs';
 import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
 import { resolveAnalyzerMetadata } from '../execution/run-analyzers.mjs';
-import { currentCodeFingerprint } from './code-fingerprint.mjs';
+import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
+import { computeCodeFingerprint } from './code-fingerprint.mjs';
 
 const CACHE_SCHEMA = 1;
 
@@ -59,7 +60,7 @@ export function createFindingsCache({
   projectRelativePath,
   configOverrides = [],
   headPolicy = {},
-  codeFingerprint = currentCodeFingerprint(),
+  codeFingerprint = computeCodeFingerprint(PACKAGE_ROOT),
 }) {
   const backend = store ?? createDirectoryStore(directory);
   function keyFor(analyzer) {
