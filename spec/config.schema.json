@@ -411,6 +411,21 @@
             }
           }
         },
+        "jscpd": {
+          "description": "Settings of jscpd.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config jscpd uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once, highest first.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
+        },
         "eslint": {
           "description": "Settings of eslint.",
           "type": "object",
