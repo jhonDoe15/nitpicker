@@ -74,12 +74,18 @@ describe.skipIf(!pythonUsable())('the shared design rules over Python facts', ()
     );
   });
 
-  it('fails an unclosed protocol, not with blocks, an owner field or a returned session', () => {
+  it('fails an unclosed protocol and an early step, not a step on the other arm of the open', () => {
     expect(findingRows('lifecycle', { protocols: [PROTOCOL] })).toEqual(
-      ['manual', 'never_called', 'not_cleanup', 'unstacked'].map((caller) => [
+      [
+        ['early', 'early:write'],
+        ['manual', 'unclosed:begin'],
+        ['never_called', 'unclosed:begin'],
+        ['not_cleanup', 'unclosed:begin'],
+        ['unstacked', 'unclosed:begin'],
+      ].map(([caller, violation]) => [
         'protocol-contract',
         'db/usage.py',
-        `db/usage.py#${caller}|session|unclosed:begin`,
+        `db/usage.py#${caller}|session|${violation}`,
         'enforceable',
       ]),
     );

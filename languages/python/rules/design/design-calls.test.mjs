@@ -247,6 +247,22 @@ describe.skipIf(!pythonUsable())('the Python design producer cleanup calls', () 
       expect(callsOf(byId, `${USAGE}#${name}`)).toEqual([]);
     },
   );
+
+  it('marks each call with the arms of the if, elif, conditional expression and match around it', () => {
+    const inArms = (target, line, branch) => ({ ...step(target, line, 'session'), branch });
+    expect(callsOf(byId, `${USAGE}#chosen`)).toEqual([
+      inArms('Session.write', 162, ['0:0']),
+      inArms('Session.write', 164, ['0:1', '1:then']),
+      inArms('Session.close', 164, ['0:1', '1:else']),
+      inArms('Session.write', 164, ['0:1']),
+      inArms('Session.close', 168, ['2:else', '3:then']),
+    ]);
+    expect(callsOf(byId, `${USAGE}#either`).map(({ branch }) => branch)).toEqual([
+      ['0:then'],
+      ['0:else'],
+      undefined,
+    ]);
+  });
 });
 
 describe.skipIf(!pythonUsable())('the Python design producer mutation marks', () => {
