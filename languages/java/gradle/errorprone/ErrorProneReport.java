@@ -16,14 +16,16 @@ import javax.tools.*;
  * around it, innermost first. Usage: {@code ErrorProneReport <report.json> <checks.json> <arguments file>...};
  * each arguments file holds javac arguments, then {@code --sources} and the sources, one per line.
  * The non-javac lines ({@code --test-only}, {@code --own-classes=}, {@code --release=}, {@code
- * --source=}, {@code --target=}, {@code --project-arg=}) and lombok.config handling are described in
- * docs/java-preset.md. A failed compilation exits with status 1 and javac's errors on stderr.
+ * --source=}, {@code --target=}, {@code --project-arg=}, {@code --errorprone-flag=}) and lombok.config
+ * handling are described in docs/java-preset.md. A failed compilation exits with status 1 and javac's
+ * errors on stderr.
  */
 public final class ErrorProneReport {
   private static final String SOURCES = "--sources";
   private static final String TEST_ONLY = "--test-only";
   private static final String OWN_CLASSES = "--own-classes=";
   private static final String PROJECT_ARG = "--project-arg=";
+  private static final String PROJECT_FLAG = "--errorprone-flag=";
   private static final List<String> MODULE_OPTIONS =
       List.of("--add-exports", "--add-modules", "--add-reads");
   private static final List<String> NULLAWAY_OPTIONS =
@@ -76,8 +78,8 @@ public final class ErrorProneReport {
     return list.find() ? NAME.matcher(list.group(1)).results().map(name -> name.group(1)).toList() : List.of();
   }
 
-  static String pluginArgument(
-      String checks, List<String> packages, boolean test, boolean lombokUnsuppressed) {
+  static String pluginArgument(String checks, List<String> packages, boolean test, boolean lombokUnsuppressed,
+      List<String> projectFlags) {
     List<String> flags = new ArrayList<>(List.of("-Xplugin:ErrorProne", "-XepAllErrorsAsWarnings"));
     if (test) {
       flags.add("-XepCompilingTestOnlyCode");
@@ -102,6 +104,7 @@ public final class ErrorProneReport {
         }
       }
     }
+    flags.addAll(projectFlags);
     return String.join(" ", flags);
   }
 
@@ -115,7 +118,7 @@ public final class ErrorProneReport {
         projectArgs.add(line.substring(PROJECT_ARG.length()));
       } else if (form.matches()) {
         level.put(form.group(1), form.group(2));
-      } else if (!line.equals(TEST_ONLY) && !line.startsWith(OWN_CLASSES)) {
+      } else if (!line.equals(TEST_ONLY) && !line.startsWith(OWN_CLASSES) && !line.startsWith(PROJECT_FLAG)) {
         options.add(line);
       }
     }
@@ -188,6 +191,8 @@ public final class ErrorProneReport {
     List<String> sources = lines.subList(separator + 1, lines.size());
     String ownClasses = head.stream().filter(line -> line.startsWith(OWN_CLASSES)).findFirst()
         .orElse(OWN_CLASSES).substring(OWN_CLASSES.length());
+    List<String> flags = head.stream().filter(line -> line.startsWith(PROJECT_FLAG))
+        .map(line -> line.substring(PROJECT_FLAG.length())).toList();
     List<String> unsuppressed = lombokUnsuppressed(sources);
     List<String> others = sources.stream().filter(source -> !unsuppressed.contains(source)).toList();
     for (List<String> group : Stream.of(others, unsuppressed).filter(list -> !list.isEmpty()).toList()) {
@@ -197,7 +202,7 @@ public final class ErrorProneReport {
         options.set(classpath, options.get(classpath) + java.io.File.pathSeparator + ownClasses);
       }
       options.add(pluginArgument(checks, ownPackages(ownClasses), head.contains(TEST_ONLY),
-          group == unsuppressed));
+          group == unsuppressed, flags));
       if (failedSilently(compiler, options, group, entries, errors)) {
         errors.add("javac failed on " + argumentsFile + " without reporting an error");
       }

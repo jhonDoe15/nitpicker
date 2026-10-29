@@ -74,5 +74,10 @@ export function toolConfigProperties(projectRoot, policy = {}, { directory, chec
       choices.spotbugs,
       path.join(directory, 'spotbugs-settings.json'),
     ),
+    ...settingsProperty(
+      'errorprone',
+      choices.errorprone,
+      path.join(directory, 'errorprone-settings.json'),
+    ),
   ];
 }
