@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
+import { named, referenceTargets } from './facts-references.mjs';
 
 const INIT_FILE = '__init__.py';
 const MAIN_FILE = '__main__.py';
@@ -61,10 +62,6 @@ function createResolver(modules, files) {
   return { fileOf: (stem) => stemToFile.get(stem), moduleStem, baseStem, filesUnder };
 }
 
-function named(name, alias) {
-  return alias === null || alias === undefined || alias === name ? { name } : { name, alias };
-}
-
 function moduleImports(file, statement, resolver) {
   return statement.aliases.flatMap(({ name, alias }) => {
     const parts = name.split('.');
@@ -119,55 +116,6 @@ function mergedStatements(entries, statement, { file, role }) {
     typeOnly: statement.typeOnly,
     ...(statement.conditional ? { conditional: true } : {}),
   }));
-}
-
-const PACKAGE_WILDCARD = '.*';
-
-function exactTarget(dotted, resolver) {
-  const parts = dotted.split('.');
-  for (let cut = parts.length; cut > 0; cut -= 1) {
-    const to = resolver.fileOf(resolver.moduleStem(parts.slice(0, cut).join('.')));
-    if (to !== undefined) {
-      return [{ to, names: parts.slice(cut, cut + 1).map((name) => named(name)) }];
-    }
-  }
-  return [];
-}
-
-function loadedTargets({ name }, fetched, resolver) {
-  const names = fetched.map((fetchedName) => named(fetchedName));
-  if (name.endsWith(PACKAGE_WILDCARD)) {
-    const stem = resolver.moduleStem(name.slice(0, -PACKAGE_WILDCARD.length));
-    return stem === undefined ? [] : resolver.filesUnder(stem).map((to) => ({ to, names }));
-  }
-  const to = resolver.fileOf(resolver.moduleStem(name));
-  return to === undefined ? [] : [{ to, names }];
-}
-
-function attributeTargets(file, { binding, attributes }, resolver) {
-  if (binding.kind === 'module') {
-    return exactTarget([binding.module, ...attributes].join('.'), resolver);
-  }
-  const stem = resolver.baseStem(file, binding);
-  const submodule = stem === undefined ? undefined : resolver.fileOf(`${stem}/${binding.name}`);
-  return submodule === undefined
-    ? []
-    : [{ to: submodule, names: attributes.slice(0, 1).map((name) => named(name)) }];
-}
-
-function referenceTargets(file, context) {
-  const { scanned, resolver } = context;
-  const fetched = scanned[file].fetchedNames ?? [];
-  const strings = (scanned[file].references ?? []).map((reference) => [
-    reference,
-    reference.dynamic
-      ? loadedTargets(reference, fetched, resolver)
-      : exactTarget(reference.name, resolver),
-  ]);
-  const attributes = context.referenceOnly.has(file)
-    ? (scanned[file].attributeUses ?? []).map((use) => [use, attributeTargets(file, use, resolver)])
-    : [];
-  return [...strings, ...attributes];
 }
 
 function withoutWildcards(record) {

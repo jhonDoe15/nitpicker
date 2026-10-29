@@ -156,7 +156,7 @@ describe('sibling-copy-edit over facts', () => {
     ).toEqual([['sibling-copy-edit', 'app/orders/totals.py', 'sibling-copy:round_total']]);
   });
 
-  it('scopes sibling copies by a definition package, and never duplicates', () => {
+  it('scopes sibling copies by a definition package, and duplicates unless asked not to', () => {
     const moves = movesFile([['app/orders/legacy_totals.py', 'app/orders/totals.py']]);
     const scoped = (facts) => ({
       ...facts,
@@ -171,9 +171,14 @@ describe('sibling-copy-edit over facts', () => {
         baseline: baseline(moves),
       }),
     ).toEqual([]);
-    expect(rows(findingsOf(scoped(factFixture('reuse')), ['duplicate-definition']))).toEqual(
-      rows(fixtureFindings('reuse', ['duplicate-definition'])),
-    );
+    expect(findingsOf(scoped(factFixture('reuse')), ['duplicate-definition'])).toEqual([]);
+    expect(
+      rows(
+        findingsOf(scoped(factFixture('reuse')), ['duplicate-definition'], {
+          duplicatesAcrossPackages: true,
+        }),
+      ),
+    ).toEqual(rows(fixtureFindings('reuse', ['duplicate-definition'])));
   });
 });
 
