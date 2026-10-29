@@ -22,7 +22,26 @@ const NON_ESLINT_EXCEPTION_RULES = [
   ...PACKAGE_EXCEPTION_RULES,
 ];
 
-export function applyRuleExceptions(configEntries, allExceptions = []) {
+function unknownRulesError(rules) {
+  return new Error(
+    `nitpicker.config.json "exceptions" name unknown rules: ${rules.join(', ')}. Only rules nitpicker runs, or rules the project ESLint config adds when tools.eslint.precedence lists "project", can be lifted: check the spelling.`,
+  );
+}
+
+export function checkExceptionRules(configEntries, exceptionEntries) {
+  const unknown = exceptionEntries
+    .flatMap((entry) => Object.keys(entry.rules ?? {}))
+    .filter((rule) => !isKnownRule(configEntries, rule));
+  if (unknown.length > 0) {
+    throw unknownRulesError([...new Set(unknown)]);
+  }
+}
+
+export function applyRuleExceptions(
+  configEntries,
+  allExceptions = [],
+  { projectRules = false } = {},
+) {
   const exceptions = allExceptions.filter(
     ({ rule }) =>
       !isAddedRule(rule) &&
@@ -30,10 +49,8 @@ export function applyRuleExceptions(configEntries, allExceptions = []) {
       !boundaryRuleNames.includes(rule),
   );
   const unknown = exceptions.filter(({ rule }) => !isKnownRule(configEntries, rule));
-  if (unknown.length > 0) {
-    throw new Error(
-      `nitpicker.config.json "exceptions" name unknown rules: ${unknown.map(({ rule }) => rule).join(', ')}. Only rules nitpicker runs can be lifted: check the spelling.`,
-    );
+  if (!projectRules && unknown.length > 0) {
+    throw unknownRulesError(unknown.map(({ rule }) => rule));
   }
   return [
     ...configEntries,

@@ -11,6 +11,7 @@
       "languages/typescript/adapters/eslint-wrapper.config.mjs",
       "languages/typescript/adapters/oxlint/oxlint-bridge.mjs",
       "languages/typescript/adapters/oxlint/oxlint-plan.mjs",
+      "languages/typescript/adapters/lint-engine/replaced-options-cli.mjs",
       "languages/typescript/adapters/test-runners/node-test/node-test-reporter.mjs",
       "languages/typescript/adapters/test-runners/v8-coverage/loaded-sources.cjs",
       "languages/typescript/preset/*/report.mjs",

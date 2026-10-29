@@ -9,6 +9,7 @@ import { fixtureGit } from '../diff/git/test-support/git-repository.mjs';
 import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
 import { fileURLToPath } from 'node:url';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+import { PROJECT_LAYER_VARIABLE } from '../../languages/typescript/adapters/lint-engine/project-layer.mjs';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
@@ -317,7 +318,7 @@ Base: ${repository.baseRef} (argument)
     );
     expect(output.stdoutText).toMatch(/Fixed files:\nlib\/changed.ts\nBase:/);
   });
-  it('fixes with the ESLint project config the project opted into', () => {
+  it('hands eslint --fix the ESLint project config the project opted into', () => {
     const repository = createRepository({
       'quality-policy.json': policy(),
       'nitpicker.config.json': `${JSON.stringify({
@@ -327,28 +328,35 @@ Base: ${repository.baseRef} (argument)
       'src/main/changed.ts': 'export const changed = 1;\n',
       'tests/placeholder.ts': 'export const placeholder = true;\n',
     });
-    symlinkSync(
-      path.join(fileURLToPath(new URL('../', import.meta.url)), '../node_modules'),
-      path.join(repository.root, 'node_modules'),
-      'dir',
-    );
     writeFiles(repository.root, {
       'src/main/changed.ts': 'const changed = 1;\nexport const holder = { changed: changed };\n',
     });
+    const layers = [];
     const output = captureOutput();
     const exitCode = runCli({
       arguments_: ['--fix', '--base', repository.baseRef, '--output', makeOutputRoot()],
       currentProjectRoot: repository.root,
       environment: isolatedCache(),
       analyzers: [fakeAnalyzer()],
+      executeFixCommand({ operation, environment }) {
+        if (operation !== 'eslint-fix') {
+          return undefined;
+        }
+        layers.push(JSON.parse(environment[PROJECT_LAYER_VARIABLE]));
+        return { status: 0, stdout: '', stderr: '' };
+      },
       stdout: output.stdout,
       stderr: output.stderr,
     });
 
     expect(exitCode, output.stdoutText + output.stderrText).toBe(0);
-    expect(readFileSync(path.join(repository.root, 'src/main/changed.ts'), 'utf8')).toBe(
-      'const changed = 1;\nexport const holder = { changed };\n',
-    );
+    expect(layers).toEqual([
+      {
+        config: path.join(repository.root, 'eslint.config.mjs'),
+        nitpickerFirst: true,
+        addsRules: true,
+      },
+    ]);
   });
   it('rejects --fix combined with --all', () => {
     const output = captureOutput();

@@ -11,13 +11,15 @@ const projects = temporaryProjects();
 const root = projects.create({ ...SOURCES, ...PROJECT_FILES });
 
 const ALWAYS = [
-  { file: 'src/console.ts', ruleId: 'no-console', line: 1 },
   { file: 'src/console.ts', ruleId: 'nitpicker/no-foo', line: 2 },
   { file: 'src/loose.ts', ruleId: 'directive', line: 1 },
+  { file: 'src/params.ts', ruleId: 'max-params', line: 1 },
   { file: 'src/strict/locked.ts', ruleId: 'directive', line: 1 },
+];
+const NITPICKER_CONSOLE = [
+  { file: 'src/console.ts', ruleId: 'no-console', line: 1 },
   { file: 'src/strict/locked.ts', ruleId: 'no-console', line: 2 },
 ];
-const NITPICKER_PARAMS = { file: 'src/params.ts', ruleId: 'max-params', line: 1 };
 const PROJECT_RULES = [
   { file: 'src/equal.ts', ruleId: 'eqeqeq', line: 1 },
   { file: 'src/named.ts', ruleId: 'house/no-bar', line: 1 },
@@ -46,26 +48,23 @@ afterAll(() => {
 });
 
 describe.each(['eslint', 'oxlint'])('the ESLint project config on %s', (engine) => {
-  it.each([[undefined], [['nitpicker']]])('is not read with precedence %j', (precedence) => {
-    expect(lint(engine, precedence)).toEqual(
+  it('is not read without the opt-in', () => {
+    expect(lint(engine, undefined)).toEqual(
       sorted([
         ...ALWAYS,
-        NITPICKER_PARAMS,
+        ...NITPICKER_CONSOLE,
         { file: 'src/generated/generated.ts', ruleId: 'no-console', line: 1 },
       ]),
     );
   });
 
-  it.each([[['project']], [['project', 'nitpicker']]])(
-    'with %j takes the project rule options, adds its rules and ignores, and keeps every nitpicker rule on',
-    (precedence) => {
-      expect(lint(engine, precedence)).toEqual(sorted([...ALWAYS, ...PROJECT_RULES]));
-    },
-  );
+  it('with the project first takes its options for nitpicker rules, adds its rules and ignores, and switches nothing off', () => {
+    expect(lint(engine, ['project', 'nitpicker'])).toEqual(sorted([...ALWAYS, ...PROJECT_RULES]));
+  });
 
-  it('with ["nitpicker", "project"] keeps nitpicker settings and adds the project rules and ignores', () => {
+  it('with nitpicker first keeps nitpicker settings and adds the project rules and ignores', () => {
     expect(lint(engine, ['nitpicker', 'project'])).toEqual(
-      sorted([...ALWAYS, NITPICKER_PARAMS, ...PROJECT_RULES]),
+      sorted([...ALWAYS, ...NITPICKER_CONSOLE, ...PROJECT_RULES]),
     );
   });
 });
