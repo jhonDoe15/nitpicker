@@ -16,6 +16,7 @@ import { annotatedWith, membersOf } from './entities.mjs';
 const STRING = /\bSTRING\b/u;
 const MAPS = new Set(['Map', 'MutableMap', 'HashMap', 'LinkedHashMap', 'SortedMap', 'TreeMap']);
 const AUTO_APPLY = /^autoApply$/u;
+const CONVERTER_DEPTH = 4;
 
 function projectEnums(projectFiles) {
   return new Set(
@@ -37,18 +38,33 @@ function autoApply(declared) {
   );
 }
 
-function convertedType(classes, declared) {
-  const supers = declared.genericSupers ?? [];
-  const direct = supers.find((text) => simpleName(text) === 'AttributeConverter');
-  if (direct !== undefined) {
-    return simpleName(typeArguments(direct)[0]);
+function inheritedArgument(classes, declared, base, depth) {
+  const inner = convertedType(classes, base, depth + 1);
+  const index =
+    inner === undefined
+      ? -1
+      : (base.typeBounds ?? []).findIndex(({ name }) => name === typeName(inner));
+  if (index < 0) {
+    return inner;
   }
-  const base = supers.find((text) =>
-    (classes.get(simpleName(text))?.genericSupers ?? []).some(
-      (inherited) => simpleName(inherited) === 'AttributeConverter',
-    ),
+  const written = (declared.genericSupers ?? []).find(
+    (text) => simpleName(text) === simpleName(base.name),
   );
-  return base === undefined ? undefined : simpleName(typeArguments(base)[0]);
+  return written === undefined ? undefined : typeArguments(written)[index];
+}
+
+function convertedType(classes, declared, depth = 0) {
+  const direct = (declared.genericSupers ?? []).find(
+    (text) => simpleName(text) === 'AttributeConverter',
+  );
+  if (direct !== undefined || depth > CONVERTER_DEPTH) {
+    return direct === undefined ? undefined : typeArguments(direct)[0];
+  }
+  return (declared.supers ?? [])
+    .map((text) => classes.get(simpleName(text)))
+    .filter((base) => base !== undefined && base !== declared)
+    .map((base) => inheritedArgument(classes, declared, base, depth))
+    .find((type) => type !== undefined);
 }
 
 function autoApplied(view, projectFiles) {
@@ -59,7 +75,8 @@ function autoApplied(view, projectFiles) {
     ...declared
       .filter((entry) => autoApply(entry))
       .map((entry) => convertedType(classes, entry))
-      .filter((type) => type !== undefined),
+      .filter((type) => type !== undefined)
+      .map((type) => simpleName(type)),
   ]);
 }
 

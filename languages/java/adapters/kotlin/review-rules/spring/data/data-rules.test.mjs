@@ -115,6 +115,49 @@ describe('Spring Data rules on the forms the review of the Kotlin port found', (
   });
 });
 
+function reportedIn(suffix) {
+  return springFindings(files, {
+    finding: findingFactory(),
+    manifest: MANIFEST,
+    projectFiles: files,
+    projectRoot: PROJECT,
+    javaRoots: ['src/main/java'],
+  })
+    .filter(({ path: source }) => source.endsWith(suffix))
+    .map(({ location, rule }) => `${String(location.line)} ${rule}`);
+}
+
+describe('Spring Data rules on the forms the regression review found', () => {
+  it.each([
+    [
+      'a write left as the last expression of let, run, executeWithoutResult, an if, an elvis or a return@',
+      ['57', '58', '59', '60', '61', '62', '63', '64', '66', '67', '68', '69'],
+      'SpringDataRowWriteInLoop',
+    ],
+    [
+      'an enum whose converter base takes the enum as its second type argument',
+      ['35'],
+      'JpaEnumString',
+    ],
+    [
+      'a helper that takes the loop element and the list as Any',
+      ['65'],
+      'SpringDataSaveInLoopHelper',
+    ],
+    ['a flush inside the inner loop when only the outer loop clears', ['74'], 'SpringDataNoFlush'],
+  ])('reports %s', (_, expected, rule) => {
+    expect(
+      reportedIn('bad/Rows.kt')
+        .filter((line) => line.endsWith(` ${rule}`))
+        .map((line) => line.split(' ')[0]),
+    ).toEqual(expected);
+  });
+
+  it('keeps a mapped value, a split or constant chunk update, a plain DAO and converted enums', () => {
+    expect(reportedIn('good/Rows.kt')).toEqual([]);
+  });
+});
+
 describe('Spring Data rules on hand-built facts', () => {
   it('skips enums converted by a Java or a positional auto-applied converter', () => {
     const facts = sourceFile({
@@ -179,6 +222,45 @@ describe('Spring Data rules on hand-built facts', () => {
     ]);
   });
 
+  it('applies the Spring Data name pattern only to a repository imported by name', () => {
+    const saver = (imports) =>
+      sourceFile({
+        imports,
+        classes: [
+          klass('Saver', {
+            primaryParameters: [parameter('audits', 'AuditRepository', { property: true })],
+          }),
+        ],
+        functions: [
+          fn('saveAll', {
+            owner: 'Saver',
+            line: 3,
+            parameters: [parameter('items', 'List<Order>')],
+          }),
+        ],
+        scopes: [
+          scope(0, 'class', { name: 'Saver', qualified: 'Saver' }),
+          scope(1, 'fun', { parent: 0, name: 'saveAll', line: 3 }),
+          scope(2, 'foreach', { parent: 1, range: 'items', params: [{ name: 'item' }] }),
+        ],
+        invocations: [
+          {
+            line: 4,
+            scope: 2,
+            name: 'save',
+            receiver: 'audits',
+            arguments: [{ text: 'item' }],
+            statement: true,
+          },
+        ],
+      });
+
+    expect(lines([saver([{ path: 'org.springframework.data.domain', all: true }])])).toEqual([]);
+    expect(
+      lines([saver([{ path: 'org.springframework.data.domain.AuditRepository', all: false }])]),
+    ).toEqual(['Sample.kt:4 SpringDataNoSaveInLoop']);
+  });
+
   it('keeps an escaped dollar in a query string as one string', () => {
     const query = (text) =>
       sourceFile({
@@ -193,6 +275,10 @@ describe('Spring Data rules on hand-built facts', () => {
       });
 
     expect(lines([query('"select o from Order o where o.price > ${\'$\'}1"')])).toEqual([]);
+    expect(lines([query('"select o from Order o where o.label = \'\\$label\'"')])).toEqual([]);
+    expect(lines([query('"select o from Order o where o.label = \\\\$label"')])).toEqual([
+      'Sample.kt:1 SpringDataQueryTextBlock',
+    ]);
     expect(lines([query('"$BASE where o.price > 1"')])).toEqual([
       'Sample.kt:1 SpringDataQueryTextBlock',
     ]);

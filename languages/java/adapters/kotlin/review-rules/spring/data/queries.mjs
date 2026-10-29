@@ -16,7 +16,7 @@ const QUERIES = new Set([...JPA_QUERY, ...NATIVE_QUERY]);
 const POSITIONAL = /\?\d/u;
 const STRINGS = /"""[\s\S]*?"""|"(?:[^"\\]|\\.)*"/gu;
 const JOINED = /\+|\.plus\(/u;
-const TEMPLATE = /\$(?:\{(?!'\$'\})|[\p{L}_])/u;
+const TEMPLATE = /(?<=(?:^|[^\\])(?:\\\\)*)\$(?:\{(?!'\$'\})|[\p{L}_])/u;
 const NATIVE_MARKER = '"PMD.SpringDataNativeQuery"';
 const FILTERS = new Set([
   'filter',
