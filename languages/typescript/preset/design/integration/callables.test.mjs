@@ -269,6 +269,7 @@ describe('the callables of a fixture project', () => {
         line: 12,
         kind: 'class',
         exported: true,
+        supertypes: ['src/base.ts#Base', 'src/base.ts#Listener'],
         fields: [{ name: 'config', private: true }, { name: 'name' }],
       },
     ]);

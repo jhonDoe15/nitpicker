@@ -82,14 +82,19 @@ describe('design facts schema', () => {
     expect(() => validateFacts(withCallable(extra))).toThrow(message);
   });
 
-  it('rejects a type reference that is not a callable id', () => {
-    const facts = designFacts({
-      types: [{ ...cart, references: ['src/cart.ts#nope'] }],
-      callables: [],
-    });
-    expect(() => validateFacts(facts)).toThrow(
+  it.each([
+    [
+      { references: ['src/cart.ts#nope'] },
       'facts.types[0].references[0] is "src/cart.ts#nope", which is not an id in facts.callables',
-    );
+    ],
+    [
+      { supertypes: ['src/base.ts#Base'] },
+      'facts.types[0].supertypes[0] is "src/base.ts#Base", which is not an id in facts.types',
+    ],
+    [{ supertypes: 'src/base.ts#Base' }, 'facts.types[0].supertypes is "src/base.ts#Base"'],
+  ])('rejects the type reference %j', (extra, message) => {
+    const facts = designFacts({ types: [{ ...cart, ...extra }], callables: [] });
+    expect(() => validateFacts(facts)).toThrow(message);
   });
 
   it('rejects a type in a file that modules do not list', () => {
