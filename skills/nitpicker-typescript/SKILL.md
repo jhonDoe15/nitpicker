@@ -157,6 +157,10 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
   Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
   not loops. The rules above (`for...of` only, no `.then()`, no `as`) apply to tests too.
+- Assert the value, not that something is there (`nitpicker/no-weak-assertion`): no `not.toBe(null)`,
+  `expect(x.length).toBeGreaterThan(0)`, `assert.ok(x.length)` or `toHaveBeenCalledWith(expect.anything())`
+  as the whole check; assert the exact value, contents or length and the call's arguments. `assert(x != null)`
+  is fine when the test then uses `x`.
 - Tests assert exact values and are deterministic and fast; each finding names the allowed form.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`, or in a `test-support/` folder beside the code when the tests sit next to it.
   When an existing test defines the same helper, make it import the shared one.

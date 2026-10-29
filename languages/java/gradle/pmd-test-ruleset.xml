@@ -88,4 +88,90 @@
       </property>
     </properties>
   </rule>
+  <rule name="WeakAssertionInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This check passes for almost any value: a not-null, non-empty or size-above-0 check, or a verify with only any() arguments. Assert the exact value, contents or length, such as assertEquals(List.of(&quot;a&quot;, &quot;b&quot;), items), and the call arguments. An exception fits only when the value cannot be pinned.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //MethodCall[@MethodName = 'assertNotNull']
+    [pmd-java:matchesSig('org.junit.Assert#assertNotNull(_*)')
+     or pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertNotNull(_*)')
+     or pmd-java:matchesSig('org.testng.Assert#assertNotNull(_*)')]
+  | //MethodCall[@MethodName = 'isNotNull'][not(parent::MethodCall)]
+      [*[1][pmd-java:typeIs('org.assertj.core.api.Assert')]]
+  | //MethodCall[@MethodName = 'assertThat']
+      [pmd-java:matchesSig('org.hamcrest.MatcherAssert#assertThat(_*)')
+       or pmd-java:matchesSig('org.junit.Assert#assertThat(_*)')]
+      [let $matcher := ArgumentList/*[last()],
+           $unwrapped := $matcher/self::MethodCall[@MethodName = 'is']/ArgumentList/*[1]
+       return exists(($matcher | $unwrapped)/self::MethodCall
+         [@MethodName = 'notNullValue'
+          or (@MethodName = 'not' and ArgumentList/MethodCall[@MethodName = 'nullValue'])
+          or (@MethodName = 'not' and ArgumentList/MethodCall
+              [@MethodName = ('empty', 'emptyString', 'emptyArray', 'emptyIterable', 'emptyCollectionOf',
+                              'emptyIterableOf', 'isEmptyString', 'isEmptyOrNullString')])])]
+  | //MethodCall[@MethodName = 'assertTrue']
+      [pmd-java:matchesSig('org.junit.Assert#assertTrue(_*)')
+       or pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertTrue(_*)')
+       or pmd-java:matchesSig('org.testng.Assert#assertTrue(_*)')]
+      [ArgumentList/InfixExpression
+        [let $left := *[1], $right := *[2],
+             $leftSize := exists($left[self::MethodCall[@MethodName = ('size', 'length')][ArgumentList[@Size = 0]]
+                                       or self::FieldAccess[@Name = 'length']]),
+             $rightSize := exists($right[self::MethodCall[@MethodName = ('size', 'length')][ArgumentList[@Size = 0]]
+                                         or self::FieldAccess[@Name = 'length']])
+         return ($leftSize and $right/self::NumericLiteral
+                 and ((@Operator = '>' and $right/@ValueAsInt = 0)
+                      or (@Operator = '>=' and $right/@ValueAsInt = 1)))
+             or ($rightSize and $left/self::NumericLiteral
+                 and ((@Operator = '<' and $left/@ValueAsInt = 0)
+                      or (@Operator = '<=' and $left/@ValueAsInt = 1)))]]
+  | //MethodCall[@MethodName = 'assertFalse']
+      [pmd-java:matchesSig('org.junit.Assert#assertFalse(_*)')
+       or pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertFalse(_*)')
+       or pmd-java:matchesSig('org.testng.Assert#assertFalse(_*)')]
+      [ArgumentList/MethodCall[@MethodName = ('isEmpty', 'isBlank')][ArgumentList[@Size = 0]]]
+  | //MethodCall[@MethodName = 'assertNotEquals']
+      [pmd-java:matchesSig('org.junit.Assert#assertNotEquals(_*)')
+       or pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertNotEquals(_*)')
+       or pmd-java:matchesSig('org.testng.Assert#assertNotEquals(_*)')]
+      [ArgumentList[NumericLiteral[@ValueAsInt = 0]]
+        [MethodCall[@MethodName = ('size', 'length')][ArgumentList[@Size = 0]] or FieldAccess[@Name = 'length']]]
+  | //MethodCall[@MethodName = ('isNotEmpty', 'isNotBlank')][not(parent::MethodCall)]
+      [*[1][pmd-java:typeIs('org.assertj.core.api.Assert')]]
+  | //MethodCall[@MethodName = 'hasSizeGreaterThan'][not(parent::MethodCall)]
+      [*[1][pmd-java:typeIs('org.assertj.core.api.Assert')]]
+      [ArgumentList/NumericLiteral[@ValueAsInt = 0]]
+  | //MethodCall[@MethodName = 'hasSizeGreaterThanOrEqualTo'][not(parent::MethodCall)]
+      [*[1][pmd-java:typeIs('org.assertj.core.api.Assert')]]
+      [ArgumentList/NumericLiteral[@ValueAsInt = 1]]
+  | //MethodCall[@MethodName = ('isPositive', 'isNotZero', 'isGreaterThan', 'isGreaterThanOrEqualTo', 'isNotEqualTo')]
+      [not(parent::MethodCall)]
+      [*[1][pmd-java:typeIs('org.assertj.core.api.Assert')]
+           [self::MethodCall[@MethodName = 'assertThat']/ArgumentList/*[1]
+             [self::MethodCall[@MethodName = ('size', 'length')][ArgumentList[@Size = 0]]
+              or self::FieldAccess[@Name = 'length']]]]
+      [@MethodName = ('isPositive', 'isNotZero')
+       or (@MethodName = ('isGreaterThan', 'isNotEqualTo') and ArgumentList/NumericLiteral[@ValueAsInt = 0])
+       or (@MethodName = 'isGreaterThanOrEqualTo' and ArgumentList/NumericLiteral[@ValueAsInt = 1])]
+  | //MethodCall
+      [ArgumentList[exists(*)]
+        [not(*[not(self::MethodCall[@MethodName = ('any', 'anyString', 'anyInt', 'anyLong', 'anyDouble',
+                                                    'anyFloat', 'anyBoolean', 'anyByte', 'anyShort', 'anyChar',
+                                                    'anyList', 'anyMap', 'anySet', 'anyCollection',
+                                                    'anyIterable')])])]]
+      [*[1][self::MethodCall]
+        [(@MethodName = 'verify'
+          and (pmd-java:matchesSig('org.mockito.Mockito#verify(_*)')
+               or pmd-java:matchesSig('org.mockito.InOrder#verify(_*)')))
+         or (@MethodName = 'should' and pmd-java:matchesSig('org.mockito.BDDMockito$Then#should(_*)'))]
+        [not(ArgumentList/MethodCall[@MethodName = ('never', 'atMost', 'atMostOnce')]
+             or ArgumentList/MethodCall[@MethodName = 'times'][ArgumentList/NumericLiteral[@ValueAsInt = 0]])]]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
 </ruleset>

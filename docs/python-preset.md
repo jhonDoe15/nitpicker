@@ -617,6 +617,7 @@ are listed at the end.
 | Signatures               | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                    | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                            |
 | Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                 | ruff `S113`, `http-without-timeout` (script)                                                                                                         |
 | Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                             | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
+| Test assertions          | the exact value, length or call arguments, not a presence, non-empty or called-only check                                                        | `weak-assertion` (script)                                                                                                                            |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                      | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
 
 Details that are decisions rather than the table:
@@ -1033,6 +1034,17 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `integration`, `e2e` and the like. `tautological-assert` covers `assert True`, `assert x == x`,
   `assert 1`, `assertTrue(True)`, `assertEqual(x, x)`, `assertGreaterEqual(x, x)`,
   `assertIsInstance(x, object)` and the like: asserts that cannot fail.
+- `weak-assertion` covers the asserts that pass for almost any value, in test files: a presence
+  check (`assert x`, `assert not x`, `assert x is not None`, `assert x != None`, `assertTrue(x)`,
+  `assertFalse(x)`, `assertIsNotNone(x)`) on a name, attribute or subscript, where a predicate call
+  such as `assert path.exists()` is not reported; a non-empty check (`assert len(x) > 0`,
+  `len(x) >= 1`, `len(x) != 0` in either order, `assert len(x)`, `assert x != []`,
+  `assertGreater(len(x), 0)`, `assertNotEqual(len(x), 0)`); and a call check that pins no arguments (`assert m.called`,
+  `assert m.call_count > 0`, `m.assert_called()`, `m.assert_awaited()`, and `assert_called_with`
+  and its siblings when every argument is `ANY`). A positive presence check is not reported when
+  the same expression is used again later in the same function, because it narrows the type for
+  the lines that follow. `assert not m.called` and `assert_called_once()` are not reported. The
+  allowed form asserts the exact value, length or call arguments.
 - A test function with no assertion is not checked here; the conventions work owns it, together
   with the detection of the project's own assertion helpers.
 - Touched code: a new finding is reported per site, and the rules in `touched-rules.mjs` (every
