@@ -14,6 +14,8 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { INIT_SCRIPT } from '../builds/java-build.mjs';
+import { loadEffectFindings } from './kotlin/review-rules/main/load-effects.mjs';
+import { findingFactory } from './kotlin/review-rules/review-finding.mjs';
 import {
   BOM,
   BROKEN,
@@ -29,6 +31,12 @@ import {
   ROOT_PACKAGE,
   UNITS,
 } from './test-support/kotlin-metrics-sources.mjs';
+import {
+  LOAD_EFFECTS,
+  LOAD_FINDINGS,
+  LOAD_HELPERS,
+  LOAD_SINGLETONS,
+} from './test-support/kotlin-load-sources.mjs';
 
 // Compiles and runs kotlin-psi, the PSI program behind Kotlin structure, CRAP, coupling and the
 // review rules, on source files. It needs Java 21, Gradle and network access to Maven Central (for
@@ -412,6 +420,24 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       'Holder.f: Phase.`in` Phase.DONE',
       'isStart: Phase.NEW Phase.`in`',
     ]);
+  });
+
+  it('collects the calls that run while a file or object loads, and the rule reports their effects', () => {
+    const { facts } = measure(
+      writeSources('load', {
+        'src/Load.kt': LOAD_EFFECTS,
+        'src/Singletons.kt': LOAD_SINGLETONS,
+        'src/Helpers.kt': LOAD_HELPERS,
+      }),
+    );
+    const findings = loadEffectFindings(facts.files, { finding: findingFactory() });
+
+    expect(
+      findings.map(
+        ({ path: file, symbol, location }) =>
+          `${path.basename(file)} ${symbol} ${String(location.line)}`,
+      ),
+    ).toEqual(LOAD_FINDINGS);
   });
 
   it('collects facts of test roots without measuring them, and words a test syntax error for tests', () => {

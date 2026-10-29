@@ -1,3 +1,4 @@
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
@@ -8,24 +9,47 @@ const ENGINE_HINT =
   'Set "tools": { "typescript": { "engine": "project" } } in nitpicker.config.json ' +
   "to type check with the project's own TypeScript instead.";
 
-export async function nativeDiagnostics({ ts, configPath, projectRoot }) {
-  const { api, startError } = await startedApi(projectRoot);
-  if (startError !== undefined) return { unsupported: true, cause: startError };
+export async function nativeDiagnostics({
+  ts,
+  configPath,
+  projectRoot,
+  apiRoot,
+  engineHint = true,
+}) {
+  const own = apiRoot !== undefined;
+  const { api, startError } = await startedApi(projectRoot, apiRoot);
+  if (startError !== undefined) {
+    if (own) {
+      throw ownStartError(startError);
+    }
+    return { unsupported: true, cause: startError };
+  }
   let collected;
   try {
     collected = collectedDiagnostics(api, configPath);
   } catch (error) {
-    throw new Error(`TypeScript 7 type check failed: ${String(error.message)}\n${ENGINE_HINT}`, {
+    const hint = own || !engineHint ? '' : `\n${ENGINE_HINT}`;
+    throw new Error(`TypeScript 7 type check failed: ${String(error.message)}${hint}`, {
       cause: error,
     });
   } finally {
     api.close();
   }
-  return settledDiagnostics(ts, collected);
+  return own ? ownDiagnostics(ts, collected) : settledDiagnostics(ts, collected);
 }
 
-async function startedApi(projectRoot) {
-  const apiPath = path.join(resolveTool('typescript-native').root, 'dist/api/sync/api.js');
+function ownStartError(cause) {
+  return new Error(
+    `The project's TypeScript 7 compiler did not start: ${String(cause.message)}. ` +
+      'Install the typescript package with its platform binary.',
+    { cause },
+  );
+}
+
+async function startedApi(projectRoot, apiRoot = resolveTool('typescript-native').root) {
+  const apiPath = createRequire(path.join(apiRoot, 'package.json')).resolve(
+    'typescript/unstable/sync',
+  );
   const { API } = await import(pathToFileURL(apiPath).href);
   try {
     return { api: new API({ cwd: projectRoot }) };
@@ -66,6 +90,18 @@ function settledDiagnostics(ts, { hasRootFiles, configErrors, diagnostics }) {
   if (configErrors.length > 0 || diagnostics.some(({ code }) => REMOVED_OPTION_CODES.has(code))) {
     return { unsupported: true };
   }
+  return shapedDiagnostics(ts, diagnostics);
+}
+
+function ownDiagnostics(ts, { hasRootFiles, configErrors, diagnostics }) {
+  const unexpectedErrors = configErrors.filter(({ code }) => code !== NO_INPUTS_CODE);
+  if (unexpectedErrors.length > 0) {
+    throw new Error(unexpectedErrors.map(({ text }) => text).join('\n'));
+  }
+  return hasRootFiles ? shapedDiagnostics(ts, diagnostics) : { diagnostics: [] };
+}
+
+function shapedDiagnostics(ts, diagnostics) {
   const sourceFileOf = sourceFileReader(ts);
   return {
     diagnostics: ts.sortAndDeduplicateDiagnostics(

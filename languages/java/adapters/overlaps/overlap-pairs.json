@@ -404,6 +404,11 @@
     "scope": "line"
   },
   {
+    "primary": ["pmd/ClassLoadEffect"],
+    "secondary": ["spotbugs/SC_START_IN_CTOR"],
+    "scope": "line"
+  },
+  {
     "primary": ["errorprone/CatchAndPrintStackTrace"],
     "secondary": ["pmd/AvoidPrintStackTrace", "errorprone/SystemOut"],
     "scope": "line"
