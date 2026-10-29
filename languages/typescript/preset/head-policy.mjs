@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { resolveJscpdPolicy } from '../../../core/tooling/jscpd/config.mjs';
 import {
   readHeadPolicyFile,
   resolveHeadPolicy as resolveSharedHeadPolicy,
@@ -73,6 +74,11 @@ export function resolveHeadPolicy(config = {}, projectRoot) {
 }
 
 function withProjectFacts(policy, config, projectRoot) {
+  const jscpd = resolveJscpdPolicy(policy.tools?.jscpd, projectRoot);
+  const tools =
+    policy.tools === undefined && jscpd === undefined
+      ? undefined
+      : { ...policy.tools, ...(jscpd === undefined ? {} : { jscpd }) };
   return {
     ...policy,
     ...(SCOPED_PRESETS.includes(config.preset)
@@ -81,7 +87,7 @@ function withProjectFacts(policy, config, projectRoot) {
           libraries: detectLibraries(projectRoot, excludedPathMatcher(policy)),
         }
       : {}),
-    ...(policy.tools === undefined ? {} : { tools: withToolFacts(policy.tools, projectRoot) }),
+    ...(tools === undefined ? {} : { tools: withToolFacts(tools, projectRoot) }),
   };
 }
 
@@ -155,15 +161,34 @@ function picked(source, keys) {
   );
 }
 
+function withoutKeys(source, keys) {
+  return Object.fromEntries(Object.entries(source).filter(([key]) => !keys.includes(key)));
+}
+
+function headJscpdFacts(settings, headSettings = {}) {
+  if (headSettings.projectConfig === undefined) {
+    return { ...headSettings, precedence: headSettings.precedence ?? ['nitpicker'] };
+  }
+  return { ...settings, ...picked(headSettings, ['projectConfig', 'projectConfigDigest']) };
+}
+
+const HEAD_TOOL_FACTS = [
+  ['prettier', ['projectConfigDigest']],
+  ['eslint', ['projectConfigFile', 'projectConfigDigest', 'projectConfigMissing']],
+];
+
 function headToolFacts(policy, headPolicy) {
   const tools = { ...policy.tools };
-  for (const [tool, keys] of [
-    ['prettier', ['projectConfigDigest']],
-    ['eslint', ['projectConfigFile', 'projectConfigDigest', 'projectConfigMissing']],
-  ]) {
+  for (const [tool, keys] of HEAD_TOOL_FACTS) {
     if (usesProjectConfig(tools[tool]?.precedence ?? [])) {
-      tools[tool] = { ...tools[tool], ...picked(headPolicy.tools?.[tool] ?? {}, keys) };
+      tools[tool] = {
+        ...withoutKeys(tools[tool], keys),
+        ...picked(headPolicy.tools?.[tool] ?? {}, keys),
+      };
     }
+  }
+  if (usesProjectConfig(tools.jscpd?.precedence ?? [])) {
+    tools.jscpd = headJscpdFacts(tools.jscpd, headPolicy.tools?.jscpd);
   }
   return policy.tools === undefined ? {} : { tools };
 }
