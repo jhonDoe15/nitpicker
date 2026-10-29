@@ -60,6 +60,7 @@ export function toolConfigProperties(projectRoot, policy = {}, { directory, chec
     ...(pmd.nitpicker === undefined ? [] : [`-Pnitpicker.pmd.nitpickerRuleset=${pmd.nitpicker}`]),
     ...(pmd.project === undefined ? [] : [`-Pnitpicker.pmd.projectConfig=${pmd.project}`]),
     ...(pmd.tests === undefined ? [] : [`-Pnitpicker.pmd.testRules=${pmd.tests}`]),
+    ...(pmd.main === undefined ? [] : [`-Pnitpicker.pmd.mainRules=${pmd.main}`]),
     ...checkstyleProperties({ checkstyle: choices.checkstyle, directory, checkstyleBase }),
   ];
 }
