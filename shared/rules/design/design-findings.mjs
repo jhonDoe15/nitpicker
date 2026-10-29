@@ -14,10 +14,9 @@ import { disjointConsumerGroupFindings } from './surface/disjoint-consumer-group
 const RULES = {
   [DESIGN_RULE_IDS.mutableStateEscape]: mutableStateEscapeFindings,
   [DESIGN_RULE_IDS.contextThreading]: contextThreadingFindings,
-  [DESIGN_RULE_IDS.callerProtocol]: (index, finding, policy) => [
-    ...protocolContractFindings(index, finding, policy.protocols ?? []),
-    ...repeatedProtocolFindings(index, finding),
-  ],
+  [DESIGN_RULE_IDS.callerProtocol]: repeatedProtocolFindings,
+  [DESIGN_RULE_IDS.protocolContract]: (index, finding, policy) =>
+    protocolContractFindings(index, finding, policy.protocols ?? []),
   [DESIGN_RULE_IDS.forwardingChain]: forwardingChainFindings,
   [DESIGN_RULE_IDS.disjointConsumerGroups]: disjointConsumerGroupFindings,
   [DESIGN_RULE_IDS.dataClump]: dataClumpFindings,

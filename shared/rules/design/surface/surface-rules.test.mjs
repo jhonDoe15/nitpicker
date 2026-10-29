@@ -54,7 +54,11 @@ describe('data-clump', () => {
     ['untyped parameters', { params: address.map(({ name }) => ({ name })) }],
     ['entries', { entry: true }],
     ['functions other modules cannot call', { exported: false }],
-    ['coordinates', { params: ['x', 'y', 'z'].map((name) => ({ name, type: 'number' })) }],
+    ...['number', 'complex', 'UInt'].map((type) => [
+      `${type} coordinates`,
+      { params: ['x', 'y', 'z'].map((name) => ({ name, type })) },
+    ]),
+    ['functions on the public surface of a published package', { published: true }],
   ])('passes %s', (_, extra) => {
     expect(designRun(shipping(extra), 'data-clump')).toEqual([]);
   });

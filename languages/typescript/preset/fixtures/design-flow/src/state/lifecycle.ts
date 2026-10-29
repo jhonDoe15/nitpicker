@@ -1,4 +1,4 @@
-import { Session } from './cart';
+import { Session } from '../model/cart';
 
 export function guarded(session: Session): void {
   session.open();

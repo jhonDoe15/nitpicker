@@ -3,7 +3,7 @@ import { quoted } from '../design-finding.mjs';
 import { displayName } from '../design-index.mjs';
 import { receiverCalls } from './receiver-calls.mjs';
 
-const RULE = DESIGN_RULE_IDS.callerProtocol;
+const RULE = DESIGN_RULE_IDS.protocolContract;
 
 function contractFor(owner, contracts) {
   return contracts.find(({ type }) => type === owner.name || type === owner.id);
@@ -55,7 +55,6 @@ export function protocolContractFindings(index, finding, contracts) {
           symbol: displayName(caller, index),
           line: violation.call.line,
           message: violationMessage(violation, { entry, contract, caller, index }),
-          enforceable: true,
         }),
       );
     }),

@@ -113,6 +113,14 @@ describe('context-threading', () => {
     expect(designRun(threaded(shape), 'context-threading')).toEqual([]);
   });
 
+  it('passes a head on the public surface of a published package', () => {
+    const facts = threaded();
+    const types = facts.types.map((type) =>
+      type.id === orders.id ? { ...type, published: true } : type,
+    );
+    expect(designRun({ ...facts, types }, 'context-threading')).toEqual([]);
+  });
+
   it('passes a context with fewer than five fields', () => {
     const facts = threaded();
     const small = { ...context, fields: context.fields.slice(0, 4) };

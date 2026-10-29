@@ -11,6 +11,7 @@ import { productionTypeResolver } from './production-types.mjs';
 import { findingFactory } from './review-finding.mjs';
 import { springFindings } from './spring/spring-findings.mjs';
 import { springContextFindings } from './tests/spring-context.mjs';
+import { testHonestyFindings } from './tests/test-honesty.mjs';
 import { testWaitFindings } from './tests/test-waits.mjs';
 
 const IDENTIFIER = /[\p{L}_$][\p{L}\p{N}_$]*/gu;
@@ -48,19 +49,33 @@ function projectView({ reportRoot, projectRoot, manifest, modules = [] }) {
   return { own, projectFiles, javaRoots, projectRoot };
 }
 
+function contextRoots(manifest, modules) {
+  return [manifest, ...modules.map((module) => module.manifest)].flatMap((entry) => [
+    ...(entry?.kotlinSourceRoots ?? []),
+    ...(entry?.kotlinTestSourceRoots ?? []),
+  ]);
+}
+
 export function readKotlinReviewFindings(context) {
-  const { manifest, projectRoot, reportRoot } = context;
+  const { manifest, projectRoot, reportRoot, modules = [] } = context;
   const { own, projectFiles, javaRoots } = projectView(context);
-  if (own.length === 0) {
-    return [];
-  }
   const finding = findingFactory();
+  const honesty = testHonestyFindings({
+    projectRoot,
+    testRoots: manifest.kotlinTestSourceRoots,
+    contextRoots: contextRoots(manifest, modules),
+    finding,
+  });
+  if (own.length === 0) {
+    return honesty;
+  }
   return [
     ...testWaitFindings(own, {
       finding,
       awaitility: hasAwaitility({ manifest, projectRoot }),
       isProduction: productionTypeResolver({ files: projectFiles, projectRoot, javaRoots }),
     }),
+    ...honesty,
     ...springContextFindings(own, { finding }),
     ...springFindings(own, { finding, manifest, projectFiles, projectRoot, javaRoots }),
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
