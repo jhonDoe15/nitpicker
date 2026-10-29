@@ -183,7 +183,7 @@ final class Declarations {
             "delegated", property.getDelegate() != null, "computed", computed(property),
             "annotations", annotationNames(property),
             "annotationEntries", annotationEntries(property), "initializer", Initializers.callee(property),
-            "literal", Initializers.literal(property)));
+            "argument", Initializers.argument(property), "literal", Initializers.literal(property)));
   }
 
   private static Boolean computed(KtProperty property) {

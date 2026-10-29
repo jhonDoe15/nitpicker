@@ -248,6 +248,44 @@ describe.skipIf(!enabled)('atomic-update-across-await', () => {
     expect(actual).toEqual(expected);
   });
 
+  it('flags an update under a semaphore or limiter that admits more than one task', () => {
+    const counter = (gate, enter = 'self.gate') =>
+      `import asyncio\nimport anyio\n\n\nclass Counter:\n    def __init__(self):\n        self.gate = ${gate}\n\n` +
+      `    async def run(self, fetch):\n        async with ${enter}:\n            self.total += await fetch()\n`;
+    const [actual, expected] = outcomes([
+      ['a semaphore of two', counter('asyncio.Semaphore(2)'), inRun(11, 'self.total')],
+      [
+        'a bounded semaphore of two',
+        counter('asyncio.BoundedSemaphore(value=2)'),
+        inRun(11, 'self.total'),
+      ],
+      ['a limiter of five', counter('anyio.CapacityLimiter(5)'), inRun(11, 'self.total')],
+      ['a semaphore of unknown size', counter('anyio.Semaphore(size)'), inRun(11, 'self.total')],
+      [
+        'a lock-named semaphore of two',
+        counter('asyncio.Semaphore(2)').replaceAll('gate', 'lock'),
+        inRun(11, 'self.total'),
+      ],
+      ['a semaphore named as one', counter('None', 'self.semaphore'), inRun(11, 'self.total')],
+      ['a lock built per call', counter('None', 'asyncio.Lock()'), inRun(11, 'self.total')],
+    ]);
+    expect(actual).toEqual(expected);
+  });
+
+  it('passes an update under a semaphore or limiter of one slot', () => {
+    const counter = (gate) =>
+      `import asyncio\nimport anyio\nimport trio\n\n\nclass Counter:\n    def __init__(self):\n        self.gate = ${gate}\n\n` +
+      `    async def run(self, fetch):\n        async with self.gate:\n            self.total += await fetch()\n`;
+    const [actual, expected] = outcomes([
+      ['the default asyncio semaphore', counter('asyncio.Semaphore()'), []],
+      ['a bounded semaphore of one', counter('asyncio.BoundedSemaphore(value=1)'), []],
+      ['an anyio limiter of one', counter('anyio.CapacityLimiter(1)'), []],
+      ['a trio semaphore of one', counter('trio.Semaphore(initial_value=1)'), []],
+      ['a trio strict lock', counter('trio.StrictFIFOLock()'), []],
+    ]);
+    expect(actual).toEqual(expected);
+  });
+
   it('keeps the finding apart from the module state rule on the same line', () => {
     const code =
       'CACHE = {}\n\n\nasync def run(key, fetch):\n    CACHE[key] = CACHE[key] + await fetch()\n';
