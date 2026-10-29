@@ -1,6 +1,7 @@
 import { isPolicyFinding } from './review/policy-findings.mjs';
 import { consolePolicySummary } from './review/policy-changes.mjs';
 import { heldFindings, heldLine } from './format/held-findings.mjs';
+import { noteSummaryLines } from './format/notes.mjs';
 import { singleLine } from './format/text.mjs';
 import { designNoteLines } from './format/design-notes.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
@@ -40,6 +41,7 @@ export function renderConsoleSummary(
   );
   appendHeldSummary(lines, report.unchangedFindings, color);
   lines.push(...designNoteLines(report.newFindings, diagnosticsPath));
+  appendNoteSummary(lines, report.notes, color);
   appendToolErrorSummary(lines, report.toolErrors, color);
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
   return `${lines.join('\n')}\n`;
@@ -66,6 +68,12 @@ function appendHeldSummary(lines, unchangedFindings, color) {
       ),
       ...lint.map((finding) => `  ${heldLine(finding)}`),
     );
+  }
+}
+
+function appendNoteSummary(lines, notes, color) {
+  for (const line of noteSummaryLines(notes)) {
+    lines.push(style(line, [ANSI.dim], color));
   }
 }
 
