@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { LANGUAGES, RULES } from '../policy.mjs';
+import { DESIGN_RULES } from '../project-rules/design/design-rules.mjs';
 import { catalogFileOf, isKotlinPath, mentionsRule, ruleEmitters } from './rule-emitters.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
@@ -10,10 +11,28 @@ const REPORT_ONLY_KOTLIN_MUTANTS = {
   file: 'languages/java/adapters/reporting/kotlin-reports.mjs',
   evidence: /reportOnlyKotlinMutants/u,
 };
+const JAVA_DESIGN_FINDINGS = 'languages/java/adapters/design/design-findings.mjs';
+const DESIGN_RULES_ONLY = { file: JAVA_DESIGN_FINDINGS, evidence: /rules: DESIGN_RULES/u };
+const JAVA_ANALYZER_ONLY = { file: JAVA_DESIGN_FINDINGS, evidence: /analyzerName !== 'java'/u };
+const FACT_RULES_OUTSIDE_DESIGN = [
+  'shared-used-by-one-feature',
+  'duplicate-definition',
+  'sibling-copy-edit',
+  'exported-name-collision',
+  'doc-comment-content',
+];
+
+function sameEvidence(ruleIds, evidence) {
+  return Object.fromEntries(ruleIds.map((ruleId) => [ruleId, evidence]));
+}
+
 const NOT_ENFORCED_ALTHOUGH_EMITTED = {
+  java: sameEvidence(FACT_RULES_OUTSIDE_DESIGN, DESIGN_RULES_ONLY),
   kotlin: {
     'mutant-survived': REPORT_ONLY_KOTLIN_MUTANTS,
     'mutant-nocoverage': REPORT_ONLY_KOTLIN_MUTANTS,
+    ...sameEvidence(FACT_RULES_OUTSIDE_DESIGN, DESIGN_RULES_ONLY),
+    ...sameEvidence(DESIGN_RULES, JAVA_ANALYZER_ONLY),
   },
   javascript: {
     'unused-prop': {
