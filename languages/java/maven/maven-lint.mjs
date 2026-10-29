@@ -48,7 +48,7 @@ function writeAuxClasspath({ module, reportDir, classpaths }) {
   return file;
 }
 
-export function runPmd({ module, reportDir, tools, classpaths, configs, spring }) {
+export function runPmd({ module, reportDir, tools, classpaths, configs, spring, spawn }) {
   const report = path.join(reportDir, 'pmd.sarif');
   const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
     existsSync(root),
@@ -93,6 +93,7 @@ export function runPmd({ module, reportDir, tools, classpaths, configs, spring }
     ],
     cwd: module.basedir,
     accept: () => existsSync(report),
+    spawn,
   });
 }
 
@@ -130,7 +131,7 @@ export function spotbugsLaunch({ module, report, tools }) {
   };
 }
 
-export function runSpotbugs({ module, reportDir, tools }) {
+export function runSpotbugs({ module, reportDir, tools, spawn }) {
   const report = path.join(reportDir, 'spotbugs.sarif');
   const hasClasses =
     existsSync(module.outputDirectory) && readdirSync(module.outputDirectory).length > 0;
@@ -145,6 +146,7 @@ export function runSpotbugs({ module, reportDir, tools }) {
     ...spotbugsLaunch({ module, report, tools }),
     cwd: module.basedir,
     accept: () => existsSync(report),
+    spawn,
   });
 }
 
@@ -165,7 +167,7 @@ const FORMATTERS = {
   },
 };
 
-export function runFormat({ module, reportDir, tools, javaStyle = 'google' }) {
+export function runFormat({ module, reportDir, tools, javaStyle = 'google', spawn }) {
   const report = path.join(reportDir, 'format.txt');
   const files = javaFiles([...module.sourceRoots, ...module.testSourceRoots]);
   const formatter = FORMATTERS[javaStyle];
@@ -180,14 +182,15 @@ export function runFormat({ module, reportDir, tools, javaStyle = 'google' }) {
     mainClass: formatter.mainClass,
     args: [...formatter.flags, '--dry-run', ...files],
     cwd: module.basedir,
+    spawn,
   });
   writeFileSync(report, result.stdout);
 }
 
-function bundledGoogleChecks(checkstyleJar) {
+function bundledGoogleChecks(checkstyleJar, spawn = spawnSync) {
   const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-checkstyle-'));
   try {
-    const result = spawnSync(javaCommand('jar'), ['xf', checkstyleJar, 'google_checks.xml'], {
+    const result = spawn(javaCommand('jar'), ['xf', checkstyleJar, 'google_checks.xml'], {
       cwd: directory,
       encoding: 'utf8',
     });
@@ -205,11 +208,11 @@ function propertiesLine(name, value) {
   return `${name}=${value.replaceAll('\\', '\\\\')}`;
 }
 
-function checkstyleSetup({ reportDir, tools, configs, pinned, style }) {
+function checkstyleSetup({ reportDir, tools, configs, pinned, style, spawn }) {
   const jar = tools.checkstyle.find(
     (entry) => path.basename(entry) === `checkstyle-${pinned.checkstyle}.jar`,
   );
-  const bundled = nitpickerCheckstyleConfig(bundledGoogleChecks(jar));
+  const bundled = nitpickerCheckstyleConfig(bundledGoogleChecks(jar, spawn));
   const unformatted = style?.javaStyle === 'none';
   return writeCheckstyleSetup({
     directory: path.join(reportDir, 'checkstyle-config'),
@@ -252,7 +255,7 @@ export function writeCheckstyleSetup({
   return { config, properties };
 }
 
-function checkstyleReport({ module, setup, tools, pinned, roots, report, always }) {
+function checkstyleReport({ module, setup, tools, pinned, roots, report, always, spawn }) {
   const files = javaFiles(roots);
   if (files.length === 0) {
     if (always) {
@@ -267,15 +270,17 @@ function checkstyleReport({ module, setup, tools, pinned, roots, report, always 
     args: ['-c', setup.config, '-p', setup.properties, '-f', 'xml', '-o', report, ...files],
     cwd: module.basedir,
     accept: () => existsSync(report),
+    spawn,
   });
 }
 
-export function runCheckstyle({ module, reportDir, tools, configs, pinned, style }) {
+export function runCheckstyle({ module, reportDir, tools, configs, pinned, style, spawn }) {
   const context = {
     module,
     tools,
     pinned,
-    setup: checkstyleSetup({ reportDir, tools, configs, pinned, style }),
+    spawn,
+    setup: checkstyleSetup({ reportDir, tools, configs, pinned, style, spawn }),
   };
   checkstyleReport({
     ...context,

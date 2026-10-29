@@ -9,9 +9,10 @@ import { cacheDirectory } from '../maven-tools.mjs';
 const RULES_DIRECTORY = path.join(GRADLE_DIRECTORY, 'archunit');
 const TOOL = 'Spring architecture rules';
 const PROPERTY_SEPARATOR = ' = ';
+const ROLES_PROPERTY = 'nitpicker.spring.roles';
 
-function jdkIdentity() {
-  const result = spawnSync(javaCommand('java'), ['-XshowSettings:properties', '-version'], {
+function jdkIdentity(spawn) {
+  const result = spawn(javaCommand('java'), ['-XshowSettings:properties', '-version'], {
     encoding: 'utf8',
   });
   if (result.error !== undefined || result.status !== 0) {
@@ -31,18 +32,18 @@ function jdkIdentity() {
 }
 
 function ruleSources(rulesDirectory) {
-  return readdirSync(rulesDirectory)
+  return readdirSync(rulesDirectory, { recursive: true })
     .filter((name) => name.endsWith('.java'))
-    .sort()
-    .map((name) => path.join(rulesDirectory, name));
+    .map((name) => path.join(rulesDirectory, name))
+    .sort();
 }
 
-function cacheKey({ sources, archunit }) {
+function cacheKey({ sources, archunit, spawn }) {
   const digest = createHash('sha256');
   for (const source of sources) {
     digest.update(readFileSync(source));
   }
-  digest.update(`${archunit}|${jdkIdentity()}`);
+  digest.update(`${archunit}|${jdkIdentity(spawn)}`);
   return digest.digest('hex');
 }
 
@@ -57,7 +58,7 @@ function publish(staging, classes) {
   }
 }
 
-function compileRules({ classes, sources, libraries, cwd }) {
+function compileRules({ classes, sources, libraries, cwd, spawn }) {
   if (existsSync(classes)) {
     return;
   }
@@ -71,6 +72,7 @@ function compileRules({ classes, sources, libraries, cwd }) {
       classpath: libraries,
       args: sources,
       cwd,
+      spawn,
       accept: (result) => result.status === 0,
     });
   } catch (error) {
@@ -84,7 +86,7 @@ function existing(entries) {
   return entries.filter((entry) => existsSync(entry));
 }
 
-function runRules({ module, classpaths, libraries, locations }) {
+function runRules({ module, classpaths, libraries, locations, springRoles, spawn }) {
   const { classes, output } = locations;
   const projectPath = [
     module.outputDirectory,
@@ -95,16 +97,27 @@ function runRules({ module, classpaths, libraries, locations }) {
   runJava({
     tool: TOOL,
     classpath: [...new Set([classes, ...libraries, ...existing(projectPath)])],
+    jvmArgs: springRoles === undefined ? [] : [`-D${ROLES_PROPERTY}=${springRoles}`],
     mainClass: 'ArchRules',
     args: [output, module.outputDirectory, module.testOutputDirectory],
     cwd: module.basedir,
+    spawn,
     accept: (result) => result.status === 0,
   });
 }
 
 export function runSpringArch(options) {
-  const { module, reportDir, tools, classpaths, pinned, spring } = options;
-  if (!spring) {
+  const {
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    pinned,
+    archRules,
+    springRoles,
+    spawn = spawnSync,
+  } = options;
+  if (!archRules) {
     return;
   }
   const output = path.join(reportDir, 'spring-arch.json');
@@ -112,8 +125,8 @@ export function runSpringArch(options) {
   const sources = ruleSources(options.rules ?? RULES_DIRECTORY);
   const root = cacheDirectory('spring-arch');
   mkdirSync(root, { recursive: true });
-  const classes = path.join(root, cacheKey({ sources, archunit: pinned.archunit }));
+  const classes = path.join(root, cacheKey({ sources, archunit: pinned.archunit, spawn }));
   const libraries = existing(tools.archunit);
-  compileRules({ classes, sources, libraries, cwd: module.basedir });
-  runRules({ module, classpaths, libraries, locations: { classes, output } });
+  compileRules({ classes, sources, libraries, cwd: module.basedir, spawn });
+  runRules({ module, classpaths, libraries, springRoles, locations: { classes, output }, spawn });
 }

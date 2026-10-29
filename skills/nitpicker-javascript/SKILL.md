@@ -22,7 +22,8 @@ Before you change code other modules use or fix a bug, read
 
 ## Finish with the gate
 
-1. Run your tests (`npx vitest run`). Failing tests stop coverage, CRAP and mutation from running.
+1. Run your tests with the project's runner (its `test` script). Failing tests stop coverage, CRAP
+   and mutation from running.
    The gate type-checks for you. Node globals (`process`, `AbortSignal`) and `node:` imports need
    `@types/node` in devDependencies.
 2. When the change is complete, run `npx nitpicker --fix` as a background command you wait on,
@@ -38,10 +39,15 @@ Before you change code other modules use or fix a bug, read
      missing package) and rerun. Exit 2 is never a pass. If it says another run is in progress,
      wait for that run; never kill it.
 4. Never suppress: no `eslint-disable`, `@ts-ignore`, `@ts-nocheck`, coverage or mutation ignore
-   comments (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`, legacy
+   comments (`istanbul`/`c8`/`v8 ignore`, `Stryker disable`), config `exclude`/`disable`/`exceptions`, legacy
    entries, generator markers (`@generated`, `DO NOT EDIT`) in files you wrote, or weakened tests. If a finding seems wrong, stop and ask. Never pass `--accept-policy-change` or set
    `NITPICKER_ACCEPT_POLICY_CHANGE`: a `nitpicker-config/policy-loosened` finding is for a person to
    accept.
+5. Code that is right despite a rule: each message ends with the `exceptions` entry that would
+   accept it (`If this is intended, add {...} to "exceptions" in nitpicker.config.json.`). That
+   entry is for a human reviewer. Never add one, and never fill in its
+   `reason`, to get past the gate: stop and ask a human, and quote the finding with its entry. A
+   TypeScript compiler error has no entry; fix the type.
 
 ## Layout
 
@@ -182,8 +188,9 @@ line) is a finding.
 
 ## Tests
 
-- Tests are Vitest files in `test/` (`*.test.js`, `.mjs`), and a test file must `import` from
-  `'vitest'`. `require('vitest')` fails, so a test is ESM even when the code it tests is CommonJS:
+- Tests are files in `test/` (`*.test.js`, `.mjs`) for the project's runner (Vitest, Jest,
+  `node:test` or Mocha). A Vitest test must `import` from `'vitest'`: `require('vitest')` fails, so
+  it is ESM even when the code it tests is CommonJS:
   `import { initials } from '../src/main/features/greeting/domain/initials.cjs';`.
 - Every branch you add needs a test: changed-branch coverage and mutation testing run on your
   change. Test each outcome of each union.

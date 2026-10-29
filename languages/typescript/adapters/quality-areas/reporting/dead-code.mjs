@@ -28,7 +28,12 @@ export function normalizeDeadCode(report, analyzerName, { exceptions = [] } = {}
   ]
     .filter(
       ({ finding, name }) =>
-        !isExcepted(exceptions, { rule: finding.rule, path: finding.path, packageName: name }),
+        !isExcepted(exceptions, {
+          rule: finding.rule,
+          path: finding.path,
+          packageName: name,
+          symbol: name,
+        }),
     )
     .map(({ finding }) => finding);
 }
@@ -78,6 +83,7 @@ function entryFindings({ issue, category, entry, analyzerName, occurrences }) {
     path: issue.file,
     identity: `name:${name}|occurrence:${String(occurrence)}${sourceSuffix}`,
     message: deadCodeMessage({ category, name, entry, file: issue.file }),
+    symbol: name,
     classification: declaration || PACKAGE_RULES.has(category) ? 'enforceable' : 'descriptive',
     ...entryLocation(entry),
   };

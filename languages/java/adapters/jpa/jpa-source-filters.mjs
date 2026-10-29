@@ -51,7 +51,7 @@ export function withExposureAdvice(finding) {
   return EXPOSURE_RULES.includes(finding.rule)
     ? {
         ...finding,
-        message: `${finding.message}. Copy on the way in and out (List.copyOf, Map.copyOf), or use a record. If it is right here, add an exception for spotbugs/${finding.rule} in nitpicker.config.json.`,
+        message: `${finding.message}. Copy on the way in and out (List.copyOf, Map.copyOf), or use a record. An exception fits only when it is right here.`,
       }
     : finding;
 }

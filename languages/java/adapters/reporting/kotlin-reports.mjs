@@ -12,7 +12,8 @@ import {
 } from '../kotlin/kotlin-metrics.mjs';
 import { readCompilerFindings } from '../kotlin/rules/kotlin-compiler.mjs';
 import { applyKotlinRuleMessages } from '../kotlin/rules/kotlin-messages.mjs';
-import { appendSentence, ONE_WAY_RULE_IDS } from '../kotlin/rules/kotlin-rules.mjs';
+import { ONE_WAY_RULE_IDS } from '../kotlin/rules/kotlin-rules.mjs';
+import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import {
   readCatchLogFindings,
   readTestAssertionFindings,
@@ -21,6 +22,7 @@ import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs
 import { withFrameworkAllowances } from '../kotlin/scan/framework-allowances.mjs';
 import { readKotlinSourceFindings } from '../kotlin/scan/kotlin-scan.mjs';
 import { readKotlinReviewFindings } from '../kotlin/review-rules/review-findings.mjs';
+import { withoutCoveredSourceFindings } from '../kotlin/review-rules/spring/spring-findings.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
@@ -110,27 +112,30 @@ export function readKotlinFindings(context, crapLimit) {
     ...readKotlinSourceFindings(projectRoot, manifest),
     ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? []),
   ]);
-  return [
-    ...ruleFindings,
-    ...readSuppressionFindings(projectRoot, {
-      sourceRoots: manifest.kotlinSourceRoots ?? [],
-      testRoots,
-    }),
-    ...readCatchLogFindings(projectRoot, {
-      sourceRoots: manifest.kotlinSourceRoots ?? [],
-      testRoots,
-    }),
-    ...readTestAssertionFindings(projectRoot, testRoots, helpers),
-    ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
-    ...readKotlinReviewFindings({ reportRoot, projectRoot, manifest, modules: context.modules }),
-    ...readKotlinStructureFindings(metrics, projectRoot),
-    ...readKotlinClassLimitFindings(metrics, context.classLimits),
-    ...readKotlinCrapFindings(metrics, {
-      projectRoot,
-      jacoco,
-      crapLimit,
-    }),
-  ];
+  return withoutCoveredSourceFindings(
+    [
+      ...ruleFindings,
+      ...readSuppressionFindings(projectRoot, {
+        sourceRoots: manifest.kotlinSourceRoots ?? [],
+        testRoots,
+      }),
+      ...readCatchLogFindings(projectRoot, {
+        sourceRoots: manifest.kotlinSourceRoots ?? [],
+        testRoots,
+      }),
+      ...readTestAssertionFindings(projectRoot, testRoots, helpers),
+      ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
+      ...readKotlinReviewFindings({ reportRoot, projectRoot, manifest, modules: context.modules }),
+      ...readKotlinStructureFindings(metrics, projectRoot),
+      ...readKotlinClassLimitFindings(metrics, context.classLimits),
+      ...readKotlinCrapFindings(metrics, {
+        projectRoot,
+        jacoco,
+        crapLimit,
+      }),
+    ],
+    context.classLimits,
+  );
 }
 
 function subjectOf(text) {

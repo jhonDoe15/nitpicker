@@ -8,12 +8,11 @@ import {
   moduleClasspaths,
   parseDependencyList,
   readReactor,
-  usesSpring,
 } from './maven-project.mjs';
 import {
   archunitMatcher,
   collectTestResults,
-  junitLauncherVersion,
+  missingLauncherVersions,
   runJacocoReport,
   runPit,
 } from './maven-tests.mjs';
@@ -27,6 +26,8 @@ import {
   resolveTools,
 } from './maven-tools.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
+import { buildRunsArchRules, springFacts, withDeclaredSpring } from './spring/arch-rules-gate.mjs';
+import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 import { writeJdepsReports } from '../builds/jdeps-reports.mjs';
@@ -47,11 +48,12 @@ function relativeTo(basedir, file) {
   return path.relative(basedir, file).replaceAll('\\', '/');
 }
 
-function readEffectivePom(projectRoot, maven, work) {
+function readEffectivePom({ projectRoot, maven, work, spawn }) {
   const output = path.join(work, 'effective-pom.xml');
   runMaven({
     projectRoot,
     maven,
+    spawn,
     args: ['--quiet', `${MAVEN_PLUGINS.help}:effective-pom`, `-Doutput=${output}`],
   });
   return readFileSync(output, 'utf8');
@@ -62,10 +64,11 @@ function dependencyFile(work, module) {
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
 }
 
-function buildAndTest({ projectRoot, maven, work, pinned, modules }) {
+function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn }) {
   runMaven({
     projectRoot,
     maven,
+    spawn,
     args: [
       '--quiet',
       `${jacocoPlugin(pinned)}:prepare-agent`,
@@ -83,7 +86,7 @@ function buildAndTest({ projectRoot, maven, work, pinned, modules }) {
   });
 }
 
-function runStructure(module, reportDir) {
+function runStructure(module, reportDir, spawn) {
   const roots = module.sourceRoots
     .filter((root) => existsSync(root))
     .map((root) => relativeTo(module.basedir, root));
@@ -98,16 +101,18 @@ function runStructure(module, reportDir) {
     ],
     cwd: module.basedir,
     accept: (result) => result.status === 0,
+    spawn,
   });
 }
 
-function runJdeps(module, reportDir) {
+function runJdeps(module, reportDir, spawn) {
   writeJdepsReports({
     command: javaCommand('jdeps'),
     cwd: module.basedir,
     mainDirectory: module.outputDirectory,
     testDirectory: module.testOutputDirectory,
     reportDir,
+    spawn,
   });
 }
 
@@ -120,7 +125,6 @@ function hasJar(classpath, jar) {
 }
 
 export function moduleManifest({ module, classpaths, pinned }) {
-  const spring = usesSpring(classpaths);
   return {
     versions: pinned,
     build: 'maven',
@@ -128,8 +132,7 @@ export function moduleManifest({ module, classpaths, pinned }) {
     kotlinSourceRoots: relativeRoots(module, module.kotlinSourceRoots ?? []),
     testSourceRoots: relativeRoots(module, module.testSourceRoots),
     resourceRoots: relativeRoots(module, module.resourceRoots),
-    spring,
-    springArch: spring,
+    ...springFacts(classpaths),
     guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
     testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
     testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
@@ -152,24 +155,20 @@ function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
   return testsRan;
 }
 
-function withDeclaredSpring(manifest, declared) {
-  const spring = declared === true || manifest.spring;
-  return { ...manifest, spring, springArch: spring };
-}
-
-function analyzeSources({ module, reportDir, classpaths, tools, pinned, configs, style, spring }) {
-  runPmd({ module, reportDir, tools, classpaths, configs, spring });
-  runSpotbugs({ module, reportDir, tools });
-  runErrorProne({ module, reportDir, tools, classpaths });
-  runFormat({ module, reportDir, tools, javaStyle: style.javaStyle });
-  runCheckstyle({ module, reportDir, tools, configs, pinned, style });
-  runStructure(module, reportDir);
-  runJdeps(module, reportDir);
+function analyzeSources(options) {
+  const { module, reportDir, classpaths, tools, pinned, configs, style, spring, spawn } = options;
+  runPmd({ module, reportDir, tools, classpaths, configs, spring, spawn });
+  runSpotbugs({ module, reportDir, tools, spawn });
+  runErrorProne({ module, reportDir, tools, classpaths, spawn });
+  runFormat({ module, reportDir, tools, javaStyle: style.javaStyle, spawn });
+  runCheckstyle({ module, reportDir, tools, configs, pinned, style, spawn });
+  runStructure(module, reportDir, spawn);
+  runJdeps(module, reportDir, spawn);
 }
 
 function analyzeTests(options) {
-  const { module, reportDir, classpaths, tools, pinned, since, spring } = options;
-  const { isArchunit, testsRan } = options;
+  const { module, reportDir, classpaths, tools, pinned, since, springArch, springRoles } = options;
+  const { isArchunit, testsRan, spawn } = options;
   runJacocoReport({
     module,
     reportDir,
@@ -177,9 +176,19 @@ function analyzeTests(options) {
     execFiles: jacocoExecFiles(module),
     since,
     testsRan,
+    spawn,
   });
-  runPit({ module, reportDir, tools, classpaths, isArchunit });
-  runSpringArch({ module, reportDir, tools, classpaths, pinned, spring });
+  runPit({ module, reportDir, tools, classpaths, isArchunit, spawn });
+  runSpringArch({
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    pinned,
+    archRules: springArch,
+    springRoles,
+    spawn,
+  });
 }
 
 function analyzeModule(options) {
@@ -190,11 +199,11 @@ function analyzeModule(options) {
     moduleManifest({ module, classpaths, pinned }),
     options.spring,
   );
-  const { spring } = manifest;
+  const { spring, springArch } = manifest;
   const testRuntime = classpaths.testRuntime;
   const testsRan = readTestRuns({ module, reportDir, since, isArchunit, testRuntime });
   analyzeSources({ ...options, reportDir, spring });
-  analyzeTests({ ...options, reportDir, spring, isArchunit, testsRan });
+  analyzeTests({ ...options, reportDir, springArch, isArchunit, testsRan });
   writeFileSync(path.join(reportDir, 'manifest.json'), JSON.stringify(manifest));
 }
 
@@ -211,13 +220,13 @@ function staleOutputs(module) {
   ];
 }
 
-function readModules(projectRoot, maven, work) {
-  const modules = readReactor(projectRoot, readEffectivePom(projectRoot, maven, work)).filter(
+function readModules(run) {
+  const modules = readReactor(run.projectRoot, readEffectivePom(run)).filter(
     (module) => module.packaging !== 'pom',
   );
   if (modules.length === 0) {
     throw new Error(
-      `No Maven module under ${projectRoot} builds Java classes: every module has packaging pom`,
+      `No Maven module under ${run.projectRoot} builds Java classes: every module has packaging pom`,
     );
   }
   for (const file of modules.flatMap(staleOutputs)) {
@@ -229,12 +238,15 @@ function readModules(projectRoot, maven, work) {
   return modules;
 }
 
-function missingLauncherVersions(analyzed) {
-  const versions = analyzed.map(({ classpaths }) => junitLauncherVersion(classpaths.testRuntime));
-  return [...new Set(versions.filter((version) => version !== undefined))];
+function extraTools({ modules, analyzed, policy, pinned }) {
+  return [
+    ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
+    ...formatTool(policy.javaStyle, pinned),
+    ...archunitTool(buildRunsArchRules(policy, analyzed), pinned),
+  ];
 }
 
-export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
+export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn }) {
   if (policy.preset === 'kotlin') {
     throw new Error(
       'The kotlin preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources',
@@ -243,9 +255,9 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
   const pinned = readPinnedTools();
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
   try {
-    const modules = readModules(projectRoot, maven, work);
+    const modules = readModules({ projectRoot, maven, work, spawn });
     const since = Date.now() - 2000;
-    buildAndTest({ projectRoot, maven, work, pinned, modules });
+    buildAndTest({ projectRoot, maven, work, pinned, modules, spawn });
     const analyzed = modules.map((module) => ({
       module,
       classpaths: readClasspaths(work, module),
@@ -253,16 +265,10 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
     const tools = resolveTools({
       projectRoot,
       maven,
+      spawn,
       pinned,
       launcherVersions: missingLauncherVersions(analyzed),
-      extraTools: [
-        ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
-        ...formatTool(policy.javaStyle, pinned),
-        ...archunitTool(
-          analyzed.some(({ classpaths }) => usesSpring(classpaths)),
-          pinned,
-        ),
-      ],
+      extraTools: extraTools({ modules, analyzed, policy, pinned }),
     });
     for (const { module, classpaths } of analyzed) {
       analyzeModule({
@@ -272,11 +278,13 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs }) {
         pinned,
         configs,
         since,
+        spawn,
         style: {
           javaStyle: policy.javaStyle,
           indentation: checkstyleIndentation(policy.conventions),
         },
         spring: policy.spring,
+        springRoles: writeSpringRoles(policy.springRoles, work),
       });
     }
     return modules.map((module) => module.basedir);

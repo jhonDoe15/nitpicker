@@ -232,7 +232,7 @@ describe('a Gradle build with several projects', () => {
     const alone = identities({ 'modules.txt': 'core\n' });
     expect(
       alone.filter((identity) => identity.startsWith('coupling stability-direction ')),
-    ).toEqual(['coupling stability-direction . package-edge:core/demo.s->core/demo.t']);
+    ).toEqual(['coupling stability-direction core/demo.s package-edge:core/demo.s->core/demo.t']);
     expect(
       identities({
         'modules.txt': 'core\napi\n',

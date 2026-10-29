@@ -14,6 +14,7 @@ import { condenseFailure } from './gradle-wrapper/diagnostics/failure-text.mjs';
 import { runJavaDuplicates } from './metrics/java-duplicates.mjs';
 import { runKotlinDuplicates } from './kotlin/kotlin-duplicates.mjs';
 import { applyFindingPolicy } from '../../../shared/findings/finding-policy.mjs';
+import { javaRouteRule } from './java-policy.mjs';
 import { withoutFollowedImports } from './imports/followed-imports.mjs';
 import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
@@ -145,6 +146,7 @@ function withGradleReports(projectRoot, options) {
 function mavenFindings(projectRoot, options) {
   const moduleDirs = runMavenPreset(projectRoot, {
     maven: options.maven,
+    spawn: options.spawn,
     policy: options.policy,
     configs: toolConfigChoices(projectRoot, options.policy),
   });
@@ -181,7 +183,7 @@ export function collectJavaFindings(root, options = {}) {
       options.policy?.conventions,
       readSource,
     ),
-    { ...options.policy, inventoryTool: preset },
+    { ...options.policy, inventoryTool: preset, routeRule: javaRouteRule },
     (reported) => withoutOverlaps(reported, { readSource }),
   );
 }

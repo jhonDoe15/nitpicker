@@ -94,7 +94,8 @@ describe('ESLint snapshot isolation and failures', () => {
         path: 'src/main/source.ts',
         identity:
           'message:`debugger` statement is not allowed|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
-        message: '`debugger` statement is not allowed',
+        message:
+          '`debugger` statement is not allowed. If this is intended, add {"rule":"no-debugger","paths":["src/main/source.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
         location: { line: 2, column: 3 },
         classification: 'enforceable',
         symbol: 'baseline',
