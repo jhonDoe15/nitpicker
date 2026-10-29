@@ -69,17 +69,23 @@ function expanded(line, parts) {
   return Array.isArray(value) ? value : [line.replace(TOKEN, () => String(yamlScalar(value)))];
 }
 
-export function renderWorkflow(projectRoot, context) {
-  const { runDefaults, ...steps } = workflowParts(projectRoot, context);
+function workflowDocument(projectRoot, context) {
+  const { runDefaults, notes, ...steps } = workflowParts(projectRoot, context);
   const parts = { ...steps, ...namedParts(projectRoot, context.repository, runDefaults) };
   const lines = readFileSync(TEMPLATE, 'utf8').trimEnd().split('\n');
-  return `${lines.flatMap((line) => expanded(line, parts)).join('\n')}\n`;
+  return { content: `${lines.flatMap((line) => expanded(line, parts)).join('\n')}\n`, notes };
+}
+
+export function renderWorkflow(projectRoot, context) {
+  return workflowDocument(projectRoot, context).content;
 }
 
 export function placeWorkflow(projectRoot, context) {
-  return placeFile({
+  const { content, notes } = workflowDocument(projectRoot, context);
+  const placed = placeFile({
     root: context.repository,
     relative: workflowPath(projectRoot, context.repository),
-    content: renderWorkflow(projectRoot, context),
+    content,
   });
+  return notes.length === 0 ? placed : { ...placed, notes };
 }

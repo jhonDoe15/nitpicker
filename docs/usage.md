@@ -41,8 +41,13 @@ left for you:
    Without such sources, or when a `pom.xml`, Gradle build or Python file sits next to them and
    there is no `package.json`, it is Python (`pyproject.toml`, `setup.py`, `setup.cfg`, `Pipfile`
    or `requirements.txt`), Java (Gradle or Maven) or Kotlin (Gradle, when there are `.kt` files and
-   they outnumber the `.java` ones or a build script applies the Kotlin plugin; `.kts` build
-   scripts do not count). A Gradle project with fewer `.kt` than `.java` files and no Kotlin plugin
+   they outnumber the `.java` ones or a build script applies the Kotlin JVM plugin, the one the
+   kotlin preset runs on: `kotlin("jvm")`, `id("org.jetbrains.kotlin.jvm")`, `apply plugin: 'kotlin'`,
+   or a version catalog alias such as `alias(libs.plugins.kotlin.jvm)`, looked up in
+   `gradle/libs.versions.toml` and the catalogs `settings.gradle(.kts)` declares, also inside the
+   convention plugins of `buildSrc` or `build-logic` (`.gradle.kts` and `.kt`); a plugin declared
+   with `apply false` and the Android and multiplatform plugins do not count, nor do `.kts` build
+   scripts and the files of `buildSrc` and `build-logic` as sources). A Gradle project with fewer `.kt` than `.java` files and no Kotlin plugin
    in its build scripts gets the `java` preset with a note. The Kotlin preset needs Gradle today: a
    Maven project with Kotlin and Java sources gets the `java` preset with a note that only its Java
    sources are checked, and one with Kotlin sources only stops with exit 2. It also reads the package manager the way the gate does (the
@@ -67,7 +72,8 @@ left for you:
    `environment.yml` or a requirements file) or has it installed (`node_modules`, `.venv`); one
    that only `.venv` holds is named, so you can declare it. `typescript` counts from 5.7 on,
    TypeScript 7 included (the installed version, else the declared range); an older one is asked
-   for again. Java and Kotlin projects need Java 21 and nothing else.
+   for again. A project on TypeScript 7 needs Node.js 22.19 or newer, so on an older Node.js init
+   stops with exit 2 and names the version, and asks for `typescript@^6` instead of `typescript`. Java and Kotlin projects need Java 21 and nothing else.
 3. **Writes `nitpicker.config.json`** with the preset only, `{ "preset": "python" }`, formatted as
    Prettier formats it. Everything else (React, the test runner, the formatter, the build tool) is
    detected at run time, so init never writes it.
@@ -95,7 +101,10 @@ of lowercase letters, digits and single `-`, `_` or `.` as it is and joins folde
 (`apps/web` gives `nitpicker-apps--web.yml`); any other folder name is lowercased with a short
 hash of the original added (`Web App` gives `web-app-60d39972`), so no two folders share a file. It runs on pull requests, checks out with `fetch-depth: 0`, sets up Node.js 24 (plus
 Java 21 or Python for those presets: from `.python-version`, else the lower bound of
-`requires-python` or the poetry `python` dependency, else 3.13), installs the dependencies and runs nitpicker:
+`requires-python` or the poetry `python` dependency, raised to 3.10 when the range allows it, else
+3.13), installs the dependencies and runs nitpicker. Python 3.10 is the oldest one the python-rules,
+mutmut and dependency checks run on; when `.python-version` or a range that leaves 3.10 out asks
+for an older one, init prints a note that those checks report that they were skipped:
 
 - **Node.js.** `npm ci`, `pnpm install --frozen-lockfile`, `yarn install --frozen-lockfile` (Yarn 1),
   `yarn install --immutable` (Yarn 2 or newer) or `bun install --frozen-lockfile` with a lockfile,

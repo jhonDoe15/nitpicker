@@ -7,6 +7,7 @@ import {
   condaEnvironmentName,
   condaFile,
 } from '../../../languages/python/adapters/execution/environments/managed.mjs';
+import { MINIMUM_PYTHON } from '../../../languages/python/ingest/rules-report.mjs';
 
 const STEP = '      - ';
 const DETAIL = '        ';
@@ -42,6 +43,10 @@ const PEER_INSTALLERS = {
 const REQUIRES_PYTHON = /^\s*requires-python\s*=\s*["'](?<spec>[^"']+)["']/mu;
 const POETRY_PYTHON = /^\s*python\s*=\s*["'](?<spec>[^"']+)["']/mu;
 const LOWER_BOUND = /(?:>=|~=|==|\^|~)\s*(?<version>\d+\.\d+)/u;
+const UPPER_BOUND = /<(?<inclusive>=?)\s*(?<version>\d+\.\d+)/u;
+const PINNED = /(?<![<>!=~])==|~(?!=)/u;
+const PINNED_VERSION = /^\s*(?<version>\d+\.\d+)/mu;
+const FLOOR_CHECKS = 'the python-rules, mutmut and dependency checks';
 const CONDA_ENVIRONMENT = 'nitpicker';
 const LOGIN_SHELL = { shell: 'bash -el {0}' };
 
@@ -145,16 +150,80 @@ function pythonInstall(root, context) {
   return [...sync, ...peerInstall(context.project)].flatMap(run);
 }
 
+function isOlder(version, than) {
+  const [major, minor] = version.split('.').map(Number);
+  const [thanMajor, thanMinor] = than.split('.').map(Number);
+  return major === thanMajor ? minor < thanMinor : major < thanMajor;
+}
+
+function allowsFloor(spec) {
+  const upper = UPPER_BOUND.exec(spec)?.groups;
+  if (PINNED.test(spec)) {
+    return false;
+  }
+  if (upper === undefined) {
+    return true;
+  }
+  return upper.inclusive === '='
+    ? !isOlder(upper.version, MINIMUM_PYTHON)
+    : isOlder(MINIMUM_PYTHON, upper.version);
+}
+
+function pinnedVersionFile(root, repository) {
+  const file = insideProject(root, '.python-version');
+  const pinned = PINNED_VERSION.exec(readFileSync(file, 'utf8'))?.groups.version;
+  const notes =
+    pinned !== undefined && isOlder(pinned, MINIMUM_PYTHON)
+      ? [
+          `.python-version asks for Python ${pinned}, and ${FLOOR_CHECKS} need Python ${MINIMUM_PYTHON} or newer, so in CI they report that they were skipped. Raise .python-version to ${MINIMUM_PYTHON} or newer to run them.`,
+        ]
+      : [];
+  return { settings: { 'python-version-file': repositoryPath(repository, file) }, notes };
+}
+
+function boundedVersion(spec) {
+  const lower = LOWER_BOUND.exec(spec)?.groups.version;
+  if (lower === undefined) {
+    return { settings: { 'python-version': PYTHON_VERSION }, notes: [] };
+  }
+  if (!isOlder(lower, MINIMUM_PYTHON)) {
+    return { settings: { 'python-version': lower }, notes: [] };
+  }
+  const reason = `pyproject.toml allows Python ${lower} ("${spec}"), and ${FLOOR_CHECKS} need Python ${MINIMUM_PYTHON} or newer`;
+  return allowsFloor(spec)
+    ? {
+        settings: { 'python-version': MINIMUM_PYTHON },
+        notes: [`${reason}, so the CI job runs Python ${MINIMUM_PYTHON}.`],
+      }
+    : {
+        settings: { 'python-version': lower },
+        notes: [
+          `${reason}, which the range leaves out, so the CI job runs Python ${lower} and those checks report that they were skipped. Widen the range to run them.`,
+        ],
+      };
+}
+
 function pythonVersion(root, repository) {
   if (hasProjectFile(root, '.python-version')) {
-    const file = insideProject(root, '.python-version');
-    return { 'python-version-file': repositoryPath(repository, file) };
+    return pinnedVersionFile(root, repository);
   }
   const pyproject = hasProjectFile(root, 'pyproject.toml')
     ? readFileSync(insideProject(root, 'pyproject.toml'), 'utf8')
     : '';
   const spec = (REQUIRES_PYTHON.exec(pyproject) ?? POETRY_PYTHON.exec(pyproject))?.groups.spec;
-  return { 'python-version': LOWER_BOUND.exec(spec ?? '')?.groups.version ?? PYTHON_VERSION };
+  return boundedVersion(spec ?? '');
+}
+
+function pythonSteps(root, context) {
+  const { settings, notes } = pythonVersion(root, context.repository);
+  return {
+    environment: [
+      ...step('actions/setup-python@v5', settings),
+      ...(context.project.tool === 'uv' ? step('astral-sh/setup-uv@v5') : []),
+    ],
+    install: pythonInstall(root, context),
+    notes,
+  };
 }
 
 function condaSteps(root, context) {
@@ -179,13 +248,7 @@ const FAMILY_STEPS = {
   python: (root, context) =>
     context.project.tool === 'conda' && condaFile(root) !== undefined
       ? condaSteps(root, context)
-      : {
-          environment: [
-            ...step('actions/setup-python@v5', pythonVersion(root, context.repository)),
-            ...(context.project.tool === 'uv' ? step('astral-sh/setup-uv@v5') : []),
-          ],
-          install: pythonInstall(root, context),
-        },
+      : pythonSteps(root, context),
   jvm: () => ({
     environment: step('actions/setup-java@v4', {
       distribution: 'temurin',
@@ -205,11 +268,13 @@ export function workflowParts(root, context) {
     environment,
     install,
     runDefaults = {},
+    notes = [],
   } = FAMILY_STEPS[context.project.family](root, context);
   return {
     ENVIRONMENT_STEPS: environment,
     INSTALL_STEPS: install,
     RUN: runCommand(root, context),
     runDefaults,
+    notes,
   };
 }

@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const API_SPECIFIER = /^typescript(?:\/package\.json|\/lib\/.+)?$/u;
-const MINIMUM_NODE = [22, 19];
+export const MINIMUM_NODE = [22, 19];
 const UNRESOLVED_CODES = new Set([
   'ERR_MODULE_NOT_FOUND',
   'MODULE_NOT_FOUND',
