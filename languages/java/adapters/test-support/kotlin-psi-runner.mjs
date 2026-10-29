@@ -20,11 +20,15 @@ export function pinnedKotlinCompiler() {
   return /kotlinCompiler\s*:\s*'([^']+)'/u.exec(readFileSync(INIT_SCRIPT, 'utf8'))[1];
 }
 
-function gradleClasspath(workspace, project) {
+function printedValue(lines, key) {
+  return lines.find((line) => line.startsWith(`${key}=`)).slice(key.length + 1);
+}
+
+function gradleClasspath(workspace, project, gradle) {
   const script = path.join(workspace, 'print.init.gradle');
   writeFileSync(script, PRINT_CLASSPATH);
   const result = spawnSync(
-    process.env.NITPICKER_GRADLE ?? 'gradle',
+    gradle,
     [
       '--console=plain',
       '--quiet',
@@ -42,8 +46,10 @@ function gradleClasspath(workspace, project) {
     throw new Error(`printKotlinCompiler failed: ${result.stderr}`);
   }
   const lines = result.stdout.split('\n');
-  const valueOf = (key) => lines.find((line) => line.startsWith(`${key}=`)).slice(key.length + 1);
-  return { javaHome: valueOf('JAVA_HOME'), classpath: valueOf('CLASSPATH') };
+  return {
+    javaHome: printedValue(lines, 'JAVA_HOME'),
+    classpath: printedValue(lines, 'CLASSPATH'),
+  };
 }
 
 function compilePsiProgram(workspace, { javaHome, classpath }) {
@@ -63,8 +69,8 @@ function compilePsiProgram(workspace, { javaHome, classpath }) {
   return output;
 }
 
-export function prepareKotlinPsi(workspace, project) {
-  const toolchain = gradleClasspath(workspace, project);
+export function prepareKotlinPsi(workspace, project, gradle) {
+  const toolchain = gradleClasspath(workspace, project, gradle);
   return { ...toolchain, classes: compilePsiProgram(workspace, toolchain) };
 }
 

@@ -4,7 +4,7 @@ const GENERIC_ARGUMENTS = /<.*$/u;
 const LAST_SEGMENT = /\.([^.]+)$/u;
 const PLAIN_NAME = /^(?:this\.)?(\w+)$/u;
 const MEMBER_PATH = /^[\w.]+\.(\w+)$/u;
-const CALLED_NAME = /^([\w.]+)\s*(?:<[^(]*>)?\s*\(/u;
+const CALLED_NAME = /^([\w.]+)\s*(?:<[^(]*>\s*)?\(/u;
 
 export function simpleName(qualified) {
   return qualified.slice(qualified.lastIndexOf('.') + 1);
@@ -52,15 +52,16 @@ function scopeIds(lookup) {
   return (lookup.scopes ?? []).map(({ id }) => id).filter((id) => id !== undefined);
 }
 
+function scopeDepth(ids, { scope }) {
+  const index = scope === undefined || scope === null ? ids.length : ids.indexOf(scope);
+  return index === -1 ? undefined : index;
+}
+
 function visibleTypes(file, name, lookup) {
   const ids = scopeIds(lookup);
-  const depthOf = ({ scope }) => {
-    const index = scope === undefined || scope === null ? ids.length : ids.indexOf(scope);
-    return index === -1 ? undefined : index;
-  };
   const visible = (file.typed ?? [])
     .filter((entry) => entry.name === name)
-    .map((entry) => ({ entry, depth: depthOf(entry) }))
+    .map((entry) => ({ entry, depth: scopeDepth(ids, entry) }))
     .filter(({ depth }) => depth !== undefined);
   const nearest = Math.min(...visible.map(({ depth }) => depth));
   return visible.filter(({ depth }) => depth === nearest).map(({ entry }) => entry.type);

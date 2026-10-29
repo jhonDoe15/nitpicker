@@ -1,6 +1,6 @@
-import { validatorNamed } from '../libraries/library-tables.mjs';
-import { validatorsOf } from '../libraries/project-libraries.mjs';
-import { RULES_TOOL } from './tool.mjs';
+import { validatorNamed } from '../../libraries/library-tables.mjs';
+import { validatorsOf } from '../../libraries/project-libraries.mjs';
+import { RULES_TOOL } from '../tool.mjs';
 
 const IN_TEST = 'In a test, use `pytest.raises(SpecificError)` (`self.assertRaises` in unittest).';
 
