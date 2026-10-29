@@ -32,11 +32,6 @@ export function layoutProductionMatcher(layout) {
   return (relative) => !matchers.some((matcher) => matcher.test(toPosix(relative)));
 }
 
-/**
- * The knip config of the normal run without tests: test and story files leave the project, test
- * entries and test-runner plugins go, and everything else (scripts in `package.json`, tool configs
- * found by plugins, `bin` and `exports`) stays an entry as before.
- */
 function productionWorkspace(workspace, { layout, tests }) {
   const kept = Object.entries(workspace).filter(([key]) => !TEST_RUNNER_PLUGINS.includes(key));
   const config = Object.fromEntries(kept);
@@ -51,6 +46,11 @@ function productionWorkspace(workspace, { layout, tests }) {
   };
 }
 
+/**
+ * The knip config of the normal run without tests: test and story files leave the project, test
+ * entries and test-runner plugins go, and everything else (scripts in `package.json`, tool configs
+ * found by plugins, `bin` and `exports`) stays an entry as before.
+ */
 export function layoutKnipProductionConfig(config, layout) {
   const tests = testAndStoryGlobs(layout);
   const workspaces = Object.entries(config.workspaces ?? {}).map(([name, workspace]) => [

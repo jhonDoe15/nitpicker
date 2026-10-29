@@ -158,6 +158,21 @@ describe('project tool configs the project opted into', () => {
       expect(between({ base: at('{}'), head: at('{}'), config }).policyLoosenings).toEqual([]);
     },
   );
+
+  it('shows the knip config a change opts into in the same change', () => {
+    const files = { 'knip.json': '{"ignore":["src/**"]}', 'src/a.ts': 'export const a = 1;\n' };
+    expect(
+      between({
+        base: files,
+        head: files,
+        baseConfig: { preset: 'typescript' },
+        config: { preset: 'typescript', tools: { knip: PROJECT } },
+      }).policyLoosenings,
+    ).toEqual([
+      'knip project config changed: knip.json',
+      'tools.knip.precedence: not set -> ["project","nitpicker"]',
+    ]);
+  });
 });
 
 describe('what counts as an edit of a project tool config', () => {

@@ -7,16 +7,16 @@ import { readInside } from '../../../shared/conventions/read-inside.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
 import {
-  PACKAGE_JSON_KEYS,
-  PROJECT_CONFIG_FILES,
+  isProjectConfigTool,
+  packageJsonKey,
   projectConfigCandidates,
+  projectConfigTools,
 } from '../../../languages/typescript/preset/project-tools/project-config-files.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
 
 const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
 const SCRIPT_PRESETS = new Set([undefined, 'typescript', 'javascript']);
-const PACKAGE_KEYS = new Map([['prettier', 'prettier'], ...PACKAGE_JSON_KEYS]);
 
 function usesProjectConfig(config, tool) {
   return (config.tools?.[tool]?.precedence ?? []).includes('project');
@@ -38,7 +38,7 @@ function fingerprintOf(tool, { projectRoot, file }, gitBlobId) {
   if (file !== PACKAGE_JSON) {
     return gitBlobId(toolConfigText(tool, file, content.toString('utf8')));
   }
-  const key = packageKey(content, PACKAGE_KEYS.get(tool));
+  const key = packageKey(content, tool === 'prettier' ? 'prettier' : packageJsonKey(tool));
   if (key.malformed === true) {
     return gitBlobId(content);
   }
@@ -93,7 +93,7 @@ function candidates(tool, side) {
   if (tool === 'prettier') {
     return SCRIPT_PRESETS.has(config.preset) ? PRETTIER_PROJECT_FILES : [];
   }
-  if (PROJECT_CONFIG_FILES.has(tool)) {
+  if (isProjectConfigTool(tool)) {
     return SCRIPT_PRESETS.has(config.preset) ? projectConfigCandidates(tool) : [];
   }
   const configured = PROJECT_TOOL_CONFIGS.get(tool);
@@ -110,11 +110,15 @@ function isOptedIn(tool, config) {
 }
 
 export function readToolConfigs(base, head, gitBlobId) {
-  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier', ...PROJECT_CONFIG_FILES.keys()]
-    .filter((tool) => isOptedIn(tool, base.config) && isOptedIn(tool, head.config))
+  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier', ...projectConfigTools()]
+    .filter((tool) => isOptedIn(tool, head.config))
     .map((tool) => ({
       tool,
-      base: fingerprints(tool, { root: base.root, files: candidates(tool, base) }, gitBlobId),
+      base: fingerprints(
+        tool,
+        { root: base.root, files: isOptedIn(tool, base.config) ? candidates(tool, base) : [] },
+        gitBlobId,
+      ),
       head: fingerprints(tool, { root: head.root, files: candidates(tool, head) }, gitBlobId),
     }));
 }

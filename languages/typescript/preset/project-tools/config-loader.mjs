@@ -29,7 +29,7 @@ const LOADERS = new Map([
   ],
 ]);
 
-async function loadToolConfig(tool, file) {
+export async function loadToolConfig(tool, file) {
   const entry = LOADERS.get(tool);
   if (entry === undefined) {
     throw new Error(`No config loader for ${tool}`);
@@ -39,24 +39,9 @@ async function loadToolConfig(tool, file) {
   return encodedValue(await entry.load(loader, file), path.basename(file));
 }
 
-function failureText(error) {
+export function failureText(error) {
   if (!(error instanceof Error)) {
     return String(error);
   }
   return error.cause instanceof Error ? `${error.message}: ${error.cause.message}` : error.message;
-}
-
-const invokedPath = process.argv[1];
-
-if (
-  invokedPath !== undefined &&
-  import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
-) {
-  try {
-    const [tool, file] = process.argv.slice(2);
-    process.stdout.write(`${JSON.stringify(await loadToolConfig(tool, file))}\n`);
-  } catch (error) {
-    process.stderr.write(`${failureText(error)}\n`);
-    process.exitCode = 1;
-  }
 }
