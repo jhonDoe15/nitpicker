@@ -242,3 +242,8 @@ export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn
     writeFileSync(report, '<mutations/>');
   }
 }
+
+export function missingLauncherVersions(analyzed) {
+  const versions = analyzed.map(({ classpaths }) => junitLauncherVersion(classpaths.testRuntime));
+  return [...new Set(versions.filter((version) => version !== undefined))];
+}
