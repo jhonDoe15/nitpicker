@@ -19,7 +19,6 @@ import { inModule } from '../../builds/module-path.mjs';
 import { readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { methodText } from '../../../../shared/ingest/structure-report.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
-import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import {
   declarationUnits,
   functionLocator,
@@ -253,9 +252,9 @@ function crapFindings({ reportRoot, sourceRoots, projectRoot }, jacoco, crapLimi
   return ingestCrap(structure, jacoco, {
     sourceRoots,
     limit: crapLimit,
-    sourceHash: (entry) =>
+    sourceText: (entry) =>
       existsSync(path.join(projectRoot, entry.file))
-        ? hash(methodText(sources, projectRoot, entry))
+        ? methodText(sources, projectRoot, entry)
         : undefined,
   }).findings;
 }
@@ -270,6 +269,7 @@ function pitFindings(context) {
   const { findings } = ingestPit(readFileSync(pitReport, 'utf8'), {
     resolvePath: (className, sourceFile) => sourceFileOf(locate, className, sourceFile),
     functionAt: functionLocator(context),
+    sourceText: sourceTextReader(projectRoot),
   });
   return context.kotlin ? reportOnlyKotlinMutants(findings) : findings;
 }

@@ -1,4 +1,4 @@
-import { addMetric } from '../../../shared/rules/finding-helpers.mjs';
+import { addMetric, hash } from '../../../shared/rules/finding-helpers.mjs';
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 
 export const SUPPORTED_MUTMUT = 'mutmut 3.x';
@@ -172,11 +172,16 @@ function describeChange({ mutant, blocks, originalLines }) {
     return { label: 'mutation' };
   }
   const start = locate(originalLines, original);
+  const line = start === undefined ? undefined : start + 1 + change.lineOffset;
+  const text = line === undefined ? undefined : originalLines[line - 1]?.trim();
   return {
     original: change.original,
     replacement: change.replacement,
     label: labelOf(change),
-    ...(start === undefined ? {} : { line: start + 1 + change.lineOffset }),
+    ...(line === undefined ? {} : { line }),
+    ...(text === undefined || text === ''
+      ? {}
+      : { anchor: `${change.original}→${change.replacement}|${hash(text)}` }),
   };
 }
 

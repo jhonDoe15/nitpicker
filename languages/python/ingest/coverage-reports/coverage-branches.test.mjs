@@ -295,6 +295,26 @@ describe('changed-branch-coverage in the differential comparison', () => {
     expect(result.unchangedFindings.map((finding) => finding.location.line)).toEqual([8]);
   });
 
+  it('keeps a legacy gap baselined when its function is renamed', () => {
+    const named = (name) => `def ${name}(a):\n    if a:\n        return 1\n    return 2\n`;
+    const gap = reportOf(
+      [],
+      [
+        [2, 3],
+        [2, 4],
+      ],
+    );
+
+    const result = compareFindings({
+      baseFindings: ingest({ sourceText: () => named('legacy') }, gap),
+      headFindings: ingest({ sourceText: () => named('renamed') }, gap),
+      touchedCode: touched(diffFor('@@ -1 +1 @@')),
+    });
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.unchangedFindings.map((finding) => finding.location.line)).toEqual([2]);
+  });
+
   it('applies to the Python tool only, not to the TypeScript coverage check of the same rule', () => {
     expect(isStrictRule('changed-branch-coverage', { tool: 'coverage-py' })).toBe(true);
     expect(isStrictRule('changed-branch-coverage', { tool: 'coverage' })).toBe(false);

@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { GREW_MESSAGES, HELD_MESSAGES, MESSAGES, renderMessage } from '../../../shared/policy.mjs';
+import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { ingestPythonCrap } from './crap.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
@@ -148,16 +149,16 @@ describe('ingestPythonCrap', () => {
 
   it('includes the source hash in the identity of a function with known coverage only', () => {
     const functions = [...functionEntries(), entry('other.py', 'f', [1, 2])];
-    const [known, unknown] = ingest({ limit: 4, sourceHash: () => 'abc' }, functions).filter(
+    const [known, unknown] = ingest({ limit: 4, sourceText: () => 'abc' }, functions).filter(
       (finding) => finding.symbol !== 'top',
     );
 
-    expect(known.identity).toBe('function:B.go:source:abc');
+    expect(known.identity).toBe(`function:B.go:source:${hash('abc')}`);
     expect(unknown.identity).toBe('function:f');
   });
 
   it('numbers same-named definitions among those of the same text, so adding one above does not rename another', () => {
-    const sourceHash = ({ start }) => (start === 30 ? 'setter' : 'getter');
+    const sourceText = ({ start }) => (start === 30 ? 'setter' : 'getter');
     const coverage = JSON.stringify({
       files: { 'm.py': { executed_lines: [], missing_lines: [6, 11, 31], functions: {} } },
     });
@@ -165,17 +166,19 @@ describe('ingestPythonCrap', () => {
       ingestPythonCrap(
         starts.map((start) => entry('m.py', 'A.value', [start, start + 1])),
         coverage,
-        { limit: 1.5, sourceHash },
+        { limit: 1.5, sourceText },
       ).findings.map((finding) => finding.identity);
 
+    const [getter, setter] = [hash('getter'), hash('setter')];
+
     expect(identities([10, 30])).toEqual([
-      'function:A.value:source:getter',
-      'function:A.value:source:setter',
+      `function:A.value:source:${getter}`,
+      `function:A.value:source:${setter}`,
     ]);
     expect(identities([5, 10, 30])).toEqual([
-      'function:A.value:source:getter',
-      'function:A.value#2:source:getter',
-      'function:A.value:source:setter',
+      `function:A.value:source:${getter}`,
+      `function:A.value#2:source:${getter}`,
+      `function:A.value:source:${setter}`,
     ]);
   });
 

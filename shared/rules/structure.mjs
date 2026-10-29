@@ -13,6 +13,10 @@
 //     start?: number, end?: number,  // 1-based lines of the function
 //     lines?, statements?, maxControlNesting?, parameters?: number,
 //     sourceHash?: string,           // digest of the function text; defaults to file:start:end
+//     anchorHash?: string,           // digest of the text with the function's own name masked
+//                                    // (nameFreeHash): the finding's anchor, kept by a rename
+//     declarationHash?: string,      // digest of the signature or declaration line: the ratchet's
+//                                    // declarationKey, kept by an edit of the body and by an overload
 //     numberedAmongSameSource?: boolean, // the occurrence of a limit finding counts only the entries of the
 //                                    // same name and source over that limit, so no other entry, under the
 //                                    // limit or of other text, renames a finding (for names that repeat in a class)
@@ -43,6 +47,8 @@ const METADATA_FIELDS = new Set([
   'file',
   'name',
   'sourceHash',
+  'anchorHash',
+  'declarationHash',
   'numberedAmongSameSource',
   'start',
   'end',
@@ -140,7 +146,15 @@ function limitFinding({
       value: entry[metricName],
       worseMessage: withHint(renderMessage(GREW_MESSAGES[metricName], values), route),
       heldMessage: renderMessage(HELD_MESSAGES[metricName], values),
+      ...(typeof entry.declarationHash === 'string'
+        ? {
+            declarationKey: `function:${entry.name}:declaration:${entry.declarationHash}:${metricName}`,
+          }
+        : {}),
     },
+    ...(typeof entry.anchorHash === 'string'
+      ? { anchor: { key: `function:${metricName}:text:${entry.anchorHash}` } }
+      : {}),
     ...(positiveInteger(entry.start) === undefined ? {} : { location: { line: entry.start } }),
   };
 }

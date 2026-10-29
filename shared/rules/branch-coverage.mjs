@@ -3,10 +3,12 @@ import { positiveInteger } from './finding-helpers.mjs';
 import { exceptionRoute } from '../exceptions/rule-names.mjs';
 
 /**
- * Neutral input: `{ path, key, percent, symbol?, line?, arms? }` per branch, `percent` being the
- * share of its outcomes covered. `symbol` names the function the branch is in, so the message
- * names the per-function exception. The n-th failing branch with the same path and key gets
- * occurrence n in `identify(key, occurrence)`, so a covered twin does not shift it.
+ * Neutral input: `{ path, key, percent, symbol?, line?, arms?, anchor? }` per branch, `percent`
+ * being the share of its outcomes covered. `symbol` names the function the branch is in, so the
+ * message names the per-function exception. The n-th failing branch with the same path and key gets
+ * occurrence n in `identify(key, occurrence)`, so a covered twin does not shift it. `anchor`
+ * (default `key`) must not name the function: on an unchanged line it keeps the finding when the
+ * function or its class is renamed.
  */
 export function branchCoverageFindings(
   branches,
@@ -29,6 +31,7 @@ export function branchCoverageFindings(
       message: `${branchMessage(branch, minimum)} ${acceptSentence(branch)}`,
       classification: 'enforceable',
       ...(isNamed(branch) ? { symbol: branch.symbol } : {}),
+      anchor: { key: `branch:${branch.anchor ?? branch.key}`, requireUnchangedLine: true },
       ...(positiveInteger(branch.line) === undefined ? {} : { location: { line: branch.line } }),
     });
   }
