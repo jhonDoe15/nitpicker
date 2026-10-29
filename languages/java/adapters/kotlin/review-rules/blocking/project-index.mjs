@@ -11,13 +11,18 @@ function isNonBlocking({ modifiers, returnType }) {
   return modifiers.includes('suspend') || REACTIVE_RESULTS.has(result);
 }
 
+function isBlockingRepository(context, resolve, text) {
+  return (
+    reachesType(context, { resolve, text, targets: BLOCKING_REPOSITORIES }) &&
+    !reachesType(context, { resolve, text, targets: REACTIVE_REPOSITORIES })
+  );
+}
+
 export function projectIndex(files, { projectRoot, javaRoots = [] } = {}) {
   const production = files.filter(({ test }) => !test);
   const declared = declaredNames(production);
   const context = projectContext({ projectFiles: production, declared, projectRoot, javaRoots });
   const functions = production.flatMap((file) => file.functions);
-  const reaches = (resolver, type, targets) =>
-    reachesType(context, resolver.resolve, type, targets);
   return {
     declared,
     suspending: new Set(
@@ -28,9 +33,7 @@ export function projectIndex(files, { projectRoot, javaRoots = [] } = {}) {
     ),
     nonBlocking: new Set(functions.filter(isNonBlocking).map(({ name }) => name)),
     constructors: new Set(production.flatMap((file) => file.classes.map(({ name }) => name))),
-    isBlockingRepository: (resolver, type) =>
-      reaches(resolver, type, BLOCKING_REPOSITORIES) &&
-      !reaches(resolver, type, REACTIVE_REPOSITORIES),
+    isBlockingRepository: (resolver, type) => isBlockingRepository(context, resolver.resolve, type),
     declares: (name) => functions.some((fn) => fn.name === name),
   };
 }

@@ -89,7 +89,7 @@ export function projectContext({ projectFiles, declared, projectRoot, javaRoots 
   };
 }
 
-export function reachesType(context, resolve, text, targets) {
+export function reachesType(context, { resolve, text, targets }) {
   const name = typeName(text);
   if (name === '') {
     return false;
@@ -107,7 +107,7 @@ export function reachesType(context, resolve, text, targets) {
 }
 
 export function isRepositoryType(context, resolve, text) {
-  return reachesType(context, resolve, text, DATA_REPOSITORIES);
+  return reachesType(context, { resolve, text, targets: DATA_REPOSITORIES });
 }
 
 export function isJavaEnum(context, candidates) {
