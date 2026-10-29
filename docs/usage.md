@@ -93,7 +93,9 @@ The base ref is the first match of:
 5. `origin/main`, then `origin/master`
 
 In CI, fetch enough history to contain the merge base (for example `fetch-depth: 0`); a shallow
-clone fails with [no merge base](troubleshooting.md#no-merge-base).
+clone fails with [no merge base](troubleshooting.md#no-merge-base). When none of the refs above
+exists, the run stops with [no base could be determined](troubleshooting.md#no-base-could-be-determined),
+and a named ref the clone lacks with [base ref not found](troubleshooting.md#base-ref-not-found).
 
 **Dependencies of the base.** The base is checked out in a temporary worktree. The package
 manager's folder is the nearest folder from the project up to the repository root that holds a
@@ -211,8 +213,8 @@ next comparison upload would close the alerts it opened.
 | 1    | At least one new enforceable finding (`--all`: any violation), even if a tool also errored.                      |
 | 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide. |
 
-A tool error never counts as a pass. Most tool error messages end with a link to their entry in
-[Troubleshooting](troubleshooting.md), which gives the cause and the fix. When a run has both findings and tool errors it exits 1, and the
+A tool error never counts as a pass. [Troubleshooting](troubleshooting.md) gives the cause and the
+fix of each one; a message whose fix takes more than it says links to its entry. When a run has both findings and tool errors it exits 1, and the
 tool errors are still listed in the console and reports and recorded in `summary.json`
 (`overallStatus` stays `tool-error`). `nitpicker aggregate` applies the same rule. With `--defer-exit`, a comparison always exits 0 once it has
 written its reports; use it only for shard workers that are followed by `nitpicker aggregate`.
@@ -265,8 +267,12 @@ nitpicker changelog [<version>]
   cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits 0 when
   everything was uploaded and 2 otherwise.
 - `nitpicker changelog [<version>]`: print what changed in a version, from the `CHANGELOG.md` that
-  ships in the package. Without a version it prints the installed one; `Unreleased` prints the
-  changes not released yet. Exits 2 when the changelog has no entry for that version.
+  ships in the package, with its heading and date. Without a version it prints the installed one;
+  `Unreleased` prints the changes not released yet, and a leading `v` is accepted. Exits 2 when the
+  changelog has no entry, or an empty one, for that version.
+
+A command line nitpicker does not accept stops the run with exit 2 before anything is analyzed; see
+[invalid arguments](troubleshooting.md#invalid-arguments).
 
 ### Findings cache
 
@@ -286,8 +292,9 @@ See [typescript-single-command.md](typescript-single-command.md) for the full mo
 
 ## Configuration
 
-Optional. Put `nitpicker.config.json` at the project root. The head is measured with the head's
-config. The base is measured with the base's own `nitpicker.config.json` when it has one that
+Optional. Put `nitpicker.config.json` at the project root. An unknown key or a wrong value stops the
+run with exit 2; see [invalid configuration](troubleshooting.md#invalid-configuration). The head is
+measured with the head's config. The base is measured with the base's own `nitpicker.config.json` when it has one that
 differs, widened to what the head reads and tightened to what the head checks: the head's added
 source and test roots are added; an `exclude`, `layout.excludedGlobs`, `layout.entryPoints`,
 `disable` or `exceptions` entry the head drops is dropped; and each threshold
@@ -926,12 +933,8 @@ error with this preset; `layout` is an error too until the Java preset runs the 
 [Exceptions for rules nitpicker adds](#exceptions-for-rules-nitpicker-adds). Details:
 [java-preset.md](java-preset.md).
 
-Troubleshooting: [the Gradle build fails](troubleshooting.md#the-gradle-build-fails),
-[the Maven build fails](troubleshooting.md#the-maven-build-fails),
-[Gradle, Maven or Java is not found](troubleshooting.md#gradle-maven-or-java-is-not-found),
-[Gradle or Maven times out](troubleshooting.md#gradle-or-maven-times-out),
-[Error Prone cannot find a JDK](troubleshooting.md#error-prone-cannot-find-a-jdk) and
-[tests fail](troubleshooting.md#tests-fail).
+Troubleshooting: the failures this preset meets are listed in the
+[Java preset guide](java-preset.md#troubleshooting).
 
 ## Kotlin preset
 
@@ -964,11 +967,8 @@ Inline `@Suppress` of any detekt or ktlint rule fails (Kotlin compiler warnings 
 entry with the same shape as TypeScript's, for example
 `{ "rule": "detekt.style.ForbiddenMethodCall", "paths": ["src/main/kotlin/app/Main.kt"], "reason": "The entry point blocks on its coroutine." }`.
 
-Troubleshooting: [the Gradle build fails](troubleshooting.md#the-gradle-build-fails),
-[Gradle, Maven or Java is not found](troubleshooting.md#gradle-maven-or-java-is-not-found),
-[Gradle or Maven times out](troubleshooting.md#gradle-or-maven-times-out),
-[a project tool config is missing](troubleshooting.md#a-project-tool-config-is-missing-or-broken) and
-[tests fail](troubleshooting.md#tests-fail).
+Troubleshooting: the failures this preset meets are listed in the
+[Kotlin preset guide](kotlin-preset.md#troubleshooting).
 
 ## JavaScript preset
 
@@ -1032,10 +1032,8 @@ reports no enforceable findings for it.
 
 CRAP is measured on `.js`, `.mjs`, `.cjs`, `.ts`, `.mts` and `.cts` files, the same way as on TypeScript ones.
 
-Troubleshooting: [a peer tool is missing](troubleshooting.md#a-peer-tool-is-missing),
-[installing the base dependencies fails](troubleshooting.md#installing-the-base-dependencies-fails),
-[the test runner ran no tests](troubleshooting.md#the-test-runner-ran-no-tests) and
-[tests fail](troubleshooting.md#tests-fail).
+Troubleshooting: the failures this preset meets are listed in the
+[TypeScript and JavaScript preset guide](typescript-strict-preset.md#troubleshooting).
 
 ## Python preset
 
@@ -1119,11 +1117,8 @@ measurement): nitpicker's rcfile measures branches, skips test files and exclude
 `if TYPE_CHECKING:`, `if __name__ == "__main__":`, `@overload` and `raise NotImplementedError`.
 A branch that cannot be tested is accepted for one function with an `exceptions` entry for `changed-branch-coverage` that names the function, which keeps every other finding of the file (see [Exceptions for rules nitpicker adds](#exceptions-for-rules-nitpicker-adds)); `exclude` lifts the whole file. A change that leaves the project with no test at all fails as `python/no-tests-ran`. Details: [python-preset.md](python-preset.md).
 
-Troubleshooting: [the Python environment cannot be found](troubleshooting.md#the-python-environment-cannot-be-found),
-[a Python tool is missing](troubleshooting.md#a-python-tool-is-missing),
-[the base needs its own Python environment](troubleshooting.md#the-base-needs-its-own-python-environment),
-[a Python tool fails](troubleshooting.md#a-python-tool-fails),
-[mutmut fails](troubleshooting.md#mutmut-fails) and [tests fail](troubleshooting.md#tests-fail).
+Troubleshooting: the failures this preset meets are listed in the
+[Python preset guide](python-preset.md#troubleshooting).
 
 ## The strict preset
 
@@ -1422,7 +1417,8 @@ for `ruff` and `detekt` and a config error for `ktlint` and `ktfmt` (both read t
 `"project"` first. The files are read from the head checkout and apply to both sides of the
 comparison; they are part of the cache key, so editing one invalidates cached results. A project
 listed without its file is a tool error for `ruff`, `black`, `ktlint` and `detekt`, and the message
-says to create the file or remove `"project"` from `tools.<tool>.precedence`.
+says to create the file or remove `"project"` from `tools.<tool>.precedence`. A project folder with
+more than 1000 such files stops with [too many style files](troubleshooting.md#too-many-style-files).
 
 Without the opt-in, ruff and black still keep the project's scope: its `exclude`, `extend-exclude`
 and `force-exclude` (paths resolved against the config file) and its `target-version` or
@@ -1556,14 +1552,8 @@ an explicitly selected config. A missing config is an error, without a preset fa
 no `project`, nitpicker keeps its strict preset and automatic root tsconfig/jsconfig layering.
 Other analyzers still enforce nitpicker's rules and source/test layout.
 
-Troubleshooting: [a peer tool is missing](troubleshooting.md#a-peer-tool-is-missing),
-[dependencies are not installed](troubleshooting.md#dependencies-are-not-installed),
-[installing the base dependencies fails](troubleshooting.md#installing-the-base-dependencies-fails),
-[unsupported Yarn setup](troubleshooting.md#unsupported-yarn-setup),
-[the lint or type-check engine cannot run](troubleshooting.md#the-lint-or-type-check-engine-cannot-run),
-[the TypeScript config cannot be read](troubleshooting.md#the-typescript-config-cannot-be-read),
-[tests fail](troubleshooting.md#tests-fail) and
-[the test runner ran no tests](troubleshooting.md#the-test-runner-ran-no-tests).
+Troubleshooting: the failures this preset meets are listed in the
+[TypeScript and JavaScript preset guide](typescript-strict-preset.md#troubleshooting).
 
 ## Adopting nitpicker on existing code
 

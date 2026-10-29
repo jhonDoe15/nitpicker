@@ -1,11 +1,12 @@
 # Troubleshooting
 
 This page covers the failures that are not findings about your code: a run that exits 2, a tool that
-cannot start, a base that cannot be analyzed. Each entry gives the symptom, the cause and the fix. The
-messages nitpicker prints for these failures end with a link to the entry that explains them, so the
-usual way in is to follow that link. The link follows the version you run: an installed package links
-to this page as it was at its release tag (`blob/v<version>`), and a checkout of the repository links
-to `main`. Findings about your code are explained in [Usage](usage.md) and the preset guides instead.
+cannot start, a base that cannot be analyzed. Each entry gives the symptom, the cause and the fix.
+A message whose fix takes more than it says ends with a link to its entry; one that already says what
+to do has no link, and its entry is here to find by the message's text. The link follows the version
+you run: an installed package links to this page at its release tag (`blob/v<version>`), and a
+checkout of the repository links to `main`. Findings about your code are explained in
+[Usage](usage.md) and the preset guides instead.
 
 - [Reading a failed run](#reading-a-failed-run)
 - [Arguments, configuration and project](#arguments-configuration-and-project)
@@ -35,7 +36,8 @@ checkout and `base` is the merge base.
 
 **Fix.**
 
-1. Read the message. Most carry a link to an entry on this page that names the cause.
+1. Read the message. Many say what to do; the others carry a link to the entry on this page that
+   names the cause.
 2. When a message has no link, find its text in the entries below, or read the full text in
    `reports/quality/diff/tool-errors.json` (the console cuts long messages at about 300 characters).
    `summary.json` records `overallStatus: "tool-error"`.
@@ -50,7 +52,8 @@ checkout and `base` is the merge base.
 ### Invalid arguments
 
 **Symptom.** `nitpicker failed: Unknown argument: --foo`, `--base requires a value`,
-`--all cannot be combined with --fix`, `--shard-count and --shard-index must be provided together`,
+`--fix cannot be combined with --all`, `--all cannot be combined with --base`,
+`--shard-count and --shard-index must be provided together`,
 `NITPICKER_MAX_PARALLEL must be a positive integer`, `Unknown cache command`, and similar. Exit code 2.
 
 **Cause.** The command line or an environment variable nitpicker reads has a form it does not accept.
@@ -83,15 +86,23 @@ name a branch such as `origin/main`.
 
 ### Not a Git repository
 
-**Symptom.** `<directory> is not inside a Git repository (or git is not installed)`.
+**Symptom.** `<directory> is not inside a Git repository that git can read (or git is not installed)`,
+followed by `git said:` and git's own message when git printed one.
 
 **Cause.** nitpicker compares your change with its merge base, so the project must be inside a Git
-checkout, and `git` must be on the `PATH`. The most common reasons are a source archive without
-`.git`, a container build that copies the files but not the history, and a CI job that runs before the
-checkout step.
+checkout that git agrees to read, and `git` must be on the `PATH`. The most common reasons are a
+source archive without `.git`, a container build that copies the files but not the history, a CI job
+that runs before the checkout step, and a checkout owned by another user, which git refuses to read
+(`detected dubious ownership in repository`).
 
-**Fix.** Run nitpicker inside a checkout, and install Git where it runs. In a container, mount or copy
-the `.git` directory. Every run needs the repository, `--all` included.
+**Fix.**
+
+- Run nitpicker inside a checkout, and install Git where it runs. Every run needs the repository,
+  `--all` included.
+- In a container, mount or copy the `.git` directory.
+- For `dubious ownership`, the checkout belongs to another user, as in containers and CI runners that
+  mount the workspace. Mark it as safe for the user that runs nitpicker:
+  `git config --global --add safe.directory <path>`, with the path git prints.
 
 ### No project found
 
@@ -115,7 +126,8 @@ on, so the change would be compared with itself`.
 
 **Cause.** nitpicker takes the first of `--base`, the pull request target branch from CI
 (`CHANGE_TARGET`, `GITHUB_BASE_REF`, `CI_MERGE_REQUEST_TARGET_BRANCH_NAME`), `base` in the config, the
-remote's default branch, then `origin/main` and `origin/master`. None exists in this clone, for example
+default branch of the `upstream` remote when there is one (else of `origin`), then `origin/main` and
+`origin/master`. None exists in this clone, for example
 a fresh `git init` with no remote, or a CI checkout that fetched one branch only. A configured `base`
 that equals `HEAD`, the branch you are on, or its commit is refused.
 
@@ -172,13 +184,13 @@ finish.` Exit code 2. Or `Could not take the run lock <path>`.
 
 **Cause.** Only one run can work in a project at a time, because the runs write the same report folder
 and share temporary state. The first run writes its process id to
-`.git/nitpicker-run-<hash>.lock` (the path `git rev-parse --git-path` reports, so each Git worktree has
-its own lock). A second run that finds the lock held by a live process exits at once. A lock whose
+`.git/nitpicker-run-<hash>.lock`, or `.git/worktrees/<name>/nitpicker-run-<hash>.lock` in a linked
+worktree (the path `git rev-parse --git-path` reports, so each worktree has its own lock). A second run that finds the lock held by a live process exits at once. A lock whose
 process is gone is taken over automatically, so a crashed run does not block the next one.
 
 **Fix.** Wait for the other run to finish, then run again. If no nitpicker run exists, the process id in
 the lock now belongs to an unrelated process (this happens in containers, where process ids restart),
-so delete the lock file in the repository's `.git` directory (`nitpicker-run-*.lock`) and run again.
+so delete the lock file (`nitpicker-run-*.lock` in that folder) and run again.
 Separate checkouts and separate worktrees do not block each other.
 
 ### An analyzer times out
@@ -206,7 +218,9 @@ test suite that waits on the network, or a project larger than the budget allows
 ### An analyzer crashes
 
 **Symptom.** `<analyzer> crashed with exit 1: ...`, `crashed with signal SIGKILL`, `<analyzer> did not
-produce valid JSON`, `<analyzer> exceeded the analyzer output limit`, or `Analyzer scheduler crashed`.
+produce valid JSON`, `<analyzer> exceeded the analyzer output limit`, `<analyzer> emitted a finding for
+unexpected tool <tool>`, `Analyzer scheduler crashed with exit 1: ...`, `Analyzer scheduler returned
+invalid JSON`, or `Hygiene check failed: ...` or `History check failed: ...`.
 
 **Cause.** Analyzers run as child processes that report findings as JSON. This message means the
 process died, was killed (an out-of-memory kill shows as `SIGKILL`), printed something that is not a
@@ -360,8 +374,9 @@ quietly. It is a finding, not a tool error, so the exit code is 1.
 **Symptom.** A tool error with the rule `tests-failed` (or, for the analyzers that depend on the tests,
 `tests-failed-skipped`) on `head`, listing the failing tests; the analyzers that need the tests
 (coverage, CRAP, console output, mutation testing) are skipped (`skipped (tests failed)`). Exit code 2
-when there is no new finding. On Java and Kotlin the message reads `Tests fail in <project>; nitpicker needs a
-passing test suite for coverage and mutation testing:` followed by the failing tests.
+when there is no new finding. On Java and Kotlin the message reads `Tests fail in the head snapshot
+(<project>); nitpicker needs a passing test suite for coverage and mutation testing:` followed by the
+failing tests.
 
 **Cause.** Coverage, CRAP and mutation testing need the project's own test suite to pass, because
 their results come from running it. The suite failed on your checkout (a failing test, a test file
@@ -374,8 +389,9 @@ Python, the project's test runner under `coverage run`; for Java and Kotlin, `./
 
 ### Tests fail on the base
 
-**Symptom.** The same tool error as above, labeled `base`, or a message such as `mutation skipped: the
-base commit fails its own tests, so its mutants cannot be compared`.
+**Symptom.** The same tool error as above, labeled `base` (on Java and Kotlin, `Tests fail in the base
+snapshot (<project>)`), or a message such as `mutation skipped: the base commit fails its own tests,
+so its mutants cannot be compared`.
 
 **Cause.** The comparison needs a passing baseline: with the base's tests failing there is no coverage or
 mutation result to compare your change with. The merge base of your branch is already broken, for
@@ -458,9 +474,12 @@ files fall in, and no separate `hookTimeoutMs` (or the same value), or run the t
 ### A peer tool is missing
 
 **Symptom.** `Required tool vitest is not installed from <dir>. Install vitest ^4.1.11 || ^5.0.0 as a
-dev dependency of the project.`; the same for `typescript`, `jest`, `mocha`, `@vitest/coverage-v8` or
-`@types/node`; `vite is not installed at or above <dir>`; or `The type check reads source files with
-the project's typescript package, which must be 5.7 to 6.x`.
+dev dependency of the project.`; the same for `jest`, `mocha`, `@vitest/coverage-v8`, `@types/node` or
+`typescript` (`Install typescript >=5.7 <7`); `vite is not installed at or above <dir>` or
+`vite could not be resolved from the project`;
+`The type check reads source files with the project's typescript package, which must be 5.7 to 6.x`;
+or `Cannot find package 'vitest' imported from <file>` (Node's `ERR_MODULE_NOT_FOUND`) when
+`node_modules` exists but does not have the package.
 
 **Cause.** nitpicker ships its own ESLint, Prettier, dependency-cruiser, knip, jscpd and Stryker, but it
 uses the project's test runner, coverage provider and TypeScript so that the results match the
@@ -517,8 +536,8 @@ Corepack, so `corepack enable` needs Corepack installed first.
 
 **Symptom.** `Dependencies are not installed: .../node_modules is missing. Yarn Plug'n'Play is not
 supported: set `nodeLinker: node-modules` in .yarnrc.yml`, `the install created no node_modules folder`,
-or `the base's .yarnrc.yml lists Yarn plugins, which are JavaScript files that Yarn runs during an
-install`.
+or `Failed to install merge-base dependencies: the base's .yarnrc.yml lists Yarn plugins, which are
+JavaScript files that Yarn runs during an install, and nitpicker does not run repository code there`.
 
 **Cause.** nitpicker reads and runs tools from `node_modules`, so a Yarn Berry project that uses
 Plug'n'Play (no `node_modules`) cannot be analyzed. A base whose `.yarnrc.yml` lists `plugins` is
@@ -543,8 +562,12 @@ the project.
 
 **Fix.** Reinstall nitpicker's dependencies on the machine that runs it (and without
 `--omit=optional`). Or choose the other engine in `nitpicker.config.json`:
-`{"tools": {"eslint": {"engine": "eslint"}}}` and `{"tools": {"typescript": {"engine": "project"}}}`. Switching engines reports the differences between
-them as new once; see [Lint engine](usage.md#lint-engine).
+
+- for lint, `{"tools": {"eslint": {"engine": "eslint"}}}`;
+- for the type check, `{"tools": {"typescript": {"engine": "project"}}}`.
+
+Switching engines reports the differences between them as new once; see
+[Lint engine](usage.md#lint-engine).
 
 ### The TypeScript config cannot be read
 
@@ -570,15 +593,38 @@ supports Mocha up to the version the message names.
 **Fix.** Use a Mocha version it supports, or turn mutation testing off for the project with
 `"disable": ["mutation"]`.
 
+### A TypeScript or JavaScript tool fails
+
+**Symptom.** A tool error of a TypeScript or JavaScript analyzer that starts with
+`Quality area adapter failed:`, `Static quality adapter failed:`, `ESLint differential adapter
+failed:` or `Entry-point differential adapter failed:`, such as `prettier exited with 2: ...`,
+`ESLint exited with 2: ...`, `vitest exited 1 without naming a failing test` or `jest exited 1
+without a readable test report: ...`. The tools are ESLint, Prettier, `tsc`, dependency-cruiser,
+knip, jscpd, Stryker and the test runner.
+
+**Cause.** A tool exited with a status that is neither success nor "findings found", so there is no
+usable result. Typical reasons are a project config the tool rejects (a broken ESLint, Prettier,
+Jest or Vitest config, or a `tsconfig.json` with an unknown option), a file the tool cannot parse,
+a test runner that crashed before it wrote its report (a setup file that throws, a worker that ran
+out of memory), or a tool version that does not match the config.
+
+**Fix.** The message ends with the tool's own output: run the same tool in the project
+(`npx prettier --check .`, `npx eslint .`, `npx tsc --noEmit`, the project's test command with
+coverage) and fix what it reports. When only nitpicker fails, rerun the analyzer alone with
+`--analyzer <name>` to see its full output in `reports/quality/diff/tool-errors.json`. When the
+tool timed out, see [An analyzer times out](#an-analyzer-times-out).
+
 ## Python
 
 ### The Python environment cannot be found
 
 **Symptom.** `uv has no environment at <dir>/.venv: run \`uv sync\` first`, `poetry has no environment for
 <dir>: run \`poetry install\` first`, `pipenv has no virtualenv for <dir>`, `hatch has no environment
-for <dir>`, `conda has no environment named <name>`, `No Python environment at <dir> (<dir>/bin does
-not exist): create it, or set "python.environment"`, or `poetry is not installed`. The tool error has
-the rule `environment-failed`.
+for <dir>`, `hatch has not created its environment at <dir>`, `conda has no environment named <name>`,
+`No conda environment at <dir>`, `No Python environment at <dir> (<dir>/bin does not exist): create it,
+or set "python.environment"`, `No <kind> environment found for <dir>`, `poetry is not installed, so its
+environment for <dir> cannot be found`, or `poetry could not run for <dir>` (or pipenv, hatch or conda). The tool error has the
+rule `environment-failed`.
 
 **Cause.** The Python tools run inside the environment your project already has, detected from its
 files in a fixed order (`python.environment` first, then `uv.lock`, `poetry.lock`, a `Pipfile`, hatch,
@@ -595,7 +641,10 @@ Or point nitpicker at an environment with `python.environment` in `nitpicker.con
 
 **Symptom.** `ruff was not found in the uv environment: install it there (for example as a dev
 dependency), or set "python.environment" to the environment that has it`, and the same for `coverage`,
-`mypy`, `pyright`, `pytest`, `mutmut` or `black`.
+`mypy`, `pyright`, `pytest`, `mutmut` or `black`. For the test runner:
+`pytest is used by this project but cannot be imported in the <name> environment`,
+`<runner> runs the tests of this project but is not installed in the <name> environment`, or
+`the tests run with Django's manage.py test, but there is no manage.py at <path>`.
 
 **Cause.** The environment was found, but a tool nitpicker needs is not in it and not on the `PATH`.
 `coverage`, the type checker and the test runner must be in the project's environment because they
@@ -603,7 +652,9 @@ import its code; `mutmut` and `pytest` are needed for mutation testing.
 
 **Fix.** Add the tool as a dev dependency and install (`uv add --dev coverage`, `poetry add --group dev
 coverage`, `pip install coverage`). Or set `python.environment` to an environment that has it. If you
-do not want mutation testing, `"disable": ["mutation"]` removes the need for `mutmut`.
+do not want mutation testing, `"disable": ["mutation"]` removes the need for `mutmut`. When the runner
+nitpicker detected is not the one the tests use, set `python.testRunner` (`pytest`, `unittest`,
+`django` or `nose2`); a Django project needs its `manage.py` at the project root or one folder below.
 
 ### The base needs its own Python environment
 

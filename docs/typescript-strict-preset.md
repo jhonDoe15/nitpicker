@@ -1705,6 +1705,9 @@ finding. The ones the TypeScript, JavaScript and React presets meet:
   [the TypeScript config cannot be read](troubleshooting.md#the-typescript-config-cannot-be-read) and
   [the base does not type check](troubleshooting.md#the-base-does-not-type-check).
 - [Mutation testing is skipped for this runner](troubleshooting.md#mutation-testing-is-skipped-for-this-runner).
+- [A TypeScript or JavaScript tool fails](troubleshooting.md#a-typescript-or-javascript-tool-fails):
+  ESLint, Prettier, `tsc`, dependency-cruiser, knip, jscpd, Stryker or the test runner exits with an
+  error.
 - [A project tool config is missing or broken](troubleshooting.md#a-project-tool-config-is-missing-or-broken)
   for Prettier.
 - [Windows and WSL](troubleshooting.md#windows-and-wsl): the base install needs WSL.
