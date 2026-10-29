@@ -4,6 +4,7 @@ import { pathInside, sourceFilesUnder } from '../../review-rules/java-sources.mj
 import { swallowedHandlerFindings } from './handlers/swallowed-handlers.mjs';
 import { enumPredicateFindings } from './main/enum-predicates.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
+import { loadEffectFindings } from './main/load-effects.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
 import { unusedOptionFindings } from './main/unused-options.mjs';
 import { readKotlinFacts } from './kotlin-facts.mjs';
@@ -82,6 +83,7 @@ export function readKotlinReviewFindings(context) {
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
     ...singularPluralFindings(own, { finding }),
     ...swallowedHandlerFindings(own, { finding, declaredIn: projectFiles }),
+    ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...unusedOptionFindings(own, {
       finding,
       serialization: manifest.kotlinSerialization === true,
