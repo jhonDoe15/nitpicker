@@ -1,6 +1,6 @@
 # Java and Kotlin: Error Prone and NullAway checks
 
-The Error Prone checks and NullAway that the Java and Kotlin presets compile Java sources with, with Gradle and Maven. This page lists 596 rules. [All pages](README.md).
+The Error Prone checks and NullAway that the Java and Kotlin presets compile Java sources with: Java with Gradle or Maven, Kotlin with Gradle. This page lists 596 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md#error-prone-and-nullaway](../java-preset.md#error-prone-and-nullaway).
 

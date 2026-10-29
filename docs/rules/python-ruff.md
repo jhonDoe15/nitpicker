@@ -1,6 +1,6 @@
 # Python: ruff rules
 
-The ruff rules in nitpicker's own ruff config, by rule code. This page lists 363 rules. [All pages](README.md).
+The ruff rules in nitpicker's own ruff config, by rule code. This page lists 364 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -5287,6 +5287,26 @@ Detects duplicate elements in `__all__` definitions.
 
 - **Exception:** If this is intended, add `{"rule":"RUF068","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 - **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/duplicate-entry-in-dunder-all/)
+
+<a id="ruff-ruf071"></a>
+
+### `ruff/RUF071`
+
+Checks for uses of `os.path.commonprefix`.
+
+- **Why it is on:** `os.path.commonprefix` performs a character-by-character string comparison rather than comparing path components. This leads to incorrect results when paths share a common string prefix that is not a valid path component. `os.path.commonpath` correctly compares path components. Selected in the ruff config of the Python preset, with the Ruff-specific rules rules (`os-path-commonprefix`).
+- **Allowed form:** See the tool's documentation: [Ruff rule documentation](https://docs.astral.sh/ruff/rules/os-path-commonprefix/).
+- **Example of the allowed form:**
+
+  ```python
+  import os
+
+  # Returns "/usr" — correct common path
+  os.path.commonpath(["/usr/lib", "/usr/local/lib"])
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"RUF071","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/os-path-commonprefix/)
 
 <a id="ruff-ruf101"></a>
 

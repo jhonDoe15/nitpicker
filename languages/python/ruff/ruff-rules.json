@@ -2466,6 +2466,15 @@
       "useInstead": "__all__ = [\n    \"DatabaseConnection\",\n    \"Product\",\n    \"User\",\n]"
     },
     {
+      "code": "RUF071",
+      "name": "os-path-commonprefix",
+      "linter": "Ruff-specific rules",
+      "summary": "`os.path.commonprefix()` compares strings character-by-character",
+      "whatItDoes": "Checks for uses of `os.path.commonprefix`.",
+      "why": "`os.path.commonprefix` performs a character-by-character string comparison rather than comparing path components. This leads to incorrect results when paths share a common string prefix that is not a valid path component. `os.path.commonpath` correctly compares path components.",
+      "useInstead": "import os\n\n# Returns \"/usr\" — correct common path\nos.path.commonpath([\"/usr/lib\", \"/usr/local/lib\"])"
+    },
+    {
       "code": "RUF101",
       "name": "redirected-noqa",
       "linter": "Ruff-specific rules",

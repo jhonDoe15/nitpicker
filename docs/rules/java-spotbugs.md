@@ -1,6 +1,6 @@
 # Java and Kotlin: SpotBugs rules
 
-The SpotBugs bug patterns that the Java and Kotlin presets run on compiled classes, with Gradle and Maven. This page lists 504 rules. [All pages](README.md).
+The SpotBugs bug patterns that the Java and Kotlin presets run on compiled classes: Java with Gradle or Maven, Kotlin with Gradle. This page lists 504 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 

@@ -50,7 +50,10 @@ function explained({ explanation = '' }) {
 function selectedRuffRules(rules) {
   return rules
     .filter(
-      (rule) => isStableRule(rule) && isSelected(rule.code) && !RUFF_IGNORE.includes(rule.code),
+      (rule) =>
+        (isStableRule(rule) || RUFF_SELECT.includes(rule.code)) &&
+        isSelected(rule.code) &&
+        !RUFF_IGNORE.includes(rule.code),
     )
     .map((rule) => ({
       code: rule.code,
@@ -92,4 +95,19 @@ export function installedRuffRules(ruff) {
   return result.status === 0 && version !== undefined
     ? { version, rules: selectedRuffRules(JSON.parse(result.stdout)) }
     : undefined;
+}
+
+/**
+ * `snapshot` with the rules of `previous` that the config selects by code and that its ruff does
+ * not have yet: a rule of a newer ruff the config already names keeps its entry.
+ */
+export function withSelectedNewerRules(snapshot, previous) {
+  const codes = new Set(snapshot.rules.map(({ code }) => code));
+  const newer = previous.rules.filter(({ code }) => RUFF_SELECT.includes(code) && !codes.has(code));
+  return {
+    ...snapshot,
+    rules: [...snapshot.rules, ...newer].toSorted((left, right) =>
+      left.code.localeCompare(right.code),
+    ),
+  };
 }
