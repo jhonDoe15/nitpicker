@@ -460,7 +460,7 @@ skipped with a note on stderr.
 | `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                                                                                                                      |
 | `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                                      |
 | `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                              |
-| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                                                                                          |
+| `unused-option` (tool `structure`)       | `review-rules/main/unused-options/`         | a defaulted parameter that no call sets, of a public top-level, `object` or companion function or a private or internal function or constructor                                                                                                                   |
 | `ClassLoadEffect`                        | `review-rules/main/load-effects.mjs`        | a call with an external effect (database, network, files, processes, threads and pools, JVM-wide settings) that runs while a file, `object`, companion object or enum class loads                                                                                 |
 
 Limits, all chosen to flag less rather than guess:
@@ -493,7 +493,8 @@ Limits, all chosen to flag less rather than guess:
   `main`, `valueOf`, `fromString`, `of`, `from`, `invoke` and `copy`; copies such as `copyOf`,
   `unmodifiable*`, `synchronized*` and `checked*`; and functions in or below a class with a Spring
   stereotype (`@Component`, `@Service`, `@Repository`, `@Controller`, `@RestController`, `@ControllerAdvice`,
-  `@Configuration`, `@SpringBootApplication`).
+  `@RestControllerAdvice`, `@Configuration`, `@SpringBootApplication`, `@AutoConfiguration`,
+  `@TestConfiguration`), resolved through the imports or written fully qualified, as in the Spring rules.
 - Singular and plural: both members must have the same element type (the plural a list, set,
   collection or array of it). Only the primary-constructor properties of a `data class` and the
   properties of a `@ConfigurationProperties` class are inspected.
@@ -506,15 +507,50 @@ Limits, all chosen to flag less rather than guess:
   body of a property getter, or the condition of an `if` that has an `else` and is itself one of those.
   Backticked constants (``Status.`in` ``) are matched by their name. A test in a property initializer is
   named after the property (`Holder.isOpen`), as it is in a getter.
-- Unused option: a defaulted parameter of a private or internal function that is not `override`, `open`,
-  `abstract`, `operator`, `infix` or `main`, has no annotation and is not declared in an interface, or of the
-  constructor of a final class without annotations. It is flagged when no call (in main or tests, matched by
-  name, through an import alias or a type alias) sets the parameter by name or position, no callable
-  reference exists and no Java file mentions the name. A call that cannot match the signature is ignored, a
-  call with a spread sets every parameter, and a `copy(name = ...)` call sets that parameter of a data class.
-  Data classes are skipped when the module has `jackson-module-kotlin`, `kotlinx-serialization` or
-  `moshi-kotlin` on its main compile or runtime classpath (`runtimeOnly` counts), since a library may set the defaults; a library that does so
-  without that jar (reflection in a framework) is not seen.
+- Unused option: a defaulted parameter that no call sets by name or position (matched by name and through
+  an import alias). A call that cannot match the signature is ignored, a call with a spread sets every
+  parameter, and a `copy(name = ...)` call sets that parameter of a data class. Functions that are
+  `override`, `open`, `abstract`, `operator`, `infix`, `main` or annotated are never judged, nor are names
+  with a callable reference or that a Java file mentions. Two kinds of declarations are judged:
+  - Public functions at the top level, in a top-level `object` or in the companion object of a top-level
+    class, interface or enum class, the Kotlin form of TypeScript's exported functions. Calls in
+    the main sources of every module of the build count, and so do the module's own tests when the module
+    is published (a Gradle `publishing` publication, as for `test-only-export`); callable references and
+    Java sources of every module are checked. An `object` or companion of a Spring-managed class is left
+    alone; the annotation is resolved through the imports as in the Spring rules (`@Component`, `@Service`,
+    `@Repository`, `@Controller`, `@RestController`, `@ControllerAdvice`, `@RestControllerAdvice`,
+    `@Configuration`, `@SpringBootApplication`, `@AutoConfiguration`, `@TestConfiguration`, also written
+    fully qualified), and the forwarding-wrapper rule uses the same check. Public member functions and
+    public constructors are not judged: frameworks build and call them by reflection (Jackson,
+    configuration binding, injection), out of sight of the facts, and TypeScript and Python do not judge
+    them either.
+  - Private and internal functions (not in an interface) and the constructors of final classes without
+    annotations, private or internal. All their callers are in the module, so calls in its main sources and
+    tests count, a type alias of the class counts as its name, and only the module's own facts and Java
+    sources are read. Data classes are skipped when the module has `jackson-module-kotlin`,
+    `kotlinx-serialization` or `moshi-kotlin` on its main compile or runtime classpath (`runtimeOnly`
+    counts), since a library may set the defaults; a library that does so without that jar (reflection in
+    a framework) is not seen.
+
+  Callers the facts do not see switch off the judging of public top-level, `object` and companion
+  functions only in the modules they can call. Each such place, read from the Gradle build, reaches the
+  projects on its main compile and runtime classpaths (directly or through other projects; test
+  dependencies do not count): an Android project (any `com.android.*` plugin) or a Multiplatform project; a
+  Kotlin or Java project outside the analysis root; a source set other than `main` and `test` that holds
+  `.kt`, `.java`, `.groovy` or `.scala` files, and Groovy or Scala files in `main` or `test` (it also
+  reaches its own project); an included build whose build files or version catalogs name a project of this
+  build as a whole `group:name` (also `module = "group:name"`) or as `group` and `name` arguments (an
+  included build that names none, such as a plugin build, reaches nothing); and a file the facts step
+  skipped, which reaches its module and that module's dependencies. Test code (a source set whose name,
+  split at capitals, `-` and `_`, has the word `it` or a word starting with `test`, the rule for the test
+  sources nitpicker lints, or the word `jmh`, `benchmark` or `gatling`; a JVM test suite; a source set a
+  `Test` task runs; a skipped test file) only counts for the public declarations of its own module when that module is published, since
+  tests count nowhere else. Internal functions and constructors are withheld when their own module has
+  such a place (a skipped file, or a source set or Groovy or Scala files of the project, test code
+  included), since an `internal` declaration is visible there; private ones are not affected. One
+  report-only note (`callers-not-analyzed`) names these places, anchored on the withheld function that
+  comes first by path and line (plain character order).
+
 - Class-load effects: load time is a top-level property initializer (it runs when the file's facade
   class loads), the property initializers and `init` blocks of an `object` or companion object, an
   enum entry's arguments and body and the enum class's own properties, `init` blocks and

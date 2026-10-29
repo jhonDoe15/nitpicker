@@ -3,7 +3,7 @@ import { exceptionText } from '../../../../shared/rules/exceptions.mjs';
 import { nextOccurrence } from '../../../../shared/rules/finding-helpers.mjs';
 import {
   UNUSED_API_RULE_IDS,
-  UNUSED_API_SCOPES,
+  UNUSED_OPTION_SCOPES,
 } from '../../../../shared/unused-api/unused-api-policy.mjs';
 
 const RULES = {
@@ -42,7 +42,8 @@ function memberFinding({ target, member, declaration, context }) {
   const file = context.owned.get(declaration.getSourceFile().fileName);
   const symbol = `${target.name}.${member}`;
   const occurrence = nextOccurrence(context.occurrences, `${rule}\0${file.path}\0${symbol}`);
-  const scope = target.package?.published ? UNUSED_API_SCOPES.published : UNUSED_API_SCOPES.private;
+  const scopes = UNUSED_OPTION_SCOPES.typescript;
+  const scope = target.package?.published ? scopes.published : scopes.private;
   return {
     tool: context.analyzerName,
     rule,
