@@ -135,3 +135,34 @@ def called_helper(session: Session):
             session.commit()
 
     finish()
+
+
+def either(session: Session, fresh: bool):
+    try:
+        if fresh:
+            session.write(8)
+        else:
+            session.begin()
+    finally:
+        session.commit()
+
+
+def early(session: Session, fresh: bool):
+    try:
+        if fresh:
+            session.write(9)
+        session.begin()
+    finally:
+        session.commit()
+
+
+def chosen(session: Session, mode: str, flag: bool):
+    match mode:
+        case "a":
+            session.write(10)
+        case _ if flag:
+            session.write(session.write(11) if flag else session.close())
+    if flag:
+        pass
+    elif mode:
+        session.close()

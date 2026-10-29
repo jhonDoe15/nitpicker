@@ -5,6 +5,7 @@ from design.calls.cleanup import enter_facts, exit_facts, paired_exit_facts
 from design.calls.exitstack import stack_facts
 from design.calls.mutations import mutation_of
 from design.support.astutil import CLOSURES, body_nodes, call_line
+from design.support.branches import branch_of
 
 TRY_TYPES = tuple(t for t in (ast.Try, getattr(ast, "TryStar", None)) if t is not None)
 WITH_TYPES = (ast.With, ast.AsyncWith)
@@ -105,13 +106,19 @@ def call_fact(scope, call, cleanup):
     return fact
 
 
-def event_facts(scope, event):
+def node_facts(scope, event):
     kind, node, in_finally = event
     if kind in ("call", "access"):
         fact = call_fact(scope, node, in_finally is True)
         found = [] if fact is None else [fact]
         return found + (stack_facts(scope, node) if kind == "call" else [])
     return enter_facts(scope, node) if kind == "enter" else exit_facts(scope, node)
+
+
+def event_facts(scope, event):
+    branch = list(branch_of(scope.function.node, event[1]))
+    facts = node_facts(scope, event)
+    return [{**fact, "branch": branch} for fact in facts] if branch else facts
 
 
 def without_cleanup(facts):

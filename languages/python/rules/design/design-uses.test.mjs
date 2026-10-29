@@ -182,7 +182,7 @@ describe.skipIf(!pythonUsable())('the Python design producer reads', () => {
   it('records property reads as accessor calls', () => {
     expect(byId.callable(`${ACCOUNTS}#parameter_value`).calls).toEqual([
       { target: `${CUSTOMER}.active`, line: 39, receiver: 'customer' },
-      { target: `${CUSTOMER}.greet`, line: 40, receiver: 'customer' },
+      { target: `${CUSTOMER}.greet`, line: 40, receiver: 'customer', branch: ['0:then'] },
     ]);
   });
 });
