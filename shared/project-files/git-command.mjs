@@ -11,7 +11,8 @@ const SCRUBBED_VARIABLES = [
 ];
 const NEUTRAL_ENVIRONMENT = [...SCRUBBED_VARIABLES.flatMap((name) => ['-u', name]), 'LC_ALL=C'];
 const NEUTRAL_CONFIGURATION = ['-c', 'core.excludesFile=', '-c', 'safe.directory=*'];
-const NOT_A_REPOSITORY = /not a git repository/iu;
+const NOT_A_REPOSITORY =
+  /not a git repository|gitfile does not point to a valid repository|invalid gitfile format/iu;
 const SUCCESS = 0;
 
 function spawnGit(directory, args) {
