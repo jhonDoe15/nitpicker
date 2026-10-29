@@ -43,6 +43,15 @@ Before you change code other modules use, or fix a bug, read
   `checkNotNull(value) { "why" }` when null is a bug; `x?.let { ... }`, not `if (x == null) null else ...`.
 - Coroutines: no `GlobalScope`, no `runBlocking` (a call, however it is imported). Make the caller `suspend`
   (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`; a test uses `runTest`.
+- Data access: give every helper that loads or writes one item a sibling that takes the whole
+  list (`loadAll(ids)` next to `load(id)`), so a caller looping over items has a batch form to
+  call; the gate follows helpers to the repository or client they reach.
+  When a loop over a query result reads a lazy relationship, fetch it in that query
+  (`@EntityGraph(attributePaths = ["customer"])` or `JOIN FETCH`) or select a projection.
+  Keep HTTP and other remote calls out of `@Transactional` functions and `withLock { }` blocks:
+  call before the transaction or after it commits, or write an outbox row.
+  Under `@Retryable` or a retry loop, give writes an idempotency key, a deduplication id or an
+  upsert. Never save and publish in one function: write an outbox row and let a relay publish it.
 - Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
   A class with `var`s is not flagged, nor a JPA or Spring Data entity; the project adds other
   annotations to `UseDataClass`'s `excludeAnnotatedClasses` in its `detekt.yml`.

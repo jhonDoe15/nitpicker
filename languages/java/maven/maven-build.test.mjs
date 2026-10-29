@@ -56,6 +56,7 @@ describe('moduleManifest', () => {
       resourceRoots: ['src/main/resources'],
       spring: true,
       springArch: true,
+      effects: true,
       guava: false,
       testGuava: false,
       testAwaitility: false,

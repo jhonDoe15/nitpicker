@@ -17,6 +17,7 @@ import { readCommentFindings } from '../comments/java-comments.mjs';
 import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readGuardFindings } from '../../guards/index.mjs';
 import { readSpringArchFindings } from '../spring-arch/spring-arch.mjs';
+import { withEffectsFindings } from '../effects/effects-findings.mjs';
 import { exceptionMatcher } from '../../../../shared/rules/exceptions.mjs';
 import { inModule } from '../../builds/module-path.mjs';
 import { javaMethodText, readJavaStructureFindings } from '../metrics/java-structure.mjs';
@@ -143,7 +144,7 @@ function testRootsOf(manifest) {
 function readModuleFindings(context, crapLimit) {
   const { reportRoot, projectRoot, kotlin, jacoco } = context;
   const testRoots = testRootsOf(context.manifest);
-  return [
+  return withEffectsFindings(context, [
     ...sarifFindings(context),
     ...readErrorProneFindings(context),
     ...formatFindings(context),
@@ -169,7 +170,7 @@ function readModuleFindings(context, crapLimit) {
       manifest: context.manifest,
       modulePath: context.testTimes.modulePath,
     }),
-  ];
+  ]);
 }
 
 function withModuleIdentity(findings, module) {

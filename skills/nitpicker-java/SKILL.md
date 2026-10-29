@@ -72,6 +72,15 @@ Before you change code other modules use, or fix a bug, read
   becomes a constant.
 - Parameters and loops: never reassign a parameter or a catch variable; copy to a local. Use
   for-each where the index is unused. Remove unused fields, locals, private methods, assignments.
+- Data access: give every helper that loads or writes one item a sibling that takes the whole
+  list (`loadAll(ids)` next to `load(id)`), so a caller looping over items has a batch form to
+  call; the gate follows helpers to the repository or client they reach.
+  When a loop over a query result reads a lazy relationship, fetch it in that query
+  (`@EntityGraph(attributePaths = "customer")` or `JOIN FETCH`) or select a projection.
+  Keep HTTP and other remote calls out of `@Transactional` methods and `synchronized` or locked
+  sections: call before the transaction or after it commits, or write an outbox row.
+  Under `@Retryable` or a retry loop, give writes an idempotency key, a deduplication id or an
+  upsert. Never save and publish in one method: write an outbox row and let a relay publish it.
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.

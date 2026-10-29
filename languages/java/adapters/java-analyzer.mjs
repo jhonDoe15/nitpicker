@@ -15,6 +15,7 @@ const ENTRY_FILES = [
 ];
 const ARCHUNIT_DIRECTORY = 'languages/java/gradle/archunit';
 const KOTLIN_PSI_DIRECTORY = 'languages/java/gradle/kotlin-psi';
+const EFFECTS_DIRECTORY = 'languages/java/gradle/effects';
 const RESOURCE_FILES = [
   'languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs',
   'languages/java/gradle/nitpicker.init.gradle',
@@ -36,6 +37,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/tasks/jdeps-task.gradle',
   'languages/java/gradle/tasks/lint-tasks.gradle',
   'languages/java/gradle/tasks/structure-task.gradle',
+  'languages/java/gradle/tasks/analysis/effects-task.gradle',
   'languages/java/gradle/tasks/pit-task.gradle',
   'languages/java/gradle/tasks/kotlin/kotlin-tasks.gradle',
   'languages/java/builds/rulesets/write-rules.mjs',
@@ -67,12 +69,14 @@ function javaSources(directory, entries) {
 function configurationContents() {
   const kotlinPsi = readdirSync(path.join(packageRoot, KOTLIN_PSI_DIRECTORY), { recursive: true });
   const archunit = readdirSync(path.join(packageRoot, ARCHUNIT_DIRECTORY), { recursive: true });
+  const effects = readdirSync(path.join(packageRoot, EFFECTS_DIRECTORY), { recursive: true });
   return importClosure(
     [
       ...ENTRY_FILES,
       ...RESOURCE_FILES,
       ...javaSources(KOTLIN_PSI_DIRECTORY, kotlinPsi),
       ...javaSources(ARCHUNIT_DIRECTORY, archunit),
+      ...javaSources(EFFECTS_DIRECTORY, effects),
     ],
     packageRoot,
   );

@@ -3,7 +3,7 @@ import path from 'node:path';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { hash, nextOccurrence } from '../../../../../shared/rules/finding-helpers.mjs';
 import { braceDepths, lineOf, lineText, scanKotlinSource } from './kotlin-source.mjs';
-import { CALL_MESSAGES, ioInLoops, logTemplates, shellCommands } from './rules/calls.mjs';
+import { CALL_MESSAGES, logTemplates, shellCommands } from './rules/calls.mjs';
 import { CATCH_MESSAGES, booleanFlags, catchOnlyLogs } from './rules/catches.mjs';
 import { DECLARATION_MESSAGES, genericNames, mutableModuleState } from './rules/declarations.mjs';
 import {
@@ -49,7 +49,6 @@ const MAIN_RULES = [
   genericNames,
   logTemplates,
   shellCommands,
-  ioInLoops,
   catchOnlyLogs,
   booleanFlags,
   hardcodedSecrets,

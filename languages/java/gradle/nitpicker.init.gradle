@@ -18,6 +18,7 @@ def pinned = [
     kotlinCompiler  : '2.4.21',
     errorProne      : '2.50.0',
     nullAway        : '0.14.2',
+    asm             : '9.9',
 ]
 
 // BEGIN SH5 structure metrics
@@ -928,6 +929,7 @@ allprojects {
                     resourceRoots  : resourceRoots,
                     spring         : usesSpring(),
                     springArch     : runsArchRules(),
+                    effects        : true,
                     guava          : hasGuava(sourceSets.main),
                     testGuava      : hasGuava(sourceSets.test),
                     testAwaitility : hasAwaitility(),
@@ -1015,7 +1017,7 @@ allprojects {
             }
         }
         tasks.named('nitpickerJava') { dependsOn 'nitpickerJdeps' }
-        ['lint-tasks.gradle', 'cpd-task.gradle', 'dependency-tasks.gradle'].each {
+        ['lint-tasks.gradle', 'cpd-task.gradle', 'dependency-tasks.gradle', 'analysis/effects-task.gradle'].each {
             project.apply from: new File(initScriptDir, 'tasks/' + it)
         }
         // --- end coupling ---

@@ -18,12 +18,14 @@ import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
 import { copyTestResults, requireTestngRun } from './results/maven-test-results.mjs';
 import {
   archunitTool,
+  effectsTool,
   formatTool,
   jacocoPlugin,
   MAVEN_PLUGINS,
   resolveTools,
 } from './maven-tools.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
+import { runEffects } from './effects/maven-effects.mjs';
 import { buildRunsArchRules, springFacts, withDeclaredSpring } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
@@ -101,6 +103,7 @@ export function moduleManifest({ module, classpaths, pinned }) {
     testSourceRoots: relativeRoots(module, module.testSourceRoots),
     resourceRoots: relativeRoots(module, module.resourceRoots),
     ...springFacts(classpaths),
+    effects: true,
     guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
     testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
     testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
@@ -132,6 +135,15 @@ function analyzeSources(context, project) {
   runJdepsMetrics(module, reportDir, spawn);
   runGuardJdeps(module, reportDir, spawn);
   runGuards({ module, reportDir, tools, classpaths, spawn }, project);
+  runEffects({
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    pinned,
+    options: context.effectsOptions,
+    spawn,
+  });
 }
 
 function analyzeTests(context, testsRan) {
@@ -212,10 +224,11 @@ function extraTools({ modules, analyzed, policy, pinned }) {
     ...modules.map((module) => processorTool(module.compiler)).filter(Boolean),
     ...formatTool(policy.javaStyle, pinned),
     ...archunitTool(buildRunsArchRules(policy, analyzed), pinned),
+    ...effectsTool(pinned),
   ];
 }
 
-export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn }) {
+export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn, ...options }) {
   if (policy.preset === 'kotlin') {
     throw new Error(
       'The kotlin preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources',
@@ -250,6 +263,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
         since,
         project,
         spawn,
+        effectsOptions: options.effectsOptions,
         style: {
           javaStyle: policy.javaStyle,
           indentation: checkstyleIndentation(policy.conventions),

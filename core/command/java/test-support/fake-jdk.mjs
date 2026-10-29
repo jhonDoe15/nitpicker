@@ -78,6 +78,18 @@ const HANDLERS = {
   },
   'com.google.googlejavaformat.java.Main'() {},
   'de.thetaphi.forbiddenapis.cli.CliMain'() {},
+  'nitpicker.effects.Effects'({ after }) {
+    put(
+      after('nitpicker.effects.Effects'),
+      JSON.stringify({
+        classes: 0,
+        skipped: 0,
+        unreadableLibraries: 0,
+        covered: [],
+        violations: [],
+      }),
+    );
+  },
 };
 
 function java({ args, cwd }) {
@@ -89,6 +101,9 @@ function java({ args, cwd }) {
   const script = tokens.find((token) => token.endsWith('.java'));
   if (args[0] === '-version') {
     return { stderr: 'openjdk version "21.0.1" 2023-10-17\n' };
+  }
+  if (args[0] === '-XshowSettings:properties') {
+    return { stderr: '    java.vendor = Fake\n    java.version = 21.0.1\n' };
   }
   if (script?.endsWith('StructureMetrics.java')) {
     put(tokens[tokens.indexOf(script) + 1], '[]');
