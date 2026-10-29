@@ -1,13 +1,16 @@
+import { describe, expect, it } from 'vitest';
 import { createRuleTester } from '../guards/test-support/rule-tester.mjs';
 import { rule } from './no-sync-node-api-in-async.mjs';
 import { SYNC_FAMILIES } from './sync-node-apis.mjs';
 
 const tester = createRuleTester();
-const alternativeOf = (module) =>
-  SYNC_FAMILIES.find((family) => family.modules.has(module)).alternative;
+const alternativeOf = (module, api) =>
+  SYNC_FAMILIES.find((family) => family.modules.has(module)).alternative(api);
 const blocking = (api, module = 'fs', context = 'an async function') => [
-  { messageId: 'blocking', data: { api, context, alternative: alternativeOf(module) } },
+  { messageId: 'blocking', data: { api, context, alternative: alternativeOf(module, api) } },
 ];
+const EXPRESS = 'import express from "express"; import { readFileSync } from "node:fs";';
+const WORKER = 'import { isMainThread } from "node:worker_threads";';
 const FS = 'import { readFileSync, writeFileSync } from "node:fs";';
 
 tester.run('no-sync-node-api-in-async', rule, {
@@ -30,6 +33,14 @@ tester.run('no-sync-node-api-in-async', rule, {
     'import { Controller, Get } from "@nestjs/common"; @Controller() export class A { @Post() save() { return 1; } }',
     `${FS} export async function load(files) { return files.map(async (file) => file); }`,
     `${FS} export async function load(emitter) { emitter.on("x", () => readFileSync("a")); }`,
+    `${FS} (async () => { readFileSync("a"); })();`,
+    `${FS} void (async function () { readFileSync("a"); })().catch(console.error);`,
+    `${EXPRESS} const cache = new Map(); cache.get("k", () => readFileSync("a"));`,
+    `${EXPRESS} export function mount(app) { app.get("/", (req, res) => res.send(readFileSync("a"))); }`,
+    `${FS} export async function load(readFileSync) { return readFileSync("a"); }`,
+    'import fs from "node:fs"; export async function load(fs) { return fs.readFileSync("a"); }',
+    `${WORKER} ${FS} export async function run() { if (!isMainThread) { readFileSync("a"); } }`,
+    `${WORKER} ${FS} export async function run() { if (isMainThread) { return 1; } else { readFileSync("a"); } }`,
   ],
   invalid: [
     {
@@ -62,7 +73,7 @@ tester.run('no-sync-node-api-in-async', rule, {
     },
     {
       code: 'import fs from "fs-extra"; export async function copy(a, b) { fs.copySync(a, b); }',
-      errors: blocking('copySync'),
+      errors: blocking('copySync', 'fs-extra'),
     },
     {
       code: 'import { execSync } from "child_process"; export async function build() { return execSync("make"); }',
@@ -117,8 +128,68 @@ tester.run('no-sync-node-api-in-async', rule, {
       errors: blocking('readFileSync', 'fs', 'a request handler'),
     },
     {
+      code: `${EXPRESS} const router = express.Router(); router.route("/").get((req, res) => { res.send(readFileSync("a")); });`,
+      errors: blocking('readFileSync', 'fs', 'a request handler'),
+    },
+    {
+      code: 'import { Router } from "express"; import { readFileSync } from "node:fs"; const router = Router(); router.use((req, res) => res.send(readFileSync("a")));',
+      errors: blocking('readFileSync', 'fs', 'a request handler'),
+    },
+    {
+      code: 'import type { Express } from "express"; import { readFileSync } from "node:fs"; export function mount(app: Express) { app.get("/", (req, res) => res.send(readFileSync("a"))); }',
+      errors: blocking('readFileSync', 'fs', 'a request handler'),
+    },
+    {
+      code: `${FS} export function start() { return (async () => readFileSync("a"))(); }`,
+      errors: blocking('readFileSync'),
+    },
+    {
+      code: 'import fs from "node:fs"; export async function real(p) { return fs.realpathSync.native(p); }',
+      errors: blocking('realpathSync'),
+    },
+    {
+      code: 'import fs from "node:fs"; export async function load(p) { return fs["readFileSync"](p); }',
+      errors: blocking('readFileSync'),
+    },
+    {
+      code: 'import { existsSync } from "node:fs"; export async function has(p) { return existsSync(p); }',
+      errors: blocking('existsSync'),
+    },
+    {
+      code: 'import { closeSync } from "node:fs"; export async function close(fd) { closeSync(fd); }',
+      errors: blocking('closeSync'),
+    },
+    {
+      code: 'import fs from "fs-extra"; export async function has(p) { return fs.pathExistsSync(p) || fs.existsSync(p); }',
+      errors: [...blocking('pathExistsSync', 'fs-extra'), ...blocking('existsSync', 'fs-extra')],
+    },
+    {
+      code: 'import { hkdfSync } from "node:crypto"; export async function derive(k) { return hkdfSync("sha256", k, "", "", 32); }',
+      errors: blocking('hkdfSync', 'crypto'),
+    },
+    {
+      code: `${WORKER} ${FS} export async function run() { if (isMainThread) { readFileSync("a"); } }`,
+      errors: blocking('readFileSync'),
+    },
+    {
       code: 'import { Controller, Get as Route } from "@nestjs/common"; import { readFileSync } from "node:fs"; @Controller() export class A { @Route() show() { return readFileSync("a"); } }',
       errors: blocking('readFileSync', 'fs', 'a request handler'),
     },
   ],
+});
+
+describe('the allowed form of each call', () => {
+  it('names the promise counterpart, or access and stat for existsSync', () => {
+    expect(alternativeOf('node:fs', 'readFileSync')).toBe(
+      '`await readFile()` from "node:fs/promises"',
+    );
+    expect(alternativeOf('fs', 'existsSync')).toContain('`access` or `stat`');
+    expect(alternativeOf('fs', 'closeSync')).toContain('`FileHandle`');
+    expect(alternativeOf('fs-extra', 'pathExistsSync')).toBe(
+      '`await pathExists()` from "fs-extra"',
+    );
+    expect(alternativeOf('fs-extra', 'existsSync')).toBe('`await pathExists()` from "fs-extra"');
+    expect(alternativeOf('crypto', 'scryptSync')).toContain('promisify(scrypt)');
+    expect(alternativeOf('execa', 'execaCommandSync')).toBe('`await execaCommand()`');
+  });
 });

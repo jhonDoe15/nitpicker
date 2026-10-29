@@ -1,12 +1,25 @@
 import { ancestorsOf } from '../analysis/ancestry.mjs';
 import { findVariable, isFunctionNode, resolveFunction } from '../analysis/constant-resolution.mjs';
-import { memberName } from '../security/security-values.mjs';
-import { NEST_DECORATORS, ROUTE_METHODS, SYNCHRONOUS_CALLBACK_METHODS } from './sync-node-apis.mjs';
+import { memberName, unwrapped } from '../security/security-values.mjs';
+import {
+  FRAMEWORK_MODULES,
+  NEST_DECORATORS,
+  ROUTE_METHODS,
+  SYNCHRONOUS_CALLBACK_METHODS,
+} from './sync-node-apis.mjs';
 
 const EXPORT_WRAPPERS = new Set(['ExportNamedDeclaration', 'ExportDefaultDeclaration']);
 const ROUTE_METHOD_NAMES = new Set(ROUTE_METHODS);
 const NEST_DECORATOR_NAMES = new Set(NEST_DECORATORS);
 const CALLBACK_METHOD_NAMES = new Set(SYNCHRONOUS_CALLBACK_METHODS);
+const FRAMEWORK_MODULE_NAMES = new Set(FRAMEWORK_MODULES);
+const CHAIN_STEPS = {
+  CallExpression: (node) => node.callee,
+  NewExpression: (node) => node.callee,
+  MemberExpression: (node) => node.object,
+  AwaitExpression: (node) => node.argument,
+  TSQualifiedName: (node) => node.left,
+};
 
 function nearestFunction(node) {
   return ancestorsOf(node).find(isFunctionNode);
@@ -46,15 +59,60 @@ function handlersIn(context, argumentsList) {
     .filter((handler) => handler !== undefined);
 }
 
-export function routeHandlers(context, calls, frameworks) {
+export function frameworkNames(program, bindings) {
+  const names = new Set([...bindings.named.keys(), ...bindings.namespaces]);
+  for (const statement of program.body) {
+    if (
+      statement.type === 'ImportDeclaration' &&
+      FRAMEWORK_MODULE_NAMES.has(statement.source.value)
+    ) {
+      for (const specifier of statement.specifiers) {
+        names.add(specifier.local.name);
+      }
+    }
+  }
+  return names;
+}
+
+function chainRoot(node) {
+  let current = unwrapped(node);
+  while (CHAIN_STEPS[current?.type] !== undefined) {
+    current = unwrapped(CHAIN_STEPS[current.type](current));
+  }
+  return current?.type === 'Identifier' ? current : undefined;
+}
+
+function declaredType(identifier) {
+  const annotation = identifier.typeAnnotation?.typeAnnotation;
+  return annotation?.type === 'TSTypeReference' ? chainRoot(annotation.typeName) : undefined;
+}
+
+function isFrameworkInstance(context, receiver, names) {
+  const root = chainRoot(receiver);
+  const definition =
+    root === undefined ? undefined : findVariable(context, root, root.name)?.defs[0];
+  if (definition?.type === 'Variable' && definition.node.init !== null) {
+    return names.has(chainRoot(definition.node.init)?.name);
+  }
+  return definition?.type === 'Parameter' && names.has(declaredType(definition.name)?.name);
+}
+
+function isRouteCall(context, call, names) {
+  const { callee } = call;
+  return (
+    callee.type === 'MemberExpression' &&
+    ROUTE_METHOD_NAMES.has(memberName(callee)) &&
+    isFrameworkInstance(context, callee.object, names)
+  );
+}
+
+export function routeHandlers(context, calls, names) {
   const handlers = new Set();
-  if (!frameworks) {
+  if (names.size === 0) {
     return handlers;
   }
-  for (const call of calls) {
-    const route =
-      call.callee.type === 'MemberExpression' && ROUTE_METHOD_NAMES.has(memberName(call.callee));
-    for (const handler of route ? handlersIn(context, call.arguments) : []) {
+  for (const call of calls.filter((candidate) => isRouteCall(context, candidate, names))) {
+    for (const handler of handlersIn(context, call.arguments)) {
       handlers.add(handler);
     }
   }
@@ -82,7 +140,16 @@ function isInvocation(reference) {
   return call?.type === 'CallExpression' && call.callee === reference.identifier;
 }
 
+function immediateCall(fn) {
+  const call = fn.parent;
+  return call?.type === 'CallExpression' && call.callee === fn ? call : undefined;
+}
+
 function callSites(context, fn) {
+  const invocation = immediateCall(fn);
+  if (invocation !== undefined) {
+    return [nearestFunction(invocation)];
+  }
   const variable = boundVariable(context, fn);
   const references = (variable?.references ?? []).filter((reference) => !reference.init);
   const invokedOnly =
@@ -125,4 +192,35 @@ export function enclosingContext(call, { handlers, nestBindings }) {
     }
   }
   return undefined;
+}
+
+function isMainThreadTest(test, workerBindings) {
+  const target = unwrapped(test);
+  if (target?.type === 'Identifier') {
+    return workerBindings.named.get(target.name) === 'isMainThread';
+  }
+  return (
+    target?.type === 'MemberExpression' &&
+    memberName(target) === 'isMainThread' &&
+    target.object.type === 'Identifier' &&
+    workerBindings.namespaces.has(target.object.name)
+  );
+}
+
+function workerSide(branching, workerBindings) {
+  const test = unwrapped(branching.test);
+  if (test?.type === 'UnaryExpression' && test.operator === '!') {
+    return isMainThreadTest(test.argument, workerBindings) ? branching.consequent : undefined;
+  }
+  return isMainThreadTest(test, workerBindings) ? branching.alternate : undefined;
+}
+
+export function isWorkerBranch(node, workerBindings) {
+  const path = [node, ...ancestorsOf(node)];
+  return path.some(
+    (current, index) =>
+      (current.type === 'IfStatement' || current.type === 'ConditionalExpression') &&
+      index > 0 &&
+      workerSide(current, workerBindings) === path[index - 1],
+  );
 }

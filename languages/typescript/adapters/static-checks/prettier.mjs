@@ -1,4 +1,5 @@
-import { globSync, readFileSync, existsSync, symlinkSync, unlinkSync } from 'node:fs';
+import { readFileSync, existsSync, symlinkSync, unlinkSync } from 'node:fs';
+import { glob, readFile } from 'node:fs/promises';
 import { prettierPrecedence, usesLayeredPrettier, readLayout } from '../../preset/head-policy.mjs';
 import { runNodeTool, projectFile, policyFile, hash } from './shared.mjs';
 import { isIgnoredByLayers, layeredPrettierOptions } from '../prettier/prettier-layers.mjs';
@@ -15,10 +16,9 @@ export async function runPrettier(options) {
   if (options.ignoreRelativePath === undefined) {
     throw new Error('Prettier requires --ignore-path');
   }
-  if (
-    !options.patterns.some((pattern) => globSync(pattern, { cwd: options.projectRoot }).length > 0)
-  )
+  if ((await matchingFiles(options)).length === 0) {
     return [];
+  }
   const installedPolicy = installPrettierPolicy(options);
   try {
     if (usesLayeredPrettier()) {
@@ -58,15 +58,20 @@ function listUnformattedFiles(options, installedPolicy) {
   return unformattedFiles;
 }
 
+async function matchingFiles(options) {
+  const perPattern = await Promise.all(
+    options.patterns.map((pattern) => Array.fromAsync(glob(pattern, { cwd: options.projectRoot }))),
+  );
+  return [...new Set(perPattern.flat())];
+}
+
 async function layeredFormattingFindings(options, installedPolicy, precedence) {
   const prettier = await importPrettier();
   const policyOptions = readPrettierPolicy(installedPolicy.configPath);
   const layout = readLayout();
-  const candidates = [
-    ...new Set(
-      options.patterns.flatMap((pattern) => globSync(pattern, { cwd: options.projectRoot })),
-    ),
-  ].filter((relativePath) => !layout.isExcluded(relativePath));
+  const candidates = (await matchingFiles(options)).filter(
+    (relativePath) => !layout.isExcluded(relativePath),
+  );
   const layers = {
     precedence,
     policyIgnorePath: installedPolicy.ignorePath,
@@ -78,7 +83,7 @@ async function layeredFormattingFindings(options, installedPolicy, precedence) {
       if (await isIgnoredByLayers(prettier, { ...layers, relativePath })) {
         return [];
       }
-      const source = readFileSync(path.join(options.projectRoot, relativePath), 'utf8');
+      const source = await readFile(path.join(options.projectRoot, relativePath), 'utf8');
       const formatted = await prettier.format(source, {
         ...(await layeredPrettierOptions(prettier, { ...layers, policyOptions, relativePath })),
         filepath: path.join(options.projectRoot, relativePath),
@@ -110,7 +115,7 @@ async function formattingFindingsOf(options, unformattedFiles, configPath) {
     unformattedFiles.map(async (filePath) => {
       const relativePath = projectFile(options.projectRoot, filePath);
       const absolutePath = path.join(options.projectRoot, relativePath);
-      const source = readFileSync(absolutePath, 'utf8');
+      const source = await readFile(absolutePath, 'utf8');
       const formatted = await prettier.format(source, {
         ...prettierOptions,
         filepath: absolutePath,

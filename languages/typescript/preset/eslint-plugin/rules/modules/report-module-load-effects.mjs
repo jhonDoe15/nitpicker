@@ -1,11 +1,10 @@
 import { stylesheetSpecifier } from '../../../layout.mjs';
 import { ancestorsOf } from '../analysis/ancestry.mjs';
+import { SYNC_API_MODULES } from '../analysis/node-sync-modules.mjs';
 import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
 import { guardedByMain, isMainGuard } from './entry/main-guard.mjs';
 
-const SYNC_MODULES = new Set(
-  ['fs', 'child_process', 'crypto', 'zlib'].flatMap((name) => [name, `node:${name}`]),
-);
+const SYNC_MODULES = new Set(SYNC_API_MODULES);
 
 const ENTRY_HINT =
   " Move the work into a function that the app entry calls. The entry (the module script in Vite's index.html, else src/main.tsx) is detected; for another entry file, list it under `layout.entryPoints` in nitpicker.config.json.";
