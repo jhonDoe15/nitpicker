@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { chainOf, depthFirst } from '../../../../../shared/traversal.mjs';
 import { syntaxChildren } from '../../syntax/children.mjs';
 
