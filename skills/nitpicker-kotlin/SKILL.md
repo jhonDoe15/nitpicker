@@ -45,8 +45,9 @@ Before you change code other modules use, or fix a bug, read
   (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`; a test uses `runTest`.
 - A timeout stops waiting, not the work (`pmd/timeout-abandons-operation`): start the work inside
   `withTimeout(ms) { ... }`, or catch `TimeoutCancellationException` and `cancel()` the `Deferred`
-  before rethrowing. `future.get(1, SECONDS)` needs `cancel(true)` or a rethrow in its
-  `TimeoutException` handler, and `orTimeout` on `supplyAsync` leaves the task running.
+  before rethrowing. `future.get(1, SECONDS)` needs `cancel(true)` on that future or a rethrow in
+  its `TimeoutException` handler; a `supplyAsync` future never interrupts its task (`get`, `orTimeout`
+  or `cancel(true)`), so run that work as a coroutine or on an `ExecutorService`.
 - Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
   A class with `var`s is not flagged, nor a JPA or Spring Data entity; the project adds other
   annotations to `UseDataClass`'s `excludeAnnotatedClasses` in its `detekt.yml`.

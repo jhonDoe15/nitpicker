@@ -1,7 +1,6 @@
 import { rulesCases } from './define.mjs';
 
 export const RULES_CASES = [
-  ...rulesCases('timeout-abandons-operation', [['timeout-abandons-operation', 'asyncio.timeout']]),
   ...rulesCases('cancellation', [['cancellation-not-propagated', 'bare `raise`']]),
   ...rulesCases('sql-queries', [['sql-string-formatting', 'query parameters']]),
   ...rulesCases('tls-verification', [['tls-verification-off', 'trust the certificate authority']]),
@@ -47,4 +46,5 @@ export const RULES_CASES = [
   ...rulesCases('cleanup-cancellation', [
     ['unshielded-cleanup-await', 'shielded scope with a deadline'],
   ]),
+  ...rulesCases('timeout-abandons-operation', [['timeout-abandons-operation', 'asyncio.timeout']]),
 ];

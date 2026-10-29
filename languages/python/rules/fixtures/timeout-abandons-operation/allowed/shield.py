@@ -21,3 +21,7 @@ async def awaited_later(work):
 
 async def owned_by_caller(task):
     return await asyncio.wait_for(asyncio.shield(task), 5)
+
+
+async def no_timeout(work):
+    return await asyncio.wait_for(asyncio.shield(work()), None)

@@ -1,99 +1,60 @@
 import { resolveConstant } from '../analysis/constant-resolution.mjs';
-import { clientBindings, clientCall } from '../security/http/http-clients.mjs';
-import { memberName, unwrapped } from '../security/security-values.mjs';
+import { clientBindings, isClientCall } from '../security/http/http-clients.mjs';
+import { unwrapped } from '../security/security-values.mjs';
 import {
-  cleansUpInFunction,
+  cleansUp,
   closesOverSignal,
   passesLifetimeOwner,
   signalParameterOf,
 } from './operation-lifetime.mjs';
-import { globalMemberCall } from './syntax-nodes.mjs';
-import { timeoutBindings, timeoutOf } from './timeout-entries.mjs';
+import { combinedEntries, operationsIn } from './race-operations.mjs';
+import { globalMemberCall, isGlobalTimerCall } from './syntax-nodes.mjs';
+import { isTimer, timeoutBindings, timeoutOf } from './timeout-entries.mjs';
 
-const CHAIN_METHODS = new Set(['then', 'catch', 'finally']);
-const COMBINATORS = new Set(['all', 'allSettled', 'race', 'any']);
-const MAX_DEPTH = 4;
 const MAX_TEXT = 40;
 
 const ADVICE =
   'Create an `AbortController`, abort it from the timeout path and pass `{ signal: controller.signal }` to the operation, or pass `AbortSignal.timeout(ms)` straight to an API that accepts `signal` and drop the race.';
-
-function chainInner(call) {
-  const callee = unwrapped(call.callee);
-  return callee.type === 'MemberExpression' && CHAIN_METHODS.has(memberName(callee))
-    ? unwrapped(callee.object)
-    : undefined;
-}
-
-function chainRoot(call) {
-  const chain = [call];
-  for (const current of chain) {
-    const inner = chainInner(current);
-    if (inner?.type === 'CallExpression') {
-      chain.push(inner);
-    }
-  }
-  return chain.at(-1);
-}
 
 function calleeText(context, call) {
   const text = context.sourceCode.getText(call.callee).replaceAll(/\s+/gu, ' ');
   return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}...` : text;
 }
 
-function combinedOperations(context, root) {
-  const list = unwrapped(resolveConstant(context, unwrapped(root.arguments[0])));
-  return (list?.elements ?? []).filter((inner) => inner !== null && inner.type !== 'SpreadElement');
-}
-
-function operationsIn(scope, entry) {
-  const { context } = scope;
-  const pending = [{ node: entry, depth: 0 }];
-  const found = [];
-  for (const { node, depth } of pending) {
-    const target = unwrapped(resolveConstant(context, unwrapped(node)));
-    const root =
-      target?.type === 'CallExpression' && depth <= MAX_DEPTH ? chainRoot(target) : undefined;
-    const combined = [...COMBINATORS].some((name) =>
-      globalMemberCall(context, root, `Promise.${name}`),
-    );
-    if (combined) {
-      pending.push(
-        ...combinedOperations(context, root).map((inner) => ({ node: inner, depth: depth + 1 })),
-      );
-    } else if (root !== undefined) {
-      found.push(root);
-    }
-  }
-  return found;
-}
-
-function isAbandoned(scope, call) {
+function isAbandoned(scope, call, race) {
   const { context } = scope;
   const callee = unwrapped(call.callee);
   const named = callee.type === 'Identifier' || callee.type === 'MemberExpression';
   return (
     named &&
-    !globalMemberCall(context, call, 'Promise.resolve') &&
-    !globalMemberCall(context, call, 'Promise.reject') &&
-    clientCall(scope, call) === undefined &&
+    !isTimer(scope, call) &&
+    !isGlobalTimerCall(context, call) &&
+    !isClientCall(scope, call) &&
     !passesLifetimeOwner(context, call) &&
     !closesOverSignal(context, callee) &&
-    !cleansUpInFunction(context, call)
+    !cleansUp(context, call, race)
   );
 }
 
 function raceTimeout(scope, node) {
-  const list = unwrapped(resolveConstant(scope.context, unwrapped(node.arguments[0])));
-  if (list?.type !== 'ArrayExpression' || !globalMemberCall(scope.context, node, 'Promise.race')) {
+  const { context } = scope;
+  const list = unwrapped(resolveConstant(context, unwrapped(node.arguments[0])));
+  if (list?.type !== 'ArrayExpression' || !globalMemberCall(context, node, 'Promise.race')) {
     return undefined;
   }
-  const entries = list.elements.filter((entry) => entry !== null && entry.type !== 'SpreadElement');
+  const entries = combinedEntries(context, node);
   const timeouts = entries.map((entry) => timeoutOf(scope, entry));
   const timeout = timeouts.find((found) => found !== undefined);
   return timeout === undefined
     ? undefined
-    : { timeout, losers: entries.filter((_, index) => timeouts[index] === undefined) };
+    : {
+        node,
+        timeout,
+        timeouts: entries.filter((_, index) => timeouts[index] !== undefined),
+        losers: entries.filter(
+          (entry, index) => timeouts[index] === undefined && !isTimer(scope, entry),
+        ),
+      };
 }
 
 export const rule = {
@@ -129,8 +90,8 @@ export const rule = {
       },
       CallExpression(node) {
         const race = raceTimeout(scope, node);
-        const losers = (race?.losers ?? []).flatMap((entry) => operationsIn(scope, entry));
-        for (const call of losers.filter((loser) => isAbandoned(scope, loser))) {
+        const losers = (race?.losers ?? []).flatMap((entry) => operationsIn(context, entry));
+        for (const call of losers.filter((loser) => isAbandoned(scope, loser, race))) {
           const parameter = signalParameterOf(context, call.callee);
           context.report({
             node: call,

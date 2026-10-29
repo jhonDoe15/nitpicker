@@ -27,6 +27,12 @@ describe('timeout race next to the HTTP timeout rule', () => {
     expect(ruleIdsFor(code, {})).toEqual(['nitpicker/require-http-timeout']);
   });
 
+  it('leaves the call on an axios instance without a timeout to require-http-timeout', () => {
+    const code = `import axios from "axios";\n${REJECT_AFTER}const api = axios.create({ baseURL: "/" });\nexport const run = (url: string) => Promise.race([api.get(url), rejectAfter(10)]);`;
+
+    expect(ruleIdsFor(code, {})).toEqual(['nitpicker/require-http-timeout']);
+  });
+
   it('reports a browser fetch that the HTTP rule leaves alone', () => {
     const code = `${REJECT_AFTER}export const run = (url: string) => Promise.race([fetch(url), rejectAfter(10)]);`;
 
@@ -52,6 +58,9 @@ const tester = createRuleTester();
 tester.run('timeout-abandons-operation with HTTP clients', rule, {
   valid: [
     'import axios from "axios"; export const run = (url, timeout) => Promise.race([axios.get(url), timeout]);',
+    'import axios from "axios"; import { rejectAfter } from "./timers.js"; export const run = (url) => Promise.race([axios.get(url, { timeout: 5 }), rejectAfter(10)]);',
+    'import axios from "axios"; import { rejectAfter } from "./timers.js"; const api = axios.create({ timeout: 5 }); export const run = (url) => Promise.race([api.get(url), rejectAfter(10)]);',
+    'import got from "got"; import { rejectAfter } from "./timers.js"; const client = got.extend({ timeout: { request: 5 } }); export const run = (url) => Promise.race([client(url), rejectAfter(10)]);',
     'import got from "got"; const rejectAfter = (ms) => new Promise((_, reject) => setTimeout(reject, ms)); export const run = (url) => Promise.race([got(url, { signal: AbortSignal.timeout(5) }), rejectAfter(5)]);',
   ],
   invalid: [
@@ -61,6 +70,15 @@ tester.run('timeout-abandons-operation with HTTP clients', rule, {
         {
           messageId: 'noSignal',
           data: { timeout: '`rejectAfter(...)`', operation: 'got.paginate', parameter: '' },
+        },
+      ],
+    },
+    {
+      code: 'import axios from "axios"; import { rejectAfter } from "./timers.js"; const api = axios.create({ timeout: 5 }); export const run = (url) => Promise.race([api.getUri(url), rejectAfter(10)]);',
+      errors: [
+        {
+          messageId: 'noSignal',
+          data: { timeout: '`rejectAfter(...)`', operation: 'api.getUri', parameter: '' },
         },
       ],
     },

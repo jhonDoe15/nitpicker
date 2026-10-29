@@ -25,7 +25,16 @@ tester.run('timeout-abandons-operation', rule, {
     `${REJECT_AFTER}export const run = (options) => Promise.race([sendPayment(options), rejectAfter(10)]);`,
     `${REJECT_AFTER}export const run = (extra) => Promise.race([sendPayment({ ...extra }), rejectAfter(10)]);`,
     `${REJECT_AFTER}const OPTIONS = { signal: AbortSignal.timeout(5) }; export const run = () => Promise.race([sendPayment(OPTIONS), rejectAfter(10)]);`,
-    `${REJECT_AFTER}export const run = () => Promise.race([sendPayment({ timeout: 5 }), rejectAfter(10)]);`,
+    `${REJECT_AFTER}export async function run() { const controller = new AbortController(); try { return await Promise.race([sendPayment(), rejectAfter(10)]); } finally { controller.abort(); } }`,
+    `${REJECT_AFTER}export const run = (controller) => Promise.race([sendPayment(), rejectAfter(10)]).catch((error) => { controller.abort(); throw error; });`,
+    'export const run = (controller, ms) => Promise.race([sendPayment(), new Promise((_, reject) => setTimeout(() => { controller.abort(); reject(new Error("t")); }, ms))]);',
+    `${REJECT_AFTER}export async function run(conn) { const result = await Promise.race([query(conn), rejectAfter(10)]); conn.destroy(); return result; }`,
+    'export const run = () => Promise.race([nextEvent(), new Promise((resolve) => setTimeout(resolve, 50))]);',
+    'export const run = () => Promise.race([nextEvent(), new Promise((resolve, reject) => setTimeout(resolve, 50))]);',
+    'import { setTimeout as delay } from "node:timers/promises"; export const run = () => Promise.race([sendPayment(), delay(10)]);',
+    'import { once } from "node:events"; export const run = (ms) => Promise.race([sendPayment(), once(AbortSignal.timeout(ms), "abort")]);',
+    `${REJECT_AFTER}export const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms)); export const run = () => Promise.race([sleep(5), rejectAfter(10)]);`,
+    `${REJECT_AFTER}const { race } = Promise; export const run = () => race([sendPayment(), rejectAfter(10)]);`,
     `${REJECT_AFTER}export async function run() { const controller = new AbortController(); try { return await Promise.race([sendPayment(), rejectAfter(10)]); } catch (error) { controller.abort(); throw error; } }`,
     `${REJECT_AFTER}export async function run(client) { try { return await Promise.race([client.send(), rejectAfter(10)]); } catch (error) { client.destroy(); throw error; } }`,
     `${REJECT_AFTER}export const run = (signal) => { const send = () => fetchPayment({ signal }); return Promise.race([send(), rejectAfter(10)]); };`,
@@ -90,15 +99,11 @@ tester.run('timeout-abandons-operation', rule, {
       errors: abandoned(REJECT_AFTER_CALL, 'sendPayment'),
     },
     {
-      code: 'import { setTimeout as delay } from "node:timers/promises"; export const run = () => Promise.race([sendPayment(), delay(10)]);',
+      code: 'import * as timers from "timers/promises"; export const run = () => Promise.race([sendPayment(), timers.setTimeout(10).then(() => Promise.reject(new Error("t")))]);',
       errors: abandoned('`setTimeout` from `node:timers/promises`', 'sendPayment'),
     },
     {
-      code: 'import * as timers from "timers/promises"; export const run = () => Promise.race([sendPayment(), timers.setTimeout(10)]);',
-      errors: abandoned('`setTimeout` from `node:timers/promises`', 'sendPayment'),
-    },
-    {
-      code: 'import { once } from "node:events"; export const run = (ms) => Promise.race([sendPayment(), once(AbortSignal.timeout(ms), "abort")]);',
+      code: 'import { once } from "node:events"; export const run = (ms) => Promise.race([sendPayment(), once(AbortSignal.timeout(ms), "abort").then(() => { throw new Error("t"); })]);',
       errors: abandoned('`once(AbortSignal.timeout(...), "abort")`', 'sendPayment'),
     },
     {
@@ -120,6 +125,55 @@ tester.run('timeout-abandons-operation', rule, {
     {
       code: `${REJECT_AFTER}export const run = () => Promise.race([sendPayment("order"), rejectAfter(10)]);`,
       errors: abandoned(REJECT_AFTER_CALL, 'sendPayment'),
+    },
+    {
+      code: `${REJECT_AFTER}export const run = () => Promise.race([sendPayment({ timeout: 5 }), rejectAfter(10)]);`,
+      errors: abandoned(REJECT_AFTER_CALL, 'sendPayment'),
+    },
+    ...['cancelReason', 'abortedCount', 'req', 'request', 'ctx', 'context', 'params', 'config'].map(
+      (name) => ({
+        code: `${REJECT_AFTER}export const run = (${name}) => Promise.race([charge(${name}), rejectAfter(10)]);`,
+        errors: abandoned(REJECT_AFTER_CALL, 'charge'),
+      }),
+    ),
+    {
+      code: `${REJECT_AFTER}export async function run(db) { const result = await Promise.race([sendPayment(), rejectAfter(10)]); db.destroy(); return result; }`,
+      errors: abandoned(REJECT_AFTER_CALL, 'sendPayment'),
+    },
+    {
+      code: `${REJECT_AFTER}const P = Promise; export const run = () => P.race([sendPayment(), rejectAfter(10)]);`,
+      errors: abandoned(REJECT_AFTER_CALL, 'sendPayment'),
+    },
+    {
+      code: 'export const run = (ms) => globalThis.Promise.race([sendPayment(), new globalThis.Promise((_, reject) => window.setTimeout(reject, ms))]);',
+      errors: abandoned(PROMISE, 'sendPayment'),
+    },
+    {
+      code: `${REJECT_AFTER}export const run = () => Promise.race([new Promise((resolve) => sendPayment(resolve)), rejectAfter(10)]);`,
+      errors: abandoned(REJECT_AFTER_CALL, 'sendPayment'),
+    },
+    {
+      code: `${REJECT_AFTER}export const run = () => Promise.race([Promise.resolve().then(() => sendPayment()), rejectAfter(10)]);`,
+      errors: abandoned(REJECT_AFTER_CALL, 'sendPayment'),
+    },
+    {
+      code: `${REJECT_AFTER}export const run = (card) => Promise.race([card ? charge() : invoice(), rejectAfter(10)]);`,
+      errors: [
+        ...abandoned(REJECT_AFTER_CALL, 'charge'),
+        ...abandoned(REJECT_AFTER_CALL, 'invoice'),
+      ],
+    },
+    {
+      code: 'import { setTimeout as delay } from "node:timers/promises"; export const run = () => Promise.race([sendPayment(), delay(10).then(() => { throw new Error("timeout"); })]);',
+      errors: abandoned('`setTimeout` from `node:timers/promises`', 'sendPayment'),
+    },
+    {
+      code: 'import { setTimeout as delay } from "node:timers/promises"; async function timeoutAfter(ms) { await delay(ms); throw new Error("timeout"); }\nexport const run = () => Promise.race([sendPayment(), timeoutAfter(10)]);',
+      errors: abandoned('`timeoutAfter(...)`', 'sendPayment'),
+    },
+    {
+      code: 'const failAfter = (ms) => new Promise((resolve) => setTimeout(resolve, ms)).then(() => Promise.reject(new Error("t")));\nexport const run = () => Promise.race([sendPayment(), failAfter(10)]);',
+      errors: abandoned('`failAfter(...)`', 'sendPayment'),
     },
   ],
 });

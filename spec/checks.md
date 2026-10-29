@@ -172,15 +172,19 @@ waiting without stopping the work.
 | Java       | `pmd/timeout-abandons-operation`          | `languages/java/gradle/pmd-main-ruleset.xml` (XPath, Gradle and Maven)                 | enforceable |
 | Kotlin     | `pmd/timeout-abandons-operation`          | `languages/java/adapters/kotlin/review-rules/main/timeouts.mjs`                        | enforceable |
 
-TypeScript and JavaScript: `Promise.race` of an operation and a timeout where the operation gets no
-`AbortSignal`, timeout option or cancelling owner (HTTP clients that `require-http-timeout` already
-reports are left to it). Python: `asyncio.wait(..., timeout=...)` whose `pending` set is not
-cancelled, awaited or handed on, and `asyncio.wait_for(asyncio.shield(task), ...)` with nothing
-cancelling or awaiting the task afterwards; `asyncio.wait_for`, `asyncio.timeout`, task groups and
-Trio and AnyIO scopes cancel and are allowed. Java: `Future.get(timeout, unit)` whose
-`TimeoutException` handler neither cancels the future nor rethrows, and `orTimeout` or
-`completeOnTimeout` on a `CompletableFuture` that `supplyAsync` or `runAsync` started. Kotlin: the
-same two forms, plus `withTimeout { deferred.await() }` on a `Deferred` another scope started that
-the timeout path does not cancel. The precision limits are in
+TypeScript and JavaScript: `Promise.race` of an operation and a timer that rejects, where the
+operation gets no `AbortSignal`, cancelling owner or cleanup in the timeout path (HTTP clients that
+`require-http-timeout` recognizes are left to it; a resolving sleep is a hedge, not a timeout).
+Python: `asyncio.wait(..., timeout=...)` or `return_when=FIRST_COMPLETED` whose pending tasks are not
+cancelled, awaited or handed on (directly or through the awaited collection), and
+`asyncio.wait_for(asyncio.shield(task), ...)` with nothing cancelling or awaiting the task afterwards;
+`asyncio.wait_for`, `asyncio.timeout`, task groups and Trio and AnyIO scopes cancel and are allowed.
+Java: `Future.get(timeout, unit)` whose `TimeoutException` handler neither rethrows nor hands the
+future on while the method never calls `cancel(true)` on it, `shutdownNow()` on its executor or
+`interrupt()` on its thread (`shutdown()` and `cancel(false)` let it finish), and `get`, `orTimeout`
+or `completeOnTimeout` on a `CompletableFuture` that `supplyAsync` or `runAsync` started, which no
+cancel interrupts (two PMD rules, one per message, printed under the one id). Kotlin: the same forms,
+plus `withTimeout { deferred.await() }` (or `awaitAll`) on a `Deferred` another scope started that the
+timeout path does not cancel. The precision limits are in
 [TypeScript](../docs/typescript-strict-preset.md), [Python](../docs/python-preset.md),
 [Java](../docs/java-preset.md) and [Kotlin](../docs/kotlin-preset.md).

@@ -64,9 +64,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
       'SingularAndPluralMember Query.tags',
       'StaticForwardingWrapper absOf',
       'StaticForwardingWrapper total',
-      'timeout-abandons-operation get:future',
-      'timeout-abandons-operation orTimeout:CompletableFuture.supplyAsync { work() }',
-      'timeout-abandons-operation withTimeout:work',
+      'timeout-abandons-operation awaitAllOutside:withTimeout:first',
+      'timeout-abandons-operation awaitAllOutside:withTimeout:second',
+      'timeout-abandons-operation awaitOutside:withTimeout:work',
+      'timeout-abandons-operation boundedAsync:orTimeout:supplyAsync',
+      'timeout-abandons-operation cancelAsyncTask:get:future',
+      'timeout-abandons-operation giveUp:get:future',
+      'timeout-abandons-operation shutDownLetsItFinish:get:future',
     ]);
   });
 

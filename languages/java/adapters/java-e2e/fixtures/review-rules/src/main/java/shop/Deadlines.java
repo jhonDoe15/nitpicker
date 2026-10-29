@@ -6,6 +6,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.FutureTask;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Supplier;
@@ -92,6 +93,92 @@ public final class Deadlines {
       pool.shutdownNow();
       return "late";
     }
+  }
+
+  public String shutDownLetsTheTaskFinish(Callable<String> work)
+      throws InterruptedException, ExecutionException {
+    Future<String> future = pool.submit(work);
+    try {
+      return future.get(1, TimeUnit.SECONDS); // violation: timeout-abandons-operation
+    } catch (TimeoutException e) {
+      pool.shutdown();
+      return "late";
+    }
+  }
+
+  public String cancelWithoutInterrupt(Callable<String> work)
+      throws InterruptedException, ExecutionException {
+    Future<String> future = pool.submit(work);
+    try {
+      return future.get(1, TimeUnit.SECONDS); // violation: timeout-abandons-operation
+    } catch (TimeoutException e) {
+      future.cancel(false);
+      return "late";
+    }
+  }
+
+  public String interruptTheWaiter(Callable<String> work)
+      throws InterruptedException, ExecutionException {
+    Future<String> future = pool.submit(work);
+    try {
+      return future.get(1, TimeUnit.SECONDS); // violation: timeout-abandons-operation
+    } catch (TimeoutException e) {
+      Thread.currentThread().interrupt();
+      return "late";
+    }
+  }
+
+  public String cancelAsyncTask(Supplier<String> work)
+      throws InterruptedException, ExecutionException {
+    CompletableFuture<String> future = CompletableFuture.supplyAsync(work);
+    try {
+      return future.get(1, TimeUnit.SECONDS); // violation: timeout-abandons-operation
+    } catch (TimeoutException e) {
+      future.cancel(true);
+      return "late";
+    }
+  }
+
+  public String cancelAfterTheTry(Callable<String> work)
+      throws InterruptedException, ExecutionException {
+    Future<String> future = pool.submit(work);
+    String result = null;
+    try {
+      result = future.get(1, TimeUnit.SECONDS);
+    } catch (TimeoutException e) {
+      result = null;
+    }
+    if (result == null) {
+      future.cancel(true);
+    }
+    return result;
+  }
+
+  public String handToAHelper(Callable<String> work)
+      throws InterruptedException, ExecutionException {
+    Future<String> future = pool.submit(work);
+    try {
+      return future.get(1, TimeUnit.SECONDS);
+    } catch (TimeoutException e) {
+      stop(future);
+      return "late";
+    }
+  }
+
+  public String interruptTheWorker(FutureTask<String> task)
+      throws InterruptedException, ExecutionException {
+    Thread worker = new Thread(task);
+    worker.start();
+    try {
+      return task.get(1, TimeUnit.SECONDS);
+    } catch (TimeoutException e) {
+      worker.interrupt();
+      return "late";
+    }
+  }
+
+  private static void stop(Future<?> future) {
+    future.cancel(true);
   }
 
   public CompletableFuture<String> boundedGivenFuture(CompletableFuture<String> given) {
