@@ -70,7 +70,9 @@ Before you change code other modules use, or fix a bug, read
   `Throwable` (also in tests: `TooGenericExceptionCaught`), and pass the caught exception on as the cause (`SwallowedException`). Use
   `require(...)` and `check(...)` instead of throwing `IllegalArgumentException` and
   `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private
-  members and parameters.
+  members and parameters (an override, a function with a framework annotation and a name starting
+  `ignored` or `unused` are skipped). A public function's `Boolean` parameter that picks a behavior
+  becomes two functions or an enum (`BooleanFlagParameter`).
 - Signatures: a value with three states is an `enum class`, not a `Boolean?` parameter, return
   type or property (`kotlin-source/TriStateBoolean`; a property or parameter a framework fills,
   such as `@Column`, `@JsonProperty`, `@SerialName` or an `@Entity` property, is exempt); a public
@@ -171,3 +173,6 @@ Before you change code other modules use, or fix a bug, read
   constructor in a unit test, or use a slice (`pmd/SpringUnusedContext`).
 - A function or file already over a limit may be edited but must not get worse: put new code in a
   new function or file and call it.
+- A string of five characters or more used three times in a main file gets one
+  `private const val NAME = "..."` (`kotlin-source/RepeatedStringLiteral`); annotation arguments,
+  `when` labels, named arguments, map keys and message keys are not counted.

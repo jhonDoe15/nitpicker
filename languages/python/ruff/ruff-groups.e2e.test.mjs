@@ -8,6 +8,8 @@ const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const ruff = process.env.NITPICKER_RUFF ?? 'ruff';
 const LISTED_GROUPS = /^(?:G|N|ERA|ARG|PT|S|TRY|FBT|DTZ)\d+$/u;
 const DECLINED = new Set([
+  'FBT001',
+  'FBT002',
   'FBT003',
   'PT009',
   'PT027',

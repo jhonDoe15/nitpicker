@@ -57,7 +57,6 @@ export const STYLE_CASES = [
     ['DTZ012', 'datetime.fromtimestamp(timestamp, tz=timezone.utc)'],
     ['DTZ901', 'datetime.min.replace(tzinfo=timezone.utc)'],
   ]),
-  ...ruffCases('boolean-flag', every(['FBT001', 'FBT002'], 'keyword-only')),
   ...ruffCases('try-patterns', [
     ['TRY002', 'specific exception'],
     ['TRY004', 'typeerror'],

@@ -415,7 +415,7 @@ through the real tools.
   `swallowed-exception` reports what they did, and more, once and under one id. The shared
   one-way rules add the groups `G` (logging calls), `N` (PEP 8 naming), `ERA` (commented-out
   code), `ARG` (unused arguments), `DTZ` (datetimes without a zone), `PT` (pytest style), `S` (security) and `TRY` (exceptions), and
-  the single rules `PLR2004`, `PLW0602`, `PLW0603`, `FBT001` and `FBT002`; the last section of this
+  the single rules `PLR2004`, `PLW0602` and `PLW0603`; the last section of this
   slice lists each one with its allowed form and the rules of those groups that are left off.
   The groups `RUF`, `G`, `N`, `DTZ`, `PT`, `S` and `TRY` are selected by listing their stable codes, not
   by prefix, so a later ruff cannot add a rule (or a preview rule) to the gate. `ruffConfigFor`
@@ -425,8 +425,8 @@ through the real tools.
   a prefix such as `E4` or `T20` stays when a known rule starts with it. Test files are the ones
   pytest collects (the `python_files` patterns, `testpaths`, `conftest.py`, any `tests` or `test`
   folder, `test_*.py`, `*_test.py`, and the Django names in a Django project, see
-  [runner parity](#runner-parity)): ruff's `ARG`, `DTZ`, `FBT`, `PLR2004` and `S` findings in them are
-  dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`). The `DTZ` codes are not in the touched-code list of `touched-rules.mjs`, like `FBT` and `ARG`: a datetime site that is added on an edited line is new only when its identity differs from the base's, so the base's findings of the same code in that file stay baselined. `datetime.strptime(...).date()` and `.time()` are allowed (`DTZ007`), since a calendar value has no zone. Security findings (ruff `S` and the
+  [runner parity](#runner-parity)): ruff's `ARG`, `DTZ`, `PLR2004` and `S` findings in them are
+  dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`). The `DTZ` codes are not in the touched-code list of `touched-rules.mjs`, like `ARG`: a datetime site that is added on an edited line is new only when its identity differs from the base's, so the base's findings of the same code in that file stay baselined. `datetime.strptime(...).date()` and `.time()` are allowed (`DTZ007`), since a calendar value has no zone. Security findings (ruff `S` and the
   `sql-string-formatting`, `tls-verification-off`, `weak-hmac`, `http-without-timeout` and
   `unsafe-deserialization` rules) are also dropped in test support that pytest does not collect, as in the
   TypeScript preset. Test support is every file under a test root (the configured pytest `testpaths`, and
@@ -603,11 +603,11 @@ are listed at the end.
 | Deserialization          | `yaml.safe_load`, `torch.load(path, weights_only=True)`, `numpy.load` without `allow_pickle`                                                                                         | ruff `S506`, `unsafe-deserialization` (script)                                                                                                       |
 | Deprecated APIs          | the replacement the deprecation notice names                                                                                                                                         | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                       |
 | Repeated strings         | a constant or enum member                                                                                                                                                            | `repeated-string-literal` (script)                                                                                                                   |
-| Unused arguments         | remove the argument, or prefix it with `_` when the signature is fixed                                                                                                               | ruff `ARG001`-`ARG005`                                                                                                                               |
+| Unused arguments         | remove the argument; `@override` on an override; a `_` prefix when a callback signature is fixed                                                                                     | ruff `ARG001`-`ARG005`                                                                                                                               |
 | Generic names            | a name for the job (`price_rounding.py`, `OrderRepository`)                                                                                                                          | `generic-name` (script)                                                                                                                              |
 | Secrets                  | read from the environment; log only that a secret is set                                                                                                                             | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
 | Datetimes                | a datetime with a zone: `datetime.now(tz=timezone.utc)`, `datetime.fromtimestamp(ts, tz=timezone.utc)`, `%z` when parsing an instant, `date.fromisoformat(text)` for a calendar date | ruff `DTZ001`-`DTZ007`, `DTZ011`, `DTZ012`, `DTZ901`                                                                                                 |
-| Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                                                                                                 | ruff `FBT001`, `FBT002`                                                                                                                              |
+| Boolean flags            | keyword-only (`def send(message, *, urgent=False)`), two functions or an enum                                                                                                        | `boolean-flag-parameter` (script)                                                                                                                    |
 | Tri-state booleans       | an enum that names the three states, or a keyword-only `bool` with a default (`*, urgent=False`)                                                                                     | `tri-state-boolean` (script)                                                                                                                         |
 | Defaulting parameters    | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                      | `falsy-default` (script)                                                                                                                             |
 | Changing an argument     | build and return a new value, or copy the argument first                                                                                                                             | `parameter-mutation` (script)                                                                                                                        |
@@ -875,12 +875,44 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `tomllib` parsing, `.json()` or an `Any` parameter, and `TypeGuard` or `TypeIs` functions over
   `Any` or `object`. `pydantic-any-field` and `pydantic-extra-allow` look at classes deriving from
   `BaseModel`, `BaseSettings` or `RootModel` anywhere (v1 `Config` and `Extra.allow` too).
-- `repeated-string-literal` counts a string of five characters or more used three times or more in
-  a file (not tests) and reports it at its first use. Annotations, f-string parts, dictionary keys,
-  docstrings and bare strings, `Literal[...]` subscripts and translation calls are not counted.
+- `repeated-string-literal` counts a string of five characters or more (with a letter or digit) used
+  three times or more in a file (not tests, not generated migrations) and reports each use from the
+  third on. Not counted: annotations, f-string parts, keyword arguments (Kotlin exempts named
+  arguments the same way; TypeScript and Java have none), dictionary keys, the value under a
+  `type`/`kind`/`tag`/`variant` key, subscript keys, `match` patterns, docstrings and bare strings,
+  `Literal[...]` subscripts, `__all__` and class-body lists, the first argument of a translation or
+  message-key call, and idiomatic text (encodings, HTTP methods, argparse actions, MIME types, time
+  formats). The minimum length, the number of allowed uses and those lists are defined once in
+  [`shared/literals/repeated-literal-exemptions.mjs`](../shared/literals/repeated-literal-exemptions.mjs);
+  `literal-exemptions.test.mjs` fails when `literals.py` drifts from it. The message ends with the
+  `exceptions` route for the rule like every other Python rule.
 - `generic-name` reports a file, a folder or a top-level class whose last word is `util`, `utils`,
   `helper`, `helpers`, `manager`, `common`, `misc` and the like; a class that extends a type with the
   same ending (`class SessionManager(CacheManager)`) is not reported.
+- `boolean-flag-parameter` reports a positional `bool` parameter (annotated `bool` or
+  `Annotated[bool, ...]`, as a string too, or defaulted to `True` or `False`; `int | bool` is not one,
+  and a nullable `bool | None` is a tri-state, not a flag) of a public function or method that is a condition: the test of an
+  `if`, a conditional expression, a `while`, an `assert`, a comprehension filter, a `match`
+  subject or guard, also under `not`, `and` and `or`, as `flag is True` or `flag == False`, and
+  inside a nested lambda or closure. The flag is keyword-only (`def send(message, *, urgent=False)`),
+  two functions, or an enum. A name the code rebinds (a loop variable, a lambda parameter, an
+  assignment) is not the flag. Private names (a leading underscore, which covers `__init__` and
+  the other dunder methods), methods of a private class, nested functions, tests, methods named
+  `set_*` or `with_*`, `@classmethod` and `@staticmethod` factories named `from_*`, `of` or
+  `builder`, functions with `@override`, `@abstractmethod`, `@overload`, a property `setter`,
+  `getter` or `deleter`, or a pydantic `field_validator`, `validator` or `model_validator`, and a
+  flag that is only passed on or stored are not reported. A module function named `set_up_db` or
+  `from_config` is checked. A method that overrides a base class without `@override` is reported;
+  mark it `@override` (`typing_extensions.override` before Python 3.12). The finding names the
+  class: `Mailer.deliver(urgent)`. The [parameter rules table](internals.md#parameter-rules-across-presets)
+  compares the presets.
+- Unused arguments (ruff `ARG001`-`ARG005`) skip names that start with `_`, `*args` and `**kwargs`,
+  `@override` and `@abstractmethod` methods, `@overload`, dunder methods other than `__init__`,
+  `__new__` and `__call__`, and bodies that are only `...`, `pass`, a docstring or
+  `raise NotImplementedError`. A callback signature that fixes a parameter the body does not read
+  takes the `_` prefix (`def handler(event, _context)`); a parameter the framework passes by
+  keyword (a FastAPI path parameter, a pytest fixture requested for its effect) keeps its name and
+  the path gets an exception. Test files are skipped, as for the other `ARG` use.
 - `hardcoded-secret` reports a secret-looking string (six characters or more with letters and
   digits, or three character classes) assigned to a name ending in `password`, `token`, `secret`,
   `api_key`, `credentials` and similar, also as a parameter default, keyword argument, dictionary
@@ -1024,8 +1056,7 @@ __getattr__` that warns or maps removed names to new ones (a PEP 562 lazy import
   fixed URL), `S311` (`random` for non-crypto use, which the domain rule covers), `S601`, `S603`,
   `S606` and `S607` (see above), and `S110`/`S112` (replaced by `swallowed-exception`).
 - Other rules of the selected groups that are left off: `TRY003` (long messages in `raise`),
-  `TRY300` and `TRY301` (`else` after `try`, `raise` inside `try`), `FBT003` (a boolean argument at
-  the call site) and, for `PT`, `PT009` and `PT027` (`unittest` assertions, which `unittest`
+  `TRY300` and `TRY301` (`else` after `try`, `raise` inside `try`), and, for `PT`, `PT009` and `PT027` (`unittest` assertions, which `unittest`
   projects use by design). `PT011` and `PT030` ask for a `match` or a more specific class.
 - The advice follows the project when two forms are valid. Pytest style: the parentheses of
   `@pytest.fixture` (`PT001`) and marks (`PT023`) and the shape of `parametrize` (`PT006`,
@@ -1163,7 +1194,7 @@ backends.
   `RUF003` and `RUF012`: non-ASCII text and mutable class attributes, both common in correct
   code) and `T20` (no `print`), without `B008` (a call in an argument default, which the web
   frameworks need). Slice 2 adds the shared one-way groups `G`, `N`, `ERA`, `ARG`, `PT`, `S`, `TRY`,
-  `PLR2004`, `FBT` and `DTZ`. The target version follows the project's
+  `PLR2004` and `DTZ`. The target version follows the project's
   `requires-python` (or poetry's `python`, or `python_requires`): its lowest version, never lower
   than 3.8, and 3.8 when none is declared, so a rule that exists only on newer versions (`B905`,
   `zip(strict=)`) cannot flag code that must run on an older one. The SARIF goes through the existing generic ingester; identity is the
