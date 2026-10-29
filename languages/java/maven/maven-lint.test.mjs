@@ -253,7 +253,7 @@ describe('runFormat', () => {
 });
 
 describe.skipIf(process.platform === 'win32')('runPmd', () => {
-  function pmdRun(spring) {
+  function pmdRun(spring, mainCompile = []) {
     const basedir = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-pmd-'));
     roots.push(basedir);
     const java = path.join(basedir, 'jdk/bin/java');
@@ -278,7 +278,7 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       mkdirSync(directory, { recursive: true });
     }
     const module = { basedir, sourceRoots: [mainRoot], testSourceRoots: [testRoot] };
-    const classpaths = { mainCompile: [], testCompile: [] };
+    const classpaths = { mainCompile, testCompile: [] };
     runPmd({
       module,
       reportDir,
@@ -315,6 +315,18 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       shipped('pmd-test-ruleset.xml'),
       shipped('spring-test-ruleset.xml'),
     ]);
+  });
+
+  it('adds the Reactor rule set to the main-only wrapper when reactor-core is on the classpath', () => {
+    const run = pmdRun(false, [
+      '/repo/io/projectreactor/reactor-core/3.7.0/reactor-core-3.7.0.jar',
+    ]);
+
+    expect(run.mainRules).toEqual([
+      shipped('pmd-main-ruleset.xml'),
+      shipped('reactor-ruleset.xml'),
+    ]);
+    expect(run.testRules).toEqual([shipped('pmd-test-ruleset.xml')]);
   });
 
   it('leaves the Spring rule sets out of a module without Spring', () => {
