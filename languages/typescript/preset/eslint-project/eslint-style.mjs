@@ -12,7 +12,7 @@ export function ignoredEslintConfigNotices({ config, projectRoot }) {
   return file === undefined ? [] : [ignoredConfigNotice(file, 'eslint')];
 }
 
-export function typescriptProjectStyle(context) {
+export function eslintConfigStyle(context) {
   return {
     unused: {},
     project: {},
