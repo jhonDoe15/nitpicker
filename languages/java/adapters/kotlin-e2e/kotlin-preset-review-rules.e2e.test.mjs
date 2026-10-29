@@ -61,6 +61,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
       'ExhaustiveEnumPredicate isOpen',
       'ExhaustiveEnumPredicate isSettled',
       'ExhaustiveEnumPredicate weight',
+      'ForwardingMethodAlias Cart.count',
       'SingularAndPluralMember Query.tags',
       'StaticForwardingWrapper absOf',
       'StaticForwardingWrapper total',

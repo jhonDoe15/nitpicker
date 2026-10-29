@@ -1,5 +1,6 @@
 import { ENUM_PREDICATE_RULE } from '../../review-rules/enum-predicates.mjs';
 import { FORWARDING_RULE } from './main/forwarding-wrappers.mjs';
+import { METHOD_ALIAS_RULE } from './main/method-aliases.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
 import { UNUSED_OPTION_RULE } from './main/unused-options.mjs';
 import { REVIEW_TOOL } from './review-finding.mjs';
@@ -14,6 +15,7 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   SPRING_UNUSED_CONTEXT_RULE,
   ENUM_PREDICATE_RULE,
   FORWARDING_RULE,
+  METHOD_ALIAS_RULE,
   SINGULAR_PLURAL_RULE,
   ...SPRING_RULES,
   JAVA_ONLY_SPRING_RULE,
