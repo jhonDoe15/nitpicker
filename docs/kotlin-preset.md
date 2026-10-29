@@ -749,15 +749,19 @@ The shared design rules (`mutable-state-escape`, `context-threading`, `caller-pr
 `protocol-contract`, `forwarding-chain`, `disjoint-consumer-groups`, `data-clump`,
 `repeated-policy-decision` and `foreign-state-decision`; see the table in
 [internals](internals.md#design-facts-sharedrulesdesign)) run on the production Kotlin sources,
-from the same syntax-tree pass as the review rules, so they need nothing more under Gradle or Maven.
+from the same syntax-tree pass as the review rules, so they need nothing more under Gradle (the Kotlin preset has no Maven run).
 All are report-only except `mutable-state-escape` and `protocol-contract`, a call that breaks a
 `protocols` contract. The pass reads names, not types: a call is tied to its
 declaration by receiver type, name and argument count, and one that stays ambiguous is left out
-instead of guessed. Each Gradle module or Maven module is judged alone (a module does not see the
+instead of guessed. Each Gradle module is judged alone (a module does not see the
 types of a sibling), smart casts and generic arguments are not followed, and a facts failure is
 a tool error (`structure/design-facts`) while the other Kotlin checks still report. An exception
 is an `exceptions` entry with the rule id and a path glob, as in the TypeScript preset.
-In a Gradle module with a `publishing` publication, its exported types and top-level functions count as published, so the rules that judge an API's shape (`context-threading`, `caller-protocol`, `forwarding-chain`, `disjoint-consumer-groups` and `data-clump`) skip them; a module with a `main` is an application and keeps all findings.
+In a Gradle module with a `publishing` publication, its exported types and top-level functions
+count as published, so the rules that judge an API's shape (`context-threading`, `caller-protocol`,
+`forwarding-chain`, `disjoint-consumer-groups` and `data-clump`) skip them; a module with a `main`
+is an application and keeps all findings. The Kotlin preset has no Maven run, so this applies to
+Gradle only. A `protected` member is not exported, and an `internal` one is.
 
 ## Format check: ktlint, ktfmt or none
 

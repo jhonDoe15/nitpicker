@@ -68,11 +68,6 @@ function compilePsiProgram({ workspace, javaHome, classpath }) {
   return output;
 }
 
-/**
- * Compiles the PSI program and returns what `runPsiProgram` needs. The compiler jars come from
- * `environment.NITPICKER_KOTLIN_COMPILER_CLASSPATH` (run on the `java` and `javac` of the path, or
- * of `environment.JAVA_HOME`) or, when it is not set, from Gradle for `project`.
- */
 export function prepareCompiler({ workspace, project, gradle, environment }) {
   const named = environment[CLASSPATH_VARIABLE];
   const { javaHome, classpath } = named
@@ -86,14 +81,14 @@ export function prepareCompiler({ workspace, project, gradle, environment }) {
   };
 }
 
-/** Runs the program on `project`; `{ ...compiler, published: true }` runs it as a published library. */
-export function runPsiProgram(compiler, project, roots = ['src']) {
+export function runPsiProgram(compiler, project, roots = ['src'], properties = []) {
   const metricsOutput = path.join(project, 'metrics.json');
   const factsOutput = path.join(project, 'facts.json');
   const result = spawnSync(
     javaTool(compiler.javaHome, 'java'),
     [
       `-Dnitpicker.kotlinCompiler=${compiler.pinned}`,
+      ...properties.map((property) => `-D${property}`),
       ...(compiler.published === true ? ['-Dnitpicker.published=true'] : []),
       '-cp',
       `${compiler.classpath}${path.delimiter}${compiler.classes}`,

@@ -5,7 +5,6 @@ import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.*;
 
-/** Finds the local declaration (parameter, local variable, loop or catch variable) a name refers to. */
 public final class Declared {
   private final String name;
   private final PsiElement ref;
@@ -16,6 +15,27 @@ public final class Declared {
   }
 
   public PsiElement at(PsiElement p, PsiElement child, boolean inFunction) {
+    if (p instanceof KtClassOrObject) {
+      return inFunction ? null : parameter(((KtClassOrObject) p).getPrimaryConstructorParameters());
+    }
+    boolean clause = p instanceof KtCatchClause || p instanceof KtWhenExpression || p instanceof KtPropertyAccessor;
+    return clause ? clauseVariable(p, child) : scopeVariable(p);
+  }
+
+  private PsiElement clauseVariable(PsiElement p, PsiElement child) {
+    if (p instanceof KtCatchClause) {
+      KtParameter caught = ((KtCatchClause) p).getCatchParameter();
+      return caught != null && name.equals(caught.getName()) ? caught : null;
+    }
+    if (p instanceof KtWhenExpression) {
+      KtProperty subject = ((KtWhenExpression) p).getSubjectVariable();
+      return subject != null && name.equals(subject.getName()) && child != subject ? subject : null;
+    }
+    KtParameter value = ((KtPropertyAccessor) p).getParameter();
+    return value != null && name.equals(value.getName()) ? value : null;
+  }
+
+  private PsiElement scopeVariable(PsiElement p) {
     if (p instanceof KtBlockExpression) {
       return inBlock((KtBlockExpression) p);
     }
@@ -28,25 +48,7 @@ public final class Declared {
     if (p instanceof KtSecondaryConstructor) {
       return parameter(((KtSecondaryConstructor) p).getValueParameters());
     }
-    if (p instanceof KtForExpression) {
-      return loopVariable((KtForExpression) p);
-    }
-    if (p instanceof KtCatchClause) {
-      KtParameter caught = ((KtCatchClause) p).getCatchParameter();
-      return caught != null && name.equals(caught.getName()) ? caught : null;
-    }
-    if (p instanceof KtWhenExpression) {
-      KtProperty subject = ((KtWhenExpression) p).getSubjectVariable();
-      return subject != null && name.equals(subject.getName()) && child != subject ? subject : null;
-    }
-    if (p instanceof KtPropertyAccessor) {
-      KtParameter value = ((KtPropertyAccessor) p).getParameter();
-      return value != null && name.equals(value.getName()) ? value : null;
-    }
-    if (p instanceof KtClassOrObject && !inFunction) {
-      return parameter(((KtClassOrObject) p).getPrimaryConstructorParameters());
-    }
-    return null;
+    return p instanceof KtForExpression ? loopVariable((KtForExpression) p) : null;
   }
 
   private PsiElement inBlock(KtBlockExpression block) {

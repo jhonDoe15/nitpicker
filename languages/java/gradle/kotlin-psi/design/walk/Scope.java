@@ -10,7 +10,6 @@ import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.lexer.KtTokens;
 import org.jetbrains.kotlin.psi.*;
 
-/** Answers questions about the expressions of one function: which parameter or field they name, where they escape. */
 public final class Scope {
   public static final class Value {
     public final Object id;

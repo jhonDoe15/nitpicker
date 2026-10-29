@@ -66,6 +66,10 @@ public final class TypeNames {
         return found;
       }
     }
+    return imported(name, source);
+  }
+
+  private Owner imported(String name, Source source) {
     String imported = source.imports.get(name);
     if (imported != null) {
       return index.type(imported);

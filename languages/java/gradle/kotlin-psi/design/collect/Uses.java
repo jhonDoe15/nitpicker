@@ -1,4 +1,4 @@
-package nitpicker.kotlinpsi.design.walk;
+package nitpicker.kotlinpsi.design.collect;
 
 import static nitpicker.kotlinpsi.common.Psi.m;
 

@@ -64,6 +64,14 @@ public final class Ps {
     return owner.hasModifier(KtTokens.PRIVATE_KEYWORD);
   }
 
+  public static boolean isProtected(KtModifierListOwner owner) {
+    return owner.hasModifier(KtTokens.PROTECTED_KEYWORD);
+  }
+
+  public static boolean hidden(KtModifierListOwner owner) {
+    return isPrivate(owner) || isProtected(owner);
+  }
+
   public static String compact(String text) {
     return text == null ? null : text.replaceAll("\\s+", "");
   }

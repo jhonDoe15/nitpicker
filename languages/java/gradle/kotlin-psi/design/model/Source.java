@@ -28,17 +28,20 @@ public final class Source {
     String file = path.substring(path.lastIndexOf('/') + 1);
     this.stem = file.endsWith(".kt") ? file.substring(0, file.length() - 3) : file;
     for (KtImportDirective directive : psi.getImportDirectives()) {
-      ImportPath target = directive.getImportPath();
-      if (target == null) {
-        continue;
-      }
-      FqName name = target.getFqName();
-      if (target.isAllUnder()) {
-        stars.add(name.asString());
-      } else {
-        String local = target.getAlias() == null ? name.shortName().asString() : target.getAlias().asString();
-        imports.put(local, name.asString());
-      }
+      read(directive.getImportPath());
+    }
+  }
+
+  private void read(ImportPath target) {
+    if (target == null) {
+      return;
+    }
+    FqName name = target.getFqName();
+    if (target.isAllUnder()) {
+      stars.add(name.asString());
+    } else {
+      String local = target.getAlias() == null ? name.shortName().asString() : target.getAlias().asString();
+      imports.put(local, name.asString());
     }
   }
 

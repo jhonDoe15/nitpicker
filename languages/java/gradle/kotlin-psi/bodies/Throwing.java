@@ -38,7 +38,7 @@ public final class Throwing {
     }
     for (KtCallExpression call : PsiTreeUtil.collectElementsOfType(body, KtCallExpression.class)) {
       String name = nameOf(call.getCalleeExpression());
-      if (FAILING.contains(name) || nothing.contains(name)) {
+      if (name != null && (FAILING.contains(name) || nothing.contains(name))) {
         return true;
       }
     }

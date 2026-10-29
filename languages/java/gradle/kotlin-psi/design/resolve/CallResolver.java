@@ -5,6 +5,8 @@ import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import nitpicker.kotlinpsi.design.Ctx;
+import nitpicker.kotlinpsi.design.lookup.Functions;
+import nitpicker.kotlinpsi.design.lookup.Functions.Site;
 import nitpicker.kotlinpsi.design.model.Fun;
 import nitpicker.kotlinpsi.design.model.Owner;
 import nitpicker.kotlinpsi.design.model.Source;
@@ -18,25 +20,44 @@ public final class CallResolver {
     public final Fun target;
     public final Owner constructed;
     public final boolean viaThis;
+    public final Implicit implicit;
 
     public Resolved(Fun target, Owner constructed, boolean viaThis) {
       this.target = target;
       this.constructed = constructed;
       this.viaThis = viaThis;
+      this.implicit = null;
+    }
+
+    private Resolved(Fun target, Implicit implicit) {
+      this.target = target;
+      this.constructed = null;
+      this.viaThis = false;
+      this.implicit = implicit;
+    }
+
+    public static Resolved through(Fun target, KtExpression receiver) {
+      return new Resolved(target, new Implicit(receiver, false));
+    }
+
+    public static Resolved hidden(KtExpression receiver) {
+      return new Resolved(null, new Implicit(receiver, true));
     }
   }
 
-  private record Site(String name, List<Arity.Arg> args, Source source) {}
+  public record Implicit(KtExpression receiver, boolean opaque) {}
 
   private static final Resolved NONE = new Resolved(null, null, false);
 
   private final Ctx ctx;
   private final Overloads overloads;
+  private final Functions functions;
   private final Map<KtCallExpression, Resolved> memo = new IdentityHashMap<>();
 
   public CallResolver(Ctx ctx) {
     this.ctx = ctx;
     this.overloads = new Overloads(ctx);
+    this.functions = new Functions(ctx);
   }
 
   public Fun target(KtCallExpression call) {
@@ -67,33 +88,45 @@ public final class CallResolver {
   private Resolved qualified(Site site, KtExpression receiver) {
     Owner staticOwner = ctx.typer.staticOwner(receiver);
     if (staticOwner != null) {
-      Owner holder = ctx.typer.objectOwner(staticOwner);
-      Fun found = holder == null ? null : overloads.pick(ctx.members.funs(holder, site.name()), site.args());
-      if (found != null) {
-        return new Resolved(found, null, false);
-      }
-      Owner nested = staticOwner.nested.get(site.name());
-      boolean shadowed = holder != null && !ctx.members.funs(holder, site.name()).isEmpty();
-      return nested == null || shadowed ? NONE : constructor(nested, site.args());
+      return staticCall(staticOwner, site);
     }
     Ty type = ctx.typer.typeOf(receiver);
     if (type.project()) {
-      Fun member = overloads.pick(ctx.members.funs(type.owner, site.name()), site.args());
-      if (member != null) {
-        return new Resolved(member, null, false);
-      }
-      if (ctx.members.prop(type.owner, site.name()) != null) {
-        return NONE;
-      }
-      boolean bindable = overloads.anyBindable(ctx.members.funs(type.owner, site.name()), site.args());
-      return bindable ? NONE : extension(type, site);
+      return memberCall(type, site);
     }
     return type.known() ? extension(type, site) : NONE;
+  }
+
+  private Resolved staticCall(Owner staticOwner, Site site) {
+    Owner holder = ctx.typer.objectOwner(staticOwner);
+    Fun found = holder == null ? null : overloads.pick(ctx.members.funs(holder, site.name()), site.args());
+    if (found != null) {
+      return new Resolved(found, null, false);
+    }
+    Owner nested = staticOwner.nested.get(site.name());
+    boolean shadowed = holder != null && !ctx.members.funs(holder, site.name()).isEmpty();
+    return nested == null || shadowed ? NONE : constructor(nested, site.args());
+  }
+
+  private Resolved memberCall(Ty type, Site site) {
+    Fun member = overloads.pick(ctx.members.funs(type.owner, site.name()), site.args());
+    if (member != null) {
+      return new Resolved(member, null, false);
+    }
+    if (ctx.members.prop(type.owner, site.name()) != null) {
+      return NONE;
+    }
+    boolean bindable = overloads.anyBindable(ctx.members.funs(type.owner, site.name()), site.args());
+    return bindable ? NONE : extension(type, site);
   }
 
   private Resolved bare(KtCallExpression call, Site site) {
     if (localFunction(call, site.name())) {
       return NONE;
+    }
+    Resolved implicit = implicitReceiver(call, site);
+    if (implicit != null) {
+      return implicit;
     }
     for (Bindings.Level level : ctx.bindings.levels(call)) {
       Resolved found = atLevel(level, site);
@@ -102,6 +135,32 @@ public final class CallResolver {
       }
     }
     return levelsBlurred(call) ? NONE : topLevel(call, site);
+  }
+
+  private Resolved implicitReceiver(KtCallExpression call, Site site) {
+    KtLambdaExpression lambda = receiverLambda(call);
+    KtExpression receiver = lambda == null ? null : ctx.lambdas.implicitReceiver(lambda);
+    Ty type = receiver == null ? Ty.UNKNOWN : ctx.typer.typeOf(receiver);
+    if (!type.project()) {
+      return null;
+    }
+    List<Fun> members = ctx.members.funs(type.owner, site.name());
+    Fun found = overloads.pick(members, site.args());
+    if (found != null) {
+      return Resolved.through(found, receiver);
+    }
+    boolean member = !members.isEmpty() || ctx.members.prop(type.owner, site.name()) != null
+        || ctx.hierarchy.external(type.owner);
+    return member ? Resolved.hidden(receiver) : null;
+  }
+
+  private KtLambdaExpression receiverLambda(KtCallExpression call) {
+    for (PsiElement p = call.getParent(); p != null; p = p.getParent()) {
+      if (p instanceof KtLambdaExpression && ctx.lambdas.receiver((KtLambdaExpression) p)) {
+        return (KtLambdaExpression) p;
+      }
+    }
+    return null;
   }
 
   private Resolved atLevel(Bindings.Level level, Site site) {
@@ -158,23 +217,12 @@ public final class CallResolver {
   }
 
   public List<Fun> plainTopLevel(String name, Source source) {
-    for (List<Fun> tier : tiers(name, source)) {
-      List<Fun> plain = plainIn(tier, source);
-      if (!plain.isEmpty()) {
-        return plain;
-      }
-    }
-    return new ArrayList<>();
+    return functions.plain(name, source);
   }
 
-  private List<Fun> plainIn(List<Fun> tier, Source source) {
-    List<Fun> plain = new ArrayList<>();
-    for (Fun function : tier) {
-      if (function.receiver == null && visible(function, source)) {
-        plain.add(function);
-      }
-    }
-    return plain;
+  private Resolved extension(Ty receiver, Site site) {
+    Fun found = functions.extension(receiver, site);
+    return found == null ? NONE : new Resolved(found, null, false);
   }
 
   private Resolved topLevel(KtCallExpression call, Site site) {
@@ -189,53 +237,6 @@ public final class CallResolver {
     }
     Fun found = overloads.pick(plain, site.args());
     return found == null ? NONE : new Resolved(found, null, false);
-  }
-
-  private List<List<Fun>> tiers(String name, Source source) {
-    List<List<Fun>> tiers = new ArrayList<>();
-    String imported = source.imports.get(name);
-    if (imported != null) {
-      int dot = imported.lastIndexOf('.');
-      tiers.add(ctx.index.topFuns(dot < 0 ? "" : imported.substring(0, dot), imported.substring(dot + 1)));
-    }
-    tiers.add(ctx.index.topFuns(source.pkg, name));
-    List<Fun> stars = new ArrayList<>();
-    for (String prefix : source.stars) {
-      stars.addAll(ctx.index.topFuns(prefix, name));
-    }
-    tiers.add(stars);
-    return tiers;
-  }
-
-  private boolean visible(Fun function, Source source) {
-    return !function.isPrivate || function.owner.source == source;
-  }
-
-  private Resolved extension(Ty receiver, Site site) {
-    List<Fun> found = new ArrayList<>();
-    for (List<Fun> tier : tiers(site.name(), site.source())) {
-      for (Fun function : tier) {
-        if (function.receiver != null && visible(function, site.source()) && receives(function, receiver)
-            && Arity.bind(function.params, site.args()) != null) {
-          found.add(function);
-        }
-      }
-      if (!found.isEmpty()) {
-        break;
-      }
-    }
-    return found.size() == 1 ? new Resolved(found.get(0), null, false) : NONE;
-  }
-
-  private boolean receives(Fun function, Ty receiver) {
-    Ty declared = ctx.names.resolve(function.receiver, function.owner.source);
-    if (declared.project() && receiver.project()) {
-      return ctx.hierarchy.subtype(receiver.owner, declared.owner);
-    }
-    if (!declared.project() && !receiver.project() && declared.known() && receiver.known()) {
-      return Overloads.strip(declared.text).equals(Overloads.strip(receiver.text));
-    }
-    return false;
   }
 
   public Resolved constructor(Owner type, List<Arity.Arg> args) {

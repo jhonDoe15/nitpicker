@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.function.Predicate;
 import nitpicker.kotlinpsi.design.judge.Decisions;
 import nitpicker.kotlinpsi.design.judge.Forwarding;
 import nitpicker.kotlinpsi.design.judge.ReturnsField;
@@ -28,12 +29,12 @@ public final class CallableFacts {
     walk.run();
     Source source = function.owner.source;
     Map<String, Object> forward = Forwarding.of(ctx, function);
-    boolean exported = !function.isPrivate && function.owner.exported;
+    boolean exported = !function.hidden() && function.owner.exported;
     return m(
         "id", function.id, "file", source.path, "name", function.name, "line", line(function, source),
         "kind", function.kind, "owner", function.owner.id,
         "exported", exported,
-        "entry", Entries.of(ctx, function) ? Boolean.TRUE : null,
+        "entry", Entries.of(function) ? Boolean.TRUE : null,
         "published", ctx.library && exported && function.owner.module() ? Boolean.TRUE : null,
         "references", nonEmpty(new ArrayList<Object>(walk.references)),
         "params", params(ctx, function),
@@ -55,18 +56,16 @@ public final class CallableFacts {
         dropForwards((Map<String, Object>) use, missing);
       }
     }
-    Object references = callable.get("references");
-    if (references instanceof List) {
-      ((List<?>) references).removeIf(missing::contains);
-      if (((List<?>) references).isEmpty()) {
-        callable.remove("references");
-      }
-    }
-    Object calls = callable.get("calls");
-    if (calls instanceof List) {
-      ((List<?>) calls).removeIf(call -> missing.contains(((Map<?, ?>) call).get("target")));
-      if (((List<?>) calls).isEmpty()) {
-        callable.remove("calls");
+    dropFrom(callable, "references", missing::contains);
+    dropFrom(callable, "calls", call -> missing.contains(((Map<?, ?>) call).get("target")));
+  }
+
+  private static void dropFrom(Map<String, Object> callable, String key, Predicate<Object> missing) {
+    Object list = callable.get(key);
+    if (list instanceof List) {
+      ((List<?>) list).removeIf(missing);
+      if (((List<?>) list).isEmpty()) {
+        callable.remove(key);
       }
     }
   }

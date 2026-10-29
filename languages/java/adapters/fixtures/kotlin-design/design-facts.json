@@ -29,6 +29,10 @@
       "role": "production"
     },
     {
+      "file": "src/shop/Changes.kt",
+      "role": "production"
+    },
+    {
       "file": "src/shop/Checkout.kt",
       "role": "production"
     },
@@ -42,6 +46,10 @@
     },
     {
       "file": "src/shop/Extensions.kt",
+      "role": "production"
+    },
+    {
+      "file": "src/shop/Hierarchy.kt",
       "role": "production"
     },
     {
@@ -61,7 +69,19 @@
       "role": "production"
     },
     {
+      "file": "src/shop/Scopes.kt",
+      "role": "production"
+    },
+    {
       "file": "src/shop/Session.kt",
+      "role": "production"
+    },
+    {
+      "file": "src/shop/Stores.kt",
+      "role": "production"
+    },
+    {
+      "file": "src/shop/Visibility.kt",
       "role": "production"
     }
   ],
@@ -177,6 +197,7 @@
         },
         {
           "name": "current",
+          "mutable": true,
           "private": true
         },
         {
@@ -208,6 +229,14 @@
           "name": "price"
         }
       ]
+    },
+    {
+      "id": "src/shop/Changes.kt",
+      "file": "src/shop/Changes.kt",
+      "name": "Changes",
+      "line": 5,
+      "kind": "module",
+      "exported": true
     },
     {
       "id": "src/shop/Checkout.kt",
@@ -294,7 +323,8 @@
       "name": "Impl",
       "line": 9,
       "kind": "class",
-      "exported": true
+      "exported": true,
+      "supertypes": ["src/shop/Entries.kt#Handler"]
     },
     {
       "id": "src/shop/Entries.kt#Framework",
@@ -351,6 +381,48 @@
       ]
     },
     {
+      "id": "src/shop/Hierarchy.kt#Resource",
+      "file": "src/shop/Hierarchy.kt",
+      "name": "Resource",
+      "line": 3,
+      "kind": "class",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Hierarchy.kt#FileRes",
+      "file": "src/shop/Hierarchy.kt",
+      "name": "FileRes",
+      "line": 9,
+      "kind": "class",
+      "exported": true,
+      "supertypes": ["src/shop/Hierarchy.kt#Resource"]
+    },
+    {
+      "id": "src/shop/Hierarchy.kt#Conn",
+      "file": "src/shop/Hierarchy.kt",
+      "name": "Conn",
+      "line": 13,
+      "kind": "interface",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Hierarchy.kt#Pg",
+      "file": "src/shop/Hierarchy.kt",
+      "name": "Pg",
+      "line": 19,
+      "kind": "class",
+      "exported": true,
+      "supertypes": ["src/shop/Hierarchy.kt#Conn"]
+    },
+    {
+      "id": "src/shop/Hierarchy.kt",
+      "file": "src/shop/Hierarchy.kt",
+      "name": "Hierarchy",
+      "line": 25,
+      "kind": "module",
+      "exported": true
+    },
+    {
       "id": "src/shop/Order.kt#Status",
       "file": "src/shop/Order.kt",
       "name": "Status",
@@ -364,9 +436,24 @@
       "file": "src/shop/Order.kt",
       "name": "Shape",
       "line": 5,
-      "kind": "enum",
-      "exported": true,
-      "cases": ["Circle", "Square"]
+      "kind": "data",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Order.kt#Circle",
+      "file": "src/shop/Order.kt",
+      "name": "Circle",
+      "line": 7,
+      "kind": "data",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Order.kt#Square",
+      "file": "src/shop/Order.kt",
+      "name": "Square",
+      "line": 9,
+      "kind": "data",
+      "exported": true
     },
     {
       "id": "src/shop/Order.kt#Result",
@@ -387,7 +474,8 @@
         {
           "name": "value"
         }
-      ]
+      ],
+      "supertypes": ["src/shop/Order.kt#Result"]
     },
     {
       "id": "src/shop/Order.kt#Failed",
@@ -395,7 +483,8 @@
       "name": "Failed",
       "line": 15,
       "kind": "data",
-      "exported": true
+      "exported": true,
+      "supertypes": ["src/shop/Order.kt#Result"]
     },
     {
       "id": "src/shop/Order.kt#Order",
@@ -535,6 +624,22 @@
       "exported": true
     },
     {
+      "id": "src/shop/Scopes.kt#Tx",
+      "file": "src/shop/Scopes.kt",
+      "name": "Tx",
+      "line": 3,
+      "kind": "class",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Scopes.kt",
+      "file": "src/shop/Scopes.kt",
+      "name": "Scopes",
+      "line": 11,
+      "kind": "module",
+      "exported": true
+    },
+    {
       "id": "src/shop/Session.kt#Session",
       "file": "src/shop/Session.kt",
       "name": "Session",
@@ -561,6 +666,119 @@
       "name": "Session",
       "line": 19,
       "kind": "module",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Stores.kt#Stores",
+      "file": "src/shop/Stores.kt",
+      "name": "Stores",
+      "line": 5,
+      "kind": "class",
+      "exported": true,
+      "fields": [
+        {
+          "name": "given",
+          "mutable": true
+        },
+        {
+          "name": "plain"
+        },
+        {
+          "name": "reused",
+          "mutable": true,
+          "private": true
+        },
+        {
+          "name": "swapped",
+          "mutable": true,
+          "private": true
+        },
+        {
+          "name": "mixed",
+          "private": true
+        },
+        {
+          "name": "built",
+          "mutable": true,
+          "private": true
+        },
+        {
+          "name": "copied",
+          "mutable": true,
+          "private": true
+        },
+        {
+          "name": "aliased",
+          "mutable": true,
+          "private": true
+        },
+        {
+          "name": "picked",
+          "mutable": true,
+          "private": true
+        },
+        {
+          "name": "lazily",
+          "mutable": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Stores.kt#Buf",
+      "file": "src/shop/Stores.kt",
+      "name": "Buf",
+      "line": 42,
+      "kind": "class",
+      "exported": true,
+      "fields": [
+        {
+          "name": "text",
+          "mutable": true,
+          "private": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Visibility.kt#Base",
+      "file": "src/shop/Visibility.kt",
+      "name": "Base",
+      "line": 3,
+      "kind": "class",
+      "exported": true,
+      "fields": [
+        {
+          "name": "shared",
+          "mutable": true,
+          "private": true
+        },
+        {
+          "name": "inside",
+          "mutable": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Visibility.kt#Shape",
+      "file": "src/shop/Visibility.kt",
+      "name": "Shape",
+      "line": 15,
+      "kind": "data",
+      "exported": true,
+      "fields": [
+        {
+          "name": "sides"
+        },
+        {
+          "name": "label"
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Visibility.kt#Named",
+      "file": "src/shop/Visibility.kt",
+      "name": "Named",
+      "line": 21,
+      "kind": "interface",
       "exported": true
     }
   ],
@@ -1277,7 +1495,14 @@
       "owner": "src/shop/Cart.kt#Cart",
       "exported": true,
       "returns": "Int",
-      "ownFields": ["items"]
+      "ownFields": ["items"],
+      "reads": [
+        {
+          "type": "src/shop/Cart.kt#Line",
+          "fields": ["price"],
+          "line": 31
+        }
+      ]
     },
     {
       "id": "src/shop/Cart.kt#Cart.count(String)",
@@ -1336,6 +1561,120 @@
         }
       ],
       "ownFields": ["sku", "price"]
+    },
+    {
+      "id": "src/shop/Changes.kt#scopeChange",
+      "file": "src/shop/Changes.kt",
+      "name": "scopeChange",
+      "line": 5,
+      "kind": "function",
+      "owner": "src/shop/Changes.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "stores",
+          "type": "src/shop/Stores.kt#Stores"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Stores.kt#Stores.reuse",
+          "line": 6,
+          "receiver": "stores",
+          "mutation": "add"
+        },
+        {
+          "target": "src/shop/Stores.kt#Stores.builtList",
+          "line": 7,
+          "receiver": "stores",
+          "mutation": "clear"
+        },
+        {
+          "target": "src/shop/Stores.kt#Stores.copiedList",
+          "line": 8,
+          "receiver": "stores",
+          "mutation": "removeAt"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["reuse", "builtList", "copiedList"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Changes.kt#helperChange",
+      "file": "src/shop/Changes.kt",
+      "name": "helperChange",
+      "line": 11,
+      "kind": "function",
+      "owner": "src/shop/Changes.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "stores",
+          "type": "src/shop/Stores.kt#Stores"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Stores.kt#Stores.reuse",
+          "line": 12,
+          "receiver": "stores",
+          "mutation": "sort"
+        },
+        {
+          "target": "src/shop/Stores.kt#Stores.aliasedList",
+          "line": 13,
+          "receiver": "stores",
+          "mutation": "reverse"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["reuse", "aliasedList"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Changes.kt#builderChange",
+      "file": "src/shop/Changes.kt",
+      "name": "builderChange",
+      "line": 16,
+      "kind": "function",
+      "owner": "src/shop/Changes.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "buf",
+          "type": "src/shop/Stores.kt#Buf"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Stores.kt#Buf.text",
+          "line": 17,
+          "receiver": "buf",
+          "mutation": "appendLine"
+        },
+        {
+          "target": "src/shop/Stores.kt#Buf.text",
+          "line": 18,
+          "receiver": "buf",
+          "mutation": "setLength"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["text"],
+          "forwards": []
+        }
+      ]
     },
     {
       "id": "src/shop/Checkout.kt#addDirect",
@@ -2538,8 +2877,7 @@
       "line": 18,
       "kind": "method",
       "owner": "src/shop/Entries.kt#Framework",
-      "exported": true,
-      "entry": true
+      "exported": true
     },
     {
       "id": "src/shop/Entries.kt#Controller.index",
@@ -2578,7 +2916,6 @@
       "kind": "method",
       "owner": "src/shop/Entries.kt#Failure",
       "exported": true,
-      "entry": true,
       "returns": "String"
     },
     {
@@ -2841,6 +3178,212 @@
       ]
     },
     {
+      "id": "src/shop/Hierarchy.kt#Resource.open",
+      "file": "src/shop/Hierarchy.kt",
+      "name": "open",
+      "line": 4,
+      "kind": "method",
+      "owner": "src/shop/Hierarchy.kt#Resource",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Hierarchy.kt#Resource.close",
+      "file": "src/shop/Hierarchy.kt",
+      "name": "close",
+      "line": 6,
+      "kind": "method",
+      "owner": "src/shop/Hierarchy.kt#Resource",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Hierarchy.kt#FileRes.close",
+      "file": "src/shop/Hierarchy.kt",
+      "name": "close",
+      "line": 10,
+      "kind": "method",
+      "owner": "src/shop/Hierarchy.kt#FileRes",
+      "exported": true,
+      "entry": true
+    },
+    {
+      "id": "src/shop/Hierarchy.kt#Conn.open",
+      "file": "src/shop/Hierarchy.kt",
+      "name": "open",
+      "line": 14,
+      "kind": "method",
+      "owner": "src/shop/Hierarchy.kt#Conn",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Hierarchy.kt#Conn.close",
+      "file": "src/shop/Hierarchy.kt",
+      "name": "close",
+      "line": 16,
+      "kind": "method",
+      "owner": "src/shop/Hierarchy.kt#Conn",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Hierarchy.kt#Pg.open",
+      "file": "src/shop/Hierarchy.kt",
+      "name": "open",
+      "line": 20,
+      "kind": "method",
+      "owner": "src/shop/Hierarchy.kt#Pg",
+      "exported": true,
+      "entry": true
+    },
+    {
+      "id": "src/shop/Hierarchy.kt#Pg.close",
+      "file": "src/shop/Hierarchy.kt",
+      "name": "close",
+      "line": 22,
+      "kind": "method",
+      "owner": "src/shop/Hierarchy.kt#Pg",
+      "exported": true,
+      "entry": true
+    },
+    {
+      "id": "src/shop/Hierarchy.kt#readFile",
+      "file": "src/shop/Hierarchy.kt",
+      "name": "readFile",
+      "line": 25,
+      "kind": "function",
+      "owner": "src/shop/Hierarchy.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "f",
+          "type": "src/shop/Hierarchy.kt#FileRes"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Hierarchy.kt#Resource.open",
+          "line": 26,
+          "receiver": "f"
+        },
+        {
+          "target": "src/shop/Hierarchy.kt#FileRes.close",
+          "line": 30,
+          "receiver": "f",
+          "cleanup": true
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["open", "close"],
+          "forwards": [],
+          "opaque": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Hierarchy.kt#leakFile",
+      "file": "src/shop/Hierarchy.kt",
+      "name": "leakFile",
+      "line": 34,
+      "kind": "function",
+      "owner": "src/shop/Hierarchy.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "f",
+          "type": "src/shop/Hierarchy.kt#FileRes"
+        }
+      ],
+      "forward": {
+        "target": "src/shop/Hierarchy.kt#Resource.open",
+        "arguments": [],
+        "returned": false
+      },
+      "calls": [
+        {
+          "target": "src/shop/Hierarchy.kt#Resource.open",
+          "line": 35,
+          "receiver": "f"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["open"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Hierarchy.kt#leakPg",
+      "file": "src/shop/Hierarchy.kt",
+      "name": "leakPg",
+      "line": 38,
+      "kind": "function",
+      "owner": "src/shop/Hierarchy.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "pg",
+          "type": "src/shop/Hierarchy.kt#Pg"
+        }
+      ],
+      "forward": {
+        "target": "src/shop/Hierarchy.kt#Pg.open",
+        "arguments": [],
+        "returned": false
+      },
+      "calls": [
+        {
+          "target": "src/shop/Hierarchy.kt#Pg.open",
+          "line": 39,
+          "receiver": "pg"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["open"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Hierarchy.kt#closePg",
+      "file": "src/shop/Hierarchy.kt",
+      "name": "closePg",
+      "line": 42,
+      "kind": "function",
+      "owner": "src/shop/Hierarchy.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "pg",
+          "type": "src/shop/Hierarchy.kt#Pg"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Hierarchy.kt#Pg.open",
+          "line": 43,
+          "receiver": "pg"
+        },
+        {
+          "target": "src/shop/Hierarchy.kt#Pg.close",
+          "line": 47,
+          "receiver": "pg",
+          "cleanup": true
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["open", "close"],
+          "forwards": [],
+          "opaque": true
+        }
+      ]
+    },
+    {
       "id": "src/shop/Order.kt#Ok.<init>",
       "file": "src/shop/Order.kt",
       "name": "Ok",
@@ -3048,6 +3591,16 @@
           "forwards": []
         }
       ]
+    },
+    {
+      "id": "src/shop/Resources.kt#Depot.size:get",
+      "file": "src/shop/Resources.kt",
+      "name": "size",
+      "line": 10,
+      "kind": "accessor",
+      "owner": "src/shop/Resources.kt#Depot",
+      "exported": true,
+      "returns": "Int"
     },
     {
       "id": "src/shop/Resources.kt#Depot.reopen",
@@ -3263,6 +3816,13 @@
       "owner": "src/shop/Resources.kt#Gateway",
       "exported": true,
       "returns": "Int",
+      "calls": [
+        {
+          "target": "src/shop/Resources.kt#Depot.size:get",
+          "line": 30,
+          "receiver": "this.depot"
+        }
+      ],
       "ownFields": ["depot"],
       "reads": [
         {
@@ -3409,6 +3969,13 @@
         }
       ],
       "returns": "Int",
+      "calls": [
+        {
+          "target": "src/shop/Resources.kt#Depot.size:get",
+          "line": 41,
+          "receiver": "depot"
+        }
+      ],
       "paramUses": [
         {
           "param": 0,
@@ -3614,17 +4181,10 @@
       "params": [
         {
           "name": "shape",
-          "type": "src/shop/Order.kt#Shape"
+          "type": "Shape"
         }
       ],
-      "returns": "Int",
-      "decisions": [
-        {
-          "subject": "src/shop/Order.kt#Shape",
-          "groups": [["Circle"], ["Square"]],
-          "line": 35
-        }
-      ]
+      "returns": "Int"
     },
     {
       "id": "src/shop/Rules.kt#areaIs",
@@ -3637,17 +4197,10 @@
       "params": [
         {
           "name": "shape",
-          "type": "src/shop/Order.kt#Shape"
+          "type": "Shape"
         }
       ],
-      "returns": "Int",
-      "decisions": [
-        {
-          "subject": "src/shop/Order.kt#Shape",
-          "groups": [["Circle"], ["Square"]],
-          "line": 41
-        }
-      ]
+      "returns": "Int"
     },
     {
       "id": "src/shop/Rules.kt#notAnEnum",
@@ -3883,6 +4436,429 @@
           "fields": ["note"],
           "decided": ["note"],
           "line": 88
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Scopes.kt#Tx.open",
+      "file": "src/shop/Scopes.kt",
+      "name": "open",
+      "line": 4,
+      "kind": "method",
+      "owner": "src/shop/Scopes.kt#Tx",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Scopes.kt#Tx.step",
+      "file": "src/shop/Scopes.kt",
+      "name": "step",
+      "line": 6,
+      "kind": "method",
+      "owner": "src/shop/Scopes.kt#Tx",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Scopes.kt#Tx.close",
+      "file": "src/shop/Scopes.kt",
+      "name": "close",
+      "line": 8,
+      "kind": "method",
+      "owner": "src/shop/Scopes.kt#Tx",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Scopes.kt#exclusive",
+      "file": "src/shop/Scopes.kt",
+      "name": "exclusive",
+      "line": 11,
+      "kind": "function",
+      "owner": "src/shop/Scopes.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "t",
+          "type": "src/shop/Scopes.kt#Tx"
+        },
+        {
+          "name": "flag",
+          "type": "Boolean"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Scopes.kt#Tx.step",
+          "line": 12,
+          "receiver": "t",
+          "branch": ["0:then"]
+        },
+        {
+          "target": "src/shop/Scopes.kt#Tx.open",
+          "line": 12,
+          "receiver": "t",
+          "branch": ["0:else"]
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["step", "open"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Scopes.kt#chosen",
+      "file": "src/shop/Scopes.kt",
+      "name": "chosen",
+      "line": 15,
+      "kind": "function",
+      "owner": "src/shop/Scopes.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "t",
+          "type": "src/shop/Scopes.kt#Tx"
+        },
+        {
+          "name": "n",
+          "type": "Int"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Scopes.kt#Tx.step",
+          "line": 17,
+          "receiver": "t",
+          "branch": ["0:0"]
+        },
+        {
+          "target": "src/shop/Scopes.kt#Tx.open",
+          "line": 18,
+          "receiver": "t",
+          "branch": ["0:1"]
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["step", "open"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Scopes.kt#sequential",
+      "file": "src/shop/Scopes.kt",
+      "name": "sequential",
+      "line": 22,
+      "kind": "function",
+      "owner": "src/shop/Scopes.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "t",
+          "type": "src/shop/Scopes.kt#Tx"
+        },
+        {
+          "name": "flag",
+          "type": "Boolean"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Scopes.kt#Tx.step",
+          "line": 23,
+          "receiver": "t",
+          "branch": ["0:then"]
+        },
+        {
+          "target": "src/shop/Scopes.kt#Tx.open",
+          "line": 24,
+          "receiver": "t"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["step", "open"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Scopes.kt#lambdaInFinally",
+      "file": "src/shop/Scopes.kt",
+      "name": "lambdaInFinally",
+      "line": 27,
+      "kind": "function",
+      "owner": "src/shop/Scopes.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "r",
+          "type": "src/shop/Scopes.kt#Tx"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Scopes.kt#Tx.open",
+          "line": 28,
+          "receiver": "r"
+        },
+        {
+          "target": "src/shop/Scopes.kt#Tx.step",
+          "line": 30,
+          "receiver": "r"
+        },
+        {
+          "target": "src/shop/Scopes.kt#Tx.close",
+          "line": 32,
+          "receiver": "r"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["open", "step"],
+          "forwards": [],
+          "opaque": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Scopes.kt#scopeInFinally",
+      "file": "src/shop/Scopes.kt",
+      "name": "scopeInFinally",
+      "line": 37,
+      "kind": "function",
+      "owner": "src/shop/Scopes.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "t",
+          "type": "src/shop/Scopes.kt#Tx"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Scopes.kt#Tx.open",
+          "line": 38,
+          "receiver": "t"
+        },
+        {
+          "target": "src/shop/Scopes.kt#Tx.step",
+          "line": 40,
+          "receiver": "t"
+        },
+        {
+          "target": "src/shop/Scopes.kt#Tx.close",
+          "line": 42,
+          "receiver": "t",
+          "cleanup": true
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["open", "step"],
+          "forwards": [],
+          "opaque": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Scopes.kt#receiverBlock",
+      "file": "src/shop/Scopes.kt",
+      "name": "receiverBlock",
+      "line": 46,
+      "kind": "function",
+      "owner": "src/shop/Scopes.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "t",
+          "type": "src/shop/Scopes.kt#Tx"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Scopes.kt#Tx.open",
+          "line": 48,
+          "receiver": "t"
+        },
+        {
+          "target": "src/shop/Scopes.kt#Tx.step",
+          "line": 49,
+          "receiver": "t"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Scopes.kt#receiverRun",
+      "file": "src/shop/Scopes.kt",
+      "name": "receiverRun",
+      "line": 53,
+      "kind": "function",
+      "owner": "src/shop/Scopes.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "t",
+          "type": "src/shop/Scopes.kt#Tx"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Scopes.kt#Tx.open",
+          "line": 55,
+          "receiver": "t"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Scopes.kt#unknownReceiver",
+      "file": "src/shop/Scopes.kt",
+      "name": "unknownReceiver",
+      "line": 59,
+      "kind": "function",
+      "owner": "src/shop/Scopes.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "t",
+          "type": "src/shop/Scopes.kt#Tx"
+        },
+        {
+          "name": "other",
+          "type": "Any"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Scopes.kt#Tx.open",
+          "line": 60,
+          "receiver": "t"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": ["open"],
+          "forwards": []
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Scopes.kt#twoLambdas",
+      "file": "src/shop/Scopes.kt",
+      "name": "twoLambdas",
+      "line": 66,
+      "kind": "function",
+      "owner": "src/shop/Scopes.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "a",
+          "type": "List"
+        },
+        {
+          "name": "b",
+          "type": "List"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Scopes.kt#Tx.open",
+          "line": 67,
+          "receiver": "it@1"
+        },
+        {
+          "target": "src/shop/Scopes.kt#Tx.step",
+          "line": 67,
+          "receiver": "it@2"
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Scopes.kt#typedLambda",
+      "file": "src/shop/Scopes.kt",
+      "name": "typedLambda",
+      "line": 70,
+      "kind": "function",
+      "owner": "src/shop/Scopes.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "items",
+          "type": "List"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Scopes.kt#Tx.open",
+          "line": 71,
+          "receiver": "item"
+        }
+      ]
+    },
+    {
+      "id": "src/shop/Scopes.kt#scoped",
+      "file": "src/shop/Scopes.kt",
+      "name": "scoped",
+      "line": 74,
+      "kind": "function",
+      "owner": "src/shop/Scopes.kt",
+      "exported": true,
+      "params": [
+        {
+          "name": "a",
+          "type": "src/shop/Scopes.kt#Tx"
+        },
+        {
+          "name": "b",
+          "type": "src/shop/Scopes.kt#Tx"
+        }
+      ],
+      "calls": [
+        {
+          "target": "src/shop/Scopes.kt#Tx.open",
+          "line": 77,
+          "receiver": "a"
+        },
+        {
+          "target": "src/shop/Scopes.kt#Tx.step",
+          "line": 78,
+          "receiver": "b"
+        }
+      ],
+      "paramUses": [
+        {
+          "param": 0,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
+        },
+        {
+          "param": 1,
+          "fields": [],
+          "forwards": [],
+          "opaque": true
         }
       ]
     },
@@ -4207,6 +5183,258 @@
           "forwards": []
         }
       ]
+    },
+    {
+      "id": "src/shop/Stores.kt#Stores.<init>",
+      "file": "src/shop/Stores.kt",
+      "name": "Stores",
+      "line": 5,
+      "kind": "constructor",
+      "owner": "src/shop/Stores.kt#Stores",
+      "exported": true,
+      "params": [
+        {
+          "name": "given",
+          "type": "MutableList",
+          "optional": true
+        },
+        {
+          "name": "plain",
+          "type": "List",
+          "optional": true
+        }
+      ],
+      "ownFields": [
+        "given",
+        "plain",
+        "reused",
+        "swapped",
+        "mixed",
+        "built",
+        "copied",
+        "aliased",
+        "picked",
+        "lazily"
+      ]
+    },
+    {
+      "id": "src/shop/Stores.kt#Stores.lazily:get",
+      "file": "src/shop/Stores.kt",
+      "name": "lazily",
+      "line": 13,
+      "kind": "accessor",
+      "owner": "src/shop/Stores.kt#Stores",
+      "exported": true,
+      "returnsField": "lazily"
+    },
+    {
+      "id": "src/shop/Stores.kt#Stores.swap",
+      "file": "src/shop/Stores.kt",
+      "name": "swap",
+      "line": 15,
+      "kind": "method",
+      "owner": "src/shop/Stores.kt#Stores",
+      "exported": true,
+      "ownFields": ["swapped", "mixed"]
+    },
+    {
+      "id": "src/shop/Stores.kt#Stores.reuse",
+      "file": "src/shop/Stores.kt",
+      "name": "reuse",
+      "line": 20,
+      "kind": "method",
+      "owner": "src/shop/Stores.kt#Stores",
+      "exported": true,
+      "returns": "MutableList",
+      "ownFields": ["reused"],
+      "returnsField": "reused"
+    },
+    {
+      "id": "src/shop/Stores.kt#Stores.swappedList",
+      "file": "src/shop/Stores.kt",
+      "name": "swappedList",
+      "line": 22,
+      "kind": "method",
+      "owner": "src/shop/Stores.kt#Stores",
+      "exported": true,
+      "returns": "MutableList",
+      "ownFields": ["swapped"],
+      "returnsField": "swapped"
+    },
+    {
+      "id": "src/shop/Stores.kt#Stores.mixedList",
+      "file": "src/shop/Stores.kt",
+      "name": "mixedList",
+      "line": 24,
+      "kind": "method",
+      "owner": "src/shop/Stores.kt#Stores",
+      "exported": true,
+      "returns": "MutableList",
+      "ownFields": ["mixed"],
+      "returnsField": "mixed"
+    },
+    {
+      "id": "src/shop/Stores.kt#Stores.builtList",
+      "file": "src/shop/Stores.kt",
+      "name": "builtList",
+      "line": 26,
+      "kind": "method",
+      "owner": "src/shop/Stores.kt#Stores",
+      "exported": true,
+      "returns": "MutableList",
+      "ownFields": ["built"],
+      "returnsField": "built"
+    },
+    {
+      "id": "src/shop/Stores.kt#Stores.copiedList",
+      "file": "src/shop/Stores.kt",
+      "name": "copiedList",
+      "line": 28,
+      "kind": "method",
+      "owner": "src/shop/Stores.kt#Stores",
+      "exported": true,
+      "returns": "MutableList",
+      "ownFields": ["copied"],
+      "returnsField": "copied"
+    },
+    {
+      "id": "src/shop/Stores.kt#Stores.aliasedList",
+      "file": "src/shop/Stores.kt",
+      "name": "aliasedList",
+      "line": 30,
+      "kind": "method",
+      "owner": "src/shop/Stores.kt#Stores",
+      "exported": true,
+      "returns": "MutableList",
+      "ownFields": ["aliased"],
+      "returnsField": "aliased"
+    },
+    {
+      "id": "src/shop/Stores.kt#Stores.pick",
+      "file": "src/shop/Stores.kt",
+      "name": "pick",
+      "line": 32,
+      "kind": "method",
+      "owner": "src/shop/Stores.kt#Stores",
+      "exported": true,
+      "params": [
+        {
+          "name": "flag",
+          "type": "Boolean"
+        }
+      ],
+      "returns": "MutableList",
+      "ownFields": ["picked"],
+      "returnsField": "picked"
+    },
+    {
+      "id": "src/shop/Stores.kt#Stores.byWhen",
+      "file": "src/shop/Stores.kt",
+      "name": "byWhen",
+      "line": 34,
+      "kind": "method",
+      "owner": "src/shop/Stores.kt#Stores",
+      "exported": true,
+      "params": [
+        {
+          "name": "n",
+          "type": "Int"
+        }
+      ],
+      "returns": "MutableList",
+      "ownFields": ["picked"],
+      "returnsField": "picked"
+    },
+    {
+      "id": "src/shop/Stores.kt#Stores.locked",
+      "file": "src/shop/Stores.kt",
+      "name": "locked",
+      "line": 39,
+      "kind": "method",
+      "owner": "src/shop/Stores.kt#Stores",
+      "exported": true,
+      "returns": "MutableList",
+      "ownFields": ["picked"],
+      "returnsField": "picked"
+    },
+    {
+      "id": "src/shop/Stores.kt#Buf.text",
+      "file": "src/shop/Stores.kt",
+      "name": "text",
+      "line": 45,
+      "kind": "method",
+      "owner": "src/shop/Stores.kt#Buf",
+      "exported": true,
+      "returns": "StringBuilder",
+      "ownFields": ["text"],
+      "returnsField": "text"
+    },
+    {
+      "id": "src/shop/Visibility.kt#Base.hook",
+      "file": "src/shop/Visibility.kt",
+      "name": "hook",
+      "line": 4,
+      "kind": "method",
+      "owner": "src/shop/Visibility.kt#Base",
+      "exported": false
+    },
+    {
+      "id": "src/shop/Visibility.kt#Base.inner",
+      "file": "src/shop/Visibility.kt",
+      "name": "inner",
+      "line": 6,
+      "kind": "method",
+      "owner": "src/shop/Visibility.kt#Base",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Visibility.kt#Base.inside:get",
+      "file": "src/shop/Visibility.kt",
+      "name": "inside",
+      "line": 10,
+      "kind": "accessor",
+      "owner": "src/shop/Visibility.kt#Base",
+      "exported": true,
+      "returnsField": "inside"
+    },
+    {
+      "id": "src/shop/Visibility.kt#Base.visible",
+      "file": "src/shop/Visibility.kt",
+      "name": "visible",
+      "line": 12,
+      "kind": "method",
+      "owner": "src/shop/Visibility.kt#Base",
+      "exported": true
+    },
+    {
+      "id": "src/shop/Visibility.kt#Shape.sides:get",
+      "file": "src/shop/Visibility.kt",
+      "name": "sides",
+      "line": 16,
+      "kind": "accessor",
+      "owner": "src/shop/Visibility.kt#Shape",
+      "exported": true,
+      "returns": "Int"
+    },
+    {
+      "id": "src/shop/Visibility.kt#Shape.label:get",
+      "file": "src/shop/Visibility.kt",
+      "name": "label",
+      "line": 18,
+      "kind": "accessor",
+      "owner": "src/shop/Visibility.kt#Shape",
+      "exported": true,
+      "returns": "String"
+    },
+    {
+      "id": "src/shop/Visibility.kt#Named.title:get",
+      "file": "src/shop/Visibility.kt",
+      "name": "title",
+      "line": 22,
+      "kind": "accessor",
+      "owner": "src/shop/Visibility.kt#Named",
+      "exported": true,
+      "returns": "String"
     }
   ]
 }

@@ -12,6 +12,7 @@ public final class Prop {
   public final KtExpression init;
   public final boolean isVar;
   public final boolean isPrivate;
+  public final boolean isProtected;
   public final boolean field;
   public final boolean delegated;
   public final boolean constructorParameter;
@@ -25,9 +26,14 @@ public final class Prop {
     this.init = shape.init;
     this.isVar = shape.isVar;
     this.isPrivate = shape.isPrivate;
+    this.isProtected = shape.isProtected;
     this.field = shape.field;
     this.delegated = shape.delegated;
     this.constructorParameter = shape.constructorParameter;
+  }
+
+  public boolean hidden() {
+    return isPrivate || isProtected;
   }
 
   public static final class Shape {
@@ -35,6 +41,7 @@ public final class Prop {
     public KtExpression init;
     public boolean isVar;
     public boolean isPrivate;
+    public boolean isProtected;
     public boolean field;
     public boolean delegated;
     public boolean constructorParameter;

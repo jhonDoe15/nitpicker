@@ -8,16 +8,16 @@ public final class Published {
 
   public static boolean library(Ctx ctx) {
     for (Owner owner : ctx.index.owners) {
-      if (hasMain(ctx, owner)) {
+      if (hasMain(owner)) {
         return false;
       }
     }
     return true;
   }
 
-  private static boolean hasMain(Ctx ctx, Owner owner) {
+  private static boolean hasMain(Owner owner) {
     for (Fun function : owner.funs) {
-      if (function.name.equals("main") && Entries.of(ctx, function)) {
+      if (function.name.equals("main") && Entries.of(function)) {
         return true;
       }
     }

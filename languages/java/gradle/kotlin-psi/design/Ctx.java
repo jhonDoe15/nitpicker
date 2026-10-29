@@ -6,6 +6,7 @@ import nitpicker.kotlinpsi.design.index.Hierarchy;
 import nitpicker.kotlinpsi.design.index.Index;
 import nitpicker.kotlinpsi.design.index.Members;
 import nitpicker.kotlinpsi.design.index.TypeNames;
+import nitpicker.kotlinpsi.design.lookup.Elements;
 import nitpicker.kotlinpsi.design.model.Source;
 import nitpicker.kotlinpsi.design.resolve.Bindings;
 import nitpicker.kotlinpsi.design.resolve.CallResolver;
@@ -23,6 +24,7 @@ public final class Ctx {
   public final Lambdas lambdas;
   public final Bindings bindings;
   public final Typer typer;
+  public final Elements elements;
   public final CallResolver calls;
   public final References references;
   public boolean library;
@@ -39,6 +41,7 @@ public final class Ctx {
     this.lambdas = new Lambdas(this);
     this.bindings = new Bindings(this);
     this.typer = new Typer(this);
+    this.elements = new Elements(this);
     this.calls = new CallResolver(this);
     this.references = new References(this);
   }

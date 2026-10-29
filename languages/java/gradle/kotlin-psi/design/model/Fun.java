@@ -21,6 +21,7 @@ public final class Fun {
   public final KtTypeReference receiver;
   public final KtTypeReference returns;
   public final boolean isPrivate;
+  public final boolean isProtected;
   public final boolean isOverride;
   public final boolean hasBody;
   public final List<PsiElement> roots = new ArrayList<>();
@@ -37,8 +38,13 @@ public final class Fun {
     this.receiver = shape.receiver;
     this.returns = shape.returns;
     this.isPrivate = shape.isPrivate;
+    this.isProtected = shape.isProtected;
     this.isOverride = shape.isOverride;
     this.hasBody = shape.hasBody;
+  }
+
+  public boolean hidden() {
+    return isPrivate || isProtected;
   }
 
   public boolean constructor() {
@@ -52,6 +58,7 @@ public final class Fun {
     public KtTypeReference receiver;
     public KtTypeReference returns;
     public boolean isPrivate;
+    public boolean isProtected;
     public boolean isOverride;
     public boolean hasBody;
 
