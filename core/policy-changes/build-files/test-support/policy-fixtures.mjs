@@ -7,14 +7,14 @@ import { readPolicyScope } from '../../policy-scope.mjs';
 const { createGitRepository } = useGitFixtures();
 const JAVA = { preset: 'java' };
 
-export function between({ base, head, config = JAVA }) {
+export function between({ base, head, config = JAVA, baseConfig = config }) {
   const scope = readPolicyScope({
-    baseConfig: config,
+    baseConfig,
     headConfig: config,
     baseProjectRoot: createGitRepository(base).root,
     headProjectRoot: createGitRepository(head).root,
   });
-  return guided(policyChangeFields(config, config, scope));
+  return guided(policyChangeFields(baseConfig, config, scope));
 }
 
 function guided(fields) {
