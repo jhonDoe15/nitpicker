@@ -359,8 +359,10 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   factories, constructors, type predicates, destructured options and a boolean that is only passed
   on or stored are not reported.
 - `nitpicker/no-io-in-loop` (all production code): a database query or a remote request once per
-  item of a loop or an iteration callback (`map`, `forEach`, `flatMap`, `filter`, `reduce`, `some`,
-  `every`, `find`) is reported. Calls are recognized with the type checker first: a call whose
+  item of a loop (`for await` included) or an iteration callback (`map`, `forEach` of an array, a
+  `Map` or a `Set`, `flatMap`, `filter`, `reduce`, `reduceRight`, `some`, `every`, `find`,
+  `findIndex`, `findLast`, `findLastIndex`, the mapping function of `Array.from(items, fn)`, and a
+  `sort`/`toSorted` comparator) is reported. Calls are recognized with the type checker first: a call whose
   receiver type or declaration comes from a database package (`pg`, `mysql2`, `mongodb`, `mongoose`,
   `redis`, `ioredis`, `typeorm`, `sequelize`, `knex`, `drizzle-orm`, `@prisma/client`,
   `better-sqlite3`, `@aws-sdk/client-dynamodb` and similar) is a query, and one from `fetch`,
@@ -401,12 +403,18 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   A call that takes a whole chunk of the items is the batch form and is not reported: its argument
   uses the element of a loop over chunks (an iterable named like `chunk(rows, 500)`, `_.chunk`,
   `chunks` or `batches`, a typed array of arrays, or a `const` holding `rows.slice(...)` in the
-  loop body), as in `await prisma.user.createMany({ data: part })` or
-  `await repo.findBy({ id: In(part) })`. Broker publishes and job enqueues (`kafkajs`, `amqplib`,
+  loop body) or slices the items in the argument itself (`repo.findByIds(ids.slice(i, i + 100))`),
+  as in `await prisma.user.createMany({ data: part })`, `await repo.findBy({ id: In(part) })` or a
+  project helper given the chunk (`await saveBatch(part)`). Broker publishes and job enqueues (`kafkajs`, `amqplib`,
   SQS `SendMessage`, SNS `Publish`, `@google-cloud/pubsub`, `nats`, BullMQ `queue.add`) are not
-  reported: one publish per item is the protocol. Paging, cursor and polling loops (the loop
-  condition reads a variable the body assigns, as in
-  `do { page = await repo.findPage(cursor); cursor = page.next; } while (cursor)`; stepping an index with `i += 1`, `i++` or `i = i + 1` does not count) and retries (a
+  reported: one publish per item is the protocol, and neither is the write that marks a row sent
+  after its publish in an outbox relay loop (see `nitpicker/no-dual-write`). Paging, cursor and
+  polling loops are not reported: the loop condition reads a variable the body assigns from the
+  call's result, and the call's inputs either stay the same (polling) or carry state across
+  iterations through a variable assigned from another variable, as in
+  `do { page = await repo.findPage(cursor); cursor = page.next; } while (cursor)`. Stepping an
+  index with `i += 1`, `i++` or `i = i + 1` is not state, so a lookup per item that stops early
+  (`if (!row) break;`, or `while (row)` over `findById(ids[i])`) is still reported. Retries (a
   `try` directly in the loop body that returns or breaks on success, with a `catch` that lets the
   loop go on) are not reported, and neither are file system calls (`node:fs`, `node:fs/promises`):
   one read or write per file has no batch form, as in the Python and Java presets. One chain
@@ -434,8 +442,12 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   (`relations: { customer: true }` or `['customer']`) or join it with
   `leftJoinAndSelect('order.customer', 'customer')`. Only proven cases are reported: a collection
   of unknown origin (a parameter, a field), options that are not a literal, and a query builder
-  that does not start from `createQueryBuilder` in the same chain are not. Prisma has no lazy
-  loading, and Sequelize association getters (`order.getCustomer()`) are explicit calls that
+  that does not start from `createQueryBuilder` in the same chain are not, and neither is one item
+  read outside a loop (`await rows[0].customer`). A project function or method that receives the
+  item, called in the loop (`await toDto(order)`) or passed by reference to an iteration method
+  (`rows.map(toDto)`), and awaits the lazy relation of that parameter in its body is reported at
+  the call, with the message naming the helper and the access it awaits (`order.customer`).
+  Prisma has no lazy loading, and Sequelize association getters (`order.getCustomer()`) are explicit calls that
   `nitpicker/no-io-in-loop` reports.
 - `nitpicker/no-remote-call-in-transaction` (all production code): a remote call (HTTP, gRPC, a
   cloud SDK call that is not a store or a broker), direct or through project helpers (the message
@@ -449,8 +461,11 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   declared by a database package (TypeORM `QueryRunner`, Sequelize, knex, `pg`), so an APM
   `apm.startTransaction('job')` is not one, a callback opener must be declared by a database
   package or by the project, and the proof is a query recognized in the transaction; without it,
-  any receiver counts and a call on the callback's parameter also proves the connection. A
-  handler registered inside the transaction (`setTimeout`, `on`) runs later and is not judged. The
+  any receiver counts and a call on the callback's parameter also proves the connection. An end
+  inside a branch (an `if`, a `catch`, a `switch` case, `?:`) ends the transaction only in that
+  branch, so a guard clause with an early rollback
+  (`if (!order) { await runner.rollbackTransaction(); return; }`) leaves the calls after it in the
+  transaction. A handler registered inside the transaction (`setTimeout`, `on`) runs later and is not judged. The
   connection stays held for the remote latency, so the pool runs dry under load. Make the remote
   call before the transaction starts or after it commits; when its side effect must match the
   transaction's outcome, write an outbox row inside the transaction and send it from a worker.
@@ -464,7 +479,13 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   permits bounds concurrency (`limiter.runExclusive(() => axios.get(url))` is the bounded form
   `nitpicker/no-io-in-loop` asks for) and is not reported; receiver names (`lock`, `mutex`,
   `semaphore`, `redlock`, or `runExclusive`) decide only when the type is unknown or declared by
-  the project. Every waiter queues behind the remote latency. Make the remote call before taking
+  the project. A `release()` inside a branch (a guard clause `if (busy) { release(); return; }`)
+  ends the lock only in that branch. A fill-once block stays allowed: the call under an `if` that
+  tests the state the block then sets (`if (!token) { token = await refresh(); }`, or
+  `if (cache.has(key)) return;` before `cache.set(key, await download(key))`), or assigned with
+  `??=`/`||=`, so callers wait for one request instead of each sending their own; a guard on any
+  other state (`if (closed) return;`) does not exempt the call, and inside a transaction it never
+  does. Every waiter queues behind the remote latency. Make the remote call before taking
   the lock or after releasing it and keep only the shared-state change under it.
 - `nitpicker/no-retry-without-idempotency` (all production code): a write with no idempotency
   contract, direct or through project helpers, inside a retry is reported, since a timeout after
@@ -472,14 +493,15 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `exponential-backoff` `backOff` (imported, required, or loaded with `import x = require(...)`),
   a cockatiel policy's `execute` (the policy built in the same expression or held in a `const`),
   and the hand-written retry loop that `nitpicker/no-io-in-loop` exempts (a `try` in the loop that
-  leaves on success while its `catch` goes on); a retried function passed by name or as
+  leaves on success with `return` or `break` while its `catch` goes on, including a `catch` that
+  rethrows only on the last attempt); a retried function passed by name or as
   `this.send.bind(this)` is followed with the type checker. The supported writes are: a Stripe
   `create` without `{ idempotencyKey }` in its request options; a broker publish (`kafkajs`,
   `amqplib`, `@google-cloud/pubsub`, `nats` without a JetStream `msgID`, BullMQ `add` without
   `jobId`, SQS `SendMessage` or SNS `Publish` without `MessageDeduplicationId`); and SQL `INSERT`
   text without `ON CONFLICT`, `ON DUPLICATE KEY UPDATE`, `INSERT IGNORE` or
   `INSERT OR IGNORE`/`REPLACE` sent through a recognized database call. Options that are not a
-  literal count as a contract, an HTTP `POST` alone is not reported, and other writes are not
+  literal (a parameter of a wrapper, the result of an options-builder helper) count as a contract, an HTTP `POST` alone is not reported, and other writes are not
   judged. Give the write a stable idempotency key derived from the request, a provider
   deduplication id, an upsert, or retry only the read.
 - `nitpicker/no-dual-write` (all production code): a function that writes to the database
@@ -493,8 +515,11 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   lock callbacks, retry wrappers, `afterCommit`), which belongs to the function that passes it: a
   route handler or an event listener is its own unit, so two handlers registered by one function,
   one writing and one publishing, are not a dual write, and a handler that does both is. The
-  outbox relay is not reported: a publish inside a loop over rows read from the database, that
-  uses the row, followed in the loop by a write that uses the same row (marking it sent). A
+  outbox relay is not reported: a publish inside a loop (`for...of`, `for await`, `forEach` or
+  another iteration callback) over rows read from the database, or one that uses a single row read
+  from the database, that uses the row, directly or through a helper (`await publish(row.id)`),
+  followed by a write that uses the same row (marking it sent). A batch job that writes first and
+  publishes after is still a dual write. A
   publish inside a Sequelize `transaction.afterCommit(...)` hook, or after an awaited transaction
   callback or a `commit` that every write is inside, gets its own message: it no longer publishes
   a rolled-back change, but a crash after the commit still loses the message. Write the message to
