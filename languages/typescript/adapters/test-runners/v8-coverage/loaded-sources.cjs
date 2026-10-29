@@ -14,6 +14,8 @@ const LINES_VARIABLE = 'NITPICKER_TEST_CONSOLE_LINES';
 const RUNNER_VARIABLE = 'NITPICKER_TEST_CONSOLE_RUNNER';
 const MAX_CONTENT_LENGTH = 4000;
 const NO_PLACE = { file: '', test: '' };
+const IN_PROCESS_OPTION = /(?:^|\s)--(?:experimental-)?test-isolation[=\s]+none(?:\s|$)/u;
+const TEST_OF = Symbol('nitpicker test');
 const PROJECT_SCRIPT = /^(?:file:\/\/|\/|[A-Za-z]:\\)/u;
 const DEPENDENCY = /[\\/]node_modules[\\/]/u;
 const OWN_URLS = new Set([__filename, pathToFileURL(__filename).href]);
@@ -213,12 +215,39 @@ function trackedTests(file = '', { after, afterEach, beforeEach } = nodeTestApi(
   };
 }
 
+function testOf(resource = {}) {
+  const test = TEST_OF in resource ? resource[TEST_OF] : undefined;
+  return typeof test === 'object' && test !== null ? test : {};
+}
+
+function fileOfTest(test = {}) {
+  const loc = 'loc' in test && typeof test.loc === 'object' && test.loc !== null ? test.loc : {};
+  const files = ['entryFile' in test ? test.entryFile : '', 'file' in loc ? loc.file : ''];
+  const found = files.find((each) => typeof each === 'string' && each !== '');
+  const file = typeof found === 'string' ? found : '';
+  return file.startsWith('file:') ? fileURLToPath(file) : file;
+}
+
+function inProcessTests() {
+  const { createHook, executionAsyncResource } = process.getBuiltinModule('node:async_hooks');
+  createHook({
+    init(...values) {
+      const [, type, , resource] = values;
+      Reflect.set(resource, TEST_OF, type === 'Test' ? resource : testOf(executionAsyncResource()));
+    },
+  }).enable();
+  return function place() {
+    return { file: fileOfTest(testOf(executionAsyncResource())), test: '' };
+  };
+}
+
 function captureNodeTest({
   environment = process.env,
   script = '',
   testRunner = false,
   processId = 0,
   parentId = 0,
+  inProcess = false,
   testApi = nodeTestApi,
   target = globalThis.console,
   events = process,
@@ -230,6 +259,10 @@ function captureNodeTest({
   }
   if (context === '' && testRunner && (environment[RUNNER_VARIABLE] ?? '') === '') {
     environment[RUNNER_VARIABLE] = String(processId);
+    if (inProcess) {
+      recordConsole(linesPath, inProcessTests(), { target, events });
+      return { capturing: true };
+    }
   }
   const isTestFile =
     context.startsWith('child') &&
@@ -250,11 +283,15 @@ captureNodeTest({
   environment: process.env,
   script: process.argv[1] ?? '',
   testRunner: process.execArgv.includes('--test'),
+  inProcess: IN_PROCESS_OPTION.test(
+    `${process.execArgv.join(' ')} ${process.env.NODE_OPTIONS ?? ''}`,
+  ),
   processId: process.pid,
   parentId: process.ppid,
 });
 
 module.exports = {
+  IN_PROCESS_OPTION,
   LINES_VARIABLE,
   MAX_CONTENT_LENGTH,
   RUNNER_VARIABLE,
