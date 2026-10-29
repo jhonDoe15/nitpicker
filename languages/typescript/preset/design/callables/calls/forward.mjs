@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { unwrap } from '../../syntax/nodes.mjs';
 import { acceptsPosition, declaredParameters } from '../signature/params.mjs';
 import { targetSite } from './targets.mjs';

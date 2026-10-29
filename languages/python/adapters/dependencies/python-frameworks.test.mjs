@@ -32,7 +32,7 @@ describe('Python frameworks', () => {
 
     expect([...detectFrameworks(root, imports)].sort()).toEqual(['django', 'flask']);
   });
-  it('allows environment reads and star imports in Django settings, and env reads and missing tests in its entry points', () => {
+  it('allows environment reads, import-time effects and star imports in Django settings, and the same plus missing tests in its entry points', () => {
     const root = project({
       'pyproject.toml': '[project]\ndependencies = ["Django"]\n',
       'manage.py': 'os.environ.setdefault("DJANGO_SETTINGS_MODULE", "site_conf.prod")\n',
@@ -48,14 +48,18 @@ describe('Python frameworks', () => {
     };
     const findings = [
       finding('process-env-access', 'site_conf/prod.py'),
+      finding('import-time-effect', 'site_conf/prod.py'),
       finding('F403', 'mysite/settings/base.py'),
       finding('process-env-access', 'mysite/views.py'),
+      finding('import-time-effect', 'mysite/views.py'),
       finding('crap-coverage-unknown', 'mysite/wsgi.py'),
+      finding('import-time-effect', 'mysite/wsgi.py'),
       finding('crap-coverage-unknown', 'mysite/views.py'),
     ];
 
     expect(withoutFrameworkForms(findings, root, imports)).toEqual([
       finding('process-env-access', 'mysite/views.py'),
+      finding('import-time-effect', 'mysite/views.py'),
       finding('crap-coverage-unknown', 'mysite/views.py'),
     ]);
   });

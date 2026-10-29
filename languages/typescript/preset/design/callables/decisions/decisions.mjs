@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { chainOf } from '../../../../../../shared/traversal.mjs';
 import { lineOf, unwrap } from '../../syntax/nodes.mjs';
 import { conditionArm, constantOf, subjectKey } from './constants.mjs';

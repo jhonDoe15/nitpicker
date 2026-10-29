@@ -83,7 +83,11 @@ describe('the shared design rules over the Java facts', () => {
       [escape(ref('zoo/Zoo.java', 'Zoo.teach'), ref('zoo/Animal.java', 'Animal.noises'))],
     ],
   ])('reports exactly these findings for the %s fixture', (name, modules, expected) => {
-    const findings = designFindings({ projectRoot: fixtureRoot(name), modules, policy: {} });
+    const findings = designFindings({
+      projectRoot: fixtureRoot(name),
+      listModules: () => modules,
+      policy: {},
+    });
 
     expect(
       findings.map(({ rule, identity, classification }) => [rule, identity, classification]),
@@ -102,7 +106,7 @@ describe('the shared design rules over the Java facts', () => {
 
     const findings = designFindings({
       projectRoot: fixtureRoot('lifecycle'),
-      modules: SINGLE,
+      listModules: () => SINGLE,
       policy: { protocols },
     });
 

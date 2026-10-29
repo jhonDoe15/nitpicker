@@ -29,7 +29,7 @@ export function designPolicy(policy = {}, head = readHeadPolicyFile()) {
 
 export function designFindings({
   projectRoot,
-  modules,
+  listModules,
   policy,
   analyzerName = 'java',
   output,
@@ -39,7 +39,7 @@ export function designFindings({
     return [];
   }
   try {
-    const facts = produceDesignFacts({ projectRoot, modules, output });
+    const facts = produceDesignFacts({ projectRoot, modules: listModules(), output });
     return evaluate(facts, {
       language: 'java',
       analyzerName,

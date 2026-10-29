@@ -70,6 +70,7 @@ export const DESIGN_SHAPES = {
     kind: oneOf(TYPE_KINDS),
     exported: isBoolean,
     fields: isList,
+    supertypes: optional(isStrings),
     cases: optional(isStrings),
     published: optional(isBoolean),
     references: optional(isStrings),

@@ -19,6 +19,7 @@ import { readHeadPolicy, readLayout } from '../../../preset/head-policy.mjs';
 import { withFunctionSourceHashes, withDeadCodeSourceHashes } from '../reporting/source-hashes.mjs';
 import { typescriptStructureProjectFindings } from '../../../preset/structure/project-findings.mjs';
 import { layoutJscpdConfig, layoutKnipConfig } from '../../../preset/tool-configs.mjs';
+import { layeredJscpdConfig } from '../../../../../core/tooling/jscpd/config.mjs';
 import { rootsPattern } from '../../../../../core/tooling/jscpd/skipped-folders.mjs';
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
 import { normalizeDuplicates } from '../../../preset/duplicates/normalize.mjs';
@@ -150,7 +151,8 @@ function duplicatesJscpdConfig(options) {
     ),
     readLayout(),
   );
-  return { ...config, path: existingRoots(options.projectRoot, config.path) };
+  const layered = layeredJscpdConfig(config);
+  return { ...layered, path: existingRoots(options.projectRoot, config.path) };
 }
 
 function jscpdRunner(options) {

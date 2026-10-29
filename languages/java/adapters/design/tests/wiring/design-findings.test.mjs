@@ -42,7 +42,7 @@ describe('design findings for Java', () => {
 
     const findings = designFindings({
       projectRoot: fixtureRoot('modules'),
-      modules: MODULES,
+      listModules: () => MODULES,
       policy: { exceptions },
       evaluate,
     });
@@ -81,7 +81,7 @@ describe('design findings for Java', () => {
 
     designFindings({
       projectRoot: root,
-      modules: SINGLE,
+      listModules: () => SINGLE,
       policy: {},
       output,
     });
@@ -112,7 +112,7 @@ describe('design findings for Java', () => {
 
     const findings = designFindings({
       projectRoot: brokenProject(source),
-      modules: SINGLE,
+      listModules: () => SINGLE,
       policy: {},
       evaluate,
     });
@@ -137,7 +137,7 @@ describe('design findings for Java', () => {
     expect(
       designFindings({
         projectRoot: fixtureRoot('modules'),
-        modules: MODULES,
+        listModules: () => MODULES,
         policy: {},
         analyzerName: 'kotlin',
         evaluate,

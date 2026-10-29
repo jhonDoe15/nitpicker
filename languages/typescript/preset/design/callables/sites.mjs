@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { depthFirst } from '../../../../../shared/traversal.mjs';
 import { syntaxChildren } from '../../syntax/children.mjs';
 import { wrappedFunction } from '../syntax/function-values.mjs';

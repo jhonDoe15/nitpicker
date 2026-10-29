@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 
 export function exportedNodes(checker, sourceFile) {
   const moduleSymbol = checker.getSymbolAtLocation(sourceFile);
