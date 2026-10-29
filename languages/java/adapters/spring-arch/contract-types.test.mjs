@@ -92,7 +92,7 @@ describe('contract-infrastructure-type findings', () => {
     expect(findings.map((finding) => finding.symbol)).toEqual(['OrderStore']);
   });
 
-  it('drops the Spring rules of a module that does not use Spring and keeps the contract rule', () => {
+  it('drops the Spring rules of a module that does not use Spring and keeps the other rules', () => {
     const findings = read(
       [
         {
@@ -100,6 +100,12 @@ describe('contract-infrastructure-type findings', () => {
           className: 'com.shop.OrderTest',
           fileName: '',
           detail: '',
+        },
+        {
+          rule: 'ddd-aggregate-reference',
+          className: 'com.shop.orders.Order',
+          fileName: 'Order.java',
+          detail: 'com.shop.customers.Customer',
         },
         contract(
           'com.shop.orders.OrderService',
@@ -109,7 +115,7 @@ describe('contract-infrastructure-type findings', () => {
       { spring: false },
     );
 
-    expect(findings.map((finding) => finding.rule)).toEqual([RULE]);
+    expect(findings.map((finding) => finding.rule)).toEqual(['ddd-aggregate-reference', RULE]);
   });
 
   it('rejects a detail it cannot describe', () => {
