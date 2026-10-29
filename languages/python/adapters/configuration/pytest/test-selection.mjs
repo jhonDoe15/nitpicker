@@ -39,6 +39,7 @@ function testpathsEntry(projectRoot, options) {
     key: 'pytest:testpaths',
     file: configFileWith(projectRoot, 'testpaths'),
     label: 'pytest testpaths',
+    kind: 'test-paths',
     roots: testpaths.length === 0 ? undefined : testpaths,
     contains: (file, root) => underTestPath(file.split('/'), [root]),
     applies: (file) => isCollectedTestFile(file, options),
