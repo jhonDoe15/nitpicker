@@ -24,15 +24,8 @@ export function compareFindings({
   const withoutExactMatch = [...baseByKey]
     .filter(([key]) => !headByKey.has(key))
     .map(([, baseFinding]) => baseFinding);
-  const similar = matchSimilarFindings({
-    headFindings: present.newFindings,
-    baseFindings: withoutExactMatch,
-    renames: baseToHeadRenames,
-  });
-  present.newFindings = similar.unmatched;
-  present.unchangedFindings.push(...similar.matched);
   const unmatchedBase = moveAnchoredFindings(present, {
-    baseFindings: withoutExactMatch.filter((finding) => !similar.matchedBase.has(finding)),
+    baseFindings: moveSimilarFindings(present, withoutExactMatch, baseToHeadRenames),
     renames: baseToHeadRenames,
     touchedCode,
   });
@@ -58,6 +51,17 @@ export function compareFindings({
     unchangedFindings: sortFindings(present.unchangedFindings),
     changedMetrics: present.changedMetrics.sort(compareDisplayOrder),
   };
+}
+
+function moveSimilarFindings(present, baseFindings, renames) {
+  const similar = matchSimilarFindings({
+    headFindings: present.newFindings,
+    baseFindings,
+    renames,
+  });
+  present.newFindings = similar.unmatched;
+  present.unchangedFindings.push(...similar.matched);
+  return baseFindings.filter((finding) => !similar.matchedBase.has(finding));
 }
 
 function moveAnchoredFindings(present, { baseFindings, renames, touchedCode }) {

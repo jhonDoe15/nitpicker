@@ -44,13 +44,20 @@ export function parseFinding(value, context = 'finding') {
   return { ...finding, ...parseOptionalFields(value, classification, context) };
 }
 
+const OPTIONAL_PARSERS = {
+  symbol: requiredString,
+  location: parseLocation,
+  ratchet: parseRatchet,
+  tokens: parseTokens,
+  anchor: parseAnchor,
+};
+
 function parseOptionalFields(value, classification, context) {
   const fields = {};
-  if (value.symbol !== undefined) {
-    fields.symbol = requiredString(value.symbol, `${context}.symbol`);
-  }
-  if (value.location !== undefined) {
-    fields.location = parseLocation(value.location, `${context}.location`);
+  for (const [name, parse] of Object.entries(OPTIONAL_PARSERS)) {
+    if (value[name] !== undefined) {
+      fields[name] = parse(value[name], `${context}.${name}`);
+    }
   }
   if (value.metric !== undefined) {
     if (classification !== 'descriptive') {
@@ -58,16 +65,6 @@ function parseOptionalFields(value, classification, context) {
     }
     fields.metric = parseMetric(value.metric, `${context}.metric`);
   }
-  if (value.ratchet !== undefined) {
-    fields.ratchet = parseRatchet(value.ratchet, `${context}.ratchet`);
-  }
-  if (value.tokens !== undefined) {
-    fields.tokens = parseTokens(value.tokens, `${context}.tokens`);
-  }
-  if (value.anchor !== undefined) {
-    fields.anchor = parseAnchor(value.anchor, `${context}.anchor`);
-  }
-
   return fields;
 }
 
