@@ -117,11 +117,10 @@ by field. Per snapshot:
    tasks (PMD's auxiliary classpath is the main and test compile classpaths plus both class
    directories). The versions are read from the init script's `pinned` map, so both builds always
    run the same tools.
-   A module that uses Spring (`spring-context` or `spring-boot` on its main compile classpath), or
-   any module when the head checkout has a feature folder (see
-   [Contract types](#contract-types)), also runs the Spring architecture rules: ArchUnit is
-   resolved with the other tools, but only when some module uses Spring or the checkout has a
-   feature folder, and the rule classes are compiled once into
+   A module that uses Spring (`spring-context` or `spring-boot` on its main compile classpath) or
+   jMolecules (`jmolecules-ddd`), or any module when the head checkout has a feature folder (see
+   [Contract types](#contract-types)), also runs the Spring architecture rules: ArchUnit is resolved
+   with the other tools, but only when some module runs them, and the rule classes are compiled once into
    `$XDG_CACHE_HOME/nitpicker/spring-arch/<hash>` (else `~/.cache/nitpicker/spring-arch/<hash>`, private
    to the user; the hash is computed like Gradle's, but the cache is separate from Gradle's) and run in
    one extra JVM per module (`languages/java/maven/spring/maven-spring-arch.mjs`).
@@ -417,8 +416,9 @@ classpath and its `test` task, and adds no test library to the project.
   timer within its supported range. The analyzer deadline allows two commands (the optional
   Checkstyle configuration export and the analysis), plus one minute for reports. This does
   not change Maven's command budget or configure individual PIT phases.
-- **Config keys.** `base`, `disable` and `analyzers` work as before. `thresholds`, `exclude` and
-  `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
+- **Config keys.** `base`, `disable` and `analyzers` work as before. `history` turns on the
+  opt-in [change history](usage.md#change-history) check, which reads git and not the Java runner.
+  `thresholds`, `exclude` and `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
   `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are
   part of the analyzer's configuration hash:
   - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`), and
@@ -460,9 +460,10 @@ classpath and its `test` task, and adds no test library to the project.
     configuration hash. Every message of a rule nitpicker adds ends with the entry that accepts it, and so does every PMD,
     Checkstyle, SpotBugs and ArchUnit message (`pmd/<rule>`).
   - `layout` is a config error with `"preset": "java"` instead of being ignored: its source-folder
-    keys are TypeScript only, and `layout.sharedRoots` and `layout.featureRoots` are accepted because
-    the Java and Kotlin presets run a rule that reads them (`contract-infrastructure-type`, listed in
-    `OWN_RULE_SETTINGS` of `shared/project-rules/fact-rules.mjs`). `testConsole` is accepted because the registry lists Java and
+    keys are TypeScript only, and `layout.featureRoots` and `layout.sharedRoots` are accepted
+    because the Java and Kotlin presets run a rule that reads them (`contract-infrastructure-type`,
+    listed in `OWN_RULE_SETTINGS` of `shared/project-rules/fact-rules.mjs`); once `history.coChange`
+    is on, `featureRoots` also names the feature folders `co-change` reads. `testConsole` is accepted because the registry lists Java and
     Kotlin for `test-console-output`. `tools` takes `pmd` and `checkstyle`.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
@@ -1965,7 +1966,8 @@ Error Prone checks fire on the deliberate violations the Spring rule examples ho
 ## Spring architecture rules
 
 Spring projects (same detection as the Spring ruleset: `spring-context` or `spring-boot` on the
-compile classpath, `spring: true` in the manifest) also get nitpicker's own ArchUnit rules. They are
+compile classpath, `spring: true` in the manifest) also get nitpicker's own ArchUnit rules, and so
+does a module with `jmolecules-ddd` on its main compile classpath (for the aggregate rules below). They are
 separate from the project's own `*ArchTest` classes of slice 4 and need nothing from the project:
 the init script's `nitpickerSpringArch` task resolves ArchUnit 1.5.1 (Apache-2.0, pinned in the
 `pinned` map) into its own configuration, compiles the rule classes in
@@ -2048,6 +2050,33 @@ instance per injection point, often meant), a custom scope it cannot model (`@Sc
 `thread`), a type with no bean in the module (one from a library or registered in code) or a
 `@ComponentScan(scopedProxy = ...)` default it cannot resolve to one mode is never a finding.
 
+**Aggregates (jMolecules).** A project that declares its domain model with
+[jMolecules](https://github.com/xmolecules/jmolecules) (`org.jmolecules:jmolecules-ddd`, Apache-2.0,
+read from the project's own classes; nitpicker adds no dependency) gets its aggregate boundaries
+checked. A module with `jmolecules-ddd` on its main compile classpath runs these rules even without
+Spring; without `spring-context` on the classpath they are the only rules of this section that run. Membership comes only from
+what the code declares, never from class names: an aggregate root implements `AggregateRoot<T, ID>`
+or carries `@AggregateRoot`; an entity implementing `Entity<A, ID>` belongs to `A` (also through a
+generic base class such as `BaseEntity<Order, LineId>`); an entity carrying `@Entity` (jMolecules')
+belongs to every root that reaches it through its fields; a value object implements `ValueObject`
+or carries `@ValueObject`. Fields are read with their generic arguments (`List<LineItem>`,
+`Map<String, Set<Cart>>`, `? super` bounds, generic arrays, and a type variable as the subclass binds
+it), inherited ones included (a field declared in a superclass that is itself a root, entity or value
+object is reported there, once), and an `Association<T, ID>` or a field annotated `@Association` is a
+reference by identifier, so its type arguments do not count; nor do those of `Class<T>` and the
+`java.util.function` types. Abstract classes and interfaces count: an entity typed
+`Entity<Shape, ...>` with an interface root `Shape` belongs to every root implementing it.
+
+| Rule                         | Fails when                                                                                                                                                                                                                    |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ddd-aggregate-reference`    | a root or entity of one aggregate holds the root of another (`Customer customer` in `Order`); hold its identifier (`CustomerId`) or an `Association<Customer, CustomerId>`                                                    |
+| `ddd-foreign-entity`         | a root or entity holds an entity that belongs to another aggregate (`List<CartLine>` in `Order` when `CartLine implements Entity<Cart, ...>`), or an `@Entity` that two roots reach (each root is reported, naming the other) |
+| `ddd-value-object-reference` | a value object holds an aggregate root or an entity; hold its identifier                                                                                                                                                      |
+
+A class referring to its own type (a root's `parent` of the same root type), a subclass or
+supertype of it, or an entity holding its own root is not reported. The detail of `ddd-foreign-entity` is `<aggregate>:<entity>`, so its
+identity is `Order|Cart:CartLine`.
+
 <a id="contract-types"></a>**Contract types.** A class that other code calls through (a
 `@Service`, a `@Controller`, or any class directly in a feature package) keeps persistence handles
 and web request objects out of its public method signatures, so callers do not need a database
@@ -2081,8 +2110,8 @@ accessors and Kotlin property getters and setters are read through the record co
 properties, not as methods, so a record or data class that holds a handle is not reported through
 its accessors.
 
-The rule runs where the other architecture rules run (Spring projects) and also in a project
-without Spring when the head checkout has a `.java` or `.kt` file of a main source set
+The rule runs where the other architecture rules run (Spring and jMolecules projects) and also in a
+project without Spring when the head checkout has a `.java` or `.kt` file of a main source set
 (`src/main/java`, `src/main/kotlin`) directly in a feature folder: `layout.featureRoots` (default
 `**/features`) and `layout.sharedRoots` (default `**/shared`) in `nitpicker.config.json`, the same
 keys the feature boundary rules read. Node checks this on the head checkout (`featureFolders` head
@@ -2115,9 +2144,10 @@ Java, not here.
 **Limits.** The rules read bytecode, so generated classes without a source file are skipped (no
 finding can be placed), and a use of another package's compile-time constant (`static final` of a
 primitive or `String`) is invisible, because `javac` inlines its value. `contract-infrastructure-type`
-reads methods only, not fields, record components or Kotlin properties; it matches an override of a library method by
-name and parameter count; and a Kotlin `internal` class is public in bytecode, so it counts as
-public (its `internal` members are skipped). Each Gradle project and Maven module that uses Spring is checked on its own,
+reads methods only, not fields, record components or Kotlin properties; it matches an override of a
+library method by name and parameter count; and a Kotlin `internal` class is public in bytecode, so
+it counts as public (its `internal` members are skipped). Each Gradle project and Maven module that
+uses Spring or jMolecules is checked on its own,
 over its main and test classes. Kotlin modules run the same rules on their compiled classes, and the
 findings point at the `.kt` files; the file facade of top-level functions (`ShopApplicationKt`, with
 `fun main`) next to the application or a `@Configuration` class in the root package is not a
