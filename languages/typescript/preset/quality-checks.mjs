@@ -167,6 +167,7 @@ function typeAndArchitectureChecksFor(layout) {
         'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
         'languages/typescript/preset/architecture/domain-packages.mjs',
         'languages/typescript/preset/architecture/strict-layout.mjs',
+        'languages/typescript/preset/coupling/feature-layout.mjs',
         'languages/typescript/preset/defaults/tsconfig.quality.json',
       ],
     },

@@ -1,5 +1,10 @@
 import { DEAD_CODE_RULES, FUNCTION_STRUCTURE_LIMITS, RULE_IDS } from '../policy.mjs';
-import { HYGIENE_RULE_IDS, PACKAGE_RULE_IDS } from '../project-rules/hygiene-rules.mjs';
+import {
+  CHANGE_HISTORY_TOOL,
+  HISTORY_RULE_IDS,
+  HYGIENE_RULE_IDS,
+  PACKAGE_RULE_IDS,
+} from '../project-rules/hygiene-rules.mjs';
 import { SIZE_RULE_IDS } from '../project-rules/size-rules.mjs';
 
 const STRUCTURE_RULES = [
@@ -42,6 +47,7 @@ const RULE_TOOLS = new Map([
   [RULE_IDS.stabilityDirection, ['coupling']],
   ...DEAD_CODE_RULES.map((rule) => [rule, ['dead-code']]),
   ...Object.values(HYGIENE_RULE_IDS).map((rule) => [rule, ['repository-hygiene']]),
+  ...Object.values(HISTORY_RULE_IDS).map((rule) => [rule, [CHANGE_HISTORY_TOOL]]),
   ...Object.values(PACKAGE_RULE_IDS).map((rule) => [rule, ['dead-code']]),
   [RULE_IDS.slowTest, ['test-runtime']],
   [RULE_IDS.noProductionRuntime, ['test-runtime']],
@@ -81,6 +87,7 @@ export function toolsOf(rule) {
 const TYPESCRIPT_TOOLS = [
   'structure',
   'repository-hygiene',
+  CHANGE_HISTORY_TOOL,
   'crap',
   'coverage',
   'mutation',
@@ -92,7 +99,7 @@ const TYPESCRIPT_TOOLS = [
   'coding-standards',
   'dependency-architecture',
 ];
-const SHARED_TOOLS = ['structure', 'test-runtime', 'repository-hygiene'];
+const SHARED_TOOLS = ['structure', 'test-runtime', 'repository-hygiene', CHANGE_HISTORY_TOOL];
 const JVM_ANALYZER_TOOLS = [...SHARED_TOOLS, 'crap', 'jacoco', 'pit', 'duplicates', 'coupling'];
 
 /** The tools of each preset that print rules an `exceptions` entry can name. */
