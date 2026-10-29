@@ -4,6 +4,9 @@ const OPENERS = new Map([
   ['{', '}'],
 ]);
 const CLOSERS = new Set(OPENERS.values());
+const INITIALIZER_MARKS = new Set(['=', '->']);
+const NAME_SEPARATORS = new Set(['.', ':']);
+const ARGUMENT_OPENERS = new Set(['(', '[']);
 const KOTLIN_MODIFIERS = new Set([
   'public',
   'private',
@@ -67,33 +70,41 @@ export function skipNested(close, index) {
   return close[index] > index ? close[index] : index;
 }
 
-function isInitializerBrace(tokens, close, { from, index }) {
-  for (let position = from; position < index; position = skipNested(close, position) + 1) {
-    if (tokens[position].text === '=' || tokens[position].text === '->') {
-      return true;
+export function topLevelIndexes(close, { from, to }) {
+  const indexes = [];
+  const positions = [from];
+  for (const index of positions) {
+    if (index < to) {
+      indexes.push(index);
+      positions.push(skipNested(close, index) + 1);
     }
   }
-  return false;
+  return indexes;
 }
 
-export function javaMembers(tokens, close, { from, to }) {
+function isInitializerBrace(tokens, close, { start, index }) {
+  return topLevelIndexes(close, { from: start, to: index }).some((position) =>
+    INITIALIZER_MARKS.has(tokens[position].text),
+  );
+}
+
+function javaMemberEnd(tokens, close, { start, index }) {
+  const { text } = tokens[index];
+  if (text === '{' && !isInitializerBrace(tokens, close, { start, index })) {
+    return skipNested(close, index) + 1;
+  }
+  return text === ';' ? index + 1 : undefined;
+}
+
+export function javaMembers(tokens, close, range) {
   const members = [];
-  let start = from;
-  for (let index = from; index < to; index += 1) {
-    const { text } = tokens[index];
-    if (text === '{' && !isInitializerBrace(tokens, close, { from: start, index })) {
-      const end = skipNested(close, index);
-      members.push({ start, end: end + 1 });
-      start = end + 1;
-      index = end;
-    } else if (text === ';') {
-      if (index > start) {
-        members.push({ start, end: index + 1 });
-      }
-      start = index + 1;
-    } else {
-      index = skipNested(close, index);
+  let start = range.from;
+  for (const index of topLevelIndexes(close, range)) {
+    const end = javaMemberEnd(tokens, close, { start, index });
+    if (end !== undefined && end - start > 1) {
+      members.push({ start, end });
     }
+    start = end ?? start;
   }
   return members;
 }
@@ -110,41 +121,52 @@ function declares(tokens, from, to) {
   return tokens.slice(from, to).some(({ text }) => KOTLIN_KEYWORDS.has(text));
 }
 
-export function kotlinMembers(tokens, close, { from, to }) {
+function trimmedEnd(tokens, start, end) {
+  const kept = tokens.slice(start + 1, end).findLastIndex(({ text }) => text !== ';');
+  return start + 2 + kept;
+}
+
+export function kotlinMembers(tokens, close, range) {
   const starts = [];
-  for (let index = from; index < to; index += 1) {
+  for (const index of topLevelIndexes(close, range)) {
     const pending = starts.length > 0 && !declares(tokens, starts.at(-1), index);
     if (!pending && startsKotlinMember(tokens, index)) {
       starts.push(index);
     }
-    index = skipNested(close, index);
   }
   return starts.map((start, position) => ({
     start,
-    end: trimmedEnd(tokens, start, starts[position + 1] ?? to),
+    end: trimmedEnd(tokens, start, starts[position + 1] ?? range.to),
   }));
 }
 
-function trimmedEnd(tokens, start, end) {
-  let last = end;
-  while (last > start + 1 && tokens[last - 1].text === ';') {
-    last -= 1;
+function nameEnd(tokens, from) {
+  const positions = [from];
+  for (const index of positions) {
+    if (NAME_SEPARATORS.has(tokens[index]?.text)) {
+      positions.push(index + 2);
+    }
   }
-  return last;
+  return positions.at(-1);
+}
+
+function annotationEnd(tokens, close, at) {
+  const name = nameEnd(tokens, tokens[at + 1]?.text === '[' ? at + 1 : at + 2);
+  return ARGUMENT_OPENERS.has(tokens[name]?.text) ? skipNested(close, name) + 1 : name;
+}
+
+function startsAnnotation(tokens, index) {
+  return tokens[index]?.text === '@' && tokens[index + 1]?.text !== 'interface';
 }
 
 export function annotationsEnd(tokens, close, from) {
-  let index = from;
-  while (tokens[index]?.text === '@' && tokens[index + 1]?.text !== 'interface') {
-    index += tokens[index + 1]?.text === '[' ? 1 : 2;
-    while (tokens[index]?.text === '.' || tokens[index]?.text === ':') {
-      index += 2;
-    }
-    if (tokens[index]?.text === '(' || tokens[index]?.text === '[') {
-      index = skipNested(close, index) + 1;
+  const positions = [from];
+  for (const index of positions) {
+    if (startsAnnotation(tokens, index)) {
+      positions.push(annotationEnd(tokens, close, index));
     }
   }
-  return index;
+  return positions.at(-1);
 }
 
 export function isKotlinModifier(text) {

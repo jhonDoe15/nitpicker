@@ -5,79 +5,51 @@ import {
   LANGUAGE_RULES,
   parseStructure,
 } from './jvm-declarations.mjs';
-import { skipNested } from './jvm-members.mjs';
+import { annotationsEnd, topLevelIndexes } from './jvm-members.mjs';
 import { namesOf } from './jvm-tokens.mjs';
 
 const ANGLE_DEPTH = new Map([
   ['<', 1],
   ['>', -1],
 ]);
-const PAREN_DEPTH = new Map([
-  ['(', 1],
-  [')', -1],
-]);
 const TYPE_KEYWORDS = new Set(['class', 'interface', 'enum', 'record', 'object']);
 const MEMBER_ACCESS = new Set(['.', '::']);
 const STATIC_OWNERS = { java: new Set(['class', 'interface']), kotlin: new Set(['object']) };
 
-function angleDepthChange(text) {
-  return ANGLE_DEPTH.get(text) ?? 0;
-}
-
-function parameterParts(tokens, close, paren) {
-  const parts = [[]];
+function parameterRanges(tokens, close, paren) {
+  const ranges = [];
+  let from = paren + 1;
   let depth = 0;
-  for (let index = paren + 1; index < close[paren]; index += 1) {
-    const { text } = tokens[index];
-    depth += angleDepthChange(text);
-    if (text === ',' && depth === 0) {
-      parts.push([]);
-      continue;
-    }
-    const end = skipNested(close, index);
-    parts.at(-1).push(...tokens.slice(index, end + 1));
-    index = end;
-  }
-  return parts.filter((part) => part.length > 0);
-}
-
-function parameterType(part, kotlin) {
-  if (kotlin) {
-    const colon = part.findIndex(({ text }) => text === ':');
-    const assign = part.findIndex(({ text }) => text === '=');
-    return part.slice(colon + 1, assign === -1 ? undefined : assign);
-  }
-  return withoutAnnotations(part.filter(({ text }) => text !== 'final')).slice(0, -1);
-}
-
-function annotationEnd(part, from) {
-  let index = from + 2;
-  while (part[index]?.text === '.') {
-    index += 2;
-  }
-  let depth = 0;
-  while (part[index]?.text === '(' || depth > 0) {
-    depth += PAREN_DEPTH.get(part[index]?.text) ?? 0;
-    index += 1;
-    if (index >= part.length) {
-      return index;
+  for (const index of topLevelIndexes(close, { from: paren + 1, to: close[paren] })) {
+    depth += ANGLE_DEPTH.get(tokens[index].text) ?? 0;
+    if (tokens[index].text === ',' && depth === 0) {
+      ranges.push({ from, to: index });
+      from = index + 1;
     }
   }
-  return index;
+  return [...ranges, { from, to: close[paren] }].filter((range) => range.to > range.from);
 }
 
-function withoutAnnotations(part) {
-  const kept = [];
-  let index = 0;
-  while (index < part.length) {
-    if (part[index].text === '@') {
-      index = annotationEnd(part, index);
-    } else {
-      kept.push(part[index]);
-      index += 1;
+function javaParameterStart(tokens, close, from) {
+  const positions = [from];
+  for (const index of positions) {
+    if (tokens[index]?.text === 'final') {
+      positions.push(index + 1);
+    } else if (tokens[index]?.text === '@') {
+      positions.push(annotationsEnd(tokens, close, index));
     }
   }
-  return kept;
+  return positions.at(-1);
+}
+
+function parameterType(tokens, close, { range, kotlin }) {
+  const part = tokens.slice(range.from, range.to);
+  if (!kotlin) {
+    return tokens.slice(javaParameterStart(tokens, close, range.from), range.to - 1);
+  }
+  const colon = part.findIndex(({ text }) => text === ':');
+  const assign = part.findIndex(({ text }) => text === '=');
+  return part.slice(colon + 1, assign === -1 ? undefined : assign);
 }
 
 function signature(structure, { paren }, kotlin) {
@@ -85,9 +57,9 @@ function signature(structure, { paren }, kotlin) {
   if (paren === undefined || close[paren] < 0) {
     return '';
   }
-  return parameterParts(tokens, close, paren)
-    .map((part) =>
-      parameterType(part, kotlin)
+  return parameterRanges(tokens, close, paren)
+    .map((range) =>
+      parameterType(tokens, close, { range, kotlin })
         .map(({ text }) => text)
         .join(''),
     )
@@ -171,14 +143,20 @@ function topLevel(structure, language) {
   });
 }
 
-function usedLocally(structure, { name, member }) {
-  const { tokens, header } = structure;
-  return tokens.some(
-    (token, index) =>
-      index >= header.end &&
-      (index < member.start || index >= member.end) &&
-      namesOf(token).includes(name),
-  );
+function namePositions({ tokens, header }) {
+  const positions = new Map();
+  for (const [index, token] of tokens.entries()) {
+    for (const name of index < header.end ? [] : namesOf(token)) {
+      const found = positions.get(name) ?? [];
+      found.push(index);
+      positions.set(name, found);
+    }
+  }
+  return positions;
+}
+
+function usedLocally(positions, { name, member }) {
+  return (positions.get(name) ?? []).some((index) => index < member.start || index >= member.end);
 }
 
 function qualifierOf(found, overloaded, signatures) {
@@ -203,7 +181,7 @@ function definition(structure, found, context) {
     exportNames: exported ? [exportName] : [],
     tokens: texts,
     text: texts.join(' '),
-    usedLocally: usedLocally(structure, found),
+    usedLocally: usedLocally(context.positions, found),
     start,
     end,
     ...(found.owner === undefined ? {} : { owner: found.owner }),
@@ -220,13 +198,16 @@ function isEntry(found, mainTypes) {
   return found.type ? mainTypes.has(found.name) : found.name === 'main';
 }
 
+function overloadKey({ owner, name, kind }) {
+  return `${kind}\0${owner ?? ''}\0${name}`;
+}
+
 function overloadCounter(found) {
   const counts = new Map();
-  const keyOf = ({ owner, name, kind }) => `${kind}\0${owner ?? ''}\0${name}`;
   for (const item of found) {
-    counts.set(keyOf(item), (counts.get(keyOf(item)) ?? 0) + 1);
+    counts.set(overloadKey(item), (counts.get(overloadKey(item)) ?? 0) + 1);
   }
-  return (item) => counts.get(keyOf(item)) > 1;
+  return (item) => counts.get(overloadKey(item)) > 1;
 }
 
 function declaredTypes(tokens) {
@@ -251,7 +232,12 @@ export function readJvmDefinitions(source, { kotlin = false } = {}) {
       .filter(({ name, owner }) => name === 'main' && owner !== undefined)
       .map(({ owner }) => owner),
   );
-  const context = { overloaded: overloadCounter(found), signatures, mainTypes };
+  const context = {
+    overloaded: overloadCounter(found),
+    signatures,
+    mainTypes,
+    positions: namePositions(structure),
+  };
   return {
     packageName: structure.header.packageName,
     imports: structure.header.imports,

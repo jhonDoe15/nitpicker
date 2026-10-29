@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { jvmReuseFacts, readJvmReuseFindings } from './jvm-reuse-facts.mjs';
 
 const roots = [];
@@ -60,10 +61,22 @@ describe('duplicate-definition on Java and Kotlin', () => {
       ],
       ['duplicate-definition', `${JAVA_ROOT}/shop/orders/Orders.java`, 'duplicate:Orders.clean'],
     ]);
-    expect(found[0]).toMatchObject({ tool: 'structure', location: { line: 4 } });
-    expect(found[0].message).toMatch(
-      /^Invoices\.clean is also defined with the same code in src\/main\/java\/shop\/orders\/Orders\.java\. Move it to one module and import it\./u,
-    );
+    const invoices = `${JAVA_ROOT}/shop/invoices/Invoices.java`;
+
+    expect(found[0]).toEqual({
+      tool: 'structure',
+      rule: 'duplicate-definition',
+      path: invoices,
+      identity: 'duplicate:Invoices.clean',
+      symbol: 'clean',
+      location: { line: 4 },
+      classification: 'enforceable',
+      message: [
+        `Invoices.clean is also defined with the same code in ${JAVA_ROOT}/shop/orders/Orders.java.`,
+        'Move it to one module and import it.',
+        exceptionHint('duplicate-definition', invoices),
+      ].join(' '),
+    });
   });
 
   it('counts a public static method used only as Class.method from another file as used', () => {
@@ -173,8 +186,13 @@ describe('exported-name-collision on Java and Kotlin', () => {
       ['exported-name-collision', `${JAVA_ROOT}/shop/billing/Money.java`, 'collision:Money'],
       ['exported-name-collision', `${JAVA_ROOT}/shop/money/Money.java`, 'collision:Money'],
     ]);
-    expect(found[0].message).toContain(
-      `${JAVA_ROOT}/shop/orders/Orders.java imports both. Rename one, or use both by their fully qualified names.`,
+    expect(found[0].message).toBe(
+      [
+        `Money is also exported by ${JAVA_ROOT}/shop/money/Money.java;`,
+        `${JAVA_ROOT}/shop/orders/Orders.java imports both.`,
+        'Rename one, or use both by their fully qualified names.',
+        exceptionHint('exported-name-collision', `${JAVA_ROOT}/shop/billing/Money.java`),
+      ].join(' '),
     );
   });
 
@@ -203,7 +221,13 @@ describe('exported-name-collision on Java and Kotlin', () => {
       `exported-name-collision ${JAVA_ROOT}/shop/billing/Money.java`,
       `exported-name-collision ${JAVA_ROOT}/shop/money/Money.java`,
     ]);
-    expect(found[0].message).toContain('Rename one, or alias both imports.');
+    expect(found[0].message).toBe(
+      [
+        `Money is also exported by ${JAVA_ROOT}/shop/money/Money.java;`,
+        `${KOTLIN_ROOT}/shop/use/Use.kt imports both. Rename one, or alias both imports.`,
+        exceptionHint('exported-name-collision', `${JAVA_ROOT}/shop/billing/Money.java`),
+      ].join(' '),
+    );
   });
 
   it('lets an import shadow a same-package class of that name, as javac does', () => {
@@ -307,9 +331,12 @@ describe('jvmReuseFacts', () => {
       },
     ];
 
-    expect(jvmReuseFacts(root, { projects, exclude: ['**/Skipped.java'] })).toMatchObject({
-      modules: [{ file: `app/${JAVA_ROOT}/shop/App.java`, role: 'production', entry: true }],
-      packages: [{ root: 'app', published: false }],
-    });
+    const facts = jvmReuseFacts(root, { projects, exclude: ['**/Skipped.java'] });
+
+    expect([facts.modules, facts.packages, facts.imports]).toEqual([
+      [{ file: `app/${JAVA_ROOT}/shop/App.java`, role: 'production', entry: true }],
+      [{ root: 'app', published: false }],
+      [],
+    ]);
   });
 });

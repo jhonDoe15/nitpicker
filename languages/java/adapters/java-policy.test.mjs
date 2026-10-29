@@ -189,10 +189,9 @@ describe('the baseline moves file', () => {
       baselineMovesFile: '/tmp/moves.json',
     });
 
-    expect(parseJavaRunnerArguments(args.slice(1)).policy).toMatchObject({
-      exclude: ['a/**'],
-      baselineMovesFile: '/tmp/moves.json',
-    });
+    const { policy } = parseJavaRunnerArguments(args.slice(1));
+
+    expect([policy.exclude, policy.baselineMovesFile]).toEqual([['a/**'], '/tmp/moves.json']);
     expect(
       parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1)).policy,
     ).not.toHaveProperty('baselineMovesFile');
