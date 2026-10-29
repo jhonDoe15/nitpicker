@@ -3,7 +3,7 @@ import { missingProjectConfig } from '../../../../../shared/conventions/tool-pre
 import { configurations, pluginsNamed, textsOf } from '../../../builds/narrowing/maven-sources.mjs';
 import { declarationText, gradleSettings, mavenText, quotedStrings } from './declared-build.mjs';
 
-export const NITPICKER_PIT = { threads: 2, timeoutConst: 4000, timeoutFactor: 1.25 };
+const NITPICKER_PIT = { threads: 2, timeoutConst: 4000, timeoutFactor: 1.25 };
 const LOGGING_CLASSES = [
   ...['java.util.logging', 'org.apache.log4j', 'org.apache.logging.log4j'],
   ...['org.slf4j', 'org.apache.commons.logging', 'org.jboss.logging'],
@@ -74,7 +74,7 @@ function elementValues(configuration, element) {
   return children.length > 0 ? [children] : [[found.text?.trim()].filter(Boolean)];
 }
 
-function mavenSetting(poms, pom, configuration, [element, setting]) {
+function mavenSetting({ poms, pom, configuration }, [element, setting]) {
   const texts = NUMBERS.includes(setting)
     ? textsOf(configuration, element).map((text) => numberIn(mavenText(poms, pom, text)))
     : elementValues(configuration, element).map((values) =>
@@ -95,7 +95,7 @@ function mavenDeclarations(poms) {
       pluginsNamed(pom.project, new Set(['pitest-maven']))
         .flatMap((plugin) => configurations(plugin))
         .flatMap((configuration) =>
-          [...MAVEN_NAMES].flatMap((entry) => mavenSetting(poms, pom, configuration, entry)),
+          [...MAVEN_NAMES].flatMap((entry) => mavenSetting({ poms, pom, configuration }, entry)),
         ),
     );
 }
