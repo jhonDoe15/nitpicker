@@ -28,7 +28,6 @@ const ACCEPT_ROUTE = [
   'only they accept exactly these loosenings,',
   `with --accept-policy-change=${DIGEST} at an interactive terminal`,
   `or NITPICKER_ACCEPT_POLICY_CHANGE=${DIGEST} in CI.`,
-  linkSentence('policyLoosened'),
 ].join(' ');
 
 function kindsOf(changes, kind = 'entry-point') {

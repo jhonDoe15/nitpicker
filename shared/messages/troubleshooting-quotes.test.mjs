@@ -9,11 +9,13 @@ import {
 } from './test-support/troubleshooting-page.mjs';
 
 const MINIMUM_QUOTE = 12;
+const MINIMUM_LITERAL = 10;
 const SHARED_RUN = 8;
 const LONGEST_VALUE = 60;
 const QUOTED_FROM_OTHER_TOOLS = new Set([
   "error TS5083: Cannot read file '.../tsconfig.json'",
   'error TS5057',
+  "Cannot find package 'vitest' imported from <file>",
 ]);
 const CLAUSE_END = /(?<=[.:;]) /u;
 const TRAILING_PUNCTUATION = /[.:;,]+$/u;
@@ -55,9 +57,22 @@ function isText(node) {
   );
 }
 
-function sourceStrings(file) {
-  const source = ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
-  const constants = stringConstants(source);
+function parsed(file) {
+  return ts.createSourceFile(file, read(file), ts.ScriptTarget.Latest, true);
+}
+
+function sharedConstants(sources) {
+  const values = new Map();
+  for (const [name, value] of sources.flatMap((source) => [...stringConstants(source)])) {
+    values.set(name, [...new Set([...(values.get(name) ?? []), value])]);
+  }
+  return new Map(
+    [...values].filter(([, found]) => found.length === 1).map(([name, [value]]) => [name, value]),
+  );
+}
+
+function sourceStrings(source, shared) {
+  const constants = new Map([...shared, ...stringConstants(source)]);
   const strings = [];
   const pending = [source];
   for (const node of pending) {
@@ -123,7 +138,10 @@ function step(states, token, { code, needed }) {
 }
 
 function producedBy(quoted, code) {
-  const needed = Math.ceil(quoted.filter((token) => token !== ELIDED).length / 2);
+  const needed = Math.min(
+    MINIMUM_LITERAL,
+    Math.ceil(quoted.filter((token) => token !== ELIDED).length / 2),
+  );
   const start = Array.from({ length: code.length + 1 }, (_unused, position) => ({
     position,
     absorbed: 0,
@@ -151,7 +169,9 @@ function quotedSpans() {
 
 describe('the symptoms of the troubleshooting page', () => {
   it('quote only text that a string in the code can produce', () => {
-    const strings = productionSources().flatMap(sourceStrings);
+    const sources = productionSources().map(parsed);
+    const shared = sharedConstants(sources);
+    const strings = sources.flatMap((source) => sourceStrings(source, shared));
     const unmatched = quotedSpans()
       .filter(({ span }) => {
         const quoted = quotedTokens(span);

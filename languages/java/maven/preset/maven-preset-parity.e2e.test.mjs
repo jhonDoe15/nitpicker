@@ -15,7 +15,6 @@ import {
   twinProjects,
   comparable,
 } from '../__tests__/maven-preset-project.mjs';
-import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 describe.skipIf(!enabled)('Java preset on Maven builds', () => {
   useMavenPresetProject();
@@ -43,13 +42,10 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       'structure',
     ]);
   }, 180_000);
-  it('reports a failing test as a maven-failure tool error that names the test and the snapshot', () => {
+  it('reports a failing test as a maven-failure tool error that names the test', () => {
     const project = copyOf(path.join(fixtures, 'multi-module'));
     writeFileSync(path.join(project, 'core/src/test/java/demo/core/AdderTest.java'), FAILING_TEST);
-    const [finding] = analyzeJavaSnapshot(project, {
-      maven,
-      policy: { snapshot: 'base' },
-    }).findings;
+    const [finding] = analyzeJavaSnapshot(project, { maven, policy: {} }).findings;
 
     expect(finding).toEqual({
       tool: 'java',
@@ -58,10 +54,9 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       identity: 'maven-failure',
       classification: 'tool-error',
       message: [
-        `Tests fail in the base snapshot (${path.join(project, 'core')}); nitpicker needs a ` +
-          'passing test suite for coverage and mutation testing:',
+        `Tests fail in ${path.join(project, 'core')}; nitpicker needs a passing test suite ` +
+          'for coverage and mutation testing:',
         '  demo.core.AdderTest.adds: expected: <4> but was: <3>',
-        linkSentence('baseTestsFail'),
       ].join('\n'),
     });
   }, 180_000);

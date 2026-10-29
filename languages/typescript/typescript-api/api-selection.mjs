@@ -20,8 +20,15 @@ export function selectTypeScriptApi(resolve = createRequire(import.meta.url).res
     : { file: resolve('typescript-js-api'), bundled: true };
 }
 
-export function redirectToBundledTypeScriptApi(environment, selected = selectTypeScriptApi()) {
-  if (selected.bundled) {
-    redirectTypeScriptApi(path.dirname(path.dirname(selected.file)), environment);
+let selected;
+
+export function typeScriptApi() {
+  selected ??= selectTypeScriptApi();
+  return selected;
+}
+
+export function redirectToBundledTypeScriptApi(environment, selection = typeScriptApi()) {
+  if (selection.bundled) {
+    redirectTypeScriptApi(path.dirname(path.dirname(selection.file)), environment);
   }
 }

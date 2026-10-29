@@ -41,13 +41,13 @@ describe('tool precedence', () => {
     for (const precedence of [[], ['project', 'project'], ['workspace'], 'project', undefined]) {
       expect(() => validateConfig({ tools: { prettier: { precedence } } })).toThrow(
         new Error(
-          `nitpicker.config.json: "tools.prettier.precedence" must list "project", "nitpicker" or both, each once, highest first`,
+          'nitpicker.config.json: "tools.prettier.precedence" must list "project", "nitpicker" or both, each once, highest first',
         ),
       );
     }
     expect(() => validateConfig({ preset: 'java', tools: { pmd: { precedence: [] } } })).toThrow(
       new Error(
-        `nitpicker.config.json: "tools.pmd.precedence" must list "project", "nitpicker" or both, each once`,
+        'nitpicker.config.json: "tools.pmd.precedence" must list "project", "nitpicker" or both, each once',
       ),
     );
     expect(() => validateConfig({ tools: [] })).toThrow('"tools" must be an object');

@@ -1,12 +1,12 @@
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { selectTypeScriptApi } from '../../typescript-api/api-selection.mjs';
+import { typeScriptApi } from '../../typescript-api/api-selection.mjs';
 
 export const PROJECT_TSCONFIG = 'tsconfig.json';
 
 function typescriptCompiler() {
-  return createRequire(import.meta.url)(selectTypeScriptApi().file);
+  return createRequire(import.meta.url)(typeScriptApi().file);
 }
 
 export function readJsonc(file) {

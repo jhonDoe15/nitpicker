@@ -8,7 +8,9 @@ import {
 } from '../../../../../shared/messages/troubleshooting.mjs';
 
 function keepingExplained(error, wrapped) {
-  return isExplainedError(error) ? Object.assign(wrapped, { explained: true }) : wrapped;
+  return isExplainedError(error)
+    ? Object.defineProperty(wrapped, 'explained', { value: true })
+    : wrapped;
 }
 
 function withLineBeforeLink(message, line) {
