@@ -215,11 +215,6 @@ function trackedTests(file = '', { after, afterEach, beforeEach } = nodeTestApi(
   };
 }
 
-function testOf(resource = {}) {
-  const test = TEST_OF in resource ? resource[TEST_OF] : undefined;
-  return typeof test === 'object' && test !== null ? test : {};
-}
-
 function fileOfTest(test = {}) {
   const loc = 'loc' in test && typeof test.loc === 'object' && test.loc !== null ? test.loc : {};
   const files = ['entryFile' in test ? test.entryFile : '', 'file' in loc ? loc.file : ''];
@@ -228,16 +223,22 @@ function fileOfTest(test = {}) {
   return file.startsWith('file:') ? fileURLToPath(file) : file;
 }
 
+function fileOf(resource = {}) {
+  const tag = TEST_OF in resource ? resource[TEST_OF] : '';
+  return typeof tag === 'object' && tag !== null ? fileOfTest(tag) : String(tag);
+}
+
 function inProcessTests() {
   const { createHook, executionAsyncResource } = process.getBuiltinModule('node:async_hooks');
   createHook({
     init(...values) {
       const [, type, , resource] = values;
-      Reflect.set(resource, TEST_OF, type === 'Test' ? resource : testOf(executionAsyncResource()));
+      const value = type === 'Test' ? resource : fileOf(executionAsyncResource());
+      Reflect.defineProperty(resource, TEST_OF, { value, configurable: true });
     },
   }).enable();
   return function place() {
-    return { file: fileOfTest(testOf(executionAsyncResource())), test: '' };
+    return { file: fileOf(executionAsyncResource()), test: '' };
   };
 }
 
@@ -283,9 +284,7 @@ captureNodeTest({
   environment: process.env,
   script: process.argv[1] ?? '',
   testRunner: process.execArgv.includes('--test'),
-  inProcess: IN_PROCESS_OPTION.test(
-    `${process.execArgv.join(' ')} ${process.env.NODE_OPTIONS ?? ''}`,
-  ),
+  inProcess: IN_PROCESS_OPTION.test(process.execArgv.join(' ')),
   processId: process.pid,
   parentId: process.ppid,
 });
