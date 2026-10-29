@@ -61,14 +61,17 @@ function parseOptionalFields(value, classification, context) {
   if (value.ratchet !== undefined) {
     fields.ratchet = parseRatchet(value.ratchet, `${context}.ratchet`);
   }
-  if (value.tokens !== undefined) {
-    fields.tokens = parseTokens(value.tokens, `${context}.tokens`);
-  }
-  if (value.cause !== undefined) {
-    fields.cause = parseCause(value.cause, `${context}.cause`);
-  }
 
-  return fields;
+  return { ...fields, ...parseEvidenceFields(value, context) };
+}
+
+function parseEvidenceFields(value, context) {
+  return {
+    ...(value.tokens === undefined
+      ? {}
+      : { tokens: parseTokens(value.tokens, `${context}.tokens`) }),
+    ...(value.cause === undefined ? {} : { cause: parseCause(value.cause, `${context}.cause`) }),
+  };
 }
 
 function parseLocation(value, context) {
@@ -139,20 +142,26 @@ function parseCause(value, context) {
   if (!isRecord(value) || !Array.isArray(value.files) || !Array.isArray(value.contributors)) {
     throw new TypeError(`${context} must be { files, contributors }`);
   }
-  const pathAt = (file, at) => normalizeFindingPath(requiredString(file, at), at);
   return {
-    files: value.files.map((file, index) => pathAt(file, `${context}.files[${String(index)}]`)),
-    contributors: value.contributors.map((entry, index) => {
-      const at = `${context}.contributors[${String(index)}]`;
-      if (!isRecord(entry)) {
-        throw new TypeError(`${at} must be { file, unit }`);
-      }
-      return {
-        file: pathAt(entry.file, `${at}.file`),
-        unit: requiredString(entry.unit, `${at}.unit`),
-      };
-    }),
+    files: value.files.map((file, index) => causePath(file, `${context}.files[${String(index)}]`)),
+    contributors: value.contributors.map((entry, index) =>
+      parseContributor(entry, `${context}.contributors[${String(index)}]`),
+    ),
   };
+}
+
+function parseContributor(entry, context) {
+  if (!isRecord(entry)) {
+    throw new TypeError(`${context} must be { file, unit }`);
+  }
+  return {
+    file: causePath(entry.file, `${context}.file`),
+    unit: requiredString(entry.unit, `${context}.unit`),
+  };
+}
+
+function causePath(file, context) {
+  return normalizeFindingPath(requiredString(file, context), context);
 }
 
 function positiveInteger(value, context) {

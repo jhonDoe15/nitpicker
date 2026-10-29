@@ -1,4 +1,4 @@
-export const LIBRARY_FEATURES = ['catalog', 'loans', 'members'];
+const LIBRARY_FEATURES = ['catalog', 'loans', 'members'];
 
 function featureUses(name, { adaptersImplementFace }) {
   return [

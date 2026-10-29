@@ -2,13 +2,14 @@ export const STABILITY_FIX =
   "Depend on the other side's public face, or move the code that joins them into the composition root.";
 
 const OTHER = { kind: 'other' };
+const ROUNDING = 10_000;
 
 export function rounded(value) {
-  return Math.round(value * 10_000) / 10_000;
+  return Math.round(value * ROUNDING) / ROUNDING;
 }
 
-export function instabilityOf(fanIn, fanOut) {
-  return fanIn + fanOut === 0 ? null : rounded(fanOut / (fanIn + fanOut));
+function unitInstabilityOf(fanIn, fanOut) {
+  return fanIn + fanOut === 0 ? undefined : rounded(fanOut / (fanIn + fanOut));
 }
 
 function remembered(compute) {
@@ -29,10 +30,10 @@ function addTo(map, key, value) {
 
 function graphContext({ modules, packageOf, roleOf, fileOf = (module) => module }) {
   const role = remembered((module) => roleOf?.(module) ?? OTHER);
-  const unitOf = (module) => {
+  function unitOf(module) {
     const found = role(module);
     return found.kind === 'feature' ? found.directory : packageOf(module);
-  };
+  }
   const facePackages = new Map();
   for (const module of modules.filter((entry) => role(entry).isPublic === true)) {
     addTo(facePackages, role(module).directory, packageOf(module));
@@ -52,7 +53,7 @@ function unitInstabilities(edges, unitOf) {
     addTo(fanIn, unitOf(target), source);
     addTo(fanOut, unitOf(source), target);
   }
-  return (unit) => instabilityOf(fanIn.get(unit)?.size ?? 0, fanOut.get(unit)?.size ?? 0);
+  return (unit) => unitInstabilityOf(fanIn.get(unit)?.size ?? 0, fanOut.get(unit)?.size ?? 0);
 }
 
 function insideOneFeature(edge, context) {
@@ -116,11 +117,11 @@ function causeOf(pair, { context, edges }) {
 }
 
 function featureWording(pair, context) {
-  const describe = (name) => {
+  function describe(name) {
     const module = endMembers(context, { level: pair.level, name })[0];
     const role = context.role(module);
     return role.kind === 'feature' ? `feature ${role.name} (${role.directory})` : `package ${name}`;
-  };
+  }
   const [source, target] = [describe(pair.source), describe(pair.target)];
   const sentence = `${source[0].toUpperCase()}${source.slice(1)} depends on less stable ${target}`;
   return { path: pair.source, message: `${sentence}. ${STABILITY_FIX}` };
@@ -155,8 +156,9 @@ export function stabilityDirections({ edges, packages, ...graph }) {
   const context = graphContext(graph);
   const packageInstability = new Map(packages.map((entry) => [entry.name, entry.instability]));
   const unitInstability = unitInstabilities(edges, context.unitOf);
-  const instability = ({ level, source }) =>
-    level === 'package' ? packageInstability.get(source) : unitInstability(source);
+  function instability({ level, source }) {
+    return level === 'package' ? packageInstability.get(source) : unitInstability(source);
+  }
   const pairs = new Map();
   for (const edge of edges.filter(({ kind }) => kind !== 'type-only')) {
     const pair = pairOf(edge, context);
