@@ -49,9 +49,13 @@ function wrapMethod(owner, name, before) {
   }
 }
 
-function enter(tracking, place) {
+function isRootAllHook(hook) {
+  return hook.parent?.root === true && !isEachHook(hook);
+}
+
+function enter(tracking, place, origin = place) {
   tracking.state.current = place;
-  tracking.storage.enterWith(place);
+  tracking.storage.enterWith(origin);
 }
 
 function watchLoading(tracking, { suite }) {
@@ -80,7 +84,8 @@ function watchRunner(tracking, runner) {
   }
   tracking.watched.add(runner);
   runner.on('hook', (hook) => {
-    enter(tracking, hookPlace(hook, tracking.loadedHookFiles));
+    const place = hookPlace(hook, tracking.loadedHookFiles);
+    enter(tracking, place, isRootAllHook(hook) ? NO_PLACE : place);
   });
   runner.on('test', (test) => {
     enter(tracking, testPlace(test));
