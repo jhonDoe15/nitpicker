@@ -5,8 +5,9 @@ import { unifiedDiff } from './line-diff.mjs';
 
 const DIFFERS = 'It differs from what init would write.';
 
-function withLineFeeds(text) {
-  return text.replaceAll('\r\n', '\n');
+function normalized(text) {
+  const lines = text.replaceAll('\r\n', '\n');
+  return lines === '' || lines.endsWith('\n') ? lines : `${lines}\n`;
 }
 
 function sameText(content) {
@@ -21,7 +22,7 @@ export function placeFile({ root, relative, content, revise = sameText(content) 
     writeFileSync(file, content);
     return { relative, status: 'created' };
   }
-  const current = withLineFeeds(existing);
+  const current = normalized(existing);
   const revision = revise(current);
   if (revision === undefined) {
     return { relative, status: 'unchanged' };

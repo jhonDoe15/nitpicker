@@ -11,7 +11,8 @@ const VERSION = '1.2.3';
 const ROOT_WORKFLOW = '.github/workflows/nitpicker.yml';
 const NO_PEERS = { missing: [], undeclared: [], installedOnly: [] };
 const PYTHON = { family: 'python', testRunner: 'pytest', typeChecker: 'mypy' };
-const ALL_PYTHON_PEERS = "python -m pip install coverage mypy pytest 'mutmut>=3,<4'";
+const PYTHON_PEERS = "coverage mypy pytest 'mutmut>=3,<4'";
+const ALL_PYTHON_PEERS = `python -m pip install ${PYTHON_PEERS}`;
 
 function nodeContext(root, repository = root) {
   return {
@@ -82,15 +83,20 @@ describe('workflow for Node projects', () => {
       'yarn install',
       'yarn nitpicker',
     ]);
-    expect(nodeSteps(declared('yarn@4.5.0')).slice(-2)).toEqual([
-      'yarn install --no-immutable',
-      'yarn nitpicker',
-    ]);
+    const berry = { ...declared('yarn@4.5.0'), '.yarnrc.yml': 'nodeLinker: node-modules\n' };
+
+    expect(nodeSteps(berry).slice(-2)).toEqual(['yarn install --no-immutable', 'yarn nitpicker']);
     expect(nodeSteps(declared('bun@1.1.0')).slice(-2)).toEqual(['bun install', 'bunx nitpicker']);
   });
 
   it('enables corepack and installs immutably for Yarn 2 or newer', () => {
-    expect(nodeSteps({ 'package.json': '{}', '.yarnrc.yml': '', 'yarn.lock': '' })).toEqual([
+    const files = {
+      'package.json': '{}',
+      '.yarnrc.yml': 'nodeLinker: node-modules\n',
+      'yarn.lock': '',
+    };
+
+    expect(nodeSteps(files)).toEqual([
       'corepack enable',
       'yarn install --immutable',
       'yarn nitpicker',
@@ -166,24 +172,58 @@ describe('workflow for Python projects', () => {
   });
 
   it.each([
-    ['uv', ['astral-sh/setup-uv@v5', 'uv sync']],
-    ['poetry', ['pipx install poetry', 'poetry install']],
-    ['pipenv', ['pipx install pipenv', 'pipenv install --dev']],
-    ['pdm', ['pipx install pdm', 'pdm install']],
-    ['hatch', ['pipx install hatch', 'hatch env create']],
-  ])('syncs a %s project with its own tool', (tool, expected) => {
-    expect(pythonSteps({ 'pyproject.toml': '' }, tool)).toEqual([
-      'actions/setup-python@v5',
-      ...expected,
-    ]);
-  });
+    ['uv', ['astral-sh/setup-uv@v5', 'uv sync'], 'uv pip install'],
+    ['poetry', ['pipx install poetry', 'poetry install'], 'poetry run python -m pip install'],
+    ['pipenv', ['pipx install pipenv', 'pipenv install --dev'], 'pipenv run python -m pip install'],
+    ['pdm', ['pipx install pdm', 'pdm install'], 'pdm run python -m pip install'],
+    ['hatch', ['pipx install hatch', 'hatch env create'], 'hatch run python -m pip install'],
+  ])(
+    'syncs a %s project with its own tool, then installs every peer into it',
+    (tool, sync, install) => {
+      expect(pythonSteps({ 'pyproject.toml': '' }, tool)).toEqual([
+        'actions/setup-python@v5',
+        ...sync,
+        `${install} ${PYTHON_PEERS}`,
+      ]);
+    },
+  );
+
+  it.each([['uv'], ['hatch'], ['pip']])(
+    'writes the same %s workflow before and after the project declares its peers',
+    (tool) => {
+      const root = project({ 'pyproject.toml': '' });
+
+      expect(renderWorkflow(root, pythonContext(root, tool, ['mypy', 'mutmut>=3,<4']))).toBe(
+        renderWorkflow(root, pythonContext(root, tool)),
+      );
+    },
+  );
 
   it.each([
-    ['uv', "uv add --dev mypy 'mutmut>=3,<4'"],
-    ['hatch', "hatch run python -m pip install mypy 'mutmut>=3,<4'"],
-  ])('adds the peers %s does not declare, even when .venv has them', (tool, command) => {
-    expect(pythonSteps({ 'pyproject.toml': '' }, tool, ['mypy', 'mutmut>=3,<4']).at(-1)).toBe(
-      command,
+    [
+      '.python-version',
+      { '.python-version': '3.12\n' },
+      { 'python-version-file': '.python-version' },
+    ],
+    [
+      'requires-python',
+      { 'pyproject.toml': '[project]\nrequires-python = ">=3.11,<4"\n' },
+      { 'python-version': '3.11' },
+    ],
+    [
+      'the poetry python',
+      { 'pyproject.toml': '[tool.poetry.dependencies]\npython = "^3.10"\n' },
+      { 'python-version': '3.10' },
+    ],
+    ['nothing', { 'pyproject.toml': '[tool.ruff]\n' }, { 'python-version': '3.13' }],
+  ])('sets the Python version from %s', (_name, files, settings) => {
+    const root = project(files);
+
+    expect(parse(renderWorkflow(root, pythonContext(root, 'pip'))).jobs.nitpicker.steps[2]).toEqual(
+      {
+        uses: 'actions/setup-python@v5',
+        with: settings,
+      },
     );
   });
 
@@ -205,7 +245,7 @@ describe('workflow for Python projects', () => {
     },
   );
 
-  it('creates the environment of a conda project with setup-miniconda and adds the undeclared peers', () => {
+  it('creates the environment of a conda project with setup-miniconda and installs every peer into it', () => {
     const root = project(
       { 'api/environment.yml': 'name: shop-api\ndependencies:\n  - pytest\n' },
       { repository: true },
@@ -223,7 +263,7 @@ describe('workflow for Python projects', () => {
           'auto-activate-base': false,
         },
       },
-      { run: 'conda install --yes --channel conda-forge mypy' },
+      { run: `conda install --yes --channel conda-forge ${PYTHON_PEERS}` },
       { name: 'nitpicker', run: 'npx nitpicker@1.2.3' },
     ]);
   });
@@ -238,7 +278,10 @@ describe('workflow for Python projects', () => {
       'activate-environment': 'nitpicker',
       'auto-activate-base': false,
     });
-    expect(job.steps).toHaveLength(4);
+    expect(job.steps.slice(3)).toEqual([
+      { run: `conda install --yes --channel conda-forge ${PYTHON_PEERS}` },
+      { name: 'nitpicker', run: 'npx nitpicker@1.2.3' },
+    ]);
   });
 
   it('does not install a pyproject.toml that only configures tools', () => {
@@ -322,24 +365,19 @@ describe('workflow location', () => {
   });
 
   it.each([
-    ['Unix', '\n'],
-    ['Windows', '\r\n'],
-  ])(
-    'is unchanged when the same workflow is already there with %s line endings',
-    (_name, ending) => {
-      const sample = project({ 'package.json': '{}' });
-      const content = renderWorkflow(sample, nodeContext(sample)).replaceAll('\n', ending);
-      const root = project(
-        { 'package.json': '{}', [ROOT_WORKFLOW]: content },
-        { repository: true },
-      );
+    ['Unix line endings', (text) => text],
+    ['Windows line endings', (text) => text.replaceAll('\n', '\r\n')],
+    ['no final newline', (text) => text.trimEnd()],
+  ])('is unchanged when the same workflow is already there with %s', (_name, written) => {
+    const sample = project({ 'package.json': '{}' });
+    const content = written(renderWorkflow(sample, nodeContext(sample)));
+    const root = project({ 'package.json': '{}', [ROOT_WORKFLOW]: content }, { repository: true });
 
-      expect(placeWorkflow(root, nodeContext(root))).toEqual({
-        relative: ROOT_WORKFLOW,
-        status: 'unchanged',
-      });
-    },
-  );
+    expect(placeWorkflow(root, nodeContext(root))).toEqual({
+      relative: ROOT_WORKFLOW,
+      status: 'unchanged',
+    });
+  });
 
   it('never overwrites a workflow of the same name, and returns the diff', () => {
     const existing = 'name: nitpicker\non: push\n';

@@ -1,9 +1,11 @@
 import { describe, expect, it } from 'vitest';
+import { packageVersion } from '../../help/package-version.mjs';
 import { useProjects } from '../test-support/projects.mjs';
 import { installCommand, planPeers, pythonInstaller, shellQuoted } from './peer-plan.mjs';
 
 const project = useProjects();
 const MUTMUT = 'mutmut>=3,<4';
+const NITPICKER = `nitpicker@${packageVersion()}`;
 const NOTHING = { missing: [], undeclared: [], installedOnly: [] };
 
 function nodeProject(add, testRunner = 'vitest') {
@@ -22,8 +24,8 @@ describe('peer plan for Node projects', () => {
 
       expect(planPeers(root, nodeProject(add))).toEqual({
         ...NOTHING,
-        missing: ['nitpicker', 'vitest', '@vitest/coverage-v8'],
-        command: `${add} nitpicker vitest @vitest/coverage-v8`,
+        missing: [NITPICKER, 'vitest', '@vitest/coverage-v8'],
+        command: `${add} ${NITPICKER} vitest @vitest/coverage-v8`,
       });
     },
   );
@@ -32,7 +34,7 @@ describe('peer plan for Node projects', () => {
     const root = project({ 'package.json': '{}' });
 
     expect(planPeers(root, nodeProject('npm install --save-dev', 'jest')).command).toBe(
-      "npm install --save-dev nitpicker 'typescript@^6' @types/node jest",
+      `npm install --save-dev ${NITPICKER} 'typescript@^6' @types/node jest`,
     );
   });
 

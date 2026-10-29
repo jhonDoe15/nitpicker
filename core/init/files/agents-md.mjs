@@ -1,7 +1,7 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
-import { projectFileText, writableProjectFile } from '../support/inside-project.mjs';
+import { insideProject, projectFileText, writableProjectFile } from '../support/inside-project.mjs';
 
 const SNIPPET_FILE = 'docs/agents-snippet.md';
 const SNIPPET_SEPARATOR = '\n---\n';
@@ -18,6 +18,17 @@ function appended(existing, snippet) {
   }
   const text = `${existing.trimEnd()}\n\n${snippet}\n`;
   return existing.includes('\r\n') ? text.replaceAll(/\r?\n/gu, '\r\n') : text;
+}
+
+export function hasSnippet(root, packageRoot = PACKAGE_ROOT) {
+  const heading = readSnippet(packageRoot).split('\n')[0];
+  return INSTRUCTION_FILES.some((name) => {
+    const file = insideProject(root, name);
+    return (
+      statSync(file, { throwIfNoEntry: false })?.isFile() === true &&
+      readFileSync(file, 'utf8').includes(heading)
+    );
+  });
 }
 
 export function appendSnippet(root, packageRoot = PACKAGE_ROOT) {

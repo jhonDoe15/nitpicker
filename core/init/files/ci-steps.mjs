@@ -1,7 +1,7 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { hasProjectFile, insideProject } from '../support/inside-project.mjs';
-import { installCommand, pythonInstaller } from '../peers/peer-plan.mjs';
+import { installCommand } from '../peers/peer-plan.mjs';
 import { requiredPythonPeers } from '../peers/python-peers.mjs';
 import {
   condaEnvironmentName,
@@ -31,7 +31,17 @@ const PYTHON_SYNC = {
   pdm: ['pipx install pdm', 'pdm install'],
   hatch: ['pipx install hatch', 'hatch env create'],
 };
-const CI_INSTALLERS = { conda: 'conda install --yes --channel conda-forge' };
+const PEER_INSTALLERS = {
+  uv: 'uv pip install',
+  poetry: 'poetry run python -m pip install',
+  pipenv: 'pipenv run python -m pip install',
+  pdm: 'pdm run python -m pip install',
+  hatch: 'hatch run python -m pip install',
+  conda: 'conda install --yes --channel conda-forge',
+};
+const REQUIRES_PYTHON = /^\s*requires-python\s*=\s*["'](?<spec>[^"']+)["']/mu;
+const POETRY_PYTHON = /^\s*python\s*=\s*["'](?<spec>[^"']+)["']/mu;
+const LOWER_BOUND = /(?:>=|~=|==|\^|~)\s*(?<version>\d+\.\d+)/u;
 const CONDA_ENVIRONMENT = 'nitpicker';
 const LOGIN_SHELL = { shell: 'bash -el {0}' };
 
@@ -123,12 +133,8 @@ function pipInstall(root, project) {
   ];
 }
 
-function undeclaredInstall({ project, peers }) {
-  if (peers.undeclared.length === 0) {
-    return [];
-  }
-  const installer = CI_INSTALLERS[project.tool] ?? pythonInstaller(project.tool);
-  return [installCommand(installer, peers.undeclared)];
+function peerInstall(project) {
+  return [installCommand(PEER_INSTALLERS[project.tool], requiredPythonPeers(project))];
 }
 
 function pythonInstall(root, context) {
@@ -136,7 +142,19 @@ function pythonInstall(root, context) {
   if (sync === undefined) {
     return pipInstall(root, context.project).flatMap(run);
   }
-  return [...sync, ...undeclaredInstall(context)].flatMap(run);
+  return [...sync, ...peerInstall(context.project)].flatMap(run);
+}
+
+function pythonVersion(root, repository) {
+  if (hasProjectFile(root, '.python-version')) {
+    const file = insideProject(root, '.python-version');
+    return { 'python-version-file': repositoryPath(repository, file) };
+  }
+  const pyproject = hasProjectFile(root, 'pyproject.toml')
+    ? readFileSync(insideProject(root, 'pyproject.toml'), 'utf8')
+    : '';
+  const spec = (REQUIRES_PYTHON.exec(pyproject) ?? POETRY_PYTHON.exec(pyproject))?.groups.spec;
+  return { 'python-version': LOWER_BOUND.exec(spec ?? '')?.groups.version ?? PYTHON_VERSION };
 }
 
 function condaSteps(root, context) {
@@ -148,7 +166,7 @@ function condaSteps(root, context) {
   };
   return {
     environment: step('conda-incubator/setup-miniconda@v3', settings),
-    install: undeclaredInstall(context).flatMap(run),
+    install: peerInstall(context.project).flatMap(run),
     runDefaults: LOGIN_SHELL,
   };
 }
@@ -163,7 +181,7 @@ const FAMILY_STEPS = {
       ? condaSteps(root, context)
       : {
           environment: [
-            ...step('actions/setup-python@v5', { 'python-version': PYTHON_VERSION }),
+            ...step('actions/setup-python@v5', pythonVersion(root, context.repository)),
             ...(context.project.tool === 'uv' ? step('astral-sh/setup-uv@v5') : []),
           ],
           install: pythonInstall(root, context),

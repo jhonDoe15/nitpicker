@@ -3,6 +3,8 @@ import path from 'node:path';
 import { configError } from '../../../shared/config.mjs';
 import { filesUnder, pathInside } from '../../../shared/filesystem.mjs';
 import { sourceRoots as defaultSourceRoots } from '../../../languages/typescript/preset/layout.mjs';
+import { firstJsxFile } from './project-config.mjs';
+import { gradleAppliesKotlin } from '../../../languages/java/builds/java-build.mjs';
 
 const PROJECT_MARKERS = [
   {
@@ -24,7 +26,7 @@ const PROJECT_MARKERS = [
 ];
 const SCRIPT_FILE = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/u;
 const TYPESCRIPT_OR_JSX_FILE = /\.(?:ts|tsx|mts|cts|jsx)$/u;
-const KOTLIN_FILE = /\.kts?$/u;
+const KOTLIN_FILE = /\.kt$/u;
 const JAVA_FILE = /\.java$/u;
 const MINIFIED_FILE = /\.min\.[cm]?js$/u;
 const SKIPPED_FOLDERS = new Set(['node_modules', 'build', 'target', 'out']);
@@ -62,9 +64,10 @@ export function detectedPreset(projectRoot) {
   const files = codeFiles(projectRoot);
   const kotlin = files.filter((name) => KOTLIN_FILE.test(name)).length;
   const java = files.filter((name) => JAVA_FILE.test(name)).length;
+  const kotlinBuild = kotlin > 0 && (kotlin > java || gradleAppliesKotlin(projectRoot));
   return {
     ...marker,
-    preset: kotlin > java ? 'kotlin' : 'java',
+    preset: kotlinBuild ? 'kotlin' : 'java',
     javaSources: java > 0,
     kotlinSources: kotlin > 0,
   };
@@ -87,7 +90,8 @@ export function scriptProjectPreset(config, projectRoot) {
   }
   const typed =
     existsSync(path.join(projectRoot, 'tsconfig.json')) ||
-    scripts.some((name) => TYPESCRIPT_OR_JSX_FILE.test(name));
+    scripts.some((name) => TYPESCRIPT_OR_JSX_FILE.test(name)) ||
+    firstJsxFile(config, projectRoot) !== undefined;
   return typed ? 'typescript' : 'javascript';
 }
 

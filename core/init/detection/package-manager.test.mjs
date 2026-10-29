@@ -3,6 +3,7 @@ import { useProjects } from '../test-support/projects.mjs';
 import { describePackageManager } from './package-manager.mjs';
 
 const project = useProjects();
+const NODE_MODULES_LINKER = 'nodeLinker: node-modules\n';
 const COMMANDS = {
   npm: { add: 'npm install --save-dev', run: 'npx nitpicker' },
   pnpm: { add: 'pnpm add --save-dev', run: 'pnpm exec nitpicker' },
@@ -41,6 +42,7 @@ describe('package manager detection', () => {
     const root = project({
       'package.json': JSON.stringify({ packageManager: field }),
       'yarn.lock': '',
+      '.yarnrc.yml': NODE_MODULES_LINKER,
     });
 
     expect(describePackageManager(root)).toEqual(
@@ -48,10 +50,46 @@ describe('package manager detection', () => {
     );
   });
 
-  it('reads the lockfile of a workspace root above the project, up to the repository root', () => {
-    const root = project({ 'pnpm-lock.yaml': '', 'web/package.json': '{}' }, { repository: true });
+  it.each([
+    ['no .yarnrc.yml', {}],
+    ['nodeLinker: pnp', { '.yarnrc.yml': 'nodeLinker: "pnp"\n' }],
+  ])("refuses Yarn Plug'n'Play, with %s", (_name, files) => {
+    const root = project({
+      'package.json': JSON.stringify({ packageManager: 'yarn@4.5.0' }),
+      'yarn.lock': '',
+      ...files,
+    });
 
-    expect(describePackageManager(`${root}/web`)).toEqual(manager(root, 'pnpm', { locked: true }));
+    expect(() => describePackageManager(root)).toThrow(
+      `This project uses Yarn Plug'n'Play, which nitpicker does not support: it reads the packages from node_modules. Add the line \`nodeLinker: node-modules\` to ${root}/.yarnrc.yml, run yarn install, and run nitpicker init again.`,
+    );
+  });
+
+  it('reads the lockfile of a workspace root above the project, up to the repository root', () => {
+    const root = project(
+      {
+        'pnpm-lock.yaml': '',
+        'pnpm-workspace.yaml': 'packages:\n  - "apps/*"\n',
+        'apps/web/package.json': '{}',
+      },
+      { repository: true },
+    );
+
+    expect(describePackageManager(`${root}/apps/web`)).toEqual(
+      manager(root, 'pnpm', { locked: true }),
+    );
+  });
+
+  it.each([
+    ['no workspaces', { 'package.json': '{}' }],
+    ['workspaces that leave it out', { 'package.json': '{"workspaces":["apps/*","!apps/web"]}' }],
+  ])('takes a folder below a lockfile, with %s, as a project of its own', (_name, files) => {
+    const root = project(
+      { ...files, 'package-lock.json': '{}', 'apps/web/package.json': '{}' },
+      { repository: true },
+    );
+
+    expect(describePackageManager(`${root}/apps/web`)).toEqual(manager(`${root}/apps/web`, 'npm'));
   });
 
   it('takes the declaration of an ancestor when no lockfile exists yet', () => {
@@ -93,6 +131,7 @@ describe('the install command at a workspace root', () => {
     const bun = project({ 'package.json': JSON.stringify(workspaces), 'bun.lock': '' });
     const berry = project({
       'package.json': JSON.stringify({ ...workspaces, packageManager: 'yarn@4.5.0' }),
+      '.yarnrc.yml': NODE_MODULES_LINKER,
     });
 
     expect(describePackageManager(npm).add).toBe('npm install --save-dev');

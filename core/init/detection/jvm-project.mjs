@@ -15,9 +15,18 @@ function buildNotes(projectRoot, buildTool) {
       ];
 }
 
+const UNSEEN_KOTLIN_PLUGIN =
+  'This Gradle project has Kotlin sources, but none of its build scripts applies the Kotlin plugin, so the java preset is set. It checks the Java sources only; set "preset": "kotlin" to check both.';
+
 function presetFor(detected, buildTool) {
-  if (detected.kotlinSources !== true || buildRunsPreset(buildTool, 'kotlin')) {
+  if (
+    detected.kotlinSources !== true ||
+    (detected.preset === 'kotlin' && buildRunsPreset(buildTool, 'kotlin'))
+  ) {
     return { preset: detected.preset, notes: [] };
+  }
+  if (buildRunsPreset(buildTool, 'kotlin')) {
+    return { preset: 'java', notes: [UNSEEN_KOTLIN_PLUGIN] };
   }
   const label = BUILD_LABELS[buildTool];
   if (!detected.javaSources) {

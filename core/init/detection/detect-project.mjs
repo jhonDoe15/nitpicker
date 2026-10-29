@@ -14,16 +14,30 @@ function emptySourcesNote(roots) {
   return `No TypeScript or JavaScript sources under ${roots.join(', ')} yet, so the TypeScript preset is set. For another layout, set "layout.sourceRoots" in nitpicker.config.json.`;
 }
 
-function configuredSourceRoots(projectRoot) {
+function stringList(value) {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string')
+    ? value
+    : undefined;
+}
+
+function detectionConfig(projectRoot) {
   const existing = existingConfig(projectRoot);
-  const roots = existing.kind === 'parsed' ? existing.config.layout?.sourceRoots : undefined;
-  const valid = Array.isArray(roots) && roots.every((root) => typeof root === 'string');
-  return valid ? roots : defaultSourceRoots;
+  const config = existing.kind === 'parsed' ? existing.config : {};
+  const testRoots = stringList(config.layout?.testRoots);
+  const exclude = stringList(config.exclude);
+  return {
+    layout: {
+      sourceRoots: stringList(config.layout?.sourceRoots) ?? defaultSourceRoots,
+      ...(testRoots === undefined ? {} : { testRoots }),
+    },
+    ...(exclude === undefined ? {} : { exclude }),
+  };
 }
 
 export function detectProject(projectRoot) {
-  const sourceRoots = configuredSourceRoots(projectRoot);
-  const scriptPreset = scriptProjectPreset({ layout: { sourceRoots } }, projectRoot);
+  const config = detectionConfig(projectRoot);
+  const sourceRoots = config.layout.sourceRoots;
+  const scriptPreset = scriptProjectPreset(config, projectRoot);
   if (scriptPreset !== undefined) {
     return describeNodeProject(projectRoot, scriptPreset);
   }

@@ -2,6 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ancestorDirectories } from '../../../shared/filesystem.mjs';
 import { readManifest } from '../../../languages/typescript/preset/eslint-config/scope-support.mjs';
+import { packageVersion } from '../../help/package-version.mjs';
 
 const COVERAGE_PACKAGE = '@vitest/coverage-v8';
 const RUNNER_PEERS = {
@@ -12,13 +13,14 @@ const RUNNER_PEERS = {
 };
 const DEPENDENCY_FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies'];
 const TYPESCRIPT = 'typescript';
+const NITPICKER = 'nitpicker';
 const SUPPORTED_TYPESCRIPT = 'typescript@^6';
 const FIRST_VERSION = /(?<major>\d+)(?:\.(?<minor>\d+))?/u;
 const OLDEST_TYPESCRIPT = [5, 7];
 const NEWEST_TYPESCRIPT_MAJOR = 6;
 
 export function requiredNodePeers(testRunner) {
-  return ['nitpicker', 'typescript', '@types/node', ...RUNNER_PEERS[testRunner]];
+  return [NITPICKER, TYPESCRIPT, '@types/node', ...RUNNER_PEERS[testRunner]];
 }
 
 function installedManifest(projectRoot, name) {
@@ -58,6 +60,9 @@ function isPresent(projectRoot, manifest, name) {
 }
 
 function requirementOf(projectRoot, name) {
+  if (name === NITPICKER) {
+    return `${NITPICKER}@${packageVersion()}`;
+  }
   return name === TYPESCRIPT ? SUPPORTED_TYPESCRIPT : pinnedToVitest(projectRoot, name);
 }
 

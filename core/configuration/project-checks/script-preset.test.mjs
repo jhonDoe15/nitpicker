@@ -62,4 +62,17 @@ describe('the preset of a script project', () => {
 
     expect(scriptProjectPreset({}, project(files))).toBeUndefined();
   });
+
+  it('is typescript when a test root holds .jsx or .tsx, which the javascript preset refuses', () => {
+    const files = { 'package.json': '{}', 'src/a.js': '', 'test/view.test.jsx': '' };
+
+    expect(scriptProjectPreset({}, project(files))).toBe('typescript');
+    expect(javascriptPresetHint({}, project(files))).toBeUndefined();
+  });
+
+  it('leaves an excluded .jsx file out, like the javascript preset does', () => {
+    const files = { 'package.json': '{}', 'src/a.js': '', 'test/legacy/view.test.jsx': '' };
+
+    expect(scriptProjectPreset({ exclude: ['test/legacy/**'] }, project(files))).toBe('javascript');
+  });
 });

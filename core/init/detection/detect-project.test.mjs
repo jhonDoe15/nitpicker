@@ -203,6 +203,49 @@ describe('Java and Kotlin detection', () => {
     expect(detected(files)).toEqual(jvm('java', 'Java, Maven', [MAVEN_KOTLIN_NOTE, MAVEN_NOTE]));
   });
 
+  it.each([['build.gradle.kts'], ['settings.gradle.kts']])(
+    'picks Java for Java sources built with the Kotlin DSL file %s',
+    (script) => {
+      const files = { [script]: '', gradlew: '', 'src/main/java/App.java': '' };
+
+      expect(detected(files)).toEqual(jvm('java', 'Java, Gradle'));
+    },
+  );
+
+  it.each([
+    ['kotlin("jvm")', 'plugins {\n    kotlin("jvm") version "2.1.0"\n}\n'],
+    ['the plugin id', 'plugins {\n    id("org.jetbrains.kotlin.jvm") version "2.1.0"\n}\n'],
+  ])(
+    'picks Kotlin on Gradle for fewer Kotlin than Java sources when %s is applied',
+    (_name, script) => {
+      const files = {
+        'build.gradle.kts': script,
+        gradlew: '',
+        'src/main/kotlin/App.kt': '',
+        'src/main/java/A.java': '',
+        'src/main/java/B.java': '',
+      };
+
+      expect(detected(files)).toEqual(jvm('kotlin', 'Kotlin, Gradle'));
+    },
+  );
+
+  it('sets Java on Gradle for fewer Kotlin than Java sources without the Kotlin plugin, and says why', () => {
+    const files = {
+      'build.gradle': '',
+      gradlew: '',
+      'src/main/kotlin/App.kt': '',
+      'src/main/java/A.java': '',
+      'src/main/java/B.java': '',
+    };
+
+    expect(detected(files)).toEqual(
+      jvm('java', 'Java, Gradle', [
+        'This Gradle project has Kotlin sources, but none of its build scripts applies the Kotlin plugin, so the java preset is set. It checks the Java sources only; set "preset": "kotlin" to check both.',
+      ]),
+    );
+  });
+
   it('stops for Kotlin on Maven without Java sources, which no preset checks yet', () => {
     const root = project({ 'pom.xml': '<project/>', mvnw: '', 'src/main/kotlin/App.kt': '' });
 
