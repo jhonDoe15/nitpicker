@@ -35,9 +35,11 @@ describe('project tool configs in the head policy', () => {
       'package.json': '{ "knip": { "ignore": ["b/**"], "entry": ["x.ts"] } }',
     });
     const first = withProjectToolConfigs(OPTED_IN, root).knip;
-    expect(first).toMatchObject({
+    expect(first).toEqual({
+      precedence: ['project', 'nitpicker'],
       projectConfigFile: 'knip.json and the "knip" key in package.json',
       projectConfig: { ignore: ['a/**'], entry: ['x.ts'] },
+      projectConfigDigest: expect.any(String),
     });
     writeFileSync(path.join(root, 'knip.json'), '{ "ignore": ["c/**"] }');
     const second = withProjectToolConfigs(OPTED_IN, root).knip;
@@ -49,15 +51,41 @@ describe('project tool configs in the head policy', () => {
   });
 
   it('records why a named config cannot be used and fails when the tool runs', () => {
+    const unread = (file, reason) =>
+      `Could not read the project's knip config (${file}): ${reason}`;
     const cases = [
-      [{}, '"tools.knip.precedence" lists "project" but a knip config'],
-      [{ 'knip.json': '[1]' }, 'knip.json must hold an object'],
-      [{ 'knip.js': 'export default { ignore: () => 1 };' }, 'knip.js.ignore is a function'],
-      [{ 'knip.js': 'throw new Error("boom");' }, 'boom'],
+      [
+        {},
+        undefined,
+        '"tools.knip.precedence" lists "project" but a knip config (knip.json, knip.jsonc, .knip.json, ' +
+          '.knip.jsonc, knip.ts, knip.js, knip.config.ts, knip.config.js, or the "knip" key in ' +
+          'package.json) is missing: create it, or remove "project" from tools.knip.precedence',
+      ],
+      [{ 'knip.json': '[1]' }, 'knip.json', unread('knip.json', 'knip.json must hold an object')],
+      [
+        { 'knip.js': 'export default { ignore: () => 1 };' },
+        'knip.js',
+        unread(
+          'knip.js',
+          'knip.js: "ignore" is a function; only JSON values and regular expressions can be used',
+        ),
+      ],
+      [
+        { 'knip.js': 'throw new Error("boom");' },
+        'knip.js',
+        (root) => unread('knip.js', `Error loading ${path.join(root, 'knip.js')}: boom`),
+      ],
     ];
-    for (const [files, message] of cases) {
-      const settings = withProjectToolConfigs(OPTED_IN, project(files)).knip;
-      expect(settings.projectConfigError).toContain(message);
+    for (const [files, file, error] of cases) {
+      const root = project(files);
+      const message = typeof error === 'function' ? error(root) : error;
+      const settings = withProjectToolConfigs(OPTED_IN, root).knip;
+      expect(settings).toEqual({
+        precedence: ['project', 'nitpicker'],
+        ...(file === undefined ? {} : { projectConfigFile: file }),
+        projectConfigError: message,
+        projectConfigDigest: expect.any(String),
+      });
       expect(() => projectToolLayer('knip', settings)).toThrow(message);
     }
     expect(() => projectToolLayer('knip', { precedence: ['project'] })).toThrow(
