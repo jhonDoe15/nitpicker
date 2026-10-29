@@ -112,6 +112,7 @@ describe.skipIf(!enabled)('nitpicker --fix for Kotlin', () => {
       ).toEqual({
         ...expectedOutcome(formatter),
         exitCode: result.exitCode,
+        toolErrors: [],
         gateFormatFindings: [],
       });
     },

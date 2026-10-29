@@ -124,3 +124,11 @@ Four Python files (`ruff/ruff-rules`, `ruff/ruff-groups`, `adapters/formatting/f
 `adapters/configuration/python-ruff-config`, six cases) were gated on the Python flag but selected
 by no script. They are now in `test:python` with a weight of one second each: they only run the
 installed ruff and black, and took under four seconds together locally.
+
+The three `--fix` files (`languages/python/fix/e2e/python-fix`, `java-e2e/fix/java-fix` and
+`kotlin-e2e/fix/kotlin-fix`) weigh 25, 99 and 153 seconds: their whole-file times, hooks included,
+measured locally with warm Maven and Gradle caches and rounded up. Most of it is the one case per
+language that runs the real gate after `--fix`: about 12 seconds per Python case (most of it
+installing coverage, pytest, ruff and black into a fresh virtualenv), 91 seconds for the Java
+Gradle case and about 72 seconds for each Kotlin case. The other cases run the fake analyzer and
+take one to seven seconds.
