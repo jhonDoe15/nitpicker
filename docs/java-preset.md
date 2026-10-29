@@ -48,6 +48,20 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   class (its own first). A project's names depend only on its own folder, never on how many projects
   there are: a lone subproject is named with its folder too, and the root project's names and
   identities are as in a one-project build, which reads its own jdeps reports unmerged.
+- **Integration tests on Gradle.** As on Maven (Surefire and Failsafe in `verify`), a project's
+  integration tests are run and counted, following what the project's own build runs: Nitpicker runs
+  `test` and every `Test` task that `check` depends on. A test suite of the `jvm-test-suite` plugin
+  (`integrationTest` and so on) is one of them only when the project wires it with
+  `check.dependsOn testing.suites.integrationTest`, because the plugin wires `test` alone, just as
+  Failsafe runs only when it is bound to a phase. A task `check` does not run is not run and not
+  counted. A checked task that the build skips (`enabled = false`, `onlyIf`) adds nothing: the JaCoCo
+  data and the JUnit XML an earlier run left behind are ignored (Maven deletes stale reports before
+  it builds) and PIT leaves its tests out. The JaCoCo data of the checked tasks is merged into one
+  report (coverage, CRAP and `changed-branch-coverage` count what an integration test covers), and
+  their JUnit XML goes to `test-results/<task>/` with the integration budget of the
+  [slow test](#slow-tests) rule (any task but `test`). Every checked task also has its own PIT run
+  and, when the task holds ArchUnit classes, its own ArchUnit run (see
+  [Slice 4](#slice-4-archunit) and [Slice 7](#slice-7-mutation-with-pit)).
 - **Nitpicker side: `languages/java/adapters/`.** `runJavaPreset` runs the task,
   `readJavaFindings` converts the reports, `runJavaDiff` does worktrees, rename map, comparison.
   `languages/java/adapters/java-analyzer.mjs` wraps all of it as one analyzer named `java` for the CLI (slice
@@ -103,9 +117,9 @@ by field. Per snapshot:
    tasks (PMD's auxiliary classpath is the main and test compile classpaths plus both class
    directories). The versions are read from the init script's `pinned` map, so both builds always
    run the same tools.
-   A module that uses Spring (`spring-context` or `spring-boot` on its main compile classpath) also
-   runs the Spring architecture rules: ArchUnit is resolved with the other tools, but only when some
-   module uses Spring, and the rule classes are compiled once into
+   A module that uses Spring (`spring-context` or `spring-boot` on its main compile classpath) or
+   jMolecules (`jmolecules-ddd`) also runs the Spring architecture rules: ArchUnit is resolved with
+   the other tools, but only when some module runs them, and the rule classes are compiled once into
    `$XDG_CACHE_HOME/nitpicker/spring-arch/<hash>` (else `~/.cache/nitpicker/spring-arch/<hash>`, private
    to the user; the hash is computed like Gradle's, but the cache is separate from Gradle's) and run in
    one extra JVM per module (`languages/java/maven/spring/maven-spring-arch.mjs`).
@@ -205,7 +219,11 @@ for jscpd, a long-running PIT) and each is expensive enough to deserve its own r
   `nitpickerArchunit` task (a `Test` task on the project's test classes and runtime classpath,
   `ignoreFailures`). It runs on the framework the declared ArchUnit library needs: JUnit 4 for
   `archunit-junit4` rules (`@RunWith(ArchUnitRunner.class)`), the JUnit Platform for
-  `archunit-junit5`; with both or neither declared, on the framework of the project's `test` task.
+  `archunit-junit5`; with both or neither declared, on the framework of the task whose classes it
+  runs. The ArchUnit classes are left out of every checked test task (`test` and each task `check`
+  depends on) and run by their own `nitpickerArchunit` task, `nitpickerArchunit<Task>` for a task
+  other than `test` (on that task's test classes and runtime classpath), so a rule in an
+  integration test source set is a finding, not a failed build.
   When the test classes hold ArchUnit classes and none of them produced a report, the task fails
   (a Gradle failure, `tool-error`), as Maven does, instead of passing without findings. The
   project must have one of the two libraries on its test classpath; Nitpicker adds no dependency
@@ -250,9 +268,15 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   plugins the project's framework needs (`pitest-junit5-plugin` 1.2.1, `pitest-testng-plugin`
   1.0.0, both pinned, added on the conditions below), default mutators, XML output, two threads, to
   `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`), and
-  `--mutableCodePaths` limits mutation to the main classes. For a JUnit Platform `test` task, its
-  `includeTags` and `excludeTags` also select the tests PIT runs during its green-suite check and
-  mutation testing, including method-level tags. The JUnit Platform is not pinned by
+  `--mutableCodePaths` limits mutation to the main classes. Every test task the build checks (`test`
+  and each task `check` depends on) is a run of its own, `nitpickerPit<Task>`, with that task's test
+  classes (its `include` and `exclude` patterns applied), its runtime classpath, so tasks on
+  different library versions never share one, and, for a JUnit Platform task, its `includeTags` and
+  `excludeTags`, which select the tests PIT runs during the green-suite check and mutation testing,
+  including method-level tags. A task the build skips has no run. With more than one run, each
+  writes `pit/<task>/mutations.xml` and `nitpickerPit` merges them into `pit/mutations.xml`: a mutant
+  counts as killed when any run killed it, as when one run holds every test, which is what Maven's
+  single PIT run does. The JUnit Platform is not pinned by
   Nitpicker: the plugin's own platform dependencies are excluded and the project's are used, with a
   launcher of the project's engine version added when the project does not declare one. PIT
   requires a green test run: a failing test suite fails the build, which is a `java/gradle-failure`
@@ -391,8 +415,9 @@ classpath and its `test` task, and adds no test library to the project.
   timer within its supported range. The analyzer deadline allows two commands (the optional
   Checkstyle configuration export and the analysis), plus one minute for reports. This does
   not change Maven's command budget or configure individual PIT phases.
-- **Config keys.** `base`, `disable` and `analyzers` work as before. `thresholds`, `exclude` and
-  `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
+- **Config keys.** `base`, `disable` and `analyzers` work as before. `history` turns on the
+  opt-in [change history](usage.md#change-history) check, which reads git and not the Java runner.
+  `thresholds`, `exclude` and `legacyInventory` are shared with the TypeScript preset (`shared/config.mjs`,
   `head-policy.mjs`, `legacy-inventory.mjs`) and reach the Java runner as arguments, so they are
   part of the analyzer's configuration hash:
   - `thresholds.crapLimit` replaces the default CRAP limit (from `shared/policy.mjs`), and
@@ -413,31 +438,50 @@ classpath and its `test` task, and adds no test library to the project.
     `count` enforceable findings per site are baselined on both snapshots, read from the head's
     inventory. Head fails with `baseline-expansion` for any site whose count is higher than on base
     (a new site counts as 0 before).
-  - `exceptions` lifts one rule for some paths: `{ "rule", "paths", "reason" }`, where `rule` is the
-    finding as printed, `<tool>/<rule>` (for example `pmd/UnusedPrivateField`), and `tool` is one of
-    the tools the Java analyzer reports. Matching findings are dropped on both snapshots. The shared
-    `file-lines-limit`, `folder-files-limit`, `folder-depth-limit`, `class-methods-limit`,
-    `class-fields-limit` and `inheritance-depth-limit` rules and the
-    [dependency and repository checks](usage.md#dependency-and-repository-checks) are named as they are. Each exception is listed
-    in the report and changes the configuration hash.
+  - `exceptions` lifts one rule for some paths: `{ "rule", "paths", "function"?, "reason" }`. `rule` is
+    a finding as it is printed, `<tool>/<rule>` (for example `pmd/UnusedPrivateField`), where `tool`
+    is one of the tools the Java analyzer reports, or a rule nitpicker adds, bare or as printed:
+    `file-lines-limit`, `line-length-limit` (100 characters per Java line), `folder-files-limit`,
+    `folder-depth-limit`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`, the structure rules (`function-lines-limit`,
+    `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`),
+    `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
+    `mutant-nocoverage` and `stability-direction`, and the
+    [dependency and repository checks](usage.md#dependency-and-repository-checks). `function` names one method
+    (`Big.run`, parameter lists ignored; matched exactly, so `run` alone does not accept
+    `Big.run`) for the structure, CRAP, coverage and mutation rules, and is required for
+    `changed-branch-coverage`. A branch is attributed to the narrowest method of `structure.json`
+    that holds its line, or to a unit that is not a method: a `static { }` block
+    (`Big.<clinit>`), an instance initializer block (`Big.<init>`) and a field initializer, lambdas
+    included (`Big.field`), found by a scan of the source, so every branch of Java code can be
+    named. The name in the entry is the one the finding prints. `stability-direction` takes the
+    package name as printed (`"paths": ["stable"]`), not a source path. Matching findings are dropped on both snapshots. The entries reach the runner as
+    `--exception <json>`, one per entry, are listed in the report and change the analyzer's
+    configuration hash. Every message of a rule nitpicker adds ends with the entry that accepts it, and so does every PMD,
+    Checkstyle, SpotBugs and ArchUnit message (`pmd/<rule>`).
   - `layout` is a config error with `"preset": "java"` instead of being ignored: its source-folder
-    keys are TypeScript only, and `layout.sharedRoots` and `layout.featureRoots` are accepted once the
-    Java preset registers the rule that reads them (`shared-used-by-one-feature`) in
+    keys are TypeScript only, `layout.featureRoots` is accepted once `history.coChange` is on (it
+    names the feature folders `co-change` reads), and `layout.sharedRoots` is accepted once the
+    Java preset registers the rule that reads it (`shared-used-by-one-feature`) in
     `shared/project-rules/fact-rules.mjs`. `testConsole` is accepted because the registry lists Java and
     Kotlin for `test-console-output`. `tools` takes `pmd` and `checkstyle`.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
 - **Tests.** `core/command/java/java-cli.test.mjs` drives the CLI with a fake `gradle` (`languages/java/adapters/fixtures/fake-gradle.mjs`),
-  so it runs without Java: pass, new finding in text/JSON/SARIF/JUnit, Gradle failure on head and
-  on base, missing binary, `--all`. The fake runs in the test process: `runFakeGradle({ args, cwd })`
+  and with a fake `mvn` plus a fake JDK (`core/command/java/test-support/`), so it runs without Java:
+  pass, new finding in text/JSON/SARIF/JUnit, build failure on head and on base, an exception entry,
+  missing binary, `--all`, the same cases for both builds. The Gradle fake runs in the test process: `runFakeGradle({ args, cwd })`
   (`languages/java/adapters/test-support/fake-gradle/`) is a pure function, `fixtures/fake-gradle.mjs`
   is the program that calls it, and `spawnFakeGradle` (`languages/java/adapters/test-support/in-process-gradle.mjs`),
   passed as `spawn` through `analyzeJavaSnapshot` and `runGradle`, answers the supervisor call for the fake's
   path, so no Node process starts per Gradle call. Output past `maxBuffer` is answered as `ENOBUFS` and an
   exception of the fake as a failed run; the process-tree deadline is not modelled and stays covered by
-  `gradle-process.test.mjs`, and `subprocess: true` tests run the real supervisor. The real Gradle run stays
-  behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`), unchanged.
+  `gradle-process.test.mjs`, and `subprocess: true` tests run the real supervisor (the one CLI case that does
+  runs on the Gradle build; the process wiring does not depend on the build). The Maven preset takes the same
+  `spawn` option: `runMavenPreset` passes it to `runMaven`, `runJava` and the direct `jar`, `jdeps` and `java -version`
+  calls, and `spawnFakeMaven` (`core/command/java/test-support/in-process-maven.mjs`) answers the fake `mvn`
+  and the fake `java`, `jdeps` and `jar` (by program name, wherever they are found) in process, so no process
+  starts for them. The real Gradle and Maven runs stay behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`), unchanged.
 
 ## Slice 1: tools, reports and identities
 
@@ -713,10 +757,11 @@ resolved plus a new finding, as in the TypeScript check.
   smaller Spring context or a test slice, or, for an integration test, an `*IT` name or an
   integration test source set; on Maven, an `*IT` name so that Failsafe runs it) and the exception
   route. Both keep the test's package, so package-private classes stay visible.
-  Nitpicker runs only the tests its run needs: on Gradle the `test` task and any test task the build
-  makes it depend on, on Maven the `test` phase, so a test moved out of them is not timed.
+  Nitpicker runs only the tests its run needs: on Gradle `test` and the test tasks `check` depends on
+  (see [Integration tests on Gradle](#how-it-works)), on Maven the `test` phase, or `verify` when
+  Failsafe runs, so a test moved out of them is not timed.
 - **Measurement.** Head only, from the JUnit XML the test tasks already write: the init script copies
-  `TEST-*.xml` of every test task in the run (not `nitpickerArchunit`) to
+  `TEST-*.xml` of every checked test task that ran (not the ArchUnit tasks) to
   `test-results/<task>/` in each module's report directory. No extra test run. A rerun test keeps
   its slowest time; only passed tests are timed (failed, errored and skipped cases are left out).
   A failing build reports its own error and no slow tests.
@@ -1371,7 +1416,8 @@ table:
   over 50 lines, 15 statements, control nesting 2 or 3 parameters fails with the same rule ids
   (`function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
   `function-parameters-limit`) and the same messages (`{name} has {value} {metric}; limit is
-{limit}`, and for nesting `{name} nests control flow {value} deep (limit {limit})`) as TypeScript. `shared/policy.mjs` marks the four rules as enforced for Java; the
+{limit}`, and for nesting `{name} nests control flow {value} deep (limit {limit})`) as TypeScript, followed by the `exceptions` entry that accepts the method (`If this is intended, add {...} to
+"exceptions" in nitpicker.config.json.`). `shared/policy.mjs` marks the four rules as enforced for Java; the
   catalog in `spec/checks.md` is generated from it.
 - **Metric source (decision to review).** `languages/java/gradle/StructureMetrics.java` parses the main sources
   (parse only, no compilation) with the JDK's compiler tree API (`jdk.compiler`) in single-file
@@ -1606,7 +1652,7 @@ palantir-java-format, or neither for `none`).
   `typeOnlyDependencies` summaries are not reported. (3) A second top-level class in a file named
   after another class is attributed to `<package>/<Class>.java`, which may not exist; only the
   metric path is affected. (4) Reflection and other references that are not in the bytecode are
-  invisible to jdeps. (5) Test classes and library classes are not part of the graph.
+  invisible to jdeps. (5) Test classes and library classes are not part of the graph. (6) The `path` of a `stability-direction` finding is the package name (`stable`), not a file, so its `exceptions` entry names the package: `"paths": ["stable"]`; a glob over source directories never matches it.
 - **Baselining.** Identities are `package-edge:<source>-><target>`, `package:<name>:<metric>` and
   `module:<metric>` with the file path, never a line, so an existing violation stays baselined and
   only a new package edge, or a new instability inversion, fails.
@@ -1657,8 +1703,8 @@ the `rule` of a config exception.
 
 | Area          | Rules                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Beans         | `SpringConstructorInjection`, `SpringImmutableBeans` (also static non-final fields), `SpringBeanCollectionState` (a `final` `HashMap`/`ArrayList`/`HashSet`/... field of a singleton bean written to after startup), `SpringNoServiceLocator`, `SpringNoLazyInjection`, `SpringLiteConfiguration`, `SpringNoComponentScan`, `SpringHttpClientPerCall` (a `RestTemplate`, `RestTemplateBuilder`, `RestClient`, `WebClient` or `HttpClient` built inside a method that is not a `@Bean`, a `static` factory or a private helper only they call), `SpringHttpClientTimeouts` (a client, request factory, `new RestTemplateBuilder()` or Reactor Netty `HttpClient` built without timeouts in a field, constructor, `@Bean`, `static` factory or such a helper), `SpringNoPostConstructIo` (repository, JDBC, `EntityManager` or HTTP calls in `@PostConstruct`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
-| Configuration | `SpringTypedConfiguration` (no `@Value` outside `@Configuration`, no `System.getenv`/`getProperty` of application keys in any class except `@Configuration`, `@SpringBootApplication`, `EnvironmentPostProcessor`, `ApplicationContextInitializer` and `main`, no `Environment.getProperty` in beans), `SpringValueSecretDefault` (a non-empty default for a secret-named key in `@Value("${...secret:default}")`, `@DefaultValue` or `getProperty(key, default)`), `SpringProfileOnConfiguration`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Beans         | `SpringConstructorInjection`, `SpringImmutableBeans` (also static non-final fields), `SpringBeanCollectionState` (a `final` `HashMap`/`ArrayList`/`HashSet`/... field of a singleton bean written to after startup), `SpringNoServiceLocator` (not in an `ApplicationContextInitializer` or `EnvironmentPostProcessor`), `SpringNoLazyInjection`, `SpringLiteConfiguration`, `SpringNoComponentScan`, `SpringHttpClientPerCall` (a `RestTemplate`, `RestTemplateBuilder`, `RestClient`, `WebClient` or `HttpClient` built inside a method that is not a `@Bean`, a `static` factory or a private helper only they call), `SpringHttpClientTimeouts` (a client, request factory, `new RestTemplateBuilder()` or Reactor Netty `HttpClient` built without timeouts in a field, constructor, `@Bean`, `static` factory or such a helper), `SpringNoPostConstructIo` (repository, JDBC, `EntityManager` or HTTP calls in `@PostConstruct`, `InitializingBean.afterPropertiesSet()`, a `@Bean(initMethod = ...)` method, or a private helper only they call)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
+| Configuration | `SpringTypedConfiguration` (no `@Value` outside `@Configuration`, no `System.getenv`/`getProperty` of application keys in any class except `@Configuration`, `@SpringBootApplication`, `EnvironmentPostProcessor`, `ApplicationContextInitializer` and `main`, no `Environment.getProperty` in beans), `SpringValueSecretDefault` (a non-empty default for a secret-named key in `@Value("${...secret:default}")`, `@DefaultValue`, a `@ConfigurationProperties` field initializer or `getProperty(key, default)`), `SpringProfileOnConfiguration`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
 | Proxies       | `SpringProxyMethodVisibility`, `SpringProxySelfCall` (both for `@Transactional`, `@Async`, the cache annotations, `@Retryable`, `@PreAuthorize`, `@PostAuthorize`, `@Secured`), `SpringTransactionalAnnotation`, `SpringNoTransactionalController`, `SpringNoRequiresNew`, `SpringNoSwallowedTransactionException` (also private helpers of a `@Transactional` class), `SpringTransactionalCheckedRollback` (a checked `throws` without `rollbackFor`), `SpringTransactionalReadOnlyWrite` (a repository or `EntityManager` write under `readOnly = true`), `SpringAsyncExecutor`, `SpringScheduledFixedDelay`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 |
 | Web           | `SpringComposedMapping`, `SpringRestController`, `SpringValidRequestBody`, `SpringTypedResponse` (a handler returns `Object`, `JsonNode`, `Map<String, Object>`, `ResponseEntity<?>`, raw `ResponseEntity`, a list or `Optional` of those, or `null`), `SpringTypedRequestBody` (a `@RequestBody` that is an `Object`, `JsonNode`, `Map<String, Object>` or a list or `Optional` of those), `SpringNoErrorLeak` (the stack trace, or the message of a generic, JDK or persistence exception, reaching the response of an `@ExceptionHandler`), `SpringNoCrossOrigin`, `SpringCorsWildcard`, `SpringPasswordEncoder` (also the MD4, message-digest, LDAP SHA and SHA-256 encoders and `User.withDefaultPasswordEncoder()`), `SpringPermitAllAnyRequest`, `SpringCsrfDisabled`, `SpringHardcodedUser`, `SpringOutboundUrl` (no `RestTemplate`, `RestClient`, `WebClient` or JDK `HttpRequest` request or client whose URL comes from a `String`, `URI` or `URL` method parameter or its accessor (`target.url()`), directly, through locals (several hops, reassignment) or by concatenation, or a `host(...)` in a `uri` lambda; a fixed or configured base URL plus `{variables}` is the allowed form; `@Bean` methods, `@Configuration` classes, constructors of `@Component`, `@Service`, `@Repository` and controller classes (they receive configuration, not requests), `@Value` parameters, `buildAndExpand` / `path` / `queryParam` arguments and a private helper that only constants reach (literals, constant names, or locals set only from them) are not judged), `SpringOpenRedirect` (`"redirect:"` or `"forward:"` followed by a request value, or `new RedirectView(value)`; a fixed path with a changing last segment passes) |
 | JPA           | `JpaLazyFetching`, `JpaEntityClass`, `JpaManyToManyCascade`, `JpaManyToManySet`, `JpaVersion`, `JpaSequenceIds`, `JpaEnumString` (an enum field or `@ElementCollection` of enums without `@Enumerated(EnumType.STRING)`, or enum map keys without `@MapKeyEnumerated(EnumType.STRING)`), `JpaIdentityHashCode` (`hashCode` reading the `@GeneratedValue` id, or Lombok `@Data`/`@EqualsAndHashCode` without arguments on an entity)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
@@ -1666,10 +1712,11 @@ the `rule` of a config exception.
 | Tests         | `SpringUnusedContext` (test sources only, from `spring-test-ruleset.xml`; see [Review rules](#review-rules))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
 
 **Kotlin.** PMD reads Java sources only, so every rule in this table checks the Java files of a
-project, on Gradle and Maven alike. Kotlin classes, in a kotlin-preset project or in a mixed
-module, get none of these rules for now: not the beans, HTTP-client, CSRF and security rules, not
-the JPA entity rules (`JpaEnumString`, `JpaIdentityHashCode`, `JpaLazyFetching`, ...) and not the
-Spring Data loop and query rules. The Spring configuration file checks
+project, on Gradle and Maven alike. In a kotlin-preset project every rule of the table except
+`SpringQueryConcatenation` (covered there by `kotlin-source/SqlStringBuilding`) also runs on the main
+Kotlin sources, under the same ids and exception route, from the Kotlin syntax facts (see
+[Kotlin preset: Spring rules](kotlin-preset.md#spring-rules)). Kotlin classes of a Java-preset project (a mixed module)
+get none of these rules. The Spring configuration file checks
 ([below](#spring-configuration-files)) do not depend on the language and apply to Kotlin projects
 too, and `missing-enable` scans the Kotlin sources.
 
@@ -1819,7 +1866,8 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   in the same file names, or a private helper (two levels deep, also through
   `this::register`) that only those call are startup and accepted; so are writes inside
   `synchronized` blocks or methods and in methods that take a `Lock`, and beans with
-  `@RequestScope`, `@SessionScope` or a `@Scope` other than `singleton`. The allowed form is a
+  `@RequestScope`, `@SessionScope` or a `@Scope` other than `singleton`. A write through a local
+  variable or parameter that shadows the field's name is not a write to the field. The allowed form is a
   collection filled in the constructor and kept as `Map.copyOf`/`List.copyOf`, a
   `ConcurrentHashMap`, or a cache. `SpringHttpClientPerCall` accepts a client built in a field
   initializer, a constructor, a `@Bean` method, a private helper (two levels deep) that only those
@@ -1866,8 +1914,15 @@ true)` class in the same file converts. `JpaIdentityHashCode` reports the first 
   default fires except a nested placeholder or SpEL (`${a:${B}}`, `#{...}`), so
   `${app.token:changeme}` fires and `${auth.token-ttl:3600}` does not. It also covers a non-empty
   `@DefaultValue` on a secret-named `@ConfigurationProperties` component and
-  `environment.getProperty("app.client-secret", "changeme")`. `SpringNoPostConstructIo` reports the
-  call in the `@PostConstruct` method itself.
+  `environment.getProperty("app.client-secret", "changeme")`, and a literal initializer of a
+  non-static field of a `@ConfigurationProperties` class whose prefix plus field name is
+  secret-named (`@ConfigurationProperties("auth")` with `String secret = "dev-secret"`).
+  `SpringNoPostConstructIo` reports the call in a `@PostConstruct` method, in
+  `InitializingBean.afterPropertiesSet()`, in a method that a `@Bean(initMethod = ...)` in the same
+  file names, and in a private helper (two levels deep) that only those call.
+  `SmartInitializingSingleton.afterSingletonsInstantiated()` runs once every singleton is ready, so
+  I/O there is accepted. `SpringNoServiceLocator` skips an `ApplicationContextInitializer` or
+  `EnvironmentPostProcessor`, which runs before the context exists and has no injection.
 
 **Limits.** `JpaVersion` checks each `@Entity` or `@MappedSuperclass` that declares the `@Id`,
 and each entity without a superclass, so the `@Version` field belongs next to the `@Id`. A finding
@@ -1880,7 +1935,8 @@ code gets them too. `SpringDataDerivedQuery` leaves redeclared CRUD methods alon
 name, and accepts the `@Query` of the JDBC, R2DBC, MongoDB, Neo4j, Cassandra, Couchbase and
 Elasticsearch modules; the other Spring Data rules know only the JPA annotations. Proxy annotations
 on interface methods are accepted, because Spring reads them for both proxy kinds.
-`SpringProxySelfCall` matches by name and argument count, and skips a call from one `@Transactional`
+`SpringProxySelfCall` matches by name and argument count (a varargs method takes its fixed
+arguments or more), and skips a call from one `@Transactional`
 method to another with a plain `@Transactional` (same transaction) and matches a `this::name` reference by name. `SpringDataNoSaveInLoop` covers
 `for`, `while` and `do` loops and `forEach`, `map` and `peek` callbacks on a stream, an `Iterable`
 or a `Map`, lambdas and method references (`forEach(repository::save)`) alike; `Optional.map` and
@@ -1890,7 +1946,7 @@ calls `EntityManager.clear()`, the JPA batch idiom.
 `Throwable`, `DataAccessException`, `TransactionException` or `PersistenceException`, not narrower
 exceptions such as `NumberFormatException`. `SpringQueryConcatenation` does not follow SQL that
 comes from a helper method, a parameter or a field. `SpringDataSaveInLoopHelper` follows one helper
-level, and `SpringNoPostConstructIo` does not follow a repository call through a helper.
+level (matched by name and argument count, varargs-aware), and `SpringNoPostConstructIo` follows private helpers two levels deep.
 `JpaEnumString` sees an `autoApply` converter only in the same file; an enum converted by a
 converter in another file needs an exception. `SpringPermitAllAnyRequest` does not resolve a
 pattern held in a variable (`var all = "/**"`) or an `access(...)` that allows everyone.
@@ -2001,7 +2057,8 @@ Maven.
 ## Spring architecture rules
 
 Spring projects (same detection as the Spring ruleset: `spring-context` or `spring-boot` on the
-compile classpath, `spring: true` in the manifest) also get nitpicker's own ArchUnit rules. They are
+compile classpath, `spring: true` in the manifest) also get nitpicker's own ArchUnit rules, and so
+does a module with `jmolecules-ddd` on its main compile classpath (for the aggregate rules below). They are
 separate from the project's own `*ArchTest` classes of slice 4 and need nothing from the project:
 the init script's `nitpickerSpringArch` task resolves ArchUnit 1.5.1 (Apache-2.0, pinned in the
 `pinned` map) into its own configuration, compiles the rule classes in
@@ -2047,6 +2104,69 @@ TypeScript `shared/` folder.
 | `spring-controller-repository` | a `@Controller` or `@RestController` depends on a repository (`@Repository`, or a type extending Spring Data's `Repository`) or on data access directly (`JdbcTemplate`, `NamedParameterJdbcTemplate`, `JdbcClient`, `SimpleJdbcInsert`, R2DBC `DatabaseClient`, `JdbcAggregateTemplate`, `R2dbcEntityTemplate`, `MongoTemplate`, `EntityManager`, `EntityManagerFactory`, Hibernate `Session`, `DataSource`, or their interfaces), in a field, parameter, return type or call                                                                                                                                                                                                          |
 | `spring-controller-entity`     | a request-mapping or `@ModelAttribute` method of a controller takes or returns an `@Entity` type, also inside a generic such as `List<Customer>`; methods declared on implemented interfaces (the OpenAPI-generator layout) and inherited from base controllers count                                                                                                                                                                                                                                                                                                                                                                                                                   |
 | `spring-service-web`           | a `@Service` or repository depends on the web layer: a controller or `@ControllerAdvice`, `ResponseEntity` in its own field, method or constructor signatures (not a `RestTemplate` or `RestClient` result it unwraps), or the `jakarta.servlet`, `javax.servlet`, `org.springframework.web.bind`, `org.springframework.web.servlet`, `org.springframework.web.multipart`, `org.springframework.web.context.request` (`RequestContextHolder`, `WebRequest`), `org.springframework.web.server` (`ServerWebExchange`, `ResponseStatusException`), `org.springframework.web.reactive` or `org.springframework.http.server` packages, so servlet and WebFlux apps are held to the same rule |
+| `spring-controller-controller` | a controller holds or creates another controller: a field, constructor or method parameter of that type, also inside a generic, or `new OtherController()`. Naming another controller's class in a link (`methodOn(OrderController.class)`, a `Class<OrderController>`) is fine                                                                                                                                                                                                                                                                                                                                                                                                         |
+| `spring-repository-service`    | a repository depends on a `@Service`: a field, parameter, return type or call. A repository depending on a controller or the web layer is `spring-service-web`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
+
+Roles come from Spring's stereotypes, read through composed annotations (`@RestController`, a
+project's own annotation carrying `@Service`). A project whose classes carry other role markers maps
+them with the `spring.roles` config key: `{ "spring": { "roles": { "service": ["com.example.UseCase"] } } }`
+gives every class annotated with `@UseCase` (directly or through a composed annotation), or extending
+or implementing `com.example.UseCase`, the service role on top of its stereotypes. Keys are
+`controller`, `service` and `repository`; names are binary class names, so a nested type is
+`com.example.Roles$UseCase`. A repository is also any `@RepositoryDefinition` interface. A mapping
+only adds roles, so it never lifts a finding; a small application that keeps a controller calling a
+repository on purpose uses an exception. When a layering rule and `spring-feature-boundary` both
+report the same class and dependency (a controller using `orders.internal.OrderRepository` from
+`billing`), only the layering finding is shown, unless an exception lifts it, in which case the
+boundary finding is still reported.
+
+**Bean lifetimes.**
+
+| Rule                   | Fails when                                                                                                                                                                                                                                                                                                                                                                                                   |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `spring-scope-capture` | a singleton bean (a `@Component` class or a `@Bean` method without `@Scope`, or with `singleton` or `application` scope) takes a request-, session-, `websocket`-, Spring Batch `step`- or `job`-scoped bean without a scoped proxy: in a constructor or `@Bean` method parameter, an `@Autowired`, `@Inject` or `@Resource` field or method, also as `Optional<T>`, an array or a collection or map of them |
+
+The scope is read from `@Scope` on the class or `@Bean` method, directly or through a composed
+annotation such as `@RequestScope` (whose own `ScopedProxyMode` attribute, `TARGET_CLASS` by
+default, wins over the `@Scope` it carries). A scoped proxy (`proxyMode` `TARGET_CLASS` or
+`INTERFACES`, or that default set with `@ComponentScan` or `@ComponentScans`), an
+`ObjectProvider<T>`, `ObjectFactory<T>` or `Provider<T>`, and a `@Lazy` injection point are fine:
+each resolves the bean per use. `@Lazy(false)` is not lazy, and `@Lazy` on a method covers its
+parameters only on a constructor or a `void` method, as in Spring (on a `@Bean` method it only
+delays the bean). A component is injected through the constructor Spring picks: its only
+constructor, or the one marked `@Autowired` or `@Inject`. A finding on a `@Bean` method names the
+method: `pricing:request:Basket` in the identity. The injected type is matched against every bean the module
+declares; the rule claims only when all of them have such a scope. So a prototype bean (one
+instance per injection point, often meant), a custom scope it cannot model (`@Scope("tenant")`,
+`thread`), a type with no bean in the module (one from a library or registered in code) or a
+`@ComponentScan(scopedProxy = ...)` default it cannot resolve to one mode is never a finding.
+
+**Aggregates (jMolecules).** A project that declares its domain model with
+[jMolecules](https://github.com/xmolecules/jmolecules) (`org.jmolecules:jmolecules-ddd`, Apache-2.0,
+read from the project's own classes; nitpicker adds no dependency) gets its aggregate boundaries
+checked. A module with `jmolecules-ddd` on its main compile classpath runs these rules even without
+Spring; without `spring-context` on the classpath they are the only rules of this section that run. Membership comes only from
+what the code declares, never from class names: an aggregate root implements `AggregateRoot<T, ID>`
+or carries `@AggregateRoot`; an entity implementing `Entity<A, ID>` belongs to `A` (also through a
+generic base class such as `BaseEntity<Order, LineId>`); an entity carrying `@Entity` (jMolecules')
+belongs to every root that reaches it through its fields; a value object implements `ValueObject`
+or carries `@ValueObject`. Fields are read with their generic arguments (`List<LineItem>`,
+`Map<String, Set<Cart>>`, `? super` bounds, generic arrays, and a type variable as the subclass binds
+it), inherited ones included (a field declared in a superclass that is itself a root, entity or value
+object is reported there, once), and an `Association<T, ID>` or a field annotated `@Association` is a
+reference by identifier, so its type arguments do not count; nor do those of `Class<T>` and the
+`java.util.function` types. Abstract classes and interfaces count: an entity typed
+`Entity<Shape, ...>` with an interface root `Shape` belongs to every root implementing it.
+
+| Rule                         | Fails when                                                                                                                                                                                                                    |
+| ---------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ddd-aggregate-reference`    | a root or entity of one aggregate holds the root of another (`Customer customer` in `Order`); hold its identifier (`CustomerId`) or an `Association<Customer, CustomerId>`                                                    |
+| `ddd-foreign-entity`         | a root or entity holds an entity that belongs to another aggregate (`List<CartLine>` in `Order` when `CartLine implements Entity<Cart, ...>`), or an `@Entity` that two roots reach (each root is reported, naming the other) |
+| `ddd-value-object-reference` | a value object holds an aggregate root or an entity; hold its identifier                                                                                                                                                      |
+
+A class referring to its own type (a root's `parent` of the same root type), a subclass or
+supertype of it, or an entity holding its own root is not reported. The detail of `ddd-foreign-entity` is `<aggregate>:<entity>`, so its
+identity is `Order|Cart:CartLine`.
 
 **Tests that start a Spring context.** A concrete test class counts when it, an enclosing class or
 one of its superclasses (`class X extends AbstractIntegrationTest`) is annotated, directly or
@@ -2067,7 +2187,7 @@ Java, not here.
 
 **Limits.** The rules read bytecode, so generated classes without a source file are skipped (no
 finding can be placed), and a use of another package's compile-time constant (`static final` of a
-primitive or `String`) is invisible, because `javac` inlines its value. Each Gradle project and Maven module that uses Spring is checked on its own,
+primitive or `String`) is invisible, because `javac` inlines its value. Each Gradle project and Maven module that uses Spring or jMolecules is checked on its own,
 over its main and test classes. Kotlin modules run the same rules on their compiled classes, and the
 findings point at the `.kt` files; the file facade of top-level functions (`ShopApplicationKt`, with
 `fun main`) next to the application or a `@Configuration` class in the root package is not a

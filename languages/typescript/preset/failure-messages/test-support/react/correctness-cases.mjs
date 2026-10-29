@@ -1,4 +1,4 @@
-import { exceptionCase, panel } from './react-case.mjs';
+import { panel } from './react-case.mjs';
 
 function listPanel(row) {
   return `export const List = ({ items }) => <ul>{items.map((item) => ${row})}</ul>;`;
@@ -68,11 +68,4 @@ const cases = [
   ],
 ];
 
-const exceptionRoutes = [
-  ['state mutation', stateful('list.push(1); setList(list);')],
-  ['nested component', panel('function Inner() { return <i />; } return <Inner />;')],
-  ['missing key', listPanel('<li>{item}</li>')],
-  ['forwardRef', 'export const P = forwardRef((props, ref) => <div ref={ref} />);'],
-];
-
-export const correctnessCases = [...cases, ...exceptionRoutes.map(exceptionCase)];
+export const correctnessCases = cases;

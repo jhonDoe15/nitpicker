@@ -25,7 +25,7 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
      Gradle error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
      for that run; never kill it.
-4. Never suppress: no `@Suppress` of a detekt or ktlint rule, config `exclude`/`disable`, legacy
+4. Never suppress: no `@Suppress` of a detekt or ktlint rule, config `exclude`/`disable`/`exceptions`, legacy
    entries, or weakened tests. In Java files the Java rules apply: `@SuppressFBWarnings` and
    `@SuppressWarnings("PMD")` are findings, and a project's own PMD or Checkstyle config is used
    only when `nitpicker.config.json` opts in under `tools`. If a finding seems wrong, stop and ask.
@@ -49,6 +49,14 @@ Before you change code other modules use, or fix a bug, read
 - Design for a fixed clock and a seeded random: take a `java.time.Clock` and a `kotlin.random.Random`
   as constructor parameters, and read environment variables once where `fun main` (or the
   `@SpringBootApplication` class, or the Ktor module) builds the objects, into a config class passed in.
+- With Spring, the architecture rules (`archunit/spring-...`) read the compiled Kotlin classes: package
+  by feature; controllers call services, never repositories or another controller; a repository calls
+  no service; a request- or session-scoped bean reaches a singleton only as `ObjectProvider<T>` or
+  through a scoped proxy (`@RequestScope`).
+- With jMolecules (`AggregateRoot`, `Entity`, `ValueObject` or their annotations; also without Spring),
+  the `archunit/ddd-...` rules hold aggregate boundaries: refer to another aggregate's root by its
+  identifier or an `Association`, keep each entity in one aggregate, and keep entities and roots out of
+  value objects.
 - Test sources are linted like main ones (detekt, and ktlint or ktfmt): the rules above, including `!!`, apply
   in tests. detekt keeps its default exclusions for tests, so magic numbers, `lateinit`, many functions,
   duplicated string literals, spread operators and function names in backticks are not findings in a
@@ -76,11 +84,16 @@ Before you change code other modules use, or fix a bug, read
 - Never `@Suppress` a detekt or ktlint rule (its name, `all`, a ruleset, `detekt:...`, `ktlint:...`):
   fix the code. The compiler warnings `UNCHECKED_CAST`, `DEPRECATION` and `USELESS_CAST` are
   findings too and are not suppressed either. If a rule flags legitimate code, stop and ask: the
-  project adds the `exceptions` entry the finding's message names to `nitpicker.config.json`;
+  project adds the `exceptions` entry the finding's message names to `nitpicker.config.json`
+  (`detekt.<ruleset>.<Rule>`, paths, reason). A structure, CRAP, changed-branch coverage, duplicate
+  or coupling finding ends with its own entry
+  (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`);
   switching a one-way rule off in
   `detekt.yml` has no effect. Generated code belongs in `exclude`: ask the maintainer to add it.
 - A project may add forbidden calls to `ForbiddenMethodCall.methods` in its `detekt.yml`; they join
   the preset's. Do not call anything the project lists there.
+- With Spring, the Spring, JPA and Spring Data rules of the Java preset run on Kotlin under the same
+  `pmd/...` ids, and each finding names the Kotlin form.
 
 ## Repository files
 
@@ -110,7 +123,32 @@ Before you change code other modules use, or fix a bug, read
   assert the result. A sleep in a mock answer, a thread or `launch` body, or a test fake that
   implements or extends a main class is fine. To show that something does not happen, give the
   code a clock the test moves forward, not `after(ms).never()`, `during(...)` or kotest
-  `continually` (`pmd/NegativeWaitInTest`).
+  `continually` (`pmd/NegativeWaitInTest`). Inside `runTest`, `delay` must run on the test scheduler:
+  a `delay` in `withContext(Dispatchers.IO)`, `Dispatchers.Default` or a thread-pool dispatcher, in a
+  `launch` or `async` on one that the test joins or awaits, in `runTest(Dispatchers.IO)`, on
+  `Dispatchers.Main` without a `setMain` applied to the test class, and in a Kotest body outside `runTest`
+  without `coroutineTestScope = true` waits for real, also in a test helper or a counted loop
+  (`pmd/FixedSleepInTest`); pass the test dispatcher to the code instead.
+- Do not skip or focus tests (`pmd/DisabledTest`, `pmd/FocusedTest`): no `@Disabled`, `@Ignore` or
+  `@Ignored` (nor an alias or an annotation that carries one), Kotest `xtest`, `xcontext`, `xdescribe`,
+  `xit`, `xshould`, `xgiven` or a `!` name prefix, no `.config(enabled = false)`, `invocations = 0` or other
+  config that never runs, no constant false `@EnabledIf` and no `assumeTrue(false)`; no `f:` name prefix,
+  `ftest`, `fcontext`, `fit`. Fix the test or delete it; limit it to an environment with `@EnabledOnOs` or
+  an assumption on a real condition when it cannot run elsewhere.
+- Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion that can be skipped, inside an `if`,
+  a `when`, any loop (also over results), a safe call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that
+  swallows the failure, a `runCatching`, or after an early `return`. An `if`/`else` or `when` whose every
+  branch asserts or fails is fine, and so are Kotest `checkAll` and `forAll`. Split the cases into separate
+  tests or a parameterized test (`@ParameterizedTest` with `@MethodSource` or `@CsvSource`, Kotest
+  `withData`), assert a whole collection at once, and narrow with `assertNotNull`, `assertIs` or
+  `?: fail(...)` instead of an `if`.
+- A test owns the coroutines it starts (`pmd/CoroutineEscapesTest`): do not `launch`, `async`, `launchIn`,
+  `stateIn` or `shareIn` on `CoroutineScope(...)`, a scope field, a scope a helper returns,
+  `viewModelScope`, or a `TestScope` outside `runTest` and leave it running; `with`, `run`, `apply` or
+  `also` on such a scope does not help. Run the body in `runTest`, launch from there
+  (`backgroundScope.launch` for work that ends with the test), keep the job and `join()` it or `await()` the
+  deferred (a collection of them too), or build the scope on the test dispatcher and drive it with
+  `advanceUntilIdle`; a scope the test class cancels in `@AfterEach` or Kotest `afterSpec` is owned too.
 - A `@SpringBootTest` class uses its context: it injects a bean or a `MockMvc`, `WebTestClient` or
   `TestRestTemplate`, or it starts a web server port. Otherwise create the class with its
   constructor in a unit test, or use a slice (`pmd/SpringUnusedContext`).

@@ -12,8 +12,7 @@ const HELPER_DIRECTORIES = new Set([
   '__mocks__',
 ]);
 const HELPER_STEM = /^(?:.*[-.])?(?:test-utils|test-helpers|test-support|fixtures)$/u;
-const EXCEPTION_ROUTE =
-  'If it is real production code, add an exception for nitpicker/no-test-helpers-in-source in nitpicker.config.json.';
+const EXCEPTION_ROUTE = 'An exception fits only when it is real production code.';
 
 function helperName(filename, { colocated }) {
   const parts = filename.replaceAll('\\', '/').split('/');

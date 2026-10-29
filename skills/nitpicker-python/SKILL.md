@@ -23,8 +23,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
      tool missing from the environment) and rerun. Exit 2 is never a pass. If it says another run
      is in progress, wait for that run; never kill it.
 4. Never suppress: no `# noqa`, `# type: ignore`, `# pragma: no mutate`, `do_not_mutate`, config
-   `exclude`/`disable`, legacy entries, or weakened tests (`-x`, `-k`, `--deselect` and reruns in
-   `addopts` are ignored anyway). If a finding seems wrong, stop and ask. Never pass
+   `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests (`-x`, `-k`, `--deselect` and
+   reruns in `addopts` are ignored anyway). If a finding seems wrong, stop and ask. Never pass
    `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
    `nitpicker-config/policy-loosened` finding is for a person to accept.
 
@@ -39,10 +39,19 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.
 - Errors: catch the specific exception and handle it, or re-raise it with its cause:
   `raise ParseError(text) from err`. No bare `except:` or `except Exception:`, and no `raise Exception(...)`.
+- Cancellation: after cleanup in an explicit asyncio, Trio or AnyIO cancellation handler, use
+  a bare `raise` or re-raise the unchanged caught exception. Returning a failure result or raising
+  a different error consumes cancellation (`cancellation-not-propagated`). Keep intentional
+  cancellation boundaries in the backend's timeout or cancellation scope. Awaiting a task you
+  cancelled yourself (`task.cancel()` then `await task`) is the one handler that may stay quiet.
 - A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
   local first. Build a list with a comprehension, not `append` in a loop.
 - Imports: name what you use. No `from module import *`.
+- Trio, AnyIO and `asyncio.TaskGroup`: open a resource around the whole task group or inside the
+  child task, never in a `with` inside the group that hands it to `start_soon`/`create_task`
+  (`task-outlives-resource`). In Trio and AnyIO, an `await` in `finally:` or a cancellation handler
+  needs `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True):` around it (`unshielded-cleanup-await`).
 - Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru), never `print`. A
   log in an `except` keeps the traceback (`logger.exception(...)` or `exc_info=True`); passing the
   error as an argument or `str(error)` drops it. Logging alone is not handling: also re-raise the
@@ -65,9 +74,14 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
   dependency nothing uses.
 - A finding that flags legitimate code (a command line entry point that prints) is lifted in
-  `nitpicker.config.json`, under `python.exceptions`, with an entry such as
+  `nitpicker.config.json`. A ruff, type-checker, `python-rules`, import-linter, duplicate or coupling
+  finding goes under `python.exceptions`, with an entry such as
   `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
-  message. Don't add one to get past the gate: stop and ask.
+  message. A function, CRAP, changed-branch coverage, mutation, file or size finding goes under the
+  top-level `exceptions`
+  (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`). Each
+  message ends with the entry and the list that takes it; each list rejects the other's rules.
+  Don't add one to get past the gate: stop and ask.
 
 ## Repository files
 

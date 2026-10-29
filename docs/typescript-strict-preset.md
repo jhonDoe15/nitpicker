@@ -861,7 +861,9 @@ hop, and type-only imports do not count.
   usually a bug, and warnings in a suite hide the next real one. The allowed forms are fixing the
   cause (cancel the timer or subscription in the cleanup), a `testConsole.allow` entry for a known
   third-party message, or an `exceptions` entry for the test file. Messages are compared by their
-  normalized text, per test file, so an old warning that only moved is not new. See
+  normalized text, per test file, so an old warning that only moved is not new. It runs on
+  Vitest, Jest, `node:test` and Mocha projects alike (Jest names the file but not the test), and
+  the JavaScript preset gets the same check. See
   [Console output from tests](usage.md#console-output-from-tests).
 
 Left out, from the same write-up: recomputing one expensive result in every test, and running the
@@ -1532,8 +1534,17 @@ from a real caller) and the `exceptions` entry that lifts it.
   (`nitpicker/no-ui-framework-in-domain`), used to be `no-restricted-syntax` selectors. An existing
   `no-restricted-syntax` exception no longer lifts them; add an entry for the new rule id with the
   same paths.
-- The file limits (`file-lines-limit`, `line-length-limit`, `folder-files-limit`) and `slow-test` take exceptions the
-  same way; each failure message spells out the entry that would lift it.
+- The rules nitpicker adds are not ESLint rules, but the same `exceptions` key accepts them:
+  `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `function-lines-limit`,
+  `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`,
+  `folder-depth-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
+  `mutant-nocoverage`, `stability-direction`, and the dead-code findings `files`,
+  `exports` and `types`, plus the reuse rules (`shared-used-by-one-feature`, `duplicate-definition`,
+  `sibling-copy-edit`, `exported-name-collision`, `redefined-library-component`, `new-icon-asset`),
+  the unused-API rules and `component-story-missing`, which come from the `coupling` and `structure` checks, not from
+  ESLint; the JavaScript preset runs them too. The structure, CRAP and coverage rules take an optional `function`
+  (required for `changed-branch-coverage`) that limits the entry to one function. The message of
+  each finding prints the entry. See [Exceptions for rules nitpicker adds](usage.md#exceptions-for-rules-nitpicker-adds).
 - `folder-depth-limit`: code may sit at most one folder below `features/<feature>/<layer>/` (a file in
   `domain/orders/x.ts` is fine, one in `domain/orders/rules/x.ts` is not), so nesting cannot dodge
   the 6-files-per-folder limit. `thresholds.folderDepth` changes the one folder. `__tests__` and `__mocks__` folders do not

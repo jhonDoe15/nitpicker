@@ -1,15 +1,20 @@
+import path from 'node:path';
 import { spawnNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { withoutOptions } from '../../../preset/test-runner/script-command.mjs';
+import { readTestReport } from '../../quality-areas/reporting/test-report.mjs';
 import {
-  readRun,
+  finishedRun,
   removeTemporary,
   temporaryProjectPath,
   testTimeoutMs,
   workerCount,
 } from '../test-run.mjs';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
-import { assertSourcesCovered, coverageArguments, shownRootDir } from './jest-coverage.mjs';
+import { assertSourcesCovered, coverageArguments, shownConfig } from './jest-coverage.mjs';
 import { jestTool } from './jest-launcher.mjs';
+import { consoleProducerPath, startTestConsole } from '../test-console-run.mjs';
+
+const LATE_LOG = 'Cannot log after tests are done';
 
 const OPTIONS_NITPICKER_SETS = {
   flags: [
@@ -66,13 +71,19 @@ function withoutRelatedFiles(tokens) {
   return kept;
 }
 
+function scriptArguments(command) {
+  return withoutOptions(withoutRelatedFiles(command.arguments_), OPTIONS_NITPICKER_SETS);
+}
+
 export function jestArguments(command, nitpickerArguments, { leading, trailing }) {
-  return [
-    ...leading,
-    ...withoutOptions(withoutRelatedFiles(command.arguments_), OPTIONS_NITPICKER_SETS),
-    ...nitpickerArguments,
-    ...trailing,
-  ];
+  return [...leading, ...scriptArguments(command), ...nitpickerArguments, ...trailing];
+}
+
+function rerunPaths(options, command) {
+  const named = new Set(
+    scriptArguments(command).map((token) => path.resolve(options.projectRoot, token)),
+  );
+  return options.rerun.files.filter((file) => !named.has(file));
 }
 
 function workerArguments(options, tokens) {
@@ -91,31 +102,75 @@ function spawnJest(options, command, nitpickerArguments) {
   });
 }
 
+function consoleArguments(options, testConsole) {
+  return testConsole.enabled
+    ? [
+        '--silent=false',
+        '--verbose=false',
+        '--reporters=default',
+        `--reporters=${consoleProducerPath(options, 'jest')}`,
+      ]
+    : [];
+}
+
+function passedEverything(report) {
+  return (
+    report?.success === true &&
+    report.snapshot?.failure !== true &&
+    report.numFailedTests === 0 &&
+    report.numFailedTestSuites === 0 &&
+    report.numRuntimeErrorTestSuites === 0 &&
+    report.wasInterrupted !== true
+  );
+}
+
+function withoutForcedLateLogExit(result, { report, printsDirectly, testConsole }) {
+  const ownRunPrints = printsDirectly || report?.numTotalTestSuites === 1;
+  const forced =
+    testConsole.enabled &&
+    ownRunPrints &&
+    passedEverything(report) &&
+    result.status === 1 &&
+    result.stderr.includes(LATE_LOG);
+  return forced ? { ...result, status: 0 } : result;
+}
+
 export function runJest(options, command) {
-  const rootDir = shownRootDir(spawnJest(options, command, ['--showConfig']));
+  const { rootDir, printsDirectly } = shownConfig(spawnJest(options, command, ['--showConfig']));
   const reportPath = temporaryProjectPath(options, 'jest-report.json');
+  const testConsole = startTestConsole(options, { collectsLines: false });
   try {
-    const result = spawnJest(options, command, [
-      '--ci',
-      '--no-watchman',
-      '--passWithNoTests',
-      ...(options.rerun === undefined
-        ? coverageArguments(options, rootDir)
-        : [
-            '--coverage=false',
-            '--testNamePattern',
-            options.rerun.namePattern,
-            '--runTestsByPath',
-            ...options.rerun.files,
-          ]),
-      '--json',
-      `--outputFile=${reportPath}`,
-      '--testLocationInResults',
-      `--testTimeout=${String(testTimeoutMs(options))}`,
-      '--restoreMocks',
-      ...workerArguments(options, command.arguments_),
-    ]);
-    const run = readRun({ reportPath, result, runnerName: RUNNER_NAMES.jest });
+    const result = spawnJest(
+      options,
+      { ...command, environment: { ...command.environment, ...testConsole.environment } },
+      [
+        '--ci',
+        '--no-watchman',
+        '--passWithNoTests',
+        ...(options.rerun === undefined
+          ? coverageArguments(options, rootDir)
+          : [
+              '--coverage=false',
+              '--testNamePattern',
+              options.rerun.namePattern,
+              '--runTestsByPath',
+              ...rerunPaths(options, command),
+            ]),
+        '--json',
+        `--outputFile=${reportPath}`,
+        '--testLocationInResults',
+        `--testTimeout=${String(testTimeoutMs(options))}`,
+        '--restoreMocks',
+        ...workerArguments(options, command.arguments_),
+        ...consoleArguments(options, testConsole),
+      ],
+    );
+    const report = readTestReport(reportPath, result, RUNNER_NAMES.jest);
+    const run = finishedRun({
+      report,
+      result: withoutForcedLateLogExit(result, { report, printsDirectly, testConsole }),
+      runnerName: RUNNER_NAMES.jest,
+    });
     if (!run.failed && run.report.numTotalTests > 0 && options.rerun === undefined) {
       assertSourcesCovered(options, rootDir);
     }

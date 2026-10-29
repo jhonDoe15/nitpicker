@@ -61,22 +61,27 @@ describe('Java structure findings', () => {
         tool,
       ]),
     ).toEqual([
-      [RULE_IDS.functionLines, 'Big.big has 51 lines; limit is 50', 'enforceable', 'structure'],
+      [
+        RULE_IDS.functionLines,
+        'Big.big has 51 lines; limit is 50. If this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        'enforceable',
+        'structure',
+      ],
       [
         RULE_IDS.functionStatements,
-        'Big.big has 16 statements; limit is 15. Split by responsibility and name each part for what it checks or does.',
+        'Big.big has 16 statements; limit is 15. Split by responsibility and name each part for what it checks or does. If this is intended, add {"rule":"function-statements-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
         'enforceable',
         'structure',
       ],
       [
         RULE_IDS.functionControlNesting,
-        'Big.big nests control flow 3 deep (limit 2). Return early instead of nesting.',
+        'Big.big nests control flow 3 deep (limit 2). Return early instead of nesting. If this is intended, add {"rule":"function-control-nesting-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
         'enforceable',
         'structure',
       ],
       [
         RULE_IDS.functionParameters,
-        'Big.big has 4 parameters; limit is 3',
+        'Big.big has 4 parameters; limit is 3. If this is intended, add {"rule":"function-parameters-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
         'enforceable',
         'structure',
       ],
@@ -86,14 +91,15 @@ describe('Java structure findings', () => {
       rule: 'function-lines-limit',
       path: FILE,
       identity: 'function:Big.big:occurrence:1:source:796ab01f9eb19cf455b6cda2',
-      message: 'Big.big has 51 lines; limit is 50',
+      message:
+        'Big.big has 51 lines; limit is 50. If this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
       classification: 'enforceable',
       symbol: 'Big.big',
       ratchet: {
         key: 'function:Big.big:occurrence:1:lines',
         value: 51,
         worseMessage:
-          'Big.big grew from {base} to 51 lines (limit 50). Put new code in a new function.',
+          'Big.big grew from {base} to 51 lines (limit 50). Put new code in a new function. If this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
         heldMessage:
           'Big.big: 51 lines (limit 50), allowed because base was {base}; any increase fails.',
       },
@@ -236,7 +242,9 @@ describe('Java file limits', () => {
       );
 
     expect(found({})).toEqual([[RULE_IDS.lineLength, 'src/main/java/demo/C0.java']]);
-    expect(found({ exceptions: [{ rule: 'line-length-limit', glob: 'src/main/**' }] })).toEqual([]);
+    expect(found({ exceptions: [{ rule: 'line-length-limit', paths: ['src/main/**'] }] })).toEqual(
+      [],
+    );
   });
 
   it('limits Java lines to the length the conventions choose', () => {
@@ -259,7 +267,7 @@ describe('Java file limits', () => {
       manifest,
       policy: {
         thresholds: { fileLines: 2, folderFiles: 2 },
-        exceptions: [{ rule: 'folder-files-limit', glob: 'src/test/java/**' }],
+        exceptions: [{ rule: 'folder-files-limit', paths: ['src/test/java/**'] }],
         exclude: ['src/main/java/gen/**'],
       },
     });
@@ -319,7 +327,7 @@ describe('Java file limits', () => {
     ]);
     expect(found({ policy: { thresholds: { folderDepth: 5 } } })).toEqual([]);
     expect(
-      found({ policy: { exceptions: [{ rule: 'folder-depth-limit', glob: '**/e/**' }] } }),
+      found({ policy: { exceptions: [{ rule: 'folder-depth-limit', paths: ['**/e/**'] }] } }),
     ).toEqual([]);
   });
 

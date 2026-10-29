@@ -152,7 +152,8 @@ describe('the react-project fixture', () => {
         'Style with styled components (styled-components or Emotion), not an inline `style` object of fixed values:',
         'put them in a styled component, `const Title = styled.h1({ fontSize: 18 })`.',
         'A `style` object stays for values computed at runtime, such as `{ width: progress }`.',
-        'For a one-off, add an exception for this rule in nitpicker.config.json.',
+        'An exception fits only for a one-off.',
+        'If this is intended, add {"rule":"nitpicker/react-single-styling-approach","paths":["src/main/ui/inline-style.tsx"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       ].join(' '),
     );
   });
