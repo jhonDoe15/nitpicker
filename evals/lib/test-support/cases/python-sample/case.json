@@ -1,0 +1,6 @@
+{
+  "id": "python-sample",
+  "title": "Add a shout function",
+  "preset": "python",
+  "prompt": "Add shout(name: str) -> str to src/sample/greeter.py that returns the greeting in upper case, with a test in tests/test_greeter.py. Run nitpicker-gate until it exits 0."
+}
