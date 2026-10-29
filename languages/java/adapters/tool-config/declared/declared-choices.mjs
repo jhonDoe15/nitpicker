@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import path from 'node:path';
 import {
   ignoredConfigNotice,
   precedenceLayers,
@@ -34,6 +35,10 @@ export function declaredToolChoices(projectRoot, { toolPrecedence = {}, policyRo
   );
 }
 
+function portable(argument, policyRoot) {
+  return path.isAbsolute(argument) ? path.relative(policyRoot, argument) : argument;
+}
+
 function fileContents(files) {
   return files.map((file) => readFileSync(file, 'utf8'));
 }
@@ -44,7 +49,7 @@ export function declaredToolDigest(toolPrecedence, policyRoot) {
     return JSON.stringify(
       Object.entries(choices).map(([tool, choice]) => [
         tool,
-        choice.arguments,
+        choice.arguments.map((argument) => portable(argument, policyRoot)),
         fileContents(choice.files),
       ]),
     );

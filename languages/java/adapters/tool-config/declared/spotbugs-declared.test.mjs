@@ -177,4 +177,19 @@ describe('the SpotBugs settings each precedence runs with', () => {
 
     expect(layered.effort).toBe('max');
   });
+
+  it('applies nothing declared under a condition, and names it as not applied', () => {
+    const build = `tasks.withType<SpotBugsTask>().configureEach {
+  if (name.endsWith("Test")) { excludeFilter.set(file("config/tests.xml")) }
+}
+spotbugs { when (mode) { "strict" -> effort = 'max' } }
+`;
+    const declarations = spotbugsDeclarations(
+      readDeclaredBuild(sourceOf({ 'build.gradle': build })),
+    );
+    const layered = spotbugsLayers(declarations, { projectWins: true });
+
+    expect([layered.effort, layered.threshold, layered.filters]).toEqual(['default', 'medium', []]);
+    expect(layered.notApplied.map(({ setting }) => setting)).toEqual(['excludeFilter', 'effort']);
+  });
 });
