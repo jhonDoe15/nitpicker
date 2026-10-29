@@ -48,11 +48,18 @@ import {
 const MODULE_IDENTITY_SEPARATOR = '@';
 const ROOT_MODULE = 'root';
 
+export function readProjectDuplicateFindings(reportRoot, { preset, projectRoot }) {
+  return [
+    ...readDuplicateFindings(reportRoot, { projectRoot }),
+    ...(preset === 'kotlin' ? readKotlinDuplicateFindings(reportRoot, projectRoot) : []),
+  ];
+}
+
 export function readJavaFindings(projectRoot, options = {}) {
   const { reportBase, report, preset = 'java', projectWide = true } = options;
   const kotlinPreset = preset === 'kotlin';
   const { modules, manifest } = report ?? readReportModules(reportBase, preset);
-  if (kotlinPreset) {
+  if (kotlinPreset && options.requireKotlin !== false) {
     requireKotlinManifest(manifest);
   }
   const moduleFindings = modules
@@ -67,8 +74,7 @@ export function readJavaFindings(projectRoot, options = {}) {
     findings: applyRuleMessages(
       [
         ...moduleFindings,
-        ...readDuplicateFindings(reportBase, { projectRoot }),
-        ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase, projectRoot) : []),
+        ...(projectWide ? readProjectDuplicateFindings(reportBase, { preset, projectRoot }) : []),
         ...(projectWide
           ? projectWideFindings(projectRoot, {
               projects: modules.map((module) => ({

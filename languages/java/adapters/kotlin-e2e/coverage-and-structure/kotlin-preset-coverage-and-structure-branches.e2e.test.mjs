@@ -30,11 +30,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset coverage and structure end to 
     ]);
     expect(fromTool(result.newEnforceable, 'pit')).toEqual([]);
     expect(
-      result.newFindings.filter(
-        ({ tool, rule, path: file }) =>
-          tool === 'pit' && rule === 'mutant-survived' && file.endsWith('Label.kt'),
-      ),
-    ).not.toEqual([]);
+      result.newFindings
+        .filter(({ tool, rule }) => tool === 'pit' && rule === 'mutant-survived')
+        .map(({ path: file, identity }) => `${file} ${identity}`)
+        .sort(),
+    ).toEqual([
+      'src/main/kotlin/demo/Label.kt Label|larger(II)LString;|ConditionalsBoundaryMutator|changed conditional boundary#1',
+    ]);
   });
   it('fails the untested branches of a statement that spans lines and of a file outside its package directory', () => {
     const result = diffOf(fixture.project, 'multiline-branch');

@@ -56,7 +56,9 @@ export function runCacheCommand(cli) {
       ? resolveProjectRoot()
       : realpathSync(cli.currentProjectRoot);
   const config = loadConfig(projectRoot);
-  const headPolicy = publishHeadPolicy(config, projectRoot);
+  const headPolicy = publishHeadPolicy(config, projectRoot, {
+    maven: cli.environment?.NITPICKER_MAVEN,
+  });
   const configured = configureAnalyzers(presetAnalyzers(config, cli.analyzers), config, headPolicy);
   const selected = selectedAnalyzers(configured, options);
   const store = writableStore(projectRoot, cli);

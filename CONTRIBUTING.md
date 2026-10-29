@@ -86,11 +86,11 @@ arguments pass through) and rewrites the times of the files it ran.
 node scripts/test-shards/record-durations.mjs --maxWorkers=100%
 ```
 
-Java end-to-end CI uses 16 isolated runner shards and Kotlin uses 10, with files run serially in
-each shard. Independent behavior groups have separate fixture trees; the full 95 Java and 92
+Java end-to-end CI uses 16 isolated runner shards and Kotlin uses 14, with files run serially in
+each shard. Independent behavior groups have separate fixture trees; the full 102 Java and 167
 Kotlin cases remain selected. The final `java` or `kotlin` check passes only when all its shards
 pass. Reproduce a shard with `npm run test:java -- --shard=1/16` or
-`npm run test:kotlin -- --no-file-parallelism --shard=1/10`.
+`npm run test:kotlin -- --no-file-parallelism --shard=1/14`.
 
 Named `tools.tests.timeouts.projects` select the Java/Kotlin subject even though the harness is
 JavaScript. They inherit language declaration ceilings and repository execution defaults. JVM

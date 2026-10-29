@@ -10,8 +10,10 @@ const TEST_RESULTS = 'test-results';
 const SOURCE_FILE = /\.(?:java|kt|groovy)$/u;
 const FAILSAFE_NAME = /^IT|IT$|ITCase$/u;
 const KOTEST_SPECS = 'Fun|String|Should|Describe|Behavior|Word|Free|Feature|Expect|Annotation';
+const KOTEST_SPEC = String.raw`:\s*(?:${KOTEST_SPECS})Spec\b`;
+export const DECLARES_KOTEST_SPEC = new RegExp(KOTEST_SPEC, 'u');
 const DECLARES_TESTS = new RegExp(
-  String.raw`@(?:Test|ParameterizedTest|RepeatedTest|TestFactory|TestTemplate)\b|\bextends\s+Specification\b|:\s*(?:${KOTEST_SPECS})Spec\b`,
+  String.raw`@(?:Test|ParameterizedTest|RepeatedTest|TestFactory|TestTemplate)\b|\bextends\s+Specification\b|${KOTEST_SPEC}`,
   'u',
 );
 const PACKAGE = /^\s*package\s+([\w.]+)/mu;

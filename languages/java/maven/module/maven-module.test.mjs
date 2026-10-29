@@ -2,8 +2,8 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { moduleManifest } from './manifest/maven-manifest.mjs';
-import { readReactor } from './maven-project.mjs';
+import { moduleManifest } from '../manifest/maven-manifest.mjs';
+import { readReactor } from '../maven-project.mjs';
 
 const roots = [];
 

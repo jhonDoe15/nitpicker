@@ -186,14 +186,16 @@ by field. Per snapshot:
   modules, so a dependency from one module to another counts, and file limits are evaluated once
   over every module's roots, so `exceptions` and `exclude` globs are relative to the project root
   (`languages/java/builds/java-modules.mjs`; both builds share `builds/project-wide.mjs`). Duplicate
-  detection runs per module, so a clone between two modules is not found, as a clone between two
-  source roots is not.
+  detection scans one source root at a time, so a clone between two modules is not found, as a clone
+  between two source roots is not; on Maven the scan runs once from the project root over the roots of
+  all modules, as on Gradle, and its clone findings carry the module-prefixed paths.
 - **Binary.** `NITPICKER_MAVEN` when set; otherwise the project's `mvnw` (`mvnw.cmd` on Windows),
   run with `sh` when not executable; otherwise `mvn` from the PATH. A missing `mvn` is a tool error
   that names these three ways. The JDK tools (`java`, `jar`, `jdeps`) come from `JAVA_HOME` when
   set, else the PATH.
-- **Not covered.** The Kotlin preset needs Gradle and says so; use the java preset for a Maven
-  project's Java sources. A surefire or Failsafe configuration that sets
+- **Kotlin.** A Maven project that applies `kotlin-maven-plugin` runs with the Kotlin preset (see
+  [Maven](kotlin-preset.md#maven)); the java preset on it analyzes the Java sources only.
+- **Not covered.** A surefire or Failsafe configuration that sets
   `<testFailureIgnore>false</testFailureIgnore>`, or a `jacoco:check` that sets
   `<haltOnFailure>true</haltOnFailure>`, explicitly overrides the command line, so a violated
   ArchUnit rule or coverage rule stops the build as a tool error. Maven 3 cannot resolve a
@@ -2539,7 +2541,8 @@ to "exceptions" in nitpicker.config.json.
 ```
 
 The Kotlin preset, which runs the same tools on a mixed module's Java files, gets the fix but not
-the exception route: its `exceptions` only lift detekt rules. An `exceptions` entry that names a
+the exception route: its `exceptions` lift detekt rules, the configuration checks (`spring/<rule>`)
+and the Kotlin Spring rules (`pmd/<Rule>`, as for Java). An `exceptions` entry that names a
 Checkstyle check by class (`checkstyle/com.puppycrawl...IndentationCheck`) is a config error that
 gives the name to write instead.
 

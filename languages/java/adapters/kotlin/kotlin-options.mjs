@@ -5,6 +5,7 @@ import {
 } from '../../../../shared/config.mjs';
 import { JAVA_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import { SHARED_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
+import { SPRING_CONFIG_RULE_IDS } from '../spring/java-spring.mjs';
 import { JAVA_TOOLS } from '../gradle-presets.mjs';
 import {
   isJavaFindingRule,
@@ -23,6 +24,7 @@ const KOTLIN_KEYS = ['formatter', 'detektConfig'];
 export const KOTLIN_EXCEPTION_RULES = [
   ...new Set([
     ...SOURCE_RULE_IDS,
+    ...SPRING_CONFIG_RULE_IDS,
     ...SHARED_EXCEPTION_RULES,
     ...JAVA_SIZE_RULES,
     'test-runtime/slow-test',
