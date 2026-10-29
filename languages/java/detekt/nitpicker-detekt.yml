@@ -248,6 +248,13 @@ style:
     excludes: []
     ignoreAnnotated: []
     includes: []
+  UnusedParameter:
+    active: true
+    severity: warning
+    excludes: []
+    includes: []
+    allowedNames: '(ignored|unused).*'
+    ignoreAnnotated: []
 
 complexity:
   active: true
