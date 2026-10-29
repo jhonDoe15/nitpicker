@@ -32,6 +32,11 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
    Never pass `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
    `nitpicker-config/policy-loosened` finding is for a person to accept.
 
+With Spring on the classpath, also follow [spring.md](spring.md).
+
+If your change edits a function, class, file or package that existed before it, read
+[editing-existing-code.md](editing-existing-code.md) before you edit.
+
 Before you change code other modules use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md).
 
@@ -49,10 +54,6 @@ Before you change code other modules use, or fix a bug, read
 - Design for a fixed clock and a seeded random: take a `java.time.Clock` and a `kotlin.random.Random`
   as constructor parameters, and read environment variables once where `fun main` (or the
   `@SpringBootApplication` class, or the Ktor module) builds the objects, into a config class passed in.
-- With Spring, the architecture rules (`archunit/spring-...`) read the compiled Kotlin classes: package
-  by feature; controllers call services, never repositories or another controller; a repository calls
-  no service; a request- or session-scoped bean reaches a singleton only as `ObjectProvider<T>` or
-  through a scoped proxy (`@RequestScope`).
 - With jMolecules (`AggregateRoot`, `Entity`, `ValueObject` or their annotations; also without Spring),
   the `archunit/ddd-...` rules hold aggregate boundaries: refer to another aggregate's root by its
   identifier or an `Association`, keep each entity in one aggregate, and keep entities and roots out of
@@ -92,8 +93,6 @@ Before you change code other modules use, or fix a bug, read
   `detekt.yml` has no effect. Generated code belongs in `exclude`: ask the maintainer to add it.
 - A project may add forbidden calls to `ForbiddenMethodCall.methods` in its `detekt.yml`; they join
   the preset's. Do not call anything the project lists there.
-- With Spring, the Spring, JPA and Spring Data rules of the Java preset run on Kotlin under the same
-  `pmd/...` ids, and each finding names the Kotlin form.
 
 ## Repository files
 
@@ -152,5 +151,3 @@ Before you change code other modules use, or fix a bug, read
 - A `@SpringBootTest` class uses its context: it injects a bean or a `MockMvc`, `WebTestClient` or
   `TestRestTemplate`, or it starts a web server port. Otherwise create the class with its
   constructor in a unit test, or use a slice (`pmd/SpringUnusedContext`).
-- A function or file already over a limit may be edited but must not get worse: put new code in a
-  new function or file and call it.
