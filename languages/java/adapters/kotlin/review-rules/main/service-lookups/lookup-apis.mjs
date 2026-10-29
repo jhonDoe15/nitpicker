@@ -12,16 +12,11 @@ const BEAN_MANAGERS = ['jakarta', 'javax'].flatMap((base) => [
   `${base}.enterprise.inject.spi.BeanManager`,
   `${base}.enterprise.inject.spi.BeanContainer`,
 ]);
-const JNDI_CONTEXTS = [
-  'Context',
-  'InitialContext',
-  'directory.DirContext',
-  'directory.InitialDirContext',
-  'ldap.LdapContext',
-  'ldap.InitialLdapContext',
-  'event.EventContext',
-  'event.EventDirContext',
-].map((name) => `javax.naming.${name}`);
+const JNDI_CONTEXTS = ['javax.naming.Context', 'javax.naming.InitialContext'];
+const SPRING_JNDI = [
+  'org.springframework.jndi.JndiTemplate',
+  'org.springframework.jndi.JndiLocatorDelegate',
+];
 
 export const GUICE_MODULES = [
   'com.google.inject.AbstractModule',
@@ -34,9 +29,30 @@ export const PRODUCING_ANNOTATIONS = [
   'jakarta.enterprise.inject.Produces',
   'javax.enterprise.inject.Produces',
 ];
-export const ROOT_ANNOTATIONS = ['org.springframework.boot.autoconfigure.SpringBootApplication'];
-export const ROOT_SUPERTYPES = ['android.app.Application', 'androidx.multidex.MultiDexApplication'];
+export const CONFIGURATION_ANNOTATIONS = [
+  'org.springframework.context.annotation.Configuration',
+  'org.springframework.boot.SpringBootConfiguration',
+  'org.springframework.boot.autoconfigure.SpringBootApplication',
+];
+export const BEAN_ANNOTATION = 'org.springframework.context.annotation.Bean';
 export const KTOR_APPLICATION = 'io.ktor.server.application.Application';
+export const KOIN_SCOPE = 'org.koin.core.scope.Scope';
+export const ROOT_SUPERTYPES = [
+  ...['Activity', 'Application', 'Service', 'IntentService', 'Fragment', 'DialogFragment'].map(
+    (name) => `android.app.${name}`,
+  ),
+  'android.content.BroadcastReceiver',
+  'android.content.ContentProvider',
+  'androidx.activity.ComponentActivity',
+  'androidx.appcompat.app.AppCompatActivity',
+  'androidx.fragment.app.Fragment',
+  'androidx.fragment.app.FragmentActivity',
+  'androidx.fragment.app.DialogFragment',
+  'androidx.lifecycle.LifecycleService',
+  'androidx.multidex.MultiDexApplication',
+  'jakarta.enterprise.inject.spi.Extension',
+  'javax.enterprise.inject.spi.Extension',
+];
 const DEFINITION_HOSTS = new Set([
   'module',
   'single',
@@ -49,18 +65,21 @@ const DEFINITION_HOSTS = new Set([
   'koinApplication',
   'koinConfiguration',
 ]);
-export const START_KOIN = 'startKoin';
 
 const FUNCTION_APIS = [
   ...KOIN_LOOKUPS.map((name) => ({ name, owners: KOIN_OWNERS })),
   { name: 'getKoin', owners: [...KOIN_OWNERS, 'org.koin.compose'] },
-  { name: 'koinInject', owners: ['org.koin.compose', 'org.koin.androidx.compose'] },
-  { name: 'koinViewModel', owners: ['org.koin.compose.viewmodel', 'org.koin.androidx.compose'] },
+  { name: 'koinInject', owners: ['org.koin.compose', 'org.koin.androidx.compose'], compose: true },
+  {
+    name: 'koinViewModel',
+    owners: ['org.koin.compose.viewmodel', 'org.koin.androidx.compose'],
+    compose: true,
+  },
 ];
 const STATIC_APIS = [
-  { owner: 'org.koin.core.context.GlobalContext', names: ['get', 'getOrNull'] },
-  { owner: 'org.koin.mp.KoinPlatform', names: ['getKoin'] },
-  { owner: 'org.koin.java.KoinJavaComponent', names: [...KOIN_LOOKUPS, 'getKoin'] },
+  { owner: 'org.koin.core.context.GlobalContext', names: ['get', 'getOrNull'], koin: true },
+  { owner: 'org.koin.mp.KoinPlatform', names: ['getKoin'], koin: true },
+  { owner: 'org.koin.java.KoinJavaComponent', names: [...KOIN_LOOKUPS, 'getKoin'], koin: true },
   ...CDI_TYPES.map((owner) => ({ owner, names: ['current'] })),
 ];
 const RECEIVER_APIS = [
@@ -71,13 +90,14 @@ const RECEIVER_APIS = [
   { receivers: BEAN_MANAGERS, names: ['getReference', 'getInjectableReference', 'createInstance'] },
   { receivers: CDI_TYPES, names: ['select'] },
   { receivers: JNDI_CONTEXTS, names: ['lookup', 'lookupLink'] },
-  { receivers: KOIN_RECEIVERS, names: [...KOIN_LOOKUPS, 'getAll'] },
+  { receivers: SPRING_JNDI, names: ['lookup'] },
+  { receivers: KOIN_RECEIVERS, names: [...KOIN_LOOKUPS, 'getAll'], koin: true },
 ];
 
 const PRODUCERS = new Map([
   ['com.google.inject.Guice.createInjector', GUICE_INJECTOR],
   ...CDI_TYPES.map((type) => [`${type}.current`, type]),
-  ...JNDI_CONTEXTS.map((type) => [type, type]),
+  ...[...JNDI_CONTEXTS, ...SPRING_JNDI].map((type) => [type, type]),
 ]);
 
 export function isDefinitionHost(name) {

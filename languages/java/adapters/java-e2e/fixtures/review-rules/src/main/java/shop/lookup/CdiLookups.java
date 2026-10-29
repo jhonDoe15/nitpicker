@@ -4,6 +4,7 @@ import jakarta.enterprise.inject.Instance;
 import jakarta.enterprise.inject.Produces;
 import jakarta.enterprise.inject.spi.BeanManager;
 import jakarta.enterprise.inject.spi.CDI;
+import jakarta.enterprise.inject.spi.Extension;
 import jakarta.inject.Inject;
 
 public class CdiLookups {
@@ -42,4 +43,10 @@ public class CdiLookups {
   }
 
   public static class Mailer {}
+
+  public static class MailerExtension implements Extension {
+    Mailer late() {
+      return CDI.current().select(Mailer.class).get();
+    }
+  }
 }

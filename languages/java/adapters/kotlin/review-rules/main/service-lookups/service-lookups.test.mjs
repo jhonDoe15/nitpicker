@@ -1,40 +1,19 @@
 import { describe, expect, it } from 'vitest';
+import { argument, file, summary, testFile } from '../../test-support/facts.mjs';
 import {
-  call,
-  file,
-  fn,
-  klass,
-  routed,
-  run,
-  summary,
-  testFile,
-} from '../../test-support/facts.mjs';
-import { SERVICE_LOOKUP_RULE, serviceLookupFindings } from './service-lookups.mjs';
+  composeMessage,
+  findingsFor,
+  flagged,
+  imp,
+  inClass,
+  inFun,
+  koinMessage,
+  lookup,
+  lookupMessage,
+  rule,
+} from '../../test-support/lookup-facts.mjs';
 
-const imp = (path, overrides = {}) => ({ path, all: false, ...overrides });
-const inClass = (name = 'Orders', supers = []) => ({
-  k: 'class',
-  name,
-  qualified: name,
-  supers,
-  visibility: 'public',
-});
-const inFun = (name = 'load') => ({ k: 'fun', name });
-const lookup = (name, overrides = {}) => ({
-  line: 7,
-  name,
-  positional: 0,
-  lambda: false,
-  delegated: false,
-  annotations: [],
-  scopes: [inFun(), inClass()],
-  ...overrides,
-});
-const inLambda = (host) => [{ k: 'lambda', host }, inFun(), inClass()];
 const sample = (overrides) => file(overrides);
-const findingsFor = (files, options) => run(serviceLookupFindings, files, options);
-const flagged = (overrides) => summary(findingsFor([sample(overrides)]));
-const rule = (symbol) => `${SERVICE_LOOKUP_RULE} ${symbol} 7`;
 
 describe('service lookups in Kotlin', () => {
   it('reports a Koin lookup imported by path, with the allowed form first and the exception route', () => {
@@ -47,12 +26,7 @@ describe('service lookups in Kotlin', () => {
 
     expect(summary(findings)).toEqual([rule('Orders.load: Koin inject()')]);
     expect(findings[0].tool).toBe('pmd');
-    expect(findings[0].message).toBe(
-      routed(
-        'Take the dependency as a constructor parameter (a Provider or a factory parameter when it is optional or created per use) instead of looking it up with Koin inject() where it is used: the lookup hides what the class needs. The file with fun main, an Application or Ktor module, startKoin and Koin definitions, Guice modules and @Produces or @Provides functions may look dependencies up.',
-        'ServiceLocatorLookup',
-      ),
-    );
+    expect(findings[0].message).toBe(koinMessage('Koin inject()'));
   });
 
   it.each([
@@ -70,7 +44,7 @@ describe('service lookups in Kotlin', () => {
   });
 
   it('reports getKoin() inside a KoinComponent, and one lookup for the whole chain', () => {
-    const component = [inFun(), inClass('Orders', ['KoinComponent'])];
+    const component = [inFun(), inClass('Orders', { supers: ['KoinComponent'] })];
 
     expect(
       flagged({
@@ -218,13 +192,168 @@ describe('service lookups in Kotlin', () => {
   });
 });
 
+describe('service lookups by shape, scope and receiver', () => {
+  const wildcard = [imp('org.koin.core.component', { all: true })];
+
+  it.each([
+    ['a qualifier', [argument('named("eu")')]],
+    ['a named qualifier', [argument('named("eu")', { name: 'qualifier' })]],
+    ['parameters in a trailing lambda', [argument('{ parametersOf(id) }', { lambda: true })]],
+  ])('reports a bare Koin get with %s', (_, given) => {
+    expect(flagged({ imports: wildcard, lookups: [lookup('get', { arguments: given })] })).toEqual([
+      rule('Orders.load: Koin get()'),
+    ]);
+  });
+
+  it('reports a typed Koin receiver with a trailing lambda, Spring JNDI and fully qualified calls', () => {
+    expect(
+      flagged({
+        imports: [imp('org.koin.core.Koin'), imp('org.springframework.jndi.JndiTemplate')],
+        typed: [
+          { name: 'koin', type: 'Koin' },
+          { name: 'jndi', type: 'JndiTemplate' },
+        ],
+        lookups: [
+          lookup('get', { qualifier: 'koin', lambda: true }),
+          lookup('lookup', { qualifier: 'jndi' }),
+          lookup('lookup', { qualifier: 'org.springframework.jndi.JndiLocatorDelegate()' }),
+          lookup('lookup', { qualifier: 'javax.naming.InitialContext()' }),
+        ],
+      }),
+    ).toEqual([
+      rule('Orders.load: Koin.get()'),
+      rule('Orders.load: JndiTemplate.lookup()'),
+      rule('Orders.load: JndiLocatorDelegate.lookup()'),
+      rule('Orders.load: InitialContext.lookup()'),
+    ]);
+  });
+
+  it('reports method references on a typed receiver and on the type', () => {
+    expect(
+      flagged({
+        imports: [imp('com.google.inject.Injector')],
+        typed: [{ name: 'injector', type: 'Injector' }],
+        lookups: [
+          lookup('getInstance', { qualifier: 'injector', reference: true }),
+          lookup('getProvider', { qualifier: 'Injector', reference: true }),
+          lookup('getProvider', { qualifier: 'Injector' }),
+        ],
+      }),
+    ).toEqual([
+      rule('Orders.load: Injector.getInstance()'),
+      rule('Orders.load: Injector.getProvider()'),
+    ]);
+  });
+
+  it('types a receiver by the nearest declaration in scope, not by its name elsewhere in the file', () => {
+    const scopes = (owner, id) => [inFun('load', { id: 3 }), inClass(owner, { id })];
+
+    expect(
+      flagged({
+        imports: [imp('org.koin.core.scope.Scope')],
+        typed: [
+          { name: 'scope', type: 'Scope', scope: 1, member: true },
+          { name: 'scope', type: 'Map<String, Int>', scope: 2, member: true },
+          { name: 'scope', type: 'Map<String, Int>', scope: 4 },
+        ],
+        lookups: [
+          lookup('get', { qualifier: 'scope', scopes: scopes('A', 1) }),
+          lookup('get', { qualifier: 'scope', scopes: scopes('B', 2), line: 8 }),
+          lookup('get', {
+            qualifier: 'scope',
+            scopes: [inFun('shadow', { id: 4 }), inClass('A', { id: 1 })],
+            line: 9,
+          }),
+        ],
+      }),
+    ).toEqual([rule('A.load: Scope.get()')]);
+  });
+
+  it('types a qualified receiver by a member declaration and a type alias by its target', () => {
+    expect(
+      flagged({
+        imports: [imp('com.google.inject.Injector')],
+        typeAliases: [{ name: 'Di', target: 'Injector' }],
+        typed: [
+          { name: 'injector', type: 'Injector', scope: 9, member: true },
+          { name: 'di', type: 'Di' },
+        ],
+        lookups: [
+          lookup('getInstance', { qualifier: 'other.injector' }),
+          lookup('getBinding', { qualifier: 'di' }),
+        ],
+      }),
+    ).toEqual([
+      rule('Orders.load: Injector.getInstance()'),
+      rule('Orders.load: Injector.getBinding()'),
+    ]);
+  });
+
+  it('words the Koin, Compose and other lookups for their own allowed form', () => {
+    const findings = findingsFor([
+      sample({
+        imports: [
+          imp('org.koin.compose.viewmodel.koinViewModel'),
+          imp('org.koin.compose.koinInject'),
+          imp('com.google.inject.Injector'),
+        ],
+        typed: [{ name: 'injector', type: 'Injector' }],
+        lookups: [
+          lookup('koinViewModel', {
+            scopes: [inFun('OrdersScreen', { topLevel: true, annotations: ['Composable'] })],
+          }),
+          lookup('koinInject', { scopes: [inFun('load'), inClass()] }),
+          lookup('getInstance', { qualifier: 'injector' }),
+        ],
+      }),
+    ]);
+
+    expect(findings.map(({ message }) => message)).toEqual([
+      composeMessage('koinViewModel()'),
+      koinMessage('Koin koinInject()'),
+      lookupMessage('Injector.getInstance()'),
+    ]);
+  });
+});
+
 describe('service lookups that are not locators', () => {
   const koin = [imp('org.koin.core.component.get'), imp('org.koin.core.component.inject')];
 
   it.each([
     ['a get that no Koin import resolves', [], [lookup('get')]],
     ['a collection get on an unknown receiver', koin, [lookup('get', { qualifier: 'prices' })]],
-    ['a Ktor route get with a handler', koin, [lookup('get', { lambda: true, positional: 1 })]],
+    [
+      'a Ktor route get with a handler',
+      koin,
+      [
+        lookup('get', {
+          lambda: true,
+          positional: 1,
+          arguments: [
+            argument('"/orders"'),
+            argument('{ call.respond(orders) }', { lambda: true }),
+          ],
+        }),
+      ],
+    ],
+    [
+      'a bare get with a positional argument that is no Koin qualifier',
+      [imp('org.koin.core.component', { all: true })],
+      [lookup('get', { positional: 1, arguments: [argument('index')] })],
+    ],
+    [
+      'a get with a named argument Koin does not take',
+      [imp('org.koin.core.component', { all: true })],
+      [lookup('get', { arguments: [argument('1', { name: 'index' })] })],
+    ],
+    [
+      'a directory lookup',
+      [imp('javax.naming.directory.DirContext'), imp('javax.naming.ldap.InitialLdapContext')],
+      [
+        lookup('lookup', { qualifier: 'directory' }),
+        lookup('lookup', { qualifier: 'InitialLdapContext()' }),
+      ],
+    ],
     [
       'a lookup on a type that is not a context',
       [imp('java.rmi.registry.Registry')],
@@ -241,115 +370,17 @@ describe('service lookups that are not locators', () => {
       [lookup('getInstance', { qualifier: 'Calendar' })],
     ],
   ])('does not report %s', (_, imports, lookups) => {
-    expect(flagged({ imports, lookups, typed: [{ name: 'registry', type: 'Registry' }] })).toEqual(
-      [],
-    );
-  });
-
-  it.each([
-    ['module', 'module'],
-    ['single', 'single'],
-    ['factory', 'factory'],
-    ['viewModel', 'viewModel'],
-    ['startKoin', 'startKoin'],
-  ])('lets a get inside a %s definition lambda resolve against the scope', (_, host) => {
-    expect(
-      flagged({ imports: koin, lookups: [lookup('get', { scopes: inLambda(host) })] }),
-    ).toEqual([]);
-  });
-
-  it('still reports a lookup in a lambda that no Koin definition hosts', () => {
-    expect(
-      flagged({ imports: koin, lookups: [lookup('get', { scopes: inLambda('lazy') })] }),
-    ).toEqual([rule('Orders.load: Koin get()')]);
-  });
-
-  it.each([
-    ['a file with a top-level main', { functions: [fn('main')] }],
-    [
-      'a Ktor Application module',
-      {
-        functions: [fn('module', { receiver: 'Application' })],
-        imports: [imp('io.ktor.server.application.Application')],
-      },
-    ],
-    [
-      'a SpringBootApplication class',
-      {
-        classes: [
-          klass('Shop', { annotations: [{ name: 'SpringBootApplication', arguments: [] }] }),
-        ],
-        imports: [imp('org.springframework.boot.autoconfigure.SpringBootApplication')],
-      },
-    ],
-    [
-      'an Android Application',
-      {
-        classes: [klass('ShopApp', { supers: ['Application'] })],
-        imports: [imp('android.app.Application')],
-      },
-    ],
-    [
-      'a file that starts Koin',
-      { calls: [call('startKoin')], imports: [imp('org.koin.core.context.startKoin')] },
-    ],
-  ])('lets %s look dependencies up', (_, overrides) => {
-    const imports = [...koin, ...(overrides.imports ?? [])];
-
-    expect(flagged({ ...overrides, imports, lookups: [lookup('get')] })).toEqual([]);
-  });
-
-  it('lets a Guice module, a project module built on one, and a producer method look dependencies up', () => {
-    const guice = [
-      imp('com.google.inject.AbstractModule'),
-      imp('com.google.inject.Injector'),
-      imp('com.google.inject.Provides'),
-    ];
-    const base = sample({
-      package: 'demo',
-      imports: [imp('com.google.inject.AbstractModule')],
-      classes: [klass('BaseModule', { supers: ['AbstractModule'] })],
-    });
-    const derived = sample({
-      file: 'src/main/kotlin/demo/Wiring.kt',
-      imports: guice,
-      typed: [{ name: 'injector', type: 'Injector' }],
-      classes: [klass('Wiring', { supers: ['BaseModule'] }), klass('Plain')],
-      lookups: [
-        lookup('getInstance', {
-          qualifier: 'injector',
-          scopes: [inFun(), inClass('Wiring', ['BaseModule'])],
-        }),
-        lookup('getInstance', {
-          qualifier: 'injector',
-          annotations: ['Provides'],
-          scopes: [inFun(), inClass('Plain')],
-        }),
-        lookup('getInstance', {
-          qualifier: 'injector',
-          scopes: [inFun(), inClass('Plain')],
-          line: 20,
-        }),
-      ],
-    });
-
-    expect(summary(findingsFor([derived], { declaredIn: [base, derived] }))).toEqual([
-      `${SERVICE_LOOKUP_RULE} Plain.load: Injector.getInstance() 20`,
-    ]);
-  });
-
-  it('lets a CDI producer method look a bean up and leaves test files alone', () => {
-    const cdi = [
-      imp('jakarta.enterprise.inject.spi.CDI'),
-      imp('jakarta.enterprise.inject.Produces'),
+    const typed = [
+      { name: 'registry', type: 'Registry' },
+      { name: 'directory', type: 'DirContext' },
     ];
 
-    expect(
-      flagged({
-        imports: cdi,
-        lookups: [lookup('current', { qualifier: 'CDI', annotations: ['Produces'] })],
-      }),
-    ).toEqual([]);
+    expect(flagged({ imports, lookups, typed })).toEqual([]);
+  });
+
+  it('leaves test files alone', () => {
+    const cdi = [imp('jakarta.enterprise.inject.spi.CDI')];
+
     expect(
       summary(
         findingsFor([

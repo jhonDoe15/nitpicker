@@ -87,7 +87,8 @@ final class Declarations {
             "annotations", annotationTexts(klass), "supers", supertypes(klass), "superCall", superCall,
             "primaryParameters", constructor, "entries", entries));
     return new Frame(frame, m("k", "class", "name", simple, "qualified", qualified,
-        "supers", supertypes(klass), "visibility", own));
+        "supers", supertypes(klass), "visibility", own, "object", klass instanceof KtObjectDeclaration,
+        "annotations", annotationNames(klass)));
   }
 
   private Map<String, Object> parameter(KtParameter parameter) {
@@ -135,7 +136,17 @@ final class Declarations {
             "hasBody", body != null,
             "emptyBody", body instanceof KtBlockExpression && ((KtBlockExpression) body).getStatements().isEmpty(),
             "forward", forward(function)));
-    return new Frame(frame, m("k", "fun", "name", function.getName()));
+    return new Frame(frame, m("k", "fun", "name", function.getName(), "topLevel", owner == null && !local,
+        "annotations", annotationNames(function), "receiver", clip(function.getReceiverTypeReference()),
+        "parameters", parameterTypes(function)));
+  }
+
+  private static List<Object> parameterTypes(KtNamedFunction function) {
+    List<Object> types = new ArrayList<>();
+    for (KtParameter parameter : function.getValueParameters()) {
+      types.add(m("type", clip(parameter.getTypeReference()), "vararg", parameter.isVarArg()));
+    }
+    return types;
   }
 
   Frame declareConstructor(KtSecondaryConstructor constructor, Frame frame) {
@@ -168,8 +179,8 @@ final class Declarations {
             "delegated", property.getDelegate() != null, "annotations", annotationNames(property)));
   }
 
-  void typed(String name, KtTypeReference type, KtExpression initializer) {
-    if (!state.locatorImports || name == null) {
+  void typed(String name, KtTypeReference type, KtExpression initializer, Frame frame) {
+    if (!state.locators || name == null) {
       return;
     }
     String text = type != null ? withoutTypeArguments(type.getText()).replace("?", "").trim() : null;
@@ -178,8 +189,27 @@ final class Declarations {
       text = matcher.find() ? matcher.group(1) : null;
     }
     if (text != null) {
-      state.typed.add(m("name", name, "type", clip(text, 120)));
+      boolean member = frame != null && ("class".equals(frame.kind()) || "object".equals(frame.kind()));
+      state.typed.add(
+          m("name", name, "type", clip(text, 120), "scope", frame == null ? null : frame.data.get("id"),
+              "member", member));
     }
+  }
+
+  static KtExpression lazyValue(KtProperty property) {
+    KtExpression delegate = property.getDelegateExpression();
+    if (!(delegate instanceof KtCallExpression)
+        || !"lazy".equals(nameOf(((KtCallExpression) delegate).getCalleeExpression()))) {
+      return null;
+    }
+    for (KtLambdaArgument argument : ((KtCallExpression) delegate).getLambdaArguments()) {
+      KtLambdaExpression lambda = argument.getLambdaExpression();
+      KtBlockExpression body = lambda == null ? null : lambda.getBodyExpression();
+      if (body != null && !body.getStatements().isEmpty()) {
+        return body.getStatements().get(body.getStatements().size() - 1);
+      }
+    }
+    return null;
   }
 
   void declareTypeAlias(KtTypeAlias alias) {

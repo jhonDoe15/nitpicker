@@ -428,15 +428,15 @@ declarations, across all modules of the build; a call that cannot be tied to one
 an unclear case is not flagged. A file nested deeper than even the large stack of that program allows is
 skipped with a note on stderr.
 
-| Rule id                                  | Where                                       | Flags                                                                                                                                                                                                                                                              |
-| ---------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`         | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during`                                                                                             |
-| `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                    |
-| `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                                                                                                                       |
-| `ServiceLocatorLookup`                   | `review-rules/main/service-lookups/`        | a dependency looked up from a container where it is used: Koin `get()`, `inject()`, `by inject()`, `getKoin()`, `GlobalContext.get()`, `KoinJavaComponent`, `koinInject()`; Guice `getInstance`; CDI `CDI.current()` and `BeanManager.getReference`; JNDI `lookup` |
-| `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                                       |
-| `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                               |
-| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                                                                                           |
+| Rule id                                  | Where                                       | Flags                                                                                                                                                                                                                                                                                                                    |
+| ---------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`         | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during`                                                                                                                                                   |
+| `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                                                                          |
+| `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                                                                                                                                                                             |
+| `ServiceLocatorLookup`                   | `review-rules/main/service-lookups/`        | a dependency looked up from a container where it is used: Koin `get()`, `inject()`, `by inject()`, `getKoin()`, `GlobalContext.get()`, `KoinJavaComponent`, `koinInject()`; Guice `getInstance`; CDI `CDI.current()` and `BeanManager.getReference`; JNDI and Spring `JndiTemplate` `lookup`; also as a method reference |
+| `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                                                                                             |
+| `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                                                                                     |
+| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                                                                                                                                                 |
 
 Limits, all chosen to flag less rather than guess:
 
@@ -470,18 +470,35 @@ Limits, all chosen to flag less rather than guess:
   `@Configuration`, `@SpringBootApplication`).
 - Service lookups: resolved by import and declared type, never by the bare name `get`. A bare
   `get`, `getOrNull`, `inject`, `injectOrNull`, `getKoin`, `koinInject` or `koinViewModel` counts when an
-  import (by path, alias or wildcard) names it in Koin's component, Android, Ktor or Compose packages, and
-  `getKoin()` inside a `KoinComponent` or `KoinScopeComponent`; a qualified call counts on `GlobalContext`,
-  `KoinPlatform`, `KoinJavaComponent` and `CDI` (imported), on a name whose declared type or initializer is
-  Koin's `Koin` or `Scope`, Guice's `Injector` (also `Guice.createInjector(...)`), a `BeanManager`, a `CDI`
-  or a JNDI `Context` (`InitialContext()` included). A call with a trailing lambda (a Ktor route's `get`) is
-  skipped, and a chain such as `GlobalContext.get().get<T>()` is one finding. Allowed: a lambda of `module`,
-  `single`, `factory`, `scoped`, `scope`, `viewModel`, `worker`, `startKoin`, `koinApplication` or
-  `koinConfiguration`; a Guice module (a class below `AbstractModule`, `Module`, `PrivateModule` or
-  `ServletModule`, also through project classes); a function annotated `@Provides` or `@Produces`; and a
-  file with a top-level `fun main`, a `fun Application.module()`, a `@SpringBootApplication` class, an
-  Android `Application` subclass or a `startKoin` call. Test files are not read. Types that only a compiler
-  knows (a lookup receiver returned by another function) are left alone.
+  import (by path, alias or wildcard) names it in Koin's component, Android, Ktor or Compose packages and
+  the call has Koin's shape: no positional argument but a qualifier (`named(...)`), only Koin's named
+  arguments, and a trailing lambda only for `parametersOf(...)`, so a class's own `operator fun get` and a
+  Ktor route's `get("/path") { }` are left alone. `getKoin()` counts inside a `KoinComponent` or
+  `KoinScopeComponent`. A qualified call or a method reference (`injector::getInstance`) counts on
+  `GlobalContext`, `KoinPlatform`, `KoinJavaComponent` and `CDI`, imported or written fully qualified, and
+  on a receiver whose declared type or initializer is Koin's `Koin` or `Scope`, Guice's `Injector` (also
+  `Guice.createInjector(...)` and `by lazy { Guice.createInjector(...) }`), a `BeanManager`, a `CDI`, an
+  `InitialContext` or plain JNDI `Context`, or Spring's `JndiTemplate` or `JndiLocatorDelegate`. A receiver
+  is typed by the nearest declaration of its name in scope (a parameter, a local, a property of the
+  enclosing class or a top-level property), a qualified receiver (`other.injector`) by the class
+  properties of that name, and a type alias by its target. `DirContext` and `LdapContext` lookups read
+  directory entries and are not reported. A chain such as `GlobalContext.get().get<T>()` is one finding.
+  Allowed, and only these places: a lambda of `module`, `single`, `factory`, `scoped`, `scope`,
+  `viewModel`, `worker`, `startKoin`, `koinApplication` or `koinConfiguration`; a function with a Koin
+  `Scope` receiver or parameter (a definition helper called as `single { create(this) }`); a default
+  parameter value (`viewModel: OrdersViewModel = koinViewModel()`, Compose's recommended form); a class
+  below an Android component (`Activity`, `Fragment`, `Service`, `BroadcastReceiver`, `ContentProvider`,
+  `Application`, also through project classes), which cannot take constructor parameters, and a CDI
+  `Extension`; the entry `main` (top-level, or `@JvmStatic` in an object or companion, with no parameters
+  or `Array<String>`); a `fun Application.module()` of Ktor; a Guice module's `configure()` (a class or
+  object below `AbstractModule`, `Module`, `PrivateModule` or `ServletModule`, also through project
+  classes); a function annotated `@Provides` or `@Produces`; and a `@Bean` function of a `@Configuration`
+  or `@SpringBootApplication` class. The rest of those classes and files is reported. Inside a
+  `@Composable` function, `koinInject()` and `koinViewModel()` are reported with a message asking for a
+  parameter with that call as its default value; other Koin lookups name Koin's forms (a constructor
+  parameter passed in the module definition, or a `Lazy<T>` or function type for a lookup that must wait).
+  Test files are not read. Types that only a compiler knows (a lookup receiver returned by another
+  function) are left alone.
 - Singular and plural: both members must have the same element type (the plural a list, set,
   collection or array of it). Only the primary-constructor properties of a `data class` and the
   properties of a `@ConfigurationProperties` class are inspected.

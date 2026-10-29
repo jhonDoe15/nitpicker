@@ -47,7 +47,7 @@ final class Calls {
       }
     }
     recordCall(name, positional, named, spread, lambda);
-    if (state.locatorImports && LOOKUP_NAMES.contains(name)) {
+    if (state.locators && LOOKUP_NAMES.contains(name)) {
       lookup(call, name, positional, lambda, frame);
     }
     String imported = state.importedPath(name);
@@ -67,17 +67,36 @@ final class Calls {
         m(
             "line", state.lineOf(call.getTextRange().getStartOffset()), "name", name, "qualifier", qualifier,
             "positional", positional, "lambda", lambda, "delegated", call.getParent() instanceof KtPropertyDelegate,
-            "annotations", enclosingAnnotations(call), "scopes", frame == null ? List.of() : frame.chain()));
+            "arguments", arguments(call), "default", inDefaultValue(call), "reference", false,
+            "scopes", frame == null ? List.of() : frame.chain()));
   }
 
-  private List<Object> enclosingAnnotations(PsiElement element) {
-    List<Object> names = new ArrayList<>();
-    for (PsiElement parent = element.getParent(); parent != null; parent = parent.getParent()) {
-      if (parent instanceof KtNamedFunction || parent instanceof KtClassOrObject) {
-        names.addAll(annotationNames((KtAnnotated) parent));
-      }
+  void reference(KtCallableReferenceExpression reference, Frame frame) {
+    String name = reference.getCallableReference().getReferencedName();
+    if (!state.locators || !LOOKUP_NAMES.contains(name)) {
+      return;
     }
-    return names;
+    state.lookups.add(
+        m(
+            "line", state.lineOf(reference.getTextRange().getStartOffset()), "name", name,
+            "qualifier", clip(reference.getReceiverExpression()), "positional", 0, "lambda", false,
+            "delegated", false, "arguments", List.of(), "default", false, "reference", true,
+            "scopes", frame == null ? List.of() : frame.chain()));
+  }
+
+  private static boolean inDefaultValue(PsiElement element) {
+    PsiElement child = element;
+    for (PsiElement parent = element.getParent(); parent != null; parent = parent.getParent()) {
+      if (parent instanceof KtParameter) {
+        return ((KtParameter) parent).getDefaultValue() == child;
+      }
+      if (parent instanceof KtDeclarationWithBody || parent instanceof KtLambdaExpression
+          || parent instanceof KtClassOrObject) {
+        return false;
+      }
+      child = parent;
+    }
+    return false;
   }
 
   private void recordCall(String name, int positional, List<String> named, boolean spread, boolean lambda) {

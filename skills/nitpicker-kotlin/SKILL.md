@@ -71,6 +71,15 @@ Before you change code other modules use, or fix a bug, read
   `of` or `from` are fine.
 - A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
+- Take a dependency as a constructor parameter; never look it up where it is used with Koin
+  `get()`/`inject()`, a Guice `Injector`, `CDI.current()` or JNDI (`pmd/ServiceLocatorLookup`). With
+  Koin, pass it as a constructor parameter in the module definition (`single { Orders(get()) }`), and
+  take a `Lazy<T>` or a function type for a deferred lookup. Compose and Android: a
+  `koinViewModel()` or `koinInject()` default parameter value and Android components (Activity,
+  Fragment, Service, BroadcastReceiver, ContentProvider, Application) are fine. Only `main`, Koin
+  definitions and functions taking a Koin `Scope`, a Guice `Module`'s `configure`,
+  `@Provides`/`@Produces` functions and `@Bean` functions of a `@Configuration` class look
+  dependencies up.
 - A private or `internal` function or constructor does not declare a default parameter that no
   call in the project sets (`unused-option`): remove the parameter, or pass it from a real call.
 - Never `@Suppress` a detekt or ktlint rule (its name, `all`, a ruleset, `detekt:...`, `ktlint:...`):

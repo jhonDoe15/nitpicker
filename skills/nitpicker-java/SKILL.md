@@ -74,6 +74,11 @@ Before you change code other modules use, or fix a bug, read
   Factories named `of` or `from` and copies such as `List.copyOf` are fine.
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
   not both; one item is a one-element list.
+- Take a dependency as a constructor parameter (a `Provider` or `Instance` when it is optional or
+  created per use); never look it up where it is used from a Guice `Injector`, `CDI.current()`, a
+  `BeanManager` or JNDI (`ServiceLocatorLookup`). Only `main`, a Guice `Module`'s `configure`,
+  `@Provides`/`@Produces` methods, `@Bean` methods of a `@Configuration` class and CDI extensions
+  look dependencies up.
 - A main class only tests use belongs in the test sources (`coupling/test-only-export`).
 - Resources: try-with-resources for anything `Closeable`. No `finally` that returns or throws.
 - Utility classes: a `final` class of static methods with a `private` empty constructor.

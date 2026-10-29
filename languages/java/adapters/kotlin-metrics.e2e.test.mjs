@@ -28,6 +28,11 @@ import {
   ROOT_PACKAGE,
   UNITS,
 } from './test-support/kotlin-metrics-sources.mjs';
+import {
+  pinnedKotlinCompiler,
+  prepareKotlinPsi,
+  runKotlinPsi,
+} from './test-support/kotlin-psi-runner.mjs';
 
 // Compiles and runs kotlin-psi, the PSI program behind Kotlin structure, CRAP, coupling and the
 // review rules, on source files. It needs Java 21, Gradle and network access to Maven Central (for
@@ -36,20 +41,7 @@ import {
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
-const pinned = /kotlinCompiler\s*:\s*'([^']+)'/.exec(readFileSync(INIT_SCRIPT, 'utf8'))[1];
-const psiSources = path.resolve(import.meta.dirname, '../gradle/kotlin-psi');
-
-const PRINT_CLASSPATH = `allprojects {
-    plugins.withId('org.jetbrains.kotlin.jvm') {
-        tasks.register('printKotlinCompiler') {
-            doLast {
-                println 'JAVA_HOME=' + System.getProperty('java.home')
-                println 'CLASSPATH=' + configurations.nitpickerKotlinCompiler.asPath
-            }
-        }
-    }
-}
-`;
+const pinned = pinnedKotlinCompiler();
 
 const FORCE_OTHER_KOTLIN = `
 configurations.matching { it.name == "nitpickerKotlinCompiler" }.configureEach {
@@ -74,33 +66,7 @@ const MODULE_BUILD = [
 const PSI_CLASS = 'nitpicker/kotlinpsi/KotlinPsi.class';
 
 let workspace;
-let java;
-let classpath;
-let classes;
-
-function gradleClasspath(project) {
-  const script = path.join(workspace, 'print.init.gradle');
-  writeFileSync(script, PRINT_CLASSPATH);
-  const result = spawnSync(
-    gradle,
-    [
-      '--console=plain',
-      '--quiet',
-      '--no-configuration-cache',
-      '-Pnitpicker.kotlin=true',
-      '-I',
-      INIT_SCRIPT,
-      '-I',
-      script,
-      'printKotlinCompiler',
-    ],
-    { cwd: project, encoding: 'utf8', timeout: 180_000 },
-  );
-  expect(result.status, result.stderr).toBe(0);
-  const lines = result.stdout.split('\n');
-  const valueOf = (key) => lines.find((line) => line.startsWith(`${key}=`)).slice(key.length + 1);
-  return { javaHome: valueOf('JAVA_HOME'), classpath: valueOf('CLASSPATH') };
-}
+let psi;
 
 function writeSources(name, files) {
   const dir = path.join(workspace, name);
@@ -146,43 +112,8 @@ function functionsOf(project, module) {
   return JSON.parse(readFileSync(report, 'utf8')).functions.map(({ name }) => name);
 }
 
-function compilePsiProgram() {
-  const output = path.join(workspace, 'psi-classes');
-  const sources = readdirSync(psiSources, { recursive: true })
-    .filter((entry) => entry.endsWith('.java'))
-    .map((entry) => path.join(psiSources, entry));
-  const result = spawnSync(
-    path.join(java, 'bin/javac'),
-    ['-proc:none', '-d', output, '-cp', classpath, ...sources],
-    { encoding: 'utf8', timeout: 180_000 },
-  );
-  expect(result.status, result.stderr).toBe(0);
-  return output;
-}
-
 function measure(project, roots = ['src']) {
-  const metricsOutput = path.join(project, 'metrics.json');
-  const factsOutput = path.join(project, 'facts.json');
-  const result = spawnSync(
-    path.join(java, 'bin/java'),
-    [
-      `-Dnitpicker.kotlinCompiler=${pinned}`,
-      '-cp',
-      `${classpath}${path.delimiter}${classes}`,
-      'nitpicker.kotlinpsi.KotlinPsi',
-      metricsOutput,
-      factsOutput,
-      project,
-      ...roots,
-    ],
-    { cwd: project, encoding: 'utf8', timeout: 180_000 },
-  );
-  return {
-    status: result.status,
-    log: result.stdout + result.stderr,
-    metrics: result.status === 0 ? JSON.parse(readFileSync(metricsOutput, 'utf8')) : undefined,
-    facts: result.status === 0 ? JSON.parse(readFileSync(factsOutput, 'utf8')) : undefined,
-  };
+  return runKotlinPsi(psi, project, roots);
 }
 
 describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
@@ -196,8 +127,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       path.join(project, 'build.gradle.kts'),
       `${readFileSync(path.join(project, 'build.gradle.kts'), 'utf8')}${FORCE_OTHER_KOTLIN}`,
     );
-    ({ javaHome: java, classpath } = gradleClasspath(project));
-    classes = compilePsiProgram();
+    psi = prepareKotlinPsi(workspace, project);
   });
 
   afterAll(() => {
@@ -205,7 +135,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   });
 
   it('resolves the pinned compiler although the project forces another Kotlin version', () => {
-    const jars = classpath.split(path.delimiter).map((jar) => path.basename(jar));
+    const jars = psi.classpath.split(path.delimiter).map((jar) => path.basename(jar));
 
     expect(jars.filter((jar) => jar.startsWith('kotlin-compiler-embeddable'))).toEqual([
       `kotlin-compiler-embeddable-${pinned}.jar`,
