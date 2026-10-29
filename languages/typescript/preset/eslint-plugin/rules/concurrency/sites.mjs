@@ -97,26 +97,36 @@ function pushed(context, identifier) {
   return sites;
 }
 
-export function mappings(context, node, depth = 0) {
-  const target = skipped(node);
-  if (target === undefined || depth > MAX_DEPTH) {
-    return [];
-  }
+function mappingStep(context, target) {
   if (target.type === 'ArrayExpression') {
     const spreads = target.elements.filter((element) => element?.type === 'SpreadElement');
-    return spreads.flatMap((spread) => mappings(context, spread.argument, depth + 1));
+    return { sites: [], next: spreads.map((spread) => spread.argument) };
   }
   if (target.type === 'CallExpression') {
-    return mapped(context, target);
+    return { sites: mapped(context, target), next: [] };
   }
   if (target.type !== 'Identifier') {
-    return [];
+    return { sites: [], next: [] };
   }
   const resolved = resolveConstant(context, target);
   const empty = resolved.type === 'ArrayExpression' && resolved.elements.length === 0;
   return resolved === target || empty
-    ? pushed(context, target)
-    : mappings(context, resolved, depth + 1);
+    ? { sites: pushed(context, target), next: [] }
+    : { sites: [], next: [resolved] };
+}
+
+export function mappings(context, node) {
+  const pending = [{ node, depth: 0 }];
+  const sites = [];
+  for (const entry of pending) {
+    const target = skipped(entry.node);
+    if (target !== undefined && entry.depth <= MAX_DEPTH) {
+      const step = mappingStep(context, target);
+      sites.push(...step.sites);
+      pending.push(...step.next.map((next) => ({ node: next, depth: entry.depth + 1 })));
+    }
+  }
+  return sites;
 }
 
 function runsInside(node, root) {

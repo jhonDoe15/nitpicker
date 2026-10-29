@@ -1,5 +1,5 @@
 import { isFixedCollection, createBounds } from './bounds.mjs';
-import { helperOf, ioKind } from './fan-out-io.mjs';
+import { createIo } from './fan-out-io.mjs';
 import { combinatorName, callsOf, mappings, workerOf } from './sites.mjs';
 
 const MAX_HELPER_DEPTH = 3;
@@ -11,31 +11,51 @@ function labelOf(context, call) {
   return text.length <= MAX_TEXT ? `${text}()` : 'a call';
 }
 
-function remoteIn(scope, worker, depth = 0) {
-  const { context, bounds, seen } = scope;
-  if (worker.fn !== undefined && bounds.acquiresIn(worker.fn)) {
-    return undefined;
+function foundAt(scope, entry, hit) {
+  const operation = labelOf(scope.context, hit.call);
+  if (entry.depth === 0) {
+    return { kind: hit.kind, operation };
   }
-  for (const call of callsOf(worker)) {
-    if (bounds.wrapsInFunction(call, worker.root)) {
+  return { kind: hit.kind, operation: labelOf(scope.context, entry.origin), via: operation };
+}
+
+function inspect(scope, entry) {
+  const { fn, root } = entry.worker;
+  const helpers = [];
+  if (fn !== undefined && scope.bounds.acquiresIn(fn)) {
+    return { helpers };
+  }
+  for (const call of callsOf(entry.worker)) {
+    if (scope.bounds.wrapsInFunction(call, root)) {
       continue;
     }
-    const kind = ioKind(call, context);
+    const kind = scope.io.ioKind(call);
     if (kind !== undefined) {
-      return { kind, operation: labelOf(context, call) };
+      return { found: foundAt(scope, entry, { call, kind }), helpers };
     }
-    const helper = depth < MAX_HELPER_DEPTH ? helperOf(call, context) : undefined;
-    if (helper === undefined || seen.has(helper)) {
-      continue;
+    const helper = entry.depth < MAX_HELPER_DEPTH ? scope.io.helperOf(call) : undefined;
+    if (helper !== undefined) {
+      helpers.push({ call, helper });
     }
-    seen.add(helper);
-    const found = remoteIn(scope, { root: helper, fn: helper }, depth + 1);
+  }
+  return { helpers };
+}
+
+function remoteIn(scope, worker) {
+  const seen = new Set();
+  const pending = [{ worker, depth: 0, origin: worker.root }];
+  for (const entry of pending) {
+    const { found, helpers } = inspect(scope, entry);
     if (found !== undefined) {
-      return {
-        kind: found.kind,
-        operation: labelOf(context, call),
-        via: found.via ?? found.operation,
-      };
+      return found;
+    }
+    for (const { call, helper } of helpers.filter((item) => !seen.has(item.helper))) {
+      seen.add(helper);
+      pending.push({
+        worker: { root: helper, fn: helper },
+        depth: entry.depth + 1,
+        origin: entry.depth === 0 ? call : entry.origin,
+      });
     }
   }
   return undefined;
@@ -49,11 +69,11 @@ function viaText(found) {
   return ` (which ${verb} \`${found.via}\`)`;
 }
 
-function reportSites(scope, node, combinator, sites) {
+function reportSites(scope, group) {
   const { context } = scope;
+  const { node, combinator, sites } = group;
   const reported = new Set();
   for (const { collection, worker } of sites) {
-    scope.seen = new Set();
     const found = remoteIn(scope, worker);
     const text = context.sourceCode.getText(collection);
     const key = `${found?.operation}|${text}`;
@@ -81,12 +101,16 @@ function mentionsPMap(context) {
 
 function lazyScope(context) {
   let bounds;
+  let io;
   return {
     context,
-    seen: new Set(),
     get bounds() {
       bounds ??= createBounds(context);
       return bounds;
+    },
+    get io() {
+      io ??= createIo(context);
+      return io;
     },
   };
 }
@@ -107,11 +131,15 @@ export const rule = {
       CallExpression(node) {
         const combinator = combinatorName(node);
         if (combinator !== undefined) {
-          reportSites(scope, node, combinator, mappings(context, node.arguments[0] ?? node));
+          reportSites(scope, {
+            node,
+            combinator,
+            sites: mappings(context, node.arguments[0] ?? node),
+          });
         } else if (mentionsPMap(context) && scope.bounds.isUnboundedPMap(node)) {
           const worker = workerOf(context, node.arguments[1]);
           const sites = worker === undefined ? [] : [{ collection: node.arguments[0], worker }];
-          reportSites(scope, node, 'pMap', sites);
+          reportSites(scope, { node, combinator: 'pMap', sites });
         }
       },
     };

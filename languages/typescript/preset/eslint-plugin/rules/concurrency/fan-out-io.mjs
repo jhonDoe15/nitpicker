@@ -5,15 +5,6 @@ import { clientSpec } from './client-modules.mjs';
 import { createOrigins, skipped } from './io-origin.mjs';
 
 const GLOBAL_OBJECTS = new Set(['globalThis', 'window', 'self', 'global']);
-const origins = new WeakMap();
-
-function originsOf(context) {
-  const program = context.sourceCode.ast;
-  if (!origins.has(program)) {
-    origins.set(program, createOrigins(context, clientSpec));
-  }
-  return origins.get(program);
-}
 
 function isGlobalFetch(context, callee) {
   const target = unwrapped(callee);
@@ -54,7 +45,7 @@ function identifierKind(ref) {
   return named || (ref.imported === 'default' && spec.callable === true) ? spec.kind : undefined;
 }
 
-export function ioKind(call, context) {
+function ioKind(call, { context, originOf }) {
   const callee = skipped(call.callee);
   if (callee.type === 'ArrowFunctionExpression' || callee.type === 'FunctionExpression') {
     return undefined;
@@ -62,7 +53,6 @@ export function ioKind(call, context) {
   if (isGlobalFetch(context, callee)) {
     return 'remote';
   }
-  const { originOf } = originsOf(context);
   if (callee.type === 'Identifier') {
     return identifierKind(originOf(callee));
   }
@@ -85,7 +75,15 @@ function methodOf(context, callee) {
   return found?.value;
 }
 
-export function helperOf(call, context) {
+function helperOf(call, context) {
   const callee = skipped(call.callee);
   return resolveFunction(context, callee) ?? methodOf(context, callee);
+}
+
+export function createIo(context) {
+  const { originOf } = createOrigins(context, clientSpec);
+  return {
+    ioKind: (call) => ioKind(call, { context, originOf }),
+    helperOf: (call) => helperOf(call, context),
+  };
 }

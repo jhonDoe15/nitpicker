@@ -139,6 +139,10 @@ tester.run('unbounded-fan-out', rule, {
       errors: error({ operation: 'this.http.get()', collection: 'ids' }),
     },
     {
+      code: 'import axios from "axios"; class Api { http; constructor() { this.http = axios.create(); } all(ids: string[]) { return Promise.all(ids.map((id) => this.http.get(id))); } }',
+      errors: error({ operation: 'this.http.get()', collection: 'ids' }),
+    },
+    {
       code: 'import type { AxiosInstance } from "axios"; export function all(api: AxiosInstance, ids: string[]) { return Promise.all(ids.map((id) => api.get(id))); }',
       errors: error({ operation: 'api.get()', collection: 'ids' }),
     },

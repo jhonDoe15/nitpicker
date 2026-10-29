@@ -131,7 +131,7 @@
     </properties>
   </rule>
   <rule name="UnboundedFanOut" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This loop or stream starts a remote or message call on a new task for every element of a collection at once, with no bound on how many run together, so a large collection exhausts connections, rate limits or the remote service. Bound it: run the tasks on a fixed pool (Executors.newFixedThreadPool(8) passed to supplyAsync, or its submit), take a Semaphore permit around each call, or work through fixed-size batches (Lists.partition(items, 20)), or send one batch request when the API has one. CompletableFuture's default pool, newCachedThreadPool and newVirtualThreadPerTaskExecutor start a task for every element, and a limit constant that no pool or semaphore uses bounds nothing. An exception fits only when the collection is always small.">
+        message="This loop or stream starts a remote or message call on a new task for every element of a collection at once, with no bound on how many run together, so a large collection exhausts connections, rate limits or the remote service. Bound it: run the tasks on a fixed pool (Executors.newFixedThreadPool(8) passed to supplyAsync, or its submit), take a Semaphore permit around each call, or work through fixed-size batches (Lists.partition(items, 20)), or send one batch request when the API has one. The default pool of CompletableFuture, newCachedThreadPool and newVirtualThreadPerTaskExecutor start a task for every element, and a limit constant that no pool or semaphore uses bounds nothing. An exception fits only when the collection is always small.">
     <priority>2</priority>
     <properties>
       <property name="xpath">

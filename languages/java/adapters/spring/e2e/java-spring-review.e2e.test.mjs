@@ -16,6 +16,18 @@ import {
   stableConsoleEmitters,
 } from '../__tests__/spring-project.mjs';
 
+const FAN_OUT_REST = [
+  ', with no bound on how many run together, so a large collection exhausts connections, rate limits or the',
+  ' remote service. Bound it: run the tasks on a fixed pool (Executors.newFixedThreadPool(8) passed to',
+  ' supplyAsync, or its submit), take a Semaphore permit around each call, or work through fixed-size batches',
+  ' (Lists.partition(items, 20)), or send one batch request when the API has one. The default pool of',
+  ' CompletableFuture, newCachedThreadPool and newVirtualThreadPerTaskExecutor start a task for every',
+  ' element, and a limit constant that no pool or semaphore uses bounds nothing. An exception fits only when',
+  ' the collection is always small.',
+  ' If this is intended, add {"rule":"pmd/UnboundedFanOut","paths":["src/main/java/shop/Prefetch.java"],',
+  '"reason":"..."} to "exceptions" in nitpicker.config.json.',
+].join('');
+
 describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring project', () => {
   const runs = {};
 
@@ -59,12 +71,11 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
   it('names the collection and the task start of an unbounded fan-out', () => {
     const fanOut = runs.gradle.filter(({ rule }) => rule === 'UnboundedFanOut');
 
-    expect(fanOut.map(({ message }) => message.split(' for every element')[0])).toEqual([
-      '`urls` starts `CompletableFuture.supplyAsync`',
-      '`urls` starts `ExecutorService.submit`',
-      '`urls` starts `HttpClient.sendAsync`',
-    ]);
-    expect(fanOut[0].message).toMatch(/Semaphore permit around each call/u);
+    expect(fanOut.map(({ message }) => message)).toEqual(
+      ['CompletableFuture.supplyAsync', 'ExecutorService.submit', 'HttpClient.sendAsync'].map(
+        (starter) => `\`urls\` starts \`${starter}\` for every element at once${FAN_OUT_REST}`,
+      ),
+    );
   });
 
   it('reports the main classes only tests use and spares the Spring service', () => {
