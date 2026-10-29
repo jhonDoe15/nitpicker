@@ -21,6 +21,8 @@ const ASSERT_FUNCTIONS = new Map([
   ['notDeepEqual', true],
   ['notDeepStrictEqual', true],
 ]);
+const TRUTH_FUNCTIONS = new Set(['ok', 'isTrue', 'isFalse', 'isOk', 'isNotOk']);
+const EQUALITY_OPERATORS = new Set(['===', '==', '!==', '!=']);
 const ASSERT_MODULES = new Set([
   'assert',
   'node:assert',
@@ -77,6 +79,24 @@ function firstFloat(candidates, deep) {
     }
     if (deep) {
       pending.push(...nestedValues(unwrap(node)));
+    }
+  }
+  return undefined;
+}
+
+function comparedFloat(expression) {
+  const pending = [expression];
+  for (const node of pending) {
+    const current = unwrap(node);
+    if (current.type === 'LogicalExpression') {
+      pending.push(current.left, current.right);
+    } else if (current.type === 'UnaryExpression' && current.operator === '!') {
+      pending.push(current.argument);
+    } else if (current.type === 'BinaryExpression' && EQUALITY_OPERATORS.has(current.operator)) {
+      const literal = [current.left, current.right].find(isNonIntegral);
+      if (literal !== undefined) {
+        return literal;
+      }
     }
   }
   return undefined;
@@ -157,11 +177,27 @@ function expectFloat(node) {
   return firstFloat(node.arguments.slice(0, 1), deep);
 }
 
+function isAssertCall(callee, bindings) {
+  return callee.type === 'Identifier' && isAssertOwner(callee, bindings);
+}
+
+function truthFloat(node, bindings) {
+  const [first] = node.arguments;
+  if (first === undefined || first.type === 'SpreadElement') {
+    return undefined;
+  }
+  const truthCall =
+    isExpectCall(node) ||
+    isAssertCall(node.callee, bindings) ||
+    TRUTH_FUNCTIONS.has(assertFunctionName(node.callee, bindings));
+  return truthCall ? comparedFloat(first) : undefined;
+}
+
 function assertFloat(node, bindings) {
   const name = assertFunctionName(node.callee, bindings);
   return ASSERT_FUNCTIONS.has(name)
     ? firstFloat(node.arguments.slice(0, 2), ASSERT_FUNCTIONS.get(name))
-    : undefined;
+    : truthFloat(node, bindings);
 }
 
 export const rule = {
