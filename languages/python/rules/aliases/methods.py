@@ -162,10 +162,6 @@ def same_signature(wrapper, target):
     )
 
 
-def visibility(name):
-    return 2 if name.startswith("__") else 1 if name.startswith("_") else 0
-
-
 def alias_findings(context, node):
     inherited, complete = inherited_names(context, node)
     if not complete:
@@ -194,18 +190,16 @@ def alias_findings(context, node):
             or not same_signature(wrapper, targets[0])
         ):
             continue
-        rename = visibility(name) < visibility(target_name)
-        found.append((wrapper, name, {"target": target_name, "rename": rename}))
+        found.append((wrapper, name, target_name))
     return later_of_mutual(found, methods)
 
 
 def later_of_mutual(found, methods):
-    targets = {name: detail["target"] for _, name, detail in found}
+    targets = {name: target for _, name, target in found}
     return [
         entry
         for entry in found
-        if targets.get(entry[2]["target"]) != entry[1]
-        or methods[entry[2]["target"]][0].lineno < entry[0].lineno
+        if targets.get(entry[2]) != entry[1] or methods[entry[2]][0].lineno < entry[0].lineno
     ]
 
 
@@ -229,9 +223,9 @@ def check(context):
             "rule": RULE,
             "path": context.path,
             "subject": f"{'.'.join(names)}.{name}",
-            "detail": detail,
+            "via": f"{name} -> {target}",
             "line": wrapper.lineno,
         }
         for node, names in class_paths(context.tree)
-        for wrapper, name, detail in alias_findings(context, node)
+        for wrapper, name, target in alias_findings(context, node)
     ]

@@ -6,7 +6,17 @@ import { applyRuleHints } from '../../rule-hints.mjs';
 import { createScripts } from '../../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
-const { cleanup, outcomes, findingsOf, reportsOf } = createScripts();
+const scripts = createScripts();
+const { cleanup, reportsOf } = scripts;
+const bare = (text) => text.replace(/ via .*$/u, '');
+const findingsOf = (files) => scripts.findingsOf(files).map(bare);
+const outcomes = (rows) => {
+  const [actual, expected] = scripts.outcomes(rows);
+  return [
+    Object.fromEntries(Object.entries(actual).map(([name, found]) => [name, found.map(bare)])),
+    expected,
+  ];
+};
 afterEach(cleanup);
 
 const SUM = 'def _sum(self, items: list[int]) -> int:\n        return sum(items)\n';
