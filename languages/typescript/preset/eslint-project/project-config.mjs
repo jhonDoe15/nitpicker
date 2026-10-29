@@ -17,7 +17,10 @@ const SCRIPT_SPECIFIER = /\.([cm]?)js$/u;
 function insideFile(root, relative) {
   const base = path.resolve(root);
   const full = path.resolve(base, relative);
-  if (!full.startsWith(base + path.sep) || !existsSync(full) || !statSync(full).isFile()) {
+  if (!full.startsWith(base + path.sep)) {
+    return undefined;
+  }
+  if (!existsSync(full) || !statSync(full).isFile()) {
     return undefined;
   }
   const realBase = realpathSync(base);
