@@ -37,8 +37,11 @@ function blockMessage({ name }, awaited) {
   return `${name} stops waiting for ${awaited.name}, which ${started} started outside the timeout block, so the coroutine keeps running after the timeout: ${awaited.scope} is not cancelled by it. Start the work inside the block (${name}(millis) { work() } or coroutineScope { async { work() }.await() }), or cancel ${awaited.name} when the timeout passes (catch (e: TimeoutCancellationException) { ${awaited.name}.cancel(); throw e }).`;
 }
 
+function stops(calls) {
+  return calls.some((name) => STOPPING_CALLS.has(name));
+}
+
 function getFinding(entry) {
-  const stops = (calls) => calls.some((name) => STOPPING_CALLS.has(name));
   const abandoned =
     !stops(entry.finallyCalls ?? []) &&
     entry.handlers.some(({ calls, throws }) => !throws && !stops(calls));

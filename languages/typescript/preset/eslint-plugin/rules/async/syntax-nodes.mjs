@@ -23,7 +23,8 @@ function isGlobalName(context, node, name) {
   );
 }
 
-export function globalMemberCall(context, node, owner, method) {
+export function globalMemberCall(context, node, qualified) {
+  const [owner, method] = qualified.split('.');
   const callee = node?.type === 'CallExpression' ? unwrapped(node.callee) : undefined;
   return (
     callee?.type === 'MemberExpression' &&
@@ -39,7 +40,7 @@ export function isGlobalTimerCall(context, node) {
   const callee = unwrapped(node.callee);
   return (
     isGlobalName(context, callee, 'setTimeout') ||
-    globalMemberCall(context, node, 'globalThis', 'setTimeout')
+    globalMemberCall(context, node, 'globalThis.setTimeout')
   );
 }
 

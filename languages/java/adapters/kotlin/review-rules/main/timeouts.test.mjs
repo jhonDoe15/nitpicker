@@ -34,6 +34,9 @@ const started = (overrides = {}) => ({
   ...overrides,
 });
 
+const ROUTE =
+  ' If this is intended, add {"rule":"pmd/timeout-abandons-operation","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
+
 const findingsFor = (timeouts, overrides = {}) =>
   run(timeoutFindings, [file({ timeouts, ...overrides })]);
 
@@ -43,9 +46,11 @@ describe('timeouts that abandon work in Kotlin', () => {
 
     expect(summary(findings)).toEqual([`${TIMEOUT_RULE} get:future 4`]);
     expect(findings[0].tool).toBe('pmd');
-    expect(findings[0].message).toContain('future.get(timeout, unit) stops waiting');
-    expect(findings[0].message).toContain(
-      'If this is intended, add {"rule":"pmd/timeout-abandons-operation"',
+    expect(findings[0].message).toBe(
+      'future.get(timeout, unit) stops waiting for the future, not for its task: the TimeoutException handler ' +
+        'neither calls cancel(true) nor rethrows, so the task keeps running and a retry overlaps it. Call ' +
+        'cancel(true) on the future in the handler, rethrow the TimeoutException to the owner, or give the task ' +
+        `its own deadline.${ROUTE}`,
     );
   });
 
@@ -65,7 +70,13 @@ describe('timeouts that abandon work in Kotlin', () => {
     ]);
 
     expect(summary(findings)).toEqual([`${TIMEOUT_RULE} ${kind}:task 6`]);
-    expect(findings[0].message).toContain('cancelling a CompletableFuture never interrupts it');
+    expect(findings[0].message).toBe(
+      `task.${kind}(...) completes the future when the timeout passes, but the task from ` +
+        'CompletableFuture.supplyAsync(...) keeps running, because cancelling a CompletableFuture never ' +
+        'interrupts it. Run the work as a coroutine under withTimeout, which cancels it, or on an ' +
+        'ExecutorService whose Future you cancel(true) when the timeout passes, or give the task a deadline ' +
+        `it checks.${ROUTE}`,
+    );
   });
 
   it.each([
@@ -90,7 +101,12 @@ describe('timeouts that abandon work in Kotlin', () => {
     const findings = findingsFor([block([started()])], { imports: [COROUTINES_IMPORT] });
 
     expect(summary(findings)).toEqual([`${TIMEOUT_RULE} withTimeout:work 8`]);
-    expect(findings[0].message).toContain('scope.async started outside the timeout block');
+    expect(findings[0].message).toBe(
+      'withTimeout stops waiting for work, which scope.async started outside the timeout block, so the ' +
+        'coroutine keeps running after the timeout: scope is not cancelled by it. Start the work inside the ' +
+        'block (withTimeout(millis) { work() } or coroutineScope { async { work() }.await() }), or cancel ' +
+        `work when the timeout passes (catch (e: TimeoutCancellationException) { work.cancel(); throw e }).${ROUTE}`,
+    );
   });
 
   it('accepts the star import and the alias of the timeout function', () => {

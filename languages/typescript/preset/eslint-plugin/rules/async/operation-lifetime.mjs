@@ -29,7 +29,7 @@ function ownsLifetime(context, argument) {
       return SIGNAL_NAME.test(memberName(target) ?? '');
     case 'CallExpression':
       return SIGNAL_FACTORIES.some((name) =>
-        globalMemberCall(context, target, 'AbortSignal', name),
+        globalMemberCall(context, target, `AbortSignal.${name}`),
       );
     default:
       return false;

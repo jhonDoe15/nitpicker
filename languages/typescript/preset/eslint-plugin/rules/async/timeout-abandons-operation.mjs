@@ -18,13 +18,22 @@ const MAX_TEXT = 40;
 const ADVICE =
   'Create an `AbortController`, abort it from the timeout path and pass `{ signal: controller.signal }` to the operation, or pass `AbortSignal.timeout(ms)` straight to an API that accepts `signal` and drop the race.';
 
-function chainRoot(call) {
+function chainInner(call) {
   const callee = unwrapped(call.callee);
-  const inner =
-    callee.type === 'MemberExpression' && CHAIN_METHODS.has(memberName(callee))
-      ? unwrapped(callee.object)
-      : undefined;
-  return inner?.type === 'CallExpression' ? chainRoot(inner) : call;
+  return callee.type === 'MemberExpression' && CHAIN_METHODS.has(memberName(callee))
+    ? unwrapped(callee.object)
+    : undefined;
+}
+
+function chainRoot(call) {
+  const chain = [call];
+  for (const current of chain) {
+    const inner = chainInner(current);
+    if (inner?.type === 'CallExpression') {
+      chain.push(inner);
+    }
+  }
+  return chain.at(-1);
 }
 
 function calleeText(context, call) {
@@ -32,23 +41,31 @@ function calleeText(context, call) {
   return text.length > MAX_TEXT ? `${text.slice(0, MAX_TEXT)}...` : text;
 }
 
-function operationsIn(scope, entry, depth = 0) {
+function combinedOperations(context, root) {
+  const list = unwrapped(resolveConstant(context, unwrapped(root.arguments[0])));
+  return (list?.elements ?? []).filter((inner) => inner !== null && inner.type !== 'SpreadElement');
+}
+
+function operationsIn(scope, entry) {
   const { context } = scope;
-  const target = unwrapped(resolveConstant(context, unwrapped(entry)));
-  if (target?.type !== 'CallExpression' || depth > MAX_DEPTH) {
-    return [];
-  }
-  const root = chainRoot(target);
-  const combinator = [...COMBINATORS].find((name) =>
-    globalMemberCall(context, root, 'Promise', name),
-  );
-  if (combinator !== undefined) {
-    const list = unwrapped(resolveConstant(context, unwrapped(root.arguments[0])));
-    return (list?.elements ?? []).flatMap((inner) =>
-      inner === null || inner.type === 'SpreadElement' ? [] : operationsIn(scope, inner, depth + 1),
+  const pending = [{ node: entry, depth: 0 }];
+  const found = [];
+  for (const { node, depth } of pending) {
+    const target = unwrapped(resolveConstant(context, unwrapped(node)));
+    const root =
+      target?.type === 'CallExpression' && depth <= MAX_DEPTH ? chainRoot(target) : undefined;
+    const combined = [...COMBINATORS].some((name) =>
+      globalMemberCall(context, root, `Promise.${name}`),
     );
+    if (combined) {
+      pending.push(
+        ...combinedOperations(context, root).map((inner) => ({ node: inner, depth: depth + 1 })),
+      );
+    } else if (root !== undefined) {
+      found.push(root);
+    }
   }
-  return [root];
+  return found;
 }
 
 function isAbandoned(scope, call) {
@@ -57,8 +74,8 @@ function isAbandoned(scope, call) {
   const named = callee.type === 'Identifier' || callee.type === 'MemberExpression';
   return (
     named &&
-    !globalMemberCall(context, call, 'Promise', 'resolve') &&
-    !globalMemberCall(context, call, 'Promise', 'reject') &&
+    !globalMemberCall(context, call, 'Promise.resolve') &&
+    !globalMemberCall(context, call, 'Promise.reject') &&
     clientCall(scope, call) === undefined &&
     !passesLifetimeOwner(context, call) &&
     !closesOverSignal(context, callee) &&
@@ -68,10 +85,7 @@ function isAbandoned(scope, call) {
 
 function raceTimeout(scope, node) {
   const list = unwrapped(resolveConstant(scope.context, unwrapped(node.arguments[0])));
-  if (
-    list?.type !== 'ArrayExpression' ||
-    !globalMemberCall(scope.context, node, 'Promise', 'race')
-  ) {
+  if (list?.type !== 'ArrayExpression' || !globalMemberCall(scope.context, node, 'Promise.race')) {
     return undefined;
   }
   const entries = list.elements.filter((entry) => entry !== null && entry.type !== 'SpreadElement');
