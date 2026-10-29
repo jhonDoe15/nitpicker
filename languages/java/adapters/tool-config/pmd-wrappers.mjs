@@ -21,7 +21,7 @@ function rulesetExcluding({ name, description, rules, roots }) {
   ].join('\n');
 }
 
-export function writeRulesets({ module, reportDir, configs, spring }) {
+export function writeRulesets({ module, reportDir, configs, spring, reactor = false }) {
   const mainRuleset = path.join(reportDir, 'pmd-main.xml');
   writeFileSync(
     mainRuleset,
@@ -31,6 +31,7 @@ export function writeRulesets({ module, reportDir, configs, spring }) {
       rules: [
         path.join(GRADLE_DIRECTORY, 'pmd-main-ruleset.xml'),
         ...(spring ? [path.join(GRADLE_DIRECTORY, 'spring-ruleset.xml')] : []),
+        ...(reactor ? [path.join(GRADLE_DIRECTORY, 'reactor-ruleset.xml')] : []),
       ],
       roots: module.testSourceRoots,
     }),

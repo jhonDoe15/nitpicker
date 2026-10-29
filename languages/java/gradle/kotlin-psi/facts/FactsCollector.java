@@ -6,6 +6,7 @@ import static nitpicker.kotlinpsi.common.Psi.nameOf;
 import java.util.List;
 import java.util.Map;
 import nitpicker.kotlinpsi.common.Frame;
+import nitpicker.kotlinpsi.coroutines.CoroutineFacts;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
 
@@ -15,6 +16,7 @@ public final class FactsCollector {
   private final Declarations declarations;
   private final Calls calls;
   private final Predicates predicates;
+  private final CoroutineFacts coroutines;
 
   public FactsCollector(KtFile file, String text, String relative, boolean test) {
     this.file = file;
@@ -22,6 +24,7 @@ public final class FactsCollector {
     this.declarations = new Declarations(state);
     this.calls = new Calls(state);
     this.predicates = new Predicates(state);
+    this.coroutines = new CoroutineFacts(file, text);
   }
 
   public void collect() {
@@ -29,7 +32,9 @@ public final class FactsCollector {
   }
 
   public Map<String, Object> result() {
-    return state.result();
+    Map<String, Object> result = state.result();
+    result.put("coroutines", coroutines.collect());
+    return result;
   }
 
   private void walk(PsiElement element, Frame frame) {
