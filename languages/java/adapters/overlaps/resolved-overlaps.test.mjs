@@ -21,20 +21,6 @@ const PARTIAL = new Set([
   'URF_UNREAD_FIELD',
   'UUF_UNUSED_FIELD',
 ]);
-const WITHOUT_PROBE_EVIDENCE = [
-  'line: errorprone/MutablePublicArray over spotbugs/MS_MUTABLE_ARRAY, spotbugs/MS_PKGPROTECT',
-  'line: pmd/ArrayIsStoredDirectly over spotbugs/EI_EXPOSE_REP2',
-  'line: errorprone/EmptyBlockTag over checkstyle/NonEmptyAtclauseDescription',
-  'javadoc: errorprone/MissingSummary over checkstyle/SummaryJavadoc',
-  'line: errorprone/AnnotationPosition over checkstyle/AnnotationLocationMostCases, ' +
-    'checkstyle/AnnotationLocationVariables',
-  'line: errorprone/ClassName over checkstyle/OuterTypeFilename',
-  'line: errorprone/AssignmentExpression over pmd/AssignmentInOperand',
-  'line: errorprone/HardCodedSdCardPath over pmd/DoNotHardCodeSDCard',
-  'line: errorprone/ForEachIterable over pmd/ForLoopCanBeForeach',
-  'line: errorprone/Finally over pmd/DoNotThrowExceptionInFinally, pmd/ReturnFromFinallyBlock',
-  'member: pmd/PreserveStackTrace over errorprone/UnusedException',
-];
 const roots = [];
 
 afterAll(() => {
@@ -111,6 +97,7 @@ describe('overlaps on the probe project', () => {
         ['errorprone/StatementSwitchToExpressionSwitch', 'pmd/NonExhaustiveSwitch'],
       ],
       ['Encodings.java:9', ['errorprone/DefaultCharset', 'pmd/AvoidFileStream']],
+      ['G2Stored.java:7', ['errorprone/NullAway', 'pmd/UseVarargs']],
       [
         'Hiding.java:12',
         ['errorprone/HidingField', 'spotbugs/URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD'],
@@ -133,13 +120,13 @@ describe('overlaps on the probe project', () => {
     ]);
   });
 
-  it('drop a secondary under every pair of the table except those still without probe evidence', () => {
+  it('drop a secondary under every pair of the table, so each pair matches real findings', () => {
     expect(
       OVERLAP_PAIRS.filter((pair) => droppedBy(pair).length === 0).map(
         ({ primary, secondary, scope }) =>
           `${scope}: ${primary.join(', ')} over ${secondary.join(', ')}`,
       ),
-    ).toStrictEqual(WITHOUT_PROBE_EVIDENCE);
+    ).toStrictEqual([]);
   });
 
   it('keep the cases only the secondary side covers', () => {

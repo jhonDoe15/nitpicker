@@ -19,6 +19,16 @@
     "src/main/java/probe/Eqs.java": "package probe;\n\npublic class Eqs {\n  private int a;\n\n  @Override\n  public boolean equals(Object o) {\n    Eqs e = (Eqs) o;\n    return e.a == a;\n  }\n\n  @Override\n  public int hashCode() {\n    return a;\n  }\n}\n",
     "src/main/java/probe/Fields.java": "package probe;\n\npublic class Fields {\n  public static final String[] ARR = {\"a\"};\n  private final int k = 5;\n\n  public int k() {\n    return k;\n  }\n\n  public class Inner {\n    public int one() {\n      return 1;\n    }\n  }\n}\n",
     "src/main/java/probe/Formats.java": "package probe;\n\nimport java.util.regex.Pattern;\n\npublic class Formats {\n  public String all(String s) {\n    return String.format(\"%d\", \"x\") + s.split(\".\").length + Pattern.compile(\"[\").pattern();\n  }\n}\n",
+    "src/main/java/probe/G10Finally.java": "package probe;\n\npublic class G10Finally {\n  public int pick() {\n    try {\n      return 1;\n    } finally {\n      return 2;\n    }\n  }\n\n  public void fail() {\n    try {\n      System.getProperty(\"a\");\n    } finally {\n      throw new IllegalStateException(\"x\");\n    }\n  }\n}\n",
+    "src/main/java/probe/G11Catch.java": "package probe;\n\nimport java.io.IOException;\n\npublic class G11Catch {\n  public void read() {\n    try {\n      load();\n    } catch (IOException e) {\n      throw new IllegalStateException(\"failed\");\n    }\n  }\n\n  private void load() throws IOException {\n    throw new IOException(\"x\");\n  }\n}\n",
+    "src/main/java/probe/G12Worker.java": "package probe;\n\npublic class G12Worker {\n  public static final G12Worker SHARED = new G12Worker();\n  private final String label;\n\n  public G12Worker() {\n    new Thread(G12Worker::work).start();\n    label = \"worker\";\n  }\n\n  public String label() {\n    return label;\n  }\n\n  private static void work() {}\n}\n",
+    "src/main/java/probe/G1Mutable.java": "package probe;\n\npublic class G1Mutable {\n  public static final String[] NAMES = {\"a\", \"b\"};\n  public static final int[] LOCAL = {1, 2};\n\n  public static int local() {\n    return LOCAL.length;\n  }\n}\n",
+    "src/main/java/probe/G2Stored.java": "package probe;\n\npublic class G2Stored {\n  private String[] names;\n  private int[] values;\n\n  public G2Stored(String[] names) {\n    this.names = names;\n  }\n\n  public void setValues(int[] values) {\n    this.values = values;\n  }\n\n  public int count() {\n    return names.length + values.length;\n  }\n}\n",
+    "src/main/java/probe/G3Tags.java": "package probe;\n\npublic class G3Tags {\n  /**\n   * Adds.\n   *\n   * @param a\n   * @return\n   */\n  public int add(int a) {\n    return a;\n  }\n}\n",
+    "src/main/java/probe/G4Summary.java": "package probe;\n\npublic class G4Summary {\n  /**\n   * @return the value\n   */\n  public int value() {\n    return 1;\n  }\n\n  /** */\n  public int other() {\n    return 2;\n  }\n}\n",
+    "src/main/java/probe/G6Named.java": "package probe;\n\nclass Misnamed {\n  int one() {\n    return 1;\n  }\n}\n",
+    "src/main/java/probe/G7Flag.java": "package probe;\n\npublic class G7Flag {\n  public int pick(boolean flag) {\n    boolean b;\n    if (b = flag) {\n      return 1;\n    }\n    return b ? 2 : 3;\n  }\n}\n",
+    "src/main/java/probe/G9Loop.java": "package probe;\n\nimport java.util.Iterator;\nimport java.util.List;\n\npublic class G9Loop {\n  public int sum(List<Integer> items) {\n    int total = 0;\n    for (Iterator<Integer> it = items.iterator(); it.hasNext(); ) {\n      total += it.next();\n    }\n    return total;\n  }\n}\n",
     "src/main/java/probe/HashOnly.java": "package probe;\n\npublic class HashOnly {\n  @Override\n  public int hashCode() {\n    return 1;\n  }\n}\n",
     "src/main/java/probe/Hiding.java": "package probe;\n\npublic class Hiding extends Fields {\n  public String name = \"h\";\n  private String inner;\n\n  public static class Base {\n    public String name = \"b\";\n  }\n\n  public static class Sub extends Base {\n    public String name = \"s\";\n\n    @Override\n    public String toString() {\n      return null;\n    }\n  }\n\n  public String inner() {\n    return inner;\n  }\n}\n",
     "src/main/java/probe/Immut.java": "package probe;\n\nimport java.math.BigDecimal;\nimport java.math.BigInteger;\n\npublic class Immut {\n  public void ops(BigDecimal d, BigInteger i, String s) {\n    d.add(BigDecimal.ONE);\n    i.add(BigInteger.ONE);\n    s.trim();\n  }\n}\n",
@@ -29,6 +39,7 @@
     "src/main/java/probe/NullColl.java": "package probe;\n\nimport java.util.List;\nimport org.jspecify.annotations.Nullable;\n\npublic class NullColl {\n  public List<String> none(int x) {\n    if (x > 0) {\n      return List.of();\n    }\n    return null;\n  }\n\n  public @Nullable List<String> maybe(int x) {\n    if (x > 0) {\n      return List.of();\n    }\n    return null;\n  }\n}\n",
     "src/main/java/probe/Numbers.java": "package probe;\n\nimport java.util.Random;\n\npublic class Numbers {\n  public long all(int x, byte b, int y) {\n    int s = x << 32;\n    int r = (int) Math.random();\n    int m = new Random().nextInt() % 5;\n    boolean big = b == 200;\n    long mul = x * y;\n    int abs = Math.abs(new Random().nextInt());\n    return s + r + m + (big ? 1 : 0) + mul + abs;\n  }\n}\n",
     "src/main/java/probe/Obsolete.java": "package probe;\n\nimport java.util.Hashtable;\nimport java.util.LinkedList;\nimport java.util.Stack;\nimport java.util.Vector;\n\npublic class Obsolete {\n  public int sizes() {\n    Vector<String> v = new Vector<>();\n    Hashtable<String, String> h = new Hashtable<>();\n    Stack<String> s = new Stack<>();\n    LinkedList<String> l = new LinkedList<>();\n    StringBuffer b = new StringBuffer();\n    return v.size() + h.size() + s.size() + l.size() + b.length();\n  }\n}\n",
+    "src/main/java/probe/other/G1Reader.java": "package probe.other;\n\nimport probe.G1Mutable;\n\npublic class G1Reader {\n  public int count() {\n    return G1Mutable.NAMES.length;\n  }\n}\n",
     "src/main/java/probe/P2Eq.java": "package probe;\n\npublic class P2Eq {\n  private int a;\n\n  public boolean equals(P2Eq o) {\n    return o.a == a;\n  }\n}\n",
     "src/main/java/probe/P2Inner.java": "package probe;\n\nimport java.text.SimpleDateFormat;\n\npublic class P2Inner {\n  public static String[] names = {\"a\"};\n  private static SimpleDateFormat format = new SimpleDateFormat(\"yyyy\");\n\n  public int one() {\n    return new Helper().one() + format.toPattern().length() + names.length;\n  }\n\n  private class Helper {\n    int one() {\n      return 1;\n    }\n  }\n}\n",
     "src/main/java/probe/P2Strings.java": "package probe;\n\nimport java.io.ByteArrayOutputStream;\nimport java.io.IOException;\nimport java.io.OutputStreamWriter;\nimport java.io.Writer;\n\npublic class P2Strings {\n  public String all(byte[] b, int[] arr, int x, int y) throws IOException {\n    String u = \"A\";\n    String s = new String(b, \"UTF-8\");\n    Writer w = new OutputStreamWriter(new ByteArrayOutputStream(), \"UTF-8\");\n    w.close();\n    long sum = x + y;\n    float div = x / y;\n    if (x > y);\n    return u + s + arr.toString() + String.format(\"%s %s\", \"x\") + sum + div;\n  }\n\n  public Object make(Class<?> c) throws ReflectiveOperationException {\n    return c.newInstance();\n  }\n\n  public void sleep() {\n    try {\n      Thread.sleep(5);\n    } catch (Exception e) {\n      throw new IllegalStateException(e);\n    }\n  }\n}\n",
@@ -91,6 +102,36 @@
       "rule": "MemberName",
       "path": "src/main/java/probe/C7Names.java",
       "line": 6
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "NonEmptyAtclauseDescription",
+      "path": "src/main/java/probe/G3Tags.java",
+      "line": 7
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "NonEmptyAtclauseDescription",
+      "path": "src/main/java/probe/G3Tags.java",
+      "line": 8
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "SummaryJavadoc",
+      "path": "src/main/java/probe/G4Summary.java",
+      "line": 11
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "SummaryJavadoc",
+      "path": "src/main/java/probe/G4Summary.java",
+      "line": 4
+    },
+    {
+      "tool": "checkstyle",
+      "rule": "OuterTypeFilename",
+      "path": "src/main/java/probe/G6Named.java",
+      "line": 3
     },
     {
       "tool": "checkstyle",
@@ -517,6 +558,102 @@
       "rule": "InvalidPatternSyntax",
       "path": "src/main/java/probe/Formats.java",
       "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "Finally",
+      "path": "src/main/java/probe/G10Finally.java",
+      "line": 16
+    },
+    {
+      "tool": "errorprone",
+      "rule": "Finally",
+      "path": "src/main/java/probe/G10Finally.java",
+      "line": 8
+    },
+    {
+      "tool": "errorprone",
+      "rule": "UnusedException",
+      "path": "src/main/java/probe/G11Catch.java",
+      "line": 9
+    },
+    {
+      "tool": "errorprone",
+      "rule": "PrivateConstructorForUtilityClass",
+      "path": "src/main/java/probe/G1Mutable.java",
+      "line": 3
+    },
+    {
+      "tool": "errorprone",
+      "rule": "MutablePublicArray",
+      "path": "src/main/java/probe/G1Mutable.java",
+      "line": 4
+    },
+    {
+      "tool": "errorprone",
+      "rule": "MutablePublicArray",
+      "path": "src/main/java/probe/G1Mutable.java",
+      "line": 5
+    },
+    {
+      "tool": "errorprone",
+      "rule": "FieldCanBeFinal",
+      "path": "src/main/java/probe/G2Stored.java",
+      "line": 4
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NullAway",
+      "path": "src/main/java/probe/G2Stored.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "EmptyBlockTag",
+      "path": "src/main/java/probe/G3Tags.java",
+      "line": 7
+    },
+    {
+      "tool": "errorprone",
+      "rule": "EmptyBlockTag",
+      "path": "src/main/java/probe/G3Tags.java",
+      "line": 8
+    },
+    {
+      "tool": "errorprone",
+      "rule": "MissingSummary",
+      "path": "src/main/java/probe/G4Summary.java",
+      "line": 12
+    },
+    {
+      "tool": "errorprone",
+      "rule": "MissingSummary",
+      "path": "src/main/java/probe/G4Summary.java",
+      "line": 5
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ClassName",
+      "path": "src/main/java/probe/G6Named.java",
+      "line": 1
+    },
+    {
+      "tool": "errorprone",
+      "rule": "AssignmentExpression",
+      "path": "src/main/java/probe/G7Flag.java",
+      "line": 6
+    },
+    {
+      "tool": "errorprone",
+      "rule": "LogicalAssignment",
+      "path": "src/main/java/probe/G7Flag.java",
+      "line": 6
+    },
+    {
+      "tool": "errorprone",
+      "rule": "ForEachIterable",
+      "path": "src/main/java/probe/G9Loop.java",
+      "line": 9
     },
     {
       "tool": "errorprone",
@@ -1360,6 +1497,66 @@
     },
     {
       "tool": "pmd",
+      "rule": "DoNotThrowExceptionInFinally",
+      "path": "src/main/java/probe/G10Finally.java",
+      "line": 15
+    },
+    {
+      "tool": "pmd",
+      "rule": "ReturnFromFinallyBlock",
+      "path": "src/main/java/probe/G10Finally.java",
+      "line": 8
+    },
+    {
+      "tool": "pmd",
+      "rule": "PreserveStackTrace",
+      "path": "src/main/java/probe/G11Catch.java",
+      "line": 10
+    },
+    {
+      "tool": "pmd",
+      "rule": "ClassLoadEffect",
+      "path": "src/main/java/probe/G12Worker.java",
+      "line": 8
+    },
+    {
+      "tool": "pmd",
+      "rule": "UseVarargs",
+      "path": "src/main/java/probe/G2Stored.java",
+      "line": 11
+    },
+    {
+      "tool": "pmd",
+      "rule": "ArrayIsStoredDirectly",
+      "path": "src/main/java/probe/G2Stored.java",
+      "line": 12
+    },
+    {
+      "tool": "pmd",
+      "rule": "UseVarargs",
+      "path": "src/main/java/probe/G2Stored.java",
+      "line": 7
+    },
+    {
+      "tool": "pmd",
+      "rule": "ArrayIsStoredDirectly",
+      "path": "src/main/java/probe/G2Stored.java",
+      "line": 8
+    },
+    {
+      "tool": "pmd",
+      "rule": "AssignmentInOperand",
+      "path": "src/main/java/probe/G7Flag.java",
+      "line": 6
+    },
+    {
+      "tool": "pmd",
+      "rule": "ForLoopCanBeForeach",
+      "path": "src/main/java/probe/G9Loop.java",
+      "line": 9
+    },
+    {
+      "tool": "pmd",
       "rule": "OverrideBothEqualsAndHashcode",
       "path": "src/main/java/probe/HashOnly.java",
       "line": 5
@@ -2091,6 +2288,41 @@
       "path": "src/main/java/probe/Formats.java",
       "line": 7,
       "symbol": "String.split(String)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SC_START_IN_CTOR",
+      "path": "src/main/java/probe/G12Worker.java",
+      "line": 8,
+      "symbol": "Thread.start()"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "MS_MUTABLE_ARRAY",
+      "path": "src/main/java/probe/G1Mutable.java",
+      "line": 4,
+      "symbol": "probe.G1Mutable.NAMES"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "MS_PKGPROTECT",
+      "path": "src/main/java/probe/G1Mutable.java",
+      "line": 5,
+      "symbol": "probe.G1Mutable.LOCAL"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "EI_EXPOSE_REP2",
+      "path": "src/main/java/probe/G2Stored.java",
+      "line": 12,
+      "symbol": "probe.G2Stored.setValues(int[])#values"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "EI_EXPOSE_REP2",
+      "path": "src/main/java/probe/G2Stored.java",
+      "line": 8,
+      "symbol": "new probe.G2Stored(String[])#names"
     },
     {
       "tool": "spotbugs",
