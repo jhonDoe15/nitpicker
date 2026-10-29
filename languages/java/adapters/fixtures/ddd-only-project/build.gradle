@@ -1,0 +1,18 @@
+plugins {
+    id 'java'
+}
+
+repositories {
+    mavenCentral()
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+}
+
+dependencies {
+    compileOnly 'org.jmolecules:jmolecules-ddd:2.0.1'
+    testCompileOnly 'org.testcontainers:junit-jupiter:1.21.3'
+}
