@@ -38,28 +38,28 @@ export const PAGES = [
     id: 'java-pmd',
     title: 'Java and Kotlin: PMD rules',
     summary:
-      "PMD's errorprone and bestpractices categories and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets, with Gradle and Maven.",
+      "PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets.",
     guide: 'docs/java-preset.md',
   },
   {
     id: 'java-checkstyle',
     title: 'Java and Kotlin: Checkstyle rules',
     summary:
-      "The checks of Checkstyle's Google style that the Java and Kotlin presets run on Java sources, with Gradle and Maven.",
+      "The checks of Checkstyle's Google style that the Java and Kotlin presets run on Java sources: Java with Gradle or Maven, Kotlin with Gradle.",
     guide: 'docs/java-preset.md#slice-3-checkstyle',
   },
   {
     id: 'java-spotbugs',
     title: 'Java and Kotlin: SpotBugs rules',
     summary:
-      'The SpotBugs bug patterns that the Java and Kotlin presets run on compiled classes, with Gradle and Maven.',
+      'The SpotBugs bug patterns that the Java and Kotlin presets run on compiled classes: Java with Gradle or Maven, Kotlin with Gradle.',
     guide: 'docs/java-preset.md',
   },
   {
     id: 'java-errorprone',
     title: 'Java and Kotlin: Error Prone and NullAway checks',
     summary:
-      'The Error Prone checks and NullAway that the Java and Kotlin presets compile Java sources with, with Gradle and Maven.',
+      'The Error Prone checks and NullAway that the Java and Kotlin presets compile Java sources with: Java with Gradle or Maven, Kotlin with Gradle.',
     guide: 'docs/java-preset.md#error-prone-and-nullaway',
   },
   {

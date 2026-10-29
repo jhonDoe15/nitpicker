@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's errorprone and bestpractices categories and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets, with Gradle and Maven. This page lists 209 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 241 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -47,6 +47,28 @@ When accessing private fields / methods from another class, the Java compiler wi
 - **Exception:** If this is intended, add `{"rule":"pmd/AccessorMethodGeneration","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#accessormethodgeneration)
 
+<a id="pmd-addemptystring"></a>
+
+### `pmd/AddEmptyString`
+
+The conversion of literals to strings by concatenating them with empty strings is inefficient.
+
+- **Why it is on:** It is much better to use one of the type-specific `toString()` methods instead or `String.valueOf()`.
+- **Allowed form:** Delete the "" when another operand is already a String (i + "x"); when the value is the only other operand, write String.valueOf(value).
+- **Exception:** If this is intended, add `{"rule":"pmd/AddEmptyString","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#addemptystring)
+
+<a id="pmd-appendcharacterwithchar"></a>
+
+### `pmd/AppendCharacterWithChar`
+
+Avoid concatenating characters as strings in StringBuffer/StringBuilder.append methods.
+
+- **Why it is on:** PMD's errorprone and bestpractices categories run on main and test sources. Each rule names one allowed form of something Java allows several ways, or a defect.
+- **Allowed form:** Append a single character as a char literal: append('x').
+- **Exception:** If this is intended, add `{"rule":"pmd/AppendCharacterWithChar","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#appendcharacterwithchar)
+
 <a id="pmd-arrayisstoreddirectly"></a>
 
 ### `pmd/ArrayIsStoredDirectly`
@@ -91,6 +113,17 @@ Methods such as `getDeclaredConstructors()`, `getDeclaredMethods()`, and `getDec
 - **Exception:** If this is intended, add `{"rule":"pmd/AvoidAccessibilityAlteration","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#avoidaccessibilityalteration)
 
+<a id="pmd-avoidarrayloops"></a>
+
+### `pmd/AvoidArrayLoops`
+
+Instead of manually copying data between two arrays, use the more efficient `Arrays.copyOf` or `System.arraycopy` method instead.
+
+- **Why it is on:** To copy only part of the array, use `Arrays.copyOfRange` or `System.arraycopy`. If you want to copy/move elements inside the same array (e.g. shift the elements), use `System.arraycopy`.
+- **Allowed form:** Copy with System.arraycopy(source, sourceStart, target, targetStart, length) instead of an element-by-element loop.
+- **Exception:** If this is intended, add `{"rule":"pmd/AvoidArrayLoops","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#avoidarrayloops)
+
 <a id="pmd-avoidassertasidentifier"></a>
 
 ### `pmd/AvoidAssertAsIdentifier`
@@ -112,6 +145,17 @@ Using a branching statement as the last part of a loop may be a bug, and/or is c
 - **Allowed form:** Delete the trailing break, continue or return that makes the loop run once, or replace the loop with an if or a stream findFirst.
 - **Exception:** If this is intended, add `{"rule":"pmd/AvoidBranchingStatementAsLastInLoop","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#avoidbranchingstatementaslastinloop)
+
+<a id="pmd-avoidcalendardatecreation"></a>
+
+### `pmd/AvoidCalendarDateCreation`
+
+Problem: `java.util.Calendar` is a heavyweight object and expensive to create.
+
+- **Why it is on:** It should only be used, if calendar calculations are needed. Solution: Use `new Date()`, Java 8+ `java.time.LocalDateTime.now()` or `ZonedDateTime.now()`.
+- **Allowed form:** Read the current time from an injected java.time.Clock: Instant.now(clock).
+- **Exception:** If this is intended, add `{"rule":"pmd/AvoidCalendarDateCreation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#avoidcalendardatecreation)
 
 <a id="pmd-avoidcallingfinalize"></a>
 
@@ -211,6 +255,17 @@ It is somewhat confusing to have a field name matching the declaring type name.
 - **Allowed form:** Rename the field so it differs from the enclosing class name; name it for its role, not its type.
 - **Exception:** If this is intended, add `{"rule":"pmd/AvoidFieldNameMatchingTypeName","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#avoidfieldnamematchingtypename)
+
+<a id="pmd-avoidfilestream"></a>
+
+### `pmd/AvoidFileStream`
+
+The FileInputStream and FileOutputStream classes contains a finalizer method which will cause garbage collection pauses.
+
+- **Why it is on:** See [JDK-8080225](https://bugs.openjdk.org/browse/JDK-8080225) for details. The FileReader and FileWriter constructors instantiate FileInputStream and FileOutputStream, again causing garbage collection issues while finalizer methods are called. \* Use `Files.newInputStream(Paths.get(fileName))` instead of `new FileInputStream(fileName)`. \* Use `Files.newOutputStream(Paths.get(fileName))` instead of `new FileOutputStream(fileName)`. \* Use `Files.newBufferedReader(Paths.get(fileName))` instead of `new FileReader(fileName)`. \* Use `Files.newBufferedWriter(Paths.get(fileName))` instead of `new FileWriter(fileName)`. Please note, that the `java.nio` API does not throw a `FileNotFoundException` anymore, instead it throws a `NoSuchFileException`. If your code dealt explicitly with a `FileNotFoundException`, then this needs to be adjusted. Both exceptions are subclasses of `IOException`, so catching that one covers both.
+- **Allowed form:** Replace it with its Files form: Files.newInputStream, newOutputStream, newBufferedReader or newBufferedWriter for the matching java.io class.
+- **Exception:** If this is intended, add `{"rule":"pmd/AvoidFileStream","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#avoidfilestream)
 
 <a id="pmd-avoidinstanceofchecksincatchclause"></a>
 
@@ -322,6 +377,39 @@ StringBuffers/StringBuilders can grow considerably, and so may become a source o
 - **Exception:** If this is intended, add `{"rule":"pmd/AvoidStringBufferField","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#avoidstringbufferfield)
 
+<a id="pmd-avoidsynchronizedatmethodlevel"></a>
+
+### `pmd/AvoidSynchronizedAtMethodLevel`
+
+Method-level synchronization will pin virtual threads and can cause performance problems.
+
+- **Why it is on:** Additionally, it can cause problems when new code is added to the method. Block-level ReentrantLock helps to ensure that only the code that needs mutual exclusion will be locked.
+- **Allowed form:** Guard the state with a private final ReentrantLock: lock.lock() right before try, lock.unlock() in finally.
+- **Exception:** If this is intended, add `{"rule":"pmd/AvoidSynchronizedAtMethodLevel","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_multithreading.html#avoidsynchronizedatmethodlevel)
+
+<a id="pmd-avoidsynchronizedstatement"></a>
+
+### `pmd/AvoidSynchronizedStatement`
+
+Synchronization will pin virtual threads and can cause performance problems.
+
+- **Why it is on:** PMD's errorprone and bestpractices categories run on main and test sources. Each rule names one allowed form of something Java allows several ways, or a defect.
+- **Allowed form:** Guard the state with a private final ReentrantLock: lock.lock() right before try, lock.unlock() in finally.
+- **Exception:** If this is intended, add `{"rule":"pmd/AvoidSynchronizedStatement","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_multithreading.html#avoidsynchronizedstatement)
+
+<a id="pmd-avoidthreadgroup"></a>
+
+### `pmd/AvoidThreadGroup`
+
+Avoid using java.lang.ThreadGroup; although it is intended to be used in a threaded environment it contains methods that are not thread-safe.
+
+- **Why it is on:** PMD's errorprone and bestpractices categories run on main and test sources. Each rule names one allowed form of something Java allows several ways, or a defect.
+- **Allowed form:** Run and stop the threads through an ExecutorService instead of a ThreadGroup.
+- **Exception:** If this is intended, add `{"rule":"pmd/AvoidThreadGroup","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_multithreading.html#avoidthreadgroup)
+
 <a id="pmd-avoidusinghardcodedip"></a>
 
 ### `pmd/AvoidUsingHardCodedIP`
@@ -343,6 +431,17 @@ Integer literals should not start with zero since this denotes that the rest of 
 - **Allowed form:** Drop the leading zero for a decimal value, or write hex (0x1F), so the number is not read as octal.
 - **Exception:** If this is intended, add `{"rule":"pmd/AvoidUsingOctalValues","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#avoidusingoctalvalues)
+
+<a id="pmd-bigintegerinstantiation"></a>
+
+### `pmd/BigIntegerInstantiation`
+
+Don't create instances of already existing BigInteger (`BigInteger.ZERO`, `BigInteger.ONE`), for Java 1.5 onwards, BigInteger.TEN and BigDecimal (`BigDecimal.ZERO`, `BigDecimal.ONE`, `BigDecimal.TEN`) and for Java 9 onwards `BigInteger.TWO`.
+
+- **Why it is on:** PMD's errorprone and bestpractices categories run on main and test sources. Each rule names one allowed form of something Java allows several ways, or a defect.
+- **Allowed form:** Use the constant (BigInteger.ZERO, ONE, TWO, TEN or BigDecimal.ZERO, ONE, TEN) instead of creating the value.
+- **Exception:** If this is intended, add `{"rule":"pmd/BigIntegerInstantiation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#bigintegerinstantiation)
 
 <a id="pmd-brokennullcheck"></a>
 
@@ -487,6 +586,28 @@ Reports a confusing argument passed to a varargs method.
 - **Exception:** If this is intended, add `{"rule":"pmd/ConfusingArgumentToVarargsMethod","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#confusingargumenttovarargsmethod)
 
+<a id="pmd-consecutiveappendsshouldreuse"></a>
+
+### `pmd/ConsecutiveAppendsShouldReuse`
+
+Consecutive calls to StringBuffer/StringBuilder .append should be chained, reusing the target object.
+
+- **Why it is on:** This can improve the performance by producing a smaller bytecode, reducing overhead and improving inlining. A complete analysis can be found [here](https://github.com/pmd/pmd/issues/202#issuecomment-274349067)
+- **Allowed form:** Chain the appends on the same builder in one statement: sb.append(a).append(b).
+- **Exception:** If this is intended, add `{"rule":"pmd/ConsecutiveAppendsShouldReuse","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#consecutiveappendsshouldreuse)
+
+<a id="pmd-consecutiveliteralappends"></a>
+
+### `pmd/ConsecutiveLiteralAppends`
+
+Consecutively calling StringBuffer/StringBuilder.append(...) with literals should be avoided.
+
+- **Why it is on:** Since the literals are constants, they can already be combined into a single String literal and this String can be appended in a single method call.
+- **Allowed form:** Join the adjacent literals into one append: append("ab").
+- **Exception:** If this is intended, add `{"rule":"pmd/ConsecutiveLiteralAppends","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#consecutiveliteralappends)
+
 <a id="pmd-constantsininterface"></a>
 
 ### `pmd/ConstantsInInterface`
@@ -597,6 +718,17 @@ Throwing exceptions within a 'finally' block is confusing since they may mask ot
 - **Exception:** If this is intended, add `{"rule":"pmd/DoNotThrowExceptionInFinally","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#donotthrowexceptioninfinally)
 
+<a id="pmd-dontcallthreadrun"></a>
+
+### `pmd/DontCallThreadRun`
+
+Explicitly calling Thread.run() method will execute in the caller's thread of control.
+
+- **Why it is on:** Instead, call Thread.start() for the intended behavior.
+- **Allowed form:** Call start(); run() runs the body on the calling thread.
+- **Exception:** If this is intended, add `{"rule":"pmd/DontCallThreadRun","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_multithreading.html#dontcallthreadrun)
+
 <a id="pmd-dontimportsun"></a>
 
 ### `pmd/DontImportSun`
@@ -629,6 +761,17 @@ Double brace initialisation is a pattern to initialise eg collections concisely.
 - **Allowed form:** Build the collection with List.of, Set.of or Map.of, or create it and call add or put in plain statements.
 - **Exception:** If this is intended, add `{"rule":"pmd/DoubleBraceInitialization","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#doublebraceinitialization)
+
+<a id="pmd-doublecheckedlocking"></a>
+
+### `pmd/DoubleCheckedLocking`
+
+Partially created objects can be returned by the Double Checked Locking pattern when used in Java.
+
+- **Why it is on:** An optimizing JRE may assign a reference to the baz variable before it calls the constructor of the object the reference points to. Note: With Java 5, you can make Double checked locking work, if you declare the variable to be `volatile`. For more details refer to: \<http://www.javaworld.com/javaworld/jw-02-2001/jw-0209-double.html> or \<http://www.cs.umd.edu/~pugh/java/memoryModel/DoubleCheckedLocking.html>
+- **Allowed form:** Initialize the value eagerly in a final field (static final for a static); class initialization already defers it to first use.
+- **Exception:** If this is intended, add `{"rule":"pmd/DoubleCheckedLocking","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_multithreading.html#doublecheckedlocking)
 
 <a id="pmd-emptycatchblock"></a>
 
@@ -773,6 +916,17 @@ Whenever using a log level, one should check if it is actually enabled, or other
 - **Exception:** If this is intended, add `{"rule":"pmd/GuardLogStatement","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#guardlogstatement)
 
+<a id="pmd-hardcodedcryptokey"></a>
+
+### `pmd/HardCodedCryptoKey`
+
+Do not use hard coded values for cryptographic operations.
+
+- **Why it is on:** Please store keys outside of source code.
+- **Allowed form:** Read the key at run time from the deployment's secret store; keep no key bytes in source.
+- **Exception:** If this is intended, add `{"rule":"pmd/HardCodedCryptoKey","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_security.html#hardcodedcryptokey)
+
 <a id="pmd-idempotentoperations"></a>
 
 ### `pmd/IdempotentOperations`
@@ -794,6 +948,39 @@ Switch statements without break or return statements for each case option may in
 - **Allowed form:** Rewrite the switch in arrow form, case A, B -> ..., which cannot fall through; in a colon-form switch end every case with break, return or throw.
 - **Exception:** If this is intended, add `{"rule":"pmd/ImplicitSwitchFallThrough","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#implicitswitchfallthrough)
+
+<a id="pmd-inefficientemptystringcheck"></a>
+
+### `pmd/InefficientEmptyStringCheck`
+
+String.trim().length() == 0 (or String.trim().isEmpty() for the same reason) is an inefficient way to check if a String is really blank, as it creates a new String object just to check its size.
+
+- **Why it is on:** Consider creating a static function that loops through a string, checking Character.isWhitespace() on each character and returning false if a non-whitespace character is found.
+- **Allowed form:** Call s.isBlank() instead of trimming and checking the result for emptiness.
+- **Exception:** If this is intended, add `{"rule":"pmd/InefficientEmptyStringCheck","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#inefficientemptystringcheck)
+
+<a id="pmd-inefficientstringbuffering"></a>
+
+### `pmd/InefficientStringBuffering`
+
+Avoid concatenating non-literals in a StringBuffer constructor or append() since intermediate buffers will need to be be created and destroyed by the JVM.
+
+- **Why it is on:** PMD's errorprone and bestpractices categories run on main and test sources. Each rule names one allowed form of something Java allows several ways, or a defect.
+- **Allowed form:** Give each value its own append: sb.append(a).append(b), not sb.append(a + b).
+- **Exception:** If this is intended, add `{"rule":"pmd/InefficientStringBuffering","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#inefficientstringbuffering)
+
+<a id="pmd-insecurecryptoiv"></a>
+
+### `pmd/InsecureCryptoIv`
+
+Do not use hard coded initialization vector in cryptographic operations.
+
+- **Why it is on:** Please use a randomly generated IV.
+- **Allowed form:** Generate a fresh IV for each encryption with SecureRandom.nextBytes and store it with the ciphertext.
+- **Exception:** If this is intended, add `{"rule":"pmd/InsecureCryptoIv","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_security.html#insecurecryptoiv)
 
 <a id="pmd-instantiationtogetclass"></a>
 
@@ -1221,6 +1408,17 @@ A non-static initializer block will be called any time a constructor is invoked 
 - **Exception:** If this is intended, add `{"rule":"pmd/NonStaticInitializer","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#nonstaticinitializer)
 
+<a id="pmd-nonthreadsafesingleton"></a>
+
+### `pmd/NonThreadSafeSingleton`
+
+Non-thread safe singletons can result in bad state changes.
+
+- **Why it is on:** Eliminate static singletons if possible by instantiating the object directly. Static singletons are usually not needed as only a single instance exists anyway. Other possible fixes are to synchronize the entire method or to use an [initialize-on-demand holder class](https://en.wikipedia.org/wiki/Initialization-on-demand_holder_idiom). Refrain from using the double-checked locking pattern. The Java Memory Model doesn't guarantee it to work unless the variable is declared as `volatile`, adding an uneeded performance penalty. [Reference](http://www.cs.umd.edu/~pugh/java/memoryModel/DoubleCheckedLocking.html) See Effective Java, item 48.
+- **Allowed form:** Initialize the instance eagerly: private static final T INSTANCE = new T(); class initialization already defers it to first use.
+- **Exception:** If this is intended, add `{"rule":"pmd/NonThreadSafeSingleton","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_multithreading.html#nonthreadsafesingleton)
+
 <a id="pmd-nullassignment"></a>
 
 ### `pmd/NullAssignment`
@@ -1242,6 +1440,17 @@ Java allows the use of several variables declaration of the same type on one lin
 - **Allowed form:** Declare each variable in its own statement: int width; int height;.
 - **Exception:** If this is intended, add `{"rule":"pmd/OneDeclarationPerLine","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#onedeclarationperline)
+
+<a id="pmd-optimizabletoarraycall"></a>
+
+### `pmd/OptimizableToArrayCall`
+
+Calls to a collection's `toArray(E[])` method should specify a target array of zero size.
+
+- **Why it is on:** This allows the JVM to optimize the memory allocation and copying as much as possible. Previous versions of this rule (pre PMD 6.0.0) suggested the opposite, but current JVM implementations perform always better, when they have full control over the target array. And allocation an array via reflection is nowadays as fast as the direct allocation. See also [Arrays of Wisdom of the Ancients](https://shipilev.net/blog/2016/arrays-wisdom-ancients/) Note: If you don't need an array of the correct type, then the simple `toArray()` method without an array is faster, but returns only an array of type `Object[]`.
+- **Allowed form:** Pass a zero-length array: list.toArray(new String[0]).
+- **Exception:** If this is intended, add `{"rule":"pmd/OptimizableToArrayCall","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#optimizabletoarraycall)
 
 <a id="pmd-overridebothequalsandhashcode"></a>
 
@@ -1297,6 +1506,17 @@ A logger should normally be defined private static final and be associated with 
 - **Allowed form:** Declare it private static final Log LOG = LogFactory.getLog(Foo.class), where Foo is the class that declares it.
 - **Exception:** If this is intended, add `{"rule":"pmd/ProperLogger","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#properlogger)
+
+<a id="pmd-redundantfieldinitializer"></a>
+
+### `pmd/RedundantFieldInitializer`
+
+Java will initialize fields with known default values so any explicit initialization of those same defaults is redundant and results in a larger class file (approximately three additional bytecode instructions per field).
+
+- **Why it is on:** PMD's errorprone and bestpractices categories run on main and test sources. Each rule names one allowed form of something Java allows several ways, or a defect.
+- **Allowed form:** Delete the initializer; Java already sets the field to 0, false or null.
+- **Exception:** If this is intended, add `{"rule":"pmd/RedundantFieldInitializer","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#redundantfieldinitializer)
 
 <a id="pmd-replaceenumerationwithiterator"></a>
 
@@ -2015,6 +2235,28 @@ Individual character values provided as initialization arguments will be convert
 - **Exception:** If this is intended, add `{"rule":"pmd/StringBufferInstantiationWithChar","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#stringbufferinstantiationwithchar)
 
+<a id="pmd-stringinstantiation"></a>
+
+### `pmd/StringInstantiation`
+
+Avoid instantiating String objects; this is usually unnecessary since they are immutable and can be safely shared.
+
+- **Why it is on:** PMD's errorprone and bestpractices categories run on main and test sources. Each rule names one allowed form of something Java allows several ways, or a defect.
+- **Allowed form:** Use the String itself instead of new String(s); for a StringBuilder or StringBuffer, call sb.toString().
+- **Exception:** If this is intended, add `{"rule":"pmd/StringInstantiation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#stringinstantiation)
+
+<a id="pmd-stringtostring"></a>
+
+### `pmd/StringToString`
+
+Avoid calling toString() on objects already known to be string instances; this is unnecessary.
+
+- **Why it is on:** PMD's errorprone and bestpractices categories run on main and test sources. Each rule names one allowed form of something Java allows several ways, or a defect.
+- **Allowed form:** Delete the toString() call; the value is already a String.
+- **Exception:** If this is intended, add `{"rule":"pmd/StringToString","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#stringtostring)
+
 <a id="pmd-suspiciousequalsmethodname"></a>
 
 ### `pmd/SuspiciousEqualsMethodName`
@@ -2080,6 +2322,17 @@ Test classes typically end with the suffix "Test", "Tests" or "TestCase".
 - **Allowed form:** Add @Test methods to the class, or rename it if it is a helper (for example TestInputGenerator becomes InputGenerator).
 - **Exception:** If this is intended, add `{"rule":"pmd/TestClassWithoutTestCases","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#testclasswithouttestcases)
+
+<a id="pmd-toofewbranchesforaswitchstatement"></a>
+
+### `pmd/TooFewBranchesForASwitchStatement`
+
+Switch statements are intended to be used to support complex branching behaviour.
+
+- **Why it is on:** Using a switch for only a few cases is ill-advised, since switches are not as easy to understand as if-else statements. In these cases use the if-else statement to increase code readability. Note: This rule was named TooFewBranchesForASwitchStatement before PMD 7.7.0.
+- **Allowed form:** Write the decision as an if/else instead of a switch with fewer than three branches.
+- **Exception:** If this is intended, add `{"rule":"pmd/TooFewBranchesForASwitchStatement","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#toofewbranchesforswitch)
 
 <a id="pmd-unconditionalifstatement"></a>
 
@@ -2180,6 +2433,17 @@ Reports explicit array creation when a varargs is expected.
 - **Exception:** If this is intended, add `{"rule":"pmd/UnnecessaryVarargsArrayCreation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#unnecessaryvarargsarraycreation)
 
+<a id="pmd-unsynchronizedstaticformatter"></a>
+
+### `pmd/UnsynchronizedStaticFormatter`
+
+Instances of `java.text.Format` are generally not synchronized.
+
+- **Why it is on:** Sun recommends using separate format instances for each thread. If multiple threads must access a static formatter, the formatter must be synchronized on block level.
+- **Allowed form:** Format dates with a static final DateTimeFormatter; create any other Format (DecimalFormat, MessageFormat) as a local where it is used.
+- **Exception:** If this is intended, add `{"rule":"pmd/UnsynchronizedStaticFormatter","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_multithreading.html#unsynchronizedstaticformatter)
+
 <a id="pmd-unusedassignment"></a>
 
 ### `pmd/UnusedAssignment`
@@ -2246,6 +2510,28 @@ Unused Private Method detects when a private method is declared but is unused.
 - **Exception:** If this is intended, add `{"rule":"pmd/UnusedPrivateMethod","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#unusedprivatemethod)
 
+<a id="pmd-usearraylistinsteadofvector"></a>
+
+### `pmd/UseArrayListInsteadOfVector`
+
+ArrayList is a much better Collection implementation than Vector if thread-safe operation is not required.
+
+- **Why it is on:** PMD's errorprone and bestpractices categories run on main and test sources. Each rule names one allowed form of something Java allows several ways, or a defect.
+- **Allowed form:** Use new ArrayList\<>() instead of new Vector\<>().
+- **Exception:** If this is intended, add `{"rule":"pmd/UseArrayListInsteadOfVector","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#usearraylistinsteadofvector)
+
+<a id="pmd-usearraysaslist"></a>
+
+### `pmd/UseArraysAsList`
+
+The `java.util.Arrays` class has a `asList()` method that should be used when you want to create a new List from an array of objects.
+
+- **Why it is on:** It is faster than executing a loop to copy all the elements of the array one by one. Note that the result of `Arrays.asList()` is backed by the specified array, changes in the returned list will result in the array to be modified. For that reason, it is not possible to add new elements to the returned list of `Arrays.asList()` (UnsupportedOperationException). You must use `new ArrayList<>(Arrays.asList(...))` if that is inconvenient for you (e.g. because of concurrent access).
+- **Allowed form:** Replace the loop with Collections.addAll(target, array).
+- **Exception:** If this is intended, add `{"rule":"pmd/UseArraysAsList","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#usearraysaslist)
+
 <a id="pmd-usecollectionisempty"></a>
 
 ### `pmd/UseCollectionIsEmpty`
@@ -2290,6 +2576,28 @@ Using '==' or '!=' to compare strings is only reliable if the interned string (`
 - **Exception:** If this is intended, add `{"rule":"pmd/UseEqualsToCompareStrings","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#useequalstocomparestrings)
 
+<a id="pmd-useindexofchar"></a>
+
+### `pmd/UseIndexOfChar`
+
+Use String.indexOf(char) when checking for the index of a single character; it executes faster.
+
+- **Why it is on:** PMD's errorprone and bestpractices categories run on main and test sources. Each rule names one allowed form of something Java allows several ways, or a defect.
+- **Allowed form:** Pass a single character as a char literal: indexOf('x').
+- **Exception:** If this is intended, add `{"rule":"pmd/UseIndexOfChar","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#useindexofchar)
+
+<a id="pmd-useiostreamswithapachecommonsfileitem"></a>
+
+### `pmd/UseIOStreamsWithApacheCommonsFileItem`
+
+Problem: Use of [FileItem.get()](https://javadoc.io/static/commons-fileupload/commons-fileupload/1.5/org/apache/commons/fileupload/FileItem.html#get--) and [FileItem.getString()](https://javadoc.io/static/commons-fileupload/commons-fileupload/1.5/org/apache/commons/fileupload/FileItem.html#getString--) could exhaust memory since they load the entire file into memory.
+
+- **Why it is on:** Solution: Use [FileItem.getInputStream()](https://javadoc.io/static/commons-fileupload/commons-fileupload/1.5/org/apache/commons/fileupload/FileItem.html#getInputStream--) and buffering.
+- **Allowed form:** Read the upload through item.getInputStream() instead of get() or getString().
+- **Exception:** If this is intended, add `{"rule":"pmd/UseIOStreamsWithApacheCommonsFileItem","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#useiostreamswithapachecommonsfileitem)
+
 <a id="pmd-uselessoperationonimmutable"></a>
 
 ### `pmd/UselessOperationOnImmutable`
@@ -2301,6 +2609,17 @@ An operation on an immutable object will not change the object itself since the 
 - **Exception:** If this is intended, add `{"rule":"pmd/UselessOperationOnImmutable","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#uselessoperationonimmutable)
 
+<a id="pmd-uselessstringvalueof"></a>
+
+### `pmd/UselessStringValueOf`
+
+No need to call String.valueOf to append to a string; just use the valueOf() argument directly.
+
+- **Why it is on:** PMD's errorprone and bestpractices categories run on main and test sources. Each rule names one allowed form of something Java allows several ways, or a defect.
+- **Allowed form:** Delete the String.valueOf call and pass the value itself to + or append.
+- **Exception:** If this is intended, add `{"rule":"pmd/UselessStringValueOf","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#uselessstringvalueof)
+
 <a id="pmd-uselocalewithcaseconversions"></a>
 
 ### `pmd/UseLocaleWithCaseConversions`
@@ -2311,6 +2630,17 @@ When doing `String::toLowerCase()/toUpperCase()` conversions, use an explicit lo
 - **Allowed form:** Pass a locale: s.toUpperCase(Locale.ROOT) or s.toLowerCase(Locale.ROOT).
 - **Exception:** If this is intended, add `{"rule":"pmd/UseLocaleWithCaseConversions","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#uselocalewithcaseconversions)
+
+<a id="pmd-usenotifyallinsteadofnotify"></a>
+
+### `pmd/UseNotifyAllInsteadOfNotify`
+
+Thread.notify() awakens a thread monitoring the object.
+
+- **Why it is on:** If more than one thread is monitoring, then only one is chosen. The thread chosen is arbitrary; thus its usually safer to call notifyAll() instead.
+- **Allowed form:** Replace wait/notify with a Condition from a private final ReentrantLock: await() in a loop, signalAll().
+- **Exception:** If this is intended, add `{"rule":"pmd/UseNotifyAllInsteadOfNotify","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_multithreading.html#usenotifyallinsteadofnotify)
 
 <a id="pmd-useproperclassloader"></a>
 
@@ -2333,6 +2663,28 @@ Starting with Java 7, StandardCharsets provides constants for common Charset obj
 - **Allowed form:** Use StandardCharsets.UTF_8 instead of Charset.forName("UTF-8").
 - **Exception:** If this is intended, add `{"rule":"pmd/UseStandardCharsets","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#usestandardcharsets)
+
+<a id="pmd-usestringbufferforstringappends"></a>
+
+### `pmd/UseStringBufferForStringAppends`
+
+The use of the '+=' operator for appending strings causes the JVM to create and use an internal StringBuffer.
+
+- **Why it is on:** If a non-trivial number of these concatenations are being used then the explicit use of a StringBuilder or threadsafe StringBuffer is recommended to avoid this.
+- **Allowed form:** Build the text in a local StringBuilder in the loop and call toString() once after it.
+- **Exception:** If this is intended, add `{"rule":"pmd/UseStringBufferForStringAppends","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#usestringbufferforstringappends)
+
+<a id="pmd-usestringbufferlength"></a>
+
+### `pmd/UseStringBufferLength`
+
+Use StringBuffer.length() to determine StringBuffer length rather than using StringBuffer.toString().equals("") or StringBuffer.toString().length() == ...
+
+- **Why it is on:** PMD's errorprone and bestpractices categories run on main and test sources. Each rule names one allowed form of something Java allows several ways, or a defect.
+- **Allowed form:** Call sb.length() instead of converting the builder to a String first.
+- **Exception:** If this is intended, add `{"rule":"pmd/UseStringBufferLength","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#usestringbufferlength)
 
 <a id="pmd-usetrywithresources"></a>
 

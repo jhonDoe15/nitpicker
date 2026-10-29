@@ -10,6 +10,7 @@ import {
 import {
   installedRuffRules,
   isOlderVersion,
+  withSelectedNewerRules,
 } from '../languages/python/reference/ruff-selection.mjs';
 import { readRuffSnapshot, RUFF_RULES_FILE } from '../languages/python/reference/ruff-entries.mjs';
 import {
@@ -30,7 +31,8 @@ async function refreshRuff(ruff, stderr) {
   if (snapshot === undefined) {
     throw new Error(`ruff could not be run as ${ruff}: pass its path as --refresh-ruff=<path>`);
   }
-  const committed = readRuffSnapshot().version;
+  const previous = readRuffSnapshot();
+  const committed = previous.version;
   if (committed !== undefined && isOlderVersion(snapshot.version, committed)) {
     stderr.write(
       `Warning: ruff ${snapshot.version} is older than ruff ${committed}, which the committed snapshot comes from; the rules it lacks drop out of the reference.\n`,
@@ -39,7 +41,11 @@ async function refreshRuff(ruff, stderr) {
   const file = path.relative(repositoryRoot, fileURLToPath(RUFF_RULES_FILE));
   writeFileSync(
     RUFF_RULES_FILE,
-    await formattedText(repositoryRoot, file, JSON.stringify(snapshot)),
+    await formattedText(
+      repositoryRoot,
+      file,
+      JSON.stringify(withSelectedNewerRules(snapshot, previous)),
+    ),
   );
 }
 
