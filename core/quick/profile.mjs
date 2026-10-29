@@ -62,18 +62,15 @@ function skippedChecks(analyzers) {
 
 function withDependencies(analyzers, names) {
   const byName = new Map(analyzers.map((analyzer) => [analyzer.name, analyzer]));
-  const selected = new Set();
-  function add(name) {
-    if (selected.has(name) || !byName.has(name)) {
-      return;
-    }
-    selected.add(name);
+  const pending = names.filter((name) => byName.has(name));
+  const selected = new Set(pending);
+  for (const name of pending) {
     for (const dependency of byName.get(name).dependencies ?? []) {
-      add(dependency);
+      if (byName.has(dependency) && !selected.has(dependency)) {
+        selected.add(dependency);
+        pending.push(dependency);
+      }
     }
-  }
-  for (const name of names) {
-    add(name);
   }
   return analyzers.filter(({ name }) => selected.has(name));
 }

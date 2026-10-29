@@ -169,7 +169,7 @@ function withBasePolicyFile({ basePolicy, headPolicy, headPolicyFile }, operatio
 }
 
 function runAndCombine(context) {
-  const { settings, comparison, layout, roots, startedAt } = context;
+  const { settings, comparison, layout, startedAt } = context;
   const baseRun = runBaseSide(context);
   const headRun = withMovesFile(layout.moves.files, (baselineMovesFile) =>
     runQuickHead(context, (headAnalyzers) =>
