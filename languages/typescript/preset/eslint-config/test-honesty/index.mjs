@@ -71,6 +71,7 @@ export function testHonestyConfigFor(
         'nitpicker/no-real-time-random-or-network': 'error',
         'nitpicker/no-switched-off-tests': 'error',
         'nitpicker/no-unowned-async-assertion': 'error',
+        'nitpicker/no-weak-assertion': 'error',
         'vitest/no-restricted-matchers': ['error', restrictedMatchers],
         'vitest/prefer-called-with': 'error',
         'vitest/require-to-throw-message': 'error',

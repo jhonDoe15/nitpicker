@@ -1,4 +1,4 @@
-const EXCEPTION_ROUTE = 'An exception fits only when the value cannot be pinned.';
+import { EXCEPTION_ROUTE } from '../../eslint-plugin/test-assertions/weak-assertion/found-text.mjs';
 
 const DEFINED = `\`toBeDefined\` passes for any value but undefined. Assert the value itself with \`toBe\` or \`toEqual\`. ${EXCEPTION_ROUTE}`;
 const NOT_UNDEFINED = `\`not.toBeUndefined\` passes for any value but undefined. Assert the value itself with \`toBe\` or \`toEqual\`. ${EXCEPTION_ROUTE}`;

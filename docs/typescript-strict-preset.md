@@ -800,6 +800,29 @@ hop, and type-only imports do not count.
   rejects `toThrow()` without a message or class, and `no-restricted-syntax` rejects a literal
   subject (`expect(true)`). `nitpicker/no-partial-output-assertion` also rejects `toMatch` with a
   string or a pattern that is not anchored `^...$`; an anchored pattern pins the whole value.
+- `nitpicker/no-weak-assertion` (not strict) rejects the other spellings of a weak check, in test
+  files of the TypeScript and JavaScript presets alike:
+  - presence: `.not.toBe`, `.not.toEqual` or `.not.toStrictEqual` given `null` or `undefined` (also
+    after `.resolves`/`.rejects`), and node:assert `assert.notEqual(x, null)`,
+    `assert.notStrictEqual(x, undefined)`, `assert(x != null)` and `assert.ok(x !== undefined)`;
+  - non-empty only: `expect(x.length)` or `expect(x.size)` with `toBeGreaterThan(0)`,
+    `toBeGreaterThanOrEqual(1)` or `.not.toBe(0)`/`.not.toEqual(0)`/`.not.toStrictEqual(0)`,
+    `.not.toHaveLength(0)`, `.not.toEqual([])`, `.not.toEqual('')`, `expect(x.length > 0).toBe(true)`,
+    and `assert.ok(x.length > 0)`, `assert(x.size >= 1)`, `assert.ok(x.length)`,
+    `assert.notEqual(x.length, 0)`; `expect(spy.mock.calls.length).toBeGreaterThan(0)` is one of them;
+  - wildcard-only calls: `toHaveBeenCalledWith`, `toHaveBeenLastCalledWith`,
+    `toHaveBeenNthCalledWith` (after the index), `toHaveBeenCalledExactlyOnceWith` and their
+    aliases, when every argument is `expect.anything()` or `expect.any(Type)`.
+    Assert the exact value, contents or length (`expect(rows).toEqual([...])`,
+    `expect(rows).toHaveLength(3)`, `assert.deepStrictEqual(...)`) and the call's arguments
+    (`expect(spy).toHaveBeenCalledWith(orderId)`). `assert` is matched by name, with no import
+    tracking. `assert(x != null)` and `assert.ok(x !== undefined)` narrow the type in TypeScript, so
+    they are allowed when the same expression (`x`, `order.id`) appears later in the same
+    function; `assert.notEqual(x, null)` and `assert.notStrictEqual(x, undefined)` do not narrow and
+    are always reported. A negated call check (`.not.toHaveBeenCalledWith`) and a call that pins at least one
+    argument are allowed. The matchers `toBeDefined`, `toBeTruthy`, `toBeFalsy`, `not.toBeNull` and
+    `not.toBeUndefined` stay with `vitest/no-restricted-matchers`, and `assert.ok(x)` on a value
+    that is not a `.length` or `.size` is not reported.
 - `nitpicker/no-shared-test-state`: no `let` with a value at module level or directly in a `describe`
   callback. Keep the state in the test, or declare it without a value and set it in `beforeEach`.
 - `nitpicker/no-copy-pasted-tests`: three `it`/`test` calls in one block whose callbacks are the same

@@ -151,6 +151,13 @@ export const SMELL_HINTS = [
   },
   {
     tool: RULES_TOOL,
+    rules: ['weak-assertion'],
+    describe: (subject) => `\`${subject}\` passes for almost any value`,
+    allowed:
+      'Assert the exact value, contents or length, or the call arguments: `assert rows == expected`, `m.assert_called_once_with(order_id)`.',
+  },
+  {
+    tool: RULES_TOOL,
     rules: ['test-without-assertion'],
     describe: (subject) => `Test \`${subject}\` has no assertion`,
     allowed:

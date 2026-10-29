@@ -55,6 +55,27 @@ describe('test honesty rules', () => {
     expect(messages(code)).toEqual([]);
   });
 
+  it('report presence, non-empty and wildcard-only checks and allow the pinned forms', () => {
+    const weak = [
+      'expect(make()).not.toBe(null);',
+      'expect(rows.length).toBeGreaterThan(0);',
+      'assert.ok(rows.size > 0);',
+      'expect(spy).toHaveBeenCalledWith(expect.anything());',
+    ];
+    const pinned = [
+      'expect(make()).toEqual({ id: 1 });',
+      'expect(rows).toHaveLength(3);',
+      'assert.deepStrictEqual(rows, [1]);',
+      'expect(spy).toHaveBeenCalledWith(1, expect.any(Number));',
+    ];
+    const wrap = (lines) => `it('x', () => { ${lines.join(' ')} });`;
+
+    expect(messages(wrap(weak))).toHaveLength(weak.length);
+    expect(messages(wrap(weak), 'test/orders.test.js')).toHaveLength(weak.length);
+    expect(messages(wrap(pinned))).toEqual([]);
+    expect(messages(wrap(weak), 'src/main/orders.ts')).toEqual([]);
+  });
+
   it('require restoring a global stubbed in a test file, not in a setup file', () => {
     const stub = "vi.stubGlobal('ResizeObserver', class {});";
 

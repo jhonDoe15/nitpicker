@@ -245,7 +245,7 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `kotlin-source/<Rule>` of the [source checks](#source-checks), `kotlinc/deprecation`,
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
 `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/AssertionInControlFlow`,
-`pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
+`pmd/WeakAssertionInTest`, `pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
 `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ClassLoadEffect`, `unused-option`), a class limit, a file
 limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
 `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
@@ -455,6 +455,7 @@ skipped with a note on stderr.
 | `DisabledTest`                           | `review-rules/tests/honesty/`               | a skipped test: `@Disabled`, `@Ignore`, `@Ignored` (also aliased or carried by an annotation), Kotest `xtest`, `xcontext`, `xdescribe`, `xit`, `xshould`, `xgiven`, a `!` name prefix, a `.config(...)` that never runs, a constant false condition or assumption |
 | `FocusedTest`                            | `review-rules/tests/honesty/`               | a Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`                                                                                                                               |
 | `AssertionInControlFlow`                 | `review-rules/tests/honesty/`               | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                             |
+| `WeakAssertionInTest`                    | `review-rules/tests/honesty/weak/`          | an assertion that passes for almost any value: not null, not empty, or a mock verified with only `any()`                                                                                                                                                          |
 | `CoroutineEscapesTest`                   | `review-rules/tests/coroutines/`            | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                           |
 | `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                   |
 | `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                                                                                                                      |
@@ -622,6 +623,23 @@ guessed at.
   `@CsvSource`, Kotest `withData`, one assertion on the whole collection, and `assertNotNull`, `assertIs` or
   `?: fail(...)` to narrow a type instead of an `if` or a safe call. Unlike the Java guard, a loop over the
   results of the code under test is reported too: an empty result checks nothing.
+- `WeakAssertionInTest`: in a JUnit test or a Kotest test body, a check that passes for almost any value.
+  Presence: `assertNotNull(x)` (also `assertNotNull(x, "msg")`, and qualified as `Assertions.assertNotNull(x)`) whose result is unused (an infix matcher chained on the same line, `x.shouldNotBeNull() shouldBe 3`, uses it),
+  `assertTrue(x != null)`, `assertFalse(x == null)`, Kotest `x.shouldNotBeNull()` and `x shouldNotBe null`, which Kotlin smart-casts, so
+  they are not reported when the same expression `x` is used again later in the test; AssertJ
+  `assertThat(x).isNotNull()` as the last call, always. Non-empty: `assertTrue(c.isNotEmpty())`,
+  `isNotBlank()`, `assertFalse(c.isEmpty())`, `assertTrue(c.size > 0)` (`>= 1`, `!= 0`, `0 < c.size`,
+  `length`, `count()`), `assertNotEquals(0, c.size)`, Kotest `shouldNotBeEmpty()`, `shouldNotBeBlank()`,
+  `shouldHaveAtLeastSize(1)`, `c.size shouldBeGreaterThan 0`, `c shouldNotBe emptyList()`, and AssertJ
+  `isNotEmpty()`, `isNotBlank()`, `hasSizeGreaterThan(0)`, `hasSizeGreaterThanOrEqualTo(1)`,
+  `assertThat(c.size).isPositive()` as the last call. Called only: MockK `verify`, `coVerify` (also
+  `verifyAll` and `verifyOrder`) with a verified call whose arguments are all `any()`, `any<T>()`,
+  `ofType<T>()` or `allAny()`, each such call that the block holds directly (not inside another call's arguments), and mockito-kotlin `verify(m).f(any())`,
+  `verify(m, times(n))` and `then(m).should().f(any())` with only `any*` matchers. Not reported:
+  `exactly = 0`, `inverse = true`, `atMost = n`, `wasNot Called`, `never()`, `times(0)`, a call with no
+  argument or with a real argument. Allowed form: assert the exact value, contents or length, and the
+  arguments of the call. The Java preset reports the same forms with the same rule id; JUnit 4 and TestNG
+  assertions are covered there.
 - `CoroutineEscapesTest`: in a test body, a `launch`, `async` or `future`, and a `launchIn`,
   `produceIn`, `stateIn` or `shareIn`, on a scope the test does not own: `CoroutineScope(...)`,
   `MainScope()`, a name declared in the file as a `CoroutineScope` (a field, `lateinit var`, local or

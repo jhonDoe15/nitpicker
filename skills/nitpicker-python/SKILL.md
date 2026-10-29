@@ -74,6 +74,9 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   instead of `time.sleep` and fake network, database and disk access. A test over budget is run
   again alone without coverage and fails only if it is still over. Lift a legitimate one in the
   top-level `exceptions` with `{ "rule": "slow-test", "paths": [...], "reason": "..." }`.
+- Assert the value, not that something is there (`weak-assertion`): no `assert x`, `assert x is not None`
+  or `assert len(x) > 0` as the whole check, and no `m.assert_called()` or `assert_called_with(ANY)`; assert
+  the exact value, contents or length and the call's arguments. A not-null check is fine when the test uses `x` afterwards.
 - Dependencies: every package production code imports is a production dependency of the project
   (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
   dependency nothing uses.
