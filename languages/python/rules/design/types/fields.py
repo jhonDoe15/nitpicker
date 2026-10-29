@@ -4,7 +4,7 @@ from checks.common import dotted_name
 from design.calls.calls import canonical_root
 from design.resolve.evaluate import evaluate
 from design.resolve.symbols import Klass
-from design.support.astutil import all_nodes, own_nodes
+from design.support.astutil import all_nodes, body_nodes, own_nodes
 from design.support.attributes import attribute_sites, is_dunder
 from design.types.classes import classify, field_names
 from index.tables import MUTABLE_CONSTRUCTORS, is_mutable_value
@@ -147,7 +147,7 @@ def own_fields(scope, names):
 def declared_globals(scope):
     return {
         name
-        for node in own_nodes(scope.function.node)
+        for node in body_nodes(scope.function.node)
         if isinstance(node, ast.Global)
         for name in node.names
     }

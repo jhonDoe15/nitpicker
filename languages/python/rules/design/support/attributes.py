@@ -1,7 +1,7 @@
 import ast
 
 from design.resolve.annotations import base_name, project_type
-from design.support.astutil import own_nodes
+from design.support.astutil import body_nodes
 
 
 class AttributeSite:
@@ -51,7 +51,7 @@ def flat_targets(targets):
 
 
 def instance_sites(function, first, sites):
-    for node in own_nodes(function.node):
+    for node in body_nodes(function.node):
         if isinstance(node, ast.Assign):
             pairs = [(t, d, node.value) for t, d in flat_targets(node.targets)]
             kind = "assign"

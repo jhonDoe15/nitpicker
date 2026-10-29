@@ -47,6 +47,8 @@ describe.skipIf(!pythonUsable())('the Python design producer parameter uses', ()
       'repeated',
       [use(['user'], { forwards: [{ target: 'context.py#inner', position: 0 }] })],
     ],
+    ['is read inside a nested function', 'captured', [use(['db'])]],
+    ['is read inside a lambda', 'lambda_capture', [use(['user'])]],
   ])('lists a parameter that %s', (_label, name, expected) => {
     expect(byId.callable(`context.py#${name}`).paramUses).toEqual(expected);
   });
@@ -54,8 +56,7 @@ describe.skipIf(!pythonUsable())('the Python design producer parameter uses', ()
   it.each([
     ['returned', []],
     ['stored', []],
-    ['captured', []],
-    ['lambda_capture', []],
+    ['shadowed', []],
     ['reassigned', ['user']],
     ['unresolved_callee', []],
     ['undeclared_position', []],

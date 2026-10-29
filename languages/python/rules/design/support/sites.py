@@ -1,6 +1,6 @@
 import ast
 
-from design.support.astutil import FUNCTIONS, own_nodes
+from design.support.astutil import CLOSURES, FUNCTIONS, body_nodes, closure_arguments
 
 PATTERN_TYPES = tuple(
     t
@@ -136,7 +136,18 @@ def collect_sites(function, params):
     )
     for argument in skipped:
         add_site(sites, argument.arg, Site("param", None, None))
-    for node in own_nodes(function.node):
+    for node in body_nodes(function.node):
         assignment_sites(node, sites)
         other_sites(node, sites)
+        if isinstance(node, CLOSURES):
+            closure_sites(node, sites)
     return sites
+
+
+def closure_sites(node, sites):
+    for argument in closure_arguments(node):
+        annotation = argument.annotation
+        site = (
+            Site("other") if annotation is None else Site("annotated", None, annotation)
+        )
+        add_site(sites, argument.arg, site)

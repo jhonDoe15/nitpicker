@@ -2,6 +2,7 @@ import ast
 
 SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda, ast.ClassDef)
 FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef)
+CLOSURES = FUNCTIONS + (ast.Lambda,)
 STORE_CONTEXTS = (ast.Store, ast.Del)
 
 
@@ -41,6 +42,23 @@ def own_nodes(root):
                 cached.extend(ast.iter_child_nodes(node))
         root.own_cache = cached
     return cached
+
+
+def body_nodes(root):
+    cached = getattr(root, "body_cache", None)
+    if cached is None:
+        cached = list(ast.iter_child_nodes(root))
+        for node in cached:
+            if not isinstance(node, ast.ClassDef):
+                cached.extend(ast.iter_child_nodes(node))
+        root.body_cache = cached
+    return cached
+
+
+def closure_arguments(node):
+    arguments = node.args
+    extra = [a for a in (arguments.vararg, arguments.kwarg) if a is not None]
+    return arguments.posonlyargs + arguments.args + arguments.kwonlyargs + extra
 
 
 def all_nodes(root):

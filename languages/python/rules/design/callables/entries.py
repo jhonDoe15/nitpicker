@@ -6,7 +6,7 @@ from design.calls.calls import resolve_call
 from design.resolve.evaluate import evaluate
 from design.resolve.lookup import external_bases, linear
 from design.resolve.symbols import Function, Klass, is_main_guard
-from design.support.astutil import own_nodes
+from design.support.astutil import body_nodes, own_nodes
 from design.support.attributes import is_dunder
 from design.support.decorators import is_neutral
 
@@ -101,7 +101,8 @@ def find_callbacks(index):
     for module in index.modules.values():
         callbacks.update(main_guard_targets(index, module))
     for scope, root in scopes_to_scan(index):
-        for node in own_nodes(root):
+        nodes = own_nodes(root) if isinstance(root, ast.Module) else body_nodes(root)
+        for node in nodes:
             if not isinstance(node, ast.Call) or is_builtin_call(scope, node):
                 continue
             if resolve_call(scope, node) is None:
