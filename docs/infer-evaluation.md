@@ -2,8 +2,8 @@
 
 Status: evaluated, decision recorded. **Not integrated.** The prebuilt release links a GPL-3.0-or-later
 library into its Java analyzer, the Java checks it adds are narrow, and its finding identity is too
-coarse to use as it is. The rule ideas worth owning are listed at the end, with the open issue that tracks
-each one.
+coarse to use as it is. The rule ideas worth owning are listed at the end, each with the issue that
+tracks it or the shipped rule that already covers it.
 
 This page answers the question asked by [mindset.md](mindset.md): does the tool add enough over
 the tools already shipped to justify a dependency, and can it be a dependency at all. It is
@@ -16,14 +16,19 @@ written for the Java preset ([java-preset.md](java-preset.md)) and the Kotlin pr
 | ------------- | ----------------------------------------------------------------------------------------------- |
 | Release       | Infer v1.3.0, `infer-linux-x86_64-v1.3.0.tar.xz` from the project's GitHub releases             |
 | Size          | 276 MB archive, 1.2 GB unpacked (940 MB of that is the bundled Clang for C and Objective-C)     |
-| Newest tag    | v1.3.0 was the newest release asset found by probing tag names; no release list was available   |
+| Newest tag    | v1.3.0 was the newest release found at the time of the evaluation                               |
 | JDK           | OpenJDK 21.0.12; Gradle 8.14.3; Maven 3.9.11                                                    |
 | Checkers      | RacerD (`--racerd-only`), Starvation (`--starvation`), Scope Leakage (`--scope-leakage`)        |
 | Output        | `--sarif` plus the default `infer-out/report.json`                                              |
-| Fixtures      | 17 small Java classes, positive and negative per checker, run through `javac`, Gradle and Maven |
+| Fixtures      | 17 small Java classes in a scratch project, run through `javac`, Gradle and Maven (see below)   |
 | Larger sample | Apache Commons Lang 3.17.0 main sources (249 files, 97,613 lines) in a Gradle and a Maven build |
 
-The run command for a build is `infer run --racerd-only --starvation --scope-leakage --scope-leakage-config '<json>' --sarif -- <build command>`.
+The run command for a build is:
+
+```sh
+infer run --racerd-only --starvation --scope-leakage --scope-leakage-config '<json>' --sarif -- <build command>
+```
+
 Scope Leakage has no useful default: it needs a JSON configuration naming the scope annotation, the
 scope classes and the "must not hold" pairs, and it is passed on the command line or in `.inferconfig`.
 
@@ -113,15 +118,15 @@ plausible, and the only ones in 97,613 lines.
 
 ## Cost
 
-Small fixture (18 source files), on a lightly loaded machine:
+Small fixture (18 source files):
 
 | Build  | Plain `clean` + compile | `infer run` of the same build |
 | ------ | ----------------------- | ----------------------------- |
 | Gradle | 17.2 s (31.5 s cold)    | 21.6 s                        |
 | Maven  | 14.2 s                  | 27.1 s                        |
 
-Commons Lang main sources (249 files, 97,613 lines), measured while the host was busy (load average
-37 to 47 on 4 CPUs), so wall-clock time is inflated and only CPU time is comparable:
+Commons Lang main sources (249 files, 97,613 lines). Wall-clock time varied widely between runs on the
+shared test machine, so only CPU time is comparable:
 
 | Build  | Infer CPU time (user + sys), 2 runs | Wall time with Infer, 2 runs | Wall time without Infer, 2 runs |
 | ------ | ----------------------------------- | ---------------------------- | ------------------------------- |
@@ -158,14 +163,18 @@ reviewed checks, SpotBugs 4.9.3 at medium confidence, PMD errorprone and bestpra
 enforceable findings on them were `UnnecessarilyFullyQualified`, `PreferJavaTimeOverload` (on the
 `Thread.sleep(500)`), `AvoidStringBufferField` and `EI_EXPOSE_REP`. None of the 7 Infer reports has
 a counterpart: no data race, no lock-order inversion, no blocking call under a UI annotation and no
-scope violation was reported by Error Prone, SpotBugs or PMD.
+scope violation was reported by Error Prone, SpotBugs or PMD. The run predates the preset's PMD
+`multithreading` category; with it the fixtures that use `synchronized` are also rejected, because the
+preset allows one locking style (a private final `ReentrantLock`), which is a style rule and not a race
+or lock-order report.
 
 What the shipped tools do cover in this area: Error Prone `GuardedBy`, `SynchronizeOnNonFinalField`,
 `NonAtomicVolatileUpdate`, `DoubleCheckedLocking`, `StaticGuardedByInstance`,
 `UnsynchronizedOverridesSynchronized`, `WaitNotInLoop`, `LockNotBeforeTry`, `ThreadLocalUsage`,
-`Immutable`, and the Spring and singleton rules planned in [#324](https://github.com/jhonDoe15/nitpicker/issues/324)
-and [#325](https://github.com/jhonDoe15/nitpicker/issues/325). They are lexical or annotation-driven
-(`GuardedBy` needs the annotation on the field) and do not follow calls between methods.
+`Immutable`, PMD's multithreading category, and the Spring bean-lifetime rules `spring-scope-capture`
+and `spring-request-state` ([Spring architecture rules](java-preset.md#spring-architecture-rules)).
+They are lexical, annotation-driven (`GuardedBy` needs the annotation on the field) or modeled on
+Spring's bean scopes, and do not follow calls between methods.
 
 ## Decision
 
@@ -190,17 +199,21 @@ with an identity built from the file path, qualified procedure and issue type, a
 All are small checks on the Java and Kotlin parsers nitpicker already has, none needs whole-program
 analysis, and all need explicit modeled recognition with banned and allowed fixtures.
 
-| Idea                                                                                        | Tracked by                                                                                                                                                                  |
-| ------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Remote I/O or blocking calls while holding a lock or transaction                            | [#317](https://github.com/jhonDoe15/nitpicker/issues/317)                                                                                                                   |
-| Blocking calls in async or reactive contexts                                                | [#315](https://github.com/jhonDoe15/nitpicker/issues/315), runtime companion in [blockhound-evaluation.md](blockhound-evaluation.md)                                        |
-| Shorter-lived dependencies captured by singletons, request data kept in singletons          | [#324](https://github.com/jhonDoe15/nitpicker/issues/324), [#325](https://github.com/jhonDoe15/nitpicker/issues/325) (the useful part of Scope Leakage, with Spring scopes) |
-| Enabling PMD's multithreading category                                                      | [#220](https://github.com/jhonDoe15/nitpicker/issues/220)                                                                                                                   |
-| Lock-order inversion between two `synchronized` blocks of one class (same-class, same-file) | [#553](https://github.com/jhonDoe15/nitpicker/issues/553)                                                                                                                   |
-| Plain mutable instance field written without a lock in a class that also locks elsewhere    | [#554](https://github.com/jhonDoe15/nitpicker/issues/554) (SpotBugs `IS2_INCONSISTENT_SYNC` is the nearest shipped detector and did not report `HalfLockedCounter`)         |
+| Idea                                                                                        | Tracked by                                                                                                                                                                   |
+| ------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Remote I/O or blocking calls while holding a lock or transaction                            | [#317](https://github.com/jhonDoe15/nitpicker/issues/317)                                                                                                                    |
+| Blocking calls in async or reactive contexts                                                | [#315](https://github.com/jhonDoe15/nitpicker/issues/315), runtime companion in [blockhound-evaluation.md](blockhound-evaluation.md)                                         |
+| Shorter-lived dependencies captured by singletons, request data kept in singletons          | Done: `spring-scope-capture` ([#324](https://github.com/jhonDoe15/nitpicker/issues/324)), `spring-request-state` ([#325](https://github.com/jhonDoe15/nitpicker/issues/325)) |
+| Enabling PMD's multithreading category                                                      | Done: the Java preset runs it ([#220](https://github.com/jhonDoe15/nitpicker/issues/220))                                                                                    |
+| Lock-order inversion between two `synchronized` blocks of one class (same-class, same-file) | [#553](https://github.com/jhonDoe15/nitpicker/issues/553)                                                                                                                    |
+| Plain mutable instance field written without a lock in a class that also locks elsewhere    | [#554](https://github.com/jhonDoe15/nitpicker/issues/554) (SpotBugs `IS2_INCONSISTENT_SYNC` is the nearest shipped detector and did not report `HalfLockedCounter`)          |
 
-The last two are the only cases where Infer found something no shipped tool reported. Both can be
-recognized in one class without call graphs, and each has its own issue.
+None of the 7 fixture reports had a counterpart among the shipped tools (see
+[Overlap with the shipped tools](#overlap-with-the-shipped-tools)). Of those reports, the last two
+rows are the ones that need no annotation and no scope configuration, and both can be recognized in
+one class without call graphs, so each has its own issue. The others depend on a `@ThreadSafe` or
+UI-thread annotation or on a scope configuration that projects rarely carry; their useful parts are
+the rows above.
 
 ## Kotlin
 
@@ -210,6 +223,14 @@ evaluation, so no Kotlin path was run. The license finding is the same for the K
 Gradle build capture described above sees only `javac`, so a Kotlin module would not be analyzed by it.
 
 ## Reproducing
+
+The fixtures were a scratch project and are not committed. To recreate them, write the classes of
+[Fixture results](#fixture-results) in package `demo`, with the project-local `UiThread` and
+`ScopeType` annotations and the `Outer` and `Inner` scope classes they use, in a plain Java project
+whose only dependency is `com.facebook.infer.annotation:infer-annotation` (Gradle `java` plugin, or a
+Maven `jar` project with the default compiler plugin). The larger sample is the released Commons Lang
+3.17.0 source archive with its main sources in the same two builds. Then, with the build of your
+choice after `--`:
 
 ```sh
 tar -xJf infer-linux-x86_64-v1.3.0.tar.xz -C <empty directory>

@@ -12,8 +12,6 @@ import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { runJava } from './maven-command.mjs';
 import { failedCases, failingTestsError, freshReports } from '../builds/test-failures.mjs';
 
-const PROPERTY_REFERENCE = /[@$]\{[^}]*\}/gu;
-
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
 const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
 const TESTNG_JAR = /^testng-\d.*\.jar$/u;
@@ -207,15 +205,27 @@ export function pitClasspath(tools, testRuntime) {
   ];
 }
 
-function jvmArgsOption(jvmArgs) {
-  return jvmArgs.length === 0 ? [] : ['--jvmArgs', jvmArgs.join(',')];
+export function javaArgumentFile(args) {
+  return args
+    .map((argument) => {
+      const escaped = argument
+        .replaceAll('\\', '\\\\')
+        .replaceAll('"', '\\"')
+        .replaceAll('\n', '\\n')
+        .replaceAll('\r', '\\r');
+      return `"${escaped}"\n`;
+    })
+    .join('');
 }
 
-export function pitJvmArgs(argLine = '') {
-  return argLine
-    .replaceAll(PROPERTY_REFERENCE, ' ')
-    .split(/\s+/u)
-    .filter((argument) => argument !== '' && !argument.includes(','));
+function pitArgLine(pitDir, args) {
+  if (args.length === 0) {
+    return [];
+  }
+  const file = path.join(pitDir, 'jvm-arguments');
+  writeFileSync(file, javaArgumentFile(args));
+  const quote = file.includes('"') ? "'" : '"';
+  return ['--argLine', `${quote}@${file}${quote}`];
 }
 
 export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn }) {
@@ -253,7 +263,7 @@ export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn
       'false',
       '--verbose',
       'false',
-      ...jvmArgsOption(pitJvmArgs(module.surefireArgLine)),
+      ...pitArgLine(pitDir, module.testJvmArgs),
     ],
     cwd: module.basedir,
     accept: (result) => result.status === 0,

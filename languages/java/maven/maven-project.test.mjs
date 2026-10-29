@@ -106,6 +106,7 @@ function defaultModule(basedir, coordinates, packaging) {
     surefireReports: path.join(target, 'surefire-reports'),
     failsafeReports: path.join(target, 'failsafe-reports'),
     runsFailsafe: false,
+    testJvmArgs: [],
     published: false,
     jacocoDestFiles: [],
     archunitIncludes: undefined,
@@ -143,6 +144,7 @@ describe('readReactor', () => {
       surefireReports: `${root}/core/out/tests`,
       failsafeReports: `${root}/core/out/it-tests`,
       runsFailsafe: true,
+      testJvmArgs: [],
       published: false,
       jacocoDestFiles: [`${root}/core/out/mine.exec`],
       archunitIncludes: '**/*Rules.class',
@@ -243,20 +245,16 @@ function failsafe(executions, configuration = '') {
 
 const inBuild = (plugins) => `<build><plugins>${plugins}</plugins></build>`;
 
-describe('surefireArgLine', () => {
-  it('reads the argLine of the test execution, else of the plugin', () => {
-    const surefire = (body) => soloModule(inBuild(plugin('maven-surefire-plugin', body)));
-    const pluginLevel = '<configuration><argLine>@{argLine} -Xmx1g</argLine></configuration>';
-    const execution =
-      '<executions><execution><goals><goal>test</goal></goals>' +
-      '<configuration><argLine>--add-opens java.base/java.lang=ALL-UNNAMED</argLine></configuration>' +
-      '</execution></executions>';
+describe('testJvmArgs', () => {
+  it('reads the surefire default-test execution, not another test execution', () => {
+    const execution = (id, value) =>
+      `<execution><id>${id}</id><goals><goal>test</goal></goals>` +
+      `<configuration><argLine>-Dfrom=${value}</argLine></configuration></execution>`;
+    const executions = `<executions>${execution('extra', 'extra')}${execution('default-test', 'default')}</executions>`;
 
-    expect([
-      surefire(pluginLevel).surefireArgLine,
-      surefire(pluginLevel + execution).surefireArgLine,
-      soloModule('').surefireArgLine,
-    ]).toEqual(['@{argLine} -Xmx1g', '--add-opens java.base/java.lang=ALL-UNNAMED', undefined]);
+    expect(soloModule(inBuild(plugin('maven-surefire-plugin', executions))).testJvmArgs).toEqual([
+      '-Dfrom=default',
+    ]);
   });
 });
 

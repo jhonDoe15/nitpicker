@@ -15,7 +15,7 @@ import {
   collectTestResults,
   junitLauncherVersion,
   pitClasspath,
-  pitJvmArgs,
+  javaArgumentFile,
   pitTargets,
   pitTests,
   freshExecFiles,
@@ -105,17 +105,11 @@ describe('junitLauncherVersion', () => {
   });
 });
 
-describe('pitJvmArgs', () => {
-  it('keeps the arguments the tests run with, without property references or commas', () => {
-    expect([
-      pitJvmArgs('@{argLine} -XX:+AllowRedefinitionToAddDeleteMethods  ${extra}'),
-      pitJvmArgs('--add-opens java.base/java.lang=ALL-UNNAMED -Dlist=a,b'),
-      pitJvmArgs(undefined),
-    ]).toEqual([
-      ['-XX:+AllowRedefinitionToAddDeleteMethods'],
-      ['--add-opens', 'java.base/java.lang=ALL-UNNAMED'],
-      [],
-    ]);
+describe('javaArgumentFile', () => {
+  it('quotes each argument on its own line, escaping backslashes, quotes and line breaks', () => {
+    expect(
+      javaArgumentFile(['-Dl=a,b', '-Dg=hello world', '-Dq=say "hi"', '-Dd=C:\\x\\', '-Dn=a\nb']),
+    ).toBe('"-Dl=a,b"\n"-Dg=hello world"\n"-Dq=say \\"hi\\""\n"-Dd=C:\\\\x\\\\"\n"-Dn=a\\nb"\n');
   });
 });
 

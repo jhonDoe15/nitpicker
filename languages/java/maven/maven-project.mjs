@@ -4,6 +4,7 @@ import path from 'node:path';
 import { childAt, childrenAt, childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
 import { compilerSettings } from './errorprone/maven-compiler.mjs';
 import { kotlinSourceRoots } from './configuration/kotlin-roots.mjs';
+import { testJvmArguments } from './configuration/surefire-jvm.mjs';
 
 const SCOPES = new Set(['compile', 'provided', 'runtime', 'test', 'system']);
 const MAIN_COMPILE_SCOPES = new Set(['compile', 'provided', 'system']);
@@ -122,17 +123,23 @@ function resolvedText(build, basedir, name) {
   return value === undefined ? undefined : path.resolve(basedir, value);
 }
 
+function defaultExecution(plugin, goal) {
+  const executions = plugin === undefined ? [] : executionsWithGoal(plugin, goal);
+  return (
+    executions.find((execution) => textAt(execution, 'id') === `default-${goal}`) ?? executions[0]
+  );
+}
+
 function setting(plugin, goal, name) {
-  return plugin === undefined
-    ? undefined
-    : configured(executionsWithGoal(plugin, goal)[0], plugin, name);
+  return configured(defaultExecution(plugin, goal), plugin, name);
 }
 
 function describeModule(project, basedir) {
   const build = childAt(project, 'build');
   const plugins = pluginsOf(project);
   const buildDirectory = resolvedText(build, basedir, 'directory') ?? path.join(basedir, 'target');
-  const reports = setting(plugins.get(SUREFIRE), 'test', 'reportsDirectory');
+  const surefire = plugins.get(SUREFIRE);
+  const reports = setting(surefire, 'test', 'reportsDirectory');
   const failsafeReports = setting(plugins.get(FAILSAFE), 'integration-test', 'reportsDirectory');
   const sourceRoots = [
     resolvedText(build, basedir, 'sourceDirectory') ?? path.join(basedir, 'src/main/java'),
@@ -167,7 +174,7 @@ function describeModule(project, basedir) {
       failsafeReports ?? path.join(buildDirectory, 'failsafe-reports'),
     ),
     runsFailsafe: runsFailsafe(project, plugins.get(FAILSAFE)),
-    surefireArgLine: setting(plugins.get(SUREFIRE), 'test', 'argLine'),
+    testJvmArgs: testJvmArguments(project, surefire, defaultExecution(surefire, 'test')),
     published: isPublished(project, plugins),
     jacocoDestFiles: jacocoDestFiles(plugins.get(JACOCO), basedir),
     archunitIncludes: textAt(project, 'properties', 'nitpicker.archunit.includes'),
