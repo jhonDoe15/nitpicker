@@ -173,3 +173,45 @@ describe('a close inside a callback in a finally block', () => {
     ]);
   });
 });
+
+describe('a protocols contract across a class hierarchy and conditionals', () => {
+  const policy = {
+    protocols: [{ type: 'Res', open: ['open'], close: ['close'], steps: ['write'] }],
+  };
+  const files = {
+    'src/res.ts': [
+      'export abstract class Res {',
+      '  open(): void {}',
+      '  write(text: string): void { void text; }',
+      '  abstract close(): void;',
+      '}',
+      'export class FileRes extends Res { close(): void {} }',
+      '',
+    ].join('\n'),
+    'src/use.ts': [
+      "import { FileRes } from './res';",
+      'export function closed(f: FileRes) {',
+      '  f.open();',
+      '  try { void 1; } finally { f.close(); }',
+      '}',
+      'export function leaked(f: FileRes) { f.open(); }',
+      'export function either(f: FileRes, early: boolean) {',
+      "  if (early) { f.write('x'); } else { f.open(); }",
+      '  try { void 1; } finally { f.close(); }',
+      '}',
+      'export function before(f: FileRes, early: boolean) {',
+      "  if (early) { f.write('x'); }",
+      '  f.open();',
+      '  try { void 1; } finally { f.close(); }',
+      '}',
+      '',
+    ].join('\n'),
+  };
+
+  it('matches an inherited open and an overriding close, and skips a step on the other arm', () => {
+    expect(identities(findingsOfFiles(files, policy), 'protocol-contract')).toEqual([
+      'src/use.ts#before|f|early:write',
+      'src/use.ts#leaked|f|unclosed:open',
+    ]);
+  });
+});
