@@ -281,6 +281,7 @@ describe.skipIf(!enabled)('clock, randomness and input or output in domain code'
       ['input', domain('NAME = input()\n'), ['io-in-domain:1 input']],
       ['time.sleep', domain('import time\n\ntime.sleep(1)\n'), ['io-in-domain:3 time.sleep']],
       ['os.system', domain('import os\n\nos.system("ls")\n'), ['io-in-domain:3 os.system']],
+      ['os.popen', domain('import os\n\nos.popen("ls")\n'), ['io-in-domain:3 os.popen']],
       ['import subprocess', domain('import subprocess\n'), ['io-in-domain:1 subprocess']],
       [
         'from requests import get',
