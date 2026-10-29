@@ -123,3 +123,37 @@ export function unwrapped(text) {
   }
   return trimmed.slice(1, -1);
 }
+
+function topLevelSplits(code, pattern) {
+  const stack = [];
+  const splits = [];
+  for (const { index, 0: mark } of code.matchAll(pattern)) {
+    if (OPENING.has(mark)) {
+      stack.push(mark);
+    } else if (CLOSING.has(mark)) {
+      stack.pop();
+    } else if (stack.length === 0) {
+      splits.push({ index, length: mark.length });
+    }
+  }
+  return splits;
+}
+
+export function lambdaParts(text) {
+  const trimmed = (text ?? '').trim();
+  if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+    return undefined;
+  }
+  const inner = sourceOf(trimmed.slice(1, -1));
+  const arrow = topLevelSplits(inner.code, /->|[()[\]{}]/gu)[0];
+  const head = arrow === undefined ? undefined : inner.text.slice(0, arrow.index);
+  const params =
+    head === undefined
+      ? ['it']
+      : splitArguments(head).map((parameter) => parameter.text.split(':')[0].trim());
+  const from = arrow === undefined ? 0 : arrow.index + arrow.length;
+  const code = inner.code.slice(from);
+  const last = topLevelSplits(code, /[;\n]|[()[\]{}]/gu).at(-1);
+  const body = inner.text.slice(from + (last === undefined ? 0 : last.index + 1)).trim();
+  return body === '' ? undefined : { params, body };
+}

@@ -1187,21 +1187,32 @@ let $loop := function($node) {
     [*[1][pmd-java:typeIs('java.util.stream.BaseStream') or pmd-java:typeIs('java.lang.Iterable')
       or pmd-java:typeIs('java.util.Map') or pmd-java:typeIs('java.util.Iterator')]]])
 },
-    $entityWrite := function($node) {
-  $node/@MethodName = ('save', 'saveAndFlush', 'delete', 'deleteById', 'persist', 'merge', 'remove')
-  and exists($node/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
-    or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
+    $oneElement := function($expression) {
+  some $one in $expression/descendant-or-self::MethodCall[@MethodName = ('of', 'singletonList', 'singleton')][*[1][self::TypeExpression]]
+      [ArgumentList[count(*) = 1][not(*[pmd-java:typeIs('java.lang.Object[]')])]]
+  satisfies (every $step in $one/ancestor::*[ancestor-or-self::* intersect $expression]
+    satisfies ($step[self::CastExpression]
+      or $step[self::MethodCall][@MethodName = ('stream', 'filter', 'map', 'distinct', 'sorted', 'peek', 'limit', 'skip', 'toList', 'collect')]
+        [*[1] intersect $one/ancestor-or-self::*]))
+},
+    $loops := function($node) {
+  $node/ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement or self::LambdaExpression][1]
+},
+    $singleAdd := function($access) {
+  let $name := $access/@Name, $body := $loops($access),
+    $calls := $body//MethodCall[*[1][self::VariableAccess][@Name = $name]]
+  return exists($body//VariableDeclarator[VariableId/@Name = $name]/ConstructorCall[ArgumentList[count(*) = 0]][pmd-java:typeIs('java.util.Collection')])
+    and empty($body//AssignmentExpression/*[1][self::VariableAccess][@Name = $name])
+    and count($calls[@MethodName = ('add', 'addAll', 'addFirst', 'addLast', 'remove', 'removeAll', 'removeIf', 'retainAll', 'clear', 'set')]) = 1
+    and exists($calls[@MethodName = 'add'][ArgumentList[count(*) = 1]/*[not(pmd-java:typeIs('java.lang.Iterable'))]][$loops(.) is $body])
 }
 return //MethodCall[@MethodName = ('saveAll', 'saveAllAndFlush', 'deleteAll', 'deleteAllById', 'deleteAllInBatch')]
   [*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]]
   [ArgumentList[count(*) = 1]/*[
-    self::MethodCall[@MethodName = ('of', 'singletonList', 'singleton')][*[1][self::TypeExpression]]
-      [ArgumentList[count(*) = 1][not(*[pmd-java:typeIs('java.lang.Object[]')])]]
+    $oneElement(.)
     or self::VariableAccess[let $name := @Name
-      return exists(ancestor::*[self::ForStatement or self::ForeachStatement or self::WhileStatement or self::DoStatement or self::LambdaExpression][1]
-        //VariableDeclarator[VariableId/@Name = $name]
-        /MethodCall[@MethodName = ('of', 'singletonList', 'singleton')][*[1][self::TypeExpression]]
-          [ArgumentList[count(*) = 1][not(*[pmd-java:typeIs('java.lang.Object[]')])]])]]]
+      return (some $initial in $loops(.)//VariableDeclarator[VariableId/@Name = $name]/*[last()] satisfies $oneElement($initial))
+        or $singleAdd(.)]]]
   [$loop(.)]
 ]]></value></property></properties>
   </rule>

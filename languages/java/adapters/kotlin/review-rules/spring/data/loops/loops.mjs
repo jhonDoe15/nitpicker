@@ -2,7 +2,7 @@ import { WRITE_VERB } from '../../rules/transactions.mjs';
 import { report, symbolOf } from '../../spring-scopes.mjs';
 import { BATCH_WRITES, STANDARD_WRITES } from '../data-types.mjs';
 import { saveInLoopHelpers } from './helpers.mjs';
-import { loopVariable, oneElement, oneElementCall, queryUpdate } from './updates.mjs';
+import { loopVariable, oneElement, oneElementSource, queryUpdate } from './updates.mjs';
 import {
   ITERATING,
   PASS_THROUGH,
@@ -17,6 +17,17 @@ import {
 } from './loop-scopes.mjs';
 
 const MUTATORS = /^(?:add|plus|put|set|remove|retain|clear)/u;
+const EMPTY_FACTORIES = new Set([
+  'mutableListOf',
+  'mutableSetOf',
+  'arrayListOf',
+  'hashSetOf',
+  'linkedSetOf',
+  'ArrayList',
+  'HashSet',
+  'LinkedHashSet',
+]);
+const ADDERS = new Set(['add', 'plusAssign']);
 const READ = /^(?:find|get|read|count|exists|query|stream|search|load|fetch|list|is|has)/u;
 const SCOPE_FUNCTIONS = new Set([
   'apply',
@@ -51,12 +62,25 @@ function saveInLoop(view) {
   );
 }
 
-function mutated(view, local) {
-  return view.file.invocations.some(
+function mutations(view, local) {
+  return view.file.invocations.filter(
     (entry) =>
       ((entry.assign === true && entry.name === local.name) ||
         (entry.receiver === local.name && MUTATORS.test(entry.name))) &&
       view.chain(entry.scope).some(({ id }) => id === local.scope),
+  );
+}
+
+function singleRow(view, invocation, change) {
+  const [value, ...rest] = change.arguments;
+  return (
+    ADDERS.has(change.name) &&
+    change.scope === invocation.scope &&
+    value !== undefined &&
+    rest.length === 0 &&
+    value.spread !== true &&
+    !isCollection(view, change.scope, value.text) &&
+    (loopVariable(view, change, value.text) || view.typeOf(change.scope, value.text) !== undefined)
   );
 }
 
@@ -75,7 +99,17 @@ function oneElementLocal(view, invocation, text) {
       entry.line === local.line &&
       entry.after === undefined,
   );
-  return initializer !== undefined && oneElementCall(initializer) && !mutated(view, local);
+  if (initializer === undefined) {
+    return false;
+  }
+  const changes = mutations(view, local);
+  const empty =
+    initializer.receiver === undefined &&
+    initializer.arguments.length === 0 &&
+    EMPTY_FACTORIES.has(initializer.name);
+  return changes.length === 0
+    ? oneElementSource(view, initializer)
+    : empty && changes.length === 1 && singleRow(view, invocation, changes[0]);
 }
 
 function batchOfOne(view) {

@@ -2,7 +2,8 @@ import { QUERY_TYPES } from '../data/data-types.mjs';
 import { typeArguments, typeName } from '../spring-names.mjs';
 import { acceptsArguments, factoryType, returnTypeOf } from '../spring-scopes.mjs';
 import { ENTITY_MANAGER } from '../spring-types.mjs';
-import { elementOf, isCollectionType, isMapType, simpleName } from './member-types.mjs';
+import { lambdaParts, normalized } from './expressions.mjs';
+import { elementOf, isCollectionType, isMapType, memberOf, simpleName } from './member-types.mjs';
 import { ownersOf } from './project-types.mjs';
 
 const QUERY = 'jakarta.persistence.Query';
@@ -118,6 +119,15 @@ const PARTITIONS = new Set(['Lists', 'ListUtils', 'Iterables']);
 const PAGED = /pag/iu;
 const LISTED_FINDERS = /^(?:findAll|findAllBy\w*|findAllById|saveAll|saveAllAndFlush)$/u;
 const TYPE_NAME = /^[A-Z]/u;
+const MEMBER_CHAIN = /^[\p{L}_][\p{L}\p{N}_]*(?:\.[\p{L}_][\p{L}\p{N}_]*)*$/u;
+const LAMBDA_VALUES = new Map([
+  ['map', { lambda: 0, result: (value) => `List<${value}>` }],
+  ['mapNotNull', { lambda: 0, result: (value) => `List<${value.replace(/\?$/u, '')}>` }],
+  ['flatMap', { lambda: 0, result: (value) => elementOf(value) && `List<${elementOf(value)}>` }],
+  ['zip', { lambda: 0, result: (value) => `List<${value}>` }],
+  ['associateWith', { lambda: 0, result: (value, element) => `Map<${element},${value}>` }],
+  ['associateBy', { lambda: 1, result: (value) => `Map<Any,${value}>` }],
+]);
 const PACKAGE = /^[a-z][\w.]*$/u;
 
 function mapResult(ownerType, name) {
@@ -142,6 +152,31 @@ function collectionResult(ownerType, name) {
     return element;
   }
   return MAPPED.has(name) ? 'List<Any>' : RESULTS.get(name)?.(element);
+}
+
+function lambdaValue(view, lambda, parameterTypes) {
+  const parts = lambdaParts(lambda?.text);
+  const body = normalized(parts?.body);
+  if (!MEMBER_CHAIN.test(body)) {
+    return undefined;
+  }
+  const [head, ...members] = body.split('.');
+  const index = parts.params.indexOf(head);
+  return members.reduce(
+    (type, member) => (type === undefined ? undefined : memberOf(view, type, member)),
+    index < 0 ? undefined : parameterTypes[index],
+  );
+}
+
+function lambdaResult(view, ownerType, call) {
+  const shape = LAMBDA_VALUES.get(call.name);
+  const lambdas = call.arguments.filter(({ text }) => text.trim().startsWith('{'));
+  const element = elementOf(ownerType);
+  if (shape === undefined || element === undefined || lambdas.length !== shape.lambda + 1) {
+    return undefined;
+  }
+  const value = lambdaValue(view, lambdas[shape.lambda], [element]);
+  return value === undefined ? undefined : (shape.result(value, element) ?? undefined);
 }
 
 function selfFunction(view, id, call) {
@@ -199,7 +234,7 @@ export function callResult(view, site, ownerType) {
     return ownerType;
   }
   if (isCollectionType(ownerType)) {
-    return collectionResult(ownerType, call.name);
+    return lambdaResult(view, ownerType, call) ?? collectionResult(ownerType, call.name);
   }
   if (QUERY_CREATORS.has(call.name) && view.is(ownerType, ENTITY_MANAGER)) {
     return QUERY;

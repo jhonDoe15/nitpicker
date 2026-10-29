@@ -88,3 +88,26 @@ class CrateService(
         const val CHUNK = "update Crate c set c.version = 0 where c.id in :ids"
     }
 }
+
+class Shelf(val id: Long?, val labels: Set<String>)
+
+interface ShelfRepository : JpaRepository<Crate, Long> {
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("update Crate c set c.label = '' where c.label in :labels")
+    fun clearLabels(labels: Set<String>)
+}
+
+@Service
+class ShelfService(private val shelves: ShelfRepository, private val crates: CrateRepository) {
+    @Transactional
+    fun tidy(items: List<Shelf>, others: List<Crate>, grouped: List<List<Crate>>) {
+        items.map { it.labels }.forEach { labels -> shelves.clearLabels(labels) }
+        items.zip(others) { shelf, _ -> shelf.labels }.forEach { shelves.clearLabels(it) }
+        items.associateBy({ it.id }, { it.labels }).values.forEach { shelves.clearLabels(it) }
+        for (group in grouped) {
+            val batch = mutableListOf<Crate>()
+            for (crate in group) batch.add(crate)
+            crates.saveAll(batch)
+        }
+    }
+}
