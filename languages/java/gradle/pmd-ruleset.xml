@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- Nitpicker's PMD rules: the errorprone and bestpractices categories plus a catch rule from
-     design, run over main and test sources. Two test rules are left out because they set an
+<!-- Nitpicker's PMD rules: the errorprone, bestpractices, performance and multithreading categories
+     plus a catch rule from design, run over main and test sources (the security category runs on
+     main sources only, from pmd-main-ruleset.xml). Two test rules are left out because they set an
      assertion style the TypeScript preset does not have: a message on every assertion, and one
      assertion per test. A test without any assertion still fails (UnitTestShouldIncludeAssert),
      and mutation testing catches weak ones. Rules that report the same code as Error Prone,
@@ -126,6 +127,63 @@
                          | ConstructorCall)/ArgumentList//VariableAccess[@Name = $caught])]
 ]]></value>
       </property>
+    </properties>
+  </rule>
+  <rule ref="category/java/performance.xml">
+    <exclude name="AvoidArrayLoops"/>
+    <exclude name="AvoidFileStream"/>
+    <exclude name="UseArraysAsList"/>
+    <!-- A loop that needs a distinct object per item is correct; hoisting changes it. -->
+    <exclude name="AvoidInstantiatingObjectsInLoops"/>
+    <!-- A small exhaustive switch is valid. -->
+    <exclude name="TooFewBranchesForSwitch"/>
+    <!-- A capacity hint is a micro-optimization; asking for one only adds magic numbers. -->
+    <exclude name="InsufficientStringBufferDeclaration"/>
+  </rule>
+  <rule ref="category/java/multithreading.xml">
+    <exclude name="DontCallThreadRun"/>
+    <!-- volatile is a valid visibility primitive. -->
+    <exclude name="AvoidUsingVolatile"/>
+    <!-- The J2EE container restriction does not apply to most applications. -->
+    <exclude name="DoNotUseThreads"/>
+    <!-- A Map declaration does not show concurrent access. -->
+    <exclude name="UseConcurrentHashMap"/>
+  </rule>
+  <rule ref="category/java/performance.xml/AvoidArrayLoops">
+    <properties>
+      <!-- A loop that subtracts the loop variable in an index (a reversed copy) has no
+           System.arraycopy form. -->
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+.//AssignmentExpression/ArrayAccess/*[2]/descendant-or-self::InfixExpression[@Operator = '-']
+  /*[2]/descendant-or-self::VariableAccess[not(parent::FieldAccess)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule ref="category/java/performance.xml/AvoidFileStream">
+    <properties>
+      <!-- Files has no form that wraps a FileDescriptor such as FileDescriptor.in. -->
+      <property name="violationSuppressXPath"
+                value="..[ArgumentList/*[1][pmd-java:typeIs('java.io.FileDescriptor')]]"/>
+    </properties>
+  </rule>
+  <rule ref="category/java/performance.xml/UseArraysAsList">
+    <properties>
+      <!-- Only a loop that adds every element and does nothing else is a copy: a loop that
+           filters, or steps by more than one, stays. -->
+      <property name="violationSuppressXPath">
+        <value><![CDATA[
+.[count(../../*) > 1
+  or ../../..[self::ForStatement][not(ForUpdate/StatementExpressionList/UnaryExpression[@Operator = '++'])]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule ref="category/java/multithreading.xml/DontCallThreadRun">
+    <properties>
+      <!-- super.run() in a Thread subclass's run() runs the parent body on the same thread. -->
+      <property name="violationSuppressXPath" value=".[*[1][self::SuperExpression]]"/>
     </properties>
   </rule>
   <rule ref="category/java/design.xml/AvoidCatchingGenericException"/>
