@@ -59,12 +59,16 @@ function inClass(members, heritage = '') {
   return typed(`${HEADER}export class Cart${heritage} {\n${members}\n}\n`);
 }
 
-function aliasIn(members, [name, target], heritage = '') {
-  const errors = [{ messageId: 'forwardingMethodAlias', data: { name, target } }];
+function aliasIn(members, [name, target], heritage = '', messageId = 'forwardingMethodAlias') {
+  const errors = [{ messageId, data: { name, target } }];
   return typed(`${HEADER}export class Cart${heritage} {\n${members}\n}\n`, errors);
 }
 
 const allowedMembers = [
+  `${SUM}\n  "of"(items: Item[]): number { return this.sum(items); }`,
+  `${SUM}\n  total(@inject() items: Item[]): number { return this.sum(items); }`,
+  `${SUM}\n  async total(items: Item[]): Promise<void> { this.sum(items); }`,
+  `${SUM}\n  total(items: Item[]): number { return this.sum(items); }\n  total(items: Item[], more: number): number { return this.sum(items) + more; }`,
   `${SUM}\n  total(items: Item[]): number { return this.sum(items) + 1; }`,
   `${SUM}\n  total(items: Item[], extra: Item[]): number { return this.sum(extra); }`,
   `${SUM}\n  total(items: Item[]): number { const n = this.sum(items); return n; }`,
@@ -120,6 +124,10 @@ const inheritedMembers = [
   [TOTAL, ' extends Base'],
 ];
 
+const mergedInterface = typed(
+  `${HEADER}export class Cart {\n${SUM}\n${TOTAL}\n}\nexport interface Cart { total(items: Item[]): number; }\n`,
+);
+
 const staticMembers =
   '  static sum(items: Item[]): number { return 0; }\n  static of(items: Item[]): number { return this.sum(items); }';
 
@@ -130,6 +138,10 @@ tester.run('no-forwarding-method-alias', rule, {
     ...allowedMembers.map((members) => inClass(members)),
     ...inheritedMembers.map(([members, heritage]) => inClass(members, heritage)),
     inClass(staticMembers),
+    mergedInterface,
+    typed(
+      `${HEADER}export abstract class Cart {\n  abstract sum(items: Item[]): number;\n${TOTAL}\n}\n`,
+    ),
     classExpression,
     typed(
       `${HEADER}export const wrap = { total(items: Item[]): number { return items.length; } };\n`,
@@ -166,10 +178,44 @@ tester.run('no-forwarding-method-alias', rule, {
     aliasIn(
       '  #sum(items: Item[]): number { return items.length; }\n  total(items: Item[]): number { return this.#sum(items); }',
       ['total', '#sum'],
+      '',
+      'forwardingMethodRename',
     ),
     aliasIn(
       '  private sum(items: Item[]): number { return items.length; }\n  public total(items: Item[]): number { return this.sum(items); }',
       ['total', 'sum'],
+      '',
+      'forwardingMethodRename',
+    ),
+    aliasIn(
+      '  protected sum(items: Item[]): number { return items.length; }\n  total(items: Item[]): number { return this.sum(items); }',
+      ['total', 'sum'],
+      '',
+      'forwardingMethodRename',
+    ),
+    aliasIn(
+      '  private sum(items: Item[]): number { return items.length; }\n  private total(items: Item[]): number { return this.sum(items); }',
+      ['total', 'sum'],
+    ),
+    aliasIn(
+      '  protected sum(items: Item[]): number { return items.length; }\n  private total(items: Item[]): number { return this.sum(items); }',
+      ['total', 'sum'],
+    ),
+    aliasIn(
+      '  total(items: Item[]): number { return this.sum(items); }\n  sum(items: Item[]): number { return this.total(items); }',
+      ['sum', 'total'],
+    ),
+    aliasIn(
+      "  'sum'(items: Item[]): number { return items.length; }\n  'total'(items: Item[]): number { return this.sum(items); }",
+      ['total', 'sum'],
+    ),
+    aliasIn(
+      '  sum(items: Item[], done: (count: number) => void): void {}\n  total(items: Item[], done: (count: number) => void): void { this.sum(items, done); }',
+      ['total', 'sum'],
+    ),
+    aliasIn(
+      '  async load(id: string): Promise<void> {}\n  async fetch(id: string): Promise<void> { await this.load(id); }',
+      ['fetch', 'load'],
     ),
     aliasIn(
       '  static sum(items: Item[]): number { return 0; }\n  static total(items: Item[]): number { return this.sum(items); }',
@@ -189,6 +235,11 @@ tester.run('no-forwarding-method-alias', rule, {
 });
 
 const linter = new Linter({ cwd: root });
+const LINTED_FILES = ['src/identity.ts', 'src/cart.ts', 'generated/client.ts', 'src/gen/client.ts'];
+
+for (const file of LINTED_FILES) {
+  writeFileSync(path.join(root, file), 'export {};\n');
+}
 
 function aliasMessages(code, file, config) {
   const filename = path.join(root, file);

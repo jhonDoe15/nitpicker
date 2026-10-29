@@ -12,6 +12,18 @@ public class Cart implements ToLongFunction<List<Long>> {
     return this.sum(cents);
   }
 
+  public long size(List<Long> cents) { // violation: ForwardingMethodAlias
+    return count(cents);
+  }
+
+  public long annotated(@Deprecated List<Long> cents) {
+    return sum(cents);
+  }
+
+  public synchronized long locked(List<Long> cents) {
+    return sum(cents);
+  }
+
   public long withFee(List<Long> cents) {
     return sum(cents) + Prices.FEE;
   }
@@ -47,6 +59,10 @@ public class Cart implements ToLongFunction<List<Long>> {
 
   public Number widened(List<Long> cents) {
     return sum(cents);
+  }
+
+  public long count(List<Long> cents) {
+    return cents.size();
   }
 
   long sum(List<Long> cents) {

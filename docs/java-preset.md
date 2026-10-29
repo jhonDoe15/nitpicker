@@ -2351,11 +2351,23 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   `synchronized*` and `checked*` (they change the type or the guarantees), and wrappers that add
   type arguments, reorder or drop parameters.
 - `ForwardingMethodAlias` is the instance counterpart of `StaticForwardingWrapper`. It skips static,
-  abstract and generic methods, interface methods, annotated methods (a `@Deprecated` alias, a
-  framework callback), methods PMD resolves as overriding or implementing another (`@Overridden`,
-  with or without `@Override`), `of` and `from`, methods without parameters, calls that add type
-  arguments, reorder, drop or change a parameter, aliases or targets declared more than once under
-  one name (an overload), and a target declared in another class, a superclass or an outer class.
+  abstract, `synchronized`, `native`, `strictfp` and generic methods, interface methods, methods
+  with an annotation on the method or on a parameter (a `@Deprecated` alias, a framework callback),
+  methods PMD resolves as overriding or implementing another (`@Overridden`, with or without
+  `@Override`), `of` and `from`, methods without parameters, calls that add type arguments,
+  reorder, drop or change a parameter, aliases or targets declared more than once under one name
+  (an overload), a static or abstract target (a template-method hook is fine), and a target
+  declared in another class, a superclass or an outer class. An alias that is more visible than
+  its target (a public method over a package-private one) is still reported, with the message
+  "rename that method to this method's name and delete the alias" instead of "call that method
+  directly", because callers outside the class cannot call the target; the same finding rule and
+  exception route apply. A public non-final alias is reported too: Java methods are open by
+  default, so skipping them would disable the rule; a hook that subclasses override on purpose or a
+  public alias that must stay is an exception (`pmd/ForwardingMethodAlias`). A class whose
+  supertypes are not on the analysis classpath cannot be checked for overrides, so a method that
+  overrides an unresolved supertype is reported unless it has `@Override`. The finding identity is
+  the rule, the file and the message with an occurrence number, so two aliases in one file are told
+  apart by their order only.
   Types are compared by simple name with their type arguments and array depth, so a wider
   parameter or return type is not an alias. Bean delegation that adapts anything (a conversion, a
   default argument, a null check) is not a pure forward and passes; a Spring bean is checked like

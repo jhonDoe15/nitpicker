@@ -1,24 +1,9 @@
 import ast
 
-from checks.common import dotted_name
+from aliases.bases import FUNCTION_TYPES, class_methods, inherited_names
 
 RULE = "forwarding-method-alias"
 PUBLISHED_NAMES = {"of", "from_"}
-NEUTRAL_BASES = {
-    "object",
-    "ABC",
-    "Generic",
-    "Enum",
-    "IntEnum",
-    "StrEnum",
-    "Flag",
-    "IntFlag",
-    "NamedTuple",
-    "TypedDict",
-    "Exception",
-    "BaseException",
-}
-FUNCTION_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef)
 
 
 def body_without_docstring(body):
@@ -176,79 +161,8 @@ def same_signature(wrapper, target):
     )
 
 
-def class_methods(node):
-    methods = {}
-    for statement in node.body:
-        if isinstance(statement, FUNCTION_TYPES):
-            methods.setdefault(statement.name, []).append(statement)
-        else:
-            for name in bound_names(statement):
-                methods.setdefault(name, []).append(statement)
-    return methods
-
-
-def bound_names(statement):
-    if isinstance(statement, (ast.Assign, ast.AnnAssign, ast.AugAssign)):
-        targets = (
-            statement.targets if isinstance(statement, ast.Assign) else [statement.target]
-        )
-        return [target.id for target in targets if isinstance(target, ast.Name)]
-    return []
-
-
-def base_node(base):
-    return base.value if isinstance(base, ast.Subscript) else base
-
-
-def simple_name(name):
-    return name.rsplit(".", 1)[-1]
-
-
-def is_neutral(name):
-    last = simple_name(name)
-    return last in NEUTRAL_BASES or last.endswith(("Error", "Exception", "Warning"))
-
-
-def local_class(context, name):
-    for statement in context.tree.body:
-        if isinstance(statement, ast.ClassDef) and statement.name == name:
-            return context, statement
-    return None
-
-
-def project_class(context, dotted):
-    located = context.project.locate(dotted)
-    owner = context.project.contexts.get(located[0]) if located else None
-    return local_class(owner, located[1]) if owner else None
-
-
-def resolve_base(context, base):
-    node = base_node(base)
-    dotted = dotted_name(node, context.aliases)
-    if isinstance(node, ast.Name) and local_class(context, node.id):
-        return local_class(context, node.id)
-    return project_class(context, dotted) if dotted else None
-
-
-def inherited_names(context, node, seen=None):
-    seen = set() if seen is None else seen
-    if id(node) in seen:
-        return set(), False
-    seen.add(id(node))
-    names, complete = set(), True
-    for base in node.bases:
-        resolved = resolve_base(context, base)
-        if resolved is not None:
-            parent, parent_node = resolved
-            names |= set(class_methods(parent_node))
-            more, closed = inherited_names(parent, parent_node, seen)
-            names |= more
-            complete = complete and closed
-        else:
-            dotted = dotted_name(base_node(base), context.aliases) or ""
-            complete = complete and is_neutral(dotted)
-    keywords = [keyword for keyword in node.keywords if keyword.arg != "metaclass"]
-    return names, complete and not keywords
+def visibility(name):
+    return 2 if name.startswith("__") else 1 if name.startswith("_") else 0
 
 
 def alias_findings(context, node):
@@ -256,10 +170,16 @@ def alias_findings(context, node):
     if not complete:
         return []
     methods = class_methods(node)
+    direct = {id(statement) for statement in node.body}
     found = []
     for name, nodes in methods.items():
         wrapper = nodes[0]
-        if len(nodes) != 1 or not is_plain_method(wrapper) or name in PUBLISHED_NAMES:
+        if (
+            len(nodes) != 1
+            or id(wrapper) not in direct
+            or not is_plain_method(wrapper)
+            or name in PUBLISHED_NAMES
+        ):
             continue
         call = forwarded_call(wrapper)
         target_name = forwarded_target(wrapper, call) if call else None
@@ -268,12 +188,24 @@ def alias_findings(context, node):
             name in inherited
             or target_name in (None, name)
             or len(targets) != 1
+            or id(targets[0]) not in direct
             or not is_plain_method(targets[0])
             or not same_signature(wrapper, targets[0])
         ):
             continue
-        found.append((wrapper, f"{name} -> {target_name}"))
-    return found
+        rename = visibility(name) < visibility(target_name)
+        found.append((wrapper, name, {"target": target_name, "rename": rename}))
+    return later_of_mutual(found, methods)
+
+
+def later_of_mutual(found, methods):
+    targets = {name: detail["target"] for _, name, detail in found}
+    return [
+        entry
+        for entry in found
+        if targets.get(entry[2]["target"]) != entry[1]
+        or methods[entry[2]["target"]][0].lineno < entry[0].lineno
+    ]
 
 
 def class_paths(tree):
@@ -295,9 +227,10 @@ def check(context):
         {
             "rule": RULE,
             "path": context.path,
-            "subject": f"{'.'.join(names)}.{subject}",
+            "subject": f"{'.'.join(names)}.{name}",
+            "detail": detail,
             "line": wrapper.lineno,
         }
         for node, names in class_paths(context.tree)
-        for wrapper, subject in alias_findings(context, node)
+        for wrapper, name, detail in alias_findings(context, node)
     ]

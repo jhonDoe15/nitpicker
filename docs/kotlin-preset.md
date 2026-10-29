@@ -482,13 +482,19 @@ Limits, all chosen to flag less rather than guess:
   `@Configuration`, `@SpringBootApplication`).
 - Method aliases (`ForwardingMethodAlias`, the member counterpart of the rule above): the body is one call
   to a function of the same class, implicit or through `this`, that passes every parameter in order and
-  by name or position, and the target has the same parameter types, `suspend`ness and (when both declare
-  one) return type. The owner is a `class` or `enum class`; in an `object` or `companion` only the call
+  by name or position, and the target has the same parameter types, `suspend`ness and return type
+  (an expression body without a declared type counts as the target's type; a block body without one
+  returns `Unit`; an alias that declares a type over a target that does not is skipped). The owner is a `class` or `enum class`; in an `object` or `companion` only the call
   through `this` counts, since the call without a receiver is the static rule's. Skipped: interfaces and
   local classes, overloaded names (the alias or the target declared twice), annotations (so a
   `@Deprecated` alias passes), `override`, `operator`, `infix`, `inline`, `open`, `abstract`, `actual`
-  and `expect` members, receivers, type parameters, defaults, varargs, no parameters, calls with type
-  arguments, spread or lambda arguments, and the names `of`, `from`, `invoke` and `copy`. Spring
+  and `expect` members, aliases with an annotated parameter, receivers, type parameters, defaults,
+  varargs, no parameters, calls with type arguments, spread or lambda arguments, targets that are
+  `abstract` or `inline` or have varargs or defaults, and the names `of`, `from`, `invoke` and
+  `copy`. An alias that is more visible than its target (`private`, then `internal` or `protected`,
+  then public) is still reported, with "rename that method to this method's name and delete the
+  alias" instead of "call that method directly". When two members forward to each other, only the
+  later one is reported. Spring
   stereotype classes are checked like any other class. Generated sources are dropped for every Kotlin
   review rule, and the finding identity is the rule and `Owner.name`, so moving lines keeps it baselined.
 - Singular and plural: both members must have the same element type (the plural a list, set,

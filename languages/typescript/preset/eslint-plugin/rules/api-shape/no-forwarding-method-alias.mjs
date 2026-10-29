@@ -7,6 +7,9 @@ function keyName(member) {
   if (key.type === 'PrivateIdentifier') {
     return `#${key.name}`;
   }
+  if (key.type === 'Literal') {
+    return String(key.value);
+  }
   return key.type === 'Identifier' ? key.name : undefined;
 }
 
@@ -23,7 +26,11 @@ function forwardedCall(fn) {
   } else if (statement?.type === 'ExpressionStatement') {
     value = statement.expression;
   }
-  const call = fn.async && value?.type === 'AwaitExpression' ? value.argument : value;
+  const awaited = value?.type === 'AwaitExpression';
+  if (fn.async && statement?.type === 'ExpressionStatement' && !awaited) {
+    return undefined;
+  }
+  const call = fn.async && awaited ? value.argument : value;
   return call?.type === 'CallExpression' ? call : undefined;
 }
 
@@ -69,6 +76,8 @@ function isCandidate(member) {
     !member.computed &&
     !member.override &&
     (member.decorators ?? []).length === 0 &&
+    !fn.params.some((param) => (param.decorators ?? []).length > 0) &&
+    keyName(member) !== undefined &&
     !PUBLISHED_NAMES.has(keyName(member)) &&
     fn.body !== null &&
     !fn.generator &&
@@ -76,9 +85,20 @@ function isCandidate(member) {
   );
 }
 
+function sameType(checker, own, target) {
+  const left = checker.getTypeAtLocation(own);
+  const right = checker.getTypeAtLocation(target);
+  return (
+    left === right ||
+    (left.getCallSignatures().length > 0 &&
+      checker.isTypeAssignableTo(left, right) &&
+      checker.isTypeAssignableTo(right, left))
+  );
+}
+
 function sameParameter(checker, own, target) {
   return (
-    checker.getTypeAtLocation(own) === checker.getTypeAtLocation(target) &&
+    sameType(checker, own, target) &&
     Boolean(own.questionToken) === Boolean(target.questionToken) &&
     Boolean(own.dotDotDotToken) === Boolean(target.dotDotDotToken)
   );
@@ -117,15 +137,21 @@ function targetDeclaration(services, call, tsClass) {
   const [declaration] = declarations;
   return declarations.length === 1 &&
     ts.isMethodDeclaration(declaration) &&
-    declaration.parent === tsClass
+    declaration.parent === tsClass &&
+    (ts.getCombinedModifierFlags(declaration) & ts.ModifierFlags.Abstract) === 0
     ? declaration
     : undefined;
+}
+
+function isMerged(checker, tsClass, name) {
+  const property = checker.getTypeAtLocation(tsClass).getProperty(name);
+  return (property?.declarations ?? []).some((declaration) => declaration.parent !== tsClass);
 }
 
 function inheritsMember(checker, tsClass, name) {
   const heritage = tsClass.heritageClauses ?? [];
   if (heritage.length === 0) {
-    return false;
+    return isMerged(checker, tsClass, name);
   }
   const extended = checker.getBaseTypes(checker.getTypeAtLocation(tsClass));
   const implemented = (ts.getEffectiveImplementsTypeNodes(tsClass) ?? []).map((node) =>
@@ -134,10 +160,46 @@ function inheritsMember(checker, tsClass, name) {
   const unresolved =
     (ts.getEffectiveBaseTypeNode(tsClass) !== undefined && extended.length === 0) ||
     implemented.some((type) => (type.flags & ts.TypeFlags.Any) !== 0);
-  return unresolved || [...extended, ...implemented].some((type) => type.getProperty(name));
+  return (
+    unresolved ||
+    isMerged(checker, tsClass, name) ||
+    [...extended, ...implemented].some((type) => type.getProperty(name))
+  );
 }
 
-function isAlias({ services, checker }, { member, classNode, call }) {
+function visibilityOf(declaration) {
+  const flags = ts.getCombinedModifierFlags(declaration);
+  if (ts.isPrivateIdentifier(declaration.name) || (flags & ts.ModifierFlags.Private) !== 0) {
+    return 2;
+  }
+  return (flags & ts.ModifierFlags.Protected) === 0 ? 0 : 1;
+}
+
+function aliasCall(member) {
+  const call = isCandidate(member) ? forwardedCall(member.value) : undefined;
+  return call !== undefined && isThisMethodCall(call) && forwardsOwnParameters(member.value, call)
+    ? call
+    : undefined;
+}
+
+function calleeName(call) {
+  const { property } = call.callee;
+  return property.type === 'PrivateIdentifier' ? `#${property.name}` : property.name;
+}
+
+function isLaterOfMutual(classNode, member, call) {
+  const back = classNode.body.body.find(
+    (other) => other.type === 'MethodDefinition' && keyName(other) === calleeName(call),
+  );
+  const backCall = back === undefined ? undefined : aliasCall(back);
+  return (
+    backCall === undefined ||
+    calleeName(backCall) !== keyName(member) ||
+    back.range[0] < member.range[0]
+  );
+}
+
+function aliasVerdict({ services, checker }, { member, classNode, call }) {
   const name = keyName(member);
   const tsClass = services.esTreeNodeToTSNodeMap.get(classNode);
   const own = services.esTreeNodeToTSNodeMap.get(member);
@@ -145,7 +207,7 @@ function isAlias({ services, checker }, { member, classNode, call }) {
   const overloaded = classNode.body.body.filter(
     (other) => other.type === 'MethodDefinition' && keyName(other) === name,
   );
-  return (
+  const isAlias =
     target !== undefined &&
     target !== own &&
     overloaded.length === 1 &&
@@ -153,8 +215,9 @@ function isAlias({ services, checker }, { member, classNode, call }) {
     (member.value.body.body[0].type === 'ReturnStatement' || isVoidResult(checker, own)) &&
     hasSameSignature(checker, own, target) &&
     ts.getJSDocDeprecatedTag(own) === undefined &&
-    !inheritsMember(checker, tsClass, name)
-  );
+    isLaterOfMutual(classNode, member, call) &&
+    !inheritsMember(checker, tsClass, name);
+  return isAlias ? { rename: visibilityOf(own) < visibilityOf(target) } : undefined;
 }
 
 export const rule = {
@@ -169,6 +232,8 @@ export const rule = {
     messages: {
       forwardingMethodAlias:
         '`{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Call `{{ target }}` directly and delete `{{ name }}`.',
+      forwardingMethodRename:
+        '`{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Rename `{{ target }}` to `{{ name }}` and delete the alias.',
     },
   },
   create(context) {
@@ -181,25 +246,16 @@ export const rule = {
     return {
       MethodDefinition(member) {
         const classNode = member.parent.parent;
-        const call = isCandidate(member) ? forwardedCall(member.value) : undefined;
-        if (
-          classNode.type !== 'ClassDeclaration' ||
-          call === undefined ||
-          !isThisMethodCall(call) ||
-          !forwardsOwnParameters(member.value, call) ||
-          !isAlias(program, { member, classNode, call })
-        ) {
-          return;
+        const call = classNode.type === 'ClassDeclaration' ? aliasCall(member) : undefined;
+        const verdict =
+          call === undefined ? undefined : aliasVerdict(program, { member, classNode, call });
+        if (verdict !== undefined) {
+          context.report({
+            node: member.key,
+            messageId: verdict.rename ? 'forwardingMethodRename' : 'forwardingMethodAlias',
+            data: { name: keyName(member), target: calleeName(call) },
+          });
         }
-        const { property } = call.callee;
-        context.report({
-          node: member.key,
-          messageId: 'forwardingMethodAlias',
-          data: {
-            name: keyName(member),
-            target: property.type === 'PrivateIdentifier' ? `#${property.name}` : property.name,
-          },
-        });
       },
     };
   },

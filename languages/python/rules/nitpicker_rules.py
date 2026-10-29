@@ -91,7 +91,7 @@ def parse_file(path):
 
 
 def is_guarded(module):
-    return module.__name__.startswith("security.")
+    return module.__name__.startswith(("security.", "aliases."))
 
 
 def check_failure(module, context, error):

@@ -114,6 +114,11 @@ describe('method alias in Kotlin', () => {
     ['a call with type arguments', { forward: forward('sum', ['items'], { typeArguments: true }) }],
     ['a suspend alias of a plain target', { modifiers: ['suspend'] }],
     ['a different return type', { returnType: 'Long' }],
+    [
+      'an annotated parameter',
+      { parameters: [parameter('items', 'Int', { annotations: ['Named'] })] },
+    ],
+    ['a block body without a return type over a typed target', { returnType: undefined }],
     ['no parameters', { parameters: [], forward: forward('sum', []) }],
     ['no body call', { forward: undefined }],
     ['a local function', { local: true }],
@@ -139,6 +144,63 @@ describe('method alias in Kotlin', () => {
     expect(findingsFor([sum(), total()], [klass('Cart', { local: true })])).toEqual([]);
     expect(findingsFor([sum(), total()], [klass('Cart', { kind: 'object' })])).toEqual([]);
     expect(findingsFor([sum(), total()], [klass('Cart', { kind: 'companion' })])).toEqual([]);
+  });
+
+  it('compares the result type of an expression body with the target', () => {
+    const inferred = { returnType: undefined, expressionBody: true };
+
+    expect(summary(findingsFor([sum(), total(inferred)]))).toEqual([
+      `${METHOD_ALIAS_RULE} Cart.total 5`,
+    ]);
+    expect(summary(findingsFor([sum(inferred), total(inferred)]))).toEqual([
+      `${METHOD_ALIAS_RULE} Cart.total 5`,
+    ]);
+    expect(findingsFor([sum(inferred), total()])).toEqual([]);
+    expect(
+      findingsFor([sum({ returnType: undefined }), total({ returnType: undefined })]),
+    ).toHaveLength(1);
+    expect(findingsFor([sum(), total({ returnType: undefined })])).toEqual([]);
+    expect(
+      findingsFor([sum({ returnType: 'Unit' }), total({ returnType: undefined })]),
+    ).toHaveLength(1);
+  });
+
+  it('allows a target with vararg or default parameters, an inline or an abstract target', () => {
+    const vararg = sum({ parameters: [parameter('items', 'Int', { vararg: true })] });
+    const defaulted = sum({ parameters: [parameter('items', 'Int', { default: true })] });
+
+    expect(findingsFor([total(), vararg])).toEqual([]);
+    expect(findingsFor([total(), defaulted])).toEqual([]);
+    expect(findingsFor([total(), sum({ modifiers: ['inline'] })])).toEqual([]);
+    expect(findingsFor([total(), sum({ modifiers: ['abstract'] })])).toEqual([]);
+  });
+
+  it('reports only the later of two aliases of each other', () => {
+    const size = total({ name: 'size', line: 9, forward: forward('total', ['items']) });
+
+    expect(summary(findingsFor([total({ forward: forward('size', ['items']) }), size]))).toEqual([
+      `${METHOD_ALIAS_RULE} Cart.size 9`,
+    ]);
+  });
+
+  it('asks to rename a less visible target and otherwise to call it directly', () => {
+    const message = (overrides) => findingsFor([sum(overrides), total()])[0].message;
+    const rename = routed(
+      "This method only passes its parameters, in order, to a less visible method of the same class. Rename that method to this method's name and delete the alias.",
+      METHOD_ALIAS_RULE,
+    );
+    const direct = routed(
+      'This method only passes its parameters, in order, to another method of the same class. Call that method directly and delete the alias.',
+      METHOD_ALIAS_RULE,
+    );
+
+    expect([
+      message({ visibility: 'private' }),
+      message({ visibility: 'internal' }),
+      message({ modifiers: ['protected'] }),
+      message({ visibility: 'public' }),
+      findingsFor([sum({ visibility: 'private' }), total({ visibility: 'private' })])[0].message,
+    ]).toEqual([rename, rename, rename, direct, direct]);
   });
 
   it('allows a target that lives in another class with the same method name', () => {

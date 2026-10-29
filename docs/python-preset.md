@@ -784,11 +784,18 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   `staticmethod`, `classmethod`, `overload`, `functools.cache` and `typing.override` pass) and
   defined once; dunder methods, `of` and `from_` pass. A method whose name a base class in the
   project defines (an override) passes, and so does every method of a class with a base the project
-  does not define, except `object`, `ABC`, `Generic`, enum and `NamedTuple` bases and exception
-  classes; a class with keyword arguments other than `metaclass` is skipped too. Test files are not
-  checked, and neither are generated files (the generated-file list of the size limits), for this and
-  for the other script rules. The message says to call the target directly and delete the alias; add
-  an exception for a public alias that must stay.
+  does not define, except `object`, `ABC`, `Generic`, enum, `NamedTuple` and `TypedDict` bases and
+  builtin exceptions (their own method names, such as `add_note`, are inherited names); an exception
+  base from another package, a class with keyword arguments other than `metaclass`, and a name that
+  is defined again under `if`, `try` or `with` in the class body are skipped. Test files are not
+  checked. Findings of this rule in generated files (the generated-file list of the size limits) are
+  dropped after the run, so a generated base class still counts for the classes that extend it. The
+  finding identity is the class and method name, not the target, so renaming the target keeps it
+  baselined. The message says to call the target directly and delete the alias; when a public alias
+  forwards to a `_private` method it says to rename the target to the alias name instead. A
+  structural `Protocol` implemented without inheriting from it cannot be seen, and an alias in a
+  base class that subclasses override is reported; add an exception (`python.exceptions` in
+  `nitpicker.config.json`) for a public alias that must stay.
 - `hardcoded-secret` reports a secret-looking string (six characters or more with letters and
   digits, or three character classes) assigned to a name ending in `password`, `token`, `secret`,
   `api_key`, `credentials` and similar, also as a parameter default, keyword argument, dictionary
