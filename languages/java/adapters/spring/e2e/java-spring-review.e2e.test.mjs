@@ -50,10 +50,14 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
       findings
         .filter(({ path: file }) => file.endsWith('/Pauses.java'))
         .filter(({ rule }) => /EmptyCatch/u.test(rule) || rule === 'SwallowedInterrupt')
-        .map(({ tool, rule, location }) => `${String(location?.line)} ${tool}/${rule}`);
+        .map(({ tool, rule, location }) => `${String(location?.line)} ${tool}/${rule}`)
+        .toSorted();
 
-    expect(onPauses(runs.gradle).filter((entry) => /EmptyCatch/u.test(entry))).toEqual([]);
-    expect(onPauses(runs.gradle)).toContain('32 pmd/SwallowedInterrupt');
+    expect(onPauses(runs.gradle)).toEqual(
+      ['16', '24', '32', '40', '48', '56', '65', '73', '83', '94'].map(
+        (line) => `${line} pmd/SwallowedInterrupt`,
+      ),
+    );
     expect(onPauses(runs.maven)).toEqual(onPauses(runs.gradle));
   });
 

@@ -138,8 +138,8 @@ describe('swallowed cancellation and interrupt in Kotlin', () => {
     const javaMessage = /name="SwallowedInterrupt"[^>]*message="([^"]+)"/u.exec(xml)[1];
 
     expect(javaMessage).toBe(INTERRUPT_PROBLEM);
-    expect(INTERRUPT_MESSAGE.startsWith(`${javaMessage} `)).toBe(true);
-    expect(INTERRUPT_MESSAGE).toContain('Thread.currentThread().interrupt()');
-    expect(INTERRUPT_MESSAGE).toContain('throw e');
+    expect(INTERRUPT_MESSAGE).toBe(
+      `${javaMessage} Call Thread.currentThread().interrupt() before leaving the handler, or rethrow: throw e, or throw a new exception with the cause.`,
+    );
   });
 });

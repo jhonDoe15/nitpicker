@@ -171,7 +171,7 @@ describe('one notion of a log call for the handler rules', () => {
 
     expect(javaConsole).toEqual(['print', 'println', 'printf', 'format']);
     expect(['print', ...xpathConsole]).toEqual(javaConsole);
-    expect(HANDLING).toContain('STACK_TRACE = "printStackTrace"');
-    expect(SWALLOWED_INTERRUPT).toContain("$call/@MethodName = 'printStackTrace'");
+    expect(/STACK_TRACE = "(\w+)"/u.exec(HANDLING)?.[1]).toBe('printStackTrace');
+    expect(/\$call\/@MethodName = '(\w+)'/u.exec(SWALLOWED_INTERRUPT)?.[1]).toBe('printStackTrace');
   });
 });
