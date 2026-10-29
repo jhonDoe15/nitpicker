@@ -28,6 +28,15 @@ const NAMED_TAGS = new Set([
   'typeparam',
 ]);
 const THROWS_TAGS = new Set(['throws', 'exception']);
+const METADATA_TAGS = new Set([
+  'author',
+  'since',
+  'version',
+  'see',
+  'serial',
+  'serialfield',
+  'serialdata',
+]);
 const NAME_WORD = /^(?:\[[^\]]*\]|\S+)/u;
 const HAS_WORD = /\w/u;
 
@@ -104,18 +113,22 @@ function tagContent(line, blockTag) {
   return named ? content.replace(NAME_WORD, '') : content;
 }
 
+function isMetadataTag(line, blockTag) {
+  return METADATA_TAGS.has(blockTag.exec(line)[0].slice(1).toLowerCase());
+}
+
 export function tagsHaveContent(text, { blockTag, marker = /^/u }) {
   const lines = text.split('\n').map((raw) => raw.replace(marker, '').trim());
   const fences = pairedFences(lines);
   let insideFence = false;
-  let tagged = false;
+  let counted = false;
   for (const [index, line] of lines.entries()) {
     if (fences.has(index)) {
       insideFence = !insideFence;
     }
     const startsTag = !insideFence && blockTag.test(line);
-    tagged ||= startsTag;
-    if (tagged && HAS_WORD.test(startsTag ? tagContent(line, blockTag) : line)) {
+    counted = startsTag ? !isMetadataTag(line, blockTag) : counted;
+    if (counted && HAS_WORD.test(startsTag ? tagContent(line, blockTag) : line)) {
       return true;
     }
   }

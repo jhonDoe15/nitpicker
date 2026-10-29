@@ -3,17 +3,43 @@ import {
   tagsHaveContent,
 } from '../../../../shared/rules/doc-comments/doc-comments.mjs';
 
-const BLOCK_TAG = /^@[A-Za-z][\w-]*(?=[\s{]|$)/u;
+export const IDENTIFIER = String.raw`[\p{L}_$][\p{L}\p{N}_$]*`;
+
+const BLOCK_TAG = /^@[A-Za-z][\w-]*(?=[\s{[]|$)/u;
 const OPENERS = { '(': ')', '[': ']', '{': '}', '<': '>' };
 const CLOSERS = new Set(Object.values(OPENERS));
-const NAME_AT_END = /(`[^`\n]+`|[A-Za-z_$][\w$]*)(?:\s*\[\s*\])*\s*$/u;
+const NAME_AT_END = new RegExp(
+  String.raw`(\x60[^\x60\n]+\x60|${IDENTIFIER})(?:\s*\[\s*\])*\s*$`,
+  'u',
+);
+const ANGLES = /->|[<>]/gu;
+const SPACE = /\S/gu;
+
+export function matchesFrom(text, pattern, from) {
+  const marks = new RegExp(pattern.source, pattern.flags);
+  marks.lastIndex = from;
+  return text.matchAll(marks);
+}
+
+function lastAtOrBefore(values, offset, valueOf) {
+  let low = 0;
+  let high = values.length;
+  for (const _ of values) {
+    if (low >= high) {
+      break;
+    }
+    const middle = Math.floor((low + high) / 2);
+    [low, high] = valueOf(values[middle]) <= offset ? [middle + 1, high] : [low, middle];
+  }
+  return low - 1;
+}
 
 export function lineStarts(source) {
   return [0, ...[...source.matchAll(/\n/gu)].map(({ index }) => index + 1)];
 }
 
 export function lineAt(starts, offset) {
-  return starts.findLastIndex((start) => start <= offset) + 1;
+  return lastAtOrBefore(starts, offset, (start) => start) + 1;
 }
 
 export function bracePairs(code) {
@@ -30,19 +56,20 @@ export function bracePairs(code) {
   return pairs;
 }
 
+function ancestors(pairs, pair) {
+  return pair < 0 ? [] : [...ancestors(pairs, pairs[pair].parent), pair];
+}
+
 function innermostPair(pairs, offset) {
-  return pairs.findLastIndex(({ open, close }) => open < offset && offset < close);
+  const opened = lastAtOrBefore(pairs, offset - 1, ({ open }) => open);
+  return ancestors(pairs, opened).findLast((pair) => offset < pairs[pair].close) ?? -1;
 }
 
 export function scopeAt({ pairs, types }, offset) {
   const direct = innermostPair(pairs, offset);
-  const chain = [];
-  for (let pair = direct; pair >= 0; pair = pairs[pair].parent) {
-    const type = types.get(pairs[pair].open);
-    if (type !== undefined) {
-      chain.unshift(type.name);
-    }
-  }
+  const chain = ancestors(pairs, direct)
+    .map((pair) => types.get(pairs[pair].open)?.name)
+    .filter((name) => name !== undefined);
   return {
     chain,
     type: direct < 0 ? undefined : types.get(pairs[direct].open),
@@ -73,32 +100,34 @@ export function topLevelParts(text) {
 
 export function closingAngle(code, open) {
   let depth = 0;
-  for (let index = open; index < code.length; index += 1) {
-    if (code[index] === '<') {
-      depth += 1;
-    } else if (code[index] === '>' && !isArrow(code, index)) {
-      depth -= 1;
-      if (depth === 0) {
-        return index;
-      }
+  for (const { index, 0: mark } of matchesFrom(code, ANGLES, open)) {
+    depth += { '<': 1, '>': -1 }[mark] ?? 0;
+    if (depth === 0) {
+      return index;
     }
   }
   return code.length;
 }
 
+function escaped(characters) {
+  return characters.replaceAll(/[\\\]^-]/gu, String.raw`\$&`);
+}
+
 export function headerUntil(code, from, stops) {
+  const marks = new RegExp(String.raw`->|[<>]|[${escaped(stops)}]`, 'gu');
   let depth = 0;
-  for (let index = from; index < code.length; index += 1) {
-    const character = code[index];
-    if (character === '<') {
-      depth += 1;
-    } else if (character === '>' && !isArrow(code, index)) {
-      depth = Math.max(0, depth - 1);
-    } else if (depth === 0 && stops.includes(character)) {
-      return { text: code.slice(from, index).trim(), stop: character, at: index };
+  for (const { index, 0: mark } of matchesFrom(code, marks, from)) {
+    const change = { '<': 1, '>': -1 }[mark];
+    depth = Math.max(0, depth + (change ?? 0));
+    if (change === undefined && mark !== '->' && depth === 0) {
+      return { text: code.slice(from, index).trim(), stop: mark, at: index };
     }
   }
   return { text: code.slice(from).trim(), stop: '', at: code.length };
+}
+
+export function nameIndex(header) {
+  return NAME_AT_END.exec(header)?.index ?? header.length;
 }
 
 export function nameAtEnd(header) {
@@ -109,7 +138,10 @@ export function nameAtEnd(header) {
 export function withoutGenerics(text) {
   let previous;
   let current = text;
-  while (current !== previous) {
+  for (const _ of text) {
+    if (current === previous) {
+      break;
+    }
     previous = current;
     current = current.replaceAll(/<[^<>]*>/gu, ' ');
   }
@@ -117,13 +149,15 @@ export function withoutGenerics(text) {
 }
 
 export function skipSpace(code, from) {
-  const match = /\S/u.exec(code.slice(from));
-  return match === null ? code.length : from + match.index;
+  const [found] = matchesFrom(code, SPACE, from);
+  return found === undefined ? code.length : found.index;
 }
 
 export function docComment({ text, marker, line, declared, chain }) {
   const options = { blockTag: BLOCK_TAG, marker };
-  const qualified = [...chain, declared.name].join('.');
+  const qualified = [...chain, declared.receiver, declared.name]
+    .filter((part) => part !== undefined)
+    .join('.');
   return {
     line,
     name: declared.name,

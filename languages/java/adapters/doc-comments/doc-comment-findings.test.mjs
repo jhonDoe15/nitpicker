@@ -34,6 +34,8 @@ const FILES = {
     '  int total() { return 0; }',
     '}',
   ].join('\n'),
+  'app/src/main/java/shop/build/Steps.java':
+    'package shop.build;\nclass Steps {\n  /** The steps. */\n  int steps;\n}\n',
   'app/src/main/kotlin/shop/Cart.kt': [
     'package shop',
     '/**',
@@ -66,12 +68,19 @@ function rows(findings) {
 }
 
 describe('readDocCommentFindings', () => {
-  it('reads the Java main sources in the java preset', () => {
+  it('reads the Java main sources in the java preset, package folders named build too', () => {
     const projectRoot = project(FILES);
 
     expect(
       rows(readDocCommentFindings({ projectRoot, manifest: MANIFEST, kotlin: false })),
     ).toEqual([
+      [
+        'facts',
+        RULE,
+        'app/src/main/java/shop/build/Steps.java',
+        'doc-comment:Steps.steps:restating',
+        3,
+      ],
       [
         'facts',
         RULE,
@@ -90,6 +99,13 @@ describe('readDocCommentFindings', () => {
         [
           'facts',
           RULE,
+          'app/src/main/java/shop/build/Steps.java',
+          'doc-comment:Steps.steps:restating',
+          3,
+        ],
+        [
+          'facts',
+          RULE,
           'app/src/main/java/shop/Orders.java',
           'doc-comment:Orders.getOrderTotal():restating',
           3,
@@ -101,7 +117,9 @@ describe('readDocCommentFindings', () => {
 
   it('says how to fix it and how to lift it', () => {
     const projectRoot = project(FILES);
-    const [finding] = readDocCommentFindings({ projectRoot, manifest: MANIFEST, kotlin: false });
+    const finding = readDocCommentFindings({ projectRoot, manifest: MANIFEST, kotlin: false }).find(
+      ({ symbol }) => symbol === 'getOrderTotal',
+    );
 
     expect(finding.message).toBe(
       `This doc comment only restates getOrderTotal. Delete it, or say what the name cannot: a unit, a limit, an edge case or why. ${exceptionHint(RULE, 'app/src/main/java/shop/Orders.java')}`,

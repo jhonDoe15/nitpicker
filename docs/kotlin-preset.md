@@ -428,7 +428,8 @@ secondary constructor, property (also a `val`/`var` of a primary constructor) or
 annotations (`@get:JsonProperty(...)`) and modifiers. A file comment, a statement, a local
 declaration, an `init` block and a member of an anonymous object are not read. The identity holds
 the enclosing types and, for a function or constructor, the parameter types
-(`Orders.sum(Map<String,Int>,(Int)->Unit)`); a receiver is not part of it.
+and for an extension its receiver (`Orders.List<R>.sum(Map<String,Int>,(Int)->Unit)`), so
+overloads stay apart. `@param[name]`, KDoc's bracketed form, is a tag like `@param name`.
 
 ## Frameworks
 

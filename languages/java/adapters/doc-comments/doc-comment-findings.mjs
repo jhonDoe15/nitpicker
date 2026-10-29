@@ -1,15 +1,23 @@
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../../../shared/filesystem.mjs';
 import { RULE_IDS } from '../../../../shared/policy.mjs';
 import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
-import { sourceFilesUnder } from '../review-rules/java-sources.mjs';
 import { javaDocComments } from './java-doc-comments.mjs';
 import { kotlinDocComments } from './kotlin-doc-comments.mjs';
 
-export const DOC_COMMENT_TOOL = 'facts';
+const DOC_COMMENT_TOOL = 'facts';
 
 const READERS = { '.java': javaDocComments, '.kt': kotlinDocComments };
+
+function sourceFilesUnder(directory, extensions) {
+  if (!existsSync(directory)) {
+    return [];
+  }
+  return readdirSync(directory, { recursive: true, withFileTypes: true })
+    .filter((entry) => entry.isFile() && extensions.includes(path.extname(entry.name)))
+    .map((entry) => path.join(entry.parentPath, entry.name));
+}
 
 function mainSourceFiles(projectRoot, { manifest, kotlin }) {
   const roots = [

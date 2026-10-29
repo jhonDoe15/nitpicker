@@ -57,7 +57,7 @@ describe('kotlinDocComments', () => {
       [3, 'Orders'],
       [6, 'Orders.id'],
       [9, 'Orders.total'],
-      [11, 'Orders.sum(Map<String,Int>,(Int)->Unit)'],
+      [11, 'Orders.List<R>.sum(Map<String,Int>,(Int)->Unit)'],
       [13, 'Orders.Orders(Int)'],
       [15, 'Orders.Companion'],
       [17, 'Orders.Companion.of(String)'],
@@ -125,7 +125,48 @@ describe('kotlinDocComments', () => {
 
     expect(declared(source)).toEqual([
       [1, 'Pair'],
-      [4, 'sum()'],
+      [4, 'Pair.sum()'],
+    ]);
+  });
+
+  it('keeps extension overloads apart by their receiver', () => {
+    const source = [
+      '/** To x. */',
+      'fun String.toX() = 1',
+      '/** To x. */',
+      'fun Int.toX() = 2',
+      '/** Named. */',
+      'val Int?.named: String get() = ""',
+    ].join('\n');
+
+    expect(declared(source)).toEqual([
+      [1, 'String.toX()'],
+      [3, 'Int.toX()'],
+      [5, 'Int?.named'],
+    ]);
+  });
+
+  it('finds the body of a class whose supertype sits in a package named like a modifier', () => {
+    const source = 'class A : com.app.data.Repo, inline.B {\n  /** Foo. */\n  fun foo() {}\n}\n';
+
+    expect(declared(source)).toEqual([[2, 'A.foo()']]);
+  });
+
+  it('reads a bracketed tag as a tag', () => {
+    const source = [
+      '/**',
+      ' * Sums.',
+      ' * @param[a] the first',
+      ' * @param[b] the second',
+      ' * @param[c] the third',
+      ' * @param[d] the fourth',
+      ' * @param[e] the fifth',
+      ' */',
+      'fun sum(a: Int, b: Int, c: Int, d: Int, e: Int) = a',
+    ].join('\n');
+
+    expect(kotlinDocComments(source).map(({ lines, detailed }) => [lines, detailed])).toEqual([
+      [['Sums.'], true],
     ]);
   });
 });

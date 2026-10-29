@@ -86,6 +86,57 @@ describe('javaDocComments', () => {
     expect(declared(source)).toEqual([]);
   });
 
+  it('reads non-ASCII names, type-use annotations and array parameters, and survives stray @s', () => {
+    const source = [
+      'class Größe {',
+      '  /** Wert. */',
+      '  @Überprüft int wert;',
+      '  /** Names. */',
+      '  List<@NonNull String> names() { return null; }',
+      '  /** One. */',
+      '  void of(@Named(value = @X(1)) String s) {}',
+      '  /** Many. */',
+      '  void of(String s[]) {}',
+      '  /** Odd. */',
+      '  @ @ @ void odd() {}',
+      '}',
+    ].join('\n');
+
+    expect(declared(source)).toEqual([
+      [2, 'Größe.wert'],
+      [4, 'Größe.names()'],
+      [6, 'Größe.of(String)'],
+      [8, 'Größe.of(String[])'],
+    ]);
+  });
+
+  it('does not take a variable named record for a record', () => {
+    const source = [
+      'class A {',
+      '  void m(Object record) {',
+      '    if (record instanceof Foo f) {',
+      '      /** Local. */',
+      '      int local = 1;',
+      '    }',
+      '  }',
+      '}',
+    ].join('\n');
+
+    expect(declared(source)).toEqual([]);
+  });
+
+  it('keeps prose before and after a <pre> block on its line', () => {
+    const source = '/**\n * Do four. <pre>\n * four();\n * </pre> Then five.\n */\nclass A {}\n';
+
+    expect(javaDocComments(source)[0].lines).toEqual([
+      'Do four.',
+      '```',
+      'four();',
+      '```',
+      'Then five.',
+    ]);
+  });
+
   it('keeps the description apart from the tags, and says when a tag has text', () => {
     const source = [
       'class A {',
@@ -104,6 +155,13 @@ describe('javaDocComments', () => {
       '   * @throws IOException',
       '   */',
       '  String getUserById(String id) { return id; }',
+      '  /**',
+      '   * The user.',
+      '   * @author Ada',
+      '   * @since 1.2',
+      '   * @see Order',
+      '   */',
+      '  class User {}',
       '}',
     ].join('\n');
 
@@ -111,6 +169,7 @@ describe('javaDocComments', () => {
       [['Gets the user name.'], true],
       [['Gets the user name. @deprecated'], false],
       [['Gets the user.'], false],
+      [['The user.'], false],
     ]);
   });
 
@@ -134,10 +193,15 @@ describe('javaDocComments', () => {
     expect(javaDocComments(source)[0].lines).toEqual([
       'Sums the  open  rows.',
       '```',
+      '{@code',
       '@Override',
       'int sum() { return 1; }',
+      '}',
       '```',
       'Rounds   caps.',
+      '```',
+      'one()',
+      '```',
     ]);
   });
 
