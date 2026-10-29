@@ -72,6 +72,8 @@ public final class Bodies {
       catchClause((KtCatchClause) element, frame);
     } else if (element instanceof KtProperty && ((KtProperty) element).isLocal()) {
       local((KtProperty) element, frame);
+    } else if (element instanceof KtDestructuringDeclaration && element.getParent() instanceof KtBlockExpression) {
+      destructured((KtDestructuringDeclaration) element, frame);
     } else if (element instanceof KtArrayAccessExpression) {
       read((KtArrayAccessExpression) element, frame);
     } else if (element instanceof KtThrowExpression) {
@@ -97,6 +99,16 @@ public final class Bodies {
     locals.add(m("name", local.getName(), "scope", scopes.id(frame), "line", lineOf(local),
         "type", clip(local.getTypeReference()), "initializer", Initializers.callee(local),
         "alias", Initializers.alias(local)));
+  }
+
+  private void destructured(KtDestructuringDeclaration declaration, Frame frame) {
+    List<KtDestructuringDeclarationEntry> entries = declaration.getEntries();
+    for (int index = 0; index < entries.size(); index++) {
+      KtDestructuringDeclarationEntry entry = entries.get(index);
+      locals.add(m("name", entry.getName(), "scope", scopes.id(frame), "line", lineOf(entry),
+          "type", clip(entry.getTypeReference()), "initializer", Initializers.callee(declaration.getInitializer()),
+          "component", index + 1));
+    }
   }
 
   private void read(KtArrayAccessExpression access, Frame frame) {

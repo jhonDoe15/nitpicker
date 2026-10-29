@@ -54,7 +54,13 @@ for `--all`):
   location and message.
 - `resolved-findings.json` and `changed-metrics.json`: informational.
 - `tool-errors.json`: the tool errors, whatever the exit code.
-- `summary.json` and `report.junit.xml`: totals and CI output.
+- `held-findings.json`: findings that were already there and are no worse than before. Allowed, but
+  any increase fails.
+- `summary.json`, `report.junit.xml` and `report.sarif`: totals and CI output. `report.sarif` has
+  the new findings only; `report-baseline.sarif` adds the held ones.
+
+`--all` has no baseline: it writes `findings.json` (every finding) in place of the four JSON files
+above that compare with the base, and no `report-baseline.sarif`.
 
 Only new enforceable findings fail the run. Resolved and unchanged findings, descriptive findings
 and metric changes are reported but never fail.

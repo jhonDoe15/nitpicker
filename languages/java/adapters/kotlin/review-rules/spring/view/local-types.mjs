@@ -9,6 +9,8 @@ const RECEIVER_HOSTS = new Set(['apply', 'run', 'with']);
 const IT_HOSTS = new Set(['let', 'also', 'takeIf', 'takeUnless']);
 const MAPS = new Set(['Map', 'MutableMap', 'HashMap', 'LinkedHashMap', 'TreeMap', 'SortedMap']);
 const MAP_VIEWS = new Set(['values', 'keys', 'entries']);
+const INITIALIZER_TYPES = new Map([['groupBy', 'Map<Any, List<Any>>']]);
+const COMPONENT_TYPES = new Map([['partition', ['List<Any>', 'List<Any>']]]);
 const DEPTH = 6;
 const BOUNDARIES = new Set(['fun', 'class', 'object']);
 
@@ -116,8 +118,11 @@ function localStep(view, scope, name) {
   if (local === undefined) {
     return undefined;
   }
+  if (local.component !== undefined) {
+    return { type: local.type ?? COMPONENT_TYPES.get(local.initializer)?.[local.component - 1] };
+  }
   if (local.type !== undefined || local.initializer !== undefined) {
-    return { type: local.type ?? local.initializer };
+    return { type: local.type ?? INITIALIZER_TYPES.get(local.initializer) ?? local.initializer };
   }
   return local.alias === undefined
     ? { type: undefined }
@@ -154,9 +159,18 @@ function nameStep(view, id, name) {
   );
 }
 
+function mapView(ownerType, member) {
+  const [key, value] = typeArguments(ownerType);
+  const element = new Map([
+    ['keys', key],
+    ['values', value],
+  ]).get(member);
+  return element === undefined ? 'Collection' : `Collection<${element}>`;
+}
+
 function memberOf(view, ownerType, member) {
   if (MAPS.has(typeName(ownerType).split('.').at(-1)) && MAP_VIEWS.has(member)) {
-    return 'Collection';
+    return mapView(ownerType, member);
   }
   if (member === 'environment' && view.is(ownerType, BEAN_FACTORIES)) {
     return 'org.springframework.core.env.Environment';

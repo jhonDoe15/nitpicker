@@ -22,6 +22,7 @@
     "src/main/java/probe/HashOnly.java": "package probe;\n\npublic class HashOnly {\n  @Override\n  public int hashCode() {\n    return 1;\n  }\n}\n",
     "src/main/java/probe/Hiding.java": "package probe;\n\npublic class Hiding extends Fields {\n  public String name = \"h\";\n  private String inner;\n\n  public static class Base {\n    public String name = \"b\";\n  }\n\n  public static class Sub extends Base {\n    public String name = \"s\";\n\n    @Override\n    public String toString() {\n      return null;\n    }\n  }\n\n  public String inner() {\n    return inner;\n  }\n}\n",
     "src/main/java/probe/Immut.java": "package probe;\n\nimport java.math.BigDecimal;\nimport java.math.BigInteger;\n\npublic class Immut {\n  public void ops(BigDecimal d, BigInteger i, String s) {\n    d.add(BigDecimal.ONE);\n    i.add(BigInteger.ONE);\n    s.trim();\n  }\n}\n",
+    "src/main/java/probe/Lazy.java": "package probe;\n\npublic class Lazy {\n  private static Lazy shared;\n  private volatile int hits;\n\n  public static Lazy shared() {\n    if (shared == null) {\n      shared = new Lazy();\n    }\n    return shared;\n  }\n\n  public static Lazy fresh() {\n    return new Lazy();\n  }\n\n  public int hit() {\n    hits = hits + 1;\n    return hits;\n  }\n}\n",
     "src/main/java/probe/Locales.java": "package probe;\n\nimport java.text.SimpleDateFormat;\n\npublic class Locales {\n  public String all(String s) {\n    String f = String.format(\"%d\", 1);\n    String l = s.toLowerCase();\n    return f + l + new SimpleDateFormat(\"yyyy\").toPattern();\n  }\n}\n",
     "src/main/java/probe/Locks.java": "package probe;\n\nimport java.net.URL;\nimport java.text.SimpleDateFormat;\nimport java.util.HashSet;\nimport java.util.Locale;\nimport java.util.Set;\nimport java.util.concurrent.locks.ReentrantLock;\n\npublic class Locks {\n  private static final SimpleDateFormat FORMAT = new SimpleDateFormat(\"yyyy\", Locale.ROOT);\n  private final ReentrantLock lock = new ReentrantLock();\n  private final Set<URL> urls = new HashSet<>();\n\n  public String run(boolean a) {\n    lock.lock();\n    String s = FORMAT.toPattern();\n    lock.unlock();\n    return s + urls.size() + (a & check());\n  }\n\n  private boolean check() {\n    return urls.isEmpty();\n  }\n}\n",
     "src/main/java/probe/Misc.java": "package probe;\n\npublic class Misc {\n  private Object guard = new Object();\n\n  /**\n   * Old.\n   *\n   * @deprecated use other\n   */\n  public void old() {}\n\n  /**\n   * Void.\n   *\n   * @return nothing\n   */\n  public void v() {}\n\n  public int paren(int x) {\n    char c = 'A';\n    ;\n    synchronized (guard) {\n      guard = new Object();\n    }\n    return (x + c);\n  }\n\n  public void end() {\n    Thread t = new Thread(() -> {});\n    t.setPriority(1);\n    double d = 1.0;\n    if (d == d) {\n      return;\n    }\n    return;\n  }\n}\n",
@@ -32,9 +33,13 @@
     "src/main/java/probe/P2Inner.java": "package probe;\n\nimport java.text.SimpleDateFormat;\n\npublic class P2Inner {\n  public static String[] names = {\"a\"};\n  private static SimpleDateFormat format = new SimpleDateFormat(\"yyyy\");\n\n  public int one() {\n    return new Helper().one() + format.toPattern().length() + names.length;\n  }\n\n  private class Helper {\n    int one() {\n      return 1;\n    }\n  }\n}\n",
     "src/main/java/probe/P2Strings.java": "package probe;\n\nimport java.io.ByteArrayOutputStream;\nimport java.io.IOException;\nimport java.io.OutputStreamWriter;\nimport java.io.Writer;\n\npublic class P2Strings {\n  public String all(byte[] b, int[] arr, int x, int y) throws IOException {\n    String u = \"A\";\n    String s = new String(b, \"UTF-8\");\n    Writer w = new OutputStreamWriter(new ByteArrayOutputStream(), \"UTF-8\");\n    w.close();\n    long sum = x + y;\n    float div = x / y;\n    if (x > y);\n    return u + s + arr.toString() + String.format(\"%s %s\", \"x\") + sum + div;\n  }\n\n  public Object make(Class<?> c) throws ReflectiveOperationException {\n    return c.newInstance();\n  }\n\n  public void sleep() {\n    try {\n      Thread.sleep(5);\n    } catch (Exception e) {\n      throw new IllegalStateException(e);\n    }\n  }\n}\n",
     "src/main/java/probe/P3Fields.java": "package probe;\n\npublic class P3Fields {\n  private int unusedPrivate;\n  int unusedPackage;\n  private int writtenOnly;\n  int writtenOnlyPackage;\n\n  public void set(int value) {\n    writtenOnly = value;\n    writtenOnlyPackage = value;\n  }\n}\n",
+    "src/main/java/probe/P4Text.java": "package probe;\n\nimport java.util.List;\n\npublic class P4Text {\n  public String copy(String s) {\n    return new String(s);\n  }\n\n  public String empty() {\n    return new String();\n  }\n\n  public String same(String s) {\n    return s.toString();\n  }\n\n  public String joined(List<String> parts) {\n    String out = \"\";\n    for (String part : parts) {\n      out += part;\n    }\n    return out;\n  }\n}\n",
     "src/main/java/probe/Recur.java": "package probe;\n\npublic class Recur {\n  public int f() {\n    return f();\n  }\n}\n",
     "src/main/java/probe/SelfAssign.java": "package probe;\n\npublic class SelfAssign {\n  private int a;\n\n  public int both(int b) {\n    b = b;\n    this.a = this.a;\n    return a + b;\n  }\n}\n",
+    "src/main/java/probe/Shared.java": "package probe;\n\nimport java.text.SimpleDateFormat;\nimport java.util.Calendar;\nimport java.util.Date;\nimport java.util.Locale;\n\npublic class Shared {\n  private static final SimpleDateFormat FORMAT = new SimpleDateFormat(\"yyyy\", Locale.ROOT);\n  public static final SimpleDateFormat DAY = new SimpleDateFormat(\"dd\", Locale.ROOT);\n  private static final Calendar CALENDAR = Calendar.getInstance(Locale.ROOT);\n  private final Object monitor = new Object();\n  private boolean ready;\n\n  public String format(Date date) {\n    return FORMAT.format(date);\n  }\n\n  public int year() {\n    return CALENDAR.get(Calendar.YEAR);\n  }\n\n  public Date now() {\n    return new Date();\n  }\n\n  public Date today() {\n    return Calendar.getInstance().getTime();\n  }\n\n  public long millis() {\n    return Calendar.getInstance().getTimeInMillis();\n  }\n\n  public void signal() {\n    synchronized (monitor) {\n      ready = true;\n      monitor.notify();\n    }\n  }\n\n  public boolean ready() {\n    return ready;\n  }\n}\n",
+    "src/main/java/probe/Single.java": "package probe;\n\npublic final class Single {\n  private static Single instance;\n\n  private Single() {}\n\n  public static Single get() {\n    if (instance == null) {\n      instance = new Single();\n    }\n    return instance;\n  }\n}\n",
     "src/main/java/probe/Skip.java": "package probe;\n\nimport java.io.IOException;\nimport java.io.InputStream;\n\npublic class Skip {\n  public void skip(InputStream in) throws IOException {\n    in.skip(5);\n  }\n}\n",
+    "src/main/java/probe/Stamps.java": "package probe;\n\nimport java.text.SimpleDateFormat;\nimport java.util.Date;\nimport java.util.Locale;\n\npublic class Stamps {\n  private static final SimpleDateFormat stamp = new SimpleDateFormat(\"HH\", Locale.ROOT);\n\n  public String at(Date date) {\n    return stamp.format(date);\n  }\n}\n",
     "src/main/java/probe/StaticCtor.java": "package probe;\n\npublic class StaticCtor {\n  private static int count;\n\n  public StaticCtor() {\n    count = 5;\n  }\n\n  public int count() {\n    return count;\n  }\n}\n",
     "src/main/java/probe/SunUse.java": "package probe;\n\nimport sun.misc.Signal;\nimport sun.misc.Unsafe;\n\npublic class SunUse {\n  public Object get() {\n    return Unsafe.class.getName() + Signal.class.getName();\n  }\n}\n",
     "src/main/java/probe/Types.java": "package probe;\n\nimport java.util.List;\n\npublic class Types {\n  public boolean all(List<String> l) {\n    return l.contains(5) || \"a\".equals(5);\n  }\n}\n",
@@ -2321,6 +2326,254 @@
       "rule": "StringCharset",
       "path": "src/main/java/probe/P2Strings.java",
       "line": 11
+    },
+    {
+      "tool": "pmd",
+      "rule": "AddEmptyString",
+      "path": "src/main/java/probe/Arrays1.java",
+      "line": 5
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidSynchronizedStatement",
+      "path": "src/main/java/probe/C3Locks.java",
+      "line": 15
+    },
+    {
+      "tool": "pmd",
+      "rule": "DontCallThreadRun",
+      "path": "src/main/java/probe/C3Locks.java",
+      "line": 27
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidFileStream",
+      "path": "src/main/java/probe/Encodings.java",
+      "line": 9
+    },
+    {
+      "tool": "pmd",
+      "rule": "NonThreadSafeSingleton",
+      "path": "src/main/java/probe/Lazy.java",
+      "line": 8
+    },
+    {
+      "tool": "pmd",
+      "rule": "UnsynchronizedStaticFormatter",
+      "path": "src/main/java/probe/Locks.java",
+      "line": 17
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidSynchronizedStatement",
+      "path": "src/main/java/probe/Misc.java",
+      "line": 23
+    },
+    {
+      "tool": "pmd",
+      "rule": "UseArrayListInsteadOfVector",
+      "path": "src/main/java/probe/Obsolete.java",
+      "line": 10
+    },
+    {
+      "tool": "pmd",
+      "rule": "UnsynchronizedStaticFormatter",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 10
+    },
+    {
+      "tool": "pmd",
+      "rule": "StringInstantiation",
+      "path": "src/main/java/probe/P4Text.java",
+      "line": 7
+    },
+    {
+      "tool": "pmd",
+      "rule": "StringInstantiation",
+      "path": "src/main/java/probe/P4Text.java",
+      "line": 11
+    },
+    {
+      "tool": "pmd",
+      "rule": "StringToString",
+      "path": "src/main/java/probe/P4Text.java",
+      "line": 15
+    },
+    {
+      "tool": "pmd",
+      "rule": "UseStringBufferForStringAppends",
+      "path": "src/main/java/probe/P4Text.java",
+      "line": 21
+    },
+    {
+      "tool": "pmd",
+      "rule": "UnsynchronizedStaticFormatter",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 16
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidCalendarDateCreation",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 28
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidCalendarDateCreation",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 32
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidSynchronizedStatement",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 36
+    },
+    {
+      "tool": "pmd",
+      "rule": "UseNotifyAllInsteadOfNotify",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 38
+    },
+    {
+      "tool": "pmd",
+      "rule": "NonThreadSafeSingleton",
+      "path": "src/main/java/probe/Single.java",
+      "line": 9
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidSynchronizedStatement",
+      "path": "src/main/java/probe/Volatile.java",
+      "line": 13
+    },
+    {
+      "tool": "pmd",
+      "rule": "DoubleCheckedLocking",
+      "path": "src/main/java/probe/Volatile.java",
+      "line": 18
+    },
+    {
+      "tool": "pmd",
+      "rule": "AvoidSynchronizedStatement",
+      "path": "src/main/java/probe/Volatile.java",
+      "line": 20
+    },
+    {
+      "tool": "pmd",
+      "rule": "UnsynchronizedStaticFormatter",
+      "path": "src/main/java/probe/Stamps.java",
+      "line": 11
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "LI_LAZY_INIT_STATIC",
+      "path": "src/main/java/probe/Lazy.java",
+      "line": 8,
+      "symbol": "probe.Lazy.shared"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "VO_VOLATILE_INCREMENT",
+      "path": "src/main/java/probe/Lazy.java",
+      "line": 19,
+      "symbol": "probe.Lazy.hits"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DM_STRING_CTOR",
+      "path": "src/main/java/probe/P4Text.java",
+      "line": 7,
+      "symbol": "probe.P4Text.copy(String)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "DM_STRING_VOID_CTOR",
+      "path": "src/main/java/probe/P4Text.java",
+      "line": 11,
+      "symbol": "probe.P4Text.empty()"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SBSC_USE_STRINGBUFFER_CONCATENATION",
+      "path": "src/main/java/probe/P4Text.java",
+      "line": 21,
+      "symbol": "probe.P4Text.joined(List)"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE",
+      "path": "src/main/java/probe/Shared.java",
+      "symbol": "probe.Shared.DAY"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 16,
+      "symbol": "probe.Shared.FORMAT"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "SING_SINGLETON_GETTER_NOT_SYNCHRONIZED",
+      "path": "src/main/java/probe/Single.java",
+      "line": 9,
+      "symbol": "probe.Single.get()"
+    },
+    {
+      "tool": "spotbugs",
+      "rule": "STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE",
+      "path": "src/main/java/probe/Stamps.java",
+      "line": 11,
+      "symbol": "probe.Stamps.stamp"
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NonFinalStaticField",
+      "path": "src/main/java/probe/Lazy.java",
+      "line": 4
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NullAway",
+      "path": "src/main/java/probe/Lazy.java",
+      "line": 4
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NonAtomicVolatileUpdate",
+      "path": "src/main/java/probe/Lazy.java",
+      "line": 19
+    },
+    {
+      "tool": "errorprone",
+      "rule": "DateFormatConstant",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 9
+    },
+    {
+      "tool": "errorprone",
+      "rule": "DateFormatConstant",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 10
+    },
+    {
+      "tool": "errorprone",
+      "rule": "JavaUtilDate",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 24
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NonFinalStaticField",
+      "path": "src/main/java/probe/Single.java",
+      "line": 4
+    },
+    {
+      "tool": "errorprone",
+      "rule": "NullAway",
+      "path": "src/main/java/probe/Single.java",
+      "line": 4
     }
   ]
 }
