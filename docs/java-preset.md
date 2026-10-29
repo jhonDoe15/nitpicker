@@ -2112,6 +2112,7 @@ boundary finding is still reported.
 | Rule                   | Fails when                                                                                                                                                                                                                                                                                                                                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `spring-scope-capture` | a singleton bean (a `@Component` class or a `@Bean` method without `@Scope`, or with `singleton` or `application` scope) takes a request-, session-, `websocket`-, Spring Batch `step`- or `job`-scoped bean without a scoped proxy: in a constructor or `@Bean` method parameter, an `@Autowired`, `@Inject` or `@Resource` field or method, also as `Optional<T>`, an array or a collection or map of them |
+| `spring-request-state` | request data reaches a field of a singleton bean or a static field outside set-up: assigned, written into an array element, or passed to a collection, map, `Map.Entry` or `AtomicReference` mutator (`add`, `put`, `computeIfAbsent`, `set`, ...)                                                                                                                                                           |
 
 The scope is read from `@Scope` on the class or `@Bean` method, directly or through a composed
 annotation such as `@RequestScope` (whose own `ScopedProxyMode` attribute, `TARGET_CLASS` by
@@ -2127,6 +2128,52 @@ declares; the rule claims only when all of them have such a scope. So a prototyp
 instance per injection point, often meant), a custom scope it cannot model (`@Scope("tenant")`,
 `thread`), a type with no bean in the module (one from a library or registered in code) or a
 `@ComponentScan(scopedProxy = ...)` default it cannot resolve to one mode is never a finding.
+
+`spring-request-state` follows request data through the compiled code (bytecode dataflow with
+[ASM](https://asm.ow2.io), BSD-3-Clause, added to the rule runner only). Request data is every
+parameter of a handler method (`@RequestMapping` and its shortcuts, `@MessageMapping`,
+`@SubscribeMapping`, `@SchemaMapping`, `@BatchMapping`, `@KafkaListener`, `@KafkaHandler`,
+`@RabbitListener`, `@RabbitHandler`, `@JmsListener`, `@ModelAttribute`, `@InitBinder`,
+`@ExceptionHandler`, also when the annotation sits on the interface or superclass method the handler
+overrides, as in a generated `XApi` interface), any parameter annotated `@RequestParam`,
+`@PathVariable`, `@RequestBody`, `@RequestHeader`, `@CookieValue`, `@RequestPart`,
+`@MatrixVariable`, `@RequestAttribute`, `@SessionAttribute`, `@ModelAttribute`, `@Payload`,
+`@Header(s)`, `@DestinationVariable` or `@Argument`, any parameter of a request type
+(`ServletRequest`, `WebRequest`, `ServerHttpRequest`, `ServerWebExchange`, a functional
+`ServerRequest`) and the result of `RequestContextHolder.getRequestAttributes()` /
+`currentRequestAttributes()`, `SecurityContextHolder.getContext()` and
+`ReactiveSecurityContextHolder.getContext()`, also through the project's own helpers that return it.
+It follows the data through local variables, values derived from it, new objects, collections and
+`StringBuilder`s built from it (library calls that fill a local object, `Collections.addAll`,
+`System.arraycopy`, method references such as `list::add`), getters and identity helpers
+(`Objects.requireNonNull`), calls into the project's own methods (across classes, through interfaces
+to every implementation, to the class of an object the method created, and through lambdas and
+method references the code runs or passes on), inner and anonymous classes writing their outer
+class's fields, and helper objects a singleton holds, and reports the field where it ends up, once
+per field, on the class that declares the shared field (a base class of a singleton, another
+singleton reached through its getter), with the first handler parameter or source that reaches it:
+`last:put:VisitController.create(visit)`, identity `VisitController|last`. Stores are writes to a
+field, an array element or a collection, map (also `MultiValueMap`, `HttpHeaders`, `Properties`),
+`Map.Entry`, `ListIterator`, `AtomicReference` or `StringBuilder` mutator.
+
+Constructors, static initializers, `@PostConstruct`, `afterPropertiesSet`, `@Bean` methods and
+injection methods (`@Autowired`, `@Inject`, `@Resource`) are set-up and never report, and neither
+does an injected field (a Kotlin `@Autowired lateinit var` set through its setter). Also fine: a
+local collection, a counter that only counts (`AtomicLong.incrementAndGet()`), a cache call
+(`Cache.put`, `@Cacheable`), a `ThreadLocal`, a field of a primitive, boxed or enum type (a flag or a
+running total), a field whose type only a per-use bean (`@RequestScope`, prototype, also declared
+with `@Bean`) can fill, inherited fields included, a field of a request-scoped bean, a new instance
+of a bean class that a handler builds and uses locally, and an element a predicate (`filter`,
+`anyMatch`, ...) only compared with request data. A Kotlin `suspend` handler's `Continuation`
+parameter is not request data, and locals the coroutine state machine saves keep their own data.
+Shared classes are the classes `spring-scope-capture` treats as singletons, the types a singleton
+`@Bean` method returns and the project classes it constructs (for a project return type also its
+subclasses that are not components themselves), classes named in `@Import`, `@WebFilter`,
+`@WebServlet` and `@WebListener` classes, enums, Kotlin `object`s, and every superclass of these.
+A registry keyed by request data (in-flight keys, per-key locks, pending replies, an unbounded memo
+map) is reported: bound it with a cache that has a size and an expiry, or add an exception that
+names why its entries are removed. The analysis reads one module's classes: a call into another
+module of a multi-module build or into a library is not followed.
 
 **Aggregates (jMolecules).** A project that declares its domain model with
 [jMolecules](https://github.com/xmolecules/jmolecules) (`org.jmolecules:jmolecules-ddd`, Apache-2.0,
