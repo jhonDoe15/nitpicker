@@ -138,15 +138,20 @@ describe('the shared fact rules', () => {
   });
 
   it('lets every preset lift a rule once a language besides TypeScript registers it', () => {
-    expect(sharedFactExceptionRules()).toEqual(['test-only-export', CONSOLE]);
+    expect(sharedFactExceptionRules()).toEqual([
+      'test-only-export',
+      'doc-comment-content',
+      CONSOLE,
+    ]);
     expect(registeredFactRules('python')).toEqual([]);
-    withLanguageRegistered('doc-comment-content', 'python', () => {
+    withLanguageRegistered('sibling-copy-edit', 'python', () => {
       expect(sharedFactExceptionRules()).toEqual([
+        'sibling-copy-edit',
         'test-only-export',
         'doc-comment-content',
         CONSOLE,
       ]);
-      expect(registeredFactRules('python')).toEqual(['doc-comment-content']);
+      expect(registeredFactRules('python')).toEqual(['sibling-copy-edit']);
     });
   });
 });
