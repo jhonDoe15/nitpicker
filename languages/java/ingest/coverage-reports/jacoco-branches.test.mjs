@@ -188,6 +188,22 @@ describe('changed-branch-coverage in the differential comparison', () => {
     expect(added.newFindings.map((finding) => finding.location.line)).toEqual([14]);
   });
 
+  it('keeps an uncovered branch baselined when the formatter only respaces its line', () => {
+    const reformatted = ingest(SOURCE.replace('boolean x = o == null;', 'boolean x=o==null ;'));
+    const result = compareFindings({
+      baseFindings: base,
+      headFindings: reformatted,
+      touchedCode: touched(
+        diffFor('@@ -8 +8 @@\n-  boolean x = o == null;\n+  boolean x=o==null ;'),
+      ),
+    });
+
+    expect(reformatted.map(({ identity }) => identity)).toEqual(
+      base.map(({ identity }) => identity),
+    );
+    expect(result.newFindings).toEqual([]);
+  });
+
   it('applies to the Java coverage rule only, not to the TypeScript check of the same name', () => {
     expect(isStrictRule('changed-branch-coverage', { tool: 'jacoco' })).toBe(true);
     expect(isStrictRule('changed-branch-coverage', { tool: 'coverage' })).toBe(false);

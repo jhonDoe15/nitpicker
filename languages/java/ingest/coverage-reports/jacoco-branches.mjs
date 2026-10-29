@@ -7,6 +7,7 @@ import {
   normalizeReportPath,
   parseXml,
 } from '../../../../shared/ingest/common.mjs';
+import { formatAgnosticText } from '../../../../shared/source-text/format-tokens.mjs';
 import { isCompilerGeneratedBranchLine, suspensionCall } from './kotlin-branches.mjs';
 
 export function ingestJacocoBranches(xml, options = {}) {
@@ -101,7 +102,7 @@ function lineBranch(line, { path: filePath, lines: sourceLines }) {
   const suspension = kotlin ? suspensionCall(source) : undefined;
   return {
     path: filePath,
-    key: hashIdentity('branch-source', [source]),
+    key: hashIdentity('branch-source', [formatAgnosticText(source, filePath)]),
     percent: (covered / total) * 100,
     line: lineNumber,
     ...(suspension === undefined ? {} : { arms: [suspensionArm(suspension)] }),

@@ -10,6 +10,10 @@ import { parseChangedLines, readChangedLines } from './patches/changed-lines.mjs
 
 const temporaryRoots = [];
 
+function lineSummary({ path: filePath, added, ranges, inserted }) {
+  return { path: filePath, added, ranges, inserted };
+}
+
 afterEach(() => {
   for (const root of temporaryRoots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
@@ -73,7 +77,7 @@ describe('changed line ranges', () => {
   it('reads head-side ranges, new files and spaced names, and skips pure deletions', () => {
     const changed = parseChangedLines(diff);
 
-    expect(changed.get('src/main/a.ts')).toEqual({
+    expect(lineSummary(changed.get('src/main/a.ts'))).toEqual({
       path: 'src/main/a.ts',
       added: false,
       ranges: [
@@ -83,14 +87,14 @@ describe('changed line ranges', () => {
       inserted: [[4, 5]],
     });
     expect(changed.get('src/main/a.ts').inserted).toEqual([[4, 5]]);
-    expect(changed.get('src/main/b.ts')).toEqual({
+    expect(lineSummary(changed.get('src/main/b.ts'))).toEqual({
       path: 'src/main/b.ts',
       added: true,
       ranges: [[1, 4]],
       inserted: [[1, 4]],
     });
     expect(changed.has('src/main/gone.ts')).toBe(false);
-    expect(changed.get('src/main/with space.ts')).toEqual({
+    expect(lineSummary(changed.get('src/main/with space.ts'))).toEqual({
       path: 'src/main/with space.ts',
       added: false,
       ranges: [[1, 1]],
@@ -110,7 +114,7 @@ describe('changed line ranges', () => {
       ].join('\n'),
     );
 
-    expect(changed.get('src/a.ts')).toEqual({
+    expect(lineSummary(changed.get('src/a.ts'))).toEqual({
       path: 'src/a.ts',
       added: false,
       ranges: [
@@ -135,7 +139,7 @@ describe('changed line ranges', () => {
       ].join('\n'),
     );
 
-    expect(changed.get('src/a.ts')).toEqual({
+    expect(lineSummary(changed.get('src/a.ts'))).toEqual({
       path: 'src/a.ts',
       added: false,
       ranges: [[43, 44]],
@@ -156,7 +160,7 @@ describe('changed line ranges', () => {
       ].join('\n'),
     );
 
-    expect(changed.get('src/a.ts')).toEqual({
+    expect(lineSummary(changed.get('src/a.ts'))).toEqual({
       path: 'src/a.ts',
       added: false,
       ranges: [[30, 30]],
@@ -176,7 +180,7 @@ describe('changed line ranges', () => {
       ].join('\n'),
     );
 
-    expect(changed.get('src/a.ts')).toEqual({
+    expect(lineSummary(changed.get('src/a.ts'))).toEqual({
       path: 'src/a.ts',
       added: false,
       ranges: [[7, 7]],
@@ -230,13 +234,13 @@ describe('changed line ranges', () => {
       projectRelativePath: '.',
     });
 
-    expect(changed.get('src/a.ts')).toEqual({
+    expect(lineSummary(changed.get('src/a.ts'))).toEqual({
       path: 'src/a.ts',
       added: false,
       ranges: [[6, 6]],
       inserted: [],
     });
-    expect(changed.get('src/fresh.ts')).toEqual({
+    expect(lineSummary(changed.get('src/fresh.ts'))).toEqual({
       path: 'src/fresh.ts',
       added: true,
       ranges: [[1, 1]],

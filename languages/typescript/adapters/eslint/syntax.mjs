@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import ts from 'typescript';
+import { parenthesesAroundArrowParameter } from '../../../../shared/source-text/format-tokens.mjs';
 import { chainOf } from '../../../../shared/traversal.mjs';
 export function commentAt(text, position, endPosition) {
   const isLine = text.startsWith('//', position);
@@ -122,6 +123,13 @@ function fingerprintText(node) {
   return node.getText();
 }
 
+const ARROW_PARAMETER = [
+  ts.SyntaxKind.OpenParenToken,
+  ts.SyntaxKind.Identifier,
+  ts.SyntaxKind.CloseParenToken,
+  ts.SyntaxKind.EqualsGreaterThanToken,
+].map((kind) => (candidate) => candidate === kind);
+
 export function syntaxFingerprint(node, nodeType) {
   if (nodeType === 'Program') {
     return 'program';
@@ -133,11 +141,18 @@ export function syntaxFingerprint(node, nodeType) {
     ts.LanguageVariant.Standard,
     fingerprintText(node),
   );
-  const tokens = [...scannedTokens(scanner)];
+  const tokens = [...scannedTokens(scanner)].filter(
+    (token) => token.kind !== ts.SyntaxKind.SemicolonToken,
+  );
+  const parentheses = parenthesesAroundArrowParameter(
+    tokens.map(({ kind }) => kind),
+    ARROW_PARAMETER,
+  );
   const semanticTokens = tokens
     .filter(
       (token, index) =>
-        token.kind !== ts.SyntaxKind.CommaToken || !isClosingToken(tokens[index + 1]?.kind),
+        !(token.kind === ts.SyntaxKind.CommaToken && isClosingToken(tokens[index + 1]?.kind)) &&
+        !parentheses.has(index),
     )
     .map((token) => `${String(token.kind)}:${token.text}`);
   return createHash('sha256').update(semanticTokens.join('\0')).digest('hex').slice(0, 24);
@@ -179,7 +194,13 @@ function scannedTokens(scanner) {
         ? { done: true }
         : {
             done: false,
-            value: { kind, text: scanner.getTokenText() },
+            value: {
+              kind,
+              text:
+                kind === ts.SyntaxKind.StringLiteral
+                  ? JSON.stringify(scanner.getTokenValue())
+                  : scanner.getTokenText(),
+            },
           };
     },
   };
