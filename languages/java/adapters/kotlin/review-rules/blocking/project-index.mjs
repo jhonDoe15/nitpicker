@@ -15,7 +15,9 @@ function derivesFromData(klass, file, resolver, known) {
     }
     return (
       BLOCKING_REPOSITORY_BASES.has(simple) &&
-      (entry.startsWith(SPRING_DATA) || resolver.importsFrom(SPRING_DATA) || file.imports.length === 0)
+      (entry.startsWith(SPRING_DATA) ||
+        resolver.importsFrom(SPRING_DATA) ||
+        file.imports.length === 0)
     );
   });
 }

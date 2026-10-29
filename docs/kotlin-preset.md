@@ -243,7 +243,8 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `kotlin-source/<Rule>` of the [source checks](#source-checks), `kotlinc/deprecation`,
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
 `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/AssertionInControlFlow`,
-`pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
+`pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/BlockingCallInCoroutine`,
+`pmd/TimeoutWithoutSuspension`, `pmd/ExhaustiveEnumPredicate`,
 `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `unused-option`), a class limit, a file
 limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
 `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
@@ -442,6 +443,8 @@ skipped with a note on stderr.
 | `FocusedTest`                            | `review-rules/tests/honesty/`               | a Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`                                                                                                                               |
 | `AssertionInControlFlow`                 | `review-rules/tests/honesty/`               | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                             |
 | `CoroutineEscapesTest`                   | `review-rules/tests/coroutines/`            | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                           |
+| `BlockingCallInCoroutine`                | `review-rules/blocking/`                    | a blocking call in coroutine code that nothing offloads: `Files.*`, file, JDBC, `Future.get()`, `latch.await()`, `queue.take()`, `Mono.block()`                                                                                                                   |
+| `TimeoutWithoutSuspension`               | `review-rules/blocking/`                    | a `withTimeout` block with no suspension point, which can never time out                                                                                                                                                                                          |
 | `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                   |
 | `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                                                                                                                      |
 | `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                                      |
@@ -482,6 +485,42 @@ Limits, all chosen to flag less rather than guess:
 - Singular and plural: both members must have the same element type (the plural a list, set,
   collection or array of it). Only the primary-constructor properties of a `data class` and the
   properties of a `@ConfigurationProperties` class are inspected.
+- Blocking calls in coroutines (`BlockingCallInCoroutine`): the facts step records the calls that run in
+  coroutine code: the body of a `suspend` function and the lambdas of `launch`, `async`, `produce`, `actor`,
+  `coroutineScope`, `supervisorScope`, `withTimeout` and `withContext` inside it (also a `launch` without a
+  receiver inside such code), looking through `let`, `run`, `apply`, `also`, `with`, `use`, `forEach` and
+  `repeat`. A call is not recorded when a `withContext(...)` or `launch(...)` context argument is anything but
+  `Dispatchers.Default`, `Main` or `Unconfined` (`Dispatchers.IO`, an injected dispatcher, an executor
+  dispatcher: all count as blocking dispatchers), or inside `runInterruptible`. A
+  `launch` or `async` on an explicit receiver (`scope.launch { ... }`) in a plain function is not
+  coroutine code, because the scope's dispatcher is unknown. The call is matched by evidence: an
+  import-resolved static owner (`Files.readString`, `DriverManager.getConnection`, `InetAddress.getByName`),
+  a receiver whose declared type (parameter, property or local with a type, or a short chain such as
+  `file.toPath()`) is in the table of blocking types (`File`, `Path` with `kotlin.io.path`, `URL`, file
+  streams and readers, JDBC connection, statement and result set, `Future`, `CountDownLatch`,
+  `BlockingQueue`, `Semaphore`, `Lock`, `Process`, `Thread.join`, `HttpClient.send`, `HttpURLConnection`,
+  `Socket`, OkHttp `Call`, `JdbcTemplate`, `RestTemplate`, `EntityManager`), the names `executeQuery`,
+  `executeUpdate` and `block` in a file that imports `java.sql`, `javax.sql`, JPA, Spring JDBC or Reactor,
+  `readLine`/`readln` with no argument when the project declares no function of that name, and a call on an
+  interface of the project that extends a Spring Data repository base and declares no `suspend` function of
+  that name. The message names the basis. `Thread.sleep` and `TimeUnit.sleep` are not in the table: detekt
+  reports them (`SleepInsteadOfDelay` is on in the default config the preset builds upon, and
+  `ForbiddenMethodCall` bans both in main sources), so nothing is reported twice. Test sources are not
+  checked. Kotlin projects on Maven are not supported by the Kotlin preset (a tool error says so), so
+  this rule runs on Gradle builds; a Java module of the same build gets the Reactor rules of the
+  [Java preset](java-preset.md).
+- Timeout blocks (`TimeoutWithoutSuspension`): `withTimeout(OrNull)`, also through an import alias, in a
+  file that imports `kotlinx.coroutines`. The block is reported only when every call in it is known not to
+  suspend (a blocking call of the table above, a function the project declares only without `suspend`, a
+  constructor of the project, or a short list of standard functions such as `println`, `listOf`, `let`,
+  `map`, `use`) and at least one is blocking or a project function; any other call (`delay`, `await`,
+  `withContext`, `runInterruptible`, `launch`, `ensureActive`, `yield`, a library call) may suspend or
+  check for cancellation, so the block is left alone. A reference to `isActive` or `coroutineContext` and a
+  `for` over something that is not a range also end the check. The blocking calls inside a reported timeout
+  block are reported once, as the timeout. The allowed forms are `withContext(Dispatchers.IO) { ... }` or
+  `runInterruptible(Dispatchers.IO) { ... }` inside the block, or `ensureActive()` in the loop that does the
+  work. Calls are matched by name across the project, so an overloaded `suspend` and non-suspend function of
+  one name is treated as possibly suspending.
 - Spring context: any injected or mock bean, `MockMvc`, `WebTestClient`, `TestRestTemplate`,
   `CapturedOutput`, `ApplicationEvents`, `ApplicationContext` or a `webEnvironment` with a random or defined
   port counts as use.

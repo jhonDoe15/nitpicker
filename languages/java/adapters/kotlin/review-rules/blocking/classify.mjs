@@ -17,26 +17,20 @@ function isOneOf(resolver, name, qualified) {
   );
 }
 
-function ownerOf(entry, staticOwner) {
-  if (!entry.members) {
-    return staticOwner;
-  }
-  return staticOwner.includes('.') ? staticOwner.slice(0, staticOwner.lastIndexOf('.')) : undefined;
-}
-
 function staticCall(call, resolver) {
   const { staticOwner } = call;
   if (staticOwner === undefined) {
     return undefined;
   }
   for (const entry of STATIC_CALLS) {
-    const owner = ownerOf(entry, staticOwner);
     if (
-      owner !== undefined &&
       covers(entry.names, call.name) &&
-      entry.owners.some((qualified) => resolver.isType(owner, qualified))
+      entry.owners.some((qualified) => resolver.isType(staticOwner, qualified))
     ) {
-      return { subject: `${entry.label}.${call.name}`, basis: `${simpleName(entry.owners[0])} is a blocking API` };
+      return {
+        subject: `${entry.label}.${call.name}`,
+        basis: `${simpleName(entry.owners[0])} is a blocking API`,
+      };
     }
   }
   return undefined;

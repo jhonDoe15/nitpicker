@@ -1,3 +1,4 @@
+import { BLOCKING_RULES } from './blocking/blocking-findings.mjs';
 import { ENUM_PREDICATE_RULE } from '../../review-rules/enum-predicates.mjs';
 import { FORWARDING_RULE } from './main/forwarding-wrappers.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
@@ -14,6 +15,7 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   NEGATIVE_WAIT_RULE,
   ...HONESTY_RULES,
   SPRING_UNUSED_CONTEXT_RULE,
+  ...BLOCKING_RULES,
   ENUM_PREDICATE_RULE,
   FORWARDING_RULE,
   SINGULAR_PLURAL_RULE,

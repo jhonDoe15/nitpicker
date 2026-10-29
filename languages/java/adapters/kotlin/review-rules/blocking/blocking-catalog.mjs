@@ -85,12 +85,6 @@ export const STATIC_CALLS = [
   { owners: ['java.nio.file.Files'], names: EVERY_METHOD, label: 'Files' },
   { owners: ['java.sql.DriverManager'], names: ['getConnection'], label: 'DriverManager' },
   { owners: ['java.net.InetAddress'], names: ['getByName', 'getAllByName'], label: 'InetAddress' },
-  {
-    owners: ['java.util.concurrent.TimeUnit'],
-    names: ['sleep', 'timedJoin', 'timedWait'],
-    label: 'TimeUnit',
-    members: true,
-  },
 ];
 
 export const MEMBER_CALLS = [
@@ -104,7 +98,10 @@ export const MEMBER_CALLS = [
   { types: ['java.io.FileOutputStream'], names: ['write', 'flush'] },
   { types: ['java.io.FileReader'], names: ['read', 'readText', 'readLines', 'readLine'] },
   { types: ['java.io.FileWriter'], names: ['write', 'append', 'flush'] },
-  { types: ['java.sql.Connection'], names: ['prepareStatement', 'createStatement', 'prepareCall', 'commit', 'rollback'] },
+  {
+    types: ['java.sql.Connection'],
+    names: ['prepareStatement', 'createStatement', 'prepareCall', 'commit', 'rollback'],
+  },
   {
     types: ['java.sql.Statement', 'java.sql.PreparedStatement', 'java.sql.CallableStatement'],
     names: STATEMENT_METHODS,
@@ -112,14 +109,20 @@ export const MEMBER_CALLS = [
   { types: ['java.sql.ResultSet'], names: ['next'] },
   { types: ['javax.sql.DataSource'], names: ['getConnection'] },
   { types: FUTURES, names: ['get', 'join'] },
-  { types: ['java.util.concurrent.CountDownLatch', 'java.util.concurrent.CyclicBarrier'], names: ['await'] },
+  {
+    types: ['java.util.concurrent.CountDownLatch', 'java.util.concurrent.CyclicBarrier'],
+    names: ['await'],
+  },
   { types: BLOCKING_QUEUES, names: ['take', 'put'] },
   { types: ['java.util.concurrent.Semaphore'], names: ['acquire', 'acquireUninterruptibly'] },
   { types: LOCKS, names: ['lock', 'lockInterruptibly'] },
   { types: ['java.lang.Process'], names: ['waitFor'] },
   { types: ['java.lang.Thread'], names: ['join'] },
   { types: ['java.net.http.HttpClient'], names: ['send'] },
-  { types: ['java.net.URLConnection', 'java.net.HttpURLConnection'], names: ['getInputStream', 'getOutputStream', 'getResponseCode', 'connect'] },
+  {
+    types: ['java.net.URLConnection', 'java.net.HttpURLConnection'],
+    names: ['getInputStream', 'getOutputStream', 'getResponseCode', 'connect'],
+  },
   { types: ['java.net.Socket'], names: ['connect', 'getInputStream', 'getOutputStream'] },
   { types: ['java.net.ServerSocket'], names: ['accept'] },
   { types: ['okhttp3.Call'], names: ['execute'] },
@@ -141,7 +144,13 @@ export const MEMBER_CALLS = [
 export const EVIDENCE_CALLS = [
   {
     names: ['executeQuery', 'executeUpdate', 'executeBatch', 'executeLargeUpdate'],
-    imports: ['java.sql.', 'javax.sql.', 'org.springframework.jdbc.', 'jakarta.persistence.', 'javax.persistence.'],
+    imports: [
+      'java.sql.',
+      'javax.sql.',
+      'org.springframework.jdbc.',
+      'jakarta.persistence.',
+      'javax.persistence.',
+    ],
   },
   {
     names: ['block', 'blockFirst', 'blockLast', 'blockOptional'],

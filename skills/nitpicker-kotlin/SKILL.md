@@ -77,6 +77,12 @@ Before you change code other modules use, or fix a bug, read
 - No top-level or `object` function that only passes its parameters, in order, to another function
   with the same parameters (`pmd/StaticForwardingWrapper`); call that function. Factories named
   `of` or `from` are fine.
+- Blocking calls (`Files.readString`, `File.readText`, JDBC, `Future.get()`, `latch.await()`,
+  `queue.take()`, `Mono.block()`) in a `suspend` function or coroutine builder go through
+  `withContext(Dispatchers.IO) { ... }`, or `runInterruptible(Dispatchers.IO) { ... }` for an
+  interruptible one (`pmd/BlockingCallInCoroutine`). A `withTimeout` block needs a suspension point:
+  `withTimeout(1.seconds) { blocking() }` never times out, so offload the blocking call inside it
+  (`pmd/TimeoutWithoutSuspension`).
 - A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
 - A private or `internal` function or constructor does not declare a default parameter that no

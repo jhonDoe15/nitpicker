@@ -56,6 +56,47 @@ internal data class Envelope(val id: String, val retries: Int = 3)
 fun report(): String = pad(1) + label(2) + Mailer("h").send() + label(3, "m") + Envelope("e").id
 `;
 
+const ARCHIVE = `package demo.orders
+
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
+import java.util.concurrent.Future
+import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
+
+class Archive(private val index: File, private val pending: Future<String>) {
+    suspend fun loadsOnTheCaller(path: Path): String = Files.readString(path)
+
+    suspend fun waitsOnAFuture(): String = pending.get()
+
+    suspend fun timesOutBlockingWork(path: Path): String = withTimeout(1.seconds) { Files.readString(path) }
+
+    suspend fun offloaded(path: Path): String = withContext(Dispatchers.IO) { Files.readString(path) }
+
+    suspend fun interruptible(): String = runInterruptible(Dispatchers.IO) { pending.get() }
+
+    suspend fun timesOutOffloadedWork(path: Path): String =
+        withTimeout(1.seconds) { withContext(Dispatchers.IO) { Files.readString(path) } }
+
+    suspend fun timesOutAfterADelay(path: Path): Path = withTimeout(1.seconds) { delay(10); path }
+
+    fun readsOutsideACoroutine(path: Path): String = Files.readString(path)
+
+    fun launchesOnTheIoDispatcher(scope: CoroutineScope, path: Path) {
+        scope.launch(Dispatchers.IO) { Files.readString(path) }
+    }
+
+    fun sizeOfTheIndex(): Long = index.length()
+}
+`;
+
 const WAITING_TEST = `package demo.orders
 
 import kotlinx.coroutines.delay
@@ -144,6 +185,7 @@ export const REVIEW_RULE_FILES = {
   [`${MAIN}/Clock.kt`]: CLOCK,
   [`${MAIN}/Settlement.kt`]: SETTLEMENT,
   [`${MAIN}/Formatting.kt`]: FORMATTING,
+  [`${MAIN}/Archive.kt`]: ARCHIVE,
   [`${TEST}/WaitingTest.kt`]: WAITING_TEST,
   [`${TEST}/ContextTest.kt`]: CONTEXT_TEST,
   [`${SPRING}/boot/test/context/SpringBootTest.kt`]: SPRING_BOOT_TEST,
@@ -151,6 +193,8 @@ export const REVIEW_RULE_FILES = {
 };
 
 export const EXPECTED_REVIEW_FINDINGS = [
+  'BlockingCallInCoroutine loadsOnTheCaller.Files.readString',
+  'BlockingCallInCoroutine waitsOnAFuture.Future.get',
   'ExhaustiveEnumPredicate isLive',
   'ExhaustiveEnumPredicate isOpen',
   'ExhaustiveEnumPredicate isSettled',
@@ -162,6 +206,7 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',
   'StaticForwardingWrapper total',
+  'TimeoutWithoutSuspension timesOutBlockingWork.withTimeout',
   'unused-option Envelope.retries',
   'unused-option Mailer.retries',
   'unused-option pad.width',

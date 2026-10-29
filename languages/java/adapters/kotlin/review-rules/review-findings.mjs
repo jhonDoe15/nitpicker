@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { hasAwaitility } from '../../../messages/wait-advice.mjs';
 import { pathInside, sourceFilesUnder } from '../../review-rules/java-sources.mjs';
+import { blockingFindings } from './blocking/blocking-findings.mjs';
 import { enumPredicateFindings } from './main/enum-predicates.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
@@ -77,6 +78,7 @@ export function readKotlinReviewFindings(context) {
     ...honesty,
     ...springContextFindings(own, { finding }),
     ...springFindings(own, { finding, manifest, projectFiles, projectRoot, javaRoots }),
+    ...blockingFindings(own, { finding, declaredIn: projectFiles }),
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
     ...singularPluralFindings(own, { finding }),
