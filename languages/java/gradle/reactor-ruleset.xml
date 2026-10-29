@@ -1,0 +1,94 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Nitpicker's Reactor rules for main sources. Both rules match Mono and Flux through PMD type
+     resolution on the auxiliary classpath, so they find nothing in a project that does not have
+     Reactor on its compile classpath. docs/java-preset.md lists the rules and why each exists. -->
+<ruleset name="nitpicker-reactor"
+         xmlns="http://pmd.sourceforge.net/ruleset/2.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://pmd.sourceforge.net/ruleset/2.0.0 https://pmd.sourceforge.io/ruleset_2_0_0.xsd">
+  <description>Nitpicker Reactor rules: no blocking calls on the threads that run a reactive chain.</description>
+
+  <rule name="ReactorBlockingInOperator" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This blocking call runs inside a Reactor operator, on the event-loop thread that serves every other request. Move the work to a bounded pool: Mono.fromCallable(() -> blocking()).subscribeOn(Schedulers.boundedElastic()) inside flatMap, or publishOn(Schedulers.boundedElastic()) earlier in the chain; or use the non-blocking client.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+let $operators := ('map', 'mapNotNull', 'flatMap', 'flatMapMany', 'flatMapIterable', 'flatMapSequential',
+      'concatMap', 'switchMap', 'filter', 'handle', 'doOnNext', 'doOnSuccess', 'doOnError', 'doOnEach',
+      'doOnComplete', 'doOnTerminate', 'doAfterTerminate', 'doFinally', 'onErrorResume', 'onErrorReturn',
+      'onErrorMap', 'zipWith', 'reduce', 'scan', 'subscribe'),
+    $reactive := function($node) {
+      $node[pmd-java:typeIs('reactor.core.publisher.Mono') or pmd-java:typeIs('reactor.core.publisher.Flux')]
+    },
+    $file := function($node) {
+      exists($node[pmd-java:typeIs('java.io.FileInputStream') or pmd-java:typeIs('java.io.FileOutputStream')
+        or pmd-java:typeIs('java.io.FileReader') or pmd-java:typeIs('java.io.FileWriter')
+        or pmd-java:typeIs('java.io.RandomAccessFile')])
+    },
+    $blocking := function($call) {
+      exists($call[self::ConstructorCall][$file(.)])
+      or exists($call[self::MethodCall][not(*[1][self::ConstructorCall][$file(.)])][pmd-java:matchesSig('java.lang.Thread#sleep(_*)')
+          or pmd-java:matchesSig('java.nio.file.Files#_(_*)')
+          or pmd-java:matchesSig('java.sql.DriverManager#getConnection(_*)')
+          or pmd-java:matchesSig('java.net.InetAddress#getByName(_*)')
+          or pmd-java:matchesSig('java.net.InetAddress#getAllByName(_*)')
+          or (@MethodName = ('block', 'blockFirst', 'blockLast', 'blockOptional') and exists($reactive(*[1])))
+          or (@MethodName = ('get', 'join') and exists(*[1][pmd-java:typeIs('java.util.concurrent.Future')]))
+          or (@MethodName = 'join' and exists(*[1][pmd-java:typeIs('java.lang.Thread')]))
+          or (@MethodName = 'await' and exists(*[1][pmd-java:typeIs('java.util.concurrent.CountDownLatch')
+               or pmd-java:typeIs('java.util.concurrent.CyclicBarrier')]))
+          or (@MethodName = ('take', 'put') and exists(*[1][pmd-java:typeIs('java.util.concurrent.BlockingQueue')]))
+          or (@MethodName = ('acquire', 'acquireUninterruptibly') and exists(*[1][pmd-java:typeIs('java.util.concurrent.Semaphore')]))
+          or (@MethodName = ('lock', 'lockInterruptibly') and exists(*[1][pmd-java:typeIs('java.util.concurrent.locks.Lock')]))
+          or (@MethodName = 'waitFor' and exists(*[1][pmd-java:typeIs('java.lang.Process')]))
+          or (@MethodName = ('execute', 'executeQuery', 'executeUpdate', 'executeBatch', 'executeLargeUpdate')
+              and exists(*[1][pmd-java:typeIs('java.sql.Statement')]))
+          or (@MethodName = 'next' and exists(*[1][pmd-java:typeIs('java.sql.ResultSet')]))
+          or (@MethodName = ('prepareStatement', 'createStatement', 'prepareCall', 'commit', 'rollback')
+              and exists(*[1][pmd-java:typeIs('java.sql.Connection')]))
+          or (@MethodName = 'getConnection' and exists(*[1][pmd-java:typeIs('javax.sql.DataSource')]))
+          or (@MethodName = ('read', 'readAllBytes', 'readNBytes', 'skip') and exists(*[1][pmd-java:typeIs('java.io.InputStream')]))
+          or (@MethodName = 'write' and exists(*[1][pmd-java:typeIs('java.io.OutputStream')]))
+          or (@MethodName = ('readLine', 'read', 'lines') and exists(*[1][pmd-java:typeIs('java.io.BufferedReader')]))
+          or (@MethodName = 'send' and exists(*[1][pmd-java:typeIs('java.net.http.HttpClient')]))
+          or (@MethodName = ('openStream', 'openConnection') and exists(*[1][pmd-java:typeIs('java.net.URL')]))
+          or (@MethodName = ('getInputStream', 'getResponseCode') and exists(*[1][pmd-java:typeIs('java.net.URLConnection')]))
+          or (@MethodName = 'execute' and exists(*[1][pmd-java:typeIs('okhttp3.Call')]))
+          or exists(*[1][pmd-java:typeIs('org.springframework.web.client.RestTemplate')
+              or pmd-java:typeIs('org.springframework.jdbc.core.JdbcOperations')
+              or pmd-java:typeIs('org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations')
+              or pmd-java:typeIs('org.springframework.data.repository.CrudRepository')
+              or pmd-java:typeIs('org.springframework.data.repository.PagingAndSortingRepository')
+              or pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager')])
+             and not(@MethodName = ('toString', 'equals', 'hashCode', 'getClass'))])
+    },
+    $offloaded := function($operator) {
+      let $upstream := $operator/*[1]
+      return exists(
+        ($operator/ancestor::MethodCall | $upstream/descendant-or-self::MethodCall
+           [not(ancestor::ArgumentList intersect $upstream/descendant::ArgumentList)])
+          [@MethodName = ('subscribeOn', 'publishOn')]
+          [not(ArgumentList/MethodCall[@MethodName = ('parallel', 'single', 'immediate')][*[1][self::TypeExpression]])])
+        or exists($upstream/descendant-or-self::VariableAccess[not(ancestor::ArgumentList intersect $upstream/descendant::ArgumentList)]
+          [exists($reactive(.))])
+    }
+return
+  for $operator in //MethodCall[@MethodName = $operators][exists($reactive(*[1]))][not($offloaded(.))],
+      $lambda in $operator/ArgumentList/LambdaExpression
+  return $lambda//*[$blocking(.)]
+    [ancestor::LambdaExpression[1] is $lambda]
+    [not(ancestor::*[self::ClassBody or self::MethodDeclaration] intersect $lambda//*)]
+]]></value></property></properties>
+  </rule>
+
+  <rule name="ReactorBlockInReactiveMethod" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This method returns a Mono or Flux but waits for another one with block(). The caller runs on an event-loop thread, so block() stalls every other request (Reactor throws IllegalStateException on those threads). Compose instead: return the inner publisher through flatMap or zipWith.">
+    <priority>2</priority>
+    <properties><property name="xpath"><value><![CDATA[
+//MethodDeclaration[ClassType[pmd-java:typeIs('reactor.core.publisher.Mono')
+    or pmd-java:typeIs('reactor.core.publisher.Flux') or pmd-java:typeIs('org.reactivestreams.Publisher')]]
+  /Block//MethodCall[@MethodName = ('block', 'blockFirst', 'blockLast', 'blockOptional')]
+    [*[1][pmd-java:typeIs('reactor.core.publisher.Mono') or pmd-java:typeIs('reactor.core.publisher.Flux')]]
+    [ancestor::*[self::LambdaExpression or self::MethodDeclaration or self::ClassBody][1][self::MethodDeclaration]]
+]]></value></property></properties>
+  </rule>
+</ruleset>

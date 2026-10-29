@@ -21,6 +21,7 @@ const BRANCH_STRICT_RULES = [
   'nitpicker/no-process-access-outside-composition-root',
   'nitpicker/no-shell-string-command',
   'nitpicker/no-sql-string-building',
+  'nitpicker/no-sync-node-api-in-async',
   'nitpicker/no-unsafe-deserialization',
   'nitpicker/no-unsafe-path-join',
   'nitpicker/no-weak-hash',
