@@ -3,19 +3,19 @@ import { stringValue } from '../analysis/constant-resolution.mjs';
 import { isCompositionRootFile } from '../boundaries/composition-root-files.mjs';
 import { mentionsEntryPoint } from '../modules/no-process-globals-outside-main-guard.mjs';
 
-const PROCESS_MODULES = new Set(['process', 'node:process']);
+export const PROCESS_MODULES = new Set(['process', 'node:process']);
 const GLOBAL_OBJECTS = new Set(['globalThis', 'global', 'window', 'self']);
 const PROCESS_MEMBERS = new Set(['env', 'exit']);
 const BUNDLER_REPLACED_VARIABLE = /^(?:NODE_ENV|(?:NEXT_PUBLIC|EXPO_PUBLIC|REACT_APP)_\w+)$/;
 
-function keyText(node, key) {
+export function keyText(node, key) {
   if (!node.computed) {
     return key.type === 'Identifier' ? key.name : undefined;
   }
   return key.type === 'Literal' ? key.value : undefined;
 }
 
-function propertyText(node) {
+export function propertyText(node) {
   return keyText(node, node.property);
 }
 
@@ -23,7 +23,7 @@ function isPlainProcess(node) {
   return node.type === 'Identifier' && node.name === 'process';
 }
 
-function isProcessObject(node, namespaces) {
+export function isProcessObject(node, namespaces) {
   if (node.type === 'Identifier') {
     return isPlainProcess(node) || namespaces.has(node.name);
   }
@@ -75,7 +75,7 @@ function insideMainGuard(node) {
   );
 }
 
-function importedNamespaces(program) {
+export function importedNamespaces(program) {
   return new Set(
     program.body
       .filter(
@@ -123,7 +123,7 @@ function checkMember(state, node, ownerIsProcess) {
   }
 }
 
-function readsOf(context, declaration, name) {
+export function readsOf(context, declaration, name) {
   const variable = context.sourceCode
     .getDeclaredVariables(declaration)
     .find((candidate) => candidate.name === name);

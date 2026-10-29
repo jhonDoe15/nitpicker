@@ -1,4 +1,12 @@
 import {
+  importedNamespaces,
+  isProcessObject,
+  keyText,
+  PROCESS_MODULES,
+  propertyText,
+  readsOf,
+} from '../guards/no-process-access-outside-composition-root.mjs';
+import {
   compositionRootOptionsSchema,
   isCompositionRootFile,
 } from '../boundaries/composition-root-files.mjs';
@@ -29,15 +37,45 @@ function consoleCallMethod(callee) {
   return isConsole ? memberName(callee) : undefined;
 }
 
-function isStandardStreamWrite(callee) {
-  return (
-    callee.type === 'MemberExpression' &&
-    memberName(callee) === 'write' &&
-    callee.object.type === 'MemberExpression' &&
-    callee.object.object.type === 'Identifier' &&
-    callee.object.object.name === 'process' &&
-    ['stdout', 'stderr'].includes(memberName(callee.object))
-  );
+const STANDARD_STREAMS = new Set(['stdout', 'stderr']);
+
+function streamNamed(name) {
+  return STANDARD_STREAMS.has(name) ? name : undefined;
+}
+
+function patternSource(pattern) {
+  const { parent } = pattern;
+  if (parent.type === 'VariableDeclarator' && parent.id === pattern) {
+    return parent.init;
+  }
+  const isAssignment =
+    parent.type === 'AssignmentExpression' || parent.type === 'AssignmentPattern';
+  return isAssignment && parent.left === pattern ? parent.right : null;
+}
+
+function destructuredStreams(pattern) {
+  return pattern.properties
+    .filter((property) => property.type === 'Property')
+    .map((node) => ({ node, stream: streamNamed(keyText(node, node.key)) }))
+    .filter(({ stream }) => stream !== undefined);
+}
+
+function importedStreams(declaration) {
+  return declaration.specifiers
+    .filter((specifier) => specifier.type === 'ImportSpecifier')
+    .map((node) => ({ node, stream: streamNamed(node.imported.name ?? node.imported.value) }))
+    .filter(({ stream }) => stream !== undefined);
+}
+
+function aliasStreamReads(context, declarator) {
+  const { id } = declarator;
+  if (id.type !== 'Identifier' || id.name === 'process') {
+    return [];
+  }
+  return readsOf(context, declarator, id.name)
+    .filter((read) => read.parent.type === 'MemberExpression' && read.parent.object === read)
+    .map((read) => ({ node: read.parent, stream: streamNamed(propertyText(read.parent)) }))
+    .filter(({ stream }) => stream !== undefined);
 }
 
 export const rule = {
@@ -49,23 +87,51 @@ export const rule = {
     schema: compositionRootOptionsSchema,
     messages: {
       consoleCall:
-        'Use the application logger instead of console.{{method}}(). An exception fits only when this module prints the program output.',
-      streamWrite:
-        'Use the application logger instead of process.{{stream}}.write(). Program output is written in the composition root. An exception fits only when this module prints the program output.',
+        'Use the application logger instead of console.{{method}}(). Program output goes through a `{ write(text: string): void }` parameter that the composition root fills with process.stdout or process.stderr. An exception fits only when this module is a script that prints the program output.',
+      streamOutsideRoot:
+        'Reach process.{{stream}} only in the composition root: take a `{ write(text: string): void }` parameter and write through it, and let the composition root pass process.stdout or process.stderr (and any isTTY or columns value) as an argument. An exception fits only when this module is an entry script.',
     },
   },
   create(context) {
+    const inRoot = isCompositionRootFile(context);
+    const state = { namespaces: new Set() };
+    const reportStreams = (found) => {
+      if (!inRoot) {
+        found.forEach(({ node, stream }) =>
+          context.report({ node, messageId: 'streamOutsideRoot', data: { stream } }),
+        );
+      }
+    };
     return {
+      Program(node) {
+        state.namespaces = importedNamespaces(node);
+      },
       CallExpression(node) {
         const method = consoleCallMethod(node.callee);
         if (method !== undefined) {
           context.report({ node, messageId: 'consoleCall', data: { method } });
-        } else if (isStandardStreamWrite(node.callee) && !isCompositionRootFile(context)) {
-          context.report({
-            node,
-            messageId: 'streamWrite',
-            data: { stream: memberName(node.callee.object) },
-          });
+        }
+      },
+      MemberExpression(node) {
+        const stream = streamNamed(propertyText(node));
+        if (stream !== undefined && isProcessObject(node.object, state.namespaces)) {
+          reportStreams([{ node, stream }]);
+        }
+      },
+      ObjectPattern(node) {
+        const source = patternSource(node);
+        if (source !== null && isProcessObject(source, state.namespaces)) {
+          reportStreams(destructuredStreams(node));
+        }
+      },
+      ImportDeclaration(node) {
+        if (PROCESS_MODULES.has(node.source.value)) {
+          reportStreams(importedStreams(node));
+        }
+      },
+      VariableDeclarator(node) {
+        if (node.init !== null && isProcessObject(node.init, state.namespaces)) {
+          reportStreams(aliasStreamReads(context, node));
         }
       },
     };

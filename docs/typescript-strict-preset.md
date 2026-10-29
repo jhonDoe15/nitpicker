@@ -490,8 +490,17 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   local binding of the same name. Any other condition, such as `import.meta.env.DEV`, a bare
   `import.meta.url`, a call or a comma expression inside the comparison, is still reported.
 
-- `nitpicker/no-production-console` also reports `console['error']` and, outside the composition
-  root, `process.stdout.write` and `process.stderr.write`.
+- `nitpicker/no-production-console` reports `console.*` everywhere, also `console['error']`. Outside
+  the composition root it reports every reference to `process.stdout` and `process.stderr`, not
+  only `.write()`: an alias (`const out = process.stdout`), a `const p = process` alias, a
+  destructured `stdout`/`stderr` (also nested or assigned), an import from `node:process`, a
+  `require`, `globalThis.process` and an argument handed to a helper. Code outside the root takes a
+  `{ write(text: string): void }` parameter; the composition root passes `process.stdout` and
+  `process.stderr` (or writes to them), and that line is not a finding. Reading `isTTY`, `columns`,
+  `rows` or `hasColors()` is a reference too: the root reads the fact once and passes it down as a
+  value, like the environment. The JavaScript preset runs the same rule. The hop needs no coverage
+  or mutation exemption: a test calls the exported `main` with `vi.spyOn(process.stdout, 'write')`
+  (as the eval fixtures do), so the arrow that forwards to the stream is covered and killed.
 - Named functions use the `function` keyword; arrow functions only as callbacks.
 - `type`, never `interface`, except in a `declare module` or `declare global` augmentation, or at
   the top level of a global declaration file with no imports or exports (such as `ImportMetaEnv` in
