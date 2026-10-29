@@ -609,6 +609,8 @@ are listed at the end.
 | Secrets                  | read from the environment; log only that a secret is set                                                                                         | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
 | Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                                                             | ruff `FBT001`, `FBT002`                                                                                                                              |
 | Input or output per item | one batch call, or `asyncio.gather`                                                                                                              | `io-in-loop` (script)                                                                                                                                |
+| Task lifetimes           | open the resource around the whole task group, or inside the child; await the task first                                                         | `task-outlives-resource` (script)                                                                                                                    |
+| Trio/AnyIO cleanup       | `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()`                                                  | `unshielded-cleanup-await` (script)                                                                                                                  |
 | Task markers             | `# TODO(#123): ...` with an issue                                                                                                                | `todo-without-issue` (script)                                                                                                                        |
 | Commented-out code       | delete it                                                                                                                                        | ruff `ERA001`                                                                                                                                        |
 | Security sinks           | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`                                                         | ruff `S` (see below)                                                                                                                                 |
@@ -785,6 +787,62 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
 - `io-in-loop` reports an HTTP, database or repository call once per item of a `for`, `while` or
   comprehension; `asyncio.gather` over a comprehension, a paging loop (the condition reads a
   variable the body assigns) and a retry (a `try` in the loop that returns on success) are not.
+- `task-outlives-resource` reports a resource that a `with` or `async with` opened inside a task
+  group closes while a child task can still use it. Task groups are `trio.open_nursery()`,
+  `anyio.create_task_group()` and `asyncio.TaskGroup()` (also through import aliases and a group
+  held in a local variable, `tg = anyio.create_task_group()` then `async with tg:`). The resource is
+  the name an inner `with ... as name` binds, and it is handed over when it is a positional
+  argument of `start_soon` or `start` (`nursery.start_soon(consume, handle)`), a bound method
+  (`start_soon(handle.serve)`), a `lambda`, `functools.partial` or local `def` that captures it
+  (a parameter or a local rebinding of the same name is not a capture), or an argument or receiver
+  of the coroutine passed to `create_task` (`group.create_task(use(handle))`). A task assigned to a
+  name that is read again inside the `with` block (`await task`, `asyncio.wait([task])`) is
+  accepted, since the parent waits for it. Inside a plain `with res:` or `with open(...) as res:`
+  block, `asyncio.create_task(use(res))` or `asyncio.ensure_future(...)` as a statement is
+  reported when the task is discarded or its variable is never read before the block ends. The
+  allowed forms are a `with` that encloses the whole group, a resource opened inside the child, and
+  awaiting the task before the block exits. Ownership is modeled explicitly rather than inferred:
+  only the resource itself counts, so a value derived from it (`handle.name`, `handle.read()`,
+  `stack.pop_all()` for an `ExitStack` that moves ownership) is not reported, and neither is a
+  helper that is given the resource under another name; cancel scopes, timeouts and task groups
+  opened inside a group are not resources; keyword arguments such as `name=` are not passed to the
+  child; a task that is returned, collected or handed to another function is not tracked. A helper
+  that takes ownership and closes the resource itself is not recognized, and neither is a parent
+  that waits on an event instead of the task: open the resource in the child, or add a reviewed
+  `python.exceptions` entry. A group held in an attribute (`self.group`) is not followed. The
+  group-scoped form follows the documented flake8-async ASYNC111 behavior, extended to
+  `asyncio.TaskGroup` with explicit lifetime modeling; Ruff 0.16.8 and 0.16.9 have no ASYNC111, and
+  no flake8-async code is used. The identity is the resource name, the method and the enclosing
+  function. Ruff's `RUF006` reports the discarded `asyncio.create_task(...)` statement for its own
+  reason (the task can be garbage collected) and keeps its own finding.
+- `unshielded-cleanup-await` follows the documented flake8-async ASYNC102 behavior for Trio and
+  AnyIO, which cancel again at every checkpoint of a cancelled scope: an `await`, `async with`,
+  `async for` or async comprehension inside `finally:` or inside a handler for `trio.Cancelled` or
+  `anyio.get_cancelled_exc_class()` (import aliases, tuples and names bound once by assignment
+  included, such as `cancelled = anyio.get_cancelled_exc_class()`) can be cancelled before the
+  cleanup finishes, so the resource may never be released. The check runs only in a module that
+  shows Trio or AnyIO cancellation semantics: any import of `trio`, or for AnyIO a use of
+  `anyio.create_task_group`, `anyio.CancelScope`, `anyio.move_on_after`, `anyio.fail_after`,
+  `anyio.run` or `anyio.get_cancelled_exc_class`, so a module that imports `anyio` only for
+  `to_thread` or `Path` is not checked. It reports the first checkpoint per block and allows it
+  inside a `with` that sets `shield=True` (a literal, or a name bound once to `True`) in a
+  `trio.CancelScope`, `trio.move_on_after`, `move_on_at`, `fail_after`, `fail_at`,
+  `anyio.CancelScope`, `anyio.move_on_after` or `anyio.fail_after`, called in the `with` or held in
+  a variable (`scope = trio.CancelScope(shield=True)`, then `with scope:`), in the block or around
+  the `try`. The message recommends `CancelScope(deadline=..., shield=True)`, because a shield
+  without a deadline can hang shutdown on a stuck close; such an unbounded shield is allowed, and
+  the deadline is not checked. `move_on_after(5, shield=True)` and `fail_after` need Trio 0.27 or
+  later for the `shield` argument. `trio.aclose_forcefully(...)` and the
+  `cancel_shielded_checkpoint()` helpers cannot be interrupted and are allowed. A shield set after
+  the scope is created (`scope.shield = True`) is not followed, and `except BaseException` and bare
+  `except:` handlers are not treated as cancellation handlers, because the evidence that they catch
+  a cancellation is missing. asyncio cancels a task once (`CancelledError` is raised at the `await`
+  that is waiting, and later awaits run normally unless the task is cancelled again), so the Trio
+  assumption does not carry over: modules without that evidence are not checked. `asyncio.shield`
+  is not a scope: it protects the inner task but the shielding `await` is still interrupted, and
+  its inner task must stay referenced; neither is modeled. Ruff 0.16.8 (the version pinned in
+  `.github/python-e2e-constraints.txt`) and 0.16.9 have no ASYNC102, and no flake8-async code is
+  used. The identity is the checkpoint, the block and the enclosing function.
 - `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` as a whole word at the start of a
   comment or followed by `:` or `(`, not directly followed by `#123`, `PROJ-123` or a link. `TD` and
   `FIX` from ruff are not used, because they ask for an author and a date, which the TypeScript and
