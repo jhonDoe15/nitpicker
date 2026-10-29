@@ -9,7 +9,9 @@ def reversed_by(acquisition, outer, sites):
         (
             other
             for other in sites.acquisitions
-            if other.key == outer and acquisition.key in other.held
+            if other.key == outer
+            and acquisition.key in other.held
+            and other.key not in other.held
         ),
         None,
     )
@@ -29,6 +31,8 @@ def evidence(acquisition, outer, other):
 
 def inversions(context, sites):
     for acquisition in sites.acquisitions:
+        if acquisition.key in acquisition.held:
+            continue
         for outer in dict.fromkeys(reversed(acquisition.held)):
             if outer in (UNKNOWN, acquisition.key):
                 continue

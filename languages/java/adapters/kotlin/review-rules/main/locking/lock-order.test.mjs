@@ -118,6 +118,17 @@ describe('lock-order inversions in Kotlin', () => {
     ],
     ['a single lock', [take(4, 'synchronized', 'accounts'), take(9, 'withLock', 'accounts')]],
     [
+      'a reentrant re-acquire inside another lock',
+      [
+        take(4, 'synchronized', 'accounts'),
+        take(5, 'synchronized', 'audit', [lambda('synchronized', 'accounts')]),
+        take(6, 'synchronized', 'accounts', [
+          lambda('synchronized', 'audit'),
+          lambda('synchronized', 'accounts'),
+        ]),
+      ],
+    ],
+    [
       'a reentrant re-acquire',
       [
         take(4, 'synchronized', 'accounts', [lambda('synchronized', 'accounts')]),

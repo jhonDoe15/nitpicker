@@ -196,7 +196,7 @@ describe('lock evidence in Java PMD findings', () => {
     expect(identities(moved)).toEqual(identities(SOURCE));
   });
 
-  it('keeps the generic text when the evidence cannot be read', () => {
+  it('keeps the generic text when the evidence cannot be read, keyed by class and method', () => {
     const root = project(SOURCE);
     const gone = result(SOURCE, ORDER_SITES[0]);
     gone.locations[0].physicalLocation.artifactLocation.uri = 'src/main/java/shop/Gone.java';
@@ -204,8 +204,94 @@ describe('lock evidence in Java PMD findings', () => {
     const plain = result(SOURCE, [FIELD_LOCKING_RULE, 'label = value']);
     plain.ruleId = 'SwallowedInterrupt';
     const log = { version: '2.1.0', runs: [{ results: [gone, unmatched, plain] }] };
+    const unlockedOnly = SOURCE.replace('label = "a"', 'moved = 2').replace(
+      'label = "b"',
+      'moved = 3',
+    );
+    const fieldOnly = result(unlockedOnly, [FIELD_LOCKING_RULE, 'label = value']);
+    const subject = (value) => ({ partialFingerprints: { 'nitpicker/subject': value } });
 
-    expect(withLockEvidence(log, { projectRoot: root })).toEqual(log);
+    expect(withLockEvidence(log, { projectRoot: root })).toEqual({
+      ...log,
+      runs: [{ results: [gone, { ...unmatched, ...subject('Ledger.transfer()') }, plain] }],
+    });
+    expect(
+      withLockEvidence(
+        { ...log, runs: [{ results: [fieldOnly] }] },
+        { projectRoot: project(unlockedOnly) },
+      ),
+    ).toEqual({
+      ...log,
+      runs: [{ results: [{ ...fieldOnly, ...subject('Ledger.rename(): label') }] }],
+    });
     expect(withLockEvidence(log, { projectRoot: undefined })).toEqual(log);
+  });
+
+  it('skips a local lock and a local declaration, and keeps a dollar sign in a name', () => {
+    const source = `package shop;
+
+final class Ledger {
+  private final Object first = new Object();
+  private final Object second = new Object();
+  private final Object a$$b = new Object();
+  private int count;
+
+  void add() {
+    synchronized (first) {
+      synchronized (second) {
+        count += 1;
+      }
+    }
+  }
+
+  void local() {
+    Object second = new Object();
+    synchronized (second) {
+      synchronized (first) {
+        int count = 5;
+      }
+    }
+  }
+
+  void real() {
+    synchronized (second) {
+      synchronized (first) {
+        count -= 1;
+      }
+    }
+  }
+
+  void dollar() {
+    synchronized (a$$b) {
+      synchronized (first) {
+        count -= 2;
+      }
+    }
+  }
+
+  void dollarBack() {
+    synchronized (first) {
+      synchronized (a$$b) {
+        count += 2;
+      }
+    }
+  }
+
+  void bump() {
+    count = 0;
+  }
+}
+`;
+    const named = findings(source, [
+      [LOCK_ORDER_RULE, 'synchronized (second) {\n        count'],
+      [LOCK_ORDER_RULE, 'synchronized (first) {\n        count -= 2'],
+      [FIELD_LOCKING_RULE, 'count = 0'],
+    ]);
+
+    expect(named.map(({ message }) => evidence(message))).toEqual([
+      'add() takes `second` while it holds `first`, and real() takes `first` while it holds `second`',
+      'dollar() takes `first` while it holds `a$$b`, and dollarBack() takes `a$$b` while it holds `first`',
+      'bump() writes `count` without a lock, while add() writes it holding `second`',
+    ]);
   });
 });

@@ -9,6 +9,10 @@ public final class Registry {
   private final Object first = new Object();
   private final Object second = new Object();
   private final Object third = new Object();
+  private final Object fourth = new Object();
+  private final Object fifth = new Object();
+  private final Lock left = new ReentrantLock();
+  private final Lock right = new ReentrantLock();
   private final Lock reentrant = new ReentrantLock();
   private long entries;
 
@@ -109,6 +113,46 @@ public final class Registry {
       synchronized (second) {
         entries -= 5;
       }
+    }
+  }
+
+  public void reenter() {
+    synchronized (fourth) {
+      synchronized (fifth) {
+        synchronized (fourth) {
+          entries *= 3;
+        }
+      }
+    }
+  }
+
+  public void sequential() {
+    left.lock();
+    try {
+      entries += 7;
+    } finally {
+      left.unlock();
+    }
+    right.lock();
+    try {
+      entries -= 7;
+    } finally {
+      right.unlock();
+    }
+  }
+
+  public void sequentialBack() {
+    right.lock();
+    try {
+      entries += 8;
+    } finally {
+      right.unlock();
+    }
+    left.lock();
+    try {
+      entries -= 8;
+    } finally {
+      left.unlock();
     }
   }
 

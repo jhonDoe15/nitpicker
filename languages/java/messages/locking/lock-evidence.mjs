@@ -25,14 +25,13 @@ function memberName(member) {
 }
 
 function reversed(sites, { outer, inner }) {
-  return sites.find(
-    (site) =>
-      site.key === outer.key &&
-      holding(
-        sites.filter((other) => other.member === site.member),
-        site.at,
-      ).some(({ key }) => key === inner.key),
-  );
+  return sites.find((site) => {
+    const held = holding(
+      sites.filter((other) => other.member === site.member),
+      site.at,
+    ).map(({ key }) => key);
+    return site.key === outer.key && !held.includes(site.key) && held.includes(inner.key);
+  });
 }
 
 function orderEvidence(facts, place, at) {
@@ -74,10 +73,28 @@ function fieldEvidence(facts, place, at) {
   };
 }
 
+function orderSubject(facts, place, at) {
+  return typeSites(facts.text, place.type).find((site) => site.at === at && !site.method)?.key;
+}
+
 const RULES = {
-  [LOCK_ORDER_RULE]: { evidence: orderEvidence, place: ORDER_PLACE },
-  [FIELD_LOCKING_RULE]: { evidence: fieldEvidence, place: FIELD_PLACE },
+  [LOCK_ORDER_RULE]: { evidence: orderEvidence, subject: orderSubject, place: ORDER_PLACE },
+  [FIELD_LOCKING_RULE]: {
+    evidence: fieldEvidence,
+    subject: (facts, _place, at) => fieldAt(facts.text, at),
+    place: FIELD_PLACE,
+  },
 };
+
+function fallback(result, { facts, place, at, rule }) {
+  const subject = [`${place.type.name}.${memberName(place.member)}`, rule.subject(facts, place, at)]
+    .filter((part) => part !== undefined)
+    .join(': ');
+  return {
+    ...result,
+    partialFingerprints: { ...result.partialFingerprints, [SUBJECT_KEY]: subject },
+  };
+}
 
 function named(result, { cache, projectRoot }) {
   const location = result.locations?.[0]?.physicalLocation;
@@ -92,13 +109,19 @@ function named(result, { cache, projectRoot }) {
   });
   const place = placeAt(facts.types, at);
   const rule = RULES[result.ruleId];
-  const found = place?.member === undefined ? undefined : rule.evidence(facts, place, at);
-  if (found === undefined) {
+  if (place?.member === undefined) {
     return result;
+  }
+  const found = rule.evidence(facts, place, at);
+  if (found === undefined) {
+    return fallback(result, { facts, place, at, rule });
   }
   return {
     ...result,
-    message: { ...result.message, text: result.message.text.replace(rule.place, found.text) },
+    message: {
+      ...result.message,
+      text: result.message.text.replace(rule.place, () => found.text),
+    },
     partialFingerprints: { ...result.partialFingerprints, [SUBJECT_KEY]: found.subject },
   };
 }

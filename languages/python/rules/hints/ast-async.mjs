@@ -27,7 +27,7 @@ export const ASYNC_HINTS = [
     describe: (subject) =>
       `${subject}: two threads or tasks that run both can each hold one lock and wait forever for the other, a deadlock that no test reliably shows`,
     allowed:
-      'Take nested locks in one order everywhere in the class (if any path takes `self.a` and then `self.b`, no path takes `self.b` and then `self.a`), or guard the state with one lock. Only locks held in attributes of the class or the module (`self.lock`, `Registry.LOCK`) and built there from `threading.Lock`, `threading.RLock`, `threading.Condition`, a one-slot `threading.Semaphore` or an `asyncio`, AnyIO or Trio lock are compared; a lock passed in, held in a local or taken in a called method is not followed.',
+      'Take nested locks in one order everywhere in the class (if any path takes `self.a` and then `self.b`, no path takes `self.b` and then `self.a`), or guard the state with one lock. Only locks held in attributes of the class or the module (`self.lock`, `Registry.LOCK`) are compared, when they are built there from `threading.Lock`, `threading.RLock`, `threading.Condition`, a one-slot `threading.Semaphore` or an `asyncio`, AnyIO or Trio lock, or are named like a lock where the build is out of sight; a lock passed in, held in a local or taken in a called method is not followed.',
   },
   {
     tool: RULES_TOOL,
@@ -35,6 +35,6 @@ export const ASYNC_HINTS = [
     describe: (subject) =>
       `${subject}: a thread or task that writes here races with the locked writer, so an update is lost or another reader sees a stale value`,
     allowed:
-      'Hold the same lock for every write of the attribute (`with self.lock:` or `async with self.lock:`), or keep the state where only the lock holder changes it (a method that takes the lock and returns the new value). `__init__`, `__new__`, `__post_init__`, a write in a nested function or lambda, and a method the class calls while it holds a lock are not reported.',
+      'Hold the same lock for every write of the attribute (`with self.lock:` or `async with self.lock:`), or keep the state where only the lock holder changes it (a method that takes the lock and returns the new value). `__init__`, `__new__`, `__post_init__`, a write in a nested function or lambda, a method the class calls while it holds a lock, a decorated method and a method that calls `acquire()` are not reported.',
   },
 ];
