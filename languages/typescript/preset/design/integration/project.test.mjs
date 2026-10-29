@@ -59,6 +59,7 @@ describe('the modules and public surface of a project', () => {
           'export interface Shape {\n  size: number;\n}\nexport function area(shape: Shape): number {\n  return shape.size;\n}\n',
         'src/widget.ts':
           'export class Widget {\n  run(): void {}\n}\nexport class Hidden {\n  run(): void {}\n}\n',
+        'src/script.ts': 'function local(): void {}\nlocal();\n',
       },
     });
     const facts = factsOf(root);
@@ -66,6 +67,7 @@ describe('the modules and public surface of a project', () => {
     expect(publicationOf(facts)).toEqual([
       { id: 'src/api.ts', published: undefined },
       { id: 'src/index.ts', published: true },
+      { id: 'src/script.ts', published: undefined },
       { id: 'src/shapes.ts', published: true },
       { id: 'src/shapes.ts#Shape', published: true },
       { id: 'src/widget.ts', published: undefined },
@@ -73,6 +75,7 @@ describe('the modules and public surface of a project', () => {
       { id: 'src/widget.ts#Hidden', published: undefined },
       { id: 'src/api.ts#open', published: true },
       { id: 'src/api.ts#internal', published: undefined },
+      { id: 'src/script.ts#local', published: undefined },
       { id: 'src/shapes.ts#area', published: true },
       { id: 'src/widget.ts#Widget.run', published: undefined },
       { id: 'src/widget.ts#Hidden.run', published: undefined },
@@ -218,9 +221,51 @@ describe('the design rules over the facts of a fixture project', () => {
     const root = project({ fixture: 'flow' });
 
     expect(summaryOf(findingsOf(root))).toEqual([
-      { rule: 'mutable-state-escape', classification: 'enforceable', path: 'src/mutations.ts' },
-      { rule: 'mutable-state-escape', classification: 'enforceable', path: 'src/mutations.ts' },
-      { rule: 'mutable-state-escape', classification: 'enforceable', path: 'src/mutations.ts' },
+      {
+        rule: 'mutable-state-escape',
+        classification: 'enforceable',
+        path: 'src/state/mutations.ts',
+      },
+      {
+        rule: 'mutable-state-escape',
+        classification: 'enforceable',
+        path: 'src/state/mutations.ts',
+      },
+      {
+        rule: 'mutable-state-escape',
+        classification: 'enforceable',
+        path: 'src/state/mutations.ts',
+      },
+    ]);
+  });
+
+  it('runs the rules on a JavaScript project, typed through JSDoc', () => {
+    const root = project({
+      files: {
+        'src/model/cart.js': [
+          'export class Cart {',
+          '  /** @type {string[]} */',
+          '  #items = [];',
+          '  /** @returns {string[]} */',
+          '  lines() {',
+          '    return this.#items;',
+          '  }',
+          '}',
+          '',
+        ].join('\n'),
+        'src/checkout/pay.js': [
+          "import { Cart } from '../model/cart.js';",
+          '/** @param {Cart} cart */',
+          'export function pay(cart) {',
+          "  cart.lines().push('x');",
+          '}',
+          '',
+        ].join('\n'),
+      },
+    });
+
+    expect(summaryOf(findingsOf(root, { preset: 'javascript' }))).toEqual([
+      { rule: 'mutable-state-escape', classification: 'enforceable', path: 'src/checkout/pay.js' },
     ]);
   });
 

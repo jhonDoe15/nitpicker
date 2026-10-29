@@ -62,6 +62,14 @@ describe('forwarding-chain', () => {
     expect(designRun(chain(extra), 'forwarding-chain')).toEqual([]);
   });
 
+  it('passes a head whose module is on the public surface of a published package', () => {
+    const facts = chain();
+    const types = facts.types.map((type) =>
+      type.id === api.id ? { ...type, published: true } : type,
+    );
+    expect(designRun({ ...facts, types }, 'forwarding-chain')).toEqual([]);
+  });
+
   it('passes a hop into a member that other modules cannot call', () => {
     const facts = chain();
     const load = { ...facts.callables[2], exported: false };
@@ -117,6 +125,36 @@ describe('caller-protocol', () => {
     ]);
   });
 
+  it('reports the longest repeated steps once and keeps a sequence in another order', () => {
+    const long = [begin, write, rollback, commit].map(({ id }) => ({ target: id }));
+    const reversed = [commit, write, begin].map(({ id }) => ({ target: id }));
+    const facts = sessionUsers([
+      caller('src/a/one.ts', 'one', long),
+      caller('src/a/two.ts', 'two', long),
+      caller('src/b/three.ts', 'three', long),
+      caller('src/c/four.ts', 'four', reversed),
+      caller('src/c/five.ts', 'five', reversed),
+      caller('src/d/six.ts', 'six', reversed),
+    ]);
+    const identities = designRun(facts, 'caller-protocol').map(({ identity }) => identity);
+    expect(identities.toSorted()).toEqual([
+      'src/db/session.ts#Session|begin>write>rollback>commit',
+      'src/db/session.ts#Session|commit>write>begin',
+    ]);
+  });
+
+  it('passes steps on a class on the public surface of a published package', () => {
+    const facts = sessionUsers([
+      caller('src/a/save.ts', 'save', sequence),
+      caller('src/a/update.ts', 'update', sequence),
+      caller('src/b/import.ts', 'load', sequence),
+    ]);
+    const types = facts.types.map((type) =>
+      type.id === session.id ? { ...type, published: true } : type,
+    );
+    expect(designRun({ ...facts, types }, 'caller-protocol')).toEqual([]);
+  });
+
   it('passes steps two callers share, and a builder that returns itself', () => {
     const builder = owner('src/db/query.ts', 'Query');
     const chained = ['select', 'where', 'limit'].map((name) =>
@@ -150,6 +188,7 @@ describe('caller-protocol', () => {
       [{ target: write.id }, { target: begin.id }, { target: commit.id, cleanup: true }],
       ['src/a/save.ts#save|s|early:write'],
     ],
+    ['no open call', [{ target: write.id }, { target: commit.id, cleanup: true }], []],
     [
       'a close in finally',
       [{ target: begin.id }, { target: write.id }, { target: rollback.id, cleanup: true }],

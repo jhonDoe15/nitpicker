@@ -165,5 +165,9 @@ Notes:
   `test-execution` concurrency group. `mutation` has a 30 minute timeout; `coverage` 5 minutes;
   `policy-tests`, `coding-standards`, `coupling`, `test-runtime`, `structure`, `duplicates`,
   `dead-code` and `crap` 2 minutes.
+- "partial" means the rule runs but sees less of the code than in a fully typed language. For the
+  design rules in JavaScript, a parameter or return without a JSDoc type leaves that part of the
+  fact out, so `data-clump` and `forwarding-chain`, which compare types, fire only where types are
+  declared.
 - "No threshold" means the gate is differential: the finding fails because it is new, not because
   it crosses a numeric limit.

@@ -1,4 +1,4 @@
-import { Cart } from './cart';
+import { Cart } from '../model/cart';
 
 export function direct(cart: Cart): void {
   cart.lines().push('x');
