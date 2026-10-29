@@ -151,22 +151,15 @@ describe.skipIf(!pythonE2eEnabled)('Python changed-branch coverage end to end', 
       'Branch coverage is 50.00%; minimum is 95%. Not taken: no case matching (if the cases cover every value, end the match with `case _:` and `assert_never(subject)`). Test it, or remove it if it can\'t happen. If this is intended, add {"rule":"changed-branch-coverage","paths":["src/demo/colors.py"],"function":"name","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
   });
-  it('still fails a default case no test reaches', () => {
-    const result = gate(project, 'colors-default');
-
-    expect(branchFindings(result)).toEqual(['src/demo/colors.py:14']);
-  });
-  it('still fails a wildcard arm that does more than assert_never', () => {
-    const result = gate(project, 'colors-extra');
-
-    expect(branchFindings(result)).toEqual(['src/demo/colors.py:14']);
-  });
-  it('still counts a wrapped condition with an ellipsis body and an assert_never in an else', () => {
-    const result = gate(project, 'lookalikes');
-
-    expect(branchFindings(result)).toEqual([
-      'src/demo/lookalikes.py:5',
-      'src/demo/lookalikes.py:14',
-    ]);
+  it.each([
+    ['a default case no test reaches', 'colors-default', ['src/demo/colors.py:14']],
+    ['a wildcard arm that does more than assert_never', 'colors-extra', ['src/demo/colors.py:14']],
+    [
+      'a wrapped condition with an ellipsis body and an assert_never in an else',
+      'lookalikes',
+      ['src/demo/lookalikes.py:5', 'src/demo/lookalikes.py:14'],
+    ],
+  ])('still fails %s', (_, branch, expected) => {
+    expect(branchFindings(gate(project, branch))).toEqual(expected);
   });
 });
