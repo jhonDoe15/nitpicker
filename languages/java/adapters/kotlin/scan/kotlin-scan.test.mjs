@@ -1,6 +1,10 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../../core/diff/git/test-support/git-checkout.mjs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { withFrameworkAllowances } from './framework-allowances.mjs';
 import {
@@ -11,6 +15,7 @@ import {
 import { scanKotlinSource } from './kotlin-source.mjs';
 
 const roots = [];
+const { gitCheckout } = useGitCheckouts();
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -271,5 +276,23 @@ describe('withFrameworkAllowances', () => {
     });
 
     expect(kept).toEqual(findings.slice(1));
+  });
+});
+
+describe('readKotlinSourceFindings in a Git checkout', () => {
+  it('reads the files of the checkout, not ignored folders or nested checkouts', () => {
+    const state = 'package demo\n\nvar a = 0\n';
+    const root = gitCheckout(
+      {
+        'src/main/kotlin/demo/State.kt': state,
+        'src/main/kotlin/gen/Gen.kt': state,
+        ...nestedCheckout('src/main/kotlin/agent', { 'Other.kt': state }),
+      },
+      ['src/main/kotlin/gen/'],
+    );
+
+    expect(readKotlinSourceFindings(root, manifest).map(({ path: file }) => file)).toEqual([
+      'src/main/kotlin/demo/State.kt',
+    ]);
   });
 });

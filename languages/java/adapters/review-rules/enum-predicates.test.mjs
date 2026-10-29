@@ -177,16 +177,18 @@ describe('withProjectEnumPredicates', () => {
 });
 
 describe('readEnums', () => {
-  it('reads the enums of a Git checkout, not those of ignored folders or nested checkouts', () => {
+  it('reads the enums of a checkout, also in ignored generated folders, but not of nested checkouts', () => {
     const root = gitCheckout(
       {
         'src/main/java/shop/Status.java': STATUS,
-        'scratch/Hidden.java': 'enum Hidden { A, B }\n',
+        'src/main/generated/shop/Generated.java': 'enum Generated { A, B }\n',
+        'build/Built.java': 'enum Built { A, B }\n',
+        'node_modules/pkg/Vendored.java': 'enum Vendored { A, B }\n',
         ...nestedCheckout('agent', { 'src/main/java/shop/Other.java': 'enum Other { A, B }\n' }),
       },
-      ['scratch/'],
+      ['src/main/generated/', 'build/', 'node_modules/'],
     );
 
-    expect([...readEnums(root).keys()]).toEqual(['Status']);
+    expect([...readEnums(root).keys()].toSorted()).toEqual(['Generated', 'Status']);
   });
 });

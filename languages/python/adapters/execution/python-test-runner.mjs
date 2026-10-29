@@ -1,6 +1,7 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
 import { environmentError } from './python-environment.mjs';
 import { probe, probeVersion, VERSION_PATTERN } from './python-process.mjs';
 import { readOptional, readProjectHints } from './python-project.mjs';
@@ -33,16 +34,18 @@ const DJANGO_IMPORT = /^\s*(?:from|import)\s+django\b/m;
 const NOSE2_DEPENDENCY = /(?:^|[\s"'=])nose2(?![\w.-])/m;
 const NOSE2_SECTION = '[unittest]';
 
+function isTestScope(file) {
+  const parts = file.split('/');
+  const inTestDirectory = parts.length > 1 && TEST_DIRECTORIES.includes(parts[0]);
+  return (parts.length === 1 || inTestDirectory) && TEST_FILE_NAME.test(parts.at(-1));
+}
+
 function existingTestFiles(projectRoot) {
-  const directories = TEST_DIRECTORIES.filter((name) => existsSync(path.join(projectRoot, name)));
-  return [
-    ...readdirSync(projectRoot).filter((name) => TEST_FILE_NAME.test(name)),
-    ...directories.flatMap((directory) =>
-      readdirSync(path.join(projectRoot, directory), { recursive: true })
-        .filter((name) => TEST_FILE_NAME.test(path.basename(name)))
-        .map((name) => path.join(directory, name)),
-    ),
-  ];
+  const top = path.resolve(projectRoot);
+  return projectFilePaths(top, {
+    skipDirectory: (absolute) =>
+      path.dirname(absolute) === top && !TEST_DIRECTORIES.includes(path.basename(absolute)),
+  }).filter((file) => isTestScope(file));
 }
 
 function hasPytestFile(projectRoot) {

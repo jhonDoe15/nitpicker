@@ -1,12 +1,12 @@
 import { existsSync, lstatSync } from 'node:fs';
 import path from 'node:path';
-import { gitProjectFiles } from '../../../../../shared/project-files/project-files.mjs';
+import { projectFilePaths } from '../../../../../shared/project-files/project-files.mjs';
 import { containedPath } from './contained-path.mjs';
 
 const DEPENDENCY_DIRECTORY = 'node_modules';
 
 function manifestDirectories(root) {
-  return (gitProjectFiles(root, ['*package.json']) ?? [])
+  return projectFilePaths(root)
     .filter((file) => path.basename(file) === 'package.json')
     .map((file) => path.dirname(file))
     .filter(

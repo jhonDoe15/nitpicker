@@ -2,6 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { inModule } from '../../builds/module-path.mjs';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 
 const TOOL = 'test-runtime';
 const UNRUN_TEST_RULE = 'test-not-run';
@@ -22,12 +23,8 @@ function filesUnder(base, root) {
   if (!directory.startsWith(base + path.sep)) {
     return [];
   }
-  if (!existsSync(directory)) {
-    return [];
-  }
-  return readdirSync(directory, { recursive: true, withFileTypes: true })
-    .filter((entry) => entry.isFile() && SOURCE_FILE.test(entry.name))
-    .map((entry) => path.resolve(entry.parentPath, entry.name))
+  return projectFilesUnder(directory)
+    .filter((file) => SOURCE_FILE.test(path.basename(file)))
     .sort();
 }
 

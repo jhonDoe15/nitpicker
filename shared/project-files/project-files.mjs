@@ -1,87 +1,60 @@
-import { spawnSync } from 'node:child_process';
-import { existsSync, lstatSync } from 'node:fs';
+import { statSync } from 'node:fs';
 import path from 'node:path';
-import { filesUnder, pathInside } from '../filesystem.mjs';
-import { chainOf } from '../traversal.mjs';
+import { ancestorDirectories } from '../filesystem.mjs';
+import { cachedTree } from './listing-cache.mjs';
+import { loadTree } from './repository-listing.mjs';
+import { hasRepositoryMarker, inheritedRule, posixRelative, walkedPaths } from './tree-walk.mjs';
 
-const MAX_LISTING_BYTES = 64 * 1024 * 1024;
-const REPOSITORY_MARKER = '.git';
-const ROOT_DIRECTORY = '.';
+const ROOT_DIRECTORY = '';
 
-function listedByGit(directory, pathspecs) {
-  const listed = spawnSync(
-    'git',
-    [
-      'ls-files',
-      '-z',
-      '--cached',
-      '--others',
-      '--exclude-standard',
-      ...(pathspecs.length === 0 ? [] : ['--', ...pathspecs]),
-    ],
-    { cwd: directory, encoding: 'utf8', maxBuffer: MAX_LISTING_BYTES },
-  );
-  return listed.error === undefined && listed.status === 0
-    ? listed.stdout.split('\0').filter(Boolean)
-    : undefined;
+function repositoryTop(directory) {
+  return ancestorDirectories(directory).find(hasRepositoryMarker);
 }
 
-function inheritedRule(ownRule) {
-  const known = new Map([[ROOT_DIRECTORY, false]]);
-  return (directory) => {
-    const chain = chainOf(directory, (current) =>
-      known.has(current) ? undefined : path.posix.dirname(current),
-    );
-    for (const current of chain.toReversed().slice(1)) {
-      known.set(current, known.get(path.posix.dirname(current)) || ownRule(current));
-    }
-    return known.get(directory);
-  };
+function repositoryOf(directory) {
+  const top = repositoryTop(directory);
+  const tree = top === undefined ? undefined : cachedTree(top, loadTree);
+  return tree === undefined ? undefined : { top, tree };
 }
 
-function hasRepositoryMarker(root, directory) {
-  return existsSync(pathInside(root, `${directory}/${REPOSITORY_MARKER}`) ?? '');
-}
-
-export function gitProjectFiles(root, pathspecs = []) {
-  const listed = listedByGit(root, pathspecs);
-  if (listed === undefined) {
-    return undefined;
-  }
-  const isNested = inheritedRule((directory) => hasRepositoryMarker(root, directory));
-  return [...new Set(listed)]
-    .filter((file) => !file.endsWith('/') && !isNested(path.posix.dirname(file)))
-    .toSorted();
-}
-
-function isRegularFile(file) {
-  return lstatSync(file, { throwIfNoEntry: false })?.isFile() === true;
-}
-
-function walkedFiles(root, skipDirectory) {
-  return [
-    ...filesUnder(root, {
-      skipDirectory: (absolute, entry) =>
-        entry.name === REPOSITORY_MARKER ||
-        existsSync(path.join(absolute, REPOSITORY_MARKER)) ||
-        skipDirectory(absolute, entry),
-    }),
-  ];
-}
-
-export function projectFilesUnder(root, { skipDirectory = () => false } = {}) {
-  const listed = gitProjectFiles(root);
-  if (listed === undefined || listed.length === 0) {
-    return walkedFiles(root, skipDirectory);
-  }
-  const isSkipped = inheritedRule((directory) =>
-    skipDirectory(path.join(root, ...directory.split('/')), {
-      name: path.posix.basename(directory),
+function listedPaths({ top, tree }, directory, { skipDirectory, includeLinks }) {
+  const prefix = posixRelative(top, directory);
+  const kept = tree.files.filter((file) => includeLinks || !tree.links.has(file));
+  const inside =
+    prefix === ROOT_DIRECTORY
+      ? kept
+      : kept
+          .filter((file) => file.startsWith(`${prefix}/`))
+          .map((file) => file.slice(prefix.length + 1));
+  const isSkipped = inheritedRule((relative) =>
+    skipDirectory(path.join(directory, ...relative.split('/')), {
+      name: path.posix.basename(relative),
       isDirectory: () => true,
     }),
   );
-  return listed
-    .filter((file) => !isSkipped(path.posix.dirname(file)))
-    .map((file) => path.join(root, ...file.split('/')))
-    .filter(isRegularFile);
+  return inside.filter((file) => !isSkipped(path.posix.dirname(file)));
+}
+
+export function projectFilePaths(root, options = {}) {
+  const { skipDirectory = () => false, includeIgnored = false, includeLinks = false } = options;
+  const directory = path.resolve(root);
+  if (statSync(directory, { throwIfNoEntry: false })?.isDirectory() !== true) {
+    return [];
+  }
+  const repository = repositoryOf(directory);
+  if (includeIgnored || repository === undefined) {
+    return walkedPaths(directory, {
+      skipDirectory,
+      includeLinks,
+      registered: repository?.tree.submodules,
+    }).toSorted();
+  }
+  return listedPaths(repository, directory, { skipDirectory, includeLinks });
+}
+
+export function projectFilesUnder(root, options) {
+  const directory = path.resolve(root);
+  return projectFilePaths(directory, options).map((file) =>
+    path.join(directory, ...file.split('/')),
+  );
 }

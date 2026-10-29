@@ -1,7 +1,8 @@
-import { globSync, readdirSync, readFileSync, statSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import ts from 'typescript';
 import { firstFileIn } from '../../../../../shared/filesystem.mjs';
+import { projectFilePaths } from '../../../../../shared/project-files/project-files.mjs';
 import { propertyName } from '../../syntax/property-names.mjs';
 import { VITEST_CONFIG_NAMES } from './setup-files.mjs';
 
@@ -30,21 +31,28 @@ function nodesOf(sourceFile) {
   return nodes;
 }
 
-function directoryConfig(directory) {
-  const files = new Set(readdirSync(directory));
-  const name = VITEST_CONFIG_NAMES.find((candidate) => files.has(candidate));
-  return name === undefined ? undefined : path.join(directory, name);
+function configsMatching(files, pattern) {
+  const listed = new Set(files);
+  const directories = [...new Set(files.map((file) => path.posix.dirname(file)))]
+    .filter((directory) => path.matchesGlob(directory, pattern))
+    .flatMap((directory) =>
+      VITEST_CONFIG_NAMES.map((name) => path.posix.join(directory, name))
+        .filter((candidate) => listed.has(candidate))
+        .slice(0, 1),
+    );
+  const direct = files.filter(
+    (file) =>
+      PROJECT_CONFIG_FILE.test(path.posix.basename(file)) && path.matchesGlob(file, pattern),
+  );
+  return [...directories, ...direct];
 }
 
-function projectConfigs(projectRoot, entries) {
+function projectConfigs(base, entries) {
+  const files = projectFilePaths(base);
   return entries.flatMap((entry) =>
-    globSync(entry.replace(/^\.\//u, ''), { cwd: projectRoot })
-      .map((match) => path.join(projectRoot, match))
-      .flatMap((match) =>
-        statSync(match).isDirectory()
-          ? [directoryConfig(match)].filter((config) => config !== undefined)
-          : [match].filter((config) => PROJECT_CONFIG_FILE.test(path.basename(config))),
-      ),
+    configsMatching(files, entry.replace(/^\.\//u, '').replace(/\/$/u, '')).map((match) =>
+      path.join(base, match),
+    ),
   );
 }
 

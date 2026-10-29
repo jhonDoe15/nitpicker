@@ -1,51 +1,26 @@
-import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { mkdirSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import { fixtureGit } from '../../core/diff/git/test-support/git-repository.mjs';
-import { gitProjectFiles, projectFilesUnder } from './project-files.mjs';
+import { projectFilePaths, projectFilesUnder } from './project-files.mjs';
+import {
+  relativeTo,
+  useProjectFixtures,
+} from '../../core/diff/git/test-support/projects/project-fixtures.mjs';
 
-const temporaryRoots = [];
-
-afterEach(() => {
-  for (const root of temporaryRoots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
-
-function write(root, files) {
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-}
-
-function plainProject(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-project-files-'));
-  temporaryRoots.push(root);
-  write(root, files);
-  return root;
-}
-
-function gitProject(files, { ignored = [], tracked = [] } = {}) {
-  const root = plainProject({});
-  fixtureGit(root, ['init', '-q']);
-  write(root, files);
-  writeFileSync(path.join(root, '.git', 'info', 'exclude'), `${ignored.join('\n')}\n`);
-  if (tracked.length > 0) {
-    fixtureGit(root, ['add', ...tracked]);
-  }
-  return root;
-}
-
-function relativeTo(root, files) {
-  return files.map((file) => path.relative(root, file).split(path.sep).join('/')).toSorted();
-}
+const { gitProject, outsideGit } = useProjectFixtures();
 
 const SOURCES = { 'src/a.mjs': '', 'src/deep/b.mjs': '', 'README.md': '' };
 
-describe('gitProjectFiles', () => {
-  it('lists tracked and untracked files except ignored ones and nested repositories', () => {
+function nestedClone(root, name) {
+  const clone = path.join(root, name);
+  mkdirSync(clone);
+  fixtureGit(clone, ['init', '-q']);
+  writeFileSync(path.join(clone, 'e.mjs'), '');
+}
+
+describe('projectFilePaths in a Git checkout', () => {
+  it('lists tracked and untracked files except ignored ones, nested checkouts and gitlinks', () => {
     const root = gitProject(
       {
         ...SOURCES,
@@ -56,24 +31,120 @@ describe('gitProjectFiles', () => {
       },
       { ignored: ['.scratch/'], tracked: ['src/a.mjs'] },
     );
-    const clone = path.join(root, 'clone');
-    mkdirSync(clone);
-    fixtureGit(clone, ['init', '-q']);
-    writeFileSync(path.join(clone, 'e.mjs'), '');
+    nestedClone(root, 'clone');
 
-    expect(gitProjectFiles(root)).toEqual(['README.md', 'src/a.mjs', 'src/deep/b.mjs']);
-    expect(gitProjectFiles(root, ['*.md'])).toEqual(['README.md']);
+    expect(projectFilePaths(root)).toEqual(['README.md', 'src/a.mjs', 'src/deep/b.mjs']);
   });
 
-  it('answers nothing outside a Git checkout', () => {
-    expect(gitProjectFiles(plainProject(SOURCES))).toBeUndefined();
-    expect(gitProjectFiles(path.join(tmpdir(), 'nitpicker-missing-project'))).toBeUndefined();
+  it('trusts an empty listing when every file of the repository is ignored', () => {
+    const root = gitProject({ 'a.log': '', 'sub/b.log': '' }, { ignored: ['*.log'] });
+
+    expect(projectFilePaths(root)).toEqual([]);
+    expect(projectFilePaths(path.join(root, 'sub'))).toEqual([]);
+  });
+
+  it('trusts the listing of a root whose files are ignored but whose folder is not', () => {
+    const root = gitProject(
+      { ...SOURCES, 'src/gen/x.generated': '' },
+      { ignored: ['*.generated'] },
+    );
+
+    expect(relativeTo(root, projectFilesUnder(path.join(root, 'src/gen')))).toEqual([]);
+  });
+
+  it('keeps the ignored files of a source root when they are asked for', () => {
+    const root = gitProject(
+      { '.gitignore': 'src/\n', 'src/ignored.ts': '' },
+      { tracked: ['.gitignore'] },
+    );
+
+    expect(projectFilePaths(path.join(root, 'src'), { includeIgnored: true })).toEqual([
+      'ignored.ts',
+    ]);
+  });
+
+  it('trusts an empty listing for a source root that the repository ignores', () => {
+    const root = gitProject(
+      { '.gitignore': 'src/\n', 'package.json': '{}', 'src/ignored.ts': '' },
+      { tracked: ['.gitignore', 'package.json'] },
+    );
+    nestedClone(root, 'src/clone');
+
+    expect(projectFilePaths(root)).toEqual(['.gitignore', 'package.json']);
+    expect(projectFilesUnder(path.join(root, 'src'))).toEqual([]);
+  });
+
+  it('trusts the listing of an ignored root that holds one force-added file', () => {
+    const root = gitProject(
+      { ...SOURCES, 'scratch/x.mjs': '', 'scratch/forced.mjs': '' },
+      { ignored: ['scratch/'], tracked: ['scratch/forced.mjs'] },
+    );
+
+    expect(projectFilePaths(path.join(root, 'scratch'))).toEqual(['forced.mjs']);
+    expect(projectFilePaths(root)).toEqual([
+      'README.md',
+      'scratch/forced.mjs',
+      'src/a.mjs',
+      'src/deep/b.mjs',
+    ]);
+  });
+
+  it('drops tracked files that are missing and keeps the requested folder rules', () => {
+    const root = gitProject(
+      { ...SOURCES, 'src/deep/skip/e.mjs': '' },
+      { tracked: ['src/a.mjs', 'src/deep/skip/e.mjs'] },
+    );
+    rmSync(path.join(root, 'src', 'a.mjs'));
+
+    const options = { skipDirectory: (_, entry) => entry.name === 'skip' };
+
+    expect(projectFilePaths(root, options)).toEqual(['README.md', 'src/deep/b.mjs']);
+    expect(relativeTo(root, projectFilesUnder(path.join(root, 'src'), options))).toEqual([
+      'src/deep/b.mjs',
+    ]);
+  });
+
+  it('keeps symbolic links out unless they are asked for', () => {
+    const root = gitProject(SOURCES);
+    symlinkSync(path.join(root, 'README.md'), path.join(root, 'link.md'));
+
+    expect(projectFilePaths(root)).toEqual(['README.md', 'src/a.mjs', 'src/deep/b.mjs']);
+    expect(projectFilePaths(root, { includeLinks: true })).toEqual([
+      'README.md',
+      'link.md',
+      'src/a.mjs',
+      'src/deep/b.mjs',
+    ]);
+  });
+
+  it('lists an empty list for a folder that does not exist or is a file', () => {
+    const root = gitProject(SOURCES);
+
+    expect(projectFilePaths(path.join(root, 'missing'))).toEqual([]);
+    expect(projectFilePaths(path.join(root, 'README.md'))).toEqual([]);
   });
 });
 
-describe('projectFilesUnder', () => {
-  it('walks a project outside Git, skipping nested repositories and the requested folders', () => {
-    const root = plainProject({
+describe('projectFilePaths with ignored files kept', () => {
+  it('still skips nested checkouts, the requested folders and the Git folder', () => {
+    const root = gitProject(
+      { ...SOURCES, 'src/generated/g.mjs': '', 'node_modules/pkg/i.mjs': '' },
+      { ignored: ['src/generated/', 'node_modules/'] },
+    );
+    nestedClone(root, 'clone');
+
+    expect(
+      projectFilePaths(root, {
+        includeIgnored: true,
+        skipDirectory: (_, entry) => entry.name === 'node_modules',
+      }),
+    ).toEqual(['README.md', 'src/a.mjs', 'src/deep/b.mjs', 'src/generated/g.mjs']);
+  });
+});
+
+describe('projectFilePaths outside Git', () => {
+  it('walks the tree, skipping nested repositories and the requested folders', () => {
+    const root = outsideGit({
       ...SOURCES,
       'agent/.git/HEAD': '',
       'agent/src/c.mjs': '',
@@ -90,37 +161,15 @@ describe('projectFilesUnder', () => {
     ).toEqual(['README.md', 'src/a.mjs', 'src/deep/b.mjs']);
   });
 
-  it('uses the Git file set inside a checkout and still honours the requested folders', () => {
-    const root = gitProject(
-      {
-        ...SOURCES,
-        'dist/out.mjs': '',
-        'agent/.git': 'gitdir: /nonexistent\n',
-        'agent/src/c.mjs': '',
-        'src/deep/skip/e.mjs': '',
-      },
-      { ignored: ['dist/'], tracked: ['src/a.mjs'] },
-    );
-    rmSync(path.join(root, 'src', 'a.mjs'));
-    symlinkSync(path.join(root, 'README.md'), path.join(root, 'link.md'));
+  it('answers an empty list for a folder that does not exist', () => {
+    const root = outsideGit(SOURCES);
 
-    expect(
-      relativeTo(
-        root,
-        projectFilesUnder(root, { skipDirectory: (_, entry) => entry.name === 'skip' }),
-      ),
-    ).toEqual(['README.md', 'src/deep/b.mjs']);
-    expect(relativeTo(root, projectFilesUnder(path.join(root, 'src')))).toEqual([
-      'src/deep/b.mjs',
-      'src/deep/skip/e.mjs',
-    ]);
+    expect(projectFilesUnder(path.join(root, 'missing'))).toEqual([]);
   });
 
-  it('walks an ignored directory that lies inside a Git checkout', () => {
-    const root = gitProject({ ...SOURCES, 'scratch/x.mjs': '' }, { ignored: ['scratch/'] });
+  it('keeps the files of a folder that a broken checkout marker covers', () => {
+    const root = outsideGit({ ...SOURCES, '.git': 'gitdir: /nonexistent\n' });
 
-    expect(relativeTo(root, projectFilesUnder(path.join(root, 'scratch')))).toEqual([
-      'scratch/x.mjs',
-    ]);
+    expect(projectFilePaths(root)).toEqual(['README.md', 'src/a.mjs', 'src/deep/b.mjs']);
   });
 });
