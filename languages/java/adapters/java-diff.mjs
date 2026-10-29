@@ -21,7 +21,7 @@ import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
-import { withUtf16Columns } from '../../../shared/ingest/columns/utf16-columns.mjs';
+import { withJavaColumns } from './reporting/columns/java-columns.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
 import { runMavenPreset, MAVEN_REPORT_DIRECTORY } from '../maven/maven-build.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
@@ -39,7 +39,6 @@ import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 import { gradleStages } from './gradle-wrapper/gradle-stages.mjs';
 
 const CLOCK_SLACK_MS = 2000;
-const COLUMN_UNITS = { checkstyle: 'tab-expanded', errorprone: 'tab-expanded' };
 
 function runJavaPreset(
   projectRoot,
@@ -179,7 +178,9 @@ export function collectJavaFindings(root, options = {}) {
     return sourceText(projectRoot, file);
   }
   const parsed = parseAnalyzerReport(
-    { findings: withUtf16Columns(findings, { units: COLUMN_UNITS, readSource }) },
+    {
+      findings: withJavaColumns(findings, { projectRoot, policy: options.policy, readSource }),
+    },
     preset,
   ).findings;
   const policed = applyFindingPolicy(

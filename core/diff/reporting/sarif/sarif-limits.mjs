@@ -8,8 +8,10 @@ function megabytes(bytes) {
   return `${String(Math.round((bytes / BYTES_PER_MEGABYTE) * 10) / 10)} MB`;
 }
 
-export function droppedResultsText({ kept, total, sources }, limits) {
-  return `This file lists the first ${String(kept)} of ${String(total)} findings, because GitHub code scanning rejects a SARIF run of more than ${String(limits.results)} results or a file over ${megabytes(limits.gzipBytes)} gzipped. New findings come first, and ${sources} lists them all.`;
+export function droppedResultsText({ kept, total, sources, newFirst }, limits) {
+  const order = newFirst ? 'New findings come first, and ' : 'The rest are in ';
+  const rest = newFirst ? `${sources} lists them all` : sources;
+  return `This file lists the first ${String(kept)} of ${String(total)} findings, because GitHub code scanning rejects a SARIF run of more than ${String(limits.results)} results or a file over ${megabytes(limits.gzipBytes)} gzipped. ${order}${rest}.`;
 }
 
 function descendingPowersOfTwo(below) {

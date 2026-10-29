@@ -213,7 +213,8 @@ consumer matches a finding across runs when its line moves. A tool error makes t
 unsuccessful and adds a notification; a note (such as a red base) adds a `note`-level notification
 without changing the outcome. Columns are counted in UTF-16 code units
 (`columnKind: "utf16CodeUnits"`), a tab counting as one: nitpicker converts the columns of ruff
-(code points), Checkstyle and Error Prone (tabs expanded to every eighth column). mypy versions count
+(code points), Error Prone (tabs expanded to every eighth column) and Checkstyle (tabs expanded to its
+`tabWidth`, 8 unless the project Checkstyle config the run uses sets it). mypy versions count
 columns differently, so a mypy finding on a line with non-ASCII text has a line and no column.
 
 | File                    | Run        | Results                                      | `baselineState`    |
