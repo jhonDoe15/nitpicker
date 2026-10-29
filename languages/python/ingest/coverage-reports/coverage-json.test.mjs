@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { comparisonKey } from '../../../../core/diff/comparison/fingerprint.mjs';
 import { ingestCoverageJson } from './coverage-json.mjs';
 
 const report = readFileSync(path.join(import.meta.dirname, '..', 'fixtures/coverage.json'), 'utf8');
@@ -31,7 +32,7 @@ describe('coverage.py JSON ingester', () => {
         tool: 'coverage',
         rule: 'uncovered-function',
         path: 'src/demo/shapes.py',
-        identity: 'cov:aa82bb4527c08dc0',
+        identity: 'cov:unused_helper',
         symbol: 'unused_helper',
         message: 'Function unused_helper is not covered',
         classification: 'descriptive',
@@ -66,7 +67,7 @@ describe('coverage.py JSON ingester', () => {
         tool: 'coverage',
         rule: 'uncovered-function',
         path: 'a.py',
-        identity: 'cov:46a445e93ab5d3c0',
+        identity: 'cov:Klass.never',
         symbol: 'Klass.never',
         message: 'Function Klass.never is not covered',
         classification: 'descriptive',
@@ -74,17 +75,17 @@ describe('coverage.py JSON ingester', () => {
     ]);
   });
 
-  it('gives the same function in different files different identities', () => {
+  it('gives the same function in different files different comparison keys', () => {
     const { findings } = ingestCoverageJson(
       JSON.stringify({
         files: { 'a.py': file(2, 0, { run: fn(2, 0) }), 'b.py': file(2, 0, { run: fn(2, 0) }) },
       }),
     );
 
-    const identities = findings
+    const keys = findings
       .filter(({ rule }) => rule === 'uncovered-function')
-      .map(({ identity }) => identity);
-    expect(new Set(identities).size).toBe(2);
+      .map((finding) => comparisonKey(finding));
+    expect(new Set(keys).size).toBe(2);
   });
 
   it('works with a report from before function data existed', () => {
@@ -122,5 +123,16 @@ describe('coverage.py JSON ingester', () => {
     expect(() => ingestCoverageJson(text)).toThrow(
       'coverage.py JSON report must contain a files object',
     );
+  });
+
+  it('keeps the functions of a module moved to another package', () => {
+    const keysAt = (module, renames) =>
+      ingestCoverageJson(
+        JSON.stringify({ files: { [module]: file(4, 0, { audit: fn(4, 0) }) } }),
+      ).findings.map((finding) => comparisonKey(finding, renames));
+    const before = 'src/shop/service/audit.py';
+    const after = 'src/shop/audit/records.py';
+
+    expect(keysAt(before, new Map([[before, after]]))).toEqual(keysAt(after));
   });
 });
