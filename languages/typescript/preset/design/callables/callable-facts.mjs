@@ -17,6 +17,19 @@ function optionalValue(name, value) {
   return value === undefined ? {} : { [name]: value };
 }
 
+function bodyFacts(scope) {
+  return {
+    ...optionalValue('forward', forwardFact(scope)),
+    ...listed('calls', collectCalls(scope)),
+    ...listed('references', referenceFacts(scope)),
+    ...listed('paramUses', paramUseFacts(scope)),
+    ...listed('ownFields', ownFieldNames(scope)),
+    ...optionalValue('returnsField', returnedField(scope)),
+    ...listed('decisions', decisionFacts(scope)),
+    ...listed('reads', readFacts(scope)),
+  };
+}
+
 export function callableFact(state, site) {
   const scope = createScope(state, site);
   const returns = site.kind === 'constructor' ? undefined : declaredReturnType(scope, site.node);
@@ -31,13 +44,6 @@ export function callableFact(state, site) {
     ...(isEntry(state, site) ? { entry: true } : {}),
     ...listed('params', paramFacts(scope, site.node)),
     ...optionalValue('returns', returns),
-    ...optionalValue('forward', forwardFact(scope)),
-    ...listed('calls', collectCalls(scope)),
-    ...listed('references', referenceFacts(scope)),
-    ...listed('paramUses', paramUseFacts(scope)),
-    ...listed('ownFields', ownFieldNames(scope)),
-    ...optionalValue('returnsField', returnedField(scope)),
-    ...listed('decisions', decisionFacts(scope)),
-    ...listed('reads', readFacts(scope)),
+    ...(site.bodyless === true ? {} : bodyFacts(scope)),
   };
 }

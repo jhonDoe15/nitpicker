@@ -72,12 +72,11 @@ export function repeatedPolicyDecisionFindings(index, finding) {
         (left, right) =>
           left.callable.file.localeCompare(right.callable.file) || left.line - right.line,
       );
-      const [first] = ordered;
       return finding({
         rule: RULE,
-        path: first.callable.file,
+        path: owner.type.file,
         identity: `${subject}|${group.join(',')}`,
-        line: first.line,
+        line: owner.type.line,
         message: [
           `${String(ordered.length)} decisions over ${owner.label} treat ${quoted(group)} as one case:`,
           `${listSites(ordered.map(siteLabel))}. That grouping is a rule of its own:`,

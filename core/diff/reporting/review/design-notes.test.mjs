@@ -49,7 +49,7 @@ describe('design notes in the console summary', () => {
   });
 
   it('lists a note without a location by its path', () => {
-    const { location: _, ...unplaced } = note(1);
+    const unplaced = { ...note(1), location: undefined };
     const lines = renderConsoleSummary(report({ newFindings: [unplaced] }), { color: false }).split(
       '\n',
     );
