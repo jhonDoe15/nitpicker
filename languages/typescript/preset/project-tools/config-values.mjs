@@ -6,7 +6,7 @@ const SCALAR_TYPES = new Set(['string', 'number', 'boolean', 'undefined']);
 const KNIP_COMPILER_KEYS = new Set(['compilers', 'syncCompilers', 'asyncCompilers']);
 const DEPENDENCY_CRUISER_FILE_OPTIONS = new Set(['webpackConfig', 'babelConfig']);
 
-export const DEPENDENCY_CRUISER_OWNED_OPTIONS = new Set([
+const DEPENDENCY_CRUISER_OWNED_OPTIONS = new Set([
   'baseDir',
   'cache',
   'collapse',
@@ -33,6 +33,10 @@ export const DEPENDENCY_CRUISER_OWNED_OPTIONS = new Set([
   'tsPreCompilationDeps',
   'validate',
 ]);
+
+export function isDependencyCruiserOwnedOption(key) {
+  return DEPENDENCY_CRUISER_OWNED_OPTIONS.has(key);
+}
 
 function isDataObject(value) {
   const prototype = Object.getPrototypeOf(value);

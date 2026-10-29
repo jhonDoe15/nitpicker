@@ -2,7 +2,7 @@ import { isDeepStrictEqual } from 'node:util';
 import { isPlainObject, listOf } from '../../../../../shared/config.mjs';
 import { precedenceLayers } from '../../../../../shared/conventions/tool-precedence.mjs';
 import {
-  DEPENDENCY_CRUISER_OWNED_OPTIONS,
+  isDependencyCruiserOwnedOption,
   patternSource,
 } from '../../../preset/project-tools/config-values.mjs';
 
@@ -43,7 +43,7 @@ function ruleLists(high, low) {
 
 function projectOptions(options = {}) {
   return Object.fromEntries(
-    Object.entries(options).filter(([key]) => !DEPENDENCY_CRUISER_OWNED_OPTIONS.has(key)),
+    Object.entries(options).filter(([key]) => !isDependencyCruiserOwnedOption(key)),
   );
 }
 
@@ -72,7 +72,7 @@ function mergedOptions(policy = {}, project = {}, nitpickerFirst) {
     ...low,
     ...high,
     ...Object.fromEntries(
-      Object.entries(policy).filter(([key]) => DEPENDENCY_CRUISER_OWNED_OPTIONS.has(key)),
+      Object.entries(policy).filter(([key]) => isDependencyCruiserOwnedOption(key)),
     ),
     ...doNotFollow(policy, project),
     ...(policy.enhancedResolveOptions === undefined && owned.enhancedResolveOptions === undefined

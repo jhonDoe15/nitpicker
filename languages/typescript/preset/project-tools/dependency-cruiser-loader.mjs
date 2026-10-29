@@ -58,6 +58,24 @@ function extendedFile(target, from) {
   );
 }
 
+function containedExtends(root, current, config) {
+  const local = listOf(isPlainObject(config) ? config.extends : undefined).filter(
+    (target) => typeof target === 'string' && isLocalSpecifier(target),
+  );
+  return local.flatMap((target) => {
+    const extended = extendedFile(target, path.dirname(current));
+    if (!existsSync(extended)) {
+      return [];
+    }
+    if (!isRealPathInside(root, extended)) {
+      throw new Error(
+        `"extends": "${target}" in ${path.relative(root, current)} is outside the project`,
+      );
+    }
+    return [extended];
+  });
+}
+
 async function assertContainedExtends(root, file, readConfig) {
   const pending = [file];
   const seen = new Set();
@@ -66,22 +84,7 @@ async function assertContainedExtends(root, file, readConfig) {
       continue;
     }
     seen.add(current);
-    const config = await readConfig(current);
-    const local = listOf(isPlainObject(config) ? config.extends : undefined).filter(
-      (target) => typeof target === 'string' && isLocalSpecifier(target),
-    );
-    for (const target of local) {
-      const extended = extendedFile(target, path.dirname(current));
-      if (!existsSync(extended)) {
-        continue;
-      }
-      if (!isRealPathInside(root, extended)) {
-        throw new Error(
-          `"extends": "${target}" in ${path.relative(root, current)} is outside the project`,
-        );
-      }
-      pending.push(extended);
-    }
+    pending.push(...containedExtends(root, current, await readConfig(current)));
   }
 }
 
