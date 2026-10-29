@@ -1,4 +1,5 @@
 import { nitpickerCheckstyleConfig } from './configuration/checkstyle-config.mjs';
+import { withGuardChecks } from '../builds/rulesets/checkstyle-config.mjs';
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -60,6 +61,57 @@ describe('nitpickerCheckstyleConfig', () => {
     expect(() => nitpickerCheckstyleConfig('<module name="Checker"/>')).toThrow(
       'nitpicker could not find MemberName in google_checks.xml',
     );
+  });
+});
+
+describe('an inline Checkstyle suppression', () => {
+  const INLINE_FILTERS = [
+    'SuppressWarningsFilter',
+    'SuppressionCommentFilter',
+    'SuppressWithNearbyCommentFilter',
+    'SuppressWithNearbyTextFilter',
+    'SuppressWithPlainTextCommentFilter',
+    'SuppressionXpathFilter',
+  ];
+  const bundled = [
+    '<module name="Checker">',
+    ...INLINE_FILTERS.map((name) => `<module name="${name}"/>`),
+    '<module name="TreeWalker"><module name="SuppressWarningsHolder"/></module>',
+    NAME_MODULES,
+    '</module>',
+  ].join('\n');
+  const moduleNames = (config) =>
+    [...config.matchAll(/<module name="(\w+)"/g)].map(([, name]) => name);
+
+  const honored = (names) =>
+    names.filter((name) => [...INLINE_FILTERS, 'SuppressWarningsHolder'].includes(name));
+
+  it('such as @SuppressWarnings("checkstyle:magicnumber") has no effect on the Gradle run', () => {
+    const script = readFileSync(path.join(GRADLE_DIRECTORY, 'nitpicker.init.gradle'), 'utf8');
+    const listed = /def inlineCheckstyleFilters = \[([^\]]*)\]/u.exec(script)?.[1] ?? '';
+    const removed = [...listed.matchAll(/'(\w+)'/gu)].map(([, name]) => name);
+    const guards = readFileSync(path.join(GRADLE_DIRECTORY, 'rules/checkstyle-main.xml'), 'utf8');
+
+    expect({
+      kept: honored([...INLINE_FILTERS, 'SuppressWarningsHolder']).filter(
+        (name) => !removed.includes(name),
+      ),
+      magicNumber: moduleNames(guards).includes('MagicNumber'),
+    }).toEqual({ kept: [], magicNumber: true });
+  });
+
+  it('such as @SuppressWarnings("checkstyle:magicnumber") has no effect on the Maven run', () => {
+    const names = moduleNames(
+      withGuardChecks(nitpickerCheckstyleConfig(bundled), [
+        'checkstyle-all.xml',
+        'checkstyle-main.xml',
+      ]),
+    );
+
+    expect({ magicNumber: names.includes('MagicNumber'), honored: honored(names) }).toEqual({
+      magicNumber: true,
+      honored: [],
+    });
   });
 });
 

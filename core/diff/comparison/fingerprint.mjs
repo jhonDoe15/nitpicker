@@ -7,7 +7,8 @@ export function comparisonKey(
   baseToHeadRenames = new Map(),
   baseToHeadDirectories = new Map(),
 ) {
-  const normalizedPath = normalizeGitPath(finding.path);
+  const normalizedPath =
+    FOLDER_IDENTITY.exec(finding.identity)?.[1] ?? normalizeGitPath(finding.path);
   const cycle = parseCycleIdentity(finding.identity);
   const canonical =
     cycle === undefined
@@ -30,6 +31,7 @@ export function comparisonKey(
   ]);
 }
 
+const FOLDER_IDENTITY = /^folder:([^|]+\/)(?:\||$)/u;
 const PAIR_IDENTITY = /^((?:[\w-]+:)*pair:)([^|]+)\|([^:]+)(:.*)?$/u;
 
 function sortedPair(canonical) {

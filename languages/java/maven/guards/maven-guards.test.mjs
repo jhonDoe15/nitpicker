@@ -68,7 +68,12 @@ function moduleOf(root, files) {
 function guards(root, { files, mainCompile }) {
   const { module, reportDir } = moduleOf(root, files);
   runGuards(
-    { module, reportDir, tools: TOOLS, classpaths: { mainCompile, dependencies: [] } },
+    {
+      module,
+      reportDir,
+      tools: TOOLS,
+      classpaths: { mainCompile, testCompile: [], dependencies: [] },
+    },
     { projectRoot: root, baselineRoot: undefined, reactor: [] },
   );
   return reportDir;

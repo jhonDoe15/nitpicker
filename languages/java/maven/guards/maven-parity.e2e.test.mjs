@@ -60,6 +60,17 @@ describe.skipIf(!enabled)('Maven guard parity and compile modes', () => {
     ).toEqual([true, true, true, true]);
     expect(
       fromMaven
+        .filter((finding) => finding.tool === 'javac' && finding.path.startsWith('src/test/'))
+        .map(({ path: file, rule, location }) => `${file}:${String(location.line)} ${rule}`),
+    ).toEqual([
+      'src/test/java/guards/TypesTest.java:13 rawtypes',
+      'src/test/java/guards/TypesTest.java:13 rawtypes',
+      'src/test/java/guards/TypesTest.java:14 unchecked',
+      'src/test/java/guards/TypesTest.java:15 unchecked',
+      'src/test/java/guards/TypesTest.java:16 cast',
+    ]);
+    expect(
+      fromMaven
         .filter((finding) => finding.rule === 'TestClassWithoutTestCases')
         .map(({ path: file, location }) => `${file}:${String(location.line)}`),
     ).toEqual([

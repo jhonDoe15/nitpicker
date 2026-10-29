@@ -220,7 +220,7 @@ Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setI
   `devDependencies` is reported. Move the package to `dependencies` (zod included). Type-only imports
   are not reported. An app a bundler builds (a bundler config or `build` script, and no `main`,
   `module`, `exports` or `bin` in package.json) and test support files (`setupTests.*`,
-  `test-utils`, `testing/`, `__mocks__/`, stories) are skipped. The nearest package.json that lists
+  `test-utils`, `testing/`, `test-support/`, `__mocks__/`, stories) are skipped. The nearest package.json that lists
   dependencies is used; one that is not a JSON object is reported. Unlisted packages and unused dependencies are reported by the
   `dead-code` analyzer, see [Dependency and repository checks](usage.md#dependency-and-repository-checks).
 - `nitpicker/no-unvalidated-schema-field` (all production code): no `z.unknown()` or `z.any()`
@@ -326,38 +326,71 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   type-position literals, object and class keys, `case` labels, discriminant values
   (`type: 'order-placed'`, `kind: ...`), JSX attribute values, enum members, directives and
   translation keys (`t('orders.title')`, `i18n.t`, `intl.formatMessage({ id })`, `useTranslation('ns')`)
-  are not counted. Nor is a value whose type is a union of string literals (`status: 'on-hold'` where
-  `status` is typed `'paid' | 'on-hold'`, or `order.status === 'on-hold'`): the compiler already
-  rejects a misspelling there.
-- `nitpicker/no-hardcoded-secret` (all production code): a secret-looking string (six characters
-  or more with letters and digits, or three character classes) assigned to a secret-named
-  variable, property, parameter default or fallback (`password`, `token`, `secret`,
-  `credentials`, `apiKey`, `privateKey` and similar, also after `||` or `??`, through `as const`,
-  `atob(...)`, `Buffer.from(...)` or a concatenation of literals) is reported, and so is a string
-  shaped like an AWS key, a GitHub or Slack token, a `sk_live_`/`sk-proj-` key, a private key
-  header, a URL with `user:password@`, a `password=` query parameter or a `Bearer` header value
-  anywhere. Read secrets from the environment in the composition root. A secret-named value
-  passed to a `logger.*`, `console.*` or `process.stdout.write` call, directly, as a property
-  value or in a template or `+` concatenation, is reported too: log that it is set
-  (`{ hasToken: token !== undefined }`) or a masked tail. Placeholders (`changeme`, `<token>`,
-  `[redacted]`), environment variable names (`MY_API_KEY`), URLs, header and storage key names
-  (`X-XSRF-TOKEN`, `auth_token`) and translation keys are not secrets. Like the other guards
-  below, it fails a change only when the change adds a finding.
+  are not counted, and neither is idiomatic text: an encoding (`utf-8`), an HTTP method (`DELETE`),
+  a MIME type (`application/json`) or a `strftime`-style format (`%Y-%m-%d`). Nor is a value whose
+  type is a union of string literals (`status: 'on-hold'` where `status` is typed
+  `'paid' | 'on-hold'`, or `order.status === 'on-hold'`): the compiler already rejects a misspelling
+  there. A constant's own initializer counts as a use. The length, the number of allowed uses, the
+  idiomatic texts, the translation calls and the discriminant keys come from
+  `shared/literals/repeated-literal-exemptions.mjs`, which every preset reads.
+- `nitpicker/no-hardcoded-secret` (all production code): a secret value assigned to a
+  secret-named variable, property, parameter default or fallback (also after `||` or `??`,
+  through `as const`, `atob(...)`, `Buffer.from(...)` or a concatenation of literals) is
+  reported, and so is a string shaped like an AWS key, a GitHub or Slack token, a
+  `sk_live_`/`sk-proj-` key, a private key header, a `django-insecure-` key, a URL with
+  `user:password@`, a `password=` query parameter or a `Bearer`/`Basic`/`Token` header value
+  anywhere; a credential-shaped value gets only that finding. Names and values follow
+  `shared/naming/secret-words.mjs`, which every preset shares: a name ending in `password`,
+  `token`, `secret`, `credentials`, `apiKey`, `privateKey`, `hmacKey`, `jwtKey` and similar (a
+  trailing `Value`, `Raw`, `Str`, `String`, `Text` or `Plain` is ignored, and tokenizer marker
+  tokens such as `eosToken` are not secrets), and a value of six characters or more with letters
+  and digits or three character classes, or for a `password` or `passphrase` name eight
+  characters or more with a lowercase letter followed by an uppercase one
+  (`CorrectHorseBatteryStaple`). Placeholders (`changeme`, `<token>`, `${...}`, `$NAME`, `{name}`,
+  `%s`, `****1234`), environment variable names (`MY_API_KEY`), header names (`X-XSRF-TOKEN`),
+  lowercase paths and message keys, regular expressions, URLs, a value equal to its name and an
+  identifier that contains a secret word (`auth_token`, `dev-token-123456`) are not secrets. Read
+  secrets from the environment in the composition root. A secret-named value passed to a
+  `logger.*`, `console.*` or `process.stdout.write` call, SLF4J-style `addKeyValue`/`addArgument`,
+  `MDC.put` or a thrown error's message, directly, as a property value or key, through a getter
+  (`user.getPassword()`) or in a template or `+` concatenation, is reported too: log that it is
+  set (`{ hasToken: token !== undefined }`) or a masked tail. A status (`hasToken`,
+  `isPasswordSet`), a member of a `tokenizer` and a constant name used on its own (`API_TOKEN`,
+  not `config.API_TOKEN`) are fine. Like the other guards below, it fails a change only when the
+  change adds a finding.
 - `nitpicker/no-generic-names` (all production code): a file or folder whose name ends in
-  `util`, `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`, `common`, `commons` or
-  `misc` (also `string-utils.ts`, `OrderManager.ts`), and an exported class, type, interface, enum
-  or `const` named that way (`OrderHelper`), is reported. A class that extends or implements a type
-  with the same ending (`class SessionManager implements CacheManager`) is not. Name it for its
-  job (`price-rounding.ts`); pure logic shared between features lives in `shared/` under such a
-  name. The Java preset uses the same word list.
+  `util`, `utils`, `utility`, `utilities`, `helper`, `helpers`, `manager`, `managers`, `common`,
+  `commons`, `misc` or `miscellaneous` (`GENERIC_NAME_WORDS` in `shared/naming/smell-words.mjs`;
+  also `string-utils.ts`, `OrderManager.ts`; trailing digits and version words are ignored, so
+  `utils_v2.ts` counts, and a name that ends in a container word of `CONTAINER_NAME_WORDS`
+  (`functions`, `module`, `mixin`, `base`, ...) after other words is judged by the word before it:
+  `util_functions.ts`, `OrderHelperMixin`, `HelperBase` and `UtilsModule` are reported,
+  `LoggingMixin`, `ModelBase` and a lone `Base` are not) is reported, and so is every class, type, interface
+  or enum named that way, exported or not (`OrderHelper`, `class Util {}`), and an exported `const`
+  (ESM `export` or CommonJS `module.exports`/`exports.name`). An exported function is reported
+  when its whole name is generic (`helpers()`, `commonUtils()`), not when it names what it returns
+  (`getManager()`). A generic folder is reported once, on its first source file in path order (test
+  files left out), with the identity `folder:<path>/`, which the comparison keys on the folder, so a
+  new file that sorts first and takes the report does not make it new; a workspace package root
+  such as `packages/common/` is a folder like any other, as in the Python and Kotlin presets. A
+  class that extends or implements a type with the same ending (`class SessionManager implements
+CacheManager`) is not reported, nor are the framework manager roles of `ACCEPTED_MANAGER_ROLES`
+  (`SessionManager`, `TransactionManager`, ...), as in the Java preset. Name it for its job
+  (`price-rounding.ts`); pure logic shared between features lives in `shared/` under such a name.
+  The Java, Kotlin and Python presets use the same word list.
 - `nitpicker/no-boolean-flag-parameter` (all production code): a `boolean` parameter
-  (`flag: boolean`, `flag?: boolean`, `flag = false`) of an exported function, exported arrow or
-  function `const`, or public method of an exported class is reported when it switches the
-  function between two behaviors (it is the condition of an `if` or `?:`). Split it into two
-  functions named for each behavior, or take an options object (`{ force }`) or a string union.
-  Hooks (`useToggle(initial)`), setters (`setOpen(open)`), `with*` builders, `of`/`from`
-  factories, constructors, type predicates, destructured options and a boolean that is only passed
-  on or stored are not reported.
+  (`flag: boolean`, `flag?: boolean`, `flag = false`, or in plain JavaScript a parameter whose
+  JSDoc says `@param {boolean} flag`) of an exported function, exported arrow or function
+  `const`, or public method of an exported class is reported when it switches the function
+  between two behaviors: it is the condition of an `if`, `?:`, `while` or `do`/`while`, also
+  through `!`, `&&`, `||` or a comparison with `true` or `false`, and also inside a nested arrow
+  or function. Split it into two functions named for each behavior, or take an options object
+  (`{ force }`) or a string union. Setter and `with*` builder methods (`setOpen(open)` on a
+  class), `of`/`from`/`valueOf`/`builder` factories, constructors, type predicates, destructured
+  options and a boolean that is only passed on or stored are not reported; a `setX` or `withX`
+  function outside a class is. React hooks (`useToggle(initial)`) are skipped too: a hook takes
+  options positionally and is called unconditionally, so a boolean argument cannot be split into
+  two hooks.
 - `nitpicker/no-io-in-loop` (all production code): a database, HTTP or repository call once
   per item of a loop or an iteration callback (`map`, `forEach`, `flatMap`, `filter`, `reduce`,
   `some`, `every`, `find`) is reported: `fetch`, anything imported from `node:http`,

@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { POLICY_GUIDANCE, policyKindGuidance } from './policy-guidance.mjs';
 import { isPolicyChangeAccepted, policyDigest, policyFindings } from './policy-findings.mjs';
 
 describe('policy findings', () => {
@@ -16,18 +17,36 @@ describe('policy findings', () => {
     );
   });
 
-  it('names the allowed form first and the acceptance route for a person second', () => {
-    const [finding] = policyFindings(loosenings, 'd1e2f3a4b5c6', undefined);
+  it('explains the exclusion before the self-contained acceptance route', () => {
+    const kinds = { 'exclude added: src/**': 'exclusion' };
+    const [finding] = policyFindings(loosenings, 'd1e2f3a4b5c6', { kinds });
 
+    expect(finding.policyKind).toBe('exclusion');
     expect(finding.message).toBe(
-      "exclude added: src/**. Keep the base's policy and change the code until it passes: keep new code under the source roots, where the gate checks it, and fix findings instead of excluding, excepting or reclassifying the code. " +
-        'If the policy change is intended, stop and ask a person reviewing this change: only they accept exactly these loosenings, with --accept-policy-change=d1e2f3a4b5c6 at an interactive terminal or NITPICKER_ACCEPT_POLICY_CHANGE=d1e2f3a4b5c6 in CI.',
+      [
+        `exclude added: src/**. ${POLICY_GUIDANCE.exclusion}`,
+        'If the policy change is intended, stop and ask a person reviewing this change:',
+        'only they accept exactly these loosenings, with --accept-policy-change=d1e2f3a4b5c6',
+        'at an interactive terminal or NITPICKER_ACCEPT_POLICY_CHANGE=d1e2f3a4b5c6 in CI.',
+      ].join(' '),
     );
   });
 
+  it('words a finding without a kind with the generic guidance and keeps its identity', () => {
+    const [, finding] = policyFindings(loosenings, 'd1e2f3a4b5c6');
+
+    expect(finding.policyKind).toBeUndefined();
+    expect(finding.identity).toBe('analyzer disabled: mutation');
+    expect(finding.message).toContain(policyKindGuidance(undefined));
+  });
+
   it('accepts only the digest the run computed', () => {
-    expect(policyFindings(loosenings, 'd1e2f3a4b5c6', 'd1e2f3a4b5c6')).toEqual([]);
-    expect(policyFindings(loosenings, 'd1e2f3a4b5c6', 'ffffffffffff')).toHaveLength(2);
+    expect(policyFindings(loosenings, 'd1e2f3a4b5c6', { acceptedDigest: 'd1e2f3a4b5c6' })).toEqual(
+      [],
+    );
+    expect(
+      policyFindings(loosenings, 'd1e2f3a4b5c6', { acceptedDigest: 'ffffffffffff' }),
+    ).toHaveLength(2);
     expect(isPolicyChangeAccepted([], 'd1e2f3a4b5c6', 'd1e2f3a4b5c6')).toBe(false);
     expect(isPolicyChangeAccepted(loosenings, 'd1e2f3a4b5c6', undefined)).toBe(false);
   });

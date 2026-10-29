@@ -7,12 +7,13 @@ import { compiledProgram, programSources } from '../programs/helper-programs.mjs
 
 const RULES_DIRECTORY = path.join(GRADLE_DIRECTORY, 'archunit');
 const TOOL = 'Spring architecture rules';
+const ROLES_PROPERTY = 'nitpicker.spring.roles';
 
 function existing(entries) {
   return entries.filter((entry) => existsSync(entry));
 }
 
-function runRules({ module, classpaths, libraries, locations, spawn }) {
+function runRules({ module, classpaths, libraries, locations, springRoles, spawn }) {
   const { classes, output } = locations;
   const projectPath = [
     module.outputDirectory,
@@ -23,6 +24,7 @@ function runRules({ module, classpaths, libraries, locations, spawn }) {
   runJava({
     tool: TOOL,
     classpath: [...new Set([classes, ...libraries, ...existing(projectPath)])],
+    jvmArgs: springRoles === undefined ? [] : [`-D${ROLES_PROPERTY}=${springRoles}`],
     mainClass: 'ArchRules',
     args: [output, module.outputDirectory, module.testOutputDirectory],
     cwd: module.basedir,
@@ -32,8 +34,17 @@ function runRules({ module, classpaths, libraries, locations, spawn }) {
 }
 
 export function runSpringArch(options) {
-  const { module, reportDir, tools, classpaths, pinned, spring, spawn = spawnSync } = options;
-  if (!spring) {
+  const {
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    pinned,
+    archRules,
+    springRoles,
+    spawn = spawnSync,
+  } = options;
+  if (!archRules) {
     return;
   }
   const output = path.join(reportDir, 'spring-arch.json');
@@ -42,11 +53,11 @@ export function runSpringArch(options) {
   const classes = compiledProgram({
     tool: TOOL,
     name: 'spring-arch',
-    sources: programSources(options.rules ?? RULES_DIRECTORY),
+    sources: programSources(options.rules ?? RULES_DIRECTORY, { recursive: true }),
     version: pinned.archunit,
     libraries,
     cwd: module.basedir,
     spawn,
   });
-  runRules({ module, classpaths, libraries, locations: { classes, output }, spawn });
+  runRules({ module, classpaths, libraries, springRoles, locations: { classes, output }, spawn });
 }

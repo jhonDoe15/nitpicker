@@ -74,7 +74,7 @@ describe('formatTool', () => {
 });
 
 describe('archunitTool', () => {
-  it('asks for the pinned ArchUnit jar only for a build with a Spring module', () => {
+  it('asks for the pinned ArchUnit jar only for a build with a module that runs the architecture rules', () => {
     expect([archunitTool(true, pinned), archunitTool(false, pinned)]).toEqual([
       [{ name: 'archunit', coordinates: [`com.tngtech.archunit:archunit:${pinned.archunit}`] }],
       [],
