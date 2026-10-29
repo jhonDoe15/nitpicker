@@ -1,5 +1,5 @@
 import { LOG_LEVEL_METHODS, LOG_NAME_WORDS } from '../../../../../../shared/naming/smell-words.mjs';
-import { wordsOf } from './identifier-words.mjs';
+import { wordsOf } from '../../../../../../shared/naming/secret-words.mjs';
 
 const LOG_METHODS = new Set(LOG_LEVEL_METHODS);
 const LOG_WORDS = new Set(LOG_NAME_WORDS);
