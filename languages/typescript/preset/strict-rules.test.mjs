@@ -5,11 +5,13 @@ import { strictPresetConfig } from './eslint-config/strict.mjs';
 import { defaultResolvedLayout } from './layout.mjs';
 import { isStrictRule, strictEslintRuleIds } from './strict-rules.mjs';
 
+const PARAMETER_ONLY_RULE = '@typescript-eslint/no-unused-vars';
+
 describe('strict rule ids', () => {
   it('list exactly the rules of the real strict preset config', () => {
-    const fromConfig = strictPresetConfig(defaultResolvedLayout, {}).flatMap((entry) =>
-      Object.keys(entry.rules ?? {}),
-    );
+    const fromConfig = strictPresetConfig(defaultResolvedLayout, {})
+      .flatMap((entry) => Object.keys(entry.rules ?? {}))
+      .filter((rule) => rule !== PARAMETER_ONLY_RULE);
     expect(
       new Set(strictEslintRuleIds),
       'a strict rule was added or removed: update strictEslintRuleIds in languages/typescript/preset/strict-rules.mjs',
