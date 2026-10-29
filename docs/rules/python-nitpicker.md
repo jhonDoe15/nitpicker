@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 50 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 53 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -148,6 +148,15 @@ Dataclass \<name> is not frozen.
 - **Allowed form:** Pass a timeout in seconds: `urllib.request.urlopen(url, timeout=10)`, `session.get(url, timeout=10)`, or set `socket.setdefaulttimeout(10)` once at startup for `urllib`; an `httpx` client keeps its 5 second default unless you pass another number (`httpx.Client(timeout=10)`), never `timeout=None`.
 - **Exception:** If this is intended, add `{"rule":"http-without-timeout","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
+<a id="python-rules-import-time-effect"></a>
+
+### `python-rules/import-time-effect`
+
+`<name>()` runs when the module is imported, so every import, tests included, performs it.
+
+- **Allowed form:** Move the call into a function and call that from the composition root (`main.py`, a `create_app` factory) or under `if __name__ == "__main__":`, passing the result in.
+- **Exception:** If this is intended, add `{"rule":"import-time-effect","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
 <a id="python-rules-io-in-domain"></a>
 
 ### `python-rules/io-in-domain`
@@ -166,6 +175,15 @@ Dataclass \<name> is not frozen.
 - **Allowed form:** Batch it: fetch or write all items in one call, or run the calls together with `asyncio.gather` or a `ThreadPoolExecutor.map` when there is no batch API.
 - **Exception:** If this is intended, add `{"rule":"io-in-loop","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
+<a id="python-rules-logger-in-domain"></a>
+
+### `python-rules/logger-in-domain`
+
+`<name>` is imported into domain code.
+
+- **Allowed form:** Return a result that says what happened, or raise a domain error, and let `adapters/` or the composition root log it.
+- **Exception:** If this is intended, add `{"rule":"logger-in-domain","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
 <a id="python-rules-module-level-mutable-state"></a>
 
 ### `python-rules/module-level-mutable-state`
@@ -174,6 +192,15 @@ Dataclass \<name> is not frozen.
 
 - **Allowed form:** Keep the state in an object that is created in the composition root and passed in, or build a new immutable value and return it. A registry filled once at import time (a decorator that adds the function to a table) is not run-time state; the exception route below covers its path.
 - **Exception:** If this is intended, add `{"rule":"module-level-mutable-state","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-module-state-in-domain"></a>
+
+### `python-rules/module-state-in-domain`
+
+Domain code uses the module state `<name>`.
+
+- **Allowed form:** Receive the state as a parameter and return the new value; the composition root creates the object and passes it in.
+- **Exception:** If this is intended, add `{"rule":"module-state-in-domain","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-network-in-test"></a>
 
