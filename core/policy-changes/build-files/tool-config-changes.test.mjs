@@ -104,6 +104,84 @@ describe('project tool configs the project opted into', () => {
       }).policyLoosenings,
     ).toEqual(['prettier project config changed: package.json']);
   });
+  it.each(['typescript', 'python', 'java', 'kotlin'])(
+    'counts an edit of the opted-in .jscpd.json with the %s preset, not a reformat',
+    (preset) => {
+      const at = (jscpd) => ({ '.jscpd.json': jscpd, 'README.md': 'x\n' });
+      const config = { preset, tools: { jscpd: PROJECT } };
+      const base = at('{"minTokens": 50}');
+
+      expect(between({ base, head: at('{"minTokens": 500}'), config }).policyLoosenings).toEqual([
+        'jscpd .jscpd.json minTokens: 50 -> 500',
+      ]);
+      expect(changesOf(between({ base, head: at('{"minTokens": 10}'), config }))).toEqual({
+        policyLoosenings: [],
+        policyChanges: ['jscpd .jscpd.json minTokens: 50 -> 10'],
+      });
+      expect(
+        between({ base, head: at('{\n  "minTokens": 50\n}\n'), config }).policyLoosenings,
+      ).toEqual([]);
+      expect(
+        between({ base, head: at('{"minTokens": 500}'), config: { preset } }).policyLoosenings,
+      ).toEqual([]);
+      expect(
+        between({ base, head: at('{"reporters": ["html"], "minTokens": 50}'), config })
+          .policyLoosenings,
+      ).toEqual([]);
+    },
+  );
+  it.each(['typescript', 'python', 'java', 'kotlin'])(
+    'shows the .jscpd.json a %s change opts into in the same change',
+    (preset) => {
+      const files = { '.jscpd.json': '{"minTokens": 5000}', 'README.md': 'x\n' };
+      expect(
+        between({
+          base: files,
+          head: files,
+          baseConfig: { preset },
+          config: { preset, tools: { jscpd: PROJECT } },
+        }).policyLoosenings,
+      ).toEqual([
+        'jscpd .jscpd.json minTokens: not set -> 5000',
+        'tools.jscpd.precedence: not set -> ["project","nitpicker"]',
+      ]);
+    },
+  );
+});
+
+describe('what an edit of .jscpd.json changes', () => {
+  const config = { preset: 'python', tools: { jscpd: PROJECT } };
+  const at = (jscpd) => ({ '.jscpd.json': JSON.stringify(jscpd), 'README.md': 'x\n' });
+
+  it.each([
+    [{ minLines: 5 }, { minLines: 9 }, 'loosened', 'minLines: 5 -> 9'],
+    [{}, { minLines: 3 }, 'changed', 'minLines: not set -> 3'],
+    [{}, { maxLines: 900 }, 'loosened', 'maxLines: not set -> 900'],
+    [{ maxLines: 900 }, { maxLines: 2000 }, 'changed', 'maxLines: 900 -> 2000'],
+    [{ maxSize: '1mb' }, { maxSize: '100kb' }, 'loosened', 'maxSize: "1mb" -> "100kb"'],
+    [{ maxSize: '100kb' }, {}, 'changed', 'maxSize: "100kb" -> not set'],
+    [{}, { mode: 'strict' }, 'loosened', 'mode: not set -> "strict"'],
+    [{}, { skipComments: true }, 'changed', 'mode: not set -> "weak"'],
+    [{ ignoreCase: true }, {}, 'loosened', 'ignoreCase: true -> not set'],
+    [{ ignore: ['a/**'] }, { ignore: ['b/**'] }, 'loosened', 'ignore: ["a/**"] -> ["b/**"]'],
+    [
+      { ignore: ['a/**', 'b/**'] },
+      { ignore: ['a/**'] },
+      'changed',
+      'ignore: ["a/**","b/**"] -> ["a/**"]',
+    ],
+    [{}, { ignorePattern: ['^import'] }, 'loosened', 'ignorePattern: not set -> ["^import"]'],
+  ])('reads %j -> %j as %s', (base, head, kind, text) => {
+    const { policyLoosenings, policyChanges } = between({ base: at(base), head: at(head), config });
+    expect(policyChanges).toEqual([`jscpd .jscpd.json ${text}`]);
+    expect(policyLoosenings).toEqual(kind === 'loosened' ? policyChanges : []);
+  });
+
+  it('falls back to the file when one side cannot be read', () => {
+    expect(
+      between({ base: at({ minTokens: 50 }), head: at({ minTokens: 0 }), config }).policyLoosenings,
+    ).toEqual(['jscpd project config changed: .jscpd.json']);
+  });
 });
 
 describe('build-declared tool settings the project opted into', () => {

@@ -6,6 +6,8 @@ import {
 } from '../../../languages/java/adapters/gradle-presets.mjs';
 import { declaredConfigFiles } from '../../../languages/java/adapters/tool-config/declared/declared-choices.mjs';
 import { readInside } from '../../../shared/conventions/read-inside.mjs';
+import { JSCPD_PROJECT_FILE } from '../../../shared/conventions/tool-precedence.mjs';
+import { appliedJscpdConfig } from '../../tooling/jscpd/config.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
@@ -30,6 +32,10 @@ function fingerprintOf(tool, { projectRoot, file }, gitBlobId) {
   const content = readInside(projectRoot, file);
   if (content === undefined) {
     return undefined;
+  }
+  const applied = tool === 'jscpd' ? appliedJscpdConfig(content.toString('utf8')) : {};
+  if (applied.kind === 'applied') {
+    return gitBlobId(JSON.stringify(applied.config));
   }
   if (file !== PACKAGE_JSON) {
     return gitBlobId(toolConfigText(tool, file, content.toString('utf8')));
@@ -89,6 +95,9 @@ function candidates(tool, side) {
   if (tool === 'prettier') {
     return PRETTIER_PRESETS.has(config.preset) ? PRETTIER_PROJECT_FILES : [];
   }
+  if (tool === 'jscpd') {
+    return [JSCPD_PROJECT_FILE];
+  }
   const configured = PROJECT_TOOL_CONFIGS.get(tool);
   return GRADLE_PRESETS.includes(config.preset) && configured !== undefined
     ? rulesUnder(files, path.posix.dirname(configured))
@@ -114,17 +123,38 @@ function declaredFingerprints(tool, side, gitBlobId) {
 }
 
 function sideFingerprints(tool, side, gitBlobId) {
+  if (!isOptedIn(tool, side.config)) {
+    return new Map();
+  }
   return BUILD_DECLARED_TOOLS.includes(tool)
     ? declaredFingerprints(tool, side, gitBlobId)
     : fingerprints(tool, { root: side.root, files: candidates(tool, side) }, gitBlobId);
 }
 
+function appliedSide(side, optedIn) {
+  if (!optedIn) {
+    return { kind: 'applied', config: {} };
+  }
+  const content = readInside(side.root, JSCPD_PROJECT_FILE);
+  return content === undefined
+    ? { kind: 'applied', config: {} }
+    : appliedJscpdConfig(content.toString('utf8'));
+}
+
+function appliedConfigs(base, head) {
+  const sides = [appliedSide(base, isOptedIn('jscpd', base.config)), appliedSide(head, true)];
+  return sides.every(({ kind }) => kind === 'applied')
+    ? { applied: { base: sides[0].config, head: sides[1].config } }
+    : {};
+}
+
 export function readToolConfigs(base, head, gitBlobId) {
-  return ['pmd', 'checkstyle', ...BUILD_DECLARED_TOOLS, ...KOTLIN_TOOLS, 'prettier']
-    .filter((tool) => isOptedIn(tool, base.config) && isOptedIn(tool, head.config))
+  return ['pmd', 'checkstyle', ...BUILD_DECLARED_TOOLS, ...KOTLIN_TOOLS, 'prettier', 'jscpd']
+    .filter((tool) => isOptedIn(tool, head.config))
     .map((tool) => ({
       tool,
       base: sideFingerprints(tool, base, gitBlobId),
       head: sideFingerprints(tool, head, gitBlobId),
+      ...(tool === 'jscpd' ? appliedConfigs(base, head) : {}),
     }));
 }
