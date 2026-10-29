@@ -424,7 +424,12 @@ compared with the defaults. These changes are loosening:
   `tools.prettier.precedence` lists `"project"` (the `prettier` key of `package.json` only, and in
   `.editorconfig` only the sections that match the files Prettier formats). An edit that only
   changes comments, blank lines or layout is not counted. Whether an edit is stricter or looser is
-  not judged, so a person reviews it; a removed file is listed;
+  not judged, so a person reviews it; a removed file is listed. The TypeScript compiler options are
+  judged per option while `tools.typescript.precedence` lists `"project"` first on both sides: each
+  strict option whose effective value moved is listed as `typescript tsconfig.json
+noUncheckedIndexedAccess: true -> false`, only one that goes from `true` to `false` needs a person,
+  and the files of the tsconfig chain (the selected config, the root `tsconfig.json` and what they
+  `extends` inside the project) are listed when the change adds the opt-in or a side cannot be read;
 - a newly disabled analyzer, a threshold above the base's (a removed threshold counts at its
   default), and a removed or changed custom analyzer (any change to its `command` or `args`);
 - a `preset` that checks less: an explicit preset changed to another one, or `javascript` set where
@@ -1247,7 +1252,7 @@ own tools do:
   `jsx`, `paths`, module resolution and other settings, and nitpicker adds its policy flags on top
   (`strict`, `noImplicitReturns`, `noFallthroughCasesInSwitch`, `noUncheckedIndexedAccess`,
   `useUnknownInCatchVariables` and the
-  rest of the strict family) plus `noEmit` and `skipLibCheck`. Where the project's tsconfig sets one
+  rest of the strict family) plus `noEmit`, `noCheck: false` and `skipLibCheck`. Where the project's tsconfig sets one
   of these options itself, it wins only with `tools.typescript.precedence` listing `"project"` first
   (see [TypeScript compiler options](#typescript-compiler-options-typescript-and-javascript-presets)). TypeScript projects also get
   `exactOptionalPropertyTypes`, `noPropertyAccessFromIndexSignature` and `noUncheckedSideEffectImports`
@@ -1596,28 +1601,54 @@ opt-in. What `tools.typescript.precedence` decides is who wins for nitpicker's s
 `noUncheckedIndexedAccess`, `forceConsistentCasingInFileNames` and, with the TypeScript preset,
 `exactOptionalPropertyTypes`, `noPropertyAccessFromIndexSignature` and `noUncheckedSideEffectImports`.
 
-| `precedence`                                          | Strict options                                                                                             |
-| ----------------------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
-| `["nitpicker"]` (default), `["nitpicker", "project"]` | nitpicker's values, whatever the tsconfig sets                                                             |
-| `["project"]`, `["project", "nitpicker"]`             | the value the tsconfig sets explicitly (following `extends`) wins; every option it leaves out stays strict |
+| `precedence`                              | Strict options                                                                                             |
+| ----------------------------------------- | ---------------------------------------------------------------------------------------------------------- |
+| `["nitpicker"]` (default)                 | nitpicker's values, whatever the tsconfig sets                                                             |
+| `["nitpicker", "project"]`                | nitpicker's values; the tsconfig is not read for them (see below)                                          |
+| `["project"]`, `["project", "nitpicker"]` | the value the tsconfig sets explicitly (following `extends`) wins; every option it leaves out stays strict |
 
 So a tsconfig that sets only `"noUncheckedIndexedAccess": false` is still checked with every other
 strict option. A `strict` the tsconfig sets also decides the members of its family that it leaves
 out, as in TypeScript (except `alwaysStrict`, which TypeScript deprecates turning off), and with `strictNullChecks` off `strictPropertyInitialization` and
 `exactOptionalPropertyTypes` are turned off too unless the tsconfig sets them, because TypeScript
-rejects them without it. `noEmit`, `skipLibCheck`, `allowJs` and `checkJs`, the files checked and the
-excludes stay nitpicker's. Both type check engines and the mutation checker's tsconfig use the same
+rejects them without it. `noEmit`, `noCheck`, `skipLibCheck`, `allowJs` and `checkJs`, the files
+checked and the excludes stay nitpicker's with every ordering: a tsconfig that sets `noCheck: true`,
+which would switch type checking off, is checked anyway, and `skipLibCheck` is on, which also covers
+`skipDefaultLibCheck`. Both type check engines and the mutation checker's tsconfig use the same
 values, and so do the type-aware lint rules, which read the same config. The values are read from the
 head checkout and apply to both sides of the comparison (a base whose tsconfig is still strict is
-checked with the head's values), they are part of the head policy, and an edit of the tsconfig or a
-file it `extends` inside the project is a policy change while `precedence` lists `"project"`.
-Naming `"project"` without a tsconfig, or with one TypeScript cannot read (invalid JSON, a missing
-`extends` target), is a tool error of the analyzers that use the type check config. Without the
-opt-in, a tsconfig that relaxes one of these options gets the notice `Ignoring strict: false,
-noUncheckedIndexedAccess: false in tsconfig.json; opt in with "tools": { "typescript": { "precedence":
-["project", "nitpicker"] } }`. `precedence` cannot be combined with `tools.typescript.project`, which
-already keeps the selected config's options as written (see
-[TypeScript project config](#typescript-project-config)).
+checked with the head's values), and they are part of the head policy.
+
+With `["nitpicker", "project"]` nitpicker wins every option the tsconfig could set here, so the
+tsconfig is not read for them: a missing or unreadable tsconfig is no error of this setting, and an
+edit of it is no policy change. Whichever ordering is used, the project's other options (`target`,
+`paths`, `lib`, `include` and so on) reach the type check through `extends`.
+
+With `"project"` first, naming it without a tsconfig, or with one TypeScript cannot read (invalid
+JSON, a missing `extends` target, an option the TypeScript version in use does not know), is a tool
+error of the analyzers that use the type check config. The message names the compiler, as in
+`tsconfig.json cannot be read by TypeScript 6.0.3: Cannot read file ...`, and a tsconfig that a
+symlink moves out of the project is rejected with `must stay inside the project`.
+
+Policy review loads the selected tsconfig on both sides and compares the value each strict option
+ends up with (nitpicker's, replaced by what the project sets), so a `strict` moved to `false`, a
+changed `extends`, the root solution `tsconfig.json` that picks another config, and an edit of a file
+`extends`ed from above the project root or from a package (`@org/config/tsconfig.json`,
+`@tsconfig/strictest`) all show up, while `paths`, `include`, comments and key order show nothing.
+Each option that moved is listed as `typescript tsconfig.json noUncheckedIndexedAccess: true ->
+false`, and a strict option that goes from `true` to `false` needs a person's acceptance; a move the
+other way is only listed. When the change adds the opt-in, or a side cannot be read, every file of
+the chain is listed instead as `typescript project config changed: tsconfig.json`: the selected
+config, the root `tsconfig.json`, and the files they `extends` inside the project (not one that a
+symlink moves out of it). A head that removes the opt-in is not judged, and the base follows the
+head.
+
+Without the opt-in (the default or an explicit `["nitpicker"]`), a tsconfig that relaxes one of these
+options gets the notice `Ignoring strict: false, noUncheckedIndexedAccess: false in tsconfig.json; opt
+in with "tools": { "typescript": { "precedence": ["project", "nitpicker"] } }`; when the tsconfig
+cannot be read the report says `Could not check the tsconfig for relaxed strict options: ...` instead.
+`precedence` cannot be combined with `tools.typescript.project`, which already keeps the selected
+config's options as written (see [TypeScript project config](#typescript-project-config)).
 
 ### Lint engine
 
@@ -1696,7 +1727,7 @@ TypeScript checker, explicitly select a config in `nitpicker.config.json`:
 The path must name a JSON config file inside the project, relative to its root. Nested configs
 and their `extends` are supported. Each snapshot reads its own copy of that config. Its options,
 `files`, `include` and `exclude` are retained; nitpicker adds its configured `exclude` patterns
-and sets `noEmit: true`. Imported files and explicit `files` entries follow TypeScript's usual
+and sets `noEmit: true` and `noCheck: false`. Imported files and explicit `files` entries follow TypeScript's usual
 exclusion semantics. The preset does not add strictness, JavaScript inputs or DOM libraries to
 an explicitly selected config. A missing config is an error, without a preset fallback. Because the
 selected config's options are used as written, `project` cannot be combined with

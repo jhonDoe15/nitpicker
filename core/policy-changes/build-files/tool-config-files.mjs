@@ -32,7 +32,8 @@ const SCRIPT_TOOL_FILES = new Map([
 ]);
 
 function usesProjectConfig(config, tool) {
-  return (config.tools?.[tool]?.precedence ?? []).includes('project');
+  const layers = precedenceLayers(config.tools?.[tool]?.precedence);
+  return layers.usesProject && !(tool === 'typescript' && layers.nitpickerFirst);
 }
 
 function prettierKey(content) {

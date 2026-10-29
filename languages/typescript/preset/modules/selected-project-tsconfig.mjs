@@ -28,7 +28,7 @@ export function selectedProjectTsconfig(projectDirectory, layout) {
   return `${JSON.stringify(
     {
       extends: `./${name}`,
-      compilerOptions: { noEmit: true },
+      compilerOptions: { noCheck: false, noEmit: true },
       exclude: [...excluded.map(fromConfig), ...layout.exclude],
       ...(config?.references === undefined
         ? {}

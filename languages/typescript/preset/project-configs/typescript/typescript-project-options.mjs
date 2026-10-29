@@ -157,8 +157,14 @@ export function relaxedStrictOptions(projectRoot, layout) {
 }
 
 export function projectTsconfigFiles(projectRoot, layout) {
-  const extended = extendedProjectTsconfig(projectRoot, layout);
-  return extended === undefined ? [] : tsconfigChain(projectRoot, extended.slice(2));
+  const selected = extendedProjectTsconfig(projectRoot, layout);
+  if (selected === undefined) {
+    return [];
+  }
+  const root = `./${projectConfigName(projectRoot, layout)}`;
+  return [
+    ...new Set([selected, root].flatMap((config) => tsconfigChain(projectRoot, config.slice(2)))),
+  ];
 }
 
 export function appliedTypescriptOptions(projectRoot, layout) {
