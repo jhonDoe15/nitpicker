@@ -194,12 +194,12 @@ function optionFlag(flag, checks) {
   return raising || listed ? flag : 'dropped';
 }
 
-function sourcesKept(pattern) {
+function pathCheck(pattern) {
   try {
     const excluded = new RegExp(`^(?:${pattern})$`, 'u');
-    return !SOURCE_PATHS.some((file) => excluded.test(file));
-  } catch {
-    return false;
+    return { kind: SOURCE_PATHS.some((file) => excluded.test(file)) ? 'matches-sources' : 'kept' };
+  } catch (error) {
+    return { kind: 'invalid-pattern', message: error.message };
   }
 }
 
@@ -215,7 +215,7 @@ function classified(flag, context) {
     return optionFlag(flag, context.checks);
   }
   if (flag.startsWith('-XepExcludedPaths:')) {
-    return sourcesKept(flag.slice('-XepExcludedPaths:'.length)) ? flag : 'dropped';
+    return pathCheck(flag.slice('-XepExcludedPaths:'.length)).kind === 'kept' ? flag : 'dropped';
   }
   if (MOOT_FLAGS.has(flag)) {
     return 'moot';
