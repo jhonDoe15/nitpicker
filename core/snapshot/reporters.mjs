@@ -24,7 +24,10 @@ export function writeSnapshotReports(outputRoot, report, { projectPath } = {}) {
 }
 
 export function renderSnapshotConsoleSummary(report, diagnosticsPath) {
-  return renderTextReport(report, designNoteLines(report.findings, diagnosticsPath, { snapshot: true }));
+  return renderTextReport(
+    report,
+    designNoteLines(report.findings, diagnosticsPath, { snapshot: true }),
+  );
 }
 
 function renderTextReport(report, descriptiveLines) {
