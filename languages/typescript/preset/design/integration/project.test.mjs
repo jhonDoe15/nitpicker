@@ -167,20 +167,12 @@ describe('the design rules over the facts of a fixture project', () => {
     const root = project({ fixture: 'signals' });
 
     expect(summaryOf(findingsOf(root))).toEqual([
-      {
-        rule: 'foreign-state-decision',
-        classification: 'descriptive',
-        path: 'src/accounts/audit.ts',
-      },
       { rule: 'forwarding-chain', classification: 'descriptive', path: 'src/forward/outer.ts' },
-      { rule: 'caller-protocol', classification: 'descriptive', path: 'src/jobs/export-job.ts' },
+      { rule: 'caller-protocol', classification: 'descriptive', path: 'src/model.ts' },
       { rule: 'disjoint-consumer-groups', classification: 'descriptive', path: 'src/model.ts' },
+      { rule: 'foreign-state-decision', classification: 'descriptive', path: 'src/model.ts' },
+      { rule: 'repeated-policy-decision', classification: 'descriptive', path: 'src/model.ts' },
       { rule: 'data-clump', classification: 'descriptive', path: 'src/net/client.ts' },
-      {
-        rule: 'repeated-policy-decision',
-        classification: 'descriptive',
-        path: 'src/policy/cost.ts',
-      },
       { rule: 'context-threading', classification: 'descriptive', path: 'src/threading/start.ts' },
     ]);
   });
@@ -189,18 +181,10 @@ describe('the design rules over the facts of a fixture project', () => {
     const root = project({ fixture: 'signals', manifest: { name: 'lib', main: 'src/model.ts' } });
 
     expect(summaryOf(findingsOf(root))).toEqual([
-      {
-        rule: 'foreign-state-decision',
-        classification: 'descriptive',
-        path: 'src/accounts/audit.ts',
-      },
       { rule: 'forwarding-chain', classification: 'descriptive', path: 'src/forward/outer.ts' },
+      { rule: 'foreign-state-decision', classification: 'descriptive', path: 'src/model.ts' },
+      { rule: 'repeated-policy-decision', classification: 'descriptive', path: 'src/model.ts' },
       { rule: 'data-clump', classification: 'descriptive', path: 'src/net/client.ts' },
-      {
-        rule: 'repeated-policy-decision',
-        classification: 'descriptive',
-        path: 'src/policy/cost.ts',
-      },
       { rule: 'context-threading', classification: 'descriptive', path: 'src/threading/start.ts' },
     ]);
   });
@@ -212,8 +196,19 @@ describe('the design rules over the facts of a fixture project', () => {
     );
 
     expect(summaryOf(protocolFindings)).toEqual([
-      { rule: 'caller-protocol', classification: 'descriptive', path: 'src/jobs/export-job.ts' },
       { rule: 'protocol-contract', classification: 'enforceable', path: 'src/jobs/export-job.ts' },
+      { rule: 'caller-protocol', classification: 'descriptive', path: 'src/model.ts' },
+    ]);
+  });
+
+  it('does not report an open whose function returns the session it opened', () => {
+    const root = project({ fixture: 'signals' });
+    const unclosed = findingsOf(root, SESSION_CONTRACT).filter(
+      ({ rule }) => rule === 'protocol-contract',
+    );
+
+    expect(unclosed.map(({ identity }) => identity)).toEqual([
+      'src/jobs/export-job.ts#leaky|session|unclosed:open',
     ]);
   });
 

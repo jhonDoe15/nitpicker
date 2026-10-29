@@ -1,6 +1,6 @@
 import { beforeAll, describe, expect, it } from 'vitest';
 import { validateFacts } from '../../../../../shared/rules/facts/schema.mjs';
-import { byId, factsOfFixture } from '../test-support/project.mjs';
+import { byId, factsOfFiles, factsOfFixture } from '../test-support/project.mjs';
 
 let facts;
 
@@ -100,8 +100,13 @@ describe('the calls of a fixture project', () => {
     ],
     [
       'src/calls/receivers.ts#Factory.make',
-      [{ target: 'src/calls/receivers.ts#Factory.build', line: 21 }],
+      [{ target: 'src/calls/receivers.ts#Factory.build(static)', line: 21 }],
     ],
+    [
+      'src/calls/receivers.ts#byInterface',
+      [{ target: 'src/calls/receivers.ts#Runner.run', line: 35, receiver: 'runner' }],
+    ],
+    ['src/state/uses.ts#reads', [{ target: 'src/state/uses.ts#Clock.now', line: 22 }]],
     [
       'src/calls/receivers.ts#byType',
       [
@@ -137,9 +142,9 @@ describe('the calls of a fixture project', () => {
       'src/calls/overloads.ts#overloaded',
       'src/calls/receivers.ts#Left.run',
       'src/calls/receivers.ts#Right.run',
-      'src/calls/receivers.ts#Factory.build',
+      'src/calls/receivers.ts#Runner.run',
+      'src/calls/receivers.ts#Factory.build(static)',
       'src/calls/receivers.ts#byUnion',
-      'src/calls/receivers.ts#byInterface',
       'src/calls/receivers.ts#Holder.constructor',
       'src/model/cart.ts#Cart.add',
       'src/model/cart.ts#Cart.lines',
@@ -153,8 +158,8 @@ describe('the calls of a fixture project', () => {
       'src/model/cart.ts#Session.rollback',
       'src/state/lifecycle.ts#Worker.constructor',
       'src/state/lifecycle.ts#Worker.helper',
+      'src/state/uses.ts#Clock.now',
       'src/state/uses.ts#extra',
-      'src/state/uses.ts#reads',
       'src/state/uses.ts#destructures',
       'src/state/uses.ts#destructuresRest',
       'src/state/uses.ts#destructuresParameter',
@@ -264,4 +269,83 @@ describe('the callables a fixture project uses as values', () => {
       },
     ]);
   });
+});
+
+describe('the reads of an accessor', () => {
+  const files = {
+    'src/cart.ts': [
+      'export class Cart {',
+      '  private store: string[] = [];',
+      '  get items(): string[] { return this.store; }',
+      '  set items(value: string[]) { this.store = value; }',
+      '  size(): number { return this.items.length; }',
+      '}',
+      '',
+    ].join('\n'),
+    'src/use.ts': [
+      "import { Cart } from './cart';",
+      "export function pushes(cart: Cart) { cart.items.push('x'); }",
+      'export function reads(cart: Cart) { return cart.items.length; }',
+      "export function aliases(cart: Cart) { const xs = cart.items; xs.push('y'); }",
+      'export function replaces(cart: Cart) { cart.items = []; }',
+      'export function assigns(cart: Cart) { cart.items.length = 0; }',
+      '',
+    ].join('\n'),
+  };
+
+  it.each([
+    ['pushes', [{ target: 'src/cart.ts#Cart.items', line: 2, receiver: 'cart', mutation: 'push' }]],
+    ['reads', [{ target: 'src/cart.ts#Cart.items', line: 3, receiver: 'cart' }]],
+    [
+      'aliases',
+      [{ target: 'src/cart.ts#Cart.items', line: 4, receiver: 'cart', mutation: 'push' }],
+    ],
+    ['replaces', undefined],
+    [
+      'assigns',
+      [{ target: 'src/cart.ts#Cart.items', line: 6, receiver: 'cart', mutation: 'assign' }],
+    ],
+  ])('records the calls of %s as reads of the accessor', (name, expected) => {
+    const facts = factsOfFiles(files);
+
+    expect(byId(facts.callables, `src/use.ts#${name}`).calls).toEqual(expected);
+  });
+
+  it('records a read of the accessor through this', () => {
+    const facts = factsOfFiles(files);
+
+    expect(byId(facts.callables, 'src/cart.ts#Cart.size').calls).toEqual([
+      { target: 'src/cart.ts#Cart.items', line: 5, receiver: 'this' },
+    ]);
+  });
+});
+
+describe('the cleanup calls of a function', () => {
+  const files = {
+    'src/conn.ts': 'export class Conn {\n  commit(): void {}\n}\n',
+    'src/use.ts': [
+      "import { Conn } from './conn';",
+      'export function direct(conn: Conn) { try { void 1; } finally { conn.commit(); } }',
+      'export function nested(conn: Conn) {',
+      '  try { void 1; } finally { [1].forEach(() => conn.commit()); }',
+      '}',
+      'export function inner(conn: Conn) {',
+      '  [1].forEach(() => { try { void 1; } finally { conn.commit(); } });',
+      '}',
+      '',
+    ].join('\n'),
+  };
+
+  it.each([
+    ['direct', true],
+    ['nested', undefined],
+    ['inner', true],
+  ])(
+    'marks the commit in %s as cleanup only when its own function has the finally',
+    (name, cleanup) => {
+      const facts = factsOfFiles(files);
+
+      expect(byId(facts.callables, `src/use.ts#${name}`).calls?.[0].cleanup).toBe(cleanup);
+    },
+  );
 });

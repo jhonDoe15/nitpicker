@@ -70,6 +70,24 @@ export function factsOfFixture(fixture, options = {}) {
   }
 }
 
+export function factsOfFiles(files, options = {}) {
+  const root = createProject({ files, manifest: options.manifest });
+  try {
+    return factsOf(root, options.policy);
+  } finally {
+    removeProject(root);
+  }
+}
+
+export function findingsOfFiles(files, policy = {}) {
+  const root = createProject({ files });
+  try {
+    return findingsOf(root, policy);
+  } finally {
+    removeProject(root);
+  }
+}
+
 export function byId(items, id) {
   return items.find((item) => item.id === id);
 }

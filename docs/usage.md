@@ -838,7 +838,8 @@ Two of them do fail, because they are not a guess:
 - `protocol-contract`, for the lifecycles listed in `protocols`: a call of an `open` member without a
   `close` member on every exit (in `finally`, `with`, `use`, try-with-resources or a `using`
   declaration), and a listed step before `open`. The project writes the contract, so the rule never
-  guesses a lifecycle from names:
+  guesses a lifecycle from names. A function that returns the opened value, or keeps it in a field,
+  hands the lifecycle over and is not reported. Each type is listed once:
 
 ```json
 {

@@ -13,12 +13,20 @@ function namedIn(names) {
   return ({ member }) => names.includes(member.name);
 }
 
-function violations(entry, contract) {
+const FIELD_RECEIVER = /^(?:this|self)\./u;
+
+function handsOver(entry, caller) {
+  return FIELD_RECEIVER.test(entry.receiver) || caller.returns === entry.owner.id;
+}
+
+function violations(entry, contract, caller) {
   const opens = entry.calls.filter(namedIn(contract.open));
   if (opens.length === 0) {
     return [];
   }
-  const closed = entry.calls.some((call) => namedIn(contract.close)(call) && call.cleanup === true);
+  const closed =
+    handsOver(entry, caller) ||
+    entry.calls.some((call) => namedIn(contract.close)(call) && call.cleanup === true);
   const firstOpen = entry.calls.indexOf(opens[0]);
   const early = entry.calls.slice(0, firstOpen).filter(namedIn(contract.steps ?? []));
   return [
@@ -47,15 +55,16 @@ export function protocolContractFindings(index, finding, contracts) {
   return index.callables.flatMap((caller) =>
     receiverCalls(caller, index).flatMap((entry) => {
       const contract = contractFor(entry.owner, contracts);
-      return (contract === undefined ? [] : violations(entry, contract)).flatMap((violation) =>
-        finding({
-          rule: RULE,
-          path: caller.file,
-          identity: `${caller.id}|${entry.receiver}|${violation.kind}:${violation.call.member.name}`,
-          symbol: displayName(caller, index),
-          line: violation.call.line,
-          message: violationMessage(violation, { entry, contract, caller, index }),
-        }),
+      return (contract === undefined ? [] : violations(entry, contract, caller)).flatMap(
+        (violation) =>
+          finding({
+            rule: RULE,
+            path: caller.file,
+            identity: `${caller.id}|${entry.receiver}|${violation.kind}:${violation.call.member.name}`,
+            symbol: displayName(caller, index),
+            line: violation.call.line,
+            message: violationMessage(violation, { entry, contract, caller, index }),
+          }),
       );
     }),
   );

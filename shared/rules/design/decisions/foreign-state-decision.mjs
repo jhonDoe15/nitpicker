@@ -12,17 +12,25 @@ function pairs(fields) {
   );
 }
 
+function isForeign(type, callable) {
+  return type?.kind === 'class' && type.file !== callable.file && callable.owner !== type.id;
+}
+
 function decidedReads(callable, index) {
-  return (callable.reads ?? []).flatMap((read) => {
+  const byType = new Map();
+  for (const read of callable.reads ?? []) {
     const type = index.type(read.type);
-    const decided = [...new Set(read.decided ?? [])].sort();
-    const foreign =
-      type?.kind === 'class' &&
-      type.file !== callable.file &&
-      callable.owner !== type.id &&
-      decided.length >= MIN_FIELDS;
-    return foreign ? [{ type, decided, line: read.line }] : [];
-  });
+    if (isForeign(type, callable)) {
+      const known = byType.get(type.id) ?? { type, decided: new Set(), line: read.line };
+      for (const field of read.decided ?? []) {
+        known.decided.add(field);
+      }
+      byType.set(type.id, known);
+    }
+  }
+  return [...byType.values()]
+    .map((read) => ({ ...read, decided: [...read.decided].sort() }))
+    .filter(({ decided }) => decided.length >= MIN_FIELDS);
 }
 
 function callablePairs(callable, index) {
@@ -64,19 +72,18 @@ function groupsOf(index) {
 }
 
 export function foreignStateDecisionFindings(index, finding) {
-  return groupsOf(index).flatMap(({ type, fields, sites }) => {
-    const [first] = sites;
-    return finding({
+  return groupsOf(index).flatMap(({ type, fields, sites }) =>
+    finding({
       rule: RULE,
-      path: first.callable.file,
+      path: type.file,
       identity: `${type.id}|${fields.join(',')}`,
-      line: first.line,
+      line: type.line,
       message: [
         `${String(sites.length)} functions outside ${type.name} decide on its ${quoted(fields)}:`,
         `${listSites(sites.map(({ callable }) => siteText(callable, index)))}.`,
         `${type.name} already has behaviour; give it a method that answers this question and call that,`,
         'so the rule lives with the state it reads.',
       ].join(' '),
-    });
-  });
+    }),
+  );
 }

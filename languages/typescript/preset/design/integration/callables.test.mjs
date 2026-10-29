@@ -17,6 +17,12 @@ describe('the callables of a fixture project', () => {
     expect(
       facts.callables.map(({ id, kind, owner, exported }) => ({ id, kind, owner, exported })),
     ).toEqual([
+      {
+        id: 'src/base.ts#Listener.handle',
+        kind: 'method',
+        owner: 'src/base.ts#Listener',
+        exported: true,
+      },
       { id: 'src/base.ts#Base.run', kind: 'method', owner: 'src/base.ts#Base', exported: true },
       { id: 'src/base.ts#Base.stop', kind: 'method', owner: 'src/base.ts#Base', exported: true },
       { id: 'src/legacy.js#load', kind: 'function', owner: 'src/legacy.js', exported: true },
@@ -77,7 +83,7 @@ describe('the callables of a fixture project', () => {
         exported: true,
       },
       {
-        id: 'src/service.ts#Service.create',
+        id: 'src/service.ts#Service.create(static)',
         kind: 'method',
         owner: 'src/service.ts#Service',
         exported: true,
@@ -88,7 +94,7 @@ describe('the callables of a fixture project', () => {
       { id: 'src/service.ts#page', kind: 'function', owner: 'src/service.ts', exported: true },
       { id: 'src/service.ts#arrow', kind: 'function', owner: 'src/service.ts', exported: true },
       { id: 'src/service.ts#untyped', kind: 'function', owner: 'src/service.ts', exported: true },
-      { id: 'src/service.ts#register@58:15', kind: 'function', owner: undefined, exported: false },
+      { id: 'src/service.ts#register@1', kind: 'function', owner: undefined, exported: false },
     ]);
   });
 
@@ -99,7 +105,7 @@ describe('the callables of a fixture project', () => {
       'src/service.ts#Service.decorated',
       'src/service.ts#Service.[Symbol.iterator]',
       'src/service.ts#main',
-      'src/service.ts#register@58:15',
+      'src/service.ts#register@1',
     ]);
   });
 
@@ -150,7 +156,7 @@ describe('the callables of a fixture project', () => {
       'src/service.ts#untyped',
       [{ name: 'first' }, { name: 'second', type: 'string', optional: true }],
     ],
-    ['src/service.ts#register@58:15', [{ name: 'value', type: 'string' }]],
+    ['src/service.ts#register@1', [{ name: 'value', type: 'string' }]],
   ])('lists the parameters of %s', (id, expected) => {
     expect(byId(facts.callables, id).params).toEqual(expected);
   });
@@ -170,14 +176,14 @@ describe('the callables of a fixture project', () => {
     ['src/service.ts#Service.other', 'void'],
     ['src/service.ts#Service.decorated', 'void'],
     ['src/service.ts#Service.[Symbol.iterator]', 'Iterator'],
-    ['src/service.ts#Service.create', 'Service'],
-    ['src/service.ts#open', 'Service'],
+    ['src/service.ts#Service.create(static)', 'src/service.ts#Service'],
+    ['src/service.ts#open', 'src/service.ts#Service'],
     ['src/service.ts#pick', 'string'],
     ['src/service.ts#main', 'void'],
     ['src/service.ts#page', 'void'],
     ['src/service.ts#arrow', 'string'],
     ['src/service.ts#untyped', undefined],
-    ['src/service.ts#register@58:15', undefined],
+    ['src/service.ts#register@1', undefined],
   ])('declares the return type of %s', (id, expected) => {
     expect(byId(facts.callables, id).returns).toEqual(expected);
   });
