@@ -56,7 +56,7 @@ function createProject(files) {
   return root;
 }
 
-function architecture(root, policy) {
+function architecture(root, policy, { reportsConfigErrors = true } = {}) {
   return withHeadPolicyFile(policy, (policyFile) => {
     vi.stubEnv('NITPICKER_POLICY', policyFile);
     const report = loadDependencyGraph({
@@ -64,6 +64,7 @@ function architecture(root, policy) {
       policyRoot: PACKAGE_ROOT,
       liveProjectRoot: PACKAGE_ROOT,
       patterns: ['src'],
+      reportsConfigErrors,
     });
     return normalizeArchitectureViolations(report, 'dependency-architecture')
       .map(({ rule, path: file, classification }) => `${rule} ${file} ${classification}`)
@@ -171,9 +172,38 @@ describe('dependency-cruiser project config precedence', () => {
     const head = createProject({ ...SOURCES, '.dependency-cruiser.cjs': PROJECT_CONFIG });
     const base = createProject({ ...SOURCES, '.dependency-cruiser.json': '{}' });
     const headPolicy = resolveHeadPolicy(cruiserConfig(['project', 'nitpicker']), head);
-    const basePolicy = withHeadCheckoutFacts(resolveHeadPolicy({}), headPolicy);
+    const basePolicy = withHeadCheckoutFacts(
+      resolveHeadPolicy(cruiserConfig(['project', 'nitpicker'])),
+      headPolicy,
+    );
     expect(basePolicy.tools['dependency-cruiser']).toEqual(headPolicy.tools['dependency-cruiser']);
     expect(architecture(base, basePolicy)).toEqual(PROJECT_FIRST);
+    const notOptedIn = withHeadCheckoutFacts(resolveHeadPolicy({}), headPolicy);
+    expect(architecture(base, notOptedIn)).toEqual(NITPICKER_ONLY);
+  });
+
+  it.each([
+    ['exclude: { path: /^src\\/legacy/u }', 'a RegExp exclude'],
+    ['exclude: [/^src\\/legacy/u]', 'a RegExp list exclude'],
+    ['doNotFollow: { path: [/^src\\/legacy/u] }', 'a RegExp doNotFollow'],
+  ])('reads %s as its pattern source (%s)', (option) => {
+    const config = PROJECT_CONFIG.replace("exclude: { path: '^src/legacy' },", `${option},`);
+    const root = createProject({ ...SOURCES, '.dependency-cruiser.cjs': config });
+    expect(
+      architecture(root, resolveHeadPolicy(cruiserConfig(['nitpicker', 'project']), root)),
+    ).toEqual(['a-not-b src/a/a.ts enforceable', NITPICKER_ONLY[0]]);
+  });
+
+  it('keeps type-only imports in the graph when the project config drops them', () => {
+    const root = createProject({
+      ...SOURCES,
+      'src/a/a.ts': "import type { B } from '../b/b';\nexport const a: B = 1;\n",
+      'src/b/b.ts': 'export type B = number;\n',
+      '.dependency-cruiser.cjs': PROJECT_CONFIG,
+    });
+    expect(
+      architecture(root, resolveHeadPolicy(cruiserConfig(['project', 'nitpicker']), root)),
+    ).toEqual(PROJECT_FIRST);
   });
 
   it('fails the cruise when the opted-in config is missing or malformed', () => {
@@ -186,5 +216,6 @@ describe('dependency-cruiser project config precedence', () => {
     expect(() => architecture(root, policy())).toThrow(
       "Could not read the project's dependency-cruiser config (.dependency-cruiser.js)",
     );
+    expect(architecture(root, policy(), { reportsConfigErrors: false })).toEqual(NITPICKER_ONLY);
   });
 });

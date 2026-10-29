@@ -24,27 +24,31 @@ const TOOLS = new Map([
       ],
       packageKey: 'knip',
       analyzers: ['dead-code'],
+      json: { pattern: /\.jsonc?$/u, strict: true },
     },
   ],
   [
     DEPENDENCY_CRUISER_TOOL,
-    [
-      '.dependency-cruiser.json',
-      '.dependency-cruiser.js',
-      '.dependency-cruiser.cjs',
-      '.dependency-cruiser.mjs',
-      '.dependency-cruiser.ts',
-      '.dependency-cruiser.cts',
-      '.dependency-cruiser.mts',
-    ],
+    {
+      files: [
+        '.dependency-cruiser.json',
+        '.dependency-cruiser.js',
+        '.dependency-cruiser.cjs',
+        '.dependency-cruiser.mjs',
+        '.dependency-cruiser.ts',
+        '.dependency-cruiser.cts',
+        '.dependency-cruiser.mts',
+      ],
+      analyzers: ['dependency-architecture', 'coupling', 'test-runtime', 'entry-points'],
+      json: { pattern: /\.json$/u, strict: false },
+    },
   ],
 ]);
-
-const JSON_FILE = /\.jsonc?$/u;
 
 export const PROJECT_TOOL_FILES = [
   'config-loader.mjs',
   'config-values.mjs',
+  'dependency-cruiser-loader.mjs',
   'project-config-files.mjs',
   'project-tool-policy.mjs',
 ].map((name) => `languages/typescript/preset/project-tools/${name}`);
@@ -61,8 +65,9 @@ export function packageJsonKey(tool) {
   return TOOLS.get(tool)?.packageKey;
 }
 
-export function isJsonConfigFile(file) {
-  return JSON_FILE.test(file);
+export function jsonReading(tool, file) {
+  const json = TOOLS.get(tool)?.json;
+  return json !== undefined && json.pattern.test(file) ? { strict: json.strict } : undefined;
 }
 
 export function isProjectToolNeeded(tool, disabled = []) {

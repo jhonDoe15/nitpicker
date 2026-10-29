@@ -164,18 +164,43 @@ describe('project tool configs the project opted into', () => {
     ).toEqual(['knip project config changed: knip.json']);
   });
   it.each([undefined, 'javascript'])(
-    'counts an edit of the dependency-cruiser config a %s project opted into',
+    'reads what an edit of the dependency-cruiser config a %s project opted into applies',
     (preset) => {
       const tools = { 'dependency-cruiser': PROJECT };
       const config = { ...(preset === undefined ? {} : { preset }), tools };
-      const at = (rules) => ({
+      const rule =
+        "{ name: 'no-lib', severity: 'error', from: { path: '^src' }, to: { path: '^lib' } }";
+      const at = (rules, options = '{}') => ({
         'src/a.ts': 'export const a = 1;\n',
-        '.dependency-cruiser.cjs': `// house rules\nmodule.exports = ${rules};\n`,
+        'tools/rules.cjs': `module.exports = [${rules}];\n`,
+        '.dependency-cruiser.cjs': [
+          '// house rules',
+          `module.exports = { forbidden: require('./tools/rules.cjs'), options: ${options} };`,
+          '',
+        ].join('\n'),
       });
-      expect(
-        between({ base: at('{}'), head: at('{ options: {} }'), config }).policyLoosenings,
-      ).toEqual(['dependency-cruiser project config changed: .dependency-cruiser.cjs']);
-      expect(between({ base: at('{}'), head: at('{}'), config }).policyLoosenings).toEqual([]);
+      const base = at(rule);
+      const changes = (head) => changesOf(between({ base, head, config }));
+      const label = 'dependency-cruiser .dependency-cruiser.cjs';
+
+      expect(changes(at(rule, "{ tsPreCompilationDeps: false, outputType: 'dot' }"))).toEqual({
+        policyLoosenings: [],
+        policyChanges: [],
+      });
+      expect(changes(at(rule, '{ exclude: { path: /^gen/u } }'))).toEqual({
+        policyLoosenings: [`${label} options.exclude: not set -> ["path ^gen"]`],
+        policyChanges: [`${label} options.exclude: not set -> ["path ^gen"]`],
+      });
+      const dropped = `${label} forbidden: [${JSON.stringify({
+        name: 'no-lib',
+        severity: 'error',
+        from: { path: '^src' },
+        to: { path: '^lib' },
+      })}] -> []`;
+      expect(changes(at(''))).toEqual({ policyLoosenings: [dropped], policyChanges: [dropped] });
+      const unnamed = "{ severity: 'error', from: { path: '^src' }, to: { path: '^vendor' } }";
+      expect(changes(at(`${rule}, ${unnamed}`)).policyLoosenings).toEqual([]);
+      expect(changes(at(`${rule}, ${unnamed}`)).policyChanges).toEqual([expect.any(String)]);
     },
   );
   it('shows the knip config a change opts into in the same change', () => {

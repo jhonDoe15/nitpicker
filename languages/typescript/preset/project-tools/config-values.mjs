@@ -1,8 +1,38 @@
+import path from 'node:path';
 import { isPlainObject } from '../../../../shared/config.mjs';
 
 const REGEXP_KEY = '$nitpickerRegExp';
 const SCALAR_TYPES = new Set(['string', 'number', 'boolean', 'undefined']);
 const KNIP_COMPILER_KEYS = new Set(['compilers', 'syncCompilers', 'asyncCompilers']);
+const DEPENDENCY_CRUISER_FILE_OPTIONS = new Set(['webpackConfig', 'babelConfig']);
+
+export const DEPENDENCY_CRUISER_OWNED_OPTIONS = new Set([
+  'baseDir',
+  'cache',
+  'collapse',
+  'exclude',
+  'extraExtensionsToScan',
+  'focus',
+  'focusDepth',
+  'highlight',
+  'includeOnly',
+  'knownViolationsFile',
+  'maxDepth',
+  'metrics',
+  'moduleSystems',
+  'outputTo',
+  'outputType',
+  'prefix',
+  'preserveSymlinks',
+  'progress',
+  'reaches',
+  'reporterOptions',
+  'ruleSet',
+  'skipAnalysisNotInRules',
+  'tsConfig',
+  'tsPreCompilationDeps',
+  'validate',
+]);
 
 export function listOf(value) {
   if (value === undefined) {
@@ -62,6 +92,13 @@ export function encodedValue(value, at = 'config') {
   );
 }
 
+export function patternSource(pattern) {
+  if (pattern instanceof RegExp) {
+    return pattern.source;
+  }
+  return Array.isArray(pattern?.[REGEXP_KEY]) ? pattern[REGEXP_KEY][0] : pattern;
+}
+
 export function hasEncodedRegExp(value) {
   return JSON.stringify(value).includes(JSON.stringify(REGEXP_KEY));
 }
@@ -98,4 +135,16 @@ export function withoutKnipCompilers(config) {
     isPlainObject(workspace) ? withoutKeys(workspace, KNIP_COMPILER_KEYS) : workspace,
   ]);
   return { ...root, workspaces: Object.fromEntries(workspaces) };
+}
+
+export function withDependencyCruiserFiles(config, root) {
+  if (!isPlainObject(config) || !isPlainObject(config.options)) {
+    return config;
+  }
+  const options = Object.entries(config.options).map(([key, value]) =>
+    DEPENDENCY_CRUISER_FILE_OPTIONS.has(key) && typeof value?.fileName === 'string'
+      ? [key, { ...value, fileName: path.resolve(root, value.fileName) }]
+      : [key, value],
+  );
+  return { ...config, options: Object.fromEntries(options) };
 }

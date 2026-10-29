@@ -1,4 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { readFileSync } from 'node:fs';
+import path from 'node:path';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
+import { TYPESCRIPT_CONFIG_ENVIRONMENT } from '../../../preset/dependency-graph/cruise.mjs';
+import { DEPENDENCY_CRUISER_OWNED_OPTIONS } from '../../../preset/project-tools/config-values.mjs';
 import {
   layeredDependencyCruiserConfig,
   projectExcludePaths,
@@ -38,6 +43,12 @@ const PROJECT = {
     enhancedResolveOptions: { extensions: ['.vue'], conditionNames: ['import'] },
   },
 };
+
+const MERGED_OPTIONS = new Set(['doNotFollow', 'enhancedResolveOptions']);
+
+afterEach(() => {
+  vi.unstubAllEnvs();
+});
 
 function layered(precedence, project = PROJECT) {
   return layeredDependencyCruiserConfig(POLICY, { precedence, config: project });
@@ -91,5 +102,42 @@ describe('layered dependency-cruiser config', () => {
     }
     expect(projectExcludePaths({ config: PROJECT })).toEqual(['^src/legacy', '^src/old']);
     expect(projectExcludePaths({ config: { options: { exclude: '^dist' } } })).toEqual(['^dist']);
+  });
+
+  it('reads regular expressions in the project exclusions as their sources', () => {
+    const regExp = (source) => ({ $nitpickerRegExp: [source, 'u'] });
+    const project = {
+      options: {
+        exclude: { path: [regExp('^gen'), '^old'] },
+        doNotFollow: { path: regExp('^vendor') },
+      },
+    };
+    expect(projectExcludePaths({ config: project })).toEqual(['^gen', '^old']);
+    expect(projectExcludePaths({ config: { options: { exclude: regExp('^dist') } } })).toEqual([
+      '^dist',
+    ]);
+    const revived = { options: { doNotFollow: [/^vendor/u, /^lib/u] } };
+    expect(layered(['project'], revived).options.doNotFollow).toEqual({
+      path: 'node_modules|^vendor|^lib',
+    });
+  });
+
+  it('keeps every option nitpicker sets in its config or on the command line', async () => {
+    vi.stubEnv(TYPESCRIPT_CONFIG_ENVIRONMENT, path.join(PACKAGE_ROOT, 'package.json'));
+    const { default: policy } =
+      await import('../../../preset/dependency-graph/dependency-cruiser.config.mjs');
+    const graphSource = readFileSync(
+      path.join(import.meta.dirname, '../project-dependency-graph.mjs'),
+      'utf8',
+    );
+    const flags = [...graphSource.matchAll(/'--([a-z-]+)'/gu)]
+      .map(([, flag]) => flag.replaceAll(/-([a-z])/gu, (_match, letter) => letter.toUpperCase()))
+      .filter((option) => option !== 'config');
+    const set = [
+      ...Object.keys(policy.options).filter((key) => !MERGED_OPTIONS.has(key)),
+      ...flags,
+    ];
+    expect(flags.toSorted()).toEqual(['exclude', 'includeOnly', 'outputType']);
+    expect(set.filter((option) => !DEPENDENCY_CRUISER_OWNED_OPTIONS.has(option))).toEqual([]);
   });
 });

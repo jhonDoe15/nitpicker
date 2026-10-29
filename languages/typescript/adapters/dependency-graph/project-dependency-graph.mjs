@@ -8,12 +8,11 @@ import { linkPolicyFile } from '../../../../core/tooling/policy-links.mjs';
 import { trackTemporaryPath } from '../../../../core/tooling/temporary-files.mjs';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import { ARCHITECTURE_CONFIG } from '../../preset/dependency-graph/cruise.mjs';
-import { readHeadPolicy, readLayout } from '../../preset/head-policy.mjs';
+import { readLayout } from '../../preset/head-policy.mjs';
 import { revivedExpression } from '../../preset/project-tools/config-values.mjs';
-import { DEPENDENCY_CRUISER_TOOL } from '../../preset/project-tools/project-config-files.mjs';
-import { projectToolLayer } from '../../preset/project-tools/project-tool-policy.mjs';
 import { layoutTransformFor } from '../../preset/tool-configs.mjs';
 import { projectExcludePaths } from './project-config/dependency-cruiser-layers.mjs';
+import { projectGraphLayer } from './project-config/graph-layer.mjs';
 
 const MAX_OUTPUT_BYTES = 100 * 1024 * 1024;
 const TSCONFIG_NAME = 'tsconfig.quality.json';
@@ -35,11 +34,9 @@ function cruiseSpecification({
   exclude,
   includeOnly,
   configRelativePath = ARCHITECTURE_CONFIG,
+  reportsConfigErrors,
 }) {
-  const projectLayer = projectToolLayer(
-    DEPENDENCY_CRUISER_TOOL,
-    readHeadPolicy().tools[DEPENDENCY_CRUISER_TOOL],
-  );
+  const projectLayer = projectGraphLayer({ reportsConfigErrors });
   const requested = [exclude, ...projectExcludePaths(projectLayer)].filter(
     (pattern) => pattern !== undefined && pattern.length > 0,
   );
