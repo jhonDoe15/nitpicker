@@ -124,6 +124,8 @@ line) is a finding.
   over unions.
 - `const` or `let`, never `var`. Rest parameters (`...args`) instead of `arguments[i]`, and spread
   instead of `.apply`.
+- No method that only passes its parameters, in order, to another method of the same class
+  (`total(items) { return this.sum(items); }`): call that method directly.
 - Template literals take strings only: `${String(count)}`.
 - Sort IDs, codes and ISO dates with `toSorted()` and no comparator; names and titles with
   `a.localeCompare(b, 'en')`. Objects in plain string order share one `compareText(a, b)` that
