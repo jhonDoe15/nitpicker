@@ -1,6 +1,6 @@
 import { existsSync, globSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { firstFileIn, pathInside } from '../../../../shared/filesystem.mjs';
 import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
 import { exceptionMatcher } from '../../../../shared/rules/exceptions.mjs';
