@@ -38,7 +38,9 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   included when it applies it; paths in findings are relative to the directory Gradle runs in, so a
   subproject's findings carry its folder (`lib/src/main/java/...`). A build where no project applies
   the plugin, or a project whose reports are missing, is a tool error, never a pass. Projects of
-  an `includeBuild` composite build and `buildSrc` are separate builds and are not analyzed. Each project
+  an `includeBuild` composite build (in `settings.gradle` or in `pluginManagement`, such as a
+  `build-logic` convention-plugin build) and `buildSrc` are separate builds: they are neither
+  analyzed nor configured, so Gradle builds their plugins as it would without nitpicker. Each project
   runs every tool (tests, JaCoCo, PIT included) in the one Gradle invocation, so a build of several
   projects costs about the sum of single-project runs; Gradle's own `--parallel` setting applies.
   File limits and coupling (with the stability direction) are evaluated once over all projects, as
