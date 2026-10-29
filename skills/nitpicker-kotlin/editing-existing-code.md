@@ -15,10 +15,8 @@ Everything in `SKILL.md` still applies to the lines you add.
 - Keep a legacy function's name. Renaming it makes all its limit, branch-coverage and
   `LongMethod` findings new. An overload with the same name added above it makes its limit
   findings new: add the overload below, or give it its own name.
-- A function at detekt's `ReturnCount` or `ThrowsCount` limit (2) fails on one more `return` or
-  `throw`. One already over the limit keeps its finding however many it gains, so hold its count
-  yourself. Return the new failure from a new function and throw it by widening an existing
-  `throw` in place: `if (y < 0 || x == y) { throw BadState(reason(y)) }`.
+- Don't add a `return` or `throw` to a function at or over detekt's `ReturnCount` or `ThrowsCount`
+  limit (2): one more fails at the limit. Return the new failure from a new function instead.
 - A file, class or folder already over its limit must not grow: `File grew from 320 to 321 lines`,
   `Object Sprawl grew from 316 to 317 methods`, `Folder grew from 8 to 9 source files`. Put new
   code in a new class in its own file, and a new file in a subpackage. A folder at 6 files fails
