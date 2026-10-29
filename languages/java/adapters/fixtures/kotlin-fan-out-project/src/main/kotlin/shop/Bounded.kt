@@ -129,6 +129,7 @@ class Bounded(private val pages: Pages, private val client: HttpClient) {
         }
 
     suspend fun guardedSend(requests: List<HttpRequest>) = coroutineScope {
-        requests.map { async { permits.withPermit { client.send(it, HttpResponse.BodyHandlers.ofString()) } } }.awaitAll()
+        val body = HttpResponse.BodyHandlers.ofString()
+        requests.map { async { permits.withPermit { client.send(it, body) } } }.awaitAll()
     }
 }
