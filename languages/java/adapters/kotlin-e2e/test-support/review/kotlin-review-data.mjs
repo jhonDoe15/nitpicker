@@ -133,6 +133,26 @@ class WaitingTest {
 }
 `;
 
+const FLOAT_TEST = `package demo.orders
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+import kotlin.test.assertTrue
+
+class FloatTest {
+    @Test
+    fun compares() {
+        val total = 0.5 + 0.25
+        assertEquals(0.75, total)
+        assertTrue(total == 0.75)
+        assertEquals(0.75, total, absoluteTolerance = 1e-9)
+        assertEquals(1.0, total + 0.25)
+        assertTrue(total < 1.0)
+        assertTrue(total + 0.25 == 1.0)
+    }
+}
+`;
+
 const SPRING_BOOT_TEST = `package org.springframework.boot.test.context
 
 annotation class SpringBootTest(val webEnvironment: String = "MOCK")
@@ -179,6 +199,7 @@ export const REVIEW_RULE_FILES = {
   [`${MAIN}/Inventory.kt`]: INVENTORY,
   [`${TEST}/WaitingTest.kt`]: WAITING_TEST,
   [`${TEST}/ContextTest.kt`]: CONTEXT_TEST,
+  [`${TEST}/FloatTest.kt`]: FLOAT_TEST,
   [`${SPRING}/boot/test/context/SpringBootTest.kt`]: SPRING_BOOT_TEST,
   [`${SPRING}/beans/factory/annotation/Autowired.kt`]: AUTOWIRED,
 };
@@ -194,6 +215,8 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'FixedSleepInTest WaitingTest.iterates',
   'FixedSleepInTest WaitingTest.sleeps',
   'FixedSleepInTest WaitingTest.sleeps',
+  'FloatEqualityInTest FloatTest.compares',
+  'FloatEqualityInTest FloatTest.compares',
   'SingularAndPluralMember Query.tags',
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',
