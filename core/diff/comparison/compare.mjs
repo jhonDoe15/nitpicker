@@ -236,7 +236,7 @@ function isInTouchedCode(finding, touchedCode) {
   }
   if (
     finding.ratchet?.existingCodeOnly === true &&
-    touchedCode.mustMeetOnEditedLines?.(finding.rule) !== true
+    touchedCode.mustMeetOnEditedLines?.(finding.rule, finding) !== true
   ) {
     return false;
   }
