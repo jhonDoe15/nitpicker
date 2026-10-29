@@ -17,7 +17,7 @@ const COMPILER_OPTIONS = {
   checkJs: true,
 };
 
-export function typedIoProject(prefix, store) {
+export function typedIoProject(prefix, store, files = {}) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), `nitpicker-${prefix}-`)));
   for (const [name, declarations] of Object.entries(IO_PACKAGES)) {
     const folder = path.join(root, 'node_modules', name);
@@ -33,7 +33,13 @@ export function typedIoProject(prefix, store) {
     JSON.stringify({ compilerOptions: COMPILER_OPTIONS, include: ['src'] }),
   );
   mkdirSync(path.join(root, 'src'));
-  writeFileSync(path.join(root, 'src', 'store.ts'), `${store}\n`);
+  for (const [name, content] of Object.entries({ 'store.ts': store, ...files })) {
+    const filename = path.resolve(root, 'src', name);
+    if (filename.startsWith(`${root}${path.sep}`)) {
+      mkdirSync(path.dirname(filename), { recursive: true });
+      writeFileSync(filename, `${content}\n`);
+    }
+  }
   afterAll(() => {
     rmSync(root, { recursive: true, force: true });
   });
@@ -57,5 +63,6 @@ export function typedIoProject(prefix, store) {
     tester: typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root }),
     typed,
     typedScript,
+    typedFile,
   };
 }

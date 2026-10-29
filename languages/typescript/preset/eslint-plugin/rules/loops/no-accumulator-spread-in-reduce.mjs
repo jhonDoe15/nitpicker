@@ -1,9 +1,11 @@
 import { findVariable } from '../analysis/constant-resolution.mjs';
-import { hasBoundedKeys } from '../support/checked-types.mjs';
+import { hasArrayType, hasBoundedKeys } from '../support/checked-types.mjs';
 import { contains, enclosingLoop } from './loop-shapes.mjs';
 
 const REDUCERS = new Set(['reduce', 'reduceRight']);
 const IDENTIFIER = 'Identifier';
+const MEMBER = 'MemberExpression';
+const CONCAT = 'concat';
 const ONE_PASS =
   '`Object.fromEntries(items.map(...))`, `Object.groupBy`, `Map.groupBy` or `flatMap`';
 const SQUARED = 'so the work grows with the square of the list.';
@@ -11,8 +13,7 @@ const EXCEPTION = 'An exception fits only when the list is always tiny.';
 
 function reducerOf(call) {
   const [callback] = call.arguments;
-  const isReduce =
-    call.callee.type === 'MemberExpression' && REDUCERS.has(call.callee.property.name);
+  const isReduce = call.callee.type === MEMBER && REDUCERS.has(call.callee.property.name);
   const isFunction = ['ArrowFunctionExpression', 'FunctionExpression'].includes(callback?.type);
   return isReduce && isFunction && callback.params[0]?.type === IDENTIFIER ? callback : undefined;
 }
@@ -32,18 +33,27 @@ function copiedShape(value, name) {
   if (value.type === 'ObjectExpression' && spreadsAccumulator(value.properties, name)) {
     return 'object';
   }
-  const concatenates =
-    value.type === 'CallExpression' &&
-    value.callee.type === 'MemberExpression' &&
-    isAccumulator(value.callee.object, name) &&
-    value.callee.property.name === 'concat';
-  return concatenates ? 'array' : undefined;
+  return isConcatOf(value, name) ? CONCAT : undefined;
 }
 
-function isDeclaredOutside(context, target, found) {
+function isConcatOf(value, name) {
+  return (
+    value.type === 'CallExpression' &&
+    value.callee.type === MEMBER &&
+    isAccumulator(value.callee.object, name) &&
+    value.callee.property.name === CONCAT
+  );
+}
+
+function isArrayValue(context, node, start) {
+  const typed = hasArrayType(context, node);
+  return typed ?? start?.type === 'ArrayExpression';
+}
+
+function outsideDefinition(context, target, found) {
   const scope = found.loop ?? found.callback;
-  const declaration = findVariable(context, target, target.name)?.defs[0]?.name;
-  return declaration !== undefined && !contains(scope, declaration);
+  const definition = findVariable(context, target, target.name)?.defs[0];
+  return definition !== undefined && !contains(scope, definition.name) ? definition : undefined;
 }
 
 function isLoopCopy(context, node) {
@@ -51,10 +61,28 @@ function isLoopCopy(context, node) {
   const shape =
     operator === '=' && left.type === IDENTIFIER ? copiedShape(right, left.name) : undefined;
   const found = shape === undefined ? undefined : enclosingLoop(node, context.sourceCode);
-  if (found === undefined || !isDeclaredOutside(context, left, found)) {
+  const definition = found && outsideDefinition(context, left, found);
+  if (definition === undefined) {
     return false;
   }
+  if (shape === CONCAT) {
+    return isArrayValue(context, left, definition.node.init);
+  }
   return shape === 'array' || !hasBoundedKeys(context, left);
+}
+
+function isReduceConcat(context, node, reducers) {
+  const object = node.callee.type === MEMBER ? node.callee.object : undefined;
+  const reducer =
+    object?.type === IDENTIFIER
+      ? reducers.findLast((candidate) => contains(candidate, node))
+      : undefined;
+  const accumulator = reducer?.params[0].name;
+  return (
+    accumulator !== undefined &&
+    isConcatOf(node, accumulator) &&
+    isArrayValue(context, object, reducer.parent.arguments[1])
+  );
 }
 
 export const rule = {
@@ -72,6 +100,11 @@ export const rule = {
         `Build the result in one pass: ${ONE_PASS}.`,
         EXCEPTION,
       ].join(' '),
+      concat: [
+        `Concatenating onto the accumulator copies it on every step, ${SQUARED}`,
+        `Build the result in one pass (${ONE_PASS}), or push into the accumulator and return it.`,
+        EXCEPTION,
+      ].join(' '),
       loopCopy: [
         `This loop copies \`{{name}}\` into a new value on every pass, ${SQUARED}`,
         `Build the result in one pass (${ONE_PASS}),`,
@@ -87,6 +120,9 @@ export const rule = {
         const reducer = reducerOf(node);
         if (reducer !== undefined) {
           reducers.push(reducer);
+        }
+        if (isReduceConcat(context, node, reducers)) {
+          context.report({ node, messageId: CONCAT });
         }
       },
       AssignmentExpression(node) {

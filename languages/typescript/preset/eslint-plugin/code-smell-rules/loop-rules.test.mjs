@@ -51,6 +51,16 @@ ruleTester.run('no-io-in-loop', ioInLoop, {
     'await Promise.all(ids.map((id) => api.send(id)));',
     "import { producer } from 'kafkajs'; for (const id of ids) { await producer.send({ topic, messages: [id] }); }",
     "import { exec } from 'node:child_process'; for (const id of ids) { exec(id); }",
+    inLoop('pool.find((entry) => entry.id === id);'),
+    inLoop('pool.utf.get(id);'),
+    inLoop('repos.find((repo) => repo.name === id);'),
+    inLoop('db.users.filter((user) => user.id === id);'),
+    'for (const part of chunk(rows, 500)) { await prisma.user.createMany({ data: part }); }',
+    'for (const part of _.chunk(ids, 500)) { await orders.findBy({ id: In(part) }); }',
+    'for (const batch of batches) { await db.query("select 1 where id = any($1)", [batch]); }',
+    'chunks.forEach(async (part) => { await repository.saveAll(part); });',
+    'for (let i = 0; i < rows.length; i += 500) { const part = rows.slice(i, i + 500); await repository.insertMany(part); }',
+    "import knex from 'knex'; const query = knex('users'); for (const f of filters) { query.where(f); }",
   ]),
   invalid: [
     ...[
@@ -65,7 +75,6 @@ ruleTester.run('no-io-in-loop', ioInLoop, {
       inLoop('try { await repository.save(id); } catch { log(); }'),
       inLoop('try { return await repository.findById(id); } catch (error) { throw error; }'),
       inLoop('await repository.getById(id);'),
-      inLoop('await redisClient.get(id);'),
       inLoop('await client.query(id);'),
       'for (const attempt of attempts) { await repository.save(attempt); }',
       'let index = 0; while (index < ids.length) { await repository.findById(ids[index]); index += 1; }',
@@ -76,7 +85,14 @@ ruleTester.run('no-io-in-loop', ioInLoop, {
       'const pending = []; for (const id of ids) { pending.push(await repository.findById(id)); } await Promise.all(pending);',
       'const pending = []; for (const id of ids) { pending.push(repository.findById(id)); } use(pending);',
       "import { Pool } from 'pg'; for (const id of ids) { await Pool.query(id); }",
+      inLoop('await pool.query("select 1", [id]);'),
+      "import knex from 'knex'; for (const id of ids) { await knex('users').where({ id }); }",
+      'for (const part of chunk(rows, 500)) { for (const row of part) { await repository.save(row); } }',
     ].map((code) => ({ code, errors: [{ messageId: 'query' }] })),
+    ...[inLoop('await redisClient.get(id);'), inMap('redis.get(id)')].map((code) => ({
+      code,
+      errors: [{ messageId: 'cacheQuery' }],
+    })),
     ...[
       'await Promise.all(ids.map(async (id) => { return await repository.findById(id); }));',
       'const pending = ids.map((id) => repository.findById(id)); await Promise.all(pending);',
@@ -125,6 +141,8 @@ ruleTester.run('no-accumulator-spread-in-reduce', accumulatorSpread, {
     'let all = []; for (const item of items) { all = other.concat(item); }',
     'let all = []; function add(item) { all = [...all, item]; } for (const item of items) { add(item); }',
     'let all = []; for (const item of items) { all += [...all, item]; }',
+    "let text = ''; for (const part of parts) { text = text.concat(part); }",
+    "items.reduce((text, item) => text.concat(item.name), '');",
   ]),
   invalid: [
     ...[
@@ -142,6 +160,10 @@ ruleTester.run('no-accumulator-spread-in-reduce', accumulatorSpread, {
       'let all = []; let i = 0; while (i < items.length) { all = [...all, items[i]]; i += 1; }',
       'let all = []; for (const group of groups) { for (const item of group) { all = [...all, item]; } }',
     ].map((code) => ({ code, errors: [{ messageId: 'loopCopy', data: { name: 'all' } }] })),
+    ...[
+      'items.reduce((acc, item) => acc.concat([item.id]), []);',
+      'items.reduceRight(function (all, item) { return all.concat(item.tags); }, []);',
+    ].map((code) => ({ code, errors: [{ messageId: 'concat' }] })),
     {
       code: 'let byId = {}; for (const item of items) { byId = { ...byId, [item.id]: item }; }',
       errors: [{ messageId: 'loopCopy', data: { name: 'byId' } }],

@@ -65,6 +65,18 @@ const FIXTURES = {
     '  return lists.reduce<readonly number[]>((all, list) => [...all, ...list], []);',
     '}',
   ].join('\n'),
+  'concat.ts': [
+    'export function text(parts: string[]) {',
+    "  let joined = '';",
+    '  for (const part of parts) { joined = joined.concat(part); }',
+    "  return parts.reduce((all, part) => all.concat(part), '') + joined;",
+    '}',
+    'export function lists(groups: number[][]) {',
+    '  let all: number[] = [];',
+    '  for (const group of groups) { all = all.concat(group); }',
+    '  return groups.reduce((acc: number[], group) => acc.concat(group), all);',
+    '}',
+  ].join('\n'),
 };
 
 describe('typed exemptions of the duplicate literal and accumulator spread rules', () => {
@@ -128,6 +140,11 @@ describe('typed exemptions of the duplicate literal and accumulator spread rules
       'spreading an open accumulator',
       'open-record.ts',
       ['nitpicker/spread:3', 'nitpicker/spread:6'],
+    ],
+    [
+      'concatenating onto an array but not onto a string',
+      'concat.ts',
+      ['nitpicker/spread:8', 'nitpicker/spread:9'],
     ],
   ])('reports %s only when it grows with the list', async (_name, file, expected) => {
     expect(await findings(file)).toEqual(expected);

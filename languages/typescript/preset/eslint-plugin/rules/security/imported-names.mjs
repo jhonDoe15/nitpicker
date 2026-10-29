@@ -1,7 +1,11 @@
 import { chainOf } from '../analysis/ancestry.mjs';
 import { findVariable, resolveConstant, stringValue } from '../analysis/constant-resolution.mjs';
 import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
+import { memoized } from '../support/memo.mjs';
 import { DEPTHS, memberName, staticKey, unwrapped } from './security-values.mjs';
+
+const programBindings = new WeakMap();
+const DEFAULT = 'default';
 
 function loadedModuleCall(node) {
   const target = unwrapped(node);
@@ -20,7 +24,7 @@ function moduleStep(node) {
   if (target?.type === 'AwaitExpression') {
     return target.argument;
   }
-  return target?.type === 'MemberExpression' && memberName(target) === 'default'
+  return target?.type === 'MemberExpression' && memberName(target) === DEFAULT
     ? target.object
     : undefined;
 }
@@ -72,7 +76,7 @@ export function bindingsOf(program, modules) {
   const base = moduleBindings(program, modules);
   const bindings = { named: new Map(), namespaces: new Set(base.namespaces), modules };
   for (const [local, imported] of base.named) {
-    if (imported === 'default') {
+    if (imported === DEFAULT) {
       bindings.namespaces.add(local);
     } else {
       bindings.named.set(local, imported);
@@ -84,7 +88,34 @@ export function bindingsOf(program, modules) {
   return bindings;
 }
 
-function isBindCall(node) {
+function statementModules(statement) {
+  if (statement.type === 'ImportDeclaration') {
+    return statement.importKind === 'type' ? [] : [statement.source.value];
+  }
+  const declarations = statement.type === 'VariableDeclaration' ? statement.declarations : [];
+  return [importEqualsModule(statement), ...declarations.map(({ init }) => loadedModule(init))];
+}
+
+function collectedBindings(program) {
+  const modules = new Set(program.body.flatMap(statementModules));
+  const found = new Map();
+  for (const module of [...modules].filter((each) => typeof each === 'string')) {
+    const bindings = bindingsOf(program, new Set([module]));
+    for (const local of bindings.namespaces) {
+      found.set(local, { module, name: DEFAULT });
+    }
+    for (const [local, name] of bindings.named) {
+      found.set(local, { module, name });
+    }
+  }
+  return found;
+}
+
+export function importedBindings(program) {
+  return memoized(programBindings, program, collectedBindings);
+}
+
+export function isBindCall(node) {
   return (
     node?.type === 'CallExpression' &&
     node.callee.type === 'MemberExpression' &&

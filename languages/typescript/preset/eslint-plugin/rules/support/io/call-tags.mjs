@@ -1,9 +1,14 @@
 import { LOOSE_STATEMENT } from '../../../../../../../shared/rules/security/sql-text.mjs';
 import { wordsOf } from '../identifier-words.mjs';
+import { isCachePackage } from './packages.mjs';
 
 const DATABASE = 'database';
 const REMOTE = 'remote';
-const DATABASE_OWNERS = new Set(['repo', 'repository', 'dao', 'db', DATABASE, 'prisma', 'pool']);
+const QUERY = 'query';
+const EXECUTE = 'execute';
+const DATABASE_OWNERS = new Set(['repo', 'repository', 'dao', 'db', DATABASE, 'prisma']);
+const POOL_METHODS = new Set([QUERY, 'connect', EXECUTE]);
+const CALLBACK_SEARCHES = new Set(['find', 'filter', 'some', 'every', 'map']);
 const MORE_DATABASE_OWNERS = new Set(['connection', 'knex', 'redis', 'sql', 'pg', 'mongo']);
 const REMOTE_OWNERS = new Set(['http', 'axios', 'api', 'gateway']);
 const WRITE_WORDS = new Set(['update', 'delete', 'remove', 'replace', 'upsert']);
@@ -15,19 +20,19 @@ const METHOD_PREFIXES = new Set([
   'fetch',
   'load',
   'read',
-  'query',
+  QUERY,
   'select',
   INSERT,
   'save',
   CREATE,
   'count',
-  'execute',
+  EXECUTE,
   'write',
   'list',
 ]);
 const GETTER_LOOKUPS = new Set(['by', 'all', 'many', 'one', 'page']);
 const METHOD_NAMES = new Set(['exists', 'exec', 'send', 'post', 'put', 'patch', 'request', 'raw']);
-const SQL_METHODS = new Set(['query', 'execute', 'exec', 'raw', 'run', 'select', INSERT]);
+const SQL_METHODS = new Set([QUERY, EXECUTE, 'exec', 'raw', 'run', 'select', INSERT]);
 const WRITE_FIRST_WORDS = new Set([
   ...WRITE_WORDS,
   'save',
@@ -59,6 +64,7 @@ const RAW_WRITES = new Set(['$executeRaw', '$executeRawUnsafe']);
 const WRITE_COMMAND = /^(?:Put|Update|Delete|BatchWrite|TransactWrite)(?:Item|Items)?Command$/u;
 const WRITE_STATEMENT =
   /^\s*(?:WITH\b[\s\S]*?\)\s*)?(?:INSERT|UPDATE|DELETE|MERGE|REPLACE|UPSERT)\b/iu;
+const UPSERT_STATEMENT = /^\s*UPSERT\s+INTO\b/iu;
 const INSERT_STATEMENT = /^\s*(?:WITH\b[\s\S]*?\)\s*)?INSERT\b/iu;
 const UPSERT_CLAUSE =
   /\bON\s+CONFLICT\b|\bON\s+DUPLICATE\s+KEY\b|\bINSERT\s+IGNORE\b|\bINSERT\s+OR\s+(?:IGNORE|REPLACE)\b/iu;
@@ -82,7 +88,8 @@ function isInputOutputMethod(name) {
 function ownerKind(owner, method) {
   const words = wordsOf(owner);
   const last = words.at(-1);
-  if (DATABASE_OWNERS.has(last) || MORE_DATABASE_OWNERS.has(last)) {
+  const pooled = last === 'pool' && POOL_METHODS.has(method);
+  if (DATABASE_OWNERS.has(last) || MORE_DATABASE_OWNERS.has(last) || pooled) {
     return DATABASE;
   }
   if (last === 'client') {
@@ -99,7 +106,9 @@ export function namedKind(view) {
   if (names.length === 1 && method === 'fetch') {
     return REMOTE;
   }
-  if (names.length < 2 || !isInputOutputMethod(method)) {
+  const searches =
+    CALLBACK_SEARCHES.has(method) && view.args.some((arg) => arg.type === 'function');
+  if (names.length < 2 || searches || !isInputOutputMethod(method)) {
     return undefined;
   }
   const kinds = names.slice(0, -1).map((owner) => ownerKind(owner, method));
@@ -108,7 +117,10 @@ export function namedKind(view) {
 
 function statementText(view) {
   const [first] = view.args;
-  return first?.type === 'text' && LOOSE_STATEMENT.test(first.text) ? first.text : undefined;
+  const isStatement =
+    first?.type === 'text' &&
+    (LOOSE_STATEMENT.test(first.text) || UPSERT_STATEMENT.test(first.text));
+  return isStatement ? first.text : undefined;
 }
 
 function isWriteName(name) {
@@ -167,8 +179,18 @@ function isUnsafeWrite(kind, pkg, view) {
   return isUnkeyedPayment(pkg, view) || (kind === DATABASE && isPlainInsert(view));
 }
 
+function isCache(pkg, view) {
+  if (pkg !== undefined) {
+    return isCachePackage(pkg);
+  }
+  return view.names.slice(0, -1).some((name) => wordsOf(name).includes('redis'));
+}
+
 function directTags(kind, pkg, view) {
   const tags = [kind];
+  if (kind === DATABASE && isCache(pkg, view)) {
+    tags.push('cache');
+  }
   if (kind === DATABASE && isDatabaseWrite(view)) {
     tags.push('write');
   }

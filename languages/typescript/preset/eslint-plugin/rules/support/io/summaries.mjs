@@ -1,11 +1,14 @@
 import ts from 'typescript';
+import { tsRunsWithCaller } from '../flow/sync-callbacks.mjs';
 import { memoized } from '../memo.mjs';
-import { functionLike, resolvedSymbol } from './implementations.mjs';
+import { calleeDeclaration, functionLike } from './implementations.mjs';
+import { messagePackages, packageFromPath } from './packages.mjs';
 import { resolveCall } from './typed-calls.mjs';
 
 const MAX_HOPS = 3;
 const BUDGETS = Array.from({ length: MAX_HOPS + 1 }, (_, budget) => budget);
 const states = new WeakMap();
+const QUOTES = ["'", '"', '`'];
 
 function stateOf(program) {
   return memoized(states, program, () => ({
@@ -13,12 +16,15 @@ function stateOf(program) {
     checker: program.getTypeChecker(),
     descriptors: new Map(),
     summaries: new Map(),
+    calls: new Map(),
   }));
 }
 
 function runsWithCaller(node) {
-  const isCallback = ts.isCallExpression(node.parent) && node.parent.arguments.includes(node);
-  return !(ts.isFunctionLike(node) || ts.isClassLike(node)) || isCallback;
+  if (ts.isClassLike(node)) {
+    return false;
+  }
+  return !ts.isFunctionLike(node) || tsRunsWithCaller(node);
 }
 
 function callsIn(root) {
@@ -75,13 +81,15 @@ function combined(state, { view, effects, targets }, budget) {
   return prefixed(view.label, new Map(common));
 }
 
+function isPropagated(descriptor, budget) {
+  return descriptor.guessed !== true && (budget > 0 || descriptor.targets === undefined);
+}
+
 function evaluated(state, fn, budget) {
-  const effects = new Map();
-  const entries = descriptorsOf(state, fn).flatMap((descriptor) => [
-    ...(budget === 0 && descriptor.targets !== undefined
-      ? []
-      : combined(state, descriptor, budget - 1)),
-  ]);
+  const effects = new Map(budget === 0 ? [] : summaryAt(state, fn, budget - 1));
+  const entries = descriptorsOf(state, fn)
+    .filter((descriptor) => isPropagated(descriptor, budget))
+    .flatMap((descriptor) => [...combined(state, descriptor, budget - 1)]);
   for (const [tag, path] of entries) {
     effects.set(tag, effects.get(tag) ?? path);
   }
@@ -99,8 +107,7 @@ function summarize(state, roots) {
   }
 }
 
-export function typedCallEffects(call, program) {
-  const state = stateOf(program);
+function resolvedEffects(state, call) {
   const descriptor = resolveCall(state, call);
   if (descriptor.targets !== undefined) {
     summarize(state, descriptor.targets);
@@ -108,9 +115,36 @@ export function typedCallEffects(call, program) {
   return combined(state, descriptor, MAX_HOPS);
 }
 
+export function typedCallEffects(call, program) {
+  const state = stateOf(program);
+  return memoized(state.calls, call, () => resolvedEffects(state, call));
+}
+
+export { stateOf as programState };
+
+function mentionsBroker(file, specifiers) {
+  if (file.isDeclarationFile) {
+    return specifiers.includes(packageFromPath(file.fileName));
+  }
+  if (file.imports !== undefined) {
+    return file.imports.some((specifier) => specifiers.includes(specifier.text));
+  }
+  return specifiers.some((specifier) =>
+    QUOTES.some((quote) => file.text.includes(`${quote}${specifier}${quote}`)),
+  );
+}
+
+export function programMayPublish(program) {
+  const state = stateOf(program);
+  state.mayPublish ??= program
+    .getSourceFiles()
+    .some((file) => mentionsBroker(file, messagePackages()));
+  return state.mayPublish;
+}
+
 export function typedReferenceEffects(node, program) {
   const state = stateOf(program);
-  const declaration = resolvedSymbol(state.checker, node)?.declarations?.[0];
+  const declaration = calleeDeclaration(state.checker, node);
   const fn = declaration && functionLike(declaration);
   if (fn === undefined) {
     return new Map();

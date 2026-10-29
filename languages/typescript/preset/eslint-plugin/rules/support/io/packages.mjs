@@ -37,6 +37,8 @@ const DATABASE_PACKAGES = new Set([
   '@elastic/elasticsearch',
 ]);
 const DATABASE_SCOPES = ['@mikro-orm/', 'drizzle-orm/'];
+const BUILDER_PACKAGES = new Set(['knex', 'mongoose', 'kysely', 'objection', 'drizzle-orm']);
+const CACHE_PACKAGES = new Set(['redis', '@redis/client', 'ioredis']);
 const SYNC_DATABASE_PACKAGES = new Set(['better-sqlite3', 'sqlite3', 'node:sqlite']);
 const SYNC_DATABASE_CALLS = new Set(['get', 'all', 'run', 'iterate', 'exec', 'pragma', 'each']);
 
@@ -115,7 +117,7 @@ export function packageFromPath(fileName) {
   return joined.startsWith('@types/') ? joined.slice('@types/'.length) : joined;
 }
 
-function isDatabasePackage(name) {
+export function isDatabasePackage(name) {
   return DATABASE_PACKAGES.has(name) || DATABASE_SCOPES.some((scope) => name.startsWith(scope));
 }
 
@@ -129,8 +131,16 @@ function brokerClientKind(client, view) {
   return publishes ? MESSAGE : REMOTE;
 }
 
-function asyncKind(kind, isAsync) {
-  return isAsync() ? kind : undefined;
+function isBuilderPackage(name) {
+  return BUILDER_PACKAGES.has(name) || name.startsWith('drizzle-orm/');
+}
+
+export function isCachePackage(name) {
+  return CACHE_PACKAGES.has(name);
+}
+
+function asyncKind(kind, isAsync, name = '') {
+  return isAsync(isBuilderPackage(name)) ? kind : undefined;
 }
 
 function storeOrRemoteKind(name, view, isAsync) {
@@ -138,7 +148,7 @@ function storeOrRemoteKind(name, view, isAsync) {
     return SYNC_DATABASE_CALLS.has(view.method) ? DATABASE : asyncKind(DATABASE, isAsync);
   }
   if (isDatabasePackage(name)) {
-    return asyncKind(DATABASE, isAsync);
+    return asyncKind(DATABASE, isAsync, name);
   }
   return isRemotePackage(name) ? asyncKind(REMOTE, isAsync) : undefined;
 }
@@ -158,4 +168,8 @@ export function libraryKind(specifier, view, isAsync) {
   return client === undefined
     ? storeOrRemoteKind(name, view, isAsync)
     : asyncKind(brokerClientKind(client, view), isAsync);
+}
+
+export function messagePackages() {
+  return [...MESSAGE_PACKAGES.keys(), ...BROKER_CLIENTS.keys()];
 }
