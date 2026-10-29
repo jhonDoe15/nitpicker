@@ -4,7 +4,11 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { findPackageJsonByWalking } from './package-json.mjs';
+import {
+  findPackageJSON,
+  findPackageJsonByWalking,
+  selectFindPackageJson,
+} from './package-json.mjs';
 import { PACKAGE_ROOT } from './tool-resolution.mjs';
 
 const nativeFindPackageJson = nodeModule.findPackageJSON;
@@ -49,6 +53,9 @@ describe('the findPackageJSON fallback for runtimes without node:module findPack
       exports: './index.js',
     });
     writeManifest(path.join(linkedRoot, 'bare'), { name: 'bare' });
+    mkdirSync(path.join(linkedRoot, 'broken'));
+    writeFileSync(path.join(linkedRoot, 'broken/package.json'), '{not json');
+    writeFileSync(path.join(linkedRoot, 'broken/index.js'), '');
   });
 
   afterAll(() => {
@@ -128,5 +135,47 @@ describe('the findPackageJSON fallback for runtimes without node:module findPack
     expect(app.walked.found).toBe(path.join(linkedRoot, 'app/package.json'));
     expect(bare.walked).toEqual(bare.native);
     expect(bare.walked.code).toBe('ERR_MODULE_NOT_FOUND');
+  });
+
+  it.each([
+    ['a relative specifier to a missing file', './core/missing-module.mjs'],
+    ['a parent directory', '..'],
+    ['the base directory', '.'],
+    ['an absolute path that does not exist', '/nitpicker-missing/module.mjs'],
+    ['a scope without a package name', '@scope'],
+    ['a name that starts with a dot', '.hidden-package/x'],
+  ])('gives the native result or error for %s', (_case, specifier) => {
+    const { walked, native } = bothOutcomes(specifier, packageBase);
+
+    expect(walked).toEqual(native);
+  });
+
+  it('reports an empty specifier as a missing module, as the native API does', () => {
+    const { walked, native } = bothOutcomes('', packageBase);
+
+    expect([walked.code, native.code]).toEqual(['ERR_MODULE_NOT_FOUND', 'ERR_MODULE_NOT_FOUND']);
+  });
+
+  it('reports a malformed package.json in scope as an invalid package config', () => {
+    const base = pathToFileURL(path.join(linkedRoot, 'broken/index.js'));
+    const results = ['broken', './index.js'].map((specifier) => bothOutcomes(specifier, base));
+
+    expect(results.map(({ walked }) => walked)).toEqual(results.map(({ native }) => native));
+    expect(results.map(({ walked }) => walked.code)).toEqual([
+      'ERR_INVALID_PACKAGE_CONFIG',
+      'ERR_INVALID_PACKAGE_CONFIG',
+    ]);
+  });
+});
+
+describe('choosing the findPackageJSON implementation', () => {
+  it('uses the native API where node:module has it', () => {
+    expect(findPackageJSON).toBe(nativeFindPackageJson);
+  });
+
+  it('falls back to the walk on a runtime whose node:module lacks findPackageJSON', () => {
+    const { findPackageJSON: _native, ...withoutIt } = nodeModule;
+
+    expect(selectFindPackageJson(withoutIt)).toBe(findPackageJsonByWalking);
   });
 });

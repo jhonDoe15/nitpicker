@@ -6,6 +6,8 @@ const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 
 const FORCE_KILL_DELAY_MS = 1_000;
 
+const OUTPUT_POLL_INTERVAL_MS = 100;
+
 const activeChildren = new Set();
 
 const HOST_CI_OUTPUT_VARIABLES = ['GITHUB_STEP_SUMMARY'];
@@ -16,14 +18,12 @@ function analyzerEnvironment(environment) {
   );
 }
 
-function outputFailure(task, stdoutFile, stderrBytes) {
-  return stdoutFile.size() + stderrBytes > MAX_ANALYZER_OUTPUT_BYTES
-    ? new Error(`${task.name} exceeded the analyzer output limit`)
-    : undefined;
+function outputLimitError(task) {
+  return new Error(`${task.name} exceeded the analyzer output limit`);
 }
 
 function settleClose(task, { failure, status, signal, stdoutFile, output }, { resolve, reject }) {
-  const error = failure ?? outputFailure(task, stdoutFile, output.bytes());
+  const error = failure ?? (output.exceeded() ? outputLimitError(task) : undefined);
   if (error !== undefined) {
     reject(error);
     return;
@@ -53,18 +53,35 @@ function spawnAnalyzer(task, stdoutDescriptor) {
   return child;
 }
 
-function createOutputCollector(onOverflow) {
+function createOutputCollector(stdoutFile, onOverflow) {
   const stderr = [];
-  let outputBytes = 0;
+  const state = { stderrBytes: 0 };
+  function exceeded() {
+    return stdoutFile.size() + state.stderrBytes > MAX_ANALYZER_OUTPUT_BYTES;
+  }
+  function check() {
+    if (exceeded()) {
+      onOverflow();
+    }
+  }
   function collectStderr(chunk) {
-    outputBytes += chunk.length;
-    if (outputBytes > MAX_ANALYZER_OUTPUT_BYTES) {
+    state.stderrBytes += chunk.length;
+    if (exceeded()) {
       onOverflow();
       return;
     }
     stderr.push(chunk);
   }
-  return { stderr, collectStderr, bytes: () => outputBytes };
+  const poll = setInterval(check, OUTPUT_POLL_INTERVAL_MS);
+  poll.unref();
+  return {
+    stderr,
+    collectStderr,
+    exceeded,
+    stop() {
+      clearInterval(poll);
+    },
+  };
 }
 
 function scheduleForceKill(child) {
@@ -123,8 +140,8 @@ function runAnalyzerChild(task, stdoutFile) {
   return new Promise((resolve, reject) => {
     const child = spawnAnalyzer(task, stdoutFile.descriptor);
     const controller = createTaskController(child, task);
-    const output = createOutputCollector(() => {
-      controller.terminate(new Error(`${task.name} exceeded the analyzer output limit`));
+    const output = createOutputCollector(stdoutFile, () => {
+      controller.terminate(outputLimitError(task));
     });
     child.stderr.on('data', output.collectStderr);
     child.on('error', (error) => {
@@ -132,6 +149,7 @@ function runAnalyzerChild(task, stdoutFile) {
     });
     child.on('close', (status, signal) => {
       controller.finish(() => {
+        output.stop();
         settleClose(
           task,
           { failure: controller.error(), status, signal, stdoutFile, output },
