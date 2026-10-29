@@ -1164,7 +1164,9 @@ new and touched code must comply.
   bans.
 - **Tests** follow the same construct bans: `for...of` is the only loop (use `it.each` for one test
   per case), no `forEach`, no `.then()/.catch()/.finally()` chains, and no `as` (except `as const`)
-  or `<Type>value`. `nitpicker/no-partial-output-assertion` also rejects `toMatchObject` and
+  or `<Type>value`. `nitpicker/no-assertion-in-loop` rejects an assertion inside any loop or
+  iterating callback of a test, because an empty collection passes without asserting: assert the
+  whole collection, write a parameterized test, or use the loop only to build data. `nitpicker/no-partial-output-assertion` also rejects `toMatchObject` and
   `expect.objectContaining`, `expect.stringContaining` and `expect.arrayContaining` inside
   `toEqual`/`toStrictEqual`, and `toMatch` with a string or an unanchored pattern: assert the whole
   value. Assertions must pin the value: `toBeDefined`, `toBeTruthy`, `toBeFalsy`, `not.toBeNull`,
