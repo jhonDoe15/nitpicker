@@ -4,7 +4,7 @@ import { ASYNC_HINTS } from './hints/ast-async.mjs';
 import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
 import { SMELL_HINTS } from './hints/ast-smells.mjs';
 import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
-import { SIGNATURE_HINTS } from './hints/ast-signatures.mjs';
+import { SIGNATURE_HINTS } from './hints/signatures/ast-signatures.mjs';
 import { SECURITY_HINTS } from './hints/security/ruff-security.mjs';
 import { RULES_SECURITY_HINTS } from './hints/security/rules-security.mjs';
 import { STYLE_HINTS } from './hints/ruff-style.mjs';
