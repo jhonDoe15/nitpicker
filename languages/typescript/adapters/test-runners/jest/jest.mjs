@@ -97,6 +97,7 @@ function spawnJest(options, command, nitpickerArguments) {
     options,
     ...launch.tool,
     nodeArguments: command.nodeArguments,
+    nodeOptions: command.nodeOptions,
     environment: command.environment,
     arguments_: jestArguments(command, nitpickerArguments, launch),
   });
@@ -115,7 +116,7 @@ function consoleCommand(options, command, testConsole) {
   return testConsole.enabled
     ? {
         ...command,
-        nodeArguments: [...command.nodeArguments, jestAssertImport(options)],
+        nodeOptions: [jestAssertImport(options)],
         environment: { ...command.environment, ...testConsole.environment },
       }
     : command;

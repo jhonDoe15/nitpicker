@@ -3,6 +3,7 @@ import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import { testTimeoutMs } from '../test-run.mjs';
+import { TEST_CONSOLE_REPORT_PATH } from '../../quality-areas/reporting/test-report.mjs';
 import { consoleProducerPath } from '../test-console-run.mjs';
 import { createRunnerProjects } from '../test-support/runner-project.mjs';
 import { coverageArguments } from './jest-coverage.mjs';
@@ -41,7 +42,8 @@ function launchedProject(files) {
       'src/main/pick.js': PICK_JS,
       'test/pick.test.js': [
         "const { pick } = require('../src/main/pick');",
-        "it('answers', () => {\n  expect(pick(true)).toBe('yes');\n});\n",
+        "it('answers', () => {\n  console.assert(pick(false) === 'yes', 'got %s', pick(false));",
+        "  expect(pick(true)).toBe('yes');\n});\n",
       ].join('\n'),
       ...files,
     },
@@ -139,6 +141,15 @@ describe('a Jest run that a Create React App script starts', () => {
     );
 
     expect([run.failed, run.report.numTotalTests]).toEqual([false, 1]);
+    expect(
+      JSON.parse(readFileSync(path.join(root, TEST_CONSOLE_REPORT_PATH), 'utf8')).entries,
+    ).toEqual([
+      {
+        file: path.join(root, 'test/pick.test.js'),
+        test: '',
+        messages: ['Assertion failed: got no'],
+      },
+    ]);
     expect(
       readFileSync(path.join(root, ARGV_FILE), 'utf8')
         .trim()

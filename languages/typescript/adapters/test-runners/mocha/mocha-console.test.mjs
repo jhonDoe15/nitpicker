@@ -86,6 +86,7 @@ describe('test console output on a Mocha project', () => {
         '  const written = [];',
         '  fs.writeFileSync = (...values) => written.push(values);',
         "  console.warn('saving');",
+        "  console.assert(pick(false) === 'yes', 'got %s', pick(false));",
         '  fs.writeFileSync = writeFileSync;',
         '  assert.deepEqual(written, []);',
         "  assert.equal(pick(true) + pick(false), 'yesno');",
@@ -94,6 +95,7 @@ describe('test console output on a Mocha project', () => {
     });
 
     expect(await consoleOutput(project)).toEqual([
+      ['test-console-output', 'test/cli.test.js', '"Assertion failed: got no" (test "prints yes")'],
       ['test-console-output', 'test/cli.test.js', '"saving" (test "prints yes")'],
     ]);
   });
