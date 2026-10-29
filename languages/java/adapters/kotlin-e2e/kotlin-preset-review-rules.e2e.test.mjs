@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { BLOCKING_RULES } from '../kotlin/review-rules/blocking/blocking-findings.mjs';
 import {
+  ARCHIVE_FILE,
   EXPECTED_REVIEW_FINDINGS,
   REVIEW_RULE_FILES,
   runtimeSerializationFiles,
@@ -21,7 +23,12 @@ const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';
 
 function reviewFindings(findings) {
   return findings
-    .filter(({ tool, rule }) => REVIEW_TOOLS.has(tool) || rule === 'unused-option')
+    .filter(
+      ({ tool, rule }) =>
+        REVIEW_TOOLS.has(tool) ||
+        rule === 'unused-option' ||
+        (tool === 'kotlin-source' && BLOCKING_RULES.includes(rule)),
+    )
     .map(({ rule, symbol }) => `${rule} ${symbol}`)
     .sort();
 }
@@ -42,6 +49,11 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
 
     expect(result.failed).toBe(true);
     expect(reviewFindings(result.newEnforceable)).toEqual(EXPECTED_REVIEW_FINDINGS);
+    expect(
+      result.newEnforceable
+        .filter(({ tool, path: file }) => tool === 'detekt' && file === ARCHIVE_FILE)
+        .map(({ rule }) => rule),
+    ).toEqual([]);
   });
 
   it('lifts a rule for some paths with the exception its message names', () => {
@@ -51,7 +63,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
         exceptions: [
           { rule: 'pmd/FixedSleepInTest', glob: ORDERS_TESTS },
           { rule: 'pmd/SpringUnusedContext', glob: ORDERS_TESTS },
-          { rule: 'pmd/BlockingCallInCoroutine', glob: 'src/main/kotlin/demo/orders/Archive.kt' },
+          { rule: 'kotlin-source/BlockingCallInCoroutine', glob: ARCHIVE_FILE },
           { rule: 'unused-option', glob: 'src/main/kotlin/demo/orders/*' },
         ],
       },
@@ -65,7 +77,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
       'SingularAndPluralMember Query.tags',
       'StaticForwardingWrapper absOf',
       'StaticForwardingWrapper total',
-      'TimeoutWithoutSuspension timesOutBlockingWork.withTimeout',
+      'TimeoutWithoutSuspension Archive.timesOutBlockingWork.withTimeout',
     ]);
   });
 

@@ -1,3 +1,12 @@
+import {
+  DATA_REPOSITORIES,
+  ENTITY_MANAGER,
+  JDBC,
+  REST_CLIENT,
+  REST_OPERATIONS,
+  group,
+} from '../spring/spring-types.mjs';
+
 const FILE_EXTENSIONS = [
   'readText',
   'readBytes',
@@ -80,6 +89,8 @@ const LOCKS = [
   'java.util.concurrent.locks.StampedLock',
 ];
 const EVERY_METHOD = '*';
+const REST_CLIENT_REQUESTS = ['get', 'post', 'put', 'patch', 'delete', 'head', 'options', 'method'];
+const NON_BLOCKING_DATA = /\.(?:reactive|kotlin|r2dbc)\.|\.Reactive\w*$/u;
 
 export const STATIC_CALLS = [
   { owners: ['java.nio.file.Files'], names: EVERY_METHOD, label: 'Files' },
@@ -88,15 +99,25 @@ export const STATIC_CALLS = [
 ];
 
 export const MEMBER_CALLS = [
-  { types: ['java.io.File'], names: [...FILE_EXTENSIONS, ...FILE_MEMBERS] },
-  { types: ['java.nio.file.Path'], names: PATH_EXTENSIONS, requires: ['kotlin.io.path.'] },
-  { types: ['java.net.URL'], names: ['readText', 'readBytes', 'openStream', 'openConnection'] },
+  { types: ['java.io.File'], names: FILE_MEMBERS, extensions: FILE_EXTENSIONS },
+  {
+    types: ['java.nio.file.Path'],
+    names: [],
+    extensions: PATH_EXTENSIONS,
+    requires: ['kotlin.io.path.'],
+  },
+  {
+    types: ['java.net.URL'],
+    names: ['openStream', 'openConnection'],
+    extensions: ['readText', 'readBytes'],
+  },
   {
     types: ['java.io.FileInputStream', 'java.io.RandomAccessFile'],
-    names: ['read', 'readBytes', 'readAllBytes', 'readNBytes', 'skip'],
+    names: ['read', 'readAllBytes', 'readNBytes', 'skip'],
+    extensions: ['readBytes'],
   },
   { types: ['java.io.FileOutputStream'], names: ['write', 'flush'] },
-  { types: ['java.io.FileReader'], names: ['read', 'readText', 'readLines', 'readLine'] },
+  { types: ['java.io.FileReader'], names: ['read'], extensions: ['readText', 'readLines'] },
   { types: ['java.io.FileWriter'], names: ['write', 'append', 'flush'] },
   {
     types: ['java.sql.Connection'],
@@ -126,20 +147,11 @@ export const MEMBER_CALLS = [
   { types: ['java.net.Socket'], names: ['connect', 'getInputStream', 'getOutputStream'] },
   { types: ['java.net.ServerSocket'], names: ['accept'] },
   { types: ['okhttp3.Call'], names: ['execute'] },
-  {
-    types: [
-      'org.springframework.jdbc.core.JdbcTemplate',
-      'org.springframework.jdbc.core.JdbcOperations',
-      'org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate',
-      'org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations',
-      'org.springframework.jdbc.core.simple.JdbcClient',
-      'org.springframework.web.client.RestTemplate',
-      'jakarta.persistence.EntityManager',
-      'javax.persistence.EntityManager',
-    ],
-    names: EVERY_METHOD,
-  },
+  { types: [...REST_CLIENT], names: REST_CLIENT_REQUESTS },
+  { types: [...JDBC, ...REST_OPERATIONS, ...ENTITY_MANAGER], names: EVERY_METHOD },
 ];
+
+export const OBJECT_METHODS = ['toString', 'equals', 'hashCode', 'getClass'];
 
 export const EVIDENCE_CALLS = [
   {
@@ -160,16 +172,13 @@ export const EVIDENCE_CALLS = [
 
 export const STANDARD_INPUT = ['readLine', 'readln', 'readlnOrNull'];
 
-export const BLOCKING_REPOSITORY_BASES = [
-  'Repository',
-  'CrudRepository',
-  'ListCrudRepository',
-  'PagingAndSortingRepository',
-  'ListPagingAndSortingRepository',
-  'JpaRepository',
-  'MongoRepository',
-  'QueryByExampleExecutor',
-];
+export const BLOCKING_REPOSITORIES = group(
+  [...DATA_REPOSITORIES].filter((name) => !NON_BLOCKING_DATA.test(name)),
+  ['org.springframework.data.repository.query.QueryByExampleExecutor'],
+);
+export const REACTIVE_REPOSITORIES = group(
+  [...DATA_REPOSITORIES].filter((name) => NON_BLOCKING_DATA.test(name)),
+);
 
 export const NON_SUSPENDING_STANDARD = [
   'println',

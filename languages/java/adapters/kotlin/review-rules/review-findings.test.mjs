@@ -187,14 +187,14 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/AssertionInControlFlow',
       'pmd/CoroutineEscapesTest',
       'pmd/SpringUnusedContext',
-      'pmd/BlockingCallInCoroutine',
-      'pmd/TimeoutWithoutSuspension',
       'pmd/ExhaustiveEnumPredicate',
       'pmd/StaticForwardingWrapper',
       'pmd/SingularAndPluralMember',
       ...SPRING_RULES.map((rule) => `pmd/${rule}`),
       'pmd/SpringQueryConcatenation',
       'unused-option',
+      'kotlin-source/BlockingCallInCoroutine',
+      'kotlin-source/TimeoutWithoutSuspension',
     ]);
     for (const rule of KOTLIN_REVIEW_EXCEPTION_RULES) {
       expect(KOTLIN_EXCEPTION_RULES).toContain(rule);

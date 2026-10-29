@@ -166,6 +166,10 @@ export const HTTP_CLIENTS = group(
   ['java.net.http.HttpClient'],
 );
 export const REST_TEMPLATE = group(inPackage(`${SPRING}.web.client`, 'RestTemplate'));
+export const REST_OPERATIONS = group(
+  inPackage(`${SPRING}.web.client`, 'RestTemplate', 'RestOperations'),
+);
+export const REST_CLIENT = group(inPackage(`${SPRING}.web.client`, 'RestClient'));
 export const REST_TEMPLATE_BUILDER = group(
   inPackage(`${SPRING}.boot.web.client`, 'RestTemplateBuilder'),
   inPackage(`${SPRING}.boot.restclient`, 'RestTemplateBuilder'),
