@@ -5,6 +5,7 @@ import {
 } from '../../../../shared/conventions/tool-precedence.mjs';
 import { resolveLayoutFor } from '../layout.mjs';
 import { STRYKER_TOOL, strykerProjectFile } from './stryker-project-config.mjs';
+import { TESTS_TOOL, retryingConfigFiles } from './test-runner-config.mjs';
 import { parsedTsconfig } from '../modules/tsconfig-files.mjs';
 import {
   TYPESCRIPT_TOOL,
@@ -55,8 +56,21 @@ function typescriptNotices(config, projectRoot) {
     : [ignoredConfigNotice(`${relaxed.join(', ')} in ${file}`, TYPESCRIPT_TOOL)];
 }
 
+function testsNotices(config, projectRoot) {
+  if ((config.disable ?? []).includes('coverage') || optedIn(config, TESTS_TOOL)) {
+    return [];
+  }
+  return retryingConfigFiles(projectRoot).map(({ setting, file }) =>
+    ignoredConfigNotice(`${setting} in ${file}`, TESTS_TOOL),
+  );
+}
+
 export function ignoredScriptToolNotices({ config, projectRoot }) {
-  return [...typescriptNotices(config, projectRoot), ...strykerNotices(config, projectRoot)];
+  return [
+    ...typescriptNotices(config, projectRoot),
+    ...strykerNotices(config, projectRoot),
+    ...testsNotices(config, projectRoot),
+  ];
 }
 
 export function scriptProjectStyle(context) {

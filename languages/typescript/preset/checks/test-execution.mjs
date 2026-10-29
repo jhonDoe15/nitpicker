@@ -10,6 +10,7 @@ const COVERAGE_CONFIGURATION_FILES = [
   'shared/policy.mjs',
   'languages/typescript/adapters/test-runners/v8-coverage/loaded-sources.cjs',
   'languages/typescript/adapters/test-runners/vitest/test-timeouts-setup.mjs',
+  'languages/typescript/preset/project-configs/test-runner-config.mjs',
   'languages/typescript/preset/defaults/vitest.quality.config.ts',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
