@@ -91,14 +91,20 @@ function addFileTypes(state, file) {
   }
 }
 
-function implementedEntries(state, entry) {
-  const clauses = (entry.node.heritageClauses ?? []).filter(
-    ({ token }) => token === ts.SyntaxKind.ImplementsKeyword,
-  );
-  return clauses
+function heritageEntries(state, entry, keep) {
+  return (entry.node.heritageClauses ?? [])
+    .filter(({ token }) => keep(token))
     .flatMap(({ types }) => types)
     .map((type) => entryOfSymbol(state, state.checker.getSymbolAtLocation(type.expression)))
-    .filter((target) => target !== undefined);
+    .filter((target) => target !== undefined && target !== entry);
+}
+
+function implementedEntries(state, entry) {
+  return heritageEntries(state, entry, (token) => token === ts.SyntaxKind.ImplementsKeyword);
+}
+
+function supertypeIds(state, entry) {
+  return [...new Set(heritageEntries(state, entry, () => true).map(({ id }) => id))];
 }
 
 function markImplemented(state) {
@@ -133,6 +139,7 @@ function fieldsOf(state, entry) {
 
 export function typeFact(state, entry) {
   const fields = fieldsOf(state, entry);
+  const supertypes = supertypeIds(state, entry);
   entry.fieldNames = new Set(fields.map(({ name }) => name));
   return {
     id: entry.id,
@@ -142,6 +149,7 @@ export function typeFact(state, entry) {
     kind: entry.kind,
     exported: entry.exported,
     ...(fields.length === 0 ? {} : { fields }),
+    ...(supertypes.length === 0 ? {} : { supertypes }),
     ...(entry.cases === undefined ? {} : { cases: entry.cases }),
   };
 }
