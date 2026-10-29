@@ -2,8 +2,7 @@ import { createHash } from 'node:crypto';
 import { createDirectoryStore, resolveCacheDirectory } from './cache-stores.mjs';
 import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
 import { resolveAnalyzerMetadata } from '../execution/run-analyzers.mjs';
-import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
-import { codeFingerprint } from './code-fingerprint.mjs';
+import { currentCodeFingerprint } from './code-fingerprint.mjs';
 
 const CACHE_SCHEMA = 1;
 
@@ -13,13 +12,13 @@ export function cacheKey({
   analyzer,
   configOverrides = [],
   headPolicy = {},
-  producedBy,
+  codeFingerprint,
 }) {
   return createHash('sha256')
     .update(
       JSON.stringify([
         CACHE_SCHEMA,
-        producedBy,
+        codeFingerprint,
         mergeBaseSha,
         projectRelativePath,
         analyzer.name,
@@ -42,7 +41,7 @@ export function createFindingsCache({
   projectRelativePath,
   configOverrides = [],
   headPolicy = {},
-  producedBy = codeFingerprint(PACKAGE_ROOT),
+  codeFingerprint = currentCodeFingerprint(),
 }) {
   const backend = store ?? createDirectoryStore(directory);
   function keyFor(analyzer) {
@@ -52,7 +51,7 @@ export function createFindingsCache({
       analyzer,
       configOverrides,
       headPolicy,
-      producedBy,
+      codeFingerprint,
     });
   }
   function readReport(analyzer) {
@@ -82,6 +81,9 @@ export function createFindingsCache({
       const outcome = attempt(() => writeReport(analyzer, report));
       return outcome.kind === 'done' ? outcome.value : false;
     },
+    servedBy(analyzer) {
+      return store === undefined ? directory : store.servedBy?.(keyFor(analyzer));
+    },
   };
 }
 
@@ -96,7 +98,13 @@ function attempt(action) {
 export function runBaseWithCache({ cache, analyzers, run, resolveContext, onCached }) {
   const cached = readCachedReports(cache, analyzers, resolveContext);
   if (cached.size > 0) {
-    onCached?.(cached.size);
+    const sources = analyzers
+      .filter(({ name }) => cached.has(name))
+      .map((analyzer) => cache.servedBy?.(analyzer));
+    onCached?.(
+      cached.size,
+      [...new Set(sources)].filter((source) => source !== undefined),
+    );
   }
 
   const toRun = uncachedDependencies(cached, analyzers);

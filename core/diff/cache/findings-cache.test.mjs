@@ -8,7 +8,6 @@ import {
   resolveCacheDirectory,
   runBaseWithCache,
 } from './findings-cache.mjs';
-import { codeFingerprint } from './code-fingerprint.mjs';
 
 const temporaryRoots = [];
 
@@ -48,7 +47,7 @@ describe('cache key', () => {
     ['head policy thresholds', { headPolicy: { thresholds: { crapLimit: 10 } } }],
     ['head policy exceptions', { headPolicy: { exceptions: [{ rule: 'x' }] } }],
     ['legacy inventory path', { analyzer: { ...analyzer, legacyInventory: 'legacy.json' } }],
-    ['code that produced the findings', { producedBy: 'other-code' }],
+    ['code that produced the findings', { codeFingerprint: 'other-code' }],
   ])('changes with the %s', (_label, change) => {
     expect(cacheKey({ ...key, ...change })).not.toBe(cacheKey(key));
   });
@@ -69,31 +68,19 @@ describe('cache directory', () => {
 });
 
 describe('findings cache', () => {
-  it('misses when the analyzer code changed without a version bump, not when only a test changed', () => {
-    const packageRoot = temporaryRoot();
-    const write = (file, text) => {
-      mkdirSync(path.dirname(path.join(packageRoot, file)), { recursive: true });
-      writeFileSync(path.join(packageRoot, file), text);
-    };
-    write('package.json', '{ "version": "1.0.0" }\n');
-    write('core/cli.mjs', 'export const run = 1;\n');
-    write('languages/python/rules/rule.mjs', 'export const banned = ["print"];\n');
-    write('languages/python/rules/rule.test.mjs', 'export const checked = 1;\n');
+  it('misses a base analyzed by other nitpicker code', () => {
     const directory = path.join(temporaryRoot(), 'cache');
-    const cacheOf = () =>
+    const cacheOf = (codeFingerprint) =>
       createFindingsCache({
         directory,
         mergeBaseSha: 'abc',
         projectRelativePath: '.',
-        producedBy: codeFingerprint(packageRoot),
+        codeFingerprint,
       });
-    cacheOf().write(analyzer, { findings: [finding] });
+    cacheOf('built-from-a').write(analyzer, { findings: [finding] });
 
-    write('languages/python/rules/rule.test.mjs', 'export const checked = 2;\n');
-    expect(cacheOf().read(analyzer)).toEqual({ findings: [finding] });
-
-    write('languages/python/rules/rule.mjs', 'export const banned = ["print", "pprint"];\n');
-    expect(cacheOf().read(analyzer)).toBeUndefined();
+    expect(cacheOf('built-from-a').read(analyzer)).toEqual({ findings: [finding] });
+    expect(cacheOf('built-from-b').read(analyzer)).toBeUndefined();
   });
 
   it('round-trips a report and treats corrupt entries as misses', () => {
@@ -141,6 +128,23 @@ describe('findings cache', () => {
 
     runBaseWithCache({ cache, analyzers, run, resolveContext });
     expect(ran[1]).toEqual(['broken']);
+  });
+
+  it('reports how many analyzers it read from the cache, and from where', () => {
+    const directory = path.join(temporaryRoot(), 'cache');
+    const cache = createFindingsCache({ directory, mergeBaseSha: 'abc', projectRelativePath: '.' });
+    cache.write(analyzer, { findings: [finding] });
+    const cachedLines = [];
+
+    runBaseWithCache({
+      cache,
+      analyzers: [analyzer],
+      run: () => ({ reports: new Map(), timings: new Map(), toolErrors: [] }),
+      resolveContext: { liveProjectRoot: '.', policyRoot: '.' },
+      onCached: (count, sources) => cachedLines.push({ count, sources }),
+    });
+
+    expect(cachedLines).toEqual([{ count: 1, sources: [directory] }]);
   });
 
   it('does not store a report built on a dependency that reported a tool error', () => {
