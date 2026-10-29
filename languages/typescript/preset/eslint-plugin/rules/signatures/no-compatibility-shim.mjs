@@ -51,6 +51,29 @@ function aliasOf(declaration) {
   return plain ? { alias: only.id.name, target: only.init.name } : undefined;
 }
 
+function reportDeprecatedTags(context) {
+  const deprecated = context.sourceCode
+    .getAllComments()
+    .filter((comment) => isJsdocBlock(comment) && DEPRECATED_TAG.test(comment.value));
+  for (const comment of deprecated) {
+    context.report({ loc: comment.loc, messageId: 'deprecatedTag' });
+  }
+}
+
+function reportAliases(context, program) {
+  const exported = exportedNamesOf(program);
+  const aliases = program.body
+    .filter((statement) => statement.type === 'ExportNamedDeclaration')
+    .map((statement) => ({ statement, found: aliasOf(statement.declaration) }))
+    .filter(
+      ({ found }) =>
+        found !== undefined && found.alias !== found.target && exported.has(found.target),
+    );
+  for (const { statement, found } of aliases) {
+    context.report({ node: statement, messageId: 'aliasExport', data: found });
+  }
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -68,22 +91,9 @@ export const rule = {
     return {
       Program(program) {
         if (!tagsHandledByComments) {
-          for (const comment of context.sourceCode.getAllComments()) {
-            if (isJsdocBlock(comment) && DEPRECATED_TAG.test(comment.value)) {
-              context.report({ loc: comment.loc, messageId: 'deprecatedTag' });
-            }
-          }
+          reportDeprecatedTags(context);
         }
-        const exported = exportedNamesOf(program);
-        for (const statement of program.body) {
-          const found =
-            statement.type === 'ExportNamedDeclaration'
-              ? aliasOf(statement.declaration)
-              : undefined;
-          if (found !== undefined && found.alias !== found.target && exported.has(found.target)) {
-            context.report({ node: statement, messageId: 'aliasExport', data: found });
-          }
-        }
+        reportAliases(context, program);
       },
     };
   },

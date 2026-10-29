@@ -1,5 +1,6 @@
 import { closingIndex } from '../kotlin-source.mjs';
 
+const DECLARATION_WINDOW = 400;
 const DEPRECATED = /(?<![\w.])@(?:kotlin\.)?Deprecated\b/g;
 const DECLARATION_KEYWORD = /\b(?:fun|val|var|class|interface|object|typealias|constructor)\b/;
 const ALIAS = /(?<![\w.])typealias\s+([A-Z]\w*)\s*=\s*([A-Z]\w*)\s*$/gm;
@@ -14,9 +15,9 @@ function annotatedDeclaration(code, match) {
   if (/^\s*\(/.test(code.slice(end))) {
     end = closingIndex(code, end + code.slice(end).indexOf('(')) + 1;
   }
-  const rest = code.slice(end, end + 400);
-  const keyword = DECLARATION_KEYWORD.exec(rest);
-  return keyword === null ? rest : rest.slice(0, keyword.index);
+  const rest = code.slice(end, end + DECLARATION_WINDOW);
+  const keyword = DECLARATION_KEYWORD.exec(rest) ?? undefined;
+  return keyword === undefined ? rest : rest.slice(0, keyword.index);
 }
 
 function deprecations(code) {

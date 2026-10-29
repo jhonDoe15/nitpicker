@@ -1,4 +1,4 @@
-export const ARRAY_MUTATORS = new Set([
+const ARRAY_MUTATORS = new Set([
   'push',
   'pop',
   'shift',
@@ -61,4 +61,8 @@ export function mutatedOwner(node, method, services) {
   return partsOf(receiver)
     .flatMap((part) => ownersOf(checker.getApparentType(part).getProperty(method)))
     .find((owner) => mutates(owner, method));
+}
+
+export function isArrayMutator(method) {
+  return ARRAY_MUTATORS.has(method);
 }

@@ -545,7 +545,7 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `createReducer`, `useImmer` or `useImmerReducer`), a `readonly` type (the compiler rejects the
   write), and plain property assignment (`user.name = name`). `domain/` files keep the stricter
   `no-mutating-method-in-domain` and do not get this rule. The shared method tables are in
-  `eslint-plugin/rules/analysis/mutating-methods.mjs`.
+  `eslint-plugin/rules/analysis/mutation/mutating-methods.mjs`.
 - `@typescript-eslint/prefer-nullish-coalescing` (type-aware, `ignorePrimitives: { boolean: true }`):
   `name || 'none'` on a value that can be `undefined` turns `''` and `0` into the default; write
   `name ?? 'none'`. Conditions (`if (a || b)`) and boolean operands are not reported.

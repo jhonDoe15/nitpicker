@@ -60,7 +60,7 @@ describe('signature rule messages', () => {
 
     expect(message).toContain(form);
     expect(message).toMatch(
-      /If this is intended, add \{"rule":"[a-z-]+","paths":\["src\/mod\.py"\],"reason":"\.\.\."\} to "python\.exceptions" in nitpicker\.config\.json\.$/u,
+      /^.*If this is intended, add \{"rule":"[a-z-]+","paths":\["src\/mod\.py"\],"reason":"\.\.\."\} to "python\.exceptions" in nitpicker\.config\.json\.$/u,
     );
   });
 });

@@ -42,7 +42,7 @@ describe.skipIf(!enabled)('parameter-mutation', () => {
   ])('flags %s: %s', (type, use, label) => {
     const imports =
       'import bisect\nimport heapq\nimport random\nfrom collections import deque\n\n\n';
-    const code = `${imports}${body({ type: type === 'deque' ? 'deque[int]' : `${type}`, use })}`;
+    const code = `${imports}${body({ type: type === 'deque' ? 'deque[int]' : type, use })}`;
     const [actual, expected] = outcomes([[use, code, [`parameter-mutation:8 ${label} (f)`]]]);
     expect(actual).toEqual(expected);
   });
