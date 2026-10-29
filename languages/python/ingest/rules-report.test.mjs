@@ -85,6 +85,16 @@ describe('rules script report', () => {
     ['credential-shape', 'credential', 'A string has the shape of a credential'],
     ['secret-in-log', 'token', '`token` is a secret and is passed to a log call'],
     ['io-in-loop', 'requests.get()', '`requests.get()` runs once per item of a loop'],
+    [
+      'task-outlives-resource',
+      'stream passed to nursery.start_soon',
+      '`stream passed to nursery.start_soon`: the resource closes when its `with` block ends, while the child task can still use it',
+    ],
+    [
+      'unshielded-cleanup-await',
+      'await stream.aclose() in finally',
+      '`await stream.aclose() in finally` can be cancelled before the cleanup finishes, so the resource may stay open',
+    ],
     ['todo-without-issue', 'TODO: later', 'The task marker `TODO: later` has no issue'],
     [
       'skipped-test-without-reason',

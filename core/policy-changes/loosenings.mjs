@@ -37,24 +37,29 @@ function precedenceLoosened({ before = DEFAULT_PRECEDENCE, after = DEFAULT_PRECE
     : projectWeight(after) > projectWeight(before);
 }
 
+function listShrank({ before = [], after = [] }) {
+  return before.some((entry) => !after.includes(entry));
+}
+
 function turnedOff(offValue) {
   return ({ before, after }) => after === offValue && before !== offValue;
 }
 
 const LOOSENING_SETTINGS = [
-  [/^preset$/u, presetLoosened],
-  [/^react\.enabled$/u, turnedOff(false)],
-  [/^i18n\.enabled$/u, turnedOff(false)],
-  [/^python\.importLinter$/u, turnedOff(false)],
-  [/^kotlin\.formatter$/u, turnedOff('none')],
-  [/^kotlin\.detektConfig$/u, () => true],
-  [/^tools\.[^.]+\.precedence$/u, precedenceLoosened],
+  [/^preset$/u, 'preset', presetLoosened],
+  [/^react\.enabled$/u, 'react-disabled', turnedOff(false)],
+  [/^i18n\.enabled$/u, 'i18n-disabled', turnedOff(false)],
+  [/^python\.importLinter$/u, 'import-linter-disabled', turnedOff(false)],
+  [/^kotlin\.formatter$/u, 'kotlin-formatter-off', turnedOff('none')],
+  [/^kotlin\.detektConfig$/u, 'kotlin-detekt-config', () => true],
+  [/^tools\.[^.]+\.precedence$/u, 'tool-precedence', precedenceLoosened],
+  [/^spring\.roles\.[^.]+$/u, 'spring-roles-shrank', listShrank],
 ];
 
-export function loosensSetting(change, scope) {
-  return LOOSENING_SETTINGS.some(
-    ([pattern, loosens]) => pattern.test(change.setting) && loosens({ ...change, scope }),
-  );
+export function looseningKindOfSetting(change, scope) {
+  return LOOSENING_SETTINGS.find(
+    ([pattern, , loosens]) => pattern.test(change.setting) && loosens({ ...change, scope }),
+  )?.[1];
 }
 
 function thresholdChanges(baseThresholds = {}, headThresholds = {}) {
@@ -73,7 +78,10 @@ function thresholdChanges(baseThresholds = {}, headThresholds = {}) {
       );
   }
   return {
-    loosened: described('raised', ({ before, after }) => after > before),
+    loosened: described('raised', ({ before, after }) => after > before).map((text) => ({
+      text,
+      kind: 'threshold',
+    })),
     changed: described('lowered', ({ before, after }) => after < before),
   };
 }
@@ -85,11 +93,11 @@ function analyzerChanges(baseAnalyzers = [], headAnalyzers = []) {
     loosened: baseAnalyzers.flatMap((entry) => {
       const head = heads.get(entry.name);
       if (head === undefined) {
-        return [`analyzer removed: ${entry.name}`];
+        return [{ text: `analyzer removed: ${entry.name}`, kind: 'analyzer-changed' }];
       }
       return JSON.stringify(head) === JSON.stringify(entry)
         ? []
-        : [`analyzer changed: ${entry.name}`];
+        : [{ text: `analyzer changed: ${entry.name}`, kind: 'analyzer-changed' }];
     }),
     changed: headAnalyzers
       .filter(({ name }) => !bases.has(name))
@@ -104,7 +112,7 @@ export function listedChanges(baseConfig, headConfig) {
     {
       loosened: after
         .filter((name) => !before.includes(name))
-        .map((name) => `analyzer disabled: ${name}`),
+        .map((name) => ({ text: `analyzer disabled: ${name}`, kind: 'analyzer-disabled' })),
       changed: before
         .filter((name) => !after.includes(name))
         .map((name) => `analyzer enabled: ${name}`),
