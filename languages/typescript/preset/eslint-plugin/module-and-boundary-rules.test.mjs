@@ -87,12 +87,12 @@ ruleTester.run('no-production-console', noProductionConsole, {
     {
       filename: '/repo/src/main/feature.ts',
       code: "console.warn('degraded');",
-      errors: [{ messageId: 'consoleCall', data: { method: 'warn' } }],
+      errors: [{ messageId: 'consoleCall', data: { reference: 'console.warn()' } }],
     },
     {
       filename: '/repo/src/main/feature.ts',
       code: "console.error('failed');",
-      errors: [{ messageId: 'consoleCall', data: { method: 'error' } }],
+      errors: [{ messageId: 'consoleCall', data: { reference: 'console.error()' } }],
     },
   ],
 });
