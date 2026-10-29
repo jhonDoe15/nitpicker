@@ -20,7 +20,9 @@ afterEach(() => {
 
 function manifestIn(text) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-manifest-guard-')));
-  cleanups.push(() => rmSync(root, { recursive: true, force: true }));
+  cleanups.push(() => {
+    rmSync(root, { recursive: true, force: true });
+  });
   writeFileSync(path.join(root, 'package.json'), text);
   writeFileSync(path.join(root, 'other.json'), text);
   return root;
@@ -34,7 +36,9 @@ describe('the package.json guard of the knip run', () => {
   it('drops the knip key wherever knip reads the manifest from, symlinked or not', async () => {
     const root = manifestIn('{ "name": "app", "knip": { "ignore": ["**"] } }');
     const linked = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-manifest-link-')), 'app');
-    cleanups.push(() => rmSync(path.dirname(linked), { recursive: true, force: true }));
+    cleanups.push(() => {
+      rmSync(path.dirname(linked), { recursive: true, force: true });
+    });
     symlinkSync(root, linked);
     guarded(path.join(linked, 'package.json'));
     expect(JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'))).toEqual({

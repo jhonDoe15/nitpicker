@@ -32,10 +32,14 @@ function failureText(error) {
   return error.cause instanceof Error ? `${error.message}: ${error.cause.message}` : error.message;
 }
 
+async function loadedResult(tool, file) {
+  try {
+    return { config: await loadToolConfig(tool, file) };
+  } catch (error) {
+    return { failure: failureText(error) };
+  }
+}
+
 export async function writeToolConfig({ tool, file, resultFile }) {
-  const result = await loadToolConfig(tool, file).then(
-    (config) => ({ config }),
-    (error) => ({ failure: failureText(error) }),
-  );
-  writeFileSync(resultFile, JSON.stringify(result));
+  writeFileSync(resultFile, JSON.stringify(await loadedResult(tool, file)));
 }

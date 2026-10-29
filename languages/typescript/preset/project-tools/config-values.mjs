@@ -1,4 +1,4 @@
-import { isPlainObject, listOf } from '../../../../shared/config.mjs';
+import { isPlainObject } from '../../../../shared/config.mjs';
 
 const REGEXP_KEY = '$nitpickerRegExp';
 const SCALAR_TYPES = new Set(['string', 'number', 'boolean', 'undefined']);
@@ -17,12 +17,15 @@ function described(value) {
   return typeof name === 'string' && name.length > 0 ? `a ${name}` : 'an object with a prototype';
 }
 
+function keyPath(where, key) {
+  return where === '' ? key : `${where}.${key}`;
+}
+
 function childrenOf(value, where, ancestors) {
-  const at = (key) => (where === '' ? key : `${where}.${key}`);
   const lineage = [...ancestors, value];
   return Array.isArray(value)
     ? value.map((item, index) => [item, `${where}[${String(index)}]`, lineage])
-    : Object.entries(value).map(([key, item]) => [item, at(key), lineage]);
+    : Object.entries(value).map(([key, item]) => [item, keyPath(where, key), lineage]);
 }
 
 function unsupportedValue(value) {
