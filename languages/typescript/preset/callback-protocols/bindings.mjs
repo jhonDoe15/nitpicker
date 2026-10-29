@@ -1,5 +1,5 @@
 import { chainOf, depthFirst } from '../../../../shared/traversal.mjs';
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 
 export function unwrap(node) {
   return chainOf(node, (current) =>

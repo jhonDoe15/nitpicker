@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { accessedName, enclosingClosure, unwrapValue } from '../../syntax/nodes.mjs';
 import { isOwnerThis, symbolOf } from '../scope.mjs';
 

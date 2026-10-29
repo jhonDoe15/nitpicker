@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { descendants, isAssignmentOperator, isStep, unwrap } from '../syntax/nodes.mjs';
 
 const COLLECTIONS = new Set(['Map', 'Set', 'WeakMap', 'WeakSet', 'Array', 'Object']);

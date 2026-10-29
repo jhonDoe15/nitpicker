@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { entryOfNodeOrType, isUntyped, normalizedTypeText } from '../../types/type-lookup.mjs';
 
 export function parameterInfo(scope, parameter) {
