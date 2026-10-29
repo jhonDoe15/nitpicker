@@ -2,7 +2,11 @@ import { namesOf } from './source/jvm-tokens.mjs';
 
 const TYPE_KINDS = new Set(['class', 'interface', 'enum', 'type']);
 const MEMBER_SEPARATORS = new Set(['.', '::']);
-export const CALL_SEPARATORS = new Set(['.', '?.', '::']);
+const CALL_SEPARATORS = new Set(['.', '?.', '::']);
+
+export function isCallSeparator(text) {
+  return CALL_SEPARATORS.has(text);
+}
 
 function qualified(packageName, name) {
   return packageName === '' ? name : `${packageName}.${name}`;

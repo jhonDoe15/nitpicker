@@ -1,6 +1,6 @@
 import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import { namesOf } from './source/jvm-tokens.mjs';
-import { CALL_SEPARATORS } from './jvm-references.mjs';
+import { isCallSeparator } from './jvm-references.mjs';
 
 const CONSTANT_NAME = /^\p{Lu}[\p{Lu}\p{N}_]+$/u;
 
@@ -41,7 +41,7 @@ export function definitionKey(definition, { parsed, bindings, scope }) {
   const context = { scope, bindings, definition };
   const references = parsed.tokens
     .slice(start, end)
-    .filter((_, offset) => !CALL_SEPARATORS.has(parsed.tokens[start + offset - 1]?.text))
+    .filter((_, offset) => !isCallSeparator(parsed.tokens[start + offset - 1]?.text))
     .flatMap((token) => namesOf(token).map((local) => [local, referenceOf(local, context)]));
   const inherits = references.some(
     ([local, reference]) => reference === undefined && CONSTANT_NAME.test(local),
