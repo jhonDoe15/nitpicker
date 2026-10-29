@@ -10,14 +10,14 @@ export function docsRef({ version, checkout }) {
 
 function readManifest(packageRoot) {
   try {
-    return JSON.parse(readFileSync(new URL('package.json', packageRoot), 'utf8'));
-  } catch {
-    return undefined;
+    return { manifest: JSON.parse(readFileSync(new URL('package.json', packageRoot), 'utf8')) };
+  } catch (error) {
+    return { kind: 'unreadable-manifest', cause: error };
   }
 }
 
 export function docsRootUrl(packageRoot = PACKAGE_ROOT) {
-  const manifest = readManifest(packageRoot);
+  const { manifest } = readManifest(packageRoot);
   const repository = REPOSITORY_URL.exec(String(manifest?.repository?.url ?? ''))?.[1];
   const checkout = existsSync(new URL('.git', packageRoot));
   if (repository === undefined || (!checkout && typeof manifest.version !== 'string')) {
