@@ -1,12 +1,21 @@
+import { matchesFrom } from './kotlin-brackets.mjs';
+
+export {
+  braceDepths,
+  closingIndex,
+  enclosingOpen,
+  parenDepths,
+  splitArguments,
+} from './kotlin-brackets.mjs';
+
 const CHARACTER_LITERAL = /'(?:\\(?:u[0-9a-fA-F]{4}|.)|[^'\\\n])'/y;
-const TOKEN = /"+|\\|'|\/\/|\/\*|\$\{|\$[A-Za-z_]|[{}\n]/g;
+const TOKEN = /"+|\\|'|\/\/|\/\*|\$\{|\$[A-Za-z_`]|[{}\n]/g;
 const BLOCK_COMMENT_MARK = /\/\*|\*\//g;
 const RAW_QUOTES = '"""';
-const BRACKETS = { '(': /[()]/g, '{': /[{}]/g, '[': /[[\]]/g };
-const ARGUMENT_MARK = /[()[\]{},]/g;
 
 function blank(state, from, to) {
   state.ranges.push({ from, to });
+  state.contextRanges.push({ from, to });
 }
 
 function blankRanges(source, ranges) {
@@ -21,12 +30,6 @@ function blankRanges(source, ranges) {
   }
   pieces.push(source.slice(cursor));
   return pieces.join('');
-}
-
-function matchesFrom(text, pattern, from) {
-  const marks = new RegExp(pattern.source, 'g');
-  marks.lastIndex = from;
-  return text.matchAll(marks);
 }
 
 function blockCommentEnd(source, start) {
@@ -72,10 +75,11 @@ function openBrace(state) {
   state.stack.at(-1).depth += 1;
 }
 
-function closeBrace(state) {
+function closeBrace(state, index) {
   const top = state.stack.at(-1);
   if (top.template === true && top.depth === 0) {
     state.stack.pop();
+    state.stack.at(-1).expressions.push({ from: top.expressionStart, to: index });
     return;
   }
   top.depth -= 1;
@@ -100,12 +104,28 @@ function closeLiteral(state, bodyEnd, end) {
     template: entry.template,
     raw: entry.mode === 'raw',
   });
-  blank(state, entry.bodyStart, bodyEnd);
+  state.ranges.push({ from: entry.bodyStart, to: bodyEnd });
+  const edges = [
+    entry.bodyStart,
+    ...entry.expressions.flatMap(({ from, to }) => [from, to]),
+    bodyEnd,
+  ];
+  for (const [position, from] of edges.entries()) {
+    if (position % 2 === 0) {
+      state.contextRanges.push({ from, to: edges[position + 1] });
+    }
+  }
 }
 
 function openLiteral(state, start, mode) {
   const width = mode === 'raw' ? RAW_QUOTES.length : 1;
-  state.stack.push({ mode, start, bodyStart: start + width, template: false });
+  state.stack.push({
+    mode,
+    start,
+    bodyStart: start + width,
+    template: false,
+    expressions: [],
+  });
   return start + width;
 }
 
@@ -143,7 +163,7 @@ function readLiteralToken(state, index, text) {
     closeLiteral(state, index, index + 1);
   } else if (text === '${') {
     top.template = true;
-    state.stack.push({ mode: 'code', template: true, depth: 0 });
+    state.stack.push({ mode: 'code', template: true, depth: 0, expressionStart: index + 2 });
   } else if (text.startsWith('$')) {
     top.template = true;
   }
@@ -184,6 +204,7 @@ export function scanKotlinSource(source) {
   const state = {
     source,
     ranges: [],
+    contextRanges: [],
     literals: [],
     comments: [],
     stack: [{ mode: 'code', depth: 0 }],
@@ -196,6 +217,7 @@ export function scanKotlinSource(source) {
   return {
     source,
     code: blankRanges(source, state.ranges),
+    contextCode: blankRanges(source, state.contextRanges),
     literals: state.literals.toSorted((left, right) => left.start - right.start),
     comments: state.comments,
     lineStarts: lineStarts(source),
@@ -218,72 +240,6 @@ export function literalAt(scanned, offset) {
 
 export function literalsIn(scanned, from, to) {
   return scanned.literals.filter(({ start, end }) => start >= from && end <= to);
-}
-
-export function closingIndex(code, open) {
-  const opener = code[open];
-  let depth = 0;
-  for (const { index, 0: bracket } of matchesFrom(code, BRACKETS[opener], open)) {
-    depth += bracket === opener ? 1 : -1;
-    if (depth === 0) {
-      return index;
-    }
-  }
-  return code.length;
-}
-
-export function splitArguments(code, open) {
-  const close = closingIndex(code, open);
-  const parts = [];
-  let depth = 0;
-  let start = open + 1;
-  for (const { index, 0: mark } of matchesFrom(code.slice(0, close), ARGUMENT_MARK, open + 1)) {
-    if (mark === ',' && depth === 0) {
-      parts.push({ start, end: index });
-      start = index + 1;
-    } else if (mark !== ',') {
-      depth += '([{'.includes(mark) ? 1 : -1;
-    }
-  }
-  if (code.slice(start, close).trim() !== '') {
-    parts.push({ start, end: close });
-  }
-  return { close, parts };
-}
-
-function depthsOf(code, opener) {
-  const depths = new Int32Array(code.length + 1);
-  let depth = 0;
-  let cursor = 0;
-  for (const { index, 0: bracket } of code.matchAll(BRACKETS[opener])) {
-    const opens = bracket === opener;
-    const next = opens ? index + 1 : index;
-    depths.fill(depth, cursor, next);
-    depth += opens ? 1 : -1;
-    cursor = next;
-  }
-  depths.fill(depth, cursor);
-  return depths;
-}
-
-export function braceDepths(code) {
-  return depthsOf(code, '{');
-}
-
-export function parenDepths(code) {
-  return depthsOf(code, '(');
-}
-
-export function enclosingOpen(code, offset) {
-  const open = [];
-  for (const { index, 0: brace } of code.slice(0, offset).matchAll(BRACKETS['{'])) {
-    if (brace === '{') {
-      open.push(index);
-    } else {
-      open.pop();
-    }
-  }
-  return open.at(-1) ?? -1;
 }
 
 export function inImport(code, offset) {

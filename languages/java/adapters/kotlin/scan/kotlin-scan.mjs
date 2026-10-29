@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { hash, nextOccurrence } from '../../../../../shared/rules/finding-helpers.mjs';
 import { braceDepths, lineOf, lineText, scanKotlinSource } from './kotlin-source.mjs';
+import { REPEATED_STRING_MESSAGE, repeatedStringLiterals } from './literals/repeated-strings.mjs';
 import { CALL_MESSAGES, ioInLoops, logTemplates, shellCommands } from './rules/calls.mjs';
 import { CATCH_MESSAGES, booleanFlags, catchOnlyLogs } from './rules/catches.mjs';
 import { DECLARATION_MESSAGES, genericNames, mutableModuleState } from './rules/declarations.mjs';
@@ -48,6 +49,7 @@ const MESSAGES = {
   ...TRI_STATE_MESSAGES,
   ...PARAMETER_MUTATION_MESSAGES,
   ...COMPATIBILITY_SHIM_MESSAGES,
+  RepeatedStringLiteral: REPEATED_STRING_MESSAGE,
 };
 
 export const KOTLIN_SOURCE_RULES = Object.keys(MESSAGES).map(
@@ -76,6 +78,7 @@ const MAIN_RULES = [
   triStateBooleans,
   parameterMutations,
   compatibilityShims,
+  repeatedStringLiterals,
 ];
 const TEST_RULES = [testClassesWithoutTests];
 
