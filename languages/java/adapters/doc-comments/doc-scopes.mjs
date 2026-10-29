@@ -21,25 +21,12 @@ export function matchesFrom(text, pattern, from) {
   return text.matchAll(marks);
 }
 
-function lastAtOrBefore(values, offset, valueOf) {
-  let low = 0;
-  let high = values.length;
-  for (const _ of values) {
-    if (low >= high) {
-      break;
-    }
-    const middle = Math.floor((low + high) / 2);
-    [low, high] = valueOf(values[middle]) <= offset ? [middle + 1, high] : [low, middle];
-  }
-  return low - 1;
-}
-
 export function lineStarts(source) {
   return [0, ...[...source.matchAll(/\n/gu)].map(({ index }) => index + 1)];
 }
 
 export function lineAt(starts, offset) {
-  return lastAtOrBefore(starts, offset, (start) => start) + 1;
+  return starts.findLastIndex((start) => start <= offset) + 1;
 }
 
 export function bracePairs(code) {
@@ -57,11 +44,16 @@ export function bracePairs(code) {
 }
 
 function ancestors(pairs, pair) {
-  return pair < 0 ? [] : [...ancestors(pairs, pairs[pair].parent), pair];
+  const chain = pair < 0 ? [] : [pair];
+  for (const current of chain) {
+    const { parent } = pairs[current];
+    chain.push(...(parent < 0 ? [] : [parent]));
+  }
+  return chain.toReversed();
 }
 
 function innermostPair(pairs, offset) {
-  const opened = lastAtOrBefore(pairs, offset - 1, ({ open }) => open);
+  const opened = pairs.findLastIndex(({ open }) => open < offset);
   return ancestors(pairs, opened).findLast((pair) => offset < pairs[pair].close) ?? -1;
 }
 
@@ -136,16 +128,12 @@ export function nameAtEnd(header) {
 }
 
 export function withoutGenerics(text) {
-  let previous;
-  let current = text;
-  for (const _ of text) {
-    if (current === previous) {
-      break;
-    }
-    previous = current;
-    current = current.replaceAll(/<[^<>]*>/gu, ' ');
+  const versions = [text];
+  for (const version of versions) {
+    const next = version.replaceAll(/<[^<>]*>/gu, ' ');
+    versions.push(...(next === version ? [] : [next]));
   }
-  return current;
+  return versions.at(-1);
 }
 
 export function skipSpace(code, from) {
