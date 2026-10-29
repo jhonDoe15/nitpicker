@@ -399,6 +399,30 @@ describe('spec/findings.schema.json', () => {
     expect(validate({ findings: [empty] })).not.toEqual([]);
   });
 
+  it('accepts the files behind a finding and rejects a contributor without its unit', () => {
+    const finding = {
+      tool: 'coupling',
+      rule: 'stability-direction',
+      path: 'src/features/loans',
+      identity: 'package-edge:src/features/loans->src/features/fines',
+      message: 'message',
+      classification: 'enforceable',
+      cause: {
+        files: ['src/features/loans/index.ts'],
+        contributors: [{ file: 'src/features/fines/index.ts', unit: 'feature fines' }],
+      },
+    };
+    const unitless = { ...finding, cause: { ...finding.cause, contributors: [{ file: 'a.ts' }] } };
+    const outside = { ...finding, cause: { ...finding.cause, files: ['../a.ts'] } };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
+    expect(() => parseFinding(unitless)).toThrow(TypeError);
+    expect(validate({ findings: [unitless] })).not.toEqual([]);
+    expect(() => parseFinding(outside)).toThrow(TypeError);
+    expect(validate({ findings: [outside] })).not.toEqual([]);
+  });
+
   it('accepts the number of files of a folder finding and rejects zero', () => {
     const finding = {
       tool: 'tool',

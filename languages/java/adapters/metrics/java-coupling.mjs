@@ -1,6 +1,10 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { buildCouplingReport, evaluateCoupling } from '../../../../shared/rules/coupling.mjs';
+import {
+  featureRoleContract,
+  PUBLIC_FACES,
+} from '../../../../shared/rules/features/feature-roles.mjs';
 
 const COUPLING_TOOL = 'coupling';
 const JDEPS_REPORT = 'jdeps.txt';
@@ -27,7 +31,8 @@ function packageOf(className) {
   return index < 0 ? ROOT_PACKAGE : className.slice(0, index);
 }
 
-export function analyzeJavaCoupling({ classes, edges, fileOf, moduleOf = outerClass }) {
+export function analyzeJavaCoupling({ classes, edges, fileOf, moduleOf = outerClass, layout }) {
+  const roleOfFile = featureRoleContract(layout ?? {}, PUBLIC_FACES.jvm);
   return buildCouplingReport({
     modules: [...new Set(classes.map(moduleOf))].sort(),
     edges: edges.map((edge) => ({
@@ -36,10 +41,14 @@ export function analyzeJavaCoupling({ classes, edges, fileOf, moduleOf = outerCl
     })),
     packageOf,
     fileOf,
+    roleOf: (module) => roleOfFile(fileOf(module)),
   });
 }
 
-export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots, kotlin, files }) {
+export function readCouplingFindings(
+  reportRoot,
+  { projectRoot, sourceRoots, kotlin, files, layout },
+) {
   const jdeps = path.join(reportRoot, JDEPS_REPORT);
   const classList = path.join(reportRoot, JDEPS_CLASSES);
   if (!existsSync(jdeps) || !existsSync(classList)) {
@@ -67,6 +76,7 @@ export function readCouplingFindings(reportRoot, { projectRoot, sourceRoots, kot
       const outer = outerClass(className);
       return kotlin?.moduleOf.get(outer) ?? outer;
     },
+    layout,
   });
   return evaluateCoupling(report, COUPLING_TOOL);
 }

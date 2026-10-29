@@ -48,11 +48,39 @@
           "description": "The words of the message. A new finding of three or more tokens counts as already present when the base has an unmatched finding with the same tool, rule, path and classification, the same number of tokens and at most one differing token.",
           "type": "array",
           "items": { "$ref": "#/$defs/nonEmptyString" }
-        }
+        },
+        "cause": { "$ref": "#/$defs/cause" }
       },
       "if": { "required": ["metric"] },
       "then": {
         "properties": { "classification": { "const": "descriptive" } }
+      }
+    },
+    "projectPath": {
+      "allOf": [
+        { "$ref": "#/$defs/nonEmptyString" },
+        { "not": { "pattern": "^(/|[A-Za-z]:[/\\\\]|\\.\\.([/\\\\]|$))" } }
+      ]
+    },
+    "cause": {
+      "description": "The files behind a finding that measures more than one file. `files` are the files the finding is about; `contributors` are the files whose dependencies move its numbers, each with the feature or package it belongs to. A new finding none of whose `files` the change edited names the changed contributors in its message.",
+      "type": "object",
+      "required": ["files", "contributors"],
+      "additionalProperties": false,
+      "properties": {
+        "files": { "type": "array", "items": { "$ref": "#/$defs/projectPath" } },
+        "contributors": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["file", "unit"],
+            "additionalProperties": false,
+            "properties": {
+              "file": { "$ref": "#/$defs/projectPath" },
+              "unit": { "$ref": "#/$defs/nonEmptyString" }
+            }
+          }
+        }
       }
     },
     "location": {
