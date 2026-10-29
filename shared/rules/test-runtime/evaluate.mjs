@@ -12,7 +12,15 @@
 // Each finding is enforceable and keyed by test path and source hash; the category counts and the
 // other summary figures are descriptive metrics.
 
+import { RULE_IDS } from '../../policy.mjs';
 import { addMetric, hash, summaryMetrics } from '../finding-helpers.mjs';
+
+const MESSAGES = {
+  [RULE_IDS.noProductionRuntime]:
+    'Test runs no production code: nothing it imports or references, directly or through test helpers, is production code. Test the production code it is about, or delete the test',
+  [RULE_IDS.typeOnlyProductionDependency]:
+    'Test reaches production code only through type-only imports. Import and run the production code it is about, or delete the test',
+};
 
 export function evaluateTestRuntime(report, analyzerName) {
   const findings = summaryMetrics(analyzerName, report.summary, 'test-runtime', ['categories']);
@@ -33,7 +41,7 @@ export function evaluateTestRuntime(report, analyzerName) {
       rule: finding.category,
       path: finding.test,
       identity: `test:${finding.test}:source:${finding.sourceHash ?? hash(finding.test)}`,
-      message: `Test has ${finding.category.replaceAll('-', ' ')}`,
+      message: MESSAGES[finding.category],
       classification: 'enforceable',
     });
   }

@@ -246,7 +246,7 @@ describe('the findings', () => {
         rule: 'no-production-runtime',
         path: 'tests/test_a.py',
         identity: `test:tests/test_a.py:source:${hash('def test_a():\n    pass\n')}`,
-        message: 'Test has no production runtime',
+        message: 'Test runs no production code: nothing it imports or references, directly or through test helpers, is production code. Test the production code it is about, or delete the test',
         classification: 'enforceable',
       },
     ]);
@@ -319,7 +319,7 @@ describe('exceptions', () => {
     const [hinted] = applyRuleHints([finding()]);
 
     expect(hinted.message).toBe(
-      'Test has no production runtime. If this is intended, add {"rule":"no-production-runtime","paths":["tests/test_a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+      'Test runs no production code: nothing it imports or references, directly or through test helpers, is production code. Test the production code it is about, or delete the test. If this is intended, add {"rule":"no-production-runtime","paths":["tests/test_a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
     );
   });
 });

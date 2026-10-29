@@ -254,13 +254,13 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
         rule: 'type-only-production-dependency',
         path: 'tests/test_typed_only.py',
         message:
-          'Test has type only production dependency. If this is intended, add {"rule":"type-only-production-dependency","paths":["tests/test_typed_only.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+          'Test reaches production code only through type-only imports. Import and run the production code it is about, or delete the test. If this is intended, add {"rule":"type-only-production-dependency","paths":["tests/test_typed_only.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       },
       {
         rule: 'no-production-runtime',
         path: 'tests/test_unlinked.py',
         message:
-          'Test has no production runtime. If this is intended, add {"rule":"no-production-runtime","paths":["tests/test_unlinked.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+          'Test runs no production code: nothing it imports or references, directly or through test helpers, is production code. Test the production code it is about, or delete the test. If this is intended, add {"rule":"no-production-runtime","paths":["tests/test_unlinked.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       },
     ]);
   });

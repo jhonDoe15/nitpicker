@@ -144,7 +144,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
         rule: 'no-production-runtime',
         path: 'tests/orphan.test.ts',
         identity: 'test:tests/orphan.test.ts:source:8d9c747345db8de18b883037',
-        message: 'Test has no production runtime',
+        message: 'Test runs no production code: nothing it imports or references, directly or through test helpers, is production code. Test the production code it is about, or delete the test',
         classification: 'enforceable',
       },
     ]);

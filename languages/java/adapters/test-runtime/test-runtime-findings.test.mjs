@@ -160,7 +160,7 @@ describe('readTestRuntimeFindings reports', () => {
         rule: NO_PRODUCTION,
         path: 'src/test/java/shop/MathTest.java',
         identity: `test:src/test/java/shop/MathTest.java:source:${hash(MATH_TEST)}`,
-        message: 'Test has no production runtime',
+        message: 'Test runs no production code: nothing it imports or references, directly or through test helpers, is production code. Test the production code it is about, or delete the test',
         classification: 'enforceable',
       },
     ]);
@@ -290,7 +290,7 @@ describe('readTestRuntimeFindings exceptions', () => {
     const [finding] = applyFindingPolicy(offending(), { routeRule: javaRouteRule });
 
     expect(finding.message).toBe(
-      'Test has no production runtime. If this is intended, add {"rule":"no-production-runtime","paths":["src/test/java/shop/MathTest.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      'Test runs no production code: nothing it imports or references, directly or through test helpers, is production code. Test the production code it is about, or delete the test. If this is intended, add {"rule":"no-production-runtime","paths":["src/test/java/shop/MathTest.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
   });
 

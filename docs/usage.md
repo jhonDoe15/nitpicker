@@ -550,11 +550,11 @@ Every finding of a rule nitpicker adds ends with the entry that accepts it, in t
 surviving and uncovered mutants (`mutant-survived`, `mutant-nocoverage`) and `stability-direction`;
 a `duplicate-clone` message keeps its sentence naming the files to add to `exclude`, and an
 `exceptions` entry for `duplicate-clone` lifts it too. The TypeScript and JavaScript presets add the dead-code findings (`files`,
-`exports`, `types`), `no-production-runtime`, `type-only-production-dependency`,
-`public-alternative-bypass`, the coding-standards findings (`public-contract-production-use`,
+`exports`, `types`), `public-alternative-bypass`, the coding-standards findings (`public-contract-production-use`,
 `runtime-boundary/*`, `callback-protocol/*`) and the dependency-cruiser rules (for example
 `no-production-cycles`, `domain-does-not-import-adapters`); every ESLint message ends with its own
-entry too, whose `rule` is the ESLint rule id. A TypeScript compiler error (`TS2322`) has no
+entry too, whose `rule` is the ESLint rule id. `no-production-runtime` prints its entry in every preset and
+`type-only-production-dependency` in the TypeScript, JavaScript and Python presets (Python: for `python.exceptions`). A TypeScript compiler error (`TS2322`) has no
 exception: fix the type error, and a config entry for one is rejected. The entry is the usual
 `{ "rule", "paths", "reason" }` with the path of the finding filled in, plus `function` (the
 structure, CRAP, coverage and mutation rules) or `name` (unused `exports` and `types`):
