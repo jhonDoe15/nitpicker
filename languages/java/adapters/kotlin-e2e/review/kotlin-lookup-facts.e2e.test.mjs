@@ -5,7 +5,7 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { findingFactory } from '../../kotlin/review-rules/review-finding.mjs';
 import { serviceLookupFindings } from '../../kotlin/review-rules/main/service-lookups/service-lookups.mjs';
 import { composeMessage } from '../../kotlin/review-rules/test-support/lookup-facts.mjs';
-import { prepareKotlinPsi, runKotlinPsi } from '../../test-support/kotlin-psi-runner.mjs';
+import { prepareKotlinPsi, runKotlinPsi } from '../../test-support/kotlin/kotlin-psi-runner.mjs';
 import {
   EXPECTED_LOOKUP_FACT_FINDINGS,
   LOOKUP_FACT_SOURCES,
