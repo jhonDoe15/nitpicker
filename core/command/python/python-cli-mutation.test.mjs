@@ -181,7 +181,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
     ]);
     expect(calls().filter(({ tool }) => tool === 'mutmut')).toEqual([]);
   });
-  it('does not run mutmut when the tests fail, and the tests-failed error is the only one', () => {
+  it('does not run mutmut when the tests fail, and the tests-not-run error is the only one', () => {
     const calls = callsLog();
     const root = pythonRepository();
     writeFiles(root, { 'test-exit.txt': '1\n' });
@@ -190,7 +190,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
     const result = run(root);
 
     expect(result.exitCode).toBe(2);
-    expect(result.json('tool-errors.json').map(({ rule }) => rule)).toEqual(['tests-failed']);
+    expect(result.json('tool-errors.json').map(({ rule }) => rule)).toEqual(['tests-not-run']);
     expect(calls().filter(({ tool }) => tool === 'mutmut')).toHaveLength(1);
   });
   it('reports a failing mutmut run as a tool error on head', () => {

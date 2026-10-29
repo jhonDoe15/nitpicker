@@ -64,7 +64,7 @@ describe('reading the CRAP inputs', () => {
           'f has CRAP 12.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/a.py"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
         allowedForm: 'Test its uncovered branches, or split a branchy part into its own function.',
         classification: 'enforceable',
-        location: { line: 1 },
+        location: { line: 1, endLine: 2 },
         ratchet: {
           key: 'function:f:crap',
           value: 12,

@@ -5,8 +5,25 @@ import { createHash } from 'node:crypto';
 
 /** Tool-error rules for a project whose own tests fail; the skipped one is a notice, not a cause. */
 export const TESTS_FAILED_RULE = 'tests-failed';
+export const TESTS_NOT_RUN_RULE = 'tests-not-run';
 export const TESTS_FAILED_SKIPPED_RULE = 'tests-failed-skipped';
+export const TESTS_FAILED_RULES = [TESTS_FAILED_RULE, TESTS_FAILED_SKIPPED_RULE];
+/** A tests-failed finding's `symbol` lists the directories it covers, joined by this. */
+export const TESTS_FAILED_SCOPE_SEPARATOR = ',';
 export const TYPECHECK_FAILED_SKIPPED_RULE = 'typecheck-failed-skipped';
+
+const MAX_LISTED_TESTS = 5;
+
+/** The note of a base whose own tests fail: one headline, then the failing tests. */
+export function testsFailOnBase(tests, where = '') {
+  const listed = tests.slice(0, MAX_LISTED_TESTS).map((test) => `  ${test}`);
+  const omitted = tests.length - listed.length;
+  return [
+    `Tests fail on the base${where}:`,
+    ...listed,
+    ...(omitted > 0 ? [`  and ${String(omitted)} more`] : []),
+  ].join('\n');
+}
 
 /** A stable 24-character digest used inside finding identities. */
 export function hash(value) {

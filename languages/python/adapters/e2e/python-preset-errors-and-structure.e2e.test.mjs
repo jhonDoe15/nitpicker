@@ -219,7 +219,7 @@ describe.skipIf(!pythonE2eEnabled)(
             },
             exceptionList: 'exceptions',
             classification: 'enforceable',
-            location: { line: 2 },
+            location: { line: 2, endLine: 12 },
             ratchet: {
               key: 'function:pipeline.score:crap',
               value: 10,
@@ -255,7 +255,7 @@ describe.skipIf(!pythonE2eEnabled)(
             },
             exceptionList: 'exceptions',
             classification: 'enforceable',
-            location: { line: 1 },
+            location: { line: 1, endLine: 8 },
             ratchet: {
               key: 'function:pick:crap',
               value: 20,
