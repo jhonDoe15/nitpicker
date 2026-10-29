@@ -1,18 +1,9 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { parse as parseYaml } from 'yaml';
-import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 import { runGit } from '../../diff/git/repository/command.mjs';
-import { declaresUvWorkspace } from '../../tooling/uv-workspace.mjs';
+import { declaresProjects } from '../plan/enclosing.mjs';
 import { inspectRepository } from '../plan/inspect.mjs';
 import { canChangePlan, isPlanInput, withBaseTree } from './base-tree.mjs';
-
-export const DECLARATION_FILES = [
-  CONFIG_FILE_NAME,
-  'package.json',
-  'pnpm-workspace.yaml',
-  'pyproject.toml',
-];
 
 function inspectedPlan(inspection) {
   try {
@@ -75,42 +66,13 @@ function baseText(repositoryRoot, sha, file) {
   return runGit(repositoryRoot, ['show', `${sha}:${file}`]);
 }
 
-function parsed(parse, text) {
-  try {
-    return { value: parse(text) };
-  } catch (error) {
-    return { value: undefined, error };
-  }
-}
-
-function listsProjects(text) {
-  const projects = parsed(JSON.parse, text).value?.projects;
-  return Array.isArray(projects) && projects.length > 0;
-}
-
-function hasWorkspaces(text) {
-  const workspaces = parsed(JSON.parse, text).value?.workspaces;
-  return Array.isArray(workspaces) || Array.isArray(workspaces?.packages);
-}
-
-function listsPackages(text) {
-  return Array.isArray(parsed(parseYaml, text).value?.packages);
-}
-
-const DECLARES = {
-  [CONFIG_FILE_NAME]: listsProjects,
-  'package.json': hasWorkspaces,
-  'pnpm-workspace.yaml': listsPackages,
-  'pyproject.toml': declaresUvWorkspace,
-};
-
 export function baseDeclaresProjects({ repositoryRoot, prefix, mergeBaseSha }) {
   const folder = prefix === '.' ? '' : `${prefix}/`;
   const listing = ['ls-tree', '--name-only', mergeBaseSha, ...(folder === '' ? [] : [folder])];
   const present = runGit(repositoryRoot, listing)
     .split('\n')
     .map((entry) => entry.slice(folder.length));
-  return DECLARATION_FILES.filter((file) => present.includes(file)).some((file) =>
-    DECLARES[file](baseText(repositoryRoot, mergeBaseSha, `${folder}${file}`)),
+  return declaresProjects((file) =>
+    present.includes(file) ? baseText(repositoryRoot, mergeBaseSha, `${folder}${file}`) : undefined,
   );
 }

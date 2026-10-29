@@ -195,6 +195,8 @@ describe('workspace root lookup', () => {
     });
 
     expect(installedDependencies(member)).toBe(path.join(repository, 'node_modules'));
+    writeFiles(member, { 'node_modules/.bin/tsc': '', 'node_modules/.package-lock.json': '{}' });
+    expect(installedDependencies(member)).toBe(path.join(repository, 'node_modules'));
     writeFiles(member, { 'node_modules/eslint/package.json': '{}' });
     expect(installedDependencies(member)).toBe(path.join(member, 'node_modules'));
   });

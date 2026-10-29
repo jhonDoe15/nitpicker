@@ -5,6 +5,7 @@ import { clearSnapshotReports } from '../../snapshot/reporters.mjs';
 import { repositoryRootOf } from '../../configuration/layers/layers.mjs';
 import { readLayeredConfig } from '../../configuration/layers/read-layered.mjs';
 import { normalizeProjectPath } from '../../configuration/layers/settings.mjs';
+import { enclosingMember } from '../plan/enclosing.mjs';
 import { inspectRepository } from '../plan/inspect.mjs';
 import { isGitWorkTree, memberProjectOf } from '../plan/member-root.mjs';
 import { reportFolder } from '../plan/project-entry.mjs';
@@ -268,12 +269,22 @@ function singleMode({ inspection, cli, currentProjectRoot }) {
   return { extraCli: { repositoryLoosenings: loosenings, repositoryToolErrors: toolErrors } };
 }
 
+function enclosingRun(cli, currentProjectRoot) {
+  return (cli.options.projectPaths ?? []).length === 0
+    ? enclosingMember(currentProjectRoot)
+    : undefined;
+}
+
 export function runMonorepo({ cli, currentProjectRoot, runProject }) {
   if (cli.singleProject === true || !isGitWorkTree(currentProjectRoot)) {
     return {};
   }
   const inspection = inspectRepository({ root: currentProjectRoot });
   const { plan, files } = inspection;
+  const enclosing = plan === undefined ? enclosingRun(cli, currentProjectRoot) : undefined;
+  if (enclosing !== undefined) {
+    return { exitCode: runMember({ ...enclosing, cli, runProject }) };
+  }
   if (plan === undefined) {
     return singleMode({ inspection, cli, currentProjectRoot });
   }

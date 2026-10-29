@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { containedPath } from './contained-path.mjs';
 
@@ -69,9 +69,15 @@ export function installedDependencies(projectRoot) {
   const ancestors = ancestorsToRepository(projectRoot);
   const root = managerRoot(projectRoot);
   const upToRoot = ancestors.slice(0, Math.max(ancestors.indexOf(root), 0) + 1);
-  return upToRoot
-    .map((directory) => containedPath(directory, 'node_modules'))
-    .find((candidate) => existsSync(candidate));
+  return upToRoot.map((directory) => containedPath(directory, 'node_modules')).find(holdsPackages);
+}
+
+function holdsPackages(candidate) {
+  return (
+    existsSync(candidate) &&
+    statSync(candidate).isDirectory() &&
+    readdirSync(candidate).some((entry) => !entry.startsWith('.'))
+  );
 }
 
 function parsedManifest(text) {

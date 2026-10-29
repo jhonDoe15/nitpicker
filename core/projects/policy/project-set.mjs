@@ -3,7 +3,7 @@ import path from 'node:path';
 import { policyDigest, policyFindings } from '../../diff/reporting/review/policy-findings.mjs';
 import { gitBlobId } from '../../policy-changes/policy-scope.mjs';
 import { isInside } from '../discovery/repository-files.mjs';
-import { DECLARATION_FILES } from './base-plan.mjs';
+import { DECLARATION_FILES } from '../plan/enclosing.mjs';
 
 function inside(root, file) {
   const full = path.resolve(root, file);

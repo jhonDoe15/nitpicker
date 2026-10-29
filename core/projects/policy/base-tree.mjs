@@ -70,6 +70,14 @@ function blobContents(repositoryRoot, objects) {
   return contents;
 }
 
+function placedFolder(root, folder) {
+  const full = path.resolve(root, folder);
+  if (full !== root && !full.startsWith(root + path.sep)) {
+    throw new Error(`${folder} is outside the base tree`);
+  }
+  return full;
+}
+
 function placed(root, file) {
   const full = path.resolve(root, file);
   if (!full.startsWith(root + path.sep)) {
@@ -94,6 +102,9 @@ function materialize(repositoryRoot, sha, root) {
   const read = written.filter(({ file, mode }) => isPlanInput(file) || mode === SYMLINK_MODE);
   const objects = read.map(({ object }) => object);
   const contents = objects.length === 0 ? new Map() : blobContents(repositoryRoot, objects);
+  for (const folder of new Set(entries.map(({ file }) => path.posix.dirname(file)))) {
+    mkdirSync(placedFolder(root, folder), { recursive: true });
+  }
   for (const entry of written) {
     writeEntry(root, entry, contents);
   }
