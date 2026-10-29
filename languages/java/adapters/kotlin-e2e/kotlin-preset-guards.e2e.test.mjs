@@ -57,7 +57,7 @@ const ALLOWED_GUARDS = {
   'Shell.kt': `${PACKAGE}fun list(dir: String): Process = ProcessBuilder("ls", dir).start()\n`,
   'Loader.kt': `${PACKAGE}class Loader {\n    fun load(file: java.io.File): String {\n        try {\n            return file.readText()\n        } catch (e: java.io.IOException) {\n            throw IllegalStateException("load failed", e)\n        }\n    }\n}\n`,
   'Flags.kt': `${PACKAGE}fun plain(text: String): String = text\n\nfun bold(text: String): String = "<b>$text</b>"\n`,
-  'TriState.kt': `${PACKAGE}fun toggle(force: Boolean): Int = if (force) 1 else 0\n`,
+  'TriState.kt': `${PACKAGE}fun describe(force: Boolean): String = "forced=$force"\n`,
   'Mutation.kt': `${PACKAGE}fun append(items: List<String>): List<String> = items + "x"\n`,
   'Legacy.kt': `${PACKAGE}fun current(): Int = 2\n`,
   'Parser.kt': parser('logger.log(Level.WARNING, "parse failed", e)'),
