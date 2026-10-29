@@ -140,6 +140,14 @@ describe('python config validation', () => {
       'names no rule nitpicker reports: "S110"; ruff S110 was replaced by "swallowed-exception": rename the entry to "swallowed-exception"',
     ],
     [
+      { exceptions: [{ rule: 'FBT001', paths: ['a'], reason: 'r' }] },
+      'names no rule nitpicker reports: "FBT001"; ruff FBT001 was replaced by "boolean-flag-parameter": rename the entry to "boolean-flag-parameter"',
+    ],
+    [
+      { exceptions: [{ rule: 'FBT002', paths: ['a'], reason: 'r' }] },
+      'ruff FBT002 was replaced by "boolean-flag-parameter"',
+    ],
+    [
       {
         exceptions: [
           { rule: 'T201', paths: ['a'], reason: 'r' },
