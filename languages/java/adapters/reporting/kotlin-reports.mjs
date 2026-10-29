@@ -128,7 +128,9 @@ export function readKotlinFindings(context, crapLimit) {
       ...readKotlinReviewFindings({ reportRoot, projectRoot, manifest, modules: context.modules }),
       ...readKotlinStructureFindings(metrics, projectRoot),
       ...readKotlinClassLimitFindings(metrics, context.classLimits),
-      ...(context.quick ? [] : readKotlinCrapFindings(metrics, { projectRoot, jacoco, crapLimit })),
+      ...(jacoco === undefined
+        ? []
+        : readKotlinCrapFindings(metrics, { projectRoot, jacoco, crapLimit })),
     ],
     context.classLimits,
   );

@@ -1,3 +1,4 @@
+import { noteSectionLines } from './format/notes.mjs';
 import { singleLine } from './format/text.mjs';
 import { junitRunProfile } from '../../quick/report-formats.mjs';
 
@@ -35,9 +36,16 @@ export function renderJunitReport(report) {
     `<testsuite name="quality.diff" tests="${String(tests)}" failures="${String(failures)}" errors="0"${profile.skippedAttribute} time="${(report.summary.elapsedMs / 1000).toFixed(3)}">`,
     ...profile.propertyLines,
     ...testCases,
+    ...noteElement(report.notes),
     '</testsuite>',
     '',
   ].join('\n');
+}
+
+function noteElement(notes) {
+  return notes === undefined || notes.length === 0
+    ? []
+    : [`  <system-out>${escapeXml(noteSectionLines(notes).slice(1).join('\n'))}</system-out>`];
 }
 
 function escapeXml(value) {

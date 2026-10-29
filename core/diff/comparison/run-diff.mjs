@@ -12,6 +12,7 @@ import {
   readTouchedPaths,
 } from '../git/patches/project-moves.mjs';
 import { readChangedLines } from '../git/patches/changed-lines.mjs';
+import { readRemovesTests } from '../git/patches/test-removal.mjs';
 import { withTemporaryWorktree, withNamedTemporaryWorktree } from '../git/repository/worktree.mjs';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
 import { runAnalyzers } from '../execution/run-analyzers.mjs';
@@ -35,7 +36,9 @@ export function runQualityDiff(options) {
     compareSnapshots({ settings, comparison, layout, roots, startedAt }),
   );
   report.summary.elapsedMs = Date.now() - startedAt;
-  report.text = writeDiffReports(settings.outputRoot, report);
+  report.text = writeDiffReports(settings.outputRoot, report, {
+    projectPath: settings.projectRelativePath,
+  });
   return report;
 }
 
@@ -92,7 +95,18 @@ function readSnapshotLayout({ repositoryRoot, projectRelativePath }, comparison)
     baseProjectRelativePath,
     moves,
     touchedPaths,
-    touchedCode: { changedLines, isStrictRule, mustMeetOnEditedLines },
+    touchedCode: {
+      changedLines,
+      isStrictRule,
+      mustMeetOnEditedLines,
+      testsRemoved: readRemovesTests({
+        repositoryRoot,
+        mergeBaseSha,
+        headSha,
+        projectRelativePath,
+        baseProjectRelativePath,
+      }),
+    },
   };
 }
 

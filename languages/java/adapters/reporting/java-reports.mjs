@@ -111,7 +111,10 @@ function moduleContextFindings(projectRoot, module, { manifest, modules, options
       javaStyle: options.javaStyle,
       classLimits: { thresholds, exceptions, modulePath },
       quick: options.quick === true,
-      jacoco: options.quick === true ? undefined : readModuleJacoco(module, preset),
+      jacoco:
+        options.quick === true || module.manifest.testsFailed === true
+          ? undefined
+          : readModuleJacoco(module, preset),
       mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
       testTimes: {
         limits: options.testSeconds,
@@ -129,6 +132,10 @@ function moduleContextFindings(projectRoot, module, { manifest, modules, options
   );
 }
 
+function ifTested(jacoco, build) {
+  return jacoco === undefined ? [] : build(jacoco);
+}
+
 function testRootsOf(manifest) {
   return [...(manifest.testSourceRoots ?? []), ...(manifest.kotlinTestSourceRoots ?? [])];
 }
@@ -141,14 +148,14 @@ function readModuleFindings(context, crapLimit) {
     ...readErrorProneFindings(context),
     ...formatFindings(context),
     ...checkstyleFindings(context),
-    ...whenTested(context, () => jacocoFindings(context, jacoco)),
+    ...ifTested(jacoco, (report) => jacocoFindings(context, report)),
     ...archunitFindings(context),
     ...springArchFindings(context),
-    ...whenTested(context, () => crapFindings(context, jacoco, crapLimit)),
+    ...ifTested(jacoco, (report) => crapFindings(context, report, crapLimit)),
     ...whenTested(context, () => pitFindings(context)),
     ...readJavaStructureFindings(reportRoot, projectRoot),
     ...readClassLimitFindings(reportRoot, context.classLimits),
-    ...whenTested(context, () => branchFindings(context, jacoco)),
+    ...ifTested(jacoco, (report) => branchFindings(context, report)),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
     ...whenTested(context, () =>
       readSlowTestFindings({ reportRoot, projectRoot, testRoots, ...context.testTimes }),

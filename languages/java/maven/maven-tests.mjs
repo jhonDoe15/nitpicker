@@ -63,23 +63,44 @@ function copyArchunitReports(reports, reportDir, isArchunit) {
   }
 }
 
+function testOutcome({ module, moduleName, failures, testsRan, tolerateFailures }) {
+  if (failures.length === 0) {
+    return { testsRan, failure: undefined };
+  }
+  const failure = { module: moduleName, tests: failures };
+  if (tolerateFailures === true) {
+    return { testsRan, failure };
+  }
+  throw failingTestsError(module.basedir, [failure]);
+}
+
 export function collectArchunitResults({ module, reportDir, since, isArchunit }) {
   const reports = freshTestReports(module, since);
   copyArchunitReports(reports, reportDir, isArchunit);
   requireArchunitRun(module, reports, isArchunit);
 }
 
-export function collectTestResults({ module, reportDir, since, isArchunit }) {
+export function collectTestResults({
+  module,
+  reportDir,
+  since,
+  isArchunit,
+  tolerateFailures,
+  moduleName = '.',
+}) {
   const reports = freshTestReports(module, since);
   copyArchunitReports(reports, reportDir, isArchunit);
   const failures = reports
     .filter((report) => !isArchunit(suiteNameOf(report)))
     .flatMap((report) => failedCases(report));
   requireArchunitRun(module, reports, isArchunit);
-  if (failures.length > 0) {
-    throw failingTestsError(module.basedir, failures);
-  }
-  return reports.length > 0;
+  return testOutcome({
+    module,
+    moduleName,
+    failures,
+    testsRan: reports.length > 0,
+    tolerateFailures,
+  });
 }
 
 function requireArchunitRun(module, reports, isArchunit) {

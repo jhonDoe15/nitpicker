@@ -25,7 +25,7 @@ function profiledReport(profile) {
   return { ...base, summary: { ...base.summary, ...runProfileSummary(profile) } };
 }
 
-function snapshotJunit(profile) {
+function snapshotReport(profile, file) {
   const outputRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-quick-snapshot-'));
   roots.push(outputRoot);
   const summary = {
@@ -36,7 +36,7 @@ function snapshotJunit(profile) {
     ...runProfileSummary(profile),
   };
   writeSnapshotReports(outputRoot, { summary, findings: [], toolErrors: [] });
-  return readFileSync(path.join(outputRoot, 'report.junit.xml'), 'utf8');
+  return readFileSync(path.join(outputRoot, file), 'utf8');
 }
 
 describe('the run profile in summary.json', () => {
@@ -82,7 +82,7 @@ describe('the run profile in the JUnit report', () => {
   });
 
   it('marks a quick --all snapshot the same way', () => {
-    expect(snapshotJunit({ quick: QUICK })).toBe(
+    expect(snapshotReport({ quick: QUICK }, 'report.junit.xml')).toBe(
       [
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<testsuite name="quality.snapshot" tests="2" failures="0" errors="0" skipped="2" time="0.000">',
@@ -108,6 +108,17 @@ describe('the run profile in the SARIF report', () => {
       executionSuccessful: true,
       toolExecutionNotifications: [{ level: 'warning', message: { text: QUICK_LINE } }],
       properties: { quick: true, skipped: ['coverage', 'mutation'], staged: true },
+    });
+  });
+
+  it('marks a quick --all snapshot the same way', () => {
+    const [invocation] = JSON.parse(snapshotReport({ quick: QUICK }, 'report.sarif')).runs[0]
+      .invocations;
+
+    expect(invocation).toEqual({
+      executionSuccessful: true,
+      toolExecutionNotifications: [{ level: 'warning', message: { text: QUICK_LINE } }],
+      properties: { quick: true, skipped: ['coverage', 'mutation'] },
     });
   });
 
