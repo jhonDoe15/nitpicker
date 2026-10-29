@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { expect } from 'vitest';
 import { hasSpecificGuidance } from '../../../diff/reporting/review/policy-guidance.mjs';
 import { useGitFixtures } from '../../../diff/git/test-support/git-repository.mjs';
@@ -7,12 +8,12 @@ import { readPolicyScope } from '../../policy-scope.mjs';
 const { createGitRepository } = useGitFixtures();
 const JAVA = { preset: 'java' };
 
-export function between({ base, head, config = JAVA, baseConfig = config }) {
+export function between({ base, head, config = JAVA, baseConfig = config, folder = '.' }) {
   const scope = readPolicyScope({
     baseConfig,
     headConfig: config,
-    baseProjectRoot: createGitRepository(base).root,
-    headProjectRoot: createGitRepository(head).root,
+    baseProjectRoot: path.join(createGitRepository(base).root, folder),
+    headProjectRoot: path.join(createGitRepository(head).root, folder),
   });
   return guided(policyChangeFields(baseConfig, config, scope));
 }
