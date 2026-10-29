@@ -1,6 +1,9 @@
+import { tmpdir } from 'node:os';
 import { spawnSync } from 'node:child_process';
 import {
   closeSync,
+  cpSync,
+  mkdtempSync,
   existsSync,
   fstatSync,
   openSync,
@@ -52,7 +55,7 @@ export function splitJdepsEdges(text, { mainClasses, testClasses }) {
   };
 }
 
-function runJdeps({ command, cwd, directories, outputFile, spawn }) {
+function runJdepsCommand({ command, cwd, directories, outputFile, spawn }) {
   const output = openSync(outputFile, 'w');
   try {
     const result = spawn(command, ['-verbose:class', '-filter:none', ...directories], {
@@ -67,6 +70,33 @@ function runJdeps({ command, cwd, directories, outputFile, spawn }) {
     }
   } finally {
     closeSync(output);
+  }
+}
+
+function runJdeps(context) {
+  if (
+    !context.directories.some((directory) => existsSync(path.join(directory, 'module-info.class')))
+  ) {
+    runJdepsCommand(context);
+    return;
+  }
+  const staged = mkdtempSync(path.join(tmpdir(), 'nitpicker-jdeps-'));
+  try {
+    const directories = context.directories.map((directory, index) => {
+      const base = path.resolve(staged);
+      const target = path.resolve(base, String(index));
+      if (!target.startsWith(base + path.sep)) {
+        throw new Error('Class staging target is outside its directory');
+      }
+      cpSync(directory, target, {
+        recursive: true,
+        filter: (file) => path.basename(file) !== 'module-info.class',
+      });
+      return target;
+    });
+    runJdepsCommand({ ...context, directories });
+  } finally {
+    rmSync(staged, { recursive: true, force: true });
   }
 }
 

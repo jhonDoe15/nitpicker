@@ -1,7 +1,5 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { outerClass, parseJdeps } from '../metrics/java-coupling.mjs';
-import { exceptionText } from '../../../../shared/rules/exceptions.mjs';
-import { EXCEPTION_HINT } from '../../../../shared/policy.mjs';
 import { pathInside } from './java-sources.mjs';
 import { isNamedElsewhere, readProjectTexts } from './project-texts.mjs';
 import { readDeclarations } from './source-declarations.mjs';
@@ -11,7 +9,9 @@ const TEST_ONLY_TOOL = 'coupling';
 const TEST_ONLY_RULE = 'test-only-export';
 export const TEST_ONLY_EXCEPTION_RULE = `${TEST_ONLY_TOOL}/${TEST_ONLY_RULE}`;
 const REPORTS = ['jdeps.txt', 'jdeps-classes.txt', 'jdeps-test.txt'];
-const MESSAGE = `Class {name} is only used by tests. Move it to the test sources, or use it from production code. ${EXCEPTION_HINT}`;
+const MESSAGE =
+  'Class {name} is only used by tests. Move it to the test sources, or use it from production code. ' +
+  'Nitpicker cannot see uses loaded by name from a file it does not read, or uses from another build.';
 
 function readProject(project) {
   function report(name) {
@@ -73,7 +73,6 @@ function withDeclarations(projectRoot, project) {
 }
 
 function finding({ file, className, line }) {
-  const exception = exceptionText(TEST_ONLY_EXCEPTION_RULE, file);
   return {
     tool: TEST_ONLY_TOOL,
     rule: TEST_ONLY_RULE,
@@ -81,7 +80,7 @@ function finding({ file, className, line }) {
     identity: `class:${className}`,
     symbol: className,
     location: { line },
-    message: MESSAGE.replace('{name}', className).replace('{exception}', exception),
+    message: MESSAGE.replace('{name}', className),
     classification: 'enforceable',
   };
 }

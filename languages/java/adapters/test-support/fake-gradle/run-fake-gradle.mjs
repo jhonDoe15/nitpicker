@@ -123,7 +123,7 @@ function writeJavaReports(module) {
 
 function copyJdeps(module) {
   const { run } = module;
-  for (const name of ['jdeps.txt', 'jdeps-classes.txt', 'jdeps-test.txt']) {
+  for (const name of ['jdeps.txt', 'jdeps-classes.txt', 'jdeps-test.txt', 'permits.txt']) {
     const source = [inside(module, name), inside(module, `jdeps/${name}`)].find((file) =>
       exists(run, file),
     );

@@ -1,0 +1,40 @@
+{
+  "description": "In a project inside a larger repository, files that leave the project are not renames of the project, so they move nothing; legacy/C.java was renamed to core/C.java within it. The base notice still covers legacy, so legacy/Keep.java, which never moved, stays descriptive, as does the renamed core/C.java; core/Other.java stays enforceable and the head's legacy notice is unchanged.",
+  "renames": {
+    "legacy/C.java": "core/C.java"
+  },
+  "new": [
+    {
+      "tool": "javac",
+      "rule": "rawtypes",
+      "path": "core/C.java",
+      "identity": "rawtypes:core/C.java",
+      "classification": "descriptive"
+    },
+    {
+      "tool": "javac",
+      "rule": "rawtypes",
+      "path": "core/Other.java",
+      "identity": "rawtypes:core/Other.java",
+      "classification": "enforceable"
+    },
+    {
+      "tool": "javac",
+      "rule": "rawtypes",
+      "path": "legacy/Keep.java",
+      "identity": "rawtypes:legacy/Keep.java",
+      "classification": "descriptive"
+    }
+  ],
+  "resolved": [],
+  "unchanged": [
+    {
+      "tool": "javac",
+      "rule": "lint-not-run",
+      "path": ".",
+      "identity": "lint-not-run",
+      "classification": "descriptive"
+    }
+  ],
+  "changedMetrics": []
+}

@@ -41,15 +41,13 @@ function compareAnalyzer(context) {
 }
 
 function compareOrReportError(context) {
-  const { name, baseFindings, headFindings, toolErrors } = context;
+  const { name, toolErrors } = context;
   try {
-    return compareFindings({
-      baseFindings,
-      headFindings,
-      baseToHeadRenames: context.baseToHeadRenames,
-      baseToHeadDirectories: context.baseToHeadDirectories,
-      touchedCode: context.touchedCode,
-    });
+    const result = compareFindings(context);
+    return {
+      ...result,
+      newFindings: withoutEmittedToolErrors(result.newFindings, 'head', toolErrors),
+    };
   } catch (error) {
     toolErrors.push({
       tool: name,

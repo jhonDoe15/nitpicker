@@ -52,26 +52,33 @@ function readRuns(reportRoot, reportFile) {
   return runs.flatMap(({ root, report }) => jscpdClones(report, [root]));
 }
 
-export function duplicateFindings(plain, { reportRoot, reportFile, projectRoot, syntax }) {
+export function duplicateFindings(
+  plain,
+  { reportRoot, reportFile, projectRoot, syntax, skip = () => false },
+) {
   const renamedFile = renamedReportFile(reportFile);
   const renamed =
     projectRoot !== undefined && existsSync(insideReportRoot(reportRoot, renamedFile))
       ? renamedClones(readRuns(reportRoot, renamedFile), { projectRoot, syntax })
       : [];
+  function kept(clones) {
+    return clones.filter((clone) => !skip(clone));
+  }
   return [
-    ...evaluateDuplicates(withoutRenamedCopies(plain, renamed), DUPLICATES_TOOL),
-    ...renamedFindings(renamed, DUPLICATES_TOOL),
+    ...evaluateDuplicates(kept(withoutRenamedCopies(plain, renamed)), DUPLICATES_TOOL),
+    ...renamedFindings(kept(renamed), DUPLICATES_TOOL),
   ];
 }
 
 export function readDuplicateFindings(
   reportRoot,
-  { reportFile = DUPLICATES_REPORT, format = 'java', projectRoot } = {},
+  { reportFile = DUPLICATES_REPORT, format = 'java', projectRoot, skip } = {},
 ) {
   return duplicateFindings(withoutImportOnlyClones(readRuns(reportRoot, reportFile), format), {
     reportRoot,
     reportFile,
     projectRoot,
     syntax: format,
+    skip,
   });
 }

@@ -7,7 +7,7 @@ import {
   sizeRules,
 } from './project-rules/size-rules.mjs';
 import { UNUSED_API_RULES, UNUSED_API_RULE_IDS } from './unused-api/unused-api-policy.mjs';
-import { reuseRules } from './project-rules/reuse-rules.mjs';
+import { couplingRules, reuseRules } from './project-rules/reuse-rules.mjs';
 import { testConsoleRule } from './project-rules/test-runtime-rules.mjs';
 import {
   docCommentRule,
@@ -48,6 +48,7 @@ export const RULE_IDS = {
   mutantNoCoverage: 'mutant-nocoverage',
   duplicateClone: 'duplicate-clone',
   stabilityDirection: 'stability-direction',
+  packageCycle: 'package-cycle',
   baselineExpansion: 'baseline-expansion',
   publicAlternativeBypass: 'public-alternative-bypass',
   ...UNUSED_API_RULE_IDS,
@@ -228,13 +229,10 @@ const CATALOG = [
     limit: `jscpd in \`${DUPLICATES_MODE}\` mode, also over sources with names and literals normalized (at least 100 tokens, except code that only repeats one or two statements); any new clone fails`,
     enforcedBy: withKotlin(ALL, true),
   },
-  {
-    id: RULE_IDS.stabilityDirection,
-    check: 'coupling',
-    limit:
-      'a package depending on a less stable package; an import that exists only for the type checker (`import type`, `if TYPE_CHECKING:`) is never the reported dependency, but still counts toward instability',
-    enforcedBy: withKotlin(ALL, true),
-  },
+  ...couplingRules(RULE_IDS, {
+    everyLanguage: withKotlin(ALL, true),
+    withoutTypescript: withKotlin({ typescript: false, java: true, python: true }, true),
+  }),
   {
     id: RULE_IDS.noProductionRuntime,
     check: 'test-runtime',

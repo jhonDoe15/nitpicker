@@ -1,3 +1,6 @@
+import { writeGuardRulesets } from '../builds/rulesets/pmd-rulesets.mjs';
+import { guardCompiler } from './errorprone/maven-compiler.mjs';
+import { withGuardChecks } from '../builds/rulesets/checkstyle-config.mjs';
 import { nitpickerCheckstyleConfig } from './configuration/checkstyle-config.mjs';
 import { spawnSync } from 'node:child_process';
 import {
@@ -58,18 +61,7 @@ export function runPmd({ module, reportDir, tools, classpaths, configs, spring, 
     return;
   }
   const auxClasspath = writeAuxClasspath({ module, reportDir, classpaths });
-  const { mainRuleset, testsRuleset, layers } = writeRulesets({
-    module,
-    reportDir,
-    configs,
-    spring,
-  });
-  const rulesets = [
-    layers.nitpicker ?? NITPICKER_RULESET,
-    ...(layers.project === undefined ? [] : [layers.project]),
-    testsRuleset,
-    mainRuleset,
-  ];
+  const rulesets = pmdRulesets({ module, reportDir, configs, spring });
   runJava({
     tool: 'PMD',
     classpath: tools.pmd,
@@ -183,15 +175,18 @@ function propertiesLine(name, value) {
   return `${name}=${value.replaceAll('\\', '\\\\')}`;
 }
 
-function checkstyleSetup({ reportDir, tools, configs, pinned, style, spawn }) {
+function checkstyleSetup({ reportDir, tools, configs, pinned, style, spawn, test = false }) {
   const jar = tools.checkstyle.find(
     (entry) => path.basename(entry) === `checkstyle-${pinned.checkstyle}.jar`,
   );
   const bundled = nitpickerCheckstyleConfig(bundledGoogleChecks(jar, spawn));
   const unformatted = style?.javaStyle === 'none';
   return writeCheckstyleSetup({
-    directory: path.join(reportDir, 'checkstyle-config'),
-    nitpickerConfig: unformatted ? unformattedCheckstyle(bundled, style.indentation) : bundled,
+    directory: path.join(reportDir, test ? 'checkstyle-test-config' : 'checkstyle-config'),
+    nitpickerConfig: withGuardChecks(
+      unformatted ? unformattedCheckstyle(bundled, style.indentation) : bundled,
+      ['checkstyle-all.xml', ...(test ? [] : ['checkstyle-main.xml'])],
+    ),
     suppressions: unformatted ? UNFORMATTED_SUPPRESSIONS : LAYOUT_SUPPRESSIONS,
     ...configs.checkstyle,
   });
@@ -265,8 +260,30 @@ export function runCheckstyle({ module, reportDir, tools, configs, pinned, style
   });
   checkstyleReport({
     ...context,
+    setup: checkstyleSetup({ reportDir, tools, configs, pinned, style, spawn, test: true }),
     roots: module.testSourceRoots,
     report: path.join(reportDir, 'checkstyle-test.xml'),
     always: false,
   });
+}
+
+function pmdRulesets({ module, reportDir, configs, spring }) {
+  const { mainRuleset, testsRuleset, layers } = writeRulesets({
+    module,
+    reportDir,
+    configs,
+    spring,
+  });
+  return [
+    layers.nitpicker ?? NITPICKER_RULESET,
+    ...(layers.project === undefined ? [] : [layers.project]),
+    testsRuleset,
+    mainRuleset,
+    ...writeGuardRulesets({
+      reportDir,
+      mainDirectories: module.sourceRoots,
+      testDirectories: module.testSourceRoots,
+      compiler: guardCompiler(module.compiler),
+    }),
+  ];
 }

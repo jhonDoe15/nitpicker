@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import { readErrorProneFindings } from './java-errorprone.mjs';
 
 const roots = [];
@@ -40,12 +41,15 @@ describe('readErrorProneFindings', () => {
       diagnostic('/elsewhere/src/main/java/demo/B.java'),
     ]);
 
-    const findings = readErrorProneFindings({
-      reportRoot,
-      roots: [projectRoot],
-      lintedRoots: ['src/main/java', 'src/test/java'],
-      manifest: { testSourceRoots: ['src/test/java'] },
-    });
+    const findings = applyRuleMessages(
+      readErrorProneFindings({
+        reportRoot,
+        roots: [projectRoot],
+        lintedRoots: ['src/main/java', 'src/test/java'],
+        manifest: { testSourceRoots: ['src/test/java'] },
+      }),
+      { testRoots: ['src/test/java'] },
+    );
 
     expect(findings.map((finding) => [finding.rule, finding.path, finding.message])).toEqual([
       [
@@ -72,17 +76,17 @@ describe('readErrorProneFindings', () => {
       },
       diagnostic(path.join(root, 'src/main/java/demo/A.java')),
     ]);
+    const read = (preset) =>
+      applyRuleMessages(
+        readErrorProneFindings({ reportRoot, roots: [projectRoot], lintedRoots: ['src'] }),
+        { preset },
+      ).map((finding) => finding.message);
 
-    const messages = readErrorProneFindings({
-      reportRoot,
-      roots: [projectRoot],
-      lintedRoots: ['src'],
-    }).map((finding) => finding.message);
-
-    expect(messages).toEqual([
+    expect(read('java')).toEqual([
       'Stack is a nonstandard class. If this is intended, add {"rule":"errorprone/JdkObsolete","paths":["src/main/java/demo/A.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
       "Exception created but not thrown. Did you mean 'throw new X();'?",
     ]);
+    expect(read('kotlin')).toEqual(read('java'));
   });
 
   it('gives the JDK form of a Guava suggestion where the source set has no Guava', () => {

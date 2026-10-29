@@ -138,6 +138,7 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
       'errorprone EmptyCatch SwallowingTest.java',
       'google-java-format format SwallowingTest.java',
       'pmd AvoidCatchingGenericException SwallowingTest.java',
+      'pmd TryCatchInTest SwallowingTest.java',
       'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
       'structure line-length-limit SwallowingTest.java',
     ]);
@@ -149,6 +150,7 @@ describe.skipIf(!enabled)('Java preset escape hatches', () => {
     expect(ofTool(result, 'pmd')).toEqual([
       'pmd AvoidCatchingGenericException SwallowingTest.java',
       'pmd MethodArgumentCouldBeFinal Bad.java',
+      'pmd TryCatchInTest SwallowingTest.java',
       'pmd UnitTestShouldIncludeAssert SwallowingTest.java',
     ]);
   }, 180_000);

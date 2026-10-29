@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0">
+  <modelVersion>4.0.0</modelVersion>
+  <groupId>modes</groupId>
+  <artifactId>guards-compile-modes</artifactId>
+  <version>1.0</version>
+  <packaging>pom</packaging>
+  <properties>
+    <maven.compiler.release>21</maven.compiler.release>
+    <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+  </properties>
+  <modules>
+    <module>legacy</module>
+    <module>plugin</module>
+    <module>plugged</module>
+    <module>preview</module>
+    <module>modular</module>
+    <module>outside</module>
+    <module>lombok</module>
+  </modules>
+</project>

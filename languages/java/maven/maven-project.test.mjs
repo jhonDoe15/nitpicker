@@ -32,7 +32,11 @@ function effective(root) {
   <project>
     <parent><groupId>demo</groupId></parent>
     <artifactId>core</artifactId>
-    <properties><nitpicker.archunit.includes>**/*Rules.class</nitpicker.archunit.includes></properties>
+    <properties>
+      <nitpicker.archunit.includes>**/*Rules.class</nitpicker.archunit.includes>
+      <maven.compiler.release>17</maven.compiler.release>
+      <project.build.sourceEncoding>ISO-8859-1</project.build.sourceEncoding>
+    </properties>
     <build>
       <sourceDirectory>${root}/core/src/main/java</sourceDirectory>
       <testSourceDirectory>${root}/core/src/test/java</testSourceDirectory>
@@ -56,6 +60,15 @@ function effective(root) {
           <artifactId>jacoco-maven-plugin</artifactId>
           <configuration><destFile>${root}/core/out/mine.exec</destFile></configuration>
           <executions><execution><goals><goal>prepare-agent</goal></goals></execution></executions>
+        </plugin>
+        <plugin>
+          <artifactId>maven-compiler-plugin</artifactId>
+          <configuration>
+            <source>17</source>
+            <compilerArgs><arg>-Xlint:all</arg><arg>-Xplugin:Noop</arg></compilerArgs>
+            <compilerArgument>-parameters</compilerArgument>
+            <enablePreview>true</enablePreview>
+          </configuration>
         </plugin>
         <plugin>
           <artifactId>maven-surefire-plugin</artifactId>
@@ -89,11 +102,14 @@ const NO_COMPILER_SETTINGS = {
   processorPaths: undefined,
   test: { ...PLUGIN_DEFAULT_LEVEL, compilerArgs: [] },
 };
+const CORE_LEVEL = { release: '17', source: '17', target: undefined };
+const CORE_ARGS = ['-Xlint:all', '-Xplugin:Noop', '-parameters', '--enable-preview'];
 
-function defaultModule(basedir, coordinates, packaging) {
+function defaultModule(basedir, { coordinates, packaging, pomFile = 'pom.xml' }) {
   const target = path.join(basedir, 'target');
   return {
     basedir,
+    pomFile: path.join(basedir, pomFile),
     coordinates,
     packaging,
     buildDirectory: target,
@@ -128,9 +144,10 @@ describe('readReactor', () => {
     });
     const [parent, core, app] = readReactor(root, effective(root));
 
-    expect(parent).toEqual(defaultModule(root, 'demo:parent', 'pom'));
+    expect(parent).toEqual(defaultModule(root, { coordinates: 'demo:parent', packaging: 'pom' }));
     expect(core).toEqual({
       basedir: path.join(root, 'core'),
+      pomFile: path.join(root, 'core/pom.xml'),
       coordinates: 'demo:core',
       packaging: 'jar',
       buildDirectory: `${root}/core/out`,
@@ -146,9 +163,22 @@ describe('readReactor', () => {
       published: false,
       jacocoDestFiles: [`${root}/core/out/mine.exec`],
       archunitIncludes: '**/*Rules.class',
-      compiler: NO_COMPILER_SETTINGS,
+      compiler: {
+        ...CORE_LEVEL,
+        encoding: 'ISO-8859-1',
+        compilerArgs: CORE_ARGS,
+        proc: undefined,
+        processorPaths: undefined,
+        test: { ...CORE_LEVEL, compilerArgs: CORE_ARGS },
+      },
     });
-    expect(app).toEqual(defaultModule(path.join(root, 'tools'), 'demo:app', 'war'));
+    expect(app).toEqual(
+      defaultModule(path.join(root, 'tools'), {
+        coordinates: 'demo:app',
+        packaging: 'war',
+        pomFile: 'app-pom.xml',
+      }),
+    );
   });
 
   it('reads a single-module effective POM', () => {
@@ -162,6 +192,7 @@ describe('readReactor', () => {
       [root, 'demo:solo'],
     ]);
   });
+
   it('matches a module whose raw coordinates use a property by its build directory', () => {
     const root = reactor({
       'pom.xml': raw('parent'),

@@ -271,7 +271,8 @@ function foundClones() {
   return cachedFindings;
 }
 
-function expectedClone({ file, other, hash, line, lines, advice = 'Keep one copy' }) {
+function expectedClone({ file, other, hash, line, lines, tokens, advice = 'Keep one copy' }) {
+  const endLine = line + lines - 1;
   return {
     tool: 'duplicates',
     rule: 'duplicate-clone',
@@ -282,6 +283,15 @@ function expectedClone({ file, other, hash, line, lines, advice = 'Keep one copy
       `places. If the repetition is intended, add ${file} or ${other} to "exclude" in nitpicker.config.json.`,
     classification: 'enforceable',
     location: { line },
+    ratchet: {
+      key: `pair:${file}|${other}:clone`,
+      value: tokens,
+      divisible: true,
+      mustKeepUnchangedLines: [
+        { path: file, startLine: line, endLine },
+        { path: other, startLine: line, endLine },
+      ],
+    },
   };
 }
 
@@ -300,6 +310,7 @@ describe('clones whose names and literals were renamed', () => {
         hash: '2f4bb56275d13c34bd0f291f',
         line: 1,
         lines: 12,
+        tokens: 111,
       }),
     );
   });
@@ -314,6 +325,7 @@ describe('clones whose names and literals were renamed', () => {
         hash: '20e1e008857a525fbf83d0de',
         line: 1,
         lines: 21,
+        tokens: 142,
       }),
     );
   });
@@ -330,6 +342,7 @@ describe('clones whose names and literals were renamed', () => {
         hash: 'cb054678e83a967c5cd306ce',
         line: 3,
         lines: 18,
+        tokens: 147,
         advice: 'Extract a helper, or fold the cases into one table-driven test. Keep one copy',
       }),
     );

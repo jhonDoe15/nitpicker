@@ -1,8 +1,10 @@
+const COUPLING = 'coupling';
+
 export function reuseRules(ids, reactEnforcedBy) {
   return [
     {
       id: ids.sharedUsedByOneFeature,
-      check: 'coupling',
+      check: COUPLING,
       limit:
         'a module under a shared root (`layout.sharedRoots`) that exactly one feature reaches and nothing else uses',
     },
@@ -35,6 +37,24 @@ export function reuseRules(ids, reactEnforcedBy) {
       check: 'structure',
       limit: 'React only: a new icon-sized `.svg` file while an icon package is a dependency',
       enforcedBy: reactEnforcedBy,
+    },
+  ];
+}
+
+export function couplingRules(ids, { everyLanguage, withoutTypescript }) {
+  return [
+    {
+      id: ids.stabilityDirection,
+      check: COUPLING,
+      limit:
+        'a package depending on a less stable package; an import that exists only for the type checker (`import type`, `if TYPE_CHECKING:`) is never the reported dependency, but still counts toward instability',
+      enforcedBy: everyLanguage,
+    },
+    {
+      id: ids.packageCycle,
+      check: COUPLING,
+      limit: 'packages that depend on each other in a loop',
+      enforcedBy: withoutTypescript,
     },
   ];
 }

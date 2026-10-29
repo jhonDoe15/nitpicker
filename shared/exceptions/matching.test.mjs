@@ -24,14 +24,16 @@ describe('clonePartnerPath', () => {
     ]);
   });
 
-  it('names the other file of the pair for a renamed clone', () => {
+  it('names the other file of the pair for a renamed clone and a CPD clone', () => {
     expect(
-      clonePartnerPath({
-        rule: 'duplicate-clone',
-        path: 'a.py',
-        identity: 'renamed:pair:a.py|b.py:fragment:x:occurrence:1',
-      }),
-    ).toBe('b.py');
+      ['renamed:', 'cpd:'].map((kind) =>
+        clonePartnerPath({
+          rule: 'duplicate-clone',
+          path: 'a.py',
+          identity: `${kind}pair:a.py|b.py:fragment:x:occurrence:1`,
+        }),
+      ),
+    ).toEqual(['b.py', 'b.py']);
   });
 
   it('has no partner for other findings', () => {

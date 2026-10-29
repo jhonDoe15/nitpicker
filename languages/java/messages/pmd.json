@@ -100,7 +100,7 @@
     "mayBeIntended": true
   },
   "AvoidLiteralsInIfCondition": {
-    "fix": "Compare against a named private static final constant instead of the literal; 0 and -1 are fine.",
+    "fix": "Compare against a named private static final constant instead of the literal.",
     "mayBeIntended": true
   },
   "AvoidLosingExceptionInformation": {
@@ -136,7 +136,7 @@
     "mayBeIntended": true
   },
   "AvoidSynchronizedAtMethodLevel": {
-    "fix": "Guard the state with a private final ReentrantLock: lock.lock() right before try, lock.unlock() in finally.",
+    "fix": null,
     "mayBeIntended": true
   },
   "AvoidSynchronizedStatement": {
@@ -630,6 +630,10 @@
   "UnnecessaryConversionTemporary": {
     "fix": "Call the conversion on the value directly (Integer.toString(i), String.valueOf(i)) instead of building a wrapper object first.",
     "mayBeIntended": false
+  },
+  "UnnecessaryImport": {
+    "fix": "Remove the import.",
+    "mayBeIntended": true
   },
   "UnnecessaryVarargsArrayCreation": {
     "fix": "Pass the elements directly: Arrays.asList(\"a\", \"b\") instead of wrapping them in new String[] { ... }.",

@@ -1,5 +1,6 @@
 def pinned = [
     pmd             : '7.7.0',
+    forbiddenapis   : '3.10',
     spotbugs        : '4.9.3',
     googleJavaFormat: '1.25.2',
     palantirJavaFormat: '2.50.0',
@@ -123,8 +124,57 @@ def testRulesOnTestSources = { File testRules, File rulesetDir, boolean spring, 
         rules.collect { "  <rule ref=\"${escapeXml(it.absolutePath)}\"/>".toString() }, mainDirectories)
 }
 
+def nodeCommand = nitpickerArgument('nitpicker.node') ?: 'node'
+def rulesWriter = new File(initScriptDir, '../builds/rulesets/write-rules.mjs').canonicalFile
+def runNode = { File script, List<String> arguments, String failure ->
+    def process = new ProcessBuilder([nodeCommand, script.absolutePath] + arguments)
+        .redirectErrorStream(true).start()
+    def log = process.inputStream.getText('UTF-8')
+    if (process.waitFor() != 0) {
+        throw new GradleException("${failure}: ${log.trim()}")
+    }
+}
+def writeRules = { String kind, File plan ->
+    runNode(rulesWriter, [kind, plan.absolutePath], "nitpicker could not write the ${kind} configuration")
+}
+def toolCommandsFile = new File(initScriptDir, '../builds/tools/tool-commands.json').canonicalFile
+def toolCommandsScript = new File(initScriptDir, '../builds/tools/tool-commands.mjs').canonicalFile
+def toolLauncher = { String tool ->
+    def launcher = new groovy.json.JsonSlurper().parse(toolCommandsFile)[tool].launcher
+    launcher == null ? null : new File(toolCommandsFile.parentFile, launcher).canonicalFile
+}
+def toolCommand = { String tool, Map values, File directory ->
+    directory.mkdirs()
+    def valuesFile = new File(directory, "${tool}-values.json")
+    def commandFile = new File(directory, "${tool}-command.json")
+    valuesFile.text = groovy.json.JsonOutput.toJson(values)
+    runNode(toolCommandsScript, [tool, valuesFile.absolutePath, commandFile.absolutePath],
+        "nitpicker could not build the ${tool} command line")
+    def command = new groovy.json.JsonSlurper().parse(commandFile)
+    def accept = command.accept
+    [
+        launcher: command.launcher == null ? null : new File(command.launcher),
+        args    : command.args,
+        accepts : { int code ->
+            def report = accept.report == null ? null : new File(accept.report)
+            (accept.exits == null || code in accept.exits) && (report == null || (report.isFile() &&
+                (accept.reportPattern == null || (report.getText('UTF-8') =~ accept.reportPattern).find())))
+        },
+    ]
+}
+def compilerOf = { compile ->
+    [
+        release : compile.options.release.orNull?.toString(),
+        source  : compile.sourceCompatibility,
+        target  : compile.targetCompatibility,
+        encoding: compile.options.encoding,
+        args    : compile.options.allCompilerArgs.collect { it.toString() },
+    ]
+}
+
 allprojects {
     plugins.withId('java') {
+        project.ext.nitpickerPinned = pinned
         pluginManager.apply('jacoco')
         pluginManager.apply('checkstyle')
 
@@ -136,6 +186,15 @@ allprojects {
             javaModules << [key: moduleKey, path: project.path, dir: relativeToRoot(project.projectDir)]
         }
         def kotlinPreset = nitpickerArgument('nitpicker.kotlin') == 'true'
+        project.ext.nitpickerReportDir = reportDir
+        project.ext.nitpickerRelativeToRoot = relativeToRoot
+        project.ext.nitpickerAnalysisRoot = analysisRoot
+        project.ext.nitpickerCompilerOf = compilerOf
+        project.ext.nitpickerToolCommand = toolCommand
+        project.ext.nitpickerToolCommandInputs = [toolCommandsFile, toolCommandsScript]
+        project.ext.nitpickerToolLauncher = toolLauncher
+        project.ext.nitpickerRunNode = runNode
+        project.ext.nitpickerWriteRules = writeRules
         def javaStyle = nitpickerArgument('nitpicker.java.style') ?: 'google'
         def javaIndentation = nitpickerArgument('nitpicker.java.indentation') ?: '2'
 
@@ -246,7 +305,7 @@ allprojects {
         }
         checkstyle { toolVersion = pinned.checkstyle }
         afterEvaluate {
-            tasks.withType(Checkstyle).configureEach {
+            tasks.withType(Checkstyle).configureEach { task ->
                 ignoreFailures = true
                 showViolations = false
                 maxWarnings = Integer.MAX_VALUE
@@ -261,6 +320,21 @@ allprojects {
                 configProperties = ['org.checkstyle.google.suppressionfilter.config':
                     new File(initScriptDir, javaStyle == 'none'
                         ? 'checkstyle-suppressions-unformatted.xml' : 'checkstyle-suppressions.xml').absolutePath]
+                def baseConfig = configFile
+                inputs.dir(new File(initScriptDir, 'rules'))
+                doFirst {
+                    def directory = new File(reportDir.get().asFile, 'checkstyle-guards/' + task.name)
+                    directory.mkdirs()
+                    def output = new File(directory, 'checkstyle.xml')
+                    def plan = new File(directory, 'plan.json')
+                    plan.text = groovy.json.JsonOutput.toJson([
+                        source: baseConfig.absolutePath,
+                        output: output.absolutePath,
+                        files: ['checkstyle-all.xml'] + (task.name == 'checkstyleMain' ? ['checkstyle-main.xml'] : []),
+                    ])
+                    writeRules('checkstyle-guards', plan)
+                    configFile = output
+                }
             }
         }
         tasks.withType(Checkstyle).configureEach { checkstyleTask ->
@@ -313,6 +387,8 @@ allprojects {
         // PIT mutates the Java and the Kotlin classes alike; the Kotlin findings are report-only (see the Nitpicker side).
         def mutatedClassDirs = { sourceSets.main.output.classesDirs.files }
 
+        project.ext.nitpickerAnalyzedClassDirs = analyzedClassDirs
+        project.ext.nitpickerTestSourceDirectories = testSourceDirectories
         def springDeclared = nitpickerArgument('nitpicker.spring') == 'true'
         def usesSpring = {
             springDeclared || sourceSets.main.compileClasspath.files.any { it.name ==~ /spring-(context|boot)-.*\.jar/ }
@@ -354,6 +430,15 @@ allprojects {
                 def testRuleset = reportDir.get().file('pmd-tests.xml').asFile
                 testRuleset.text = testRulesOnTestSources(testRules, initScriptDir, usesSpring(), mainSources.files)
                 def nitpickerExtras = [testRuleset, mainRuleset]
+                def guardsPlan = reportDir.get().file('pmd-guards-plan.json').asFile
+                guardsPlan.text = groovy.json.JsonOutput.toJson([
+                    reportDir: reportDir.get().asFile.absolutePath,
+                    mainDirectories: mainSources.files*.absolutePath,
+                    testDirectories: testSourceDirectories()*.absolutePath,
+                    compiler: compilerOf(tasks.named('compileJava').get()),
+                ])
+                writeRules('pmd-guards', guardsPlan)
+                nitpickerExtras += reportDir.get().file('pmd-rulesets.txt').asFile.text.split(',').findAll { it }.collect { new File(it) }
                 def rulesets = ([ruleset] + nitpickerExtras.collect { it.absolutePath }).join(',')
                 args 'check', '--no-cache', '--no-progress', '--format', 'sarif',
                     '--report-file', reportDir.get().file('pmd.sarif').asFile.absolutePath,
@@ -855,21 +940,44 @@ allprojects {
         // The coupling metrics, stability-direction and test-only-export findings are computed on the
         // Nitpicker side from these files. jdeps ships with the JDK that runs Gradle; it is not a
         // pinned download.
+        def classFilesIn = { File directory ->
+            java.nio.file.Files.walk(directory.toPath()).withCloseable { paths ->
+                paths.filter { java.nio.file.Files.isRegularFile(it, java.nio.file.LinkOption.NOFOLLOW_LINKS) }
+                    .filter { it.fileName.toString().endsWith('.class') &&
+                        !(it.fileName.toString() in ['module-info.class', 'package-info.class']) }
+                    .map { it.toFile() }.collect(java.util.stream.Collectors.toList())
+            }
+        }
         def classNamesIn = { Collection<File> classDirs ->
             classDirs.collectMany { dir ->
-                fileTree(dir) { include '**/*.class'; exclude '**/module-info.class', '**/package-info.class' }.files.collect {
+                classFilesIn(dir).collect {
                     dir.toPath().relativize(it.toPath()).toString().replace('\\', '/')
                         .replaceAll(/\.class$/, '').replace('/', '.')
                 }
             }.unique().sort()
         }
         def runJdeps = { Collection<File> classDirs, Closure onLine ->
+            def staged = layout.buildDirectory.dir('nitpicker-jdeps-classes').get().asFile
+            delete staged
+            staged.mkdirs()
+            def analyzed = classDirs.withIndex().collect { directory, index ->
+                def target = new File(staged, index.toString())
+                target.mkdirs()
+                classFilesIn(directory).each { source ->
+                    def destination = new File(target, directory.toPath().relativize(source.toPath()).toString())
+                    destination.parentFile.mkdirs()
+                    java.nio.file.Files.copy(source.toPath(), destination.toPath())
+                }
+                target
+            }
             def jdeps = new File(System.getProperty('java.home'), 'bin/jdeps')
             def process = new ProcessBuilder([jdeps.absolutePath, '-verbose:class', '-filter:none'] +
-                classDirs.collect { it.absolutePath }).directory(projectDir)
+                analyzed.collect { it.absolutePath }).directory(projectDir)
                 .redirectError(ProcessBuilder.Redirect.DISCARD).start()
             process.inputStream.withReader('UTF-8') { reader -> reader.eachLine { onLine(it) } }
-            if (process.waitFor() != 0) {
+            def result = process.waitFor()
+            delete staged
+            if (result != 0) {
                 throw new GradleException("jdeps failed (${jdeps}) with exit code ${process.exitValue()}")
             }
         }
@@ -906,6 +1014,9 @@ allprojects {
             }
         }
         tasks.named('nitpickerJava') { dependsOn 'nitpickerJdeps' }
+        ['lint-tasks.gradle', 'cpd-task.gradle', 'dependency-tasks.gradle'].each {
+            project.apply from: new File(initScriptDir, 'tasks/' + it)
+        }
         // --- end coupling ---
 
         // --- kotlin (KT1): detekt, a ktlint or ktfmt format check and JaCoCo on Kotlin classes ---
