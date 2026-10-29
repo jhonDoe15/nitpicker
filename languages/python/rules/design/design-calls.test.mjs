@@ -6,6 +6,12 @@ const CART = 'app/core/cart.py#Cart';
 const REPO = 'app/core/repo.py';
 const SERVICES = 'app/services.py';
 
+const MODEL = 'app/model.py';
+
+function session(member, line, extra = {}) {
+  return { target: `${MODEL}#Session.${member}`, line, receiver: 'session', ...extra };
+}
+
 function callsOf(byId, id) {
   return byId.callable(id).calls;
 }
@@ -264,5 +270,43 @@ describe.skipIf(!pythonUsable())('the Python design producer mutation marks', ()
     ['Inventory.fetch', '_lines'],
   ])('records that %s returns the field %s', (name, field) => {
     expect(byId.callable(`inventory.py#${name}`).returnsField).toBe(field);
+  });
+});
+
+describe.skipIf(!pythonUsable())('the Python design producer closures', () => {
+  const byId = factsById(designFacts('closures'));
+  it('folds the calls, uses, decisions and reads of nested functions and lambdas into the function', () => {
+    const { calls, paramUses, decisions, reads, returns } = byId.callable('app/usage.py#settle');
+    expect({ calls, paramUses, decisions, reads, returns }).toEqual({
+      calls: [
+        { target: `${MODEL}#Order.lines`, line: 12, receiver: 'order', mutation: 'append' },
+        session('begin', 13),
+        session('close', 18, { cleanup: true }),
+      ],
+      paramUses: [
+        { param: 0, fields: ['status', 'lines', 'total'], forwards: [] },
+        { param: 1, fields: ['begin', 'close'], forwards: [] },
+      ],
+      decisions: [{ subject: `${MODEL}#Status`, groups: [['OPEN'], ['PAID']], line: 6 }],
+      reads: [
+        { type: `${MODEL}#Order`, fields: ['status', 'total'], line: 6, decided: ['status'] },
+      ],
+      returns: 'int',
+    });
+  });
+
+  it('does not count a close inside a lambda as cleanup, even when the lambda sits in a finally', () => {
+    expect(callsOf(byId, 'app/usage.py#deferred')).toEqual([
+      session('begin', 22),
+      session('close', 26),
+    ]);
+  });
+
+  it('leaves a name untyped when a lambda parameter reuses it', () => {
+    const { calls, paramUses } = byId.callable('app/usage.py#shadowing');
+    expect({ calls, paramUses }).toEqual({
+      calls: [],
+      paramUses: [{ param: 0, fields: ['begin'], forwards: [], opaque: true }],
+    });
   });
 });

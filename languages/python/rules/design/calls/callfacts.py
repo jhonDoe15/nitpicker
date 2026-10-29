@@ -3,7 +3,7 @@ import ast
 from design.calls.calls import access_resolution, receiver_key, resolve_call
 from design.calls.cleanup import enter_facts, exit_facts, paired_exit_facts
 from design.calls.mutations import mutation_of
-from design.support.astutil import SCOPES, call_line
+from design.support.astutil import CLOSURES, call_line
 
 TRY_TYPES = tuple(t for t in (ast.Try, getattr(ast, "TryStar", None)) if t is not None)
 WITH_TYPES = (ast.With, ast.AsyncWith)
@@ -29,7 +29,7 @@ def call_events(function_node):
                 (state if state == "enter" else event_kind(node), node, in_finally)
             )
             continue
-        if isinstance(node, SCOPES):
+        if isinstance(node, ast.ClassDef):
             continue
         if isinstance(node, (ast.Call, *WITH_TYPES)) or is_load_attribute(node):
             stack.append((node, in_finally, "done"))
@@ -38,6 +38,9 @@ def call_events(function_node):
 
 
 def child_entries(node, in_finally):
+    if isinstance(node, CLOSURES):
+        children = reversed(list(ast.iter_child_nodes(node)))
+        return [(child, False, "visit") for child in children]
     if not isinstance(node, WITH_TYPES):
         children = flagged_children(node, in_finally)
         return [(child, flag, "visit") for child, flag in reversed(children)]

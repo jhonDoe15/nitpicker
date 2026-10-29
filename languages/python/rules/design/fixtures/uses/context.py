@@ -120,3 +120,7 @@ def repeated(ctx: Ctx):
     inner(ctx)
     inner(ctx)
     return ctx.user + ctx.user
+
+
+def shadowed(ctx: Ctx):
+    return lambda ctx: ctx.user

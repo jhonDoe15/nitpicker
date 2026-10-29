@@ -2,7 +2,7 @@ import ast
 
 from design.resolve.annotations import project_type
 from design.resolve.imports import bind_from, bind_import
-from design.support.astutil import own_nodes
+from design.support.astutil import body_nodes, own_nodes
 from design.support.sites import collect_sites, parameters, skips_first
 
 UNKNOWN = object()
@@ -22,7 +22,7 @@ class LocalImports:
 
 def local_imports(index, function):
     holder = LocalImports(function.module.path)
-    for node in own_nodes(function.node):
+    for node in body_nodes(function.node):
         if isinstance(node, ast.ImportFrom):
             bind_from(index, holder, node)
         elif isinstance(node, ast.Import):

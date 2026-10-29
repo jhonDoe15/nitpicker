@@ -4,10 +4,12 @@ from design.calls.calls import resolve_call
 from design.resolve.annotations import project_type
 from design.resolve.symbols import LiteralAlias
 from design.support.astutil import (
-    SCOPES,
+    CLOSURES,
     STORE_CONTEXTS,
     all_nodes,
     body_without_docstring,
+    closure_arguments,
+    own_nodes,
 )
 from design.types.classes import classify
 
@@ -28,11 +30,17 @@ def eligible_params(scope):
     return found
 
 
+def shadows(node, name):
+    return isinstance(node, CLOSURES) and any(
+        argument.arg == name for argument in closure_arguments(node)
+    )
+
+
 def captured(scope, node):
     parents = scope.module.parents
     current = parents.get(id(node))
     while current is not None and current is not scope.function.node:
-        if isinstance(current, SCOPES):
+        if isinstance(current, ast.ClassDef) or shadows(current, node.id):
             return True
         current = parents.get(id(current))
     return False
@@ -156,7 +164,7 @@ def returns_nothing(scope, function):
         return isinstance(node, ast.Constant) and node.value is None
     from design.support.scope import is_generator
 
-    returns = [n for n in all_nodes(function.node) if isinstance(n, ast.Return)]
+    returns = [n for n in own_nodes(function.node) if isinstance(n, ast.Return)]
     valued = [
         n for n in returns if n.value is not None and not is_none_constant(n.value)
     ]

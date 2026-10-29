@@ -3,7 +3,7 @@ import ast
 from design.resolve.evaluate import evaluate
 from design.resolve.lookup import find_member
 from design.resolve.symbols import Klass, LiteralAlias
-from design.support.astutil import chain, chain_text, constant_text, own_nodes
+from design.support.astutil import body_nodes, chain, chain_text, constant_text
 from design.types.classes import enum_cases
 
 
@@ -172,7 +172,7 @@ def match_decision(scope, node):
 
 
 def decisions(scope):
-    nodes = list(own_nodes(scope.function.node))
+    nodes = list(body_nodes(scope.function.node))
     found = if_decisions(scope, [n for n in nodes if isinstance(n, ast.If)])
     if MATCH is not None:
         matches = [match_decision(scope, n) for n in nodes if isinstance(n, MATCH)]
