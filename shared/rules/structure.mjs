@@ -13,10 +13,6 @@
 //     start?: number, end?: number,  // 1-based lines of the function
 //     lines?, statements?, maxControlNesting?, parameters?: number,
 //     sourceHash?: string,           // digest of the function text; defaults to file:start:end
-//     anchorHash?: string,           // digest of the text with the function's own name masked
-//                                    // (nameFreeHash): the finding's anchor, kept by a rename
-//     declarationHash?: string,      // digest of the signature or declaration line: the ratchet's
-//                                    // declarationKey, kept by an edit of the body and by an overload
 //     numberedAmongSameSource?: boolean, // the occurrence of a limit finding counts only the entries of the
 //                                    // same name and source over that limit, so no other entry, under the
 //                                    // limit or of other text, renames a finding (for names that repeat in a class)
