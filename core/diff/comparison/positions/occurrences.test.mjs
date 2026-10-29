@@ -19,10 +19,14 @@ function ruff(rule, subject, lines) {
   }));
 }
 
-function touched(hunks) {
+function touched(hunks, sources) {
   const diff = ['diff --git a/src/mod.py b/src/mod.py', '--- a/src/mod.py', '+++ b/src/mod.py'];
   return {
-    changedLines: parseChangedLines([...diff, ...hunks.flat()].join('\n')),
+    changedLines: parseChangedLines(
+      [...diff, ...hunks.flat()].join('\n'),
+      '.',
+      () => new Map([['src/mod.py', sources]]),
+    ),
     isStrictRule: isPythonTouchedRule,
   };
 }
@@ -113,9 +117,64 @@ describe('a legacy finding on a line the change edits', () => {
     const result = compareFindings({
       baseFindings: ruff('T201', '`print` found', [2]),
       headFindings: ruff('T201', '`print` found', [2]),
-      touchedCode: touched([['@@ -2 +2 @@', "-    print( 'start' )", '+    print("start")']]),
+      touchedCode: touched([['@@ -2 +2 @@', "-    print( 'start' )", '+    print("start")']], {
+        base: "def run():\n    print( 'start' )\n",
+        head: 'def run():\n    print("start")\n',
+      }),
     });
 
     expect(result.newFindings).toEqual([]);
+  });
+});
+
+describe('findings that share a message on deleted, moved and added lines', () => {
+  it('reports a print in new code as new when an identical legacy print was deleted elsewhere', () => {
+    const result = compareFindings({
+      baseFindings: ruff('T201', '`print` found', [2]),
+      headFindings: ruff('T201', '`print` found', [6]),
+      touchedCode: touched(
+        [
+          ['@@ -1,4 +0,0 @@', '-def old(items):', '-    print("debug", items)', '-', '-'],
+          ['@@ -6,0 +3,4 @@', '+', '+', '+def brand_new(items):', '+    print("debug", items)'],
+        ],
+        {
+          base: 'def old(items):\n    print("debug", items)\n\n\ndef keep():\n    return 1\n',
+          head: 'def keep():\n    return 1\n\n\ndef brand_new(items):\n    print("debug", items)\n',
+        },
+      ),
+    });
+
+    expect(lineOf(result.newFindings)).toEqual([6]);
+  });
+
+  it('does not say an added line was edited', () => {
+    const result = compareFindings({
+      baseFindings: ruff('T201', '`print` found', [2]),
+      headFindings: ruff('T201', '`print` found', [2]),
+      touchedCode: touched(
+        [['@@ -2 +2 @@', '-    print("a", first, second)', '+    print(other)']],
+        {
+          base: 'def run():\n    print("a", first, second)\n',
+          head: 'def run():\n    print(other)\n',
+        },
+      ),
+    });
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual([`\`print\` found. ${ROUTE}`]);
+  });
+
+  it('pairs very many findings in line order, whatever order the analyzer listed them in', () => {
+    const lines = (count) => Array.from({ length: count }, (_, index) => index + 1);
+    const pair = (heads) =>
+      compareFindings({
+        baseFindings: ruff('T201', '`print` found', lines(500)),
+        headFindings: heads,
+      });
+    const heads = ruff('T201', '`print` found', lines(600));
+
+    expect(lineOf(pair(heads).newFindings)).toEqual(lines(600).slice(500));
+    expect(lineOf(pair(heads.toReversed()).newFindings).toSorted((a, b) => a - b)).toEqual(
+      lines(600).slice(500),
+    );
   });
 });

@@ -65,7 +65,9 @@ describe('strict rules on an edited line of a legacy function', () => {
       touchedCode: strictTouched([[4, 4]]),
     });
 
-    expect(result.newFindings).toEqual([withEditedLineReason(unformatted)]);
+    expect(result.newFindings).toEqual([
+      withEditedLineReason(unformatted, strictTouched([[4, 4]])),
+    ]);
   });
   it('keeps a strict finding without a count ratchet new on an edited line', () => {
     const moduleLevel = { ...pushFinding('module', 4, 1), ratchet: undefined };
@@ -76,6 +78,8 @@ describe('strict rules on an edited line of a legacy function', () => {
       touchedCode: strictTouched([[4, 4]]),
     });
 
-    expect(result.newFindings).toEqual([withEditedLineReason(moduleLevel)]);
+    expect(result.newFindings).toEqual([
+      withEditedLineReason(moduleLevel, strictTouched([[4, 4]])),
+    ]);
   });
 });

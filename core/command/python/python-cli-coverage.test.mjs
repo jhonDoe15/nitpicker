@@ -3,6 +3,7 @@ import { runCli as nitpickerCli } from '../../cli.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { usePythonFixtures } from './test-support/python-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { EDITED_LINE_SENTENCE } from '../../diff/comparison/positions/touched-lines.mjs';
 
 const { pythonRepository, run } = usePythonFixtures(nitpickerCli);
 
@@ -46,8 +47,7 @@ describe('changed-branch-coverage with "preset": "python"', () => {
         rule: 'changed-branch-coverage',
         path: 'src/demo/a.py',
         line: 5,
-        message:
-          'Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 7. Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
+        message: `Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 7. Test it, or remove it if it can't happen. To accept the file, add it to "exclude" in nitpicker.config.json. ${EDITED_LINE_SENTENCE}`,
       },
     ]);
   });

@@ -240,6 +240,17 @@ describe('ingestCoverageBranches', () => {
     expect(identity("if name=='a' :")).toBe(identity('if name == "a":'));
     expect(identity('if name == "b":')).not.toBe(identity('if name == "a":'));
   });
+
+  it('keeps the identity when ruff format moves a one-line body to its own line', () => {
+    const text = reportOf([], [[1, 2]]);
+    const identity = (source) =>
+      ingestCoverageBranches(text, { sourceText: () => source }).findings[0].identity;
+
+    expect(identity("if x == 1: print('v1')\n")).toBe(identity('if x == 1:\n    print("v1")\n'));
+    expect(identity('if name == "a  b":\n    pass\n')).not.toBe(
+      identity('if name == "a b":\n    pass\n'),
+    );
+  });
 });
 
 describe('changed-branch-coverage in the differential comparison', () => {

@@ -294,7 +294,9 @@ describe('strict rules in touched code', () => {
       touchedCode: touched(changed),
     });
 
-    expect(result.newFindings).toEqual(head.map(withEditedLineReason));
+    expect(result.newFindings).toEqual(
+      head.map((finding) => withEditedLineReason(finding, touched(changed))),
+    );
     expect(result.unchangedFindings).toEqual([]);
     expect(result.resolvedFindings).toEqual([]);
   });

@@ -7,20 +7,13 @@ function startOfStep(frontier, diagonal, edits) {
     : { previous: diagonal - 1, x: frontier.get(diagonal - 1) + 1 };
 }
 
-function* offsetsBelow(limit) {
-  for (const [offset] of Array.prototype.entries.call({ length: limit })) {
-    yield offset;
-  }
-}
-
 function followDiagonal(left, right, start) {
-  const room = Math.min(left.length - start.x, right.length - start.y);
-  for (const offset of offsetsBelow(room)) {
-    if (left[start.x + offset] !== right[start.y + offset]) {
-      return { x: start.x + offset, y: start.y + offset };
-    }
+  const end = { x: start.x, y: start.y };
+  while (end.x < left.length && end.y < right.length && left[end.x] === right[end.y]) {
+    end.x += 1;
+    end.y += 1;
   }
-  return { x: start.x + room, y: start.y + room };
+  return end;
 }
 
 function diagonalsOf(edits) {
@@ -46,13 +39,11 @@ function backtrack(trace, sides) {
     const { previous } = startOfStep(frontier, cursor.x - cursor.y, edits);
     const previousX = edits === 0 ? 0 : frontier.get(previous);
     const previousY = edits === 0 ? 0 : previousX - previous;
-    const diagonal = Math.max(Math.min(cursor.x - previousX, cursor.y - previousY), 0);
-    pairs.push(
-      ...Array.from({ length: diagonal }, (_, offset) => [
-        cursor.x - 1 - offset,
-        cursor.y - 1 - offset,
-      ]),
-    );
+    while (cursor.x > previousX && cursor.y > previousY) {
+      cursor.x -= 1;
+      cursor.y -= 1;
+      pairs.push([cursor.x, cursor.y]);
+    }
     Object.assign(cursor, { x: previousX, y: previousY });
   }
   return pairs.reverse();
@@ -94,27 +85,27 @@ function lineKeys(tokens, lines) {
   );
 }
 
+function appendShifted(pairs, shifted, offset) {
+  for (const [leftIndex, rightIndex] of shifted) {
+    pairs.push([offset[0] + leftIndex, offset[1] + rightIndex]);
+  }
+}
+
+function texts(tokens) {
+  return tokens.map(({ text }) => text);
+}
+
 function gapPairs(sides, from, to) {
-  const left = sides.left.slice(from[0], to[0]).map(({ text }) => text);
-  const right = sides.right.slice(from[1], to[1]).map(({ text }) => text);
-  return (alignTokens(left, right, sides.maxEdits) ?? []).map(([leftIndex, rightIndex]) => [
-    from[0] + leftIndex,
-    from[1] + rightIndex,
-  ]);
+  const left = texts(sides.left.slice(from[0], to[0]));
+  const right = texts(sides.right.slice(from[1], to[1]));
+  return alignTokens(left, right, sides.maxEdits) ?? [];
 }
 
 function boundaries(lines, index, total) {
   return { start: lines[index]?.start ?? total, end: lines[index]?.end ?? total };
 }
 
-function pairedLine(bounds) {
-  return Array.from({ length: bounds.left.end - bounds.left.start }, (_, offset) => [
-    bounds.left.start + offset,
-    bounds.right.start + offset,
-  ]);
-}
-
-export function alignLines(left, right, maxEdits) {
+function alignLines(left, right, maxEdits) {
   const sides = { left, right, maxEdits };
   const leftLines = linesOf(left);
   const rightLines = linesOf(right);
@@ -129,9 +120,48 @@ export function alignLines(left, right, maxEdits) {
       left: boundaries(leftLines, leftLine, left.length),
       right: boundaries(rightLines, rightLine, right.length),
     };
-    pairs.push(...gapPairs(sides, previous, [bounds.left.start, bounds.right.start]));
-    pairs.push(...pairedLine(bounds));
+    appendShifted(
+      pairs,
+      gapPairs(sides, previous, [bounds.left.start, bounds.right.start]),
+      previous,
+    );
+    for (const offset of Array.from({ length: bounds.left.end - bounds.left.start }).keys()) {
+      pairs.push([bounds.left.start + offset, bounds.right.start + offset]);
+    }
     previous.splice(0, 2, bounds.left.end, bounds.right.end);
+  }
+  return pairs;
+}
+
+function commonEnds(left, right) {
+  const shorter = Math.min(left.length, right.length);
+  const ends = { prefix: 0, suffix: 0 };
+  while (ends.prefix < shorter && left[ends.prefix].text === right[ends.prefix].text) {
+    ends.prefix += 1;
+  }
+  const room = shorter - ends.prefix;
+  while (ends.suffix < room && left.at(-1 - ends.suffix).text === right.at(-1 - ends.suffix).text) {
+    ends.suffix += 1;
+  }
+  return ends;
+}
+
+export function alignSequences(left, right, maxEdits) {
+  const { prefix, suffix } = commonEnds(left, right);
+  const middle = {
+    left: left.slice(prefix, left.length - suffix),
+    right: right.slice(prefix, right.length - suffix),
+  };
+  const inner =
+    alignTokens(texts(middle.left), texts(middle.right), maxEdits) ??
+    alignLines(middle.left, middle.right, maxEdits);
+  if (inner === undefined) {
+    return undefined;
+  }
+  const pairs = Array.from({ length: prefix }, (_, index) => [index, index]);
+  appendShifted(pairs, inner, [prefix, prefix]);
+  for (const offset of Array.from({ length: suffix }).keys()) {
+    pairs.push([left.length - suffix + offset, right.length - suffix + offset]);
   }
   return pairs;
 }
