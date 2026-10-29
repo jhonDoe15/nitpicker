@@ -12,14 +12,16 @@ public final class Body {
     public final long position;
     public String mutation;
 
-    public CallFact(MethodInfo target, int line, String receiver, boolean cleanup, long position) {
-      this.target = target;
-      this.line = line;
-      this.receiver = receiver;
-      this.cleanup = cleanup;
-      this.position = position;
+    public CallFact(Call call) {
+      this.target = call.target();
+      this.line = call.line();
+      this.receiver = call.receiver();
+      this.cleanup = call.cleanup();
+      this.position = call.position();
     }
   }
+
+  public record Call(MethodInfo target, int line, String receiver, boolean cleanup, long position) {}
 
   public record Forward(MethodInfo target, int position) {}
 

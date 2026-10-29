@@ -34,19 +34,20 @@ public final class MethodInfo {
     }
   }
 
-  public MethodInfo(
-      TypeInfo owner, String name, Tree returnType, String field, Set<Modifier> flags, int line) {
+  public record Getter(String name, Tree returnType, String field, Set<Modifier> flags, int line) {}
+
+  public MethodInfo(TypeInfo owner, Getter getter) {
     this.owner = owner;
     this.tree = null;
-    this.name = name;
+    this.name = getter.name();
     this.ctor = false;
     this.isStatic = false;
     this.params = List.of();
-    this.returnType = returnType;
-    this.flags = flags;
-    this.lombokField = field;
-    this.accessorField = field;
-    this.line = line;
+    this.returnType = getter.returnType();
+    this.flags = getter.flags();
+    this.lombokField = getter.field();
+    this.accessorField = getter.field();
+    this.line = getter.line();
   }
 
   public boolean hasBody() {

@@ -16,6 +16,8 @@ public final class Decisions {
 
   public record Test(Subject subject, List<String> constants) {}
 
+  public record Arms(List<List<String>> groups, boolean otherwise) {}
+
   private final Typer typer;
   private final Ctx ctx;
   private final Unit unit;
@@ -138,29 +140,35 @@ public final class Decisions {
       tails.add(next);
       tail = next.getElseStatement();
     }
+    List<Test> tests = new ArrayList<>();
+    for (IfTree element : elements) {
+      tests.add(test(element.getCondition(), consumed));
+    }
     List<Map<String, Object>> found = new ArrayList<>();
     int index = 0;
-    while (index < elements.size()) {
-      Test first = test(elements.get(index).getCondition(), consumed);
+    while (index < tests.size()) {
+      Test first = tests.get(index);
       if (first == null) {
         index++;
         continue;
       }
-      List<List<String>> groups = new ArrayList<>(List.of(first.constants()));
-      int end = index + 1;
-      while (end < elements.size()) {
-        Test next = test(elements.get(end).getCondition(), consumed);
-        if (next == null || !next.subject().sameValue(first.subject())) {
-          break;
-        }
-        groups.add(next.constants());
-        end++;
-      }
-      boolean otherwise = end == elements.size() && tail != null;
-      found.add(decision(first.subject(), groups, unit.line(elements.get(index)), otherwise));
+      int end = runEnd(tests, index);
+      List<List<String>> groups = new ArrayList<>();
+      tests.subList(index, end).forEach(next -> groups.add(next.constants()));
+      Arms arms = new Arms(groups, end == elements.size() && tail != null);
+      found.add(decision(first.subject(), arms, unit.line(elements.get(index))));
       index = end;
     }
     return found;
+  }
+
+  private static int runEnd(List<Test> tests, int start) {
+    Subject subject = tests.get(start).subject();
+    int end = start + 1;
+    while (end < tests.size() && tests.get(end) != null && tests.get(end).subject().sameValue(subject)) {
+      end++;
+    }
+    return end;
   }
 
   public Map<String, Object> disjunction(BinaryTree tree, Set<Tree> consumed) {
@@ -168,7 +176,7 @@ public final class Decisions {
     if (test == null || test.constants().size() < 2) {
       return null;
     }
-    return decision(test.subject(), List.of(test.constants()), unit.line(tree), false);
+    return decision(test.subject(), new Arms(List.of(test.constants()), false), unit.line(tree));
   }
 
   public Map<String, Object> selection(Tree selector, List<? extends CaseTree> cases, int line) {
@@ -176,36 +184,54 @@ public final class Decisions {
     if (subject == null) {
       return null;
     }
-    List<List<String>> groups = new ArrayList<>();
-    List<String> pending = new ArrayList<>();
-    boolean otherwise = false;
+    Grouping grouping = new Grouping(subject);
     for (CaseTree entry : cases) {
-      if (entry.getLabels().isEmpty()) {
-        otherwise = true;
+      if (!grouping.add(entry)) {
+        return null;
       }
+    }
+    return decision(subject, grouping.finish(), line);
+  }
+
+  private final class Grouping {
+    private final Subject subject;
+    private final List<List<String>> groups = new ArrayList<>();
+    private List<String> pending = new ArrayList<>();
+    private boolean otherwise;
+
+    private Grouping(Subject subject) {
+      this.subject = subject;
+    }
+
+    private boolean add(CaseTree entry) {
+      otherwise |= entry.getLabels().isEmpty();
       for (CaseLabelTree label : entry.getLabels()) {
         if (label instanceof DefaultCaseLabelTree) {
           otherwise = true;
-        } else if (label instanceof ConstantCaseLabelTree constantLabel) {
-          String constant = labelText(constantLabel.getConstantExpression(), subject);
-          if (constant == null) {
-            return null;
-          }
-          pending.add(constant);
-        } else {
-          return null;
+          continue;
         }
+        String constant = label instanceof ConstantCaseLabelTree constantLabel
+            ? labelText(constantLabel.getConstantExpression(), subject)
+            : null;
+        if (constant == null) {
+          return false;
+        }
+        pending.add(constant);
       }
       boolean closes = entry.getCaseKind() == CaseTree.CaseKind.RULE || !entry.getStatements().isEmpty();
       if (closes && !pending.isEmpty()) {
         groups.add(pending);
         pending = new ArrayList<>();
       }
+      return true;
     }
-    if (!pending.isEmpty()) {
-      groups.add(pending);
+
+    private Arms finish() {
+      if (!pending.isEmpty()) {
+        groups.add(pending);
+      }
+      return new Arms(groups, otherwise);
     }
-    return decision(subject, groups, line, otherwise);
   }
 
   private String labelText(Tree expression, Subject subject) {
@@ -216,12 +242,12 @@ public final class Decisions {
     return constant(e, subject, true);
   }
 
-  private static Map<String, Object> decision(Subject subject, List<List<String>> groups, int line, boolean otherwise) {
+  private static Map<String, Object> decision(Subject subject, Arms arms, int line) {
     Map<String, Object> map = new LinkedHashMap<>();
     map.put("subject", subject.id());
-    map.put("groups", groups);
+    map.put("groups", arms.groups());
     map.put("line", line);
-    map.put("otherwise", otherwise ? Boolean.TRUE : null);
+    map.put("otherwise", arms.otherwise() ? Boolean.TRUE : null);
     return map;
   }
 }

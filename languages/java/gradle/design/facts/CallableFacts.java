@@ -18,11 +18,11 @@ public final class CallableFacts {
   }
 
   public Map<String, Object> build(MethodInfo method) {
-    Ctx ctx = new Ctx(method.owner, method.typeVars);
+    Ctx ctx = Ctx.forMethod(method);
     Body body = new Body();
     List<Map<String, Object>> params = parameters(method, ctx, body);
     if (method.tree != null && method.tree.getBody() != null) {
-      new BodyScanner(body, typer, ctx, method).run();
+      new BodyScanner(body, typer, ctx).run();
     }
     Map<String, Object> map = new LinkedHashMap<>();
     map.put("id", method.id);
@@ -121,11 +121,12 @@ public final class CallableFacts {
   }
 
   private static int parameterIndex(MethodInfo method, Tree argument) {
-    if (argument instanceof IdentifierTree identifier) {
-      for (int index = 0; index < method.params.size(); index++) {
-        if (method.params.get(index).name.contentEquals(identifier.getName())) {
-          return index;
-        }
+    if (!(argument instanceof IdentifierTree identifier)) {
+      return -1;
+    }
+    for (int index = 0; index < method.params.size(); index++) {
+      if (method.params.get(index).name.contentEquals(identifier.getName())) {
+        return index;
       }
     }
     return -1;

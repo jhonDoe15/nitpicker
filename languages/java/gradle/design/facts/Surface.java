@@ -92,9 +92,10 @@ public final class Surface {
       return false;
     }
     String simple = parts.get(parts.size() - 1);
+    Tree type = annotation.getAnnotationType();
     if (QUIET.contains(simple)
-        || project.resolveTree(annotation.getAnnotationType(), owner.outer, owner.unit, Set.of()) != null
-        || project.resolveTree(annotation.getAnnotationType(), owner, owner.unit, Set.of()) != null) {
+        || project.resolveTree(type, new Project.Site(owner.outer, owner.unit, Set.of())) != null
+        || project.resolveTree(type, new Project.Site(owner, owner.unit, Set.of())) != null) {
       return false;
     }
     if (owner.unit.lombok && (LOMBOK.contains(parts.get(0)) || LOMBOK.contains(simple))) {

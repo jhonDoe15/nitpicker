@@ -43,7 +43,7 @@ public final class Calls {
   }
 
   private Resolved creation(NewClassTree creation, Ctx c) {
-    TypeInfo type = typer.project.resolveTree(creation.getIdentifier(), c.owner, c.unit, c.typeVars);
+    TypeInfo type = typer.project.resolveTree(creation.getIdentifier(), c.site());
     if (type == null || type.isInterface()) {
       return Resolved.NONE;
     }
@@ -83,23 +83,23 @@ public final class Calls {
     Set<MethodInfo> candidates = new LinkedHashSet<>();
     for (String member : c.unit.staticSingle) {
       if (member.endsWith("." + name)) {
-        addStatic(candidates, member.substring(0, member.length() - name.length() - 1), name, argc);
+        candidates.add(staticMethod(member.substring(0, member.length() - name.length() - 1), name, argc));
       }
     }
     for (String base : c.unit.staticOnDemand) {
-      addStatic(candidates, base, name, argc);
+      candidates.add(staticMethod(base, name, argc));
     }
+    candidates.remove(null);
     return candidates.size() == 1 ? new Resolved(candidates.iterator().next(), null) : Resolved.NONE;
   }
 
-  private void addStatic(Set<MethodInfo> candidates, String type, String name, int argc) {
+  private MethodInfo staticMethod(String type, String name, int argc) {
     TypeInfo owner = typer.project.find(type);
-    if (owner != null) {
-      Lookup.Found found = typer.lookup.method(owner, name, argc);
-      if (found.method() != null && found.method().isStatic) {
-        candidates.add(found.method());
-      }
+    if (owner == null) {
+      return null;
     }
+    MethodInfo found = typer.lookup.method(owner, name, argc).method();
+    return found != null && found.isStatic ? found : null;
   }
 
   private Resolved qualified(MemberSelectTree select, int argc, Ctx c) {
@@ -117,7 +117,7 @@ public final class Calls {
       }
     }
     if (base instanceof MemberSelectTree outerThis && outerThis.getIdentifier().contentEquals("this")) {
-      TypeInfo outer = typer.project.resolveTree(outerThis.getExpression(), c.owner, c.unit, c.typeVars);
+      TypeInfo outer = typer.project.resolveTree(outerThis.getExpression(), c.site());
       return outer == null ? Resolved.NONE : of(lookup.method(outer, name, argc), null);
     }
     TypeInfo named = typer.typeNameOf(base, c);

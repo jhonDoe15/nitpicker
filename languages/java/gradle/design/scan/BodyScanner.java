@@ -17,12 +17,12 @@ public final class BodyScanner extends ScopeScanner {
   private final Set<Tree> consumed = Collections.newSetFromMap(new IdentityHashMap<>());
   private int finallyDepth;
 
-  public BodyScanner(Body body, Typer typer, Ctx ctx, MethodInfo method) {
+  public BodyScanner(Body body, Typer typer, Ctx ctx) {
     super(typer, ctx, new Usage(body, typer, ctx));
     this.body = body;
-    this.method = method;
+    this.method = ctx.method;
     this.decisions = new Decisions(typer, ctx);
-    this.mutations = new Mutations(typer, ctx, method.tree.getBody());
+    this.mutations = new Mutations(typer, ctx, ctx.method.tree.getBody());
   }
 
   public void run() {
@@ -132,7 +132,7 @@ public final class BodyScanner extends ScopeScanner {
     MethodInfo close = ty.type() == null ? null : typer.lookup.method(ty.type(), "close", 0).method();
     if (close != null) {
       body.calls.add(
-          new Body.CallFact(close, ctx.unit.line(resource), key, true, ctx.unit.end(block)));
+          new Body.CallFact(new Body.Call(close, ctx.unit.line(resource), key, true, ctx.unit.end(block))));
     }
   }
 
@@ -185,7 +185,7 @@ public final class BodyScanner extends ScopeScanner {
     boolean cleanup = finallyDepth > 0 && usage.closureDepth == 0;
     Body.CallFact fact =
         new Body.CallFact(
-            resolved.target(), ctx.unit.lineAt(position), resolved.receiver(), cleanup, position);
+            new Body.Call(resolved.target(), ctx.unit.lineAt(position), resolved.receiver(), cleanup, position));
     mutations.register(tree, fact);
     body.calls.add(fact);
   }

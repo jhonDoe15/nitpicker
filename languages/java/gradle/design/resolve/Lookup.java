@@ -2,6 +2,7 @@ package nitpicker.designfacts.resolve;
 
 import com.sun.source.tree.*;
 import java.util.*;
+import java.util.function.Predicate;
 import nitpicker.designfacts.*;
 import nitpicker.designfacts.model.*;
 
@@ -64,16 +65,12 @@ public final class Lookup {
     return null;
   }
 
+  private List<MethodInfo> members(TypeInfo type, Predicate<MethodInfo> keep) {
+    return chain(type).stream().flatMap(member -> member.methods.stream()).filter(keep).toList();
+  }
+
   public Found method(TypeInfo type, String name, int argc) {
-    List<MethodInfo> candidates = new ArrayList<>();
-    for (TypeInfo member : chain(type)) {
-      for (MethodInfo method : member.methods) {
-        if (!method.ctor && method.name.equals(name) && method.accepts(argc)) {
-          candidates.add(method);
-        }
-      }
-    }
-    return select(candidates, argc);
+    return select(members(type, method -> !method.ctor && method.name.equals(name) && method.accepts(argc)), argc);
   }
 
   public Found constructor(TypeInfo type, int argc) {
@@ -91,12 +88,8 @@ public final class Lookup {
       return null;
     }
     Map<String, MethodInfo> bySignature = new LinkedHashMap<>();
-    for (TypeInfo member : chain(type)) {
-      for (MethodInfo method : member.methods) {
-        if (!method.ctor && method.name.equals(name)) {
-          bySignature.putIfAbsent(signature(method), method);
-        }
-      }
+    for (MethodInfo method : members(type, method -> !method.ctor && method.name.equals(name))) {
+      bySignature.putIfAbsent(signature(method), method);
     }
     return bySignature.size() == 1 ? bySignature.values().iterator().next() : null;
   }
@@ -139,16 +132,11 @@ public final class Lookup {
   }
 
   public List<MethodInfo> overridden(MethodInfo method) {
-    List<MethodInfo> found = new ArrayList<>();
     List<TypeInfo> chain = chain(method.owner);
-    for (TypeInfo member : chain.subList(1, chain.size())) {
-      for (MethodInfo candidate : member.methods) {
-        if (!candidate.ctor && !candidate.isStatic && candidate.name.equals(method.name)
-            && candidate.params.size() == method.params.size()) {
-          found.add(candidate);
-        }
-      }
-    }
-    return found;
+    return chain.subList(1, chain.size()).stream()
+        .flatMap(member -> member.methods.stream())
+        .filter(candidate -> !candidate.ctor && !candidate.isStatic && candidate.name.equals(method.name)
+            && candidate.params.size() == method.params.size())
+        .toList();
   }
 }

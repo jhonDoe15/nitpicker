@@ -2,11 +2,13 @@ package nitpicker.designfacts.scope;
 
 import java.util.*;
 import nitpicker.designfacts.model.*;
+import nitpicker.designfacts.resolve.*;
 
 public final class Ctx {
   public final TypeInfo owner;
   public final Unit unit;
   public final Set<String> typeVars;
+  public MethodInfo method;
   private final Deque<Map<String, Local>> scopes = new ArrayDeque<>();
 
   public Ctx(TypeInfo owner, Set<String> typeVars) {
@@ -14,6 +16,16 @@ public final class Ctx {
     this.unit = owner.unit;
     this.typeVars = typeVars;
     push();
+  }
+
+  public Project.Site site() {
+    return new Project.Site(owner, unit, typeVars);
+  }
+
+  public static Ctx forMethod(MethodInfo method) {
+    Ctx ctx = new Ctx(method.owner, method.typeVars);
+    ctx.method = method;
+    return ctx;
   }
 
   public static Ctx forType(TypeInfo owner) {
