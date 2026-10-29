@@ -57,7 +57,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   blocking or CPU work without an `await` cannot be interrupted: `await asyncio.to_thread(work)`
   (`trio.to_thread.run_sync`) or add `await asyncio.sleep(0)` first
   (`timeout-scope-path-without-checkpoint`).
-- Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru), never `print`. A
+- Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru), never `print`;
+  a `domain` package returns a result instead and leaves logging to `adapters/`. A
   log in an `except` keeps the traceback (`logger.exception(...)` or `exc_info=True`); passing the
   error as an argument or `str(error)` drops it. Logging alone is not handling: also re-raise the
   error or return a failure that carries it.
