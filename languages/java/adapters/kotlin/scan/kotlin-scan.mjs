@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { hash, nextOccurrence } from '../../../../../shared/rules/finding-helpers.mjs';
 import { braceDepths, lineOf, lineText, scanKotlinSource } from './kotlin-source.mjs';
+import { REPEATED_STRING_MESSAGE, repeatedStringLiterals } from './literals/repeated-strings.mjs';
 import { CALL_MESSAGES, ioInLoops, logTemplates, shellCommands } from './rules/calls.mjs';
 import { CATCH_MESSAGES, booleanFlags, catchOnlyLogs } from './rules/catches.mjs';
 import { DECLARATION_MESSAGES, genericNames, mutableModuleState } from './rules/declarations.mjs';
@@ -38,6 +39,7 @@ const MESSAGES = {
   ...CRYPTO_MESSAGES,
   ...CLIENT_MESSAGES,
   ...FAN_OUT_MESSAGES,
+  RepeatedStringLiteral: REPEATED_STRING_MESSAGE,
 };
 
 export const KOTLIN_SOURCE_RULES = Object.keys(MESSAGES).map(
@@ -63,6 +65,7 @@ const MAIN_RULES = [
   disabledTlsVerification,
   httpWithoutTimeout,
   unsafeDeserialization,
+  repeatedStringLiterals,
 ];
 const TEST_RULES = [testClassesWithoutTests];
 

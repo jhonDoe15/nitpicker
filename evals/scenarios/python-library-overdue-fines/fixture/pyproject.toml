@@ -1,0 +1,39 @@
+[project]
+name = "library-app"
+version = "0.1.0"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.scripts]
+library = "library_app.cli:run"
+
+[dependency-groups]
+dev = ["coverage", "import-linter", "mutmut", "mypy", "pytest", "ruff"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]
+
+[tool.importlinter]
+root_package = "library_app"
+
+[[tool.importlinter.contracts]]
+name = "catalog is used only through its package"
+type = "forbidden"
+source_modules = ["library_app.cli", "library_app.composition_root", "library_app.features.members", "library_app.features.loans"]
+forbidden_modules = ["library_app.features.catalog.domain", "library_app.features.catalog.adapters"]
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "members is used only through its package"
+type = "forbidden"
+source_modules = ["library_app.cli", "library_app.composition_root", "library_app.features.catalog", "library_app.features.loans"]
+forbidden_modules = ["library_app.features.members.domain", "library_app.features.members.adapters"]
+allow_indirect_imports = true
+
+[[tool.importlinter.contracts]]
+name = "loans is used only through its package"
+type = "forbidden"
+source_modules = ["library_app.cli", "library_app.composition_root", "library_app.features.catalog", "library_app.features.members"]
+forbidden_modules = ["library_app.features.loans.domain", "library_app.features.loans.adapters"]
+allow_indirect_imports = true
