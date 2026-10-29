@@ -43,6 +43,9 @@ Before you change code other modules use, or fix a bug, read
 - Paths: `pathlib.Path` with `/`, `.read_text()`, `.exists()`. No `os.path`, no `open(path)`.
 - Strings: f-strings only. No `.format()` and no `%`.
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.
+- Parameters: remove an unused one (`@override` marks an override; `_context` only when a callback
+  signature fixes it). A `bool` that picks a behavior is keyword-only
+  (`def send(message, *, urgent=False)`), two functions or an enum.
 - Errors: catch the specific exception and handle it, or re-raise it with its cause:
   `raise ParseError(text) from err`. No bare `except:` or `except Exception:`, and no `raise Exception(...)`.
 - Cancellation: after cleanup in an explicit asyncio, Trio or AnyIO cancellation handler, use

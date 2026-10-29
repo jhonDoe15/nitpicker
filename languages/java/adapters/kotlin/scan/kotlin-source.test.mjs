@@ -29,6 +29,22 @@ describe('scanKotlinSource', () => {
     expect(literals.map(({ text, template }) => [text, template])).toEqual([['x // y', false]]);
   });
 
+  it('keeps the code of a template expression in contextCode and blanks its text and comments', () => {
+    const source = 'val a = "id: ${row["order_id"] /* c */}"\nval b = "cost $`x` dollars"\n';
+    const { contextCode, literals } = scanKotlinSource(source);
+
+    expect(contextCode.split('\n')).toEqual([
+      'val a = "      row["        "]         "',
+      'val b = "                 "',
+      '',
+    ]);
+    expect(literals.map(({ text, template }) => [text, template])).toEqual([
+      ['id: ${row["order_id"] /* c */}', true],
+      ['order_id', false],
+      ['cost $`x` dollars', true],
+    ]);
+  });
+
   it('reads templates, raw strings, nested comments, KDoc and character literals', () => {
     const source =
       'val a = "hi $name ${f("}")}"\nval r = """a"b"""\n/* x /* y */ z */\n/** doc */\nval c = \'"\'\nval d = "\\$x"\n';
