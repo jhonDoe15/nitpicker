@@ -124,6 +124,14 @@ describe.skipIf(!pythonE2eEnabled)('ruff lint with the project config end to end
     );
   });
 
+  it('keeps nitpicker rules when the project selects none', () => {
+    const files = { 'src/shop/app.py': 'print("ready")\n', 'ruff.toml': '[lint]\nselect = []\n' };
+
+    expect(realLintFindings({ files, toolPrecedence: { ruff: ['project'] } })).toEqual([
+      'T201 src/shop/app.py',
+    ]);
+  });
+
   it('follows the codes ruff redirects, in the selection and in the per-file ignores', () => {
     const files = {
       'src/shop/models.py': 'class Item:\n    pass\n',
