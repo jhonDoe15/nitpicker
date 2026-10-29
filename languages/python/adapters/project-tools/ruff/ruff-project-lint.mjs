@@ -99,15 +99,34 @@ function perFileIgnores(layers) {
   ];
 }
 
-function mergedTables(tables) {
-  const merged = {};
-  for (const table of tables) {
-    for (const [key, value] of Object.entries(table)) {
-      merged[key] =
-        isTable(value) && isTable(merged[key]) ? mergedTables([merged[key], value]) : value;
+function mergedValue(value, current, joinLists) {
+  return joinLists && Array.isArray(value) && Array.isArray(current)
+    ? [...new Set([...current, ...value])]
+    : value;
+}
+
+function mergeLevel({ target, winner, other }, { joinLists, pending }) {
+  for (const [key, value] of Object.entries(winner)) {
+    const current = other[key];
+    const nested = isTable(value) && isTable(current);
+    target[key] = nested ? { ...current } : mergedValue(value, current, joinLists);
+    if (nested) {
+      pending.push({ target: target[key], winner: value, other: current });
     }
   }
+}
+
+export function mergeTables(winner, other, { joinLists }) {
+  const merged = { ...other };
+  const pending = [{ target: merged, winner, other }];
+  for (const level of pending) {
+    mergeLevel(level, { joinLists, pending });
+  }
   return merged;
+}
+
+function mergedTables(tables) {
+  return tables.reduce((merged, table) => mergeTables(table, merged, { joinLists: false }), {});
 }
 
 function optionsOf(layers) {

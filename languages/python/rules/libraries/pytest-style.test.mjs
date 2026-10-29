@@ -118,9 +118,12 @@ describe('the pytest style of a project', () => {
       'pyproject.toml': '[tool.ruff.lint.flake8-pytest-style]\nfixture-parentheses = true\n',
     });
 
-    expect(pytestStyle(base, ['tests/test_a.py'], head)).toMatchObject({
+    expect(pytestStyle(base, ['tests/test_a.py'], head)).toEqual({
       'fixture-parentheses': false,
       'mark-parentheses': true,
+      'parametrize-names-type': 'csv',
+      'parametrize-values-type': 'list',
+      'parametrize-values-row-type': 'tuple',
     });
   });
 

@@ -1,6 +1,5 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { isTable } from '../../configuration/project-files.mjs';
 import { listRuffRules, ruffConfigFor } from '../../configuration/python-ruff-config.mjs';
 import { readRuffLayers } from '../../formatting/project-format-config.mjs';
 import {
@@ -11,10 +10,10 @@ import {
   toolLayers,
   unique,
 } from '../project-tool-layers.mjs';
-import { projectLint } from './ruff-project-lint.mjs';
+import { mergeTables, projectLint } from './ruff-project-lint.mjs';
 import { expandSelectors, resolveSelection, ruleCatalog } from './ruff-selection.mjs';
 
-export const RUFF_TOOL = 'ruff';
+const RUFF_TOOL = 'ruff';
 const LAYERED_CONFIG = 'nitpicker-ruff-layered.toml';
 const LOOKED = [
   'a ruff config (.ruff.toml, ruff.toml, or pyproject.toml with a [tool.ruff] table,',
@@ -32,21 +31,6 @@ function readProject(configRoot) {
     return { file: error.file ?? configRoot, unreadable: error.message };
   }
   return value;
-}
-
-function mergeOptions(winner, other) {
-  const merged = { ...other };
-  for (const [key, value] of Object.entries(winner)) {
-    const current = other[key];
-    if (isTable(value) && isTable(current)) {
-      merged[key] = mergeOptions(value, current);
-    } else if (Array.isArray(value) && Array.isArray(current)) {
-      merged[key] = unique([...current, ...value]);
-    } else {
-      merged[key] = value;
-    }
-  }
-  return merged;
 }
 
 function filteredIgnores(perFileIgnores, { catalog, extra }) {
@@ -78,8 +62,8 @@ function layeredConfig({ nitpicker, project, catalog, nitpickerFirst }) {
       .filter((code) => !nitpickerFirst || !ignoredByNitpicker.has(code)),
   );
   const options = nitpickerFirst
-    ? mergeOptions(nitpickerOptions, project.options)
-    : mergeOptions(project.options, nitpickerOptions);
+    ? mergeTables(nitpickerOptions, project.options, { joinLists: true })
+    : mergeTables(project.options, nitpickerOptions, { joinLists: true });
   return {
     ...project.globals,
     ...nonEmpty('extend-exclude', project.exclude),

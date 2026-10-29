@@ -73,8 +73,8 @@ function lintLines({ config, formatter, projectRoot }) {
   }
   try {
     return ignoredConfig('ruff', projectRoot);
-  } catch {
-    return [];
+  } catch (error) {
+    return [`Could not read the ruff lint settings: ${error.message}`];
   }
 }
 
