@@ -74,6 +74,10 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
 - **Failure policy.** If Gradle fails on either snapshot (does not compile, tests fail, tool
   crashes, no `gradle` on the PATH, unreadable reports), nothing is silently skipped. `runJavaDiff`
   (the library entry) throws; the CLI path maps the failure to a `tool-error` finding, see slice 2.
+  The one exception is a base snapshot whose test reports name failing tests while the head passes:
+  that is a note and the run goes on (see [A base whose tests fail](usage.md#a-base-whose-tests-fail)).
+  A base that fails for another reason, or whose tests fail without a named failing test, still
+  fails.
 
 ## Maven builds
 
@@ -146,7 +150,12 @@ by field. Per snapshot:
 - **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
   `nitpicker.archunit.includes` property in the POM) become findings; any other failing test, from
   Surefire's or Failsafe's reports, is a `java/maven-failure` tool error that names up to ten
-  failing tests. Reports older than the build are ignored. Gradle runs the ArchUnit classes in their
+  failing tests. On the base snapshot the failing tests are listed instead of thrown: that module
+  skips JaCoCo and PIT, and the failure becomes a `tests-failed` tool error for that module that the
+  core reads as a red base, the same as a Gradle base whose tests fail. The other modules keep their
+  coverage, CRAP and mutation comparison with the base; a failing root module is unknown only for its
+  own source and test directories. Reports older than the build are ignored.
+  Gradle runs the ArchUnit classes in their
   own task, but Maven only has the Surefire and Failsafe results: when a module has ArchUnit classes
   and neither plugin ran any of them (Surefire's `<includes>` miss them, as they would `*Rules`, or
   the module skips tests), that is a tool error rather than a silent pass. ArchUnit reads bytecode
@@ -2084,6 +2093,7 @@ boundary finding is still reported.
 | Rule                   | Fails when                                                                                                                                                                                                                                                                                                                                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `spring-scope-capture` | a singleton bean (a `@Component` class or a `@Bean` method without `@Scope`, or with `singleton` or `application` scope) takes a request-, session-, `websocket`-, Spring Batch `step`- or `job`-scoped bean without a scoped proxy: in a constructor or `@Bean` method parameter, an `@Autowired`, `@Inject` or `@Resource` field or method, also as `Optional<T>`, an array or a collection or map of them |
+| `spring-request-state` | request data reaches a field of a singleton bean or a static field outside set-up: assigned, written into an array element, or passed to a collection, map, `Map.Entry` or `AtomicReference` mutator (`add`, `put`, `computeIfAbsent`, `set`, ...)                                                                                                                                                           |
 
 The scope is read from `@Scope` on the class or `@Bean` method, directly or through a composed
 annotation such as `@RequestScope` (whose own `ScopedProxyMode` attribute, `TARGET_CLASS` by
@@ -2099,6 +2109,52 @@ declares; the rule claims only when all of them have such a scope. So a prototyp
 instance per injection point, often meant), a custom scope it cannot model (`@Scope("tenant")`,
 `thread`), a type with no bean in the module (one from a library or registered in code) or a
 `@ComponentScan(scopedProxy = ...)` default it cannot resolve to one mode is never a finding.
+
+`spring-request-state` follows request data through the compiled code (bytecode dataflow with
+[ASM](https://asm.ow2.io), BSD-3-Clause, added to the rule runner only). Request data is every
+parameter of a handler method (`@RequestMapping` and its shortcuts, `@MessageMapping`,
+`@SubscribeMapping`, `@SchemaMapping`, `@BatchMapping`, `@KafkaListener`, `@KafkaHandler`,
+`@RabbitListener`, `@RabbitHandler`, `@JmsListener`, `@ModelAttribute`, `@InitBinder`,
+`@ExceptionHandler`, also when the annotation sits on the interface or superclass method the handler
+overrides, as in a generated `XApi` interface), any parameter annotated `@RequestParam`,
+`@PathVariable`, `@RequestBody`, `@RequestHeader`, `@CookieValue`, `@RequestPart`,
+`@MatrixVariable`, `@RequestAttribute`, `@SessionAttribute`, `@ModelAttribute`, `@Payload`,
+`@Header(s)`, `@DestinationVariable` or `@Argument`, any parameter of a request type
+(`ServletRequest`, `WebRequest`, `ServerHttpRequest`, `ServerWebExchange`, a functional
+`ServerRequest`) and the result of `RequestContextHolder.getRequestAttributes()` /
+`currentRequestAttributes()`, `SecurityContextHolder.getContext()` and
+`ReactiveSecurityContextHolder.getContext()`, also through the project's own helpers that return it.
+It follows the data through local variables, values derived from it, new objects, collections and
+`StringBuilder`s built from it (library calls that fill a local object, `Collections.addAll`,
+`System.arraycopy`, method references such as `list::add`), getters and identity helpers
+(`Objects.requireNonNull`), calls into the project's own methods (across classes, through interfaces
+to every implementation, to the class of an object the method created, and through lambdas and
+method references the code runs or passes on), inner and anonymous classes writing their outer
+class's fields, and helper objects a singleton holds, and reports the field where it ends up, once
+per field, on the class that declares the shared field (a base class of a singleton, another
+singleton reached through its getter), with the first handler parameter or source that reaches it:
+`last:put:VisitController.create(visit)`, identity `VisitController|last`. Stores are writes to a
+field, an array element or a collection, map (also `MultiValueMap`, `HttpHeaders`, `Properties`),
+`Map.Entry`, `ListIterator`, `AtomicReference` or `StringBuilder` mutator.
+
+Constructors, static initializers, `@PostConstruct`, `afterPropertiesSet`, `@Bean` methods and
+injection methods (`@Autowired`, `@Inject`, `@Resource`) are set-up and never report, and neither
+does an injected field (a Kotlin `@Autowired lateinit var` set through its setter). Also fine: a
+local collection, a counter that only counts (`AtomicLong.incrementAndGet()`), a cache call
+(`Cache.put`, `@Cacheable`), a `ThreadLocal`, a field of a primitive, boxed or enum type (a flag or a
+running total), a field whose type only a per-use bean (`@RequestScope`, prototype, also declared
+with `@Bean`) can fill, inherited fields included, a field of a request-scoped bean, a new instance
+of a bean class that a handler builds and uses locally, and an element a predicate (`filter`,
+`anyMatch`, ...) only compared with request data. A Kotlin `suspend` handler's `Continuation`
+parameter is not request data, and locals the coroutine state machine saves keep their own data.
+Shared classes are the classes `spring-scope-capture` treats as singletons, the types a singleton
+`@Bean` method returns and the project classes it constructs (for a project return type also its
+subclasses that are not components themselves), classes named in `@Import`, `@WebFilter`,
+`@WebServlet` and `@WebListener` classes, enums, Kotlin `object`s, and every superclass of these.
+A registry keyed by request data (in-flight keys, per-key locks, pending replies, an unbounded memo
+map) is reported: bound it with a cache that has a size and an expiry, or add an exception that
+names why its entries are removed. The analysis reads one module's classes: a call into another
+module of a multi-module build or into a library is not followed.
 
 **Aggregates (jMolecules).** A project that declares its domain model with
 [jMolecules](https://github.com/xmolecules/jmolecules) (`org.jmolecules:jmolecules-ddd`, Apache-2.0,
@@ -2517,7 +2573,7 @@ in it against the catalogs and Error Prone's check list.
   text, the exception route, and the shape of every catalog entry.
 - `languages/java/messages/rule-catalog.e2e.test.mjs`: gated like the other e2e tests. The catalogs
   name exactly the rules of the pinned tool versions.
-- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `spring/e2e/spring-arch.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs`, `languages/java/maven/maven-preset.e2e.test.mjs`, `languages/java/adapters/errorprone/error-prone.e2e.test.mjs`, the other Error Prone e2e tests and `rule-catalog.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle, Maven and network access to Maven Central; about 85 seconds
+- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `spring/e2e/spring-arch.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs`, `languages/java/maven/preset/red-base/maven-red-base.e2e.test.mjs`, `languages/java/adapters/errorprone/error-prone.e2e.test.mjs`, the other Error Prone e2e tests `rule-catalog.e2e.test.mjs` and `languages/java/adapters/java-e2e/red-base/java-red-base.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle, Maven and network access to Maven Central; about 85 seconds
   warm. `.github/workflows/java-e2e.yml` runs it (Temurin 21, Gradle 8.14.3, Maven 3.9.11) on a push to `main` that changes `languages/java/**`, `core/**`, `shared/**`, `package.json`, `package-lock.json`, `vitest.config.mts` or the workflow, by hand (`workflow_dispatch`), and on a pull request when the `run-ci` label is added. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset
