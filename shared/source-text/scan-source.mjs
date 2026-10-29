@@ -7,20 +7,8 @@ const REGEX_LITERAL = /\/(?:[^\\/[\n]|\\.|\[(?:[^\\\]\n]|\\.)*\])+\/\p{L}*/uy;
 const CONTINUATION = /\\\r?\n/y;
 const COMMENT_MARKER = /^(?:\/\*\*?|\/{2,}|#+)/u;
 const BEFORE_REGEX = new Set([
-  'return',
-  'typeof',
-  'case',
-  'do',
-  'else',
-  'in',
-  'instanceof',
-  'new',
-  'delete',
-  'void',
-  'throw',
-  'yield',
-  'await',
-  'of',
+  ...['return', 'typeof', 'case', 'do', 'else', 'in', 'instanceof', 'new', 'delete', 'void'],
+  ...['throw', 'yield', 'await', 'of'],
 ]);
 const AFTER_OPERAND = new Set([')', ']', '++', '--']);
 const NESTED_QUOTES = new Set(["'", '"', '`']);

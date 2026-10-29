@@ -3,10 +3,8 @@ import { createHash } from 'node:crypto';
 import { existsSync, readdirSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
-import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 
 const MAX_LISTING_BYTES = 64 * 1024 * 1024;
-const fingerprints = new Map();
 
 function git(packageRoot, args) {
   const result = spawnSync('git', args, {
@@ -29,10 +27,10 @@ function checkoutFiles(packageRoot) {
 
 function insidePackage(packageRoot, file) {
   const full = path.resolve(packageRoot, file);
-  if (!full.startsWith(`${packageRoot}${path.sep}`) || !existsSync(full)) {
+  if (!full.startsWith(packageRoot + path.sep)) {
     return undefined;
   }
-  return full;
+  return existsSync(full) ? full : undefined;
 }
 
 function walkedFiles(packageRoot, folders) {
@@ -76,11 +74,4 @@ export function computeCodeFingerprint(packageDirectory) {
     hash.update(`\0${file}\0`).update(readFileSync(full));
   }
   return hash.digest('hex');
-}
-
-export function currentCodeFingerprint(packageRoot = PACKAGE_ROOT) {
-  if (!fingerprints.has(packageRoot)) {
-    fingerprints.set(packageRoot, computeCodeFingerprint(packageRoot));
-  }
-  return fingerprints.get(packageRoot);
 }

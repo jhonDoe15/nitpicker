@@ -71,11 +71,6 @@
       "reason": "These files test the process boundary itself: the bin entry guard under a symlinked launch; the environment a spawned analyzer receives, the force-kill of an analyzer that ignores SIGTERM, and the analyzer scheduler's exit code and cancelled queue under SIGINT and SIGTERM; and that shard aggregation starts with a fresh module graph that loads no development dependency. None of that is observable in-process."
     },
     {
-      "rule": "nitpicker/no-module-level-mutable-state",
-      "paths": ["core/diff/cache/code-fingerprint.mjs"],
-      "reason": "A deliberate per-process singleton: the shipped files do not change while the process runs, so their hash is computed once per package root instead of once per findings cache."
-    },
-    {
       "rule": "nitpicker/no-unsafe-path-join",
       "paths": [
         "languages/java/adapters/gradle-reports/report-modules.mjs",
