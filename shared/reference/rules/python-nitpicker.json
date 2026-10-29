@@ -39,6 +39,10 @@
     { "key": "python.exceptions", "rule": "blind-suppress" },
     "`<name>` ignores every error",
     "Name the expected exception: `contextlib.suppress(KeyError)`; or handle it or re-raise it with its cause. In a test, use `pytest.raises(SpecificError)` (`self.assertRaises` in unittest).",
+    "boolean-flag-parameter",
+    { "key": "python.exceptions", "rule": "boolean-flag-parameter" },
+    "`<name>` switches a public function between two behaviors",
+    "Make the flag keyword-only, `def send(message, *, urgent=False)`, split the function into two named for each behavior, or pass an enum. click, typer and FastAPI pass options by keyword, so `def command(*, verbose: bool)` works there. A method that overrides a base class takes `@typing.override` (`typing_extensions.override` before Python 3.12), which lifts the rule.",
     "cancellation-not-propagated",
     { "key": "python.exceptions", "rule": "cancellation-not-propagated" },
     "`<name>` has a path that consumes cancellation or replaces it with another error",
@@ -289,7 +293,8 @@
     [18, 200, 2, 3, 201, 202, 22, 203, -1],
     [18, 204, 2, 3, 205, 206, 22, 207, -1],
     [18, 208, 2, 3, 209, 210, 22, 211, -1],
-    [212, 213, 2, 3, 214, 215, 216, 217, -1],
-    [218, 219, 2, 3, 220, 221, 222, 223, 224]
+    [18, 212, 2, 3, 213, 214, 22, 215, -1],
+    [216, 217, 2, 3, 218, 219, 220, 221, -1],
+    [222, 223, 2, 3, 224, 225, 226, 227, 228]
   ]
 }

@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 53 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 54 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -57,6 +57,15 @@ A package that is in a dependency cycle with other packages.
 
 - **Allowed form:** Name the expected exception: `contextlib.suppress(KeyError)`; or handle it or re-raise it with its cause. In a test, use `pytest.raises(SpecificError)` (`self.assertRaises` in unittest).
 - **Exception:** If this is intended, add `{"rule":"blind-suppress","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-boolean-flag-parameter"></a>
+
+### `python-rules/boolean-flag-parameter`
+
+`<name>` switches a public function between two behaviors.
+
+- **Allowed form:** Make the flag keyword-only, `def send(message, *, urgent=False)`, split the function into two named for each behavior, or pass an enum. click, typer and FastAPI pass options by keyword, so `def command(*, verbose: bool)` works there. A method that overrides a base class takes `@typing.override` (`typing_extensions.override` before Python 3.12), which lifts the rule.
+- **Exception:** If this is intended, add `{"rule":"boolean-flag-parameter","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-cancellation-not-propagated"></a>
 

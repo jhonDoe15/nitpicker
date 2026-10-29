@@ -18,7 +18,7 @@ Unless an entry says otherwise:
 Checks for the presence of unused arguments in function definitions.
 
 - **Why it is on:** An argument that is defined but not used is likely a mistake, and should be removed to avoid confusion. If a variable is intentionally defined-but-not-used, it should be prefixed with an underscore, or some other value that adheres to the `lint.dummy-variable-rgx` pattern. Selected in the ruff config of the Python preset, with the flake8-unused-arguments rules (`unused-function-argument`).
-- **Allowed form:** Remove the unused argument. A method that overrides a base class takes `@typing.override` (`typing_extensions.override` before Python 3.12) instead; a parameter that a framework passes by keyword keeps its name, and that path gets an exception.
+- **Allowed form:** Remove the unused argument and update the callers. One that a signature requires (a callback, a hook) starts with an underscore, `_context`; a method that overrides a base class takes `@typing.override` (`typing_extensions.override` before Python 3.12) instead; a parameter that a framework passes by keyword keeps its name, and that path gets an exception.
 - **Example of the allowed form:**
 
   ```python
@@ -36,7 +36,7 @@ Checks for the presence of unused arguments in function definitions.
 Checks for the presence of unused arguments in instance method definitions.
 
 - **Why it is on:** An argument that is defined but not used is likely a mistake, and should be removed to avoid confusion. If a variable is intentionally defined-but-not-used, it should be prefixed with an underscore, or some other value that adheres to the `lint.dummy-variable-rgx` pattern. Selected in the ruff config of the Python preset, with the flake8-unused-arguments rules (`unused-method-argument`).
-- **Allowed form:** Remove the unused argument. A method that overrides a base class takes `@typing.override` (`typing_extensions.override` before Python 3.12) instead; a parameter that a framework passes by keyword keeps its name, and that path gets an exception.
+- **Allowed form:** Remove the unused argument and update the callers. One that a signature requires (a callback, a hook) starts with an underscore, `_context`; a method that overrides a base class takes `@typing.override` (`typing_extensions.override` before Python 3.12) instead; a parameter that a framework passes by keyword keeps its name, and that path gets an exception.
 - **Example of the allowed form:**
 
   ```python
@@ -55,7 +55,7 @@ Checks for the presence of unused arguments in instance method definitions.
 Checks for the presence of unused arguments in class method definitions.
 
 - **Why it is on:** An argument that is defined but not used is likely a mistake, and should be removed to avoid confusion. If a variable is intentionally defined-but-not-used, it should be prefixed with an underscore, or some other value that adheres to the `lint.dummy-variable-rgx` pattern. Selected in the ruff config of the Python preset, with the flake8-unused-arguments rules (`unused-class-method-argument`).
-- **Allowed form:** Remove the unused argument. A method that overrides a base class takes `@typing.override` (`typing_extensions.override` before Python 3.12) instead; a parameter that a framework passes by keyword keeps its name, and that path gets an exception.
+- **Allowed form:** Remove the unused argument and update the callers. One that a signature requires (a callback, a hook) starts with an underscore, `_context`; a method that overrides a base class takes `@typing.override` (`typing_extensions.override` before Python 3.12) instead; a parameter that a framework passes by keyword keeps its name, and that path gets an exception.
 - **Example of the allowed form:**
 
   ```python
@@ -75,7 +75,7 @@ Checks for the presence of unused arguments in class method definitions.
 Checks for the presence of unused arguments in static method definitions.
 
 - **Why it is on:** An argument that is defined but not used is likely a mistake, and should be removed to avoid confusion. If a variable is intentionally defined-but-not-used, it should be prefixed with an underscore, or some other value that adheres to the `lint.dummy-variable-rgx` pattern. Selected in the ruff config of the Python preset, with the flake8-unused-arguments rules (`unused-static-method-argument`).
-- **Allowed form:** Remove the unused argument. A method that overrides a base class takes `@typing.override` (`typing_extensions.override` before Python 3.12) instead; a parameter that a framework passes by keyword keeps its name, and that path gets an exception.
+- **Allowed form:** Remove the unused argument and update the callers. One that a signature requires (a callback, a hook) starts with an underscore, `_context`; a method that overrides a base class takes `@typing.override` (`typing_extensions.override` before Python 3.12) instead; a parameter that a framework passes by keyword keeps its name, and that path gets an exception.
 - **Example of the allowed form:**
 
   ```python
@@ -95,7 +95,7 @@ Checks for the presence of unused arguments in static method definitions.
 Checks for the presence of unused arguments in lambda expression definitions.
 
 - **Why it is on:** An argument that is defined but not used is likely a mistake, and should be removed to avoid confusion. If a variable is intentionally defined-but-not-used, it should be prefixed with an underscore, or some other value that adheres to the `lint.dummy-variable-rgx` pattern. Selected in the ruff config of the Python preset, with the flake8-unused-arguments rules (`unused-lambda-argument`).
-- **Allowed form:** Remove the unused argument. A method that overrides a base class takes `@typing.override` (`typing_extensions.override` before Python 3.12) instead; a parameter that a framework passes by keyword keeps its name, and that path gets an exception.
+- **Allowed form:** Remove the unused argument and update the callers. One that a signature requires (a callback, a hook) starts with an underscore, `_context`; a method that overrides a base class takes `@typing.override` (`typing_extensions.override` before Python 3.12) instead; a parameter that a framework passes by keyword keeps its name, and that path gets an exception.
 - **Example of the allowed form:**
 
   ```python
@@ -2221,7 +2221,7 @@ Checks for `raise` statements that raise `NotImplemented`.
 Checks for the use of boolean positional arguments in function definitions, as determined by the presence of a type hint containing `bool` as an evident subtype - e.g. `bool`, `bool | int`, `typing.Optionalbool`, etc.
 
 - **Why it is on:** Calling a function with boolean positional arguments is confusing as the meaning of the boolean value is not clear to the caller and to future readers of the code. The use of a boolean will also limit the function to only two possible behaviors, which makes the function difficult to extend in the future. Selected in the ruff config of the Python preset, with the flake8-boolean-trap rules (`boolean-type-hint-positional-argument`).
-- **Allowed form:** Make the flag keyword-only, `def send(message, *, urgent=False)`, or split the function into two named for each behavior. click, typer and FastAPI pass options by keyword, so `def command(*, verbose: bool)` works there.
+- **Allowed form:** See the tool's documentation: [Ruff rule documentation](https://docs.astral.sh/ruff/rules/boolean-type-hint-positional-argument/).
 - **Exception:** If this is intended, add `{"rule":"FBT001","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 - **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/boolean-type-hint-positional-argument/)
 
@@ -2232,7 +2232,7 @@ Checks for the use of boolean positional arguments in function definitions, as d
 Checks for the use of boolean positional arguments in function definitions, as determined by the presence of a boolean default value.
 
 - **Why it is on:** Calling a function with boolean positional arguments is confusing as the meaning of the boolean value is not clear to the caller and to future readers of the code. The use of a boolean will also limit the function to only two possible behaviors, which makes the function difficult to extend in the future. Selected in the ruff config of the Python preset, with the flake8-boolean-trap rules (`boolean-default-value-positional-argument`).
-- **Allowed form:** Make the flag keyword-only, `def send(message, *, urgent=False)`, or split the function into two named for each behavior. click, typer and FastAPI pass options by keyword, so `def command(*, verbose: bool)` works there.
+- **Allowed form:** See the tool's documentation: [Ruff rule documentation](https://docs.astral.sh/ruff/rules/boolean-default-value-positional-argument/).
 - **Exception:** If this is intended, add `{"rule":"FBT002","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 - **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/boolean-default-value-positional-argument/)
 
