@@ -148,8 +148,8 @@ function readClasspaths(work, module) {
   );
 }
 
-function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
-  const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
+function readTestRuns({ module, reportDir, since, isArchunit, testRuntime, snapshot }) {
+  const testsRan = collectTestResults({ module, reportDir, since, isArchunit, snapshot });
   requireTestngRun({ module, since, isArchunit, testRuntime });
   copyTestResults({ module, reportDir, since, isArchunit });
   return testsRan;
@@ -192,7 +192,7 @@ function analyzeTests(options) {
 }
 
 function analyzeModule(options) {
-  const { module, classpaths, pinned, since } = options;
+  const { module, classpaths, pinned } = options;
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const manifest = withDeclaredSpring(
@@ -201,7 +201,7 @@ function analyzeModule(options) {
   );
   const { spring, springArch } = manifest;
   const testRuntime = classpaths.testRuntime;
-  const testsRan = readTestRuns({ module, reportDir, since, isArchunit, testRuntime });
+  const testsRan = readTestRuns({ ...options, reportDir, isArchunit, testRuntime });
   analyzeSources({ ...options, reportDir, spring });
   analyzeTests({ ...options, reportDir, springArch, isArchunit, testsRan });
   writeFileSync(path.join(reportDir, 'manifest.json'), JSON.stringify(manifest));
@@ -285,6 +285,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
         },
         spring: policy.spring,
         springRoles: writeSpringRoles(policy.springRoles, work),
+        snapshot: policy.snapshot,
       });
     }
     return modules.map((module) => module.basedir);

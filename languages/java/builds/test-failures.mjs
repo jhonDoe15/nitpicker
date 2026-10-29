@@ -38,6 +38,10 @@ export function freshReports(directory, since) {
     : [];
 }
 
+function failingPlace(where, snapshot) {
+  return snapshot === undefined ? where : `the ${snapshot} snapshot (${where})`;
+}
+
 export function failingTestsError(where, failures, snapshot) {
   const listed = failures.slice(0, MAX_LISTED_FAILURES).map((failure) => `  ${failure}`);
   const more =
@@ -46,7 +50,7 @@ export function failingTestsError(where, failures, snapshot) {
       : [];
   return troubleshootingError(
     [
-      `Tests fail in ${where}; nitpicker needs a passing test suite for coverage and mutation testing:`,
+      `Tests fail in ${failingPlace(where, snapshot)}; nitpicker needs a passing test suite for coverage and mutation testing:`,
       ...listed,
       ...more,
     ].join('\n'),

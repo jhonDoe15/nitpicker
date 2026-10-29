@@ -48,7 +48,7 @@ export function suiteNameOf(report) {
   return path.basename(report).replace(/^TEST-|\.xml$/gu, '');
 }
 
-export function collectTestResults({ module, reportDir, since, isArchunit }) {
+export function collectTestResults({ module, reportDir, since, isArchunit, snapshot }) {
   const reports = testReportDirectories(module).flatMap(([, directory]) =>
     freshReports(directory, since),
   );
@@ -64,7 +64,7 @@ export function collectTestResults({ module, reportDir, since, isArchunit }) {
   }
   requireArchunitRun(module, reports, isArchunit);
   if (failures.length > 0) {
-    throw failingTestsError(module.basedir, failures);
+    throw failingTestsError(module.basedir, failures, snapshot);
   }
   return reports.length > 0;
 }
