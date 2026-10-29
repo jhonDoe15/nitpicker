@@ -636,9 +636,8 @@ allprojects {
                           '--mutableCodePaths', classDirs.collect { it.absolutePath }.join(','),
                           '--outputFormats', 'XML',
                           '--timestampedReports', 'false',
-                          '--threads', '2',
                           '--failWhenNoMutations', 'false',
-                          '--verbose', 'false'])
+                          '--verbose', 'false'] + nitpickerSettings('pit', ['--threads', '2']))
                     if (source.options instanceof org.gradle.api.tasks.testing.junitplatform.JUnitPlatformOptions) {
                         if (!source.options.includeTags.isEmpty()) {
                             args '--includedGroups', source.options.includeTags.toList().sort().join(',')

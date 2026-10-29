@@ -168,7 +168,7 @@ function analyzeSources(options) {
 
 function analyzeTests(options) {
   const { module, reportDir, classpaths, tools, pinned, since, springArch, springRoles } = options;
-  const { isArchunit, testsRan, spawn } = options;
+  const { isArchunit, testsRan, configs, spawn } = options;
   runJacocoReport({
     module,
     reportDir,
@@ -178,7 +178,7 @@ function analyzeTests(options) {
     testsRan,
     spawn,
   });
-  runPit({ module, reportDir, tools, classpaths, isArchunit, spawn });
+  runPit({ module, reportDir, tools, classpaths, isArchunit, configs, spawn });
   runSpringArch({
     module,
     reportDir,
