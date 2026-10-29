@@ -1,128 +1,40 @@
 import { createRequire } from 'node:module';
-import { existsSync, mkdtempSync, readFileSync, readdirSync, realpathSync, rmSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import {
+  existsSync,
+  lstatSync,
+  mkdtempSync,
+  mkdirSync,
+  readFileSync,
+  readdirSync,
+  realpathSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
-import { docsRef } from '../shared/messages/docs-url.mjs';
-import { runCli } from './cli.mjs';
-import { captureOutput } from './diff/reporting/test-support/output-capture.mjs';
-import { indexEntries, readReferenceEntries, referenceUrl } from '../shared/reference/store.mjs';
 import {
-  checked,
-  command,
-  listing,
-  temporaryFiles,
-  write,
-} from './test-support/installed-package.mjs';
+  checkoutOutput,
+  expectedDirtyFindings,
+  expectedDirtyOutput,
+  expectedSnapshotOutput,
+  installedHelpUri,
+  installedLinks,
+} from './test-support/installed-expectations.mjs';
 
 const enabled = process.env.NITPICKER_INSTALLED_TEST === '1';
 const packageRoot = PACKAGE_ROOT;
 const manifest = JSON.parse(readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
+const links = installedLinks(manifest);
 const layouts = [undefined, 'nested', 'linked'];
-const repositoryUrl = manifest.repository.url.replace(/^git\+/u, '').replace(/\.git$/u, '');
-const tagRoot = `${repositoryUrl}/blob/${docsRef({ version: manifest.version, checkout: false })}`;
-const reference = indexEntries(readReferenceEntries());
-const helpUri = (id) => referenceUrl(reference.exact.get(id)[0], tagRoot);
 const explained = ['pmd/UnusedLocalVariable', 'coverage', 'MagicNumber'];
 // npm 10.9 crashes resolving vitest's optional peers ("reading 'edgesOut'"), so
 // the consumer install is pinned to a newer npm.
 const installer = 'npm@11';
 const cleanSource = 'export function example() {\n  return 1;\n}\n';
 const violation = 'export function example(){\n  debugger;\n  return 1\n}\n';
-
-const debuggerMessage =
-  '`debugger` statement is not allowed. If this is intended, add {"rule":"no-debugger",' +
-  '"paths":["src/main/example.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
-const expectedDirtyFindings = [
-  {
-    tool: 'eslint-lint',
-    rule: 'no-debugger',
-    path: 'src/main/example.ts',
-    identity:
-      'message:`debugger` statement is not allowed|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
-    message: debuggerMessage,
-    classification: 'enforceable',
-    symbol: 'example',
-    location: { line: 2, column: 3 },
-    helpUri: helpUri('eslint-lint/no-debugger'),
-    ratchet: {
-      key: 'count:`debugger` statement is not allowed',
-      value: 1,
-      existingCodeOnly: true,
-    },
-  },
-  {
-    tool: 'prettier-format',
-    rule: 'prettier/prettier',
-    path: 'src/main/example.ts',
-    identity: 'format-diff:3021261b8c9abc3d63b74d13',
-    message: 'Format these lines with Prettier',
-    classification: 'enforceable',
-    location: { line: 1, endLine: 1 },
-    helpUri: helpUri('prettier-format/prettier/prettier'),
-  },
-  {
-    tool: 'prettier-format',
-    rule: 'prettier/prettier',
-    path: 'src/main/example.ts',
-    identity: 'format-diff:92772ea69de4f061a708c457',
-    message: 'Format these lines with Prettier',
-    classification: 'enforceable',
-    location: { line: 3, endLine: 3 },
-    helpUri: helpUri('prettier-format/prettier/prettier'),
-  },
-];
-const expectedSnapshotOutput = [
-  "Following this project's conventions:",
-  '  Trailing commas: none (used by 1 of 1 measured files)',
-  'Nitpicker quality snapshot',
-  'Status: violations',
-  'Enforceable findings: 2',
-  'Descriptive findings: 0',
-  'Tool errors: 0',
-  '',
-  'Per-tool counts:',
-  'prettier-format: total=2 enforceable=2 descriptive=0',
-  '',
-  'Enforceable findings:',
-  'prettier-format/prettier/prettier src/main/example.ts:1 Format these lines with Prettier',
-  'prettier-format/prettier/prettier src/main/example.ts:3 Format these lines with Prettier',
-  '',
-  `Rule reference: ${tagRoot}/docs/rules/README.md (nitpicker explain <tool/rule> prints one rule)`,
-  'nitpicker: head: running 1 analyzer',
-  '',
-].join('\n');
-
-function expectedDirtyOutput(root) {
-  return `Base: main (argument)
-
-Quality gate summary
-✖ 3 new enforceable violations
-  eslint-lint/no-debugger src/main/example.ts:2
-    ${debuggerMessage}
-  prettier-format/prettier/prettier src/main/example.ts (2 times, lines 1, 3)
-    Format these lines with Prettier
-Full diagnostics: ${root}/reports/dirty/report.txt
-nitpicker: base 2 analyzers cached
-nitpicker: head: running 2 analyzers
-`;
-}
-
-function checkoutOutput(args) {
-  const output = captureOutput();
-  runCli({
-    arguments_: args,
-    currentProjectRoot: packageRoot,
-    environment: {},
-    stdout: output.stdout,
-    stderr: output.stderr,
-  });
-  return `${output.stdoutText}${output.stderrText}`.replaceAll(
-    `${repositoryUrl}/blob/main/`,
-    `${tagRoot}/`,
-  );
-}
 
 function expectedEslintVersion(typeScriptVersion) {
   const plugins = [
@@ -144,6 +56,55 @@ function expectedEslintVersion(typeScriptVersion) {
     `plugins:${[...plugins, `nitpicker-plugin@${manifest.version}`].join(',')};` +
     `oxlint@${manifest.dependencies.oxlint},oxlint-tsgolint@${manifest.dependencies['oxlint-tsgolint']}`
   );
+}
+
+function command(cwd, executable, args) {
+  const result = spawnSync(executable, args, {
+    cwd,
+    encoding: 'utf8',
+    env: { ...process.env, NO_COLOR: '1' },
+    timeout: 180_000,
+  });
+  if (result.error) throw result.error;
+  return { status: result.status, output: `${result.stdout}${result.stderr}` };
+}
+
+function checked(cwd, executable, args) {
+  const result = command(cwd, executable, args);
+  expect(result.status, `${executable} ${args.join(' ')}\n${result.output}`).toBe(0);
+  return result.output.trim();
+}
+
+function write(root, relative, contents) {
+  const target = path.join(root, relative);
+  mkdirSync(path.dirname(target), { recursive: true });
+  writeFileSync(target, contents);
+}
+
+function listing(root) {
+  function walk(directory, prefix = '') {
+    return readdirSync(directory).flatMap((name) => {
+      const relative = path.posix.join(prefix, name);
+      const location = path.join(directory, name);
+      if (lstatSync(location).isDirectory()) return walk(location, relative);
+      return [`${relative}:${lstatSync(location).size}`];
+    });
+  }
+  return walk(realpathSync(root)).sort();
+}
+
+function temporaryFiles(root) {
+  const result = [];
+  function walk(directory) {
+    for (const item of readdirSync(directory, { withFileTypes: true })) {
+      if (item.name === 'node_modules' || item.name === '.git') continue;
+      const location = path.join(directory, item.name);
+      if (/^\.(?:quality|nitpicker)-/.test(item.name)) result.push(path.relative(root, location));
+      if (item.isDirectory()) walk(location);
+    }
+  }
+  walk(root);
+  return result;
 }
 
 const suite = enabled ? describe : describe.skip;
@@ -430,7 +391,7 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(clean.status, clean.output).toBe(0);
         expect(dirty.status, dirty.output).toBe(1);
         expect(summary('dirty').overallStatus).toBe('completed');
-        expect(findings('dirty')).toEqual(expectedDirtyFindings);
+        expect(findings('dirty')).toEqual(expectedDirtyFindings(links));
         expect(dirty.output).toEqual(expectedDirtyOutput(root));
       });
       it('records pinned owned tool versions and the installed TypeScript peer', () => {
@@ -466,20 +427,20 @@ suite('packed nitpicker in a separate consumer', () => {
       });
       it('supports --all with the packed prettier analyzer', () => {
         expect(snapshot.status, snapshot.output).toBe(1);
-        expect(snapshot.output).toEqual(expectedSnapshotOutput);
+        expect(snapshot.output).toEqual(expectedSnapshotOutput(links));
       });
       it('lists and explains rules from the reference data the package ships, linking the release tag', () => {
         expect(rules.status, rules.output).toBe(0);
-        expect(rules.output).toBe(checkoutOutput(['rules', '--preset', 'java']));
+        expect(rules.output).toBe(checkoutOutput(links, ['rules', '--preset', 'java']));
         expect(explanation.status, explanation.output).toBe(0);
-        expect(explanation.output).toBe(checkoutOutput(['explain', ...explained]));
+        expect(explanation.output).toBe(checkoutOutput(links, ['explain', ...explained]));
         expect(
           JSON.parse(readFileSync(path.join(reports('snapshot'), 'findings.json'))).map(
             (finding) => finding.helpUri,
           ),
         ).toEqual([
-          helpUri('prettier-format/prettier/prettier'),
-          helpUri('prettier-format/prettier/prettier'),
+          installedHelpUri(links, 'prettier-format/prettier/prettier'),
+          installedHelpUri(links, 'prettier-format/prettier/prettier'),
         ]);
       });
       it('fixes the consumer Prettier violation with --fix', () => {
