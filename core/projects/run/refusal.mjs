@@ -1,6 +1,7 @@
 import { realpathSync } from 'node:fs';
 import { resolveProjectRoot } from '../../tooling/tool-resolution.mjs';
 import { isGitWorkTree, memberProjectOf } from '../plan/member-root.mjs';
+import { enclosingMember } from '../plan/enclosing.mjs';
 import { planMonorepo } from '../plan/inspect.mjs';
 import { oneProjectCommandMessage } from './messages.mjs';
 
@@ -13,9 +14,24 @@ function rootOf(cli) {
 function monorepoAt(cli) {
   try {
     const root = rootOf(cli);
-    return { plan: isGitWorkTree(root) ? planMonorepo({ root }) : undefined };
+    return { plan: isGitWorkTree(root) ? planMonorepo({ root }) : undefined, root };
   } catch (error) {
     return { plan: undefined, error };
+  }
+}
+
+function enclosingScope(cli, root) {
+  const enclosing = root === undefined ? undefined : memberAround(root);
+  return enclosing?.member === undefined
+    ? { currentProjectRoot: cli.currentProjectRoot }
+    : { currentProjectRoot: enclosing.member.absolute, configOverlay: enclosing.member.overlay };
+}
+
+function memberAround(root) {
+  try {
+    return isGitWorkTree(root) ? enclosingMember(root) : undefined;
+  } catch (error) {
+    return { member: undefined, error };
   }
 }
 
@@ -23,9 +39,9 @@ export function oneProjectScope(cli, command) {
   if (cli.arguments_.includes('--help')) {
     return { currentProjectRoot: cli.currentProjectRoot };
   }
-  const { plan } = monorepoAt(cli);
+  const { plan, root } = monorepoAt(cli);
   if (plan === undefined) {
-    return { currentProjectRoot: cli.currentProjectRoot };
+    return enclosingScope(cli, root);
   }
   const member =
     cli.currentProjectRoot === undefined ? memberProjectOf(plan, cli.workingDirectory) : undefined;

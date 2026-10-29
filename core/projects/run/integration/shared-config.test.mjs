@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { writeFiles } from '../../../diff/git/test-support/fixture-files.mjs';
 import { projectFiles, useMonorepoFixtures, violation } from '../test-support/monorepo-harness.mjs';
@@ -231,6 +232,35 @@ describe('the root config of a workspace', () => {
     expect(result.exitCode).toBe(1);
     expect(loosenings(result, 'packages/a').map(({ identity }) => identity)).toEqual([
       'threshold fileLines raised from 200 to 400 (from ../../nitpicker.config.json)',
+    ]);
+  });
+
+  it('is policy of a run started in a member folder that has its own package.json', () => {
+    const root = workspaceWithRootConfig({ thresholds: { fileLines: 200 } });
+    writeFiles(root, {
+      'nitpicker.config.json': JSON.stringify({ thresholds: { fileLines: 900 } }),
+      'packages/a/src/a.ts': 'export const a = 2;\n',
+    });
+
+    const inside = run(root, [], { workingDirectory: path.join(root, 'packages/a') });
+
+    expect(inside.exitCode).toBe(1);
+    expect(
+      inside
+        .json('new-findings.json')
+        .filter(({ rule }) => rule === 'policy-loosened')
+        .map(({ identity }) => identity),
+    ).toEqual(['threshold fileLines raised from 200 to 900 (from ../../nitpicker.config.json)']);
+  });
+
+  it('still applies when the root holds files of another language', () => {
+    const root = workspaceWithRootConfig({ exclude: ['packages/a/src/gen/**'] });
+    writeFiles(root, { 'requirements.txt': 'mkdocs\n', 'packages/a/src/a.ts': violation('a') });
+
+    const result = run(root);
+
+    expect(reportOf(result, 'packages/a').summary.configOverrides).toEqual([
+      'exclude: ["src/gen/**"]',
     ]);
   });
 });

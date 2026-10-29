@@ -41,6 +41,34 @@ describe('the root config of a monorepo as the base layer of each member', () =>
     });
   });
 
+  it('keeps root paths anchored: a pattern naming the member or a parent folder matches nothing in it', () => {
+    const root = repository({
+      'nitpicker.config.json': JSON.stringify({
+        exclude: ['packages/a', 'packages', 'packages/a/**', '{packages/a,libs/b}/src/gen/**'],
+        exceptions: [
+          { rule: 'file-lines-limit', paths: ['packages/a'], reason: 'exact folder' },
+          { rule: 'file-lines-limit', paths: ['{libs/b,packages/a}/big.ts'], reason: 'braces' },
+        ],
+        testConsole: {
+          allow: [
+            { contains: 'deprecated api', paths: ['packages/a/test/**'], reason: 'old sdk' },
+            { contains: 'other member', paths: ['packages/b/test/**'], reason: 'old sdk' },
+          ],
+        },
+        analyzers: [{ name: 'lint-docs', command: 'node', args: ['scripts/lint-docs.mjs'] }],
+      }),
+      'packages/a/src/a.ts': '',
+    });
+
+    expect(member(root)).toEqual({
+      exclude: ['**', 'src/gen/**'],
+      exceptions: [{ rule: 'file-lines-limit', paths: ['big.ts'], reason: 'braces' }],
+      testConsole: {
+        allow: [{ contains: 'deprecated api', paths: ['test/**'], reason: 'old sdk' }],
+      },
+    });
+  });
+
   it('lets the member config override the root one key by key and does not inherit projects', () => {
     const root = repository({
       'nitpicker.config.json': JSON.stringify({
@@ -69,10 +97,28 @@ describe('the root config of a monorepo as the base layer of each member', () =>
     expect(() => member(root)).toThrow('../../nitpicker.config.json');
   });
 
-  it('inherits nothing into a member of another language than the root', () => {
+  it('drops only the settings of another language when the root sets no preset', () => {
     const root = repository({
-      'nitpicker.config.json': '{"exclude":["api/**"],"disable":["knip"]}',
+      'nitpicker.config.json': JSON.stringify({
+        exclude: ['api/gen/**'],
+        thresholds: { fileLines: 400 },
+        react: { enabled: true },
+      }),
       'package.json': '{"workspaces":["web"]}',
+      'requirements.txt': 'mkdocs\n',
+      'api/pyproject.toml': '[project]\nname = "api"\n',
+    });
+
+    expect(member(root, 'api', { preset: 'python', declared: true })).toEqual({
+      preset: 'python',
+      exclude: ['gen/**'],
+      thresholds: { fileLines: 400 },
+    });
+  });
+
+  it('inherits nothing into a member of another language than the preset the root declares', () => {
+    const root = repository({
+      'nitpicker.config.json': '{"preset":"typescript","exclude":["api/gen/**"]}',
       'api/pyproject.toml': '[project]\nname = "api"\n',
     });
 

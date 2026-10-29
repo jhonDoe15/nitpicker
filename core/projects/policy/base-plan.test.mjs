@@ -64,6 +64,24 @@ describe('the plan of the base', () => {
     ]);
   });
 
+  it('finds a listed project folder that holds no file the plan reads', () => {
+    const { root, baseSha } = repository({
+      'nitpicker.config.json': JSON.stringify({
+        projects: ['web', { path: 'tools', preset: 'python' }],
+      }),
+      'web/package.json': '{"name":"web"}',
+      'tools/main.py': 'print(1)\n',
+    });
+
+    const result = basePlanOf({ repositoryRoot: root, prefix: '.', mergeBaseSha: baseSha });
+
+    expect(result.error).toBeUndefined();
+    expect(result.plan.projects.map(({ path, preset }) => [path, preset])).toEqual([
+      ['web', 'typescript'],
+      ['tools', 'python'],
+    ]);
+  });
+
   it('returns the error of a base whose projects cannot be read', () => {
     const { root, baseSha } = repository({ 'nitpicker.config.json': '{"projects":["gone"]}' });
 

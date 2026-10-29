@@ -318,6 +318,27 @@ describe('a run inside a member of a workspace', () => {
     expect(accepted.exitCode).toBe(0);
   });
 
+  it('reports a shrunk workspace in a member that has its own package.json', () => {
+    const root = repository({
+      'package.json': JSON.stringify({ private: true, workspaces: ['packages/*'] }),
+      ...typescriptProject('packages/a'),
+      ...typescriptProject('packages/b'),
+    });
+    writeFiles(root, {
+      'package.json': JSON.stringify({ private: true, workspaces: ['packages/a'] }),
+    });
+
+    const result = run(root, [], { workingDirectory: path.join(root, 'packages/a/src') });
+
+    expect([result.exitCode, result.json('summary.json').policyLoosenings]).toEqual([
+      1,
+      [
+        'project packages/b is no longer one of the projects of the monorepo, ' +
+          'so nothing gates it with its own config',
+      ],
+    ]);
+  });
+
   it('gives cache and aggregate the preset the workspace gives the member', () => {
     const root = uvWorkspace();
     const inside = { workingDirectory: path.join(root, 'libs/a/src') };

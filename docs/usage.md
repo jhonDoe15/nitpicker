@@ -973,13 +973,15 @@ Where you start the run matters:
 - At the top (the folder with `projects` or the workspace declaration), nitpicker gates every
   project. Nitpicker finds that top from a subfolder too: the nearest folder that holds a
   `package.json`, a `nitpicker.config.json` or a uv workspace.
-- Inside a project folder that has its own `package.json` or `nitpicker.config.json`, nitpicker gates
-  that project alone, with its own config only, exactly as before.
-- Inside a member that has neither (a uv workspace member, or a listed folder with only a
-  `pyproject.toml` or build file), nitpicker gates that member alone, with the preset the top gives
-  it and the base of the top config. A change to the set of projects (see below) is a loosening of
-  that run too. `nitpicker aggregate` and `nitpicker cache publish` started there work on that
-  member with the same preset and settings.
+- Inside a project of the monorepo (`cd packages/a`, a CI step with `working-directory`, or
+  `npm run -w`), nitpicker gates that project alone, with the settings the top config gives it, the
+  preset the top gives it and the base of the top config, whether or not the folder has a
+  `package.json` of its own. A change to the set of projects (see below) is a loosening of that run
+  too. `nitpicker aggregate` and `nitpicker cache publish` started there work on that project with
+  the same preset and settings.
+- Inside a folder with its own `package.json` or `nitpicker.config.json` that is not one of the
+  monorepo's projects, nitpicker gates that folder alone, with its own config only, exactly as
+  before.
 
 ### Listing the projects
 
@@ -999,13 +1001,18 @@ Where you start the run matters:
   preset can be detected; the `preset` of an entry declares it. An entry's `preset` that disagrees
   with the project's own config is an error. Only the config at the top may set `projects`.
 - The config at the top is the base layer of every other project, merged like a file the project
-  `extends` (see below): `exclude`, `exceptions`, `disable`, `thresholds`, `analyzers` and the other
-  settings apply to each project unless its own config sets the same key. `projects`, `extends` and
-  `preset` are not passed on. Paths in it stay paths from the top: `"exclude":
-  ["packages/a/src/gen/**"]` reaches `packages/a` as `src/gen/**`, and a path in another project
-  is left out. A project of another language than the top (a Python project under a TypeScript
-  top) takes nothing from it. The top config is policy of every project: it is part of each
-  project's digest, and loosening it is a `policy-loosened` finding that names it.
+  `extends` (see below): `exclude`, `exceptions`, `disable`, `thresholds`, `testConsole` and the
+  other settings apply to each project unless its own config sets the same key. `projects`,
+  `extends`, `preset` and `analyzers` are not passed on (a custom analyzer runs in the folder of
+  the project that lists it). Paths in it stay paths from the top: `"exclude":
+  ["packages/a/src/gen/**"]` reaches `packages/a` as `src/gen/**`, `{packages/a,libs/b}/src/**`
+  reaches both as `src/**`, and `packages/a/**` reaches `packages/a` as `**`. A pattern that names
+  a project folder itself or a folder above it (`packages/a`, `packages`) matches no file, so it
+  reaches no project, and neither does a path in another project. When the top config declares a
+  `preset`, a project of another language (a Python project under a TypeScript top) takes nothing
+  from it; when it declares none, each project takes every setting its own preset accepts. The top
+  config is policy of every project: it is part of each project's digest, a change to it runs
+  every project, and loosening it is a `policy-loosened` finding that names it.
 - A project may sit inside another one (`.` and `web`, or `web` and `web/sub`). The outer project's
   run leaves the inner folders out, so each file is gated once.
 - `"projects": []` keeps the repository one project, whatever it holds.
