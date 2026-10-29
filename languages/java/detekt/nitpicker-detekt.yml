@@ -262,12 +262,4 @@ complexity:
   ignoreAnnotated: []
   includes: []
   StringLiteralDuplication:
-    active: true
-    severity: warning
-    excludes: []
-    ignoreAnnotated: []
-    includes: []
-    threshold: 3
-    ignoreAnnotation: true
-    excludeStringsWithLessThan5Characters: true
-    ignoreStringsRegex: '^[^A-Za-z0-9]*$'
+    active: false

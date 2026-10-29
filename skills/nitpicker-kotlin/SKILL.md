@@ -158,3 +158,6 @@ Before you change code other modules use, or fix a bug, read
   constructor in a unit test, or use a slice (`pmd/SpringUnusedContext`).
 - A function or file already over a limit may be edited but must not get worse: put new code in a
   new function or file and call it.
+- A string of five characters or more used three times in a main file gets one
+  `private const val NAME = "..."` (`kotlin-source/RepeatedStringLiteral`); annotation arguments,
+  `when` labels, named arguments, map keys and message keys are not counted.
