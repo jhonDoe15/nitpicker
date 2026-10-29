@@ -76,12 +76,8 @@ function writeArguments(work, { name, roots, classpath, own, processors, compile
   return [file];
 }
 
-export function runErrorProne({ module, reportDir, tools, classpaths, configs, spawn }) {
-  const report = path.join(reportDir, 'errorprone.json');
-  const work = path.join(reportDir, 'errorprone');
-  rmSync(work, { recursive: true, force: true });
-  const { compiler } = module;
-  const sets = [
+function sourceSets(module, classpaths) {
+  return [
     {
       name: 'main',
       roots: module.sourceRoots,
@@ -97,7 +93,14 @@ export function runErrorProne({ module, reportDir, tools, classpaths, configs, s
       test: true,
     },
   ];
-  const argumentFiles = sets.flatMap((set) =>
+}
+
+export function runErrorProne({ module, reportDir, tools, classpaths, configs, spawn }) {
+  const report = path.join(reportDir, 'errorprone.json');
+  const work = path.join(reportDir, 'errorprone');
+  rmSync(work, { recursive: true, force: true });
+  const { compiler } = module;
+  const argumentFiles = sourceSets(module, classpaths).flatMap((set) =>
     writeArguments(work, {
       ...set,
       compiler: set.test ? { ...compiler, ...compiler.test } : compiler,

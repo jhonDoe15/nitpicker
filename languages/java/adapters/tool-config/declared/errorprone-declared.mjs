@@ -3,12 +3,6 @@ import { missingProjectConfig } from '../../../../../shared/conventions/tool-pre
 import { configurations, pluginsNamed, textsOf } from '../../../builds/narrowing/maven-sources.mjs';
 import { declarationText, gradleSettings, mavenText, quotedStrings } from './declared-build.mjs';
 
-const CHECKS = JSON.parse(
-  readFileSync(new URL('../../../gradle/errorprone/checks.json', import.meta.url), 'utf8'),
-);
-const REVIEWED = new Set(CHECKS.reviewedChecks);
-const NITPICKER_OFF = new Set(CHECKS.disable);
-const NITPICKER_ON = new Set([...CHECKS.enable, ...CHECKS.lombokUnsuppressedOff]);
 const MEASURED_OPTIONS = new Set(['CheckReturnValue:Packages', 'NullAway:AnnotatedPackages']);
 const NARROWING_OPTIONS = new Set(
   [
@@ -93,7 +87,8 @@ function severityFlags(found) {
 }
 
 function isTrue(value) {
-  return /^\s*\(?\s*true\b/u.test(value);
+  const text = value.trimStart();
+  return (text.startsWith('(') ? text.slice(1).trimStart() : text).startsWith('true');
 }
 
 function errorproneFlags(found) {
@@ -118,7 +113,8 @@ function errorproneFlags(found) {
 
 function nullawayFlags(found) {
   const values = literals(found.value);
-  const value = values.length === 0 ? (isTrue(found.value) ? 'true' : undefined) : values.join(',');
+  const flag = isTrue(found.value) ? 'true' : undefined;
+  const value = values.length === 0 ? flag : values.join(',');
   const option = `${found.name[0].toUpperCase()}${found.name.slice(1)}`;
   return value === undefined ? [] : [`-XepOpt:NullAway:${option}=${value}`];
 }
@@ -170,18 +166,30 @@ export function errorproneDeclarations(build) {
   return [...gradleDeclarations(build.scripts), ...mavenDeclarations(build.poms)];
 }
 
-function checkFlag(flag, projectWins) {
+function nitpickerChecks() {
+  const checks = JSON.parse(
+    readFileSync(new URL('../../../gradle/errorprone/checks.json', import.meta.url), 'utf8'),
+  );
+  return {
+    reviewed: new Set(checks.reviewedChecks),
+    off: new Set(checks.disable),
+    on: new Set([...checks.enable, ...checks.lombokUnsuppressedOff]),
+    nullAway: new Map(Object.entries(checks.nullAway)),
+  };
+}
+
+function checkFlag(flag, { projectWins, checks }) {
   const [, name, severity = 'WARN'] = flag.split(':');
   if (severity.toUpperCase() === 'OFF') {
-    return NITPICKER_OFF.has(name) ? 'moot' : 'dropped';
+    return checks.off.has(name) ? 'moot' : 'dropped';
   }
-  if (name === 'NullAway' || !REVIEWED.has(name)) {
+  if (name === 'NullAway' || !checks.reviewed.has(name)) {
     return 'dropped';
   }
-  if (NITPICKER_ON.has(name)) {
+  if (checks.on.has(name)) {
     return 'moot';
   }
-  return !NITPICKER_OFF.has(name) || projectWins ? `-Xep:${name}:WARN` : 'dropped';
+  return !checks.off.has(name) || projectWins ? `-Xep:${name}:WARN` : 'dropped';
 }
 
 function optionFlag(flag) {
@@ -189,12 +197,13 @@ function optionFlag(flag) {
   return MEASURED_OPTIONS.has(key) || NARROWING_OPTIONS.has(key) ? 'dropped' : flag;
 }
 
-function classified(flag, projectWins) {
+function classified(flag, context) {
+  const { projectWins } = context;
   if (/\s/u.test(flag) || flag.includes('$')) {
     return 'dropped';
   }
   if (flag.startsWith('-Xep:')) {
-    return checkFlag(flag, projectWins);
+    return checkFlag(flag, context);
   }
   if (flag.startsWith('-XepOpt:')) {
     return optionFlag(flag);
@@ -208,8 +217,7 @@ function classified(flag, projectWins) {
   return PROJECT_WINS_FLAGS.has(flag) && projectWins ? flag : 'dropped';
 }
 
-function unionedOptions(flags) {
-  const lists = new Map(Object.entries(CHECKS.nullAway));
+function unionedOptions(flags, lists) {
   const merged = new Map();
   const others = flags.filter((flag) => {
     const [key, value = ''] = flag.slice('-XepOpt:NullAway:'.length).split('=');
@@ -236,15 +244,16 @@ function excludedPaths(flags) {
 }
 
 export function errorproneLayers(declarations, { projectWins }) {
+  const checks = nitpickerChecks();
   const outcomes = declarations.map((declaration) => ({
     declaration,
-    outcome: classified(declaration.setting, projectWins),
+    outcome: classified(declaration.setting, { projectWins, checks }),
   }));
   const applied = outcomes
     .map(({ outcome }) => outcome)
     .filter((outcome) => outcome !== 'moot' && outcome !== 'dropped');
   return {
-    flags: excludedPaths(unionedOptions([...new Set(applied)])),
+    flags: excludedPaths(unionedOptions([...new Set(applied)], checks.nullAway)),
     notApplied: outcomes
       .filter(({ outcome }) => outcome === 'dropped')
       .map(({ declaration }) => declaration),

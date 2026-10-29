@@ -70,6 +70,13 @@ tasks.withType(JavaCompile).configureEach {
 }
 
 ${ERRORPRONE_BLOCK}`;
+const PLUGIN_ARGUMENT = [
+  '-Xplugin:ErrorProne',
+  '-Xep:ReferenceEquality:OFF',
+  '-Xep:UnusedVariable:WARN',
+  '-Xep:Var:WARN',
+  '-XepExcludedPaths:.*/Skipped[.]java',
+].join(' ');
 const MAVEN_COMPILER = `<build><plugins><plugin>
     <groupId>org.apache.maven.plugins</groupId>
     <artifactId>maven-compiler-plugin</artifactId>
@@ -79,7 +86,7 @@ const MAVEN_COMPILER = `<build><plugins><plugin>
         <arg>-XDcompilePolicy=simple</arg>
         <arg>-XDaddTypeAnnotationsToSymbol=true</arg>
         <arg>--should-stop=ifError=FLOW</arg>
-        <arg>-Xplugin:ErrorProne -Xep:ReferenceEquality:OFF -Xep:UnusedVariable:WARN -Xep:Var:WARN -XepExcludedPaths:.*/Skipped[.]java</arg>
+        <arg>${PLUGIN_ARGUMENT}</arg>
       </compilerArgs>
       <annotationProcessorPaths>
         <path>
