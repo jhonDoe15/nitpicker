@@ -56,11 +56,10 @@ function unusedFileFindings(file, analyzerName) {
   return [{ finding }];
 }
 
-const UNUSED_FILE_ADVICE = 'delete it, or import it where it is needed';
 const UNUSED_FILE_ALLOWED_FORM = 'Delete it, or import it where it is needed.';
 
 function unusedFileMessage(filePath) {
-  return `Unused file: ${filePath}. Nothing imports it: ${UNUSED_FILE_ADVICE}.`;
+  return `Unused file: ${filePath}. Nothing imports it. ${UNUSED_FILE_ALLOWED_FORM}`;
 }
 
 function issueFindings({ issue, analyzerName, occurrences }) {

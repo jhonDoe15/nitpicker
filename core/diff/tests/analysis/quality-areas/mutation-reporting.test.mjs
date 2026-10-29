@@ -43,6 +43,8 @@ describe('mutation reporting in the quality-area analyzers', () => {
         identity: 'BooleanLiteral|fcbcf165908dd18a9e49f7ff|42fa055d09edd207663e69f0|occurrence:1',
         message:
           'Survived BooleanLiteral at column 5: replacing this code with `false` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
         location: { line: 4, column: 5 },
       },
@@ -53,6 +55,8 @@ describe('mutation reporting in the quality-area analyzers', () => {
         identity: 'BooleanLiteral|fcbcf165908dd18a9e49f7ff|42fa055d09edd207663e69f0|occurrence:2',
         message:
           'Survived BooleanLiteral at column 5: replacing this code with `false` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
         location: { line: 4, column: 5 },
       },
@@ -83,6 +87,8 @@ describe('mutation reporting in the quality-area analyzers', () => {
         identity: 'BooleanLiteral|fcbcf165908dd18a9e49f7ff|42fa055d09edd207663e69f0|occurrence:1',
         message:
           'Survived BooleanLiteral at column 5: replacing this code with `false` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
         location: { line: 4, column: 5 },
       },
@@ -93,6 +99,8 @@ describe('mutation reporting in the quality-area analyzers', () => {
         identity: 'BooleanLiteral|fcbcf165908dd18a9e49f7ff|42fa055d09edd207663e69f0|occurrence:2',
         message:
           'Survived BooleanLiteral at column 5: replacing this code with `false` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
         location: { line: 4, column: 5 },
       },
@@ -123,6 +131,8 @@ describe('mutation reporting in the quality-area analyzers', () => {
         identity: 'BooleanLiteral|fcbcf165908dd18a9e49f7ff|42fa055d09edd207663e69f0|occurrence:1',
         message:
           'Survived BooleanLiteral at column 5: replacing this code with `false` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
         location: { line: 4, column: 5 },
       },
@@ -133,6 +143,8 @@ describe('mutation reporting in the quality-area analyzers', () => {
         identity: 'BooleanLiteral|fcbcf165908dd18a9e49f7ff|42fa055d09edd207663e69f0|occurrence:2',
         message:
           'Survived BooleanLiteral at column 5: replacing this code with `false` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
         location: { line: 4, column: 5 },
       },

@@ -7,7 +7,7 @@ import {
   exceptionEntryText,
   exceptionSentence,
 } from '../../../shared/messages/exception-sentence.mjs';
-import { parseFinding } from './finding-schema.mjs';
+import { parseAnalyzerReport, parseFinding } from './finding-schema.mjs';
 
 const schema = JSON.parse(
   readFileSync(
@@ -57,8 +57,8 @@ describe('exception of a parsed finding', () => {
     expect(parsed).not.toHaveProperty('exceptionList');
   });
 
-  it('keeps the entry an analyzer gives', () => {
-    const exception = { rule: 'x', paths: ['y'], reason: 'because' };
+  it('keeps an entry an analyzer gives when it is the one the message prints', () => {
+    const exception = { reason: '...', paths: ['src/a.ts'], rule: 'file-lines-limit' };
     const parsed = parseFinding({
       ...BASE,
       message: withSentence('exceptions'),
@@ -66,7 +66,49 @@ describe('exception of a parsed finding', () => {
       exceptionList: 'exceptions',
     });
 
-    expect(parsed.exception).toEqual(exception);
+    expect([parsed.exception, parsed.exceptionList]).toEqual([exception, 'exceptions']);
+  });
+
+  it.each([
+    [
+      'an entry that differs from the one the message prints',
+      withSentence('exceptions'),
+      { exception: { rule: 'x', paths: ['y'], reason: 'because' }, exceptionList: 'exceptions' },
+      'finding (structure file-lines-limit in src/a.ts): exception {"rule":"x","paths":["y"],"reason":"because"} in "exceptions" differs from the entry the message prints',
+    ],
+    [
+      'the list of the other language',
+      withSentence('exceptions'),
+      { exception: ENTRY, exceptionList: 'python.exceptions' },
+      'finding (structure file-lines-limit in src/a.ts): exception {"rule":"file-lines-limit","paths":["src/a.ts"],"reason":"..."} in "python.exceptions" differs from the entry the message prints',
+    ],
+    [
+      'an entry on a message that prints none',
+      'File has 400 lines.',
+      { exception: ENTRY, exceptionList: 'exceptions' },
+      'finding (structure file-lines-limit in src/a.ts): exception is set, but the message prints no exception sentence',
+    ],
+    [
+      'an allowed form the message does not state',
+      'File has 400 lines. Split it.',
+      { allowedForm: 'Merge it.' },
+      'finding (structure file-lines-limit in src/a.ts): allowedForm is not part of the message: Merge it.',
+    ],
+  ])('refuses %s, naming the finding', (_name, message, fields, error) => {
+    expect(() => parseFinding({ ...BASE, message, ...fields })).toThrow(new TypeError(error));
+  });
+
+  it('names the analyzer and the finding when an exception comes without its list', () => {
+    expect(() =>
+      parseAnalyzerReport(
+        { findings: [{ ...BASE, message: withSentence('exceptions'), exception: ENTRY }] },
+        'custom-linter',
+      ),
+    ).toThrow(
+      new TypeError(
+        'custom-linter findings[0] (structure file-lines-limit in src/a.ts): exception needs exceptionList: "exceptions" or "python.exceptions"',
+      ),
+    );
   });
 
   it.each([

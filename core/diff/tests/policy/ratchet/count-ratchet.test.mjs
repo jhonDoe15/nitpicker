@@ -109,7 +109,8 @@ describe('count ratchet on findings inside an edited function', () => {
 });
 
 describe('growth advice on a finding that is new in a function with findings at base', () => {
-  const ADVICE = 'The base had {base}; keep to it.';
+  const FORM = 'Keep to it.';
+  const ADVICE = `${FORM} The base had {base}.`;
   function throwFinding(identity, line, count, ratchet = {}) {
     return {
       tool: 'eslint',
@@ -125,6 +126,7 @@ describe('growth advice on a finding that is new in a function with findings at 
         value: count,
         existingCodeOnly: true,
         growthAdvice: ADVICE,
+        growthAllowedForm: FORM,
         ...ratchet,
       },
     };
@@ -146,10 +148,10 @@ describe('growth advice on a finding that is new in a function with findings at 
     });
 
     expect(result.newFindings.map(({ message }) => message)).toEqual([
-      'Do not throw. The base had 2; keep to it.',
+      'Do not throw. Keep to it. The base had 2.',
     ]);
   });
-  it('adds the advice to the allowed form too, and tells it alone when there was none', () => {
+  it('adds the allowed form of the advice to the allowed form, or tells it alone when there was none', () => {
     const base = [throwFinding('first', 4, 2), throwFinding('second', 9, 2)];
     const head = (allowedForm) => [
       throwFinding('first', 4, 3),
@@ -164,9 +166,28 @@ describe('growth advice on a finding that is new in a function with findings at 
       }).newFindings.map((finding) => finding.allowedForm);
 
     expect(allowedForms(head({ allowedForm: 'Return a union.' }))).toEqual([
-      'Return a union. The base had 2; keep to it.',
+      'Return a union. Keep to it.',
     ]);
-    expect(allowedForms(head({}))).toEqual(['The base had 2; keep to it.']);
+    expect(allowedForms(head({}))).toEqual(['Keep to it.']);
+  });
+  it('keeps the allowed form as it was when the advice states none', () => {
+    const plain = (identity, line, count, extra = {}) => ({
+      ...throwFinding(identity, line, count, { growthAllowedForm: undefined }),
+      ...extra,
+    });
+    const result = compareFindings({
+      baseFindings: [plain('first', 4, 2), plain('second', 9, 2)],
+      headFindings: [
+        plain('first', 4, 3),
+        plain('second', 9, 3),
+        plain('added', 12, 3, { allowedForm: 'Return a union.' }),
+      ],
+      touchedCode: inserted([[12, 12]]),
+    });
+
+    expect(result.newFindings.map(({ message, allowedForm }) => [message, allowedForm])).toEqual([
+      ['Do not throw. Keep to it. The base had 2.', 'Return a union.'],
+    ]);
   });
   it('puts the advice before the exception sentence, which stays last', () => {
     const route =
@@ -182,7 +203,7 @@ describe('growth advice on a finding that is new in a function with findings at 
     });
 
     expect(result.newFindings.map(({ message }) => message)).toEqual([
-      `Do not throw. The base had 2; keep to it. ${route}`,
+      `Do not throw. Keep to it. The base had 2. ${route}`,
     ]);
   });
   it('appends the advice to an edited throw the function now has more of', () => {
@@ -196,8 +217,8 @@ describe('growth advice on a finding that is new in a function with findings at 
     });
 
     expect(result.newFindings.map(({ message }) => message)).toEqual([
-      'Do not throw. The base had 1; keep to it.',
-      'Do not throw. The base had 1; keep to it.',
+      'Do not throw. Keep to it. The base had 1.',
+      'Do not throw. Keep to it. The base had 1.',
     ]);
   });
   it('leaves the message alone when the base function had none of them', () => {

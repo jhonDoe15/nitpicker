@@ -45,6 +45,8 @@ describe('running mutmut', () => {
         identity: 'value|1→2#1',
         message:
           'Survived number: replacing `1` with `2` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
         symbol: 'value',
         location: { line: 2 },

@@ -75,6 +75,10 @@ Before you change code other modules use or fix a bug, read
 - Don't put `x.js` beside `x.ts` in one directory: TypeScript drops the `.js`. `.jsx` and `.tsx` are
   outside the preset, and so is React: a React project uses the typescript preset (`react` in
   `nitpicker.config.json` is an error here).
+- The `$schema` line of `nitpicker.config.json`
+  (`"$schema": "./node_modules/nitpicker/spec/config.schema.json"`)
+  lets the editor flag a misspelled key or a value the run refuses; nitpicker ignores it. Keep it
+  when you edit the file.
 - Follow neighbouring signatures (parameter order, naming) and reuse helpers that exist. Match the
   module format of the files around you (ESM `import`/`export`, or CommonJS where the project is).
 

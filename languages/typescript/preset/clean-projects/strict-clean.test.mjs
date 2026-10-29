@@ -2,6 +2,7 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import {
   createCleanProject,
   git,
@@ -69,6 +70,7 @@ describe('the strict-clean fixture project', () => {
       expect(stderrText).toBe('');
       expect(findings.filter(({ classification }) => classification === 'enforceable')).toEqual([]);
       expect(toolErrors).toEqual([]);
+      expect(findingsSchemaErrors(findings)).toEqual([]);
       expect(summary.overallStatus).toBe('clean');
       expect(summary.enforceableFindings).toBe(0);
       expect(summary.tools.length).toBeGreaterThan(10);

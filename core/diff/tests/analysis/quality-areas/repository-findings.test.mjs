@@ -171,7 +171,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
         path: 'src/main/unused.ts',
         identity: 'file:src/main/unused.ts|source:83250426356270ef2c09e1be',
         message:
-          'Unused file: src/main/unused.ts. Nothing imports it: delete it, or import it where it is needed.',
+          'Unused file: src/main/unused.ts. Nothing imports it. Delete it, or import it where it is needed.',
         allowedForm: 'Delete it, or import it where it is needed.',
         classification: 'enforceable',
       },
@@ -221,7 +221,7 @@ describe('repository-level findings in the quality-area analyzers', () => {
     ).map(({ message }) => message);
 
     expect(messages).toEqual([
-      'Unused file: src/main/orphan.ts. Nothing imports it: delete it, or import it where it is needed.',
+      'Unused file: src/main/orphan.ts. Nothing imports it. Delete it, or import it where it is needed.',
       'Exported type Rejection is never imported. Remove `export`, or the type if nothing uses it.',
       'Exported type Local is only used in its own file. Remove `export`.',
       'Export helper is never imported. Remove `export`, or the declaration if nothing uses it.',

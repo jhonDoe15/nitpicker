@@ -486,7 +486,7 @@ underline a misspelled key or a value the run would refuse:
 ```
 
 A project without `node_modules` (a Java, Kotlin or Python project that has no `package.json`) points
-at the published file instead; use a release tag in place of `main` to match the version you run:
+at the published file instead:
 
 ```json
 {
@@ -495,9 +495,24 @@ at the published file instead; use a release tag in place of `main` to match the
 }
 ```
 
+The URL names `main` because no release has the file yet: 0.1.0-rc.1 ships no schema and refuses
+`$schema` as an unknown key, so the first release after 0.1.0-rc.1 is the oldest that accepts the line.
+From that release on, put its tag in place of `main`
+(`https://raw.githubusercontent.com/jhonDoe15/nitpicker/<tag>/spec/config.schema.json`) so the editor
+checks against the keys of the version you run; `main` may offer a key that your version does not take
+yet.
+
+In an npm workspace, a `nitpicker.config.json` in a package folder points at the copy the root
+installed, with one `../` per level up to the root: `"$schema": "../../node_modules/nitpicker/spec/config.schema.json"`
+for `packages/web/nitpicker.config.json`. A package that installs nitpicker in its own
+`node_modules` keeps `./node_modules/...`. Tools that resolve package exports instead of paths can
+use `nitpicker/config.schema.json` or `nitpicker/spec/config.schema.json`, and
+`nitpicker/spec/findings.schema.json` is the schema of the findings an analyzer writes.
+
 The schema follows `preset`: it offers only the keys, thresholds, tools, conventions and exception
 rules that the chosen preset takes, and flags the others. nitpicker reads and ignores the `$schema`
-line: it is not an override, it does not change the policy hash and it is never a policy change.
+line: it is not an override and it never counts as a policy change (when a change does loosen the policy
+in `nitpicker.config.json`, the digest to accept it covers the whole file, this line included).
 Run time validation stays the authority. It also checks what a schema cannot express: analyzer names
 in `disable`, whether a Python or Checkstyle rule exists, a `{` that is never closed in a glob, how
 much of `testConsole.allow[].contains` is left once numbers become `<n>`, and the files of the

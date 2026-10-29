@@ -1,8 +1,8 @@
 import { normalizeGitPath } from '../git/normalize.mjs';
-import { isExceptionEntry, routeFields } from '../../../shared/messages/exception-sentence.mjs';
+import { routeFields } from '../../../shared/messages/exception-sentence.mjs';
+import { adviceProblems } from '../../../shared/messages/finding-advice.mjs';
 
 const CLASSIFICATIONS = new Set(['enforceable', 'descriptive', 'tool-error']);
-const EXCEPTION_LISTS = new Set(['exceptions', 'python.exceptions']);
 
 export function parseAnalyzerReport(value, analyzerName) {
   if (!isRecord(value) || !Array.isArray(value.findings)) {
@@ -75,35 +75,21 @@ function parseOptionalFields(value, classification, context) {
 }
 
 function parseAdvice(value, message, context) {
-  const fields = {};
-  if (value.allowedForm !== undefined) {
-    fields.allowedForm = requiredString(value.allowedForm, `${context}.allowedForm`);
-  }
-  if (value.exception === undefined) {
-    if (value.exceptionList !== undefined) {
-      throw new TypeError(`${context}.exceptionList requires exception`);
-    }
-    return { ...fields, ...routeFields(message) };
-  }
-  return {
-    ...fields,
-    exception: parseException(value.exception, `${context}.exception`),
-    exceptionList: parseExceptionList(value.exceptionList, `${context}.exceptionList`),
+  const advice = {
+    ...(value.allowedForm === undefined
+      ? {}
+      : { allowedForm: requiredString(value.allowedForm, `${context}.allowedForm`) }),
+    ...(value.exception === undefined && value.exceptionList === undefined
+      ? routeFields(message)
+      : { exception: value.exception, exceptionList: value.exceptionList }),
   };
-}
-
-function parseException(value, context) {
-  if (!isExceptionEntry(value)) {
-    throw new TypeError(`${context} must have a rule, a non-empty paths array and a reason`);
+  const [problem] = adviceProblems({ message, ...advice });
+  if (problem !== undefined) {
+    throw new TypeError(
+      `${context} (${String(value.tool)} ${String(value.rule)} in ${String(value.path)}): ${problem}`,
+    );
   }
-  return value;
-}
-
-function parseExceptionList(value, context) {
-  if (!EXCEPTION_LISTS.has(value)) {
-    throw new TypeError(`${context} must be one of: ${[...EXCEPTION_LISTS].join(', ')}`);
-  }
-  return value;
+  return advice;
 }
 
 function parseLocation(value, context) {
@@ -135,7 +121,17 @@ function parseMetric(value, context) {
   };
 }
 
-const RATCHET_TEXT_FIELDS = ['worseMessage', 'worseAllowedForm', 'growthAdvice', 'heldMessage'];
+const RATCHET_TEXT_FIELDS = [
+  'worseMessage',
+  'worseAllowedForm',
+  'growthAdvice',
+  'growthAllowedForm',
+  'heldMessage',
+];
+const RATCHET_PARTS = [
+  ['worseAllowedForm', 'worseMessage'],
+  ['growthAllowedForm', 'growthAdvice'],
+];
 const RATCHET_FLAGS = ['existingCodeOnly', 'pathIsFolder'];
 
 function parseRatchet(value, context) {
@@ -152,6 +148,11 @@ function parseRatchet(value, context) {
   for (const name of RATCHET_TEXT_FIELDS) {
     if (value[name] !== undefined) {
       ratchet[name] = requiredString(value[name], `${context}.${name}`);
+    }
+  }
+  for (const [part, whole] of RATCHET_PARTS) {
+    if (ratchet[part] !== undefined && !(ratchet[whole] ?? '').includes(ratchet[part])) {
+      throw new TypeError(`${context}.${part} is not part of ${whole}`);
     }
   }
   for (const name of RATCHET_FLAGS.filter((flag) => value[flag] !== undefined)) {
