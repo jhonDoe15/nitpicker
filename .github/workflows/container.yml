@@ -1,0 +1,165 @@
+name: container
+
+# Builds each image variant of the Dockerfile and gates a sample project of every preset in it
+# (.github/container-smoke). The github-release workflow calls this one with publish: true, which
+# pushes each image from the job that tested it to the registry named in env below, then moves the
+# latest tags once every variant has passed. Not a required check.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Dockerfile'
+      - '.dockerignore'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.npmrc'
+      - 'core/**'
+      - 'shared/**'
+      - 'languages/**'
+      - '.github/container-smoke/**'
+      - '.github/workflows/container.yml'
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      commit:
+        description: Full SHA of the commit to build, if not the one the workflow runs on
+        type: string
+        default: ''
+      version:
+        description: Version the images are tagged with, for example 1.2.0
+        type: string
+        required: true
+      publish:
+        description: Push the images to the registry after they pass
+        type: boolean
+        default: false
+      latest:
+        description: Also move the latest tags (a stable release)
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+# The registry and the image name under the repository owner. To publish elsewhere, change these and
+# the login steps (docs/releasing.md, "Container images").
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: nitpicker
+
+# Pull requests are checked locally; CI runs on a pull request only when the `run-ci` label is added,
+# and a newer request cancels the older run.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  # Each case runs as the host user with a home directory mounted, or as <case>@root, or as
+  # <case>@<uid>:<gid>, a user with no passwd entry and no home mount (.github/container-smoke/run.sh).
+  image:
+    name: image ${{ matrix.variant }}
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    # packages: write is used only to push, when publish is set; the checkout keeps no credentials,
+    # so the smoke test never sees the token.
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - variant: typescript
+            cases: typescript javascript@root pnpm@12345:12345
+          - variant: jvm
+            cases: java-gradle java-maven@12345:12345 kotlin@root
+          - variant: python
+            cases: python@root poetry@12345:12345 python-pinned@12345:12345
+          - variant: all
+            cases: typescript javascript@root java-maven kotlin@12345:12345 python poetry@12345:12345
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.commit }}
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: docker/setup-buildx-action@v3
+      # Every run reads the layer cache; only main and releases write it, so pull requests cannot
+      # evict the cache that main builds from.
+      - name: Build the image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          target: ${{ matrix.variant }}
+          load: true
+          provenance: false
+          tags: nitpicker:${{ matrix.variant }}
+          build-args: |
+            SOURCE_URL=${{ github.server_url }}/${{ github.repository }}
+          labels: |
+            org.opencontainers.image.revision=${{ inputs.commit || github.sha }}
+            org.opencontainers.image.version=${{ inputs.version || 'dev' }}
+          cache-from: type=gha,scope=${{ matrix.variant }}
+          cache-to: >-
+            ${{ (github.ref == 'refs/heads/main' || inputs.publish)
+            && format('type=gha,scope={0}', matrix.variant) || '' }}
+      - name: Report the image size
+        run: |
+          size=$(docker image inspect nitpicker:${{ matrix.variant }} --format '{{.Size}}')
+          echo "${{ matrix.variant }}: $((size / 1000000)) MB" >> "$GITHUB_STEP_SUMMARY"
+      - name: Gate the sample projects in the image
+        run: .github/container-smoke/run.sh nitpicker:${{ matrix.variant }} ${{ matrix.cases }}
+      # The image pushed is the one the cases above just passed in, never a rebuild.
+      - name: Log in to the registry
+        if: ${{ inputs.publish }}
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      # The registry path must be lower case, and the owner name may not be.
+      - name: Push the image
+        if: ${{ inputs.publish }}
+        env:
+          VERSION: ${{ inputs.version }}
+          VARIANT: ${{ matrix.variant }}
+        run: |
+          image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/${IMAGE_NAME}"
+          tags=("${image}:${VERSION}-${VARIANT}")
+          if [ "$VARIANT" = "typescript" ]; then tags+=("${image}:${VERSION}"); fi
+          for tag in "${tags[@]}"; do
+            docker tag "nitpicker:${VARIANT}" "$tag"
+            docker push "$tag"
+          done
+
+  # A stable release moves the latest tags only after every variant passed and was pushed, so they
+  # never point at a mix of versions. The manifests are copied in the registry, not rebuilt.
+  latest:
+    if: ${{ inputs.publish && inputs.latest }}
+    needs: image
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: docker/setup-buildx-action@v3
+      - uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Move the latest tags
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          image="${REGISTRY}/${GITHUB_REPOSITORY_OWNER,,}/${IMAGE_NAME}"
+          for variant in typescript jvm python all; do
+            docker buildx imagetools create --tag "${image}:latest-${variant}" "${image}:${VERSION}-${variant}"
+          done
+          docker buildx imagetools create --tag "${image}:latest" "${image}:${VERSION}"
