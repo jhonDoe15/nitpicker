@@ -53,6 +53,12 @@ const TESTS = `<?xml version="1.0"?>
   </rule>
 </ruleset>
 `;
+const MAIN = `<?xml version="1.0"?>
+<ruleset name="main" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
+  <description>m</description>
+  <rule ref="category/java/security.xml"/>
+</ruleset>
+`;
 const HEADER = '<?xml version="1.0" encoding="UTF-8"?>\n';
 const NITPICKER_PATH = '/nitpicker/pmd-ruleset.xml';
 
@@ -61,6 +67,8 @@ const layer = (options) =>
     nitpickerPath: NITPICKER_PATH,
     nitpickerText: NITPICKER,
     testText: TESTS,
+    mainPath: '/nitpicker/pmd-main-ruleset.xml',
+    mainText: MAIN,
     ...options,
   });
 
