@@ -48,6 +48,10 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
   local first. Build a list with a comprehension, not `append` in a loop.
 - Imports: name what you use. No `from module import *`.
+- Trio, AnyIO and `asyncio.TaskGroup`: open a resource around the whole task group or inside the
+  child task, never in a `with` inside the group that hands it to `start_soon`/`create_task`
+  (`task-outlives-resource`). In Trio and AnyIO, an `await` in `finally:` or a cancellation handler
+  needs `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True):` around it (`unshielded-cleanup-await`).
 - Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru), never `print`. A
   log in an `except` keeps the traceback (`logger.exception(...)` or `exc_info=True`); passing the
   error as an argument or `str(error)` drops it. Logging alone is not handling: also re-raise the
