@@ -17,7 +17,7 @@ const indented = (body) =>
     .map((line) => `        ${line}`)
     .join('\n');
 const method = (body, prelude = '') =>
-  `${prelude}class Store:\n    async def run(self, fetch, key=None, flag=False):\n${indented(body)}\n`;
+  `${prelude}class Store:\n    async def run(self, fetch, key=None, *, flag=False):\n${indented(body)}\n`;
 const function_ = (body, prelude = '') =>
   `${prelude}async def run(fetch, key=None):\n${indented(body).replaceAll('        ', '    ')}\n`;
 const at = (line, subject) => [`${RULE}:${String(line)} ${subject}`];
