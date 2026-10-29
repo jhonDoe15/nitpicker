@@ -46,8 +46,16 @@ export const SUMMARY_LIMIT_BYTES = 1024 * 1024;
 const CUT_NOTE =
   '\n\nThe summary is cut here to stay under the 1 MiB limit of GitHub; see `report.txt`.\n';
 
+const FENCE_CLOSE = '\n```';
+
+function closedFences(markdown) {
+  const fences = markdown.split('\n').filter((line) => line.startsWith('```')).length;
+  return fences % 2 === 0 ? markdown : `${markdown}${FENCE_CLOSE}`;
+}
+
 export function fittedSummary(text, usedBytes) {
-  const budget = SUMMARY_LIMIT_BYTES - usedBytes - Buffer.byteLength(CUT_NOTE);
+  const budget =
+    SUMMARY_LIMIT_BYTES - usedBytes - Buffer.byteLength(CUT_NOTE) - Buffer.byteLength(FENCE_CLOSE);
   if (Buffer.byteLength(text) + usedBytes <= SUMMARY_LIMIT_BYTES) {
     return text;
   }
@@ -55,7 +63,7 @@ export function fittedSummary(text, usedBytes) {
     return '';
   }
   const kept = Buffer.from(text).subarray(0, budget).toString('utf8');
-  return `${kept.slice(0, Math.max(kept.lastIndexOf('\n'), 0))}${CUT_NOTE}`;
+  return `${closedFences(kept.slice(0, Math.max(kept.lastIndexOf('\n'), 0)))}${CUT_NOTE}`;
 }
 
 function appendSummary(summaryPath, text) {

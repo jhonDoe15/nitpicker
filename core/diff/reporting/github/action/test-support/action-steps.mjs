@@ -19,11 +19,32 @@ while [ "$1" != nitpicker ]; do shift; done
 shift
 case "$*" in
   --help) exit "\${FAKE_HELP_EXIT:-0}" ;;
-  base*) exec node "$NITPICKER_CLI" "$@" ;;
+  base*)
+    if [ -n "\${FAKE_NO_BASE:-}" ]; then
+      echo 'nitpicker failed: Unknown argument: base' >&2
+      exit 2
+    fi
+    exec node "$NITPICKER_CLI" "$@"
+    ;;
   "cache publish") exit 0 ;;
   *) exit "\${FAKE_GATE_EXIT:-0}" ;;
 esac
 `;
+
+const FAKE_CYGPATH = `#!/usr/bin/env bash
+case "$1" in
+  -m) printf 'C:%s\\n' "$2" ;;
+  -u) printf '%s\\n' "\${FAKE_UNIX_WORKSPACE:-$2}" ;;
+esac
+`;
+
+export function windowsTools(root) {
+  const bin = path.join(root, 'windows-bin');
+  mkdirSync(bin, { recursive: true });
+  writeFileSync(path.join(bin, 'cygpath'), FAKE_CYGPATH);
+  chmodSync(path.join(bin, 'cygpath'), EXECUTABLE_MODE);
+  return bin;
+}
 
 const FAKE_COMMAND = `#!/usr/bin/env bash
 printf '%s\\n' "$(basename "$0") $* (in $PWD)" >> "$FAKE_LOG"

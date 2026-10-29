@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { comparisonKey } from '../comparison/fingerprint.mjs';
 import { heldFindingsOf } from './report-model.mjs';
-import { joinRepositoryPath, repositoryPath } from '../git/paths.mjs';
+import { repositoryFindingPath } from '../git/paths.mjs';
 
 const SARIF_SCHEMA_URL = 'https://json.schemastore.org/sarif-2.1.0.json';
 
@@ -18,9 +18,9 @@ function encodePath(findingPath) {
 function toSarifResult({ finding, baselineState }, projectPath) {
   const artifactLocation =
     projectPath === undefined
-      ? { uri: encodePath(finding.path) }
+      ? { uri: encodePath(repositoryFindingPath('.', finding.path)) }
       : {
-          uri: encodePath(joinRepositoryPath(repositoryPath(projectPath), finding.path)),
+          uri: encodePath(repositoryFindingPath(projectPath, finding.path)),
           uriBaseId: SOURCE_ROOT_ID,
         };
   const physicalLocation = { artifactLocation };

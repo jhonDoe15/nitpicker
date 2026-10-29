@@ -81,11 +81,13 @@ jobs:
           else
             floating="v$major"
           fi
-          git fetch --no-tags origin "+refs/tags/$floating:refs/tags/$floating" 2> /dev/null || true
-          if git rev-parse --verify --quiet "refs/tags/$floating^{commit}" > /dev/null &&
-            ! git merge-base --is-ancestor "refs/tags/$floating" "$COMMIT"; then
-            echo "::error::$floating points at a commit that $TAG does not contain; move it by hand if that is intended."
-            exit 1
+          remote="$(git ls-remote --tags origin "refs/tags/$floating" | cut -f1)"
+          if [ -n "$remote" ]; then
+            git fetch --no-tags origin "+refs/tags/$floating:refs/tags/$floating"
+            if ! git merge-base --is-ancestor "refs/tags/$floating" "$COMMIT"; then
+              echo "::error::$floating points at a commit that $TAG does not contain; move it by hand if that is intended."
+              exit 1
+            fi
           fi
           git tag -f "$floating" "$COMMIT"
           git push --force origin "refs/tags/$floating"

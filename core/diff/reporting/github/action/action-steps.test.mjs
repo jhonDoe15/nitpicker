@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { commit, fixtureGit, useGitFixtures } from '../../../git/test-support/git-repository.mjs';
 import { writeFiles } from '../../../git/test-support/fixture-files.mjs';
 import { resolveBase } from '../../../git/repository/base-ref.mjs';
-import { actionStep, executeStep, readAction } from './test-support/action-steps.mjs';
+import { actionStep, executeStep, readAction, windowsTools } from './test-support/action-steps.mjs';
 
 function runAt({ name, root, cwd, environment }) {
   return executeStep({
@@ -143,6 +143,32 @@ describe('the install step', () => {
     ]);
   });
 
+  it('stops a custom command of several lines at the first line that fails', () => {
+    const { status, commands } = install({}, 'false\nnpm ci');
+
+    expect([status, commands]).toEqual([1, []]);
+  });
+
+  it('stops looking for a lockfile at the workspace on Windows, where paths differ', () => {
+    const outer = temporaryRoot('nitpicker-action-outer-');
+    writeFiles(outer, { 'package-lock.json': '{}\n' });
+    const project = path.join(outer, 'repo/app');
+    mkdirSync(project, { recursive: true });
+    const result = runAt({
+      name: INSTALL,
+      root: outer,
+      cwd: project,
+      environment: {
+        INSTALL_COMMAND: '',
+        GITHUB_WORKSPACE: String.raw`D:\a\repo`,
+        FAKE_UNIX_WORKSPACE: path.join(outer, 'repo'),
+        PATH: `${windowsTools(outer)}:${process.env.PATH}`,
+      },
+    });
+
+    expect([result.status, result.commands]).toEqual([0, []]);
+  });
+
   it('installs nothing for none, and runs a custom command in the working directory', () => {
     const none = install({ 'package-lock.json': '{}\n' }, 'none');
     const custom = install({}, 'npm install --no-save "$GITHUB_WORKSPACE"');
@@ -169,7 +195,7 @@ describe('the prepare step', () => {
       0,
       {
         'skip-gate': 'false',
-        'cache-scope': 'apps-web-v2',
+        'cache-scope': 'apps%2Fweb%2Cv2',
         'cache-dir': `${checkout}/.git/nitpicker-cache`,
         base: 'origin/main',
         'base-sha': forkPoint,
@@ -263,7 +289,77 @@ describe('the prepare step', () => {
   });
 });
 
+describe('the prepare step with a base that is not a branch, or an older nitpicker', () => {
+  it('fetches a tag or a commit given as base-ref into a shallow checkout', () => {
+    const { remote, forkPoint } = remoteWith([]);
+    fixtureGit(remote, ['tag', 'v1', forkPoint]);
+    const tag = prepare(shallowCheckout(remote, 'feature'), { BASE_REF: 'v1' });
+    const sha = prepare(shallowCheckout(remote, 'feature'), { BASE_REF: forkPoint });
+
+    expect([tag.status, tag.outputs['base-sha'], sha.status, sha.outputs['base-sha']]).toEqual([
+      0,
+      forkPoint,
+      0,
+      forkPoint,
+    ]);
+  });
+
+  it('names a base-ref that origin does not have', () => {
+    const { remote } = remoteWith([]);
+    const { status, stdout } = prepare(shallowCheckout(remote, 'feature'), { BASE_REF: 'v9' });
+
+    expect([status, stdout.trim().split('\n').at(-1)]).toEqual([
+      1,
+      '::error title=nitpicker cannot find the base::v9 is not in the checkout and could not be fetched from origin. Set base-ref to a branch (origin/<branch>), a tag or a commit SHA that origin has.',
+    ]);
+  });
+
+  it('falls back to the pull request target when the nitpicker of the project has no base command', () => {
+    const { remote, forkPoint } = remoteWith([]);
+    const { status, stdout, outputs } = prepare(shallowCheckout(remote, 'feature'), {
+      FAKE_NO_BASE: '1',
+      GITHUB_BASE_REF: 'main',
+    });
+
+    expect([status, stdout.trim(), outputs.base, outputs['base-sha']]).toEqual([
+      0,
+      "::error title=nitpicker is too old for this action::The nitpicker of this project has no 'base' command, so the action cannot read base from nitpicker.config.json. Upgrade to nitpicker 0.1.0 or newer. This run compares with origin/main.",
+      'origin/main',
+      forkPoint,
+    ]);
+  });
+
+  it('writes the cache folder as a Windows path where cygpath exists', () => {
+    const { remote } = remoteWith([]);
+    const checkout = shallowCheckout(remote, 'feature');
+    const tools = windowsTools(temporaryRoot('nitpicker-action-tools-'));
+    const { outputs } = prepare(checkout, {
+      GITHUB_BASE_REF: 'main',
+      PATH: `${tools}:${process.env.PATH}`,
+    });
+
+    expect(outputs['cache-dir']).toBe(`C:${checkout}/.git/nitpicker-cache`);
+  });
+});
+
 describe('the gate step', () => {
+  it('refuses --all, since the action always compares with a base', () => {
+    const { status, stdout, outputs } = gate({ EXTRA_ARGUMENTS: '--all' });
+
+    expect([status, stdout.trim(), outputs]).toEqual([
+      1,
+      '::error title=nitpicker arguments::The action runs a comparison with a base, which --all cannot be combined with. Run npx nitpicker --all in a step of its own for a full run.',
+      {},
+    ]);
+  });
+
+  it('writes the report folder as a Windows path where cygpath exists', () => {
+    const tools = windowsTools(temporaryRoot('nitpicker-action-tools-'));
+    const { outputs, root } = gate({ PATH: `${tools}:${process.env.PATH}` });
+
+    expect(outputs['report-directory']).toBe(`C:${root}/reports/quality/diff`);
+  });
+
   it('records the exit code of a failing gate instead of stopping the step', () => {
     const { status, outputs, commands, root } = gate({ FAKE_GATE_EXIT: '1' });
 

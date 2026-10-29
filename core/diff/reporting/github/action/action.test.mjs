@@ -89,7 +89,7 @@ describe('action.yml', () => {
     const gate = stepNamed('Run the gate');
 
     expect(gate['working-directory']).toBe('${{ inputs.working-directory }}');
-    expect(scriptLines(gate, 'npx')).toEqual([
+    expect(scriptLines(gate, 'runner=(npx')).toEqual([
       '  runner=(npx --yes --package "$PACKAGE" nitpicker)',
       '  runner=(npx --no-install nitpicker)',
     ]);
@@ -121,7 +121,11 @@ describe('the sample workflow', () => {
     expect(job.if).toBe(
       "github.event_name != 'pull_request' || github.event.label.name == 'run-ci'",
     );
-    expect(job['timeout-minutes']).toBe(20);
+    expect([job['timeout-minutes'], job.strategy.matrix.os, job.defaults.run.shell]).toEqual([
+      30,
+      ['ubuntu-latest', 'windows-latest'],
+      'bash',
+    ]);
   });
 
   it('uses the action of this repository on the sample project', () => {

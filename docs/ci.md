@@ -64,8 +64,13 @@ project (its own devDependency), writes the job summary and annotations, uploads
 the gate fails, and fails the job with the gate's exit code. On a push or a manual run it compares
 with the repository default branch, and in a merge queue with the queue's target branch. The
 sample workflow [`.github/workflows/github-action.yml`](../.github/workflows/github-action.yml)
-runs it on [a sample project](../.github/sample-project) with a seeded finding, and on a project
-without a `package.json`.
+runs it on [a sample project](../.github/sample-project) with a seeded finding, on Linux and
+Windows, and on a project without a `package.json`.
+
+The action runs on GitHub-hosted and self-hosted Linux, macOS and Windows runners; every step is
+bash, which all three have (Git Bash on Windows, whose paths the action turns into Windows paths for
+`actions/cache` and the outputs). On Windows, nitpicker itself cannot install the dependencies of
+the base when a change edits the lockfile, and skips mutmut; use a Linux runner for those projects.
 
 <!-- generated:action-inputs begin (npm run gen:checks) -->
 
@@ -74,13 +79,15 @@ Inputs:
 - `working-directory` (default `.`): The project folder, relative to the repository root, for a
   project in a subfolder. Annotations, links and report paths carry the folder, so they land on the
   right files.
-- `base-ref` (empty by default): The ref to compare against, passed as `--base`, for example
-  `origin/release`. Empty takes the base the way nitpicker picks it (the pull request or merge queue
-  target branch, then `base` in `nitpicker.config.json`, then the repository default branch). The
-  action fetches the base and keys the cache on its merge base with `HEAD`.
+- `base-ref` (empty by default): The ref to compare against, passed as `--base`: a branch
+  (`origin/release`), a tag or a commit SHA. Empty takes the base the way nitpicker picks it (the
+  pull request or merge queue target branch, then `base` in `nitpicker.config.json`, then the
+  repository default branch). The action fetches the base, also into a shallow checkout, and keys
+  the cache on its merge base with `HEAD`.
 - `arguments` (empty by default): Extra nitpicker arguments, one per line or separated by spaces (no
-  quoting), for example `--analyzer eslint-lint`. `--output` and `--base` are refused: use
-  `report-directory` and `base-ref`.
+  quoting), for example `--analyzer eslint-lint`. `--output` and `--base` are refused (use
+  `report-directory` and `base-ref`), and so is `--all`, since the action always runs a comparison;
+  run `npx nitpicker --all` in a step of its own for a full run.
 - `package` (empty by default): A package to run with `npx` instead of the project's own nitpicker,
   for example `nitpicker@<version>`, the URL of a release tarball or the path of one. A project
   without a `package.json` (Java, Kotlin or Python) needs it. Empty runs the project's
@@ -93,8 +100,11 @@ Inputs:
   its folder; set up Bun before the action for a Bun project. `none` skips the install, and anything
   else runs as a shell command in the working directory.
 - `cache` (default `true`): Restore and save the findings cache with `actions/cache`, keyed by the
-  merge base and `nitpicker.config.json`, also when the gate fails. It lives in
-  `node_modules/.cache/nitpicker`, or in the `.git` folder for a project without `node_modules`.
+  runner, the project folder, the merge base and `nitpicker.config.json`, also when the gate fails.
+  GitHub scopes caches by branch: a pull request reads its own caches and those of its base branch,
+  never another pull request's, so use `cache-url` to share the base across pull requests. The cache
+  lives in `node_modules/.cache/nitpicker`, or in the `.git` folder for a project without
+  `node_modules`.
 - `cache-url` (empty by default): A remote cache prefix (`NITPICKER_CACHE_URL`). Runs read it, and
   `cache-publish` writes to it.
 - `cache-auth-header` (empty by default): The `Authorization` header value for the remote cache
@@ -113,8 +123,9 @@ Inputs:
 - `sarif-category` (default `nitpicker`): The code scanning category of the upload. Use one per
   project when several projects upload.
 - `upload-report` (default `true`): Upload the report directory as an artifact when the gate fails.
-- `artifact-name` (default `nitpicker-report`): The artifact name of the report. Use another name
-  when a job runs the action more than once.
+- `artifact-name` (default `nitpicker-report`): The artifact name of the report. Artifact names are
+  unique in a workflow run, so give each use its own name: a job that runs the action more than
+  once, and each job of a matrix or a sharded run (for example `nitpicker-report-<shard>`).
 
 Outputs:
 
@@ -125,6 +136,16 @@ Outputs:
   to compare.
 
 <!-- generated:action-inputs end -->
+
+`arguments` cannot hold `--all`: the action always compares with a base. Run `npx nitpicker --all`
+in a step of its own for a full run. A matrix or a sharded workflow that runs the action in several
+jobs gives each job its own `artifact-name` (for example `nitpicker-report-${{ matrix.shard }}`),
+since artifact names are unique in a workflow run.
+
+The findings cache is saved per pull request: GitHub lets a pull request restore its own caches and
+those of its base branch, never another pull request's. To share the measured base across pull
+requests, publish the default branch's findings to `cache-url` (below); runs read it before they
+measure the base themselves.
 
 The action does not check out the repository: the gate reads the code and its history from the
 checkout, so put `actions/checkout` with `fetch-depth: 0` before it. With a shallow checkout the
@@ -191,7 +212,7 @@ jobs:
         uses: actions/cache/restore@v6.1.0
         with:
           path: node_modules/.cache/nitpicker
-          key: nitpicker-${{ runner.os }}-${{ steps.base.outputs.sha }}-${{ hashFiles('nitpicker.config.json') }}
+          key: nitpicker-${{ runner.os }}-${{ runner.arch }}-${{ steps.base.outputs.sha }}-${{ hashFiles('nitpicker.config.json') }}
       - run: npx nitpicker --output reports/nitpicker
         env:
           NITPICKER_ACCEPT_POLICY_CHANGE: ${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}

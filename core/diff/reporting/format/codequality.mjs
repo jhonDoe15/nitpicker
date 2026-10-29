@@ -1,36 +1,36 @@
 import { createHash } from 'node:crypto';
 import { comparisonKey } from '../../comparison/fingerprint.mjs';
-import { joinRepositoryPath, repositoryPath } from '../../git/paths.mjs';
+import { repositoryFindingPath, repositoryPath } from '../../git/paths.mjs';
 
 export const CODE_QUALITY_REPORT_FILE_NAME = 'codequality.json';
 
-function locationPath(finding, projectDirectory) {
-  if (finding.path === '') {
-    return projectDirectory === '' ? '.' : projectDirectory;
-  }
-  return joinRepositoryPath(projectDirectory, finding.path);
-}
-
-function toIssue(finding, projectDirectory) {
+function toIssue(finding, projectPath) {
   return {
     description: finding.message,
     check_name: `${finding.tool}/${finding.rule}`,
     fingerprint: createHash('sha256')
-      .update(`${projectDirectory}\n${comparisonKey(finding)}`)
+      .update(`${repositoryPath(projectPath)}\n${comparisonKey(finding)}`)
       .digest('hex'),
     severity: finding.classification === 'enforceable' ? 'major' : 'info',
     location: {
-      path: locationPath(finding, projectDirectory),
-      lines: { begin: finding.location?.line ?? 1 },
+      path: repositoryFindingPath(projectPath, finding.path),
+      lines: { begin: Math.max(finding.location?.line ?? 1, 1) },
     },
   };
 }
 
+function firstOfEachFingerprint(issues) {
+  const seen = new Set();
+  return issues.filter(({ fingerprint }) => {
+    if (seen.has(fingerprint)) {
+      return false;
+    }
+    seen.add(fingerprint);
+    return true;
+  });
+}
+
 export function renderCodeQualityReport(findings, { projectPath = '.' } = {}) {
-  const projectDirectory = repositoryPath(projectPath);
-  return `${JSON.stringify(
-    findings.map((finding) => toIssue(finding, projectDirectory)),
-    null,
-    2,
-  )}\n`;
+  const issues = firstOfEachFingerprint(findings.map((finding) => toIssue(finding, projectPath)));
+  return `${JSON.stringify(issues, null, 2)}\n`;
 }

@@ -62,6 +62,8 @@ Work from a clean checkout of `main` with full history.
    ```sh
    git tag v<new-version> <commit>
    git push origin v<new-version>
+   git fetch --no-tags origin '+refs/tags/v0.<minor>:refs/tags/v0.<minor>'  # skip if it does not exist yet
+   git merge-base --is-ancestor v0.<minor> <commit>   # must succeed: the tag only moves forward
    git tag -f v0.<minor> <commit> && git push --force origin refs/tags/v0.<minor>
    ```
 6. **Publish** from the repository root:
@@ -90,7 +92,10 @@ Work from a clean checkout of `main` with full history.
    The `github-release` workflow does the same from the Actions tab: run it with the full SHA of the
    release commit on `main`. It creates the tag `v<version>` from that commit's `package.json`,
    attaches the tarball and `SHA256SUMS`, moves the floating tag unless `prerelease` is set or
-   the version has a suffix, and takes its notes from
+   the version has a suffix (the step runs after the release is created, so when it fails, for
+   example because the tag would move backwards or a tag ruleset of the repository blocks the
+   forced push, the release stays published and the floating tag is moved by hand as in step 5),
+   and takes its notes from
    `.github/release-notes/v<version>.md`, which must be on `main` first. Write the notes without
    personal names: generated notes credit PR authors.
 
