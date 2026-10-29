@@ -63,6 +63,7 @@ function runArchitecture(options) {
     exclude: options.exclude,
     includeOnly: options.includeOnly,
     configRelativePath: options.configRelativePath,
+    reportsConfigErrors: true,
   });
   return applyAreaExceptions(normalizeArchitectureViolations(report, options.analyzerName));
 }

@@ -1,8 +1,12 @@
 import { evaluatedProjectConfig } from '../project-tool-policy.mjs';
-import { KNIP_TOOL } from '../project-config-files.mjs';
+import { DEPENDENCY_CRUISER_TOOL, KNIP_TOOL } from '../project-config-files.mjs';
+import { dependencyCruiserConfigChanges } from './dependency-cruiser-config-changes.mjs';
 import { knipConfigChanges } from './knip-config-changes.mjs';
 
-const CLASSIFIERS = new Map([[KNIP_TOOL, knipConfigChanges]]);
+const CLASSIFIERS = new Map([
+  [KNIP_TOOL, knipConfigChanges],
+  [DEPENDENCY_CRUISER_TOOL, dependencyCruiserConfigChanges],
+]);
 
 function evaluatedSide(tool, root, optedIn) {
   if (!optedIn) {

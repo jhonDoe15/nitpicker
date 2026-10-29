@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import { encodedValue, withoutKnipCompilers } from './config-values.mjs';
+import { loadDependencyCruiserConfig } from './dependency-cruiser-loader.mjs';
 
 const LOADERS = new Map([
   [
@@ -17,7 +18,7 @@ const LOADERS = new Map([
     'dependency-cruiser',
     {
       module: 'src/config-utl/extract-depcruise-config/index.mjs',
-      load: (loader, file) => loader.default(file),
+      load: loadDependencyCruiserConfig,
     },
   ],
 ]);

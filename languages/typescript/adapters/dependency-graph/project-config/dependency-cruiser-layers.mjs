@@ -1,39 +1,16 @@
 import { isDeepStrictEqual } from 'node:util';
 import { precedenceLayers } from '../../../../../shared/conventions/tool-precedence.mjs';
-import { listOf } from '../../../preset/project-tools/config-values.mjs';
-
-const NITPICKER_OPTIONS = new Set([
-  'baseDir',
-  'cache',
-  'collapse',
-  'exclude',
-  'extraExtensionsToScan',
-  'focus',
-  'focusDepth',
-  'highlight',
-  'includeOnly',
-  'knownViolationsFile',
-  'maxDepth',
-  'metrics',
-  'moduleSystems',
-  'outputTo',
-  'outputType',
-  'prefix',
-  'preserveSymlinks',
-  'progress',
-  'reaches',
-  'reporterOptions',
-  'ruleSet',
-  'skipAnalysisNotInRules',
-  'tsConfig',
-  'tsPreCompilationDeps',
-  'validate',
-]);
+import {
+  DEPENDENCY_CRUISER_OWNED_OPTIONS,
+  listOf,
+  patternSource,
+} from '../../../preset/project-tools/config-values.mjs';
 
 function pathsOf(option) {
-  return listOf(
-    typeof option === 'object' && option !== null && !Array.isArray(option) ? option.path : option,
-  );
+  const source = patternSource(option);
+  const paths =
+    typeof source === 'object' && source !== null && !Array.isArray(source) ? source.path : source;
+  return listOf(paths).map(patternSource);
 }
 
 function uniqueRules(rules) {
@@ -66,7 +43,9 @@ function ruleLists(high, low) {
 }
 
 function projectOptions(options = {}) {
-  return Object.fromEntries(Object.entries(options).filter(([key]) => !NITPICKER_OPTIONS.has(key)));
+  return Object.fromEntries(
+    Object.entries(options).filter(([key]) => !DEPENDENCY_CRUISER_OWNED_OPTIONS.has(key)),
+  );
 }
 
 function doNotFollow(policy = {}, project = {}) {
@@ -93,7 +72,9 @@ function mergedOptions(policy = {}, project = {}, nitpickerFirst) {
   return {
     ...low,
     ...high,
-    ...Object.fromEntries(Object.entries(policy).filter(([key]) => NITPICKER_OPTIONS.has(key))),
+    ...Object.fromEntries(
+      Object.entries(policy).filter(([key]) => DEPENDENCY_CRUISER_OWNED_OPTIONS.has(key)),
+    ),
     ...doNotFollow(policy, project),
     ...(policy.enhancedResolveOptions === undefined && owned.enhancedResolveOptions === undefined
       ? {}

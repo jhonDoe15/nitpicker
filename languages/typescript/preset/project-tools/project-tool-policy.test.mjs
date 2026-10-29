@@ -174,3 +174,74 @@ describe('project tool configs in the head policy', () => {
     );
   });
 });
+
+describe('dependency-cruiser configs in the head policy', () => {
+  const tools = { 'dependency-cruiser': { precedence: ['project', 'nitpicker'] } };
+  const settingsOf = (root) => withProjectToolConfigs(tools, root)['dependency-cruiser'];
+  const unreadCruiser = (file, reason) =>
+    `Could not read the project's dependency-cruiser config (${file}): ${reason}`;
+
+  it('reads JSON in process, hands JSON5 and extends to dependency-cruiser, and keeps patterns', () => {
+    const root = project({
+      '.dependency-cruiser.json': '{ forbidden: [{ name: "x", from: {}, to: {} }], // json5\n}',
+    });
+    expect(settingsOf(root).projectConfig).toEqual({
+      forbidden: [{ name: 'x', from: {}, to: {} }],
+    });
+    const extending = project({
+      'base.json': '{ "options": { "exclude": "^gen" } }',
+      '.dependency-cruiser.json':
+        '{ "extends": "./base.json", "forbidden": [{ "name": "y", "from": {}, "to": {} }] }',
+    });
+    expect(settingsOf(extending).projectConfig).toEqual({
+      forbidden: [{ name: 'y', from: {}, to: {} }],
+      options: { exclude: '^gen' },
+    });
+    const script = project({
+      '.dependency-cruiser.cjs': 'module.exports = { options: { exclude: { path: /^gen/u } } };',
+    });
+    expect(settingsOf(script).projectConfig).toEqual({
+      options: { exclude: { path: { $nitpickerRegExp: ['^gen', 'u'] } } },
+    });
+  });
+
+  it('resolves the webpack and babel config files against the head checkout', () => {
+    const options = {
+      webpackConfig: { fileName: 'webpack.config.js', env: 'production' },
+      babelConfig: { fileName: 'config/babel.json' },
+    };
+    const json = project({ '.dependency-cruiser.json': JSON.stringify({ options }) });
+    const script = project({
+      '.dependency-cruiser.cjs': `module.exports = ${JSON.stringify({ options })};`,
+    });
+    for (const root of [json, script]) {
+      expect(settingsOf(root).projectConfig.options).toEqual({
+        webpackConfig: { fileName: path.join(root, 'webpack.config.js'), env: 'production' },
+        babelConfig: { fileName: path.join(root, 'config/babel.json') },
+      });
+    }
+  });
+
+  it('rejects extends and local requires that resolve outside the project', () => {
+    const outside = project({ 'shared.cjs': 'module.exports = { forbidden: [] };' });
+    const shared = path.join(outside, 'shared.cjs');
+    const viaExtends = project({
+      '.dependency-cruiser.json': JSON.stringify({ extends: shared }),
+    });
+    expect(settingsOf(viaExtends).projectConfigError).toBe(
+      unreadCruiser(
+        '.dependency-cruiser.json',
+        `"extends": "${shared}" in .dependency-cruiser.json is outside the project`,
+      ),
+    );
+    const viaRequire = project({
+      '.dependency-cruiser.cjs': `module.exports = require(${JSON.stringify(shared)});`,
+    });
+    expect(settingsOf(viaRequire).projectConfigError).toBe(
+      unreadCruiser(
+        '.dependency-cruiser.cjs',
+        `${shared} in .dependency-cruiser.cjs is outside the project`,
+      ),
+    );
+  });
+});

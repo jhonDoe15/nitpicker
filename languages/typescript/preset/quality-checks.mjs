@@ -11,6 +11,7 @@ import { MINUTE_MS, eslintVersion, vitestVersion } from './checks/constants.mjs'
 import { COUPLING_CHECK_FILES } from './coupling/check-files.mjs';
 import { STRUCTURE_CHECK_FILES } from './structure/check-files.mjs';
 import { DEAD_CODE_CHECK_FILES } from './unused-api/check-files.mjs';
+import { PROJECT_TOOL_FILES } from './project-tools/project-config-files.mjs';
 
 const dependencyCruiserVersion = 'unresolved';
 
@@ -105,6 +106,7 @@ function entryPointsCheckFor(layout, exclusions) {
       ARCHITECTURE_CONFIG,
       POLICY_TYPESCRIPT_CONFIG,
       'languages/typescript/adapters/dependency-graph/project-config/dependency-cruiser-layers.mjs',
+      'languages/typescript/adapters/dependency-graph/project-config/graph-layer.mjs',
       ...PROJECT_TOOL_FILES,
     ],
   };
@@ -172,6 +174,7 @@ function typeAndArchitectureChecksFor(layout) {
         'languages/typescript/preset/architecture/strict-layout.mjs',
         'languages/typescript/preset/defaults/tsconfig.quality.json',
         'languages/typescript/adapters/dependency-graph/project-config/dependency-cruiser-layers.mjs',
+        'languages/typescript/adapters/dependency-graph/project-config/graph-layer.mjs',
         'languages/typescript/adapters/dependency-graph/project-dependency-graph.mjs',
         ...PROJECT_TOOL_FILES,
       ],

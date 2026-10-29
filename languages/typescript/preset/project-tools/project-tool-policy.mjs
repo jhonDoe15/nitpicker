@@ -12,11 +12,15 @@ import {
   precedenceLayers,
 } from '../../../../shared/conventions/tool-precedence.mjs';
 import { parsedJsonc } from '../../../../shared/jsonc/jsonc.mjs';
-import { encodedValue, withoutKnipCompilers } from './config-values.mjs';
 import {
-  isJsonConfigFile,
+  encodedValue,
+  withDependencyCruiserFiles,
+  withoutKnipCompilers,
+} from './config-values.mjs';
+import {
   isProjectConfigTool,
   isProjectToolNeeded,
+  jsonReading,
   lookedFor,
   packageJsonKey,
   projectConfigSources,
@@ -32,10 +36,13 @@ const LOADER_SOURCE = [
 const MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
 const CONFIG_LOAD_TIMEOUT_MS = 60_000;
 const CAPTURED_FACTS = ['projectConfig', 'projectConfigDigest', 'projectConfigError'];
-const NORMALIZED = new Map([['knip', withoutKnipCompilers]]);
+const NORMALIZED = new Map([
+  ['knip', withoutKnipCompilers],
+  ['dependency-cruiser', withDependencyCruiserFiles],
+]);
 
-function normalized(tool, config) {
-  return (NORMALIZED.get(tool) ?? ((value) => value))(config);
+function normalized(tool, config, projectRoot) {
+  return (NORMALIZED.get(tool) ?? ((value) => value))(config, projectRoot);
 }
 
 function childFailure(result) {
@@ -87,12 +94,22 @@ function spawnedConfig(tool, projectRoot, { full, timeout }) {
   }
 }
 
-function jsonConfig(tool, { full, file }) {
+function inProcessConfig(tool, projectRoot, { full, file }) {
+  const reading = jsonReading(tool, file);
+  if (reading === undefined) {
+    return undefined;
+  }
   const parsed = parsedJsonc(readFileSync(full, 'utf8'));
   if (parsed.kind !== 'json') {
+    if (!reading.strict) {
+      return undefined;
+    }
     throw new Error(`${file} is not valid JSON: ${parsed.reason}`);
   }
-  return encodedValue(normalized(tool, parsed.value), file);
+  if (isPlainObject(parsed.value) && parsed.value.extends !== undefined) {
+    return undefined;
+  }
+  return { config: encodedValue(normalized(tool, parsed.value, projectRoot), file) };
 }
 
 function objectConfig(value, label) {
@@ -107,13 +124,11 @@ function fileConfig(tool, projectRoot, { file, timeout }) {
   if (full === undefined) {
     throw new Error(`${file} must be a file inside the project`);
   }
-  const config = isJsonConfigFile(file)
-    ? jsonConfig(tool, { full, file })
-    : spawnedConfig(tool, projectRoot, { full, timeout });
-  return objectConfig(config, file);
+  const loaded = inProcessConfig(tool, projectRoot, { full, file });
+  return objectConfig(loaded?.config ?? spawnedConfig(tool, projectRoot, { full, timeout }), file);
 }
 
-function sectionConfig(tool, section) {
+function sectionConfig(tool, projectRoot, section) {
   if (section.kind !== 'json') {
     throw new Error(`package.json is not valid JSON: ${section.reason}`);
   }
@@ -121,12 +136,15 @@ function sectionConfig(tool, section) {
     return {};
   }
   const label = `the "${packageJsonKey(tool)}" key in package.json`;
-  return objectConfig(encodedValue(normalized(tool, section.value), 'package.json'), label);
+  return objectConfig(
+    encodedValue(normalized(tool, section.value, projectRoot), 'package.json'),
+    label,
+  );
 }
 
 function loadedConfig(tool, projectRoot, { sources, timeout }) {
   return {
-    ...sectionConfig(tool, sources.section),
+    ...sectionConfig(tool, projectRoot, sources.section),
     ...(sources.file === undefined
       ? {}
       : fileConfig(tool, projectRoot, { file: sources.file, timeout })),
