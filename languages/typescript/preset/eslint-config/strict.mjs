@@ -20,7 +20,6 @@ import {
   controlFlowRules,
   controlFlowSelectors,
   controlFlowTypedRules,
-  nullishDefaultRules,
   forEachSelectors,
   loopSelectors,
 } from './strict/strict-control-flow.mjs';
@@ -161,7 +160,7 @@ function strictTypedConfigFor(layout, parserOptions) {
         ...controlFlowTypedRules,
         'nitpicker/exhaustive-union-predicate': 'error',
         'nitpicker/no-forwarding-wrapper': 'error',
-        ...nullishDefaultRules,
+        'nitpicker/no-falsy-default': 'error',
       },
     },
     {

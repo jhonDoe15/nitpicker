@@ -529,31 +529,46 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
 - `nitpicker/no-tri-state-boolean`: a `boolean` that can also be `undefined` or `null` has three
   states that the type does not name. Reported as the whole type of a parameter, return type
   (also inside `Promise<...>`), type member or class field (`force: boolean | undefined`,
-  `true | false | undefined`), and for an optional boolean parameter (`force?: boolean`,
-  including in function types and `declare` signatures). Not reported: an optional property
-  (`{ force?: boolean }`), a union with another type (`boolean | string`), a local variable, and a
+  `true | false | undefined`), for an optional boolean parameter (`force?: boolean`, including in
+  function types and `declare` signatures) and for an optional boolean property
+  (`{ force?: boolean }`). Not reported: an optional property of a type named `*Props` (a React
+  component's props), a union with another type (`boolean | string`), a local variable, and a
   method with `override`. The message names a required `boolean` or a union of string literals.
-  In the JavaScript preset the rule reads JSDoc types (`@param {boolean|undefined}`,
-  `{boolean=}`, `@param {boolean} [force]`, `Promise<boolean|undefined>` in `@returns`).
+  In the JavaScript preset the rule reads JSDoc types, so the type-aware rules need JSDoc types to
+  see anything: `@param {boolean|undefined}`, `{boolean=}`, `{?boolean}`, a bare
+  `@param {boolean} [force]` with no default, and `Promise<boolean|undefined>` in `@returns`.
+  `[force=false]` (a default given), `@property` tags and dotted option names
+  (`@param {boolean} [options.verbose]`) are not reported.
 - `nitpicker/no-parameter-mutation` (type-aware): a mutating method (`push`, `pop`, `splice`,
   `sort`, `reverse`, `add`, `set`, `delete`, `clear` and the other array, `Set`, `Map` mutators of
   `no-mutating-method-in-domain`) called on a parameter, or an assignment, `++` or `delete` on an
   index or `length` of a parameter whose type has a writable index signature (arrays, typed
-  arrays, records), is flagged, also through `grid[0]!.push`. Not flagged: a copy
-  (`const copy = [...items]`), the accumulator (first parameter) of a `reduce` or `reduceRight`
-  callback, an immer draft (a parameter inside `produce`, `produceWithPatches`, `createSlice`,
-  `createReducer`, `useImmer` or `useImmerReducer`), a `readonly` type (the compiler rejects the
-  write), and plain property assignment (`user.name = name`). `domain/` files keep the stricter
+  arrays, records), is flagged, also through `grid[0]!.push` and `counts['a']!++`. Only exported
+  functions and public methods are checked: a function that is not exported, a nested function and
+  a `private` or `#` method are helpers. Not flagged: a rest parameter, a copy
+  (`const copy = [...items]`, or `items = items.slice()` / `[...items]` / `structuredClone(items)`
+  before the call), an accumulator (the first parameter of a `reduce` or `reduceRight` callback,
+  inline or named, and a parameter defaulted to `[]`, `{}`, `new Set()` or `new Map()`), an immer
+  draft (a parameter inside `produce`, `produceWithPatches`, `createSlice`, `createReducer`,
+  `useImmer` or `useImmerReducer`), a `readonly` type (the compiler rejects the write), and plain
+  property assignment (`user.name = name`). `domain/` files keep the stricter
   `no-mutating-method-in-domain` and do not get this rule. The shared method tables are in
   `eslint-plugin/rules/analysis/mutation/mutating-methods.mjs`.
-- `@typescript-eslint/prefer-nullish-coalescing` (type-aware, `ignorePrimitives: { boolean: true }`):
-  `name || 'none'` on a value that can be `undefined` turns `''` and `0` into the default; write
-  `name ?? 'none'`. Conditions (`if (a || b)`) and boolean operands are not reported.
+- `nitpicker/no-falsy-default` (type-aware): `limit || DEFAULT_LIMIT` and `limit ? limit : DEFAULT`
+  on a parameter that is optional, defaulted to `undefined` or `null`, or typed
+  `| undefined` / `| null`, when its type also has a falsy value that is not absent (`number`,
+  `string`, `boolean`, `bigint`) turns `0`, `''` and `false` into the default. Write
+  `limit ?? DEFAULT_LIMIT`, or test `limit === undefined`. Not reported: a fallback equal to the
+  falsy value (`name || ''`, `count || 0`, `flag || false`, where `??` gives the same result), a
+  fallback of `undefined` or `null`, a condition (`if (a || b)`), and a value that is not a
+  parameter. In the JavaScript preset the type comes from JSDoc; without JSDoc types the rule sees
+  nothing.
 - `nitpicker/no-compatibility-shim`: a doc comment with a `@deprecated` tag, and an exported
-  `const Old = New` or `type Old = New` whose target `New` is also exported from the same module
-  (two public names for one thing). Generic aliases, aliases of imports and of non-exported
-  declarations, and `export { a as b }` lists (which `no-forwarding-wrapper` recommends) are not
-  reported. Callers of a deprecated API are reported by `@typescript-eslint/no-deprecated`. In the
+  `const Old = New`, `type Old = New` or `export { New as Old }` whose target `New` is also
+  exported from the same module (two public names for one thing). Generic aliases, aliases of
+  imports and of non-exported declarations are not reported, so `export { callee as wrapper }` of a
+  function that is not itself exported (the form `no-forwarding-wrapper` recommends) stays
+  allowed. Callers of a deprecated API are reported by `@typescript-eslint/no-deprecated`. In the
   JavaScript preset the `@deprecated` tag is already rejected as an unsupported JSDoc tag, so only
   the alias form is added.
 - Naive datetimes have no rule in this preset. A `Date` is a UTC instant: it has no naive form and

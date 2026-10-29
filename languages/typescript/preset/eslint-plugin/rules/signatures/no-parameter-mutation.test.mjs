@@ -58,6 +58,16 @@ tester.run('no-parameter-mutation', rule, {
     'export function set(values: Set<string>) { return new Set([...values, "x"]); }',
     'export function has(table: Map<string, number>) { return table.get("a"); }',
     'export function shadow(items: string[]) { return items.map((items) => { items.length = 0; return items; }); }',
+    'export function add(...items: string[][]) { items.push([]); }',
+    'export function add(items: string[]) { items = items.slice(); items.push("x"); return items; }',
+    'export function add(items: string[]) { items = [...items]; items.push("x"); return items; }',
+    'export function add(items: string[]) { items = structuredClone(items); items.push("x"); return items; }',
+    'function add(items: string[]) { items.push("x"); }',
+    'export class Bag { private fill(items: string[]) { items.push("x"); } #drain(items: string[]) { items.pop(); } }',
+    'export function run(items: string[]) { const collect = (list: string[]) => { list.push("x"); }; return collect(items); }',
+    'function collect(table: string[], item: string) { table.push(item); return table; }\nexport function all(items: string[]) { return items.reduce(collect, []); }',
+    'export function collect(table: string[] = [], item = "") { table.push(item); return table; }',
+    'export function collect(table: Record<string, number> = {}, key = "") { table[key] = 1; return table; }',
   ].map((code) => typed(code)),
   invalid: [
     typed('export function add(items: string[], item: string) { items.push(item); }', 'items.push'),
@@ -83,5 +93,16 @@ tester.run('no-parameter-mutation', rule, {
       'items.push',
     ),
     typed('export function fill(bytes: Uint8Array) { bytes[0] = 1; }', 'bytes[…]'),
+    typed('export function bump(counts: Record<string, number>) { counts["a"]!++; }', 'counts[…]'),
+    typed(
+      'export function add(items: string[]) { items.push("x"); items = items.slice(); }',
+      'items.push',
+    ),
+    typed('export class Bag { fill(items: string[]) { items.push("x"); } }', 'items.push'),
+    typed('const add = (items: string[]) => items.push("x");\nexport { add };', 'items.push'),
+    typed(
+      'export function add(items: string[] | undefined) { items = items ?? []; items.push("x"); }',
+      'items.push',
+    ),
   ],
 });

@@ -21,12 +21,12 @@ tester.run('no-tri-state-boolean', rule, {
     'export function run(value: boolean | string | undefined) { return value; }',
     'export function run(): boolean { return true; }',
     'export function run(): Promise<boolean> { return Promise.resolve(true); }',
-    'export type Options = { force?: boolean };',
+    'export type ButtonProps = { disabled?: boolean };',
+    'export type ButtonProps = { label: string } & { disabled?: boolean };',
     'export type Options = { force: boolean };',
     'export function run() { const found: boolean | undefined = undefined; return found; }',
     'export class Check { override isOn(): boolean | undefined { return undefined; } }',
     'export type Mode = "on" | "off" | "auto";',
-    'export function run(options: { force?: boolean }) { return options; }',
     {
       code: '/** @param {boolean} force */\nexport function run(force) { return force; }',
       options: [{ jsdoc: true }],
@@ -34,8 +34,23 @@ tester.run('no-tri-state-boolean', rule, {
     {
       code: '/** @param {boolean|undefined} force */\nexport function run(force) { return force; }',
     },
+    {
+      code: '/** @param {boolean} [force=false] */\nexport function run(force) { return force; }',
+      options: [{ jsdoc: true }],
+    },
+    {
+      code: '/** @param {boolean} [options.verbose] */\nexport function run(options) { return options; }',
+      options: [{ jsdoc: true }],
+    },
+    {
+      code: '/** @typedef {object} Options\n * @property {boolean} [verbose] */\n',
+      options: [{ jsdoc: true }],
+    },
   ],
   invalid: [
+    flagged('export type Options = { force?: boolean };', '`force`'),
+    flagged('export function run(options: { force?: boolean }) { return options; }', '`force`'),
+    flagged('export class Check { enabled?: boolean; }', '`enabled`'),
     flagged('export function run(force: boolean | undefined) { return force; }', '`force`'),
     flagged('export function run(force: undefined | boolean) { return force; }', '`force`'),
     flagged('export function run(force: boolean | null) { return force; }', '`force`'),

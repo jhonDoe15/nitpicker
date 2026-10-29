@@ -139,8 +139,10 @@ line) is a finding.
 - `async`/`await`, never `.then()`. No floating promises.
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
-- Signatures: a value with three states is a union of string literals, not `{boolean|undefined}`
-  or `{boolean=}`; default only `undefined` with `??`, never `||` on a nullable value; return a
+- Signatures: a value with three states is a union of string literals, not `{boolean|undefined}`,
+  `{boolean=}` or a `@param {boolean} [force]` with no default (the type-aware rules read your
+  JSDoc types, so write them); default only `undefined` with `??`, never `||` on an optional parameter that can be `0`, `''` or
+  `false`; return a
   new array, `Set`, `Map` or object instead of changing a parameter (`[...items, item]`,
   `items.toSorted()`). When code moves, change every caller and delete the old name: no
   `@deprecated` declaration and no `export const Old = New` alias.
