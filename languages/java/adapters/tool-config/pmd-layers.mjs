@@ -41,18 +41,26 @@ function withHelpers(rule, helpers) {
   return { ...rule, children: groups };
 }
 
-function testRulesOf(testRuleset) {
-  return childrenNamed(testRuleset, 'rule').map((rule) => ({
+function scopedRulesOf(ruleset) {
+  return childrenNamed(ruleset, 'rule').map((rule) => ({
     ...referenceOf(rule),
     element: rule,
   }));
 }
 
-function catalogOf({ ruleset, helpers, testRuleset }) {
+function catalogOf({ ruleset, helpers, testRuleset, mainRuleset }) {
   const definitions = new Map();
   const covers = new Map();
-  for (const { file, rule, element: definition } of testRulesOf(testRuleset)) {
+  const mainCovers = new Map();
+  for (const { file, rule, element: definition } of scopedRulesOf(testRuleset)) {
     definitions.set(rule, { file, element: definition, testOnly: true });
+  }
+  for (const { file, rule, element: definition } of scopedRulesOf(mainRuleset)) {
+    if (rule === undefined) {
+      mainCovers.set(file, excludedNames(definition));
+    } else {
+      definitions.set(rule, { file, element: definition, mainOnly: true });
+    }
   }
   for (const rule of childrenNamed(ruleset, 'rule')) {
     const { file, rule: name } = referenceOf(rule);
@@ -65,11 +73,15 @@ function catalogOf({ ruleset, helpers, testRuleset }) {
       });
     }
   }
-  return { definitions, covers };
+  return { definitions, covers, mainCovers };
+}
+
+function covered(covers, file, name) {
+  return covers.has(file) && !covers.get(file).has(name);
 }
 
 function runsRule({ definitions, covers }, file, name) {
-  return definitions.has(name) || (covers.has(file) && !covers.get(file).has(name));
+  return definitions.has(name) || covered(covers, file, name);
 }
 
 function mergedProperties(base, over) {
@@ -111,7 +123,8 @@ function overlay(base, over) {
 }
 
 function wholeCategory({ rule, file, catalog }) {
-  if (!catalog.covers.has(file)) {
+  const covers = catalog.covers.has(file) ? catalog.covers : catalog.mainCovers;
+  if (!covers.has(file)) {
     const named = [...catalog.definitions].filter(([, entry]) => entry.file === file);
     const present = excludedNames(rule);
     const added = named.map(([name]) => name).filter((name) => !present.has(name));
@@ -123,7 +136,7 @@ function wholeCategory({ rule, file, catalog }) {
         };
   }
   const own = excludedNames(rule);
-  return [...catalog.covers.get(file)]
+  return [...covers.get(file)]
     .filter((name) => !catalog.definitions.has(name) && !own.has(name))
     .map((name) => element('rule', { ref: `${file}/${name}` }));
 }
@@ -135,13 +148,18 @@ function splitProjectRule(rule, catalog, projectWins) {
   }
   const definition = catalog.definitions.get(name);
   if (definition === undefined) {
-    return { kept: [rule], replaced: runsRule(catalog, file, name) ? [name] : [] };
+    return covered(catalog.mainCovers, file, name)
+      ? { kept: [], replaced: [], main: [[name, rule]] }
+      : { kept: [rule], replaced: runsRule(catalog, file, name) ? [name] : [] };
   }
   const merged = projectWins
     ? overlay(definition.element, rule)
     : overlay(rule, definition.element);
-  return definition.testOnly
-    ? { kept: [], replaced: [], tests: [[name, merged]] }
+  if (definition.testOnly) {
+    return { kept: [], replaced: [], tests: [[name, merged]] };
+  }
+  return definition.mainOnly
+    ? { kept: [], replaced: [], main: [[name, merged]] }
     : { kept: [merged], replaced: [name] };
 }
 
@@ -154,30 +172,46 @@ function projectLayer(projectRuleset, catalog, projectWins) {
   );
   return {
     tests: new Map(layers.flatMap(({ tests = [] }) => tests)),
+    main: new Map(layers.flatMap(({ main = [] }) => main)),
     replaced: [...new Set(layers.flatMap(({ replaced }) => replaced))],
     ruleset: { ...project, children: layers.flatMap(({ kept }) => kept) },
   };
 }
 
+function wrapperRuleset({ name, text, path, excluded, rules }) {
+  const description = element('description');
+  description.text = text;
+  const wrapper = element('ruleset', { name, xmlns: 'http://pmd.sourceforge.net/ruleset/2.0.0' }, [
+    description,
+    element(
+      'rule',
+      { ref: path },
+      excluded.map((rule) => element('exclude', { name: rule })),
+    ),
+    ...rules,
+  ]);
+  return `${DECLARATION}${renderXml(wrapper)}\n`;
+}
+
 function nitpickerRuleset({ nitpickerPath, catalog, replaced, helpers }) {
   const withAssertion = helpers.length > 0 && !replaced.includes(ASSERT_RULE);
-  const excluded = [...replaced, ...(withAssertion ? [ASSERT_RULE] : [])];
-  const description = element('description');
-  description.text = "Nitpicker's PMD rules, without the rules the project's ruleset sets itself.";
-  const wrapper = element(
-    'ruleset',
-    { name: 'nitpicker', xmlns: 'http://pmd.sourceforge.net/ruleset/2.0.0' },
-    [
-      description,
-      element(
-        'rule',
-        { ref: nitpickerPath },
-        excluded.map((name) => element('exclude', { name })),
-      ),
-      ...(withAssertion ? [catalog.definitions.get(ASSERT_RULE).element] : []),
-    ],
-  );
-  return `${DECLARATION}${renderXml(wrapper)}\n`;
+  return wrapperRuleset({
+    name: 'nitpicker',
+    text: "Nitpicker's PMD rules, without the rules the project's ruleset sets itself.",
+    path: nitpickerPath,
+    excluded: [...replaced, ...(withAssertion ? [ASSERT_RULE] : [])],
+    rules: withAssertion ? [catalog.definitions.get(ASSERT_RULE).element] : [],
+  });
+}
+
+function mainRuleset(mainPath, overlaid) {
+  return wrapperRuleset({
+    name: 'nitpicker-main-rules',
+    text: "Nitpicker's main-only PMD rules, with the project's settings over them.",
+    path: mainPath,
+    excluded: [...overlaid.keys()],
+    rules: [...overlaid.values()],
+  });
 }
 
 function testRuleset(catalog, overlaid) {
@@ -198,6 +232,8 @@ export function layerPmdRulesets({
   nitpickerPath,
   nitpickerText,
   testText,
+  mainPath,
+  mainText,
   projectText,
   projectWins = true,
   assertionHelpers = [],
@@ -206,11 +242,13 @@ export function layerPmdRulesets({
     ruleset: parseXml(nitpickerText),
     helpers: assertionHelpers,
     testRuleset: parseXml(testText),
+    mainRuleset: parseXml(mainText),
   });
   const project =
     projectText === undefined ? undefined : projectLayer(projectText, catalog, projectWins);
   return {
     tests: project === undefined ? undefined : testRuleset(catalog, project.tests),
+    main: project === undefined ? undefined : mainRuleset(mainPath, project.main),
     nitpicker: nitpickerRuleset({
       nitpickerPath,
       catalog,
