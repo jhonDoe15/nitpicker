@@ -9,10 +9,7 @@ export function securityPatterns() {
 }
 
 export function securityMessage(pattern) {
-  const advice = ADVICE.get(pattern);
-  return advice === undefined
-    ? undefined
-    : `${advice} If it is right here, add an exception for spotbugs/${pattern} in nitpicker.config.json.`;
+  return ADVICE.get(pattern);
 }
 
 export function stableName(name) {

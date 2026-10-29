@@ -133,7 +133,7 @@
     </properties>
   </rule>
   <rule name="HttpWithoutTimeout" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Give this HTTP call a timeout: HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10)) on every request, HttpClient.newBuilder().connectTimeout(...) for the client, setConnectTimeout and setReadTimeout on the URLConnection from url.openConnection() (url.openStream() cannot take one), and a RequestConfig with timeouts on an Apache client, HttpClients.custom().setDefaultRequestConfig(...). Without one a slow or silent server holds the thread forever. If it is right here, add an exception for pmd/HttpWithoutTimeout in nitpicker.config.json.">
+        message="Give this HTTP call a timeout: HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10)) on every request, HttpClient.newBuilder().connectTimeout(...) for the client, setConnectTimeout and setReadTimeout on the URLConnection from url.openConnection() (url.openStream() cannot take one), and a RequestConfig with timeouts on an Apache client, HttpClients.custom().setDefaultRequestConfig(...). Without one a slow or silent server holds the thread forever.">
     <priority>2</priority>
     <properties>
       <property name="xpath">
@@ -197,7 +197,7 @@ return (
     </properties>
   </rule>
   <rule name="WeakHmac" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Sign with HMAC-SHA256: Mac.getInstance(&quot;HmacSHA256&quot;) (or Hashing.hmacSha256, HmacAlgorithms.HMAC_SHA_256). HMAC-SHA1 stays allowed where a protocol fixes it; HMAC-MD5 is not. If it is right here, add an exception for pmd/WeakHmac in nitpicker.config.json.">
+        message="Sign with HMAC-SHA256: Mac.getInstance(&quot;HmacSHA256&quot;) (or Hashing.hmacSha256, HmacAlgorithms.HMAC_SHA_256). HMAC-SHA1 stays allowed where a protocol fixes it; HMAC-MD5 is not.">
     <priority>2</priority>
     <properties>
       <property name="xpath">
@@ -220,7 +220,7 @@ return (
     </properties>
   </rule>
   <rule name="TlsVerificationOff" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Keep certificate and hostname verification on in every environment, also behind a flag or an environment variable. For a private or self-signed CA, trust that CA: a KeyStore holding it, given to a TrustManagerFactory (or a Spring SSL bundle). Trusting every certificate or host lets anyone on the network read and change the traffic. If it is right here, add an exception for pmd/TlsVerificationOff in nitpicker.config.json.">
+        message="Keep certificate and hostname verification on in every environment, also behind a flag or an environment variable. For a private or self-signed CA, trust that CA: a KeyStore holding it, given to a TrustManagerFactory (or a Spring SSL bundle). Trusting every certificate or host lets anyone on the network read and change the traffic.">
     <priority>1</priority>
     <properties>
       <property name="xpath">

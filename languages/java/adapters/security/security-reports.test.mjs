@@ -82,7 +82,13 @@ describe('readJavaFindings: find-sec-bugs', () => {
       ({ tool }) => tool === 'spotbugs',
     );
 
-    expect(found.map(({ message }) => message)).toEqual(Array(2).fill(securityMessage(PATTERN)));
+    const route = `{"rule":"spotbugs/${PATTERN}","paths":["src/main/java/demo/Bad.java"],"reason":"..."}`;
+
+    expect(found.map(({ message }) => message)).toEqual(
+      Array(2).fill(
+        `${securityMessage(PATTERN)} If this is intended, add ${route} to "exceptions" in nitpicker.config.json.`,
+      ),
+    );
     expect(found.map(({ identity }) => identity)).toEqual([
       'fp:nitpicker/subject=JdbcTemplate.queryForList a.B.one',
       'fp:nitpicker/subject=JdbcTemplate.queryForList a.B.two',
