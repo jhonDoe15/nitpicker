@@ -96,6 +96,38 @@ class PricingTest {
 }
 `;
 
+const INVENTORY = `package demo.orders
+
+import java.nio.file.Files
+import java.nio.file.Path
+import java.sql.Connection
+import java.sql.DriverManager
+import java.util.concurrent.Executors
+import java.util.logging.Logger
+
+private val log: Logger = Logger.getLogger("inventory")
+val stockFile: Path = Path.of("stock.csv")
+val seeded: Boolean = Files.exists(stockFile)
+val stockLines: List<String> by lazy { Files.readAllLines(stockFile) }
+
+object Inventory {
+    val workers = Executors.newFixedThreadPool(2)
+
+    fun connection(): Connection {
+        log.fine("connecting")
+        return DriverManager.getConnection("jdbc:h2:mem:inventory")
+    }
+}
+
+enum class Shelf(val file: String) {
+    TOP("top.csv"),
+    BOTTOM("bottom.csv"),
+    ;
+
+    val present: Boolean = Files.exists(Path.of(file))
+}
+`;
+
 const WAITING_TEST = `package demo.orders
 
 import kotlinx.coroutines.delay
@@ -188,6 +220,7 @@ export const REVIEW_RULE_FILES = {
   ['src/main/kotlin/org/springframework/boot/context/properties/ConfigurationProperties.kt']:
     CONFIGURATION_PROPERTIES,
   [`${TEST}/PricingTest.kt`]: PRICING_TEST,
+  [`${MAIN}/Inventory.kt`]: INVENTORY,
   [`${TEST}/WaitingTest.kt`]: WAITING_TEST,
   [`${TEST}/ContextTest.kt`]: CONTEXT_TEST,
   [`${SPRING}/boot/test/context/SpringBootTest.kt`]: SPRING_BOOT_TEST,
@@ -195,6 +228,9 @@ export const REVIEW_RULE_FILES = {
 };
 
 export const EXPECTED_REVIEW_FINDINGS = [
+  'ClassLoadEffect Inventory.workers',
+  'ClassLoadEffect Shelf.present',
+  'ClassLoadEffect seeded',
   'ExhaustiveEnumPredicate isLive',
   'ExhaustiveEnumPredicate isOpen',
   'ExhaustiveEnumPredicate isSettled',

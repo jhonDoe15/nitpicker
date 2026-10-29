@@ -134,11 +134,9 @@ export function readKotlinFindings(context, crapLimit) {
       }),
       ...readKotlinStructureFindings(metrics, projectRoot),
       ...readKotlinClassLimitFindings(metrics, context.classLimits),
-      ...readKotlinCrapFindings(metrics, {
-        projectRoot,
-        jacoco,
-        crapLimit,
-      }),
+      ...(jacoco === undefined
+        ? []
+        : readKotlinCrapFindings(metrics, { projectRoot, jacoco, crapLimit })),
     ],
     context.classLimits,
   );

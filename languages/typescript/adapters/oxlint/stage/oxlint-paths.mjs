@@ -1,5 +1,5 @@
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 
 const NO_INPUT_ERROR_CODES = new Set([18002, 18003]);
 

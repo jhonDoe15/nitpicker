@@ -52,7 +52,8 @@ Before you change code other modules use, or fix a bug, read
 - With Spring, the architecture rules (`archunit/spring-...`) read the compiled Kotlin classes: package
   by feature; controllers call services, never repositories or another controller; a repository calls
   no service; a request- or session-scoped bean reaches a singleton only as `ObjectProvider<T>` or
-  through a scoped proxy (`@RequestScope`).
+  through a scoped proxy (`@RequestScope`); request data never lands in a singleton's property or a
+  `companion object`: pass it through parameters and return values.
 - With jMolecules (`AggregateRoot`, `Entity`, `ValueObject` or their annotations; also without Spring),
   the `archunit/ddd-...` rules hold aggregate boundaries: refer to another aggregate's root by its
   identifier or an `Association`, keep each entity in one aggregate, and keep entities and roots out of
@@ -79,9 +80,17 @@ Before you change code other modules use, or fix a bug, read
   `of` or `from` are fine.
 - A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
-- A public top-level or `object` function, or a private or `internal` function or constructor, does
-  not declare a default parameter that no call sets (`unused-option`): remove the parameter, or pass
-  it from a real call. Tests count only for private and `internal` declarations and published modules.
+- In main code, nothing with an outside effect runs while a file, `object`, companion object or
+  enum class loads (`pmd/ClassLoadEffect`): no connection, request, file access, pool, timer,
+  coroutine launch or JVM-wide setting in a top-level property, an `object`'s properties or `init`,
+  an enum entry, or a class its companion creates, nor in a function they call. Do the work in a
+  function `main` or the framework calls after startup (a `@Bean` method, an `ApplicationRunner`, a
+  Ktor module) and pass the result in, or defer it with `by lazy { }`. Constants, loggers, `Regex`
+  and collections can stay.
+- A public top-level, `object` or companion function, or a private or `internal` function or
+  constructor, does not declare a default parameter that no call sets (`unused-option`): remove the
+  parameter, or pass it from a real call. Tests count only for private and `internal` declarations
+  and published modules.
 - Never `@Suppress` a detekt or ktlint rule (its name, `all`, a ruleset, `detekt:...`, `ktlint:...`):
   fix the code. The compiler warnings `UNCHECKED_CAST`, `DEPRECATION` and `USELESS_CAST` are
   findings too and are not suppressed either. If a rule flags legitimate code, stop and ask: the
