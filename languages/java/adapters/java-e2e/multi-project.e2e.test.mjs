@@ -124,9 +124,7 @@ describe.skipIf(!enabled)(
       expect(located(result.findings, 'pmd', 'UnusedPrivateField')).toEqual([
         'src/main/java/demo/Counter.java',
       ]);
-      expect(
-        result.findings.filter((finding) => /^(?:build-logic|buildSrc)\//u.test(finding.path)),
-      ).toEqual([]);
+      expect(result.nested).toEqual([]);
     }, 180_000);
   },
 );
