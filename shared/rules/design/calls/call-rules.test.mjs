@@ -235,3 +235,46 @@ describe('caller-protocol', () => {
     expect(designRun(facts, 'protocol-contract', { protocols: [contract] })).toEqual([]);
   });
 });
+
+describe('protocol-contract across a class hierarchy', () => {
+  const resource = owner('src/io/resource.ts', 'Resource');
+  const file = owner('src/io/file.ts', 'FileRes', { supertypes: [resource.id] });
+  const conn = owner('src/db/conn.ts', 'Conn', { kind: 'interface' });
+  const pg = owner('src/db/pg.ts', 'Pg', { supertypes: [conn.id] });
+  const user = owner('src/a/use.ts');
+  const open = fn(resource, 'open');
+  const close = fn(resource, 'close');
+  const fileClose = fn(file, 'close');
+  const pgOpen = fn(pg, 'open');
+  const protocols = [
+    { type: 'Resource', open: ['open'], close: ['close'] },
+    { type: 'Conn', open: ['open'], close: ['close'] },
+  ];
+
+  function run(calls) {
+    const use = fn(user, 'use', {
+      calls: calls.map((call, index) => ({ receiver: 'f', line: 3 + index, ...call })),
+    });
+    const facts = designFacts({
+      types: [resource, file, conn, pg, user],
+      callables: [open, close, fileClose, pgOpen, use],
+    });
+    return designRun(facts, 'protocol-contract', { protocols }).map(({ identity }) => identity);
+  }
+
+  it.each([
+    [
+      'an override that closes in finally',
+      [{ target: open.id }, { target: fileClose.id, cleanup: true }],
+      [],
+    ],
+    ['an override that never closes', [{ target: open.id }], ['src/a/use.ts#use|f|unclosed:open']],
+    [
+      'a subclass of a contract interface',
+      [{ target: pgOpen.id }],
+      ['src/a/use.ts#use|f|unclosed:open'],
+    ],
+  ])('matches the contract of a supertype: %s', (_, calls, identities) => {
+    expect(run(calls)).toEqual(identities);
+  });
+});

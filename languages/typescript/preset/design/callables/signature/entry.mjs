@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 
 const OBJECT_MEMBERS = new Set(['toString', 'toJSON', 'valueOf', 'equals']);
 
