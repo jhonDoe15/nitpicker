@@ -244,3 +244,8 @@ export function runPit({
   }
   return undefined;
 }
+
+export function missingLauncherVersions(analyzed) {
+  const versions = analyzed.map(({ classpaths }) => junitLauncherVersion(classpaths.testRuntime));
+  return [...new Set(versions.filter((version) => version !== undefined))];
+}

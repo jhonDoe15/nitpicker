@@ -1,5 +1,9 @@
 import { exceptionMatcher } from '../../../../../../shared/rules/exceptions.mjs';
 import { inModule } from '../../../../builds/module-path.mjs';
+import { COLUMN_RULES } from './data/columns.mjs';
+import { ENTITY_RULES } from './data/entities.mjs';
+import { LOOP_RULES } from './data/loops.mjs';
+import { QUERY_RULES } from './data/queries.mjs';
 import { BEAN_RULES } from './rules/beans.mjs';
 import { CLIENT_RULES } from './rules/clients.mjs';
 import { CONFIGURATION_RULES } from './rules/configuration.mjs';
@@ -20,6 +24,10 @@ const RULES = [
   ...WEB_RULES,
   ...ERROR_LEAK_RULES,
   ...SECURITY_RULES,
+  ...ENTITY_RULES,
+  ...COLUMN_RULES,
+  ...QUERY_RULES,
+  ...LOOP_RULES,
 ];
 
 export function springFindings(
@@ -50,6 +58,12 @@ export function springFindings(
 
 const COVERED_SOURCE_RULES = {
   HttpWithoutTimeout: new Set(['SpringHttpClientTimeouts', 'SpringHttpClientPerCall']),
+  IoCallInLoop: new Set([
+    'SpringDataNoSaveInLoop',
+    'SpringDataBatchOfOne',
+    'SpringDataRowWriteInLoop',
+    'SpringDataSaveInLoopHelper',
+  ]),
 };
 
 export function withoutCoveredSourceFindings(findings, { exceptions = [], modulePath } = {}) {

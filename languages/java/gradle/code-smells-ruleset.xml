@@ -80,34 +80,99 @@ return //PackageDeclaration[some $segment in tokenize(@Name, '\.') satisfies $is
         message="This variable holds a hardcoded secret. Read it from the environment or a secrets manager and inject it.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
-let $secret := '(password|passwd|pwd|passphrase|secret|token|credentials?|apikey|privatekey|accesskey|secretkey|authkey|signingkey|encryptionkey)$',
-    $assigned := (
-      //VariableDeclarator[matches(lower-case(replace(VariableId/@Name, '[^A-Za-z]', '')), $secret)]/*[2]
-      | //AssignmentExpression[matches(lower-case(replace((VariableAccess | FieldAccess)[1]/@Name, '[^A-Za-z]', '')), $secret)]/*[2]
+let $nameWords := ('password', 'passwd', 'pwd', 'passphrase', 'secret', 'token', 'credentials?', 'apikey', 'privatekey', 'accesskey', 'secretkey', 'authkey', 'signingkey', 'encryptionkey', 'hmackey', 'jwtkey'),
+    $valueSuffixes := ('value', 'raw', 'str', 'string', 'text', 'plain'),
+    $markerTokens := ('eos', 'bos', 'pad', 'unk', 'cls', 'sep', 'mask'),
+    $passphraseNames := ('password', 'passwd', 'passphrase'),
+    $placeholders := ('\*+\w{0,4}', 'x+', '<.*>', '\[.*\]', '\$\{.*\}', '\$[A-Za-z_]\w*', '\{\{.*\}\}', '\{\w*\}', '%s', '%\(\w+\)s', ':[A-Za-z_]+', 'changeme', 'change-me', 'todo', 'example', 'dummy', 'placeholder', 'redacted', 'none', 'null', 'undefined', 'your[-_ ].*'),
+    $notSecret := ('[A-Z][A-Z0-9_]+', '[A-Za-z]+(?:[._:/-][A-Za-z]+)+', '[a-z][a-z0-9_-]*(?:[./][a-z0-9_-]+)+', '(?:~|\.{1,2})?(?:/[\w.-]+)+/?', '\^.*\$'),
+    $identifiers := ('[a-z][a-z0-9]*(?:[_-][a-z0-9]+)+', '[a-z]+(?:[A-Z][a-z0-9]*)+'),
+    $credentialShapes := ('\bAKIA[0-9A-Z]{16}\b', '\bgh[pousr]_[A-Za-z0-9]{30,}', '\bxox[abprs]-[A-Za-z0-9-]{10,}', '-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----', '\b[rs]k_(?:live|test)_[A-Za-z0-9]{20,}', '\bsk-(?:proj|ant|live|test)-[A-Za-z0-9_-]{20,}', '\bdjango-insecure-\S{6,}'),
+    $embeddedSecrets := ('^[a-z][a-z0-9+.-]*://[^\s/:@]+:([^\s/@]+)@', '^(?:bearer|basic|token)\s+(\S+)$', '[?&;]password=([^&;\s]+)'),
+    $valueLength := 6,
+    $characterClasses := 3,
+    $passphraseLength := 8,
+    $words := function($name) {
+      tokenize(lower-case(replace(replace(string($name), '([a-z0-9])([A-Z])', '$1 $2'), '([A-Z]+)([A-Z][a-z])', '$1 $2')), '[^a-z0-9]+')[. != '']
+    },
+    $nameWordsOf := function($name) {
+      let $all := $words($name),
+          $kept := (for $i in reverse(1 to count($all)) return if ($all[$i] = $valueSuffixes) then () else $i)[1]
+      return subsequence($all, 1, max((1, $kept)))
+    },
+    $letters := function($words) { replace(string-join($words, ''), '[0-9]', '') },
+    $isSecretName := function($name) {
+      let $kept := $nameWordsOf($name)
+      return not($kept[last()] = 'token' and $kept[last() - 1] = $markerTokens)
+        and matches($letters($kept), concat('(?:', string-join($nameWords, '|'), ')$'))
+    },
+    $js := function($pattern) {
+      replace(replace(replace(replace($pattern, '\[([^\]\\]*)\\w', '[$1A-Za-z0-9_'), '\\w', '[A-Za-z0-9_]'),
+        '^\\b', '(?:^|[^A-Za-z0-9_])'), '\\b$', '(?:[^A-Za-z0-9_]|\$)')
+    },
+    $anyOf := function($patterns) { concat('(?:', string-join(for $p in $patterns return $js($p), '|'), ')') },
+    $isCandidate := function($text) {
+      not(matches($text, '\s'))
+        and not(matches($text, concat('^', $anyOf($placeholders), '$'), 'i'))
+        and not(matches($text, concat('^', $anyOf($notSecret), '$')))
+    },
+    $looksLikeSecret := function($text) {
+      string-length($text) >= $valueLength and $isCandidate($text)
+        and ((matches($text, '\d') and matches($text, '[A-Za-z]'))
+          or count(('[a-z]', '[A-Z]', '\d', '[^A-Za-z0-9]')[matches($text, .)]) >= $characterClasses)
+    },
+    $hasCredentialShape := function($text) {
+      matches($text, $anyOf($credentialShapes))
+      or (some $shape in $embeddedSecrets ! $js(.) satisfies
+        (matches($text, $shape, 'i')
+          and $looksLikeSecret(replace($text, concat('^',
+            if (starts-with($shape, '^')) then substring($shape, 2) else concat('.*?(?:', $shape, ')'),
+            if (ends-with($shape, '$')) then '' else '.*', '$'), '$1', 'is'))))
+    },
+    $isPassphrase := function($text, $name) {
+      string-length($text) >= $passphraseLength and matches($text, '[a-z][A-Z]') and $isCandidate($text)
+        and matches($letters($nameWordsOf($name)), concat('(?:', string-join($passphraseNames, '|'), ')$'))
+    },
+    $namesASecret := function($text, $name) {
+      let $textWords := $words($text)
+      return (matches($text, concat('^', $anyOf($identifiers), '$'))
+          and matches($letters($textWords), string-join($nameWords, '|')))
+        or string-join($textWords, '') = string-join($words($name), '')
+    },
+    $isHardcodedSecret := function($text, $name) {
+      not($hasCredentialShape($text)) and not(matches($text, '^[a-z][a-z0-9+.-]*://', 'i'))
+        and not($namesASecret($text, $name))
+        and ($looksLikeSecret($text) or $isPassphrase($text, $name))
+    },
+    $named := (
+      //VariableDeclarator[$isSecretName(VariableId/@Name)]/*[2]
+      | //AssignmentExpression[$isSecretName((VariableAccess | FieldAccess)[1]/@Name)]/*[2]
       | //MethodCall[@MethodName = ('of', 'entry', 'put', 'setProperty', 'addProperty')]/ArgumentList
-          /*[preceding-sibling::*[1][self::StringLiteral][matches(lower-case(replace(@ConstValue, '[^A-Za-z0-9]', '')), $secret)]]
+          /*[preceding-sibling::*[1][self::StringLiteral][$isSecretName(@ConstValue)]]
     ),
     $values := (
-      $assigned
-      | $assigned/self::ConditionalExpression/*[position() > 1]
-      | $assigned/self::MethodCall[@MethodName = ('orElse', 'getOrDefault', 'requireNonNullElse')]/ArgumentList/*[last()]
-      | $assigned/self::MethodCall[@MethodName = 'getProperty'][count(ArgumentList/*) = 2]/ArgumentList/*[last()]
-      | $assigned/self::MethodCall[@MethodName = 'orElseGet']/ArgumentList/LambdaExpression/*[last()]
-    )
+      $named
+      | $named/self::ConditionalExpression/*[position() > 1]
+      | $named/self::MethodCall[@MethodName = ('orElse', 'getOrDefault', 'requireNonNullElse')]/ArgumentList/*[last()]
+      | $named/self::MethodCall[@MethodName = 'getProperty'][count(ArgumentList/*) = 2]/ArgumentList/*[last()]
+      | $named/self::MethodCall[@MethodName = 'orElseGet']/ArgumentList/LambdaExpression/*[last()]
+    ),
+    $springFile := exists(//ImportDeclaration[starts-with(@ImportedName, 'org.springframework.')])
 return (
   $values[self::StringLiteral]
   | $values[self::InfixExpression[@Operator = '+'][not(.//*[not(self::InfixExpression[@Operator = '+'] or self::StringLiteral)])]]
   | $values/self::MethodCall[@MethodName = ('toCharArray', 'getBytes')]/StringLiteral
   | $values/self::MethodCall[@MethodName = ('valueOf', 'copyValueOf')]/ArgumentList/StringLiteral
   | $values/self::ConstructorCall[ClassType/@SimpleName = 'String']/ArgumentList/StringLiteral
-)[let $text := (if (self::StringLiteral) then string(@ConstValue) else string-join(.//StringLiteral/@ConstValue, ''))
-  return string-length($text) >= 6
-    and not(matches($text, '\s'))
-    and not(matches($text, '^[a-zA-Z][a-zA-Z0-9+.-]*://'))
-    and not(matches($text, '^([A-Z][A-Z0-9_]+|[A-Za-z]+([_.:/-][A-Za-z]+)+|\*+|x+|<.*>|\[.*\]|\$\{.*\})$'))
-    and not(matches($text, '^(changeme|change-me|todo|example|dummy|placeholder|redacted|none|null|undefined|your[-_ ].*)$', 'i'))
-    and ((matches($text, '[0-9]') and matches($text, '[A-Za-z]'))
-      or count((matches($text, '[a-z]'), matches($text, '[A-Z]'), matches($text, '[0-9]'), matches($text, '[^A-Za-z0-9]'))[. = true()]) >= 3)]
+)[let $text := (if (self::StringLiteral) then string(@ConstValue) else string-join(.//StringLiteral/@ConstValue, '')),
+     $target := (ancestor-or-self::* intersect $named)[last()],
+     $owner := ($target/parent::VariableDeclarator/VariableId/@Name | $target/parent::AssignmentExpression/*[1]/@Name
+       | $target[parent::ArgumentList]/preceding-sibling::*[1]/@ConstValue)
+  return $isHardcodedSecret($text, string($owner[1]))]
+| //StringLiteral[not($springFile)]
+  [some $default in tokenize(@ConstValue, '\$\{')[position() > 1][matches(., '^[\w.-]+:[^}]*\}')]
+   satisfies $isSecretName(substring-before($default, ':'))
+     and $isHardcodedSecret(substring-before(substring-after($default, ':'), '}'), substring-before($default, ':'))]
 ]]></value></property></properties>
   </rule>
 
@@ -115,11 +180,36 @@ return (
         message="This string looks like a credential (access key, token, private key, or a password in a URL). Read it from the environment or a secrets manager.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
-//StringLiteral[
-  matches(@ConstValue, 'AKIA[0-9A-Z]{16}|gh[pousr]_[A-Za-z0-9]{30,}|xox[abprs]-[A-Za-z0-9-]{10,}|-----BEGIN ([A-Z]+ )?PRIVATE KEY-----|[rs]k_(live|test)_[A-Za-z0-9]{20,}|sk-(proj|ant|live|test)-[A-Za-z0-9_-]{20,}')
-  or matches(@ConstValue, '^[a-z][a-z0-9+.-]*://[^\s/:@]+:[^\s/@$\{\}]{6,}@', 'i')
-  or matches(@ConstValue, '[?&amp;;]password=[^&amp;;\s$\{\}]{6,}', 'i')
-  or matches(@ConstValue, '^(Bearer|Basic) [A-Za-z0-9._~+/=-]{16,}$')]
+let $placeholders := ('\*+\w{0,4}', 'x+', '<.*>', '\[.*\]', '\$\{.*\}', '\$[A-Za-z_]\w*', '\{\{.*\}\}', '\{\w*\}', '%s', '%\(\w+\)s', ':[A-Za-z_]+', 'changeme', 'change-me', 'todo', 'example', 'dummy', 'placeholder', 'redacted', 'none', 'null', 'undefined', 'your[-_ ].*'),
+    $notSecret := ('[A-Z][A-Z0-9_]+', '[A-Za-z]+(?:[._:/-][A-Za-z]+)+', '[a-z][a-z0-9_-]*(?:[./][a-z0-9_-]+)+', '(?:~|\.{1,2})?(?:/[\w.-]+)+/?', '\^.*\$'),
+    $credentialShapes := ('\bAKIA[0-9A-Z]{16}\b', '\bgh[pousr]_[A-Za-z0-9]{30,}', '\bxox[abprs]-[A-Za-z0-9-]{10,}', '-----BEGIN (?:[A-Z]+ )?PRIVATE KEY-----', '\b[rs]k_(?:live|test)_[A-Za-z0-9]{20,}', '\bsk-(?:proj|ant|live|test)-[A-Za-z0-9_-]{20,}', '\bdjango-insecure-\S{6,}'),
+    $embeddedSecrets := ('^[a-z][a-z0-9+.-]*://[^\s/:@]+:([^\s/@]+)@', '^(?:bearer|basic|token)\s+(\S+)$', '[?&;]password=([^&;\s]+)'),
+    $valueLength := 6,
+    $characterClasses := 3,
+    $js := function($pattern) {
+      replace(replace(replace(replace($pattern, '\[([^\]\\]*)\\w', '[$1A-Za-z0-9_'), '\\w', '[A-Za-z0-9_]'),
+        '^\\b', '(?:^|[^A-Za-z0-9_])'), '\\b$', '(?:[^A-Za-z0-9_]|\$)')
+    },
+    $anyOf := function($patterns) { concat('(?:', string-join(for $p in $patterns return $js($p), '|'), ')') },
+    $isCandidate := function($text) {
+      not(matches($text, '\s'))
+        and not(matches($text, concat('^', $anyOf($placeholders), '$'), 'i'))
+        and not(matches($text, concat('^', $anyOf($notSecret), '$')))
+    },
+    $looksLikeSecret := function($text) {
+      string-length($text) >= $valueLength and $isCandidate($text)
+        and ((matches($text, '\d') and matches($text, '[A-Za-z]'))
+          or count(('[a-z]', '[A-Z]', '\d', '[^A-Za-z0-9]')[matches($text, .)]) >= $characterClasses)
+    },
+    $hasCredentialShape := function($text) {
+      matches($text, $anyOf($credentialShapes))
+      or (some $shape in $embeddedSecrets ! $js(.) satisfies
+        (matches($text, $shape, 'i')
+          and $looksLikeSecret(replace($text, concat('^',
+            if (starts-with($shape, '^')) then substring($shape, 2) else concat('.*?(?:', $shape, ')'),
+            if (ends-with($shape, '$')) then '' else '.*', '$'), '$1', 'is'))))
+    }
+return //StringLiteral[$hasCredentialShape(string(@ConstValue))]
 ]]></value></property></properties>
   </rule>
 
@@ -127,13 +217,46 @@ return (
         message="A secret must not be logged. Log that it is set, or a masked tail, instead.">
     <priority>1</priority>
     <properties><property name="xpath"><value><![CDATA[
-(//VariableAccess | //FieldAccess | //MethodCall)
-  [matches(lower-case(replace(@Name, '[^A-Za-z0-9]', '')), '(password|passwd|pwd|passphrase|secret|token|credentials?|apikey|privatekey|accesskey|secretkey|authkey|signingkey|encryptionkey)$')
-   or matches(@MethodName, '^get(Password|Secret|Token|ApiKey|PrivateKey|Credentials?)$')]
-  [not(matches(@Name, '^(has|is)[A-Z_]|^[A-Z][A-Z0-9_]*$'))]
-  [ancestor::*[not(self::InfixExpression[@Operator = '+'])][1][self::ArgumentList]/parent::MethodCall
-    [@MethodName = ('trace', 'debug', 'info', 'warn', 'error', 'fatal', 'log', 'severe', 'warning', 'fine', 'finer', 'finest', 'println', 'print', 'printf')]
-    [*[1][matches(@Name, '(^|\.)(log|logger|out|err)$', 'i') or pmd-java:typeIs('org.slf4j.Logger') or pmd-java:typeIs('java.util.logging.Logger') or pmd-java:typeIs('org.apache.logging.log4j.Logger') or pmd-java:typeIs('java.io.PrintStream')]]]
+let $nameWords := ('password', 'passwd', 'pwd', 'passphrase', 'secret', 'token', 'credentials?', 'apikey', 'privatekey', 'accesskey', 'secretkey', 'authkey', 'signingkey', 'encryptionkey', 'hmackey', 'jwtkey'),
+    $valueSuffixes := ('value', 'raw', 'str', 'string', 'text', 'plain'),
+    $markerTokens := ('eos', 'bos', 'pad', 'unk', 'cls', 'sep', 'mask'),
+    $words := function($name) {
+      tokenize(lower-case(replace(replace(string($name), '([a-z0-9])([A-Z])', '$1 $2'), '([A-Z]+)([A-Z][a-z])', '$1 $2')), '[^a-z0-9]+')[. != '']
+    },
+    $nameWordsOf := function($name) {
+      let $all := $words($name),
+          $kept := (for $i in reverse(1 to count($all)) return if ($all[$i] = $valueSuffixes) then () else $i)[1]
+      return subsequence($all, 1, max((1, $kept)))
+    },
+    $letters := function($words) { replace(string-join($words, ''), '[0-9]', '') },
+    $isSecretName := function($name) {
+      let $kept := $nameWordsOf($name)
+      return not($kept[last()] = 'token' and $kept[last() - 1] = $markerTokens)
+        and matches($letters($kept), concat('(?:', string-join($nameWords, '|'), ')$'))
+    },
+    $status := '^(?:has|is)[A-Z_]',
+    $isLogged := function($node) {
+      let $name := string(($node/@Name, $node/@MethodName)[1])
+      return $isSecretName($name) and not(matches($name, $status))
+        and not($node/self::VariableAccess and matches($name, '^[A-Z][A-Z0-9_]*$'))
+    },
+    $sinks := (
+      //MethodCall[@MethodName = ('trace', 'debug', 'info', 'warn', 'error', 'fatal', 'log', 'severe', 'warning', 'fine', 'finer', 'finest', 'println', 'print', 'printf', 'format')]
+        [*[1][matches(@Name, '(^|\.)(log|logger|out|err)$', 'i') or pmd-java:typeIs('org.slf4j.Logger') or pmd-java:typeIs('java.util.logging.Logger') or pmd-java:typeIs('org.apache.logging.log4j.Logger') or pmd-java:typeIs('java.io.PrintStream')]]
+      | //MethodCall[@MethodName = ('addArgument', 'addKeyValue')]
+      | //MethodCall[@MethodName = 'put'][*[1][.//@SimpleName = 'MDC' or @Name = 'MDC']]
+      | //ThrowStatement/ConstructorCall
+    )/ArgumentList
+return (
+  (//VariableAccess | //FieldAccess | //MethodCall[matches(@MethodName, '^get[A-Z]')][ArgumentList[not(*)]])
+    [not(*[1][matches(@Name, 'tokenizer$', 'i')])]
+    [$isLogged(.)]
+    [ancestor::*[not(self::InfixExpression[@Operator = '+'])][1] intersect $sinks]
+  | $sinks[parent::MethodCall[@MethodName = ('addKeyValue', 'put')]]/*[1][self::StringLiteral]
+    [$isSecretName(@ConstValue) and not(matches(@ConstValue, $status))]
+    [following-sibling::*[1][self::VariableAccess or self::FieldAccess or self::MethodCall]
+      [not(matches(string((@Name, @MethodName)[1]), $status))]]
+)
 ]]></value></property></properties>
   </rule>
 

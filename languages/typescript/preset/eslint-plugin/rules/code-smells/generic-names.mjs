@@ -12,6 +12,10 @@ const CONTAINER_WORDS = new Set(CONTAINER_NAME_WORDS);
 const VERSION_WORD = /^v?$/;
 const MANAGER_WORDS = new Set(['manager', 'managers']);
 const MANAGER_ROLES = new Set(ACCEPTED_MANAGER_ROLES);
+const WORD_BEFORE_LAST = -2;
+const IDENTIFIER = 'Identifier';
+const EXPORTS_OBJECT = 'exports';
+const MODULE_OBJECT = 'module';
 const EXPORTS = new Set(['ExportNamedDeclaration', 'ExportDefaultDeclaration']);
 const TYPE_DECLARATIONS = [
   'ClassDeclaration',
@@ -36,7 +40,7 @@ function isGenericContainer(name) {
   if (!GENERIC_WORDS.has(last)) {
     return false;
   }
-  return !(MANAGER_WORDS.has(last) && MANAGER_ROLES.has(words.at(-2) ?? ''));
+  return !(MANAGER_WORDS.has(last) && MANAGER_ROLES.has(words.at(WORD_BEFORE_LAST) ?? ''));
 }
 
 function isGenericFunction(name) {
@@ -45,7 +49,7 @@ function isGenericFunction(name) {
 }
 
 function lastWord(node) {
-  const name = node?.type === 'Identifier' ? node.name : node?.property?.name;
+  const name = identifierName(node) ?? node?.property?.name;
   return judgedWords(name ?? '').at(-1);
 }
 
@@ -69,7 +73,11 @@ function firstSourceFile(directory) {
 }
 
 function isFirstFileOf(folder, { cwd, relativePath }) {
-  const directory = path.resolve(cwd, folder);
+  const base = path.resolve(cwd);
+  const directory = path.resolve(base, folder);
+  if (!directory.startsWith(base + path.sep)) {
+    return false;
+  }
   const first = existsSync(directory) ? firstSourceFile(directory) : undefined;
   return first === undefined || `${folder}${first}` === relativePath;
 }
@@ -99,20 +107,20 @@ function exportableIdentifiers(node) {
   if (node?.type !== 'VariableDeclaration') {
     return [];
   }
-  return node.declarations.map(({ id }) => id).filter(({ type }) => type === 'Identifier');
+  return node.declarations.map(({ id }) => id).filter(({ type }) => type === IDENTIFIER);
 }
 
-function isNamed(node, name) {
-  return node?.type === 'Identifier' && node.name === name;
+function identifierName(node) {
+  return node?.type === IDENTIFIER ? node.name : undefined;
 }
 
 function exportedValueNames(value) {
-  if (value.type === 'Identifier') {
+  if (value.type === IDENTIFIER) {
     return [value.name];
   }
   return value.type === 'ObjectExpression'
     ? value.properties
-        .filter((property) => property.type === 'Property' && property.value.type === 'Identifier')
+        .filter((property) => property.type === 'Property' && property.value.type === IDENTIFIER)
         .map((property) => property.value.name)
     : [];
 }
@@ -126,14 +134,14 @@ function commonJsExportNames(statement) {
   if (computed) {
     return [];
   }
-  if (isNamed(object, 'module') && property.name === 'exports') {
+  if (identifierName(object) === MODULE_OBJECT && property.name === EXPORTS_OBJECT) {
     return exportedValueNames(assignment.right);
   }
   const exportsObject =
-    isNamed(object, 'exports') ||
+    identifierName(object) === EXPORTS_OBJECT ||
     (object.type === 'MemberExpression' &&
-      isNamed(object.object, 'module') &&
-      isNamed(object.property, 'exports'));
+      identifierName(object.object) === MODULE_OBJECT &&
+      identifierName(object.property) === EXPORTS_OBJECT);
   return exportsObject ? [property.name] : [];
 }
 
