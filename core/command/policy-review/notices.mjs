@@ -1,3 +1,8 @@
+import {
+  availabilityNotices,
+  coChangeNotices,
+} from '../../../shared/history/co-change/notices.mjs';
+import { CHANGE_HISTORY_TOOL } from '../../../shared/project-rules/hygiene-rules.mjs';
 import { jvmOutsideRootsNotices } from '../../../languages/java/adapters/notices/outside-roots-notice.mjs';
 import { readBuildSources } from '../../../languages/java/builds/narrowing/build-sources.mjs';
 import { listedFiles } from '../../policy-changes/policy-scope.mjs';
@@ -27,7 +32,7 @@ function jvmDescriber(config, headPolicy, projectRoot) {
     });
 }
 
-function presetDescriber(config, headPolicy, projectRoot) {
+function languageDescriber(config, headPolicy, projectRoot) {
   if (TYPESCRIPT_PRESETS.has(config.preset)) {
     return (changedFiles) => outsideRootsNotices(changedFiles, headPolicy);
   }
@@ -45,11 +50,37 @@ function presetDescriber(config, headPolicy, projectRoot) {
     : undefined;
 }
 
+function runsCoChange(config) {
+  return config.history?.coChange === true && !(config.disable ?? []).includes(CHANGE_HISTORY_TOOL);
+}
+
+function coChangeDescriber(config, headPolicy, projectRoot) {
+  return runsCoChange(config)
+    ? (changedFiles, { mergeBaseSha, touchedPaths } = {}) =>
+        coChangeNotices({
+          projectRoot,
+          policy: headPolicy,
+          ref: mergeBaseSha,
+          changedPaths: touchedPaths ?? changedFiles,
+        })
+    : undefined;
+}
+
 export function noticeDescriber(config, headPolicy, projectRoot) {
   const notices = policyNotices(headPolicy);
-  const describe = presetDescriber(config, headPolicy, projectRoot);
-  if (describe === undefined) {
-    return notices.length === 0 ? undefined : () => notices;
+  const describers = [
+    notices.length === 0 ? undefined : () => notices,
+    languageDescriber(config, headPolicy, projectRoot),
+    coChangeDescriber(config, headPolicy, projectRoot),
+  ].filter((describer) => describer !== undefined);
+  return describers.length === 0
+    ? undefined
+    : (changedFiles, context) => describers.flatMap((describe) => describe(changedFiles, context));
+}
+
+export function historyAvailabilityNotes(config, headPolicy, projectRoot) {
+  if (!runsCoChange(config)) {
+    return [];
   }
-  return (changedFiles) => [...notices, ...describe(changedFiles)];
+  return availabilityNotices({ projectRoot, policy: headPolicy });
 }
