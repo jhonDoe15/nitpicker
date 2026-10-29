@@ -87,6 +87,13 @@ export function toolNameForPath(relativeToolPath) {
 
 const PROJECT_MARKERS = ['package.json', CONFIG_FILE_NAME];
 
+const UV_WORKSPACE_TABLE = /^\s*\[tool\.uv\.workspace\]/mu;
+
+function isUvWorkspaceRoot(directory) {
+  const pyproject = path.join(directory, 'pyproject.toml');
+  return existsSync(pyproject) && UV_WORKSPACE_TABLE.test(readFileSync(pyproject, 'utf8'));
+}
+
 export function resolveProjectRoot(cwd = process.cwd()) {
   const current = realpathSync(cwd);
   const repositoryRoot = realpathSync(
@@ -99,8 +106,10 @@ export function resolveProjectRoot(cwd = process.cwd()) {
     const parent = path.dirname(directory);
     return directory === repositoryRoot || directory === parent ? undefined : parent;
   });
-  const projectRoot = directories.find((directory) =>
-    PROJECT_MARKERS.some((marker) => existsSync(path.join(directory, marker))),
+  const projectRoot = directories.find(
+    (directory) =>
+      PROJECT_MARKERS.some((marker) => existsSync(path.join(directory, marker))) ||
+      isUvWorkspaceRoot(directory),
   );
   if (projectRoot !== undefined) return projectRoot;
   throw new Error(

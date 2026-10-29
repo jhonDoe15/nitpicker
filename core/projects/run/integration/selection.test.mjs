@@ -215,17 +215,15 @@ describe('commands that work on one project', () => {
     const cache = run(root, [], { command: ['cache', 'publish'] });
     const aggregate = run(root, [], { command: ['aggregate'] });
 
-    expect(cache.exitCode).toBe(2);
-    expect(cache.err.replace(/ and \S+ holds/u, ' and <root> holds')).toBe(
-      'nitpicker: "cache" works on one project, and <root> holds 3 ' +
-        '(packages/core, packages/docs, packages/ui). ' +
-        'Run it inside each project instead: cd <project> && nitpicker cache ...\n',
-    );
-    expect(aggregate.exitCode).toBe(2);
-    expect(aggregate.err.replace(/ and \S+ holds/u, ' and <root> holds')).toBe(
-      'nitpicker: "aggregate" works on one project, and <root> holds 3 ' +
-        '(packages/core, packages/docs, packages/ui). ' +
-        'Run it inside each project instead: cd <project> && nitpicker aggregate ...\n',
-    );
+    const expected = (command) =>
+      `nitpicker: "${command}" works on one project, and <root> is a monorepo of 3 projects ` +
+      '(packages/core, packages/docs, packages/ui). Run it in a project folder ' +
+      `(cd packages/core && nitpicker ${command} ...), or set "projects": [] in the root ` +
+      'nitpicker.config.json to gate the repository as one project.\n';
+    expect([cache.exitCode, cache.err.replaceAll(root, '<root>')]).toEqual([2, expected('cache')]);
+    expect([aggregate.exitCode, aggregate.err.replaceAll(root, '<root>')]).toEqual([
+      2,
+      expected('aggregate'),
+    ]);
   });
 });

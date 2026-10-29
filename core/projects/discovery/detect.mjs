@@ -3,8 +3,14 @@ import path from 'node:path';
 import { hasScriptSources } from '../../configuration/project-checks/preset-detection.mjs';
 import { javascriptWorkspaces } from './javascript-workspaces.mjs';
 import { JVM_MARKERS, jvmBuilds } from './jvm-builds.mjs';
-import { pythonProjects } from './python-projects.mjs';
-import { directoriesWith, listRepositoryFiles } from './repository-files.mjs';
+import { PYTHON_MARKERS, PYTHON_PROJECT_MARKERS, pythonWorkspace } from './python-projects.mjs';
+import {
+  directoriesWith,
+  isInside,
+  isSkippedLocation,
+  listRepositoryFiles,
+  outermost,
+} from './repository-files.mjs';
 
 const ROOT_SOURCES_ORIGIN = 'repository root sources';
 
@@ -31,19 +37,35 @@ function byPath(left, right) {
   return sortKey(left).localeCompare(sortKey(right));
 }
 
-function isMultiple(entries, declared) {
-  return entries.length > 1 || (declared && entries.some((entry) => entry.path !== '.'));
+function nestedPython(directories) {
+  return outermost(
+    directories.filter((directory) => directory !== '.' && !isSkippedLocation(directory)),
+  ).map((directory) => ({ path: directory, origin: 'Python project' }));
+}
+
+function candidatesOf(root, files) {
+  const python = nestedPython(directoriesWith(root, files, PYTHON_PROJECT_MARKERS));
+  const jvm = jvmBuilds(root, directoriesWith(root, files, JVM_MARKERS)).filter(
+    (build) => build.path !== '.',
+  );
+  return [...python, ...jvm];
+}
+
+export function undeclaredProjects({ root, files, projects }) {
+  const covering = projects.filter((project) => project.path !== '.');
+  return candidatesOf(root, files)
+    .filter((candidate) => !covering.some((project) => isInside(candidate.path, project.path)))
+    .toSorted(byPath);
 }
 
 export function detectProjects({ root, rootConfig = {}, files = listRepositoryFiles(root) }) {
   const javascript = javascriptWorkspaces(root, directoriesWith(root, files, ['package.json']));
-  const python = pythonProjects(root, directoriesWith(root, files, ['pyproject.toml']));
-  const jvm = jvmBuilds(root, directoriesWith(root, files, JVM_MARKERS));
+  const python = pythonWorkspace(root, directoriesWith(root, files, PYTHON_MARKERS));
   const declared = javascript.declared || python.declared;
-  const others = unique([...javascript.members, ...python.members, ...jvm]);
-  if (others.length === 0) {
-    return { declared, entries: [], multiple: false };
-  }
-  const entries = unique([...rootJavascript(root, rootConfig), ...others]).toSorted(byPath);
-  return { declared, entries, multiple: isMultiple(entries, declared) };
+  const members = unique([...javascript.members, ...python.members]);
+  const multiple = declared && members.some((entry) => entry.path !== '.');
+  const entries = multiple
+    ? unique([...rootJavascript(root, rootConfig), ...members]).toSorted(byPath)
+    : [];
+  return { declared, entries, multiple };
 }

@@ -10,7 +10,13 @@ function ownerOf(projects, file) {
   return projects.find(({ repoPath }) => repoPath === owner);
 }
 
-function claimsOn(projects, file) {
+function rootClaims(projects, file, rootConfigFiles) {
+  return rootConfigFiles.includes(file)
+    ? projects.map(({ path: project }) => ({ project, reason: `root config ${file} changed` }))
+    : [];
+}
+
+function claimsOn(projects, file, rootConfigFiles) {
   const owner = ownerOf(projects, file);
   const shared = projects
     .filter(({ sharedFiles }) => sharedFiles.includes(file))
@@ -22,18 +28,18 @@ function claimsOn(projects, file) {
           .map(({ path: project }) => ({ project, reason: `${file} changed` }))
       : [];
   const own = owner === undefined ? [] : [{ project: owner.path, own: true }];
-  return [...own, ...shared, ...toolchain];
+  return [...own, ...rootClaims(projects, file, rootConfigFiles), ...shared, ...toolchain];
 }
 
 function plural(count, word) {
   return `${String(count)} ${word}${count === 1 ? '' : 's'}`;
 }
 
-function touchedBy(projects, changed, prefix) {
+function touchedBy({ projects, changed, prefix, rootConfigFiles }) {
   const touched = new Map();
   const outside = [];
   for (const file of changed) {
-    const claims = claimsOn(projects, file);
+    const claims = claimsOn(projects, file, rootConfigFiles);
     if (claims.length === 0 && isInside(file, prefix)) {
       outside.push(file);
     }
@@ -62,7 +68,29 @@ function unknownRequests(projects, requested) {
   }
 }
 
-export function selectProjects({ projects, changed, graph, prefix = '.', requested = [], all }) {
+function changedSelection(projects, { touched, dependents }) {
+  return projects.map(({ path: project, configError }) => {
+    if (touched.has(project)) {
+      return { path: project, selected: true, reason: reasonOf(touched.get(project)) };
+    }
+    if (configError !== undefined) {
+      return { path: project, selected: true, reason: 'its config has an error' };
+    }
+    return dependents.has(project)
+      ? { path: project, selected: true, reason: `depends on ${dependents.get(project)}` }
+      : { path: project, selected: false, reason: 'no changed files' };
+  });
+}
+
+export function selectProjects({
+  projects,
+  changed,
+  graph,
+  prefix = '.',
+  requested = [],
+  all,
+  rootConfigFiles = [],
+}) {
   if (requested.length > 0) {
     unknownRequests(projects, requested);
     return {
@@ -84,15 +112,7 @@ export function selectProjects({ projects, changed, graph, prefix = '.', request
       outside: [],
     };
   }
-  const { touched, outside } = touchedBy(projects, changed, prefix);
+  const { touched, outside } = touchedBy({ projects, changed, prefix, rootConfigFiles });
   const dependents = dependentsOf(graph, new Set(touched.keys()));
-  const selection = projects.map(({ path: project }) => {
-    if (touched.has(project)) {
-      return { path: project, selected: true, reason: reasonOf(touched.get(project)) };
-    }
-    return dependents.has(project)
-      ? { path: project, selected: true, reason: `depends on ${dependents.get(project)}` }
-      : { path: project, selected: false, reason: 'no changed files' };
-  });
-  return { selection, outside };
+  return { selection: changedSelection(projects, { touched, dependents }), outside };
 }

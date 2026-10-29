@@ -1,16 +1,23 @@
 import { describe, expect, it } from 'vitest';
 import { useGitFixtures } from '../../diff/git/test-support/git-repository.mjs';
-import { detectProjects } from './detect.mjs';
+import { detectProjects, undeclaredProjects } from './detect.mjs';
+import { listRepositoryFiles } from './repository-files.mjs';
 
 const git = useGitFixtures();
 
 function detect(files, rootConfig = {}) {
   const { root } = git.createGitRepository(files, { prefix: 'nitpicker-detect-' });
   const detected = detectProjects({ root, rootConfig });
+  const undeclared = undeclaredProjects({
+    root,
+    files: listRepositoryFiles(root),
+    projects: detected.entries,
+  });
   return {
     ...detected,
     paths: detected.entries.map(({ path }) => path),
     origins: [...new Set(detected.entries.map(({ origin }) => origin))],
+    undeclared: undeclared.map(({ path, origin }) => `${path} (${origin})`),
   };
 }
 
@@ -24,11 +31,35 @@ describe('a repository with one project', () => {
   });
 
   it('is not one for a lone Gradle, Maven or Python project', () => {
-    expect(detect({ 'settings.gradle': '', 'app/build.gradle': '' }).paths).toEqual(['.']);
-    expect(detect({ 'pom.xml': '<project/>', 'module-a/pom.xml': '<project/>' }).multiple).toBe(
+    for (const files of [
+      { 'settings.gradle': '', 'app/build.gradle': '' },
+      { 'pom.xml': '<project/>', 'module-a/pom.xml': '<project/>' },
+      { 'pyproject.toml': '[project]\nname = "solo"\n' },
+    ]) {
+      expect(detect(files)).toEqual({
+        declared: false,
+        entries: [],
+        multiple: false,
+        paths: [],
+        origins: [],
+        undeclared: [],
+      });
+    }
+  });
+
+  it('is not one for a package with an Android build and example Python projects', () => {
+    const result = detect({
+      'package.json': MANIFEST('app'),
+      'src/a.ts': 'export {};\n',
+      'android/build.gradle': '',
+      'pyproject.toml': '[project]\nname = "lib"\n',
+      'examples/demo/pyproject.toml': '[project]\nname = "demo"\n',
+    });
+
+    expect([result.multiple, result.undeclared]).toEqual([
       false,
-    );
-    expect(detect({ 'pyproject.toml': '[project]\nname = "solo"\n' }).multiple).toBe(false);
+      ['android (Gradle build)', 'examples/demo (Python project)'],
+    ]);
   });
 
   it('is not one when the workspaces match no package', () => {
@@ -139,33 +170,36 @@ describe('Python projects', () => {
     expect(result.paths).toEqual(['.', 'libs/core']);
   });
 
-  it('reads several pyproject.toml files when there is no workspace', () => {
+  it('keeps a Poetry root and members that use setup.py', () => {
+    const result = detect({
+      'pyproject.toml':
+        '[tool.poetry]\nname = "root"\n\n[tool.uv.workspace]\nmembers = ["libs/*"]\n',
+      'libs/legacy/setup.py': 'from setuptools import setup\n',
+      'libs/cfg/setup.cfg': '[metadata]\nname = cfg\n',
+    });
+
+    expect(result.paths).toEqual(['.', 'libs/cfg', 'libs/legacy']);
+  });
+
+  it('does not split nested Python projects without a workspace, and names them', () => {
     const result = detect({
       'services/api/pyproject.toml': PROJECT('api'),
       'services/worker/pyproject.toml': PROJECT('worker'),
       'services/api/tests/fixtures/sample/pyproject.toml': PROJECT('sample'),
-      'docs/pyproject.toml': PROJECT('docs'),
+      'services/api/inner/pyproject.toml': PROJECT('inner'),
     });
 
-    expect(result.paths).toEqual(['services/api', 'services/worker']);
-    expect(result.declared).toBe(false);
-    expect(result.multiple).toBe(true);
-  });
-
-  it('keeps a nested pyproject.toml inside the project that holds it', () => {
-    const result = detect({
-      'pyproject.toml': PROJECT('root'),
-      'tools/x/pyproject.toml': PROJECT('x'),
-      'tools/x/inner/pyproject.toml': PROJECT('inner'),
-    });
-
-    expect(result.paths).toEqual(['.', 'tools/x']);
+    expect([result.declared, result.multiple, result.undeclared]).toEqual([
+      false,
+      false,
+      ['services/api (Python project)', 'services/worker (Python project)'],
+    ]);
   });
 
   it('ignores a pyproject.toml it cannot parse', () => {
-    expect(
-      detect({ 'pyproject.toml': '[project', 'a/pyproject.toml': PROJECT('a') }).paths,
-    ).toEqual(['a']);
+    const result = detect({ 'pyproject.toml': '[project', 'a/pyproject.toml': PROJECT('a') });
+
+    expect([result.multiple, result.undeclared]).toEqual([false, ['a (Python project)']]);
   });
 });
 
@@ -179,11 +213,10 @@ describe('JVM builds', () => {
       'tools/py/pyproject.toml': '[project]\nname = "py"\n',
     });
 
-    expect(result.paths).toEqual(['.', 'tools/py']);
-    expect(result.entries[0].origin).toBe('Gradle build');
+    expect([result.multiple, result.undeclared]).toEqual([false, ['tools/py (Python project)']]);
   });
 
-  it('treats a Maven reactor with its modules as one project', () => {
+  it('names a Maven reactor and a Gradle build as one project each', () => {
     const result = detect({
       'services/billing/pom.xml': '<project><modules><module>core</module></modules></project>',
       'services/billing/core/pom.xml': '<project/>',
@@ -191,8 +224,10 @@ describe('JVM builds', () => {
       'services/ledger/settings.gradle.kts': '',
     });
 
-    expect(result.paths).toEqual(['services/billing', 'services/ledger']);
-    expect(result.entries.map(({ origin }) => origin)).toEqual(['Maven build', 'Gradle build']);
+    expect(result.undeclared).toEqual([
+      'services/billing (Maven build)',
+      'services/ledger (Gradle build)',
+    ]);
   });
 
   it('skips builds inside fixtures, test folders and dependency folders', () => {
@@ -204,12 +239,12 @@ describe('JVM builds', () => {
       '.hidden/pom.xml': '<project/>',
     });
 
-    expect(result.paths).toEqual(['app']);
+    expect(result.undeclared).toEqual(['app (Gradle build)']);
   });
 });
 
 describe('a mixed repository', () => {
-  it('lists the TypeScript package, the Python package and the Gradle build', () => {
+  it('gates the workspace members and names the other projects', () => {
     const result = detect({
       'package.json': MANIFEST('root', { workspaces: ['web'] }),
       'web/package.json': MANIFEST('web'),
@@ -218,7 +253,9 @@ describe('a mixed repository', () => {
       'svc/app/build.gradle': '',
     });
 
-    expect(result.paths).toEqual(['api', 'svc', 'web']);
-    expect(result.origins).toEqual(['pyproject.toml', 'Gradle build', 'package.json workspaces']);
+    expect([result.paths, result.undeclared]).toEqual([
+      ['web'],
+      ['api (Python project)', 'svc (Gradle build)'],
+    ]);
   });
 });

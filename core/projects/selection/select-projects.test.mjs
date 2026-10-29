@@ -140,6 +140,31 @@ describe('a shared config file', () => {
   });
 });
 
+describe('the root config and broken configs', () => {
+  it('select every project when the root config changes', () => {
+    const { selected } = choose(['nitpicker.config.json'], {
+      rootConfigFiles: ['nitpicker.config.json', 'shared/base.json'],
+    });
+
+    expect(Object.values(selected)).toEqual(
+      Array(4).fill('root config nitpicker.config.json changed'),
+    );
+  });
+
+  it('select a project whose config has an error, changed or not', () => {
+    const { selection } = selectProjects({
+      projects: [{ ...project('web'), configError: 'bad' }, project('libs/core')],
+      changed: [],
+      graph: new Map(),
+    });
+
+    expect(selection.map(({ path, selected, reason }) => [path, selected, reason])).toEqual([
+      ['web', true, 'its config has an error'],
+      ['libs/core', false, 'no changed files'],
+    ]);
+  });
+});
+
 describe('--project and --all', () => {
   it('--project runs the named projects whether or not they changed, and nothing else', () => {
     const { selected } = choose(['web/a.ts'], { requested: ['services/api'] });

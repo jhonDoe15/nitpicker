@@ -80,23 +80,49 @@ function loosening(entry) {
     : { key: entry.text, ...entry };
 }
 
-function describedEntries(baseConfig, headConfig, scope) {
+function sourceNote(scope) {
+  const changed = scope.changedConfigLayers ?? [];
+  const shared = changed.filter((label) => label !== CONFIG_FILE_NAME);
+  if (shared.length === 0) {
+    return '';
+  }
+  const own = changed.includes(CONFIG_FILE_NAME) ? [CONFIG_FILE_NAME] : [];
+  return ` (from ${[...own, ...shared].join(' or ')})`;
+}
+
+function attributed(entries, scope) {
+  const note = sourceNote(scope);
+  return entries.map(loosening).map((entry) => ({ ...entry, text: `${entry.text}${note}` }));
+}
+
+function describedEntries(baseConfig, headConfig, scope, extra = []) {
   const settings = changedSettings(baseConfig, headConfig);
-  const parts = [
+  const configParts = [
     ...coveredPathChanges(baseConfig, headConfig, scope),
     ...listedChanges(baseConfig, headConfig),
     timeoutChanges(baseConfig, headConfig),
     hiddenCodeChanges(baseConfig, headConfig, scope),
+  ];
+  const scopeParts = [
     generatedMarkingChanges(scope),
     tsconfigChanges(scope),
     ...buildNarrowingChanges(scope),
     toolConfigChanges(scope),
   ];
+  const parts = [...configParts, ...scopeParts];
   return {
     loosened: [
-      ...parts.flatMap((part) => part.loosened),
-      ...settings.filter((entry) => loosensSetting(entry, scope)).map(({ text }) => text),
-    ].map(loosening),
+      ...attributed(
+        configParts.flatMap((part) => part.loosened),
+        scope,
+      ),
+      ...scopeParts.flatMap((part) => part.loosened).map(loosening),
+      ...attributed(
+        settings.filter((entry) => loosensSetting(entry, scope)).map(({ text }) => text),
+        scope,
+      ),
+      ...extra.map(loosening),
+    ],
     changed: [
       ...parts.flatMap((part) => part.changed),
       ...settings.filter((entry) => !loosensSetting(entry, scope)).map(({ text }) => text),
@@ -117,8 +143,8 @@ function evidenceDigest(loosened, scope) {
   });
 }
 
-export function policyChangeFields(baseConfig, headConfig, scope) {
-  const { loosened, changed } = describedEntries(baseConfig, headConfig, scope);
+export function policyChangeFields(baseConfig, headConfig, scope, extra = []) {
+  const { loosened, changed } = describedEntries(baseConfig, headConfig, scope, extra);
   const texts = loosened.map(({ text }) => text);
   return {
     policyChanges: [...texts, ...changed],

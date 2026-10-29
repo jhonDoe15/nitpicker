@@ -1,0 +1,67 @@
+import { existsSync, readFileSync } from 'node:fs';
+import path from 'node:path';
+import { policyDigest, policyFindings } from '../../diff/reporting/review/policy-findings.mjs';
+import { gitBlobId } from '../../policy-changes/policy-scope.mjs';
+import { isInside } from '../discovery/repository-files.mjs';
+import { DECLARATION_FILES } from './base-plan.mjs';
+
+function declarationFiles(root) {
+  return DECLARATION_FILES.filter((file) => existsSync(path.join(root, file)));
+}
+
+function splitLoosening(basePlan, files) {
+  const listed = basePlan.projects.filter(({ path: folder }) => folder !== '.');
+  if (listed.length === 0) {
+    return [];
+  }
+  const names = listed.map(({ path: folder }) => folder).join(', ');
+  return [
+    {
+      text:
+        `the repository is no longer split into projects: ${names} were gated as projects of ` +
+        'their own and are now part of one project',
+      key: `projects: one project instead of ${names}`,
+      files,
+    },
+  ];
+}
+
+export function projectSetLoosenings({ basePlan, headPlan, root, headFiles }) {
+  if (basePlan === undefined) {
+    return [];
+  }
+  const files = declarationFiles(root);
+  if (headPlan === undefined) {
+    return splitLoosening(basePlan, files);
+  }
+  const current = new Set(headPlan.projects.map(({ path: folder }) => folder));
+  return basePlan.projects
+    .filter(({ path: folder }) => !current.has(folder))
+    .filter(({ path: folder }) => headFiles.some((file) => isInside(file, folder)))
+    .map(({ path: folder }) => ({
+      text:
+        `project ${folder} is no longer one of the projects of the monorepo, ` +
+        'so nothing gates it with its own config',
+      key: `projects: removed ${folder}`,
+      files,
+    }));
+}
+
+export function repositoryPolicy({ loosenings, root, acceptedDigest }) {
+  if (loosenings.length === 0) {
+    return undefined;
+  }
+  const files = [...new Set(loosenings.flatMap((entry) => entry.files))].toSorted();
+  const digest = policyDigest({
+    loosenings: loosenings.map(({ key }) => key),
+    files: files.map((file) => [file, gitBlobId(readFileSync(path.join(root, file)))]),
+  });
+  const texts = loosenings.map(({ text }) => text);
+  const findings = policyFindings(texts, digest, acceptedDigest);
+  return {
+    policyLoosenings: texts,
+    policyDigest: digest,
+    accepted: findings.length === 0,
+    findings,
+  };
+}

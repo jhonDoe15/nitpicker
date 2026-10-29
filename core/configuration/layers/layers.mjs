@@ -1,7 +1,7 @@
 import { execFileSync } from 'node:child_process';
-import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
-import { CONFIG_FILE_NAME, configError, isPlainObject } from '../../../shared/config.mjs';
+import { CONFIG_FILE_NAME, isPlainObject } from '../../../shared/config.mjs';
 import { validateExtends } from './settings.mjs';
 
 export function parseConfigFile(file, label) {
@@ -41,19 +41,19 @@ function labelOf(repositoryRoot, file) {
 function extendedFile({ layer, repositoryRoot }) {
   const target = path.resolve(path.dirname(layer.file), layer.config.extends);
   if (!target.startsWith(repositoryRoot + path.sep)) {
-    throw configError(
+    throw new Error(
       `${layer.label}: "extends" ${layer.config.extends} leaves the repository. A shared config must live inside it`,
     );
   }
-  if (!existsSync(target)) {
-    throw configError(
-      `${layer.label}: "extends" points at ${layer.config.extends}, which does not exist`,
+  if (!existsSync(target) || !statSync(target).isFile()) {
+    throw new Error(
+      `${layer.label}: "extends" points at ${layer.config.extends}, which is not a file`,
     );
   }
   const real = realpathSync(target);
   if (!real.startsWith(repositoryRoot + path.sep)) {
-    throw configError(
-      `${layer.label}: "extends" ${layer.config.extends} resolves outside the repository`,
+    throw new Error(
+      `${layer.label}: "extends" ${layer.config.extends} is a link that resolves outside the repository`,
     );
   }
   return real;
@@ -97,6 +97,6 @@ function validateExtendsOf(layer) {
 function rejectCycle(layers, { file, label, from }) {
   if (layers.some((layer) => layer.file === file)) {
     const chain = [...layers.map((layer) => layer.label), label];
-    throw configError(`${from.label}: "extends" forms a cycle: ${chain.join(' -> ')}`);
+    throw new Error(`${from.label}: "extends" forms a cycle: ${chain.join(' -> ')}`);
   }
 }

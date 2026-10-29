@@ -132,6 +132,36 @@ describe('renderSummary', () => {
     expect(renderSummary({ summary, summaryPath: 'x' })).not.toContain('Policy loosenings in');
   });
 
+  it('says a project with violations and tool errors is incomplete, and shows the repository policy', () => {
+    const summary = {
+      counts: { projects: 1, failed: 1, errored: 0, passed: 0, skipped: 0 },
+      projects: [
+        {
+          ...base,
+          path: 'a',
+          status: 'failed',
+          overallStatus: 'tool-error',
+          newEnforceableFindings: 2,
+          policyDigest: 'aaaaaaaaaaaa',
+        },
+      ],
+      repositoryPolicy: {
+        accepted: false,
+        policyDigest: 'rrrrrrrrrrrr',
+        policyLoosenings: ['project b is gone'],
+      },
+    };
+
+    expect(renderSummary({ summary, summaryPath: 'x' })).toBe(
+      '\nMonorepo summary: 1 failed (1 project)\n' +
+        '  ✖ a (typescript): 2 new enforceable violations, and tool errors: the run is incomplete\n' +
+        '  ✖ repository policy (not accepted, digest rrrrrrrrrrrr): project b is gone\n' +
+        'Policy loosenings in the repository policy and 1 project. A person who accepts them all ' +
+        'sets NITPICKER_ACCEPT_POLICY_CHANGE=aaaaaaaaaaaa,rrrrrrrrrrrr in CI.\n' +
+        'Combined report: x\n',
+    );
+  });
+
   it('leaves out the counts that are zero', () => {
     const summary = {
       counts: { projects: 1, failed: 0, errored: 0, passed: 1, skipped: 0 },

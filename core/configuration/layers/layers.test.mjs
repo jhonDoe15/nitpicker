@@ -76,7 +76,7 @@ describe('reading a config and what it extends', () => {
     const root = repository({ 'web/nitpicker.config.json': '{"extends":"../missing.json"}' });
 
     expect(() => layersOf(root, 'web')).toThrow(
-      'nitpicker.config.json: "extends" points at ../missing.json, which does not exist',
+      'nitpicker.config.json: "extends" points at ../missing.json, which is not a file',
     );
   });
 
@@ -96,6 +96,20 @@ describe('reading a config and what it extends', () => {
     });
 
     expect(() => layersOf(root, 'web')).toThrow('base.json: "extends" must name a .json file');
+  });
+
+  it('refuses an "extends" of null or of a file that is not JSON', () => {
+    const empty = repository({ 'web/nitpicker.config.json': '{"extends":null}' });
+    const yaml = repository({ 'web/nitpicker.config.json': '{"extends":"../base.yaml"}' });
+
+    expect(() => layersOf(empty, 'web')).toThrow(
+      new Error(
+        'nitpicker.config.json: "extends" must be the path of a JSON config file, such as "../base.json"',
+      ),
+    );
+    expect(() => layersOf(yaml, 'web')).toThrow(
+      new Error('nitpicker.config.json: "extends" must name a .json file: ../base.yaml'),
+    );
   });
 
   it('uses the repository root it is given', () => {

@@ -55,6 +55,27 @@ describe('the projects a config lists', () => {
     ).toEqual(['services/api', 'services/jobs']);
   });
 
+  it('keeps a Gradle build whole under ** and finds Python projects by any project file', () => {
+    const root = repository({
+      'apps/android/settings.gradle': '',
+      'apps/android/build.gradle': '',
+      'apps/android/app/build.gradle': '',
+      'apps/android/app/src/a.gradle': '',
+      'apps/tool/setup.py': '',
+      'apps/cli/setup.cfg': '',
+      'apps/env/Pipfile': '',
+      'apps/script/requirements.txt': '',
+    });
+
+    expect(resolve(root, [{ path: 'apps/**' }]).map(({ path: p }) => p)).toEqual([
+      'apps/android',
+      'apps/cli',
+      'apps/env',
+      'apps/script',
+      'apps/tool',
+    ]);
+  });
+
   it('refuses a folder that does not exist or is a file', () => {
     const root = repository(files);
 
@@ -68,8 +89,11 @@ describe('the projects a config lists', () => {
     const root = repository(files);
 
     expect(() => resolve(root, [{ path: 'apps/*' }])).toThrow(
-      '"projects" entry apps/* matches no folder with a package.json, ' +
-        'pyproject.toml, build file or nitpicker.config.json',
+      new Error(
+        'nitpicker.config.json: "projects" entry apps/* matches no folder with a package.json, ' +
+          'Python project file, build file or nitpicker.config.json that is not a module of ' +
+          'another Gradle or Maven build',
+      ),
     );
   });
 });
