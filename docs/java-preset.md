@@ -546,8 +546,44 @@ whole-category reference enables the rules nitpicker leaves out of that category
 entries, minus the project's `<exclude>`s) and nothing nitpicker already runs, and an `<exclude>` in the
 project's file cannot turn a nitpicker rule off. With `["nitpicker", "project"]` nitpicker's values win
 where both set one. A rule nitpicker runs through its test-only ruleset (`TestClassWithoutTestCases`, from
-`pmd-test-only.xml`) is never added to the project's file, so a project category reference does not run
+`pmd-test-ruleset.xml`) is never added to the project's file, so a project category reference does not run
 it a second time; a project rule that names it is overlaid on that ruleset (`pmd-test-rules.xml`) instead.
+The main-only ruleset (`pmd-main-ruleset.xml`, which holds the `security` category) works the same way: a
+project reference to `category/java/security.xml` adds nothing, and a project rule that names one of its
+rules is overlaid on it (`pmd-main-rules.xml`) and still runs on main sources only.
+
+**Additional PMD categories (7.7.0).** The shared ruleset also runs the `performance` and
+`multithreading` categories on main and test Java sources, and `pmd-main-ruleset.xml` runs the
+`security` category on main sources only, since a test encrypts with a fixed key and IV to check known
+output. Both hold with Gradle and Maven and for the Java sources of the Kotlin preset. Performance
+rules cover redundant string allocation and conversion, builder appends, array copies, collection
+conversion and `Files` streams instead of `FileInputStream`/`FileOutputStream`. Multithreading rules
+cover `synchronized`, thread groups, calling `Thread.run()` directly, unsafe singleton publication,
+shared formatters and `wait`/`notify`. `synchronized` is not allowed because the preset has one
+locking style, a private final `ReentrantLock` taken right before `try` and released in `finally`
+(with a `Condition` in place of `wait`/`notify`), not for performance: since JDK 24 a virtual thread
+no longer pins its carrier inside `synchronized` (JEP 491). Security rules find hardcoded
+cryptographic keys and IVs in main code; a constant IV that decrypts an existing format takes a path
+exception. Each rule's message names the one allowed form and ends with the exception route.
+
+Four rules of these categories are narrowed where their default flags code that has no other form
+(see "PMD rules tuned by nitpicker" below).
+
+Six rules of these categories are left out, each with its reason next to it in `pmd-ruleset.xml`:
+
+| Category       | Excluded rule                         | Reason                                                                           |
+| -------------- | ------------------------------------- | -------------------------------------------------------------------------------- |
+| performance    | `AvoidInstantiatingObjectsInLoops`    | A loop that needs a distinct object per item is correct; hoisting changes it.    |
+| performance    | `TooFewBranchesForSwitch`             | A small exhaustive switch is valid.                                              |
+| performance    | `InsufficientStringBufferDeclaration` | A capacity hint is a micro-optimization; asking for one only adds magic numbers. |
+| multithreading | `AvoidUsingVolatile`                  | `volatile` is a valid visibility primitive.                                      |
+| multithreading | `DoNotUseThreads`                     | The J2EE container restriction does not apply to most applications.              |
+| multithreading | `UseConcurrentHashMap`                | A `Map` declaration does not show concurrent access.                             |
+
+A project that wants one of them back names it in its own ruleset (`tools.pmd.precedence`, above).
+The reverse does not work: an `<exclude>` in the project's ruleset cannot turn off a rule nitpicker
+runs; keep code a rule flags with a path exception or an entry under `exceptions` in
+`nitpicker.config.json`.
 
 **PMD rules tuned by nitpicker.** These rules of the rule set allow a narrower form than PMD's
 default, and their messages name it:
@@ -560,6 +596,10 @@ default, and their messages name it:
 | `GuardLogStatement`                | `trace` and `debug` (and JUL `fine` levels) with placeholders whose values are variables, fields, literals or a no-argument call on one (`order.id()`); a guard only when an argument is computed. |
 | `LogStringConcatenation` (new)     | `info`, `warn` and `error` with placeholders, for SLF4J, Log4j 2, commons-logging, JUL and `System.Logger`.                                                                                        |
 | `GeneratedOnHandWrittenCode` (new) | No `@Generated` annotation on a class, method or constructor: JaCoCo and PIT skip what it marks.                                                                                                   |
+| `DontCallThreadRun`                | `super.run()` inside a `Thread` subclass's `run()`; any other `run()` call on a `Thread` is `start()`.                                                                                             |
+| `AvoidFileStream`                  | A stream, reader or writer over a `FileDescriptor` (`new FileInputStream(FileDescriptor.in)`), which `Files` has no form for.                                                                      |
+| `AvoidArrayLoops`                  | A copy loop that subtracts the loop variable in an index (a reversed copy), which `System.arraycopy` cannot do.                                                                                    |
+| `UseArraysAsList`                  | A loop that filters, steps by more than one or does more than add each element; the loop that only adds is `Collections.addAll(target, array)`.                                                    |
 
 ## Slice 3: Checkstyle
 
@@ -1333,7 +1373,7 @@ table:
 - line: `errorprone/IdentityBinaryExpression`, `errorprone/SelfComparison`, `errorprone/SelfEquals` over `spotbugs/SA_FIELD_SELF_COMPARISON`, `spotbugs/SA_LOCAL_SELF_COMPARISON`
 - line: `errorprone/LockOnBoxedPrimitive` over `spotbugs/DL_SYNCHRONIZATION_ON_*`
 - line: `errorprone/BoxedPrimitiveConstructor` over `spotbugs/DM_FP_NUMBER_CTOR`, `spotbugs/DM_NUMBER_CTOR`, `pmd/PrimitiveWrapperInstantiation`
-- line: `errorprone/DoNotCall` over `spotbugs/RU_INVOKE_RUN`
+- line: `errorprone/DoNotCall` over `spotbugs/RU_INVOKE_RUN`, `pmd/DontCallThreadRun`
 - line: `errorprone/EqualsNaN` over `spotbugs/FE_TEST_IF_EQUAL_TO_NOT_A_NUMBER`, `pmd/ComparisonWithNaN`
 - line: `errorprone/BoxedPrimitiveEquality`, `errorprone/MemorySegmentReferenceEquality`, `errorprone/OptionalEquality`, `errorprone/ProtoStringFieldReferenceEquality` over `errorprone/ReferenceEquality`
 - line: `errorprone/BoxedPrimitiveEquality`, `errorprone/MemorySegmentReferenceEquality`, `errorprone/OptionalEquality`, `errorprone/ProtoStringFieldReferenceEquality`, `errorprone/ReferenceEquality` over `spotbugs/ES_COMPARING_*`, `spotbugs/RC_REF_COMPARISON*`, `pmd/CompareObjectsWithEquals`, `pmd/UseEqualsToCompareStrings`
@@ -1381,7 +1421,7 @@ table:
 - line: `errorprone/ForEachIterable` over `pmd/ForLoopCanBeForeach`
 - line: `errorprone/Finally` over `pmd/DoNotThrowExceptionInFinally`, `pmd/ReturnFromFinallyBlock`
 - member: `errorprone/DoubleBraceInitialization` over `pmd/DoubleBraceInitialization`
-- line: `errorprone/JdkObsolete` over `pmd/ReplaceEnumerationWithIterator`, `pmd/ReplaceHashtableWithMap`, `pmd/ReplaceVectorWithList`
+- line: `errorprone/JdkObsolete` over `pmd/ReplaceEnumerationWithIterator`, `pmd/ReplaceHashtableWithMap`, `pmd/ReplaceVectorWithList`, `pmd/UseArrayListInsteadOfVector`
 - line: `errorprone/JdkObsolete` over `errorprone/StringCharset`
 - line: `errorprone/NonOverridingEquals` over `pmd/SuspiciousEqualsMethodName`
 - line: `errorprone/DefaultLocale` over `pmd/SimpleDateFormatNeedsLocale`
@@ -1408,6 +1448,13 @@ table:
 - field: `errorprone/URLEqualsHashCode` over `spotbugs/DMI_COLLECTION_OF_URLS`
 - field: `pmd/UnusedPrivateField` over `spotbugs/URF_UNREAD_FIELD`, `spotbugs/UUF_UNUSED_FIELD`
 - field: `errorprone/NullAway` over `spotbugs/NP_UNWRITTEN_FIELD`, `spotbugs/UWF_UNWRITTEN_FIELD`
+- member: `errorprone/DoubleCheckedLocking` over `pmd/DoubleCheckedLocking`
+- line: `pmd/StringInstantiation` over `spotbugs/DM_STRING_CTOR`, `spotbugs/DM_STRING_VOID_CTOR`
+- line: `pmd/UseStringBufferForStringAppends` over `spotbugs/SBSC_USE_STRINGBUFFER_CONCATENATION`
+- line: `pmd/UnsynchronizedStaticFormatter` over `spotbugs/STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE`
+- class: `errorprone/DateFormatConstant` over `pmd/UnsynchronizedStaticFormatter`, `spotbugs/STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE`
+- field: `errorprone/DateFormatConstant` over `spotbugs/STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE`
+- line: `pmd/NonThreadSafeSingleton` over `spotbugs/LI_LAZY_INIT_STATIC`, `spotbugs/SING_SINGLETON_GETTER_NOT_SYNCHRONIZED`
 
 ### Checks spared in annotated classes
 
@@ -1770,8 +1817,10 @@ sources, with the test rules, the way the TypeScript preset lints its tests; the
 file and folder limits already counted test files. A `jmh` or `benchmark` source set is neither main nor test code: nitpicker
 neither compiles nor lints it on Gradle, as Maven ignores a source folder build-helper does not add. PMD runs nitpicker's own rule set,
 [`languages/java/gradle/pmd-ruleset.xml`](../languages/java/gradle/pmd-ruleset.xml): the
-errorprone and bestpractices categories without `UnitTestAssertionsShouldIncludeMessage` and
-`UnitTestContainsTooManyAsserts`, which set an assertion style the TypeScript preset does not have,
+errorprone, bestpractices, performance and multithreading categories (security runs on main sources
+only; the rules each category leaves out are listed under "Additional PMD categories" in [Slice 2](#slice-2-cli-and-reporter-integration)) without
+`UnitTestAssertionsShouldIncludeMessage` and `UnitTestContainsTooManyAsserts`, which set an
+assertion style the TypeScript preset does not have,
 plus design's `AvoidCatchingGenericException` (no `catch (Exception e)`, `RuntimeException` or
 `NullPointerException`; errorprone already covers `Throwable`), as the TypeScript and Python presets
 forbid broad catches (the message says that a test uses `assertThrows`, as Checkstyle's `EmptyCatchBlock` message does). A test with no assertion still fails (`UnitTestShouldIncludeAssert`, which
@@ -2267,8 +2316,8 @@ classpath has Spring) run on test sources only, through the generated `pmd-tests
 excludes the main source directories. `pmd-main-ruleset.xml` (and `spring-ruleset.xml` with Spring)
 run on main sources only, through the generated `pmd-main.xml` that excludes the test directories.
 The init script and `maven/maven-lint.mjs` generate both, so the scopes are the same on both
-builds. The main-only set holds the API design rules (`ExhaustiveEnumPredicate`,
-`StaticForwardingWrapper`, `SingularAndPluralMember`): like the TypeScript preset's
+builds. The main-only set holds PMD's `security` category, since tests encrypt with fixed keys, and the API
+design rules (`ExhaustiveEnumPredicate`, `StaticForwardingWrapper`, `SingularAndPluralMember`): like the TypeScript preset's
 `exhaustive-union-predicate`, `no-forwarding-wrapper` and `no-singular-and-plural-prop`, which run
 on production files only, they leave test helpers alone, since tests are not an API anyone calls.
 Two manifest flags feed the messages and checks below: `testAwaitility` (Awaitility on the test
@@ -2367,7 +2416,8 @@ that name, so the rule would need compiler symbol facts to stay precise.
 PMD, Checkstyle and SpotBugs messages say what is wrong, rarely how to fix it, and never how to keep
 code that is right as it is. `languages/java/messages/` holds one catalog per tool (`pmd.json`,
 `checkstyle.json`, `spotbugs.json`) with an entry for every rule the preset can report: the
-errorprone and bestpractices PMD categories plus `AvoidCatchingGenericException`, every check in
+errorprone, bestpractices, performance, multithreading and security PMD categories (the rules the
+preset leaves out too, for a project that turns one back on) plus `AvoidCatchingGenericException`, every check in
 `google_checks.xml`, and every SpotBugs pattern. Each entry has:
 
 - `fix`: one sentence, in our words, naming the allowed form (`null` when the tool's message already
