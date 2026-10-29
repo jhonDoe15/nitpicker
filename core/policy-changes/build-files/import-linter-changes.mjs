@@ -1,4 +1,4 @@
-import { shownSetting } from '../loosenings.mjs';
+import { shownSetting } from '../../../shared/config.mjs';
 
 const KIND = 'tool-config';
 const NEUTRAL = new Set(['name', 'cache_dir']);
