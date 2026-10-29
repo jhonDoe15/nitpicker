@@ -1,0 +1,6 @@
+{
+  "id": "kotlin-sample",
+  "title": "Add a shout function",
+  "preset": "kotlin",
+  "prompt": "Add shout(name: String) to src/main/kotlin/sample/Greeter.kt that returns the greeting in upper case, with a test in src/test/kotlin/sample/GreeterTest.kt. Run nitpicker-gate until it exits 0."
+}
