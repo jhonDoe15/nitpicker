@@ -51,20 +51,22 @@ def skips_body(node, aliases):
 
 
 def evaluated(node, aliases):
-    if skips_body(node, aliases):
-        for statement in node.orelse:
-            yield from evaluated(statement, aliases)
-        return
-    if isinstance(node, DEFINITIONS):
-        yield from definition_heads(node)
-    if isinstance(node, ast.ClassDef):
-        for statement in node.body:
-            yield from evaluated(statement, aliases)
-    if isinstance(node, ast.expr):
-        yield from expression_calls(node)
-    elif not isinstance(node, DEFINITIONS):
-        for child in ast.iter_child_nodes(node):
-            yield from evaluated(child, aliases)
+    pending = [node]
+    while pending:
+        current = pending.pop()
+        if skips_body(current, aliases):
+            pending.extend(reversed(current.orelse))
+            continue
+        children = []
+        if isinstance(current, DEFINITIONS):
+            yield from definition_heads(current)
+        if isinstance(current, ast.ClassDef):
+            children = current.body
+        if isinstance(current, ast.expr):
+            yield from expression_calls(current)
+        elif not isinstance(current, DEFINITIONS):
+            children = list(ast.iter_child_nodes(current))
+        pending.extend(reversed(children))
 
 
 def load_time_statements(tree):

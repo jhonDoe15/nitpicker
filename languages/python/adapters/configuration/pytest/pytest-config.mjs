@@ -101,19 +101,52 @@ export function shellWords(text) {
   );
 }
 
+const TRUE_WORDS = new Set(['1', 'true', 'yes', 'y', 'on', 't']);
+const INLINE_COMMENT = /\s*[;#].*$/u;
+const OVERRIDE_FLAGS = ['-o', '--override-ini'];
+
+function isEnabled(value) {
+  const text = String(value ?? '')
+    .replace(INLINE_COMMENT, '')
+    .trim()
+    .toLowerCase();
+  return TRUE_WORDS.has(text);
+}
+
+function overrideSetting(word, following) {
+  if (OVERRIDE_FLAGS.includes(word)) {
+    return following;
+  }
+  if (word.startsWith('--override-ini=')) {
+    return word.slice('--override-ini='.length);
+  }
+  return /^-o[^-]/u.test(word) ? word.slice(2) : undefined;
+}
+
+function overriddenIni(words, key) {
+  const prefix = `${key}=`;
+  const values = words
+    .map((word, index) => overrideSetting(word, words[index + 1]))
+    .filter((setting) => setting?.startsWith(prefix))
+    .map((setting) => setting.slice(prefix.length));
+  return values.at(-1);
+}
+
 export function readPytestConfig(projectRoot) {
   const options = configuredOptions(projectRoot);
   const addopts = options.addopts;
+  const optionWords = Array.isArray(addopts) ? addopts : shellWords(addopts ?? '');
   return {
     pythonFiles: listOr(options.python_files, DEFAULT_PYTHON_FILES),
     pythonClasses: listOr(options.python_classes, DEFAULT_PYTHON_CLASSES),
     pythonFunctions: listOr(options.python_functions, DEFAULT_PYTHON_FUNCTIONS),
     norecursedirs: listOr(options.norecursedirs, DEFAULT_NORECURSEDIRS),
     testpaths: words(options.testpaths),
+    xfailStrict: isEnabled(overriddenIni(optionWords, 'xfail_strict') ?? options.xfail_strict),
     ...(options.DJANGO_SETTINGS_MODULE === undefined
       ? {}
       : { djangoSettingsModule: options.DJANGO_SETTINGS_MODULE }),
-    addopts: Array.isArray(addopts) ? addopts : shellWords(addopts ?? ''),
+    addopts: optionWords,
   };
 }
 

@@ -805,6 +805,8 @@ hop, and type-only imports do not count.
   glob `test.projects` entry (for the files under that package).
 - `nitpicker/no-switched-off-tests`: no `it.todo`/`test.todo`/`describe.todo` (`vitest/no-disabled-tests`
   already reports `skip`; neither is a way to switch a test off) and no `skipIf(true)`/`runIf(false)`.
+  A condition that folds to a constant counts as a literal: `skipIf(1 === 1)`, `skipIf(!false)`,
+  `runIf(0)`, `skipIf('x')`, `skipIf(true && true)`, `skipIf(undefined)`.
   A real condition such as `skipIf(process.platform === 'win32')` is allowed, and so is `it.fails`,
   which runs and documents a known bug: it starts failing once the bug is fixed.
 - `nitpicker/no-unowned-async-assertion`: an assertion inside a callback the test hands off must

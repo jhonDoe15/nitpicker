@@ -3,7 +3,8 @@ import { FUNCTION_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { ASYNC_HINTS } from './hints/ast-async.mjs';
 import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
 import { SMELL_HINTS } from './hints/ast-smells.mjs';
-import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
+import { TEST_SWITCH_HINTS } from './hints/tests/ast-test-switches.mjs';
+import { PYTEST_HINTS } from './hints/tests/ruff-pytest.mjs';
 import { SECURITY_HINTS } from './hints/security/ruff-security.mjs';
 import { RULES_SECURITY_HINTS } from './hints/security/rules-security.mjs';
 import { STYLE_HINTS } from './hints/ruff-style.mjs';
@@ -40,6 +41,7 @@ export const RULE_HINTS = [
   ...STRUCTURE_HINTS,
   ...ASYNC_HINTS,
   ...SMELL_HINTS,
+  ...TEST_SWITCH_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...['pyright', 'basedpyright'].map((tool) => ({
     tool,

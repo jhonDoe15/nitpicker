@@ -163,23 +163,37 @@ def is_test(function):
     return is_test_function(function) and not is_fixture(function)
 
 
-def test_functions(tree):
+def is_unittest_class(node):
+    return node is not None and any(
+        (callee_name(base) or "").endswith("TestCase") for base in node.bases
+    )
+
+
+def statement_blocks(statement):
+    if isinstance(statement, (ast.If, ast.With, ast.AsyncWith, ast.For, ast.While)):
+        return [statement.body, getattr(statement, "orelse", [])]
+    if isinstance(statement, (ast.Try, getattr(ast, "TryStar", ast.Try))):
+        handlers = [handler.body for handler in statement.handlers]
+        return [statement.body, *handlers, statement.orelse, statement.finalbody]
+    return []
+
+
+def test_cases(tree):
     found = []
-    for node in tree.body:
-        if isinstance(node, DEFINITIONS) and is_test(node):
-            found.append((node.name, node))
-        elif isinstance(node, ast.ClassDef) and is_test_class(node):
-            found.extend(
-                (f"{node.name}.{member.name}", member)
-                for member in node.body
-                if isinstance(member, DEFINITIONS) and is_test(member)
-            )
-    return found
+    stack = [(statement, ()) for statement in reversed(tree.body)]
+    while stack:
+        statement, owners = stack.pop()
+        if isinstance(statement, DEFINITIONS) and is_test(statement):
+            name = ".".join([owner.name for owner in owners] + [statement.name])
+            found.append((name, statement, owners[-1] if owners else None))
+        elif isinstance(statement, ast.ClassDef) and is_test_class(statement):
+            members = [(member, (*owners, statement)) for member in statement.body]
+            stack.extend(reversed(members))
+        else:
+            for block in statement_blocks(statement):
+                stack.extend((child, owners) for child in reversed(block))
+    return sorted(found, key=lambda case: case[1].lineno)
 
 
-def unasserted_tests(tree, aliases, project):
-    return [
-        (subject, function)
-        for subject, function in test_functions(tree)
-        if not is_exempt(function) and not asserts(function, aliases, project)
-    ]
+def test_functions(tree):
+    return [(name, function) for name, function, _ in test_cases(tree)]
