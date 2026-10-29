@@ -56,6 +56,7 @@ export function runCli(options = {}) {
       runAggregateCli({
         arguments_: cli.arguments_.slice(1),
         currentProjectRoot: scope.currentProjectRoot,
+        configOverlay: scope.configOverlay,
         analyzers: cli.analyzers,
         stdout: cli.stdout,
         stderr: cli.stderr,
@@ -103,6 +104,7 @@ function runCommand(cli) {
         arguments_: cli.arguments_.slice(1),
         environment: cli.environment,
         currentProjectRoot: scope.currentProjectRoot,
+        configOverlay: scope.configOverlay,
         analyzers: cli.analyzers,
         stdout: cli.stdout,
         stderr: cli.stderr,

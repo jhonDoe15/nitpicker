@@ -3,12 +3,17 @@ import { policyAcceptance } from '../../command/policy-review/policy-acceptance.
 import { clearDiffReports } from '../../diff/reporting/reporters.mjs';
 import { clearSnapshotReports } from '../../snapshot/reporters.mjs';
 import { repositoryRootOf } from '../../configuration/layers/layers.mjs';
+import { readLayeredConfig } from '../../configuration/layers/read-layered.mjs';
 import { normalizeProjectPath } from '../../configuration/layers/settings.mjs';
 import { inspectRepository } from '../plan/inspect.mjs';
 import { isGitWorkTree, memberProjectOf } from '../plan/member-root.mjs';
 import { reportFolder } from '../plan/project-entry.mjs';
 import { baseDeclaresProjects, basePlanOf, planInputsChanged } from '../policy/base-plan.mjs';
-import { projectSetLoosenings, repositoryPolicy } from '../policy/project-set.mjs';
+import {
+  asProjectLoosenings,
+  projectSetLoosenings,
+  repositoryPolicy,
+} from '../policy/project-set.mjs';
 import {
   clearStaleProjectReports,
   writeCombinedMachineReports,
@@ -194,20 +199,42 @@ function singleProjectLoosenings({ root, files, cli }) {
   return cli.options.all === true ? [] : formerProjectLoosenings({ root, files, cli }).loosenings;
 }
 
+function configuredBaseOf(root) {
+  try {
+    return { base: readLayeredConfig(root).base };
+  } catch (error) {
+    return { base: undefined, error };
+  }
+}
+
 function formerAt({ root, files, cli, repositoryRoot }) {
   const prefix = path.relative(repositoryRoot, root).split(path.sep).join('/') || '.';
-  const { mergeBaseSha } = comparisonBase({ repositoryRoot, configuredBase: undefined, cli });
+  const configuredBase = configuredBaseOf(root).base;
+  const { mergeBaseSha } = comparisonBase({ repositoryRoot, configuredBase, cli });
   if (!baseDeclaresProjects({ repositoryRoot, prefix, mergeBaseSha })) {
     return [];
   }
   const basePlan = basePlanOf({ repositoryRoot, prefix, mergeBaseSha });
-  return projectSetLoosenings({ basePlan, headPlan: undefined, root, headFiles: files });
+  const loosenings = projectSetLoosenings({
+    basePlan,
+    headPlan: undefined,
+    root,
+    headFiles: files,
+  });
+  return asProjectLoosenings(loosenings, root);
 }
 
-function runMember({ plan, member, cli, runProject }) {
+function runMember({ plan, files, member, cli, runProject }) {
   const comparison = comparisonOf(plan, cli);
   const extras = extrasOf(member, { comparison, analyzers: new Map() });
-  return runProject(cli.options, extras.cli);
+  const loosenings = projectSetLoosenings({
+    basePlan: comparison.basePlan,
+    headPlan: plan,
+    root: plan.root,
+    headFiles: files,
+  });
+  const repositoryLoosenings = asProjectLoosenings(loosenings, plan.root);
+  return runProject(cli.options, { ...extras.cli, repositoryLoosenings });
 }
 
 function singleMode({ inspection, cli, currentProjectRoot }) {
@@ -236,7 +263,7 @@ export function runMonorepo({ cli, currentProjectRoot, runProject }) {
   const member =
     cli.currentProjectRoot === undefined ? memberProjectOf(plan, cli.workingDirectory) : undefined;
   if (member !== undefined && (cli.options.projectPaths ?? []).length === 0) {
-    return { exitCode: runMember({ plan, member, cli, runProject }) };
+    return { exitCode: runMember({ plan, files, member, cli, runProject }) };
   }
   if (cli.options.shardCount !== undefined) {
     throw new Error(shardingMessage(plan));

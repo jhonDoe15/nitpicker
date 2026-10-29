@@ -55,6 +55,18 @@ export function projectSetLoosenings({ basePlan, headPlan, root, headFiles }) {
     }));
 }
 
+export function asProjectLoosenings(loosenings, root) {
+  return loosenings.map(({ text, key, files }) => ({
+    text,
+    key,
+    files: [],
+    evidence: files.map((file) => [
+      `repository:${file}`,
+      gitBlobId(readFileSync(inside(root, file))),
+    ]),
+  }));
+}
+
 export function repositoryPolicy({ loosenings, root, acceptedDigest }) {
   if (loosenings.length === 0) {
     return undefined;

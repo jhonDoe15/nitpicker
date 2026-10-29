@@ -55,7 +55,7 @@ export function runCacheCommand(cli) {
     cli.currentProjectRoot === undefined
       ? resolveProjectRoot()
       : realpathSync(cli.currentProjectRoot);
-  const config = loadConfig(projectRoot);
+  const config = loadConfig(projectRoot, { overlay: cli.configOverlay });
   const headPolicy = publishHeadPolicy(config, projectRoot);
   const configured = configureAnalyzers(presetAnalyzers(config, cli.analyzers), config, headPolicy);
   const selected = selectedAnalyzers(configured, options);
