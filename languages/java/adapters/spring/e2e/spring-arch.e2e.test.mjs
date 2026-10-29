@@ -55,3 +55,50 @@ describe.skipIf(!enabled)('Spring architecture rules on a Spring project', () =>
     ).toEqual(SPRING_ARCH_VIOLATIONS);
   });
 });
+
+describe.skipIf(!enabled)('Aggregate rules on a jMolecules project without Spring', () => {
+  let projectRoot;
+
+  beforeAll(() => {
+    projectRoot = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-ddd-only-')), 'sales');
+    cpSync(path.join(fixture, '..', 'ddd-only-project'), projectRoot, { recursive: true });
+    const result = spawnSync(
+      gradle,
+      ['--console=plain', '--quiet', '-I', INIT_SCRIPT, 'nitpickerSpringArch'],
+      { cwd: projectRoot, encoding: 'utf8', timeout: 180_000 },
+    );
+    if (result.status !== 0) {
+      throw new Error(`Gradle failed: ${result.stderr}`);
+    }
+  }, 300_000);
+
+  afterAll(() => {
+    if (projectRoot !== undefined) {
+      rmSync(path.dirname(projectRoot), { recursive: true, force: true });
+    }
+  });
+
+  it('runs only the aggregate rules for jmolecules-ddd without Spring, through subtypes, interface roots and bound type variables', () => {
+    const report = JSON.parse(
+      readFileSync(path.join(projectRoot, 'build', 'nitpicker', 'spring-arch.json'), 'utf8'),
+    );
+
+    expect(report).toEqual({
+      root: null,
+      violations: [
+        {
+          rule: 'ddd-aggregate-reference',
+          className: 'sales.Order',
+          fileName: 'Order.java',
+          detail: 'sales.Customer',
+        },
+        {
+          rule: 'ddd-aggregate-reference',
+          className: 'sales.Wishlist',
+          fileName: 'Wishlist.java',
+          detail: 'sales.Product',
+        },
+      ],
+    });
+  });
+});

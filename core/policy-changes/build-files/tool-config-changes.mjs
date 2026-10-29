@@ -3,7 +3,13 @@ function fileChange(tool, file, { base, head }) {
     return undefined;
   }
   return head.has(file)
-    ? { loosened: { text: `${tool} project config changed: ${file}`, files: [file] } }
+    ? {
+        loosened: {
+          text: `${tool} project config changed: ${file}`,
+          kind: 'tool-config',
+          files: [file],
+        },
+      }
     : { changed: `${tool} project config removed: ${file}` };
 }
 
