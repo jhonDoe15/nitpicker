@@ -1,5 +1,6 @@
 import { isDeepStrictEqual } from 'node:util';
-import { precedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
+import { precedenceLayers } from '../../../../../shared/conventions/tool-precedence.mjs';
+import { listOf } from '../../../preset/project-tools/config-values.mjs';
 
 const NITPICKER_OPTIONS = new Set([
   'baseDir',
@@ -28,13 +29,6 @@ const NITPICKER_OPTIONS = new Set([
   'tsPreCompilationDeps',
   'validate',
 ]);
-
-function listOf(value) {
-  if (value === undefined) {
-    return [];
-  }
-  return Array.isArray(value) ? value : [value];
-}
 
 function pathsOf(option) {
   return listOf(

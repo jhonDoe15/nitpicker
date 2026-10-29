@@ -2,14 +2,14 @@ import { mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from 'node
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import {
   resolveHeadPolicy,
   withHeadCheckoutFacts,
   withHeadPolicyFile,
-} from '../../preset/head-policy.mjs';
-import { normalizeArchitectureViolations } from '../static-checks-runner.mjs';
-import { loadDependencyGraph } from './project-dependency-graph.mjs';
+} from '../../../preset/head-policy.mjs';
+import { normalizeArchitectureViolations } from '../../static-checks-runner.mjs';
+import { loadDependencyGraph } from '../project-dependency-graph.mjs';
 
 const roots = [];
 afterEach(() => {
@@ -120,8 +120,12 @@ describe('dependency-cruiser project config precedence', () => {
     });
     const run = (precedence) =>
       architecture(root, resolveHeadPolicy(cruiserConfig(precedence, 'javascript'), root));
-    expect(run(['nitpicker'])).not.toContain('a-not-b src/a/a.js descriptive');
-    expect(run(['project', 'nitpicker'])).toContain('a-not-b src/a/a.js descriptive');
+    const nitpicker = [
+      'no-production-cycles src/c/x.js enforceable',
+      'no-production-cycles src/legacy/old.js enforceable',
+    ];
+    expect(run(['nitpicker'])).toEqual(nitpicker);
+    expect(run(['project', 'nitpicker'])).toEqual(['a-not-b src/a/a.js descriptive', ...nitpicker]);
   });
 
   it('words module rules of the project and keeps their comments', () => {
@@ -155,10 +159,12 @@ describe('dependency-cruiser project config precedence', () => {
         ({ message, classification }) => `${classification}: ${message}`,
       );
     });
-    expect(messages).toContain('descriptive: src/orphan.ts breaks the no-orphans rule');
-    expect(messages).toContain(
+    expect(messages).toEqual([
       'enforceable: src/main.ts breaks the main-uses-z rule. The entry must load z.',
-    );
+      'enforceable: Dependency cycle: src/c/x.ts -> src/c/y.ts -> src/c/x.ts',
+      'enforceable: Dependency cycle: src/legacy/old.ts -> src/legacy/older.ts -> src/legacy/old.ts',
+      'descriptive: src/orphan.ts breaks the no-orphans rule',
+    ]);
   });
 
   it('applies the head config to the base snapshot', () => {
