@@ -26,10 +26,9 @@ import { detectLibraries } from './libraries/project-libraries.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { hasPrettierConventions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
-import {
-  headProjectToolFacts,
-  withProjectToolConfigs,
-} from './project-tools/project-tool-policy.mjs';
+import { picked } from '../../../shared/config.mjs';
+import { projectConfigTools } from './project-tools/project-config-files.mjs';
+import { headCapturedFacts, withProjectToolConfigs } from './project-tools/project-tool-policy.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -82,6 +81,7 @@ function withProjectFacts(policy, config, projectRoot) {
   const tools = withProjectToolConfigs(
     jscpd === undefined ? policy.tools : { ...policy.tools, jscpd },
     projectRoot,
+    { disabled: config.disable },
   );
   return {
     ...policy,
@@ -154,31 +154,28 @@ const SCOPE_FACTS = [
   ['i18n', ['enabled']],
 ];
 
-function picked(source, keys) {
-  return Object.fromEntries(
-    keys.filter((key) => source[key] !== undefined).map((key) => [key, source[key]]),
-  );
-}
-
-function headJscpdFacts(settings, headSettings = {}) {
-  if (headSettings.projectConfig === undefined) {
-    return { ...headSettings, precedence: headSettings.precedence ?? ['nitpicker'] };
-  }
-  return { ...settings, ...picked(headSettings, ['projectConfig', 'projectConfigDigest']) };
-}
-
 function headToolFacts(policy, headPolicy) {
-  const tools = headProjectToolFacts(policy.tools, headPolicy.tools);
-  if (usesProjectConfig(tools.prettier?.precedence ?? [])) {
-    tools.prettier = {
-      ...tools.prettier,
-      ...picked(headPolicy.tools?.prettier ?? {}, ['projectConfigDigest']),
-    };
+  if (policy.tools === undefined) {
+    return {};
   }
-  if (usesProjectConfig(tools.jscpd?.precedence ?? [])) {
-    tools.jscpd = headJscpdFacts(tools.jscpd, headPolicy.tools?.jscpd);
-  }
-  return policy.tools === undefined && Object.keys(tools).length === 0 ? {} : { tools };
+  const prettier = policy.tools.prettier;
+  const captured = ['jscpd', ...projectConfigTools()]
+    .filter((tool) => usesProjectConfig(policy.tools[tool]?.precedence ?? []))
+    .map((tool) => [tool, headCapturedFacts(policy.tools[tool], headPolicy.tools?.[tool])]);
+  return {
+    tools: {
+      ...policy.tools,
+      ...(usesProjectConfig(prettier?.precedence ?? [])
+        ? {
+            prettier: {
+              ...prettier,
+              ...picked(headPolicy.tools?.prettier ?? {}, ['projectConfigDigest']),
+            },
+          }
+        : {}),
+      ...Object.fromEntries(captured),
+    },
+  };
 }
 
 function headTestPlacement(policy, headPolicy) {

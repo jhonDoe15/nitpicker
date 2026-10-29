@@ -1,27 +1,33 @@
-import { existsSync, readFileSync } from 'node:fs';
-import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { isPlainObject } from '../../../../shared/config.mjs';
-import { resolveInside } from '../../../../shared/conventions/read-inside.mjs';
+import { readRealInside, resolveInside } from '../../../../shared/conventions/read-inside.mjs';
+import { parsedJsonc } from '../../../../shared/jsonc/jsonc.mjs';
 
 export const KNIP_TOOL = 'knip';
 
 const PACKAGE_JSON = 'package.json';
 
-const CONFIG_FILES = new Map([
+const TOOLS = new Map([
   [
     KNIP_TOOL,
-    [
-      'knip.json',
-      'knip.jsonc',
-      '.knip.json',
-      '.knip.jsonc',
-      'knip.ts',
-      'knip.js',
-      'knip.config.ts',
-      'knip.config.js',
-    ],
+    {
+      files: [
+        'knip.json',
+        'knip.jsonc',
+        '.knip.json',
+        '.knip.jsonc',
+        'knip.ts',
+        'knip.js',
+        'knip.config.ts',
+        'knip.config.js',
+      ],
+      packageKey: 'knip',
+      analyzers: ['dead-code'],
+    },
   ],
 ]);
+
+const JSON_FILE = /\.jsonc?$/u;
 
 export const PROJECT_TOOL_FILES = [
   'config-loader.mjs',
@@ -30,42 +36,42 @@ export const PROJECT_TOOL_FILES = [
   'project-tool-policy.mjs',
 ].map((name) => `languages/typescript/preset/project-tools/${name}`);
 
-const PACKAGE_JSON_KEYS = new Map([[KNIP_TOOL, 'knip']]);
-
 export function projectConfigTools() {
-  return [...CONFIG_FILES.keys()];
+  return [...TOOLS.keys()];
 }
 
 export function isProjectConfigTool(tool) {
-  return CONFIG_FILES.has(tool);
+  return TOOLS.has(tool);
 }
 
 export function packageJsonKey(tool) {
-  return PACKAGE_JSON_KEYS.get(tool);
+  return TOOLS.get(tool)?.packageKey;
+}
+
+export function isJsonConfigFile(file) {
+  return JSON_FILE.test(file);
+}
+
+export function isProjectToolNeeded(tool, disabled = []) {
+  return (TOOLS.get(tool)?.analyzers ?? []).some((analyzer) => !disabled.includes(analyzer));
 }
 
 export function projectConfigCandidates(tool) {
-  return [
-    ...(CONFIG_FILES.get(tool) ?? []),
-    ...(PACKAGE_JSON_KEYS.has(tool) ? [PACKAGE_JSON] : []),
-  ];
+  const key = packageJsonKey(tool);
+  return [...(TOOLS.get(tool)?.files ?? []), ...(key === undefined ? [] : [PACKAGE_JSON])];
 }
 
-function parsedManifest(file) {
-  try {
-    return { kind: 'json', value: JSON.parse(readFileSync(file, 'utf8')) };
-  } catch {
-    return { kind: 'malformed-json' };
+export function manifestSection(text, key) {
+  const parsed = parsedJsonc(text);
+  if (parsed.kind !== 'json') {
+    return { kind: 'malformed', reason: parsed.reason };
   }
+  return { kind: 'json', value: isPlainObject(parsed.value) ? parsed.value[key] : undefined };
 }
 
 function packageJsonSection(projectRoot, key) {
-  const file = path.join(projectRoot, PACKAGE_JSON);
-  if (key === undefined || !existsSync(file)) {
-    return undefined;
-  }
-  const parsed = parsedManifest(file);
-  return parsed.kind === 'json' && isPlainObject(parsed.value) ? parsed.value[key] : undefined;
+  const text = key === undefined ? undefined : readRealInside(projectRoot, PACKAGE_JSON, 'utf8');
+  return text === undefined ? { kind: 'json', value: undefined } : manifestSection(text, key);
 }
 
 function isFileInside(projectRoot, name) {
@@ -74,18 +80,18 @@ function isFileInside(projectRoot, name) {
 }
 
 export function projectConfigSources(tool, projectRoot) {
-  const file = (CONFIG_FILES.get(tool) ?? []).find((name) => isFileInside(projectRoot, name));
-  const key = PACKAGE_JSON_KEYS.get(tool);
+  const file = (TOOLS.get(tool)?.files ?? []).find((name) => isFileInside(projectRoot, name));
+  const key = packageJsonKey(tool);
   const section = packageJsonSection(projectRoot, key);
   const labels = [
     ...(file === undefined ? [] : [file]),
-    ...(section === undefined ? [] : [`the "${key}" key in ${PACKAGE_JSON}`]),
+    ...(section.value === undefined ? [] : [`the "${key}" key in ${PACKAGE_JSON}`]),
   ];
   return labels.length === 0 ? undefined : { file, section, label: labels.join(' and ') };
 }
 
 export function lookedFor(tool) {
-  const key = PACKAGE_JSON_KEYS.get(tool);
-  const files = (CONFIG_FILES.get(tool) ?? []).join(', ');
+  const key = packageJsonKey(tool);
+  const files = (TOOLS.get(tool)?.files ?? []).join(', ');
   return `a ${tool} config (${files}${key === undefined ? '' : `, or the "${key}" key in ${PACKAGE_JSON}`})`;
 }

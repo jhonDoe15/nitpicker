@@ -1,28 +1,21 @@
+import { writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-import { encodedValue } from './config-values.mjs';
-
-const KNIP_COMPILER_KEYS = new Set(['compilers', 'syncCompilers', 'asyncCompilers']);
+import { encodedValue, withoutKnipCompilers } from './config-values.mjs';
 
 const LOADERS = new Map([
   [
     'knip',
     {
       module: 'dist/util/load-config.js',
-      load: async (loader, file) => {
-        const config = (await loader.loadResolvedConfigFile(file, {})) ?? {};
-        return typeof config === 'object' && !Array.isArray(config)
-          ? Object.fromEntries(
-              Object.entries(config).filter(([key]) => !KNIP_COMPILER_KEYS.has(key)),
-            )
-          : config;
-      },
+      load: async (loader, file) =>
+        withoutKnipCompilers((await loader.loadResolvedConfigFile(file, {})) ?? {}),
     },
   ],
 ]);
 
-export async function loadToolConfig(tool, file) {
+async function loadToolConfig(tool, file) {
   const entry = LOADERS.get(tool);
   if (entry === undefined) {
     throw new Error(`No config loader for ${tool}`);
@@ -32,9 +25,17 @@ export async function loadToolConfig(tool, file) {
   return encodedValue(await entry.load(loader, file), path.basename(file));
 }
 
-export function failureText(error) {
+function failureText(error) {
   if (!(error instanceof Error)) {
     return String(error);
   }
   return error.cause instanceof Error ? `${error.message}: ${error.cause.message}` : error.message;
+}
+
+export async function writeToolConfig({ tool, file, resultFile }) {
+  const result = await loadToolConfig(tool, file).then(
+    (config) => ({ config }),
+    (error) => ({ failure: failureText(error) }),
+  );
+  writeFileSync(resultFile, JSON.stringify(result));
 }

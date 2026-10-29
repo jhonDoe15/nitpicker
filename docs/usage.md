@@ -1341,32 +1341,52 @@ the project's Prettier config, so it is read only when `precedence` lists `"proj
 With the `typescript` and `javascript` presets, `knip` (the dead-code check) takes the project's knip
 config: the first of `knip.json`, `knip.jsonc`, `.knip.json`, `.knip.jsonc`, `knip.ts`, `knip.js`,
 `knip.config.ts` and `knip.config.js`, laid over the `knip` key in `package.json` the way knip itself
-reads them. A TypeScript or JavaScript config is evaluated by the knip version nitpicker pins, from the
-head checkout; one that exports a function is called with no options, regular expressions (in
-`ignoreDependencies` and the like) are kept, and any other value that is not plain data is a tool
-error. `compilers` is left out, since the dead-code check reads only JavaScript and TypeScript files. Without the opt-in neither the file nor the `package.json` key is
-read, not even the keys knip would merge in on its own, and the run prints `Ignoring knip.json; opt in
-with ...`. Naming `"project"` without a config, or with one knip cannot load, makes the dead-code check
-a tool error that says which.
+reads them. A JSON or JSONC config is read as data. A TypeScript or JavaScript config is code: opting
+in runs it, with the knip version nitpicker pins, in the head checkout, as the project's own tests and
+scripts already do. It runs once when the run starts (and once per side for the policy-change check),
+only while `dead-code` is enabled, without the CI output variables (`GITHUB_OUTPUT`, `GITHUB_ENV` and
+the like), and is stopped after a minute. What it prints is ignored. One that exports a function is
+called with no options; regular expressions (in `ignoreDependencies` and the like) are kept; any other
+value that is not plain data (a function, a `Set`, a `Date`) is a tool error that names its key, such
+as `ignoreDependencies[0]`. `compilers`, `syncCompilers` and `asyncCompilers` are left out, at the top
+level and in each workspace, since the dead-code check reads only JavaScript and TypeScript files. A
+config file, or a `package.json`, that resolves outside the project through a symlink is a tool error.
+Without the opt-in neither the file nor the `package.json` key is read, not even the keys knip would
+merge in on its own (a `package.json` that does not parse but names `knip` fails the check rather
+than letting knip read the key), and the run prints `Ignoring knip.json; opt in with ...`. Naming
+`"project"` without a config, or with one knip cannot load, makes the dead-code check a tool error
+that says which.
 
-The layers merge key by key, and some keys always keep or add to nitpicker's value, so the project
-config can't change which files are checked:
+The layers merge key by key:
 
-| Keys                                                                                                                                     | Merge                                                                                                                                                           |
-| ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `entry`                                                                                                                                  | the project's entry files are added to nitpicker's, so a file a host or script loads stops being reported as unused; negated (`!`) entries are not used         |
-| `project`                                                                                                                                | nitpicker's source and test roots; the project's negated patterns (`!src/generated/**`) are added, its other patterns are not                                   |
-| `ignore`, `ignoreFiles`, `ignoreDependencies`, `ignoreBinaries`, `ignoreMembers`, `ignoreUnresolved`, `ignoreWorkspaces`, `ignoreIssues` | added to nitpicker's                                                                                                                                            |
-| `rules`, `include`, `exclude`, `ignoreExportsUsedInFile`, `includeEntryExports`, `cycles`, `tags`                                        | the project's value under `["project"]` and `["project", "nitpicker"]`; nitpicker's (every issue type knip reports by default) under `["nitpicker", "project"]` |
-| `paths` and plugin settings (`"vitest": { "entry": [...] }`, `"eslint": false`)                                                          | the project's, unless nitpicker sets the same one; the production run that finds test-only exports still switches the test runner plugins off                   |
-| `workspaces`                                                                                                                             | the `"."` entry is merged as the root config; the other workspaces keep the project's settings                                                                  |
-| `$schema`, `treatConfigHintsAsErrors`, `treatTagHintsAsErrors`, `compilers`                                                              | nitpicker's                                                                                                                                                     |
+| Keys                                                                                                 | Merge                                                                                                                                                               |
+| ---------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `entry`                                                                                              | the project's entry files are added to nitpicker's, so a file a host or script loads stops being reported as unused; negated (`!`) entries are not used             |
+| `project`                                                                                            | nitpicker's source and test roots; the project's negated patterns (`!src/generated/**`) are added, its other patterns are not                                       |
+| `ignore`, `ignoreFiles`, `ignoreDependencies`, `ignoreBinaries`, `ignoreMembers`, `ignoreUnresolved` | added to nitpicker's                                                                                                                                                |
+| `ignoreWorkspaces`, `ignoreIssues`                                                                   | added to nitpicker's                                                                                                                                                |
+| `rules`, `include`, `exclude`, `ignoreExportsUsedInFile`, `includeEntryExports`, `cycles`, `tags`    | the project's value under `["project"]` and `["project", "nitpicker"]`; nitpicker's (every issue type knip reports by default) under `["nitpicker", "project"]`     |
+| `paths` and plugin settings (`"vitest": { "entry": [...] }`, `"eslint": false`)                      | the project's where nitpicker sets none; where both set one, the first layer's; the production run that finds test-only exports still switches the test runners off |
+| `workspaces`                                                                                         | the `"."` entry is merged as the root config; the other workspaces keep the project's settings                                                                      |
+| `$schema`, `treatConfigHintsAsErrors`, `treatTagHintsAsErrors`, `compilers`                          | nitpicker's                                                                                                                                                         |
 
-`["project"]` and `["project", "nitpicker"]` are the same here: nitpicker's entries, roots and ignores
-stay, because the check relies on them. The config is read from the head checkout, applies to both
-sides of the comparison and is part of the cache key; an edit of it (or of the `knip` key in
-`package.json`) is a policy change, and listing `"project"` at all is a loosening, more so when it
-comes first.
+So the project config can change which files are checked under every ordering: added entries, negated
+`project` patterns, `ignore`, `ignoreFiles`, `ignoreWorkspaces`, plugin entries and nested workspaces
+all take files or workspaces out of the report. nitpicker's own entries, roots and ignores always stay.
+`["project"]` and `["project", "nitpicker"]` are the same here. The config is read from the head
+checkout and applies to both sides of the comparison when both opt in; a base that does not opt in
+keeps nitpicker's config. Its evaluated content is part of the cache key.
+
+Listing `"project"` at all is a loosening, more so when it comes first. While the head opts in, the
+check for policy changes evaluates the config on both sides (the base's only when the base opts in
+too) and compares what applies key by key, so an edit of a file the config imports counts, and key
+order, comments and keys nitpicker never applies change nothing. A key that takes more files,
+dependencies or issues out of the report (an added entry, ignore, negated pattern or ignored issue
+type) and any change to `rules` and the other ranked keys while the project comes first, to `paths`,
+plugin settings or `workspaces` is a loosening that needs a person's acceptance, listed as
+`knip knip.json ignore: ["a/**"] -> ["a/**","b/**"]`; one that only removes entries is listed as a
+change. When either side cannot be evaluated, the change falls back to the files
+(`knip project config changed: knip.ts`).
 
 For `jscpd` (the duplicate-code check, every preset), the project's config is `.jscpd.json` at the
 project root, read from the head checkout for both sides of the comparison. Without the opt-in the
