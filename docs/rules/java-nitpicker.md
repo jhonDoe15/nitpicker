@@ -1,6 +1,6 @@
 # Java and Kotlin: nitpicker rules
 
-The rules nitpicker adds on top of the JVM tools: ArchUnit architecture rules, Spring configuration findings, the formatter check and the suppression scan, in Java and Kotlin projects. This page lists 30 rules. [All pages](README.md).
+The rules nitpicker adds on top of the JVM tools: ArchUnit architecture rules, Spring configuration findings, the formatter check and the suppression scan, in Java and Kotlin projects. This page lists 31 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -137,6 +137,17 @@ A repository depends on a `@Service`: a field, parameter, return type or call. A
 - **Why it is on:** One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes: it keeps the package-by-feature layout, the layering and the aggregate boundaries that the TypeScript preset keeps with its import rules.
 - **Allowed form:** Have the service call \<Class> and pass it what it needs from \<Service>: a repository only reads and writes data and depends on no service.
 - **Exception:** If this is intended, add `{"rule":"archunit/spring-repository-service","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [Java preset guide](../java-preset.md#spring-architecture-rules)
+
+<a id="archunit-spring-request-state"></a>
+
+### `archunit/spring-request-state`
+
+Request data reaches a field of a singleton bean or a static field outside set-up: assigned, written into an array element, or passed to a collection, map, `Map.Entry` or `AtomicReference` mutator (`add`, `put`, `computeIfAbsent`, `set`, ...).
+
+- **Why it is on:** One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes: it keeps the package-by-feature layout, the layering and the aggregate boundaries that the TypeScript preset keeps with its import rules.
+- **Allowed form:** Pass the request data from \<request source> on through parameters and return values instead of passing it to \<Class>.\<field> with \<mutator>(): \<Class> is a singleton that every request shares, so request data kept there leaks between users and races between threads. Per-request data belongs in a @RequestScope bean, and a cache needs a size and an expiry (Spring Cache, Caffeine).
+- **Exception:** If this is intended, add `{"rule":"archunit/spring-request-state","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Java preset guide](../java-preset.md#spring-architecture-rules)
 
 <a id="archunit-spring-scope-capture"></a>

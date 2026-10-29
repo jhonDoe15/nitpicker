@@ -43,7 +43,7 @@ describe('nitpicker with "preset": "python" running the project', () => {
       {
         tool: 'python',
         snapshot: 'head',
-        rule: 'tests-failed',
+        rule: 'tests-not-run',
         path: '.',
         message: 'coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet',
       },

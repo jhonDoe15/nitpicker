@@ -1,5 +1,6 @@
 import { sumToolCount, formatSeconds } from './format/text.mjs';
 import { heldFindings, heldLine } from './format/held-findings.mjs';
+import { noteSectionLines } from './format/notes.mjs';
 import { noticeSection } from './review/notices.mjs';
 import { policyChangeSection } from './review/policy-changes.mjs';
 import { docsUrl } from '../../../shared/messages/docs-url.mjs';
@@ -19,6 +20,7 @@ export function renderTextReport(report, { reference = referenceLinks() } = {}) 
   appendFindingSection(lines, 'Resolved findings', report.resolvedFindings);
   appendMetricSection(lines, report.changedMetrics);
   appendToolErrorSection(lines, report.toolErrors);
+  lines.push(...noteSectionLines(report.notes));
   return `${lines.join('\n')}\n`;
 }
 

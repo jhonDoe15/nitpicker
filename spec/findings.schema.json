@@ -65,7 +65,8 @@
       "additionalProperties": false,
       "properties": {
         "line": { "type": "integer", "minimum": 1 },
-        "column": { "type": "integer", "minimum": 1 }
+        "column": { "type": "integer", "minimum": 1 },
+        "endLine": { "type": "integer", "minimum": 1 }
       }
     },
     "ratchet": {

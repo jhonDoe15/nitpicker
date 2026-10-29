@@ -173,6 +173,29 @@ ${HELD_STRUCTURE_NOTE}
 `),
     );
   });
+  it('merges the red-base notes of every shard, in tool order, and writes them out', () => {
+    const fixture = createFixture();
+    const note = (tool) => ({
+      tool,
+      snapshot: 'base',
+      rule: 'tests-failed',
+      path: '.',
+      message: `${tool} tests fail on the base`,
+    });
+    writeShard(fixture.inputRoot, 0, { tools: ['python'], notes: [note('python')] });
+    writeShard(fixture.inputRoot, 1, { tools: ['java'], notes: [note('java')] });
+    writeShard(fixture.inputRoot, 2, { tools: ['other'] });
+
+    const report = aggregateShardReports({
+      ...fixture,
+      analyzers: [analyzer('python'), analyzer('java'), analyzer('other')],
+      shardCount: 3,
+    });
+
+    expect(report.notes).toEqual([note('java'), note('python')]);
+    expect(readJson(fixture.outputRoot, 'notes.json')).toEqual([note('java'), note('python')]);
+  });
+
   it('uses the shard head policy when the live inventory has uncommitted changes', () => {
     const fixture = createFixture();
     const { root: repositoryRoot, baseSha: headSha } = createGitRepository(

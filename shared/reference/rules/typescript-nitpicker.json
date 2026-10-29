@@ -622,6 +622,23 @@
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/no-unknown-main-folder" },
+    "nitpicker/no-unowned-async-assertion",
+    "Require tests to wait for the callbacks that hold their assertions",
+    [
+      {
+        "message": "This assertion runs in a `{{host}}` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see."
+      },
+      {
+        "message": "This assertion runs in a `{{host}}` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or `await` after scheduling it so it runs before the test ends. An exception fits only when the test waits for the callback in a way nitpicker cannot see."
+      },
+      {
+        "message": "This assertion runs in a `{{host}}` handler, and nothing after it in the test triggers the event or waits for it, so the event can arrive after the test has finished and a failure is lost or blamed on another test. Trigger the event in the test after adding the handler, or await it (`await once(emitter, 'ready')`, or a promise the handler resolves). An exception fits only when the test waits for the callback in a way nitpicker cannot see."
+      },
+      {
+        "message": "This assertion runs in the callback of `{{host}}`, which Node calls after the test function returns, so a failure is lost or blamed on another test. Await the promise form of the API (`node:fs/promises`, `util.promisify`) instead. An exception fits only when the test waits for the callback in a way nitpicker cannot see."
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/no-unowned-async-assertion" },
     "nitpicker/no-unsafe-deserialization",
     "Disallow rebuilding code or objects from untrusted data",
     [
@@ -961,10 +978,10 @@
     [0, 246, 2, 3, 247, 5, 248, 7, 249, -1, -1],
     [0, 250, 2, 3, 251, 5, 252, 7, 253, -1, -1],
     [0, 254, 2, 3, 255, 5, 256, 7, 257, -1, -1],
-    [0, 258, 74, 101, 259, 5, 260, 7, 261, -1, -1],
-    [0, 262, 2, 3, 263, 5, 264, 7, 265, -1, -1],
-    [0, 266, 74, 101, 267, 5, 268, 7, 269, -1, -1],
-    [0, 270, 2, 34, 271, 5, 272, 37, 273, 39, -1],
+    [0, 258, 2, 3, 259, 5, 260, 7, 261, -1, -1],
+    [0, 262, 74, 101, 263, 5, 264, 7, 265, -1, -1],
+    [0, 266, 2, 3, 267, 5, 268, 7, 269, -1, -1],
+    [0, 270, 74, 101, 271, 5, 272, 7, 273, -1, -1],
     [0, 274, 2, 34, 275, 5, 276, 37, 277, 39, -1],
     [0, 278, 2, 34, 279, 5, 280, 37, 281, 39, -1],
     [0, 282, 2, 34, 283, 5, 284, 37, 285, 39, -1],
@@ -974,11 +991,12 @@
     [0, 298, 2, 34, 299, 5, 300, 37, 301, 39, -1],
     [0, 302, 2, 34, 303, 5, 304, 37, 305, 39, -1],
     [0, 306, 2, 34, 307, 5, 308, 37, 309, 39, -1],
-    [0, 310, 311, 312, 313, 5, 314, 7, 315, -1, -1],
-    [0, 316, 2, 3, 317, 5, 318, 7, 319, -1, -1],
+    [0, 310, 2, 34, 311, 5, 312, 37, 313, 39, -1],
+    [0, 314, 315, 316, 317, 5, 318, 7, 319, -1, -1],
     [0, 320, 2, 3, 321, 5, 322, 7, 323, -1, -1],
-    [0, 324, 325, 326, 327, 5, 328, 7, 329, -1, -1],
-    [0, 330, 2, 3, 331, 5, 332, 7, 333, -1, -1],
-    [0, 334, 2, 3, 335, 5, 336, 7, 337, -1, -1]
+    [0, 324, 2, 3, 325, 5, 326, 7, 327, -1, -1],
+    [0, 328, 329, 330, 331, 5, 332, 7, 333, -1, -1],
+    [0, 334, 2, 3, 335, 5, 336, 7, 337, -1, -1],
+    [0, 338, 2, 3, 339, 5, 340, 7, 341, -1, -1]
   ]
 }
