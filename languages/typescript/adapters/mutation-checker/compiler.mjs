@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import path from 'node:path';
 
 function readCompilerConfig(configPath) {
