@@ -11,21 +11,7 @@ INERT_PARENTS = (
     ast.FormattedValue,
 )
 TEST_PARENTS = (ast.If, ast.While, ast.IfExp, ast.Assert)
-OWNING_METHODS = {
-    "cancel",
-    "add_done_callback",
-    "close",
-    "aclose",
-    "stop",
-    "kill",
-    "terminate",
-    "abort",
-    "destroy",
-    "shutdown",
-    "pop",
-    "popitem",
-    "copy",
-}
+OWNING_METHODS = {"cancel", "add_done_callback"}
 COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.GeneratorExp, ast.DictComp)
 
 

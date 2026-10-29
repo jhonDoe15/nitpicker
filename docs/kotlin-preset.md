@@ -436,19 +436,19 @@ declarations, across all modules of the build; a call that cannot be tied to one
 an unclear case is not flagged. A file nested deeper than even the large stack of that program allows is
 skipped with a note on stderr.
 
-| Rule id                                  | Where                                       | Flags                                                                                                                                                                                                                                                             |
-| ---------------------------------------- | ------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`         | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during`                                                                                            |
-| `DisabledTest`                           | `review-rules/tests/honesty/`               | a skipped test: `@Disabled`, `@Ignore`, `@Ignored` (also aliased or carried by an annotation), Kotest `xtest`, `xcontext`, `xdescribe`, `xit`, `xshould`, `xgiven`, a `!` name prefix, a `.config(...)` that never runs, a constant false condition or assumption |
-| `FocusedTest`                            | `review-rules/tests/honesty/`               | a Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`                                                                                                                               |
-| `AssertionInControlFlow`                 | `review-rules/tests/honesty/`               | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                             |
-| `CoroutineEscapesTest`                   | `review-rules/tests/coroutines/`            | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                           |
-| `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                   |
-| `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                                                                                                                      |
-| `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                                      |
-| `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                              |
-| `timeout-abandons-operation`             | `review-rules/main/timeouts.mjs`            | a timeout that stops waiting but leaves the work running: `future.get(timeout, unit)` without a cancel or rethrow, `orTimeout`/`completeOnTimeout` on `supplyAsync`/`runAsync`, `withTimeout { work.await() }` on a coroutine started in an outside scope         |
-| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                                                                                          |
+| Rule id                                  | Where                                       | Flags                                                                                                                                                                                                                                                               |
+| ---------------------------------------- | ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`         | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during`                                                                                              |
+| `DisabledTest`                           | `review-rules/tests/honesty/`               | a skipped test: `@Disabled`, `@Ignore`, `@Ignored` (also aliased or carried by an annotation), Kotest `xtest`, `xcontext`, `xdescribe`, `xit`, `xshould`, `xgiven`, a `!` name prefix, a `.config(...)` that never runs, a constant false condition or assumption   |
+| `FocusedTest`                            | `review-rules/tests/honesty/`               | a Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`                                                                                                                                 |
+| `AssertionInControlFlow`                 | `review-rules/tests/honesty/`               | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                               |
+| `CoroutineEscapesTest`                   | `review-rules/tests/coroutines/`            | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                             |
+| `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                     |
+| `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`        | a member and its plural form (`tag` and `tags`) in one class                                                                                                                                                                                                        |
+| `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`     | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                                        |
+| `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`     | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                                |
+| `timeout-abandons-operation`             | `review-rules/main/timeouts.mjs`            | a timeout that stops waiting but leaves the work running: `future.get(timeout, unit)` without a cancel or rethrow, `get`, `orTimeout` or `completeOnTimeout` on `supplyAsync`/`runAsync`, `withTimeout { work.await() }` on a coroutine started in an outside scope |
+| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`      | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                                                                                            |
 
 Limits, all chosen to flag less rather than guess:
 
@@ -482,19 +482,34 @@ Limits, all chosen to flag less rather than guess:
   stereotype (`@Component`, `@Service`, `@Repository`, `@Controller`, `@RestController`, `@ControllerAdvice`,
   `@Configuration`, `@SpringBootApplication`).
 - Timeouts (`pmd/timeout-abandons-operation`, main sources only, the Kotlin form of the rule every preset
-  has under that name): `withTimeout` and `withTimeoutOrNull` cancel the coroutines they start, so they pass.
-  Three forms are reported. `x.get(timeout, unit)` inside a `try` that catches `TimeoutException` (the
-  catch identifies it as `Future.get`, since the facts carry no types) when no such handler calls
-  `cancel`, `shutdownNow`, `shutdown` or `interrupt` or throws and the `finally` block calls none of them.
-  `orTimeout` or `completeOnTimeout` on a chain that starts at `CompletableFuture.supplyAsync(...)` or
-  `runAsync(...)`, directly or through a local `val`, because cancelling a `CompletableFuture` never
-  interrupts its task. And a `withTimeout`/`withTimeoutOrNull` block (imported from `kotlinx.coroutines`,
-  also under an alias or a star import) whose lambda calls `await()` or `join()` on a local `val` that
-  `<scope>.async` or `<scope>.launch` started before the block with an explicit receiver (`GlobalScope`,
-  a stored `CoroutineScope`), when neither the value nor that scope is cancelled
-  (`cancel`, `cancelAndJoin`, `cancelChildren`) anywhere in the function. An `async` without a
-  receiver is a child of the enclosing `coroutineScope` and is cancelled with it, a `Deferred` from a
-  parameter, a property or a function result has an unknown owner, and neither is reported.
+  has under that name; the facts come from `kotlin-psi/timeouts/`): `withTimeout` and `withTimeoutOrNull`
+  cancel the coroutines they start, so they pass. Three forms are reported, with the Java rule's
+  semantics. `x.get(timeout, unit)` inside a `try` that catches `TimeoutException`, when the second
+  argument is a `TimeUnit` constant (`TimeUnit.SECONDS`, or `SECONDS` imported from
+  `java.util.concurrent.TimeUnit`, also under an alias or a star import; the facts carry no types, so
+  the catch and the unit identify `Future.get`, and `cache.get("key", "fallback")` is not read as one),
+  when a timeout handler neither throws (a `throw` inside a lambda or a local function does not count)
+  nor passes `x` to a call other than a log or print call, and the function never stops the work:
+  `cancel(...)` on `x` unless its argument is `false`, `shutdownNow()` on the executor `x` comes from
+  (`val x = pool.submit(...)`, or a call that receives `x`), or `interrupt()` on a local
+  `val t = Thread(x)`; for an `x` of unknown origin (a parameter or a property) `shutdownNow()` or
+  `interrupt()` on any named receiver counts. `shutdown()` and `Thread.currentThread().interrupt()`
+  never count. A `get` on a future that `CompletableFuture.supplyAsync(...)` or `runAsync(...)`
+  started is reported whatever the handler cancels, as is `orTimeout` or `completeOnTimeout` on a
+  chain that starts there, directly or through a local `val`, because cancelling or completing a
+  `CompletableFuture` never interrupts its task; only a rethrow, a hand-off or `shutdownNow()` on the
+  executor passed to `supplyAsync` lets that `get` pass. And a `withTimeout`/`withTimeoutOrNull` block
+  (imported from `kotlinx.coroutines`, also under an alias or a star import) whose lambda calls
+  `await()` or `join()` on a local `val`, or `awaitAll`/`joinAll` with it (`awaitAll(a, b)`,
+  `listOf(a, b).awaitAll()`), that `<scope>.async` or `<scope>.launch` started before the block with
+  an explicit receiver (`GlobalScope`, a stored `CoroutineScope`), when neither the value nor that
+  scope is cancelled (`cancel`, `cancelAndJoin`, `cancelChildren`, also through
+  `scope.coroutineContext.cancelChildren()`) anywhere in the function. An `async` without a receiver
+  is a child of the enclosing `coroutineScope` and is cancelled with it, a `Deferred` from a
+  parameter, a property or a function result has an unknown owner, and neither is reported. The
+  identity is `<owner>.<function>:<form>:<name>` (the enclosing class and function, the form, and the
+  waited variable or the call it is chained on), so it holds no source text and an edit elsewhere
+  does not renumber it.
 - Singular and plural: both members must have the same element type (the plural a list, set,
   collection or array of it). Only the primary-constructor properties of a `data class` and the
   properties of a `@ConfigurationProperties` class are inspected.

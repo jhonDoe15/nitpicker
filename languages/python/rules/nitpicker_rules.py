@@ -26,8 +26,8 @@ def load_checks():
     from security.tls import check as tls
     from silent_tests import unasserted
     from smells import literals, loops, names, secret_logs, secrets
-    from waits import timeouts as abandoned_waits
     from tasks import cleanup, lifetimes
+    from waits import timeouts as abandoned_waits
 
     return [
         declarations,

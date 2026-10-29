@@ -2324,7 +2324,7 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
 | `pmd/ExhaustiveEnumPredicate`    | In main sources: a boolean in a value position (returned, assigned, a lambda body, also inside a larger `&&`/`\|\|` or as a ternary condition there) that compares one subject that reading cannot change (a variable, a `this` field, a no-argument `getX()`/`isX()` call, a record accessor; not `it.next()` or another call) with some constants of one enum, qualified or static-imported (`s == PAID \|\| s == SHIPPED`, `o.status() != A && o.status() != B`, `EnumSet.of(A, B).contains(s)`).                                                                                                                                                                                                                                                                                                                                                                                                     | A `switch` expression without `default`, or a boolean each constant declares (`PAID(true)`).                                                                                                                                                                                         |
 | `pmd/StaticForwardingWrapper`    | In main sources: a static method with parameters whose body only passes them, in order, to another static or same-class method (`return Prices.sum(a, b);`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Call the target directly. Factories named `of` or `from` and copies (`List.copyOf`, `Collections.unmodifiableList`) are allowed.                                                                                                                                                     |
 | `pmd/SingularAndPluralMember`    | In main sources: a record, or a `@ConfigurationProperties` class or a class nested in one, with both `tag` and `tags` (`-s`, `-es`, `y`/`ies`) where the plural is a `List`, `Set`, `Collection`, `Iterable` or array of the singular's type.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Keep the plural; pass one item as a one-element list.                                                                                                                                                                                                                                |
-| `pmd/timeout-abandons-operation` | In main sources: `future.get(timeout, unit)` in a `try` whose `TimeoutException` handler neither calls `cancel(...)`, `shutdownNow()`, `shutdown()` or `interrupt()` nor throws, and `CompletableFuture.orTimeout(...)` or `completeOnTimeout(...)` on a future that comes from `CompletableFuture.supplyAsync(...)` or `runAsync(...)` (also through `thenApply` and other stages, or a local variable).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | `future.cancel(true)` in the handler, or rethrow to the owner; or give the task its own deadline.                                                                                                                                                                                    |
+| `pmd/timeout-abandons-operation` | In main sources: `future.get(timeout, unit)` in a `try` whose `TimeoutException` handler neither rethrows nor hands the future to a call, when the method never calls `cancel(true)` on that future, `shutdownNow()` on the executor that runs it or `interrupt()` on the thread that runs it; and `get` (whatever the handler cancels), `orTimeout(...)` or `completeOnTimeout(...)` on a future that comes from `CompletableFuture.supplyAsync(...)` or `runAsync(...)` (also through `thenApply` and other stages, or a local variable).                                                                                                                                                                                                                                                                                                                                                              | `future.cancel(true)` in the handler, or rethrow to the owner. For `supplyAsync` work: submit it to an `ExecutorService`, wait with `get(timeout, unit)` and `cancel(true)` that `Future`.                                                                                           |
 | `coupling/test-only-export`      | A main class that only test classes use.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Move it to the test sources, or use it from production code.                                                                                                                                                                                                                         |
 
 **Precision notes.**
@@ -2353,24 +2353,38 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   type arguments, reorder or drop parameters.
 - `timeout-abandons-operation` is the Java form of the rule every preset has under that name (the
   TypeScript and Python presets print it under their own tool prefix; a PMD rule printed as
-  `pmd/timeout-abandons-operation` takes the exception with that name). It names the construct
-  through the call it reports (`get`, `orTimeout`, `completeOnTimeout`) and runs on main sources
-  only. `Future.get(timeout, unit)` is matched by resolved signature, so any `Future`, a
-  `CompletableFuture` and `ForkJoinTask` included, counts. It is reported only when the nearest
-  enclosing `try` in the same method or lambda catches `TimeoutException` (alone or in a
-  multi-catch) and the handler holds no `throw`, `cancel(...)`, `shutdownNow()`, `shutdown()` or
-  `interrupt()` call and the `finally` block holds none either; a `get` whose timeout propagates
-  (`throws TimeoutException`, a handler that rethrows, or a `try` that catches only other
-  exceptions) belongs to the caller, and a handler that catches `Exception` is not read as a
-  timeout handler. The cancel call is not matched to the future it cancels, so a loop that cancels
-  every future of a list passes. For a `CompletableFuture` the cancel only completes the future:
-  the task keeps running unless it checks a flag, which is why the message offers an
-  `ExecutorService` and a deadline inside the task as well. `orTimeout` and `completeOnTimeout` are
-  reported when the future they are called on is, through any chain of stage methods, a
-  `supplyAsync(...)` or `runAsync(...)` call, or a local variable initialized with one; a future
-  received as a parameter, built with `new CompletableFuture<>()` or read from a field is not
-  reported, since its producer is unknown. Kotlin reports the same cases in `.kt` files, see
-  [the Kotlin preset](kotlin-preset.md).
+  `pmd/timeout-abandons-operation` takes the exception with that name). It is two XPath rules in
+  `pmd-main-ruleset.xml`, one per message: `timeout-abandons-operation` for a `Future` and
+  `timeout-abandons-async-task` for a `CompletableFuture` that `supplyAsync` or `runAsync` started;
+  `sarif-reports.mjs` prints the second under the first name, so both share the id and the exception
+  route. Each names the construct through the call it reports (`get`, `orTimeout`,
+  `completeOnTimeout`) and runs on main sources only. `Future.get(timeout, unit)` is matched by
+  resolved signature, so any `Future`, a `CompletableFuture` and `ForkJoinTask` included, counts. It
+  is reported only when the nearest enclosing `try` in the same method or lambda catches
+  `TimeoutException` (alone or in a multi-catch) and a handler neither throws (a `throw` inside a
+  lambda or an anonymous class there does not count) nor passes the future to a call other than a
+  log or print call (`stop(future)`, `pending.add(future)`); a `get` whose timeout propagates
+  (`throws TimeoutException`, a handler that rethrows, or a `try` that catches only other exceptions)
+  belongs to the caller, and a handler that catches `Exception` is not read as a timeout handler. The
+  work counts as stopped by a call anywhere in the method, handler, `finally` or after the `try`:
+  `cancel(...)` on the same variable or field the `get` is called on, unless its argument is the
+  literal `false` (`cancel(false)` lets a running task finish); `shutdownNow()` on the executor the
+  future comes from (the receiver of the call that initializes the local, such as `pool.submit(...)`,
+  or of a call that receives the future, such as `pool.execute(task)`); and `interrupt()` on a local
+  `Thread` constructed with the future (`new Thread(task)`). `shutdown()` lets running tasks finish
+  and never counts, and neither does `interrupt()` on `Thread.currentThread()` or a `cancel()` on
+  something else. When the future is a parameter or a field, whose origin the rule cannot see,
+  `shutdownNow()` or `interrupt()` on any named receiver counts. For a future that `supplyAsync` or
+  `runAsync` started (directly, through stage methods, or through a local), `cancel(true)` only
+  completes the future and the task keeps running, so `get` is reported with the `CompletableFuture`
+  message whatever the handler cancels; only a rethrow, a hand-off or `shutdownNow()` on the executor
+  passed to `supplyAsync` passes. A `CompletableFuture` received as a parameter has an unknown
+  producer and is treated like any `Future`. `orTimeout` and `completeOnTimeout` are reported when the
+  future they are called on is, through any chain of stage methods, a `supplyAsync(...)` or
+  `runAsync(...)` call, or a local variable initialized with one; a future received as a parameter,
+  built with `new CompletableFuture<>()` or read from a field is not reported, since its producer is
+  unknown. A cancel through another name (a loop over a list of futures) is not matched and is
+  reported. Kotlin reports the same cases in `.kt` files, see [the Kotlin preset](kotlin-preset.md).
 - `SingularAndPluralMember` compares declared types by simple name, with primitives boxed, and is
   reported on the plural member. Method parameters and varargs record components
   (`record Keys(String key, String... keys)`) are not checked, as the Python preset leaves required

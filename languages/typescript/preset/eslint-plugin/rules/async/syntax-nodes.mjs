@@ -1,18 +1,24 @@
-import { findVariable } from '../analysis/constant-resolution.mjs';
+import { depthFirst, objectChildren } from '../../../../../../shared/traversal.mjs';
+import { findVariable, isFunctionNode, resolveConstant } from '../analysis/constant-resolution.mjs';
 import { memberName, unwrapped } from '../security/security-values.mjs';
 
-function childNodes(node, visitorKeys) {
-  return (visitorKeys[node.type] ?? [])
-    .flatMap((key) => [node[key]].flat())
-    .filter((child) => typeof child?.type === 'string');
+const GLOBAL_OBJECTS = new Set(['globalThis', 'window', 'self', 'global']);
+
+export function nodesIn(root) {
+  if (root === undefined || root === null) {
+    return [];
+  }
+  return [...depthFirst(root, objectChildren)].filter((node) => typeof node.type === 'string');
 }
 
-export function nodesIn(root, visitorKeys) {
-  const found = root === undefined || root === null ? [] : [root];
-  for (const node of found) {
-    found.push(...childNodes(node, visitorKeys));
-  }
-  return found;
+function ownChildren(root, node) {
+  return node !== root && isFunctionNode(node) ? [] : objectChildren(node);
+}
+
+export function ownNodesIn(root) {
+  return [...depthFirst(root, (node) => ownChildren(root, node))].filter(
+    (node) => typeof node.type === 'string',
+  );
 }
 
 function isGlobalName(context, node, name) {
@@ -23,27 +29,34 @@ function isGlobalName(context, node, name) {
   );
 }
 
+function isGlobalValue(context, node, name) {
+  const target = unwrapped(resolveConstant(context, unwrapped(node)));
+  if (target?.type !== 'MemberExpression') {
+    return isGlobalName(context, target, name);
+  }
+  const owner = unwrapped(target.object);
+  return (
+    memberName(target) === name &&
+    owner.type === 'Identifier' &&
+    GLOBAL_OBJECTS.has(owner.name) &&
+    isGlobalName(context, owner, owner.name)
+  );
+}
+
 export function globalMemberCall(context, node, qualified) {
   const [owner, method] = qualified.split('.');
   const callee = node?.type === 'CallExpression' ? unwrapped(node.callee) : undefined;
   return (
     callee?.type === 'MemberExpression' &&
-    isGlobalName(context, unwrapped(callee.object), owner) &&
-    memberName(callee) === method
+    memberName(callee) === method &&
+    isGlobalValue(context, callee.object, owner)
   );
 }
 
 export function isGlobalTimerCall(context, node) {
-  if (node?.type !== 'CallExpression') {
-    return false;
-  }
-  const callee = unwrapped(node.callee);
-  return (
-    isGlobalName(context, callee, 'setTimeout') ||
-    globalMemberCall(context, node, 'globalThis.setTimeout')
-  );
+  return node?.type === 'CallExpression' && isGlobalValue(context, node.callee, 'setTimeout');
 }
 
 export function isPromiseConstruction(context, node) {
-  return node?.type === 'NewExpression' && isGlobalName(context, node.callee, 'Promise');
+  return node?.type === 'NewExpression' && isGlobalValue(context, node.callee, 'Promise');
 }

@@ -23,7 +23,6 @@ final class State {
   private final String relative;
   private final Lines lines;
   private final Map<String, String> waitImports = new HashMap<>();
-  private final Map<String, String> timeoutBlocks = new HashMap<>();
 
   State(KtFile file, String text, String relative, boolean test) {
     this.file = file;
@@ -38,18 +37,8 @@ final class State {
         if (Calls.WAIT_NAMES.contains(simple)) {
           waitImports.put(path.getAlias() == null ? simple : path.getAlias().asString(), full);
         }
-        if (Timeouts.BLOCKS.contains(simple) && path.getAlias() != null) {
-          timeoutBlocks.put(path.getAlias().asString(), simple);
-        }
       }
     }
-  }
-
-  String timeoutBlock(String name) {
-    if (timeoutBlocks.containsKey(name)) {
-      return timeoutBlocks.get(name);
-    }
-    return Timeouts.BLOCKS.contains(name) ? name : null;
   }
 
   Set<String> namesOf(String qualified) {

@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import nitpicker.kotlinpsi.bodies.Bodies;
 import nitpicker.kotlinpsi.common.Frame;
+import nitpicker.kotlinpsi.timeouts.Timeouts;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
 
@@ -28,7 +29,7 @@ public final class FactsCollector {
     this.state = new State(file, text, relative, test);
     this.declarations = new Declarations(state);
     this.calls = new Calls(state);
-    this.timeouts = new Timeouts(state);
+    this.timeouts = new Timeouts(file, text, state.timeouts);
     this.predicates = new Predicates(state);
     this.bodies = new Bodies(text, test, nothing, state.namesOf(HANDLER));
   }
@@ -101,7 +102,7 @@ public final class FactsCollector {
       declarations.declareTypeAlias((KtTypeAlias) element);
     } else if (element instanceof KtCallExpression) {
       calls.call((KtCallExpression) element, frame);
-      timeouts.call((KtCallExpression) element);
+      timeouts.call((KtCallExpression) element, frame);
     } else if (element instanceof KtSuperTypeCallEntry) {
       KtSuperTypeCallEntry entry = (KtSuperTypeCallEntry) element;
       calls.delegation(element, nameOf(entry.getCalleeExpression()), entry.getValueArguments(), List.of());

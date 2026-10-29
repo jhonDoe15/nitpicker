@@ -112,9 +112,10 @@ Before you change code other modules use, or fix a bug, read
   `catch (RuntimeException)`, `catch (Throwable)` and `catch (NullPointerException)` fail. Keep
   the `try` around the one call that throws.
 - A timeout stops waiting, not the work (`pmd/timeout-abandons-operation`): in the `TimeoutException`
-  handler of `future.get(1, SECONDS)` call `future.cancel(true)` or rethrow; `orTimeout` and
-  `completeOnTimeout` on `supplyAsync` leave the task running, so run it on an executor and cancel
-  its `Future`, or give the task a deadline it checks.
+  handler of `future.get(1, SECONDS)` call `cancel(true)` on that future (not `cancel(false)` or
+  `shutdown()`) or rethrow. A `supplyAsync` or `runAsync` future never interrupts its task, with
+  `get`, `orTimeout`, `completeOnTimeout` or `cancel(true)`: submit the work to an `ExecutorService`
+  and cancel the `Future` it returns.
 - Expected failures are values: a `sealed interface` result returning
   `new QuantityParse.Invalid(text)` beats throwing.
 

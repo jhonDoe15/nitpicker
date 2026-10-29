@@ -1,11 +1,12 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { createScripts } from '../test-support/python-script-helpers.mjs';
+import { createScripts } from '../../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const { cleanup, outcomes } = createScripts({ hidden: ['swallowed-exception'] });
 afterEach(cleanup);
 
-const WAIT = 'timeout-abandons-operation:3 asyncio.wait';
+const WAIT = 'timeout-abandons-operation:3 asyncio.wait(timeout=...)';
+const FIRST = 'timeout-abandons-operation:3 asyncio.wait(return_when=FIRST_COMPLETED)';
 const SHIELD = (inner, line = 4) =>
   `timeout-abandons-operation:${String(line)} asyncio.wait_for(asyncio.shield(${inner}))`;
 
@@ -53,7 +54,49 @@ const WAIT_CASES = [
   [
     'first completed',
     ['done, pending = await asyncio.wait(tasks, return_when=asyncio.FIRST_COMPLETED)'],
+    [FIRST],
+  ],
+  [
+    'pending cleared',
+    ['done, pending = await asyncio.wait(tasks, timeout=5)', 'pending.clear()'],
     [WAIT],
+  ],
+  [
+    'pending copied',
+    ['done, pending = await asyncio.wait(tasks, timeout=5)', 'owner.seen = pending.copy()'],
+    [WAIT],
+  ],
+  ['starred rest unused', ['done, *rest = await asyncio.wait(tasks, timeout=5)'], [WAIT]],
+  ['starred rest discarded', ['done, *_ = await asyncio.wait(tasks, timeout=5)'], [WAIT]],
+  [
+    'starred rest gathered',
+    ['done, *rest = await asyncio.wait(tasks, timeout=5)', 'await asyncio.gather(*rest[0])'],
+    [],
+  ],
+  [
+    'awaited tasks cancelled',
+    [
+      'done, pending = await asyncio.wait(tasks, timeout=5)',
+      'for task in tasks:',
+      '    task.cancel()',
+    ],
+    [],
+  ],
+  [
+    'awaited tasks cancelled in finally',
+    [
+      'try:',
+      '    done, _ = await asyncio.wait(tasks, timeout=5)',
+      'finally:',
+      '    for task in tasks:',
+      '        task.cancel()',
+    ],
+    [],
+  ],
+  [
+    'task group owns its tasks',
+    ['async with asyncio.TaskGroup() as group:', '    group.create_task(work())'],
+    [],
   ],
   [
     'cancelled in a loop',
@@ -139,6 +182,20 @@ const SHIELD_CASES = [
       'except asyncio.TimeoutError:',
       '    return await task',
     ],
+    [],
+  ],
+  [
+    'annotated task',
+    [
+      'task: asyncio.Task[str] = asyncio.create_task(work())',
+      'return await asyncio.wait_for(asyncio.shield(task), 5)',
+    ],
+    [SHIELD('task')],
+  ],
+  ['no timeout', ['return await asyncio.wait_for(asyncio.shield(work()), None)'], []],
+  [
+    'keyword no timeout',
+    ['return await asyncio.wait_for(asyncio.shield(work()), timeout=None)'],
     [],
   ],
   ['task owned by the caller', ['return await asyncio.wait_for(asyncio.shield(tasks), 5)'], []],

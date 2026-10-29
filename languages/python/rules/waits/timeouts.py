@@ -26,20 +26,28 @@ def is_none(node):
     return isinstance(node, ast.Constant) and node.value is None
 
 
+def keyword_name(node):
+    if isinstance(node, ast.Attribute):
+        return node.attr
+    return node.id if isinstance(node, ast.Name) else "..."
+
+
 def ends_with_all_completed(node):
-    name = node.attr if isinstance(node, ast.Attribute) else getattr(node, "id", "")
-    return name == KEEPS_RUNNING
+    return keyword_name(node) == KEEPS_RUNNING
 
 
-def returns_early(call):
+def early_return(call):
     if any(item.arg is None for item in call.keywords):
-        return False
-    for item in call.keywords:
-        if item.arg == "timeout" and not is_none(item.value):
-            return True
-        if item.arg == "return_when" and not ends_with_all_completed(item.value):
-            return True
-    return False
+        return None
+    keywords = {item.arg: item.value for item in call.keywords}
+    timeout = keywords.get("timeout")
+    until = keywords.get("return_when")
+    parts = []
+    if timeout is not None and not is_none(timeout):
+        parts.append("timeout=...")
+    if until is not None and not ends_with_all_completed(until):
+        parts.append(f"return_when={keyword_name(until)}")
+    return f"{WAIT}({', '.join(parts)})" if parts else None
 
 
 def pending_of(call, context):
@@ -55,24 +63,45 @@ def pending_of(call, context):
     if not isinstance(target, (ast.Tuple, ast.List)) or len(target.elts) != 2:
         return HANDED_OFF
     second = target.elts[1]
+    if isinstance(second, ast.Starred):
+        second = second.value
     if isinstance(second, ast.Name):
         return DROPPED if second.id == "_" else second.id
-    return DROPPED if isinstance(second, ast.Starred) else HANDED_OFF
+    return HANDED_OFF
+
+
+def owns_awaited(call, function, context):
+    if not call.args or not isinstance(call.args[0], ast.Name):
+        return False
+    awaited = call.args[0]
+    return is_owned(awaited.id, function, context, ignore=(awaited,))
 
 
 def abandoned_wait(call, function, context):
-    if imported_name(call.func, context) != WAIT or not returns_early(call):
+    if imported_name(call.func, context) != WAIT:
+        return None
+    subject = early_return(call)
+    if subject is None:
         return None
     pending = pending_of(call, context)
-    if pending == HANDED_OFF:
+    if pending == HANDED_OFF or owns_awaited(call, function, context):
         return None
     if pending != DROPPED and is_owned(pending, function, context):
         return None
-    return WAIT
+    return subject
+
+
+def wait_for_timeout(call):
+    if len(call.args) > 1:
+        return call.args[1]
+    return next((item.value for item in call.keywords if item.arg == "timeout"), None)
 
 
 def shielded_name(call, context):
     if imported_name(call.func, context) != WAIT_FOR or not call.args:
+        return None
+    timeout = wait_for_timeout(call)
+    if timeout is None or is_none(timeout):
         return None
     shield = call.args[0]
     if not isinstance(shield, ast.Call) or not shield.args:
@@ -82,13 +111,18 @@ def shielded_name(call, context):
     return shield
 
 
+def assigned_names(node):
+    if isinstance(node, ast.Assign):
+        return node.targets
+    return [node.target] if isinstance(node, ast.AnnAssign) else []
+
+
 def created_in(name, function):
     return any(
-        isinstance(node, ast.Assign)
-        and isinstance(node.value, ast.Call)
+        isinstance(getattr(node, "value", None), ast.Call)
         and any(
             isinstance(target, ast.Name) and target.id == name
-            for target in node.targets
+            for target in assigned_names(node)
         )
         for node in own_nodes(function)
     )

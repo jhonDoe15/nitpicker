@@ -29,3 +29,14 @@ async def logged(logger, tasks):
     for task in pending:
         logger.warning("still running %s", task.get_name())
     return done
+
+
+async def first_failure(tasks):
+    done, *rest = await asyncio.wait(tasks, return_when=asyncio.FIRST_EXCEPTION)
+    return done
+
+
+async def cleared(tasks):
+    done, pending = await asyncio.wait(tasks, timeout=1)
+    pending.clear()
+    return done

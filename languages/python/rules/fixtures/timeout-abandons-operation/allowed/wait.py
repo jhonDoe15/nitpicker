@@ -50,3 +50,28 @@ async def cancels_on_timeout(task):
 async def scoped(work):
     async with asyncio.timeout(5):
         return await work()
+
+
+async def cancel_awaited(tasks):
+    try:
+        done, _ = await asyncio.wait(tasks, timeout=5)
+    finally:
+        for task in tasks:
+            task.cancel()
+    return done
+
+
+async def task_group(work):
+    async with asyncio.TaskGroup() as group:
+        group.create_task(work())
+
+
+async def cancelled_later(owner, tasks):
+    done, pending = await asyncio.wait(tasks, timeout=5)
+
+    def stop():
+        for task in pending:
+            task.cancel()
+
+    owner.stop = stop
+    return done

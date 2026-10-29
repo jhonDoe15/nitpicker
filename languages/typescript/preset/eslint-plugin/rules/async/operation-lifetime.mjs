@@ -6,13 +6,15 @@ import {
 } from '../analysis/constant-resolution.mjs';
 import { configState } from '../security/http/http-config.mjs';
 import { memberName, unwrapped } from '../security/security-values.mjs';
+import { settlementChain } from './race-operations.mjs';
 import { globalMemberCall, nodesIn } from './syntax-nodes.mjs';
 
-const SIGNAL_KEYS = ['signal', 'abortSignal', 'cancelToken', 'timeout'];
-const SIGNAL_NAME = /(?:signal|abort|cancel)|^controller$/iu;
-const OPTIONS_NAME = /^(?:options?|opts?|init|config|settings|context|ctx|request|req|params)$/iu;
+const SIGNAL_KEYS = ['signal', 'abortSignal', 'cancelToken'];
+const SIGNAL_NAME = /^(?:signal|controller|abortController|cancelToken|[a-z]\w*Signal)$/u;
+const OPTIONS_NAME = /^(?:options?|opts?|init|settings)$/u;
 const SIGNAL_FACTORIES = ['timeout', 'any', 'abort'];
 const CLEANUP_METHODS = new Set(['abort', 'cancel', 'destroy', 'kill', 'terminate', 'dispose']);
+const HANDLE_TYPES = new Set(['Identifier', 'MemberExpression', 'ThisExpression']);
 
 function ownsLifetime(context, argument) {
   const target = unwrapped(resolveConstant(context, unwrapped(argument)));
@@ -50,8 +52,8 @@ function parameterIdentifiers(fn) {
   });
 }
 
-function typedAsSignal(fn, sourceCode) {
-  return fn.params.some((param) => sourceCode.getText(param).includes('AbortSignal'));
+function typedAsSignal(param, sourceCode) {
+  return param.typeAnnotation !== undefined && sourceCode.getText(param).includes('AbortSignal');
 }
 
 export function signalParameterOf(context, callee) {
@@ -60,12 +62,11 @@ export function signalParameterOf(context, callee) {
     return undefined;
   }
   const named = parameterIdentifiers(fn).find(
-    (identifier) => identifier?.type === 'Identifier' && SIGNAL_NAME.test(identifier.name),
+    (identifier) =>
+      identifier?.type === 'Identifier' &&
+      (SIGNAL_NAME.test(identifier.name) || typedAsSignal(identifier, context.sourceCode)),
   );
-  if (named !== undefined) {
-    return named.name;
-  }
-  return typedAsSignal(fn, context.sourceCode) ? 'signal' : undefined;
+  return named?.name;
 }
 
 export function closesOverSignal(context, callee) {
@@ -74,15 +75,48 @@ export function closesOverSignal(context, callee) {
     return false;
   }
   const own = new Set(parameterIdentifiers(fn).map((identifier) => identifier?.name));
-  return nodesIn(fn.body, context.sourceCode.visitorKeys).some(
+  return nodesIn(fn.body).some(
     (node) => node.type === 'Identifier' && SIGNAL_NAME.test(node.name) && !own.has(node.name),
   );
 }
 
-export function cleansUpInFunction(context, node) {
-  const owner = ancestorsOf(node).find((ancestor) => isFunctionNode(ancestor));
-  return nodesIn(owner?.body, context.sourceCode.visitorKeys).some((inner) => {
+function textOf(context, node) {
+  return context.sourceCode.getText(unwrapped(node));
+}
+
+function operationHandles(context, call) {
+  const callee = unwrapped(call.callee);
+  const receiver = callee.type === 'MemberExpression' ? [callee.object] : [];
+  const handles = [...receiver, ...call.arguments].filter((node) =>
+    HANDLE_TYPES.has(unwrapped(node).type),
+  );
+  return new Set(handles.map((node) => textOf(context, node)));
+}
+
+function within(node, root) {
+  return root !== undefined && root !== null && (node === root || ancestorsOf(node).includes(root));
+}
+
+function inTimeoutPath(cleanup, race) {
+  const trying = ancestorsOf(race.node).filter(
+    (ancestor) => ancestor.type === 'TryStatement' && within(race.node, ancestor.block),
+  );
+  return (
+    race.timeouts.some((entry) => within(cleanup, entry)) ||
+    trying.some((owner) => within(cleanup, owner.handler) || within(cleanup, owner.finalizer)) ||
+    settlementChain(race.node).some((link) => link.arguments.some((arg) => within(cleanup, arg)))
+  );
+}
+
+export function cleansUp(context, call, race) {
+  const owner = ancestorsOf(race.node).find((ancestor) => isFunctionNode(ancestor));
+  const handles = operationHandles(context, call);
+  return nodesIn(owner?.body ?? context.sourceCode.ast).some((inner) => {
     const callee = inner.type === 'CallExpression' ? unwrapped(inner.callee) : undefined;
-    return callee?.type === 'MemberExpression' && CLEANUP_METHODS.has(memberName(callee));
+    return (
+      callee?.type === 'MemberExpression' &&
+      CLEANUP_METHODS.has(memberName(callee)) &&
+      (handles.has(textOf(context, callee.object)) || inTimeoutPath(inner, race))
+    );
   });
 }

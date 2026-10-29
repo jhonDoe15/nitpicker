@@ -6,11 +6,13 @@ import {
 } from '../analysis/constant-resolution.mjs';
 import { bindingsOf, importedFunction } from '../security/imported-names.mjs';
 import { memberName, unwrapped } from '../security/security-values.mjs';
+import { returnedValues } from './race-operations.mjs';
 import {
   globalMemberCall,
   isGlobalTimerCall,
   isPromiseConstruction,
   nodesIn,
+  ownNodesIn,
 } from './syntax-nodes.mjs';
 
 const TIMER_MODULES = new Set(['timers/promises', 'node:timers/promises']);
@@ -30,17 +32,24 @@ export function timeoutBindings(program) {
   return { timers: bindingsOf(program, TIMER_MODULES), events: bindingsOf(program, EVENT_MODULES) };
 }
 
-function usesTimerExecutor(scope, node) {
-  if (!isPromiseConstruction(scope.context, node)) {
-    return false;
+function namedIn(root, name) {
+  return nodesIn(root).some((node) => node.type === 'Identifier' && node.name === name);
+}
+
+function timerExecutor(scope, node) {
+  const executor = isPromiseConstruction(scope.context, node) ? node.arguments[0] : undefined;
+  if (!isFunctionNode(executor)) {
+    return undefined;
   }
-  const executor = node.arguments[0];
-  return (
-    isFunctionNode(executor) &&
-    nodesIn(executor.body, scope.context.sourceCode.visitorKeys).some((inner) =>
-      isGlobalTimerCall(scope.context, inner),
-    )
-  );
+  const timers = nodesIn(executor.body).filter((inner) => isGlobalTimerCall(scope.context, inner));
+  if (timers.length === 0) {
+    return undefined;
+  }
+  const reject = executor.params[1];
+  return {
+    text: 'a `new Promise` around `setTimeout`',
+    rejects: reject?.type === 'Identifier' && timers.some((timer) => namedIn(timer, reject.name)),
+  };
 }
 
 function isTimersPromisesCall(scope, node) {
@@ -64,13 +73,16 @@ function isEventsOnce(scope, node) {
 }
 
 function directTimeout(scope, target) {
-  if (usesTimerExecutor(scope, target)) {
-    return 'a `new Promise` around `setTimeout`';
+  const executor = timerExecutor(scope, target);
+  if (executor !== undefined) {
+    return executor;
   }
   if (isTimersPromisesCall(scope, target)) {
-    return '`setTimeout` from `node:timers/promises`';
+    return { text: '`setTimeout` from `node:timers/promises`', rejects: false };
   }
-  return isEventsOnce(scope, target) ? '`once(AbortSignal.timeout(...), "abort")`' : undefined;
+  return isEventsOnce(scope, target)
+    ? { text: '`once(AbortSignal.timeout(...), "abort")`', rejects: false }
+    : undefined;
 }
 
 function parameterNames(nodes) {
@@ -93,23 +105,77 @@ function isTimerOnlyCall(scope, node, parameters) {
   }
   const callee = unwrapped(node.callee);
   if (callee.type === 'MemberExpression') {
-    return memberName(callee) === 'unref';
+    const method = memberName(callee);
+    return (
+      method === 'unref' ||
+      CHAIN_METHODS.has(method) ||
+      globalMemberCall(context, node, 'Promise.reject')
+    );
   }
   const known = callee.type === 'Identifier' && TIMER_CALLS.has(callee.name);
   const settled = callee.type === 'Identifier' && parameters.has(callee.name);
-  return known || settled || isTimersPromisesCall(scope, node);
+  return known || settled || isGlobalTimerCall(context, node) || isTimersPromisesCall(scope, node);
 }
 
-function isTimerFunction(scope, fn) {
-  const nodes = nodesIn(fn.body, scope.context.sourceCode.visitorKeys);
-  const parameters = parameterNames(nodesIn(fn, scope.context.sourceCode.visitorKeys));
+function rejectsIn(scope, fn) {
+  return ownNodesIn(fn.body).some(
+    (node) =>
+      (fn.async && node.type === 'ThrowStatement') ||
+      globalMemberCall(scope.context, node, 'Promise.reject'),
+  );
+}
+
+function chainLink(target) {
+  const callee = target.type === 'CallExpression' ? unwrapped(target.callee) : undefined;
+  return callee?.type === 'MemberExpression' && CHAIN_METHODS.has(memberName(callee))
+    ? { base: callee.object, method: memberName(callee), callback: target.arguments[0] }
+    : undefined;
+}
+
+function throwsFrom(scope, link) {
+  const callback = unwrapped(link.callback);
+  if (link.method !== 'then' || !isFunctionNode(callback)) {
+    return false;
+  }
+  return ownNodesIn(callback.body).some(
+    (node) =>
+      node.type === 'ThrowStatement' || globalMemberCall(scope.context, node, 'Promise.reject'),
+  );
+}
+
+function chainedTimer(scope, entry, find) {
+  const chain = [entry];
+  let thrown = false;
+  for (const current of chain) {
+    const target = unwrapped(resolveConstant(scope.context, unwrapped(current)));
+    const found = target === undefined || chain.length > MAX_DEPTH + 1 ? undefined : find(target);
+    if (found !== undefined) {
+      return { ...found, rejects: found.rejects || thrown };
+    }
+    const link = target === undefined ? undefined : chainLink(target);
+    thrown ||= link !== undefined && throwsFrom(scope, link);
+    if (link !== undefined && chain.length <= MAX_DEPTH) {
+      chain.push(link.base);
+    }
+  }
+  return undefined;
+}
+
+function timerFunction(scope, fn) {
+  const nodes = nodesIn(fn.body);
+  const parameters = parameterNames(nodesIn(fn));
   const calls = nodes.filter(
     (node) => node.type === 'CallExpression' || node.type === 'NewExpression',
   );
-  const timer = nodes.some(
-    (node) => usesTimerExecutor(scope, node) || isTimersPromisesCall(scope, node),
+  const timers = nodes.map((node) => directTimeout(scope, node)).filter(Boolean);
+  if (timers.length === 0 || !calls.every((node) => isTimerOnlyCall(scope, node, parameters))) {
+    return undefined;
+  }
+  const returned = returnedValues(fn).map((value) =>
+    chainedTimer(scope, value, (target) => directTimeout(scope, target)),
   );
-  return timer && calls.every((node) => isTimerOnlyCall(scope, node, parameters));
+  const rejects = [...timers, ...returned].some((timer) => timer?.rejects === true);
+  return { rejects: rejects || rejectsIn(scope, fn) };
 }
 
 function importedHelperName(scope, callee) {
@@ -124,35 +190,28 @@ function helperTimeout(scope, target) {
   if (callee?.type !== 'Identifier') {
     return undefined;
   }
+  const text = `\`${callee.name}(...)\``;
   const fn = resolveFunction(scope.context, callee);
-  const local = fn !== undefined && isTimerFunction(scope, fn);
-  return local || importedHelperName(scope, callee) !== undefined
-    ? `\`${callee.name}(...)\``
-    : undefined;
+  const local = fn === undefined ? undefined : timerFunction(scope, fn);
+  if (local !== undefined) {
+    return { text, rejects: local.rejects };
+  }
+  return importedHelperName(scope, callee) === undefined ? undefined : { text, rejects: true };
 }
 
-function chainedBase(target) {
-  const callee = target.type === 'CallExpression' ? unwrapped(target.callee) : undefined;
-  return callee?.type === 'MemberExpression' && CHAIN_METHODS.has(memberName(callee))
-    ? callee.object
-    : undefined;
+function timerOf(scope, entry) {
+  return chainedTimer(
+    scope,
+    entry,
+    (target) => directTimeout(scope, target) ?? helperTimeout(scope, target),
+  );
+}
+
+export function isTimer(scope, entry) {
+  return timerOf(scope, entry) !== undefined;
 }
 
 export function timeoutOf(scope, entry) {
-  const chain = [entry];
-  for (const current of chain) {
-    const target = unwrapped(resolveConstant(scope.context, unwrapped(current)));
-    const found =
-      target === undefined || chain.length > MAX_DEPTH + 1
-        ? undefined
-        : (directTimeout(scope, target) ?? helperTimeout(scope, target));
-    if (found !== undefined) {
-      return found;
-    }
-    const base = target === undefined ? undefined : chainedBase(target);
-    if (base !== undefined && chain.length <= MAX_DEPTH) {
-      chain.push(base);
-    }
-  }
-  return undefined;
+  const timer = timerOf(scope, entry);
+  return timer?.rejects === true ? timer.text : undefined;
 }
