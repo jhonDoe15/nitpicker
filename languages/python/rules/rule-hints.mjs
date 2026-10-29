@@ -82,9 +82,9 @@ export function describeRuleFinding(rule, subject, libraries = DEFAULT_LIBRARIES
   );
 }
 
-function allowedText(hint, subject, libraries, detail) {
+function allowedText(hint, finding, libraries) {
   return typeof hint.allowed === 'function'
-    ? hint.allowed(subject, libraries, detail)
+    ? hint.allowed(finding.subject, libraries, finding.path, finding.detail)
     : hint.allowed;
 }
 
@@ -112,7 +112,9 @@ export function withHint(finding, libraries = DEFAULT_LIBRARIES) {
   const routed = hint?.exception === false || RULES_ROUTED_BY_A_SETTING.has(rest.rule);
   const sentences = [
     `${rest.message.replace(/\.$/, '')}.`,
-    ...(hint === undefined ? [] : [allowedText(hint, subject, libraries, detail)]),
+    ...(hint === undefined
+      ? []
+      : [allowedText(hint, { subject, detail, path: rest.path }, libraries)]),
     ...(routed
       ? []
       : [exceptionRoute({ rule: rest.rule, path: rest.path, key: PYTHON_EXCEPTIONS_KEY })]),

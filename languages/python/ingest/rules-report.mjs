@@ -22,18 +22,19 @@ function toolError({ rule, path, subject, error }) {
 
 export function ingestRulesReport(text, libraries) {
   const identify = createIdentities();
-  return JSON.parse(text).map(({ rule, path, subject, detail, line, error }) => {
+  return JSON.parse(text).map(({ rule, path, subject, detail, line, error, via }) => {
     if (rule === CHECK_FAILED_RULE || rule === SKIPPED_RULE) {
       return toolError({ rule, path, subject, error });
     }
+    const shown = via ?? subject;
     return {
       tool: RULES_TOOL,
       rule,
       path,
       identity: identify({ path, rule, subject }),
-      subject,
+      subject: shown,
       detail,
-      message: describeRuleFinding(rule, subject, libraries, detail),
+      message: describeRuleFinding(rule, shown, libraries, detail),
       classification: 'enforceable',
       location: { line },
     };
