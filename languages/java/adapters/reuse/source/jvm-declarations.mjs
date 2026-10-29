@@ -5,6 +5,7 @@ import {
   isKotlinModifier,
   javaMembers,
   kotlinMembers,
+  MAX_MODIFIERS,
   topLevelIndexes,
 } from './jvm-members.mjs';
 
@@ -38,9 +39,12 @@ const KOTLIN_TYPES = new Map([
   ['typealias', 'type'],
 ]);
 const NAME_PARTS = new Set(['identifier']);
-const MAX_MODIFIERS = 16;
 const BODY_OPENERS = new Set(['{']);
 const ASSIGNMENT = new Set(['=']);
+const ANGLE_DEPTH = new Map([
+  ['<', 1],
+  ['>', -1],
+]);
 const JAVA_MEMBER_MARKS = new Set(['(', '=', ';', '{']);
 const PROPERTY_MARKS = new Set([':', '=', 'by', 'get']);
 const FUNCTION_MARKS = new Set(['(', '{', '=']);
@@ -168,9 +172,37 @@ function initializer(tokens, close, { from, to }) {
   return assign === -1 ? [] : tokens.slice(assign + 1, end);
 }
 
+function javaModifiers(tokens, close, from) {
+  const modifiers = new Set();
+  const positions = [from];
+  for (const index of positions) {
+    const { text } = tokens[index] ?? {};
+    if (text === '@' && tokens[index + 1]?.text !== 'interface') {
+      positions.push(annotationsEnd(tokens, close, index));
+    } else if (JAVA_MODIFIERS.has(text)) {
+      modifiers.add(text);
+      positions.push(index + 1);
+    }
+  }
+  return { modifiers, index: positions.at(-1) };
+}
+
+function declaresSeveral(tokens, close, range) {
+  let depth = 0;
+  let assigned = false;
+  for (const index of topLevelIndexes(close, range)) {
+    const { text } = tokens[index];
+    depth += assigned ? 0 : (ANGLE_DEPTH.get(text) ?? 0);
+    assigned = assigned || text === '=';
+    if (text === ',' && depth === 0) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function javaMember(tokens, close, member) {
-  const start = annotationsEnd(tokens, close, member.start);
-  const { modifiers, index } = modifiersOf(tokens, start, (text) => JAVA_MODIFIERS.has(text));
+  const { modifiers, index } = javaModifiers(tokens, close, member.start);
   const { text } = tokens[index] ?? {};
   if (text === '@' && tokens[index + 1]?.text === 'interface') {
     return { modifiers, kind: 'type', name: tokens[index + 2]?.text, type: true };
@@ -183,7 +215,8 @@ function javaMember(tokens, close, member) {
     return { modifiers, kind: 'function', name: tokens[mark - 1]?.text, paren: mark, from: index };
   }
   const nameIndex = lastIdentifierBefore(tokens, index, mark === -1 ? member.end : mark);
-  return { modifiers, kind: 'field', name: tokens[nameIndex]?.text };
+  const kind = declaresSeveral(tokens, close, { from: index, to: member.end }) ? 'fields' : 'field';
+  return { modifiers, kind, name: tokens[nameIndex]?.text };
 }
 
 function kotlinFunction(tokens, close, range) {
@@ -218,9 +251,10 @@ function kotlinTypeKind(modifiers, keyword) {
 
 function kotlinType(modifiers, keyword, nameToken) {
   const named = nameToken?.kind === 'identifier' && !isKotlinModifier(nameToken.text);
+  const companion = modifiers.has('companion') ? 'Companion' : undefined;
   return {
     kind: kotlinTypeKind(modifiers, keyword),
-    name: named ? nameToken.text : 'Companion',
+    name: named ? nameToken.text : companion,
     type: true,
   };
 }
@@ -240,9 +274,15 @@ function kotlinMember(tokens, close, member) {
   return found === undefined ? undefined : { modifiers, ...found, from: index };
 }
 
+function kotlinVariable(tokens, close, range) {
+  const found = kotlinProperty(tokens, close, range);
+  return found === undefined ? undefined : { ...found, kind: 'variable' };
+}
+
 const KOTLIN_MEMBER_READERS = new Map([
   ['fun', kotlinFunction],
   ['val', kotlinProperty],
+  ['var', kotlinVariable],
 ]);
 
 export const LANGUAGE_RULES = {

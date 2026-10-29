@@ -157,6 +157,47 @@ describe('duplicate-definition on Java and Kotlin', () => {
   });
 });
 
+describe('duplicate-definition keys', () => {
+  it('tells apart copies that name different library types, own state or other base classes', () => {
+    const use = (name) => `  int ${name.toLowerCase()}() { return 1; }\n`;
+    const files = {
+      [`${JAVA_ROOT}/shop/a/A.java`]: javaClass(
+        'shop.a',
+        'A',
+        `  public static String f(Date x) { return x.toString(); }\n${use('A')}`,
+        'import java.util.Date;\n\n',
+      ),
+      [`${JAVA_ROOT}/shop/b/B.java`]: javaClass(
+        'shop.b',
+        'B',
+        `  public static String f(Date x) { return x.toString(); }\n${use('B')}`,
+        'import java.sql.Date;\n\n',
+      ),
+      [`${JAVA_ROOT}/shop/c/C.java`]: javaClass(
+        'shop.c',
+        'C',
+        '  private static int counter;\n  private static int next() { return ++counter; }\n  int a() { return next(); }\n',
+      ),
+      [`${JAVA_ROOT}/shop/d/D.java`]: javaClass(
+        'shop.d',
+        'D',
+        '  private static int counter;\n  private static int next() { return ++counter; }\n  int a() { return next(); }\n',
+      ),
+      [`${JAVA_ROOT}/shop/use/Use.java`]: javaClass(
+        'shop.use',
+        'Use',
+        '  void run() { shop.a.A.f(null); shop.b.B.f(null); }\n',
+      ),
+      [`${JAVA_ROOT}/shop/e/E.java`]:
+        'package shop.e;\n\nclass E extends BaseE {\n  private static int twice() { return LIMIT * 2; }\n  int a() { return twice(); }\n}\n',
+      [`${JAVA_ROOT}/shop/f/F.java`]:
+        'package shop.f;\n\nclass F extends BaseF {\n  private static int twice() { return LIMIT * 2; }\n  int a() { return twice(); }\n}\n',
+    };
+
+    expect(findings(files)).toEqual([]);
+  });
+});
+
 describe('exported-name-collision on Java and Kotlin', () => {
   const MONEY = {
     [`${JAVA_ROOT}/shop/money/Money.java`]: javaClass(

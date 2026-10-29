@@ -4,6 +4,44 @@ const OPENERS = new Map([
   ['{', '}'],
 ]);
 const CLOSERS = new Set(OPENERS.values());
+export const MAX_MODIFIERS = 16;
+const MEMBER_BOUNDARIES = new Set([';', '{']);
+const CONTINUATIONS = new Set([
+  '=',
+  ',',
+  '(',
+  '[',
+  '->',
+  ':',
+  '&&',
+  '||',
+  '+',
+  '-',
+  '*',
+  '/',
+  '%',
+  '.',
+  '?.',
+  '?:',
+  '!',
+  '==',
+  '!=',
+  '===',
+  '!==',
+  '<=',
+  '>=',
+  '..',
+  '..<',
+  '::',
+  'in',
+  'is',
+  'as',
+  '+=',
+  '-=',
+  '*=',
+  '/=',
+  '%=',
+]);
 const INITIALIZER_MARKS = new Set(['=', '->']);
 const NAME_SEPARATORS = new Set(['.', ':']);
 const ARGUMENT_OPENERS = new Set(['(', '[']);
@@ -109,16 +147,27 @@ export function javaMembers(tokens, close, range) {
   return members;
 }
 
-function startsKotlinMember(tokens, index) {
-  const { text } = tokens[index];
+function startsLine(tokens, index) {
   const previous = tokens[index - 1];
-  const newLine =
-    previous === undefined || previous.line < tokens[index].line || previous.text === ';';
-  return newLine && (text === '@' || KOTLIN_MODIFIERS.has(text) || KOTLIN_KEYWORDS.has(text));
+  return (
+    previous === undefined ||
+    MEMBER_BOUNDARIES.has(previous.text) ||
+    (previous.line < tokens[index].line && !CONTINUATIONS.has(previous.text))
+  );
 }
 
-function declares(tokens, from, to) {
-  return tokens.slice(from, to).some(({ text }) => KOTLIN_KEYWORDS.has(text));
+function declaresAhead(tokens, index) {
+  const ahead = tokens.slice(index, index + MAX_MODIFIERS);
+  const keyword = ahead.findIndex(({ text }) => KOTLIN_KEYWORDS.has(text));
+  return keyword !== -1 && ahead.slice(0, keyword).every(({ text }) => KOTLIN_MODIFIERS.has(text));
+}
+
+function startsKotlinMember(tokens, { index, from }) {
+  const { text } = tokens[index];
+  if (index !== from && !startsLine(tokens, index)) {
+    return false;
+  }
+  return text === '@' || KOTLIN_KEYWORDS.has(text) || declaresAhead(tokens, index);
 }
 
 function trimmedEnd(tokens, start, end) {
@@ -128,10 +177,14 @@ function trimmedEnd(tokens, start, end) {
 
 export function kotlinMembers(tokens, close, range) {
   const starts = [];
+  let declared = true;
   for (const index of topLevelIndexes(close, range)) {
-    const pending = starts.length > 0 && !declares(tokens, starts.at(-1), index);
-    if (!pending && startsKotlinMember(tokens, index)) {
+    const { text } = tokens[index];
+    if (declared && startsKotlinMember(tokens, { index, from: range.from })) {
       starts.push(index);
+      declared = KOTLIN_KEYWORDS.has(text);
+    } else {
+      declared = declared || KOTLIN_KEYWORDS.has(text);
     }
   }
   return starts.map((start, position) => ({
