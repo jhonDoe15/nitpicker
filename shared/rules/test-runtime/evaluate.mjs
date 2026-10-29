@@ -12,7 +12,7 @@
 // Each finding is enforceable and keyed by test path and source hash; the category counts and the
 // other summary figures are descriptive metrics.
 
-import { addMetric, hash, summaryMetrics } from './finding-helpers.mjs';
+import { addMetric, hash, summaryMetrics } from '../finding-helpers.mjs';
 
 export function evaluateTestRuntime(report, analyzerName) {
   const findings = summaryMetrics(analyzerName, report.summary, 'test-runtime', ['categories']);
