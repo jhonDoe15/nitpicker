@@ -23,7 +23,6 @@ import {
   DEEP_CHAIN,
   FLAT,
   INITIALIZERS,
-  LIFETIMES,
   MULTIFILE_A,
   MULTIFILE_B,
   NESTING,
@@ -32,11 +31,14 @@ import {
   UNITS,
 } from './test-support/kotlin-metrics-sources.mjs';
 import {
+  LIFETIME_FACTS,
+  LIFETIMES,
+  lifetimeFacts,
   LOAD_EFFECTS,
   LOAD_FINDINGS,
   LOAD_HELPERS,
   LOAD_SINGLETONS,
-} from './test-support/kotlin-load-sources.mjs';
+} from './test-support/kotlin-fact-sources.mjs';
 
 // Compiles and runs kotlin-psi, the PSI program behind Kotlin structure, CRAP, coupling and the
 // review rules, on source files. It needs Java 21, Gradle and network access to Maven Central (for
@@ -366,37 +368,8 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
 
   it('collects the calls of finally and CancellationException handlers outside NonCancellable, and the launches of use blocks', () => {
     const { facts } = measure(writeSources('lifetimes', { 'src/Lifetimes.kt': LIFETIMES }));
-    const [lifetimes] = facts.files;
 
-    expect(
-      lifetimes.cleanupCalls.map(
-        ({ section, function: name, name: callee, receiverType }) =>
-          `${section} ${name} ${callee}${receiverType === undefined ? '' : ` ${receiverType}`}`,
-      ),
-    ).toEqual([
-      'finally cleanup delay',
-      'finally cleanup join Job',
-      'finally cleanup lock Mutex',
-      'finally cleanup launch CoroutineScope',
-      'finally cleanup runCatching',
-      'finally cleanup yield',
-      'catch cancelled delay',
-      'finally releases shieldedRelease',
-    ]);
-    expect(lifetimes.functions.filter(({ shielded }) => shielded).map(({ name }) => name)).toEqual([
-      'shielded',
-      'shieldedRelease',
-    ]);
-    expect(
-      lifetimes.useLaunches.map(
-        ({ function: name, resource, opened, scope, scopeType, implicit }) =>
-          `${name} ${resource} ${opened} ${scope ?? implicit} ${scopeType ?? ''}`.trim(),
-      ),
-    ).toEqual([
-      'uses reader resource other CoroutineScope',
-      'uses it resource class',
-      'uses reader resource other CoroutineScope',
-    ]);
+    expect(lifetimeFacts(facts.files[0])).toEqual(LIFETIME_FACTS);
   });
 
   it('names a predicate in a property initializer after the property and keeps backticked constants', () => {
