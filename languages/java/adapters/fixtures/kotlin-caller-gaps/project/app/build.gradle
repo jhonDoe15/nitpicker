@@ -1,0 +1,12 @@
+sourceSets {
+    integrationTest
+    benchmark
+    latest
+}
+
+dependencies {
+    implementation project(':api')
+    testImplementation project(':tools')
+    integrationTestImplementation project(':tools')
+    latestImplementation project(':api')
+}
