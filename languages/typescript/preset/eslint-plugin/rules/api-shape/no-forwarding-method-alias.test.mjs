@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -37,11 +38,9 @@ afterAll(() => {
 const parserOptions = { project: './tsconfig.json', tsconfigRootDir: root };
 const tester = typescriptRuleTester(parserOptions);
 
-let counter = 0;
-
 function typed(code, errors) {
-  counter += 1;
-  const file = path.join(root, `src/case-${String(counter)}.ts`);
+  const digest = createHash('sha256').update(code).digest('hex').slice(0, 12);
+  const file = path.join(root, `src/case-${digest}.ts`);
   writeFileSync(file, code);
   return { filename: file, code, ...(errors === undefined ? {} : { errors }) };
 }

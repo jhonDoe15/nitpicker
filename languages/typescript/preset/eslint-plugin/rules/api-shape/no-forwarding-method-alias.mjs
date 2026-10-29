@@ -10,10 +10,6 @@ function keyName(member) {
   return key.type === 'Identifier' ? key.name : undefined;
 }
 
-function isAbsent(value) {
-  return value === undefined || value === null;
-}
-
 function soleStatement(fn) {
   const [only, ...rest] = fn.body.body;
   return rest.length === 0 ? only : undefined;
@@ -57,7 +53,7 @@ function isThisMethodCall(call) {
   const { callee } = call;
   return (
     !call.optional &&
-    isAbsent(call.typeArguments ?? call.typeParameters) &&
+    !(call.typeArguments ?? call.typeParameters) &&
     callee.type === 'MemberExpression' &&
     !callee.computed &&
     !callee.optional &&
@@ -76,7 +72,7 @@ function isCandidate(member) {
     !PUBLISHED_NAMES.has(keyName(member)) &&
     fn.body !== null &&
     !fn.generator &&
-    isAbsent(fn.typeParameters)
+    !fn.typeParameters
   );
 }
 
@@ -88,9 +84,11 @@ function sameParameter(checker, own, target) {
   );
 }
 
+function returnTypeOf(checker, declaration) {
+  return checker.getReturnTypeOfSignature(checker.getSignatureFromDeclaration(declaration));
+}
+
 function hasSameSignature(checker, own, target) {
-  const returns = (declaration) =>
-    checker.getReturnTypeOfSignature(checker.getSignatureFromDeclaration(declaration));
   return (
     !ts.isTypePredicateNode(own.type ?? target) &&
     !ts.isTypePredicateNode(target.type ?? own) &&
@@ -100,7 +98,7 @@ function hasSameSignature(checker, own, target) {
     own.parameters.every((parameter, index) =>
       sameParameter(checker, parameter, target.parameters[index]),
     ) &&
-    returns(own) === returns(target)
+    returnTypeOf(checker, own) === returnTypeOf(checker, target)
   );
 }
 
@@ -109,9 +107,7 @@ function isAsync(declaration) {
 }
 
 function isVoidResult(checker, declaration) {
-  const text = checker.typeToString(
-    checker.getReturnTypeOfSignature(checker.getSignatureFromDeclaration(declaration)),
-  );
+  const text = checker.typeToString(returnTypeOf(checker, declaration));
   return text === 'void' || text === 'Promise<void>';
 }
 
@@ -141,6 +137,26 @@ function inheritsMember(checker, tsClass, name) {
   return unresolved || [...extended, ...implemented].some((type) => type.getProperty(name));
 }
 
+function isAlias({ services, checker }, member, classNode, call) {
+  const name = keyName(member);
+  const tsClass = services.esTreeNodeToTSNodeMap.get(classNode);
+  const own = services.esTreeNodeToTSNodeMap.get(member);
+  const target = targetDeclaration(services, call, tsClass);
+  const overloaded = classNode.body.body.filter(
+    (other) => other.type === 'MethodDefinition' && keyName(other) === name,
+  );
+  return (
+    target !== undefined &&
+    target !== own &&
+    overloaded.length === 1 &&
+    !(member.value.async && !isAsync(target)) &&
+    (member.value.body.body[0].type === 'ReturnStatement' || isVoidResult(checker, own)) &&
+    hasSameSignature(checker, own, target) &&
+    ts.getJSDocDeprecatedTag(own) === undefined &&
+    !inheritsMember(checker, tsClass, name)
+  );
+}
+
 export const rule = {
   meta: {
     type: 'suggestion',
@@ -160,27 +176,7 @@ export const rule = {
     if (services?.program === null || services?.program === undefined) {
       return {};
     }
-    const checker = services.program.getTypeChecker();
-
-    function isAlias(member, classNode, call) {
-      const name = keyName(member);
-      const tsClass = services.esTreeNodeToTSNodeMap.get(classNode);
-      const own = services.esTreeNodeToTSNodeMap.get(member);
-      const target = targetDeclaration(services, call, tsClass);
-      const overloaded = classNode.body.body.filter(
-        (other) => other.type === 'MethodDefinition' && keyName(other) === name,
-      );
-      return (
-        target !== undefined &&
-        target !== own &&
-        overloaded.length === 1 &&
-        !(member.value.async && !isAsync(target)) &&
-        (member.value.body.body[0].type === 'ReturnStatement' || isVoidResult(checker, own)) &&
-        hasSameSignature(checker, own, target) &&
-        ts.getJSDocDeprecatedTag(own) === undefined &&
-        !inheritsMember(checker, tsClass, name)
-      );
-    }
+    const program = { services, checker: services.program.getTypeChecker() };
 
     return {
       MethodDefinition(member) {
@@ -191,7 +187,7 @@ export const rule = {
           call === undefined ||
           !isThisMethodCall(call) ||
           !forwardsOwnParameters(member.value, call) ||
-          !isAlias(member, classNode, call)
+          !isAlias(program, member, classNode, call)
         ) {
           return;
         }

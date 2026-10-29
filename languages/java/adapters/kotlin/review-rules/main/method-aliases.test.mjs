@@ -10,6 +10,7 @@ import {
   fn,
   klass,
   parameter,
+  routed,
   routeOf,
   run,
   summary,
@@ -46,7 +47,12 @@ describe('method alias in Kotlin', () => {
 
     expect(summary(findings)).toEqual([`${METHOD_ALIAS_RULE} Cart.total 5`]);
     expect(findings[0].tool).toBe('pmd');
-    expect(findings[0].message).toContain('Call that method directly and delete the alias.');
+    expect(findings[0].message).toBe(
+      routed(
+        'This method only passes its parameters, in order, to another method of the same class. Call that method directly and delete the alias.',
+        METHOD_ALIAS_RULE,
+      ),
+    );
     expect(routeOf(findings[0].message)).toBe(
       'If this is intended, add {"rule":"pmd/ForwardingMethodAlias","paths":["src/main/kotlin/demo/Sample.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
