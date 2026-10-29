@@ -3,7 +3,7 @@ import path from 'node:path';
 import { ingestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
 import { ingestSarif } from '../../../../shared/ingest/sarif.mjs';
 import { createGeneratedFilter } from '../../ingest/kotlin-mutants/generated-filter.mjs';
-import { KOTLIN_REPORTS } from '../kotlin/reports/kotlin-report-names.mjs';
+import { KOTLIN_REPORTS } from '../kotlin/report-names/kotlin-report-names.mjs';
 import { readKotlinClassLimitFindings } from '../kotlin/kotlin-class-limits.mjs';
 import { readSarifReport } from './sarif/sarif-reports.mjs';
 import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';

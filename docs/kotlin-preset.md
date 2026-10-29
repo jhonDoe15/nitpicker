@@ -1356,7 +1356,7 @@ fails only when it grows, and a package folder moved to a new path is matched to
   mutants left out by rule and the 14 that stay, listed one by one).
   `languages/java/adapters/reporting/kotlin-generated-filter.test.mjs` reads the mutation facts of a
   report directory: a good report, the empty report of a module without Kotlin files, a missing
-  one and unusable ones. `languages/java/adapters/kotlin/reports/kotlin-report-contract.test.mjs`
+  one and unusable ones. `languages/java/adapters/kotlin/report-names/kotlin-report-contract.test.mjs`
   fails when the no-Kotlin-files branch of a build tool lacks one of the three reports.
 - `languages/java/adapters/kotlin-e2e/mutation/kotlin-mutation-facts.e2e.test.mjs` (with `npm run test:kotlin`):
   the facts program on a source file with every construct the rules use, and on the measurement

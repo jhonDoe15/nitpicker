@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { KOTLIN_REPORTS } from '../reports/kotlin-report-names.mjs';
+import { KOTLIN_REPORTS } from '../report-names/kotlin-report-names.mjs';
 
 const NULLABLE = /\?$/u;
 const GENERIC_ARGUMENTS = /<.*$/u;
