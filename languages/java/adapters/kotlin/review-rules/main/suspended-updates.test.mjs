@@ -33,7 +33,7 @@ const ledger = (overrides = {}) =>
     properties: [property('total', 'Ledger', { var: true })],
     functions: [suspendFun('add'), suspendFun('load')],
     updates: [update([call('load')])],
-    topLevelVars: [],
+    topLevelProperties: [],
     ...overrides,
   });
 const findingsFor = (files, declaredIn = files) =>
@@ -70,7 +70,10 @@ describe('updates across a suspension in Kotlin', () => {
       ],
       properties: [],
     });
-    const topLevel = ledger({ properties: [], topLevelVars: ['total'] });
+    const topLevel = ledger({
+      properties: [],
+      topLevelProperties: [{ name: 'total', var: true, delegated: false }],
+    });
 
     expect(findingsFor([constructorVar])).toHaveLength(1);
     expect(summary(findingsFor([topLevel]))).toEqual([`${SUSPENDED_UPDATE_RULE} total in add 9`]);
@@ -200,5 +203,134 @@ describe('updates across a suspension in Kotlin', () => {
     expect(reported([withGate(gate('Semaphore', '1'), permitted('other'))])).toEqual([
       'Ledger.total in add',
     ]);
+  });
+
+  describe('a read saved in a local', () => {
+    const local = (name, value, writes = []) => ({ local: name, value, writes });
+    const assign = (name, operator, value) => ({ assign: name, operator, value, writes: [] });
+    const statement = (value, writes = []) => ({ value, writes });
+    const saved = (steps, value = [read('current'), read('delta')], overrides = {}) =>
+      update(value, {
+        operator: '=',
+        locals: ['current', 'delta'],
+        properties: ['current', 'delta'],
+        steps,
+        ...overrides,
+      });
+    const reported = (entry) =>
+      findingsFor([ledger({ updates: [entry] })]).map(({ symbol, message }) => [
+        symbol,
+        message.slice(0, message.indexOf(' suspends')),
+      ]);
+    const stale = [['Ledger.total in add', '`total` is updated from a value read before `load()`']];
+
+    it.each([
+      [
+        'a val saved before the call',
+        [local('current', [read('total')]), local('delta', [call('load')])],
+      ],
+      [
+        'a var accumulated with the call',
+        [local('current', [read('total')]), assign('current', '+=', [call('load')])],
+      ],
+      [
+        'a local derived from the saved one',
+        [
+          local('previous', [read('total', true)]),
+          local('current', [read('previous')]),
+          statement([call('load')]),
+        ],
+      ],
+    ])('reports %s', (_name, steps) => {
+      expect(
+        reported(saved(steps, [read('current')], { properties: ['previous', 'current'] })),
+      ).toEqual(stale);
+    });
+
+    it('reports a read saved before the lock is taken', () => {
+      const entry = saved(
+        [local('current', [read('total')]), { lock: 'withLock' }],
+        [read('current')],
+        {
+          scopes: scopes([{ k: 'lambda', host: 'withLock', qualifier: 'mutex' }]),
+        },
+      );
+      expect(reported(entry)).toEqual([
+        ['Ledger.total in add', '`total` is updated from a value read before `withLock()`'],
+      ]);
+    });
+
+    it.each([
+      [
+        'the call before the read',
+        [local('delta', [call('load')]), local('current', [read('total')])],
+      ],
+      ['no suspension between', [local('current', [read('total')]), statement([call('blocking')])]],
+      [
+        'the local replaced by the call',
+        [local('current', [read('total')]), assign('current', '=', [call('load')])],
+      ],
+      [
+        'the local overwritten in a nested statement',
+        [local('current', [read('total')]), statement([call('load')], ['current'])],
+      ],
+      [
+        'a saved read of another property',
+        [local('current', [read('count')]), statement([call('load')])],
+      ],
+    ])('allows %s', (_name, steps) => {
+      expect(reported(saved(steps, [read('current')]))).toEqual([]);
+    });
+
+    it('allows a read saved inside the lock that is still held', () => {
+      const entry = saved(
+        [{ lock: 'withLock' }, local('current', [read('total')]), local('delta', [call('load')])],
+        undefined,
+        { scopes: scopes([{ k: 'lambda', host: 'withLock', qualifier: 'mutex' }]) },
+      );
+      expect(reported(entry)).toEqual([]);
+    });
+  });
+
+  it('does not let a launched coroutine inherit the lock around it', () => {
+    const launched = update([call('load')], {
+      scopes: scopes([
+        { k: 'lambda', host: 'launch', qualifier: 'scope' },
+        { k: 'lambda', host: 'withLock', qualifier: 'mutex' },
+      ]),
+    });
+    expect(findingsFor([ledger({ updates: [launched] })])).toHaveLength(1);
+  });
+
+  it('does not count a Mutex built in the function', () => {
+    const local = update([call('load')], {
+      properties: ['mutex'],
+      scopes: scopes([{ k: 'lambda', host: 'withLock', qualifier: 'mutex' }]),
+    });
+    expect(findingsFor([ledger({ updates: [local] })])).toHaveLength(1);
+  });
+
+  it('accepts a one-permit semaphore of the companion object or the file', () => {
+    const permitted = update([call('load')], {
+      scopes: scopes([{ k: 'lambda', host: 'withPermit', qualifier: 'gate' }]),
+    });
+    const gate = { name: 'gate', var: false, initializer: 'Semaphore', argument: '1' };
+    const companion = ledger({
+      classes: [klass('Ledger'), klass('Ledger.Companion', { kind: 'companion' })],
+      properties: [
+        property('total', 'Ledger', { var: true }),
+        property('gate', 'Ledger.Companion', gate),
+      ],
+      updates: [permitted],
+    });
+    const topLevel = ledger({ updates: [permitted], topLevelProperties: [gate] });
+    const wide = ledger({
+      updates: [permitted],
+      topLevelProperties: [{ ...gate, argument: '2' }],
+    });
+
+    expect(findingsFor([companion])).toEqual([]);
+    expect(findingsFor([topLevel])).toEqual([]);
+    expect(findingsFor([wide])).toHaveLength(1);
   });
 });

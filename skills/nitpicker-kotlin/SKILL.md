@@ -79,9 +79,12 @@ Before you change code other modules use, or fix a bug, read
   `of` or `from` are fine.
 - A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
-- Do not update a `var` property from a value read before a suspend call (`total += repository.fetch()`):
-  call the suspend function into a local first and then update the property, or hold one `Mutex`
-  around the whole read-modify-write (`pmd/NonAtomicUpdateAcrossSuspension`).
+- Do not update a `var` property of the class or file from a value read before a suspend call of
+  the same function (`total += repository.fetch()`, or `val current = total` before the call and
+  `total = current + delta` after it): call the suspend function into a local first and then
+  update the property, or hold one shared `Mutex` (a property, not a local) around the whole
+  read-modify-write; a `launch` inside the lock does not hold it
+  (`pmd/NonAtomicUpdateAcrossSuspension`).
 - A private or `internal` function or constructor does not declare a default parameter that no
   call in the project sets (`unused-option`): remove the parameter, or pass it from a real call.
 - Never `@Suppress` a detekt or ktlint rule (its name, `all`, a ruleset, `detekt:...`, `ktlint:...`):

@@ -1,25 +1,9 @@
 import ast
 
-from checks.common import own_nodes
+from checks.common import has_decorator, own_nodes, parameter_names, root_name
 
 STATIC = "staticmethod"
 DEFINITIONS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
-
-
-def root_name(node):
-    while isinstance(node, (ast.Attribute, ast.Subscript)):
-        node = node.value
-    return node.id if isinstance(node, ast.Name) else None
-
-
-def parameter_names(function):
-    arguments = function.args
-    names = {
-        argument.arg
-        for argument in arguments.posonlyargs + arguments.args + arguments.kwonlyargs
-    }
-    names.update(a.arg for a in (arguments.vararg, arguments.kwarg) if a)
-    return names
 
 
 def stored_names(function):
@@ -45,32 +29,25 @@ def declared_names(function, kind):
     }
 
 
-def is_static(function):
-    return any(
-        isinstance(decorator, ast.Name) and decorator.id == STATIC
-        for decorator in function.decorator_list
-    )
-
-
-def receiver_names(function, parents):
-    names = set()
+def receivers_of(function, parents):
+    found = {}
     node = function
     while node is not None:
         owner = parents.get(id(node))
         if (
             isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
             and isinstance(owner, ast.ClassDef)
-            and not is_static(node)
+            and not has_decorator(node, STATIC)
             and node.args.posonlyargs + node.args.args
         ):
-            names.add((node.args.posonlyargs + node.args.args)[0].arg)
+            found.setdefault((node.args.posonlyargs + node.args.args)[0].arg, owner)
         node = owner
-    return names
+    return found
 
 
 class Scope:
     def __init__(self, context, function, module):
-        self.receivers = receiver_names(function, context.parents)
+        self.receivers = set(receivers_of(function, context.parents))
         self.global_names = declared_names(function, ast.Global)
         self.closure_names = declared_names(function, ast.Nonlocal)
         declared = self.global_names | self.closure_names

@@ -3,10 +3,13 @@ package nitpicker.kotlinpsi.facts;
 import static nitpicker.kotlinpsi.common.Psi.m;
 
 import java.util.*;
+import nitpicker.kotlinpsi.bodies.Initializers;
 import nitpicker.kotlinpsi.common.Json;
 import nitpicker.kotlinpsi.common.Lines;
+import org.jetbrains.kotlin.psi.KtDeclaration;
 import org.jetbrains.kotlin.psi.KtFile;
 import org.jetbrains.kotlin.psi.KtImportDirective;
+import org.jetbrains.kotlin.psi.KtProperty;
 
 final class State {
   final boolean test;
@@ -64,22 +67,23 @@ final class State {
     return m(
         "file", relative, "test", test, "package", file.getPackageFqName().asString(),
         "imports", imports(), "classes", classes, "functions", functions, "properties", properties,
-        "waits", waits, "predicates", predicates, "updates", updates, "topLevelVars", topLevelVars(),
+        "waits", waits, "predicates", predicates, "updates", updates, "topLevelProperties", topLevelProperties(),
         "typeAliases", typeAliases,
         "calls", new ArrayList<Object>(calls.stream().map(Json.Raw::new).toList()),
         "references", new ArrayList<Object>(references));
   }
 
-  private List<Object> topLevelVars() {
-    List<Object> names = new ArrayList<>();
-    for (var declaration : file.getDeclarations()) {
-      if (declaration instanceof org.jetbrains.kotlin.psi.KtProperty
-          && ((org.jetbrains.kotlin.psi.KtProperty) declaration).isVar()
-          && ((org.jetbrains.kotlin.psi.KtProperty) declaration).getDelegate() == null) {
-        names.add(declaration.getName());
+  private List<Object> topLevelProperties() {
+    List<Object> found = new ArrayList<>();
+    for (KtDeclaration declaration : file.getDeclarations()) {
+      if (declaration instanceof KtProperty && declaration.getName() != null) {
+        KtProperty property = (KtProperty) declaration;
+        found.add(
+            m("name", property.getName(), "var", property.isVar(), "delegated", property.getDelegate() != null,
+                "initializer", Initializers.callee(property), "argument", Initializers.argument(property)));
       }
     }
-    return names;
+    return found;
   }
 
   private List<Object> imports() {

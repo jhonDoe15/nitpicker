@@ -1150,6 +1150,16 @@ class in a module without Failsafe).
   Gradle build of the same sources). The JDK choice on Gradle was checked by hand: Gradle on JDK 17
   runs Error Prone on a JDK 21 launcher, and a project with a JDK 25 toolchain on a JDK 21 Gradle
   runs it on JDK 25.
+- **Updates across a suspension.** The TypeScript, Python and Kotlin presets report shared state
+  updated from a read made before an `await` or a suspend call (see
+  [the matrix](../spec/checks.md#updates-across-a-suspension)). A Java expression cannot suspend, so
+  that rule has no Java form. The related lost update between threads is covered where one
+  statement shows it: `errorprone/NonAtomicVolatileUpdate` (on, as Error Prone enables it by
+  default) reports `++`, `--` and compound assignments of a `volatile` field, and SpotBugs, which
+  runs at `-effort:default -medium` with no detector excluded, adds `IS2_INCONSISTENT_SYNC` (a field
+  read or written both with and without its lock) and `AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE`;
+  its `VO_VOLATILE_INCREMENT` gives way to the Error Prone finding on the same line. A plain field
+  updated from a blocking call (`this.total += future.join()`) is reported by none of them.
 
 ### Checks that are off
 

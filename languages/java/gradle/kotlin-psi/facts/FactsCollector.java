@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import nitpicker.kotlinpsi.bodies.Bodies;
 import nitpicker.kotlinpsi.common.Frame;
+import nitpicker.kotlinpsi.facts.updates.Updates;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
 
@@ -29,7 +30,7 @@ public final class FactsCollector {
     this.declarations = new Declarations(state);
     this.calls = new Calls(state);
     this.predicates = new Predicates(state);
-    this.updates = new Updates(state);
+    this.updates = new Updates(text);
     this.bodies = new Bodies(text, test, nothing, state.namesOf(HANDLER));
   }
 
@@ -107,7 +108,10 @@ public final class FactsCollector {
     } else if (element instanceof KtConstructorDelegationCall) {
       calls.constructorDelegation((KtConstructorDelegationCall) element, frame);
     } else if (element instanceof KtBinaryExpression) {
-      updates.assignment((KtBinaryExpression) element, frame);
+      Map<String, Object> update = updates.assignment((KtBinaryExpression) element, frame);
+      if (update != null) {
+        state.updates.add(update);
+      }
       predicates.binary((KtBinaryExpression) element, frame);
     } else if (element instanceof KtDotQualifiedExpression) {
       predicates.containsForm((KtDotQualifiedExpression) element, frame);

@@ -138,8 +138,9 @@ line) is a finding.
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
 - `async`/`await`, never `.then()`. No floating promises.
 - Do not update shared state from a value read before an `await` (`state.total += await load()`):
-  await into a local first, then read and write the shared state with no `await` between them, or
-  serialize the whole update (`require-atomic-updates`).
+  await into a local first (`const delta = await load(); state.total += delta;`), then read and
+  write the shared state with no `await` between them. A lock or queue is not recognized; state
+  that is already serialized takes a reviewed exception (`nitpicker/require-atomic-updates`).
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
 - CommonJS is allowed: `require()` of a module, and `module.exports = { f }`, `module.exports.f = f`
