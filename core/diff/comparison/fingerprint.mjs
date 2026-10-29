@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { normalizeGitPath } from '../git/normalize.mjs';
 import { remapRootPrefix } from '../git/patches/renames.mjs';
+import { qualifiedNameMoves, remapQualifiedNames } from './moved-names/qualified-names.mjs';
 
 export function comparisonKey(
   finding,
@@ -9,21 +10,29 @@ export function comparisonKey(
 ) {
   const normalizedPath = normalizeGitPath(finding.path);
   const cycle = parseCycleIdentity(finding.identity);
+  const names = qualifiedNameMoves(baseToHeadRenames);
   const canonical =
     cycle === undefined
       ? {
           path: baseToHeadRenames.get(normalizedPath) ?? normalizedPath,
-          identity: remapRootPrefix(
-            remapIdentityPaths(finding.identity, baseToHeadRenames),
-            baseToHeadDirectories,
+          identity: remapQualifiedNames(
+            remapRootPrefix(
+              remapIdentityPaths(finding.identity, baseToHeadRenames),
+              baseToHeadDirectories,
+            ),
+            names,
           ),
         }
-      : remapCycle(cycle, baseToHeadRenames);
+      : remapCycle(cycle, baseToHeadRenames, names);
+  const symbol = remapQualifiedNames(
+    remapIdentityPaths(finding.symbol ?? '', baseToHeadRenames),
+    names,
+  );
   return JSON.stringify([
     finding.tool,
     finding.rule,
     canonical.path,
-    finding.symbol ?? '',
+    symbol,
     canonical.identity,
     finding.classification,
     finding.metric?.name ?? '',
@@ -35,8 +44,10 @@ function parseCycleIdentity(identity) {
   return match === null ? undefined : { members: match[1].split('>'), suffix: match.at(2) ?? '' };
 }
 
-function remapCycle({ members, suffix }, baseToHeadRenames) {
-  const remapped = members.map((member) => baseToHeadRenames.get(member) ?? member);
+function remapCycle({ members, suffix }, baseToHeadRenames, names) {
+  const remapped = members.map(
+    (member) => baseToHeadRenames.get(member) ?? remapQualifiedNames(member, names),
+  );
   const rotations = remapped.map((_, index) => [
     ...remapped.slice(index),
     ...remapped.slice(0, index),
