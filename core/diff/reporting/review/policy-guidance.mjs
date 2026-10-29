@@ -13,7 +13,7 @@ export const POLICY_GUIDANCE = {
     `${VERIFY_INVOCATION} Other checks still apply.`,
   ].join(' '),
   'python-entry-point': [
-    'Matching files may read the process environment: process-env-access skips them.',
+    'Matching files may read the process environment and the standard streams: process-env-access and process-stream-access skip them.',
     `${VERIFY_INVOCATION} Other checks still apply.`,
   ].join(' '),
   exception: [

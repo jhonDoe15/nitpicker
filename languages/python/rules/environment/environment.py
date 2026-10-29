@@ -23,6 +23,8 @@ ENVIRONMENT_ATTRIBUTES = {"environ", "environb", "getenv", "getenvb"}
 SETTINGS_BASES = {"pydantic_settings.BaseSettings", "pydantic.BaseSettings"}
 HARMLESS_DEFAULTS = {"DJANGO_SETTINGS_MODULE"}
 MODULE_LOADERS = {"importlib.import_module", "__import__"}
+STREAM_NAMES = {"sys.stdout", "sys.stderr", "sys.__stdout__", "sys.__stderr__"}
+STREAM_ATTRIBUTES = {"stdout", "stderr", "__stdout__", "__stderr__"}
 
 
 def is_name_check(test):
@@ -156,13 +158,50 @@ def access_name(node, context):
     )
 
 
+def stream_attribute(node, context):
+    if not isinstance(node, ast.Attribute) or node.attr not in STREAM_ATTRIBUTES:
+        return None
+    module = module_named(node.value, context.aliases)
+    return f"sys.{node.attr}" if module == "sys" else None
+
+
+def stream_getattr(node, context):
+    if not (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "getattr"
+        and len(node.args) >= 2
+    ):
+        return None
+    key = node.args[1]
+    if dotted_name(node.args[0], context.aliases) != "sys":
+        return None
+    is_stream = isinstance(key, ast.Constant) and key.value in STREAM_ATTRIBUTES
+    return f"sys.{key.value}" if is_stream else None
+
+
+def stream_name(node, context):
+    reads = isinstance(node, ast.Attribute) or (
+        isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load)
+    )
+    name = dotted_name(node, context.aliases) if reads else None
+    if name in STREAM_NAMES:
+        return name
+    return stream_attribute(node, context) or stream_getattr(node, context)
+
+
 def check(context):
     if context.tests or is_composition_root(context):
         return []
     guarded = guarded_nodes(context.tree)
     found = []
     for node in ast.walk(context.tree):
+        if id(node) in guarded:
+            continue
         name = access_name(node, context)
-        if name and id(node) not in guarded:
+        if name:
             found.append(finding(context.path, "process-env-access", name, node))
+        stream = stream_name(node, context)
+        if stream:
+            found.append(finding(context.path, "process-stream-access", stream, node))
     return found
