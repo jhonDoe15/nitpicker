@@ -54,6 +54,13 @@ export function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+export function listOf(value) {
+  if (value === undefined) {
+    return [];
+  }
+  return Array.isArray(value) ? value : [value];
+}
+
 export function picked(source, keys) {
   return Object.fromEntries(
     keys.filter((key) => source[key] !== undefined).map((key) => [key, source[key]]),

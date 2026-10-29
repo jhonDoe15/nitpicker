@@ -1,15 +1,8 @@
-import { isPlainObject } from '../../../../shared/config.mjs';
+import { isPlainObject, listOf } from '../../../../shared/config.mjs';
 
 const REGEXP_KEY = '$nitpickerRegExp';
 const SCALAR_TYPES = new Set(['string', 'number', 'boolean', 'undefined']);
 const KNIP_COMPILER_KEYS = new Set(['compilers', 'syncCompilers', 'asyncCompilers']);
-
-export function listOf(value) {
-  if (value === undefined) {
-    return [];
-  }
-  return Array.isArray(value) ? value : [value];
-}
 
 function isDataObject(value) {
   const prototype = Object.getPrototypeOf(value);
