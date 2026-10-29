@@ -18,18 +18,15 @@ function isForeign(type, callable) {
 
 function decidedReads(callable, index) {
   const byType = new Map();
-  for (const read of callable.reads ?? []) {
-    const type = index.type(read.type);
-    if (isForeign(type, callable)) {
-      const known = byType.get(type.id) ?? { type, decided: new Set(), line: read.line };
-      for (const field of read.decided ?? []) {
-        known.decided.add(field);
-      }
-      byType.set(type.id, known);
-    }
+  const foreign = (callable.reads ?? [])
+    .map((read) => ({ read, type: index.type(read.type) }))
+    .filter(({ type }) => isForeign(type, callable));
+  for (const { read, type } of foreign) {
+    const known = byType.get(type.id) ?? { type, decided: [], line: read.line };
+    byType.set(type.id, { ...known, decided: [...known.decided, ...(read.decided ?? [])] });
   }
   return [...byType.values()]
-    .map((read) => ({ ...read, decided: [...read.decided].sort() }))
+    .map((read) => ({ ...read, decided: [...new Set(read.decided)].sort() }))
     .filter(({ decided }) => decided.length >= MIN_FIELDS);
 }
 
