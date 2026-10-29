@@ -36,19 +36,25 @@ left for you:
    `layout.sourceRoots` of an existing `nitpicker.config.json`) and the project files. A folder
    with TypeScript or JavaScript sources is a script project when it has a `package.json` or no
    other project file: TypeScript (also React, which the TypeScript preset covers) when it has a
-   `tsconfig.json` or any `.ts`, `.tsx`, `.mts`, `.cts` or `.jsx` file, and JavaScript otherwise.
+   `tsconfig.json` or any `.ts`, `.tsx`, `.mts`, `.cts` or `.jsx` file (or a `.jsx` or `.tsx` file
+   under the test roots, which the JavaScript preset refuses), and JavaScript otherwise.
    Without such sources, or when a `pom.xml`, Gradle build or Python file sits next to them and
    there is no `package.json`, it is Python (`pyproject.toml`, `setup.py`, `setup.cfg`, `Pipfile`
-   or `requirements.txt`), Java (Gradle or Maven) or Kotlin (Gradle, when `.kt` files outnumber
-   `.java` ones). The Kotlin preset needs Gradle today: a Maven project with Kotlin and Java sources
+   or `requirements.txt`), Java (Gradle or Maven) or Kotlin (Gradle, when there are `.kt` files and
+   they outnumber the `.java` ones or a build script applies the Kotlin plugin; `.kts` build
+   scripts do not count). A Gradle project with fewer `.kt` than `.java` files and no Kotlin plugin
+   in its build scripts gets the `java` preset with a note. The Kotlin preset needs Gradle today: a Maven project with Kotlin and Java sources
    gets the `java` preset with a note that only its Java sources are checked, and one with Kotlin
    sources only stops with exit 2. It also reads the package manager the way the gate does (the
    `packageManager` field or the lockfile of the nearest folder, up to the repository root, that
-   has a lockfile; without a lockfile, the nearest `packageManager` field; npm without either), the test runner (Vitest, Jest, `node:test` or Mocha, for both presets, the way
+   has a lockfile; without a lockfile, the nearest `packageManager` field; npm without either; a
+   lockfile above the project counts only when the project is a member of that root's
+   workspaces), and stops with exit 2 for Yarn Plug'n'Play (Yarn 2 or newer without
+   `nodeLinker: node-modules` in `.yarnrc.yml`), which nitpicker cannot read, the test runner (Vitest, Jest, `node:test` or Mocha, for both presets, the way
    [the strict preset](typescript-strict-preset.md) finds it) and, for Python, the project tool
    (uv, poetry, pipenv, pdm, hatch, conda, or pip for a plain or `.venv` project).
 2. **Prints the install command** for the project's package manager with only the peers that are
-   missing: `nitpicker`, `typescript@^6`, `@types/node` and the test runner's packages (`vitest` and
+   missing: `nitpicker` (pinned to the version that runs init), `typescript@^6`, `@types/node` and the test runner's packages (`vitest` and
    `@vitest/coverage-v8` pinned to the installed Vitest, `jest` or `mocha`; `node:test` needs none).
    At a workspace root it adds the flag that pnpm (`-w`) and Yarn 1 (`-W`) need there. A Python
    project gets `coverage`, its type checker, `pytest`, `mutmut` and a runner plugin if its runner
@@ -89,7 +95,8 @@ in a subfolder, so two projects of one repository get two workflows. The path ke
 of lowercase letters, digits and single `-`, `_` or `.` as it is and joins folders with `--`
 (`apps/web` gives `nitpicker-apps--web.yml`); any other folder name is lowercased with a short
 hash of the original added (`Web App` gives `web-app-60d39972`), so no two folders share a file. It runs on pull requests, checks out with `fetch-depth: 0`, sets up Node.js 24 (plus
-Java 21 or Python 3.13 for those presets), installs the dependencies and runs nitpicker:
+Java 21 or Python for those presets: from `.python-version`, else the lower bound of
+`requires-python` or the poetry `python` dependency, else 3.13), installs the dependencies and runs nitpicker:
 
 - **Node.js.** `npm ci`, `pnpm install --frozen-lockfile`, `yarn install --frozen-lockfile` (Yarn 1),
   `yarn install --immutable` (Yarn 2 or newer) or `bun install --frozen-lockfile` with a lockfile,
@@ -100,12 +107,13 @@ Java 21 or Python 3.13 for those presets), installs the dependencies and runs ni
   (`package_json_file` when that file is not at the repository root), else at the major version of
   the lockfile's `lockfileVersion` (`9.0`: 10, `6.x`: 8, `5.4`: 7), else 10.
 - **Python.** uv, poetry, pipenv, pdm and hatch sync with their own tool (`uv sync`,
-  `poetry install`, `pipenv install --dev`, `pdm install`, `hatch env create`) and then add the
-  peers the project does not declare; a peer that only your local `.venv` holds counts as missing
-  here. A conda project gets `conda-incubator/setup-miniconda` instead of `setup-python`, which
+  `poetry install`, `pipenv install --dev`, `pdm install`, `hatch env create`) and then install
+  every peer into that environment (`uv pip install`, or `python -m pip install` through
+  `poetry run`, `pipenv run`, `pdm run` or `hatch run`), which leaves a declared one as it is, so
+  the workflow stays the same after you declare them. A conda project gets `conda-incubator/setup-miniconda` instead of `setup-python`, which
   creates the environment from its `environment.yml` under the file's `name:` (`nitpicker` without
   one); the run steps use the login shell `bash -el {0}`, so that environment is active, and
-  `conda install --yes --channel conda-forge` adds the peers the file does not declare. pip
+  `conda install --yes --channel conda-forge` installs every peer into it. pip
   projects install the root `requirements*.txt` files, the project itself when `pyproject.toml`
   has a `[project]` or `[build-system]` table (or there is a `setup.py` or `setup.cfg`), and every
   peer, with pip into the runner's Python.
@@ -116,18 +124,20 @@ project (or the repository, for the workflow); it stops with exit 2 and names th
 stops with exit 2, before writing anything, when a folder stands where it writes a file (an
 `AGENTS.md` folder) or a file stands where it needs a folder (a `.github` file). For an
 existing file that needs a change it prints a unified diff from your file to what it would write
-and leaves the file alone; line endings (CRLF or LF) do not count as a change.
+and leaves the file alone, with three lines of context around each change; line endings (CRLF or
+LF) and a missing final newline do not count as a change. A rerun offers `--agents-md` and
+`--ci github` only while their file is not there yet.
 `nitpicker.config.json` is up to date when it sets the detected preset, whatever else it holds, or
 sets no preset on a TypeScript project, whose preset is the default. Otherwise the diff changes or
 adds only the `"preset"` line and keeps every other key.
 
 init has exit codes of its own:
 
-| Code | Meaning                                                                                                                                                                                                                                         |
-| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | Everything it was asked to write is in place: created, or already set up.                                                                                                                                                                       |
-| 1    | An existing `nitpicker.config.json` or workflow needs a change, shown as a diff. The rest of the setup still happens.                                                                                                                           |
-| 2    | It cannot run: an unknown argument, Node.js older than the `engines` range of the package (22.14), no Git repository, no project in the folder, Kotlin on Maven without Java sources, or a link, folder or file in the way of a file it writes. |
+| Code | Meaning                                                                                                                                                                                                                                                           |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Everything it was asked to write is in place: created, or already set up.                                                                                                                                                                                         |
+| 1    | An existing `nitpicker.config.json` or workflow needs a change, shown as a diff. The rest of the setup still happens.                                                                                                                                             |
+| 2    | It cannot run: an unknown argument, Node.js older than the `engines` range of the package (22.14), no Git repository, no project in the folder, Yarn Plug'n'Play, Kotlin on Maven without Java sources, or a link, folder or file in the way of a file it writes. |
 
 ### From a GitHub release
 

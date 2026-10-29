@@ -2,13 +2,13 @@ import { realpathSync } from 'node:fs';
 import { packageVersion } from '../help/package-version.mjs';
 import { INIT_USAGE_TEXT } from '../help/usage-text.mjs';
 import { detectProject } from './detection/detect-project.mjs';
-import { appendSnippet, INSTRUCTION_FILES } from './files/agents-md.mjs';
+import { appendSnippet, hasSnippet, INSTRUCTION_FILES } from './files/agents-md.mjs';
 import { placeWorkflow, workflowPath } from './files/ci-workflow.mjs';
 import { placeConfig } from './files/config-file.mjs';
 import { parseInitArguments } from './init-arguments.mjs';
 import { renderReport } from './init-report.mjs';
 import { planPeers } from './peers/peer-plan.mjs';
-import { assertNothingInTheWay } from './support/inside-project.mjs';
+import { assertNothingInTheWay, hasProjectFile } from './support/inside-project.mjs';
 import { assertSupportedNode, requireRepository } from './support/preconditions.mjs';
 
 export function runInitCommand(cli) {
@@ -46,5 +46,9 @@ function placeFiles(projectRoot, options, { project, peers, repository }) {
     workflow: options.ci.length === 0 ? undefined : placeWorkflow(projectRoot, context),
     workflowFile,
     agents: options.agentsMd ? appendSnippet(projectRoot) : undefined,
+    offers: {
+      agents: !options.agentsMd && !hasSnippet(projectRoot),
+      workflow: options.ci.length === 0 && !hasProjectFile(repository, workflowFile),
+    },
   };
 }

@@ -60,6 +60,16 @@ describe('a project without "preset"', () => {
     expect(message(files)).toBe(expected('Gradle or Maven', 'settings.gradle.kts', 'kotlin'));
   });
 
+  it('names the Java preset for Java sources whose build uses the Kotlin DSL', () => {
+    const files = {
+      'settings.gradle.kts': '',
+      'build.gradle.kts': 'plugins {\n    java\n}\n',
+      'src/main/java/App.java': 'class App {}',
+    };
+
+    expect(message(files)).toBe(expected('Gradle or Maven', 'build.gradle.kts', 'java'));
+  });
+
   it('stops with the Python preset for a Python project', () => {
     expect(message({ 'pyproject.toml': '', 'src/demo/app.py': '' })).toBe(
       expected('Python', 'pyproject.toml', 'python'),

@@ -1,6 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { packageVersion } from '../help/package-version.mjs';
 import { INIT_USAGE_TEXT } from '../help/usage-text.mjs';
 import { readSnippet } from './files/agents-md.mjs';
 import { unifiedDiff } from './files/line-diff.mjs';
@@ -9,8 +10,9 @@ import { init, initWith, readText, useProjects } from './test-support/projects.m
 const createProject = useProjects();
 const TYPESCRIPT = { 'package.json': '{}', 'src/index.ts': 'export const value = 1;\n' };
 const SKILL = 'npx skills add jhonDoe15/nitpicker --skill';
-const NODE_INSTALL = "nitpicker 'typescript@^6' @types/node vitest @vitest/coverage-v8";
-const NODE_MISSING = 'nitpicker, typescript@^6, @types/node, vitest, @vitest/coverage-v8';
+const NITPICKER = `nitpicker@${packageVersion()}`;
+const NODE_INSTALL = `${NITPICKER} 'typescript@^6' @types/node vitest @vitest/coverage-v8`;
+const NODE_MISSING = `${NITPICKER}, typescript@^6, @types/node, vitest, @vitest/coverage-v8`;
 const GRADLE_NOTE =
   'There is no gradlew, so nitpicker runs gradle from the PATH. Install it, or add the wrapper.';
 const MAVEN_NOTE =
@@ -107,8 +109,8 @@ describe('nitpicker init', () => {
       stdoutText: expectedReport({
         head: ['nitpicker init: TypeScript, pnpm, Vitest (preset "typescript")'],
         peers: install(
-          'nitpicker, @types/node, vitest, @vitest/coverage-v8',
-          'pnpm add --save-dev nitpicker @types/node vitest @vitest/coverage-v8',
+          `${NITPICKER}, @types/node, vitest, @vitest/coverage-v8`,
+          `pnpm add --save-dev ${NITPICKER} @types/node vitest @vitest/coverage-v8`,
         ),
         skills: ['nitpicker-typescript'],
         command: 'pnpm exec nitpicker',
@@ -259,7 +261,7 @@ describe('nitpicker init stops before it writes', () => {
     expect(init(root)).toEqual({
       exitCode: 2,
       stdoutText: '',
-      stderrText: `nitpicker failed: ${root} is not in a Git repository. nitpicker compares your changes with their merge base, so it needs one: run git init, commit, and run nitpicker init again.\n`,
+      stderrText: `nitpicker failed: ${root} is not in a Git repository. nitpicker compares your changes with their merge base, so it needs one: run git init in the project folder or one above it, and run nitpicker init again.\n`,
     });
     expect(existsSync(path.join(root, 'nitpicker.config.json'))).toBe(false);
   });
@@ -415,7 +417,7 @@ describe('nitpicker init --ci github', () => {
       npmReport({
         offers: [
           'To add the agent guidance to AGENTS.md, run: npx nitpicker init --agents-md',
-          'created .github/workflows/nitpicker-apps-web.yml',
+          'created .github/workflows/nitpicker-apps--web.yml',
         ],
       }),
     );

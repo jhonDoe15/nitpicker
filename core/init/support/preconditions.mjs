@@ -34,7 +34,7 @@ export function requireRepository(projectRoot) {
   const repository = repositoryRootOf(projectRoot);
   if (repository === undefined) {
     throw new Error(
-      `${projectRoot} is not in a Git repository. nitpicker compares your changes with their merge base, so it needs one: run git init, commit, and run nitpicker init again.`,
+      `${projectRoot} is not in a Git repository. nitpicker compares your changes with their merge base, so it needs one: run git init in the project folder or one above it, and run nitpicker init again.`,
     );
   }
   return repository;

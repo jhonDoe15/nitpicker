@@ -41,12 +41,41 @@ describe('unified diff', () => {
 
   it('shows an empty file as all additions', () => {
     expect(diff('', 'a\n')).toBe(
-      '--- file.json\n+++ file.json (nitpicker init)\n@@ -1,0 +1,1 @@\n+a\n',
+      '--- file.json\n+++ file.json (nitpicker init)\n@@ -0,0 +1,1 @@\n+a\n',
     );
   });
 
-  it('shows two empty files as no operations', () => {
-    expect(diff('', '')).toBe('--- file.json\n+++ file.json (nitpicker init)\n@@ -1,0 +1,0 @@\n\n');
+  it('shows two equal files as no hunks', () => {
+    expect(diff('a\n', 'a\n')).toBe('--- file.json\n+++ file.json (nitpicker init)\n');
+  });
+
+  it('keeps three lines of context around each change, in hunks of their own', () => {
+    const lines = Array.from({ length: 20 }, (_, index) => `line ${String(index + 1)}`);
+    const before = `${lines.join('\n')}\n`;
+    const after = before.replace('line 3\n', 'line three\n').replace('line 18\n', '');
+
+    expect(diff(before, after)).toBe(
+      [
+        '--- file.json',
+        '+++ file.json (nitpicker init)',
+        '@@ -1,6 +1,6 @@',
+        ' line 1',
+        ' line 2',
+        '-line 3',
+        '+line three',
+        ' line 4',
+        ' line 5',
+        ' line 6',
+        '@@ -15,6 +15,5 @@',
+        ' line 15',
+        ' line 16',
+        ' line 17',
+        '-line 18',
+        ' line 19',
+        ' line 20',
+        '',
+      ].join('\n'),
+    );
   });
 
   it('falls back to a full replacement for files too large to compare', () => {

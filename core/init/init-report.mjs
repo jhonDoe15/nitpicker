@@ -60,9 +60,11 @@ function skillLines(project) {
   ];
 }
 
-function agentsLines(agents, command) {
+function agentsLines(agents, command, offered) {
   if (agents === undefined) {
-    return [`To add the agent guidance to AGENTS.md, run: ${command} init --agents-md`];
+    return offered
+      ? [`To add the agent guidance to AGENTS.md, run: ${command} init --agents-md`]
+      : [];
   }
   const outcomes = {
     created: `created ${agents.relative} with the nitpicker section`,
@@ -72,24 +74,28 @@ function agentsLines(agents, command) {
   return [outcomes[agents.status]];
 }
 
-function ciLines(workflow, workflowFile, command) {
+function ciLines(workflow, workflowFile, command, offered) {
   if (workflow === undefined) {
-    return [`To write ${workflowFile}, run: ${command} init --ci github`];
+    return offered ? [`To write ${workflowFile}, run: ${command} init --ci github`] : [];
   }
   return fileLines(workflow);
 }
 
-export function renderReport({ project, peers, config, workflow, workflowFile, agents }) {
+export function renderReport({ project, peers, config, workflow, workflowFile, agents, offers }) {
   const command = runCommandOf(project);
   const sections = [
     [headline(project), ...project.notes],
     peerLines(peers),
     fileLines(config),
     skillLines(project),
-    [...agentsLines(agents, command), ...ciLines(workflow, workflowFile, command)],
+    [
+      ...agentsLines(agents, command, offers.agents),
+      ...ciLines(workflow, workflowFile, command, offers.workflow),
+    ],
     [
       `Then run \`${command}\` to check a change, or \`${command} --all\` to survey the whole project.`,
     ],
   ];
-  return `${sections.map((lines) => lines.join('\n')).join('\n\n')}\n`;
+  const shown = sections.filter((lines) => lines.length > 0);
+  return `${shown.map((lines) => lines.join('\n')).join('\n\n')}\n`;
 }

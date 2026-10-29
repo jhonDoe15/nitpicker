@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
+import { packageVersion } from '../../help/package-version.mjs';
 import { useProjects } from '../test-support/projects.mjs';
 import { missingNodePeers, requiredNodePeers } from './node-peers.mjs';
 
 const project = useProjects();
+const NITPICKER = `nitpicker@${packageVersion()}`;
 const ALL_VITEST_PEERS = [
-  'nitpicker',
+  NITPICKER,
   'typescript@^6',
   '@types/node',
   'vitest',
@@ -49,13 +51,13 @@ describe('missing Node peers', () => {
   it('does not count a peer dependency as installed', () => {
     const root = project({ 'package.json': '{"peerDependencies":{"typescript":"^6"}}' });
 
-    expect(missingNodePeers(root, 'node')).toEqual(['nitpicker', 'typescript@^6', '@types/node']);
+    expect(missingNodePeers(root, 'node')).toEqual([NITPICKER, 'typescript@^6', '@types/node']);
   });
 
   it('skips what node_modules already holds, also in a parent folder', () => {
     const root = project({ ...installed('typescript', '6.0.3'), 'web/package.json': '{}' });
 
-    expect(missingNodePeers(`${root}/web`, 'node')).toEqual(['nitpicker', '@types/node']);
+    expect(missingNodePeers(`${root}/web`, 'node')).toEqual([NITPICKER, '@types/node']);
   });
 
   it('asks only for the packages of the runner the project uses', () => {
@@ -107,7 +109,7 @@ describe('missing Node peers', () => {
     ],
   ])('asks for TypeScript 6 over %s, which nitpicker cannot read', (_name, files) => {
     expect(missingNodePeers(project(files), 'node')).toEqual([
-      'nitpicker',
+      NITPICKER,
       'typescript@^6',
       '@types/node',
     ]);
@@ -121,7 +123,7 @@ describe('missing Node peers', () => {
     ],
     ['a declared TypeScript 6', { 'package.json': '{"devDependencies":{"typescript":"6.0.3"}}' }],
   ])('takes %s as present', (_name, files) => {
-    expect(missingNodePeers(project(files), 'node')).toEqual(['nitpicker', '@types/node']);
+    expect(missingNodePeers(project(files), 'node')).toEqual([NITPICKER, '@types/node']);
   });
 
   it('judges the installed TypeScript over the declared range', () => {
@@ -130,6 +132,6 @@ describe('missing Node peers', () => {
       ...installed('typescript', '7.0.2'),
     });
 
-    expect(missingNodePeers(root, 'node')).toEqual(['nitpicker', 'typescript@^6', '@types/node']);
+    expect(missingNodePeers(root, 'node')).toEqual([NITPICKER, 'typescript@^6', '@types/node']);
   });
 });
