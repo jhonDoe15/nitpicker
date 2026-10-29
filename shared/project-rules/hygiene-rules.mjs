@@ -99,7 +99,7 @@ export const CO_CHANGE_EXAMPLES = 3;
 
 const PERCENT = 100;
 const REPORTED_EVERYWHERE = Object.fromEntries(
-  ['typescript', 'javascript', 'java', 'python', 'kotlin'].map((language) => [
+  ['typescript', 'javascript', 'java', 'python', 'kotlin', 'go'].map((language) => [
     language,
     'reported',
   ]),
