@@ -20,7 +20,7 @@ import {
   testEnvironmentNotices,
   testEnvironmentsFor,
 } from '../preset/test-environment/resolve-environment.mjs';
-import { typescriptFailureText } from './hints/tool-failure-hint.mjs';
+import { withTypeScriptHint } from './hints/tool-failure-hint.mjs';
 
 const invokedPath = process.argv[1];
 
@@ -32,8 +32,11 @@ if (
     const options = parseArguments(process.argv.slice(2));
     const findings = runEslint(options);
     process.stdout.write(`${JSON.stringify({ findings })}\n`);
-  } catch (error) {
-    process.stderr.write(`ESLint differential adapter failed: ${typescriptFailureText(error)}\n`);
+  } catch (failure) {
+    const error = withTypeScriptHint(failure);
+    process.stderr.write(
+      `ESLint differential adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
     process.exitCode = 2;
   }
 }

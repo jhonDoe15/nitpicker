@@ -7,18 +7,32 @@ const SOURCE_FOLDERS = ['core', 'shared', 'languages'];
 const SKIPPED_FOLDERS = new Set(['node_modules', 'fixtures', 'test-support', '__tests__']);
 const ANCHOR_LINK = /troubleshooting\.md#([a-z0-9-]+)/gu;
 
+function inRepository(relative) {
+  const full = path.resolve(root, relative);
+  if (!full.startsWith(root + path.sep)) {
+    throw new Error(`${relative} is outside ${root}`);
+  }
+  return full;
+}
+
 export function read(relative) {
-  return readFileSync(path.join(root, relative), 'utf8');
+  return readFileSync(inRepository(relative), 'utf8');
 }
 
 export function files(directory, accepts) {
-  return readdirSync(path.join(root, directory), { withFileTypes: true }).flatMap((entry) => {
-    const relative = `${directory}/${entry.name}`;
-    if (entry.isDirectory()) {
-      return SKIPPED_FOLDERS.has(entry.name) ? [] : files(relative, accepts);
+  const found = [];
+  const pending = [directory];
+  for (const folder of pending) {
+    for (const entry of readdirSync(inRepository(folder), { withFileTypes: true })) {
+      const relative = `${folder}/${entry.name}`;
+      if (entry.isDirectory()) {
+        pending.push(...(SKIPPED_FOLDERS.has(entry.name) ? [] : [relative]));
+      } else if (accepts(entry.name)) {
+        found.push(relative);
+      }
     }
-    return accepts(entry.name) ? [relative] : [];
-  });
+  }
+  return found.toSorted();
 }
 
 export function productionSources() {
@@ -27,7 +41,7 @@ export function productionSources() {
   );
 }
 
-export function slugOf(heading) {
+function slugOf(heading) {
   return heading
     .replaceAll('`', '')
     .trim()

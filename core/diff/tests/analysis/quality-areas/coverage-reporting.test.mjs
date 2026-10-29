@@ -157,7 +157,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
       `${failure}\nThe test script runs "npm run build", "npm run seed" before the tests; ` +
         `nitpicker runs only the test command, so run those steps first if the tests need it.`,
     ]);
-    expect(run([])).toEqual([`${failure}`]);
+    expect(run([])).toEqual([failure]);
   });
   it('lists at most five failing tests and a test file that could not run', () => {
     const failing = (index) => ({
