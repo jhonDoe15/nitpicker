@@ -282,9 +282,12 @@ resolved: an unresolved call is not listed in `calls`, it makes the uses it touc
     declaration's disposal, Python `with`, Java try-with-resources, Kotlin `use { }`. `mutation`
     names the first change the caller makes to the value the call returned, directly
     (`cart.lines().push(x)`) or through a local that holds it and is never reassigned
-    (`const lines = cart.lines(); lines.push(x)`): the mutating method (`push`, `add`, `put`, `set`,
-    `delete`, `remove`, `clear`, `sort`, `splice`, `append`, `extend`, `update`, `pop`), or
-    `assign` for an element or property assignment (`lines[0] = x`, `config.timeout = 3`).
+    (`const lines = cart.lines(); lines.push(x)`): the mutating method as the language names it
+    (`push`, `add`, `put`, `set`, `delete`, `remove`, `clear`, `sort`, `splice`, `append`,
+    `extend`, `update`, `pop`, Java's `addAll`, `putAll`, `removeIf`...), or `assign` for an element
+    or property assignment (`lines[0] = x`, `config.timeout = 3`). The list is open: the rules only
+    check that `mutation` is present, so each producer names the mutators of its own language and
+    the message quotes them.
   - `paramUses` (default `[]`): how each parameter whose type is a project `class`, `data` or
     `interface` type is used: `{ param, fields, forwards, opaque }`. `param` is the parameter's
     index; `fields` the names of its members read or called (`ctx.clock`, `ctx.clock.now()` reads

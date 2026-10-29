@@ -1,4 +1,4 @@
-import { Cart } from './cart';
+import { Cart } from '../model/cart';
 
 export class Left {
   run(): void {}
