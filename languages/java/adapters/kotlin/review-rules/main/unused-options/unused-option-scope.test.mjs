@@ -316,3 +316,65 @@ describe('unused option when callers are hidden from the facts', () => {
     ]);
   });
 });
+
+describe('unused option on an internal Kotlin function behind a gap of its own module', () => {
+  const internal = () => shared({ visibility: 'internal' });
+  const own = [
+    file({
+      functions: [internal(), fn('trim', { parameters: options, line: 9, visibility: 'private' })],
+      calls: [partial, call('trim', { positional: 1 })],
+    }),
+  ];
+  const integration = {
+    label: 'the source set integrationTest of :m0',
+    tests: true,
+    owner: ':m0',
+    reaches: [':m0'],
+  };
+  const PRIVATE_FLAGGED = `${UNUSED_OPTION_RULE} trim.pad 8`;
+
+  it('withholds internal functions, not private ones, when a test source set of the module is not read', () => {
+    const findings = findingsFor(own, { gaps: [integration] });
+
+    expect(summary(findings)).toEqual([
+      PRIVATE_FLAGGED,
+      `${UNUSED_OPTION_RULE} callers-not-analyzed 8`,
+    ]);
+    expect(findings[1].message).toBe(
+      'Internal functions are not checked for unused options where these can call them: the facts ' +
+        'do not cover the source set integrationTest of :m0.',
+    );
+  });
+
+  it('withholds them behind a skipped file of the module, but not one of another module', () => {
+    const skipped = (index) =>
+      moduleOf(index === 0 ? own : [], index, {
+        skipped:
+          index === 1 ? [{ file: 'billing/src/test/kotlin/demo/DeepTest.kt', test: true }] : [],
+      });
+    const elsewhere = buildOf([skipped(0), skipped(1)]);
+    const here = buildOf([
+      moduleOf(own, 0, { skipped: [{ file: 'src/main/kotlin/demo/Deep.kt', test: false }] }),
+    ]);
+
+    expect(summary(findingsFor(own, { build: elsewhere }))).toEqual([...FLAGGED, PRIVATE_FLAGGED]);
+    expect(summary(findingsFor(own, { build: here }))).toEqual([
+      PRIVATE_FLAGGED,
+      `${UNUSED_OPTION_RULE} callers-not-analyzed 8`,
+    ]);
+  });
+
+  it('anchors the note by plain path order, upper case before lower case', () => {
+    const upper = [file({ file: 'B/src/main/kotlin/demo/Upper.kt', functions: [internal()] })];
+    const lower = [file({ file: 'a/src/main/kotlin/demo/Lower.kt', functions: [internal()] })];
+    const build = buildOf([
+      moduleOf(lower, 0, { manifest: { kotlinCallerGaps: [integration] } }),
+      moduleOf(upper, 1, { manifest: { kotlinCallerGaps: [{ ...integration, owner: ':m1' }] } }),
+    ]);
+
+    expect(summary(findingsFor(lower, { build }))).toEqual([]);
+    expect(summary(findingsFor(upper, { build, index: 1 }))).toEqual([
+      `${UNUSED_OPTION_RULE} callers-not-analyzed 8`,
+    ]);
+  });
+});

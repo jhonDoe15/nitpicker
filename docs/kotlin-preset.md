@@ -500,7 +500,7 @@ Limits, all chosen to flag less rather than guess:
   `override`, `open`, `abstract`, `operator`, `infix`, `main` or annotated are never judged, nor are names
   with a callable reference or that a Java file mentions. Two kinds of declarations are judged:
   - Public functions at the top level, in a top-level `object` or in the companion object of a top-level
-    class, the Kotlin form of TypeScript's exported functions and Python's module-level functions. Calls in
+    class, interface or enum class, the Kotlin form of TypeScript's exported functions. Calls in
     the main sources of every module of the build count, and so do the module's own tests when the module
     is published (a Gradle `publishing` publication, as for `test-only-export`); callable references and
     Java sources of every module are checked. An `object` or companion of a Spring-managed class is left
@@ -519,17 +519,24 @@ Limits, all chosen to flag less rather than guess:
     counts), since a library may set the defaults; a library that does so without that jar (reflection in
     a framework) is not seen.
 
-  Callers the facts do not see switch off the judging of public functions only in the modules they can
-  call. Each such place, read from the Gradle build, reaches the projects it depends on (directly or
-  through other projects): an Android or Multiplatform project; a Kotlin or Java project outside the
-  analysis root; a source set other than `main` and `test` that holds `.kt` or `.java` files (it also
-  reaches its own project); an included build whose build files name a project of this build as
-  `group:name` (an included build that names none, such as a plugin build, reaches nothing); and a file
-  the facts step skipped, which reaches its module and that module's dependencies. Test code (a source set
-  whose name has `test` or `jmh`, a JVM test suite, a source set a `Test` task runs, a skipped test file)
-  only counts for the declarations of its own module when that module is published, since tests count
-  nowhere else. One report-only note (`callers-not-analyzed`) names these places, anchored on the public
-  function of an affected module that comes first by path and line.
+  Callers the facts do not see switch off the judging of public top-level, `object` and companion
+  functions only in the modules they can call. Each such place, read from the Gradle build, reaches the
+  projects on its main compile and runtime classpaths (directly or through other projects; test
+  dependencies do not count): an Android project (any `com.android.*` plugin) or a Multiplatform project; a
+  Kotlin or Java project outside the analysis root; a source set other than `main` and `test` that holds
+  `.kt`, `.java`, `.groovy` or `.scala` files, and Groovy or Scala files in `main` or `test` (it also
+  reaches its own project); an included build whose build files or version catalogs name a project of this
+  build as a whole `group:name` (also `module = "group:name"`) or as `group` and `name` arguments (an
+  included build that names none, such as a plugin build, reaches nothing); and a file the facts step
+  skipped, which reaches its module and that module's dependencies. Test code (a source set whose name,
+  split at capitals, `-` and `_`, has the word `it` or a word starting with `test`, the rule for the test
+  sources nitpicker lints, or the word `jmh`, `benchmark` or `gatling`; a JVM test suite; a source set a
+  `Test` task runs; a skipped test file) only counts for the public declarations of its own module when that module is published, since
+  tests count nowhere else. Internal functions and constructors are withheld when their own module has
+  such a place (a skipped file, or a source set or Groovy or Scala files of the project, test code
+  included), since an `internal` declaration is visible there; private ones are not affected. One
+  report-only note (`callers-not-analyzed`) names these places, anchored on the withheld function that
+  comes first by path and line (plain character order).
 
 - Class-load effects: load time is a top-level property initializer (it runs when the file's facade
   class loads), the property initializers and `init` blocks of an `object` or companion object, an

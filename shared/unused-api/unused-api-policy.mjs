@@ -9,7 +9,6 @@ export const UNUSED_OPTION_SCOPES = {
     private: 'tests and stories do not count',
     published: 'tests, stories and examples of this package count',
   },
-  python: { private: 'tests do not count', published: "this package's own tests count" },
   kotlin: {
     private: 'tests do not count',
     published: "this module's own tests count",
@@ -46,9 +45,9 @@ export const UNUSED_API_RULES = [
     check: 'structure',
     limit:
       'an optional input no call sets, tests counting only when published: TypeScript, an options property ' +
-      'of an exported function; Kotlin, a defaulted parameter of a public top-level, object or companion ' +
-      'function (not members or constructors, built by reflection) or of a private or internal function or ' +
-      "constructor (its module's calls and tests)",
+      'of an exported function (a non-literal argument sets all); Kotlin, a defaulted parameter of a public ' +
+      'top-level, object or companion function (not members or constructors, built by reflection) or of a ' +
+      "private or internal function or constructor (its module's calls and tests)",
     enforcedBy: TYPESCRIPT_AND_KOTLIN,
   },
   {

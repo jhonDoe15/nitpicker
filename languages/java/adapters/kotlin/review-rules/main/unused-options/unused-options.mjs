@@ -6,7 +6,7 @@ import {
 } from '../../../../../../../shared/unused-api/unused-api-policy.mjs';
 import { append } from '../../kotlin-facts.mjs';
 import { declaredNames } from '../../spring/spring-names.mjs';
-import { callerNote, hiddenCallers } from './unused-option-gaps.mjs';
+import { callerNote, hiddenCallers, hiddenInternalCallers } from './unused-option-gaps.mjs';
 import { limitedUnits, publicFunctionUnits } from './unused-option-units.mjs';
 
 export const UNUSED_OPTION_RULE = UNUSED_API_RULE_IDS.unusedOption;
@@ -127,20 +127,20 @@ function noteFinding(note, finding) {
   return {
     ...anchor,
     message:
-      'Public functions are not checked for unused options where these can call them: the facts ' +
+      `${note.kinds} are not checked for unused options where these can call them: the facts ` +
       `do not cover ${listed}${more}.`,
     classification: 'descriptive',
   };
 }
 
-function publicFindings(own, { build, reportRoot, finding }) {
-  const module = build?.modules.find((entry) => entry.reportRoot === reportRoot);
-  if (module === undefined) {
-    return [];
-  }
+function noteFindings({ build, reportRoot, finding }) {
+  const note = callerNote(build);
+  return note?.reportRoot === reportRoot ? [noteFinding(note, finding)] : [];
+}
+
+function publicFindings(own, module, { build, finding }) {
   if (hiddenCallers(build, module).length > 0) {
-    const note = callerNote(build);
-    return note?.reportRoot === reportRoot ? [noteFinding(note, finding)] : [];
+    return [];
   }
   const declared = build.memo('unused-option-declared', () => declaredNames(build.files));
   const units = own
@@ -169,10 +169,15 @@ function publicFindings(own, { build, reportRoot, finding }) {
 }
 
 export function unusedOptionFindings(files, options) {
-  const { finding, mentionedInJava, serialization = false } = options;
+  const { build, reportRoot, finding, mentionedInJava, serialization = false } = options;
+  const module = build?.modules.find((entry) => entry.reportRoot === reportRoot);
+  const internalHidden = module !== undefined && hiddenInternalCallers(build, module).length > 0;
   const calls = callsByName(files);
   const limited = judge(
-    files.filter(({ test }) => !test).flatMap((file) => limitedUnits(file, serialization)),
+    files
+      .filter(({ test }) => !test)
+      .flatMap((file) => limitedUnits(file, serialization))
+      .filter((unit) => !(internalHidden && unit.internal)),
     {
       calls: (name) => calls.get(name) ?? [],
       references: referencedNames(files),
@@ -181,5 +186,7 @@ export function unusedOptionFindings(files, options) {
       scope: SCOPES.local,
     },
   );
-  return [...limited, ...publicFindings(files, options)];
+  return module === undefined
+    ? limited
+    : [...limited, ...publicFindings(files, module, options), ...noteFindings(options)];
 }
