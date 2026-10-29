@@ -25,8 +25,9 @@ describe.skipIf(!enabled)('nitpicker init then --all on a Kotlin project', () =>
     const result = runInitThenAll(root);
 
     expect(result.init.exitCode, result.init.text).toBe(0);
-    expect(result.init.text.split('\n').slice(0, 5)).toEqual([
+    expect(result.init.text.split('\n').slice(0, 6)).toEqual([
       'nitpicker init: Kotlin, Gradle (preset "kotlin")',
+      'There is no gradlew, so nitpicker runs gradle from the PATH. Install it, or add the wrapper.',
       '',
       'Needs Java 21 or newer. nitpicker adds its own analysis tools to the build.',
       '',

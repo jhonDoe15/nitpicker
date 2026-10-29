@@ -31,8 +31,9 @@ describe.skipIf(!enabled)('nitpicker init then --all on a Java project', () => {
     const result = setUp(GRADLE_FIXTURE, 'nitpicker-init-gradle-');
 
     expect(result.init.exitCode, result.init.text).toBe(0);
-    expect(result.init.text.split('\n').slice(0, 5)).toEqual([
+    expect(result.init.text.split('\n').slice(0, 6)).toEqual([
       'nitpicker init: Java, Gradle (preset "java")',
+      'There is no gradlew, so nitpicker runs gradle from the PATH. Install it, or add the wrapper.',
       '',
       'Needs Java 21 or newer. nitpicker adds its own analysis tools to the build.',
       '',
@@ -48,8 +49,9 @@ describe.skipIf(!enabled)('nitpicker init then --all on a Java project', () => {
     const result = setUp(MAVEN_FIXTURE, 'nitpicker-init-maven-');
 
     expect(result.init.exitCode, result.init.text).toBe(0);
-    expect(result.init.text.split('\n').slice(0, 5)).toEqual([
+    expect(result.init.text.split('\n').slice(0, 6)).toEqual([
       'nitpicker init: Java, Maven (preset "java")',
+      'There is no mvnw, so nitpicker runs mvn from the PATH. Install it, or add the wrapper.',
       '',
       'Needs Java 21 or newer. nitpicker adds its own analysis tools to the build.',
       '',
