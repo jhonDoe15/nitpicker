@@ -39,6 +39,7 @@ export const RULES_CASES = [
   ...rulesCases('skipped-test', [['skipped-test-without-reason', 'reason=']]),
   ...rulesCases('sleep-in-test', [['sleep-in-test', 'fake clock']]),
   ...rulesCases('tautological-assert', [['tautological-assert', 'result of the code under test']]),
+  ...rulesCases('float-equality', [['float-equality-in-test', 'pytest.approx']]),
   ...rulesCases('test-without-assertion', [
     ['test-without-assertion', 'assert result == expected'],
   ]),

@@ -20,7 +20,7 @@ def load_checks():
     from effects import import_time, reach
     from environment import domain_imports, environment, purity
     from errors import errors
-    from honesty import assertions, isolation, skipped
+    from honesty import assertions, floats, isolation, skipped
     from security import hashes, loading
     from security.sql import check as sql
     from security.timeouts import check as timeouts
@@ -56,6 +56,7 @@ def load_checks():
         loops,
         skipped,
         assertions,
+        floats,
         unasserted,
         isolation,
         uncollected,
