@@ -10,7 +10,8 @@ function isVite(module: unknown): module is typeof Vite {
 }
 async function loadConfigFromFile(file: string) {
   const fromVitest = createRequire(createRequire(import.meta.url).resolve('vitest/package.json'));
-  const vite: unknown = await import(pathToFileURL(fromVitest.resolve('vite')).href);
+  const viteRoot = path.dirname(fromVitest.resolve('vite/package.json'));
+  const vite: unknown = await import(pathToFileURL(path.join(viteRoot, 'dist/node/index.js')).href);
   if (!isVite(vite)) {
     throw new Error('nitpicker found no Vite next to the Vitest this project installs.');
   }

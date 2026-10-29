@@ -10,7 +10,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 import qualityConfig from '../defaults/vitest.quality.config.ts';
 
@@ -293,12 +293,48 @@ describe('a test run with the vitest config nitpicker runs tests with', () => {
   });
 });
 
-function isolatedInstall(files) {
+function linkVitestWithRequireOnlyVite(root) {
+  const vitest = path.join(root, 'node_modules/vitest');
+  const vite = path.join(vitest, 'node_modules/vite');
+  mkdirSync(path.join(vite, 'dist/node'), { recursive: true });
+  copyFileSync(
+    path.join(packageRoot, 'node_modules/vitest/package.json'),
+    path.join(vitest, 'package.json'),
+  );
+  symlinkSync(path.join(packageRoot, 'node_modules/vitest/dist'), path.join(vitest, 'dist'), 'dir');
+  const exportsMap = {
+    '.': { import: './dist/node/index.js', require: './index.cjs' },
+    './package.json': './package.json',
+  };
+  writeFileSync(
+    path.join(vite, 'package.json'),
+    JSON.stringify({ name: 'vite', exports: exportsMap }),
+  );
+  writeFileSync(path.join(vite, 'index.cjs'), 'module.exports = {};\n');
+  const realVite = pathToFileURL(
+    path.join(packageRoot, 'node_modules/vite/dist/node/index.js'),
+  ).href;
+  writeFileSync(path.join(vite, 'dist/node/index.js'), `export * from '${realVite}';\n`);
+}
+
+function isolatedInstall(layout) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-isolated-install-'));
   temporaryRoots.push(root);
   mkdirSync(path.join(root, 'node_modules'));
   const vitestPackage = path.join(packageRoot, 'node_modules/vitest');
-  symlinkSync(vitestPackage, path.join(root, 'node_modules/vitest'), 'dir');
+  if (layout === 'require-only-vite') {
+    linkVitestWithRequireOnlyVite(root);
+  } else {
+    symlinkSync(vitestPackage, path.join(root, 'node_modules/vitest'), 'dir');
+  }
+  const files = {
+    'package.json': '{"type":"module"}\n',
+    'vitest.config.mjs': 'export default { test: { env: { LAYERED: "yes" } } };\n',
+    'src/layered.test.ts': [
+      "import { expect, it } from 'vitest';",
+      "it('runs with the project config', () => expect(process.env.LAYERED).toBe('yes'));",
+    ].join('\n'),
+  };
   for (const [name, text] of Object.entries(files)) {
     mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
     writeFileSync(path.join(root, name), text);
@@ -317,19 +353,20 @@ function isolatedInstall(files) {
   );
 }
 
-describe('the vitest config in an isolated install, as pnpm lays out node_modules', () => {
-  let run;
+describe('the vitest config in an install that does not hoist vite next to the project', () => {
+  const runs = {};
 
   beforeAll(() => {
-    run = isolatedInstall({
-      'package.json': '{"type":"module"}\n',
-      'vitest.config.mjs': 'export default { test: { environment: "node" } };\n',
-      'src/sum.test.ts':
-        "import { expect, it } from 'vitest';\nit('adds', () => expect(1 + 1).toBe(2));\n",
-    });
+    for (const layout of ['pnpm', 'require-only-vite']) {
+      runs[layout] = isolatedInstall(layout);
+    }
   });
 
-  it('layers a project config when the project lists vitest but not vite', () => {
+  it.each([
+    ['as pnpm lays out node_modules', 'pnpm'],
+    ['with a Vite whose require entry has no named exports, as Vite 5 ships', 'require-only-vite'],
+  ])('layers the project config %s', (_name, layout) => {
+    const run = runs[layout];
     const summary = run.status === 0 ? JSON.parse(run.stdout) : {};
 
     expect(
