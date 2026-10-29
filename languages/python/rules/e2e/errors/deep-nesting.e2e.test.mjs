@@ -21,6 +21,10 @@ const FILES = {
   'src/app/attributes.py': `VALUE = a${range.map((index) => `.b${String(index)}`).join('')}\n`,
   'src/app/calls.py': `VALUE = a${range.map((index) => `.m${String(index)}()`).join('')}\n`,
   'src/app/domain/chain.py': elifChain((index) => `return ${String(index)}`),
+  'src/app/settings.py': `if MODE == 0:\n    LEVEL = 0\n${range
+    .slice(1)
+    .map((index) => `elif MODE == ${String(index)}:\n    LEVEL = ${String(index)}\n`)
+    .join('')}`,
   'src/app/adapters/terms.py': `TOTAL = f(${range.map((index) => `v${String(index)}`).join(' + ')})\n`,
   'tests/test_terms.py': `def test_a():\n    assert ${range.map((index) => `v${String(index)}`).join(' + ')} == 1\n`,
   'tests/test_chain.py': elifChain((index) => `assert ${String(index)}`).replace(
