@@ -128,9 +128,11 @@ describe('knip project config precedence', () => {
     expect(policy.tools.knip.projectConfig.ignoreDependencies).toEqual([
       { $nitpickerRegExp: ['^left-', 'u'] },
     ]);
-    expect(reported(deadCode(root, policy))).not.toContain('unused-dependency left-pad');
-    expect(reported(deadCode(root, resolveHeadPolicy({}, root)))).toContain(
-      'unused-dependency left-pad',
+    expect(reported(deadCode(root, policy))).toEqual(
+      NITPICKER_ONLY.filter((item) => item !== 'src/plugin.ts'),
+    );
+    expect(reported(deadCode(root, resolveHeadPolicy({}, root)))).toEqual(
+      [...NITPICKER_ONLY, 'unused-dependency left-pad'].toSorted(),
     );
   });
 

@@ -1,13 +1,14 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { isPlainObject } from '../../../../shared/config.mjs';
+import { resolveInside } from '../../../../shared/conventions/read-inside.mjs';
 
 export const KNIP_TOOL = 'knip';
 export const DEPENDENCY_CRUISER_TOOL = 'dependency-cruiser';
 
 const PACKAGE_JSON = 'package.json';
 
-export const PROJECT_CONFIG_FILES = new Map([
+const CONFIG_FILES = new Map([
   [
     KNIP_TOOL,
     [
@@ -36,17 +37,29 @@ export const PROJECT_CONFIG_FILES = new Map([
 ]);
 
 export const PROJECT_TOOL_FILES = [
+  'config-loader.mjs',
   'config-values.mjs',
-  'load-config-script.mjs',
   'project-config-files.mjs',
   'project-tool-policy.mjs',
 ].map((name) => `languages/typescript/preset/project-tools/${name}`);
 
-export const PACKAGE_JSON_KEYS = new Map([[KNIP_TOOL, 'knip']]);
+const PACKAGE_JSON_KEYS = new Map([[KNIP_TOOL, 'knip']]);
+
+export function projectConfigTools() {
+  return [...CONFIG_FILES.keys()];
+}
+
+export function isProjectConfigTool(tool) {
+  return CONFIG_FILES.has(tool);
+}
+
+export function packageJsonKey(tool) {
+  return PACKAGE_JSON_KEYS.get(tool);
+}
 
 export function projectConfigCandidates(tool) {
   return [
-    ...(PROJECT_CONFIG_FILES.get(tool) ?? []),
+    ...(CONFIG_FILES.get(tool) ?? []),
     ...(PACKAGE_JSON_KEYS.has(tool) ? [PACKAGE_JSON] : []),
   ];
 }
@@ -68,10 +81,13 @@ function packageJsonSection(projectRoot, key) {
   return parsed.kind === 'json' && isPlainObject(parsed.value) ? parsed.value[key] : undefined;
 }
 
+function isFileInside(projectRoot, name) {
+  const full = resolveInside(projectRoot, name);
+  return full !== undefined && existsSync(full);
+}
+
 export function projectConfigSources(tool, projectRoot) {
-  const file = (PROJECT_CONFIG_FILES.get(tool) ?? []).find((name) =>
-    existsSync(path.join(projectRoot, name)),
-  );
+  const file = (CONFIG_FILES.get(tool) ?? []).find((name) => isFileInside(projectRoot, name));
   const key = PACKAGE_JSON_KEYS.get(tool);
   const section = packageJsonSection(projectRoot, key);
   const labels = [
@@ -83,6 +99,6 @@ export function projectConfigSources(tool, projectRoot) {
 
 export function lookedFor(tool) {
   const key = PACKAGE_JSON_KEYS.get(tool);
-  const files = (PROJECT_CONFIG_FILES.get(tool) ?? []).join(', ');
+  const files = (CONFIG_FILES.get(tool) ?? []).join(', ');
   return `a ${tool} config (${files}${key === undefined ? '' : `, or the "${key}" key in ${PACKAGE_JSON}`})`;
 }

@@ -32,42 +32,33 @@ describe('layered knip config', () => {
     expect(layeredKnipConfig(NITPICKER, undefined)).toBe(NITPICKER);
   });
 
-  it('adds the project entries, ignores and negated project patterns under every ordering', () => {
-    for (const precedence of [['project'], ['project', 'nitpicker'], ['nitpicker', 'project']]) {
-      expect(layered(precedence)).toMatchObject({
-        $schema: 'nitpicker',
-        entry: ['src/main.ts', 'scripts/build.ts'],
-        project: ['src/**/*.ts', '!src/vendor/**'],
-        ignore: ['coverage/**', 'src/legacy/**'],
-        ignoreDependencies: ['vitest', 'left-pad'],
-        ignoreBinaries: ['make'],
-        ignoreIssues: { 'src/a.ts': ['exports'] },
-        paths: { '@/*': ['src/*'] },
-        eslint: false,
-      });
-      expect(layered(precedence).treatConfigHintsAsErrors).toBeUndefined();
-    }
-  });
+  const ADDED = {
+    $schema: 'nitpicker',
+    entry: ['src/main.ts', 'scripts/build.ts'],
+    project: ['src/**/*.ts', '!src/vendor/**'],
+    ignore: ['coverage/**', 'src/legacy/**'],
+    ignoreDependencies: ['vitest', 'left-pad'],
+    ignoreBinaries: ['make'],
+    ignoreIssues: { 'src/a.ts': ['exports'] },
+    paths: { '@/*': ['src/*'] },
+    eslint: false,
+  };
+  const PROJECT_FIRST = { ...ADDED, rules: { exports: 'off' }, ignoreExportsUsedInFile: true };
 
-  it('lets the project switch issue types and export handling only when it comes first', () => {
-    expect(layered(['project', 'nitpicker'])).toMatchObject({
-      rules: { exports: 'off' },
-      ignoreExportsUsedInFile: true,
-    });
-    expect(layered(['project'])).toEqual(layered(['project', 'nitpicker']));
-    const nitpickerFirst = layered(['nitpicker', 'project']);
-    expect(nitpickerFirst.rules).toBeUndefined();
-    expect(nitpickerFirst.ignoreExportsUsedInFile).toBeUndefined();
+  it('adds the project entries, ignores and negated project patterns under every ordering', () => {
+    expect(layered(['project'])).toEqual(PROJECT_FIRST);
+    expect(layered(['project', 'nitpicker'])).toEqual(PROJECT_FIRST);
+    expect(layered(['nitpicker', 'project'])).toEqual(ADDED);
   });
 
   it('ranks plugin and path settings both sides set by the precedence', () => {
     const nitpicker = { ...NITPICKER, vitest: false, paths: { '@/*': ['lib/*'] } };
     const project = { vitest: { entry: ['x.ts'] }, paths: { '@/*': ['src/*'] } };
-    expect(layered(['project', 'nitpicker'], project, nitpicker)).toMatchObject(project);
-    expect(layered(['nitpicker', 'project'], project, nitpicker)).toMatchObject({
-      vitest: false,
-      paths: { '@/*': ['lib/*'] },
+    expect(layered(['project', 'nitpicker'], project, nitpicker)).toEqual({
+      ...NITPICKER,
+      ...project,
     });
+    expect(layered(['nitpicker', 'project'], project, nitpicker)).toEqual(nitpicker);
   });
 
   it('merges ignored issue types per pattern', () => {

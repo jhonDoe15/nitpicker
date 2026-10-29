@@ -11,9 +11,16 @@ import { projectToolLayer } from '../../../preset/project-tools/project-tool-pol
 import { KNIP_TOOL } from '../../../preset/project-tools/project-config-files.mjs';
 import { runNodeTool } from '../runners/tooling.mjs';
 import { layeredKnipConfig, writtenKnipConfig } from './knip-layers.mjs';
-import { KNIP_MANIFEST_ENVIRONMENT } from './manifest-guard.mjs';
 
 const MANIFEST_GUARD = pathToFileURL(path.join(import.meta.dirname, 'manifest-guard.mjs')).href;
+
+function manifestGuard(manifestPath) {
+  const source = [
+    `import { guardKnipManifest } from ${JSON.stringify(MANIFEST_GUARD)};`,
+    `guardKnipManifest(${JSON.stringify(manifestPath)});`,
+  ].join('\n');
+  return `data:text/javascript,${encodeURIComponent(source)}`;
+}
 const CONFIG_BASENAME = '.nitpicker-diff-knip';
 
 export function withProjectKnipConfig(config) {
@@ -41,11 +48,8 @@ export function knipReport(options, config) {
     const result = runNodeTool({
       options,
       relativeToolPath: 'knip/bin/knip.js',
-      nodeArguments: ['--import', MANIFEST_GUARD],
+      nodeArguments: ['--import', manifestGuard(path.join(options.projectRoot, 'package.json'))],
       arguments_: ['--config', file.path, '--reporter', 'json'],
-      environment: {
-        [KNIP_MANIFEST_ENVIRONMENT]: path.join(options.projectRoot, 'package.json'),
-      },
       acceptedStatuses: [0, 1],
     });
     return JSON.parse(result.stdout);

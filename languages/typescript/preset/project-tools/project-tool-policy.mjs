@@ -1,23 +1,34 @@
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { isPlainObject } from '../../../../shared/config.mjs';
 import {
   missingProjectConfig,
   precedenceLayers,
 } from '../../../../shared/conventions/tool-precedence.mjs';
 import { encodedValue } from './config-values.mjs';
-import { PROJECT_CONFIG_FILES, lookedFor, projectConfigSources } from './project-config-files.mjs';
+import { isProjectConfigTool, lookedFor, projectConfigSources } from './project-config-files.mjs';
 
-const LOADER_SCRIPT = path.join(import.meta.dirname, 'load-config-script.mjs');
+const LOADER = pathToFileURL(path.join(import.meta.dirname, 'config-loader.mjs')).href;
+const LOADER_SOURCE = [
+  `const loader = await import(${JSON.stringify(LOADER)});`,
+  'const [tool, file] = process.argv.slice(1);',
+  'try {',
+  '  process.stdout.write(JSON.stringify(await loader.loadToolConfig(tool, file)));',
+  '} catch (error) {',
+  '  process.stderr.write(loader.failureText(error));',
+  '  process.exitCode = 1;',
+  '}',
+].join('\n');
 const MAX_OUTPUT_BYTES = 16 * 1024 * 1024;
 
 function loadedFile(tool, projectRoot, file) {
-  const result = spawnSync(process.execPath, [LOADER_SCRIPT, tool, path.join(projectRoot, file)], {
-    cwd: projectRoot,
-    encoding: 'utf8',
-    maxBuffer: MAX_OUTPUT_BYTES,
-  });
+  const result = spawnSync(
+    process.execPath,
+    ['--input-type=module', '-e', LOADER_SOURCE, tool, path.join(projectRoot, file)],
+    { cwd: projectRoot, encoding: 'utf8', maxBuffer: MAX_OUTPUT_BYTES },
+  );
   if (result.error !== undefined) {
     throw result.error;
   }
@@ -76,7 +87,7 @@ export function withProjectToolConfigs(tools, projectRoot) {
   return Object.fromEntries(
     Object.entries(tools).map(([tool, settings]) => [
       tool,
-      PROJECT_CONFIG_FILES.has(tool) && usesProject(settings)
+      isProjectConfigTool(tool) && usesProject(settings)
         ? { ...settings, ...captured(tool, projectRoot) }
         : settings,
     ]),
@@ -86,7 +97,7 @@ export function withProjectToolConfigs(tools, projectRoot) {
 export function headProjectToolFacts(tools = {}, headTools = {}) {
   return Object.fromEntries(
     [...new Set([...Object.keys(tools), ...Object.keys(headTools)])].flatMap((tool) => {
-      if (!PROJECT_CONFIG_FILES.has(tool)) {
+      if (!isProjectConfigTool(tool)) {
         return tools[tool] === undefined ? [] : [[tool, tools[tool]]];
       }
       return headTools[tool] === undefined ? [] : [[tool, headTools[tool]]];

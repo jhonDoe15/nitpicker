@@ -1,36 +1,31 @@
 const REGEXP_KEY = '$nitpickerRegExp';
+const UNSUPPORTED_TYPES = new Set(['function', 'symbol', 'bigint']);
 
-function encodedEntries(value, at) {
-  return Object.fromEntries(
-    Object.entries(value)
-      .filter(([, item]) => item !== undefined)
-      .map(([key, item]) => [key, encodedValue(item, `${at}.${key}`)]),
-  );
+export function listOf(value) {
+  if (value === undefined) {
+    return [];
+  }
+  return Array.isArray(value) ? value : [value];
 }
 
 export function encodedValue(value, at = 'config') {
-  if (value instanceof RegExp) {
-    return { [REGEXP_KEY]: [value.source, value.flags] };
-  }
-  if (['function', 'symbol', 'bigint'].includes(typeof value)) {
-    throw new TypeError(
-      `${at} is a ${typeof value}; only JSON values and regular expressions can be used`,
-    );
-  }
-  if (Array.isArray(value)) {
-    return value.map((item, index) => encodedValue(item, `${at}[${String(index)}]`));
-  }
-  return value !== null && typeof value === 'object' ? encodedEntries(value, at) : value;
+  const text = JSON.stringify(value, (key, item) => {
+    if (item instanceof RegExp) {
+      return { [REGEXP_KEY]: [item.source, item.flags] };
+    }
+    if (UNSUPPORTED_TYPES.has(typeof item)) {
+      const where = key === '' ? at : `${at}: "${key}"`;
+      throw new TypeError(
+        `${where} is a ${typeof item}; only JSON values and regular expressions can be used`,
+      );
+    }
+    return item;
+  });
+  return text === undefined ? undefined : JSON.parse(text);
 }
 
 export function hasEncodedRegExp(value) {
-  if (Array.isArray(value)) {
-    return value.some(hasEncodedRegExp);
-  }
-  if (value === null || typeof value !== 'object') {
-    return false;
-  }
-  return REGEXP_KEY in value || Object.values(value).some(hasEncodedRegExp);
+  return JSON.stringify(value)?.includes(JSON.stringify(REGEXP_KEY)) === true;
 }
 
 export function revivedExpression(value) {

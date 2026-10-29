@@ -2,10 +2,10 @@ import {
   ignoredConfigNotice,
   precedenceLayers,
 } from '../../../../shared/conventions/tool-precedence.mjs';
-import { PROJECT_CONFIG_FILES, projectConfigSources } from './project-config-files.mjs';
+import { projectConfigSources, projectConfigTools } from './project-config-files.mjs';
 
 function ignoredProjectToolNotices(config, projectRoot) {
-  return [...PROJECT_CONFIG_FILES.keys()]
+  return projectConfigTools()
     .filter((tool) => !precedenceLayers(config.tools?.[tool]?.precedence).usesProject)
     .flatMap((tool) => {
       const sources = projectConfigSources(tool, projectRoot);
