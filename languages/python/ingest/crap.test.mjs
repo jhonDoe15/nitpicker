@@ -129,9 +129,7 @@ describe('ingestPythonCrap', () => {
   });
 
   it('puts no line number in the identity', () => {
-    for (const finding of ingest({ limit: 4 })) {
-      expect(finding.identity).not.toMatch(/\d{2,}/);
-    }
+    expect(ingest({ limit: 4 }).filter((finding) => /\d{2,}/.test(finding.identity))).toEqual([]);
   });
 
   it('does not take the coverage of a same-named entry whose lines lie outside the range of the function', () => {

@@ -18,17 +18,31 @@ const CATEGORIES = ['gate-tampering', 'weakened-tests', 'code-shortcuts'];
 describe('negative case definitions', () => {
   it('covers each detector with at least one case that has a cheating overlay', () => {
     expect(NEGATIVE_CASES.map((entry) => entry.category)).toEqual(CATEGORIES);
-    for (const { caseId, category, cheats } of NEGATIVE_CASES) {
-      expect(loadCase(path.join(casesDirectory, caseId)).categories).toEqual([category]);
-      for (const { overlay, expected, outcome, flaggedBy } of cheats) {
-        expect(existsSync(path.join(casesDirectory, caseId, 'cheats', overlay))).toBe(true);
-        // A gate-findings cheat names the finding that rejects it; a shortcut has none to name.
-        expect(typeof flaggedBy?.finding, overlay).toBe(
-          outcome === 'gate-findings' ? 'string' : 'undefined',
-        );
-        expect(expected.every((shortcut) => shortcut.category === category)).toBe(true);
-      }
-    }
+    expect(
+      NEGATIVE_CASES.map(({ caseId }) => loadCase(path.join(casesDirectory, caseId)).categories),
+    ).toEqual(NEGATIVE_CASES.map(({ category }) => [category]));
+    const cheats = NEGATIVE_CASES.flatMap(({ caseId, category, cheats: entries }) =>
+      entries.map((cheat) => ({ ...cheat, caseId, category })),
+    );
+    expect(
+      cheats.map(({ caseId, overlay }) => [
+        overlay,
+        existsSync(path.join(casesDirectory, caseId, 'cheats', overlay)),
+      ]),
+    ).toEqual(cheats.map(({ overlay }) => [overlay, true]));
+    // A gate-findings cheat names the finding that rejects it; a shortcut has none to name.
+    expect(cheats.map(({ overlay, flaggedBy }) => [overlay, typeof flaggedBy?.finding])).toEqual(
+      cheats.map(({ overlay, outcome }) => [
+        overlay,
+        outcome === 'gate-findings' ? 'string' : 'undefined',
+      ]),
+    );
+    expect(
+      cheats.map(({ overlay, expected, category }) => [
+        overlay,
+        expected.every((shortcut) => shortcut.category === category),
+      ]),
+    ).toEqual(cheats.map(({ overlay }) => [overlay, true]));
   });
 
   it('has a test for every cheats directory', () => {
@@ -58,12 +72,10 @@ describe('negative case definitions', () => {
         const strict = loadTree(strictCleanRoot);
         strict.delete('package.json');
         const fixture = loadTree(definition.fixtureDirectory);
-        for (const [file, text] of strict) {
-          const same = fixture.get(file) === text;
-          expect(same || EXTENDED_BY_CASE.has(file), `${file} differs from strict-clean`).toBe(
-            true,
-          );
-        }
+        const differing = [...strict]
+          .filter(([file, text]) => fixture.get(file) !== text && !EXTENDED_BY_CASE.has(file))
+          .map(([file]) => file);
+        expect(differing).toEqual([]);
       });
 
       it('has one test file for its honest run and one for each cheat', () => {
@@ -78,12 +90,13 @@ describe('negative case definitions', () => {
 
       it('keeps the hidden acceptance tests, the reference and the cheats out of the fixture', () => {
         const fixture = loadTree(definition.fixtureDirectory);
-        for (const file of loadTree(definition.acceptanceDirectory).keys()) {
-          expect(fixture.has(file), `${file} must not ship in the fixture`).toBe(false);
-        }
-        for (const file of fixture.keys()) {
-          expect(file).not.toMatch(/acceptance|reference|cheats/);
-        }
+        const shipped = [...loadTree(definition.acceptanceDirectory).keys()].filter((file) =>
+          fixture.has(file),
+        );
+        expect(shipped).toEqual([]);
+        expect(
+          [...fixture.keys()].filter((file) => /acceptance|reference|cheats/.test(file)),
+        ).toEqual([]);
       });
     });
   }

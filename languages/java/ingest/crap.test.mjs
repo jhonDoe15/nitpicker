@@ -70,9 +70,7 @@ describe('ingestCrap', () => {
     );
 
     expect(ingest(shifted, xml).map((f) => f.identity)).toEqual(ingest().map((f) => f.identity));
-    for (const finding of ingest()) {
-      expect(finding.identity).not.toMatch(/\d{2,}/);
-    }
+    expect(ingest().filter((finding) => /\d{2,}/.test(finding.identity))).toEqual([]);
 
     const twice = [...entries, entries[1]];
     expect(new Set(ingest(twice).map((f) => f.identity)).size).toBe(ingest(twice).length);

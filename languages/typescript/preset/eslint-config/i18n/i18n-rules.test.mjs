@@ -93,12 +93,10 @@ describe('each enabled rule fires on a small fixture', () => {
   });
 
   it('never offers an upstream fix or suggestion', () => {
-    for (const [, banned] of firing) {
-      for (const finding of lint(banned)) {
-        expect(finding.fix, finding.ruleId).toBeUndefined();
-        expect(finding.suggestions, finding.ruleId).toBeUndefined();
-      }
-    }
+    const findings = firing.flatMap(([, banned]) => lint(banned));
+    expect(findings.map(({ ruleId, fix, suggestions }) => ({ ruleId, fix, suggestions }))).toEqual(
+      findings.map(({ ruleId }) => ({ ruleId, fix: undefined, suggestions: undefined })),
+    );
   });
 
   it('checks defineMessages, FormattedMessage and the message shorthand too', () => {
@@ -162,24 +160,30 @@ describe('the plugin wrapper', () => {
   });
 
   it('ends every reachable message of a rule with its hint, joined by one full stop', () => {
-    for (const [name, { hint }] of Object.entries(i18nRules)) {
-      const texts = Object.entries(i18nPlugin.rules[name].meta.messages)
+    const rules = Object.entries(i18nRules).map(([name, { hint }]) => ({
+      name,
+      hint,
+      texts: Object.entries(i18nPlugin.rules[name].meta.messages)
         .filter(([id]) => name === 'no-invalid-icu' || id !== 'parseError')
-        .map(([, text]) => text);
-      expect(texts.length, name).toBeGreaterThan(0);
-      for (const text of texts) {
-        expect(text.endsWith(hint), `${name}: ${text}`).toBe(true);
-        expect(text.slice(0, -hint.length), `${name}: ${text}`).toMatch(/[^\s.]\.?$/u);
-        expect(text, name).not.toContain('..');
-        expect(text, name).not.toContain('\n');
-      }
-    }
+        .map(([, text]) => text),
+    }));
+    const messages = rules.flatMap(({ name, hint, texts }) =>
+      texts.map((text) => ({ name, hint, text })),
+    );
+
+    expect(rules.map(({ name, texts }) => [name, texts.length > 0])).toEqual(
+      rules.map(({ name }) => [name, true]),
+    );
+    expect(messages.filter(({ text, hint }) => !text.endsWith(hint))).toEqual([]);
+    expect(
+      messages.filter(({ text, hint }) => !/[^\s.]\.?$/u.test(text.slice(0, -hint.length))),
+    ).toEqual([]);
+    expect(messages.filter(({ text }) => text.includes('..') || text.includes('\n'))).toEqual([]);
   });
 
   it('keeps each hint to one sentence and one example', () => {
-    for (const [name, { hint }] of Object.entries(i18nRules)) {
-      expect(hint.length, name).toBeLessThan(200);
-    }
+    const hints = Object.entries(i18nRules);
+    expect(hints.filter(([, { hint }]) => hint.length >= 200).map(([name]) => name)).toEqual([]);
   });
 });
 

@@ -169,15 +169,16 @@ describe('the duplicate folder list', () => {
     expect(configureJavaAnalyzer(analyzer, { duplicates: {} })).toBe(analyzer);
   });
 
-  it('is left unset without the option and rejected when it is not a list of names', () => {
+  it('is left unset without the option', () => {
     expect(
       parseJavaRunnerArguments(['--project-root', '/p']).policy.duplicateSkippedFolders,
     ).toBeUndefined();
-    for (const value of ['"build"', '[1]', '{}']) {
-      expect(() =>
-        parseJavaRunnerArguments(['--project-root', '/p', '--duplicate-skipped-folders', value]),
-      ).toThrow('--duplicate-skipped-folders must be a JSON array of folder names');
-    }
+  });
+
+  it.each(['"build"', '[1]', '{}'])('rejects %s when it is not a list of names', (value) => {
+    expect(() =>
+      parseJavaRunnerArguments(['--project-root', '/p', '--duplicate-skipped-folders', value]),
+    ).toThrow('--duplicate-skipped-folders must be a JSON array of folder names');
   });
 });
 

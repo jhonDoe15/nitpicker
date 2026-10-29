@@ -48,10 +48,10 @@ describe('report files in the docs', () => {
     expect(unnamedIn(readDoc('agents-snippet.md'))).toEqual([]);
   });
   it('names no report file that no run writes', () => {
-    for (const text of [reportsSection(), readDoc('agents-snippet.md')]) {
-      const named = [...text.matchAll(REPORT_FILE_PATTERN)].map(([, name]) => name);
-      expect(named.filter((name) => !REPORT_FILES.has(name))).toEqual([]);
-    }
+    const named = [reportsSection(), readDoc('agents-snippet.md')].flatMap((text) =>
+      [...text.matchAll(REPORT_FILE_PATTERN)].map(([, name]) => name),
+    );
+    expect(named.filter((name) => !REPORT_FILES.has(name))).toEqual([]);
   });
   it('names only files the CLI writes wherever the README and the guides mention a report', () => {
     const unknown = guides().flatMap(([file, text]) =>

@@ -335,11 +335,10 @@ fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metric
     expect(excluded.summary.policyHash).not.toBe(plainHash);
     // Each key alone must change the hash, computed with the same functions the CLI uses.
     const analyzers = [fakeAnalyzer()];
-    for (const [key, value] of [...entries, ['exclude', ['generated/**']]]) {
-      expect(policyHash(analyzers, describeConfigOverrides({ [key]: value }))).not.toBe(
-        policyHash(analyzers),
-      );
-    }
+    const singleKeyHashes = [...entries, ['exclude', ['generated/**']]].map(([key, value]) =>
+      policyHash(analyzers, describeConfigOverrides({ [key]: value })),
+    );
+    expect(singleKeyHashes).not.toContain(policyHash(analyzers));
   });
   describe('custom analyzers', () => {
     it('classifies findings from a valid analyzer like built-in findings', () => {

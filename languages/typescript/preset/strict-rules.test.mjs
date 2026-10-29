@@ -17,15 +17,12 @@ describe('strict rule ids', () => {
   });
 
   it('recognises every ESLint and boundary rule of the preset', () => {
-    for (const rule of [...strictEslintRuleIds, ...strictBoundaryRules.map(({ name }) => name)]) {
-      expect(isStrictRule(rule)).toBe(true);
-    }
+    const rules = [...strictEslintRuleIds, ...strictBoundaryRules.map(({ name }) => name)];
+    expect(rules.filter((rule) => !isStrictRule(rule))).toEqual([]);
   });
 
   it('recognises every React rule as strict without listing it among the always-on rules', () => {
-    for (const rule of reactRuleIds) {
-      expect(isStrictRule(rule), rule).toBe(true);
-      expect(strictEslintRuleIds, rule).not.toContain(rule);
-    }
+    expect(reactRuleIds.filter((rule) => !isStrictRule(rule))).toEqual([]);
+    expect(reactRuleIds.filter((rule) => strictEslintRuleIds.includes(rule))).toEqual([]);
   });
 });

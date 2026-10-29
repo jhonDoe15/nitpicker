@@ -85,12 +85,12 @@ describe('timeout policy changes', () => {
 
   it('allows shrinking a looser suite and detects shrinking a stricter suite', () => {
     const includes = ['test/jvm/**', 'test/new/**'];
-    for (const value of [5_000, 20_000]) {
+    const loosened = [5_000, 20_000].map((value) => {
       const base = config({ projects: { jvm: project(ceilings(value), includes) } });
       const head = config({ projects: { jvm: project(ceilings(value)) } });
-      const result = loosenedTexts(base, head);
-      expect(result.length > 0).toBe(value === 5_000);
-    }
+      return timeoutChanges(base, head).loosened.length > 0;
+    });
+    expect(loosened).toEqual([true, false]);
   });
 
   it('reviews real execution increases and transitions to native hook deadlines', () => {
