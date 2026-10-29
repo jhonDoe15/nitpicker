@@ -11,6 +11,7 @@ import java.util.Set;
 import nitpicker.kotlinpsi.bodies.Bodies;
 import nitpicker.kotlinpsi.catches.Catches;
 import nitpicker.kotlinpsi.common.Frame;
+import nitpicker.kotlinpsi.load.LoadCalls;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
 
@@ -23,6 +24,7 @@ public final class FactsCollector {
   private final Calls calls;
   private final Predicates predicates;
   private final Bodies bodies;
+  private final LoadCalls loads;
 
   public FactsCollector(KtFile file, String text, String relative, boolean test, Set<String> nothing) {
     this.file = file;
@@ -31,6 +33,7 @@ public final class FactsCollector {
     this.calls = new Calls(state);
     this.predicates = new Predicates(state);
     this.bodies = new Bodies(text, test, nothing, state.namesOf(HANDLER));
+    this.loads = test ? null : new LoadCalls(file, state::lineOf);
   }
 
   public void collect() {
@@ -40,6 +43,9 @@ public final class FactsCollector {
   public Map<String, Object> result() {
     Map<String, Object> result = new LinkedHashMap<>(state.result());
     result.putAll(bodies.result());
+    if (loads != null) {
+      result.putAll(loads.result());
+    }
     return result;
   }
 
@@ -108,6 +114,9 @@ public final class FactsCollector {
 
   private void observe(PsiElement element, Frame frame) {
     bodies.observe(element, frame);
+    if (loads != null) {
+      loads.observe(element);
+    }
     if (element instanceof KtProperty) {
       declarations.declareProperty((KtProperty) element, frame);
     } else if (element instanceof KtTypeAlias) {

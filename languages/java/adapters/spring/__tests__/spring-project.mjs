@@ -66,6 +66,7 @@ const REVIEW_RULES = new Set([
   'StaticForwardingWrapper',
   'SingularAndPluralMember',
   'SwallowedInterrupt',
+  'ClassLoadEffect',
   'SpringUnusedContext',
   'TestClassWithoutTestCases',
   'test-only-export',
