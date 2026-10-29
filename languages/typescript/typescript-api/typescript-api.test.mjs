@@ -21,7 +21,7 @@ import {
   supportsRedirect,
   withRedirectPreload,
 } from './api-redirect.mjs';
-import { selectTypeScriptApi } from './api-selection.mjs';
+import { selectTypeScriptApi, typeScriptApi } from './api-selection.mjs';
 import { ts } from './typescript-api.mjs';
 
 const require = createRequire(import.meta.url);
@@ -52,6 +52,10 @@ describe('choosing the TypeScript API nitpicker reads source files with', () => 
     });
     expect(selectTypeScriptApi().bundled).toBe(false);
     expect(ts.createSourceFile).toBeTypeOf('function');
+  });
+
+  it('keeps the first choice, so a later redirect cannot change it', () => {
+    expect(typeScriptApi()).toBe(typeScriptApi());
   });
 
   it('uses the bundled TypeScript 6 when the installed one is TypeScript 7', () => {

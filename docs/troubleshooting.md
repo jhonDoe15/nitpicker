@@ -482,7 +482,7 @@ files fall in, and no separate `hookTimeoutMs` (or the same value), or run the t
 
 **Symptom.** `Required tool vitest is not installed from <dir>. Install vitest ^4.1.11 || ^5.0.0 as a
 dev dependency of the project.`; the same for `jest`, `mocha`, `@vitest/coverage-v8`, `@types/node` or
-`typescript` (`Install typescript >=5.7`); `vite is not installed at or above <dir>` or
+`typescript` (`Install typescript >=5.7 as a dev dependency`); `vite is not installed at or above <dir>` or
 `vite could not be resolved from the project`; or `Cannot find package 'vitest' imported from <file>`
 (Node's `ERR_MODULE_NOT_FOUND`) when `node_modules` exists but does not have the package.
 
@@ -699,7 +699,7 @@ tool when detection picks the wrong one. When the tool is timed out, see
 ### mutmut fails
 
 **Symptom.** A tool error of the `mutation` analyzer with the rule `mutation-failed`: `mutmut was not
-found in the uv environment`, `mutmut 2.5.1 is not supported`, `mutmut run exited 1 ...`, or
+found in the uv environment`, `mutmut 2.5.1 is not supported`, `mutmut run exited 1 in the uv environment`, or
 `failed to collect stats` followed by a hint about `also_copy`.
 
 **Cause.** Mutation testing runs mutmut 3.x after the `python` analyzer, with pytest. It needs the

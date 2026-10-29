@@ -1,4 +1,4 @@
 import { createRequire } from 'node:module';
-import { selectTypeScriptApi } from './api-selection.mjs';
+import { typeScriptApi } from './api-selection.mjs';
 
-export const ts = createRequire(import.meta.url)(selectTypeScriptApi().file);
+export const ts = createRequire(import.meta.url)(typeScriptApi().file);

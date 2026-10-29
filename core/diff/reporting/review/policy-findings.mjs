@@ -1,8 +1,4 @@
 import { createHash } from 'node:crypto';
-import {
-  TROUBLESHOOTING_ANCHORS,
-  withTroubleshooting,
-} from '../../../../shared/messages/troubleshooting.mjs';
 import { printable } from '../format/text.mjs';
 import { policyKindGuidance } from './policy-guidance.mjs';
 
@@ -39,10 +35,7 @@ export function policyFindings(loosenings, digest, { acceptedDigest, kinds = {} 
     rule: POLICY_RULE,
     path: 'nitpicker.config.json',
     identity: change,
-    message: withTroubleshooting(
-      `${printable(change)}. ${policyKindGuidance(kinds[change])} ${route}`,
-      TROUBLESHOOTING_ANCHORS.policyLoosened,
-    ),
+    message: `${printable(change)}. ${policyKindGuidance(kinds[change])} ${route}`,
     classification: 'enforceable',
     ...(kinds[change] === undefined ? {} : { policyKind: kinds[change] }),
   }));

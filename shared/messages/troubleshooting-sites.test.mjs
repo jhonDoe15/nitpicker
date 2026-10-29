@@ -21,7 +21,6 @@ const CLAUSE_BREAK = /[.:;] | \(/u;
 const EDGE_PUNCTUATION = /^[\s.:;,(]+|[\s.:;,(]+$/gu;
 const MESSAGES_BUILT_ELSEWHERE = [
   'core/diff/execution/process.mjs',
-  'core/diff/reporting/review/policy-findings.mjs',
   'core/diff/sharding/aggregate-shards.mjs',
   'core/fix/run-fix.mjs',
   'languages/java/adapters/red-base/tests-failed.mjs',
