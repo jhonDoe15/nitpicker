@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { lineOf, scanKotlinSource } from '../kotlin-source.mjs';
-import { ioInLoops, logTemplates, shellCommands } from './calls.mjs';
+import { ioInLoops, logTemplates, shellCommands, standardStreams } from './calls.mjs';
 
 function found(check, source) {
   const scanned = scanKotlinSource(source);
@@ -172,5 +172,33 @@ describe('ioInLoops', () => {
     ['a file read in a loop', ['for (item in items) {', '    java.io.File(item).readText()', '}']],
   ])('passes %s', (_name, lines) => {
     expect(found(ioInLoops, body(lines))).toEqual([]);
+  });
+});
+
+describe('standardStreams', () => {
+  it.each([
+    ['System.out', 'System.out.append(text)'],
+    ['System.err', 'System.err.println(text)'],
+    ['a qualified System.out', 'java.lang.System.out.append(text)'],
+    ['a stream passed on', 'show(System.out)'],
+    ['a method reference', 'items.forEach(System.out::println)'],
+    ['an import of the stream', 'import java.lang.System.out'],
+    ['an import renamed', 'import java.lang.System.err as stderr'],
+  ])('flags %s outside the entry point', (_name, line) => {
+    expect(found(standardStreams, `${line}\n`)).toEqual([['StandardStreamOutsideEntryPoint', 1]]);
+  });
+
+  it.each([
+    ['a parameter', 'fun show(out: Appendable) {\n    out.append("x")\n}\n'],
+    ['a stream replaced', 'fun capture() {\n    System.setOut(stream)\n}\n'],
+    ['a member named out', 'fun show(sink: Sink) = sink.out.append("x")\n'],
+    ['a name that only starts like it', 'val a = System.output\n'],
+    ['a comment', '// System.out.append("x")\nfun f() {}\n'],
+    ['a string', 'val a = "System.out"\n'],
+    ['the entry point', 'fun main() {\n    show(System.out, System.err)\n}\n'],
+    ['the entry point with a reference', 'fun main() = items.forEach(System.out::println)\n'],
+    ['a Spring application', '@SpringBootApplication\nclass App {\n    val out = System.out\n}\n'],
+  ])('passes %s', (_name, source) => {
+    expect(found(standardStreams, source)).toEqual([]);
   });
 });

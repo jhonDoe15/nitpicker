@@ -1,4 +1,4 @@
-import { literalAt, literalsIn } from '../kotlin-source.mjs';
+import { isCompositionRoot, literalAt, literalsIn } from '../kotlin-source.mjs';
 import { logCalls } from '../log-calls.mjs';
 import { isConstantExpression, templatePieces } from '../security/sql-values.mjs';
 import { isPagingLoop, loopBodies, retryAttempts } from '../loops.mjs';
@@ -73,6 +73,7 @@ const BATCH_METHODS = new Set([
 const MEMBER_CALL = /\b([A-Za-z_]\w*)\s*\.\s*([A-Za-z_]\w*)\s*\(/g;
 const MESSAGE_LEVELS = new Set(['info', 'warn', 'error', 'log', 'config', 'warning', 'severe']);
 const OPERAND_MARK = /[()[\]{}+]/g;
+const STANDARD_STREAM = /(?<![\w.])(?:java\s*\.\s*lang\s*\.\s*)?System\s*\.\s*(?:out|err)(?!\w)/g;
 export const CALL_MESSAGES = {
   LogStringConcatenation:
     'Pass values as placeholders (`log.info("user {}", user)`), or give a lambda logger the message (`logger.info { "user $user" }`), not a message built with a string template, `+` or `format`.',
@@ -80,6 +81,8 @@ export const CALL_MESSAGES = {
     'Run the program directly with an argument list (`ProcessBuilder("git", "log", ref)`), not through a shell with `-c`.',
   IoCallInLoop:
     'Fetch or write all items at once (`findAllById`, `saveAll`, `deleteAll`, `WHERE id IN (...)`, one batched request): this calls a database, HTTP or repository API once per loop item. Paging, polling and retry loops are fine.',
+  StandardStreamOutsideEntryPoint:
+    'Take an `Appendable`, `PrintStream` or `Writer` parameter and write to it (`out.append(text)`, `out.println(text)`); the file with `fun main` passes `System.out` or `System.err`. An exception fits only for a program entry point the gate does not recognize as a composition root.',
 };
 
 function operands(code, start, end) {
@@ -187,4 +190,14 @@ export function ioInLoops(scanned) {
       rule: 'IoCallInLoop',
       offset,
     }));
+}
+
+export function standardStreams(scanned) {
+  if (isCompositionRoot(scanned)) {
+    return [];
+  }
+  return [...scanned.code.matchAll(STANDARD_STREAM)].map(({ index }) => ({
+    rule: 'StandardStreamOutsideEntryPoint',
+    offset: index,
+  }));
 }
