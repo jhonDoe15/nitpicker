@@ -3,7 +3,6 @@ import { mainMethodLines } from '../review-rules/source-declarations.mjs';
 const ENTRY_POINT_RULES = new Set([
   'errorprone/SystemOut',
   'pmd/SystemPrintln',
-  'jacoco/changed-branch-coverage',
   'pit/mutant-nocoverage',
 ]);
 const PRINT_STACK_TRACE = /\.printStackTrace\(\s*\)/u;

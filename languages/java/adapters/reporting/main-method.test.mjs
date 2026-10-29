@@ -41,7 +41,7 @@ const kept = (findings, source = SOURCE) =>
   );
 
 describe('withoutMainMethodFindings', () => {
-  it('drops standard stream, coverage and mutation findings inside the body of main only', () => {
+  it('drops standard stream and no-coverage mutant findings inside the body of main only', () => {
     expect(
       kept([
         finding('errorprone', 'SystemOut', 7),
@@ -49,7 +49,6 @@ describe('withoutMainMethodFindings', () => {
         finding('pmd', 'SystemPrintln', 14),
         finding('pmd', 'SystemPrintln', 21),
         finding('pmd', 'SystemPrintln', 25),
-        finding('jacoco', 'changed-branch-coverage', 8),
         finding('jacoco', 'changed-branch-coverage', 12),
         finding('pit', 'mutant-nocoverage', 13),
         finding('pit', 'mutant-nocoverage', 25),
@@ -58,7 +57,7 @@ describe('withoutMainMethodFindings', () => {
       'errorprone/SystemOut:7',
       'pmd/SystemPrintln:21',
       'pmd/SystemPrintln:25',
-      'jacoco/changed-branch-coverage:8',
+      'jacoco/changed-branch-coverage:12',
       'pit/mutant-nocoverage:25',
     ]);
   });
