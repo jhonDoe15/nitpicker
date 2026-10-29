@@ -326,12 +326,18 @@ resolved: an unresolved call is not listed in `calls`, it makes the uses it touc
     argument of the call, the index of the parameter passed (`-1` for anything else: a literal, an
     expression, a field, `this`); `returned` says whether the call's result is the return value.
   - `calls` (default `[]`): every call of a resolved project callable, in source order, as
-    `{ target, line, receiver?, cleanup?, mutation? }`. `receiver` is a key for the value the call
+    `{ target, line, receiver?, cleanup?, branch?, mutation? }`. `receiver` is a key for the value the call
     is made on, the same key for every call on the same value within this callable: the
     parameter or local name, `this.<field>` (Python `self.<field>`) for a field of the owner, or
     `this` (Python `self`) for the owner itself; leave it out for a static or top-level call.
     `cleanup` is true when the call runs on every exit: in a `finally` block, a TypeScript `using`
-    declaration's disposal, Python `with`, Java try-with-resources, Kotlin `use { }`. `mutation`
+    declaration's disposal, Python `with`, Java try-with-resources, Kotlin `use { }`. `branch`
+    lists the arms of the conditionals the call sits in, as `"<conditional>:<arm>"` (the
+    conditional's ordinal in the callable, the arm `then`, `else` or the index of a `case` or
+    `when` entry); two calls with the same conditional and different arms never run in one
+    execution, so `protocol-contract` does not count a step on one arm as running before an open
+    on the other. Producers that leave it out make every call count as possibly running before the
+    next. `mutation`
     names the first change the caller makes to the value the call returned, directly
     (`cart.lines().push(x)`) or through a local that holds it and is never reassigned
     (`const lines = cart.lines(); lines.push(x)`): the mutating method as the language names it
