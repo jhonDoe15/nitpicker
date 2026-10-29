@@ -1,5 +1,9 @@
 const IMPLICIT_PACKAGES = ['java.lang', 'kotlin', 'kotlin.io', 'kotlin.collections', 'kotlin.text'];
 
+export function lastSegment(name) {
+  return name.split('.').at(-1);
+}
+
 export function resolverFor(file) {
   const explicit = new Map();
   const wildcards = [];
