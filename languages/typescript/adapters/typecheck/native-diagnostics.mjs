@@ -5,6 +5,7 @@ import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 
 const NO_INPUTS_CODE = 18003;
 const REMOVED_OPTION_CODES = new Set([5102, 5108]);
+const NON_FATAL_CONFIG_CODES = new Set([5023, 5025]);
 const ENGINE_HINT =
   'Set "tools": { "typescript": { "engine": "project" } } in nitpicker.config.json ' +
   "to type check with the project's own TypeScript instead.";
@@ -65,7 +66,9 @@ function collectedDiagnostics(api, configPath) {
     compilerOptions.declaration === true || compilerOptions.composite === true;
   return {
     hasRootFiles: project.rootFiles.length > 0,
-    configErrors: program.getConfigFileParsingDiagnostics(),
+    configErrors: program
+      .getConfigFileParsingDiagnostics()
+      .map((diagnostic) => withoutRootConfigLocation(diagnostic, configPath)),
     diagnostics: [
       ...program.getProgramDiagnostics().map(withoutConfigLocation),
       ...program.getSyntacticDiagnostics(),
@@ -75,6 +78,13 @@ function collectedDiagnostics(api, configPath) {
       ...(emitsDeclarations ? program.getDeclarationDiagnostics() : []),
     ],
   };
+}
+
+function withoutRootConfigLocation(diagnostic, configPath) {
+  return diagnostic.fileName !== undefined &&
+    path.resolve(diagnostic.fileName) === path.resolve(configPath)
+    ? { ...diagnostic, fileName: undefined, pos: -1, end: -1 }
+    : diagnostic;
 }
 
 function withoutConfigLocation(diagnostic) {
@@ -94,11 +104,29 @@ function settledDiagnostics(ts, { hasRootFiles, configErrors, diagnostics }) {
 }
 
 function ownDiagnostics(ts, { hasRootFiles, configErrors, diagnostics }) {
-  const unexpectedErrors = configErrors.filter(({ code }) => code !== NO_INPUTS_CODE);
-  if (unexpectedErrors.length > 0) {
-    throw new Error(unexpectedErrors.map(({ text }) => text).join('\n'));
+  const fatalErrors = configErrors.filter(
+    ({ code }) => code !== NO_INPUTS_CODE && !isNonFatalConfigCode(code),
+  );
+  if (fatalErrors.length > 0) {
+    throw configFailure(fatalErrors.map(({ text }) => text).join('\n'));
   }
-  return hasRootFiles ? shapedDiagnostics(ts, diagnostics) : { diagnostics: [] };
+  if (!hasRootFiles) {
+    return { diagnostics: [] };
+  }
+  return {
+    diagnostics: [
+      ...shapedDiagnostics(ts, configErrors).diagnostics,
+      ...shapedDiagnostics(ts, diagnostics).diagnostics,
+    ],
+  };
+}
+
+export function isNonFatalConfigCode(code) {
+  return NON_FATAL_CONFIG_CODES.has(code);
+}
+
+export function configFailure(message) {
+  return Object.assign(new Error(message), { configError: true });
 }
 
 function shapedDiagnostics(ts, diagnostics) {
