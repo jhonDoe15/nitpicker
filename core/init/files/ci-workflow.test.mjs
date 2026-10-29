@@ -187,19 +187,58 @@ describe('workflow for Python projects', () => {
     );
   });
 
-  it.each([['pip'], ['conda']])('installs the project and every peer with pip for %s', (tool) => {
-    const files = {
-      'requirements.txt': 'flask\n',
-      'requirements-dev.txt': 'pytest\n',
-      'pyproject.toml': '[project]\nname = "demo"\n',
-    };
+  it.each([['pip'], ['conda']])(
+    'installs the project and every peer with pip for %s without an environment.yml',
+    (tool) => {
+      const files = {
+        'requirements.txt': 'flask\n',
+        'requirements-dev.txt': 'pytest\n',
+        'pyproject.toml': '[project]\nname = "demo"\n',
+      };
 
-    expect(pythonSteps(files, tool).slice(1)).toEqual([
-      'python -m pip install -r requirements-dev.txt',
-      'python -m pip install -r requirements.txt',
-      'python -m pip install -e .',
-      ALL_PYTHON_PEERS,
+      expect(pythonSteps(files, tool).slice(1)).toEqual([
+        'python -m pip install -r requirements-dev.txt',
+        'python -m pip install -r requirements.txt',
+        'python -m pip install -e .',
+        ALL_PYTHON_PEERS,
+      ]);
+    },
+  );
+
+  it('creates the environment of a conda project with setup-miniconda and adds the undeclared peers', () => {
+    const root = project(
+      { 'api/environment.yml': 'name: shop-api\ndependencies:\n  - pytest\n' },
+      { repository: true },
+    );
+    const context = pythonContext(root, 'conda', ['mypy']);
+    const job = parse(renderWorkflow(`${root}/api`, context)).jobs.nitpicker;
+
+    expect(job.defaults).toEqual({ run: { 'working-directory': 'api', shell: 'bash -el {0}' } });
+    expect(job.steps.slice(2)).toEqual([
+      {
+        uses: 'conda-incubator/setup-miniconda@v3',
+        with: {
+          'environment-file': 'api/environment.yml',
+          'activate-environment': 'shop-api',
+          'auto-activate-base': false,
+        },
+      },
+      { run: 'conda install --yes --channel conda-forge mypy' },
+      { name: 'nitpicker', run: 'npx nitpicker@1.2.3' },
     ]);
+  });
+
+  it('names the conda environment itself when environment.yml has no name', () => {
+    const root = project({ 'environment.yaml': 'dependencies:\n  - python\n' });
+    const job = parse(renderWorkflow(root, pythonContext(root, 'conda'))).jobs.nitpicker;
+
+    expect(job.defaults).toEqual({ run: { shell: 'bash -el {0}' } });
+    expect(job.steps[2].with).toEqual({
+      'environment-file': 'environment.yaml',
+      'activate-environment': 'nitpicker',
+      'auto-activate-base': false,
+    });
+    expect(job.steps).toHaveLength(4);
   });
 
   it('does not install a pyproject.toml that only configures tools', () => {
@@ -229,9 +268,23 @@ describe('workflow for Java and Kotlin projects', () => {
 describe('workflow location', () => {
   it('names the workflow after a project below the repository root', () => {
     expect(workflowPath('/repo', '/repo')).toBe(ROOT_WORKFLOW);
-    expect(workflowPath('/repo/apps/Web App', '/repo')).toBe(
-      '.github/workflows/nitpicker-apps-web-app.yml',
+    expect(workflowPath('/repo/apps/web', '/repo')).toBe(
+      '.github/workflows/nitpicker-apps--web.yml',
     );
+    expect(workflowPath('/repo/apps/Web App', '/repo')).toBe(
+      '.github/workflows/nitpicker-apps--web-app-60d39972.yml',
+    );
+  });
+
+  it.each([
+    ['a-b', 'a/b', 'nitpicker-a-b.yml', 'nitpicker-a--b.yml'],
+    ['my_app', 'My_App', 'nitpicker-my_app.yml', 'nitpicker-my-app-0e86b84b.yml'],
+    ['a-b', 'a b', 'nitpicker-a-b.yml', 'nitpicker-a-b-c8687a08.yml'],
+  ])('gives %s and %s different workflow files', (first, second, firstFile, secondFile) => {
+    expect([
+      workflowPath(`/repo/${first}`, '/repo'),
+      workflowPath(`/repo/${second}`, '/repo'),
+    ]).toEqual([`.github/workflows/${firstFile}`, `.github/workflows/${secondFile}`]);
   });
 
   it('runs in the project folder, quoted, when the project is below the repository root', () => {

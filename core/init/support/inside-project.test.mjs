@@ -1,7 +1,12 @@
 import { mkdirSync, symlinkSync, writeFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { useProjects } from '../test-support/projects.mjs';
-import { hasProjectFile, insideProject, writableProjectFile } from './inside-project.mjs';
+import {
+  hasProjectFile,
+  insideProject,
+  projectFileText,
+  writableProjectFile,
+} from './inside-project.mjs';
 
 const project = useProjects();
 const ADVICE =
@@ -65,6 +70,31 @@ describe('files init may write', () => {
 
     expect(() => writableProjectFile(root, 'nitpicker.config.json')).toThrow(
       `nitpicker.config.json is a symbolic link to a missing file, ${ADVICE}`,
+    );
+  });
+});
+
+describe('what stands in the way of a file init writes', () => {
+  it('reads a file that is there, and nothing when it is missing', () => {
+    const root = project({ 'AGENTS.md': '# Notes\n' });
+
+    expect(projectFileText(root, 'AGENTS.md')).toBe('# Notes\n');
+    expect(projectFileText(root, 'CLAUDE.md')).toBeUndefined();
+  });
+
+  it('refuses a folder where the file belongs', () => {
+    const root = project({ 'AGENTS.md/keep': '' });
+
+    expect(() => projectFileText(root, 'AGENTS.md')).toThrow(
+      'AGENTS.md is a folder, so nitpicker init cannot write it as a file. Rename or remove the folder, or make the change by hand.',
+    );
+  });
+
+  it('refuses a file where a folder of the path belongs', () => {
+    const root = project({ '.github/workflows': 'notes\n' });
+
+    expect(() => writableProjectFile(root, '.github/workflows/nitpicker.yml')).toThrow(
+      '.github/workflows is a file, so nitpicker init cannot create .github/workflows/nitpicker.yml inside it. Rename or remove .github/workflows, or make the change by hand.',
     );
   });
 });

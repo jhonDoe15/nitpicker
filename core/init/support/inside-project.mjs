@@ -1,4 +1,4 @@
-import { existsSync, lstatSync, realpathSync } from 'node:fs';
+import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { ancestorDirectories, pathInside } from '../../../shared/filesystem.mjs';
 
@@ -12,6 +12,39 @@ export function insideProject(root, relative) {
 
 export function hasProjectFile(root, ...names) {
   return names.some((name) => existsSync(insideProject(root, name)));
+}
+
+function isFolder(file) {
+  return statSync(file, { throwIfNoEntry: false })?.isDirectory() === true;
+}
+
+function blockingFile(root, relative) {
+  const parts = relative.split(/[\\/]/u);
+  const folders = parts.slice(0, -1).map((_part, index) => parts.slice(0, index + 1).join('/'));
+  return folders.find((folder) => {
+    const entry = statSync(path.join(root, folder), { throwIfNoEntry: false });
+    return entry !== undefined && !entry.isDirectory();
+  });
+}
+
+export function assertNothingInTheWay(root, relative) {
+  const file = blockingFile(root, relative);
+  if (file !== undefined) {
+    throw new Error(
+      `${file} is a file, so nitpicker init cannot create ${relative} inside it. Rename or remove ${file}, or make the change by hand.`,
+    );
+  }
+  if (isFolder(insideProject(root, relative))) {
+    throw new Error(
+      `${relative} is a folder, so nitpicker init cannot write it as a file. Rename or remove the folder, or make the change by hand.`,
+    );
+  }
+}
+
+export function projectFileText(root, relative) {
+  assertNothingInTheWay(root, relative);
+  const file = insideProject(root, relative);
+  return existsSync(file) ? readFileSync(file, 'utf8') : undefined;
 }
 
 function resolvedTarget(file) {
@@ -35,6 +68,7 @@ function linkProblem(root, target) {
 }
 
 export function writableProjectFile(root, relative) {
+  assertNothingInTheWay(root, relative);
   const file = insideProject(root, relative);
   const problem = linkProblem(root, resolvedTarget(file));
   if (problem !== undefined) {

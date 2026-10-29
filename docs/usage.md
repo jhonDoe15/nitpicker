@@ -84,9 +84,11 @@ either file, changes nothing.
 
 `--ci github` writes a workflow at the repository root from the template
 `core/init/templates/github-workflow.yml`: `.github/workflows/nitpicker.yml` for a project at the
-root, and `.github/workflows/nitpicker-<path>.yml` (for example `nitpicker-apps-web.yml`) with a
-`working-directory` default for a project in a subfolder, so two projects of one repository get
-two workflows. It runs on pull requests, checks out with `fetch-depth: 0`, sets up Node.js 24 (plus
+root, and `.github/workflows/nitpicker-<path>.yml` with a `working-directory` default for a project
+in a subfolder, so two projects of one repository get two workflows. The path keeps a folder name
+of lowercase letters, digits and single `-`, `_` or `.` as it is and joins folders with `--`
+(`apps/web` gives `nitpicker-apps--web.yml`); any other folder name is lowercased with a short
+hash of the original added (`Web App` gives `web-app-60d39972`), so no two folders share a file. It runs on pull requests, checks out with `fetch-depth: 0`, sets up Node.js 24 (plus
 Java 21 or Python 3.13 for those presets), installs the dependencies and runs nitpicker:
 
 - **Node.js.** `npm ci`, `pnpm install --frozen-lockfile`, `yarn install --frozen-lockfile` (Yarn 1),
@@ -100,15 +102,19 @@ Java 21 or Python 3.13 for those presets), installs the dependencies and runs ni
 - **Python.** uv, poetry, pipenv, pdm and hatch sync with their own tool (`uv sync`,
   `poetry install`, `pipenv install --dev`, `pdm install`, `hatch env create`) and then add the
   peers the project does not declare; a peer that only your local `.venv` holds counts as missing
-  here. pip and conda projects install the root `requirements*.txt` files, the project itself when
-  `pyproject.toml` has a `[project]` or `[build-system]` table (or there is a `setup.py` or
-  `setup.cfg`), and every peer, with pip into the runner's Python: the workflow does not set conda
-  up, and nitpicker falls back to that Python when `conda` is not on the `PATH`, as on GitHub's
-  hosted runners.
+  here. A conda project gets `conda-incubator/setup-miniconda` instead of `setup-python`, which
+  creates the environment from its `environment.yml` under the file's `name:` (`nitpicker` without
+  one); the run steps use the login shell `bash -el {0}`, so that environment is active, and
+  `conda install --yes --channel conda-forge` adds the peers the file does not declare. pip
+  projects install the root `requirements*.txt` files, the project itself when `pyproject.toml`
+  has a `[project]` or `[build-system]` table (or there is a `setup.py` or `setup.cfg`), and every
+  peer, with pip into the runner's Python.
 - **Java and Kotlin.** The build runs as it always does.
 
 init never overwrites a file, and never writes through a symbolic link that leads outside the
-project (or the repository, for the workflow); it stops with exit 2 and names the link. For an
+project (or the repository, for the workflow); it stops with exit 2 and names the link. It also
+stops with exit 2, before writing anything, when a folder stands where it writes a file (an
+`AGENTS.md` folder) or a file stands where it needs a folder (a `.github` file). For an
 existing file that needs a change it prints a unified diff from your file to what it would write
 and leaves the file alone; line endings (CRLF or LF) do not count as a change.
 `nitpicker.config.json` is up to date when it sets the detected preset, whatever else it holds, or
@@ -117,11 +123,11 @@ adds only the `"preset"` line and keeps every other key.
 
 init has exit codes of its own:
 
-| Code | Meaning                                                                                                                                                                                                                    |
-| ---- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 0    | Everything it was asked to write is in place: created, or already set up.                                                                                                                                                  |
-| 1    | An existing `nitpicker.config.json` or workflow needs a change, shown as a diff. The rest of the setup still happens.                                                                                                      |
-| 2    | It cannot run: an unknown argument, Node.js older than the `engines` range of the package (22.14), no Git repository, no project in the folder, Kotlin on Maven without Java sources, or a link it does not write through. |
+| Code | Meaning                                                                                                                                                                                                                                         |
+| ---- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 0    | Everything it was asked to write is in place: created, or already set up.                                                                                                                                                                       |
+| 1    | An existing `nitpicker.config.json` or workflow needs a change, shown as a diff. The rest of the setup still happens.                                                                                                                           |
+| 2    | It cannot run: an unknown argument, Node.js older than the `engines` range of the package (22.14), no Git repository, no project in the folder, Kotlin on Maven without Java sources, or a link, folder or file in the way of a file it writes. |
 
 ### From a GitHub release
 
@@ -377,7 +383,8 @@ The other commands:
 - `nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]`: analyze
   the committed `HEAD` tree (all analyzers, the named ones, or one shard) and upload its findings to
   the remote cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits
-  0 when everything was uploaded and 2 otherwise.
+  0 when everything was uploaded and 2 otherwise. It refuses any other option, such as `--rule` or
+  `--defer-exit`, with exit 2.
 
 ### Findings cache
 
