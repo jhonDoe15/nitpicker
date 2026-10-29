@@ -1,21 +1,22 @@
-import { existsSync, writeFileSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { javaCommand, runJava } from '../maven-command.mjs';
 import { runCheckstyle, runFormat, runPmd, runSpotbugs } from '../maven-lint.mjs';
 import { archunitMatcher, collectTestResults, runJacocoReport, runPit } from '../maven-tests.mjs';
 import { copyTestResults, requireTestngRun } from '../results/maven-test-results.mjs';
 import { runSpringArch } from '../spring/maven-spring-arch.mjs';
-import { springFacts, withDeclaredSpring } from '../spring/arch-rules-gate.mjs';
+import { withDeclaredSpring } from '../spring/arch-rules-gate.mjs';
+import { moduleManifest, writeManifest } from '../manifest/maven-manifest.mjs';
+import { ownSourceRoots } from '../../adapters/red-base/tests-failed.mjs';
+import { moduleName } from '../../builds/test-failures.mjs';
 import { runErrorProne } from '../errorprone/maven-errorprone.mjs';
 import { analyzeKotlinModule } from '../kotlin/kotlin-module.mjs';
-import { relativeRoots, relativeTo } from './module-paths.mjs';
+import { relativeTo } from './module-paths.mjs';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { writeJdepsReports } from '../../builds/jdeps-reports.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 export const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
-const GUAVA_JAR = /^guava-\d.*\.jar$/u;
-const AWAITILITY_JAR = /^awaitility-\d.*\.jar$/u;
 
 export function jacocoExecFiles(module) {
   return [path.join(module.buildDirectory, OWN_JACOCO_EXEC), ...module.jacocoDestFiles];
@@ -51,45 +52,34 @@ function runJdeps(module, reportDir, spawn) {
   });
 }
 
-function hasJar(classpath, jar) {
-  return classpath.some((entry) => jar.test(path.basename(entry)));
+function moduleNameOf(module, projectRoot) {
+  return moduleName(relativeTo(projectRoot, module.basedir));
 }
 
-function kotlinOnlyRoots(module) {
-  return (module.kotlin?.sourceRoots ?? []).filter((root) => !module.sourceRoots.includes(root));
-}
-
-export function moduleManifest({ module, classpaths, pinned }) {
-  return {
-    versions: pinned,
-    build: 'maven',
-    sourceRoots: relativeRoots(module, module.sourceRoots),
-    kotlinSourceRoots: relativeRoots(module, kotlinOnlyRoots(module)),
-    testSourceRoots: relativeRoots(module, module.testSourceRoots),
-    resourceRoots: relativeRoots(module, module.resourceRoots),
-    ...springFacts(classpaths),
-    guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
-    testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
-    testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
-    published: module.published,
-    runsFailsafe: module.runsFailsafe,
-  };
-}
-
-function readTestRuns({ module, reportDir, since, isArchunit, testRuntime }) {
-  const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
+function readTestRuns(context) {
+  const { module, reportDir, since, isArchunit, testRuntime, tolerateFailures } = context;
+  const results = collectTestResults({
+    module,
+    reportDir,
+    since,
+    isArchunit,
+    tolerateFailures,
+    moduleName: moduleNameOf(module, context.projectRoot),
+  });
   requireTestngRun({ module, since, isArchunit, testRuntime });
   copyTestResults({ module, reportDir, since, isArchunit });
-  return testsRan;
+  return results;
 }
 
-function runCoverage(options) {
-  const { module, reportDir, tools, classpaths, pinned, since, testsRan, springArch } = options;
-  const { springRoles, spawn } = options;
-  const isArchunit = archunitMatcher(module.archunitIncludes);
+function runCoverageTools(options) {
+  const { module, reportDir, tools, classpaths, since, testsRan, isArchunit, spawn } = options;
   const execFiles = jacocoExecFiles(module);
   runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, spawn });
   runPit({ module, reportDir, tools, classpaths, isArchunit, spawn });
+}
+
+function runArchitecture(options) {
+  const { module, reportDir, tools, classpaths, pinned, springArch, springRoles, spawn } = options;
   runSpringArch({
     module,
     reportDir,
@@ -123,11 +113,12 @@ function analyzeSources(options) {
   runSourceTools({ ...options, kotlin: { ...kotlin, spring: options.spring } });
   runStructure(module, reportDir, options.spawn);
   runJdeps(module, reportDir, options.spawn);
+  runArchitecture({ ...options, module: kotlin.coverageModule });
   return kotlin;
 }
 
 export function analyzeModule(options) {
-  const { module, classpaths, pinned, since } = options;
+  const { module, classpaths, pinned } = options;
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const manifest = withDeclaredSpring(
@@ -135,17 +126,23 @@ export function analyzeModule(options) {
     options.spring,
   );
   const { spring, springArch } = manifest;
-  const testsRan = readTestRuns({
-    module,
+  const { testsRan, failure } = readTestRuns({
+    ...options,
     reportDir,
-    since,
     isArchunit,
     testRuntime: classpaths.testRuntime,
   });
-  const kotlin = analyzeSources({ ...options, reportDir, spring });
-  runCoverage({ ...options, module: kotlin.coverageModule, reportDir, springArch, testsRan });
-  writeFileSync(
-    path.join(reportDir, 'manifest.json'),
-    JSON.stringify({ ...manifest, ...kotlin.manifest }),
-  );
+  const kotlin = analyzeSources({ ...options, reportDir, spring, springArch });
+  if (failure === undefined) {
+    runCoverageTools({
+      ...options,
+      module: kotlin.coverageModule,
+      reportDir,
+      testsRan,
+      isArchunit,
+    });
+  }
+  const written = { ...manifest, ...kotlin.manifest };
+  writeManifest({ reportDir, manifest: written, testsFailed: failure !== undefined });
+  return failure && { ...failure, roots: ownSourceRoots(written) };
 }

@@ -90,10 +90,13 @@ gradle.projectsEvaluated {
         def modules = new File(reportBase.toString(), 'modules.json')
         modules.parentFile.mkdirs()
         modules.text = groovy.json.JsonOutput.toJson(javaModules)
-        def testResults = gradle.rootProject.allprojects.collectMany { project ->
-            project.tasks.withType(Test).findAll { !it.name.startsWith('nitpickerArchunit') }.collect {
+        def testResults = gradle.rootProject.allprojects.findAll {
+            it.projectDir.toPath().startsWith(analysisRoot.toPath())
+        }.collect { project ->
+            def tests = project.tasks.withType(Test).findAll { !it.name.startsWith('nitpickerArchunit') }
+            [dir: relativeToRoot(project.projectDir), results: tests.collect {
                 it.reports.junitXml.outputLocation.get().asFile.absolutePath
-            }
+            }]
         }
         new File(reportBase.toString(), 'test-results.json').text = groovy.json.JsonOutput.toJson(testResults)
     }
@@ -136,6 +139,8 @@ allprojects {
             javaModules << [key: moduleKey, path: project.path, dir: relativeToRoot(project.projectDir)]
         }
         def kotlinPreset = nitpickerArgument('nitpicker.kotlin') == 'true'
+        def testsFailedModules = (nitpickerArgument('nitpicker.testsFailed') ?: '').toString().split(',').findAll { it }
+        def testsFailed = testsFailedModules.contains(relativeToRoot(project.projectDir) ?: '.')
         def javaStyle = nitpickerArgument('nitpicker.java.style') ?: 'google'
         def javaIndentation = nitpickerArgument('nitpicker.java.indentation') ?: '2'
 
@@ -671,7 +676,7 @@ allprojects {
                     }
                 }
                 onlyIf {
-                    mutatedClassDirs().any { it.exists() && it.list()?.length } && !skippedByBuild(source) &&
+                    !testsFailed && mutatedClassDirs().any { it.exists() && it.list()?.length } && !skippedByBuild(source) &&
                         (source.name == 'test' || !pitTestClasses(source).isEmpty())
                 }
             }
@@ -679,7 +684,7 @@ allprojects {
         tasks.register('nitpickerPit') {
             group = 'nitpicker'
             dependsOn { checkedTestTasks().collect { tasks.named("nitpickerPit${capitalized(it.name)}") } }
-            onlyIf { mutatedClassDirs().any { it.exists() && it.list()?.length } }
+            onlyIf { !testsFailed && mutatedClassDirs().any { it.exists() && it.list()?.length } }
             doLast {
                 def report = reportDir.get().file('pit/mutations.xml').asFile
                 def parts = checkedTestTasks().collect { new File(pitReportDirectory(it).asFile, 'mutations.xml') }
@@ -696,8 +701,11 @@ allprojects {
 
         tasks.register('nitpickerJacoco') {
             group = 'nitpicker'
-            dependsOn tasks.named('jacocoTestReport')
-            dependsOn { checkedTestTasks() }
+            if (!testsFailed) {
+                dependsOn tasks.named('jacocoTestReport')
+                dependsOn { checkedTestTasks() }
+            }
+            onlyIf { !testsFailed }
             doLast {
                 copy {
                     from tasks.named('jacocoTestReport').get().reports.xml.outputLocation
@@ -723,6 +731,9 @@ allprojects {
         }
         afterEvaluate {
             checkedTestTasks().each { it.exclude archunitIncludes }
+            if (testsFailed) {
+                checkedTestTasks().each { it.enabled = false }
+            }
             checkedTestTasks().findAll { it.name != 'test' }.each { source ->
                 def archunitName = "nitpickerArchunit${capitalized(source.name)}".toString()
                 def sourceSet = sourceSets.find { set ->
@@ -867,6 +878,7 @@ allprojects {
                     testSourceRoots: testRoots,
                     resourceRoots  : resourceRoots,
                     spring         : usesSpring(),
+                    testsFailed    : testsFailed,
                     springArch     : runsArchRules(),
                     guava          : hasGuava(sourceSets.main),
                     testGuava      : hasGuava(sourceSets.test),
