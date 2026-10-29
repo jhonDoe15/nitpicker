@@ -3,6 +3,15 @@ import { buildCouplingReport } from './coupling.mjs';
 
 const packageOf = (module) => module.split('/')[0];
 const fileOf = (module) => `${module}.py`;
+const INVERSION_CAUSE = {
+  files: ['stable/s.py'],
+  contributors: [
+    { file: 'leaf/q.py', unit: 'package leaf' },
+    { file: 'p1/a.py', unit: 'package p1' },
+    { file: 'p2/a.py', unit: 'package p2' },
+    { file: 'volatile/v.py', unit: 'package volatile' },
+  ],
+};
 
 describe('coupling report on a neutral module graph', () => {
   it('summarizes the graph and reports each module against its file', () => {
@@ -57,7 +66,7 @@ describe('coupling report on a neutral module graph', () => {
     });
 
     expect(report.stabilityDirection).toEqual([
-      { source: 'stable', target: 'volatile', delta: 0.1667 },
+      { source: 'stable', target: 'volatile', delta: 0.1667, cause: INVERSION_CAUSE },
     ]);
   });
 
@@ -109,7 +118,9 @@ describe('coupling report on a neutral module graph', () => {
 
     it('are runtime edges once any copy of the edge is a runtime edge', () => {
       const typeOnly = { ...inversion, kind: 'type-only' };
-      const expected = [{ source: 'stable', target: 'volatile', delta: 0.1667 }];
+      const expected = [
+        { source: 'stable', target: 'volatile', delta: 0.1667, cause: INVERSION_CAUSE },
+      ];
 
       expect(reportWith(typeOnly, inversion).stabilityDirection).toEqual(expected);
       expect(reportWith(inversion, typeOnly).stabilityDirection).toEqual(expected);
