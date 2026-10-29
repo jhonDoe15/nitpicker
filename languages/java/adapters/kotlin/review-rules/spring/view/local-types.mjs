@@ -182,10 +182,14 @@ function receiverStep(receiver) {
   return { next: { id: receiver.scope, text: receiver.text } };
 }
 
-function callStep(view, id, head, call, fallback) {
-  const then = (ownerType) => callResult(view, id, ownerType, call, head) ?? fallback;
+function callStep(view, site, fallback) {
+  function then(ownerType) {
+    return callResult(view, site, ownerType) ?? fallback;
+  }
   then.total = true;
-  return head === undefined ? { type: then(undefined) } : { next: { id, text: head }, then };
+  return site.head === undefined
+    ? { type: then(undefined) }
+    : { next: { id: site.id, text: site.head }, then };
 }
 
 function initializerStep(view, scope, local) {
@@ -209,7 +213,7 @@ function initializerStep(view, scope, local) {
     local.initializer === undefined
       ? undefined
       : (INITIALIZER_TYPES.get(local.initializer) ?? local.initializer);
-  return callStep(view, scope.id, invocation.receiver, call, fallback);
+  return callStep(view, { id: scope.id, head: invocation.receiver, call }, fallback);
 }
 
 function step(view, { id, text: raw }) {
@@ -230,7 +234,7 @@ function step(view, { id, text: raw }) {
     return { type: undefined };
   }
   if (selector.call) {
-    return callStep(view, id, parts?.head, selector);
+    return callStep(view, { id, head: parts?.head, call: selector });
   }
   return {
     next: { id, text: parts.head },

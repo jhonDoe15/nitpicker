@@ -10,15 +10,12 @@ import {
   MAP_KEY_ENUMERATED,
   NOT_COLUMNS,
 } from './data-types.mjs';
+import { simpleName } from '../view/member-types.mjs';
 import { annotatedWith, membersOf } from './entities.mjs';
 
 const STRING = /\bSTRING\b/u;
 const MAPS = new Set(['Map', 'MutableMap', 'HashMap', 'LinkedHashMap', 'SortedMap', 'TreeMap']);
 const AUTO_APPLY = /^autoApply$/u;
-
-function simpleName(type) {
-  return typeName(type).split('.').at(-1);
-}
 
 function projectEnums(projectFiles) {
   return new Set(

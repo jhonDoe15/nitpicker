@@ -47,7 +47,12 @@ describe('Kotlin expression text', () => {
         { text: '{ it }', lambda: true },
       ],
     });
-    expect(parseSelector('content')).toMatchObject({ name: 'content', call: false });
+    expect(parseSelector('content')).toEqual({
+      name: 'content',
+      call: false,
+      typeArguments: undefined,
+      arguments: [],
+    });
     expect(parseSelector('listOf(g)[0]')).toBeUndefined();
   });
 
