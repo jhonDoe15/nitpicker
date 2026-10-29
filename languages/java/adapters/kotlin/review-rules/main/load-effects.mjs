@@ -6,6 +6,7 @@ import {
   createdType,
   factoryResult,
   hasEffect,
+  isImportBanned,
   isKnownType,
   isTopLevelEffect,
 } from './load-effect-types.mjs';
@@ -115,7 +116,8 @@ function rootState(segments, scope) {
   }
   if (CAPITALIZED.test(first.name)) {
     const type = resolveName(first.name, scope);
-    return { state: type === undefined ? UNKNOWN : { kind: 'static', type }, used: 1 };
+    const known = type !== undefined && !isImportBanned(type);
+    return { state: known ? { kind: 'static', type } : UNKNOWN, used: 1 };
   }
   const binding = bindingOf(first.name, scope);
   return binding === undefined
@@ -218,9 +220,11 @@ function isLoadEffect(item, scope) {
   if (item.receiver.length === 0) {
     return item.call && namedEffect(resolveName(item.name, scope), item);
   }
-  if (item.call && CAPITALIZED.test(item.name) && isPackagePath(item.receiver)) {
+  if (item.call && isPackagePath(item.receiver)) {
     const qualified = [...item.receiver.map(({ name }) => name), item.name].join('.');
-    return namedEffect(qualified, item);
+    if (CAPITALIZED.test(item.name) || isTopLevelEffect(qualified)) {
+      return namedEffect(qualified, item);
+    }
   }
   return memberEffect(chainState(item.receiver, scope), item);
 }
@@ -236,20 +240,21 @@ function entryOwners(file) {
   );
 }
 
-function placeOf({ kind, owner, member }, file) {
+function placeOf({ kind, owner, member, site }, file) {
   const outer = owner.replace(/\.[^.]+$/u, '');
+  const where = site === undefined ? member : `${member}, which ${site} calls`;
   const places = {
-    file: `${path.basename(file.file)} loads (top-level ${member})`,
-    object: `object ${owner} loads (${member})`,
-    companion: `the companion object of ${outer} loads (${member})`,
-    enum: `enum class ${owner} loads (${member})`,
-    singleton: `the companion object of ${owner} loads and creates a ${owner} (${member})`,
+    file: `${path.basename(file.file)} loads (in top-level ${where})`,
+    object: `object ${owner} loads (in ${where})`,
+    companion: `the companion object of ${outer} loads (in ${where})`,
+    enum: `enum class ${owner} loads (in ${where})`,
+    singleton: `the companion object of ${owner} loads and creates a ${owner} (in ${where})`,
   };
   return places[kind];
 }
 
 function messageOf(item, file) {
-  return `Do this work in a function that main or the framework calls after startup (a @Bean method, an ApplicationRunner, a Ktor module) and pass the result in, or defer it with by lazy: \`${shortCall(item.text)}\` runs while ${placeOf(item.context, file)}, so it connects, starts threads or touches files in whatever order classes load, and in every test that touches it. Constants, loggers, Regex and collections can stay, and a file with fun main is not checked.`;
+  return `Do this work in a function that main or the framework calls after startup (a @Bean method, an ApplicationRunner, a Ktor module) and pass the result in, or defer it with by lazy: \`${shortCall(item.text)}\` runs while ${placeOf(item.context, file)}, so it connects, starts threads or touches files in whatever order classes load, and in every test that touches it. Constants, loggers, Regex and collections can stay, and the top-level code of a file with fun main is not checked.`;
 }
 
 function declaredClasses(files) {

@@ -4,6 +4,7 @@ import static nitpicker.kotlinpsi.common.Psi.m;
 import static nitpicker.kotlinpsi.common.Psi.nameOf;
 
 import java.util.*;
+import java.util.regex.Pattern;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.*;
@@ -19,14 +20,18 @@ final class LoadTime {
           "maxOf", "minOf", "partition", "getOrElse", "ifEmpty", "ifBlank", "runCatching", "requireNotNull",
           "checkNotNull", "require", "check");
 
-  private final Set<String> helpers = new HashSet<>();
+  private static final Pattern SEQUENCE = Pattern.compile("\\b(?:asSequence|sequenceOf|generateSequence|sequence)\\b");
+
+  private final Map<KtNamedFunction, Map<String, Object>> helpers = new HashMap<>();
+  private final Map<KtClass, List<List<? extends ValueArgument>>> creations = new HashMap<>();
 
   LoadTime(KtFile file) {
     for (KtCallExpression call : PsiTreeUtil.findChildrenOfType(file, KtCallExpression.class)) {
       String name = nameOf(call.getCalleeExpression());
       Map<String, Object> context = name == null || hasReceiver(call) ? null : walk(call, false);
-      if (context != null) {
-        helpers.add(context.get("owner") + "#" + name);
+      KtNamedFunction callee = context == null ? null : Callees.resolve(call, name);
+      if (callee != null) {
+        helpers.putIfAbsent(callee, context);
       }
     }
   }
@@ -55,49 +60,54 @@ final class LoadTime {
     return "";
   }
 
-  private static boolean hasReceiver(KtCallExpression call) {
+  static boolean hasReceiver(KtCallExpression call) {
     PsiElement parent = call.getParent();
     return parent instanceof KtQualifiedExpression
         && ((KtQualifiedExpression) parent).getSelectorExpression() == call
         && !(((KtQualifiedExpression) parent).getReceiverExpression() instanceof KtThisExpression);
   }
 
-  private static boolean isLiteral(PsiElement element) {
+  static boolean isLiteral(PsiElement element) {
     return element instanceof KtObjectDeclaration && ((KtObjectDeclaration) element).isObjectLiteral();
+  }
+
+  static boolean deferredBetween(PsiElement start, PsiElement stop) {
+    for (PsiElement parent = start.getParent(); parent != null && parent != stop; parent = parent.getParent()) {
+      if (isDeferred(parent) || parent instanceof KtNamedFunction || isLiteral(parent)) {
+        return true;
+      }
+    }
+    return false;
   }
 
   private Map<String, Object> walk(PsiElement start, boolean followHelpers) {
     String member = null;
-    boolean follow = followHelpers;
+    PsiElement memberElement = null;
     PsiElement child = start;
     for (PsiElement parent = start.getParent(); parent != null; child = parent, parent = parent.getParent()) {
       if (parent instanceof KtNamedFunction) {
-        if (!follow || !isHelper((KtNamedFunction) parent)) {
-          return null;
-        }
-        member = ((KtNamedFunction) parent).getName() + "()";
-        follow = false;
+        return followHelpers ? helperContext((KtNamedFunction) parent) : null;
       } else if (isDeferred(parent)) {
         return null;
       } else if (isLiteral(parent)) {
         member = null;
       } else if (parent instanceof KtClassOrObject && !(parent instanceof KtEnumEntry)) {
-        return ownerContext((KtClassOrObject) parent, member);
+        return ownerContext((KtClassOrObject) parent, member, memberElement);
       } else if (parent instanceof KtFile) {
         return member == null ? null : m("kind", "file", "owner", "", "member", member);
       } else if (member == null) {
         member = memberName(parent, child);
+        memberElement = member == null ? null : parent;
       }
     }
     return null;
   }
 
-  private boolean isHelper(KtNamedFunction function) {
-    PsiElement container = function.getParent();
-    String owner = container instanceof KtFile ? ""
-        : container instanceof KtClassBody && container.getParent() instanceof KtClassOrObject
-            && !isLiteral(container.getParent()) ? qualified((KtClassOrObject) container.getParent()) : null;
-    return owner != null && helpers.contains(owner + "#" + function.getName());
+  private Map<String, Object> helperContext(KtNamedFunction function) {
+    Map<String, Object> site = helpers.get(function);
+    return site == null ? null
+        : m("kind", site.get("kind"), "owner", site.get("owner"), "member", function.getName() + "()",
+            "site", site.get("member"));
   }
 
   private static boolean isDeferred(PsiElement element) {
@@ -114,7 +124,14 @@ final class LoadTime {
     }
     PsiElement call = parent instanceof KtLambdaArgument ? parent.getParent()
         : parent instanceof KtValueArgument ? parent.getParent().getParent() : null;
-    return call instanceof KtCallExpression && INLINE.contains(nameOf(((KtCallExpression) call).getCalleeExpression()));
+    return call instanceof KtCallExpression && INLINE.contains(nameOf(((KtCallExpression) call).getCalleeExpression()))
+        && !onSequence((KtCallExpression) call);
+  }
+
+  private static boolean onSequence(KtCallExpression call) {
+    PsiElement parent = call.getParent();
+    return parent instanceof KtQualifiedExpression && ((KtQualifiedExpression) parent).getSelectorExpression() == call
+        && SEQUENCE.matcher(((KtQualifiedExpression) parent).getReceiverExpression().getText()).find();
   }
 
   private static String memberName(PsiElement parent, PsiElement child) {
@@ -131,7 +148,7 @@ final class LoadTime {
     return parent instanceof KtEnumEntry ? ((KtEnumEntry) parent).getName() : null;
   }
 
-  private static Map<String, Object> ownerContext(KtClassOrObject declaration, String member) {
+  private Map<String, Object> ownerContext(KtClassOrObject declaration, String member, PsiElement memberElement) {
     if (member == null) {
       return null;
     }
@@ -139,29 +156,14 @@ final class LoadTime {
       boolean companion = ((KtObjectDeclaration) declaration).isCompanion();
       return m("kind", companion ? "companion" : "object", "owner", qualified(declaration), "member", member);
     }
-    if (declaration instanceof KtClass && ((KtClass) declaration).isEnum()) {
-      return m("kind", "enum", "owner", qualified(declaration), "member", member);
+    if (!(declaration instanceof KtClass)) {
+      return null;
     }
-    return declaration instanceof KtClass && createsItself((KtClass) declaration)
-        ? m("kind", "singleton", "owner", qualified(declaration), "member", member)
-        : null;
-  }
-
-  private static boolean createsItself(KtClass declaration) {
-    for (KtObjectDeclaration companion : declaration.getCompanionObjects()) {
-      for (KtDeclaration inner : companion.getDeclarations()) {
-        if (!(inner instanceof KtProperty) && !(inner instanceof KtClassInitializer)) {
-          continue;
-        }
-        for (KtCallExpression call : PsiTreeUtil.findChildrenOfType(inner, KtCallExpression.class)) {
-          if (Objects.equals(nameOf(call.getCalleeExpression()), declaration.getName())
-              && PsiTreeUtil.getParentOfType(call, KtLambdaExpression.class, true, KtDeclaration.class) == null
-              && !hasReceiver(call)) {
-            return true;
-          }
-        }
-      }
-    }
-    return false;
+    KtClass type = (KtClass) declaration;
+    List<List<? extends ValueArgument>> created = creations.computeIfAbsent(type, Creations::of);
+    boolean runs = memberElement instanceof KtSecondaryConstructor
+        ? Creations.reaches(created, (KtSecondaryConstructor) memberElement)
+        : !created.isEmpty();
+    return runs ? m("kind", type.isEnum() ? "enum" : "singleton", "owner", qualified(type), "member", member) : null;
   }
 }
