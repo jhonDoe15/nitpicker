@@ -3,6 +3,8 @@ import { matchSimilarFindings } from './similar/match.mjs';
 import { normalizeGitPath } from '../git/normalize.mjs';
 import { folderMoves, mainDestination } from '../git/patches/renames.mjs';
 import { insertBeforeRoute } from '../../../shared/messages/exception-sentence.mjs';
+import { pairedKeys } from './positions/occurrences.mjs';
+import { isHeldOnTouchedLine, withEditedLineReason } from './positions/touched-lines.mjs';
 
 export function compareFindings({
   baseFindings,
@@ -11,13 +13,13 @@ export function compareFindings({
   baseToHeadDirectories = new Map(),
   touchedCode,
 }) {
-  const baseByKey = indexFindings({
-    findings: baseFindings,
+  const { baseByKey, headByKey } = indexSnapshots({
+    baseFindings,
+    headFindings,
     renames: baseToHeadRenames,
     directories: baseToHeadDirectories,
-    snapshot: 'base',
+    touchedCode,
   });
-  const headByKey = indexFindings({ findings: headFindings, snapshot: 'head' });
   const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode });
   const withoutExactMatch = [...baseByKey]
     .filter(([key]) => !headByKey.has(key))
@@ -54,6 +56,14 @@ export function compareFindings({
   };
 }
 
+function indexSnapshots({ baseFindings, headFindings, renames, directories, touchedCode }) {
+  const keys = pairedKeys({ baseFindings, headFindings, renames, directories, touchedCode });
+  return {
+    baseByKey: indexFindings({ findings: baseFindings, renames, directories, snapshot: 'base' }),
+    headByKey: indexFindings({ findings: headFindings, snapshot: 'head', keys }),
+  };
+}
+
 function classifyHeadFindings({ headByKey, baseByKey, touchedCode }) {
   const buckets = { newFindings: [], unchangedFindings: [], changedMetrics: [] };
   for (const [key, headFinding] of headByKey) {
@@ -70,9 +80,9 @@ function classify(headFinding, baseFinding, touchedCode) {
   if (hasChangedMetric(baseFinding, headFinding)) {
     return { bucket: 'changedMetrics', entry: changedMetricOf(baseFinding, headFinding) };
   }
-  const isNew =
-    isInTouchedCode(headFinding, touchedCode) || isOnAddedLine(headFinding, touchedCode);
-  return { bucket: isNew ? 'newFindings' : 'unchangedFindings', entry: headFinding };
+  return isHeldOnTouchedLine(headFinding, touchedCode)
+    ? { bucket: 'newFindings', entry: withEditedLineReason(headFinding) }
+    : { bucket: 'unchangedFindings', entry: headFinding };
 }
 
 function holdRatchetedFindings({ newFindings, unmatchedBase, renames, directories, touchedCode }) {
@@ -179,9 +189,7 @@ function groupBaseByRatchetKey(unmatchedBase, keyOf) {
 
 function holdCandidatesFor(headFinding, baseByRatchet, touchedCode) {
   const isNeverHeld =
-    headFinding.ratchet === undefined ||
-    isInTouchedCode(headFinding, touchedCode) ||
-    isOnAddedLine(headFinding, touchedCode);
+    headFinding.ratchet === undefined || isHeldOnTouchedLine(headFinding, touchedCode);
   return isNeverHeld ? undefined : baseByRatchet.get(ratchetKey(headFinding, new Map(), new Map()));
 }
 
@@ -211,47 +219,16 @@ function changedMetricOf(baseFinding, headFinding) {
   };
 }
 
-function isInTouchedCode(finding, touchedCode) {
-  if (touchedCode === undefined || finding.classification !== 'enforceable') {
-    return false;
-  }
-  if (!touchedCode.isStrictRule(finding.rule, finding)) {
-    return false;
-  }
-  const changed = touchedCode.changedLines.get(finding.path);
-  if (changed === undefined) {
-    return false;
-  }
-  if (changed.added) {
-    return true;
-  }
-  if (
-    finding.ratchet?.existingCodeOnly === true &&
-    touchedCode.mustMeetOnEditedLines?.(finding.rule) !== true
-  ) {
-    return false;
-  }
-  const line = finding.location?.line;
-  const endLine = finding.location?.endLine ?? line;
-  return (
-    line !== undefined && changed.ranges.some(([start, end]) => start <= endLine && line <= end)
-  );
-}
-
-function isOnAddedLine(finding, touchedCode) {
-  const line = finding.location?.line;
-  const inserted = touchedCode?.changedLines.get(finding.path)?.inserted;
-  return (
-    finding.ratchet?.existingCodeOnly === true &&
-    line !== undefined &&
-    (inserted ?? []).some(([start, end]) => start <= line && line <= end)
-  );
-}
-
-function indexFindings({ findings, renames = new Map(), directories = new Map(), snapshot }) {
+function indexFindings({
+  findings,
+  renames = new Map(),
+  directories = new Map(),
+  snapshot,
+  keys = new Map(),
+}) {
   const indexed = new Map();
   for (const finding of findings) {
-    const key = comparisonKey(finding, renames, directories);
+    const key = keys.get(finding) ?? comparisonKey(finding, renames, directories);
     if (indexed.has(key)) {
       throw new Error(
         `${snapshot} analyzer output contains duplicate stable identity for ${finding.tool}/${finding.rule} at ${finding.path}`,

@@ -6,6 +6,7 @@ import path from 'node:path';
 import { beforeAll, afterEach, describe, expect, it } from 'vitest';
 import { isStrictRule } from '../../../languages/typescript/preset/strict-rules.mjs';
 import { compareFindings } from '../comparison/compare.mjs';
+import { withEditedLineReason } from '../comparison/positions/touched-lines.mjs';
 import { parseChangedLines, readChangedLines } from './patches/changed-lines.mjs';
 
 const temporaryRoots = [];
@@ -293,7 +294,7 @@ describe('strict rules in touched code', () => {
       touchedCode: touched(changed),
     });
 
-    expect(result.newFindings).toEqual(head);
+    expect(result.newFindings).toEqual(head.map(withEditedLineReason));
     expect(result.unchangedFindings).toEqual([]);
     expect(result.resolvedFindings).toEqual([]);
   });
