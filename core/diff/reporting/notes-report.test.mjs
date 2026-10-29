@@ -6,6 +6,7 @@ import { noteSectionLines, noteSummaryLines } from './format/notes.mjs';
 import { renderJunitReport } from './junit.mjs';
 import { writeDiffReports } from './reporters.mjs';
 import { renderSarifReport } from './sarif.mjs';
+import { finding } from './test-support/report-builders.mjs';
 import { renderConsoleSummary } from './summary.mjs';
 import { renderTextReport } from './text.mjs';
 
@@ -152,5 +153,52 @@ describe('red-base notes in the reports', () => {
     const without = JSON.parse(readFileSync(path.join(outputRoot, 'notes.json'), 'utf8'));
 
     expect({ withNote, without }).toEqual({ withNote: [NOTE], without: [] });
+  });
+
+  it('keeps the note, the baseline state and the source root together in the SARIF files', () => {
+    const outputRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-notes-sarif-'));
+    temporaryRoots.push(outputRoot);
+    const held = finding({
+      rule: 'file-size',
+      identity: 'size',
+      ratchet: { key: 'size', value: 7 },
+      heldAtBase: 7,
+    });
+
+    writeDiffReports(
+      outputRoot,
+      { ...report([NOTE]), newFindings: [finding()], unchangedFindings: [held] },
+      { projectPath: 'packages/app' },
+    );
+    const read = (name) => JSON.parse(readFileSync(path.join(outputRoot, name), 'utf8')).runs[0];
+    const summarize = (run) => ({
+      results: run.results.map(({ baselineState, locations }) => [
+        baselineState,
+        locations[0].physicalLocation.artifactLocation.uriBaseId,
+        locations[0].physicalLocation.artifactLocation.uri.split('/').slice(0, 2).join('/'),
+      ]),
+      notifications: run.invocations[0].toolExecutionNotifications,
+    });
+    const note = {
+      level: 'note',
+      message: { text: 'python (base): pytest exited with 1: 2 failed' },
+    };
+
+    expect({
+      comparison: summarize(read('report.sarif')),
+      baseline: summarize(read('report-baseline.sarif')),
+    }).toEqual({
+      comparison: {
+        results: [['new', '%SRCROOT%', 'packages/app']],
+        notifications: [note],
+      },
+      baseline: {
+        results: [
+          ['new', '%SRCROOT%', 'packages/app'],
+          ['unchanged', '%SRCROOT%', 'packages/app'],
+        ],
+        notifications: [note],
+      },
+    });
   });
 });
