@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 
 const PUBLISHED_NAMES = new Set(['of', 'from']);
 
