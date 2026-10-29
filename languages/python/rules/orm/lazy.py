@@ -1,30 +1,12 @@
 import ast
 
-from checks.common import finding, walk_statements
-from orm.origins import EVERYTHING, FORWARD, origin_of
+from checks.common import finding
+from kinds.names import call_text
+from orm.accesses import helper_accesses, lazy_accesses, mapped_accesses
+from orm.origins import origin_of
 
 RULE = "lazy-relation-in-loop"
 COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
-MANAGER_QUERIES = {
-    "all",
-    "filter",
-    "exclude",
-    "count",
-    "exists",
-    "first",
-    "last",
-    "get",
-    "order_by",
-    "values",
-    "values_list",
-    "aggregate",
-    "annotate",
-    "iterator",
-    "distinct",
-    "earliest",
-    "latest",
-    "in_bulk",
-}
 
 
 def enumerated(target, iterable):
@@ -53,37 +35,41 @@ def loop_parts(node):
     return None
 
 
-def is_covered(relation, plan):
-    if relation.name in plan or EVERYTHING in plan:
-        return True
-    return FORWARD in plan and not relation.reverse and not relation.manager
+def subject_of(origin, name, helper=None):
+    subject = f"{origin.model.name}.{name}|{origin.orm}|{origin.text}"
+    return f"{subject}|{call_text(helper)}" if helper is not None else subject
 
 
-def loads_relation(node, relation, parents):
-    if relation.manager:
-        parent = parents.get(id(node))
-        call = parents.get(id(parent))
-        return (
-            isinstance(parent, ast.Attribute)
-            and parent.attr in MANAGER_QUERIES
-            and isinstance(call, ast.Call)
-            and call.func is parent
-        )
-    return isinstance(node.ctx, ast.Load)
-
-
-def lazy_accesses(variable, body, origin, parents):
-    found = {}
-    attributes = [n for n in walk_statements(body) if isinstance(n, ast.Attribute)]
-    for node in sorted(attributes, key=lambda n: (n.lineno, n.col_offset)):
-        if not (isinstance(node.value, ast.Name) and node.value.id == variable):
-            continue
-        relation = origin.relations.get(node.attr)
-        if relation is None or not relation.lazy or is_covered(relation, origin.plan):
-            continue
-        if loads_relation(node, relation, parents):
-            found.setdefault(relation.name, node)
+def loop_findings(node, context):
+    parts = loop_parts(node)
+    if parts is None or not isinstance(parts[0], ast.Name):
+        return []
+    target, iterable, body = parts
+    origin = origin_of(iterable, context)
+    if origin is None:
+        return []
+    direct = lazy_accesses(target.id, body, origin, context.parents)
+    found = [(subject_of(origin, name), access) for name, access in direct.items()]
+    for name, call in helper_accesses(target.id, body, origin, context).items():
+        if name not in direct:
+            found.append((subject_of(origin, name, call), call))
     return found
+
+
+def map_findings(node, context):
+    if not (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Name)
+        and node.func.id == "map"
+        and len(node.args) == 2
+    ):
+        return []
+    reference, iterable = node.args
+    origin = origin_of(iterable, context)
+    if origin is None:
+        return []
+    accesses = mapped_accesses(reference, origin, context)
+    return [(subject_of(origin, name, reference), node) for name in accesses]
 
 
 def check(context):
@@ -91,15 +77,8 @@ def check(context):
         return []
     found = []
     for node in ast.walk(context.tree):
-        parts = loop_parts(node)
-        if parts is None or not isinstance(parts[0], ast.Name):
-            continue
-        target, iterable, body = parts
-        origin = origin_of(iterable, context)
-        if origin is None:
-            continue
-        accesses = lazy_accesses(target.id, body, origin, context.parents)
-        for name, access in accesses.items():
-            subject = f"{origin.model.name}.{name}|{origin.orm}|{origin.text}"
-            found.append(finding(context.path, RULE, subject, access))
+        for subject, place in loop_findings(node, context) + map_findings(
+            node, context
+        ):
+            found.append(finding(context.path, RULE, subject, place))
     return found

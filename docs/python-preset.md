@@ -846,6 +846,12 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   (`selectinload(User.posts).selectinload(Post.comments)` loads both), or another `lazy=` strategy on the
   relationship, clears it; `defaultload`, `lazyload`, `noload` and `raiseload` load nothing. Rows of unknown origin (a
   parameter), `values()` queries, a custom `objects` manager and selects of columns are not reported.
+  The read also counts through a project function the row is passed to, as an argument or by keyword
+  (`out.append(to_dto(o))`, `[to_dto(o) for o in orders]`, `self.render(o)`) or as the function of
+  `map(to_dto, orders)`, up to three calls deep; the finding sits on the call and names the function
+  and the relationship. A function that reads only a column (`o.customer_id`) or runs over rows that
+  fetch the relationship stays quiet, and a relationship read both in the loop and in the function is
+  reported once, at the read in the loop.
 - `remote-call-in-transaction` reports a `remote` call (`requests`, `httpx`, `aiohttp`, `boto3` clients,
   or a project helper that makes one, the path named in the message) inside a transaction scope:
   `with transaction.atomic():` or `@transaction.atomic` (also the imported `atomic`), SQLAlchemy

@@ -102,6 +102,11 @@ describe('rules script report', () => {
       '`Order.customer` is a lazy relationship: `Order.objects.all()` fetches the `Order` rows without it, so each item of the loop runs one more query',
     ],
     [
+      'lazy-relation-in-loop',
+      'Order.customer|django|Order.objects.all()|to_dto()',
+      '`to_dto()` receives each item of the loop and reads its lazy relationship `Order.customer`: `Order.objects.all()` fetches the `Order` rows without it, so each item of the loop runs one more query',
+    ],
+    [
       'remote-call-in-transaction',
       'requests.post()|transaction.atomic()',
       '`requests.post()` makes a remote call while `transaction.atomic()` holds a database transaction: the connection stays checked out for the remote latency, which can exhaust the pool, and the remote side effect cannot roll back with the transaction',
@@ -297,10 +302,17 @@ describe('io-in-loop identity', () => {
     const report = [
       { rule: 'accumulator-copy', path: 'a.py', subject: 'acc|acc + [...]|loop', line: 3 },
       { rule: 'lazy-relation-in-loop', path: 'a.py', subject: 'Order.items|django|x', line: 5 },
+      {
+        rule: 'lazy-relation-in-loop',
+        path: 'b.py',
+        subject: 'Order.items|django|x|to_dto()',
+        line: 7,
+      },
     ];
 
     expect(ingestRulesReport(JSON.stringify(report)).map(({ identity }) => identity)).toEqual([
       'acc',
+      'Order.items',
       'Order.items',
     ]);
   });

@@ -9,8 +9,11 @@ const SQLALCHEMY_ADVICE =
 function describe(subject) {
   const { path, fields } = parseEffect(subject);
   const [model = ''] = path[0].split('.');
-  const [, origin = 'the query'] = fields;
-  return `\`${path[0]}\` is a lazy relationship: \`${origin}\` fetches the \`${model}\` rows without it, so each item of the loop runs one more query`;
+  const [, origin = 'the query', helper] = fields;
+  const reader = helper
+    ? `\`${helper}\` receives each item of the loop and reads its lazy relationship \`${path[0]}\``
+    : `\`${path[0]}\` is a lazy relationship`;
+  return `${reader}: \`${origin}\` fetches the \`${model}\` rows without it, so each item of the loop runs one more query`;
 }
 
 function allowed(subject) {

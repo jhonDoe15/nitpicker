@@ -61,21 +61,23 @@ def local_functions(scope, context):
     return context.project.memo(("local-functions", context.path, id(scope)), build)
 
 
+def located(found):
+    return (found[0], found[1].context) if found else None
+
+
 def named_function(function, context):
     scope = scope_of(function, context)
     while scope is not None:
         if isinstance(scope, FUNCTIONS):
             found = local_functions(scope, context).get(function.id)
             if found is not None:
-                return found
+                return found, context
         scope = scope_of(scope, context)
-    found = definition(function, where_of(function, context), FUNCTIONS)
-    return found[0] if found else None
+    return located(definition(function, where_of(function, context), FUNCTIONS))
 
 
 def class_method(cls, place, name):
-    found = method_named(cls, place, name)
-    return found[0] if found else None
+    return located(method_named(cls, place, name))
 
 
 def method_of(function, context):
@@ -91,16 +93,20 @@ def method_of(function, context):
         found = class_method(cls, place, function.attr)
         if found is not None:
             return found
-    found = definition(function, where, FUNCTIONS)
-    return found[0] if found else None
+    return located(definition(function, where, FUNCTIONS))
 
 
-def callee_of(function, context):
+def located_callee(function, context):
     if isinstance(function, ast.Name):
         return named_function(function, context)
     if isinstance(function, ast.Attribute):
         return method_of(function, context)
     return None
+
+
+def callee_of(function, context):
+    found = located_callee(function, context)
+    return found[0] if found else None
 
 
 def is_plain(value, where):
