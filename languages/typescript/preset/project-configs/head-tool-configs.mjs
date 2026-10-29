@@ -1,6 +1,7 @@
 import { precedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
 import { resolveLayoutFor } from '../layout.mjs';
 import { readStrykerProjectConfig } from './stryker-project-config.mjs';
+import { TESTS_TOOL, readTestRunnerProjectConfig } from './test-runner-config.mjs';
 import { TYPESCRIPT_TOOL, readTypescriptProjectConfig } from './typescript-project-options.mjs';
 
 const PROJECT_CONFIG_READERS = new Map([
@@ -9,6 +10,7 @@ const PROJECT_CONFIG_READERS = new Map([
     TYPESCRIPT_TOOL,
     (projectRoot, policy) => readTypescriptProjectConfig(projectRoot, resolveLayoutFor(policy)),
   ],
+  [TESTS_TOOL, readTestRunnerProjectConfig],
 ]);
 const HEAD_KEYS = ['projectConfig', 'projectConfigError'];
 

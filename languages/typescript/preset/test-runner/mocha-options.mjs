@@ -2,7 +2,7 @@ import { existsSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 
-const RC_FILES = [
+export const MOCHA_RC_FILES = [
   '.mocharc.cjs',
   '.mocharc.js',
   '.mocharc.yaml',
@@ -53,7 +53,7 @@ function optionNames(tokens) {
 
 function sourceArguments(projectRoot, tokens) {
   const names = optionNames(tokens);
-  const rc = RC_FILES.map((name) => projectFile(projectRoot, name)).find(
+  const rc = MOCHA_RC_FILES.map((name) => projectFile(projectRoot, name)).find(
     (file) => file !== undefined && existsSync(file),
   );
   const manifest = projectFile(projectRoot, 'package.json');
@@ -150,4 +150,12 @@ export function mochaMutationOptions({ projectRoot, tokens, testFiles }) {
     mochaOptions: strykerMochaOptions(loaded, specEntries(projectRoot, loaded, testFiles)),
     nodeArguments: nodeFlagArguments(mocha, loaded),
   };
+}
+
+export function mochaConfigRetries(projectRoot) {
+  const mocha = projectMocha(projectRoot);
+  if (mocha === undefined) {
+    throw new Error(`Mocha is not installed in ${projectRoot}, so its config cannot be read.`);
+  }
+  return mochaModule(mocha, 'options').loadOptions(sourceArguments(projectRoot, [])).retries;
 }

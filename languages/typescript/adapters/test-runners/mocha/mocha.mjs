@@ -15,6 +15,7 @@ import { loadFailureReport, reportFromMocha } from './mocha-report.mjs';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { consoleProducerPath, startTestConsole } from '../test-console-run.mjs';
+import { projectTestRetry } from '../../../preset/project-configs/test-runner-config.mjs';
 
 const UNIQUE_FILES = path.join(import.meta.dirname, 'mocha-files.config.mjs');
 
@@ -28,6 +29,7 @@ const OPTIONS_NITPICKER_SETS = {
     '-O',
     '--timeout',
     '-t',
+    '--retries',
     '--watch-files',
     '--watch-ignore',
   ],
@@ -47,6 +49,7 @@ function mochaReport({ options, mochaReportPath, result, testFiles }) {
 }
 
 export async function runMocha(options, command) {
+  const retries = projectTestRetry('mocha') ?? 0;
   const testFiles = options.rerun?.files ?? runnableTestFiles(options);
   const mochaReportPath = temporaryProjectPath(options, 'mocha-output.json');
   const testConsole = startTestConsole(options, { collectsLines: true });
@@ -69,6 +72,8 @@ export async function runMocha(options, command) {
         `output=${mochaReportPath}`,
         '--timeout',
         String(testTimeoutMs(options, testFiles)),
+        '--retries',
+        String(retries),
         ...(options.rerun === undefined ? [] : ['--grep', options.rerun.namePattern]),
         ...testFiles,
       ],

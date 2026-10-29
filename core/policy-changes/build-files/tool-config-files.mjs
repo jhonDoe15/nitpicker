@@ -10,6 +10,10 @@ import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
 import { STRYKER_PROJECT_FILES } from '../../../languages/typescript/preset/project-configs/stryker-project-config.mjs';
 import { projectTsconfigFiles } from '../../../languages/typescript/preset/project-configs/typescript-project-options.mjs';
+import {
+  TESTS_TOOL,
+  TEST_RUNNER_PROJECT_FILES,
+} from '../../../languages/typescript/preset/project-configs/test-runner-config.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
 
@@ -20,15 +24,20 @@ const SCRIPT_TOOL_FILES = new Map([
   ['prettier', () => PRETTIER_PROJECT_FILES],
   ['stryker', () => STRYKER_PROJECT_FILES],
   ['typescript', ({ config, root }) => projectTsconfigFiles(root, resolveLayoutFor(config))],
+  [TESTS_TOOL, () => [...TEST_RUNNER_PROJECT_FILES, PACKAGE_JSON]],
+]);
+const MANIFEST_KEYS = new Map([
+  ['prettier', 'prettier'],
+  [TESTS_TOOL, 'mocha'],
 ]);
 
 function usesProjectConfig(config, tool) {
   return (config.tools?.[tool]?.precedence ?? []).includes('project');
 }
 
-function prettierKey(content) {
+function manifestKey(tool, content) {
   try {
-    return { prettier: JSON.parse(content.toString('utf8')).prettier };
+    return { value: JSON.parse(content.toString('utf8'))[MANIFEST_KEYS.get(tool)] };
   } catch {
     return { malformed: true };
   }
@@ -46,11 +55,11 @@ function fingerprintOf(tool, { projectRoot, file }, gitBlobId) {
   if (file !== PACKAGE_JSON) {
     return gitBlobId(toolConfigText(tool, file, content.toString('utf8')));
   }
-  const key = prettierKey(content);
+  const key = manifestKey(tool, content);
   if (key.malformed === true) {
     return gitBlobId(content);
   }
-  return key.prettier === undefined ? undefined : gitBlobId(JSON.stringify(key.prettier));
+  return key.value === undefined ? undefined : gitBlobId(JSON.stringify(key.value));
 }
 
 function fingerprints(tool, { root: projectRoot, files }, gitBlobId) {
