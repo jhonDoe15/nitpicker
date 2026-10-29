@@ -26,14 +26,22 @@ function innerScope(statement, scope) {
   return { statements: body.statements, scope: { prefix, anchor, isExported } };
 }
 
+function scoped(statements, scope) {
+  return statements.map((statement) => ({ statement, scope }));
+}
+
 function expand(statements, scope) {
-  return statements.flatMap((statement) => {
-    if (namespaceBody(statement) === undefined) {
-      return [{ statement, ...scope }];
+  const pending = scoped(statements, scope);
+  const flat = [];
+  for (const entry of pending) {
+    if (namespaceBody(entry.statement) === undefined) {
+      flat.push({ statement: entry.statement, ...entry.scope });
+    } else {
+      const inner = innerScope(entry.statement, entry.scope);
+      pending.push(...scoped(inner.statements, inner.scope));
     }
-    const inner = innerScope(statement, scope);
-    return expand(inner.statements, inner.scope);
-  });
+  }
+  return flat.toSorted((left, right) => left.statement.pos - right.statement.pos);
 }
 
 export function scopedStatements(file) {
