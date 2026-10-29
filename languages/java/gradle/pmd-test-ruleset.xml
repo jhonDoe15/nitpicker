@@ -73,6 +73,74 @@
       </property>
     </properties>
   </rule>
+  <rule name="FloatEqualityInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Do not assert exact equality with a fractional floating-point literal: a computed 0.1 + 0.2 differs from 0.3 in the last bits, so the test fails on rounding noise or passes by luck. Give the comparison a tolerance: assertEquals(expected, actual, delta) in JUnit and TestNG, assertThat(actual).isCloseTo(expected, within(1e-9)) in AssertJ, or assertThat(actual, closeTo(expected, 1e-9)) in Hamcrest. The same goes for assertTrue(x == 0.1), assertThat(x == 0.1).isTrue() and Double.compare(x, 0.1) == 0. An integral literal such as 1.0 is exact and allowed.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //MethodCall
+    [pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertEquals(_,_)')
+     or pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertEquals(_,_,java.lang.String)')
+     or pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertEquals(_,_,java.util.function.Supplier)')
+     or pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertNotEquals(_,_)')
+     or pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertNotEquals(_,_,java.lang.String)')
+     or pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertNotEquals(_,_,java.util.function.Supplier)')
+     or pmd-java:matchesSig('org.junit.Assert#assertEquals(_,_)')
+     or pmd-java:matchesSig('org.junit.Assert#assertEquals(java.lang.String,_,_)')
+     or pmd-java:matchesSig('org.junit.Assert#assertNotEquals(_,_)')
+     or pmd-java:matchesSig('org.junit.Assert#assertNotEquals(java.lang.String,_,_)')
+     or pmd-java:matchesSig('org.testng.Assert#assertEquals(_,_)')
+     or pmd-java:matchesSig('org.testng.Assert#assertEquals(_,_,java.lang.String)')
+     or pmd-java:matchesSig('org.testng.Assert#assertEquals(java.lang.String,_,_)')
+     or pmd-java:matchesSig('org.testng.Assert#assertNotEquals(_,_)')
+     or pmd-java:matchesSig('org.testng.Assert#assertNotEquals(_,_,java.lang.String)')
+     or pmd-java:matchesSig('org.testng.Assert#assertNotEquals(java.lang.String,_,_)')]
+    [ArgumentList/(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral)
+       [@DoubleLiteral or @FloatLiteral][@ValueAsDouble != floor(@ValueAsDouble)]]
+  | //MethodCall[@MethodName = ('isEqualTo', 'isNotEqualTo')]
+      [*[1][pmd-java:typeIs('org.assertj.core.api.AbstractDoubleAssert')
+            or pmd-java:typeIs('org.assertj.core.api.AbstractFloatAssert')]]
+      [ArgumentList[count(*) = 1]/(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral)
+         [@DoubleLiteral or @FloatLiteral][@ValueAsDouble != floor(@ValueAsDouble)]]
+  | //MethodCall
+      [pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertTrue(_*)')
+       or pmd-java:matchesSig('org.junit.jupiter.api.Assertions#assertFalse(_*)')
+       or pmd-java:matchesSig('org.junit.Assert#assertTrue(_*)')
+       or pmd-java:matchesSig('org.junit.Assert#assertFalse(_*)')
+       or pmd-java:matchesSig('org.testng.Assert#assertTrue(_*)')
+       or pmd-java:matchesSig('org.testng.Assert#assertFalse(_*)')]
+      [ArgumentList/descendant::InfixExpression[@Operator = ('==', '!=')]
+         [(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral)
+         [@DoubleLiteral or @FloatLiteral][@ValueAsDouble != floor(@ValueAsDouble)]
+          or MethodCall[pmd-java:matchesSig('java.lang.Double#compare(double,double)')
+                        or pmd-java:matchesSig('java.lang.Float#compare(float,float)')]/ArgumentList/(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral)
+         [@DoubleLiteral or @FloatLiteral][@ValueAsDouble != floor(@ValueAsDouble)]]]
+  | //MethodCall[@MethodName = ('isTrue', 'isFalse')]
+      [*[1][pmd-java:typeIs('org.assertj.core.api.AbstractBooleanAssert')]]
+      [*[1]/descendant::InfixExpression[@Operator = ('==', '!=')]
+         [(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral)
+         [@DoubleLiteral or @FloatLiteral][@ValueAsDouble != floor(@ValueAsDouble)]
+          or MethodCall[pmd-java:matchesSig('java.lang.Double#compare(double,double)')
+                        or pmd-java:matchesSig('java.lang.Float#compare(float,float)')]/ArgumentList/(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral)
+         [@DoubleLiteral or @FloatLiteral][@ValueAsDouble != floor(@ValueAsDouble)]]]
+  | //MethodCall[@MethodName = ('is', 'equalTo')]
+      [ArgumentList[count(*) = 1]/(NumericLiteral | UnaryExpression[@Operator = ('-', '+')]/NumericLiteral)
+         [@DoubleLiteral or @FloatLiteral][@ValueAsDouble != floor(@ValueAsDouble)]]
+      [pmd-java:matchesSig('org.hamcrest.Matchers#is(_)')
+       or pmd-java:matchesSig('org.hamcrest.CoreMatchers#is(_)')
+       or pmd-java:matchesSig('org.hamcrest.Matchers#equalTo(_)')
+       or pmd-java:matchesSig('org.hamcrest.CoreMatchers#equalTo(_)')
+       or pmd-java:matchesSig('org.hamcrest.core.Is#is(_)')
+       or pmd-java:matchesSig('org.hamcrest.core.IsEqual#equalTo(_)')]
+      [ancestor::MethodCall[pmd-java:matchesSig('org.hamcrest.MatcherAssert#assertThat(_*)')
+                            or pmd-java:matchesSig('org.junit.Assert#assertThat(_*)')]]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="NegativeWaitInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Do not prove that something does not happen by waiting out a delay: after(ms).never() and during(...) pass only after the full wait, so the test is slow and depends on the timing. Give the code a Clock or a scheduler the test controls, move it past the delay and assert at once.">
     <priority>2</priority>

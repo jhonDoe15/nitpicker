@@ -245,7 +245,7 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `kotlin-source/<Rule>` of the [source checks](#source-checks), `kotlinc/deprecation`,
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
 `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/AssertionInControlFlow`,
-`pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
+`pmd/CoroutineEscapesTest`, `pmd/FloatEqualityInTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
 `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ClassLoadEffect`, `unused-option`), a class limit, a file
 limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
 `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
@@ -454,6 +454,7 @@ skipped with a note on stderr.
 | `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`         | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during`                                                                                            |
 | `DisabledTest`                           | `review-rules/tests/honesty/`               | a skipped test: `@Disabled`, `@Ignore`, `@Ignored` (also aliased or carried by an annotation), Kotest `xtest`, `xcontext`, `xdescribe`, `xit`, `xshould`, `xgiven`, a `!` name prefix, a `.config(...)` that never runs, a constant false condition or assumption |
 | `FocusedTest`                            | `review-rules/tests/honesty/`               | a Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`                                                                                                                               |
+| `FloatEqualityInTest`                    | `review-rules/tests/floats/`                | `assertEquals`, `shouldBe`, AssertJ `isEqualTo` or `assertTrue(x == 0.1)` against a fractional float literal (`0.1`, `1e-3`) in a test                                                                                                                            |
 | `AssertionInControlFlow`                 | `review-rules/tests/honesty/`               | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                             |
 | `CoroutineEscapesTest`                   | `review-rules/tests/coroutines/`            | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                           |
 | `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs` | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                   |
@@ -606,6 +607,19 @@ guessed at.
   assumption on a real condition depend on the environment and are not reported. Allowed: run the test,
   delete it, or limit it to the environment it needs.
 - `FocusedTest`: Kotest only (JUnit has no focus). Reported at the outermost focused registration.
+- `FloatEqualityInTest`: the same rule id as the Java preset. Reported anywhere in a test source file (a
+  helper included): `assertEquals` and `assertNotEquals` (also `Assertions.`, `Assert.` or `kotlin.test.`
+  qualified, with a type argument, a message first or last, or named `expected` and `actual`) whose
+  expected or actual argument is a fractional literal (`0.1`, `-0.1`, `0.1f`, `1e-3`) and that have no
+  `absoluteTolerance =` or `delta =` argument and no third numeric argument; Kotest `x shouldBe 0.1`,
+  `x shouldNotBe 0.1` and the `x.shouldBe(0.1)` call form; AssertJ `isEqualTo` and `isNotEqualTo` with
+  one such literal in a file that imports `org.assertj`; and a `==`, `!=`, `===` or `!==` with such a literal
+  inside `assertTrue` / `assertFalse` (also the block form), `(x == 0.1) shouldBe true` and `.shouldBeTrue()`,
+  and `assertThat(x == 0.1).isTrue()` (AssertJ file). Allowed: ordering comparisons, `abs(x - 0.1) < tolerance`, a tolerance,
+  `x shouldBe (0.1 plusOrMinus 1e-9)`, `0.1.plusOrMinus(...)`, `isCloseTo(...)`, integral literals such as
+  `1.0`, and literals in strings and comments. Only a literal written in the call counts: `0.1 + 0.2`, a
+  constant, a collection literal and a third argument that is not a string or a lambda (read as a delta)
+  are left alone. Hamcrest is not read in Kotlin.
 - `AssertionInControlFlow`: an assertion inside a construct that can skip it, in a JUnit test or a Kotest
   test body: an `if` or `else`, a `when`, any loop (`for`, `while`, `do`, `repeat`, `forEach`,
   `forEachIndexed`, `onEach` and the other iteration calls), a safe call (`?.let`, `?.also`, `?.run`,
