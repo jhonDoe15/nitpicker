@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { callableFact } from './callables/callable-facts.mjs';
 import { indexConstants, moduleReferences } from './callables/calls/references.mjs';
 import { collectCallbackSites, collectNamedSites } from './callables/sites.mjs';

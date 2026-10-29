@@ -1,3 +1,5 @@
+export { isCount } from '../../config.mjs';
+
 export function isString(value) {
   return typeof value === 'string';
 }
@@ -8,10 +10,6 @@ export function isNonEmpty(value) {
 
 export function isLine(value) {
   return Number.isInteger(value) && value > 0;
-}
-
-export function isCount(value) {
-  return Number.isInteger(value) && value >= 0;
 }
 
 export function isBoolean(value) {
