@@ -16,7 +16,19 @@ TRANSLATION_CALLS = {
     "gettext_lazy",
     "gettext_noop",
     "t",
+    "__",
+    "_t",
+    "$t",
+    "translate",
+    "formatMessage",
+    "getMessage",
+    "getString",
+    "getTranslations",
+    "getFixedT",
+    "useTranslation",
+    "useTranslations",
 }
+DISCRIMINANT_KEYS = {"type", "kind", "tag", "variant"}
 SKIPPED_PARENTS = (ast.JoinedStr, ast.FormattedValue)
 IDIOMATIC_TEXT = {
     "utf-8",
@@ -80,6 +92,15 @@ def is_idiomatic(value):
     )
 
 
+def is_discriminant_value(node, parent):
+    if not isinstance(parent, ast.Dict):
+        return False
+    for key, value in zip(parent.keys, parent.values):
+        if value is node:
+            return isinstance(key, ast.Constant) and key.value in DISCRIMINANT_KEYS
+    return False
+
+
 def real_parent(node, parents):
     parent = parents.get(id(node))
     if type(parent).__name__ == "Index":
@@ -135,7 +156,14 @@ def is_countable(node, parents, skipped):
         return False
     if type(parent).__name__.startswith("Match"):
         return False
-    if isinstance(parent, ast.Call) and last_name(parent.func) in TRANSLATION_CALLS:
+    if (
+        isinstance(parent, ast.Call)
+        and last_name(parent.func) in TRANSLATION_CALLS
+        and parent.args
+        and parent.args[0] is node
+    ):
+        return False
+    if is_discriminant_value(node, parent):
         return False
     if is_subscript_key(node, parents) or is_listed_constant(node, parents):
         return False
