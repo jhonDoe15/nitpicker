@@ -109,6 +109,7 @@ const FILE_EXCEPTION_RULES = [
 const PATH_EXCEPTION_RULES = [
   RULE_IDS.duplicateClone,
   RULE_IDS.stabilityDirection,
+  RULE_IDS.noProductionRuntime,
   ...FILE_EXCEPTION_RULES,
 ];
 
