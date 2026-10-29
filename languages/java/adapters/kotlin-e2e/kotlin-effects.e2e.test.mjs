@@ -1,9 +1,11 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { loadConfig } from '../../../../core/configuration/config.mjs';
 import { INIT_SCRIPT } from '../../builds/java-build.mjs';
+import { collectJavaFindings } from '../java-diff.mjs';
 import { readEffectsFindings } from '../effects/effects-findings.mjs';
 import { sourceFileOf, sourceLocator } from '../reporting/kotlin-reports.mjs';
 import {
@@ -14,13 +16,22 @@ import {
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
+const LOOPS = 'src/main/kotlin/shop/reports/LoopImports.kt';
+const HELD = 'src/main/kotlin/shop/held/HeldScopes.kt';
+const JAVA_LOOP = 'src/main/java/shop/reports/JavaImports.java';
+const LOOP_RULES = /InLoop|NoFlush|BatchOfOne/u;
+
+function copyFixture(prefix) {
+  const root = path.join(mkdtempSync(path.join(tmpdir(), prefix)), 'shop');
+  cpSync(KOTLIN_EFFECTS_FIXTURE, root, { recursive: true });
+  return root;
+}
 
 describe.skipIf(!enabled)('the effects engine on a Kotlin project', () => {
   let projectRoot;
 
   beforeAll(() => {
-    projectRoot = path.join(mkdtempSync(path.join(tmpdir(), 'nitpicker-kotlin-effects-')), 'shop');
-    cpSync(KOTLIN_EFFECTS_FIXTURE, projectRoot, { recursive: true });
+    projectRoot = copyFixture('nitpicker-kotlin-effects-');
     const result = spawnSync(
       gradle,
       [
@@ -53,7 +64,7 @@ describe.skipIf(!enabled)('the effects engine on a Kotlin project', () => {
   });
 
   it('resolves the findings to the Kotlin files', () => {
-    const locate = sourceLocator(projectRoot, ['src/main/kotlin']);
+    const locate = sourceLocator(projectRoot, ['src/main/kotlin', 'src/main/java']);
     const findings = readEffectsFindings(path.join(projectRoot, 'build', 'nitpicker'), {
       resolvePath: (className, fileName) => sourceFileOf(locate, className, fileName),
       kotlin: true,
@@ -67,7 +78,66 @@ describe.skipIf(!enabled)('the effects engine on a Kotlin project', () => {
         'src/main/kotlin/shop/held/HeldScopes.kt',
         'src/main/kotlin/shop/events/Retries.kt',
         'src/main/kotlin/shop/events/DualWrites.kt',
+        JAVA_LOOP,
       ]),
     );
+  });
+});
+
+describe.skipIf(!enabled)('the effects engine in the Kotlin preset', () => {
+  let projectRoot;
+  let config;
+  let findings;
+
+  beforeAll(() => {
+    projectRoot = copyFixture('nitpicker-kotlin-effects-preset-');
+    writeFileSync(
+      path.join(projectRoot, 'nitpicker.config.json'),
+      JSON.stringify({
+        preset: 'kotlin',
+        exceptions: [{ rule: 'kotlin-source/IoCallInLoop', paths: [LOOPS], reason: 'imports' }],
+      }),
+    );
+    config = loadConfig(projectRoot);
+    findings = collectJavaFindings(projectRoot, {
+      gradle,
+      policy: config,
+      reportDirectory: path.join(path.dirname(projectRoot), 'reports'),
+    });
+  }, 180_000);
+
+  afterAll(() => {
+    if (projectRoot !== undefined) {
+      rmSync(path.dirname(projectRoot), { recursive: true, force: true });
+    }
+  });
+
+  it('reads the old kotlin-source key as an effects exception and lifts the loop findings it names', () => {
+    expect(config.exceptions.map(({ rule }) => rule)).toEqual(['effects/IoCallInLoop']);
+    expect(
+      findings.filter((finding) => finding.path === LOOPS && LOOP_RULES.test(finding.rule)),
+    ).toEqual([]);
+    expect(
+      findings.filter(
+        (finding) => finding.tool === 'kotlin-source' && LOOP_RULES.test(finding.rule),
+      ),
+    ).toEqual([]);
+  });
+
+  it('reports on the Kotlin files with the effects exception route in the message', () => {
+    const held = findings.filter((finding) => finding.tool === 'effects' && finding.path === HELD);
+
+    expect(held.map((finding) => finding.location.line)).toEqual([25, 30, 33, 35, 39, 45, 50]);
+    expect(held.every((finding) => finding.message.includes(`"effects/${finding.rule}"`))).toBe(
+      true,
+    );
+  });
+
+  it('keeps one loop finding on a Java line that PMD and the engine both report', () => {
+    const loop = findings.filter(
+      (finding) => finding.path === JAVA_LOOP && LOOP_RULES.test(finding.rule),
+    );
+
+    expect(loop.map((finding) => finding.location.line)).toEqual([16]);
   });
 });

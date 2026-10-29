@@ -14,6 +14,7 @@ public class HeldAllowed {
   private final TransactionTemplate transactions;
   private final ReentrantLock lock = new ReentrantLock();
   private int count;
+  private BigDecimal cached;
 
   public HeldAllowed(OrderRepository repository, PriceSource prices, TransactionTemplate transactions) {
     this.repository = repository;
@@ -46,5 +47,25 @@ public class HeldAllowed {
       lock.unlock();
     }
     return prices.priceOf(id);
+  }
+
+  public BigDecimal cachedUnderLock(Long id) {
+    lock.lock();
+    try {
+      if (cached != null) {
+        return cached;
+      }
+      cached = prices.priceOf(id);
+      return cached;
+    } finally {
+      lock.unlock();
+    }
+  }
+
+  public synchronized BigDecimal cachedSynchronized(Long id) {
+    if (cached == null) {
+      cached = prices.priceOf(id);
+    }
+    return cached;
   }
 }

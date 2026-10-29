@@ -8,3 +8,4 @@ evals/results/
 release-assets/
 __pycache__/
 *.pyc
+!languages/java/adapters/fixtures/*/src/main/*/shop/reports/

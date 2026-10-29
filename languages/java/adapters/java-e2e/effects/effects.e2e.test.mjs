@@ -2,16 +2,17 @@ import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { collectJavaFindings } from '../java-diff.mjs';
+import { collectJavaFindings } from '../../java-diff.mjs';
 import {
   effectsSummary,
   JAVA_EFFECTS,
   JAVA_EFFECTS_FIXTURE,
-} from '../effects/test-support/effects-projects.mjs';
+  JAVA_LOOP_LINES,
+  loopLines,
+} from '../../effects/test-support/effects-projects.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
-const LOOPS = 'src/main/java/shop/reports/LoopImports.java';
 
 describe.skipIf(!enabled)('the effects engine on a Gradle Java project', () => {
   let work;
@@ -43,17 +44,12 @@ describe.skipIf(!enabled)('the effects engine on a Gradle Java project', () => {
   });
 
   it('keeps one finding per line where PMD reports the direct call, and names the exception route', () => {
-    const lines = (tool) =>
-      findings
-        .filter(
-          (finding) =>
-            finding.tool === tool && finding.path === LOOPS && finding.rule.endsWith('InLoop'),
-        )
-        .map((finding) => finding.location.line);
+    const { loops, allowed } = JAVA_LOOP_LINES;
     const effects = findings.filter((finding) => finding.tool === 'effects');
 
-    expect(lines('pmd')).toEqual([53, 59]);
-    expect(lines('effects')).toEqual([26, 32, 36, 40, 46]);
+    expect(loopLines(findings, 'pmd', loops)).toEqual(JAVA_LOOP_LINES.pmd);
+    expect(loopLines(findings, 'effects', loops)).toEqual(JAVA_LOOP_LINES.effects);
+    expect(loopLines(findings, 'pmd', allowed)).toEqual([]);
     expect(effects.every((finding) => finding.message.includes(`"effects/${finding.rule}"`))).toBe(
       true,
     );
