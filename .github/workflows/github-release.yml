@@ -1,7 +1,8 @@
 name: github-release
 
 # Manual only: publishes a GitHub release for a commit on main, with the packed tarball and its
-# checksum attached. It never publishes to npm.
+# checksum attached, then builds, smoke-tests and pushes the container images of that commit to the
+# registry set in container.yml. It never publishes to npm.
 on:
   workflow_dispatch:
     inputs:
@@ -24,6 +25,8 @@ jobs:
   release:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    outputs:
+      version: ${{ steps.version.outputs.version }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -38,7 +41,9 @@ jobs:
           COMMIT: ${{ inputs.commit }}
         run: |
           git merge-base --is-ancestor "$COMMIT" origin/main
-          echo "tag=v$(node -p "require('./package.json').version")" >> "$GITHUB_OUTPUT"
+          version=$(node -p "require('./package.json').version")
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "tag=v$version" >> "$GITHUB_OUTPUT"
       # The notes come from .github/release-notes/<tag>.md on main, or from the released commit.
       - name: Pack the tarball and checksum
         env:
@@ -58,3 +63,17 @@ jobs:
           flags=()
           if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
           gh release create "$TAG" release-assets/* --target "$COMMIT" --title "$TAG" --notes-file notes.md "${flags[@]}"
+
+  # Builds the images from the released commit, gates the sample projects in them and pushes them
+  # tagged with the version. A stable release also moves the latest tags.
+  images:
+    needs: release
+    permissions:
+      contents: read
+      packages: write
+    uses: ./.github/workflows/container.yml
+    with:
+      commit: ${{ inputs.commit }}
+      version: ${{ needs.release.outputs.version }}
+      publish: true
+      latest: ${{ !inputs.prerelease }}
