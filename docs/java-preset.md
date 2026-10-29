@@ -307,9 +307,12 @@ a passing test suite ...`) instead of Gradle's own failure output. Projects with
   standard streams to code that tests reach through a writer, so no test runs it. Only that method
   and only the not-covered status: a `main` that a test does run keeps its survived mutants, and
   every other method is mutated as before. The same filter drops the `errorprone/SystemOut` and
-  `pmd/SystemPrintln` findings of a line in that body (see [Error Prone and NullAway](#error-prone-and-nullaway)). The method is found with the
-  brace-depth scan the entry-point detection of the review rules uses (`mainMethodLines` in
-  `review-rules/source-declarations.mjs`). Java files only: Kotlin sources have their own rules.
+  `pmd/SystemPrintln` findings of a line in that body (see
+  [Error Prone and NullAway](#error-prone-and-nullaway)). The method is found with the brace-depth
+  scan the entry-point detection of the review rules uses (`mainMethodLines` in
+  `review-rules/source-declarations.mjs`): any `void main` declared with no parameter or one
+  `String[]` parameter, in any modifier order, so the JDK 25 launch-protocol forms count and
+  `main(int)` does not. Java files only: Kotlin sources have their own rules.
 - **Ingester.** `languages/java/ingest/pit.mjs` (`ingestPit`). PIT statuses map to the names the
   Stryker-based area uses: `SURVIVED` and `NO_COVERAGE` give enforceable `mutant-survived` and
   `mutant-nocoverage`; `TIMED_OUT`, `MEMORY_ERROR`/`RUN_ERROR`, `NON_VIABLE` and `STARTED` give
@@ -2556,8 +2559,8 @@ the catalog does not know, from a project's own config) the exception route with
 path:
 
 ```
-Usage of System.out/err. Use a logger, or write to a PrintStream, Writer or Appendable parameter;
-only static void main passes System.out, as in new Cli(System.out).run(args). If this is intended, add {"rule":"pmd/SystemPrintln","paths":["src/main/java/demo/Cli.java"],"reason":"..."}
+Usage of System.out/err. Use a logger, or write to a PrintStream, Writer or Appendable parameter; only static void main passes
+System.out. An exception fits only without a main method. If this is intended, add {"rule":"pmd/SystemPrintln","paths":["src/main/java/demo/Cli.java"],"reason":"..."}
 to "exceptions" in nitpicker.config.json.
 ```
 

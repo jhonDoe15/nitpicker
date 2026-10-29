@@ -24,6 +24,14 @@ public class Cli {
     System.out.println(count);
   }
 
+  static public synchronized void main() {
+    System.out.println("launch");
+  }
+
+  public static void main(@Nullable java.lang.String[] args) {
+    System.out.println("annotated");
+  }
+
   void other() {
     System.err.println("late");
   }
@@ -47,18 +55,20 @@ describe('withoutMainMethodFindings', () => {
         finding('errorprone', 'SystemOut', 7),
         finding('errorprone', 'SystemOut', 12),
         finding('pmd', 'SystemPrintln', 14),
-        finding('pmd', 'SystemPrintln', 21),
         finding('pmd', 'SystemPrintln', 25),
+        finding('pmd', 'SystemPrintln', 29),
+        finding('pmd', 'SystemPrintln', 21),
+        finding('pmd', 'SystemPrintln', 33),
         finding('jacoco', 'changed-branch-coverage', 12),
         finding('pit', 'mutant-nocoverage', 13),
-        finding('pit', 'mutant-nocoverage', 25),
+        finding('pit', 'mutant-nocoverage', 33),
       ]),
     ).toStrictEqual([
       'errorprone/SystemOut:7',
       'pmd/SystemPrintln:21',
-      'pmd/SystemPrintln:25',
+      'pmd/SystemPrintln:33',
       'jacoco/changed-branch-coverage:12',
-      'pit/mutant-nocoverage:25',
+      'pit/mutant-nocoverage:33',
     ]);
   });
 

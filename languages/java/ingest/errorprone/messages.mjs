@@ -36,7 +36,8 @@ const ALLOWED_FORMS = new Map([
     'SystemOut',
     'Write through a logger, or take a PrintStream, Writer or Appendable parameter and write to it; ' +
       'only static void main passes System.out or System.err, as in new Cli(System.out).run(args) ' +
-      'or System.out::print. Log an exception instead of calling printStackTrace().',
+      'or System.out::print. Log an exception instead of calling printStackTrace(). An exception ' +
+      'fits only for a program without a main method.',
   ],
   ['CheckReturnValue', 'Use the result, or make the method return void if callers do not need it.'],
   [

@@ -576,7 +576,7 @@
     "mayBeIntended": false
   },
   "SystemPrintln": {
-    "fix": "Use a logger, or write to a PrintStream, Writer or Appendable parameter; only static void main passes System.out, as in new Cli(System.out).run(args).",
+    "fix": "Use a logger, or write to a PrintStream, Writer or Appendable parameter; only static void main passes System.out. An exception fits only without a main method.",
     "mayBeIntended": true
   },
   "TestClassWithoutTestCases": {
