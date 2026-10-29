@@ -1,5 +1,5 @@
 import { describeRuleFinding, RULES_TOOL } from '../rules/rule-hints.mjs';
-import { identitySubject } from '../rules/hints/identity.mjs';
+import { identitySubject } from '../rules/hints/effects/identity.mjs';
 import { createIdentities } from './identities.mjs';
 
 const CHECK_FAILED_RULE = 'rules-check-failed';
