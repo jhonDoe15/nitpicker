@@ -1,6 +1,6 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { libraryProject } from '../../../../../../shared/rules/stability/test-support/library-project.mjs';
 import { collectJavaFindings } from '../../../java-diff.mjs';
 import {
@@ -29,22 +29,26 @@ function stability(findings) {
     .sort();
 }
 
+const FACADE_FINDINGS = ['catalog', 'fines', 'loans', 'members'].map(
+  (name) =>
+    `library.features.${name} package-edge:library.features.${name}->library.features.${name}.adapters`,
+);
+
 describe.skipIf(!enabled)('stability direction over Java feature packages', () => {
   useMavenPresetProject();
-  it('passes a new feature that reuses three others through their top package on Gradle and Maven', () => {
-    const [gradleProject, mavenProject] = twinProjects().map(withLibrary);
+  let projects;
+  beforeAll(() => {
+    projects = twinProjects().map(withLibrary);
+  });
+  it('passes a new feature that reuses three others through their top package on Gradle', () => {
+    expect(stability(collectJavaFindings(projects[0], { gradle, policy: {} }))).toEqual([]);
+  }, 180_000);
+  it('passes the same feature on Maven', () => {
+    expect(stability(collectJavaFindings(projects[1], { maven, policy: {} }))).toEqual([]);
+  }, 180_000);
+  it('reports each facade edge per package when the layout has no feature folders', () => {
+    const policy = { layout: { featureRoots: [] } };
 
-    expect(stability(collectJavaFindings(gradleProject, { gradle, policy: {} }))).toEqual([]);
-    expect(stability(collectJavaFindings(mavenProject, { maven, policy: {} }))).toEqual([]);
-    expect(
-      stability(
-        collectJavaFindings(mavenProject, { maven, policy: { layout: { featureRoots: [] } } }),
-      ),
-    ).toEqual(
-      ['catalog', 'fines', 'loans', 'members'].map(
-        (name) =>
-          `library.features.${name} package-edge:library.features.${name}->library.features.${name}.adapters`,
-      ),
-    );
-  }, 600_000);
+    expect(stability(collectJavaFindings(projects[1], { maven, policy }))).toEqual(FACADE_FINDINGS);
+  }, 180_000);
 });
