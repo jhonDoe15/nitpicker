@@ -40,11 +40,11 @@ function summary(findings) {
 }
 
 const EXPECTED = [
-  'bad/Batches.kt:24 JpaEnumString Ledger.grade',
-  'bad/Batches.kt:26 JpaEnumString Ledger.status',
-  'bad/Batches.kt:29 JpaEnumString Ledger.seen',
-  'bad/Batches.kt:32 JpaManyToManySet Ledger.linked',
-  'bad/Batches.kt:35 JpaManyToManySet Ledger.qualified',
+  'bad/Batches.kt:24 JpaEnumString Posting.grade',
+  'bad/Batches.kt:26 JpaEnumString Posting.status',
+  'bad/Batches.kt:29 JpaEnumString Posting.seen',
+  'bad/Batches.kt:32 JpaManyToManySet Posting.linked',
+  'bad/Batches.kt:35 JpaManyToManySet Posting.qualified',
   'bad/Batches.kt:39 SpringDataDerivedQuery AuditedLedgers.findByStatus',
   'bad/Batches.kt:43 SpringDataDerivedQuery LedgerStore.findByGrade',
   'bad/Batches.kt:48 SpringDataQueryTextBlock LedgerRepository.byStatus',
@@ -56,7 +56,7 @@ const EXPECTED = [
   'bad/Batches.kt:71 SpringDataSaveInLoopHelper LedgerService.importAll.keepCompanion',
   'bad/Batches.kt:72 SpringDataSaveInLoopHelper LedgerService.importAll.keepTop',
   'bad/Batches.kt:73 SpringDataNoSaveInLoop LedgerService.importAll.save',
-  'bad/Batches.kt:75 SpringDataNoSaveInLoop LedgerService.importAll.save',
+  'bad/Batches.kt:75 SpringDataNoSaveInLoop LedgerService.importAll.delete',
   'bad/Batches.kt:76 SpringDataNoSaveInLoop LedgerService.importAll.delete',
   'bad/Batches.kt:77 SpringDataNoSaveInLoop LedgerService.importAll.save',
   'bad/Batches.kt:78 SpringDataNoSaveInLoop LedgerService.importAll.save',
@@ -347,7 +347,7 @@ describe('Kotlin Spring rules that read the rest of the project', () => {
     );
 
     expect(EXPECTED.filter((line) => !viaJava.includes(line))).toEqual([
-      'bad/Batches.kt:24 JpaEnumString Ledger.grade',
+      'bad/Batches.kt:24 JpaEnumString Posting.grade',
       'bad/Clients.kt:41 SpringNoPostConstructIo Loader.warm.findAll',
       'bad/Clients.kt:53 SpringNoPostConstructIo Ledger.prime.count',
       'bad/Clients.kt:58 SpringTransactionalReadOnlyWrite Ledger.total.deleteAll',

@@ -690,7 +690,7 @@ Kotlin-specific choices:
   result of a `map` lambda; a scope function on a repository (`repository.apply { ... }`, `let`, `run`,
   `also`, `with`) is not a call itself, the calls inside it are. Method references
   (`items.forEach(repository::save)`, `items.forEach(this.repository::save)`, a local
-  `val save = repository::save`) count as calls in the loop when an iterating call (`forEach`, `map`, ...)
+  `val drop = repository::delete`) count as calls in the loop when an iterating call (`forEach`, `map`, ...)
   takes them, and not when the elements are themselves collections
   (`ids.chunked(n).forEach(repository::deleteAllById)`).
   `executeUpdate()` on a query held in a local, or built with `createNamedQuery`, `setLockMode` or
