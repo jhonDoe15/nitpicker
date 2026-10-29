@@ -1,13 +1,14 @@
 import { WRITE_VERB } from '../../rules/transactions.mjs';
 import { report, symbolOf } from '../../spring-scopes.mjs';
-import { BATCH_WRITES, QUERY_TYPES, STANDARD_WRITES } from '../data-types.mjs';
-import { lastSelector, parseSelector } from '../../view/expressions.mjs';
+import { BATCH_WRITES, STANDARD_WRITES } from '../data-types.mjs';
 import { saveInLoopHelpers } from './helpers.mjs';
+import { loopVariable, oneElement, oneElementCall, queryUpdate } from './updates.mjs';
 import {
   ITERATING,
-  chainOf,
+  PASS_THROUGH,
   elementIsCollection,
   entityWrite,
+  hostOf,
   inLoop,
   isCollection,
   loopFrames,
@@ -15,7 +16,7 @@ import {
   repositoryReceiver,
 } from './loop-scopes.mjs';
 
-const QUALIFIER = /^[\w.]+$/u;
+const MUTATORS = /^(?:add|plus|put|set|remove|retain|clear)/u;
 const READ = /^(?:find|get|read|count|exists|query|stream|search|load|fetch|list|is|has)/u;
 const SCOPE_FUNCTIONS = new Set([
   'apply',
@@ -29,33 +30,9 @@ const SCOPE_FUNCTIONS = new Set([
   'equals',
   'hashCode',
 ]);
-const DISCARDED_RESULTS = new Set([...ITERATING, 'apply', 'also']);
-const ONE_ELEMENT = new Set([
-  'listOf',
-  'setOf',
-  'mutableListOf',
-  'mutableSetOf',
-  'arrayListOf',
-  'List.of',
-  'Set.of',
-  'java.util.List.of',
-  'java.util.Set.of',
-  'singletonList',
-  'singleton',
-  'Collections.singletonList',
-  'Collections.singleton',
-]);
-const QUERY_BUILDERS = new Set([
-  'createQuery',
-  'createNamedQuery',
-  'createNativeQuery',
-  'setParameter',
-  'setHint',
-  'setLockMode',
-  'setFlushMode',
-  'setFirstResult',
-  'setMaxResults',
-]);
+const IGNORED_RESULTS = new Set([...ITERATING, 'apply', 'also', 'executeWithoutResult']);
+const RESULT_DEPTH = 6;
+const NOTHING = /^(?:Unit|Void|Nothing)\??$/u;
 
 function site(rule, view, invocation) {
   return report(rule, invocation, symbolOf(view, invocation.scope, invocation.name));
@@ -74,26 +51,18 @@ function saveInLoop(view) {
   );
 }
 
-function singleArgument(values) {
-  const [only, ...rest] = values;
-  return only !== undefined && rest.length === 0 && only.spread !== true && only.lambda !== true;
-}
-
-function oneElement(text) {
-  const parts = lastSelector(text.trim());
-  const call = parseSelector(parts?.selector ?? text.trim());
-  const qualifier = parts === undefined || QUALIFIER.test(parts.head);
-  return (
-    qualifier &&
-    call?.call === true &&
-    singleArgument(call.arguments) &&
-    ONE_ELEMENT.has([parts?.head, call.name].filter(Boolean).join('.'))
+function mutated(view, local) {
+  return view.file.invocations.some(
+    (entry) =>
+      ((entry.assign === true && entry.name === local.name) ||
+        (entry.receiver === local.name && MUTATORS.test(entry.name))) &&
+      view.chain(entry.scope).some(({ id }) => id === local.scope),
   );
 }
 
 function oneElementLocal(view, invocation, text) {
   const frames = view.chain(invocation.scope);
-  const loop = frames.indexOf(loopFrames(view, invocation.scope)[0]);
+  const loop = frames.indexOf(loopFrames(view, invocation.scope).at(-1));
   const inner = new Set(frames.slice(0, loop + 1).map(({ id }) => id));
   const local = (view.file.locals ?? []).findLast(
     (entry) => entry.name === text && inner.has(entry.scope),
@@ -106,11 +75,7 @@ function oneElementLocal(view, invocation, text) {
       entry.line === local.line &&
       entry.after === undefined,
   );
-  return (
-    initializer !== undefined &&
-    singleArgument(initializer.arguments) &&
-    ONE_ELEMENT.has([initializer.receiver, initializer.name].filter(Boolean).join('.'))
-  );
+  return initializer !== undefined && oneElementCall(initializer) && !mutated(view, local);
 }
 
 function batchOfOne(view) {
@@ -133,34 +98,42 @@ function rowWrite(view, invocation) {
     !SCOPE_FUNCTIONS.has(invocation.name) &&
     !READ.test(invocation.name) &&
     repositoryReceiver(view, invocation) &&
-    !invocation.arguments.some(({ text }) => isCollection(view, invocation.scope, text))
+    !setBased(view, invocation)
   );
 }
 
-function selfStatement(view, invocation) {
-  const host = view.chain(invocation.scope)[0]?.host;
+function setBased(view, invocation) {
+  const collections = invocation.arguments.map(
+    ({ text }) => isCollection(view, invocation.scope, text) && !oneElement(text),
+  );
   return (
-    invocation.statement === true &&
-    invocation.after === undefined &&
-    !(invocation.result === true && !DISCARDED_RESULTS.has(host))
+    collections[0] === true ||
+    (collections.includes(true) &&
+      !invocation.arguments.some(
+        ({ text }, index) => !collections[index] && loopVariable(view, invocation, text),
+      ))
   );
 }
 
-function bindsCollection(view, invocation) {
-  return chainOf(view, invocation).some(
-    (call) =>
-      call.name === 'setParameter' &&
-      call.arguments.some(({ text }, index) => index > 0 && isCollection(view, call.scope, text)),
-  );
+function returnsNothing(view, invocation) {
+  const type = view.typeOf(invocation.scope, invocation.receiver);
+  const fn = type === undefined ? undefined : view.projectFunctions(type, invocation.name)[0];
+  return fn !== undefined && NOTHING.test(fn.returnType ?? 'Unit');
 }
 
-function queryUpdate(view, invocation) {
-  return (
-    invocation.name === 'executeUpdate' &&
-    (QUERY_BUILDERS.has(invocation.previous?.name) ||
-      view.is(view.typeOf(invocation.scope, invocation.receiver), QUERY_TYPES)) &&
-    !bindsCollection(view, invocation)
-  );
+function discarded(view, invocation, depth = 0) {
+  if (
+    (invocation.statement !== true && invocation.branch !== true) ||
+    (depth === 0 && invocation.after !== undefined && !returnsNothing(view, invocation))
+  ) {
+    return false;
+  }
+  const [frame] = view.chain(invocation.scope);
+  if (invocation.result !== true || frame === undefined || IGNORED_RESULTS.has(frame.host)) {
+    return true;
+  }
+  const host = hostOf(view, frame);
+  return host === undefined || depth >= RESULT_DEPTH || discarded(view, host, depth + 1);
 }
 
 function rowWritesInLoop(view) {
@@ -169,12 +142,13 @@ function rowWritesInLoop(view) {
       invocation.reference !== true &&
       inLoop(view, invocation.scope) &&
       ((rowWrite(view, invocation) &&
-        (selfStatement(view, invocation) || WRITE_VERB.test(invocation.name))) ||
+        (discarded(view, invocation) || WRITE_VERB.test(invocation.name))) ||
         queryUpdate(view, invocation)),
   );
   const referenced = referencesInLoops(view).filter(
     (invocation) =>
-      ITERATING.has(invocation.host) &&
+      (ITERATING.has(invocation.host) ||
+        (PASS_THROUGH.has(invocation.host) && discarded(view, invocation))) &&
       !elementIsCollection(view, invocation.scope, invocation.iterated) &&
       rowWrite(view, invocation),
   );

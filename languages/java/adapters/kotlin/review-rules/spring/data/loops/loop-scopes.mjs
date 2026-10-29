@@ -53,6 +53,7 @@ const COLLECTION_FACTORIES = new Set([
   'emptySet',
 ]);
 const REFERENCE = /^(?:this\.)?(\w*)::(\w+)$/u;
+export const PASS_THROUGH = group(['let', 'also', 'run', 'apply', 'takeIf', 'takeUnless']);
 
 export function entityReceiver(view, invocation) {
   const type = view.typeOf(invocation.scope, invocation.receiver);
@@ -125,7 +126,7 @@ function iteratingCall(view, invocation) {
   );
 }
 
-function hostOf(view, scope) {
+export function hostOf(view, scope) {
   return view.file.invocations.find(
     ({ name, scope: parent, receiver }) =>
       name === scope.host && parent === scope.parent && receiver === scope.qualifier,
@@ -172,7 +173,8 @@ export function inLoop(view, scopeId) {
 }
 
 export function inClearedLoop(view, scopeId) {
-  return loopFrames(view, scopeId).some((scope) => clearedLoop(view, scope));
+  const [nearest] = loopFrames(view, scopeId);
+  return nearest !== undefined && clearedLoop(view, nearest);
 }
 
 function localReference(view, invocation, name) {
@@ -197,7 +199,8 @@ function referenced(view, invocation, text) {
 }
 
 function references(view, invocation) {
-  return iteratingCall(view, invocation)
+  return iteratingCall(view, invocation) ||
+    (PASS_THROUGH.has(invocation.name) && inLoop(view, invocation.scope))
     ? invocation.arguments
         .map(({ text }) => referenced(view, invocation, text))
         .filter((found) => found !== undefined)

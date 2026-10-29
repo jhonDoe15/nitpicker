@@ -44,6 +44,14 @@ function resolverOf(context, file) {
   return context.resolvers.get(file);
 }
 
+function exactly(names) {
+  return names.map((name) => ({ name, exact: names.length === 1 }));
+}
+
+function javaImport(text, type) {
+  return new RegExp(String.raw`^\s*import\s+([\w.]+\.${type})\s*;`, 'mu').exec(text)?.[1];
+}
+
 function javaSupers(context, candidate) {
   const text = javaSource(context, candidate);
   const simple = candidate.split('.').at(-1);
@@ -55,7 +63,12 @@ function javaSupers(context, candidate) {
   return extended
     .split(',')
     .map((type) => typeName(type))
-    .flatMap((type) => [`org.springframework.data.repository.${type}`, `${packageName}.${type}`]);
+    .flatMap((type) => {
+      const imported = type.includes('.') ? type : javaImport(text, type);
+      return imported === undefined
+        ? exactly([`org.springframework.data.repository.${type}`, `${packageName}.${type}`])
+        : exactly([imported]);
+    });
 }
 
 function supersOf(context, candidate) {
@@ -67,7 +80,7 @@ function supersOf(context, candidate) {
     return [];
   }
   const resolve = resolverOf(context, kotlin.file);
-  return kotlin.declared.supers.flatMap((type) => resolve(typeName(type)));
+  return kotlin.declared.supers.flatMap((type) => exactly(resolve(typeName(type))));
 }
 
 function dataRepository(context, candidate) {
@@ -79,13 +92,15 @@ function dataRepository(context, candidate) {
 }
 
 function reachesRepository(context, start) {
-  const queue = [...start];
-  for (const candidate of queue) {
-    if (DATA_REPOSITORIES.has(candidate) || dataRepository(context, candidate)) {
+  const queue = exactly(start);
+  for (const { name, exact } of queue) {
+    if (DATA_REPOSITORIES.has(name) || (exact && dataRepository(context, name))) {
       return true;
     }
     if (queue.length < SEARCH_LIMIT) {
-      queue.push(...supersOf(context, candidate).filter((next) => !queue.includes(next)));
+      queue.push(
+        ...supersOf(context, name).filter((next) => !queue.some((seen) => seen.name === next.name)),
+      );
     }
   }
   return false;

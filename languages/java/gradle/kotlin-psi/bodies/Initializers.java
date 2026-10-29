@@ -46,6 +46,10 @@ public final class Initializers {
     return isLiteral(property.getInitializer()) ? Boolean.TRUE : null;
   }
 
+  public static String literalText(KtProperty property) {
+    return isLiteral(property.getInitializer()) ? clip(property.getInitializer()) : null;
+  }
+
   static boolean isLiteral(KtExpression value) {
     return value instanceof KtStringTemplateExpression && !((KtStringTemplateExpression) value).hasInterpolation();
   }

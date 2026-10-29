@@ -45,6 +45,46 @@ public class Shades {
     }
   }
 
+  public enum Grain {
+    FINE,
+    COARSE
+  }
+
+  public enum Finish {
+    MATTE,
+    GLOSS
+  }
+
+  public abstract static class LabelConverter<K, E extends Enum<E>> implements AttributeConverter<E, String> {
+    @Override
+    public String convertToDatabaseColumn(E value) {
+      return value == null ? null : value.name();
+    }
+
+    @Override
+    public E convertToEntityAttribute(String value) {
+      return null;
+    }
+  }
+
+  @Converter(autoApply = true)
+  public static class GrainConverter extends LabelConverter<Tone, Grain> {}
+
+  public static class FinishColumns implements AttributeConverter<Finish, String> {
+    @Override
+    public String convertToDatabaseColumn(Finish value) {
+      return value == null ? null : value.name();
+    }
+
+    @Override
+    public Finish convertToEntityAttribute(String value) {
+      return value == null ? null : Finish.valueOf(value);
+    }
+  }
+
+  @Converter(autoApply = true)
+  public static class FinishConverter extends FinishColumns {}
+
   @Id
   @GeneratedValue(strategy = GenerationType.SEQUENCE)
   private Long id;
@@ -54,4 +94,8 @@ public class Shades {
   private Shade shade;
 
   private Tone tone; // violation: JpaEnumString
+
+  private Grain grain;
+
+  private Finish finish;
 }

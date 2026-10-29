@@ -205,7 +205,11 @@ public final class Bodies {
       data.put("elvis", clip(((KtBinaryExpression) parent).getRight()));
     }
     data.put("statement", parent instanceof KtBlockExpression ? Boolean.TRUE : null);
-    data.put("result", lambdaResult(parent, outer) ? Boolean.TRUE : null);
+    KtExpression settled = Positions.settled(outer);
+    boolean branch = (settled != outer || !(parent instanceof KtBlockExpression))
+        && Positions.statementPosition(settled);
+    data.put("branch", branch ? Boolean.TRUE : null);
+    data.put("result", Positions.lambdaResult(settled) ? Boolean.TRUE : null);
     data.put("returned", parent instanceof KtReturnExpression
         || (parent instanceof KtDeclarationWithBody && ((KtDeclarationWithBody) parent).getBodyExpression() == outer)
         ? Boolean.TRUE : null);
@@ -215,14 +219,6 @@ public final class Bodies {
         && ((KtBinaryExpression) parent).getOperationToken() == KtTokens.EQ) {
       data.put("assignedTo", clip(((KtBinaryExpression) parent).getLeft()));
     }
-  }
-
-  private static boolean lambdaResult(PsiElement parent, KtExpression outer) {
-    if (!(parent instanceof KtBlockExpression) || !(parent.getParent() instanceof KtFunctionLiteral)) {
-      return false;
-    }
-    List<KtExpression> statements = ((KtBlockExpression) parent).getStatements();
-    return statements.get(statements.size() - 1) == outer;
   }
 
   private void assignment(KtBinaryExpression expression, Frame frame) {
