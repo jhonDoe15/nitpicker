@@ -10,10 +10,18 @@ const REPORT_ONLY_KOTLIN_MUTANTS = {
   file: 'languages/java/adapters/reporting/kotlin-reports.mjs',
   evidence: /reportOnlyKotlinMutants/u,
 };
+const JVM_RUNTIME_EDGES_ONLY = {
+  file: 'languages/java/adapters/test-runtime/test-graph.mjs',
+  evidence: /kind: RUNTIME/u,
+};
 const NOT_ENFORCED_ALTHOUGH_EMITTED = {
+  java: {
+    'type-only-production-dependency': JVM_RUNTIME_EDGES_ONLY,
+  },
   kotlin: {
     'mutant-survived': REPORT_ONLY_KOTLIN_MUTANTS,
     'mutant-nocoverage': REPORT_ONLY_KOTLIN_MUTANTS,
+    'type-only-production-dependency': JVM_RUNTIME_EDGES_ONLY,
   },
   javascript: {
     'unused-prop': {

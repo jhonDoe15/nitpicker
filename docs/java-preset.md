@@ -876,6 +876,36 @@ Every message ends with the shared exception sentence, naming
 `integrationTest` source set without a test task) and the Maven `multi-module` fixture (an `*IT`
 class in a module without Failsafe).
 
+## Tests without production runtime
+
+A test class that reaches no production class at run time is an enforceable `no-production-runtime`
+finding (tool `test-runtime`, `languages/java/adapters/test-runtime/`), on Gradle and Maven builds, for
+Java and Kotlin test classes alike. It reads the same jdeps reports as `test-only-export`
+(`jdeps-test.txt`, `jdeps-classes.txt`), so a test counts as reaching production when its class files,
+directly or through test helpers and base classes, reference a main class of any module of the build.
+
+- **Which tests.** The finding is per test file. A class is judged when it declares tests (`@Test`,
+  `@ParameterizedTest`, `@RepeatedTest`, `@TestFactory`, `@TestTemplate`, TestNG `@Test`, ArchUnit
+  `@ArchTest`, a Kotest spec, a JUnit 3 `TestCase`) and is not abstract. Helpers, fixtures and abstract
+  bases are not judged. Nested, anonymous and Kotlin lambda classes count for the class that declares
+  them. A class whose source file is not under a test source root is skipped.
+- **Framework contexts.** A test annotated `@SpringBootTest`, a Spring Boot test slice (`@WebMvcTest`,
+  `@DataJpaTest`, `@JsonTest`, ...), `@SpringJUnitConfig`, `@ContextConfiguration`, `@QuarkusTest`,
+  `@QuarkusIntegrationTest`, `@MicronautTest` or ArchUnit's `@AnalyzeClasses` (or one that imports
+  classes with `ClassFileImporter`), or one whose helper or base class carries one, runs production
+  code through the framework and is not reported. So does a test that drives a build with Gradle's
+  `GradleRunner`.
+- **No type-only case.** The JVM has no import that exists only for the type checker, so
+  `type-only-production-dependency` does not apply; a production type that a test names only as an
+  erased generic argument leaves no reference in the bytecode and is reported as `no-production-runtime`.
+- **Exception.** The message ends with the shared sentence naming
+  `{ "rule": "no-production-runtime", "paths": ["<test file>"], "reason": "..." }`; `test-runtime/no-production-runtime`
+  is accepted as the same rule and lifts the finding for the matching paths.
+- **Limits.** A constant that javac inlines, or a Kotlin `inline` function, leaves no reference to its
+  class, so a test that uses only that is reported; lift it with an exception. A test that extends a base
+  class which declares the tests, and declares none itself, is not judged. Tests:
+  `adapters/test-runtime/test-runtime-findings.test.mjs`.
+
 ## Console output of tests
 
 - **Rule.** `test-runtime/test-console-output` fails a change whose tests print console output the
