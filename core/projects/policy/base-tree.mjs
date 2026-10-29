@@ -60,12 +60,12 @@ function blobContents(repositoryRoot, objects) {
   const output = git(repositoryRoot, ['cat-file', '--batch'], `${objects.join('\n')}\n`);
   const contents = new Map();
   let offset = 0;
-  while (offset < output.length) {
+  for (const object of objects) {
     const lineEnd = output.indexOf(10, offset);
-    const [object, , size] = output.subarray(offset, lineEnd).toString('utf8').split(' ');
+    const size = Number(output.subarray(offset, lineEnd).toString('utf8').split(' ')[2]);
     const start = lineEnd + 1;
-    contents.set(object, output.subarray(start, start + Number(size)));
-    offset = start + Number(size) + 1;
+    contents.set(object, output.subarray(start, start + size));
+    offset = start + size + 1;
   }
   return contents;
 }

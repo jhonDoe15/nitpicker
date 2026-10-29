@@ -3,7 +3,7 @@ import { createRequire } from 'node:module';
 import path from 'node:path';
 import { isPlainObject } from '../../shared/config.mjs';
 
-function parseToml(text) {
+export function parseToml(text) {
   return createRequire(import.meta.url)('smol-toml').parse(text);
 }
 
