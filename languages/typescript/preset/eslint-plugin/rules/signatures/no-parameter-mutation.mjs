@@ -15,7 +15,13 @@ function textOf(sourceCode, node) {
 }
 
 function unwrapped(node) {
-  return node.type === 'TSNonNullExpression' ? unwrapped(node.expression) : node;
+  const chain = [node];
+  for (const current of chain) {
+    if (current.type === 'TSNonNullExpression') {
+      chain.push(current.expression);
+    }
+  }
+  return chain.at(-1);
 }
 
 function checkWrite(scope, node, written) {

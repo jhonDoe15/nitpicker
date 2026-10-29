@@ -4,6 +4,7 @@ import {
   hasModifier,
   isMappedClass,
   isMappedMember,
+  isMappedText,
   isMemberLevel,
   typeHeaderAt,
 } from './declarations.mjs';
@@ -18,8 +19,6 @@ const HEADER = new RegExp(
 );
 const TRI_STATE_PARAMETER = /^\s*(?:(?:val|var)\s+)?([A-Za-z_]\w*)\s*:\s*Boolean\?\s*(?:=|$)/;
 const OVERRIDE_PARAMETER = /\boverride\b/;
-const MAPPED_PARAMETER =
-  /@(?:[a-z]+:)?(?:\w+\.)*(?:Column|Field|JsonProperty|SerialName|RequestParam|RequestBody|RequestHeader|PathVariable)\b/;
 const RETURN_TYPE = /^\s*:\s*(Boolean\?)(?![\w?])/;
 const PROPERTY = /(?<![\w.])(?:val|var)\s+([A-Za-z_]\w*)\s*:\s*(Boolean\?)(?![\w?])/g;
 
@@ -29,7 +28,7 @@ export const TRI_STATE_MESSAGES = {
 };
 
 function triStateParameter(text) {
-  return OVERRIDE_PARAMETER.test(text) || MAPPED_PARAMETER.test(text)
+  return OVERRIDE_PARAMETER.test(text) || isMappedText(text)
     ? undefined
     : (TRI_STATE_PARAMETER.exec(text) ?? undefined);
 }
