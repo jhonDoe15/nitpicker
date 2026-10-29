@@ -1,3 +1,5 @@
+import { languageOf } from './languages/masking/mask.mjs';
+import { isTestFile } from './languages/project-files.mjs';
 import { toTree } from './tree.mjs';
 import { isSourcePath, isTestPath } from './typescript.mjs';
 
@@ -45,8 +47,12 @@ export function detectLegacyRewrite({ fixture, final, reference }) {
   return shortcuts;
 }
 
+// TypeScript and JavaScript sources, and Python, Java and Kotlin ones, but never a test.
 function isLegacySource(file) {
-  return file.startsWith(LEGACY_ROOT) && isSourcePath(file) && !isTestPath(file);
+  const language = languageOf(file);
+  const isSource =
+    language === undefined ? isSourcePath(file) && !isTestPath(file) : !isTestFile(language, file);
+  return file.startsWith(LEGACY_ROOT) && isSource;
 }
 
 function significantLines(text) {

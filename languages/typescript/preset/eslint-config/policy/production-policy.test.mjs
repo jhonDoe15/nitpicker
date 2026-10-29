@@ -276,6 +276,14 @@ describe('magic numbers and other basics', () => {
     ['a SvelteKit error', "export function f() { throw error(404, 'missing'); }"],
     ['rounding digits', 'export function f(x: number) { return x.toFixed(3); }'],
     ['percent scaling', 'export function f(x: number) { return Math.round(x * 100) / 100; }'],
+    [
+      'an underscore parameter a signature requires',
+      'export function f(_event: string, context: string): string { return context; }',
+    ],
+    [
+      'a rest sibling that leaves a key out',
+      'export function f({ a, ...rest }: { a: number; b: number }) { return rest; }',
+    ],
   ])('allows %s', (_name, code) => {
     expect(ruleIds(adapter, code)).toEqual([]);
   });
@@ -283,6 +291,14 @@ describe('magic numbers and other basics', () => {
   it.each([
     ['if (a) return 1;', 'curly'],
     ['export function f(n: number) { n = 2; return n; }', 'no-param-reassign'],
+    [
+      'export function f(a: number, b: number): number { return a; }',
+      '@typescript-eslint/no-unused-vars',
+    ],
+    [
+      'export const g = (event: string, context: string): string => context.trim();',
+      '@typescript-eslint/no-unused-vars',
+    ],
     ['eval("1");', 'no-eval'],
     [
       "import { a } from 'x'; import { b } from 'x'; export const c = [a, b];",

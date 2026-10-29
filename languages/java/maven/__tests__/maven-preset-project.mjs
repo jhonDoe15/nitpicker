@@ -55,6 +55,59 @@ class AdderTest {
   }
 }
 `;
+const SHAPES = `package demo;
+
+public final class Shapes {
+    private Shapes() {}
+
+    public sealed interface Shape permits Circle, Square {}
+
+    public record Circle(int radius) implements Shape {}
+
+    public record Square(int side) implements Shape {}
+
+    public enum Tone { LOW, HIGH }
+
+    public interface Writer {
+        String write(String text);
+    }
+
+    public static int area(Shape shape) {
+        return switch (shape) {
+            case Circle circle -> 3 * circle.radius() * circle.radius();
+            case Square square -> square.side() * square.side();
+        };
+    }
+
+    public static String name(Tone tone) {
+        return switch (tone) {
+            case LOW -> "low";
+            case HIGH -> "high";
+        };
+    }
+
+    public static String send(Writer writer, String text) {
+        return writer.write(text);
+    }
+}
+`;
+const SHAPES_TEST = `package demo;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import org.junit.jupiter.api.Test;
+
+class ShapesTest {
+    @Test
+    void takesEveryCase() {
+        assertEquals(3, Shapes.area(new Shapes.Circle(1)));
+        assertEquals(4, Shapes.area(new Shapes.Square(2)));
+        assertEquals("low", Shapes.name(Shapes.Tone.LOW));
+        assertEquals("high", Shapes.name(Shapes.Tone.HIGH));
+        assertEquals("a", Shapes.send(text -> text, "a"));
+    }
+}
+`;
 function copyOf(...sources) {
   const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-e2e-'));
   temporary.push(root);
@@ -109,6 +162,8 @@ export {
   DATED,
   EMPTY_CATCH,
   FAILING_TEST,
+  SHAPES,
+  SHAPES_TEST,
   copyOf,
   twinProjects,
   copiedTestCases,

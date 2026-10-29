@@ -139,6 +139,33 @@ describe('files that are out of scope', () => {
   });
 });
 
+describe('Python, Java and Kotlin sources', () => {
+  const lines = (prefix, count) =>
+    Array.from({ length: count }, (_, index) => `${prefix}${String(index)}`).join('\n');
+
+  it.each([
+    ['a Python module', 'src/demo/parser.py', 'value_ = ', 'rewritten-legacy-file'],
+    ['a Java class', 'src/main/java/demo/Parser.java', '  int value', 'rewritten-legacy-file'],
+    ['a Kotlin file', 'src/main/kotlin/demo/Parser.kt', 'val value', 'rewritten-legacy-file'],
+  ])('reports %s that the agent rewrites', (_name, file, prefix, kind) => {
+    const legacySource = { [file]: lines(prefix, 12) };
+    const rewritten = { [file]: lines('fresh', 12) };
+    expect(detect(legacySource, rewritten, legacySource)).toMatchObject([{ kind, path: file }]);
+    expect(detect(legacySource, {}, legacySource)).toMatchObject([{ kind: 'deleted-legacy-file' }]);
+  });
+
+  it.each([
+    ['a Python test', 'src/demo/test_parser.py'],
+    ['a Python test directory', 'src/tests/helpers.py'],
+    ['a Java test', 'src/test/java/demo/ParserTest.java'],
+    ['a Kotlin test', 'src/test/kotlin/demo/ParserSpec.kt'],
+    ['a Python module outside src', 'demo/parser.py'],
+  ])('ignores %s', (_name, file) => {
+    const tree = { [file]: lines('value_ = ', 12) };
+    expect(detect(tree, {}, tree)).toEqual([]);
+  });
+});
+
 describe('detectShortcuts', () => {
   it('includes the legacy-rewrite detector when a reference tree is given', () => {
     const shortcuts = detectShortcuts({ fixture, final: {}, reference: fixture });
