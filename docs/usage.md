@@ -1556,10 +1556,10 @@ base's dependency install, and `/work` as the working directory.
 
 | Image (target) | Presets                | Adds to the base                                                          | Size         |
 | -------------- | ---------------------- | ------------------------------------------------------------------------- | ------------ |
-| `typescript`   | typescript, javascript | nothing; the default target                                               | about 1.5 GB |
-| `jvm`          | java, kotlin           | Temurin JDK 21, Maven 3.9 and Gradle 8.14 (for projects without wrappers) | about 2.3 GB |
-| `python`       | python                 | uv, CPython 3.13 managed by uv, and Poetry                                | about 1.9 GB |
-| `all`          | every preset           | everything above                                                          | about 2.7 GB |
+| `typescript`   | typescript, javascript | nothing; the default target                                               | about 1.2 GB |
+| `jvm`          | java, kotlin           | Temurin JDK 21, Maven 3.9 and Gradle 8.14 (for projects without wrappers) | about 1.9 GB |
+| `python`       | python                 | uv, CPython 3.13 managed by uv, and Poetry                                | about 1.5 GB |
+| `all`          | every preset           | everything above                                                          | about 2.3 GB |
 
 Each release publishes them to GitHub Container Registry as
 `ghcr.io/jhondoe15/nitpicker:<version>-<target>` (for example `:0.2.0-jvm`); the TypeScript image is

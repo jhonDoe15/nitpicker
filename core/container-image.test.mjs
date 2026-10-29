@@ -33,6 +33,10 @@ const expectedDockerignoreLines = [
   '.github',
   'docs',
 ];
+const JVM_FILES = [
+  'COPY --from=jvm-files /opt/ /opt/',
+  'ENV JAVA_HOME=/opt/java/openjdk PATH=/opt/java/openjdk/bin:/opt/maven/bin:/opt/gradle/bin:${PATH}',
+];
 const EXACT_VERSION_TAG = /^[\w./-]+:\d+(?:\.\d+){1,2}(?:_\d+)?(?:-[a-z0-9-]+)?$/;
 
 function instruction(name) {
@@ -81,7 +85,7 @@ describe('container image Dockerfile', () => {
 
   it('uses the Node major version that CI and the docs target', () => {
     expect(stage('base')[0]).toMatch(/^FROM node:24\.\d+\.\d+-bookworm-slim AS base$/);
-    expect(read('.github/workflows/typescript.yml')).toContain('node-version: 24');
+    expect(setting(read('.github/workflows/typescript.yml'), /node-version: (\d+)/)).toBe('24');
   });
 
   it('installs git, and ps for mutation testing', () => {
@@ -124,8 +128,8 @@ describe('container image Dockerfile', () => {
   });
 
   it('labels the image with its source repository', () => {
-    expect(dockerfile).toContain(
-      'org.opencontainers.image.source="https://github.com/jhonDoe15/nitpicker"',
+    expect(setting(dockerfile, /org\.opencontainers\.image\.source="([^"]+)"/)).toBe(
+      'https://github.com/jhonDoe15/nitpicker',
     );
   });
 
@@ -145,8 +149,7 @@ describe('container image toolchains', () => {
     expect(setting(stage('gradle')[0], /^FROM gradle:([\d.]+)-jdk21/)).toBe(
       setting(javaWorkflow, /gradle-version: ([\d.]+)/),
     );
-    expect(stage('jvm')).toContain('COPY --from=jvm-files /opt/ /opt/');
-    expect(stage('jvm').join('\n')).toContain('JAVA_HOME=/opt/java/openjdk');
+    expect(stage('jvm')).toEqual(['FROM base AS jvm', ...JVM_FILES]);
   });
 
   it('gives the Python images the uv and Poetry that the end-to-end suite uses', () => {
@@ -158,13 +161,11 @@ describe('container image toolchains', () => {
       setting(pythonWorkflow, /pipx install poetry==([\d.]+)/),
     );
     expect(setting(python, /uv python install (\d+\.\d+)\./)).toBe('3.13');
-    expect(python).toContain('UV_PYTHON_INSTALL_DIR=/opt/python');
+    expect(setting(python, /UV_PYTHON_INSTALL_DIR=(\S+)/)).toBe('/opt/python');
   });
 
   it('builds the all image from the Python image plus the JVM files', () => {
-    expect(stage('all')).toContain('FROM python AS all');
-    expect(stage('all')).toContain('COPY --from=jvm-files /opt/ /opt/');
-    expect(stage('all').join('\n')).toContain('JAVA_HOME=/opt/java/openjdk');
+    expect(stage('all')).toEqual(['FROM python AS all', ...JVM_FILES]);
   });
 
   it('ends with the TypeScript image, which stays the default build target', () => {
