@@ -5,7 +5,7 @@ const PASSWORD = 'password';
 const TOKEN = 'token';
 const API_KEY = 'apiKey';
 const ADMIN_PASSWORD = 'adminPassword';
-const PASSPHRASE = 'CorrectHorseBatteryStaple';
+const FOUR_WORDS = 'CorrectHorseBatteryStaple';
 const GITHUB_TOKEN = `ghp_${'a1B2'.repeat(9)}`;
 const DJANGO_KEY = ['django', 'insecure', 'abcdef'].join('-');
 const AWS_KEY = ['AKIA', 'ABCDEFGHIJKLMNOP'].join('');
@@ -18,7 +18,7 @@ export const SECRET_VALUE_CASES = [
   [SECRET, 's3cret', SECRET],
   [ADMIN_PASSWORD, 'Admin123', SECRET],
   [API_KEY, 'a1b2c3d4e5', SECRET],
-  [ADMIN_PASSWORD, PASSPHRASE, SECRET],
+  [ADMIN_PASSWORD, FOUR_WORDS, SECRET],
   ['dbPasswordValue', 'Pa55word2024', SECRET],
   ['hmacKey', 's3cr3t-hmac-2024', SECRET],
   ['clientSecret', 'abc123def', SECRET],
@@ -29,7 +29,7 @@ export const SECRET_VALUE_CASES = [
   [PASSWORD, 'Passwort', NONE],
   [PASSWORD, 'hunterhunter', NONE],
   [TOKEN, 'Authorization', NONE],
-  [TOKEN, PASSPHRASE, NONE],
+  [TOKEN, FOUR_WORDS, NONE],
   [PASSWORD, 'Password', NONE],
   [PASSWORD, '{{secrets.DB_PASSWORD}}', NONE],
   [PASSWORD, '%(db_pw)s', NONE],
