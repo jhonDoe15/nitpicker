@@ -12,6 +12,7 @@ public final class BodyScanner extends ScopeScanner {
   private final Body body;
   private final MethodInfo method;
   private final Decisions decisions;
+  private final Arity arity;
   private final Mutations mutations;
   private final Set<Tree> chainTails = Collections.newSetFromMap(new IdentityHashMap<>());
   private final Set<Tree> consumed = Collections.newSetFromMap(new IdentityHashMap<>());
@@ -22,6 +23,7 @@ public final class BodyScanner extends ScopeScanner {
     this.body = body;
     this.method = ctx.method;
     this.decisions = new Decisions(typer, ctx);
+    this.arity = new Arity(typer, ctx);
     this.mutations = new Mutations(typer, ctx, ctx.method.tree.getBody());
   }
 
@@ -212,7 +214,7 @@ public final class BodyScanner extends ScopeScanner {
 
   @Override
   public Void visitMemberReference(MemberReferenceTree tree, Void unused) {
-    MethodInfo target = typer.references.resolve(tree, ctx);
+    MethodInfo target = typer.references.resolve(tree, ctx, arity.of(getCurrentPath()));
     if (target != null) {
       body.references.add(target);
     }

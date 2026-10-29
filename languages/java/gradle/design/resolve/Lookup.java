@@ -83,19 +83,31 @@ public final class Lookup {
     return select(candidates, argc);
   }
 
-  public MethodInfo onlyMethod(TypeInfo type, String name) {
+  public record Shape(int arity, boolean unbound) {
+    boolean fits(MethodInfo method) {
+      if (arity < 0) {
+        return true;
+      }
+      return method.params.size() == (unbound && !method.isStatic ? arity - 1 : arity);
+    }
+  }
+
+  public MethodInfo onlyMethod(TypeInfo type, String name, Shape shape) {
     if (incomplete(type)) {
       return null;
     }
     Map<String, MethodInfo> bySignature = new LinkedHashMap<>();
-    for (MethodInfo method : members(type, method -> !method.ctor && method.name.equals(name))) {
+    List<MethodInfo> named = members(type, method -> !method.ctor && method.name.equals(name) && shape.fits(method));
+    for (MethodInfo method : named) {
       bySignature.putIfAbsent(signature(method), method);
     }
     return bySignature.size() == 1 ? bySignature.values().iterator().next() : null;
   }
 
-  public MethodInfo onlyConstructor(TypeInfo type) {
-    List<MethodInfo> found = type.methods.stream().filter(method -> method.ctor).toList();
+  public MethodInfo onlyConstructor(TypeInfo type, int arity) {
+    List<MethodInfo> found = type.methods.stream()
+        .filter(method -> method.ctor && (arity < 0 || method.params.size() == arity))
+        .toList();
     return found.size() == 1 ? found.get(0) : null;
   }
 
