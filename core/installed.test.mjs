@@ -15,6 +15,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readSnippet } from './init/files/agents-md.mjs';
+import { debuggerMessage, expectedDirtyFindings } from './test-support/installed-findings.mjs';
 import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 
 const enabled = process.env.NITPICKER_INSTALLED_TEST === '1';
@@ -27,45 +28,6 @@ const installer = 'npm@11';
 const cleanSource = 'export function example() {\n  return 1;\n}\n';
 const violation = 'export function example(){\n  debugger;\n  return 1\n}\n';
 
-const debuggerMessage =
-  '`debugger` statement is not allowed. If this is intended, add {"rule":"no-debugger",' +
-  '"paths":["src/main/example.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
-const expectedDirtyFindings = [
-  {
-    tool: 'eslint-lint',
-    rule: 'no-debugger',
-    path: 'src/main/example.ts',
-    identity:
-      'message:`debugger` statement is not allowed|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
-    message: debuggerMessage,
-    classification: 'enforceable',
-    symbol: 'example',
-    location: { line: 2, column: 3 },
-    ratchet: {
-      key: 'count:`debugger` statement is not allowed',
-      value: 1,
-      existingCodeOnly: true,
-    },
-  },
-  {
-    tool: 'prettier-format',
-    rule: 'prettier/prettier',
-    path: 'src/main/example.ts',
-    identity: 'format-diff:3021261b8c9abc3d63b74d13',
-    message: 'Format these lines with Prettier',
-    classification: 'enforceable',
-    location: { line: 1, endLine: 1 },
-  },
-  {
-    tool: 'prettier-format',
-    rule: 'prettier/prettier',
-    path: 'src/main/example.ts',
-    identity: 'format-diff:92772ea69de4f061a708c457',
-    message: 'Format these lines with Prettier',
-    classification: 'enforceable',
-    location: { line: 3, endLine: 3 },
-  },
-];
 const expectedSnapshotOutput = [
   "Following this project's conventions:",
   '  Trailing commas: none (used by 1 of 1 measured files)',
