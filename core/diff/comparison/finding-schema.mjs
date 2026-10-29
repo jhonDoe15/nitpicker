@@ -139,29 +139,36 @@ function parseTokens(value, context) {
 }
 
 function parseCause(value, context) {
-  if (!isRecord(value) || !Array.isArray(value.files) || !Array.isArray(value.contributors)) {
-    throw new TypeError(`${context} must be { files, contributors }`);
+  if (!isRecord(value) || !Array.isArray(value.units)) {
+    throw new TypeError(`${context} must be { folders, units }`);
   }
   return {
-    files: value.files.map((file, index) => causePath(file, `${context}.files[${String(index)}]`)),
-    contributors: value.contributors.map((entry, index) =>
-      parseContributor(entry, `${context}.contributors[${String(index)}]`),
+    folders: causePaths(value.folders, `${context}.folders`),
+    units: value.units.map((entry, index) =>
+      parseCauseUnit(entry, `${context}.units[${String(index)}]`),
     ),
   };
 }
 
-function parseContributor(entry, context) {
+function parseCauseUnit(entry, context) {
   if (!isRecord(entry)) {
-    throw new TypeError(`${context} must be { file, unit }`);
+    throw new TypeError(`${context} must be { unit, folders, files, count }`);
   }
   return {
-    file: causePath(entry.file, `${context}.file`),
     unit: requiredString(entry.unit, `${context}.unit`),
+    folders: causePaths(entry.folders, `${context}.folders`),
+    files: causePaths(entry.files, `${context}.files`),
+    count: positiveInteger(entry.count, `${context}.count`),
   };
 }
 
-function causePath(file, context) {
-  return normalizeFindingPath(requiredString(file, context), context);
+function causePaths(value, context) {
+  if (!Array.isArray(value)) {
+    throw new TypeError(`${context} must be an array of paths`);
+  }
+  return value.map((file, index) =>
+    normalizeGitPath(requiredString(file, `${context}[${String(index)}]`)),
+  );
 }
 
 function positiveInteger(value, context) {

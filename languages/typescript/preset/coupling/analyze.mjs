@@ -9,7 +9,9 @@ import {
   PUBLIC_FACES,
   withPublicFace,
 } from '../../../../shared/rules/features/feature-roles.mjs';
+import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import { featureLayout } from '../architecture/strict-layout.mjs';
+import { stabilityUnits } from './feature-layout.mjs';
 
 function pathWithinRoot(file, sourceRoot) {
   return file.startsWith(`${sourceRoot}/`) ? file.slice(sourceRoot.length + 1) : file;
@@ -52,6 +54,7 @@ function sharedUsage(graph, sourceRoot, { layout, projectRoot }) {
 }
 
 const defaultRoles = withPublicFace(featureRoles(featureLayout), PUBLIC_FACES.typescript);
+const sharedRoots = featureLayout.sharedRoots.map((glob) => globMatcher(glob));
 
 export function analyzeCoupling(graph, sourceRoot, options = {}) {
   const { layout = defaultResolvedLayout, roleOf = defaultRoles } = options;
@@ -75,7 +78,8 @@ export function analyzeCoupling(graph, sourceRoot, options = {}) {
     edges,
     packageOf: (file) => packageName(file, normalizedRoot),
     runtime: true,
-    roleOf,
+    fileOf: (file) => file,
+    ...stabilityUnits({ sourceRoot: normalizedRoot, sharedRoots, roleOf }),
   });
   const moduleMetrics = metrics.modules.map(({ module, ...rest }) => ({ source: module, ...rest }));
 

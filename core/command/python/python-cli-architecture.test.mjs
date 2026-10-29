@@ -63,15 +63,6 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
         message:
           'base depends on less stable package other. Depend on an abstraction in a more stable package instead. If this is intended, add {"rule":"stability-direction","paths":["src/base/__init__.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
-        cause: {
-          files: ['src/base/__init__.py', 'src/base/core.py'],
-          contributors: [
-            { file: 'src/feature/a.py', unit: 'package feature' },
-            { file: 'src/feature/b.py', unit: 'package feature' },
-            { file: 'src/other/__init__.py', unit: 'package other' },
-            { file: 'src/other/o.py', unit: 'package other' },
-          ],
-        },
       },
     ]);
   });

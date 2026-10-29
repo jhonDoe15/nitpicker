@@ -4,13 +4,11 @@ import { buildCouplingReport } from './coupling.mjs';
 const packageOf = (module) => module.split('/')[0];
 const fileOf = (module) => `${module}.py`;
 const INVERSION_CAUSE = {
-  files: ['stable/s.py'],
-  contributors: [
-    { file: 'leaf/q.py', unit: 'package leaf' },
-    { file: 'p1/a.py', unit: 'package p1' },
-    { file: 'p2/a.py', unit: 'package p2' },
-    { file: 'volatile/v.py', unit: 'package volatile' },
-  ],
+  folders: ['stable'],
+  units: ['leaf/q', 'p1/a', 'p2/a', 'volatile/v'].map((module) => {
+    const [name] = module.split('/');
+    return { unit: `package ${name}`, folders: [name], files: [`${module}.py`], count: 1 };
+  }),
 };
 
 describe('coupling report on a neutral module graph', () => {

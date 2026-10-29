@@ -45,16 +45,22 @@ classes -> classes
 const fileOf = (name) => `src/main/java/${name.replaceAll('.', '/')}.java`;
 const analyze = () => analyzeJavaCoupling({ classes: CLASSES, edges: parseJdeps(JDEPS), fileOf });
 const packageOf = (report, name) => report.packages.find((entry) => entry.name === name);
-const javaFile = (name) => `src/main/java/${name}.java`;
+function packageUnit(root, files) {
+  const [name] = files[0].split('/');
+  return {
+    unit: `package ${name}`,
+    folders: [`${root}/${name}`],
+    files: files.map((file) => `${root}/${file}`),
+    count: files.length,
+  };
+}
 const STABLE_CAUSE = {
-  files: [javaFile('stable/S')],
-  contributors: [
-    { file: javaFile('churn/U'), unit: 'package churn' },
-    { file: javaFile('client/A'), unit: 'package client' },
-    { file: javaFile('client/B'), unit: 'package client' },
-    { file: javaFile('client/C'), unit: 'package client' },
-    { file: javaFile('leaf/L'), unit: 'package leaf' },
-  ],
+  folders: ['src/main/java/stable'],
+  units: [
+    ['churn/U.java'],
+    ['client/A.java', 'client/B.java', 'client/C.java'],
+    ['leaf/L.java'],
+  ].map((files) => packageUnit('src/main/java', files)),
 };
 
 describe('parseJdeps', () => {
@@ -291,12 +297,9 @@ describe('Kotlin classes', () => {
         target: 'churn',
         delta: 0.1667,
         cause: {
-          files: ['src/main/kotlin/stable/Core.kt'],
-          contributors: ['churn/Volatile', 'client/Orders', 'leaf/Leaf', 'other/Reports'].map(
-            (name) => ({
-              file: `src/main/kotlin/${name}.kt`,
-              unit: `package ${name.split('/')[0]}`,
-            }),
+          folders: ['src/main/kotlin/stable'],
+          units: ['churn/Volatile.kt', 'client/Orders.kt', 'leaf/Leaf.kt', 'other/Reports.kt'].map(
+            (file) => packageUnit('src/main/kotlin', [file]),
           ),
         },
       },

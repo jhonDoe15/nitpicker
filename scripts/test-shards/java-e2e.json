@@ -9,6 +9,7 @@
   "languages/java/adapters/java-e2e/preset/comparison/java-preset-branches.e2e.test.mjs": 110,
   "languages/java/adapters/java-e2e/preset/comparison/java-preset-coupling.e2e.test.mjs": 111,
   "languages/java/adapters/java-e2e/preset/comparison/java-preset-policy.e2e.test.mjs": 111,
+  "languages/java/adapters/java-e2e/preset/comparison/java-preset-stability.e2e.test.mjs": 178,
   "languages/java/adapters/java-e2e/preset/comparison/java-preset-structure.e2e.test.mjs": 110,
   "languages/java/adapters/java-e2e/preset/quality/java-preset-complexity.e2e.test.mjs": 113,
   "languages/java/adapters/java-e2e/preset/quality/java-preset-mutations.e2e.test.mjs": 110,
