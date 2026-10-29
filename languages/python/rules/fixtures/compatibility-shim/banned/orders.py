@@ -3,8 +3,11 @@ import warnings
 from .new_orders import Order
 
 
+RENAMED = {"OldOrder": "Order"}
+
+
 def __getattr__(name: str) -> object:
-    raise AttributeError(name)
+    return globals()[RENAMED[name]]
 
 
 OldOrder = Order

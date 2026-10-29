@@ -9,22 +9,38 @@ from signatures.annotations import (
     parameters_of,
     qualified_name,
 )
+from signatures.classes import inherited_names, is_data_mapped
 
 RULE = "tri-state-boolean"
 FIXED_SIGNATURE_DECORATORS = {"override", "overload"}
-FIXED_SIGNATURE_METHODS = {"__exit__", "__aexit__"}
+FIXED_SIGNATURE_METHODS = {"__exit__", "__aexit__", "eof_received"}
+OWN_SIGNATURE_METHODS = {"__init__", "__new__", "__init_subclass__"}
 
 
-def is_fixed_signature(function):
+def owning_class(function, context):
+    parent = context.parents.get(id(function))
+    return parent if isinstance(parent, ast.ClassDef) else None
+
+
+def may_override(function, context):
+    owner = owning_class(function, context)
+    if owner is None or function.name in OWN_SIGNATURE_METHODS:
+        return False
+    inherited, unresolved = inherited_names(owner, context)
+    return unresolved or function.name in inherited
+
+
+def is_fixed_signature(function, context):
     return (
         function.name in FIXED_SIGNATURE_METHODS
         or is_hook(function)
         or bool(decorator_names(function) & FIXED_SIGNATURE_DECORATORS)
+        or may_override(function, context)
     )
 
 
 def function_findings(function, context):
-    if is_fixed_signature(function):
+    if is_fixed_signature(function, context):
         return []
     owner = qualified_name(function, context)
     found = [
@@ -40,6 +56,8 @@ def function_findings(function, context):
 def field_name(node, context):
     target = node.target
     parent = context.parents.get(id(node))
+    if isinstance(parent, ast.ClassDef) and is_data_mapped(parent, context):
+        return None
     if isinstance(target, ast.Name) and isinstance(parent, (ast.ClassDef, ast.Module)):
         owner = parent.name if isinstance(parent, ast.ClassDef) else None
         return f"{owner}.{target.id}" if owner else target.id

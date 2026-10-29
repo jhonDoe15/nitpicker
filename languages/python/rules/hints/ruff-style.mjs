@@ -50,17 +50,19 @@ const ZONE_HINTS = [
     'Give the datetime a zone: `datetime(2024, 1, 1, tzinfo=timezone.utc)`. A datetime without one cannot be compared with an aware one.',
   ],
   [
-    ['DTZ002', 'DTZ005', 'DTZ011'],
-    'Read the time in a zone: `datetime.now(tz=timezone.utc)`, and `.date()` of it for a date. In domain code take the clock as a parameter.',
+    ['DTZ002', 'DTZ005'],
+    'Read the time in a zone: `datetime.now(tz=timezone.utc)`. In domain code take the clock as a parameter.',
+  ],
+  [
+    ['DTZ011'],
+    'Read the date in a zone: `datetime.now(tz=timezone.utc).date()`, or `datetime.now().astimezone().date()` when the local date is wanted. In domain code take the clock as a parameter.',
   ],
   ['DTZ003', 'Call `datetime.now(tz=timezone.utc)`; `utcnow()` returns a datetime without a zone.'],
-  [
-    ['DTZ004', 'DTZ006', 'DTZ012'],
-    'Pass the zone: `datetime.fromtimestamp(timestamp, tz=timezone.utc)`.',
-  ],
+  [['DTZ004', 'DTZ006'], 'Pass the zone: `datetime.fromtimestamp(timestamp, tz=timezone.utc)`.'],
+  [['DTZ012'], 'Pass the zone: `datetime.fromtimestamp(timestamp, tz=timezone.utc).date()`.'],
   [
     ['DTZ007'],
-    'Parse the zone too: put `%z` in the format, or call `.replace(tzinfo=timezone.utc)` on the result.',
+    'For a calendar value parse with `date.fromisoformat(text)` or `time.fromisoformat(text)` (or `.date()` / `.time()` of the parsed result); for an instant put `%z` in the format, or call `.replace(tzinfo=timezone.utc)` on the result.',
   ],
   [
     ['DTZ901'],

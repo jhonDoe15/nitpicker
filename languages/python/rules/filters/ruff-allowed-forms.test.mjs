@@ -156,3 +156,23 @@ describe('other findings', () => {
     expect(withoutAllowedForms(rest)).toEqual(rest);
   });
 });
+
+describe('calendar parses', () => {
+  const parse = (line) => ({ tool: 'ruff', rule: 'DTZ007', path: 'a.py', location: { line } });
+  const lines = [
+    '',
+    'day = datetime.strptime(text, "%Y-%m-%d").date()',
+    'clock = datetime.datetime.strptime(text, "%H:%M").time()',
+    'moment = datetime.strptime(text, "%Y-%m-%d")',
+    'moment = datetime.strptime(text, "%Y-%m-%d").replace(year=1)',
+  ];
+  const lineOf = (_path, line) => lines[line];
+
+  it.each([1, 2])('allows strptime(...).date() and .time() on line %i', (line) => {
+    expect(withoutAllowedForms([parse(line)], { lineOf })).toEqual([]);
+  });
+
+  it.each([3, 4])('keeps a datetime parse on line %i', (line) => {
+    expect(withoutAllowedForms([parse(line)], { lineOf })).toEqual([parse(line)]);
+  });
+});

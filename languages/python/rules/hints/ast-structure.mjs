@@ -44,7 +44,7 @@ export const STRUCTURE_HINTS = [
     rules: ['swallowed-exception'],
     describe: (subject) =>
       `\`${subject}\` swallows the error: it only logs it or returns a default, and carries on`,
-    allowed: `Re-raise it with its cause (\`raise DomainError(...) from error\`), return a failure result that carries the error (\`return Rejected(str(error))\`), or collect it for the caller (\`errors.append(error)\`); logging alone is not handling. \`contextlib.suppress(SpecificError)\` ignores one expected error. ${IN_TEST}`,
+    allowed: `Re-raise it with its cause (\`raise DomainError(...) from error\`), return a failure result that carries the error (\`return Rejected(str(error))\`), or return the errors the function builds along with its result (\`return results, errors\`); logging alone is not handling. \`contextlib.suppress(SpecificError)\` ignores one expected error. ${IN_TEST}`,
   },
   {
     tool: RULES_TOOL,
