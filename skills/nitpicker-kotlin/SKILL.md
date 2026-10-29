@@ -70,7 +70,9 @@ Before you change code other modules use, or fix a bug, read
   `Throwable` (also in tests: `TooGenericExceptionCaught`), and pass the caught exception on as the cause (`SwallowedException`). Use
   `require(...)` and `check(...)` instead of throwing `IllegalArgumentException` and
   `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private
-  members and parameters.
+  members and parameters (an override, a function with a framework annotation and a name starting
+  `ignored` or `unused` are skipped). A public function's `Boolean` parameter that picks a behavior
+  becomes two functions or an enum (`BooleanFlagParameter`).
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
   declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`
@@ -162,3 +164,6 @@ Before you change code other modules use, or fix a bug, read
   constructor in a unit test, or use a slice (`pmd/SpringUnusedContext`).
 - A function or file already over a limit may be edited but must not get worse: put new code in a
   new function or file and call it.
+- A string of five characters or more used three times in a main file gets one
+  `private const val NAME = "..."` (`kotlin-source/RepeatedStringLiteral`); annotation arguments,
+  `when` labels, named arguments, map keys and message keys are not counted.
