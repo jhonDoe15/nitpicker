@@ -30,7 +30,11 @@ Beans and configuration:
   beans or helper classes (JVM properties such as `java.*` are fine). `@Profile` only on
   `@Configuration` classes and `@Bean` methods.
 - No mutable state in singleton beans: no `static` non-final fields, no plain collection written
-  after startup (keep `Map.copyOf`, or use `ConcurrentHashMap` or `@Cacheable`).
+  after startup (build lookup tables once with `Map.copyOf`). Request data (handler parameters,
+  `RequestContextHolder`, `SecurityContextHolder`) never lands in a singleton or static field, not
+  even a `ConcurrentHashMap` (`archunit/spring-request-state`): pass it through parameters and
+  return values, keep per-request data in a `@RequestScope` bean, and cache with `@Cacheable` or a
+  Caffeine cache that has a size and an expiry.
 - HTTP clients are built once, from the injected builders, with timeouts. No database or HTTP calls
   in `@PostConstruct`; use an `ApplicationRunner`.
 - `@Scheduled`, `@Async`, the cache annotations, `@PreAuthorize` and `@Retryable` need their
