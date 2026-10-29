@@ -2,6 +2,7 @@ import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { chainOf } from '../../../../../../shared/traversal.mjs';
 import { isClosure, isWrapper, isWrite, lineOf, unwrap } from '../../syntax/nodes.mjs';
 import { isOwnerThis, localKey } from '../scope.mjs';
+import { branchesOf } from './branches.mjs';
 import { mutationOfCall } from './mutation.mjs';
 import { targetSite, valueSite } from './targets.mjs';
 
@@ -81,11 +82,13 @@ function callFact(scope, node, site) {
   const receiver = hasInstanceReceiver(site) ? calleeReceiver(scope, node) : undefined;
   const isValue = ts.isCallExpression(node) || ts.isPropertyAccessExpression(node);
   const mutation = isValue ? mutationOfCall(scope, node) : undefined;
+  const branch = branchesOf(scope, node);
   return {
     target: site.id,
     line: callLine(node),
     ...(receiver === undefined ? {} : { receiver }),
     ...(isInFinally(node, scope.site.node) ? { cleanup: true } : {}),
+    ...(branch.length === 0 ? {} : { branch }),
     ...(mutation === undefined ? {} : { mutation }),
   };
 }

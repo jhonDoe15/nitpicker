@@ -211,6 +211,24 @@ describe('caller-protocol', () => {
       ['src/a/save.ts#save|s|early:write'],
     ],
     ['no open call', [{ target: write.id }, { target: commit.id, cleanup: true }], []],
+    [
+      'a step on the other arm of the same conditional',
+      [
+        { target: write.id, branch: ['0:then'] },
+        { target: begin.id, branch: ['0:else'] },
+        { target: commit.id, cleanup: true },
+      ],
+      [],
+    ],
+    [
+      'a step on an arm of another conditional',
+      [
+        { target: write.id, branch: ['0:then'] },
+        { target: begin.id, branch: ['1:else'] },
+        { target: commit.id, cleanup: true },
+      ],
+      ['src/a/save.ts#save|s|early:write'],
+    ],
     ['a receiver kept in a field', [{ target: begin.id, receiver: 'this.session' }], []],
     [
       'a close in finally',

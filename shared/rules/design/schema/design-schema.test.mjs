@@ -26,7 +26,16 @@ describe('design facts schema', () => {
       references: [lines.id],
       returns: 'number',
       forward: { target: lines.id, arguments: [0, -1], returned: true },
-      calls: [{ target: lines.id, line: 3, receiver: 'this', cleanup: true, mutation: 'push' }],
+      calls: [
+        {
+          target: lines.id,
+          line: 3,
+          receiver: 'this',
+          cleanup: true,
+          branch: ['0:then'],
+          mutation: 'push',
+        },
+      ],
       paramUses: [
         {
           param: 0,
@@ -48,6 +57,10 @@ describe('design facts schema', () => {
   it.each([
     [{ kind: 'lambda' }, 'facts.callables[1].kind is "lambda"'],
     [{ calls: [{ target: lines.id, line: 0 }] }, 'facts.callables[1].calls[0].line is 0'],
+    [
+      { calls: [{ target: lines.id, line: 3, branch: [0] }] },
+      'facts.callables[1].calls[0].branch is [0]',
+    ],
     [{ params: [{ type: 'number' }] }, 'facts.callables[1].params[0].name is missing'],
     [
       { forward: { target: lines.id, arguments: [-2], returned: true } },

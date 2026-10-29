@@ -29,6 +29,14 @@ function handsOver(entry, { caller, subject, index }) {
   return returned !== undefined && lineage(index, returned).includes(subject);
 }
 
+function exclusive(first, second) {
+  const arms = new Map((second.branch ?? []).map((marker) => marker.split(':')));
+  return (first.branch ?? []).some((marker) => {
+    const [conditional, arm] = marker.split(':');
+    return arms.has(conditional) && arms.get(conditional) !== arm;
+  });
+}
+
 function violations(entry, { contract, ...scope }) {
   const opens = entry.calls.filter(namedIn(contract.open));
   if (opens.length === 0) {
@@ -38,7 +46,10 @@ function violations(entry, { contract, ...scope }) {
     handsOver(entry, scope) ||
     entry.calls.some((call) => namedIn(contract.close)(call) && call.cleanup === true);
   const firstOpen = entry.calls.indexOf(opens[0]);
-  const early = entry.calls.slice(0, firstOpen).filter(namedIn(contract.steps ?? []));
+  const early = entry.calls
+    .slice(0, firstOpen)
+    .filter(namedIn(contract.steps ?? []))
+    .filter((call) => !exclusive(call, opens[0]));
   return [
     ...(closed ? [] : [{ kind: 'unclosed', call: opens[0] }]),
     ...early.map((call) => ({ kind: 'early', call, open: opens[0] })),
