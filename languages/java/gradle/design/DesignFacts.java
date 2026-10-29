@@ -77,7 +77,6 @@ public final class DesignFacts {
     Typer typer = new Typer(project, lookup);
     TypeFacts typeFacts = new TypeFacts(new Mutability(typer));
     CallableFacts callableFacts = new CallableFacts(typer, new Surface(project, lookup));
-    List<Map<String, Object>> modules = new ArrayList<>();
     List<Map<String, Object>> types = new ArrayList<>();
     List<Map<String, Object>> callables = new ArrayList<>();
     Set<String> starters = new HashSet<>();
@@ -86,13 +85,11 @@ public final class DesignFacts {
         continue;
       }
       types.add(typeFacts.build(type));
-      for (MethodInfo method : type.methods) {
-        callables.add(callableFacts.build(method));
-        if (method.tree != null && Surface.isMain(method)) {
-          starters.add(type.unit.file);
-        }
+      if (addCallables(type, callableFacts, callables)) {
+        starters.add(type.unit.file);
       }
     }
+    List<Map<String, Object>> modules = new ArrayList<>();
     for (Unit unit : units) {
       Map<String, Object> module = new LinkedHashMap<>();
       module.put("file", unit.file);
@@ -105,5 +102,15 @@ public final class DesignFacts {
     result.put("types", types);
     result.put("callables", callables);
     return result;
+  }
+
+  private static boolean addCallables(
+      TypeInfo type, CallableFacts callableFacts, List<Map<String, Object>> callables) {
+    boolean starts = false;
+    for (MethodInfo method : type.methods) {
+      callables.add(callableFacts.build(method));
+      starts |= method.tree != null && Surface.isMain(method);
+    }
+    return starts;
   }
 }

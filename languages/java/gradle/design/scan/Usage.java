@@ -104,7 +104,7 @@ public final class Usage {
       MethodInfo target = typer.calls.resolve(parent, ctx).target();
       name = target != null && target.accessorField != null ? target.accessorField : member;
     }
-    record(value, name, isWrite(parent, select), select);
+    record(value, name, path);
   }
 
   private static boolean isWrite(Tree parent, Tree select) {
@@ -138,7 +138,9 @@ public final class Usage {
     return null;
   }
 
-  private void record(Value value, String name, boolean write, Tree site) {
+  private void record(Value value, String name, TreePath path) {
+    Tree site = path.getLeaf();
+    boolean write = isWrite(path.getParentPath().getLeaf(), site);
     TypeInfo type = value.ty().type();
     String kind = type.designKind;
     boolean shaped = "class".equals(kind) || "data".equals(kind);

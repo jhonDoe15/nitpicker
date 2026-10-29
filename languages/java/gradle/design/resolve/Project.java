@@ -12,12 +12,18 @@ public final class Project {
   public final List<TypeInfo> types = new ArrayList<>();
   private final Map<String, List<TypeInfo>> byFqn = new HashMap<>();
 
+  public record Site(TypeInfo owner, Unit unit, Set<String> typeVars) {}
+
   public Project(List<Unit> units) {
     for (Unit unit : units) {
-      for (Tree declaration : unit.tree.getTypeDecls()) {
-        if (declaration instanceof ClassTree tree) {
-          register(unit, tree, null);
-        }
+      registerUnit(unit);
+    }
+  }
+
+  private void registerUnit(Unit unit) {
+    for (Tree declaration : unit.tree.getTypeDecls()) {
+      if (declaration instanceof ClassTree tree) {
+        register(unit, tree, null);
       }
     }
   }
@@ -60,7 +66,7 @@ public final class Project {
   }
 
   private void linkSuper(TypeInfo type, Tree tree, boolean superclass) {
-    TypeInfo resolved = resolveTree(tree, type.outer, type.unit, Set.of());
+    TypeInfo resolved = resolveTree(tree, new Site(type.outer, type.unit, Set.of()));
     if (resolved != null) {
       type.supers.add(resolved);
       if (superclass) {
@@ -92,11 +98,12 @@ public final class Project {
     return null;
   }
 
-  public TypeInfo resolveSimple(String name, TypeInfo owner, Unit unit, Set<String> variables) {
-    if (variables.contains(name)) {
+  public TypeInfo resolveSimple(String name, Site site) {
+    if (site.typeVars().contains(name)) {
       return null;
     }
-    for (TypeInfo type = owner; type != null; type = type.outer) {
+    Unit unit = site.unit();
+    for (TypeInfo type = site.owner(); type != null; type = type.outer) {
       if (type.typeVars.contains(name)) {
         return null;
       }
@@ -130,11 +137,11 @@ public final class Project {
     return candidates.size() == 1 ? candidates.iterator().next() : null;
   }
 
-  public TypeInfo resolveQualified(List<String> parts, TypeInfo owner, Unit unit, Set<String> variables) {
+  public TypeInfo resolveQualified(List<String> parts, Site site) {
     if (parts.isEmpty()) {
       return null;
     }
-    TypeInfo first = resolveSimple(parts.get(0), owner, unit, variables);
+    TypeInfo first = resolveSimple(parts.get(0), site);
     if (first != null) {
       return walk(first, parts.subList(1, parts.size()));
     }
@@ -156,17 +163,13 @@ public final class Project {
     return current;
   }
 
-  public TypeInfo resolveTree(Tree tree, TypeInfo owner, Unit unit, Set<String> variables) {
+  public TypeInfo resolveTree(Tree tree, Site site) {
     return switch (tree) {
       case null -> null;
-      case IdentifierTree identifier ->
-          resolveSimple(identifier.getName().toString(), owner, unit, variables);
-      case MemberSelectTree select ->
-          resolveQualified(Names.segments(select), owner, unit, variables);
-      case ParameterizedTypeTree parameterized ->
-          resolveTree(parameterized.getType(), owner, unit, variables);
-      case AnnotatedTypeTree annotated ->
-          resolveTree(annotated.getUnderlyingType(), owner, unit, variables);
+      case IdentifierTree identifier -> resolveSimple(identifier.getName().toString(), site);
+      case MemberSelectTree select -> resolveQualified(Names.segments(select), site);
+      case ParameterizedTypeTree parameterized -> resolveTree(parameterized.getType(), site);
+      case AnnotatedTypeTree annotated -> resolveTree(annotated.getUnderlyingType(), site);
       default -> null;
     };
   }

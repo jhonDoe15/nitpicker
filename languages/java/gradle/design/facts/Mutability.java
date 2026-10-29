@@ -59,7 +59,8 @@ public final class Mutability {
     }
     if (expression instanceof NewClassTree creation && creation.getClassBody() == null) {
       String name = Names.typeText(creation.getIdentifier());
-      TypeInfo project = typer.project.resolveTree(creation.getIdentifier(), type, type.unit, Set.of());
+      Project.Site site = new Project.Site(type, type.unit, Set.of());
+      TypeInfo project = typer.project.resolveTree(creation.getIdentifier(), site);
       return project == null && name != null && CREATED.contains(name.substring(name.lastIndexOf('.') + 1));
     }
     return false;

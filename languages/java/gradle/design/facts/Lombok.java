@@ -16,20 +16,24 @@ public final class Lombok {
   public static boolean disabledBy(Path directory, Path root) {
     Path current = directory;
     while (current != null && current.startsWith(root)) {
-      Path config = current.resolve("lombok.config");
-      if (Files.isRegularFile(config)) {
-        try {
-          String text = Files.readString(config);
-          if (text.contains("lombok.accessors") || text.contains("lombok.getter")) {
-            return true;
-          }
-        } catch (java.io.IOException unreadable) {
-          return true;
-        }
+      if (renamesAccessors(current.resolve("lombok.config"))) {
+        return true;
       }
       current = current.getParent();
     }
     return false;
+  }
+
+  private static boolean renamesAccessors(Path config) {
+    if (!Files.isRegularFile(config)) {
+      return false;
+    }
+    try {
+      String text = Files.readString(config);
+      return text.contains("lombok.accessors") || text.contains("lombok.getter");
+    } catch (java.io.IOException unreadable) {
+      return true;
+    }
   }
 
   public static void apply(TypeInfo type, boolean allowed) {
@@ -62,8 +66,9 @@ public final class Lombok {
       Set<Modifier> flags = flagsFor(level);
       String name = getterName(field);
       if (flags != null && !declares(type, name)) {
-        type.methods.add(
-            new MethodInfo(type, name, field.tree.getType(), field.name, flags, type.unit.line(field.tree)));
+        MethodInfo.Getter getter =
+            new MethodInfo.Getter(name, field.tree.getType(), field.name, flags, type.unit.line(field.tree));
+        type.methods.add(new MethodInfo(type, getter));
       }
     }
   }

@@ -27,7 +27,7 @@ public final class Typer {
       case IdentifierTree identifier when identifier.getName().contentEquals("var") -> Ty.UNKNOWN;
       case WildcardTree wildcard -> Ty.UNKNOWN;
       default -> {
-        TypeInfo resolved = project.resolveTree(type, c.owner, c.unit, c.typeVars);
+        TypeInfo resolved = project.resolveTree(type, c.site());
         yield resolved != null ? Ty.of(resolved) : Ty.text(Names.typeText(type));
       }
     };
@@ -106,7 +106,7 @@ public final class Typer {
     if (c.lookup(first) != null || lookup.bareField(first, c.owner) != null) {
       return null;
     }
-    return project.resolveQualified(parts, c.owner, c.unit, c.typeVars);
+    return project.resolveQualified(parts, c.site());
   }
 
   public String keyOf(Tree tree, Ctx c) {
