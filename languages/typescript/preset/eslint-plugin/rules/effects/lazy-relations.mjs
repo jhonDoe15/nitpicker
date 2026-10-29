@@ -2,7 +2,7 @@ import ts from 'typescript';
 import { ancestorsOf } from '../analysis/ancestry.mjs';
 import { findVariable } from '../analysis/constant-resolution.mjs';
 import { estreeCallView } from '../support/io/call-views.mjs';
-import { resolvedSymbol } from '../support/io/implementations.mjs';
+import { calleeDeclaration, functionLike, resolvedSymbol } from '../support/io/implementations.mjs';
 import { packageFromPath } from '../support/io/packages.mjs';
 import { memoized } from '../support/memo.mjs';
 
@@ -120,13 +120,13 @@ function schemaIndex(program) {
   });
 }
 
-function schemaRelation(services, member) {
-  const relation = member.property.name;
-  const candidates = schemaIndex(services.program).filter((each) => each.relation === relation);
+function schemaRelation(program, member) {
+  const relation = member.name.text;
+  const candidates = schemaIndex(program).filter((each) => each.relation === relation);
   if (candidates.length === 0) {
     return undefined;
   }
-  const type = services.getTypeAtLocation(member.object);
+  const type = program.getTypeChecker().getTypeAtLocation(member.expression);
   const typeName = (type.aliasSymbol ?? type.getSymbol())?.name;
   const open = (type.flags & ts.TypeFlags.Any) !== 0 || OPEN_TYPES.has(typeName);
   const match =
@@ -135,23 +135,59 @@ function schemaRelation(services, member) {
   return match === undefined ? undefined : { entity: match.entity ?? 'entity', relation };
 }
 
-function decoratedRelation(services, member) {
-  const checker = services.program.getTypeChecker();
-  const property = services.esTreeNodeToTSNodeMap.get(member.property);
+function decoratedRelation(program, member) {
+  const checker = program.getTypeChecker();
   const declaration = checker
-    .getSymbolAtLocation(property)
+    .getSymbolAtLocation(member.name)
     ?.declarations?.find(ts.isPropertyDeclaration);
   const decorator = declaration && relationDecorator(checker, declaration);
   const lazy =
     decorator !== undefined &&
     (decorator.arguments.some(isLazyOption) || isPromiseTyped(declaration));
   return lazy
-    ? { entity: declaration.parent.name?.text ?? 'entity', relation: member.property.name }
+    ? { entity: declaration.parent.name?.text ?? 'entity', relation: member.name.text }
+    : undefined;
+}
+
+function tsLazyRelation(program, member) {
+  return ts.isPropertyAccessExpression(member) && ts.isIdentifier(member.name)
+    ? (decoratedRelation(program, member) ?? schemaRelation(program, member))
     : undefined;
 }
 
 export function lazyRelation(services, member) {
-  return decoratedRelation(services, member) ?? schemaRelation(services, member);
+  return tsLazyRelation(services.program, services.esTreeNodeToTSNodeMap.get(member));
+}
+
+function awaitedRelation(program, fn, index) {
+  const name = fn.parameters[index]?.name;
+  const checker = program.getTypeChecker();
+  const parameter =
+    name !== undefined && ts.isIdentifier(name) && checker.getSymbolAtLocation(name);
+  const pending = parameter ? [fn.body] : [];
+  for (const node of pending) {
+    const member = ts.isAwaitExpression(node) ? node.expression : undefined;
+    const isParameter =
+      member !== undefined &&
+      ts.isPropertyAccessExpression(member) &&
+      checker.getSymbolAtLocation(member.expression) === parameter;
+    const relation = isParameter ? tsLazyRelation(program, member) : undefined;
+    if (relation !== undefined) {
+      return { ...relation, access: member.getText() };
+    }
+    ts.forEachChild(node, (child) => {
+      pending.push(child);
+    });
+  }
+  return undefined;
+}
+
+export function helperRelation(services, reference, index) {
+  const node = services.esTreeNodeToTSNodeMap.get(reference);
+  const name = ts.isPropertyAccessExpression(node) ? node.name : node;
+  const declaration = calleeDeclaration(services.program.getTypeChecker(), name);
+  const fn = declaration && functionLike(declaration);
+  return fn === undefined ? undefined : awaitedRelation(services.program, fn, index);
 }
 
 function nearestFunction(node) {
