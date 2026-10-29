@@ -20,14 +20,17 @@ public final class Bodies {
   private final List<Object> catches = new ArrayList<>();
   private final List<Object> literals = new ArrayList<>();
   private final List<Object> nullReturns = new ArrayList<>();
+  private final List<Object> returnValues = new ArrayList<>();
   private final List<Object> locals = new ArrayList<>();
   private final List<Object> throwsList = new ArrayList<>();
   private final ExceptionUses exceptionUses;
   private final Throwing throwing;
   private final Set<String> handlerNames;
+  private final Reads reads;
 
-  public Bodies(String text, boolean test, Set<String> nothing, Set<String> handlerNames) {
+  public Bodies(String text, boolean test, Set<String> nothing, Set<String> handlerNames, Reads reads) {
     this.active = !test;
+    this.reads = reads;
     this.lines = new Lines(text);
     this.exceptionUses = new ExceptionUses(this::lineOf);
     this.throwing = new Throwing(nothing);
@@ -55,9 +58,57 @@ public final class Bodies {
     if (body instanceof KtConstantExpression && "null".equals(body.getText())) {
       nullReturns.add(m("line", lineOf(body), "scope", scopes.id(inner)));
     }
+    if (!(body instanceof KtBlockExpression)) {
+      returned(body, inner, null);
+    }
     if (annotationNames(function).stream().anyMatch(handlerNames::contains) && body != null) {
       exceptionUses.collect(function, scopes.id(inner));
     }
+  }
+
+  public void lambda(KtLambdaExpression lambda, Frame inner) {
+    reads.enter(lambda, inner);
+    if (!active) {
+      return;
+    }
+    scopes.describe(inner, m("reads", reads.of(Reads.sourceOf(lambda))));
+    List<KtExpression> statements = lambda.getBodyExpression() == null ? List.of()
+        : lambda.getBodyExpression().getStatements();
+    if (!statements.isEmpty() && !(statements.get(statements.size() - 1) instanceof KtDeclaration)) {
+      returned(statements.get(statements.size() - 1), inner, Boolean.TRUE);
+    }
+  }
+
+  public void loop(KtForExpression loop, Frame inner) {
+    if (active) {
+      scopes.describe(inner, m("reads", reads.of(loop.getLoopRange())));
+    }
+  }
+
+  public void accessor(KtPropertyAccessor accessor, Frame inner) {
+    if (active && !(accessor.getBodyExpression() instanceof KtBlockExpression)) {
+      returned(accessor.getBodyExpression(), inner, null);
+    }
+  }
+
+  private void returned(KtExpression value, Frame frame, Boolean lambda) {
+    List<Object> read = value == null ? null : reads.of(value);
+    if (read != null) {
+      returnValues.add(m("line", lineOf(value), "scope", scopes.id(frame), "lambda", lambda, "reads", read));
+    }
+  }
+
+  private void returned(KtReturnExpression returned, Frame frame) {
+    KtExpression value = returned.getReturnedExpression();
+    if (returned.getLabeledExpression() != null) {
+      Frame target = reads.labeled(returned);
+      returned(value, target == null ? frame : target, target == null ? null : Boolean.TRUE);
+      return;
+    }
+    if (value instanceof KtConstantExpression && "null".equals(value.getText())) {
+      nullReturns.add(m("line", lineOf(returned), "scope", scopes.id(frame)));
+    }
+    returned(value, frame, null);
   }
 
   public void observe(PsiElement element, Frame frame) {
@@ -79,12 +130,7 @@ public final class Bodies {
     } else if (element instanceof KtThrowExpression) {
       thrown((KtThrowExpression) element, frame);
     } else if (element instanceof KtReturnExpression) {
-      KtReturnExpression returned = (KtReturnExpression) element;
-      KtExpression value = returned.getReturnedExpression();
-      if (returned.getLabeledExpression() == null && value instanceof KtConstantExpression
-          && "null".equals(value.getText())) {
-        nullReturns.add(m("line", lineOf(returned), "scope", scopes.id(frame)));
-      }
+      returned((KtReturnExpression) element, frame);
     } else if (element instanceof KtCallableReferenceExpression) {
       KtCallableReferenceExpression reference = (KtCallableReferenceExpression) element;
       record(element, frame, m("name", reference.getCallableReference().getReferencedName(), "reference", true,
@@ -98,7 +144,8 @@ public final class Bodies {
     }
     locals.add(m("name", local.getName(), "scope", scopes.id(frame), "line", lineOf(local),
         "type", clip(local.getTypeReference()), "initializer", Initializers.callee(local),
-        "alias", Initializers.alias(local)));
+        "alias", Initializers.alias(local), "reads", reads.of(local.getInitializer()),
+        "origin", Initializers.origin(local.getInitializer())));
   }
 
   private void destructured(KtDestructuringDeclaration declaration, Frame frame) {
@@ -107,7 +154,7 @@ public final class Bodies {
       KtDestructuringDeclarationEntry entry = entries.get(index);
       locals.add(m("name", entry.getName(), "scope", scopes.id(frame), "line", lineOf(entry),
           "type", clip(entry.getTypeReference()), "initializer", Initializers.callee(declaration.getInitializer()),
-          "component", index + 1));
+          "component", index + 1, "reads", reads.of(declaration.getInitializer())));
     }
   }
 
@@ -126,27 +173,12 @@ public final class Bodies {
   }
 
   private void thrown(KtThrowExpression expression, Frame frame) {
-    KtExpression value = expression.getThrownExpression();
-    if (value instanceof KtQualifiedExpression) {
-      value = ((KtQualifiedExpression) value).getSelectorExpression();
+    Map<String, Object> thrown = Throwing.thrown(expression);
+    if (thrown != null) {
+      Map<String, Object> entry = m("line", lineOf(expression), "scope", scopes.id(frame));
+      entry.putAll(thrown);
+      throwsList.add(entry);
     }
-    if (value instanceof KtCallExpression) {
-      throwsList.add(m("line", lineOf(expression), "scope", scopes.id(frame),
-          "type", nameOf(((KtCallExpression) value).getCalleeExpression()), "caught", caught(expression)));
-    }
-  }
-
-  private static Boolean caught(PsiElement start) {
-    PsiElement child = start;
-    for (PsiElement up = start.getParent(); up != null && !(up instanceof KtDeclarationWithBody);
-        up = up.getParent()) {
-      if (up instanceof KtTryExpression && ((KtTryExpression) up).getTryBlock() == child
-          && !((KtTryExpression) up).getCatchClauses().isEmpty()) {
-        return Boolean.TRUE;
-      }
-      child = up;
-    }
-    return null;
   }
 
   private void call(KtCallExpression call, Frame frame) {
@@ -154,12 +186,13 @@ public final class Bodies {
     if (name == null) {
       return;
     }
-    Map<String, Object> data = m("name", name, "arguments", arguments(call),
+    Map<String, Object> data = m("name", name, "arguments", reads.arguments(call, arguments(call)),
         "throwing", throwing.lambdaThrows(call) ? Boolean.TRUE : null);
     if (call.getParent() instanceof KtQualifiedExpression
         && ((KtQualifiedExpression) call.getParent()).getSelectorExpression() == call) {
       KtQualifiedExpression qualified = (KtQualifiedExpression) call.getParent();
       data.put("receiver", clip(qualified.getReceiverExpression()));
+      data.put("receiverReads", reads.of(qualified.getReceiverExpression()));
       data.put("safe", qualified instanceof KtSafeQualifiedExpression ? Boolean.TRUE : null);
       data.put("previous", callOf(qualified.getReceiverExpression()));
       chained(qualified, data);
@@ -218,7 +251,7 @@ public final class Bodies {
   private void assignment(KtBinaryExpression expression, Frame frame) {
     Object token = expression.getOperationToken();
     KtExpression left = expression.getLeft();
-    Map<String, Object> value = m("text", clip(expression.getRight()));
+    Map<String, Object> value = m("text", clip(expression.getRight()), "reads", reads.of(expression.getRight()));
     if (token == KtTokens.PLUSEQ || token == KtTokens.MINUSEQ) {
       String name = token == KtTokens.PLUSEQ ? "plusAssign" : "minusAssign";
       record(expression, frame, m("name", name, "receiver", clip(left), "assign", true, "arguments", List.of(value)));
@@ -256,10 +289,11 @@ public final class Bodies {
   }
 
   public Map<String, Object> result() {
+    reads.resolve(scopes::id);
     return active
         ? m("scopes", scopes.entries(), "invocations", invocations, "catches", catches, "literals", literals,
-            "nullReturns", nullReturns, "exceptionUses", exceptionUses.uses(), "locals", locals,
-            "throws", throwsList)
+            "nullReturns", nullReturns, "returnValues", returnValues, "exceptionUses", exceptionUses.uses(),
+            "locals", locals, "throws", throwsList)
         : Map.of();
   }
 }

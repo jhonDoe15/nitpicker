@@ -97,6 +97,40 @@ export function runPmd({ module, reportDir, tools, classpaths, configs, spring, 
   });
 }
 
+const SECURITY_DIRECTORY = path.join(GRADLE_DIRECTORY, 'security');
+const SINK_FILES = {
+  SqlInjectionDetector: [
+    ['jakarta-sinks.txt', 'SQL_INJECTION_JPA'],
+    ['spring-jdbc-sinks.txt', 'SQL_INJECTION_SPRING_JDBC'],
+  ],
+  PathTraversalDetector: [['path-sinks.txt', 'PATH_TRAVERSAL_IN']],
+};
+
+export function spotbugsLaunch({ module, report, tools }) {
+  return {
+    jvmArgs: Object.entries(SINK_FILES).map(([detector, sinks]) => {
+      const value = sinks
+        .map(([file, type]) => `${path.join(SECURITY_DIRECTORY, file)}|${type}`)
+        .join(path.delimiter);
+      return `-Dfindsecbugs.injection.customconfigfile.${detector}=${value}`;
+    }),
+    args: [
+      '-effort:default',
+      '-medium',
+      '-sarif',
+      '-pluginList',
+      tools.spotbugsPlugins.join(path.delimiter),
+      '-exclude',
+      path.join(SECURITY_DIRECTORY, 'exclude.xml'),
+      '-output',
+      report,
+      '-sourcepath',
+      module.sourceRoots.filter((root) => existsSync(root)).join(path.delimiter),
+      module.outputDirectory,
+    ],
+  };
+}
+
 export function runSpotbugs({ module, reportDir, tools, spawn }) {
   const report = path.join(reportDir, 'spotbugs.sarif');
   const hasClasses =
@@ -109,16 +143,7 @@ export function runSpotbugs({ module, reportDir, tools, spawn }) {
     tool: 'SpotBugs',
     classpath: tools.spotbugs,
     mainClass: 'edu.umd.cs.findbugs.FindBugs2',
-    args: [
-      '-effort:default',
-      '-medium',
-      '-sarif',
-      '-output',
-      report,
-      '-sourcepath',
-      module.sourceRoots.filter((root) => existsSync(root)).join(path.delimiter),
-      module.outputDirectory,
-    ],
+    ...spotbugsLaunch({ module, report, tools }),
     cwd: module.basedir,
     accept: () => existsSync(report),
     spawn,

@@ -71,6 +71,9 @@ export function toolDependencies(pinned, launcherVersions = [], extraTools = [])
       dependency(`net.sourceforge.pmd:pmd-java:${pinned.pmd}`),
     ],
     spotbugs: [dependency(`com.github.spotbugs:spotbugs:${pinned.spotbugs}`)],
+    spotbugsPlugins: [
+      dependency(`com.h3xstream.findsecbugs:findsecbugs-plugin:${pinned.findSecBugs}`),
+    ],
     checkstyle: [dependency(`com.puppycrawl.tools:checkstyle:${pinned.checkstyle}`)],
     errorprone: [
       dependency(`com.google.errorprone:error_prone_core:${pinned.errorProne}`),

@@ -107,6 +107,7 @@ describe('toolDependencies', () => {
     expect(Object.keys(toolDependencies(pinned))).toEqual([
       'pmd',
       'spotbugs',
+      'spotbugsPlugins',
       'checkstyle',
       'errorprone',
       'jacoco',
@@ -117,6 +118,7 @@ describe('toolDependencies', () => {
     expect(Object.keys(toolDependencies(pinned, [], formatTool('palantir', pinned)))).toEqual([
       'pmd',
       'spotbugs',
+      'spotbugsPlugins',
       'checkstyle',
       'errorprone',
       'jacoco',
@@ -132,6 +134,7 @@ describe.skipIf(process.platform === 'win32')('resolveTools', () => {
   const common = [
     'pmd',
     'spotbugs',
+    'spotbugsPlugins',
     'checkstyle',
     'errorprone',
     'jacoco',

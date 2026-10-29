@@ -1,6 +1,7 @@
 def pinned = [
     pmd             : '7.7.0',
     spotbugs        : '4.9.3',
+    findSecBugs     : '1.14.0',
     googleJavaFormat: '1.25.2',
     palantirJavaFormat: '2.50.0',
     jacoco          : '0.8.12',
@@ -148,6 +149,7 @@ allprojects {
         configurations {
             nitpickerPmd { canBeConsumed = false }
             nitpickerSpotbugs { canBeConsumed = false }
+            nitpickerSpotbugsPlugins { canBeConsumed = false; transitive = false }
             nitpickerFormat { canBeConsumed = false }
             nitpickerPit { canBeConsumed = false }
             nitpickerSpringArch { canBeConsumed = false }
@@ -160,6 +162,7 @@ allprojects {
             nitpickerPmd "net.sourceforge.pmd:pmd-cli:${pinned.pmd}"
             nitpickerPmd "net.sourceforge.pmd:pmd-java:${pinned.pmd}"
             nitpickerSpotbugs "com.github.spotbugs:spotbugs:${pinned.spotbugs}"
+            nitpickerSpotbugsPlugins "com.h3xstream.findsecbugs:findsecbugs-plugin:${pinned.findSecBugs}"
             if (javaStyle == 'palantir') {
                 nitpickerFormat "com.palantir.javaformat:palantir-java-format:${pinned.palantirJavaFormat}"
             } else if (javaStyle != 'none') {
@@ -376,6 +379,12 @@ allprojects {
             dependsOn tasks.named('classes')
             classpath = configurations.nitpickerSpotbugs
             mainClass = 'edu.umd.cs.findbugs.FindBugs2'
+            systemProperty 'findsecbugs.injection.customconfigfile.SqlInjectionDetector',
+                ["${new File(initScriptDir, 'security/jakarta-sinks.txt').absolutePath}|SQL_INJECTION_JPA",
+                 "${new File(initScriptDir, 'security/spring-jdbc-sinks.txt').absolutePath}|SQL_INJECTION_SPRING_JDBC"]
+                    .join(File.pathSeparator)
+            systemProperty 'findsecbugs.injection.customconfigfile.PathTraversalDetector',
+                "${new File(initScriptDir, 'security/path-sinks.txt').absolutePath}|PATH_TRAVERSAL_IN".toString()
             ignoreExitValue = true
             doFirst {
                 reportDir.get().asFile.mkdirs()
@@ -384,6 +393,8 @@ allprojects {
                 def auxiliary = kotlinPreset
                     ? sourceSets.main.runtimeClasspath.files.findAll { it.exists() && !classDirs.contains(it) } : []
                 args(['-effort:default', '-medium', '-sarif',
+                      '-pluginList', configurations.nitpickerSpotbugsPlugins.files*.absolutePath.join(File.pathSeparator),
+                      '-exclude', new File(initScriptDir, 'security/exclude.xml').absolutePath,
                       '-output', reportDir.get().file('spotbugs.sarif').asFile.absolutePath,
                       '-sourcepath', sourcePath] +
                     (auxiliary.isEmpty() ? [] : ['-auxclasspath', auxiliary.join(File.pathSeparator)]) +

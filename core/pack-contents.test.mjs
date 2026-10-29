@@ -102,6 +102,10 @@ describe('npm package contents', () => {
     expect(packedFiles.has('languages/python/adapters/import-scan.py')).toBe(true);
     expect(packedFiles.has('languages/java/gradle/spring-ruleset.xml')).toBe(true);
     expect(packedFiles.has('languages/java/gradle/pmd-ruleset.xml')).toBe(true);
+    expect(packedFiles.has('languages/java/gradle/security/exclude.xml')).toBe(true);
+    expect(packedFiles.has('languages/java/gradle/security/jakarta-sinks.txt')).toBe(true);
+    expect(packedFiles.has('languages/java/gradle/security/spring-jdbc-sinks.txt')).toBe(true);
+    expect(packedFiles.has('languages/java/gradle/security/path-sinks.txt')).toBe(true);
     expect(
       [...packedFiles].filter((file) => isNotShipped(file) || file === 'package-lock.json'),
     ).toEqual([]);

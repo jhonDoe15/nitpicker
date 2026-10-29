@@ -128,4 +128,37 @@ end-to-end suite at a time so the sequencer and recorder can choose the correct 
 without one). The Python end-to-end suite (`npm run test:python`) needs more tools and the
 network; see [docs/python-preset.md](docs/python-preset.md).
 
+## Licenses
+
+Code nitpicker writes or copies stays permissive (MIT, Apache-2.0, BSD, ISC). A tool nitpicker runs
+unmodified, either downloaded at run time or installed as an unmodified npm package, may be
+weak-copyleft (LGPL, EPL, MPL). GPL, AGPL and source-available licenses (SSPL, SSALv1, BSL,
+Elastic and the like) are never allowed, in either form.
+
+Weak-copyleft tools today: SpotBugs and its find-sec-bugs plugin, and Checkstyle (LGPL); JaCoCo
+(EPL-2.0); the JUnit Platform launcher that PIT needs (EPL-2.0, added at run time next to the
+project's own engine); Saxon-HE (MPL-2.0), which PMD, SpotBugs and Checkstyle pull in; axe-core,
+which `eslint-plugin-jsx-a11y-x` installs (MPL-2.0). PMD itself is BSD-style, which the Java tool
+list accepts as permissive.
+
+`core/licensing/dependency-licenses.test.mjs` enforces what it can read on every test run: each
+tool pinned in `languages/java/gradle/nitpicker.init.gradle` must have a license entry in
+`core/licensing/test-support/` that the allowlist accepts and an exact version, and every package in
+`package-lock.json` must declare an allowed license, with its installed LICENSE text scanned for a
+GPL, AGPL or source-available notice (a package that offers an allowed license in an OR expression
+passes). `Public Domain`, which is not an SPDX id, is accepted for `jsonify@0.0.1` only. Adding a
+pinned Java tool means adding its license entry in the same change, after reading the license text,
+since a package's metadata can disagree with its LICENSE file.
+
+`languages/java/adapters/java-e2e/preset/security/java-preset-tool-licenses.e2e.test.mjs` runs in the
+Java end-to-end suite, since it needs
+Maven and the network. It resolves every tool nitpicker downloads with Maven, transitive
+dependencies included (the formatters and the Kotlin tools through the coordinates in the Gradle
+scripts), and checks the license each jar's POM declares, or the nearest parent POM that declares
+one; several licenses in one POM are a choice, as Maven defines them. Free-text names become SPDX
+ids in `core/licensing/test-support/pom-licenses.mjs`, and a name it does not know fails until it is
+added there after reading the license (dom4j's POM says "Plexus" for its BSD-style license, so it
+has its own entry). The license texts inside the jars are not read, and lizard, a Python tool, keeps
+only its hand entry.
+
 To cut a release, see [docs/releasing.md](docs/releasing.md).
