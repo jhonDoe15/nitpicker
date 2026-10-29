@@ -271,8 +271,7 @@ export function readPolicyScope({
     toolConfigs: readToolConfigs(
       { config: baseConfig, root: baseProjectRoot, files: baseFiles },
       { config: headConfig, root: headProjectRoot, files },
-      gitBlobId,
-      { replacedOptions },
+      { gitBlobId, replacedOptions },
     ),
     reach: () => productionReachOf({ headProjectRoot, headConfig, files, headRoots, headSources }),
     blobOf: blobReader(headProjectRoot),

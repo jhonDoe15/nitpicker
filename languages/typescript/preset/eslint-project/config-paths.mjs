@@ -2,18 +2,16 @@ import { existsSync, lstatSync, readFileSync, realpathSync, statSync } from 'nod
 import { builtinModules, createRequire } from 'node:module';
 import path from 'node:path';
 import { resolveInside } from '../../../../shared/conventions/read-inside.mjs';
+import { ancestorDirectories } from '../../../../shared/filesystem.mjs';
 
 const NODE_MODULES = `${path.sep}node_modules${path.sep}`;
 const BUILTINS = new Set(builtinModules);
 
-function ancestors(directory) {
-  const parent = path.dirname(directory);
-  return parent === directory ? [directory] : [directory, ...ancestors(parent)];
-}
-
 function repositoryRoot(projectRoot) {
   const root = path.resolve(projectRoot);
-  return ancestors(root).find((directory) => existsSync(path.join(directory, '.git'))) ?? root;
+  return (
+    ancestorDirectories(root).find((directory) => existsSync(path.join(directory, '.git'))) ?? root
+  );
 }
 
 export function contextOf(projectRoot) {
@@ -78,15 +76,15 @@ function resolvedEntry(full, specifier) {
 
 function installedPackage(directory, name) {
   const modules = path.join(directory, 'node_modules');
-  const candidate = path.resolve(modules, name);
-  if (!candidate.startsWith(modules + path.sep)) {
+  const manifest = path.resolve(modules, name, 'package.json');
+  if (!manifest.startsWith(modules + path.sep)) {
     return undefined;
   }
-  return existsSync(path.join(candidate, 'package.json')) ? candidate : undefined;
+  return existsSync(manifest) ? path.dirname(manifest) : undefined;
 }
 
 function packageDirectory(full, name) {
-  return ancestors(path.dirname(full))
+  return ancestorDirectories(path.dirname(full))
     .map((directory) => installedPackage(directory, name))
     .find((candidate) => candidate !== undefined);
 }

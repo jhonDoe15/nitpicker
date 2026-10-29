@@ -97,14 +97,15 @@ export function toolConfigText(tool, file, text) {
   if (extension === '.xml') {
     return xmlText(text);
   }
-  if (HASH_FILES.has(extension)) {
-    return keptLines(text, (trimmed) => HASH_COMMENT.test(trimmed), false);
-  }
-  if (IGNORE_FILE.test(name) && !MIXED_FILES.has(name)) {
-    return keptLines(text, (trimmed) => HASH_COMMENT.test(trimmed), false);
-  }
   if (SCRIPT_EXTENSIONS.has(extension)) {
     return printedScript(file, text);
+  }
+  return lineCommentText(name, extension, text);
+}
+
+function lineCommentText(name, extension, text) {
+  if (HASH_FILES.has(extension) || (IGNORE_FILE.test(name) && !MIXED_FILES.has(name))) {
+    return keptLines(text, (trimmed) => HASH_COMMENT.test(trimmed), false);
   }
   if (MIXED_FILES.has(name)) {
     return keptLines(text, (trimmed) => HASH_COMMENT.test(trimmed) || SLASH_COMMENT.test(trimmed));

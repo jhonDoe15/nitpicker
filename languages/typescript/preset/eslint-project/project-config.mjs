@@ -124,12 +124,16 @@ function addPackages(walk, full, packages) {
       walk.tree.packages.add(facts.version);
     }
     for (const file of facts.workspace ?? []) {
-      if (file.endsWith('.json')) {
-        walk.tree.data.add(file);
-      } else {
-        enqueue(walk, file);
-      }
+      addWorkspaceFile(walk, file);
     }
+  }
+}
+
+function addWorkspaceFile(walk, file) {
+  if (file.endsWith('.json')) {
+    walk.tree.data.add(file);
+  } else {
+    enqueue(walk, file);
   }
 }
 
