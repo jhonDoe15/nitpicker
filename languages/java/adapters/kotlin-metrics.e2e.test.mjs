@@ -23,7 +23,6 @@ import {
   DEEP_CHAIN,
   FLAT,
   INITIALIZERS,
-  LOAD_EFFECTS,
   MULTIFILE_A,
   MULTIFILE_B,
   NESTING,
@@ -31,6 +30,12 @@ import {
   ROOT_PACKAGE,
   UNITS,
 } from './test-support/kotlin-metrics-sources.mjs';
+import {
+  LOAD_EFFECTS,
+  LOAD_FINDINGS,
+  LOAD_HELPERS,
+  LOAD_SINGLETONS,
+} from './test-support/kotlin-load-sources.mjs';
 
 // Compiles and runs kotlin-psi, the PSI program behind Kotlin structure, CRAP, coupling and the
 // review rules, on source files. It needs Java 21, Gradle and network access to Maven Central (for
@@ -382,18 +387,21 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   });
 
   it('collects the calls that run while a file or object loads, and the rule reports their effects', () => {
-    const { facts } = measure(writeSources('load', { 'src/Load.kt': LOAD_EFFECTS }));
+    const { facts } = measure(
+      writeSources('load', {
+        'src/Load.kt': LOAD_EFFECTS,
+        'src/Singletons.kt': LOAD_SINGLETONS,
+        'src/Helpers.kt': LOAD_HELPERS,
+      }),
+    );
     const findings = loadEffectFindings(facts.files, { finding: findingFactory() });
 
-    expect(findings.map(({ symbol, location }) => `${symbol} ${String(location.line)}`)).toEqual([
-      'config 7',
-      'counted 8',
-      'connect() 13',
-      'Store.init 21',
-      'Repository.Companion.shared 29',
-      'Registry.connection 34',
-      'Mode.FAST 42',
-    ]);
+    expect(
+      findings.map(
+        ({ path: file, symbol, location }) =>
+          `${path.basename(file)} ${symbol} ${String(location.line)}`,
+      ),
+    ).toEqual(LOAD_FINDINGS);
   });
 
   it('collects facts of test roots without measuring them, and words a test syntax error for tests', () => {

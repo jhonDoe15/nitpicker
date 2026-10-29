@@ -56,19 +56,38 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
     expect(timed[0].message).toMatch(/until\(\(\) -> !thread\.isAlive\(\)\)/u);
   });
 
-  it('names the call and the class that loads it in a class-load effect', () => {
+  it('names the call, the class that loads it and the member that runs it in a class-load effect', () => {
     const effects = runs.maven.filter(({ rule }) => rule === 'ClassLoadEffect');
+    const warehouseEffects = effects.filter(({ path: file }) =>
+      /\/Warehouse\w*\.java$/u.test(file),
+    );
 
     expect(
-      effects
-        .map(({ message }) => /^.*?: (`[^`]+` runs while \w+ loads)/u.exec(message)?.[1])
-        .sort(),
+      warehouseEffects.map(({ message, identity }) => [
+        /^.*?: `[^`]+` runs while (\w+ loads \([^)]*\))/u.exec(message)?.[1],
+        identity,
+      ]),
     ).toEqual([
-      '`DriverManager.getConnection(...)` runs while Ledger loads',
-      '`DriverManager.getConnection(...)` runs while Warehouse loads',
-      '`Executors.newFixedThreadPool(...)` runs while Warehouse loads',
-      '`Files.exists(...)` runs while Warehouse loads',
-      '`Files.exists(...)` runs while WarehouseConfig loads',
+      [
+        'Warehouse loads (in static field WORKERS)',
+        'fp:nitpicker/subject=Warehouse.WORKERS: Executors.newFixedThreadPool(...)',
+      ],
+      [
+        'Warehouse loads (in a static block)',
+        'fp:nitpicker/subject=Warehouse.static {}: Files.exists(...)',
+      ],
+      [
+        'Warehouse loads (in method connect, which static field STOCK calls)',
+        'fp:nitpicker/subject=Warehouse.connect(): DriverManager.getConnection(...)',
+      ],
+      [
+        'Ledger loads (in constructor Ledger of an instance created at load)',
+        'fp:nitpicker/subject=Ledger.Ledger(): DriverManager.getConnection(...)',
+      ],
+      [
+        'WarehouseConfig loads (in a static block)',
+        'fp:nitpicker/subject=WarehouseConfig.static {}: Files.exists(...)',
+      ],
     ]);
     const warehouse = effects.find(({ path: file }) => file.endsWith('Warehouse.java'))?.message;
 
