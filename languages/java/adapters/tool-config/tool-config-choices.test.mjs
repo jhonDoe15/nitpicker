@@ -21,7 +21,7 @@ function projectWith(files) {
 
 const RULESET = `<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">
   <description>p</description>
-  <rule ref="category/java/performance.xml/AvoidArrayLoops"/>
+  <rule ref="category/java/codestyle.xml/UnnecessaryImport"/>
 </ruleset>`;
 const CHECKSTYLE =
   '<module name="Checker"><module name="LineLength"><property name="max" value="140"/></module></module>';
@@ -60,6 +60,7 @@ describe('the Gradle properties of the project tool configs', () => {
       `-Pnitpicker.pmd.nitpickerRuleset=${path.join(directory, 'pmd-nitpicker.xml')}`,
       `-Pnitpicker.pmd.projectConfig=${path.join(directory, 'pmd-project.xml')}`,
       `-Pnitpicker.pmd.testRules=${path.join(directory, 'pmd-test-rules.xml')}`,
+      `-Pnitpicker.pmd.mainRules=${path.join(directory, 'pmd-main-rules.xml')}`,
       `-Pnitpicker.checkstyle.projectConfig=${path.join(head, 'config/checkstyle/checkstyle.xml')}`,
       `-Pnitpicker.checkstyle.mergedConfig=${path.join(directory, 'checkstyle-merged.xml')}`,
     ]);
@@ -69,7 +70,7 @@ describe('the Gradle properties of the project tool configs', () => {
         '<?xml version="1.0" encoding="UTF-8"?>',
         '<ruleset name="project" xmlns="http://pmd.sourceforge.net/ruleset/2.0.0">',
         '  <description>p</description>',
-        '  <rule ref="category/java/performance.xml/AvoidArrayLoops"/>',
+        '  <rule ref="category/java/codestyle.xml/UnnecessaryImport"/>',
         '</ruleset>',
         '',
       ].join('\n'),
@@ -90,6 +91,7 @@ describe('the Gradle properties of the project tool configs', () => {
       `-Pnitpicker.pmd.nitpickerRuleset=${path.join(directory, 'pmd-nitpicker.xml')}`,
       `-Pnitpicker.pmd.projectConfig=${path.join(directory, 'pmd-project.xml')}`,
       `-Pnitpicker.pmd.testRules=${path.join(directory, 'pmd-test-rules.xml')}`,
+      `-Pnitpicker.pmd.mainRules=${path.join(directory, 'pmd-main-rules.xml')}`,
     ]);
   });
 
