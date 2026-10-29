@@ -1324,8 +1324,9 @@ field, `HidingField` and `URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD`, `RandomModInteg
 `DMI_RANDOM_USED_ONLY_ONCE`, `ClassNewInstance` and `REFLC_REFLECTION_MAY_INCREASE_ACCESSIBILITY_OF_CLASS`,
 `SelfAssignment` and `AvoidReassigningParameters`. `adapters/overlaps/resolved-overlaps.test.mjs` pins every cross-tool line left
 on the probe's findings (`fixtures/probe-findings.json`, every enabled check with nothing turned off
-for overlap), the pairs that drop a secondary on those findings (a pair with no probe evidence yet is
-listed in the test, and the list must shrink as evidence is added), the partial-coverage cases kept,
+for overlap), the pairs that drop a secondary on those findings (every pair of the table must have probe
+evidence, so a new pair comes with a probe source that makes both rules report the same site),
+the partial-coverage cases kept,
 and the policy order; `static-overlaps.test.mjs` checks each pair in its scope; a unit test checks
 that this list is the table.
 
@@ -1342,6 +1343,17 @@ differs from a fresh run; `adapters/java-e2e/overlap-probe.e2e.test.mjs` runs th
 Java end-to-end suite (`npm run test:java`), so the Java CI job fails on drift. After a regeneration,
 review the diff: a disappearing finding is a rule turned off or changed in the preset, and every
 pair must still match (the pair test above).
+
+Two pairs were dropped and one changed because the two rules could never report one site with the
+preset's configuration, found by probing each pair. `errorprone/AnnotationPosition` over
+Checkstyle's `AnnotationLocation` is gone: both suppression files turn `AnnotationLocation` off,
+so Checkstyle never reports it. `errorprone/HardCodedSdCardPath` over PMD `DoNotHardCodeSDCard`
+is gone: the Error Prone check reports only under the javac option `-XDandroidCompatible=true`,
+which the runner does not set, so only PMD reports a hard-coded `/sdcard` path.
+`errorprone/ClassName` over `checkstyle/OuterTypeFilename` has the `file` scope: Error Prone names
+the first line of the file and Checkstyle the class line. SpotBugs reports `MS_MUTABLE_ARRAY` and
+`MS_PKGPROTECT` for a public static final array only when something reads the field (outside its
+package for the first, inside it for the second), so the probe has a class that reads them.
 
 The pairs:
 
@@ -1421,10 +1433,8 @@ The pairs:
 - line: `errorprone/NotJavadoc` over `checkstyle/InvalidJavadocPosition`
 - line: `errorprone/EmptyBlockTag` over `checkstyle/NonEmptyAtclauseDescription`
 - javadoc: `errorprone/MissingSummary` over `checkstyle/SummaryJavadoc`
-- line: `errorprone/AnnotationPosition` over `checkstyle/AnnotationLocationMostCases`, `checkstyle/AnnotationLocationVariables`
-- line: `errorprone/ClassName` over `checkstyle/OuterTypeFilename`
+- file: `errorprone/ClassName` over `checkstyle/OuterTypeFilename`
 - line: `errorprone/AssignmentExpression` over `pmd/AssignmentInOperand`
-- line: `errorprone/HardCodedSdCardPath` over `pmd/DoNotHardCodeSDCard`
 - line: `errorprone/ForEachIterable` over `pmd/ForLoopCanBeForeach`
 - line: `errorprone/Finally` over `pmd/DoNotThrowExceptionInFinally`, `pmd/ReturnFromFinallyBlock`
 - member: `errorprone/DoubleBraceInitialization` over `pmd/DoubleBraceInitialization`

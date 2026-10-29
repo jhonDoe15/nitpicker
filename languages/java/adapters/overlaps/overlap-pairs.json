@@ -449,26 +449,13 @@
     "scope": "javadoc"
   },
   {
-    "primary": ["errorprone/AnnotationPosition"],
-    "secondary": [
-      "checkstyle/AnnotationLocationMostCases",
-      "checkstyle/AnnotationLocationVariables"
-    ],
-    "scope": "line"
-  },
-  {
     "primary": ["errorprone/ClassName"],
     "secondary": ["checkstyle/OuterTypeFilename"],
-    "scope": "line"
+    "scope": "file"
   },
   {
     "primary": ["errorprone/AssignmentExpression"],
     "secondary": ["pmd/AssignmentInOperand"],
-    "scope": "line"
-  },
-  {
-    "primary": ["errorprone/HardCodedSdCardPath"],
-    "secondary": ["pmd/DoNotHardCodeSDCard"],
     "scope": "line"
   },
   {
