@@ -120,7 +120,7 @@ export function resolveCacheStore({ projectRoot, environment = process.env, writ
   const store =
     local === undefined && remote === undefined
       ? undefined
-      : createLayeredStore({ local, remote, writeRemote });
+      : { ...createLayeredStore({ local, remote, writeRemote }), directory };
   return { store, remote, warnings };
 }
 
