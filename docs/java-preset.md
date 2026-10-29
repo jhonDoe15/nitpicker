@@ -301,6 +301,16 @@ a passing test suite ...`) instead of Gradle's own failure output. Projects with
 - **Equivalent mutants.** A survived mutant's message names the common equivalent cases (a
   `compareTo` boundary, a discarded lambda return) and the way out: simplify the code, or add an
   exception for `pit/mutant-survived`.
+- **The `main` method.** A `mutant-nocoverage` on a line inside the body of a
+  `static void main(String[])` method is dropped (`adapters/reporting/main-method.mjs`, after
+  every report is read, so it is the same on Gradle and Maven): the method only hands the real
+  standard streams to code that tests reach through a writer, so no test runs it. Only that method
+  and only the not-covered status: a `main` that a test does run keeps its survived mutants, and
+  every other method is mutated as before. The same filter drops the changed-branch coverage
+  finding of a line in that body and the `errorprone/SystemOut` and `pmd/SystemPrintln` findings
+  of one (see [Error Prone and NullAway](#error-prone-and-nullaway)). The method is found with the
+  brace-depth scan the entry-point detection of the review rules uses (`mainMethodLines` in
+  `review-rules/source-declarations.mjs`). Java files only: Kotlin sources have their own rules.
 - **Ingester.** `languages/java/ingest/pit.mjs` (`ingestPit`). PIT statuses map to the names the
   Stryker-based area uses: `SURVIVED` and `NO_COVERAGE` give enforceable `mutant-survived` and
   `mutant-nocoverage`; `TIMED_OUT`, `MEMORY_ERROR`/`RUN_ERROR`, `NON_VIABLE` and `STARTED` give
@@ -774,6 +784,8 @@ resolved plus a new finding, as in the TypeScript check.
   the base had it. An uncovered branch on an unchanged line stays baselined. The library entry
   `runJavaDiff` passes the same `touchedCode` as the CLI path. The TypeScript check of the same
   rule name is unaffected (its identity keys on branch source; the predicate is tool-scoped).
+- **The `main` method.** An uncovered branch on a line inside the body of a `static void main(String[])`
+  method is not reported (see [Slice 7](#slice-7-mutation-with-pit)); other methods are judged as above.
 - **Identity.** A hash of the line's source text (trimmed, whitespace collapsed), `branch-source:<16 hex>`,
   with `#2`, `#3` for identical lines in one file, in order. No line number: inserting code above
   keeps the finding baselined (the lines around it are not in a changed range), and a renamed file
@@ -1456,6 +1468,17 @@ table:
 - class: `errorprone/DateFormatConstant` over `pmd/UnsynchronizedStaticFormatter`, `spotbugs/STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE`
 - field: `errorprone/DateFormatConstant` over `spotbugs/STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE`
 - line: `pmd/NonThreadSafeSingleton` over `spotbugs/LI_LAZY_INIT_STATIC`, `spotbugs/SING_SINGLETON_GETTER_NOT_SYNCHRONIZED`
+
+### Standard streams and the `main` method
+
+`SystemOut` (and PMD's `SystemPrintln`, so the rule holds if the overlap above changes) flags every
+`System.out` / `System.err` use. The one allowed form is a writer: code outside the entry point takes
+a `PrintStream`, `Writer` or `Appendable` parameter and writes to it, and only the body of a
+`static void main(String[])` method passes `System.out` / `System.err` (`new Cli(System.out).run(args)`,
+`System.out::print`). A finding of either rule on a line inside that body is dropped; the same
+method-level scan drops its `mutant-nocoverage` and changed-branch coverage findings. Nothing else
+in the class is spared. `SystemOut` also reports `printStackTrace()`, which Error Prone gives the
+same message as `System.out`; a line of the body that calls `printStackTrace()` stays a finding.
 
 ### Checks spared in annotated classes
 
@@ -2533,8 +2556,8 @@ the catalog does not know, from a project's own config) the exception route with
 path:
 
 ```
-Usage of System.out/err. Write through a logger, or take a PrintStream as a parameter so callers
-choose the stream. If this is intended, add {"rule":"pmd/SystemPrintln","paths":["src/main/java/demo/Cli.java"],"reason":"..."}
+Usage of System.out/err. Use a logger, or write to a PrintStream, Writer or Appendable parameter;
+only static void main passes System.out, as in new Cli(System.out).run(args). If this is intended, add {"rule":"pmd/SystemPrintln","paths":["src/main/java/demo/Cli.java"],"reason":"..."}
 to "exceptions" in nitpicker.config.json.
 ```
 

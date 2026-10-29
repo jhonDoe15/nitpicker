@@ -32,7 +32,6 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         .map(({ tool, rule, path: file }) => `${tool} ${rule} ${file}`),
     ).toEqual([
       'errorprone PrivateConstructorForUtilityClass app/src/main/java/demo/app/Main.java',
-      'errorprone SystemOut app/src/main/java/demo/app/Main.java',
     ]);
     expect(metrics('core/src/main/java/demo/core/Adder.java')).toEqual([
       'coupling fanIn 1',
