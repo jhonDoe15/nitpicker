@@ -24,6 +24,8 @@ typescriptRuleTester().run('no-retry-without-idempotency', rule, {
     `const { backOff } = require('exponential-backoff');\nawait backOff(() => ${insert});`,
     `import pRetry = require('p-retry');\nawait pRetry(() => ${insert});`,
     `for (const attempt of attempts) { try { await ${insert}; break; } catch { wait(attempt); } }`,
+    `for (let attempt = 1; attempt <= 3; attempt++) { try { await ${insert}; return; } catch (error) { if (attempt === 3) { throw error; } await wait(attempt); } }`,
+    `let tries = 0; while (true) { try { await ${insert}; break; } catch (error) { tries += 1; if (tries > 3) throw error; } }`,
   ].map((code) => ({ code, errors: [{ messageId: 'retry' }] })),
 });
 
@@ -63,6 +65,12 @@ tester.run('no-retry-without-idempotency with types', rule, {
       "await sqs.send(new SendMessageCommand({ QueueUrl: 'q', MessageBody: id, MessageDeduplicationId: id }));",
     ),
     typed(`${HEADER}export async function run() { await pRetry(readOrder); }`),
+    typed(
+      `${HEADER}const keyed = (key: string) => ({ idempotencyKey: key });\nexport async function run(id: string) { await pRetry(() => stripe.customers.create({ email: id }, keyed(id))); }`,
+    ),
+    typed(
+      `${HEADER}export async function run(id: string, options: { idempotencyKey: string }) { await pRetry(() => stripe.customers.create({ email: id }, options)); }`,
+    ),
   ],
   invalid: [
     ...[

@@ -56,6 +56,8 @@ function run(body) {
 }
 
 const send = "await producer.send({ topic: 'o', messages: [id] });";
+const relaySend = "await producer.send({ topic: 'o', messages: [row.id] });";
+const mark = 'await prisma.order.update({ where: { id: row.id }, data: {} });';
 
 tester.run('no-dual-write with types', rule, {
   valid: [
@@ -67,6 +69,14 @@ tester.run('no-dual-write with types', rule, {
     run(`const later = async () => { ${send} }; await saveOrder(id); return later;`),
     run(
       "const rows = await prisma.order.findMany({ where: { id } }); for (const row of rows) { await producer.send({ topic: 'o', messages: [row.id] }); await prisma.order.update({ where: { id: row.id }, data: {} }); }",
+    ),
+    ...[
+      `rows.forEach(async (row) => { ${relaySend} ${mark} });`,
+      `for await (const row of rows) { ${relaySend} ${mark} }`,
+      `for (const row of rows) { await publish(row.id); ${mark} }`,
+    ].map((body) => run(`const rows = await prisma.order.findMany({ where: { id } }); ${body}`)),
+    run(
+      `const row = await prisma.order.findUnique({ where: { id } }); if (!row) { return; } ${relaySend} ${mark}`,
     ),
   ],
   invalid: [
@@ -112,6 +122,12 @@ tester.run('no-dual-write with types', rule, {
     {
       ...run(
         `const rows = await prisma.order.findMany({ where: { id } }); for (const row of rows) { ${send} await prisma.order.update({ where: { id }, data: {} }); }`,
+      ),
+      errors: [{ messageId: 'dualWrite' }],
+    },
+    {
+      ...run(
+        `const rows = await prisma.order.findMany({ where: { id } }); for (const row of rows) { ${mark} ${relaySend} }`,
       ),
       errors: [{ messageId: 'dualWrite' }],
     },
