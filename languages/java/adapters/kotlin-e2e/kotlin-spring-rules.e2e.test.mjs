@@ -24,6 +24,12 @@ const BASE_FILES = new Set([
 ]);
 const BAD_FILES = 'src/main/kotlin/shop/bad/*';
 const SPRING = new Set(SPRING_RULES);
+const BUILD_PLUGIN = {
+  annotations: ['Entity', 'MappedSuperclass', 'Embeddable'].map(
+    (name) => `jakarta.persistence.${name}`,
+  ),
+  presets: ['spring'],
+};
 
 function fixtureFiles() {
   return Object.fromEntries(
@@ -43,7 +49,7 @@ function recordedFindings() {
   );
   return springFindings(files, {
     finding: findingFactory(),
-    manifest: { spring: true, kotlinAllOpen: { annotations: [], presets: ['spring'] } },
+    manifest: { spring: true, kotlinAllOpen: BUILD_PLUGIN },
     projectFiles: files,
     projectRoot: FIXTURE,
     javaRoots: ['src/main/java'],
