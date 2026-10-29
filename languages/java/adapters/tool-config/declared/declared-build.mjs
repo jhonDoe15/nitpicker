@@ -28,6 +28,7 @@ const MAVEN_BASEDIR = new Set(['project.basedir', 'basedir']);
 const PROPERTY = /\$\{([^}]+)\}/gu;
 const ROOT_MARK = '\u0000root';
 const MODULE_MARK = '\u0000module';
+const CONDITIONAL = /^(?:if|when|else|onlyIf)\b/u;
 
 function skipped(name, relative) {
   if (name.startsWith('.') || SKIPPED_DIRECTORIES.has(name)) {
@@ -48,7 +49,8 @@ function walk(root) {
     pending.push(
       ...entries
         .filter((entry) => entry.isDirectory() && !skipped(entry.name, directory))
-        .map((entry) => relativeOf(directory, entry.name)),
+        .map((entry) => relativeOf(directory, entry.name))
+        .filter((relative) => !existsSync(path.join(root, relative, '.git'))),
     );
     found.push(
       ...entries
@@ -122,7 +124,8 @@ export function gradleSettings(scripts, { context, skip, names }) {
   return scripts.flatMap((script) =>
     script.statements.flatMap((statement) =>
       [...statement.text.matchAll(pattern)].flatMap((match) => {
-        const before = [...statement.path, statement.text.slice(0, match.index)].join('.');
+        const segments = [...statement.path, statement.text.slice(0, match.index)];
+        const before = segments.join('.');
         if (!context.test(before) || skip?.test(before) === true) {
           return [];
         }
@@ -131,6 +134,7 @@ export function gradleSettings(scripts, { context, skip, names }) {
             file: script.file,
             directory: script.directory,
             name: match[1],
+            conditional: segments.some((segment) => CONDITIONAL.test(segment.trim())),
             text: statement.text,
             value: statement.text.slice(match.index + match[0].length),
           },

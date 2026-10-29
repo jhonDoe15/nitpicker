@@ -473,7 +473,7 @@ classpath and its `test` task, and adds no test library to the project.
     names the feature folders `co-change` reads), and `layout.sharedRoots` is accepted once the
     Java preset registers the rule that reads it (`shared-used-by-one-feature`) in
     `shared/project-rules/fact-rules.mjs`. `testConsole` is accepted because the registry lists Java and
-    Kotlin for `test-console-output`. `tools` takes `pmd` and `checkstyle`.
+    Kotlin for `test-console-output`. `tools` takes `pmd`, `checkstyle` and `spotbugs`.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
