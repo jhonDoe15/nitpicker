@@ -394,6 +394,10 @@ allprojects {
         def usesSpring = {
             springDeclared || sourceSets.main.compileClasspath.files.any { it.name ==~ /spring-(context|boot)-.*\.jar/ }
         }
+        def usesJmolecules = {
+            sourceSets.main.compileClasspath.files.any { it.name ==~ /jmolecules-ddd-.*\.jar/ }
+        }
+        def runsArchRules = { usesSpring() || usesJmolecules() }
         def hasGuava = { sourceSet -> sourceSet.compileClasspath.files.any { it.name ==~ /guava-\d.*\.jar/ } }
         def hasAwaitility = { sourceSets.test.compileClasspath.files.any { it.name ==~ /awaitility-\d.*\.jar/ } }
 
@@ -537,7 +541,7 @@ allprojects {
         tasks.register('nitpickerSpringArch') {
             group = 'nitpicker'
             dependsOn { lintedClassesTasks() }
-            onlyIf { usesSpring() }
+            onlyIf { runsArchRules() }
             def ruleSources = []
             new File(initScriptDir, 'archunit').eachFileRecurse(groovy.io.FileType.FILES) {
                 if (it.name.endsWith('.java')) {
@@ -921,7 +925,7 @@ allprojects {
                     testSourceRoots: testRoots,
                     resourceRoots  : resourceRoots,
                     spring         : usesSpring(),
-                    springArch     : usesSpring(),
+                    springArch     : runsArchRules(),
                     guava          : hasGuava(sourceSets.main),
                     testGuava      : hasGuava(sourceSets.test),
                     testAwaitility : hasAwaitility(),
