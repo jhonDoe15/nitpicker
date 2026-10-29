@@ -27,6 +27,7 @@ const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const POLICY_PATHS = [
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',
+  'core/tooling/jscpd/config.mjs',
   'core/tooling/jscpd/skipped-folders.mjs',
   'languages/typescript/preset/defaults',
   'languages/javascript/preset/javascript-preset.mjs',
@@ -67,6 +68,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/syntax',
   'languages/typescript/preset/modules',
   'languages/typescript/preset/test-environment',
+  'languages/typescript/typescript-api',
   'shared',
 ];
 const temporaryRoots = [];

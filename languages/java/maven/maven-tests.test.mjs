@@ -238,9 +238,29 @@ describe('collectTestResults', () => {
       });
 
     expect([
-      run({}),
-      run({ 'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals']]) }),
+      run({}).testsRan,
+      run({ 'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals']]) }).testsRan,
     ]).toEqual([false, true]);
+  });
+
+  it('lists the failing tests instead of failing when it is told to tolerate them', () => {
+    const reports = tree({
+      'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals', 'expected 3']]),
+    });
+
+    expect(
+      collectTestResults({
+        module: { basedir: '/m', surefireReports: reports, failsafeReports: tree({}) },
+        reportDir: tree({}),
+        since,
+        isArchunit: archunitMatcher(),
+        tolerateFailures: true,
+        moduleName: 'core',
+      }),
+    ).toEqual({
+      testsRan: true,
+      failure: { module: 'core', tests: ['shop.OrderTest.totals: expected 3'] },
+    });
   });
 
   it('fails when surefire ran none of the ArchUnit classes', () => {

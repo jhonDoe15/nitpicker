@@ -138,6 +138,7 @@ function addCrapFunction(
           identity: violationIdentity,
           ratchetKey: `function:${entry.function}:occurrence:${String(violationOccurrence)}:crap`,
           line: entry.lines?.start,
+          endLine: entry.lines?.end,
           crap: entry.crap,
         },
       ],

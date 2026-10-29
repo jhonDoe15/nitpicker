@@ -2,6 +2,9 @@
   "path": ["src", "test", "tests", "__tests__", "e2e"],
   "format": ["typescript", "tsx"],
   "mode": "mild",
+  "minTokens": 50,
+  "minLines": 5,
+  "threshold": 100,
   "reporters": ["console", "json"],
   "output": "reports/quality/duplicates",
   "ignore": [

@@ -70,7 +70,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
           'value has CRAP 9.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'value',
-        location: { line: 1 },
+        location: { line: 1, endLine: 3 },
         ratchet: {
           key: 'function:value:occurrence:1:crap',
           value: 9,
@@ -146,7 +146,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
           'value has unknown coverage and no CRAP score: no test runs it. Add a test that calls it. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'value',
-        location: { line: 1 },
+        location: { line: 1, endLine: 3 },
       },
       {
         tool: 'crap',
@@ -170,7 +170,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
           'value has unknown coverage and no CRAP score: no test runs it. Add a test that calls it. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'value',
-        location: { line: 1 },
+        location: { line: 1, endLine: 3 },
       },
       {
         tool: 'crap',
@@ -284,7 +284,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
           'value has CRAP 12.00; score must be below 12. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'value',
-        location: { line: 1 },
+        location: { line: 1, endLine: 3 },
         ratchet: {
           key: 'function:value:occurrence:1:crap',
           value: 12,
@@ -386,7 +386,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
         path: 'src/main/value.ts',
         symbol: 'value',
         identity: 'function:value:occurrence:1:source:changed',
-        location: { line: 1 },
+        location: { line: 1, endLine: 3 },
         classification: 'enforceable',
         message:
           'value CRAP rose from 9 to 9.5 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',

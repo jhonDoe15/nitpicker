@@ -18,6 +18,7 @@ export function readAndValidateShard(inputRoot, index, expectedAnalyzers) {
     changedMetrics: readJson(shardRoot, 'changed-metrics.json', index),
     heldFindings: readOptionalJson(shardRoot, 'held-findings.json', index) ?? [],
     toolErrors: readJson(shardRoot, 'tool-errors.json', index),
+    notes: readOptionalJson(shardRoot, 'notes.json', index) ?? [],
   };
   const expectedNames = expectedAnalyzers.map(({ name }) => name);
   const actualNames = report.summary.tools?.map(({ name }) => name);
@@ -56,7 +57,13 @@ export function readJson(root, fileName, shardIndex) {
 }
 
 function validateShardEntries(report, expectedNames, shardIndex) {
-  for (const property of ['newFindings', 'resolvedFindings', 'changedMetrics', 'heldFindings']) {
+  for (const property of [
+    'newFindings',
+    'resolvedFindings',
+    'changedMetrics',
+    'heldFindings',
+    'notes',
+  ]) {
     if (!Array.isArray(report[property])) {
       throw new TypeError(`Quality shard ${String(shardIndex)} ${property} must be an array`);
     }

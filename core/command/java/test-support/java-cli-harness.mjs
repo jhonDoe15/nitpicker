@@ -75,6 +75,18 @@ export function useGradleFixtures(runNitpickerCli) {
             ),
         },
       },
+      redBase: {
+        headRule: 'gradle-failure',
+        files: (suite) => ({ TESTS_FAIL: JSON.stringify({ '': suite }) }),
+        repair: { remove: ['TESTS_FAIL'] },
+        modules: {
+          files: (suite) => ({
+            TESTS_FAIL: JSON.stringify({ core: suite }),
+            'modules.txt': 'core\napi\n',
+          }),
+          repair: { remove: ['TESTS_FAIL'] },
+        },
+      },
       missingBinary: {
         stub: (binary) => vi.stubEnv('NITPICKER_GRADLE', binary),
         rule: 'gradle-failure',
@@ -117,6 +129,16 @@ export function useMavenFixtures(runNitpickerCli) {
           rule: 'maven-failure',
           message: (snapshot) =>
             `Maven failed in ${snapshot}:\n[ERROR] COMPILATION ERROR in A.java`,
+        },
+      },
+      redBase: {
+        headRule: 'maven-failure',
+        files: (suite) => ({ 'test-results/test/TEST-demo.ATest.xml': suite }),
+        repair: {
+          write: {
+            'test-results/test/TEST-demo.ATest.xml':
+              '<testsuite name="demo.ATest"><testcase classname="demo.ATest" name="works"/></testsuite>',
+          },
         },
       },
       missingBinary: {

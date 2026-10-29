@@ -199,9 +199,9 @@ config error that names the right list). `python` is an error with any other pre
 | `exceptions`   | array of `{ rule, paths, reason }`                                 | none; see [Exceptions](#exceptions)                                                  |
 
 `python.entryPoints` lists the files that start the program, such as a job runner or a worker that
-reads its settings from the environment (see the composition roots below). Adding a file there
-loosens `process-env-access`, so the policy-change list reports it as a loosening and a removal as
-a change, like `layout.entryPoints`; the base snapshot is measured with the entry points both
+reads its settings from the environment or connects at import (see the composition roots below).
+Adding a file there loosens `process-env-access` and `import-time-effect`, so the policy-change list
+reports it as a loosening and a removal as a change, like `layout.entryPoints`; the base snapshot is measured with the entry points both
 sides declare.
 
 The policy-change list also reads the project's own pytest and mutmut settings, because they shrink
@@ -597,9 +597,10 @@ are listed at the end.
 | Naming                   | PEP 8: `CapWords`, `snake_case`, `UPPER_SNAKE_CASE`, `...Error`                                                                                  | ruff `N`                                                                                                                                             |
 | Boundary                 | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`                                                      | `handwritten-boundary-guard` (script)                                                                                                                |
 | Types in the domain      | real types, `Protocol`, frozen dataclasses                                                                                                       | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
-| Pure domain              | clock, ids and random values passed in; ports implemented in `adapters/`                                                                         | `clock-now`, `random-in-domain`, `io-in-domain` (script)                                                                                             |
+| Pure domain              | clock, ids, random values and results passed in; ports implemented in `adapters/`; no logger or module state                                     | `clock-now`, `random-in-domain`, `io-in-domain`, `logger-in-domain`, `module-state-in-domain` (script)                                               |
 | Module state             | state in an object made in the composition root                                                                                                  | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
 | Updates across `await`   | `delta = await fetch()`, then `self.total += delta`, or one lock around the whole update                                                         | `atomic-update-across-await` (script)                                                                                                                |
+| Import-time effects      | work done in a function the composition root calls, or under `if __name__ == "__main__":`                                                        | `import-time-effect` (script)                                                                                                                        |
 | Risky APIs               | JSON instead of pickle or marshal, `copy.deepcopy` to clone, a specific exception class                                                          | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
 | Deserialization          | `yaml.safe_load`, `torch.load(path, weights_only=True)`, `numpy.load` without `allow_pickle`                                                     | ruff `S506`, `unsafe-deserialization` (script)                                                                                                       |
 | Deprecated APIs          | the replacement the deprecation notice names                                                                                                     | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                       |
@@ -753,10 +754,110 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   also through an options dict or `functools.partial`. `jsonpickle.decode`,
   `dill`, `shelve` and `pandas.read_pickle` are `S301` findings already. A pickle round trip used to copy a
   value is an `S301` finding whose advice names `copy.deepcopy(value)`.
-- `clock-now`, `random-in-domain`, `io-in-domain` and `any-in-domain` apply to a directory named
-  `domain` anywhere in the path (not tests). `io-in-domain` reports `open`, `input`, `time.sleep`,
-  `os.system` and imports of `subprocess`, `socket`, `requests`, `httpx`, `urllib.request`,
-  database and cloud clients and similar.
+- `clock-now`, `random-in-domain`, `io-in-domain`, `logger-in-domain`, `module-state-in-domain` and
+  `any-in-domain` apply to a directory named `domain` anywhere in the path (not tests). `io-in-domain`
+  reports `open`, `input`, `time.sleep`, `os.system`, `os.popen`, file methods of a `pathlib.Path`
+  (also one derived with `.parent`, `/`, `with_name`, `joinpath` or `resolve`), imports of
+  `subprocess`, `socket`, `requests`, `httpx`, `urllib.request`, database and cloud clients and
+  similar, and imports of an `adapters` package or module. `random-in-domain` also reports imports
+  of the random-data and id generators `faker`, `mimesis`, `nanoid`, `shortuuid`, `cuid` and `cuid2`,
+  `ulid.ULID()` with no argument and the `uuid6`/`uuid_utils` generators (`ULID.from_str(text)`
+  and `uuid.UUID(text)` parse a value and are fine). `logger-in-domain` reports an import of
+  `logging`, `structlog` or `loguru`, or of a project module whose last segment is `log`, `logger` or
+  `logging` (also by a relative import such as `from . import logger`) or that sits in a `logger` or
+  `logging` package; an import under `if TYPE_CHECKING:` is fine, as it is for the id, random and
+  input-output imports above. Return a result that says what happened, or raise a domain error, and
+  log it in `adapters/`; in `domain/` the `catch-log-without-exception` advice says the same instead
+  of naming `logger.exception`. `module-state-in-domain` reports, once per state, a domain module that
+  imports or reads another module's state: a module-level collection that some production function
+  changes (what `module-level-mutable-state` reports at its definition) or a module-level instance of
+  a project class that some production code changes, through an attribute assignment on it or a
+  method of its class that assigns to `self` (`STORE = Store()` with `def add(self, item):
+self.items.append(item)`), also through a package `__init__` that re-exports it and through
+  `module.NAME` where `module` is an imported module; a parameter, local or attribute that only
+  shares the name (`def apply(registry): registry.handlers`) is not followed. Constants that
+  nothing changes (`LIMITS = {"default": 10}`), instances that nothing changes, and frozen values are
+  fine: a frozen dataclass, `@attrs.frozen`, `@attr.frozen`, `@attr.s(frozen=True)`, a pydantic
+  model with `model_config = ConfigDict(frozen=True)` (or `{"frozen": True}`) or a v1 `class Config:`
+  with `frozen = True` or `allow_mutation = False`, a `NamedTuple` and an `Enum`. These are the TypeScript `domain-does-not-import-*` concerns: adapters,
+  Node I/O and clients are `io-in-domain`, id libraries are `random-in-domain`.
+- The domain rules also follow calls into project helpers outside `domain/` and `adapters/`: a
+  domain call to a function, method or class (its `__init__`) of another production module that
+  reads the clock, draws randomness or does input or output, itself or through further helpers, is
+  reported at that call with the same rule id as the direct effect, and the message shows the path,
+  for example `quote -> shop.shared.prices.fetch -> shop.shared.http.get_json -> requests.get`; a
+  path longer than seven steps shows its first four and last two around `...`. The finding's
+  subject and identity are the helper's qualified name (`shop.shared.prices.fetch`), not the path,
+  so a change inside the helper keeps it and two helpers both named `fetch` stay apart. Calls are
+  resolved through `import x as y`, `from x import f as g`, relative imports, names re-exported by
+  a package `__init__`, `Class.method`, `self.method`/`cls.method` inside the same class, and bare
+  decorators (`@register` is a call of `register`); recursion between helpers is followed once. A
+  name means what the module binds at the top level: a function's own parameters and locals, and an
+  import inside another function, do not change it, a later top-level assignment (`run = lambda:
+1`) replaces an import, a definition inside a top-level `if` or `else` is preferred over an import
+  in the other branch, and both sides of a `try`/`except ImportError` fallback count. An absolute
+  import resolves to a project module only by its exact name, or by a shorter suffix whose first
+  segment is a project directory that is neither a standard-library module nor installed outside
+  the project, so `import json`, `import email` or `import redis` never resolve to a project's own
+  `json.py`, `email.py` or `redis.py`. A helper that takes the clock,
+  random source or client as a parameter (`def stamp(clock): return clock()`) stays legal, as do
+  importing a helper without calling it, type-only imports and helpers nobody calls. Not followed,
+  so not reported: methods of module-level or injected objects (`client.fetch()`), inherited
+  methods, nested functions and lambdas, `getattr` and other dynamic calls, decorators that wrap
+  a helper, and third-party code beyond the effect lists. Helper effects come from the same lists
+  as the direct rules plus the HTTP (`requests.get`, `httpx.post`, `urlopen`), subprocess, socket,
+  `shutil`, `tempfile`, `glob` and client-factory calls (`sqlite3.connect`, `create_engine`,
+  `requests.Session`, `boto3.client`), and methods called on a client created in the same
+  function. When a helper reaches an effect both through another domain module and directly, the
+  path shown is the one that stays outside `domain/`. A helper that only logs is not reported; the TypeScript rule
+  `domain-does-not-reach-io-through-shared` also counts reaching a logger package. Calls into
+  another domain module or into `adapters/` are left to that module's own findings and to the
+  import finding, so one cause gives one finding.
+- `import-time-effect` reports an external effect that runs while a production module is imported:
+  top-level statements (also inside top-level `if`, `try`, `for` and `with` blocks and the `else` of
+  a main guard), class bodies, default argument values and decorators. Effects are the input and
+  output calls above (`open`, `Path(...).read_text()`, HTTP requests, subprocesses, sockets,
+  `sqlite3.connect`, `psycopg.connect`, `pymongo.MongoClient`, `os.makedirs`, `time.sleep`), starting
+  a thread, process or scheduler (`threading.Thread(...).start()`, a name bound to one and then
+  started, `ThreadPoolExecutor().submit`, an apscheduler scheduler's `start`, `multiprocessing.Pool`),
+  `asyncio.run`, `uvicorn.run`, a `logging.FileHandler` without `delay=True`, `smtplib.SMTP(host)`,
+  registrations that change the process (`atexit.register`, `signal.signal`,
+  `threading.Timer(...).start()`, a `sched.scheduler`'s `run`, `logging.basicConfig(filename=...)`),
+  package data and data files read like a path (`importlib.resources.files(...).read_text()`,
+  `importlib.resources.read_text`, `pkgutil.get_data`, `pandas.read_*`, `numpy.load`,
+  `nltk.download`), `Base.metadata.create_all`, and a method that does I/O on a client bound at
+  module level (`ENGINE.connect()`, `S3.download_file(...)` on `boto3.client`, `CACHE.ping()` on
+  `redis.Redis`; `pipeline()` and other local methods are fine), also when the name is bound in a
+  class body or with an annotation, directly or through a project helper, function or class
+  constructor (the message shows the path, as above), a helper reading a module-level `Path`
+  constant included. The finding names the receiver as written (`ENGINE.connect`,
+  `threading.Thread(...).start`). A bare decorator (`@register`) counts as a call of that
+  function. Allowed: anything under a main guard (`if __name__ == "__main__":`, also written
+  `"__main__" == __name__` or joined with `and` to another condition) or `if TYPE_CHECKING:`, function and class definitions, lazy
+  factories (a function defined but not called at import), lambdas, pure constants,
+  `logging.getLogger`, dataclasses and enums, `TypeVar`, `re.compile`, `Path(__file__).resolve()`
+  and other path arithmetic, and creating a lazy client that connects only on first use
+  (`requests.Session()`, `httpx.Client()`, `create_engine(url)`, `redis.Redis()`, `boto3.client`,
+  `smtplib.SMTP()` without a host). Composition roots are exempt, as defined for
+  `process-env-access` above (the Django settings module and `manage.py`, `wsgi.py` and `asgi.py`
+  included), so is a file listed in `python.entryPoints`. Test files and test support, as defined
+  for the security rules above, are out of scope. Reading the environment at import is
+  `process-env-access` and is not reported again; in a `domain` module, input and output at import
+  is reported once, as `io-in-domain`. Differences from the TypeScript `report-module-load-effects`:
+  - Exempt files: TypeScript exempts the detected app entry and `layout.entryPoints`; Python also
+    exempts every composition root by name, folder or factory (`main.py`, `cli.py`, `worker.py`,
+    configuration modules, a module defining `create_app`, `pyproject.toml` script entry points).
+  - Test scope: TypeScript skips test files and test directories; Python skips test files and the
+    test support (`testing/`, `fixtures/`, `mocks/` and the other support folders that production
+    code does not import).
+  - Reported only in TypeScript: reading the clock or a random value at import (`Date.now()`,
+    `Math.random()`, `crypto.randomUUID()`; in `domain/` Python reports these as `clock-now` or
+    `random-in-domain`), any `process.*` call, a side-effect-only import, top-level `await`, a
+    static block, and a top-level expression statement or control flow on its own. Python reports
+    only the effects such statements run.
+  - Reported only in Python: effects in expression statements, class bodies, default values and
+    decorators (TypeScript reports effect calls only inside a module-level declaration), and effects
+    reached through a project helper.
 - `module-level-mutable-state` reports a module-level `dict`, `list`, `set` or `collections`
   container that a function changes (item assignment, `del`, `append`, `update`, ...), once, at its
   definition; a collection that is only read, a local of the same name and a module-level change
@@ -1105,9 +1206,11 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   (`executed_branches`, `missing_branches`) those slices need, which is why it was chosen over lcov.
   Paths are made project-relative.
 - **Tool failures.** Anything that goes wrong on either snapshot becomes a `tool-error` finding with
-  the analyzer as tool (`python`, or `mutation` for `mutation-failed`) and path `.`, never a throw from the CLI: `ruff-failed`, `format-failed`, `tests-failed` (the test run
-  exited 1 without naming a failing test; failing tests themselves are the `tests/tests-failed`
-  error of [Runner parity](#runner-parity), which keeps the other findings), `coverage-failed`, `types-failed` and `rules-failed` (slice 2), `structure-failed`, `environment-failed`,
+  the analyzer as tool (`python`, or `mutation` for `mutation-failed`) and path `.`, never a throw from the CLI: `ruff-failed`, `format-failed`, `tests-failed` (failing tests the
+  runner names, the `tests/tests-failed` error of [Runner parity](#runner-parity), which keeps the other
+  findings; on the base alone it is a note, see [A base whose tests fail](usage.md#a-base-whose-tests-fail)),
+  `tests-not-run` (a test run that exits 1 without naming a failing test, or whose failures are all
+  collection or load errors, or exits with any other status; it stops the analyzer, also on the base), `coverage-failed`, `types-failed` and `rules-failed` (slice 2), `structure-failed`, `environment-failed`,
   `duplicates-failed`, `coupling-failed`, `import-linter-failed` (slice 5), `mutation-failed` (slice 6)
   and `python-failed` for anything unexpected. An environment that cannot be found at all (no
   `.venv` at the configured directory, no `uv sync`, poetry has none) is caught earlier, while the
@@ -1595,8 +1698,9 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   the analyzer. The static analyzers run as usual, coverage and CRAP come from the tests that ran,
   and the failing tests are one `tests/tests-failed` tool error per snapshot, listing up to 20 test
   ids, as Java's `tests/tests-failed` (`test-runs/test-failures.mjs`). unittest failures are read
-  from its `FAIL:`/`ERROR:` lines. A run that exits 1 without naming a test stays
-  `python/tests-failed`.
+  from its `FAIL:`/`ERROR:` lines. A run that exits 1 without naming a test, or whose
+  failures are only collection errors (pytest) or load errors (unittest's `_FailedTest`), is a
+  `python/tests-not-run` tool error on both snapshots.
 - **Slow tests.** `slow-test` (tool `test-runtime`; `test-runtime/slow-test` is accepted in
   `exceptions` as the same rule), as for Java, Kotlin and TypeScript, for pytest and unittest
   projects alike: a test the change adds or edits over 5 s, or 30 s for an integration test, from
@@ -1793,6 +1897,9 @@ and CRAP rules.
   (`languages/python/ingest/fixtures/mutmut-run.json`); the reuse check runs against real work trees
   of a repository and a real `python3` for the import scan; the fake `mutmut` writes a `mutants/`
   directory from a `mutants-data.json` in the project and logs which result files it found there.
+- `languages/python/adapters/e2e/red-base/python-preset-red-base.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
+  too. A base whose test fails and a head that repairs it passes with a note; a new violation or an
+  edited untested legacy function still fails next to the red base.
 - `languages/python/adapters/e2e/*.e2e.test.mjs`: gated behind `NITPICKER_PYTHON_E2E=1`
   (`npm run test:python`). Needs python3 3.10 or newer, uv, ruff, black, mypy, pyright, coverage and
   pytest on the `PATH` and network access to PyPI (it installs pytest, pytest-cov, pytest-xdist,

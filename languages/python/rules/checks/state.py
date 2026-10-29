@@ -136,35 +136,57 @@ def lookup(text, kind, scope):
     for candidate in candidates:
         collections, instances, attributes = tables_of(project, context.path)
         if candidate == text and kind == "item" and (candidate in attributes):
-            return candidate
+            return context.path, candidate
         if candidate in collections and candidate == text and kind == "item":
-            return candidate
+            return context.path, candidate
         if candidate in instances and (candidate != text or kind == "attribute"):
-            return candidate
+            return context.path, candidate
         located = project.locate(candidate) if "." in candidate else None
         if located is None or located[0] not in project.contexts:
             continue
         collections, instances, _ = tables_of(project, located[0])
         if located[1] in collections and candidate == text and kind == "item":
-            return located[1]
+            return located
         if located[1] in instances and (candidate != text or kind == "attribute"):
-            return located[1]
+            return located
     return None
 
 
-def function_findings(context, function, owner):
+def mutated_names(context, function, owner):
     scope = Scope(context, function, owner)
-    found = []
     for node in own_nodes(function):
         for expression, kind in mutations_of(node, scope.methods):
             text = scope.resolve(scope.dotted(expression))
-            name = lookup(text, kind, scope) if text else None
-            if name is not None:
-                subject = f"{name} in {function.name}"
-                found.append(
-                    finding(context.path, "module-level-mutable-state", subject, node)
-                )
-    return found
+            origin = lookup(text, kind, scope) if text else None
+            if origin is not None:
+                yield origin, node
+
+
+def function_findings(context, function, owner):
+    return [
+        finding(
+            context.path,
+            "module-level-mutable-state",
+            f"{origin[1]} in {function.name}",
+            node,
+        )
+        for origin, node in mutated_names(context, function, owner)
+    ]
+
+
+def mutated_state(project):
+    def build(_):
+        return {
+            origin
+            for context in project.contexts.values()
+            if not context.tests
+            for function in functions_of(context.tree)
+            for origin, _node in mutated_names(
+                context, function, owner_of(function, context.parents)
+            )
+        }
+
+    return project.memo("mutated-module-state", build)
 
 
 def instance_attributes(owner):

@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { declarationParts, fileBindings, freeBindings } from './bindings.mjs';
 import { leafTexts, normalizedTexts } from './tokens.mjs';
 
