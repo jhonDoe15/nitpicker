@@ -994,8 +994,8 @@ backends.
 
 ## Slice 1: tools, reports and identities
 
-- **Lint: ruff.** `ruff check --config <report dir>/nitpicker-ruff.toml --ignore-noqa
---no-cache --output-format sarif`, where the toml is `languages/python/ruff/nitpicker-ruff.toml`
+- **Lint: ruff.** `ruff check --config <report dir>/nitpicker-ruff.toml --line-length <python.lineLength>
+--ignore-noqa --no-cache --output-format sarif`, where the toml is `languages/python/ruff/nitpicker-ruff.toml`
   without the codes the installed ruff lacks (`ruffConfigFor`). The rule set is nitpicker's, not
   the project's, so the gate means the same on every project: pyflakes (`F`), the error rules of
   pycodestyle that are not formatting (`E4`, `E7`, `E9`), bugbear (`B`), comprehensions (`C4`),

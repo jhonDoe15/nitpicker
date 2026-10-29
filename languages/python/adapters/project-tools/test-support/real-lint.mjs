@@ -21,7 +21,7 @@ function writeProject(root, files) {
   }
 }
 
-function findingsIn({ files, policyFiles, toolPrecedence, exclude = [] }, roots) {
+function findingsIn({ files, policyFiles, toolPrecedence, conventions, exclude = [] }, roots) {
   writeProject(roots.projectRoot, files);
   writeProject(roots.policyRoot, policyFiles ?? {});
   const context = createToolContext({
@@ -31,6 +31,7 @@ function findingsIn({ files, policyFiles, toolPrecedence, exclude = [] }, roots)
     reportRoot: roots.reportRoot,
     exclude,
     toolPrecedence,
+    conventions,
     policyRoot: roots.policyRoot,
   });
   lint(context);

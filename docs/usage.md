@@ -1417,9 +1417,15 @@ line also when black is the formatter. Listing `"project"` merges the config the
   `flake8-*` tables and the like) and lint keys such as `dummy-variable-rgx`, `typing-modules` and
   `preview` merge key by key: the project's value wins where both set one when it is listed first,
   nitpicker's with `["nitpicker", "project"]`, and a list both set is joined (nitpicker's
-  `pep8-naming.ignore-names` keeps the unittest names next to the project's). `line-length`,
-  `indent-width`, `builtins`, `src`, `namespace-packages`, `target-version` and
-  `per-file-target-version` come from the project.
+  `pep8-naming.ignore-names` keeps the unittest names next to the project's). `indent-width`,
+  `builtins`, `src`, `namespace-packages`, `target-version` and `per-file-target-version` come
+  from the project.
+- **Line length.** The rules that depend on it (`SIM108` does not suggest a ternary that would not
+  fit) check against the followed `python.lineLength`, passed as `--line-length` in every ordering
+  and with either formatter, the way the format check does. The project's `line-length` is used
+  instead only when it is listed first and its value agrees with the followed one, or when the
+  conventions follow none; without the opt-in, or with `["nitpicker", "project"]`, the lint uses
+  the followed value (88 when none is followed).
 - **Scope.** The project's `exclude`, `extend-exclude` and `lint.exclude` are added to nitpicker's
   `exclude` (ruff's default excludes stay); `include`, `extend-include`, `respect-gitignore`,
   `force-exclude` and the fix, cache and output settings stay nitpicker's.
