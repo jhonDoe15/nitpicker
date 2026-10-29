@@ -16,13 +16,13 @@ afterEach(() => {
   }
 });
 
-function scan(code) {
+function scan(code, { production } = {}) {
   const root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-string-scan-')));
   const reportRoot = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-string-report-')));
   roots.push(root, reportRoot);
   mkdirSync(path.join(root, 'src'));
   mkdirSync(path.join(root, 'tests'));
-  writeFileSync(path.join(root, 'src/mod.py'), 'VALUE = 1\n');
+  writeFileSync(path.join(root, 'src/mod.py'), production ?? 'VALUE = 1\n');
   writeFileSync(path.join(root, 'tests/test_mod.py'), code);
   const context = createToolContext({
     projectRoot: root,
@@ -35,35 +35,112 @@ function scan(code) {
   return JSON.parse(readFileSync(path.join(reportRoot, 'string-literals.json'), 'utf8'));
 }
 
+const EMPTY = { strings: [], plugins: [], fixtures: [], requests: [], marks: [] };
+
 describe.skipIf(!pythonE2eEnabled)('string literal scan of test files', () => {
-  it('keeps the dotted names that call arguments and pytest_plugins give', () => {
+  it('keeps the strings of known import contexts and pytest_plugins', () => {
     const code = [
       'import importlib',
       'import subprocess',
       'from unittest import mock',
       'pytest_plugins = ["tests.fixtures", "plain"]',
-      'def test_it():',
+      'def test_it(monkeypatch):',
       '    importlib.import_module("app.x")',
       '    importlib.import_module("single")',
+      '    importlib.util.find_spec("app.spec")',
+      '    __import__("app.dunder")',
+      '    runpy.run_module("app.runner")',
       '    with mock.patch("app.service.requests"):',
       '        pass',
+      '    mock.patch.dict("app.table", {})',
+      '    mock.patch.multiple("app.multi", a=1)',
+      '    mocker.patch("app.mocked")',
+      '    monkeypatch.setattr("app.attr.name", 1)',
+      '    monkeypatch.delattr("app.gone.name")',
+      '    monkeypatch.setattr(target, "app.second", 1)',
       '    subprocess.run(["python", "-m", "app.cli"])',
-      '    subprocess.run(["python", "-m", "tool"])',
+      '    subprocess.run(("python", "-m", "tool"))',
+      '    subprocess.run("python", "-m", "app.flat")',
       '    assert name == "app.compared"',
       '    print("sentence. with a stop", "word")',
+      '    Path("config.yaml")',
+      '    logging.getLogger("app.core")',
       '',
     ].join('\n');
 
     expect(scan(code)).toEqual({
       'tests/test_mod.py': {
-        strings: ['app.cli', 'app.service.requests', 'app.x', 'single', 'tool'],
+        ...EMPTY,
+        strings: [
+          'app.attr.name',
+          'app.cli',
+          'app.dunder',
+          'app.gone.name',
+          'app.mocked',
+          'app.multi',
+          'app.runner',
+          'app.service.requests',
+          'app.spec',
+          'app.table',
+          'app.x',
+          'single',
+          'tool',
+        ],
         plugins: ['plain', 'tests.fixtures'],
+        requests: ['monkeypatch'],
       },
     });
   });
 
-  it('leaves out a file with no such string and a file that does not parse', () => {
-    expect(scan('def test_it():\n    assert 1 + 1 == 2\n')).toEqual({});
+  it('reports the fixtures a file defines and the fixtures its tests request', () => {
+    const code = [
+      'import pytest',
+      'pytestmark = pytest.mark.usefixtures("module_level")',
+      '@pytest.fixture(autouse=True)',
+      'def boot(db, request, tmp_path):',
+      '    pass',
+      '@pytest.fixture(name="renamed", scope="session")',
+      'def original():',
+      '    pass',
+      '@pytest.mark.django_db',
+      '@pytest.mark.usefixtures("on_function", "second")',
+      'def test_it(client, tmp_path):',
+      '    pass',
+      'class TestK:',
+      '    @pytest_asyncio.fixture',
+      '    async def inner(self, boot):',
+      '        pass',
+      '    def test_m(self, inner):',
+      '        pass',
+      '',
+    ].join('\n');
+
+    expect(scan(code)).toEqual({
+      'tests/test_mod.py': {
+        ...EMPTY,
+        fixtures: [
+          { name: 'boot', autouse: true, requests: ['db', 'tmp_path'] },
+          { name: 'renamed', autouse: false, requests: [] },
+          { name: 'inner', autouse: false, requests: ['boot'] },
+        ],
+        requests: ['client', 'inner', 'module_level', 'on_function', 'second', 'tmp_path'],
+        marks: ['django_db', 'usefixtures'],
+      },
+    });
+  });
+
+  it('scans a production module that pytest_plugins names, for its fixtures', () => {
+    const found = scan('pytest_plugins = ["mod"]\n', {
+      production: 'import pytest\n@pytest.fixture\ndef shared():\n    pass\n',
+    });
+
+    expect(found['src/mod.py'].fixtures).toEqual([
+      { name: 'shared', autouse: false, requests: [] },
+    ]);
+  });
+
+  it('leaves out a file with nothing to report and a file that does not parse', () => {
+    expect(scan('x = 1\n')).toEqual({});
     expect(scan('def test_it(:\n')).toEqual({});
   });
 });

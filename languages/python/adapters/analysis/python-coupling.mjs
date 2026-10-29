@@ -59,7 +59,7 @@ function relativeBase(importer, { level, module }) {
     .join('.');
 }
 
-function importedModules(importer, statement, known) {
+export function importedModules(importer, statement, known) {
   if (statement.level === 0 && statement.module === null) {
     return statement.names.map((name) => longestKnownPrefix(name, known));
   }

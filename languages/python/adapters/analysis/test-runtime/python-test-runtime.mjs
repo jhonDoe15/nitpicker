@@ -14,29 +14,36 @@ import {
 } from '../../configuration/pytest/collection-options.mjs';
 import { readProjectFile } from '../../../libraries/project-files.mjs';
 import { readImportsReport } from '../python-coupling.mjs';
+import {
+  CONFTEST,
+  FRAMEWORK_CATEGORY,
+  INIT,
+  isEndToEndFolder,
+  TEST_RUNTIME_TOOL,
+} from './pytest/constants.mjs';
+import { djangoBridges } from './pytest/django-bridge.mjs';
 import { buildRuntimeGraph } from './runtime-graph.mjs';
 
-const TEST_RUNTIME_TOOL = 'test-runtime';
 const STRINGS_REPORT = 'string-literals.json';
 const SCAN_REQUEST = 'string-scan-request.json';
 const SCAN_SCRIPT = path.join(fileURLToPath(new URL('./', import.meta.url)), 'string-scan.py');
 const SCAN_FAILED_RULE = 'test-runtime-failed';
-const CONFTEST = 'conftest.py';
-const END_TO_END_FOLDERS = new Set(['e2e', 'end_to_end', 'contract']);
 const UNITTEST_RUNNERS = new Set(['unittest', 'django']);
 const UNITTEST_PATTERN = 'test*.py';
-const FRAMEWORK_BRIDGES = ['django.test', 'rest_framework.test'];
-const FRAMEWORK_CATEGORY = 'framework-production-runtime';
 
 export function scanTestStrings(context, run) {
   const { projectRoot, reportRoot } = context;
-  const { others = [] } = readImportsReport(reportRoot);
+  const { modules = [], others = [] } = readImportsReport(reportRoot);
   let literals = {};
   if (others.length > 0) {
     const request = path.join(reportRoot, SCAN_REQUEST);
     writeFileSync(
       request,
-      JSON.stringify({ root: projectRoot, files: others.map(({ file }) => file) }),
+      JSON.stringify({
+        root: projectRoot,
+        files: others.map(({ file }) => file),
+        modules: Object.fromEntries(modules.map(({ module, file }) => [module, file])),
+      }),
     );
     const result = run(context, ['python', '-I', SCAN_SCRIPT, request], {
       rule: SCAN_FAILED_RULE,
@@ -55,37 +62,14 @@ function isJudgedTest(file, { options, runner }) {
   const name = path.posix.basename(file);
   return (
     name !== CONFTEST &&
+    name !== INIT &&
     (isCollectedTestFile(file, options) ||
       (UNITTEST_RUNNERS.has(runner) && matchesGlob(name, UNITTEST_PATTERN)))
   );
 }
 
 function isEndToEnd(file) {
-  return path.posix
-    .dirname(file)
-    .split('/')
-    .some((folder) => END_TO_END_FOLDERS.has(folder));
-}
-
-function importedNames({ level, module, names }) {
-  if (level !== 0) {
-    return [];
-  }
-  return module === null ? names : [module, ...names.map((name) => `${module}.${name}`)];
-}
-
-function importsFramework(statements, bridge) {
-  return statements.some(
-    (statement) =>
-      statement.typeOnly !== true &&
-      importedNames(statement).some((name) => name === bridge || name.startsWith(`${bridge}.`)),
-  );
-}
-
-function frameworkBridges(files, imports) {
-  return FRAMEWORK_BRIDGES.filter((bridge) =>
-    files.some((file) => importsFramework(imports[file] ?? [], bridge)),
-  );
+  return path.posix.dirname(file).split('/').some(isEndToEndFolder);
 }
 
 export function analyzePythonTestRuntime({
@@ -100,24 +84,27 @@ export function analyzePythonTestRuntime({
     .filter(({ kind, file }) => kind === 'test' && isJudgedTest(file, { options, runner }))
     .map(({ file }) => file)
     .sort();
-  const edges = buildRuntimeGraph({
+  const production = new Set(modules.map(({ file }) => file));
+  const excluded = candidates.filter((file) => isEndToEnd(file) || imports[file] === undefined);
+  const tests = candidates.filter((file) => !excluded.includes(file));
+  const { edges, fixtures } = buildRuntimeGraph({
     modules,
     others,
     imports,
     literals,
-    loadsConftest: runner === 'pytest',
+    fixtureTests: runner === 'pytest' ? tests : [],
   });
-  const production = new Set(modules.map(({ file }) => file));
-  const excluded = candidates.filter((file) => isEndToEnd(file) || imports[file] === undefined);
   return testRuntimeReport({
-    tests: candidates.filter((file) => !excluded.includes(file)),
+    tests,
     excluded,
     classify: (file) =>
       classifyTestRuntime(file, {
         edges,
         isProduction: (node) => production.has(node),
         bridgesOf: (test, visited) =>
-          options.django ? frameworkBridges([test, ...visited], imports) : [],
+          options.django
+            ? djangoBridges({ files: [test, ...visited], imports, fixtures: fixtures(test) })
+            : [],
         bridgeCategory: FRAMEWORK_CATEGORY,
       }),
   });
