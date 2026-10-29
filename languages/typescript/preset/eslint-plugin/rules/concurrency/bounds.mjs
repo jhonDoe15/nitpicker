@@ -13,9 +13,22 @@ const CHUNKERS = new Set([
   'batches',
   'inGroupsOf',
 ]);
-const KEEPS_SIZE = new Set(['filter', 'map', 'sort', 'toSorted', 'reverse', 'toReversed', 'flat']);
+const KEEPS_SIZE = new Set([
+  'filter',
+  'map',
+  'sort',
+  'toSorted',
+  'reverse',
+  'toReversed',
+  'flat',
+  'fill',
+  'keys',
+]);
 const OBJECT_VIEWS = new Set(['keys', 'values', 'entries']);
 const INFINITE = new Set(['Infinity']);
+const SIZES = new Set(['length', 'size']);
+const LIMITER_NAME = /(?:limit|limiter|queue|sema|semaphore|throttle|throttler|mutex)$/iu;
+const PROJECT_MODULE = /^[./]/u;
 const MAX_DEPTH = 6;
 
 function hasProperty(object, name) {
@@ -32,12 +45,12 @@ function hasLimitArgument(creation) {
   return first !== undefined && !INFINITE.has(first.name);
 }
 
-function limiter(makers, valid) {
+function limiter(makers, valid, types = []) {
   return {
     kind: 'limiter',
     methods: '*',
     makers: new Set(makers),
-    types: new Set(),
+    types: new Set(types),
     functions: new Set(),
     derivers: new Set(),
     valid,
@@ -45,7 +58,7 @@ function limiter(makers, valid) {
 }
 
 const LIMITERS = new Map([
-  ['p-limit', limiter(['default'], hasLimitArgument)],
+  ['p-limit', limiter(['default'], hasLimitArgument, ['LimitFunction'])],
   [
     'p-queue',
     limiter(['default'], (creation) => hasProperty(creation?.arguments[0], 'concurrency')),
@@ -81,6 +94,36 @@ function isUnboundedPMap(moduleRef, call) {
   return ref?.source === 'p-map' && ref.imported === 'default' && open;
 }
 
+function holderOf(callee) {
+  const target = skipped(callee);
+  if (target.type !== 'MemberExpression') {
+    return target;
+  }
+  const object = skipped(target.object);
+  return object.type === 'ThisExpression' ? target : object;
+}
+
+function isThisMember(node) {
+  return node.type === 'MemberExpression' && skipped(node.object).type === 'ThisExpression';
+}
+
+function classBodyOf(node) {
+  return ancestorsOf(node).find((ancestor) => ancestor.type === 'ClassBody');
+}
+
+function receivedField(member, isParameter) {
+  const key = memberName(member);
+  return [...descendants(classBodyOf(member))].some(
+    (node) =>
+      (node.type === 'TSParameterProperty' && node.parameter.name === key) ||
+      (node.type === 'AssignmentExpression' &&
+        isThisMember(node.left) &&
+        memberName(node.left) === key &&
+        node.right.type === 'Identifier' &&
+        isParameter(node.right)),
+  );
+}
+
 export function createBounds(context) {
   const { originOf, moduleRef } = createOrigins(context, limiterSpec);
 
@@ -89,15 +132,32 @@ export function createBounds(context) {
     return variable?.defs.some((definition) => definition.type === 'Parameter') === true;
   }
 
+  function isImportedLimiter(identifier) {
+    const definition = findVariable(context, identifier, identifier.name)?.defs[0];
+    const source = definition?.type === 'ImportBinding' ? definition.parent.source.value : '';
+    return PROJECT_MODULE.test(source) && LIMITER_NAME.test(identifier.name);
+  }
+
+  function received(holder) {
+    if (holder.type === 'Identifier') {
+      return isParameter(holder) || isImportedLimiter(holder);
+    }
+    return isThisMember(holder) && receivedField(holder, isParameter);
+  }
+
   function limiterAt(callee, root) {
-    const target = skipped(callee);
-    const holder = target.type === 'MemberExpression' ? skipped(target.object) : target;
-    if (holder.type === 'Identifier' && isParameter(holder)) {
+    const holder = holderOf(callee);
+    if (received(holder)) {
       return true;
     }
     const found = originOf(holder);
-    const outside = found?.creation === undefined || !isWithin(found.creation, root);
-    return found?.instance === true && outside && found.spec.valid(found.creation);
+    if (found?.instance !== true) {
+      return false;
+    }
+    return (
+      found.creation === undefined ||
+      (!isWithin(found.creation, root) && found.spec.valid(found.creation))
+    );
   }
 
   function wrapsInFunction(call, fn) {
@@ -156,8 +216,25 @@ function numeric(context, node) {
 
 function explicitSize(node) {
   return ![...descendants(node)].some(
-    (child) => child.type === 'MemberExpression' && memberName(child) === 'length',
+    (child) => child.type === 'MemberExpression' && SIZES.has(memberName(child)),
   );
+}
+
+function resolvedValue(context, node) {
+  let current = skipped(node);
+  for (let depth = 0; depth < MAX_DEPTH; depth += 1) {
+    const next = skipped(resolveConstant(context, current));
+    if (next === current || next === undefined) {
+      return next;
+    }
+    current = next;
+  }
+  return current;
+}
+
+function isEnum(context, identifier) {
+  const definition = findVariable(context, identifier, identifier.name)?.defs[0];
+  return definition?.type === 'TSEnumName';
 }
 
 function sizedWindow(context, call) {
@@ -174,7 +251,11 @@ function sizedByLength(context, node) {
     object?.type === 'ObjectExpression'
       ? object.properties.find((p) => p.key?.name === 'length')
       : undefined;
-  return length !== undefined && numeric(context, length.value);
+  return length !== undefined && explicitSize(resolvedValue(context, length.value));
+}
+
+function countOf(context, node) {
+  return node !== undefined && explicitSize(resolvedValue(context, node));
 }
 
 function isChunkCall(context, node) {
@@ -203,16 +284,21 @@ function fixedCall(context, call) {
     return sizedByLength(context, call.arguments[0]);
   }
   if (name === 'Array' && call.arguments.length === 1) {
-    return numeric(context, call.arguments[0]);
+    return countOf(context, call.arguments[0]);
   }
   return KEEPS_SIZE.has(name) && owner !== undefined ? { next: owner } : false;
 }
 
-function fixedStep(context, target) {
+function fixedStep(context, target, depth) {
   if (target.type === 'ArrayExpression') {
     return (
       target.elements.length > 0 &&
-      target.elements.every((element) => element !== null && element.type !== 'SpreadElement')
+      target.elements.every(
+        (element) =>
+          element !== null &&
+          (element.type !== 'SpreadElement' ||
+            isFixedCollection(context, element.argument, depth + 1)),
+      )
     );
   }
   if (target.type === 'ObjectExpression') {
@@ -228,20 +314,23 @@ function fixedStep(context, target) {
     return (
       target.callee.name === 'Array' &&
       target.arguments.length === 1 &&
-      numeric(context, target.arguments[0])
+      countOf(context, target.arguments[0])
     );
   }
-  return target.type === 'Identifier' && isChunkVariable(context, target);
+  return (
+    target.type === 'Identifier' &&
+    (isEnum(context, target) || isChunkVariable(context, target))
+  );
 }
 
-export function isFixedCollection(context, node) {
-  const pending = [{ node, depth: 0 }];
+export function isFixedCollection(context, node, start = 0) {
+  const pending = [{ node, depth: start }];
   for (const entry of pending) {
-    const target = resolveConstant(context, skipped(entry.node));
+    const target = resolvedValue(context, entry.node);
     if (target === undefined || entry.depth > MAX_DEPTH) {
       return false;
     }
-    const step = fixedStep(context, target);
+    const step = fixedStep(context, target, entry.depth);
     if (typeof step === 'boolean') {
       return step;
     }

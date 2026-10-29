@@ -5,22 +5,46 @@ import {
   resolveConstant,
   resolveFunction,
 } from '../analysis/constant-resolution.mjs';
-import { memberName } from '../security/security-values.mjs';
+import { memberName, staticKey } from '../security/security-values.mjs';
 import { descendants, skipped } from './io-origin.mjs';
 
 const COMBINATORS = new Set(['all', 'allSettled', 'any', 'race']);
 const MAPPERS = new Set(['map', 'flatMap']);
 const LOOPS = new Set(['ForOfStatement', 'ForInStatement']);
+const SIZES = new Set(['length', 'size']);
 const MAX_DEPTH = 4;
 
-export function combinatorName(call) {
+function isGlobalPromise(context, node) {
+  const target = skipped(resolveConstant(context, skipped(node)));
+  return (
+    target?.type === 'Identifier' &&
+    target.name === 'Promise' &&
+    (findVariable(context, target, 'Promise')?.defs.length ?? 0) === 0
+  );
+}
+
+export function combinatorName(context, call) {
   const callee = skipped(call.callee);
   const isPromise =
     callee.type === 'MemberExpression' &&
-    callee.object.type === 'Identifier' &&
-    callee.object.name === 'Promise' &&
-    COMBINATORS.has(memberName(callee));
+    COMBINATORS.has(memberName(callee)) &&
+    isGlobalPromise(context, callee.object);
   return isPromise ? `Promise.${memberName(callee)}` : undefined;
+}
+
+export function sizeOwner(context, node) {
+  const target = skipped(resolveConstant(context, skipped(node)));
+  const member = [...descendants(target)].find(
+    (child) => child.type === 'MemberExpression' && SIZES.has(memberName(child)),
+  );
+  return member === undefined ? undefined : skipped(member.object);
+}
+
+function lengthOf(object) {
+  const target = skipped(object);
+  return target?.type === 'ObjectExpression'
+    ? target.properties.find((property) => staticKey(property) === 'length')?.value
+    : undefined;
 }
 
 export function workerOf(context, callback) {
@@ -51,20 +75,33 @@ function mapped(context, call) {
   const isFrom =
     owner.type === 'Identifier' && owner.name === 'Array' && memberName(callee) === 'from';
   const fromWorker = isFrom ? workerOf(context, call.arguments[1]) : undefined;
-  return fromWorker === undefined ? [] : [{ collection: call.arguments[0], worker: fromWorker }];
+  if (fromWorker === undefined) {
+    return [];
+  }
+  const length = lengthOf(call.arguments[0]);
+  const sized = length === undefined ? undefined : sizeOwner(context, length);
+  return [{ collection: sized ?? call.arguments[0], worker: fromWorker }];
 }
 
-function loopOf(current) {
-  if (LOOPS.has(current.type) || current.type === 'ForStatement') {
-    return { collection: current.right ?? current.test, body: current.body };
+function countedCollection(context, test) {
+  const bounded = test?.type === 'BinaryExpression' && ['<', '<='].includes(test.operator);
+  return bounded ? sizeOwner(context, test.right) : undefined;
+}
+
+function loopOf(context, current) {
+  if (LOOPS.has(current.type)) {
+    return { collection: current.right, body: current.body };
+  }
+  if (current.type === 'ForStatement') {
+    return { collection: countedCollection(context, current.test), body: current.body };
   }
   const each = current.type === 'CallExpression' && memberName(current.callee) === 'forEach';
   return each ? { collection: current.callee.object, body: current.arguments[0] } : undefined;
 }
 
-function enclosingLoop(node) {
+function enclosingLoop(context, node) {
   for (const current of ancestorsOf(node)) {
-    const loop = loopOf(current);
+    const loop = loopOf(context, current);
     if (loop !== undefined) {
       return loop;
     }
@@ -82,7 +119,7 @@ function pushed(context, identifier) {
     const member = reference.identifier.parent;
     const call = member.parent;
     const isPush = member.type === 'MemberExpression' && memberName(member) === 'push';
-    const loop = isPush && call.type === 'CallExpression' ? enclosingLoop(call) : undefined;
+    const loop = isPush && call.type === 'CallExpression' ? enclosingLoop(context, call) : undefined;
     const awaited = call.arguments?.[0]?.type === 'AwaitExpression';
     if (
       loop !== undefined &&

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ingestRulesReport } from './rules-report.mjs';
+import { FAN_OUT_SEPARATOR } from '../rules/hints/ast-smells.mjs';
 
 const entry = (overrides) => ({
   rule: 'frozen-dataclass',
@@ -84,8 +85,8 @@ describe('rules script report', () => {
     ['io-in-loop', 'requests.get()', '`requests.get()` runs once per item of a loop'],
     [
       'unbounded-fan-out',
-      'asyncio.gather|items|client.get()||remote',
-      '`asyncio.gather` starts `client.get()` for every element of `items` at once, with no bound on how many run together',
+      ['asyncio.gather', 'a | b', 'fetch()', 'client.get()', 'message'].join(FAN_OUT_SEPARATOR),
+      '`asyncio.gather` starts `fetch()` (which publishes through `client.get()`) for every element of `a | b` at once',
     ],
     [
       'task-outlives-resource',

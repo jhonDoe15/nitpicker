@@ -1,48 +1,14 @@
 import ast
 
 from checks.common import dotted_name, finding
-from concurrency.remote import is_task_call
+from checks.loop_scope import COMPREHENSIONS, enclosing_loop
+from concurrency.bounds import callee_name, sized_collection
+from concurrency.fan_out import reported_work
+from concurrency.remote import is_task_call, remote_of
 from smells.io_index import IoScope, chain_names, io_index
 
 CONCURRENT_COMBINATORS = {"asyncio.gather", "asyncio.wait", "asyncio.as_completed"}
-COMPREHENSIONS = (ast.ListComp, ast.SetComp, ast.DictComp, ast.GeneratorExp)
-FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
 PAGING_PASSES = 3
-
-
-def ancestors(node, parents):
-    chain = [node]
-    while id(chain[-1]) in parents:
-        chain.append(parents[id(chain[-1])])
-    return chain
-
-
-def in_loop_body(parent, child):
-    if isinstance(parent, (ast.For, ast.AsyncFor)):
-        return child in parent.body
-    return isinstance(parent, ast.While) and (
-        child in parent.body or child is parent.test
-    )
-
-
-def is_evaluated_once(comprehension, chain, index):
-    first = comprehension.generators[0]
-    return chain[index - 1] is first and index >= 2 and chain[index - 2] is first.iter
-
-
-def enclosing_loop(node, parents):
-    chain = ancestors(node, parents)
-    for index in range(1, len(chain)):
-        child, parent = chain[index - 1], chain[index]
-        if isinstance(parent, FUNCTIONS):
-            return None
-        if in_loop_body(parent, child):
-            return parent
-        if isinstance(parent, COMPREHENSIONS) and not is_evaluated_once(
-            parent, chain, index
-        ):
-            return parent
-    return None
 
 
 def is_concurrent(comprehension, parents, aliases):
@@ -55,9 +21,18 @@ def is_concurrent(comprehension, parents, aliases):
     )
 
 
-def is_task_work(call, parents, aliases):
-    parent = parents.get(id(call))
-    return is_task_call(parent, aliases) and call in parent.args
+def is_pool_worker(call, loop, context):
+    parent = context.parents.get(id(call))
+    if not (is_task_call(parent, context.aliases) and call in parent.args):
+        return False
+    iterable = loop.generators[0].iter if isinstance(loop, COMPREHENSIONS) else None
+    if isinstance(loop, (ast.For, ast.AsyncFor)):
+        iterable = loop.iter
+    return (
+        isinstance(iterable, ast.Call)
+        and callee_name(iterable) == "range"
+        and sized_collection(iterable, remote_of(context)) is None
+    )
 
 
 def assigned_pairs(loop):
@@ -161,6 +136,7 @@ def check(context):
     scope = IoScope(context, io_index(context.project))
     parents = context.parents
     found = []
+    fanned_out = reported_work(context)
     inner_calls = {
         id(node.func.value)
         for node in ast.walk(context.tree)
@@ -169,7 +145,7 @@ def check(context):
     for node in ast.walk(context.tree):
         if not isinstance(node, ast.Call) or id(node) in inner_calls:
             continue
-        if scope.maps_io(node):
+        if scope.maps_io(node) and id(node) not in fanned_out:
             callee = ".".join(chain_names(node.args[0]))
             found.append(finding(context.path, "io-in-loop", f"{callee}()", node))
             continue
@@ -182,7 +158,7 @@ def check(context):
             loop, parents, context.aliases
         ):
             continue
-        if is_task_work(node, parents, context.aliases):
+        if id(node) in fanned_out or is_pool_worker(node, loop, context):
             continue
         if (
             is_paging_loop(loop, scope)

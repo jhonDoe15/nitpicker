@@ -1,3 +1,15 @@
+import {
+  AXIOS_MODULES,
+  FETCH_MODULES,
+  GOT_METHODS,
+  GOT_MODULES,
+  HTTP_MODULE_FUNCTIONS,
+  HTTP_MODULES,
+  NODE_FETCH_MODULES,
+  OFETCH_MODULES,
+  UNDICI_MODULES,
+} from '../security/http/http-modules.mjs';
+
 const HTTP_METHODS = [
   'request',
   'get',
@@ -12,14 +24,8 @@ const HTTP_METHODS = [
   'patchForm',
 ];
 const BODY_METHODS = ['get', 'post', 'put', 'patch', 'delete', 'head'];
-const FETCH_MODULES = [
-  'node-fetch',
-  'cross-fetch',
-  'isomorphic-fetch',
-  'isomorphic-unfetch',
-  'ofetch',
-];
-const HTTP_SERVERS = ['http', 'node:http', 'https', 'node:https'];
+const FETCH_FUNCTIONS = ['fetch', 'ofetch', '$fetch'];
+const REDIS_PUBLISH = ['publish', 'spublish', 'sPublish'];
 const MESSAGE_SERVICES = /client-(?:sqs|sns|eventbridge|kinesis|firehose)$/u;
 const DATABASE_SERVICES = /client-dynamodb$/u;
 
@@ -36,24 +42,24 @@ function client(kind, spec) {
 }
 
 const SPECS = new Map([
-  [
-    'axios',
+  ...AXIOS_MODULES.map((name) => [
+    name,
     client('remote', {
       callable: true,
       methods: new Set(HTTP_METHODS),
       makers: new Set(['create']),
       types: new Set(['AxiosInstance', 'AxiosStatic']),
     }),
-  ],
-  [
-    'got',
+  ]),
+  ...GOT_MODULES.map((name) => [
+    name,
     client('remote', {
       callable: true,
-      methods: new Set([...BODY_METHODS, 'stream', 'paginate']),
+      methods: new Set([...GOT_METHODS, 'paginate']),
       makers: new Set(['extend']),
       types: new Set(['Got']),
     }),
-  ],
+  ]),
   [
     'ky',
     client('remote', {
@@ -72,15 +78,15 @@ const SPECS = new Map([
     }),
   ],
   ['needle', client('remote', { callable: true, methods: new Set([...BODY_METHODS, 'request']) })],
-  [
-    'undici',
+  ...UNDICI_MODULES.map((name) => [
+    name,
     client('remote', {
       functions: new Set(['fetch', 'request', 'stream']),
       methods: new Set(['request', 'stream']),
       makers: new Set(['Client', 'Pool', 'Agent']),
       types: new Set(['Dispatcher']),
     }),
-  ],
+  ]),
   [
     '@nestjs/axios',
     client('remote', {
@@ -144,6 +150,22 @@ const SPECS = new Map([
   ],
   ['nats', client('message', { methods: new Set(['publish']), makers: new Set(['connect']) })],
   [
+    'ioredis',
+    client('message', {
+      methods: new Set(REDIS_PUBLISH),
+      makers: new Set(['default', 'Redis', 'Cluster']),
+      types: new Set(['Redis', 'Cluster']),
+    }),
+  ],
+  [
+    'redis',
+    client('message', {
+      methods: new Set(REDIS_PUBLISH),
+      makers: new Set(['createClient', 'createCluster']),
+      types: new Set(['RedisClientType', 'RedisClusterType']),
+    }),
+  ],
+  [
     '@google-cloud/pubsub',
     client('message', {
       methods: new Set(['publish', 'publishMessage', 'publishJSON']),
@@ -175,13 +197,13 @@ const SPECS = new Map([
       derivers: new Set(['createSender']),
     }),
   ],
-  ...FETCH_MODULES.map((name) => [
+  ...[...FETCH_MODULES, ...NODE_FETCH_MODULES, ...OFETCH_MODULES].map((name) => [
     name,
-    client('remote', { callable: true, functions: new Set(['fetch', 'ofetch']) }),
+    client('remote', { callable: true, functions: new Set(FETCH_FUNCTIONS) }),
   ]),
-  ...HTTP_SERVERS.map((name) => [
+  ...HTTP_MODULES.map((name) => [
     name,
-    client('remote', { functions: new Set(['request', 'get']) }),
+    client('remote', { functions: new Set(HTTP_MODULE_FUNCTIONS) }),
   ]),
 ]);
 

@@ -2,92 +2,18 @@ import ast
 from collections import namedtuple
 
 from checks.common import dotted_name
+from index.clients import (
+    ANY_METHOD,
+    BOTO_FACTORIES,
+    BOTO_SERVICES,
+    CLIENTS,
+    DATABASE,
+    DIRECT_CALLS,
+    LIMITER_FACTORIES,
+    REMOTE,
+)
 
 Origin = namedtuple("Origin", "factory call")
-DATABASE = "database"
-REMOTE = "remote"
-MESSAGE = "message"
-
-HTTP_METHODS = {
-    "get",
-    "post",
-    "put",
-    "patch",
-    "delete",
-    "head",
-    "options",
-    "request",
-    "send",
-    "stream",
-}
-ANY_METHOD = None
-BOTO_FACTORIES = {
-    "boto3.client",
-    "boto3.resource",
-    "aioboto3.client",
-    "aioboto3.resource",
-}
-CLIENTS = {
-    "requests.Session": (REMOTE, HTTP_METHODS, False),
-    "requests.session": (REMOTE, HTTP_METHODS, False),
-    "requests.sessions.Session": (REMOTE, HTTP_METHODS, False),
-    "httpx.Client": (REMOTE, HTTP_METHODS, False),
-    "httpx.AsyncClient": (REMOTE, HTTP_METHODS, False),
-    "aiohttp.ClientSession": (REMOTE, HTTP_METHODS, False),
-    "aiohttp.client.ClientSession": (REMOTE, HTTP_METHODS, False),
-    "urllib3.PoolManager": (REMOTE, {"request", "urlopen"}, False),
-    "boto3.client": (REMOTE, ANY_METHOD, False),
-    "boto3.resource": (REMOTE, ANY_METHOD, False),
-    "aioboto3.client": (REMOTE, ANY_METHOD, False),
-    "aioboto3.resource": (REMOTE, ANY_METHOD, False),
-    "openai.OpenAI": (REMOTE, {"create", "parse"}, True),
-    "openai.AsyncOpenAI": (REMOTE, {"create", "parse"}, True),
-    "anthropic.Anthropic": (REMOTE, {"create"}, True),
-    "anthropic.AsyncAnthropic": (REMOTE, {"create"}, True),
-    "kafka.KafkaProducer": (MESSAGE, {"send"}, False),
-    "aiokafka.AIOKafkaProducer": (MESSAGE, {"send", "send_and_wait"}, False),
-    "confluent_kafka.Producer": (MESSAGE, {"produce"}, False),
-    "pika.BlockingConnection": (MESSAGE, {"basic_publish"}, False),
-    "aio_pika.connect": (MESSAGE, {"publish"}, True),
-    "aio_pika.connect_robust": (MESSAGE, {"publish"}, True),
-    "redis.Redis": (MESSAGE, {"publish"}, False),
-    "redis.StrictRedis": (MESSAGE, {"publish"}, False),
-    "redis.asyncio.Redis": (MESSAGE, {"publish"}, False),
-    "redis.from_url": (MESSAGE, {"publish"}, False),
-    "nats.connect": (MESSAGE, {"publish"}, False),
-    "google.cloud.pubsub_v1.PublisherClient": (MESSAGE, {"publish"}, False),
-    "paho.mqtt.client.Client": (MESSAGE, {"publish"}, False),
-}
-DIRECT_CALLS = {
-    f"{module}.{method}": REMOTE
-    for module in ("requests", "httpx")
-    for method in (
-        "get",
-        "post",
-        "put",
-        "patch",
-        "delete",
-        "head",
-        "options",
-        "request",
-    )
-}
-DIRECT_CALLS.update(
-    {
-        "httpx.stream": REMOTE,
-        "aiohttp.request": REMOTE,
-        "urllib.request.urlopen": REMOTE,
-        "urllib3.request": REMOTE,
-    }
-)
-BOTO_SERVICES = {
-    "dynamodb": (DATABASE, {}),
-    "sqs": (REMOTE, {"send_message": MESSAGE, "send_message_batch": MESSAGE}),
-    "sns": (REMOTE, {"publish": MESSAGE, "publish_batch": MESSAGE}),
-    "events": (REMOTE, {"put_events": MESSAGE}),
-    "kinesis": (REMOTE, {"put_record": MESSAGE, "put_records": MESSAGE}),
-    "firehose": (REMOTE, {"put_record": MESSAGE, "put_record_batch": MESSAGE}),
-}
 NON_OPERATIONS = ("get_paginator", "get_waiter", "can_paginate", "close", "generate_")
 ANNOTATED = "annotation"
 MAX_DEPTH = 6
@@ -173,7 +99,8 @@ class Remote:
             return self.origin(node.value, depth + 1, deep)
         if isinstance(node, tuple):
             name = dotted_name(node[1], self.aliases)
-            return Origin(name, None) if name in CLIENTS else None
+            known = name in CLIENTS or name in LIMITER_FACTORIES
+            return Origin(name, None) if known else None
         if isinstance(node, ast.Call):
             factory = self.factory_of(node)
             if factory:
@@ -231,20 +158,6 @@ def boto_kind(call, method):
     return methods.get(method, default)
 
 
-LIMITER_FACTORIES = {
-    "asyncio.Semaphore",
-    "asyncio.BoundedSemaphore",
-    "asyncio.Lock",
-    "anyio.Semaphore",
-    "anyio.CapacityLimiter",
-    "anyio.Lock",
-    "trio.CapacityLimiter",
-    "trio.Semaphore",
-    "trio.Lock",
-    "aiolimiter.AsyncLimiter",
-    "asyncio_throttle.Throttler",
-    "aiometer.Throttler",
-}
 
 
 def remote_of(context):

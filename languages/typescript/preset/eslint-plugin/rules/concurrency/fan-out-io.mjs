@@ -1,24 +1,9 @@
 import { ancestorsOf } from '../analysis/ancestry.mjs';
-import { findVariable, resolveFunction } from '../analysis/constant-resolution.mjs';
-import { memberName, unwrapped } from '../security/security-values.mjs';
+import { resolveFunction } from '../analysis/constant-resolution.mjs';
+import { isGlobalFetch } from '../security/http/http-modules.mjs';
+import { memberName } from '../security/security-values.mjs';
 import { clientSpec } from './client-modules.mjs';
 import { createOrigins, skipped } from './io-origin.mjs';
-
-const GLOBAL_OBJECTS = new Set(['globalThis', 'window', 'self', 'global']);
-
-function isGlobalFetch(context, callee) {
-  const target = unwrapped(callee);
-  if (target.type === 'MemberExpression') {
-    const owner = unwrapped(target.object);
-    return (
-      owner.type === 'Identifier' &&
-      GLOBAL_OBJECTS.has(owner.name) &&
-      memberName(target) === 'fetch'
-    );
-  }
-  const isFetch = target.type === 'Identifier' && target.name === 'fetch';
-  return isFetch && (findVariable(context, target, 'fetch')?.defs.length ?? 0) === 0;
-}
 
 function memberKind(base, name) {
   if (base === undefined || name === undefined) {

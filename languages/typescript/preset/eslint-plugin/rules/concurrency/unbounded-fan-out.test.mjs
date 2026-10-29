@@ -48,8 +48,65 @@ tester.run('unbounded-fan-out', rule, {
     'import pMap from "p-map"; await pMap(urls, (url) => fetch(url), options);',
     'import pMap from "p-map"; await pMap(urls, (url) => url.length);',
     'import pLimit from "p-limit"; const limit = pLimit(Infinity); await Promise.all(urls.map((url) => limit(() => 1)));',
+    'import pLimit from "p-limit"; class Loader { limit = pLimit(4); all(urls) { return Promise.all(urls.map((url) => this.limit(() => fetch(url)))); } }',
+    'import pLimit from "p-limit"; class Loader { constructor() { this.limit = pLimit(4); } all(urls) { return Promise.all(urls.map((url) => this.limit(() => fetch(url)))); } }',
+    'type Limit = <T>(work: () => Promise<T>) => Promise<T>; class Loader { constructor(private readonly limit: Limit) {} all(urls: string[]) { return Promise.all(urls.map((url) => this.limit(() => fetch(url)))); } }',
+    'class Loader { constructor(limit) { this.limit = limit; } all(urls) { return Promise.all(urls.map((url) => this.limit(() => fetch(url)))); } }',
+    'import PQueue from "p-queue"; class Loader { constructor(private readonly queue: PQueue) {} all(urls: string[]) { return Promise.all(urls.map((url) => this.queue.add(() => fetch(url)))); } }',
+    'import type { LimitFunction } from "p-limit"; declare const limit: LimitFunction; await Promise.all(urls.map((url) => limit(() => fetch(url))));',
+    'import { apiLimit } from "./limits"; await Promise.all(urls.map((url) => apiLimit(() => fetch(url))));',
+    'const REGIONS = ["eu", "us"] as const; await Promise.all(REGIONS.map((region) => fetch(region)));',
+    'const REGIONS = ["eu", "us"] satisfies string[]; await Promise.all(REGIONS.map((region) => fetch(region)));',
+    'const HOSTS = { a: "x", b: "y" } as const; await Promise.all(Object.entries(HOSTS).map(([, host]) => fetch(host)));',
+    'enum Region { Eu = "eu", Us = "us" } await Promise.all(Object.values(Region).map((region) => fetch(region)));',
+    'export async function drain(workers: number, next: () => string) { await Promise.all(Array.from({ length: workers }, async () => fetch(next()))); }',
+    'export async function drain(workers: number, next: () => string) { const pool = []; for (let i = 0; i < workers; i++) { pool.push(fetch(next())); } await Promise.all(pool); }',
+    'export async function drain(workers: number, next: () => string) { await Promise.all([...Array(workers)].map(() => fetch(next()))); }',
+    'export async function drain(workers: number, next: () => string) { await Promise.all(new Array(workers).fill(0).map(() => fetch(next()))); }',
+    'import Redis from "ioredis"; const redis = new Redis(); await Promise.all(["a", "b"].map((channel) => redis.publish(channel, "x")));',
+    'import Redis from "ioredis"; const redis = new Redis(); await Promise.all(keys.map((key) => redis.get(key)));',
   ],
   invalid: [
+    {
+      code: 'import pLimit from "p-limit"; class Loader { limit = pLimit(4); all(urls) { return Promise.all(urls.map((url) => { this.limit(() => log(url)); return fetch(url); })); } }',
+      errors: error({ operation: 'fetch()', collection: 'urls' }),
+    },
+    {
+      code: 'import { run } from "./helpers"; await Promise.all(urls.map((url) => run(() => fetch(url))));',
+      errors: error({ operation: 'fetch()', collection: 'urls' }),
+    },
+    {
+      code: 'export async function all(urls: string[]) { await Promise.all(Array.from({ length: urls.length }, (_, i) => fetch(urls[i]))); }',
+      errors: error({ operation: 'fetch()', collection: 'urls' }),
+    },
+    {
+      code: 'export async function all(urls: string[]) { const count = urls.length; await Promise.all(Array.from({ length: count }, (_, i) => fetch(urls[i]))); }',
+      errors: error({ operation: 'fetch()', collection: 'urls' }),
+    },
+    {
+      code: 'export async function all(urls: string[]) { const tasks = []; for (let i = 0; i < urls.length; i++) { tasks.push(fetch(urls[i])); } await Promise.all(tasks); }',
+      errors: error({ operation: 'fetch()', collection: 'urls' }),
+    },
+    {
+      code: 'const P = Promise; await P.all(urls.map((url) => fetch(url)));',
+      errors: error({ operation: 'fetch()', collection: 'urls' }),
+    },
+    {
+      code: 'import Redis from "ioredis"; const redis = new Redis(); await Promise.all(events.map((event) => redis.publish("events", event)));',
+      errors: error({ operation: 'redis.publish()', collection: 'events', target: 'broker' }),
+    },
+    {
+      code: 'import { Redis as Client } from "ioredis"; export function all(redis: Client, events: string[]) { return Promise.all(events.map((event) => redis.publish("events", event))); }',
+      errors: error({ operation: 'redis.publish()', collection: 'events', target: 'broker' }),
+    },
+    {
+      code: 'import { createClient } from "redis"; const client = createClient(); await Promise.all(events.map((event) => client.publish("events", event)));',
+      errors: error({ operation: 'client.publish()', collection: 'events', target: 'broker' }),
+    },
+    {
+      code: 'import fetchy from "ofetch"; await Promise.all(urls.map((url) => fetchy(url)));',
+      errors: error({ operation: 'fetchy()', collection: 'urls' }),
+    },
     {
       code: 'await Promise.all(urls.map((url) => fetch(url)));',
       errors: error({ combinator: 'Promise.all', operation: 'fetch()', collection: 'urls' }),

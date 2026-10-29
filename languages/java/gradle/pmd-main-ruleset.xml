@@ -133,7 +133,7 @@
     </properties>
   </rule>
   <rule name="UnboundedFanOut" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="This loop or stream starts a remote or message call on a new task for every element of a collection at once, with no bound on how many run together, so a large collection exhausts connections, rate limits or the remote service. Bound it: run the tasks on a fixed pool (Executors.newFixedThreadPool(8) passed to supplyAsync, or its submit), take a Semaphore permit around each call, or work through fixed-size batches (Lists.partition(items, 20)), or send one batch request when the API has one. The default pool of CompletableFuture, newCachedThreadPool and newVirtualThreadPerTaskExecutor start a task for every element, and a limit constant that no pool or semaphore uses bounds nothing. An exception fits only when the collection is always small.">
+        message="This loop or stream starts a remote or message call on a new task for every element of a collection at once, so a large collection exhausts the connections or rate limit of the remote service. Run the tasks on a fixed pool (Executors.newFixedThreadPool(8) passed to supplyAsync or used for submit), take a Semaphore permit around each call, or work through fixed-size batches (Lists.partition(items, 20)). An exception fits only when the collection is always small.">
     <priority>2</priority>
     <properties>
       <property name="xpath">
@@ -200,27 +200,44 @@ let $clientTypes := function($r) {
             and (if (exists($locals)) then (every $d in $locals satisfies $maker($d/*[2]))
                  else exists($fields) and (every $d in $fields satisfies $maker($d/*[2]))))
     },
+    $sizes := function($n) {
+      $n/descendant-or-self::*[self::MethodCall[@MethodName = 'size'] or self::FieldAccess[@Name = 'length']]
+    },
+    $mentionsSize := function($n) {
+      exists($sizes($n))
+      or (some $v in $n/descendant-or-self::VariableAccess satisfies
+            exists($sizes($v/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+                      //VariableDeclarator[VariableId/@Name = $v/@Name]/*[2])))
+    },
+    $sizedArgument := function($a) {
+      not($mentionsSize($a))
+      or exists($a/self::MethodCall[@MethodName = 'min'][ArgumentList/*[not($mentionsSize(.))]])
+    },
     $chain := function($s) {
       $s/(. | *[1] | *[1]/*[1] | *[1]/*[1]/*[1] | *[1]/*[1]/*[1]/*[1] | *[1]/*[1]/*[1]/*[1]/*[1] | *[1]/*[1]/*[1]/*[1]/*[1]/*[1])
     },
-    $partitioned := function($s) {
-      exists($chain($s)/self::MethodCall[@MethodName = ('partition', 'subList', 'limit', 'chunked', 'batches')])
+    $sized := function($s, $names) {
+      exists($chain($s)/self::MethodCall[@MethodName = $names]
+        [every $a in ArgumentList/*[position() > 1 or not(../../*[1][self::TypeExpression])] satisfies $sizedArgument($a)])
     },
+    $windowed := function($s) { $sized($s, ('subList', 'limit')) },
+    $partitioned := function($s) { $sized($s, ('partition', 'subList', 'limit', 'chunked', 'batches')) },
     $fixedChain := function($s) {
-      $partitioned($s)
+      $windowed($s)
       or exists($chain($s)/self::MethodCall[@MethodName = ('stream', 'asList', 'of')][*[1][self::TypeExpression]]
            [ArgumentList/*[1][self::MethodCall[@MethodName = ('values', 'of', 'asList')][*[1][self::TypeExpression]]
                               or self::ArrayAllocation]])
       or exists($chain($s)/self::MethodCall[@MethodName = ('of', 'asList', 'copyOf', 'values', 'ofEntries')][*[1][self::TypeExpression]])
-      or exists($chain($s)/self::MethodCall[@MethodName = ('range', 'rangeClosed')]
-           [not(ArgumentList/*[not(self::NumericLiteral)])])
+      or exists($chain($s)/self::MethodCall[@MethodName = ('range', 'rangeClosed')][*[1][self::TypeExpression]]
+           [not(ArgumentList/*[$mentionsSize(.)])])
+      or exists($chain($s)/(self::ArrayAllocation[ArrayInitializer] | self::ArrayInitializer))
     },
     $chunkVariable := function($s) {
       let $root := $chain($s)/self::VariableAccess
       return exists($root) and (
         (let $declared := $root/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
                             //VariableDeclarator[VariableId/@Name = $root/@Name]
-         return exists($declared) and (every $d in $declared satisfies $partitioned($d/*[2])))
+         return exists($declared) and (every $d in $declared satisfies $windowed($d/*[2])))
         or (let $fields := $root/ancestor::ClassBody[1]/FieldDeclaration[pmd-java:modifiers() = 'final']
                              /VariableDeclarator[VariableId/@Name = $root/@Name]
             return exists($fields) and (every $d in $fields satisfies $fixedChain($d/*[2])))
@@ -246,7 +263,10 @@ let $clientTypes := function($r) {
               or pmd-java:matchesSig('java.util.concurrent.ExecutorService#submit(_*)'))
           and $unboundedExecutor(*[1])
           and $remote(ArgumentList/*[1]))
-        or (pmd-java:matchesSig('java.lang.Thread#startVirtualThread(_*)') and $remote(ArgumentList/*[1]))
+        or ((pmd-java:matchesSig('java.lang.Thread#startVirtualThread(_*)') or pmd-java:matchesSig('java.lang.Thread.Builder#start(_*)'))
+          and $remote(ArgumentList/*[1]))
+        or (@MethodName = 'start' and *[1][self::ConstructorCall][pmd-java:typeIs('java.lang.Thread')]
+          and $remote(*[1]/ArgumentList/*[1]))
         or pmd-java:matchesSig('java.net.http.HttpClient#sendAsync(_*)')])
     },
     $helperCalls := function($n) {
@@ -270,7 +290,8 @@ let $clientTypes := function($r) {
     },
     $waits := function($n) {
       exists($n//MethodCall[@MethodName = ('join', 'get', 'getNow', 'resultNow')]
-        [*[1][pmd-java:typeIs('java.util.concurrent.Future') or pmd-java:typeIs('java.util.concurrent.CompletionStage')]])
+        [*[1][pmd-java:typeIs('java.util.concurrent.Future') or pmd-java:typeIs('java.util.concurrent.CompletionStage')
+              or pmd-java:typeIs('java.lang.Thread')]])
       or exists($n//MethodReference[@MethodName = ('join', 'get')])
     },
     $drained := function($m) {
@@ -283,8 +304,7 @@ let $clientTypes := function($r) {
          or pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.stream.BaseStream')]
     },
     $growing := function($loop) {
-      exists($loop/InfixExpression[@Operator = ('<', '<=')]/*[2]/descendant-or-self::*
-        [self::MethodCall[@MethodName = 'size'] or self::FieldAccess[@Name = 'length']])
+      exists($loop/InfixExpression[@Operator = ('<', '<=')][$mentionsSize(*[2])])
     }
 return (
   //MethodCall[@MethodName = $mappers][$collection(*[1])]
@@ -296,6 +316,13 @@ return (
     [not($drained(.))]
   | //ForeachStatement[not($fixedChain(*[2])) and not($chunkVariable(*[2]))][$startsIn(.)][not($waits(.))]
   | //ForStatement[$growing(.)][$startsIn(.)][not($waits(.))]
+  | //MethodCall[@MethodName = ('invokeAll', 'invokeAny')][$unboundedExecutor(*[1])]
+      [let $tasks := ArgumentList/*[1],
+           $built := ($tasks, $tasks/self::VariableAccess/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+                        //VariableDeclarator[VariableId/@Name = $tasks/@Name]/*[2])
+       return some $e in $built satisfies
+         exists($chain($e)/self::MethodCall[@MethodName = $mappers][$collection(*[1])])
+         and $remote($e) and not($fixedChain($e)) and not($chunkVariable($e))]
 )[not($bounded(.))]
 ]]></value>
       </property>

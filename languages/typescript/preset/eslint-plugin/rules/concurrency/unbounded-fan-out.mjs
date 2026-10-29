@@ -122,14 +122,14 @@ export const rule = {
     schema: [],
     messages: {
       unbounded:
-        '{{combinator}} starts {{operation}}{{via}} for every element of `{{collection}}` at once, with no bound on how many run together, so a large collection exhausts connections, rate limits or the {{target}}. Bound it: run each call through a limiter created outside the loop (`const limit = pLimit(8); await Promise.all(items.map((item) => limit(() => send(item))))`, or p-queue with `concurrency`, Bottleneck with `maxConcurrent`), or work through fixed-size chunks (`for (const chunk of chunks(items, 20)) { await Promise.all(chunk.map(send)); }`), or send one batch request when the API has one. A concurrency constant that no limiter uses bounds nothing. An exception fits only when the collection is always small.',
+        "{{combinator}} starts {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Run each call through a limiter created once outside the loop (`const limit = pLimit(8)`, then `limit(() => send(item))`), await fixed-size chunks, or make one batch call when the API has one. An exception fits only when the collection is always small.",
     },
   },
   create(context) {
     const scope = lazyScope(context);
     return {
       CallExpression(node) {
-        const combinator = combinatorName(node);
+        const combinator = combinatorName(context, node);
         if (combinator !== undefined) {
           reportSites(scope, {
             node,

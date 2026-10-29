@@ -1,8 +1,12 @@
-import { rmSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
+import path from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { collectJavaFindings } from '../../java-diff.mjs';
+import { FAN_OUT_LEAD, FAN_OUT_RULE } from '../../../messages/fan-out-details.mjs';
+import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
+import { appendSentence } from '../../../../../shared/messages/exception-sentence.mjs';
 import {
   enabled,
   gradle,
@@ -16,17 +20,41 @@ import {
   stableConsoleEmitters,
 } from '../__tests__/spring-project.mjs';
 
-const FAN_OUT_REST = [
-  ', with no bound on how many run together, so a large collection exhausts connections, rate limits or the',
-  ' remote service. Bound it: run the tasks on a fixed pool (Executors.newFixedThreadPool(8) passed to',
-  ' supplyAsync, or its submit), take a Semaphore permit around each call, or work through fixed-size batches',
-  ' (Lists.partition(items, 20)), or send one batch request when the API has one. The default pool of',
-  ' CompletableFuture, newCachedThreadPool and newVirtualThreadPerTaskExecutor start a task for every',
-  ' element, and a limit constant that no pool or semaphore uses bounds nothing. An exception fits only when',
-  ' the collection is always small.',
-  ' If this is intended, add {"rule":"pmd/UnboundedFanOut","paths":["src/main/java/shop/Prefetch.java"],',
-  '"reason":"..."} to "exceptions" in nitpicker.config.json.',
-].join('');
+const PREFETCH = 'src/main/java/shop/Prefetch.java';
+const RULESET = path.resolve(import.meta.dirname, '../../../gradle/pmd-main-ruleset.xml');
+const FAN_OUT_LEADS = [
+  ['urls', 'CompletableFuture.supplyAsync'],
+  ['urls', 'ExecutorService.submit'],
+  ['urls', 'HttpClient.sendAsync'],
+  ['urls', 'ExecutorService.submit'],
+  ['urls', 'Executor.execute'],
+  ['urls', 'Thread.startVirtualThread'],
+  ['urls', 'CompletableFuture.supplyAsync'],
+  ['urls'],
+  ['urls'],
+  ['urls', 'Thread.start'],
+  ['urls', 'Thread.Builder.start'],
+  ['tasks', 'ExecutorService.invokeAll'],
+  ['urls.subList(0,urls.size())', 'CompletableFuture.supplyAsync'],
+  ['urls', 'CompletableFuture.supplyAsync'],
+  ['IntStream.range(0,count)', 'CompletableFuture.supplyAsync'],
+  ['getUrls()', 'CompletableFuture.supplyAsync'],
+  ['urls', 'CompletableFuture.supplyAsync'],
+  ['getUrls()', 'CompletableFuture.supplyAsync'],
+];
+
+function fanOutRest() {
+  const ruleset = readFileSync(RULESET, 'utf8');
+  const rule = ruleset.slice(ruleset.indexOf(`<rule name="${FAN_OUT_RULE}"`));
+  const message = /message="([^"]*)"/u.exec(rule)[1].slice(FAN_OUT_LEAD.length);
+  return appendSentence(message, exceptionRoute({ rule: `pmd/${FAN_OUT_RULE}`, path: PREFETCH }));
+}
+
+function fanOutLead([collection, starter]) {
+  const work =
+    starter === undefined ? 'a task that makes a remote or message call' : `\`${starter}\``;
+  return `\`${collection}\` starts ${work} for every element at once`;
+}
 
 describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring project', () => {
   const runs = {};
@@ -72,9 +100,7 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
     const fanOut = runs.gradle.filter(({ rule }) => rule === 'UnboundedFanOut');
 
     expect(fanOut.map(({ message }) => message)).toEqual(
-      ['CompletableFuture.supplyAsync', 'ExecutorService.submit', 'HttpClient.sendAsync'].map(
-        (starter) => `\`urls\` starts \`${starter}\` for every element at once${FAN_OUT_REST}`,
-      ),
+      FAN_OUT_LEADS.map((lead) => `${fanOutLead(lead)}${fanOutRest()}`),
     );
   });
 
