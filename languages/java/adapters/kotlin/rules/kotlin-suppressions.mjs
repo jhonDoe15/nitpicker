@@ -99,9 +99,15 @@ export function kotlinFiles(projectRoot, sourceRoot) {
     .map((entry) => path.posix.join(sourceRoot, entry.replaceAll('\\', '/')));
 }
 
+const UNUSED_PARAMETER_FORM =
+  'Remove the parameter, or use it; a name starting `ignored` or `unused` marks one a signature requires.';
+
 function suppressionMessage(file, token) {
   if (isUnusedCodeSuppression(token)) {
-    return `Suppressing "${token}" inline would hide an unused parameter. Remove the parameter, or use it; a name starting \`ignored\` or \`unused\` marks one a signature requires. When reflection or a framework calls it with that signature, remove the suppression and lift the rule for this path instead. ${exceptionHint('detekt.style.UnusedParameter', file)}`;
+    return {
+      message: `Suppressing "${token}" inline would hide an unused parameter. ${UNUSED_PARAMETER_FORM} When reflection or a framework calls it with that signature, remove the suppression and lift the rule for this path instead. ${exceptionHint('detekt.style.UnusedParameter', file)}`,
+      allowedForm: UNUSED_PARAMETER_FORM,
+    };
   }
   const compilerRule = compilerWarningRule(token);
   const allowedForm =
