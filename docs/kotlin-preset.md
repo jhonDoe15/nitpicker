@@ -136,8 +136,8 @@ Kotlin classes (see [Mutation](#mutation-report-only-for-kotlin)), and jdeps rea
   in report order. A line never takes part, so a moved finding stays baselined.
 - **Counts.** A count rule holds a legacy finding at its base count, like the structure limits: the
   count goes into the identity as `|value:<n>`, and a finding whose count did not grow stays
-  baselined while one that grew fails with `Return statements grew from 3 to 4.` before detekt's
-  message. The count comes from the message (`ReturnCount`, `LongMethod`: "too long (62)",
+  baselined while one that grew fails with `Return statements grew from 3 to 4. Put the new code in a
+  new function.` before detekt's message. The count comes from the message (`ReturnCount`, `LongMethod`: "too long (62)",
   `CyclomaticComplexMethod`, `CognitiveComplexMethod`, `ComplexCondition`, `TooManyFunctions`,
   `NestedScopeFunctions`, `MethodOverloading`, `DestructuringDeclarationWithTooManyEntries`), or,
   for the rules whose message leaves it out (`ThrowsCount`, `NestedBlockDepth`, `LargeClass`,

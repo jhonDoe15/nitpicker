@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { COUNT, countInMessage, withCountRatchets } from './count-ratchet.mjs';
+import { countInMessage, countPattern, withCountRatchets } from './count-ratchet.mjs';
 
-const RETURNS = new RegExp(`has ${COUNT} return statements`, 'du');
+const RETURNS = countPattern('has {count} return statements', 'return statements').pattern;
 
 function finding(message, line, extra = {}) {
   return {
@@ -30,7 +30,7 @@ describe('countInMessage', () => {
   });
 
   it('reads a count printed with grouping commas', () => {
-    const npath = new RegExp(`NPath Complexity is ${COUNT} \\(`, 'du');
+    const npath = countPattern(String.raw`NPath Complexity is {count} \(`, 'NPath').pattern;
 
     expect(countInMessage('NPath Complexity is 1,234,567 (max allowed is 200).', npath)).toEqual({
       value: 1_234_567,
@@ -54,8 +54,23 @@ describe('withCountRatchets', () => {
     expect(counted.ratchet).toEqual({
       key: 'count:return statements:Function f has # return statements.:occurrence:1',
       value: 3,
-      worseMessage: 'Return statements grew from {base} to 3. Function f has 3 return statements.',
+      worseMessage:
+        'Return statements grew from {base} to 3. Put the new code in a new function. Function f has 3 return statements.',
+      heldMessage:
+        'Function f has 3 return statements. Allowed at 3 return statements because base was {base}; any increase fails.',
     });
+  });
+
+  it('leaves the exception sentence out of the held note', () => {
+    const route =
+      'If this is intended, add {"rule":"returns","paths":["src/a.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.';
+    const [counted] = withCountRatchets(
+      [finding(`Function f has 3 return statements. ${route}`, 4)],
+      returnCount,
+    );
+
+    expect(counted.ratchet.heldMessage).not.toContain('If this is intended');
+    expect(counted.ratchet.worseMessage.endsWith(route)).toBe(true);
   });
 
   it('numbers findings of the same subject by line, whatever order they come in', () => {

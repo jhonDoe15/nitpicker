@@ -137,6 +137,12 @@ describe('Java count findings on legacy code', () => {
     ],
     [
       'checkstyle',
+      'coding.MultipleStringLiteralsCheck',
+      'The String "x" appears 4 times in the file.',
+      4,
+    ],
+    [
+      'checkstyle',
       'coding.VariableDeclarationUsageDistanceCheck',
       "Distance between variable 'x' declaration and its first usage is 5, but allowed 3.",
       5,

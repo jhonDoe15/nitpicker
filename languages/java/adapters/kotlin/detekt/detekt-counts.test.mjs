@@ -74,11 +74,11 @@ const throwsAt = (count, line = 6, column = 9) => ({
 
 describe('detekt count findings on a legacy function', () => {
   it('fails a function whose return count grew and says from what', () => {
-    const { newFindings } = compare(returns(3), returns(4));
+    const [grew] = compare(returns(3), returns(4)).newFindings;
 
-    expect(newFindings.map(({ message }) => message.split('. ').slice(0, 2).join('. '))).toEqual([
-      'Return statements grew from 3 to 4. Function pick has 4 return statements which exceeds the limit of 2',
-    ]);
+    expect(grew.message).toMatch(
+      /^Return statements grew from 3 to 4\. Put the new code in a new function\. Function pick has 4 return statements which exceeds the limit of 2\. If this is intended, add /u,
+    );
   });
 
   it('holds a function whose return count fell but is still over the limit', () => {

@@ -64,35 +64,32 @@ export function readJavaFindings(projectRoot, options = {}) {
         module,
       ),
     );
-  return {
-    findings: withJavaCountRatchets(
-      applyRuleMessages(
-        [
-          ...moduleFindings,
-          ...readDuplicateFindings(reportBase, { projectRoot }),
-          ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase, projectRoot) : []),
-          ...(projectWide
-            ? projectWideFindings(projectRoot, {
-                projects: modules.map((module) => ({
-                  reportRoot: module.reportRoot,
-                  qualifier: module.key === ROOT_MODULE ? '' : module.dir,
-                  sourceRoots: module.manifest.sourceRoots ?? [],
-                  kotlinSourceRoots: module.manifest.kotlinSourceRoots ?? [],
-                  resourceRoots: module.manifest.resourceRoots ?? [],
-                })),
-                mergedRoot: path.join(reportBase, 'project'),
-                manifest,
-                kotlin: kotlinPreset,
-                policy: options,
-              })
-            : []),
-          ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
-          ...springFindings(projectRoot, manifest, options),
-        ],
-        { preset, javaStyle: options.javaStyle },
-      ),
-    ),
-  };
+  const findings = applyRuleMessages(
+    [
+      ...moduleFindings,
+      ...readDuplicateFindings(reportBase, { projectRoot }),
+      ...(kotlinPreset ? readKotlinDuplicateFindings(reportBase, projectRoot) : []),
+      ...(projectWide
+        ? projectWideFindings(projectRoot, {
+            projects: modules.map((module) => ({
+              reportRoot: module.reportRoot,
+              qualifier: module.key === ROOT_MODULE ? '' : module.dir,
+              sourceRoots: module.manifest.sourceRoots ?? [],
+              kotlinSourceRoots: module.manifest.kotlinSourceRoots ?? [],
+              resourceRoots: module.manifest.resourceRoots ?? [],
+            })),
+            mergedRoot: path.join(reportBase, 'project'),
+            manifest,
+            kotlin: kotlinPreset,
+            policy: options,
+          })
+        : []),
+      ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
+      ...springFindings(projectRoot, manifest, options),
+    ],
+    { preset, javaStyle: options.javaStyle },
+  );
+  return { findings: withJavaCountRatchets(findings) };
 }
 
 function moduleContextFindings(projectRoot, module, { manifest, modules, options }) {

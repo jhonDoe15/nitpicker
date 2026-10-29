@@ -1,44 +1,61 @@
 import {
   countInMessage,
   countPattern,
+  REMEDIES,
   withCountRatchets,
 } from '../../../../../shared/rules/counts/count-ratchet.mjs';
 
+const LITERAL = 'Use one constant for the literal.';
+
 const CHECKSTYLE_COUNTS = new Map([
   ['ExecutableStatementCount', countPattern('statement count is {count}', 'executable statements')],
-  ['AnonInnerLength', countPattern('class length is {count} lines', 'lines')],
-  ['FileLength', countPattern('File length is {count} lines', 'lines')],
+  ['AnonInnerLength', countPattern('class length is {count} lines', 'lines', REMEDIES.class)],
+  ['FileLength', countPattern('File length is {count} lines', 'lines', REMEDIES.file)],
   ['LambdaBodyLength', countPattern('body length is {count} lines', 'lines')],
   ['MethodLength', countPattern('length is {count} lines', 'lines')],
-  ['OuterTypeNumber', countPattern('Outer types defined is {count}', 'outer types')],
-  ['ParameterNumber', countPattern(String.raw`\(found {count}\)`, 'parameters')],
-  ['RecordComponentNumber', countPattern('record components is {count}', 'record components')],
-  ['MethodCount', countPattern('methods is {count}', 'methods')],
+  ['OuterTypeNumber', countPattern('Outer types defined is {count}', 'outer types', REMEDIES.file)],
+  [
+    'ParameterNumber',
+    countPattern(String.raw`\(found {count}\)`, 'parameters', REMEDIES.parameters),
+  ],
+  [
+    'RecordComponentNumber',
+    countPattern('record components is {count}', 'record components', REMEDIES.class),
+  ],
+  ['MethodCount', countPattern('methods is {count}', 'methods', REMEDIES.class)],
   [
     'BooleanExpressionComplexity',
-    countPattern('complexity is {count}', 'boolean expression complexity'),
+    countPattern('complexity is {count}', 'boolean operators', REMEDIES.condition),
   ],
   [
     'ClassDataAbstractionCoupling',
-    countPattern('Coupling is {count}', 'data abstraction coupling'),
+    countPattern('Coupling is {count}', 'instantiated classes', REMEDIES.coupling),
   ],
-  ['ClassFanOutComplexity', countPattern('Complexity is {count}', 'fan-out complexity')],
+  [
+    'ClassFanOutComplexity',
+    countPattern('Complexity is {count}', 'used classes', REMEDIES.coupling),
+  ],
   ['CyclomaticComplexity', countPattern('Complexity is {count}', 'cyclomatic complexity')],
   ['JavaNCSS', countPattern('is {count}', 'non-commenting source statements')],
   ['NPathComplexity', countPattern('Complexity is {count}', 'NPath complexity')],
-  ['NestedForDepth', countPattern('depth is {count}', 'for nesting depth')],
-  ['NestedIfDepth', countPattern('depth is {count}', 'if-else nesting depth')],
-  ['NestedTryDepth', countPattern('depth is {count}', 'try nesting depth')],
+  ['NestedForDepth', countPattern('depth is {count}', 'for nesting levels', REMEDIES.nesting)],
+  ['NestedIfDepth', countPattern('depth is {count}', 'if-else nesting levels', REMEDIES.nesting)],
+  ['NestedTryDepth', countPattern('depth is {count}', 'try nesting levels', REMEDIES.nesting)],
   ['ReturnCount', countPattern('Return count is {count}', 'return statements')],
   ['ThrowsCount', countPattern('Throws count is {count}', 'declared exceptions')],
+  ['MultipleStringLiterals', countPattern('appears {count} times', 'uses of the literal', LITERAL)],
   [
     'VariableDeclarationUsageDistance',
-    countPattern('first usage is {count}', 'statements between declaration and first use'),
+    countPattern(
+      'first usage is {count}',
+      'statements between declaration and first use',
+      'Declare the variable next to its first use.',
+    ),
   ],
 ]);
 
 const PMD_COUNTS = new Map([
-  ['AvoidDuplicateLiterals', countPattern('appears {count} times', 'repeats of the literal')],
+  ['AvoidDuplicateLiterals', countPattern('appears {count} times', 'uses of the literal', LITERAL)],
   ['CognitiveComplexity', countPattern('cognitive complexity of {count}', 'cognitive complexity')],
   [
     'CyclomaticComplexity',
@@ -46,7 +63,10 @@ const PMD_COUNTS = new Map([
   ],
   ['NPathComplexity', countPattern('NPath complexity of {count}', 'NPath complexity')],
   ['NcssCount', countPattern('NCSS line count of {count}', 'non-commenting source statements')],
-  ['CouplingBetweenObjects', countPattern('A value of {count} may denote', 'coupling')],
+  [
+    'CouplingBetweenObjects',
+    countPattern('A value of {count} may denote', 'coupled types', REMEDIES.coupling),
+  ],
 ]);
 
 const COUPLED_CLASSES = / classes \[.*\]/u;
@@ -73,6 +93,7 @@ export function withJavaCountRatchets(findings) {
           ...count,
           subject: count.subject.replace(COUPLED_CLASSES, ' classes'),
           unit: counted.unit,
+          remedy: counted.remedy,
         };
   });
 }
