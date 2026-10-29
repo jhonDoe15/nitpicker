@@ -15,14 +15,15 @@ export const EXPECTED_DIFFERENCES = [
   {
     runtime: 'deno',
     sample: 'typescript',
-    tools: ['typescript-typecheck'],
+    analyzer: 'typescript-typecheck',
     reason:
       'The TypeScript 7 engine cannot reach `tsgo` through its sync pipe channel (#476); set `tools.typescript.engine` to `"project"`.',
   },
   {
     platform: 'win32',
     sample: 'python',
-    tools: ['mutation'],
+    analyzer: 'mutation',
+    findingTools: ['mutmut'],
     reason:
       'mutmut needs `fork`, so Python mutation testing is skipped on native Windows; use WSL.',
   },
@@ -90,13 +91,22 @@ function describeDifference(run, { part, sign, key }) {
   return `${label(run)}: ${part} ${sign} ${key}`;
 }
 
-function involves(tools, difference) {
-  return tools.includes(toolOf(difference.kind, difference.key));
+export function coversDifference(expected, difference) {
+  const tool = toolOf(difference.kind, difference.key);
+  return difference.kind === 'toolErrors'
+    ? tool === expected.analyzer
+    : (expected.findingTools ?? [expected.analyzer]).includes(tool);
+}
+
+function isExpected(expected, difference) {
+  return expected.some((candidate) => coversDifference(candidate, difference));
 }
 
 function exitProblems(reference, run, allowed) {
   return PARTS.filter(
-    (part) => reference[part].exitCode !== run[part].exitCode && allowed.length === 0,
+    (part) =>
+      reference[part].exitCode !== run[part].exitCode &&
+      !allowed.some((difference) => difference.part === part),
   ).map(
     (part) =>
       `${label(run)}: ${part} exited ${String(run[part].exitCode)}, the reference ${String(reference[part].exitCode)}`,
@@ -105,25 +115,48 @@ function exitProblems(reference, run, allowed) {
 
 export function compareRuns(reference, run) {
   const expected = expectedDifferences(run);
-  const allowedTools = expected.flatMap(({ tools }) => tools);
   const found = differences(reference, run);
-  const allowed = found.filter((difference) => involves(allowedTools, difference));
-  const unexpected = found.filter((difference) => !involves(allowedTools, difference));
+  const allowed = found.filter((difference) => isExpected(expected, difference));
   const stale = expected
-    .filter(({ tools }) => !found.some((difference) => involves(tools, difference)))
+    .filter((candidate) => !found.some((difference) => coversDifference(candidate, difference)))
     .map(
-      ({ tools }) =>
-        `${label(run)}: the expected difference in ${tools.join(', ')} no longer occurs; update EXPECTED_DIFFERENCES and docs/compatibility.md`,
+      ({ analyzer }) =>
+        `${label(run)}: the expected difference in ${analyzer} no longer occurs; update EXPECTED_DIFFERENCES and docs/compatibility.md`,
     );
   return {
     problems: [
       ...invariantProblems(run),
-      ...unexpected.map((difference) => describeDifference(run, difference)),
+      ...found
+        .filter((difference) => !isExpected(expected, difference))
+        .map((difference) => describeDifference(run, difference)),
       ...exitProblems(reference, run, allowed),
       ...stale,
     ],
     allowed: allowed.map((difference) => describeDifference(run, difference)),
   };
+}
+
+export function referenceProblems(reference) {
+  const expectedExit = SAMPLES[reference.sample].allExitCode;
+  return [
+    ...invariantProblems(reference),
+    ...(reference.all.exitCode === expectedExit
+      ? []
+      : [
+          `${label(reference)}: --all exited ${String(reference.all.exitCode)}, not ${String(expectedExit)}`,
+        ]),
+    ...PARTS.flatMap((part) =>
+      reference[part].toolErrors.map(
+        (key) => `${label(reference)}: the reference run has a tool error in ${part}: ${key}`,
+      ),
+    ),
+  ];
+}
+
+function toolErrorNotes(run) {
+  return PARTS.flatMap((part) =>
+    run[part].toolErrorMessages.map((line) => `tool error in ${label(run)}, ${part}: ${line}`),
+  );
 }
 
 function readRuns(directory) {
@@ -141,10 +174,7 @@ function compareWithReference(reference, directory) {
   const { problems, allowed } = compareRuns(reference, run);
   return {
     problems,
-    notes: [
-      ...allowed.map((line) => `expected: ${line}`),
-      ...run.all.toolErrorMessages.map((line) => `tool error in ${label(run)}: ${line}`),
-    ],
+    notes: [...allowed.map((line) => `expected: ${line}`), ...toolErrorNotes(run)],
   };
 }
 
@@ -155,10 +185,10 @@ function compareDirectories(referenceDirectory, directories) {
   );
   return {
     problems: [
-      ...references.flatMap(invariantProblems),
+      ...references.flatMap(referenceProblems),
       ...comparisons.flatMap(({ problems }) => problems),
     ],
-    notes: comparisons.flatMap(({ notes }) => notes),
+    notes: [...references.flatMap(toolErrorNotes), ...comparisons.flatMap(({ notes }) => notes)],
   };
 }
 

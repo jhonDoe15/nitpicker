@@ -91,7 +91,7 @@ export function spawnSyncWithOutputFile(command, args, options = {}) {
       ...options,
       stdio: stdioWith(stdio, file.descriptor),
     });
-    if (result.output === null) {
+    if (!Array.isArray(result.output)) {
       return result;
     }
     const captured = capturedStdout({ command, args, result }, { file, encoding, maxBuffer });

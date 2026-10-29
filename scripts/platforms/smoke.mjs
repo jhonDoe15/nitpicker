@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
+import { cpSync, existsSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { parseArgs } from 'node:util';
@@ -52,7 +52,14 @@ function runNitpicker(runtime, root, args) {
   return result.status;
 }
 
-export function runSample(sample, runtime) {
+function keepReports(repository, directory) {
+  const reports = path.join(repository.root, 'reports');
+  if (existsSync(reports)) {
+    cpSync(reports, directory, { recursive: true });
+  }
+}
+
+export function runSample(sample, runtime, reportsDirectory) {
   const repository = createSampleRepository(sample);
   try {
     const allReports = path.join(repository.root, 'reports/all');
@@ -77,6 +84,9 @@ export function runSample(sample, runtime) {
       }),
     };
   } finally {
+    if (reportsDirectory !== undefined) {
+      keepReports(repository, reportsDirectory);
+    }
     repository.remove();
   }
 }
@@ -94,7 +104,7 @@ function main() {
   }
   mkdirSync(values.output, { recursive: true });
   for (const sample of positionals) {
-    const run = runSample(sample, values.runtime);
+    const run = runSample(sample, values.runtime, inside(values.output, `${sample}-reports`));
     writeFileSync(path.join(values.output, `${sample}.json`), `${JSON.stringify(run, null, 2)}\n`);
   }
 }

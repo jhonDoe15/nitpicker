@@ -21,6 +21,13 @@ on:
       - 'README.md'
       - 'LICENSE'
       - '.github/workflows/typescript.yml'
+      # docs/compatibility.md is generated from these; the staleness test checks it.
+      - '.github/workflows/java-e2e.yml'
+      - '.github/workflows/kotlin-e2e.yml'
+      - '.github/workflows/python-e2e.yml'
+      - '.github/workflows/platforms.yml'
+      - '.github/python-e2e-constraints.txt'
+      - 'docs/compatibility.md'
   pull_request:
     types: [labeled]
   workflow_dispatch:
