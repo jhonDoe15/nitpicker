@@ -2,6 +2,10 @@ import { nextOccurrence } from '../finding-helpers.mjs';
 
 export const COUNT = String.raw`(\d{1,3}(?:,\d{3})+|\d+)`;
 
+export function countPattern(template, unit) {
+  return { pattern: new RegExp(template.replace('{count}', COUNT), 'du'), unit };
+}
+
 export function countInMessage(message, pattern) {
   const match = pattern.exec(message);
   if (match === null || match.indices === undefined) {
