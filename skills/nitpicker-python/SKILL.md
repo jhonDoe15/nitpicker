@@ -52,6 +52,11 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   child task, never in a `with` inside the group that hands it to `start_soon`/`create_task`
   (`task-outlives-resource`). In Trio and AnyIO, an `await` in `finally:` or a cancellation handler
   needs `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True):` around it (`unshielded-cleanup-await`).
+- Timeouts: every path through a `trio.fail_after`, `move_on_after`, `anyio.fail_after`,
+  `asyncio.timeout` or `CancelScope(deadline=...)` block must reach a checkpoint. A branch that runs
+  blocking or CPU work without an `await` cannot be interrupted: `await asyncio.to_thread(work)`
+  (`trio.to_thread.run_sync`) or add `await asyncio.sleep(0)` first
+  (`timeout-scope-path-without-checkpoint`).
 - Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru), never `print`. A
   log in an `except` keeps the traceback (`logger.exception(...)` or `exc_info=True`); passing the
   error as an argument or `str(error)` drops it. Logging alone is not handling: also re-raise the

@@ -36,11 +36,13 @@ async def loop_that_always_runs():
             work()
 
 
-async def finally_checkpoint():
+async def else_checkpoint():
     with trio.move_on_after(5):
         try:
             work()
-        finally:
+        except ValueError:
+            raise
+        else:
             await cleanup()
 
 
