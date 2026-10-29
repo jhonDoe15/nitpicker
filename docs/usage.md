@@ -364,8 +364,9 @@ compared with the defaults. These changes are loosening:
   path, so updating a glob after a move is not loosening; a glob that covers no new code file is
   listed but does not fail. A `layout.entryPoints` entry makes the dead-code check treat the files
   as used and allows module-load effects and process access in them, and a `python.entryPoints`
-  entry only exempts them from `process-env-access` and `process-stream-access`; other checks still apply. A reviewer confirms
-  that a command or runtime loads each file without an import, and otherwise the entry is removed;
+  entry only exempts them from `process-env-access`, `process-stream-access` and
+  `import-time-effect`; other checks still apply. A reviewer confirms that a command or runtime
+  loads each file without an import, and otherwise the entry is removed;
 - a removed `layout.sourceRoots`, `layout.testRoots` or `python.sourceRoots` entry that still has
   checked files under it (Python's detected default counts when the setting is absent), and an
   added `layout.testRoots` entry that turns production code the base checked into test code;

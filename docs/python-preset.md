@@ -200,9 +200,9 @@ config error that names the right list). `python` is an error with any other pre
 
 `python.entryPoints` lists the files that start the program, such as a job runner or a worker that
 reads its settings from the environment or connects at import (see the composition roots below).
-Adding a file there loosens `process-env-access`, `process-stream-access` and `import-time-effect`, so the policy-change list
-reports it as a loosening and a removal as a change, like `layout.entryPoints`; the base snapshot is measured with the entry points both
-sides declare.
+Adding a file there loosens `process-env-access`, `process-stream-access` and `import-time-effect`,
+so the policy-change list reports it as a loosening and a removal as a change, like
+`layout.entryPoints`; the base snapshot is measured with the entry points both sides declare.
 
 The policy-change list also reads the project's own pytest and mutmut settings, because they shrink
 what the gate measures: `testpaths` that stop collecting a test file and an added `--ignore` or
@@ -243,7 +243,7 @@ snapshot alike, and every exception is listed in the report's config overrides. 
 when the config loads: a ruff code (or a prefix such as `PTH`, which covers every `PTH` code), a
 `python-rules` id, a mypy error code or a pyright or basedpyright `report*` rule; a typo such as `T210` is a config
 error, not a silent no-op. Prefer fixing the code; an exception is for code that is
-legitimately outside the rule, such as a command line entry point that prints or a module that
+legitimately outside the rule, such as a loop that must handle each item on its own or a module that
 must keep a mutable dataclass.
 
 **Per-function exceptions.** The function size limits, CRAP and changed-branch coverage take an
@@ -644,11 +644,12 @@ Details that are decisions rather than the table:
   Nothing under a `domain` folder is a composition root.
 - `process-stream-access` reports `sys.stdout`, `sys.stderr`, `sys.__stdout__` and `sys.__stderr__`,
   also through `from sys import stdout`, import aliases, `getattr(sys, "stdout")` and
-  `sys.modules["sys"]`, once per site in every non-test file that is not a composition root, as
+  `sys.modules["sys"]`, and `from sys import *` itself, once per site in every non-test file that is not a composition root, as
   defined for `process-env-access` above. Code under an `if __name__ == "__main__":` guard is exempt
   too, in any file. Every reference counts, including read-only facts such as
   `sys.stdout.isatty()` or `sys.stdout.encoding`: take them from the writer the entry point passes in.
-  `sys.stdin` is not reported. The allowed form is a `TextIO` parameter written with `out.write(...)`
+  A name counts only when the file imports it from `sys`, so a parameter or class called `sys`
+  in a file that does not import the module is not reported. `sys.stdin` is not reported. The allowed form is a `TextIO` parameter written with `out.write(...)`
   or `print(..., file=out)`, which ruff `T201` accepts; the entry point passes `sys.stdout` or
   `sys.stderr`. A function that only forwards the real stream is covered by a test that passes
   `io.StringIO()` or pytest's `capsys`; the passing line itself sits in the entry point or the
