@@ -42,6 +42,26 @@ number about a function (`nitpicker/cognitive-complexity`, `complexity`, `max-li
 | `eslint-logging`        | production source (tests excluded) | `languages/typescript/preset/eslint-config/policies/logging.config.mjs`        | enforceable |
 | `eslint-module-effects` | production source (tests excluded) | `languages/typescript/preset/eslint-config/policies/module-effects.config.mjs` | enforceable |
 
+### I/O and write rules
+
+The first five `nitpicker/` rules below read one shared notion of a call's effect (`database`,
+`remote` or `message`), resolved from the type checker first, then from summaries of project
+helpers (type- or import-proven effects only), then from receiver names where no type is known
+(for a call written in the loop or scope itself); their findings name the path through helpers.
+`no-lazy-relation-in-loop` reads TypeORM relation declarations and `no-accumulator-spread-in-reduce`
+reads the syntax (with the type checker to tell arrays and fixed records apart). Each finding is
+enforceable.
+
+| Rule                                        | Reports                                                                                                                                                                                                                                                                              |
+| ------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `nitpicker/no-io-in-loop`                   | a database query per loop item (also inside `Promise.all`, `for await`, `Array.from`, comparators), a remote request per item of a sequential loop; not a chunked call, a paging or polling loop whose call carries state across iterations, a retry, or an outbox relay's sent mark |
+| `nitpicker/no-lazy-relation-in-loop`        | a lazy TypeORM relation awaited per item of a `find`/`getMany` result that does not fetch it, directly or by a helper given the item (`rows.map(toDto)`)                                                                                                                             |
+| `nitpicker/no-remote-call-in-transaction`   | a remote call, direct or through helpers, inside a transaction that also runs a query; an early rollback in a guard clause does not end it                                                                                                                                           |
+| `nitpicker/no-remote-call-under-lock`       | a remote call, direct or through helpers, while a mutex or distributed lock is held; not a fill-once block (`if (!token) token = await refresh()`), and an early release in a guard clause does not end the lock                                                                     |
+| `nitpicker/no-retry-without-idempotency`    | a Stripe create without an idempotency key, a broker publish without a deduplication id or a plain SQL `INSERT` inside a retry wrapper or hand-written retry loop                                                                                                                    |
+| `nitpicker/no-dual-write`                   | a function that writes to the database and publishes a broker message at separate calls (outbox missing); not an outbox relay (a loop or single row read, published, then marked)                                                                                                    |
+| `nitpicker/no-accumulator-spread-in-reduce` | an accumulator copied on every step of `reduce` or of a loop (`acc = [...acc, x]`, an array's `acc.concat(x)`)                                                                                                                                                                       |
+
 ## Entry points
 
 | Check          | Rule                        | Threshold                                         | Status      |

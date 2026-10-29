@@ -23,6 +23,8 @@ const duplicate = "use('pending'); use('pending'); use('pending');";
 const secret = "const password = 'hunter2';";
 const flag = 'export function render(loud: boolean) { return loud ? 1 : 0; }';
 const loop = 'for (const id of ids) { await repository.findById(id); }';
+const request = 'for (const id of ids) { await httpClient.get(id); }';
+const concurrentQuery = 'await Promise.all(ids.map((id) => repository.findById(id)));';
 
 export const codeSmellFailureMessageCases = [
   ...[
@@ -35,10 +37,52 @@ export const codeSmellFailureMessageCases = [
     ['boolean flag names the exception', flag, EXCEPTION],
     ['I/O in a loop names the batched call', loop, 'findByIds'],
     ['I/O in a loop names the exception', loop, EXCEPTION],
+    ['request in a loop names bounded concurrency', request, 'p-limit'],
+    ['query in Promise.all names one query', concurrentQuery, 'in one query'],
+    [
+      'Redis command in a loop names mget and a pipeline',
+      'for (const id of ids) { await redisClient.get(id); }',
+      'pipeline()',
+    ],
+    [
+      'accumulator concat names pushing into the accumulator',
+      'xs.reduce((acc, x) => acc.concat([x]), []);',
+      'push into the accumulator',
+    ],
     [
       'accumulator spread names Object.fromEntries',
       'xs.reduce((acc, x) => ({ ...acc, [x.id]: x }), {});',
       'Object.fromEntries',
+    ],
+    [
+      'accumulator copied in a loop names pushing into an array',
+      'let all = []; for (const x of xs) { all = [...all, x]; }',
+      'push into an array',
+    ],
+    [
+      'remote call in a transaction names the outbox',
+      'await prisma.$transaction(async (tx) => { await tx.order.create({}); await fetch(url); });',
+      'outbox row',
+    ],
+    [
+      'remote call under a lock names releasing it first',
+      'await mutex.runExclusive(async () => { await fetch(url); });',
+      'after releasing it',
+    ],
+    [
+      'retried insert names the upsert',
+      "import pRetry from 'p-retry';\nawait pRetry(() => db.query('INSERT INTO t (id) VALUES (1)'));",
+      'ON CONFLICT',
+    ],
+    [
+      'dual write names the outbox',
+      "import { send } from 'kafkajs';\nexport async function run(o) { await orderRepository.save(o); await send(o); }",
+      'outbox table',
+    ],
+    [
+      'dual write names the relay',
+      "import { send } from 'kafkajs';\nexport async function run(o) { await orderRepository.save(o); await send(o); }",
+      'relay loop',
     ],
     ['generic file name names the exception', 'export const a = 1;', EXCEPTION, GENERIC_FILE],
     [

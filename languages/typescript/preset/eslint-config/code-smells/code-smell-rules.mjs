@@ -7,4 +7,9 @@ export const codeSmellProductionRules = {
   'nitpicker/no-generic-names': ERROR,
   'nitpicker/no-hardcoded-secret': ERROR,
   'nitpicker/no-io-in-loop': ERROR,
+  'nitpicker/no-lazy-relation-in-loop': ERROR,
+  'nitpicker/no-remote-call-in-transaction': ERROR,
+  'nitpicker/no-remote-call-under-lock': ERROR,
+  'nitpicker/no-retry-without-idempotency': ERROR,
+  'nitpicker/no-dual-write': ERROR,
 };

@@ -16,6 +16,17 @@ The gate can't check these; reviewers keep catching them.
 - Feature flags: one flag per feature, checked in the feature's `adapters/`. When a flag retires,
   delete the flag, its checks and the old path together.
 
+## Remote calls and writes
+
+- Moving a remote call out of a transaction or lock (the gate reports it inside) is not enough on
+  its own: decide what happens when one side fails. When the remote effect must match the commit,
+  write an outbox row in the transaction and send it from a worker.
+- A retried write needs a key that is the same on every attempt: derive it from the request (the
+  order id), never from a fresh `randomUUID()` per attempt. The gate checks that a key is passed,
+  not where it comes from.
+- Publishing an event next to a database write goes through the outbox, also when the gate cannot
+  see the broker (an in-house client, a webhook used as an event).
+
 ## Tests for a fix
 
 - Reproduce the failure through the path that broke (the missing input, the module boundary),

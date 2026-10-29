@@ -447,3 +447,39 @@ describe('findings another rule already covers', () => {
     ]);
   });
 });
+
+describe('findings of one rule in one function', () => {
+  const IO = 'nitpicker/no-io-in-loop';
+  const service = (calls, above = '') =>
+    [
+      'export const service = {',
+      '  sync: async (ids: string[]) => {',
+      `    ${above}for (const id of ids) {`,
+      ...calls.map((call) => `      await ${call}(id);`),
+      '    }',
+      '  },',
+      '};',
+      '',
+    ].join('\n');
+  const loopFindings = (calls, above) =>
+    findingFor({ code: service(calls, above), reported: calls, ruleId: IO, messageId: 'io' });
+
+  it('name the object-literal member they sit in', () => {
+    expect(loopFindings(['load']).map(({ symbol }) => symbol)).toEqual(['service.sync']);
+  });
+
+  it('keep their own baseline when lines move and another finding goes away', () => {
+    const base = loopFindings(['load', 'save']);
+
+    expect(compare(base, loopFindings(['load', 'save'], 'ids.sort();\n    ')).newFindings).toEqual(
+      [],
+    );
+    expect(compare(base, loopFindings(['save'])).newFindings).toEqual([]);
+  });
+
+  it('fail a second finding with the same reported text', () => {
+    expect(
+      compare(loopFindings(['load']), loopFindings(['load', 'load'])).newFindings,
+    ).toHaveLength(1);
+  });
+});
