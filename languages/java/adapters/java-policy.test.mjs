@@ -181,6 +181,30 @@ describe('the duplicate folder list', () => {
   });
 });
 
+describe('the baseline moves file', () => {
+  it('hands the renames of a change to the runner when the head run has them', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), { exclude: ['a/**'] });
+    const { args } = configured.createInvocation({
+      ...context(),
+      baselineMovesFile: '/tmp/moves.json',
+    });
+
+    expect(parseJavaRunnerArguments(args.slice(1)).policy).toMatchObject({
+      exclude: ['a/**'],
+      baselineMovesFile: '/tmp/moves.json',
+    });
+    expect(
+      parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1)).policy,
+    ).not.toHaveProperty('baselineMovesFile');
+  });
+
+  it('rejects the option without a file', () => {
+    expect(() =>
+      parseJavaRunnerArguments(['--project-root', '/p', '--baseline-moves-file']),
+    ).toThrow('--baseline-moves-file needs a file');
+  });
+});
+
 describe('project tool configs', () => {
   function projectWith(files) {
     const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-tools-'));
