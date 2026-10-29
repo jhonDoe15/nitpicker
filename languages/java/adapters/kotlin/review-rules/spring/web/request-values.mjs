@@ -13,8 +13,20 @@ const NAME_START = /^[\p{L}_]/u;
 const MEMBER_AFTER = /^\s*\??\./u;
 const NAMED_ARGUMENT = /^\s*=(?!=)/u;
 const SELECTED_BEFORE = /(?:\.|\?\.|::)\s*$/u;
-const TEMPLATE_CALL =
-  /(?:\.|\?\.)\s*(?:buildAndExpand|expand|path|pathSegment|queryParam|queryParams|replaceQueryParam|uriVariables)\s*\(/gu;
+const TEMPLATE_CALLS = [
+  'buildAndExpand',
+  'expand',
+  'path',
+  'pathSegment',
+  'queryParam',
+  'queryParams',
+  'replaceQueryParam',
+  'uriVariables',
+];
+const TEMPLATE_CALL = new RegExp(
+  String.raw`(?:\.|\?\.)\s*(?:${TEMPLATE_CALLS.join('|')})\s*\(`,
+  'gu',
+);
 const PAREN_STEP = { '(': 1, ')': -1 };
 const DIRECT = 'direct';
 const MEMBER = 'member';
@@ -60,21 +72,30 @@ function rootReference(text, index, name) {
     : [{ name, member: MEMBER_AFTER.test(after) }];
 }
 
+function scan(text) {
+  const open = withoutTemplateArguments(text);
+  const found = [];
+  const inner = [];
+  for (const match of open.matchAll(TOKEN)) {
+    const [token] = match;
+    if (token.startsWith('"')) {
+      const entries = templateEntries(token);
+      found.push(...entries.names);
+      inner.push(...entries.inner);
+    } else if (NAME_START.test(token)) {
+      found.push(...rootReference(open, match.index, token));
+    }
+  }
+  return { found, inner };
+}
+
 export function referencesIn(text) {
   const pending = [text];
   const found = [];
   for (const current of pending) {
-    const open = withoutTemplateArguments(current);
-    for (const match of open.matchAll(TOKEN)) {
-      const [token] = match;
-      if (token.startsWith('"')) {
-        const { names, inner } = templateEntries(token);
-        found.push(...names);
-        pending.push(...inner);
-      } else if (NAME_START.test(token)) {
-        found.push(...rootReference(open, match.index, token));
-      }
-    }
+    const scanned = scan(current);
+    found.push(...scanned.found);
+    pending.push(...scanned.inner);
   }
   return found;
 }
@@ -115,13 +136,18 @@ function sourceKind(view, parameter, members) {
     : undefined;
 }
 
+function inRegion(view, scope, region) {
+  return regionOf(view, scope)?.id === region.id;
+}
+
 function carriers(view, region) {
-  const inRegion = ({ scope }) => regionOf(view, scope)?.id === region.id;
   return [
-    ...view.file.locals.filter(inRegion).map(({ name, value }) => ({ name, text: value })),
+    ...view.file.locals
+      .filter(({ scope }) => inRegion(view, scope, region))
+      .map(({ name, value }) => ({ name, text: value })),
     ...view.file.invocations
       .filter(({ assign, receiver }) => assign === true && receiver === undefined)
-      .filter(inRegion)
+      .filter(({ scope }) => inRegion(view, scope, region))
       .map(({ name, arguments: given }) => ({ name, text: given[0]?.text })),
   ];
 }
