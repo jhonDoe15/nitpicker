@@ -1,4 +1,5 @@
 import { JSCPD_PROJECT_FILE } from '../../../shared/conventions/tool-precedence.mjs';
+import { addedEntries, shownValue } from '../config-value-changes.mjs';
 import { JSCPD_MODES, JSCPD_SIZE } from './config.mjs';
 
 const UNITS = { b: 1, k: 1024, m: 1024 ** 2, g: 1024 ** 3 };
@@ -18,10 +19,6 @@ function lowerLimit(measure) {
     head !== undefined && (base === undefined || measure(head) < measure(base));
 }
 
-function addedEntries(base = [], head = []) {
-  return head.some((entry) => !base.includes(entry));
-}
-
 const LOOSENS = {
   minTokens: raisedMinimum('minTokens'),
   minLines: raisedMinimum('minLines'),
@@ -33,16 +30,12 @@ const LOOSENS = {
   ignorePattern: addedEntries,
 };
 
-function shown(value) {
-  return value === undefined ? 'not set' : JSON.stringify(value);
-}
-
 export function jscpdConfigChanges({ base, head }) {
   const keys = [...new Set([...Object.keys(base), ...Object.keys(head)])].toSorted();
   return keys
     .filter((key) => JSON.stringify(base[key]) !== JSON.stringify(head[key]))
     .map((key) => {
-      const text = `jscpd ${JSCPD_PROJECT_FILE} ${key}: ${shown(base[key])} -> ${shown(head[key])}`;
+      const text = `jscpd ${JSCPD_PROJECT_FILE} ${key}: ${shownValue(base[key])} -> ${shownValue(head[key])}`;
       return LOOSENS[key](base[key], head[key])
         ? { loosened: { text, kind: 'tool-config', files: [JSCPD_PROJECT_FILE] } }
         : { changed: text };

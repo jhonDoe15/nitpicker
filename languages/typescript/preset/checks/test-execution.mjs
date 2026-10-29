@@ -10,7 +10,7 @@ const COVERAGE_CONFIGURATION_FILES = [
   'shared/policy.mjs',
   'languages/typescript/adapters/test-runners/v8-coverage/loaded-sources.cjs',
   'languages/typescript/adapters/test-runners/vitest/test-timeouts-setup.mjs',
-  'languages/typescript/preset/project-configs/test-runner-config.mjs',
+  'languages/typescript/preset/project-configs/test-runner/test-runner-config.mjs',
   'languages/typescript/preset/defaults/vitest.quality.config.ts',
   'languages/typescript/preset/layout.mjs',
   'languages/typescript/preset/head-policy.mjs',
@@ -63,7 +63,7 @@ export function testExecutionChecksFor(exclusions) {
       timeoutMs: 30 * MINUTE_MS,
       configurationFiles: [
         'languages/typescript/preset/tool-configs.mjs',
-        'languages/typescript/preset/project-configs/typescript-project-options.mjs',
+        'languages/typescript/preset/project-configs/typescript/typescript-project-options.mjs',
         'languages/typescript/preset/modules/selected-project-tsconfig.mjs',
         JAVASCRIPT_PRESET_FILE,
         'languages/typescript/preset/defaults/stryker.config.mjs',

@@ -1,18 +1,31 @@
-import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { validateConfig } from '../../../../core/configuration/validate.mjs';
-import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { validateConfig } from '../../../../../core/configuration/validate.mjs';
+import { PACKAGE_ROOT } from '../../../../../core/tooling/tool-resolution.mjs';
 import {
   loadTypeScript,
   preEmitDiagnostics,
-} from '../../adapters/typecheck/typescript-program.mjs';
-import { resolveHeadPolicy, withHeadCheckoutFacts } from '../head-policy.mjs';
-import { resolveLayoutFor } from '../layout.mjs';
-import { layoutTransformFor } from '../tool-configs.mjs';
-import { ignoredScriptToolNotices } from './ignored-notices.mjs';
-import { projectStrictValues } from './typescript-project-options.mjs';
+} from '../../../adapters/typecheck/typescript-program.mjs';
+import { resolveHeadPolicy, withHeadCheckoutFacts } from '../../head-policy.mjs';
+import { resolveLayoutFor } from '../../layout.mjs';
+import { layoutTransformFor } from '../../tool-configs.mjs';
+import { typescriptIgnoredNotices } from '../ignored-notices.mjs';
+import { typescriptVersion } from '../../modules/tsconfig-files.mjs';
+import {
+  projectStrictValues,
+  projectTsconfigFiles,
+  readTypescriptProjectConfig,
+} from './typescript-project-options.mjs';
 
 const roots = [];
 
@@ -32,6 +45,7 @@ function projectWith(files) {
   return root;
 }
 
+const options = (compilerOptions, extra = {}) => JSON.stringify({ compilerOptions, ...extra });
 const ORDERINGS = [['nitpicker'], ['project'], ['project', 'nitpicker'], ['nitpicker', 'project']];
 const EACH_ORDERING = ORDERINGS.map((precedence) => [precedence]);
 
@@ -171,18 +185,28 @@ describe('the project tsconfig compiler options', () => {
       [
         {},
         { 'tsconfig.json': '{"extends": "./missing.json"}' },
-        'tsconfig.json cannot be read: Cannot read file',
+        `tsconfig.json cannot be read by TypeScript ${typescriptVersion()}: Cannot read file`,
       ],
     ];
     for (const [config, files, message] of cases) {
       const root = projectWith(files);
       const policy = resolveHeadPolicy(
-        { ...config, tools: { typescript: { precedence: ['nitpicker', 'project'] } } },
+        { ...config, tools: { typescript: { precedence: ['project', 'nitpicker'] } } },
         root,
       );
       expect(policy.tools.typescript.projectConfigError).toContain(message);
       expect(() => generatedConfig('tsconfig.quality.json', policy, root)).toThrow(message);
     }
+  });
+
+  it('are a tool error when the tsconfig is a link that leaves the project', () => {
+    const outside = projectWith({ 'shared.json': '{}' });
+    const root = projectWith({ 'src/a.ts': SOURCE });
+    symlinkSync(path.join(outside, 'shared.json'), path.join(root, 'tsconfig.json'));
+
+    expect(policyFor(['project'], root).tools.typescript.projectConfigError).toBe(
+      'tsconfig.json must stay inside the project',
+    );
   });
 
   it('are not read without the opt-in, even when the tsconfig cannot be parsed', () => {
@@ -212,15 +236,131 @@ describe('the TypeScript precedence setting', () => {
 
   it('prints a notice for the strict options the tsconfig relaxes while not opted in', () => {
     const root = relaxedProject();
-    const notices = (config) => ignoredScriptToolNotices({ config, projectRoot: root });
+    const notices = (config) => typescriptIgnoredNotices({ config, projectRoot: root });
 
     expect(notices({})).toEqual([
       'Ignoring strict: false, noUncheckedIndexedAccess: false in tsconfig.json; opt in with "tools": { "typescript": { "precedence": ["project", "nitpicker"] } }',
     ]);
+    expect(notices({ tools: { typescript: { precedence: ['nitpicker'] } } })).toEqual(notices({}));
     expect(notices({ tools: { typescript: { precedence: ['nitpicker', 'project'] } } })).toEqual(
       [],
     );
     expect(notices({ tools: { typescript: { project: 'tsconfig.json' } } })).toEqual([]);
-    expect(ignoredScriptToolNotices({ config: {}, projectRoot: relaxedProject('{}') })).toEqual([]);
+    expect(typescriptIgnoredNotices({ config: {}, projectRoot: relaxedProject('{}') })).toEqual([]);
+  });
+
+  it('says so when the tsconfig cannot be read to look for relaxed strict options', () => {
+    const root = projectWith({ 'tsconfig.json': '{"compilerOptions": [' });
+
+    expect(typescriptIgnoredNotices({ config: {}, projectRoot: root })).toEqual([
+      'Could not check the tsconfig for relaxed strict options: tsconfig.json cannot be read by TypeScript ' +
+        `${typescriptVersion()}: ']' expected.`,
+    ]);
+  });
+});
+
+describe('the project tsconfig compiler options that nitpicker owns or does not read', () => {
+  const OWNED = { allowJs: true, noCheck: false, noEmit: true, skipLibCheck: true };
+  const strictness = (compilerOptions) =>
+    projectWith({
+      'tsconfig.json': JSON.stringify({ compilerOptions, include: ['src'] }),
+      'src/a.ts': SOURCE,
+    });
+  const pickedOwned = (compilerOptions) =>
+    Object.fromEntries(Object.entries(compilerOptions).filter(([option]) => option in OWNED));
+  const compilerOptionsOf = (name, precedence, root) =>
+    JSON.parse(readFileSync(generatedConfig(name, policyFor(precedence, root), root), 'utf8'))
+      .compilerOptions;
+
+  it.each([
+    [{ allowJs: false, noCheck: true, noEmit: false, skipLibCheck: false }],
+    [{ allowJs: true, noCheck: false, noEmit: true, skipLibCheck: true }],
+  ])('keep %j out of the project values for every ordering', (compilerOptions) => {
+    for (const [precedence] of EACH_ORDERING) {
+      const root = strictness(compilerOptions);
+      const quality = compilerOptionsOf('tsconfig.quality.json', precedence, root);
+      const mutation = compilerOptionsOf('tsconfig.stryker.json', precedence, root);
+
+      expect(pickedOwned(quality)).toEqual(OWNED);
+      expect(pickedOwned(mutation)).toEqual({ noCheck: false, skipLibCheck: true });
+    }
+  });
+
+  it('still type checks when the project turns checking off', async () => {
+    const root = relaxedProject(
+      JSON.stringify({ compilerOptions: { lib: ['ES2022'], types: [], noCheck: true } }),
+    );
+    const configPath = generatedConfig('tsconfig.quality.json', policyFor(['project'], root), root);
+
+    expect(await errorCodes('native', configPath, root)).toEqual(STRICT_ERRORS);
+  });
+
+  it('lets the value of alwaysStrict the project sets win, outside the strict family', () => {
+    expect(projectStrictValues({ strict: false, alwaysStrict: false }, true)).toEqual({
+      strict: false,
+      noImplicitAny: false,
+      strictNullChecks: false,
+      strictFunctionTypes: false,
+      strictBindCallApply: false,
+      strictPropertyInitialization: false,
+      noImplicitThis: false,
+      useUnknownInCatchVariables: false,
+      alwaysStrict: false,
+    });
+  });
+
+  it('read the jsconfig.json of a JavaScript project without a tsconfig.json', () => {
+    const root = projectWith({ 'jsconfig.json': options({ strict: false }), 'src/a.js': '' });
+    const policy = resolveHeadPolicy(
+      { preset: 'javascript', tools: { typescript: { precedence: ['project'] } } },
+      root,
+    );
+
+    expect(policy.tools.typescript.projectConfig.compilerOptions.strict).toBe(false);
+    expect(() =>
+      readTypescriptProjectConfig(root, { javascript: false, sourceRoots: ['src'] }),
+    ).toThrow('a tsconfig.json is missing');
+  });
+
+  it('prefers the tsconfig.json to a jsconfig.json and follows a solution config', () => {
+    const root = projectWith({
+      'tsconfig.json': JSON.stringify({ files: [], references: [{ path: './tsconfig.app.json' }] }),
+      'tsconfig.app.json': options({ strict: false }, { include: ['src'] }),
+      'jsconfig.json': options({ strict: true }),
+      'src/a.ts': SOURCE,
+    });
+    const layout = { javascript: true, sourceRoots: ['src'] };
+
+    expect(readTypescriptProjectConfig(root, layout).compilerOptions.strict).toBe(false);
+    expect(projectTsconfigFiles(root, layout)).toEqual(['tsconfig.app.json', 'tsconfig.json']);
+  });
+});
+
+describe('the head policy when the opt-in changes', () => {
+  it('lets a base that opted in follow a head that removed the opt-in', () => {
+    const baseRoot = relaxedProject();
+    const head = policyFor(['nitpicker'], baseRoot);
+    const base = withHeadCheckoutFacts(
+      { tools: { typescript: { precedence: ['project'] } } },
+      head,
+    );
+
+    expect(base.tools.typescript).toEqual({ precedence: ['nitpicker'] });
+    expect(() => generatedConfig('tsconfig.quality.json', base, baseRoot)).not.toThrow();
+    expect(() =>
+      withHeadCheckoutFacts({ tools: { typescript: { precedence: ['project'] } } }, {}),
+    ).not.toThrow();
+  });
+
+  it('does not read the tsconfig while nitpicker wins every option the project could set', () => {
+    const missing = projectWith({});
+    const broken = projectWith({ 'tsconfig.json': '{"compilerOptions": [' });
+
+    for (const root of [missing, broken]) {
+      const policy = policyFor(['nitpicker', 'project'], root);
+
+      expect(policy.tools.typescript).toEqual({ precedence: ['nitpicker', 'project'] });
+      expect(() => generatedConfig('tsconfig.quality.json', policy, root)).not.toThrow();
+    }
   });
 });

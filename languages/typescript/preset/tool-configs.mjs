@@ -17,7 +17,7 @@ import {
   extendedProjectTsconfig,
   projectStrictOverrides,
   strictCompilerOptions,
-} from './project-configs/typescript-project-options.mjs';
+} from './project-configs/typescript/typescript-project-options.mjs';
 import { selectedProjectTsconfig } from './modules/selected-project-tsconfig.mjs';
 import { END_TO_END_ROOT, sourceRoots, testRoots } from './layout.mjs';
 
@@ -209,12 +209,13 @@ const MUTANT_STRICTNESS_OPTIONS = new Set([
   'noUncheckedIndexedAccess',
 ]);
 
-const ANALYSIS_OPTIONS = { allowJs: true, noEmit: true, skipLibCheck: true };
+const ANALYSIS_OPTIONS = { allowJs: true, noCheck: false, noEmit: true, skipLibCheck: true };
 
 function projectLayeredMutationTsconfig(extended, { strictMutants, layout }) {
   return {
     extends: extended,
     compilerOptions: {
+      noCheck: false,
       skipLibCheck: true,
       ...(strictMutants ? POLICY_COMPILER_OPTIONS : {}),
       ...strictOverrides(layout, Object.keys(POLICY_COMPILER_OPTIONS)),
