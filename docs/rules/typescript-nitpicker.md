@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 79 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 80 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -697,6 +697,20 @@ Allow only features, shared and the composition root under src/main.
   - '{{folder}}/' is not a layer of this layout. Under src/main/ put code in features/\<name>/ (domain/ for pure logic, adapters/ for I/O), in shared/ when several features need it, or in the composition root. An exception fits only when this folder is deliberate.
   - '{{folder}}/' is not a layer of a feature. A feature holds domain/ for pure logic and adapters/ for I/O (and ui/ for components in a React project), and its public index.ts. An exception fits only when this folder is deliberate.
   - '{{folder}}' sits directly in a feature folder, which holds only its public index.ts besides domain/ and adapters/ (and ui/ for components in a React project). Move it into domain/ if it is pure logic or adapters/ if it does I/O. An exception fits only when the file is deliberate.
+
+<a id="eslint-nitpicker-no-unowned-async-assertion"></a>
+
+### `eslint/nitpicker/no-unowned-async-assertion`
+
+Require tests to wait for the callbacks that hold their assertions.
+
+- **Printed as:** `eslint-lint/nitpicker/no-unowned-async-assertion`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-unowned-async-assertion","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - This assertion runs in a `{{host}}` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or fake the timers and advance them past it in the test. An exception fits only when the test waits for the callback in a way nitpicker cannot see.
+  - This assertion runs in a `{{host}}` callback the test does not wait for: the test function returns first, so a failure is lost or blamed on another test. Await a promise the callback resolves, or `await` after scheduling it so it runs before the test ends. An exception fits only when the test waits for the callback in a way nitpicker cannot see.
+  - This assertion runs in a `{{host}}` handler, and nothing after it in the test triggers the event or waits for it, so the event can arrive after the test has finished and a failure is lost or blamed on another test. Trigger the event in the test after adding the handler, or await it (`await once(emitter, 'ready')`, or a promise the handler resolves). An exception fits only when the test waits for the callback in a way nitpicker cannot see.
+  - This assertion runs in the callback of `{{host}}`, which Node calls after the test function returns, so a failure is lost or blamed on another test. Await the promise form of the API (`node:fs/promises`, `util.promisify`) instead. An exception fits only when the test waits for the callback in a way nitpicker cannot see.
 
 <a id="eslint-nitpicker-no-unsafe-deserialization"></a>
 

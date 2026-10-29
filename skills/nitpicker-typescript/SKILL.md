@@ -166,6 +166,9 @@ To learn why a rule is on and what form it allows before you write or change cod
   Don't pin call order or messages just to kill it. If an input can kill it, add that test; never
   delete a schema rule to silence it.
 - No per-test git repos, child processes, servers, fixed sleeps, or raised timeouts.
+- Wait for every callback that asserts: `await once(emitter, 'ready')`, await a promise the
+  callback resolves, or advance fake timers in the test. An assertion in a timer, listener or
+  error-first callback the test does not wait for runs after it ends and its failure is lost.
 - Give synchronous `child_process` calls in integration tests and shared test helpers a positive
   subprocess `timeout`, such as `{ timeout: 10_000 }`. The runner's test timeout cannot interrupt
   `spawnSync`, `execSync` or `execFileSync` while they block the event loop.

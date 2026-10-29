@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 241 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 242 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -508,6 +508,17 @@ When deriving an array of a specific class from your Collection, one should prov
 - **Allowed form:** Pass a correctly typed array to toArray (list.toArray(new String[0])) or use list.toArray(String[]::new).
 - **Exception:** If this is intended, add `{"rule":"pmd/ClassCastExceptionWithToArray","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#classcastexceptionwithtoarray)
+
+<a id="pmd-classloadeffect"></a>
+
+### `pmd/ClassLoadEffect`
+
+In main sources: a call with an external effect that runs while the class loads: in a `static` block or `static` field initializer (interface constants too), an enum constant's arguments or body fields, an anonymous class created in one of those (double-brace initialization), the field, instance initializer or constructor of an instance the class creates in its own `static` code (`static final Db INSTANCE = new Db()`, `new Box<>()`, a `static` factory such as `INSTANCE = create()`, a constructor that `this(...)` reaches from the one created), or a method of the same class that one of those calls without a receiver, on `this` or through the class name. Effects, by resolved type: JDBC (`DriverManager.getConnection`, `DataSource.getConnection`, `Persistence.createEntityManagerFactory`), pools and clients that connect when built (`new HikariDataSource(config)`, `MongoClients.create`, Lettuce `RedisClient.connect`, `new KafkaProducer`), network calls (`HttpClient.send`, `URL.openConnection`/`openStream`, `new Socket(host, port)`, `new ServerSocket(port)`, `DatagramSocket`, `InetAddress.getByName`/`getLocalHost`, OkHttp and Retrofit `Call.execute`, Apache `HttpClient.execute`, `RestTemplate` requests, `RestClient` `retrieve()`, a `WebClient` result that is `block()`ed or subscribed), file I/O (every `Files` method, statically imported ones too, `FileInputStream`, `FileOutputStream`, `FileReader`, `FileWriter`, `RandomAccessFile`, `ZipFile`, a `PrintWriter`, `PrintStream` or `Formatter` on a file name, a `Scanner` on a `File` or `Path`, `File` methods that touch the disk), processes, threads and waits (`ProcessBuilder.start`/`startPipeline`, `Runtime.exec`, `Thread.start`, `Thread.Builder.start`, `Thread.sleep`, `Executors.new*`, `new ThreadPoolExecutor`, `new ForkJoinPool`, `new Timer`, executor, pool and timer `submit`/`execute`/`invoke*`/`schedule*` (`ForkJoinPool.commonPool().submit(...)` too), `CompletableFuture.runAsync`/`supplyAsync`) and JVM-wide settings (`System.setProperty`, `setOut`, `setErr`, `Runtime.addShutdownHook`, `Locale.setDefault`, `TimeZone.setDefault`, `Thread.setDefaultUncaughtExceptionHandler`). The message names the call, the class that loads and the member that runs it.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** Do this work in a method that main or the framework calls after startup (a @Bean method, an ApplicationRunner) and pass the result in, or create it on first use in a lazy holder class: this call runs while its class loads (in a static field or block, an enum constant, the constructor or initializer of an instance created at load, or a method one of them calls), so it connects, starts threads, sleeps or touches files in whatever order classes load, and in every test that touches the class. Constants, loggers, Pattern.compile and collections can stay static, and the class with main is not checked.
+- **Exception:** If this is intended, add `{"rule":"pmd/ClassLoadEffect","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-clonemethodmustbepublic"></a>
 

@@ -28,6 +28,7 @@ const DIFF_REPORTS = [
     render: (report, { reference }) => json(withHelpUris(heldFindingsOf(report), reference)),
   },
   { name: 'tool-errors.json', render: (report) => json(report.toolErrors) },
+  { name: 'notes.json', render: (report) => json(report.notes ?? []) },
   { name: TEXT_REPORT_FILE_NAME, render: renderTextReport },
   { name: 'report.junit.xml', render: renderJunitReport },
   { name: 'report.sarif', render: renderSarifReport },
