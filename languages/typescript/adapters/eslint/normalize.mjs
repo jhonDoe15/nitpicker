@@ -15,11 +15,11 @@ import {
   nodeChain,
 } from './syntax.mjs';
 import {
-  growthAdviceFor,
   metricGrowth,
   routedEslintFields,
   withoutFatalDirectives,
 } from '../hints/eslint-hints.mjs';
+import { growthAdviceFor } from '../hints/growth-advice.mjs';
 import { requiredString, positiveInteger } from './arguments.mjs';
 
 export function normalizeEslintResults({ value, projectRoot, analyzerName }) {

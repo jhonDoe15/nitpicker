@@ -106,19 +106,6 @@ const UNUSED_VARIABLE_HINT = ' Remove it, or use it.';
 
 const DEPRECATED_HINT = ` Call the replacement that the deprecation names instead of the deprecated API. An exception fits only when it names none and the API cannot be avoided.`;
 
-const NO_THROW_GROWTH_FORM =
-  'Edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.';
-
-const GROWTH_ADVICE = new Map([
-  [
-    'nitpicker/no-throw',
-    {
-      growthAdvice: `${NO_THROW_GROWTH_FORM} This function had {base} of these at base and the count may not grow: a throw on a new line counts as new even when the count holds.`,
-      growthAllowedForm: NO_THROW_GROWTH_FORM,
-    },
-  ],
-]);
-
 function hinted(text, hint) {
   return { message: `${text}${hint}`, allowedForm: hint.replace(/^[.\s]+/u, '') };
 }
@@ -289,11 +276,6 @@ export function routedEslintFields(options) {
     message: withEslintRoute(message, { rule: options.ruleId, path: options.relativePath }),
     ...definedField('allowedForm', allowedForm),
   };
-}
-
-/** The ratchet fields that tell a count rule what to do when its count grows; undefined for other rules. */
-export function growthAdviceFor(ruleId) {
-  return GROWTH_ADVICE.get(ruleId);
 }
 
 const UNSUPPORTED_DIRECTIVE_TEXT = '/* eslint-env */ comments are no longer supported';
