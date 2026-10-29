@@ -1022,6 +1022,14 @@ fails only when it grows, and a package folder moved to a new path is matched to
 | KT3 | Structure, CRAP, duplicates, coupling (#178) | Done: structure limits and CRAP from a PSI metrics step (a token-based reader misreads Kotlin), jscpd with the Kotlin format and jdeps over Kotlin classes. |
 | KT4 | Changed coverage and mutation (#179)         | Done: `changed-branch-coverage` on Kotlin with generated-branch filtering; PIT on Kotlin classes, report-only.                                              |
 
+## Tools evaluated and not integrated
+
+- [Infer](infer-evaluation.md): not integrated; the license finding applies to Kotlin too, and its Kotlin
+  support captures `kotlinc` invocations only, not Gradle or Maven Kotlin builds.
+- [BlockHound](blockhound-evaluation.md): not integrated by nitpicker. With the `kotlinx-coroutines-debug`
+  integration on the test classpath it flags a blocking call on `Dispatchers.Default` and accepts it on
+  `Dispatchers.IO`; a project opts in with its own test dependencies and JVM flag.
+
 ## Known limits
 
 - Multi-module builds: every project with the Kotlin plugin is analyzed and its findings carry

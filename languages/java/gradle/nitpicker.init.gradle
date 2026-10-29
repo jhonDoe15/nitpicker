@@ -622,6 +622,14 @@ allprojects {
                           '--threads', '2',
                           '--failWhenNoMutations', 'false',
                           '--verbose', 'false'])
+                    // The minions run the project's tests, so they get the JVM arguments and system properties
+                    // the test task sets (BlockHound's redefinition flag, --add-opens; Gradle keeps -D apart);
+                    // PIT splits its list on commas.
+                    def testJvmArgs = ((source.jvmArgs ?: []) + source.systemProperties.collect { key, value ->
+                        "-D${key}=${value}".toString() }).findAll { !it.contains(',') }
+                    if (!testJvmArgs.isEmpty()) {
+                        args '--jvmArgs', testJvmArgs.join(',')
+                    }
                     if (source.options instanceof org.gradle.api.tasks.testing.junitplatform.JUnitPlatformOptions) {
                         if (!source.options.includeTags.isEmpty()) {
                             args '--includedGroups', source.options.includeTags.toList().sort().join(',')

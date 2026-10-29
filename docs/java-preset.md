@@ -273,7 +273,12 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   classes (its `include` and `exclude` patterns applied), its runtime classpath, so tasks on
   different library versions never share one, and, for a JUnit Platform task, its `includeTags` and
   `excludeTags`, which select the tests PIT runs during the green-suite check and mutation testing,
-  including method-level tags. A task the build skips has no run. With more than one run, each
+  including method-level tags, and its own `jvmArgs` and `systemProperties` (PIT's minion JVMs run the tests, so a flag the
+  tests need, such as `--add-opens` or BlockHound's `-XX:+AllowRedefinitionToAddDeleteMethods`, reaches
+  them through `--jvmArgs`; Gradle's and JaCoCo's agents are not task `jvmArgs` and stay out). On Maven
+  the same arguments come from the surefire `<argLine>` of the module's effective POM, with `@{...}` and
+  `${...}` references (JaCoCo's `@{argLine}`) dropped and the rest split on whitespace. An argument that
+  holds a comma is left out, because PIT splits its list on commas. A task the build skips has no run. With more than one run, each
   writes `pit/<task>/mutations.xml` and `nitpickerPit` merges them into `pit/mutations.xml`: a mutant
   counts as killed when any run killed it, as when one run holds every test, which is what Maven's
   single PIT run does. The JUnit Platform is not pinned by
@@ -2328,6 +2333,16 @@ in it against the catalogs and Error Prone's check list.
   branch-coverage gate are described in their own sections.
 - Kotlin sources (see [kotlin-preset.md](kotlin-preset.md)), Groovy sources, Maven (since added, see
   [Maven builds](#maven-builds)).
+
+## Tools evaluated and not integrated
+
+- [Infer](infer-evaluation.md) (RacerD, Starvation, Scope Leakage): not integrated. The Java analyzer of the
+  release includes GPL-3.0-or-later code, it adds only a few annotation-driven checks over the shipped
+  tools, and its finding key collides across packages. The page lists the rule ideas worth owning and the
+  issues that track them.
+- [BlockHound](blockhound-evaluation.md) (runtime blocking-call detection in reactive tests): not
+  integrated by nitpicker, supported as a project's own opt-in in Gradle and Maven builds. The page lists
+  the JVM flag it needs, the JaCoCo and PIT behavior, and what a project has to configure.
 
 ## Tests
 
