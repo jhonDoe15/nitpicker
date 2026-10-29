@@ -1,6 +1,8 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { listRuffRules, ruffConfigFor } from '../../configuration/python-ruff-config.mjs';
+import { PYTHON_SETTING_IDS } from '../../../conventions/python-conventions.mjs';
+import { followed } from '../../formatting/format-options.mjs';
 import { readRuffLayers } from '../../formatting/project-format-config.mjs';
 import {
   attempt,
@@ -76,11 +78,20 @@ function layeredConfig({ nitpicker, project, catalog, nitpickerFirst }) {
   };
 }
 
+function lineLength({ conventions = {} }, { layers, own }) {
+  const measured = conventions[PYTHON_SETTING_IDS.lineLength];
+  const projectWins =
+    layers?.nitpickerFirst === false &&
+    own !== undefined &&
+    (measured === undefined || measured === String(own));
+  return projectWins ? String(own) : followed(conventions, 'lineLength');
+}
+
 export function ruffLintConfig(context) {
   const nitpickerFile = ruffConfigFor(context);
   const layers = toolLayers(context, RUFF_TOOL);
   if (!layers.optedIn) {
-    return { file: nitpickerFile, setsTargetVersion: false };
+    return { file: nitpickerFile, setsTargetVersion: false, lineLength: lineLength(context, {}) };
   }
   const found = requireProjectConfig(readProject(layers.configRoot), {
     tool: RUFF_TOOL,
@@ -103,5 +114,9 @@ export function ruffLintConfig(context) {
   });
   const file = path.join(context.reportRoot, LAYERED_CONFIG);
   writeFileSync(file, stringifyToml(config));
-  return { file, setsTargetVersion: config['target-version'] !== undefined };
+  return {
+    file,
+    setsTargetVersion: config['target-version'] !== undefined,
+    lineLength: lineLength(context, { layers, own: config['line-length'] }),
+  };
 }

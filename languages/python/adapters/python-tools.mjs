@@ -156,6 +156,8 @@ export function lint(context) {
       '--config',
       config.file,
       ...(config.setsTargetVersion ? [] : ['--target-version', context.project.targetVersion]),
+      '--line-length',
+      config.lineLength,
       ...pytestStyleFlags(style),
       '--ignore-noqa',
       '--no-cache',

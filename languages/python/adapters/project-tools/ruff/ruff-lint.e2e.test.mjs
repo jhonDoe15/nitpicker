@@ -44,6 +44,15 @@ const PROJECT_RULES = [
   'D103 src/shop/app.py',
   'D103 src/shop/app.py',
 ];
+const TERNARY = [
+  'def pick(flag):',
+  '    if flag:',
+  '        chosen_label_for_the_report = "the first rather long label text"',
+  '    else:',
+  '        chosen_label_for_the_report = "the other long label"',
+  '    return chosen_label_for_the_report',
+  '',
+].join('\n');
 const UNUSED_VARIADIC = ['ARG001 src/shop/app.py', 'ARG002 src/shop/app.py'];
 
 function findings(precedence, options = {}) {
@@ -104,6 +113,27 @@ describe.skipIf(!pythonE2eEnabled)('ruff lint with the project config end to end
         exclude: ['src/legacy/**'],
       }),
     ).toEqual(['D100 src/shop/app.py', 'T201 src/shop/app.py']);
+  });
+
+  it('checks against the followed line length in every ordering', () => {
+    const wide = { 'src/shop/pick.py': TERNARY, 'ruff.toml': 'line-length = 120\n' };
+    const measured = (lineLength) => ({ 'python.lineLength': lineLength });
+    const lineFindings = (precedence, conventions) =>
+      realLintFindings({
+        files: wide,
+        toolPrecedence: precedence === undefined ? undefined : { ruff: precedence },
+        conventions,
+      });
+    const ternary = ['SIM108 src/shop/pick.py'];
+
+    expect(lineFindings(undefined, undefined)).toEqual([]);
+    expect(lineFindings(undefined, measured('120'))).toEqual(ternary);
+    expect(lineFindings(['nitpicker'], measured('120'))).toEqual(ternary);
+    expect(lineFindings(['project', 'nitpicker'], undefined)).toEqual(ternary);
+    expect(lineFindings(['project'], measured('120'))).toEqual(ternary);
+    expect(lineFindings(['project', 'nitpicker'], measured('88'))).toEqual([]);
+    expect(lineFindings(['nitpicker', 'project'], undefined)).toEqual([]);
+    expect(lineFindings(['nitpicker', 'project'], measured('120'))).toEqual(ternary);
   });
 
   it('fails when the project is listed without a ruff config, or with one that does not parse', () => {
