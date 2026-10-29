@@ -170,7 +170,7 @@ describe('test console output on a Mocha project', () => {
     },
   );
 
-  it('gives the running test of another file what a server a spec file root hook started prints', async () => {
+  it('gives the running test of another file what a server from spec file top-level hooks prints', async () => {
     const project = mochaProject({
       'test/a.test.js': testFile([
         "import { createServer } from 'node:http';",

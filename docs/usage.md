@@ -848,11 +848,13 @@ shows its console output in the run's log. Jest keeps only the first argument of
 because the file of a call is not known there: the check passes with no findings. Mocha runs every
 spec file in one process (one per worker with `--parallel`); a root hook from a `--require` file
 belongs to no test file and is not seen, but what the work it started prints while a test runs (a
-server it started handling the test's request) belongs to that test, as with Vitest. A `before` or
-`after` at the top level of a spec file is a root hook too (it runs once for every file): what it
-prints belongs to its file, and what the work it started prints while a later file's test runs
-belongs to that test. Other work another spec file started, such as a test's timer, is not seen while
-a later file runs.
+server it started handling the test's request) belongs to that test, as Vitest without isolation
+gives a shared server's output to the running test. A `before` or `after` at the top level of a spec
+file is a root hook too, which runs once for the whole run: what it prints belongs to its file, and
+what the work it started prints later belongs to whichever test is running then, in any file, so a
+timer such a hook leaves running is reported against the test it fires in. With `--parallel` each
+file runs alone with its own root hooks, so their work stays with their file. Other work another
+spec file started, such as a test's timer, is not seen while a later file runs.
 
 It does not see:
 
