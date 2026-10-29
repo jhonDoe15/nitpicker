@@ -107,6 +107,11 @@ describe('rules script report', () => {
       '`os.getenv` reads the process environment outside the composition root',
     ],
     [
+      'process-stream-access',
+      'sys.stdout',
+      '`sys.stdout` reaches a standard stream outside the composition root',
+    ],
+    [
       'clock-now',
       'datetime.datetime.now',
       '`datetime.datetime.now()` reads the clock in domain code',
