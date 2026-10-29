@@ -65,12 +65,13 @@ function withDependencies(analyzers, names) {
   const pending = names.filter((name) => byName.has(name));
   const selected = new Set(pending);
   for (const name of pending) {
-    for (const dependency of byName.get(name).dependencies ?? []) {
-      if (byName.has(dependency) && !selected.has(dependency)) {
-        selected.add(dependency);
-        pending.push(dependency);
-      }
+    const added = (byName.get(name).dependencies ?? []).filter(
+      (dependency) => byName.has(dependency) && !selected.has(dependency),
+    );
+    for (const dependency of added) {
+      selected.add(dependency);
     }
+    pending.push(...added);
   }
   return analyzers.filter(({ name }) => selected.has(name));
 }
