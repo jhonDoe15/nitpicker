@@ -17,17 +17,15 @@ const MINIMUM_KEY = 6;
 function valueTable() {
   const values = [];
   const indexes = new Map();
-  return {
-    values,
-    indexOf(value) {
-      const key = JSON.stringify(value);
-      if (!indexes.has(key)) {
-        indexes.set(key, values.length);
-        values.push(value);
-      }
-      return indexes.get(key);
-    },
-  };
+  function indexOf(value) {
+    const key = JSON.stringify(value);
+    if (!indexes.has(key)) {
+      indexes.set(key, values.length);
+      values.push(value);
+    }
+    return indexes.get(key);
+  }
+  return { values, indexOf };
 }
 
 /**

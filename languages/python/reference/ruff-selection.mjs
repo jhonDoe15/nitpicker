@@ -75,7 +75,6 @@ export function isOlderVersion(left, right) {
     : leftParts[differing] < (rightParts[differing] ?? 0);
 }
 
-/** The version of the ruff at `ruff`, as `ruff --version` prints it, or undefined when it cannot be run. */
 function ruffVersion(ruff) {
   const result = spawnSync(ruff, ['--version'], { encoding: 'utf8' });
   return result.status === 0 ? VERSION.exec(result.stdout)?.[1] : undefined;

@@ -1,10 +1,6 @@
 const ROUTE =
   /\s*If this is intended, add (\{.*\}) to "((?:python\.)?exceptions)" in nitpicker\.config\.json\.$/su;
 
-/**
- * A finding message split into its text and the exception entry its last sentence names, as the
- * `exception` of an entry: the config list, the rule and the narrowing keys it uses.
- */
 function splitRoute(message) {
   const match = ROUTE.exec(message);
   if (match === null) {
