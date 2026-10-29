@@ -4,6 +4,7 @@ import static nitpicker.kotlinpsi.common.Psi.*;
 
 import java.util.*;
 import nitpicker.kotlinpsi.bodies.Initializers;
+import nitpicker.kotlinpsi.bodies.Reads;
 import nitpicker.kotlinpsi.common.Frame;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
@@ -12,9 +13,11 @@ import org.jetbrains.kotlin.psi.*;
 
 final class Declarations {
   private final State state;
+  private final Reads reads;
 
-  Declarations(State state) {
+  Declarations(State state, Reads reads) {
     this.state = state;
+    this.reads = reads;
   }
 
   private List<Object> supertypes(KtClassOrObject klass) {
@@ -194,7 +197,9 @@ final class Declarations {
             "delegated", property.getDelegate() != null, "computed", computed(property),
             "annotations", annotationNames(property),
             "annotationEntries", annotationEntries(property), "initializer", Initializers.callee(property),
-            "literal", Initializers.literal(property)));
+            "literal", Initializers.literal(property),
+            "reads", reads.of(property.hasDelegate() ? property.getDelegateExpression() : property.getInitializer()),
+            "origin", Initializers.origin(Initializers.valueOf(property))));
   }
 
   private static Boolean computed(KtProperty property) {
