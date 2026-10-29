@@ -18,7 +18,8 @@ def load_checks():
     from checks import comments, declarations, shell, state
     from concurrency import fan_out
     from discovery import helpers, uncollected
-    from environment import environment, purity
+    from effects import import_time, reach
+    from environment import domain_imports, environment, purity
     from errors import errors
     from honesty import assertions, isolation, skipped
     from security import hashes, loading
@@ -35,6 +36,9 @@ def load_checks():
         comments,
         environment,
         purity,
+        reach,
+        domain_imports,
+        import_time,
         state,
         shell,
         sql,
@@ -91,7 +95,9 @@ def parse_file(path):
 
 
 def is_guarded(module):
-    return module.__name__.startswith(("security.", "concurrency."))
+    return getattr(module, "GUARDED", False) or module.__name__.startswith(
+        ("security.", "concurrency.")
+    )
 
 
 def check_failure(module, context, error):

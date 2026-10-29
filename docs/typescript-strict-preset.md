@@ -842,6 +842,64 @@ hop, and type-only imports do not count.
   already reports `skip`; neither is a way to switch a test off) and no `skipIf(true)`/`runIf(false)`.
   A real condition such as `skipIf(process.platform === 'win32')` is allowed, and so is `it.fails`,
   which runs and documents a known bug: it starts failing once the bug is fixed.
+- `nitpicker/no-unowned-async-assertion`: an assertion inside a callback the test hands off must
+  run before the test ends, or its failure is lost or blamed on another test. The callbacks it
+  follows, written inline or passed by the name of a local function, anywhere in the test body
+  (also inside helpers, nested callbacks and immediately called functions the test defines).
+  A bare `setTimeout`, `setImmediate`, `queueMicrotask` and the like count only when they are the
+  global: a function or variable of that name declared in scope is not a timer, and a bare
+  `nextTick` counts only when imported from `node:process` (Vue's `nextTick` is not a timer):
+  - timers: `setTimeout`, `setImmediate`, `requestAnimationFrame`, `requestIdleCallback`, also on
+    `globalThis`/`window` and imported from `node:timers` under any name. Awaiting an unrelated
+    promise only drains microtasks, so `await Promise.resolve()` or `await load()` does not own a
+    timer. The test owns one when a later step awaits or returns a timer wait at least as long as
+    the timer's literal delay (`sleep(n)`, `delay(n)`, `wait(n)`, `page.waitForTimeout(n)`,
+    `setTimeout(n)` from `node:timers/promises`, `new Promise((r) => setTimeout(r, n))`), awaits a
+    polling wait (`waitFor`, `vi.waitFor`, `waitUntil`, `expect.poll`, Testing Library `findBy*`),
+    or advances a fake clock (`vi.advanceTimersByTime`,
+    `jest.runAllTimers`, `clock.tick`, `clock.next`, `jasmine.clock().tick`, `cy.tick`,
+    `t.mock.timers.tick`, `page.clock.runFor`, ..., also inside a local helper the test calls, a
+    function passed to another call such as `act(() => vi.advanceTimersByTime(10))`, or after
+    `const { advanceTimersByTime } = vi`). A clock method on another object (`game.tick()`) does
+    not count.
+  - microtasks: `queueMicrotask` and `process.nextTick`. A later `await` owns them, and so does
+    `jest.runAllTicks()`; advancing fake timers does not, as Vitest's fake timers leave them real.
+  - handlers: `on`, `once`, `addListener`, `prependListener`, `prependOnceListener`,
+    `addEventListener`, an `onmessage`-style handler property, the callback of a
+    `MutationObserver`, `ResizeObserver`, `IntersectionObserver` or `PerformanceObserver`, and
+    the long-lived handlers of `http`/`https`/`http2`/`net`/`tls` `createServer` and
+    `createSecureServer`, `dgram.createSocket`, `connect` and `fs.watch`/`fs.watchFile`. A later
+    step that awaits, calls something other than `console` or a log method, creates an object or
+    writes a property may fire the event and owns it. `subscribe` counts only on an rxjs source
+    known to be asynchronous (`interval`, `timer`, `fromEvent`, `webSocket`, or a `pipe` with
+    `delay`, `debounceTime` and the like, imported from `rxjs`): `of(1).subscribe(...)` or a
+    `BehaviorSubject` run synchronously and are not reported, and neither is anything inside
+    `testScheduler.run(...)`.
+  - Node callback APIs: a callback passed to a function of `fs`, `child_process`, `dns`, `zlib`,
+    `crypto`, `stream`, `net`, `tls`, `http`, `https`, `http2` or `dgram` (imported or required
+    under any name). Only the promise form or `done` owns it; other synchronous callbacks, such as
+    `assert.throws(run, (err) => ...)`, `errors.map((error) => ...)` or `vi.fn((error) => ...)`,
+    are not reported.
+  - Also owned: a callback inside a `new Promise(...)` executor whose promise is awaited, returned,
+    yielded or passed on to something that is (`Promise.all([...])`, an arrow body handed to
+    `map`, a variable, property or array it is stored in and that is awaited later); a test that
+    takes the runner's `done` callback and uses it (Mocha and Jest: the first parameter;
+    `node:test`: the second; in a Jest `it.each` table the last, once the row length is known or
+    the parameter is called; Vitest has no `done`); and a test whose plan needs an assertion from
+    the callback (`expect.assertions(n)` or `t.plan(n)` with more than the assertions that run
+    synchronously, counting each `expect(...).matcher` chain once, or `expect.hasAssertions()`
+    with none). Returning or awaiting the timer or listener call itself (`return setTimeout(...)`)
+    does not own it, and an expression-bodied test (`it('x', () => setTimeout(...))`) is checked
+    like a block. Hooks, `describe` bodies and Playwright's `test.step` are not tests: a listener
+    registered in a hook lives through the test. A host and its owner may sit together in a nested
+    block, loop, `test.step` callback or helper; whatever runs after the host in source order, or
+    after a call of the helper that holds it, can own it.
+  - Limits: a host is found only by its own name, so an alias (`const st = setTimeout`) hides it,
+    and module-level helpers outside the test are not followed. Any later await, call or property
+    write owns a handler, even one unrelated to it. `expect.hasAssertions()` or a larger
+    `expect.assertions(n)` exempts the test whichever callback the assertions are in, and a
+    `hasAssertions` in a global `beforeEach` is not seen. A tagged-template `it.each` table is not
+    read as a table, and a computed template member name (``obj[`on${name}`]``) is not matched.
 - `slow-test` (coverage check, head only): an added or edited test fails above 5 s, or 30 s in an integration/e2e test folder. All supported runners share this policy. Suspected slow tests are rerun without coverage instrumentation, using the existing head policy's thresholds and reviewed exceptions; unchanged test calls do not add findings.
 - `nitpicker/no-real-time-random-or-network`: in tests, no `Date.now()`, `new Date()` without an
   argument or `Math.random()` (fake the clock with `vi.useFakeTimers()` and `vi.setSystemTime`, or

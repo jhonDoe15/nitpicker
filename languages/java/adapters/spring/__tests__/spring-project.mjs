@@ -65,6 +65,7 @@ const REVIEW_RULES = new Set([
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
   'SingularAndPluralMember',
+  'ClassLoadEffect',
   'SpringUnusedContext',
   'TestClassWithoutTestCases',
   'test-only-export',

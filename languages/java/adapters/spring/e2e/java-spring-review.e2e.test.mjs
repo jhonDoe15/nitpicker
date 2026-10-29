@@ -104,6 +104,49 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
     );
   });
 
+  it('names the call, the class that loads it and the member that runs it in a class-load effect', () => {
+    const effects = runs.maven.filter(({ rule }) => rule === 'ClassLoadEffect');
+    const warehouseEffects = effects.filter(({ path: file }) =>
+      /\/Warehouse\w*\.java$/u.test(file),
+    );
+
+    expect(
+      warehouseEffects.map(({ message, identity }) => [
+        /^.*?: `[^`]+` runs while (\w+ loads \([^)]*\))/u.exec(message)?.[1],
+        identity,
+      ]),
+    ).toEqual([
+      [
+        'Warehouse loads (in static field WORKERS)',
+        'fp:nitpicker/subject=Warehouse.WORKERS: Executors.newFixedThreadPool(...)',
+      ],
+      [
+        'Warehouse loads (in a static block)',
+        'fp:nitpicker/subject=Warehouse.static {}: Files.exists(...)',
+      ],
+      [
+        'Warehouse loads (in method connect, which static field STOCK calls)',
+        'fp:nitpicker/subject=Warehouse.connect(): DriverManager.getConnection(...)',
+      ],
+      [
+        'Ledger loads (in constructor Ledger of an instance created at load)',
+        'fp:nitpicker/subject=Ledger.Ledger(): DriverManager.getConnection(...)',
+      ],
+      [
+        'WarehouseConfig loads (in a static block)',
+        'fp:nitpicker/subject=WarehouseConfig.static {}: Files.exists(...)',
+      ],
+    ]);
+    const warehouse = effects.find(({ path: file }) => file.endsWith('Warehouse.java'))?.message;
+
+    expect(warehouse?.slice(warehouse.indexOf('If this is intended'))).toBe(
+      [
+        'If this is intended, add {"rule":"pmd/ClassLoadEffect","paths":["src/main/java/shop/Warehouse.java"],',
+        '"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      ].join(''),
+    );
+  });
+
   it('reports the main classes only tests use and spares the Spring service', () => {
     const testOnly = (findings) =>
       findings
