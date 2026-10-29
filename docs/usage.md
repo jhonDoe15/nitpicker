@@ -1004,8 +1004,8 @@ project folder named `_root` next to a root project is an error). Reports of a p
 longer listed are removed. The output folder also gets:
 
 - a combined `summary.json` ([format](internals.md#monorepo-summary)) and `report.txt`;
-- a combined `report.sarif` with one run per project (category `nitpicker/<project>/`) and paths
-  from the repository root, for one code scanning upload;
+- a combined `report.sarif` and `report-baseline.sarif` with one run per project (category
+  `nitpicker/<project>/`) and paths from the repository root, for one code scanning upload;
 - a combined `report.junit.xml` with one test suite per project.
 
 ```yaml

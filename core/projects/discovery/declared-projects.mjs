@@ -8,7 +8,7 @@ const DECLARED_ORIGIN = `${CONFIG_FILE_NAME} "projects"`;
 const OWN_MARKERS = ['package.json', ...PYTHON_MARKERS, CONFIG_FILE_NAME];
 export const PROJECT_FILES = [...JVM_MARKERS, ...OWN_MARKERS];
 
-export function isGlob(folder) {
+function isGlob(folder) {
   return /[*?{]/u.test(folder);
 }
 

@@ -52,7 +52,9 @@ describe('policy findings', () => {
   });
 
   it('accepts a digest listed among several, one per project of a monorepo', () => {
-    expect(policyFindings(loosenings, 'd1e2f3a4b5c6', 'aaaaaaaaaaaa,d1e2f3a4b5c6')).toEqual([]);
+    expect(
+      policyFindings(loosenings, 'd1e2f3a4b5c6', { acceptedDigest: 'aaaaaaaaaaaa,d1e2f3a4b5c6' }),
+    ).toEqual([]);
     expect(isPolicyChangeAccepted(loosenings, 'd1e2f3a4b5c6', 'aaaaaaaaaaaa,bbbbbbbbbbbb')).toBe(
       false,
     );

@@ -6,7 +6,7 @@ import { renderSarifReport } from '../../diff/reporting/sarif.mjs';
 import { reportFolder } from '../plan/project-entry.mjs';
 import { SUMMARY_FILE } from './combined-summary.mjs';
 
-const SARIF_FILE = 'report.sarif';
+const SARIF_FILES = ['report.sarif', 'report-baseline.sarif'];
 const JUNIT_FILE = 'report.junit.xml';
 const TESTSUITE = /<testsuite\b[\s\S]*?<\/testsuite>/u;
 
@@ -26,61 +26,41 @@ function readInside(outputRoot, ...segments) {
   return existsSync(full) ? readFileSync(full, 'utf8') : undefined;
 }
 
-function prefixed(repoPath, uri) {
-  return repoPath === '.' ? uri : `${repoPath}/${uri}`;
-}
-
-function relocatedRun(run, { id, repoPath }) {
-  return {
-    ...run,
-    automationDetails: { id: `nitpicker/${id}/` },
-    results: run.results.map((result) => ({
-      ...result,
-      locations: result.locations.map((location) => ({
-        ...location,
-        physicalLocation: {
-          ...location.physicalLocation,
-          artifactLocation: {
-            uri: prefixed(repoPath, location.physicalLocation.artifactLocation.uri),
-          },
-        },
-      })),
-    })),
-  };
+function relocatedRun(run, id) {
+  return { ...run, automationDetails: { id: `nitpicker/${id}/` } };
 }
 
 function repositoryReport(repository) {
   return {
     summary: { tools: [], elapsedMs: 0 },
     newFindings: repository?.findings ?? [],
+    resolvedFindings: [],
+    unchangedFindings: [],
     toolErrors: [],
   };
 }
 
-function projectRuns(outputRoot, projects) {
+function projectRuns(outputRoot, projects, file) {
   return projects.flatMap((project) => {
-    const text = readInside(outputRoot, reportFolder(project.path), SARIF_FILE);
+    const text = readInside(outputRoot, reportFolder(project.path), file);
     return text === undefined
       ? []
-      : JSON.parse(text).runs.map((run) =>
-          relocatedRun(run, { id: project.path, repoPath: project.repoPath }),
-        );
+      : JSON.parse(text).runs.map((run) => relocatedRun(run, project.path));
   });
 }
 
-function combinedSarif({ outputRoot, plan, repository }) {
-  const runs = projectRuns(outputRoot, plan.projects);
+function combinedSarif({ outputRoot, plan, repository }, file) {
+  const runs = projectRuns(outputRoot, plan.projects, file);
+  const options = { projectPath: plan.prefix };
   const policy =
     repository === undefined
       ? []
-      : JSON.parse(renderSarifReport(repositoryReport(repository))).runs;
+      : JSON.parse(renderSarifReport(repositoryReport(repository), options)).runs;
   if (runs.length === 0 && policy.length === 0) {
     return undefined;
   }
-  const log = JSON.parse(renderSarifReport(repositoryReport(undefined)));
-  const repositoryRuns = policy.map((run) =>
-    relocatedRun(run, { id: 'repository', repoPath: plan.prefix }),
-  );
+  const log = JSON.parse(renderSarifReport(repositoryReport(undefined), options));
+  const repositoryRuns = policy.map((run) => relocatedRun(run, 'repository'));
   return `${JSON.stringify({ ...log, runs: [...runs, ...repositoryRuns] }, null, 2)}\n`;
 }
 
@@ -114,11 +94,12 @@ function combinedJunit({ outputRoot, plan, repository }) {
 }
 
 export function writeCombinedMachineReports(context) {
-  for (const [file, render] of [
-    [SARIF_FILE, combinedSarif],
+  const renders = [
+    ...SARIF_FILES.map((file) => [file, combinedSarif]),
     [JUNIT_FILE, combinedJunit],
-  ]) {
-    const text = render(context);
+  ];
+  for (const [file, render] of renders) {
+    const text = render(context, file);
     if (text !== undefined) {
       writeFileSync(path.join(context.outputRoot, file), text);
     }
