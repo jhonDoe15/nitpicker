@@ -8,7 +8,7 @@ const ADMIN_PASSWORD = 'adminPassword';
 const PASSPHRASE = 'CorrectHorseBatteryStaple';
 const GITHUB_TOKEN = `ghp_${'a1B2'.repeat(9)}`;
 const DJANGO_KEY = ['django', 'insecure', 'abcdef'].join('-');
-const AWS_KEY = `AKIA${'ABCDEFGHIJKLMNOP'}`;
+const AWS_KEY = ['AKIA', 'ABCDEFGHIJKLMNOP'].join('');
 const BEARER = ['Bearer', 'abc123def456'].join(' ');
 const DSN = `postgres://${['app', 'Hunter22'].join(':')}@db/app`;
 
