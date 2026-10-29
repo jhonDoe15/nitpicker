@@ -61,11 +61,15 @@ export function write(root, files) {
   }
 }
 
-export function commitBranch(root, name, files) {
-  git(root, 'checkout', '-q', '-b', name, 'main');
+export function commitBranchFrom({ root, name, files, from }) {
+  git(root, 'checkout', '-q', '-b', name, from);
   write(root, files);
   git(root, 'add', '-A');
   git(root, 'commit', '-q', '-m', name);
+}
+
+export function commitBranch(root, name, files) {
+  commitBranchFrom({ root, name, files, from: 'main' });
 }
 
 export function gate(root, branch, { extra = [], environment = {}, base = 'main' } = {}) {
@@ -89,7 +93,11 @@ export function gate(root, branch, { extra = [], environment = {}, base = 'main'
     progress: { write: () => undefined },
   });
   function json(name) {
-    return JSON.parse(readFileSync(path.join(reports, name), 'utf8'));
+    const file = path.resolve(reports, name);
+    if (!file.startsWith(reports + path.sep)) {
+      throw new Error(`${name} is outside the reports directory`);
+    }
+    return JSON.parse(readFileSync(file, 'utf8'));
   }
   return { exitCode, json, text: output.text, reports };
 }

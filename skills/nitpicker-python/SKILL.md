@@ -37,6 +37,9 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Paths: `pathlib.Path` with `/`, `.read_text()`, `.exists()`. No `os.path`, no `open(path)`.
 - Strings: f-strings only. No `.format()` and no `%`.
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.
+- Parameters: remove an unused one (`@override` marks an override; `_context` only when a callback
+  signature fixes it). A `bool` that picks a behavior is keyword-only
+  (`def send(message, *, urgent=False)`), two functions or an enum.
 - Errors: catch the specific exception and handle it, or re-raise it with its cause:
   `raise ParseError(text) from err`. No bare `except:` or `except Exception:`, and no `raise Exception(...)`.
 - Cancellation: after cleanup in an explicit asyncio, Trio or AnyIO cancellation handler, use
@@ -52,7 +55,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   child task, never in a `with` inside the group that hands it to `start_soon`/`create_task`
   (`task-outlives-resource`). In Trio and AnyIO, an `await` in `finally:` or a cancellation handler
   needs `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True):` around it (`unshielded-cleanup-await`).
-- Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru), never `print`. A
+- Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru), never `print`;
+  a `domain` package returns a result instead and leaves logging to `adapters/`. A
   log in an `except` keeps the traceback (`logger.exception(...)` or `exc_info=True`); passing the
   error as an argument or `str(error)` drops it. Logging alone is not handling: also re-raise the
   error or return a failure that carries it.
