@@ -456,7 +456,7 @@ describe('atomic-update differential identity', () => {
       findingFor({
         code: source,
         reported,
-        ruleId: 'require-atomic-updates',
+        ruleId: 'nitpicker/require-atomic-updates',
         messageId: 'nonAtomicObjectUpdate',
       });
     const result = compare(find(code), find(`export const unrelated = 1;\n${code}`));

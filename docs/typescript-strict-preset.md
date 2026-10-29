@@ -316,38 +316,57 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   do not count. `await Promise.allSettled(...)` with its result dropped hides every rejection, and
   `new Promise((resolve) => resolve(value))` wraps a value that `Promise.resolve(value)` or an
   async function returns directly.
-- Shared read/modify/write operations across `await` are rejected (`require-atomic-updates`, ESLint
-  10.9.1, `allowProperties: false`) in production and test code, including the JavaScript dialect:
-  `state.total += await load()`, `total = total + (await load())` on a binding that closures or
-  other calls share, `state.items = [...state.items, await load()]`, and a value read into a local
-  before the `await` and written back after it. Await the new value into a local first and read
-  and write the shared state in one step with no `await` between them, or serialize the whole
-  operation (a lock, a queue). A value that only one call can observe (a local, an object the
-  function creates) passes, and so does `state.items.push(await load())`, which mutates in place.
-  The rule is a strict rule, so a violation on a line you touch is new even when the base has it.
-  It is enabled explicitly in `eslint-lint` (`eslint.configs.recommended` and
-  `strictTypeChecked` do not include it); Oxlint 1.87.0 has no native equivalent, so the existing
-  JavaScript plugin bridge runs the ESLint rule, and the finding keeps the standard ESLint semantic
-  identity. The message adds the failure mechanism and the allowed forms to ESLint's evidence, and a
-  reviewed `exceptions` entry (`rule: "require-atomic-updates"`, `paths`, `reason`) is the route
-  for state that is already serialized or confined to one task. Other immutability rules can
-  independently reject mutation; this rule specifically identifies stale reads across suspension.
-  The `allowProperties: true` option would disable the property check and is deliberately not the
+- Shared read/modify/write operations across `await` are rejected
+  (`nitpicker/require-atomic-updates`, which runs ESLint 10.9.1's `require-atomic-updates` with
+  `allowProperties: false` and keeps only some of its reports) in production and test code,
+  including the JavaScript dialect: `state.total += await load()`,
+  `total = total + (await load())` on a binding that closures or other calls share,
+  `state.items = [...state.items, await load()]`, a lazy initialization written as an operator
+  (`cached ??= await load()`), and a value read into a local before the `await` and written back
+  after it (`const current = total; const delta = await load(); total = current + delta`).
+- A plain `=` is reported only when its value reads the location it writes before the `await`:
+  directly, or through a local that holds such a read (followed through aliases, destructuring and
+  compound updates of the local). ESLint's rule alone also reports a write whose value never read
+  that location once anything of the same object was read before the `await`; nitpicker drops
+  those, so the advised local-first forms pass:
+  `const user = await verify(req.headers.token); req.user = user;`,
+  `const { id } = order; const items = await load(id); order.items = items;` and the lazy
+  initialization below.
+
+  ```ts
+  if (cached === undefined) {
+    const value = await load();
+    cached = value;
+  }
+  ```
+
+- Await the new value into a local first, then read and write the shared state in one step with no
+  `await` between them (`const delta = await load(); state.total += delta;`). A lock or a queue is
+  not recognized: `mutex.runExclusive(async () => { state.total += await load(); })` and an update
+  between `acquire()` and `release()` are still reported. A value that only one call can observe (a
+  local, an object the function creates) passes, and so does `state.items.push(await load())`,
+  which mutates in place. When the state is already serialized or confined to one task, a reviewed
+  `exceptions` entry (`rule: "nitpicker/require-atomic-updates"`, `paths`, `reason`) is the route.
+- The rule is a strict rule, so a violation on a line you touch is new even when the base has it.
+  It is enabled explicitly in `eslint-lint` (`eslint.configs.recommended` and `strictTypeChecked`
+  do not include ESLint's rule); Oxlint 1.87.0 has no native equivalent, so the existing JavaScript
+  plugin bridge runs it, and the finding keeps the standard ESLint semantic identity. The message
+  adds the failure mechanism and the allowed forms to ESLint's evidence. Other immutability rules
+  can independently reject mutation; this rule specifically identifies stale reads across
+  suspension. `allowProperties: true` would disable the property check and is deliberately not the
   preset default.
-  Limits of the upstream analysis, measured and not assumed: it does not follow `this`
-  (`this.total += await load()` passes; the preset bans classes outside `Error` subclasses, so
-  this mostly concerns tests, object-literal methods and framework classes), a local alias of a
-  shared object escapes detection (`const alias = state; alias.total += await load()`), a
-  parameter object is treated as shared, so `req.user = await verify(req.headers.token)` and
-  `order.items = await load(order.id)` report although they write a different property than they
-  read, and a lazy initialization (`cached ??= await load()`, or `if (cached === undefined) {
-cached = await load(); }` on a module binding) reports because two calls can both initialize.
-  Run over real code, the rule reported nothing: Nitpicker's own `.mjs` sources (1,808 files, 201
-  of them with `await`), the TypeScript sources of `@stryker-mutator`, `zod`, `rxjs` and
-  `typed-inject` (843 files, 157 with `await`) and the JavaScript of `vitest`, `vite`, `knip`,
-  `execa`, `eslint` and `@stryker-mutator/core` (1,475 files, 209 with `await`). That sample says
-  nothing about recall; the false-positive classes above come from probes written for them, not
-  from that corpus.
+- Limits of the upstream analysis, measured and not assumed: it does not follow `this`
+  (`this.total += await load()` passes; the preset bans classes outside `Error` subclasses, so this
+  mostly concerns tests, object-literal methods and framework classes), a local alias of a shared
+  object escapes detection (`const alias = state; alias.total += await load()`), and an update
+  through a method call is not an assignment (`cache.set(key, (cache.get(key) ?? 0) + await load())`
+  passes). Run over nitpicker's own sources and several open-source TypeScript and JavaScript
+  packages, the rule reported nothing; that measures false positives only, and the classes above
+  come from probes written for them.
+- Parity with the other presets ([the matrix](../spec/checks.md#updates-across-a-suspension)): a
+  saved local is followed, `this` is not, and no lock or semaphore is recognized. The Python rule
+  follows `self` and recognizes a proven shared lock and a one-slot semaphore; the Kotlin rule
+  recognizes `Mutex.withLock` and a one-permit `Semaphore`.
 - `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
   statement per module (`no-duplicate-imports`; a separate `import type` is fine).
 - Identifier casing (`nitpicker/naming-convention`, which wraps

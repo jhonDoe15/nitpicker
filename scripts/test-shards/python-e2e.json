@@ -23,6 +23,7 @@
   "languages/python/rules/e2e/boundary/paths.e2e.test.mjs": 1,
   "languages/python/rules/e2e/boundary/state.e2e.test.mjs": 1,
   "languages/python/rules/e2e/boundary/types.e2e.test.mjs": 1,
+  "languages/python/rules/e2e/concurrency/atomic-update-proofs.e2e.test.mjs": 4,
   "languages/python/rules/e2e/concurrency/atomic-updates.e2e.test.mjs": 4,
   "languages/python/rules/e2e/environment/commands.e2e.test.mjs": 1,
   "languages/python/rules/e2e/environment/environment.e2e.test.mjs": 8,

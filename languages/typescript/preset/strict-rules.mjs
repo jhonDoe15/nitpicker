@@ -62,7 +62,7 @@ export const strictEslintRuleIds = [
   'no-restricted-properties',
   'no-restricted-syntax',
   'regexp/no-super-linear-backtracking',
-  'require-atomic-updates',
+  'nitpicker/require-atomic-updates',
 ];
 
 const PRETTIER_RULE = 'prettier/prettier';

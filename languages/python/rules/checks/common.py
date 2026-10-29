@@ -167,6 +167,38 @@ def functions_of(tree):
     ]
 
 
+def parameter_names(function):
+    arguments = function.args
+    names = {
+        argument.arg
+        for argument in arguments.posonlyargs + arguments.args + arguments.kwonlyargs
+    }
+    names.update(a.arg for a in (arguments.vararg, arguments.kwarg) if a)
+    return names
+
+
+def has_decorator(function, name):
+    return any(
+        last_name(decorator.func if isinstance(decorator, ast.Call) else decorator)
+        == name
+        for decorator in function.decorator_list
+    )
+
+
+def root_name(node, through_calls=False):
+    while True:
+        if through_calls and isinstance(node, ast.Await):
+            node = node.value
+        elif through_calls and isinstance(node, ast.Call):
+            if not isinstance(node.func, ast.Attribute):
+                return None
+            node = node.func.value
+        elif isinstance(node, (ast.Attribute, ast.Subscript)):
+            node = node.value
+        else:
+            return node.id if isinstance(node, ast.Name) else None
+
+
 def own_nodes(root):
     pending = list(ast.iter_child_nodes(root))
     while pending:

@@ -45,7 +45,7 @@ describe('ESLint analyzers do not report the same rule on the same file', () => 
 
   it.each(SAMPLE_FILES)('owns atomic updates once for %s', async (file) => {
     const byRule = await errorRulesByAnalyzer(file);
-    expect(byRule.get('require-atomic-updates')).toEqual(['eslint-lint']);
+    expect(byRule.get('nitpicker/require-atomic-updates')).toEqual(['eslint-lint']);
   });
 
   it('pins property checking in the effective preset', async () => {
@@ -54,7 +54,10 @@ describe('ESLint analyzers do not report the same rule on the same file', () => 
       overrideConfigFile: path.join(packageRoot, ANALYZER_CONFIGS['eslint-lint']),
     });
     const calculated = await eslint.calculateConfigForFile(path.join(packageRoot, SAMPLE_FILES[0]));
-    expect(calculated.rules['require-atomic-updates']).toEqual([2, { allowProperties: false }]);
+    expect(calculated.rules['nitpicker/require-atomic-updates']).toEqual([
+      2,
+      { allowProperties: false },
+    ]);
   });
 
   it('still reports no-silent-catch for adapters, through eslint-errors', async () => {

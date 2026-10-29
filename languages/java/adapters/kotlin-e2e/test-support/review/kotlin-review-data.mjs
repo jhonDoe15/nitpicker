@@ -103,6 +103,8 @@ class WaitingTest {
 
 const LEDGER = `package demo.orders
 
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
 import kotlinx.coroutines.sync.withLock
@@ -112,7 +114,9 @@ interface Balances {
     suspend fun fetch(): Int
 }
 
-class Ledger(private val balances: Balances) {
+private val fileGate = Semaphore(1)
+
+class Ledger(private val balances: Balances, private val scope: CoroutineScope) {
     private val mutex = Mutex()
     private val single = Semaphore(1)
     private val pair = Semaphore(2)
@@ -127,16 +131,62 @@ class Ledger(private val balances: Balances) {
         total += delta
     }
 
+    suspend fun addFromSaved() {
+        val current = total
+        val delta = balances.fetch()
+        total = current + delta
+    }
+
+    suspend fun addAccumulated() {
+        var current = total
+        current += balances.fetch()
+        total = current
+    }
+
+    suspend fun addSavedBeforeLock() {
+        val current = total
+        mutex.withLock { total = current + 1 }
+    }
+
     suspend fun addSerialized() {
         mutex.withLock { total += balances.fetch() }
+    }
+
+    suspend fun addSavedInsideLock() {
+        mutex.withLock {
+            val current = total
+            val delta = balances.fetch()
+            total = current + delta
+        }
+    }
+
+    suspend fun addLaunched() {
+        mutex.withLock { scope.launch { total += balances.fetch() } }
+    }
+
+    suspend fun addUnderLocalMutex() {
+        val local = Mutex()
+        local.withLock { total += balances.fetch() }
     }
 
     suspend fun addOneAtATime() {
         single.withPermit { total += balances.fetch() }
     }
 
+    suspend fun addThroughFileGate() {
+        fileGate.withPermit { total += balances.fetch() }
+    }
+
+    suspend fun addThroughCompanionGate() {
+        shared.withPermit { total += balances.fetch() }
+    }
+
     suspend fun addTwoAtATime() {
         pair.withPermit { total += balances.fetch() }
+    }
+
+    companion object {
+        private val shared = Semaphore(1)
     }
 }
 `;
@@ -200,7 +250,12 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'FixedSleepInTest WaitingTest.sleeps',
   'FixedSleepInTest WaitingTest.sleeps',
   'NonAtomicUpdateAcrossSuspension Ledger.total in add',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addAccumulated',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addFromSaved',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addLaunched',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addSavedBeforeLock',
   'NonAtomicUpdateAcrossSuspension Ledger.total in addTwoAtATime',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addUnderLocalMutex',
   'SingularAndPluralMember Query.tags',
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',
