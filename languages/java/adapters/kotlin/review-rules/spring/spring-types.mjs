@@ -188,6 +188,11 @@ export const REDIRECT_VIEW = group(
   inPackage(`${SPRING}.web.servlet.view`, 'RedirectView'),
   inPackage(`${SPRING}.web.reactive.result.view`, 'RedirectView'),
 );
+export const SERVLET_REQUESTS = group(
+  twins('servlet.ServletRequest', 'servlet.http.HttpServletRequest'),
+  inPackage(`${SPRING}.web.context.request`, 'WebRequest', 'NativeWebRequest'),
+);
+export const RESPONSE_ENTITY = group(inPackage(`${SPRING}.http`, 'ResponseEntity'));
 export const REACTOR_HTTP_CLIENT = group(['reactor.netty.http.client.HttpClient']);
 export const REQUEST_FACTORIES = group(
   inPackage(

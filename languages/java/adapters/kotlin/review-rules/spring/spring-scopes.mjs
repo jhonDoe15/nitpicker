@@ -1,5 +1,11 @@
 import { annotationIn } from './spring-names.mjs';
-import { BEAN, COMPLETABLE_FUTURE, POST_CONSTRUCT, SYNCHRONIZED } from './spring-types.mjs';
+import {
+  BEAN,
+  COMPLETABLE_FUTURE,
+  POST_CONSTRUCT,
+  STEREOTYPES,
+  SYNCHRONIZED,
+} from './spring-types.mjs';
 
 const INIT_NAMES = new Set(['afterPropertiesSet']);
 const STARTUP_NAMES = new Set([...INIT_NAMES, 'afterSingletonsInstantiated']);
@@ -22,8 +28,10 @@ const FACTORY_TYPES = {
   mutableSetOf: 'MutableSet',
 };
 
+const NAMED_INVOCATIONS = new WeakMap();
+
 export function entriesOf(declaration) {
-  return declaration.annotationEntries ?? [];
+  return declaration.annotationEntries ?? declaration.annotations ?? [];
 }
 
 export function report(rule, declaration, symbol) {
@@ -32,6 +40,10 @@ export function report(rule, declaration, symbol) {
 
 export function has(view, declaration, fqns) {
   return annotationIn(view.resolve, entriesOf(declaration), fqns) !== undefined;
+}
+
+export function managed(view, declared) {
+  return declared !== undefined && has(view, declared, STEREOTYPES);
 }
 
 export function ownerOf(view, invocation) {
@@ -72,13 +84,19 @@ function initMethods(view) {
   );
 }
 
-function callersOf(view, fn) {
-  return view.file.invocations.filter(
-    (invocation) =>
-      invocation.name === fn.name &&
-      isSelfCall(view, invocation) &&
-      ownerOf(view, invocation) === fn.owner,
-  );
+export function invocationsNamed(view, name) {
+  if (!NAMED_INVOCATIONS.has(view)) {
+    const named = Map.groupBy(view.file.invocations, (invocation) => invocation.name);
+    NAMED_INVOCATIONS.set(view, named);
+  }
+  return NAMED_INVOCATIONS.get(view).get(name) ?? [];
+}
+
+export function callersOf(view, fn, { visible } = {}) {
+  const matches =
+    visible ??
+    ((invocation) => isSelfCall(view, invocation) && ownerOf(view, invocation) === fn.owner);
+  return invocationsNamed(view, fn.name).filter((invocation) => matches(invocation));
 }
 
 function inStartOf(view, startFunctions, scopeId) {
