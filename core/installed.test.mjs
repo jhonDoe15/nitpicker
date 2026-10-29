@@ -1,10 +1,9 @@
 import { createRequire } from 'node:module';
-import { spawnSync } from 'node:child_process';
 import {
   existsSync,
   lstatSync,
-  mkdtempSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   readdirSync,
   realpathSync,
@@ -15,6 +14,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
+import { consumerCommands, eslintVersionOf } from './test-support/installed-consumer.mjs';
 
 const enabled = process.env.NITPICKER_INSTALLED_TEST === '1';
 const packageRoot = PACKAGE_ROOT;
@@ -99,44 +99,8 @@ nitpicker: head: running 2 analyzers
 `;
 }
 
-function expectedEslintVersion(typeScriptVersion) {
-  const plugins = [
-    '@eslint/js',
-    '@vitest/eslint-plugin',
-    'eslint-plugin-formatjs',
-    'eslint-plugin-functional',
-    'eslint-plugin-jsx-a11y-x',
-    'eslint-plugin-react-dom',
-    'eslint-plugin-react-hooks',
-    'eslint-plugin-react-web-api',
-    'eslint-plugin-react-x',
-    'eslint-plugin-regexp',
-    'eslint-plugin-testing-library',
-    'typescript-eslint',
-  ].map((name) => `${name}@${manifest.dependencies[name]}`);
-  return (
-    `eslint@${manifest.dependencies.eslint};typescript@${typeScriptVersion};` +
-    `plugins:${[...plugins, `nitpicker-plugin@${manifest.version}`].join(',')};` +
-    `oxlint@${manifest.dependencies.oxlint},oxlint-tsgolint@${manifest.dependencies['oxlint-tsgolint']}`
-  );
-}
-
-function command(cwd, executable, args) {
-  const result = spawnSync(executable, args, {
-    cwd,
-    encoding: 'utf8',
-    env: { ...process.env, NO_COLOR: '1' },
-    timeout: 180_000,
-  });
-  if (result.error) throw result.error;
-  return { status: result.status, output: `${result.stdout}${result.stderr}` };
-}
-
-function checked(cwd, executable, args) {
-  const result = command(cwd, executable, args);
-  expect(result.status, `${executable} ${args.join(' ')}\n${result.output}`).toBe(0);
-  return result.output.trim();
-}
+const expectedEslintVersion = eslintVersionOf(manifest);
+const { command, checked } = consumerCommands({ ...process.env, NO_COLOR: '1' });
 
 function write(root, relative, contents) {
   const target = path.join(root, relative);
