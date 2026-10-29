@@ -5,5 +5,5 @@ export function writeMarker({ file, text }) {
 }
 
 export function failWith({ message }) {
-  throw Object.assign(new Error(message), { tool: 'marker' });
+  throw new Error(message);
 }

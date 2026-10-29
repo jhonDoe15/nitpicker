@@ -42,7 +42,9 @@ function setup() {
       exitCode,
       progress: output.stderrText.split('\n').filter(Boolean),
       newFindings: newFindings.map(({ identity }) => identity),
-      writeHead: (files) => writeFiles(repository.root, files),
+      writeHead: (files) => {
+        writeFiles(repository.root, files);
+      },
     };
   };
 }

@@ -3,7 +3,7 @@ import { GitCommandError, runGit } from '../diff/git/repository/command.mjs';
 import { commitTreeOverHead } from '../diff/git/repository/git.mjs';
 import { stagedConfigDrift, stagedConfigNotice } from './config-drift.mjs';
 
-export function stagedRunNotice(projectRoot, indexFile) {
+function stagedRunNotice(projectRoot, indexFile) {
   const repositoryRoot = runGit(projectRoot, ['rev-parse', '--show-toplevel']).trim();
   try {
     return stagedConfigNotice(stagedConfigDrift(repositoryRoot, indexFile));
@@ -15,7 +15,15 @@ export function stagedRunNotice(projectRoot, indexFile) {
   }
 }
 
-export function indexCapture(indexFile) {
+export function stagedCapture({ staged, indexFile, projectRoot, stderr }) {
+  if (!staged) {
+    return undefined;
+  }
+  stderr.write(stagedRunNotice(projectRoot, indexFile));
+  return indexCapture(indexFile);
+}
+
+function indexCapture(indexFile) {
   return function captureIndex(repositoryRoot, headSha) {
     const environment =
       indexFile === undefined

@@ -1,56 +1,45 @@
+import { spawnSync } from 'node:child_process';
 import { availableParallelism } from 'node:os';
-import { MessageChannel, receiveMessageOnPort, Worker } from 'node:worker_threads';
 
-const WORKER_SOURCE = [
-  "const { workerData } = require('node:worker_threads');",
-  `import(${JSON.stringify(new URL('tool-worker.mjs', import.meta.url).href)})`,
-  '  .then(({ runToolInWorker }) => runToolInWorker(workerData));',
+const SUPERVISOR_URL = new URL('tool-supervisor.mjs', import.meta.url).href;
+const SUPERVISOR_SOURCE = [
+  `import { superviseTools } from ${JSON.stringify(SUPERVISOR_URL)};`,
+  'const chunks = [];',
+  'for await (const chunk of process.stdin) chunks.push(chunk);',
+  "const outcomes = await superviseTools(JSON.parse(Buffer.concat(chunks).toString('utf8')));",
+  'process.stdout.write(JSON.stringify(outcomes));',
 ].join('\n');
+const MAX_OUTCOME_BYTES = 16 * 1024 * 1024;
 
-function startWorker(task, signal) {
-  const { port1, port2 } = new MessageChannel();
-  const worker = new Worker(WORKER_SOURCE, {
-    eval: true,
-    workerData: { url: task.url, name: task.name, options: task.options, port: port2, signal },
-    transferList: [port2],
+function runInProcesses(tasks) {
+  const result = spawnSync(process.execPath, ['--input-type=module', '--eval', SUPERVISOR_SOURCE], {
+    input: JSON.stringify({
+      tasks: tasks.map(({ url, name, options }) => ({ url, name, options })),
+      limit: Math.max(1, availableParallelism()),
+    }),
+    encoding: 'utf8',
+    maxBuffer: MAX_OUTCOME_BYTES,
   });
-  worker.unref();
-  return port1;
-}
-
-function outcomeOf(port) {
-  const received = receiveMessageOnPort(port);
-  port.close();
-  return received?.message ?? { error: { message: 'the tool worker stopped without a result' } };
-}
-
-function runInWorkers(tasks, { limit, alongside }) {
-  const signal = new Int32Array(new SharedArrayBuffer(Int32Array.BYTES_PER_ELEMENT));
-  const ports = [];
-  const fill = (finished) => {
-    while (ports.length < Math.min(tasks.length, finished + limit)) {
-      ports.push(startWorker(tasks[ports.length], signal));
-    }
-  };
-  fill(0);
-  alongside();
-  for (let finished = Atomics.load(signal, 0); finished < tasks.length;) {
-    Atomics.wait(signal, 0, finished);
-    finished = Atomics.load(signal, 0);
-    fill(finished);
+  if (result.error !== undefined) {
+    throw result.error;
   }
-  return ports.map(outcomeOf);
+  if (result.status !== 0) {
+    throw new Error(`The Java tool supervisor failed: ${result.stderr.trim()}`);
+  }
+  return JSON.parse(result.stdout);
 }
 
-export function runToolsConcurrently(tasks, { spawn, alongside, concurrent }) {
+export function runToolsConcurrently(tasks, { spawn, concurrent }) {
   if (!concurrent || spawn !== undefined) {
-    for (const task of tasks) task.run({ ...task.options, spawn });
-    alongside();
+    for (const task of tasks) {
+      task.run({ ...task.options, spawn });
+    }
     return;
   }
-  const outcomes = runInWorkers(tasks, { limit: Math.max(1, availableParallelism()), alongside });
-  const failure = outcomes.map(({ error }) => error).find((error) => error !== undefined);
+  const failure = runInProcesses(tasks)
+    .map(({ error }) => error)
+    .find((error) => error !== undefined);
   if (failure !== undefined) {
-    throw Object.assign(new Error(failure.message), failure);
+    throw new Error(failure.message);
   }
 }

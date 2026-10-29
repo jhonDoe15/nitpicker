@@ -23,6 +23,12 @@ export function stagedLines(summary) {
   return summary?.staged === true ? [STAGED_LINE] : [];
 }
 
+export function stagedHeader(summary) {
+  return stagedLines(summary)
+    .map((line) => `${line}\n`)
+    .join('');
+}
+
 export function quickLines(summary) {
   return summary?.quick === undefined ? [] : [summary.quick.message];
 }

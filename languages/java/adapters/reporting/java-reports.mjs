@@ -16,6 +16,7 @@ import { readSpringConfigFindings } from '../spring/java-spring.mjs';
 import { readSpringArchFindings } from '../spring-arch/spring-arch.mjs';
 import { exceptionMatcher } from '../../../../shared/rules/exceptions.mjs';
 import { inModule } from '../../builds/module-path.mjs';
+import { testRunFindings } from '../test-runs/test-run-findings.mjs';
 import { readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { methodText } from '../../../../shared/ingest/structure-report.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
@@ -27,9 +28,6 @@ import {
   structureFunctions,
 } from './function-locator.mjs';
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
-import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
-import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
-import { readUnrunTestFindings } from '../test-runs/unrun-tests.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
@@ -152,30 +150,13 @@ function readModuleFindings(context, crapLimit) {
     ...archunitFindings(context),
     ...springArchFindings(context),
     ...ifTested(jacoco, (report) => crapFindings(context, report, crapLimit)),
-    ...whenTested(context, () => pitFindings(context)),
+    ...(context.quick ? [] : pitFindings(context)),
     ...readJavaStructureFindings(reportRoot, projectRoot),
     ...readClassLimitFindings(reportRoot, context.classLimits),
     ...ifTested(jacoco, (report) => branchFindings(context, report)),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
-    ...whenTested(context, () =>
-      readSlowTestFindings({ reportRoot, projectRoot, testRoots, ...context.testTimes }),
-    ),
-    ...whenTested(context, () =>
-      readTestConsoleFindings({ reportRoot, projectRoot, testRoots }, context.testConsole),
-    ),
-    ...whenTested(context, () =>
-      readUnrunTestFindings({
-        reportRoot,
-        projectRoot,
-        manifest: context.manifest,
-        modulePath: context.testTimes.modulePath,
-      }),
-    ),
+    ...testRunFindings(context, { reportRoot, projectRoot, testRoots }),
   ];
-}
-
-function whenTested(context, read) {
-  return context.quick ? [] : read();
 }
 
 function withModuleIdentity(findings, module) {

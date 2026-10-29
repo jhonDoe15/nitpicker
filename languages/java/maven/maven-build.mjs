@@ -1,21 +1,21 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { javaCommand, runJava, runMaven } from './maven-command.mjs';
+import { runMaven } from './maven-command.mjs';
 import { runCheckstyle, runFormat, runPmd, runSpotbugs } from './maven-lint.mjs';
 import { moduleClasspaths, parseDependencyList, readReactor } from './maven-project.mjs';
 import { archunitMatcher, missingLauncherVersions } from './maven-tests.mjs';
 import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
 import { archunitTool, formatTool, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { ownSourceRoots } from '../adapters/red-base/tests-failed.mjs';
-import { moduleManifest, relativeTo, writeManifest } from './manifest/maven-manifest.mjs';
+import { moduleManifest, writeManifest } from './manifest/maven-manifest.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
 import { buildRunsArchRules, withDeclaredSpring } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
-import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
-import { writeJdepsReports } from '../builds/jdeps-reports.mjs';
+import { readPinnedTools } from '../builds/java-build.mjs';
 import { runToolsConcurrently } from './parallel/concurrent-tools.mjs';
+import { runJdeps, runStructure } from './parallel/module-metrics.mjs';
 import {
   buildGoals,
   jacocoExecFiles,
@@ -26,6 +26,7 @@ import {
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const LINT_URL = new URL('maven-lint.mjs', import.meta.url).href;
 const ERRORPRONE_URL = new URL('errorprone/maven-errorprone.mjs', import.meta.url).href;
+const METRICS_URL = new URL('parallel/module-metrics.mjs', import.meta.url).href;
 const PROJECT_CHECKS_OFF = [
   '-Dcheckstyle.skip=true',
   '-Dpmd.skip=true',
@@ -70,36 +71,6 @@ function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn, quick 
   });
 }
 
-function runStructure(module, reportDir, spawn) {
-  const roots = module.sourceRoots
-    .filter((root) => existsSync(root))
-    .map((root) => relativeTo(module.basedir, root));
-  runJava({
-    tool: 'StructureMetrics',
-    args: [
-      path.join(GRADLE_DIRECTORY, 'StructureMetrics.java'),
-      path.join(reportDir, 'structure.json'),
-      path.join(reportDir, 'classes.json'),
-      module.basedir,
-      ...roots,
-    ],
-    cwd: module.basedir,
-    accept: (result) => result.status === 0,
-    spawn,
-  });
-}
-
-function runJdeps(module, reportDir, spawn) {
-  writeJdepsReports({
-    command: javaCommand('jdeps'),
-    cwd: module.basedir,
-    mainDirectory: module.outputDirectory,
-    testDirectory: module.testOutputDirectory,
-    reportDir,
-    spawn,
-  });
-}
-
 function readClasspaths(work, module) {
   return moduleClasspaths(
     module,
@@ -116,12 +87,10 @@ function analyzeSources(options) {
     [runErrorProne, ERRORPRONE_URL, { module, reportDir, tools, classpaths }],
     [runFormat, LINT_URL, { module, reportDir, tools, javaStyle: style.javaStyle }],
     [runCheckstyle, LINT_URL, { module, reportDir, tools, configs, pinned, style }],
+    [runStructure, METRICS_URL, { module, reportDir }],
+    [runJdeps, METRICS_URL, { module, reportDir }],
   ].map(([run, url, toolOptions]) => ({ run, url, name: run.name, options: toolOptions }));
-  const alongside = () => {
-    runStructure(module, reportDir, spawn);
-    runJdeps(module, reportDir, spawn);
-  };
-  runToolsConcurrently(tasks, { spawn, alongside, concurrent: options.quick === true });
+  runToolsConcurrently(tasks, { spawn, concurrent: options.quick === true });
   runSpringArch({
     module,
     reportDir,
@@ -198,6 +167,19 @@ function extraTools({ modules, analyzed, policy, pinned }) {
   ];
 }
 
+function resolveRunTools({ projectRoot, maven, spawn, pinned, modules, analyzed, policy }) {
+  const quick = policy.quick === true;
+  return resolveTools({
+    projectRoot,
+    maven,
+    spawn,
+    pinned,
+    launcherVersions: quick ? [] : missingLauncherVersions(analyzed),
+    extraTools: extraTools({ modules, analyzed, policy, pinned }),
+    quick,
+  });
+}
+
 export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn }) {
   const quick = policy.quick === true;
   if (policy.preset === 'kotlin') {
@@ -215,15 +197,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
       module,
       classpaths: readClasspaths(work, module),
     }));
-    const tools = resolveTools({
-      projectRoot,
-      maven,
-      spawn,
-      pinned,
-      launcherVersions: quick ? [] : missingLauncherVersions(analyzed),
-      extraTools: extraTools({ modules, analyzed, policy, pinned }),
-      quick,
-    });
+    const tools = resolveRunTools({ projectRoot, maven, spawn, pinned, modules, analyzed, policy });
     const style = {
       javaStyle: policy.javaStyle,
       indentation: checkstyleIndentation(policy.conventions),
