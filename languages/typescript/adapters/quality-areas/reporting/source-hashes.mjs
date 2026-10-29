@@ -5,8 +5,10 @@ import path from 'node:path';
 
 const DEFAULT_CASE = 'the default case';
 const DEFAULT_CLAUSE = /^default\b/u;
+const NEVER_ANNOTATION = /^default\s*:[\s\S]*?:\s*never\b/u;
 const UNION_DEFAULT_HINT =
   ' (a switch that lists every member of a union needs no default: switch-exhaustiveness-check proves it complete)';
+const VALUE_DEFAULT_HINT = ' (pass a value that no case lists)';
 
 export function withFunctionSourceHashes(report, projectRoot) {
   const sourceTexts = new Map();
@@ -70,9 +72,18 @@ export function describeUncoveredArms(branch, hits, source) {
       return [];
     }
     const name = armName(branch, index, source);
-    const hint = name === DEFAULT_CASE ? UNION_DEFAULT_HINT : '';
+    const hint = name === DEFAULT_CASE ? defaultHint(branch, locations[index], source) : '';
     return [`${name} at ${armPosition(locations[index], branch)}${hint}`];
   });
+}
+
+function defaultHint(branch, location, source) {
+  const end = location?.end ?? branch.loc?.end;
+  if (location?.start === undefined || end === undefined) {
+    return VALUE_DEFAULT_HINT;
+  }
+  const clause = source.slice(offsetOf(source, location.start), offsetOf(source, end));
+  return NEVER_ANNOTATION.test(clause) ? UNION_DEFAULT_HINT : VALUE_DEFAULT_HINT;
 }
 
 function armPosition(location, branch) {
