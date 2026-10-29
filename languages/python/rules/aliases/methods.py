@@ -3,6 +3,7 @@ import ast
 from aliases.bases import FUNCTION_TYPES, class_methods, inherited_names
 
 RULE = "forwarding-method-alias"
+GUARDED = True
 PUBLISHED_NAMES = {"of", "from_"}
 
 

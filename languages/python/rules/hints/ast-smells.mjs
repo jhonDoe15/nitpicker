@@ -190,7 +190,7 @@ export const SMELL_HINTS = [
     rules: ['forwarding-method-alias'],
     describe: (subject = '', _libraries, detail) =>
       `\`${methodName(subject)}\` only forwards its parameters to \`${detail?.target}\` and has the same signature`,
-    allowed: (subject = '', _libraries, detail) => {
+    allowed: (subject = '', _libraries, _path, detail) => {
       if (detail === undefined) {
         return 'Call the target method directly and delete the alias.';
       }
