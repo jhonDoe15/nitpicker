@@ -819,6 +819,19 @@ hop, and type-only imports do not count.
   already reports `skip`; neither is a way to switch a test off) and no `skipIf(true)`/`runIf(false)`.
   A real condition such as `skipIf(process.platform === 'win32')` is allowed, and so is `it.fails`,
   which runs and documents a known bug: it starts failing once the bug is fixed.
+- `nitpicker/no-float-equality-in-tests`: no exact equality assertion against a non-integral float
+  literal (`0.1`, `-2.5`, `1e-3`, `.5`, also as `0.1 as number`), because the sum or product it checks
+  rarely equals the decimal literal bit for bit. It reports `toBe`, `toEqual` and `toStrictEqual`
+  (also after `.not`, `.resolves`, `.rejects` and on `expect.soft`/`expect.poll`), the `node:assert`
+  forms `equal`, `strictEqual`, `deepEqual`, `deepStrictEqual` and their `not` forms (also from
+  `assert/strict`, as a default, namespace or named import, and on a `node:test` `t.assert`) with the
+  literal in either of the first two arguments, and chai `equal`/`eq`/`eql` (`expect(x).to.equal(0.1)`,
+  `assert.equal` from chai). `toEqual`, `toStrictEqual`, `deepEqual`, `deepStrictEqual`, `eql` and
+  `.deep.equal` also look inside array and object literals. Use `toBeCloseTo(0.1)`,
+  `expect.closeTo(0.1)` inside the expected value, chai `closeTo`, or
+  `assert.ok(Math.abs(actual - 0.1) < tolerance)`. Integral literals such as `1.0` or `2e3`, `BigInt`,
+  `NaN`, infinities and ordering comparisons are allowed. A value that is exact by construction needs
+  an exception in the config file.
 - `nitpicker/no-unowned-async-assertion`: an assertion inside a callback the test hands off must
   run before the test ends, or its failure is lost or blamed on another test. The callbacks it
   follows, written inline or passed by the name of a local function, anywhere in the test body
