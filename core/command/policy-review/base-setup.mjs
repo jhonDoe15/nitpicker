@@ -1,6 +1,10 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import {
+  ANALYZER_TIMEOUT_KEY,
+  withConfiguredTimeout,
+} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
 import { withHeadCheckoutFacts } from '../../../languages/typescript/preset/head-policy.mjs';
 import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs';
@@ -65,8 +69,12 @@ export function createBaseSetupResolver({
   };
 }
 
+function withoutTimeouts(config) {
+  return Object.fromEntries(Object.entries(config).filter(([key]) => key !== ANALYZER_TIMEOUT_KEY));
+}
+
 function measuredBase({ baseConfig, headConfig, headPolicy, injectedAnalyzers, analyzers }) {
-  const measured = baseConfigCoveringHead(baseConfig, headConfig);
+  const measured = withoutTimeouts(baseConfigCoveringHead(baseConfig, headConfig));
   const baseHeadPolicy = withHeadCheckoutFacts(resolveHeadPolicy(measured), headPolicy);
   const configured = new Map(
     configureAnalyzers(presetAnalyzers(measured, injectedAnalyzers), measured, baseHeadPolicy).map(
@@ -74,7 +82,11 @@ function measuredBase({ baseConfig, headConfig, headPolicy, injectedAnalyzers, a
     ),
   );
   return {
-    analyzers: analyzers.map((analyzer) => configured.get(analyzer.name) ?? analyzer),
+    analyzers: analyzers.map((analyzer) =>
+      configured.has(analyzer.name)
+        ? withConfiguredTimeout(configured.get(analyzer.name), headConfig[ANALYZER_TIMEOUT_KEY])
+        : analyzer,
+    ),
     headPolicy: baseHeadPolicy,
     configOverrides: describeConfigOverrides(measured),
   };

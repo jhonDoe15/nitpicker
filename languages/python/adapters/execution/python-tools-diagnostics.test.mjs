@@ -1,6 +1,6 @@
 import { writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { jscpdVersion } from '../../../../core/tooling/jscpd/run-jscpd.mjs';
 import { execute, failure, probe, probeVersion } from './python-process.mjs';
 import { PYTEST_SCRIPT } from './python-test-runner.mjs';
@@ -15,7 +15,10 @@ import {
   temporaryRoot,
 } from './test-support/python-tools-project.mjs';
 
-afterEach(restoreTemporaryState);
+afterEach(() => {
+  vi.unstubAllEnvs();
+  restoreTemporaryState();
+});
 
 describe('running the import and duplicate tools', () => {
   it('writes the duplicate, import and import-linter reports', () => {
@@ -196,6 +199,22 @@ describe('failure messages', () => {
 
     expect(error.message).toBe(
       'coverage run timed out after 25 minutes in the virtualenv environment',
+    );
+  });
+
+  it('follows a configured analyzer deadline', () => {
+    vi.stubEnv('NITPICKER_ANALYZER_TIMEOUT_MS', String(90 * 60_000));
+    const { context } = contextFor(project());
+
+    const error = failure({
+      context,
+      command: ['coverage', 'run'],
+      result: { error: { code: 'ETIMEDOUT' } },
+      rule: 'x',
+    });
+
+    expect(error.message).toBe(
+      'coverage run timed out after 90 minutes in the virtualenv environment',
     );
   });
 });

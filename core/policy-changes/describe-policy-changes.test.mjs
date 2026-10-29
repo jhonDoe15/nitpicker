@@ -48,6 +48,16 @@ describe('describePolicyChanges', () => {
     expect(changes({}, {})).toEqual(none);
   });
 
+  it('lists no analyzer timeout change, raised, lowered, added or removed', () => {
+    const none = { loosened: [], changed: [] };
+
+    expect(changes({}, { analyzerTimeoutMinutes: { java: 60 } })).toEqual(none);
+    expect(
+      changes({ analyzerTimeoutMinutes: { java: 60 } }, { analyzerTimeoutMinutes: { java: 5 } }),
+    ).toEqual(none);
+    expect(changes({ analyzerTimeoutMinutes: { java: 60 } }, {})).toEqual(none);
+  });
+
   it('counts added excludes, disabled analyzers and exceptions as loosening', () => {
     expect(
       loosened(

@@ -4,14 +4,24 @@ import { collectJavaFindings } from './java-diff.mjs';
 import { detectJavaBuild } from '../builds/java-build.mjs';
 import { parseJavaRunnerArguments } from './java-policy.mjs';
 import { javaStyle } from './style/java-style.mjs';
-import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
+import { gradleBudget, mavenBudget } from './gradle-wrapper/gradle-budget.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
 const MAX_MESSAGE_LENGTH = 4000;
 
 export function javaExecutionBudget(environment = process.env) {
-  return gradleBudget(environment);
+  const gradle = gradleBudget(environment);
+  const maven = mavenBudget(environment);
+  const configured = [
+    ...(environment.NITPICKER_GRADLE_TIMEOUT_MINUTES === undefined ? [] : [gradle]),
+    ...(environment.NITPICKER_MAVEN_TIMEOUT_MINUTES === undefined ? [] : [maven]),
+  ];
+  const budgets = configured.length === 0 ? [gradle] : configured;
+  return {
+    ...gradle,
+    analyzerTimeoutMs: Math.max(...budgets.map((budget) => budget.analyzerTimeoutMs)),
+  };
 }
 
 export function analyzeJavaSnapshot(

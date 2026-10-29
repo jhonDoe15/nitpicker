@@ -24,6 +24,7 @@ import {
   failingTestModules,
   pythonVersionSkip,
 } from './test-run/mutation-scope.mjs';
+import { commandTimeoutMs } from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 export const MUTATION_FAILED_RULE = 'mutation-failed';
 export const MUTMUT_VERSION_PROBE = [
@@ -73,7 +74,7 @@ function runMutmut(context, ignored = []) {
   return run(context, ['mutmut', 'run'], {
     accepted: finishedRun,
     rule: MUTATION_FAILED_RULE,
-    timeoutMs: MUTATION_TIMEOUT_MS,
+    timeoutMs: commandTimeoutMs(MUTATION_TIMEOUT_MS),
     ...mutmutEnvironment(context, ignored),
   });
 }
