@@ -6,7 +6,9 @@ runCases('no-assertion-in-loop through helpers, async callbacks and tables', {
     "it('x', () => { const check = (o) => run(o); for (const o of orders) { check(o); } expect(done()).toBe(true); });",
     "it('x', () => { const check = (o) => expect(o.paid).toBe(true); const [first] = orders; check(first); });",
     "function check(o) { expect(o.paid).toBe(true); } it('x', () => { check(order); });",
-    "function check(o) { for (const p of o.parts) { expect(p).toBe(1); } } it('x', () => { check(order); });",
+    "function build(o) { const parts = []; for (const p of o.parts) { parts.push(p); } return parts; } it('x', () => { expect(build(order)).toEqual([1]); });",
+    'function check(o) { for (const p of o.parts) { expect(p).toBe(1); } } beforeEach(() => { check(order); });',
+    "function check(o) { for (const p of o.parts) { expect(p).toBe(1); } } it('x', () => { run(check); });",
     "it('x', async () => { const rows = await Promise.all(items.map(async (x) => load(x))); expect(rows).toEqual([1, 2]); });",
     "it('x', () => { orders.forEach(register); expect(registry.size).toBe(2); });",
     "it('x', () => { const check = (o) => run(o); orders.forEach(check); expect(done()).toBe(true); });",
@@ -64,6 +66,31 @@ runCases('no-assertion-in-loop through helpers, async callbacks and tables', {
     ],
     [
       "it('x', () => { function check(list) { for (const o of list) { expect(o).toBe(1); } } check(orders); });",
+      'loop',
+      'for...of',
+    ],
+    [
+      "function check(o) { for (const p of o.parts) { expect(p).toBe(1); } } it('x', () => { check(order); });",
+      'loop',
+      'for...of',
+    ],
+    [
+      "const check = (o) => { o.parts.forEach((p) => { expect(p).toBe(1); }); }; it('x', () => { check(order); });",
+      'loop',
+      'forEach',
+    ],
+    [
+      "function check(o) { for (const p of o.parts) { expect(p).toBe(1); } } function outer(o) { check(o); } it('x', () => { outer(order); });",
+      'loop',
+      'for...of',
+    ],
+    [
+      "function check(o) { for (const p of o.parts) { expect(p).toBe(1); } } it('x', () => { check(a); }); it('y', () => { check(b); });",
+      'loop',
+      'for...of',
+    ],
+    [
+      "function check(o) { for (const p of o.parts) { verify(p); } } function verify(p) { expect(p).toBe(1); } it('x', () => { check(order); });",
       'loop',
       'for...of',
     ],

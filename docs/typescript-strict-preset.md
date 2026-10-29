@@ -900,11 +900,12 @@ hop, and type-only imports do not count.
 
   `expect.assertions(n)` and `expect.hasAssertions()` do not exempt a loop. They catch an empty
   loop only when `n` is exact for today's data and nobody keeps it in step with the table, so the
-  rule reports the loop anyway and the message sends the test to the allowed forms. Limits: only
-  loops that are lexically inside the test body (including helpers defined in it) and calls from
-  those loops are read; a loop inside a module-level helper that the test calls once is not
-  reported, as in the Python rule (loops in an assertion helper that is not a test function).
-  Hooks, `describe` bodies and `test.step` callbacks are not tests (a step in a loop is judged
+  rule reports the loop anyway and the message sends the test to the allowed forms. A loop of assertions
+  inside a same-file helper that a test calls (a module-level function, or one defined in the test
+  or its `describe`) is the same hole, so it is reported at the assertion in the helper's loop,
+  once, however many tests call the helper, and also when the helper reaches the loop through
+  other same-file helpers. Limits: helpers imported from another file are not followed; a helper
+  that no test calls is not read; a helper called only from a hook is not read. Hooks, `describe` bodies and `test.step` callbacks are not tests (a step in a loop is judged
   as part of its test). A chained property assertion without a call (`value.should.be.true`) is
   not an assertion call and is not seen; `value.should.equal(1)` is. A tagged-template
   `it.each` table is not read as a table.

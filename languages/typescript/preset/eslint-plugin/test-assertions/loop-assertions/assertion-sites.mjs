@@ -6,6 +6,13 @@ function calledFunction(context, node) {
   return node.type === 'CallExpression' ? resolvedFunction(context, node.callee) : undefined;
 }
 
+export function referencedFunction(context, node) {
+  if (node.type === 'Identifier' && isIterationArgument(node)) {
+    return resolvedFunction(context, node);
+  }
+  return calledFunction(context, node);
+}
+
 function holdsAssertion(env, start) {
   const seen = new Set([start]);
   const pending = [start];
@@ -39,8 +46,5 @@ export function isAssertionSite(env, node) {
   if (countsAsAssertion(node, env.bindings)) {
     return true;
   }
-  if (node.type === 'Identifier' && isIterationArgument(node)) {
-    return isAssertingHelper(env, resolvedFunction(env.context, node));
-  }
-  return isAssertingHelper(env, calledFunction(env.context, node));
+  return isAssertingHelper(env, referencedFunction(env.context, node));
 }
