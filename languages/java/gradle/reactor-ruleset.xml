@@ -9,7 +9,7 @@
   <description>Nitpicker Reactor rules: no blocking calls on the threads that run a reactive chain.</description>
 
   <rule name="ReactorBlockingInOperator" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Move this blocking call off the Reactor event loop: wrap it as Mono.fromCallable(() -&gt; blocking()).subscribeOn(Schedulers.boundedElastic()) inside flatMap, or add publishOn(Schedulers.boundedElastic()) earlier in the chain, or use a non-blocking client. A blocking call inside an operator runs on the thread that serves every other request, so it stalls them all until it returns."">
+        message="Move this blocking call off the Reactor event loop: wrap it as Mono.fromCallable(() -&gt; blocking()).subscribeOn(Schedulers.boundedElastic()) inside flatMap, or add publishOn(Schedulers.boundedElastic()) earlier in the chain, or use a non-blocking client. A blocking call inside an operator runs on the thread that serves every other request, so it stalls them all until it returns.">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 let $operators := ('map', 'mapNotNull', 'flatMap', 'flatMapMany', 'flatMapIterable', 'flatMapSequential',
@@ -81,7 +81,7 @@ return
   </rule>
 
   <rule name="ReactorBlockInReactiveMethod" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="Return the inner publisher through flatMap or zipWith instead of calling block(). This method returns a Mono or Flux, so its caller runs on an event-loop thread, where block() stalls every other request (Reactor throws IllegalStateException on those threads)."">
+        message="Return the inner publisher through flatMap or zipWith instead of calling block(). This method returns a Mono or Flux, so its caller runs on an event-loop thread, where block() stalls every other request (Reactor throws IllegalStateException on those threads).">
     <priority>2</priority>
     <properties><property name="xpath"><value><![CDATA[
 //MethodDeclaration[ClassType[pmd-java:typeIs('reactor.core.publisher.Mono')

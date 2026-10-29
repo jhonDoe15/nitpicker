@@ -33,6 +33,11 @@ describe('reactor-ruleset.xml', () => {
     expect(rules.filter(({ message }) => /[{}]/u.test(message))).toEqual([]);
   });
 
+  it('closes every message attribute once', () => {
+    expect(ruleset.match(/message="[^"]*">/gu)).toHaveLength(rules.length);
+    expect(ruleset.includes('""')).toBe(false);
+  });
+
   it('names the offloading scheduler in the operator rule', () => {
     expect(rules.map(({ message }) => message.includes('Schedulers.boundedElastic()'))).toEqual([
       true,
