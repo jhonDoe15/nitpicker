@@ -190,7 +190,6 @@ describe('the Python facts bundle', () => {
       text: 'function|body',
       key: expect.any(String),
       entry: false,
-      package: 'src/shop',
     });
   });
 
@@ -228,6 +227,68 @@ describe('the Python facts bundle', () => {
 
     expect(bundle({ 'src/shop/orders/cart.py': file({ docComments }) }).docComments).toEqual([
       { file: 'src/shop/orders/cart.py', ...docComments[0] },
+    ]);
+  });
+  it('resolves references to the exact name and loads to the fetched names', () => {
+    const references = [
+      { name: 'shop.orders.lines.helper', line: 2 },
+      { name: 'shop.orders.cart', line: 3 },
+      { name: 'shop.orders.*', line: 4, dynamic: true },
+    ];
+    const { imports } = bundle({
+      'src/shop/orders/__init__.py': file({ references, fetchedNames: ['run'] }),
+      'src/shop/orders/cart.py': file(),
+      'src/shop/orders/lines.py': file(),
+    });
+
+    expect(imports.map(({ to, names, line, reference }) => [to, names, line, reference])).toEqual([
+      ['src/shop/orders/lines.py', [{ name: 'helper' }], 2, true],
+      ['src/shop/orders/cart.py', [], 3, true],
+      ['src/shop/orders/cart.py', [{ name: 'run' }], 4, true],
+      ['src/shop/orders/lines.py', [{ name: 'run' }], 4, true],
+    ]);
+  });
+
+  it('counts only the attributes a migration reads', () => {
+    const migration = 'src/shop/migrations/0001_initial.py';
+    const binding = { kind: 'module', module: 'shop', level: 0 };
+    const { imports, definitions } = bundle(
+      {
+        [migration]: file({
+          imports: [statement(1, null, [['shop.orders.lines']])],
+          attributeUses: [{ binding, attributes: ['orders', 'lines', 'helper'], line: 5 }],
+          definitions: [definition('Migration')],
+        }),
+        'src/shop/orders/__init__.py': file(),
+        'src/shop/orders/lines.py': file(),
+      },
+      { referenceFiles: [migration] },
+    );
+
+    expect(definitions).toEqual([]);
+    expect(imports.map(({ to, names, reference = false }) => [to, names, reference])).toEqual([
+      ['src/shop/orders/__init__.py', [], false],
+      ['src/shop/orders/lines.py', [], false],
+      ['src/shop/orders/lines.py', [{ name: 'helper' }], true],
+    ]);
+  });
+
+  it('scopes definitions to their distribution and Django names to a Django application', () => {
+    const scanned = {
+      'src/shop/orders/cart.py': file({ definitions: [definition('Command')] }),
+      'src/shop/orders/lines.py': file({ definitions: [definition('Config')] }),
+    };
+    const packageOf = (name) => (name.endsWith('cart.py') ? 'src/shop' : '');
+    const rowsOf = ({ definitions }) =>
+      definitions.map(({ name, entry, package: root }) => [name, entry, root]);
+
+    expect(rowsOf(bundle(scanned, { packageOf }))).toEqual([
+      ['Command', false, 'src/shop'],
+      ['Config', false, undefined],
+    ]);
+    expect(rowsOf(bundle(scanned, { packageOf, django: true }))).toEqual([
+      ['Command', true, 'src/shop'],
+      ['Config', true, undefined],
     ]);
   });
 });

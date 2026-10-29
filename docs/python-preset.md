@@ -607,36 +607,36 @@ under `languages/python/rules/`: `checks`, `boundary`, `smells`, `honesty`); the
 rules. Rules that are not enforced because they flag idiomatic code with no clean alternative
 are listed at the end.
 
-| Concern                  | Allowed form                                                                                                                                     | Rule                                                                                                                                                 |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Logging                  | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below)                                           | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                               |
-| Environment              | read once in a composition root, pass values in                                                                                                  | `process-env-access` (script)                                                                                                                        |
-| Shell                    | a list: `subprocess.run(["git", "status"], check=True)`                                                                                          | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                        |
-| SQL                      | parameters: `cursor.execute("select * from t where id = %s", (id,))`; placeholder lists, fixed lookups, `Literal`/`Enum` names, `sql.Identifier` | `sql-string-formatting` (script), ruff `S610`, `S611`                                                                                                |
-| Path traversal           | `target = (base / name).resolve()`, then `target.is_relative_to(base)`                                                                           | `unsafe-path-join` (script)                                                                                                                          |
-| Magic numbers            | a named constant                                                                                                                                 | ruff `PLR2004`                                                                                                                                       |
-| Naming                   | PEP 8: `CapWords`, `snake_case`, `UPPER_SNAKE_CASE`, `...Error`                                                                                  | ruff `N`                                                                                                                                             |
-| Boundary                 | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`                                                      | `handwritten-boundary-guard` (script)                                                                                                                |
-| Types in the domain      | real types, `Protocol`, frozen dataclasses                                                                                                       | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
-| Pure domain              | clock, ids and random values passed in; ports implemented in `adapters/`                                                                         | `clock-now`, `random-in-domain`, `io-in-domain` (script)                                                                                             |
-| Module state             | state in an object made in the composition root                                                                                                  | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
-| Risky APIs               | JSON instead of pickle or marshal, `copy.deepcopy` to clone, a specific exception class                                                          | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
-| Deserialization          | `yaml.safe_load`, `torch.load(path, weights_only=True)`, `numpy.load` without `allow_pickle`                                                     | ruff `S506`, `unsafe-deserialization` (script)                                                                                                       |
-| Deprecated APIs          | the replacement the deprecation notice names                                                                                                     | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                       |
-| Repeated strings         | a constant or enum member                                                                                                                        | `repeated-string-literal` (script)                                                                                                                   |
-| Unused arguments         | remove the argument, or prefix it with `_` when the signature is fixed                                                                           | ruff `ARG001`-`ARG005`                                                                                                                               |
-| Generic names            | a name for the job (`price_rounding.py`, `OrderRepository`)                                                                                      | `generic-name` (script)                                                                                                                              |
-| Secrets                  | read from the environment; log only that a secret is set                                                                                         | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
-| Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                                                             | ruff `FBT001`, `FBT002`                                                                                                                              |
-| Input or output per item | one batch call, or `asyncio.gather`                                                                                                              | `io-in-loop` (script)                                                                                                                                |
-| Task markers             | `# TODO(#123): ...` with an issue                                                                                                                | `todo-without-issue` (script)                                                                                                                        |
-| Commented-out code       | delete it                                                                                                                                        | ruff `ERA001`                                                                                                                                        |
-| Security sinks           | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`                                                         | ruff `S` (see below)                                                                                                                                 |
-| TLS                      | verification on in every environment; a CA bundle (`verify=ca_path`, `cafile=`, `tlsCAFile=`)                                                    | ruff `S501`, `S323`, `tls-verification-off` (script)                                                                                                 |
-| Signatures               | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                    | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                            |
-| Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                 | ruff `S113`, `http-without-timeout` (script)                                                                                                         |
+| Concern                  | Allowed form                                                                                                                                     | Rule                                                                                                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Logging                  | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below)                                           | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                                                        |
+| Environment              | read once in a composition root, pass values in                                                                                                  | `process-env-access` (script)                                                                                                                                                 |
+| Shell                    | a list: `subprocess.run(["git", "status"], check=True)`                                                                                          | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                                                 |
+| SQL                      | parameters: `cursor.execute("select * from t where id = %s", (id,))`; placeholder lists, fixed lookups, `Literal`/`Enum` names, `sql.Identifier` | `sql-string-formatting` (script), ruff `S610`, `S611`                                                                                                                         |
+| Path traversal           | `target = (base / name).resolve()`, then `target.is_relative_to(base)`                                                                           | `unsafe-path-join` (script)                                                                                                                                                   |
+| Magic numbers            | a named constant                                                                                                                                 | ruff `PLR2004`                                                                                                                                                                |
+| Naming                   | PEP 8: `CapWords`, `snake_case`, `UPPER_SNAKE_CASE`, `...Error`                                                                                  | ruff `N`                                                                                                                                                                      |
+| Boundary                 | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`                                                      | `handwritten-boundary-guard` (script)                                                                                                                                         |
+| Types in the domain      | real types, `Protocol`, frozen dataclasses                                                                                                       | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                                                        |
+| Pure domain              | clock, ids and random values passed in; ports implemented in `adapters/`                                                                         | `clock-now`, `random-in-domain`, `io-in-domain` (script)                                                                                                                      |
+| Module state             | state in an object made in the composition root                                                                                                  | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                                              |
+| Risky APIs               | JSON instead of pickle or marshal, `copy.deepcopy` to clone, a specific exception class                                                          | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                                                   |
+| Deserialization          | `yaml.safe_load`, `torch.load(path, weights_only=True)`, `numpy.load` without `allow_pickle`                                                     | ruff `S506`, `unsafe-deserialization` (script)                                                                                                                                |
+| Deprecated APIs          | the replacement the deprecation notice names                                                                                                     | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                                                |
+| Repeated strings         | a constant or enum member                                                                                                                        | `repeated-string-literal` (script)                                                                                                                                            |
+| Unused arguments         | remove the argument, or prefix it with `_` when the signature is fixed                                                                           | ruff `ARG001`-`ARG005`                                                                                                                                                        |
+| Generic names            | a name for the job (`price_rounding.py`, `OrderRepository`)                                                                                      | `generic-name` (script)                                                                                                                                                       |
+| Secrets                  | read from the environment; log only that a secret is set                                                                                         | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                                              |
+| Boolean flags            | keyword-only (`def send(message, *, urgent=False)`) or two functions                                                                             | ruff `FBT001`, `FBT002`                                                                                                                                                       |
+| Input or output per item | one batch call, or `asyncio.gather`                                                                                                              | `io-in-loop` (script)                                                                                                                                                         |
+| Task markers             | `# TODO(#123): ...` with an issue                                                                                                                | `todo-without-issue` (script)                                                                                                                                                 |
+| Commented-out code       | delete it                                                                                                                                        | ruff `ERA001`                                                                                                                                                                 |
+| Security sinks           | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`                                                         | ruff `S` (see below)                                                                                                                                                          |
+| TLS                      | verification on in every environment; a CA bundle (`verify=ca_path`, `cafile=`, `tlsCAFile=`)                                                    | ruff `S501`, `S323`, `tls-verification-off` (script)                                                                                                                          |
+| Signatures               | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                    | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                                                     |
+| Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                 | ruff `S113`, `http-without-timeout` (script)                                                                                                                                  |
 | Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                             | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `negative-wait-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
-| Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                      | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
+| Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                      | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                                         |
 
 Details that are decisions rather than the table:
 
@@ -878,13 +878,16 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   negative assertion of `nitpicker/no-fixed-sleep-synchronization`) reports a wait that the test
   expects to run out: `assert not event.wait(0.5)`, `lock.acquire(timeout=1) is False`,
   `assertFalse(x.wait(...))`, and the first call with a delay (`timeout=`, `asyncio.wait_for(x,
-  t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or `assertRaises`
+t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or `assertRaises`
   of `TimeoutError`, `queue.Empty` or `TimeoutExpired`. Such a test passes only after the full
   delay. A delay of `0` or `None` is not reported. Only a real wait counts: a `wait`, `wait_for`,
-  `get`, `join`, `acquire`, `result` or `communicate` call, a `timeout` or `fail_after` scope, or a
-  `subprocess.run`-style call with a `timeout`. A call on a name the test binds to a mock (`Mock()`,
-  `MagicMock()`, `patch(...)`, or a name whose `side_effect` or `return_value` it sets) waits for
-  nothing, and `assert not proc.wait(timeout=5)` on a `Popen` checks an exit code of 0. `real-clock-in-test` and `random-in-test` skip a
+  `get`, `join`, `acquire`, `result` or `communicate` call, a `timeout` or `fail_after` scope, a
+  `subprocess.run`-style call with a `timeout`, or a project helper named `wait_*`, `*_until` or
+  `poll*` called with `timeout=`. A call on something the test binds to a mock (`Mock()`,
+  `MagicMock()`, `patch(...)`, or whose `side_effect` or `return_value` it sets) waits for nothing;
+  the binding is matched by its full path (`self.api` mocked leaves `self.jobs` real), and the one
+  that counts is the last assignment before the call, so a name rebound from a mock to a
+  `Queue()` waits again. `assert not proc.wait(timeout=5)` on a `Popen` checks an exit code of 0. `real-clock-in-test` and `random-in-test` skip a
   file that uses `freezegun`, `time_machine`, a patched clock, a seed or a `random.Random(...)`, and
   look at the fake per test function, not per file. `network-in-test` skips files that use
   `responses`, `respx`, `requests_mock` and similar or patch the client, and tests under
@@ -947,23 +950,34 @@ members is not reported.
   change the facts step also scans the base checkout, and a module-level function or class of at
   least 20 tokens that the change edits so that it drifts from a same-named copy in another module,
   while that copy is left as it was, is reported. A file the change moves is matched to its base
-  path through the moves file the head run receives. Copies are compared within one top-level
-  package (`src/shop`, or each Django app), as TypeScript compares within one workspace package, and
-  a name a framework requires (`Command`, `Migration`, `Meta`, `Config`), every definition of a
-  Django convention module (`admin.py`, `apps.py`, `urls.py`, `signals.py`, `settings`,
-  `wsgi.py`, `asgi.py`, `templatetags/`, `management/commands/`) and an entry point are never
-  compared.
-- `test-only-export`, `duplicate-definition` and `exported-name-collision` read the same scan. A
-  module Django loads by convention (the list above, in a project with `manage.py` or a Django
-  dependency) and its names are production code; so is what a migration, a settings string
-  (`INSTALLED_APPS`, `MIDDLEWARE`, any dotted path such as `"shop.models.upload_to"`) or
-  `importlib.import_module("app.plugins.csv")` names, and every module of a package an f-string
-  such as `f"app.plugins.{name}"` loads. Migrations are scanned for those references only, never
-  compared as copies. `@overload` stubs are folded into the implementation, as TypeScript folds
+  path through the moves file the head run receives. Copies are compared within one distribution
+  (the nearest folder above the module with a `pyproject.toml`, `setup.cfg` or `setup.py`, else the
+  whole project), as TypeScript compares within one workspace package, so the packages and flat
+  modules of one project are compared with each other. In a Django application (a `manage.py`, a
+  module that sets `INSTALLED_APPS`, or `django` among the main dependencies; an optional extra or a
+  development dependency does not count) a name Django requires (`Command`, `Migration`, `Meta`,
+  `Config`) and every definition of a convention module (`admin.py`, `apps.py`, `urls.py`,
+  `signals.py`, `settings`, `wsgi.py`, `asgi.py`, `templatetags/`, `management/commands/`) are
+  never compared; an entry point never is.
+- `test-only-export`, `duplicate-definition` and `exported-name-collision` read the same scan.
+  `duplicate-definition` compares the whole project, whatever the distribution. A module Django
+  loads by convention (the list above, in a Django application) and its names are production code.
+  A string that spells a dotted path counts only for the name it spells: `"shop.models.upload_to"`
+  uses `upload_to` of `shop.models`, while `"shop.models"`, a logger name such as `"app.billing"`
+  or a permission string only load the module. An `importlib.import_module(...)` or `__import__`
+  call loads the module it names, or every module of `app.plugins` for `f"app.plugins.{name}"`, and
+  uses there only the names the file fetches by a literal (`getattr(module, "export")`); no other
+  f-string counts. A migration uses only the attributes it reads (`shop.models.upload_to`), not the
+  whole module it imports; migrations are scanned for those references only, never compared as
+  copies. Dotted strings are references, never imports, so a registry of two `"…parse"` paths is
+  no name collision. `@overload` stubs are folded into the implementation, as TypeScript folds
   overload signatures, so two stores with the same overloads and different bodies are no copies.
-  An import inside an `if`, `try` or function (a platform gate, an `ImportError` fallback, a local
-  import) is an alternative implementation, not a collision, as a `require` in a branch is in
-  TypeScript; it still counts as a use.
+  Only a real alternative is spared by `exported-name-collision`, as a `require` in a branch is in
+  TypeScript: imports in a `try` and its `except ImportError` (or `ModuleNotFoundError`) handler,
+  and imports of the same name in two branches of one `if`/`elif`/`else` chain (a platform, version
+  or feature gate). A second import in the same scope, a function-local import that shadows a
+  module-level one and an import under `if __name__ == "__main__":` are reported; every import
+  still counts as a use.
 - `singular-and-plural-field` (TypeScript: `nitpicker/no-singular-and-plural-prop`): an optional
   `tag: T` beside an optional `tags` whose element type is `T` (`list`, `Sequence`, `set`,
   `frozenset`, `Iterable`, `tuple[T, ...]` and the `typing` names; `Optional`, `| None`,
@@ -993,15 +1007,15 @@ members is not reported.
   augmented assignment, a lambda body, also inside `not`, a conditional expression or another
   `and`/`or`), never an `if` or `while` condition, and not in a function that returns `TypeGuard`
   or `TypeIs`. A method of the enum itself may list its own members (`def is_early(self): return
-  self in (Stage.A, Stage.B)`), like the boolean each constant declares in the Java preset. Only a
+self in (Stage.A, Stage.B)`), like the boolean each constant declares in the Java preset. Only a
   list of some of the members fails, as in the TypeScript and Java presets, because a member added
   later falls into the default silently; a list of every member is not reported. An alias
   (`DEFAULT = A`, or a second name with the value of an earlier member) is not a member of its own.
   Enums from libraries are not checked. The allowed form is a `match` with `case _:
-  assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(value)`.
+assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(value)`.
 - `forwarding-wrapper` (TypeScript: `nitpicker/no-forwarding-wrapper`): an undecorated
   module-level function whose body (after a docstring) is `return target(...)`, or `return await
-  target(...)` in an `async def`, passing its own parameters in order (by position or as
+target(...)` in an `async def`, passing its own parameters in order (by position or as
   `name=name`, `*args` and `**kwargs` as spreads, keyword-only ones as `name=name`), where `target`
   is a single undecorated function of the project (same module, imported or reached through a
   module) with the same parameter names, kinds (positional-only, positional or keyword,
@@ -1058,12 +1072,16 @@ is defined.
   logged at `WARNING` or above (through any logger; the exception's type and message are added for
   `logger.exception`), or raised as a warning (`DeprecationWarning: ...`). Standard output
   (`print`) never counts, and neither does a log record of a test that takes the `caplog` fixture,
-  because that test asserts on its logs, nor the standard error copy of a record `caplog` captured
-  (a project handler from `dictConfig`, or loguru's default sink), as a mocked console is silent in
-  TypeScript. One record is one message: a logger with its own handler on standard error is reported
-  once, from standard error, also in a test that takes `capsys`, and so is a record that reaches
-  standard error a second way (a `QueueListener`, a stream opened on `/dev/stderr`, a handler that
-  writes with `click.echo(err=True)`, loguru records passed on to `logging`). A log call whose
+  because that test asserts on its logs, nor the standard error copy of a `WARNING` or higher
+  record `caplog` captured (a project handler from `dictConfig`, or loguru's default sink), as a
+  mocked console is silent in TypeScript. One record is one message: a logger with its own handler
+  on standard error is reported once, from standard error, also in a test that takes `capsys`, and
+  so is a record that reaches standard error a second way (a `QueueListener`, a stream opened on
+  `/dev/stderr`, a handler that writes with `click.echo(err=True)`). A standard error line is
+  taken for such a copy only when it is the whole line: the record's message, or the line one of
+  its handlers formats. Any other line stays, even one that contains the message (`log.warning("failed")`
+  hides no `Upload failed: connection refused`), and two identical lines from two sources may count
+  once. A log call whose
   message cannot be formatted is left to the project's handlers and `logging.raiseExceptions`; the
   plugin never makes it fail a test. Standard error printed while pytest
   imports and collects a file is given to that file with no test name; a warning raised then is
@@ -1075,7 +1093,9 @@ is defined.
   a plugin wraps, such as a `pytest-asyncio` one, by the function under `__wrapped__`), not to
   the test that happened to run first, so a new test that uses it adds no message. Its warnings
   stay where pytest recorded them and are only charged to that file: the plugin does not raise
-  them again, so `filterwarnings` entries that name a module keep matching. The TypeScript
+  them again, so `filterwarnings` entries that name a module keep matching. This holds with
+  context-aware warnings too (the default of free-threaded Python 3.14, or
+  `-X context_aware_warnings=1`), where pytest's record is found through the warnings context. The TypeScript
   preset does the same with Vitest, which gives the output of a `beforeAll` hook to its file or
   suite; Java findings name the module, not the test class, so they do not move either.
 - **Logging.** The plugin does not add a handler: it reads each record as a logger hands it to its

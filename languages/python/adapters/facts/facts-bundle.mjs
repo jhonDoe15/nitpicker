@@ -3,6 +3,7 @@ import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 
 const INIT_FILE = '__init__.py';
 const MAIN_FILE = '__main__.py';
+const ANY_NAME = '*';
 const FRAMEWORK_NAMES = new Set(['Command', 'Config', 'Meta', 'Migration']);
 const DJANGO_MODULES = new Set([
   'admin.py',
@@ -21,11 +22,6 @@ function isDjangoConvention(file) {
     DJANGO_MODULES.has(path.posix.basename(file)) ||
     DJANGO_FOLDERS.some((folder) => directory.includes(`/${folder}/`))
   );
-}
-
-function packageRoot(file, module) {
-  const parts = stemOf(file).split('/');
-  return parts.slice(0, parts.length - module.split('.').length + 1).join('/');
 }
 
 function stemOf(file) {
@@ -77,7 +73,7 @@ function moduleImports(file, statement, resolver) {
       names: [],
     }));
     const to = resolver.fileOf(resolver.moduleStem(name));
-    return [...loads, { to, names: [named('*', alias)] }];
+    return [...loads, { to, names: [named(ANY_NAME, alias)] }];
   });
 }
 
@@ -98,9 +94,9 @@ function fromImports(file, statement, { resolver, scanned }) {
   );
   return statement.aliases.map(({ name, alias }) => {
     const reexport = reexported.has(alias ?? name);
-    const submodule = name === '*' ? undefined : resolver.fileOf(`${stem}/${name}`);
+    const submodule = name === ANY_NAME ? undefined : resolver.fileOf(`${stem}/${name}`);
     if (submodule !== undefined && !definesName(scanned[target], name)) {
-      return { to: submodule, names: [named('*', alias ?? name)], reexport };
+      return { to: submodule, names: [named(ANY_NAME, alias ?? name)], reexport };
     }
     return { to: target, names: [named(name, alias)], reexport };
   });
@@ -127,20 +123,55 @@ function mergedStatements(entries, statement, { file, role }) {
 
 const PACKAGE_WILDCARD = '.*';
 
-function referencedTargets({ name }, resolver) {
+function exactTarget(dotted, resolver) {
+  const parts = dotted.split('.');
+  for (let cut = parts.length; cut > 0; cut -= 1) {
+    const to = resolver.fileOf(resolver.moduleStem(parts.slice(0, cut).join('.')));
+    if (to !== undefined) {
+      return [{ to, names: parts.slice(cut, cut + 1).map((name) => named(name)) }];
+    }
+  }
+  return [];
+}
+
+function loadedTargets({ name }, fetched, resolver) {
+  const names = fetched.map((fetchedName) => named(fetchedName));
   if (name.endsWith(PACKAGE_WILDCARD)) {
     const stem = resolver.moduleStem(name.slice(0, -PACKAGE_WILDCARD.length));
-    return stem === undefined
-      ? []
-      : resolver.filesUnder(stem).map((to) => ({ to, names: [named('*')] }));
+    return stem === undefined ? [] : resolver.filesUnder(stem).map((to) => ({ to, names }));
   }
-  const whole = resolver.fileOf(resolver.moduleStem(name));
-  if (whole !== undefined) {
-    return [{ to: whole, names: [named('*')] }];
+  const to = resolver.fileOf(resolver.moduleStem(name));
+  return to === undefined ? [] : [{ to, names }];
+}
+
+function attributeTargets(file, { binding, attributes }, resolver) {
+  if (binding.kind === 'module') {
+    return exactTarget([binding.module, ...attributes].join('.'), resolver);
   }
-  const cut = name.lastIndexOf('.');
-  const owner = resolver.fileOf(resolver.moduleStem(name.slice(0, cut)));
-  return owner === undefined ? [] : [{ to: owner, names: [named(name.slice(cut + 1))] }];
+  const stem = resolver.baseStem(file, binding);
+  const submodule = stem === undefined ? undefined : resolver.fileOf(`${stem}/${binding.name}`);
+  return submodule === undefined
+    ? []
+    : [{ to: submodule, names: attributes.slice(0, 1).map((name) => named(name)) }];
+}
+
+function referenceTargets(file, context) {
+  const { scanned, resolver } = context;
+  const fetched = scanned[file].fetchedNames ?? [];
+  const strings = (scanned[file].references ?? []).map((reference) => [
+    reference,
+    reference.dynamic
+      ? loadedTargets(reference, fetched, resolver)
+      : exactTarget(reference.name, resolver),
+  ]);
+  const attributes = context.referenceOnly.has(file)
+    ? (scanned[file].attributeUses ?? []).map((use) => [use, attributeTargets(file, use, resolver)])
+    : [];
+  return [...strings, ...attributes];
+}
+
+function withoutWildcards(record) {
+  return { ...record, names: record.names.filter(({ name }) => name !== ANY_NAME) };
 }
 
 function importFacts(file, context) {
@@ -152,14 +183,17 @@ function importFacts(file, context) {
         : fromImports(file, statement, context);
     return mergedStatements(entries, statement, { file, role });
   });
-  const references = (context.scanned[file].references ?? []).flatMap((reference) =>
+  const references = referenceTargets(file, context).flatMap(([reference, targets]) =>
     mergedStatements(
-      referencedTargets(reference, context.resolver).filter(({ to }) => to !== file),
+      targets.filter(({ to }) => to !== file),
       reference,
       { file, role },
     ),
   );
-  return [...statements, ...references.map((record) => ({ ...record, typeOnly: false }))];
+  return [
+    ...(context.referenceOnly.has(file) ? statements.map(withoutWildcards) : statements),
+    ...references.map((record) => ({ ...record, typeOnly: false, reference: true })),
+  ];
 }
 
 function definitionText({ tag, tokens }) {
@@ -187,7 +221,7 @@ function definitionFacts(file, context) {
   }
   const entries = context.entryNames.get(file) ?? new Set();
   const convention = context.isConvention(file);
-  const module = context.moduleNames.get(file);
+  const distribution = context.packageOf(file);
   return context.scanned[file].definitions.map((definition) => {
     const free = definition.free.map((use) => `${use.name}=${bindingText(file, use, context)}`);
     const text = definitionText(definition);
@@ -203,8 +237,8 @@ function definitionFacts(file, context) {
       usedLocally: definition.usedLocally,
       text,
       key: hash(`${text}|${free.join(',')}`),
-      entry: convention || entries.has(definition.name) || FRAMEWORK_NAMES.has(definition.name),
-      ...(module === undefined ? {} : { package: packageRoot(file, module) }),
+      entry: convention || entries.has(definition.name) || context.isFrameworkName(definition.name),
+      ...(distribution === '' ? {} : { package: distribution }),
     };
   });
 }
@@ -259,6 +293,7 @@ export function factsBundle({
   entryPoints = [],
   django = false,
   referenceFiles = [],
+  packageOf = () => '',
 }) {
   const files = Object.keys(scanned).sort();
   const resolver = createResolver(modules, files);
@@ -268,11 +303,16 @@ export function factsBundle({
   function isConvention(file) {
     return django && isDjangoConvention(file);
   }
+  function isFrameworkName(name) {
+    return django && FRAMEWORK_NAMES.has(name);
+  }
   const context = {
     resolver,
     scanned,
     roleOf,
     isConvention,
+    isFrameworkName,
+    packageOf,
     entryNames: entryPointNames(entryPoints, resolver),
     referenceOnly: new Set(referenceFiles),
     moduleNames: new Map(modules.map(({ file, module }) => [file, module])),

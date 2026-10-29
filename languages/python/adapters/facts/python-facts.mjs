@@ -8,7 +8,7 @@ import {
 } from '../analysis/python-sources.mjs';
 import { readPackageFacts } from '../../rules/libraries/package-facts.mjs';
 import { ROOT_TEST_DIRECTORIES } from '../execution/python-project.mjs';
-import { isDjangoProject } from '../configuration/pytest/collection-options.mjs';
+import { readPythonDependencies } from '../../libraries/python-dependencies.mjs';
 import { factsBundle } from './facts-bundle.mjs';
 import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
 import { registeredFactRules } from '../../../../shared/project-rules/fact-rules.mjs';
@@ -21,6 +21,39 @@ const FACTS_FAILED_RULE = 'facts-failed';
 const FACTS_REQUEST = 'facts-request.json';
 const MIGRATIONS_FOLDER = 'migrations';
 const SCAN_SCRIPT = path.join(fileURLToPath(new URL('../', import.meta.url)), 'import-scan.py');
+const DJANGO_ENTRY = 'manage.py';
+const DJANGO_SETTING = 'INSTALLED_APPS';
+const DJANGO_DISTRIBUTION = 'django';
+const DISTRIBUTION_FILES = ['pyproject.toml', 'setup.cfg', 'setup.py'];
+
+function isDjangoApplication(root, scanned, isTest) {
+  return (
+    existsSync(path.join(root, DJANGO_ENTRY)) ||
+    Object.entries(scanned).some(
+      ([file, facts]) =>
+        !isTest(file) && facts.definitions.some(({ name }) => name === DJANGO_SETTING),
+    ) ||
+    readPythonDependencies(root).dependencies.some(
+      ({ normalized, group }) => normalized === DJANGO_DISTRIBUTION && group === 'production',
+    )
+  );
+}
+
+function distributionLookup(root) {
+  const roots = new Map();
+  function rootOf(folder) {
+    if (folder === '.' || folder === '') {
+      return '';
+    }
+    if (!roots.has(folder)) {
+      const own = DISTRIBUTION_FILES.some((name) => existsSync(path.join(root, folder, name)));
+      roots.set(folder, own ? folder : rootOf(path.posix.dirname(folder)));
+    }
+    return roots.get(folder);
+  }
+  return (file) => rootOf(path.posix.dirname(file));
+}
+
 function isMigration(file) {
   return `/${file}`.includes(`/${MIGRATIONS_FOLDER}/`);
 }
@@ -54,7 +87,8 @@ function scanFacts(context, run, root) {
     scanned,
     isTest,
     referenceFiles,
-    django: isDjangoProject(root),
+    django: isDjangoApplication(root, scanned, isTest),
+    packageOf: distributionLookup(root),
     ...readPackageFacts(root),
   });
 }

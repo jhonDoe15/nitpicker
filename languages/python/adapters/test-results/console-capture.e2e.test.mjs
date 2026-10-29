@@ -62,8 +62,8 @@ describe.skipIf(!pythonE2eEnabled)('the pytest console plugin', () => {
     const file = path.join(root, 'tests/test_shop.py');
 
     expect(report.entries).toEqual([
-      { file, test: 'test_stderr', messages: ['disk almost full'] },
       { file, test: 'test_logged', messages: ['WARNING shop: rate is 0'] },
+      { file, test: 'test_stderr', messages: ['disk almost full'] },
       {
         file,
         test: 'test_traceback',

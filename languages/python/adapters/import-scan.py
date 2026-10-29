@@ -13,6 +13,7 @@ from python_facts import decoded, facts_of
 
 TYPE_CHECKING = "TYPE_CHECKING"
 TYPING_MODULES = {"typing", "typing_extensions"}
+IMPORT_ERRORS = {"ImportError", "ModuleNotFoundError"}
 
 
 def is_false_assignment(node):
@@ -73,22 +74,75 @@ def statement_of(node, type_only, conditional):
     }
 
 
+def import_nodes(statements):
+    return [
+        node
+        for statement in statements
+        for node in ast.walk(statement)
+        if isinstance(node, (ast.Import, ast.ImportFrom))
+    ]
+
+
+def bound_names(node):
+    if isinstance(node, ast.Import):
+        return {alias.asname or alias.name.split(".")[0] for alias in node.names}
+    return {alias.asname or alias.name for alias in node.names}
+
+
+def catches_import_error(handler):
+    caught = handler.type.elts if isinstance(handler.type, ast.Tuple) else [handler.type]
+    return any(getattr(name, "id", None) in IMPORT_ERRORS for name in caught)
+
+
+def fallback_imports(node):
+    handlers = [handler for handler in node.handlers if catches_import_error(handler)]
+    if not handlers:
+        return []
+    return import_nodes([*node.body, *(statement for h in handlers for statement in h.body)])
+
+
+def chain_branches(node):
+    found = [node.body]
+    while len(node.orelse) == 1 and isinstance(node.orelse[0], ast.If):
+        node = node.orelse[0]
+        found.append(node.body)
+    return [*found, node.orelse] if node.orelse else found
+
+
+def gated_imports(node):
+    per_branch = [import_nodes(branch) for branch in chain_branches(node)]
+    counts = {}
+    for nodes in per_branch:
+        for name in set().union(*map(bound_names, nodes)):
+            counts[name] = counts.get(name, 0) + 1
+    shared = {name for name, count in counts.items() if count >= 2}
+    return [node for nodes in per_branch for node in nodes if bound_names(node) & shared]
+
+
+def alternative_imports(tree):
+    found = set()
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Try, getattr(ast, "TryStar", ast.Try))):
+            found.update(map(id, fallback_imports(node)))
+        elif isinstance(node, ast.If):
+            found.update(map(id, gated_imports(node)))
+    return found
+
+
 def collect(root, flags):
+    alternatives = alternative_imports(root)
     found = []
-    stack = [(root, False, False)]
+    stack = [(root, False)]
     while stack:
-        node, type_only, conditional = stack.pop()
+        node, type_only = stack.pop()
         if isinstance(node, (ast.Import, ast.ImportFrom)):
-            found.append(statement_of(node, type_only, conditional))
+            found.append(statement_of(node, type_only, id(node) in alternatives))
             continue
         split = branches(node, type_only, flags) if isinstance(node, ast.If) else None
         if split is None:
-            nested = conditional or not isinstance(node, ast.Module)
-            pending = [(child, type_only, nested) for child in ast.iter_child_nodes(node)]
+            pending = [(child, type_only) for child in ast.iter_child_nodes(node)]
         else:
-            pending = [
-                (child, flag, conditional) for statements, flag in split for child in statements
-            ]
+            pending = [(child, flag) for statements, flag in split for child in statements]
         stack.extend(reversed(pending))
     return found
 
