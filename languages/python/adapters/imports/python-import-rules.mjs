@@ -1,10 +1,9 @@
-import { isExplainedCycle } from '../../../../shared/graph/explained-cycles.mjs';
 import { stronglyConnected } from '../../../../shared/graph/strongly-connected.mjs';
 import { listed } from '../../../../shared/rules/features/feature-boundaries.mjs';
+import { packageCycleFindings } from '../../../../shared/rules/features/package-cycles.mjs';
 import { importEdges } from '../analysis/python-coupling.mjs';
 
 const COUPLING_TOOL = 'coupling';
-const PACKAGE_CYCLE_RULE = 'package-cycle';
 const MODULE_CYCLE_RULE = 'no-production-cycles';
 const OUTSIDE_ROOTS_RULE = 'no-import-outside-roots';
 const NO_FEATURES = { explainedCycles: [], featureOf: () => undefined };
@@ -55,20 +54,10 @@ function packageAnchors(modules) {
 
 function packageCycles(modules, edges, features) {
   const byName = new Map(modules.map((entry) => [entry.module, entry]));
-  const packaged = packageEdges(byName, edges);
-  const anchor = packageAnchors(modules);
-  return stronglyConnected([...anchor.keys()], packaged)
-    .filter((members) => !isExplainedCycle(members, { packaged, anchor, features }))
-    .flatMap((members) =>
-      members.map((member) => ({
-        tool: COUPLING_TOOL,
-        rule: PACKAGE_CYCLE_RULE,
-        path: anchor.get(member),
-        identity: `cycle:${member}`,
-        message: `Package ${member} is in a dependency cycle with ${listed(members.filter((other) => other !== member))}. Move the shared types down into one of them, or invert one dependency behind an interface`,
-        classification: 'enforceable',
-      })),
-    );
+  return packageCycleFindings(
+    { anchor: packageAnchors(modules), packaged: packageEdges(byName, edges) },
+    features,
+  );
 }
 
 function moduleCycles(modules, edges) {

@@ -28,7 +28,7 @@ function featureFolderRules(ids) {
       id: ids.packageCycle,
       check: 'coupling',
       limit:
-        'a production package in a dependency cycle with other packages, one finding per package of the cycle (Java and Kotlin: compiled class dependencies, so mixed Java and Kotlin edges count; Python: runtime imports, where a package `__init__` importing its own submodules is not a dependency); a cycle that only `feature-cycle` edges close is left to that rule (Java and Kotlin: also `shared-imports-feature` edges); TypeScript and JavaScript: dependency-cruiser `no-production-cycles`, which reports every module cycle',
+        'a production package in a dependency cycle with other packages, one finding per package of the cycle (Java and Kotlin: compiled class dependencies, so mixed Java and Kotlin edges count; Python: runtime imports, where a package `__init__` importing its own submodules is not a dependency); a cycle that a reported `feature-cycle` fully explains (its packages lie in two or more features of that cycle, and removing the edges of that feature cycle leaves no cycle) is left to that rule; TypeScript and JavaScript: dependency-cruiser `no-production-cycles`, which reports every module cycle',
       enforcedBy: { typescript: true, javascript: true, java: true, python: true, kotlin: true },
     },
   ];

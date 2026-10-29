@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { SPRING_ARCH_REPORT } from '../spring-arch/spring-arch.mjs';
 
-const SPRING_LAYER_PACKAGES = [
+export const SPRING_LAYER_PACKAGES = [
   'controller',
   'controllers',
   'service',

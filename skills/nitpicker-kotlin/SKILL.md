@@ -110,6 +110,11 @@ Before you change code other modules use, or fix a bug, read
   stay below 9.
 - A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
   a function, also when the copy has other names and literals. A package must not depend on a less stable one (`stability-direction`).
+- Features (`**/features/<name>`, or in a Spring app the sub-packages of the root package): other
+  code uses only the classes directly in a feature's package, never its sub-packages
+  (`feature-internal-import`); `shared` never uses a feature (`shared-imports-feature`); features
+  and packages never depend on each other in a cycle (`feature-cycle`, `package-cycle`); a shared
+  class only one feature uses moves into it (`shared-used-by-one-feature`).
 - A file stays within 300 lines (a test file 500). A package folder holds at most 6 files and 6
   test files directly: group the rest into subpackages by what they do. Java sources follow the
   `nitpicker-java` rules.

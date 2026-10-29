@@ -1,6 +1,7 @@
+import { readFileSync } from 'node:fs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readCouplingFindings } from '../metrics/java-coupling.mjs';
-import { springRootFolders } from './feature-layout.mjs';
+import { SPRING_LAYER_PACKAGES, springRootFolders } from './feature-layout.mjs';
 import { readFeatureGraph } from './feature-findings.mjs';
 import { featureProjects, javaSources, rows } from './test-support/feature-project.mjs';
 
@@ -76,9 +77,10 @@ describe('Spring package-by-feature roles', () => {
       })
         .filter(({ rule }) => rule === 'stability-direction')
         .map(({ identity }) => identity);
-    expect(layout).toMatchObject({
+    expect(layout).toEqual({
       featureRoots: [FOLDER],
-      notFeatures: expect.arrayContaining(['shared', 'service']),
+      sharedRoots: [`${FOLDER}/shared`],
+      notFeatures: ['shared', ...SPRING_LAYER_PACKAGES],
     });
     expect(stability({ layout })).toEqual([
       `package-edge:${ROOT}.orders->${ROOT}.billing`,
@@ -132,6 +134,20 @@ describe('Spring package-by-feature roles', () => {
         ([rule]) => rule,
       ),
     ).toEqual(['feature-internal-import']);
+  });
+});
+
+describe('Spring layer packages', () => {
+  it('names the same layer packages as the ArchUnit spring-layout rule', () => {
+    const layoutRule = readFileSync(
+      new URL('../../gradle/archunit/Layout.java', import.meta.url),
+      'utf8',
+    );
+    const [, listed] = /LAYER_PACKAGES =\s*Set\.of\(([^)]*)\)/u.exec(layoutRule);
+
+    expect([...listed.matchAll(/"(\w+)"/gu)].map(([, name]) => name).sort()).toEqual(
+      SPRING_LAYER_PACKAGES.toSorted(),
+    );
   });
 });
 

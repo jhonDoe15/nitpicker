@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { cycleFindings, outsideRootsFindings } from './python-import-rules.mjs';
 
 const module = (file, name, isPackage = false) => ({ file, module: name, isPackage });
@@ -28,7 +29,7 @@ describe('import cycles', () => {
       ['package-cycle', 'src/app/orders/__init__.py', 'cycle:app.orders'],
     ]);
     expect(findings[0].message).toBe(
-      'Package app.billing is in a dependency cycle with app.orders. Move the shared types down into one of them, or invert one dependency behind an interface',
+      `Keep dependencies between packages one-way: package app.billing is in a dependency cycle with app.orders. Move the shared types down into one of them, or invert one dependency behind an interface. ${exceptionHint('coupling/package-cycle', 'src/app/billing/*')}`,
     );
   });
   it('does not count a package that imports its own submodules, and reports module cycles inside one package', () => {
