@@ -62,6 +62,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
       'ExhaustiveEnumPredicate isSettled',
       'ExhaustiveEnumPredicate weight',
       'NonAtomicUpdateAcrossSuspension Ledger.total in add',
+      'NonAtomicUpdateAcrossSuspension Ledger.total in addTwoAtATime',
       'SingularAndPluralMember Query.tags',
       'StaticForwardingWrapper absOf',
       'StaticForwardingWrapper total',
