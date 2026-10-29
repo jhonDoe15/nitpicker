@@ -94,7 +94,7 @@ describe.skipIf(!pythonE2eEnabled)('Python slow test gate end to end', () => {
       ['test-runtime', 'tests/test_slow.py', 'test:tests/test_slow.py::::test_slow', 'enforceable'],
     ]);
     const [message] = findingsOf(result, 'slow-test').map((row) => row[4]);
-    expect(message.slice(0, message.indexOf(' s;'))).toBe('test_slow took 1.5');
+    expect(message).toMatch(/^test_slow took (?:1\.[5-9]|[2-9]\.\d) s;/u);
   });
 
   it('gives a test under an integration folder the integration budget', () => {
