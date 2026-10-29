@@ -146,9 +146,10 @@ tester.run('no-float-equality-in-tests', noFloatEqualityInTests, {
     "import { assert } from 'chai'; assert.isAbove(total, 0.1);",
     "import assert from 'node:assert'; assert.ok(total === 1);",
     "import assert from 'node:assert'; assert(total < 0.1);",
-    "import assert from 'node:assert'; assert.ok(isClose(total === 0.1));",
     'expect(total < 0.1).toBe(true);',
     'verify(total === 0.1);',
+    'expect(values.some((value) => value > 0.5)).toBe(true);',
+    "import assert from 'node:assert'; assert.ok(values.every((value) => { return value; }));",
   ],
   invalid: floatCases([
     'expect(total).toBe(0.1);',
@@ -217,6 +218,10 @@ tester.run('no-float-equality-in-tests', noFloatEqualityInTests, {
     'assert(total === 0.1);',
     "import { assert } from 'chai'; assert.isTrue(total === 0.1);",
     'expect(total === 0.1).toBe(true);',
+    'expect(total).toBe(+0.1);',
+    "import assert from 'node:assert'; assert.ok(isClose(total === 0.1));",
+    'expect(values.some((value) => value === 0.5)).toBe(true);',
+    "import assert from 'node:assert'; assert.ok(values.every((value) => value !== 0.5));",
   ]),
 });
 

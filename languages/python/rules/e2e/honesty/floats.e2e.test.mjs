@@ -61,6 +61,19 @@ describe.skipIf(!enabled)('float-equality-in-test', () => {
         ['float-equality-in-test:6 0.3'],
       ],
       [
+        'a literal between two operands of a chain',
+        inTest('assert a() == 0.5 == b()'),
+        ['float-equality-in-test:2 0.5'],
+      ],
+      [
+        'assertEqual with keyword arguments',
+        {
+          file: 'tests/test_prices.py',
+          code: `${UNITTEST}def test_total(self):\n        self.assertEqual(first=total(), second=0.3)\n`,
+        },
+        ['float-equality-in-test:6 0.3'],
+      ],
+      [
         'assertTrue around a comparison',
         {
           file: 'tests/test_prices.py',
