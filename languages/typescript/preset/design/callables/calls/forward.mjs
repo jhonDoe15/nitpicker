@@ -37,7 +37,7 @@ function isThenable(scope, call) {
   return scope.checker.getTypeAtLocation(call).getProperty('then') !== undefined;
 }
 
-function forwardedCall(scope, expression) {
+function forwardedCall(expression) {
   const call = ts.isParenthesizedExpression(expression) ? unwrap(expression) : expression;
   const isPlainCall =
     ts.isCallExpression(call) &&
@@ -51,7 +51,7 @@ export function forwardFact(scope) {
   const { node } = site;
   const sole = site.kind === 'method' || site.kind === 'function' ? soleStatement(node) : undefined;
   const call =
-    sole === undefined || node.asteriskToken ? undefined : forwardedCall(scope, sole.expression);
+    sole === undefined || node.asteriskToken ? undefined : forwardedCall(sole.expression);
   const target = call === undefined ? undefined : targetSite(scope, call);
   if (target === undefined || (isAsync(node) && !(sole.returned && isThenable(scope, call)))) {
     return undefined;
