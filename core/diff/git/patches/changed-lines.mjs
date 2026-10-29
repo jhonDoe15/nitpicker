@@ -149,6 +149,7 @@ function fileChanges({ filePath, added, hunks }, sources, projectRelativePath) {
     added,
     ranges: offsetRanges(0, onlyChanged(headLines, aligned)),
     inserted: offsetRanges(0, onlyChanged(insertedLines(hunks), aligned)),
+    deletions: hunks.filter(({ head }) => head.count === 0).map(({ head }) => head.start),
     hunks: hunks.map(({ base, head }) => [base.start, base.count, head.start, head.count]),
     carried: aligned?.carried ?? [],
   };

@@ -66,6 +66,11 @@ const HONESTY_ROWS = [
   ],
   ['todo tests name writing the test', "it.todo('later');", 'write the test'],
   [
+    'an unowned timer assertion names awaiting the callback',
+    "it('x', () => { setTimeout(() => { expect(run()).toBe(1); }, 10); });",
+    'Await a promise the callback resolves',
+  ],
+  [
     'skipIf(true) names the platform condition',
     "it.skipIf(true)('x', () => {});",
     'process.platform',
