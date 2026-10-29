@@ -7,9 +7,9 @@ import {
   runPit,
 } from '../maven-tests.mjs';
 import { copyTestResults, requireTestngRun } from '../results/maven-test-results.mjs';
-import { runSpringArch } from '../spring/maven-spring-arch.mjs';
 import { lifecycleArgs } from '../maven-project.mjs';
 import { jacocoPlugin } from '../maven-tools.mjs';
+import { moduleName } from '../../builds/test-failures.mjs';
 
 const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
 
@@ -39,40 +39,35 @@ export function jacocoExecFiles(module) {
   return [path.join(module.buildDirectory, OWN_JACOCO_EXEC), ...module.jacocoDestFiles];
 }
 
-export function readTestRuns({ module, reportDir, since, isArchunit, testRuntime, quick }) {
-  if (quick) {
-    collectArchunitResults({ module, reportDir, since, isArchunit });
-    return false;
-  }
-  const testsRan = collectTestResults({ module, reportDir, since, isArchunit });
-  requireTestngRun({ module, since, isArchunit, testRuntime });
-  copyTestResults({ module, reportDir, since, isArchunit });
-  return testsRan;
+function moduleNameOf(module, projectRoot) {
+  return moduleName(path.relative(projectRoot, module.basedir).replaceAll('\\', '/'));
 }
 
-export function analyzeTests(options) {
-  const { module, reportDir, classpaths, tools, pinned, since, springArch, springRoles } = options;
-  const { isArchunit, testsRan, spawn, quick } = options;
-  if (!quick) {
-    runJacocoReport({
-      module,
-      reportDir,
-      tools,
-      execFiles: jacocoExecFiles(module),
-      since,
-      testsRan,
-      spawn,
-    });
-    runPit({ module, reportDir, tools, classpaths, isArchunit, spawn });
+export function readTestRuns(context) {
+  const { module, reportDir, since, isArchunit, testRuntime, tolerateFailures } = context;
+  if (context.quick) {
+    collectArchunitResults({ module, reportDir, since, isArchunit });
+    return { testsRan: false, failure: undefined };
   }
-  runSpringArch({
+  const results = collectTestResults({
     module,
     reportDir,
-    tools,
-    classpaths,
-    pinned,
-    archRules: springArch,
-    springRoles,
-    spawn,
+    since,
+    isArchunit,
+    tolerateFailures,
+    moduleName: moduleNameOf(module, context.projectRoot),
   });
+  requireTestngRun({ module, since, isArchunit, testRuntime });
+  copyTestResults({ module, reportDir, since, isArchunit });
+  return results;
+}
+
+export function runCoverageTools(options) {
+  const { module, reportDir, tools, classpaths, since, testsRan, isArchunit, spawn } = options;
+  if (options.quick) {
+    return;
+  }
+  const execFiles = jacocoExecFiles(module);
+  runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, spawn });
+  runPit({ module, reportDir, tools, classpaths, isArchunit, spawn });
 }

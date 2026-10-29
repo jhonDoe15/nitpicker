@@ -56,6 +56,15 @@ Before you change code other modules use, or fix a bug, read
   indentation.
 - Text: `"a".equals(x)` or `a.equals(b)`, never `==` on strings or other objects. Pass a charset and
   a locale: `s.getBytes(StandardCharsets.UTF_8)`, `s.toUpperCase(Locale.ROOT)`.
+- Strings, arrays and files: no field initializer that repeats the default (`= 0`, `= null`,
+  `= false`). Append one character as a char (`append('x')`) and chain appends
+  (`sb.append(a).append(b)`). Write `i + "x"`, not `"" + i + "x"`; `String.valueOf(i)` only when
+  nothing else is concatenated. Build loop output in a local `StringBuilder`. Copy arrays with
+  `System.arraycopy`, and an array into a collection with `Collections.addAll(target, array)`. Open
+  files with `Files.newInputStream` or `Files.newBufferedReader`, not `FileInputStream`.
+- Threads: no `synchronized`, `wait` or `notify`. Lock with a private final `ReentrantLock`
+  (`lock()` right before `try`, `unlock()` in `finally`) and wait on a `Condition` from it
+  (`await()` in a loop, `signalAll()`).
 - Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with
   `System.getLogger(Foo.class.getName())`, or the project's logger.
 - Null: a method returning a collection returns an empty one (`List.of()`), never `null`. Any
@@ -93,9 +102,10 @@ Before you change code other modules use, or fix a bug, read
   never call `System.exit`. A trailing array parameter is varargs (`String... names`).
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
-- nitpicker runs its own PMD rules (errorprone, bestpractices and a broad-catch rule) and Google
-  checks. A project's `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` counts only
-  when `nitpicker.config.json` opts in under `tools`; then read it too.
+- nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,
+  security and a broad-catch rule) and Google checks. A project's `config/pmd/ruleset.xml` or
+  `config/checkstyle/checkstyle.xml` counts only when `nitpicker.config.json` opts in under
+  `tools`; then read it too.
 
 ## Errors
 
@@ -142,10 +152,19 @@ Before you change code other modules use, or fix a bug, read
   `after(ms).never()` or `during(...)` (`NegativeWaitInTest`).
 - Tests print nothing new (`test-runtime/test-console-output`): no `System.out`/`System.err`, and
   no new `WARN` or `ERROR` log line from the code under test. Fix the cause the line names.
+- In main code, nothing with an outside effect runs while a class loads (`ClassLoadEffect`): no
+  connection, request, file access, thread, pool, sleep or JVM-wide setting in a `static` field or
+  block, an enum constant, or the constructor or initializer of a `static final INSTANCE = new X()`
+  singleton, nor in a method of the class they call. Do the work in a method `main` or the
+  framework calls after startup (a `@Bean` method, an `ApplicationRunner`) and pass the result in,
+  or create it on first use in a lazy holder
+  (`private static final class Holder { static final Db INSTANCE = new Db(); }`). Constants,
+  loggers, `Pattern.compile` and collections stay static.
 - Tests get the same PMD, Checkstyle, Error Prone and formatter checks as main code, plus the file
   (500 lines) and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection
   read main sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply
-  to main sources only, as do the enum predicate, forwarding wrapper and singular-and-plural rules.
+  to main sources only, as do the enum predicate, forwarding wrapper, singular-and-plural and
+  class-load rules.
   If a PMD rule or an Error Prone check flags test code that is right, ask a human for a reviewed
   exception for `pmd/<rule>` or `errorprone/<Check>`.
 

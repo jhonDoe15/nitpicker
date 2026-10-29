@@ -6,7 +6,7 @@ import { readPinnedTools } from '../../builds/java-build.mjs';
 import { runMavenPreset } from '../maven-build.mjs';
 import { toolDependencies } from '../maven-tools.mjs';
 import { withoutTestTools } from './maven-quick.mjs';
-import { analyzeTests, buildGoals, readTestRuns } from './maven-test-phase.mjs';
+import { buildGoals, readTestRuns, runCoverageTools } from './maven-test-phase.mjs';
 
 const roots = [];
 const pinned = readPinnedTools();
@@ -145,7 +145,7 @@ describe('the Maven build in a quick run', () => {
       testOutputDirectory: path.join(root, 'target/test-classes'),
     };
 
-    const testsRan = readTestRuns({
+    const outcome = readTestRuns({
       quick: true,
       module,
       reportDir,
@@ -153,7 +153,7 @@ describe('the Maven build in a quick run', () => {
       isArchunit: (suite) => suite.endsWith('ArchitectureTest'),
     });
 
-    expect(testsRan).toBe(false);
+    expect(outcome).toEqual({ testsRan: false, failure: undefined });
     expect(readdirSync(path.join(reportDir, 'archunit'))).toEqual([
       'TEST-demo.ArchitectureTest.xml',
     ]);
@@ -165,7 +165,7 @@ describe('the Maven build in a quick run', () => {
     };
 
     expect(() => {
-      analyzeTests({ quick: true, spring: false, spawn, module: {}, classpaths: {} });
+      runCoverageTools({ quick: true, spawn, module: {}, classpaths: {} });
     }).not.toThrow();
   });
 });

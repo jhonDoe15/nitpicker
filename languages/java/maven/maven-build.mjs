@@ -1,4 +1,4 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync, existsSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { javaCommand, runJava, runMaven } from './maven-command.mjs';
@@ -7,24 +7,25 @@ import { moduleClasspaths, parseDependencyList, readReactor } from './maven-proj
 import { archunitMatcher, missingLauncherVersions } from './maven-tests.mjs';
 import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
 import { archunitTool, formatTool, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
-import { buildRunsArchRules, springFacts, withDeclaredSpring } from './spring/arch-rules-gate.mjs';
+import { ownSourceRoots } from '../adapters/red-base/tests-failed.mjs';
+import { moduleManifest, relativeTo, writeManifest } from './manifest/maven-manifest.mjs';
+import { runSpringArch } from './spring/maven-spring-arch.mjs';
+import { buildRunsArchRules, withDeclaredSpring } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
 import { writeJdepsReports } from '../builds/jdeps-reports.mjs';
 import { runToolsConcurrently } from './parallel/concurrent-tools.mjs';
 import {
-  analyzeTests,
   buildGoals,
   jacocoExecFiles,
   readTestRuns,
+  runCoverageTools,
 } from './quick/maven-test-phase.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
 const LINT_URL = new URL('maven-lint.mjs', import.meta.url).href;
 const ERRORPRONE_URL = new URL('errorprone/maven-errorprone.mjs', import.meta.url).href;
-const GUAVA_JAR = /^guava-\d.*\.jar$/u;
-const AWAITILITY_JAR = /^awaitility-\d.*\.jar$/u;
 const PROJECT_CHECKS_OFF = [
   '-Dcheckstyle.skip=true',
   '-Dpmd.skip=true',
@@ -32,10 +33,6 @@ const PROJECT_CHECKS_OFF = [
   '-Dspotbugs.skip=true',
   '-Dspotless.check.skip=true',
 ];
-
-function relativeTo(basedir, file) {
-  return path.relative(basedir, file).replaceAll('\\', '/');
-}
 
 function readEffectivePom({ projectRoot, maven, work, spawn }) {
   const output = path.join(work, 'effective-pom.xml');
@@ -103,31 +100,6 @@ function runJdeps(module, reportDir, spawn) {
   });
 }
 
-function relativeRoots(module, roots) {
-  return roots.map((root) => relativeTo(module.basedir, root));
-}
-
-function hasJar(classpath, jar) {
-  return classpath.some((entry) => jar.test(path.basename(entry)));
-}
-
-export function moduleManifest({ module, classpaths, pinned }) {
-  return {
-    versions: pinned,
-    build: 'maven',
-    sourceRoots: relativeRoots(module, module.sourceRoots),
-    kotlinSourceRoots: relativeRoots(module, module.kotlinSourceRoots ?? []),
-    testSourceRoots: relativeRoots(module, module.testSourceRoots),
-    resourceRoots: relativeRoots(module, module.resourceRoots),
-    ...springFacts(classpaths),
-    guava: hasJar(classpaths.mainCompile, GUAVA_JAR),
-    testGuava: hasJar(classpaths.testCompile, GUAVA_JAR),
-    testAwaitility: hasJar(classpaths.testCompile, AWAITILITY_JAR),
-    published: module.published,
-    runsFailsafe: module.runsFailsafe,
-  };
-}
-
 function readClasspaths(work, module) {
   return moduleClasspaths(
     module,
@@ -136,7 +108,8 @@ function readClasspaths(work, module) {
 }
 
 function analyzeSources(options) {
-  const { module, reportDir, classpaths, tools, pinned, configs, style, spring, spawn } = options;
+  const { module, reportDir, classpaths, tools, pinned, configs, style, spring } = options;
+  const { springArch, springRoles, spawn } = options;
   const tasks = [
     [runPmd, LINT_URL, { module, reportDir, tools, classpaths, configs, spring }],
     [runSpotbugs, LINT_URL, { module, reportDir, tools }],
@@ -149,10 +122,20 @@ function analyzeSources(options) {
     runJdeps(module, reportDir, spawn);
   };
   runToolsConcurrently(tasks, { spawn, alongside, concurrent: options.quick === true });
+  runSpringArch({
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    pinned,
+    archRules: springArch,
+    springRoles,
+    spawn,
+  });
 }
 
 function analyzeModule(options) {
-  const { module, classpaths, pinned, since } = options;
+  const { module, classpaths, pinned } = options;
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
   const manifest = withDeclaredSpring(
@@ -160,18 +143,24 @@ function analyzeModule(options) {
     options.spring,
   );
   const { spring, springArch } = manifest;
-  const testRuntime = classpaths.testRuntime;
-  const testsRan = readTestRuns({
-    module,
+  const { testsRan, failure } = readTestRuns({
+    ...options,
     reportDir,
-    since,
     isArchunit,
-    testRuntime,
-    quick: options.quick,
+    testRuntime: classpaths.testRuntime,
   });
-  analyzeSources({ ...options, reportDir, spring });
-  analyzeTests({ ...options, reportDir, springArch, isArchunit, testsRan });
-  writeFileSync(path.join(reportDir, 'manifest.json'), JSON.stringify(manifest));
+  analyzeSources({ ...options, reportDir, spring, springArch });
+  if (failure === undefined) {
+    runCoverageTools({ ...options, reportDir, testsRan, isArchunit });
+  }
+  writeManifest({ reportDir, manifest, testsFailed: failure !== undefined });
+  return failure && { ...failure, roots: ownSourceRoots(manifest) };
+}
+
+function analyzeModules({ analyzed, ...shared }) {
+  return analyzed
+    .map(({ module, classpaths }) => analyzeModule({ ...shared, module, classpaths }))
+    .filter((failure) => failure !== undefined);
 }
 
 function staleOutputs(module) {
@@ -235,25 +224,27 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
       extraTools: extraTools({ modules, analyzed, policy, pinned }),
       quick,
     });
-    for (const { module, classpaths } of analyzed) {
-      analyzeModule({
-        module,
-        classpaths,
+    const style = {
+      javaStyle: policy.javaStyle,
+      indentation: checkstyleIndentation(policy.conventions),
+    };
+    return {
+      moduleDirs: modules.map((module) => module.basedir),
+      testsFailures: analyzeModules({
+        analyzed,
         tools,
         pinned,
         configs,
         since,
         spawn,
+        style,
         quick,
-        style: {
-          javaStyle: policy.javaStyle,
-          indentation: checkstyleIndentation(policy.conventions),
-        },
+        tolerateFailures: policy.snapshot === 'base',
+        projectRoot,
         spring: policy.spring,
         springRoles: writeSpringRoles(policy.springRoles, work),
-      });
-    }
-    return modules.map((module) => module.basedir);
+      }),
+    };
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
