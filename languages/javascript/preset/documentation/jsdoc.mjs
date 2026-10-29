@@ -213,14 +213,15 @@ export function typePredicateTags(tags) {
 }
 
 const TRI_STATE_TYPE =
-  /^(?:Promise<\s*)?(?:boolean\s*\|\s*(?:undefined|null)|(?:undefined|null)\s*\|\s*boolean|boolean=)\s*>?$/;
+  /^(?:Promise<\s*)?(?:\?\s*boolean|boolean\s*\|\s*(?:undefined|null)|(?:undefined|null)\s*\|\s*boolean|boolean=)\s*>?$/;
+const BARE_NAME = /^\[[\w$]+\]$/;
 
 function isTriStateTag(tag) {
   if (tag.type === undefined) {
     return false;
   }
-  const optionalName = MEMBER_TAGS.has(tag.tag) && tag.name?.startsWith('[') === true;
-  return TRI_STATE_TYPE.test(tag.type) || (optionalName && tag.type === 'boolean');
+  const optionalParameter = tag.tag === 'param' && BARE_NAME.test(tag.name ?? '');
+  return TRI_STATE_TYPE.test(tag.type) || (optionalParameter && tag.type === 'boolean');
 }
 
 export function triStateBooleanTags(tags) {

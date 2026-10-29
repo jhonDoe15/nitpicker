@@ -13,6 +13,8 @@ tester.run('no-compatibility-shim', rule, {
     '/** The user id. */\nexport function fetchUser() { return 1; }',
     'function load() { return 1; }\nexport const fetchUser = load;',
     'function load() { return 1; }\nexport { load as fetchUser };',
+    'export function load() { return 1; }\nexport { load as default };',
+    'import { load } from "./load";\nexport { load as fetchUser };',
     'export function load() { return 1; }\nexport const fetchUser = other;',
     'import { load } from "./load";\nexport const fetchUser = load;',
     'export type User = { id: string };\nexport type Entity<T> = User;',
@@ -41,6 +43,16 @@ tester.run('no-compatibility-shim', rule, {
     ),
     alias('export class Loader {}\nexport const OldLoader = Loader;', 'OldLoader', 'Loader'),
     alias('export type User = { id: string };\nexport type Account = User;', 'Account', 'User'),
+    alias(
+      'export function load() { return 1; }\nexport { load as fetchUser };',
+      'fetchUser',
+      'load',
+    ),
+    alias(
+      'function load() { return 1; }\nexport { load, load as fetchUser };',
+      'fetchUser',
+      'load',
+    ),
     alias(
       'function load() { return 1; }\nexport { load };\nexport const fetchUser = load;',
       'fetchUser',

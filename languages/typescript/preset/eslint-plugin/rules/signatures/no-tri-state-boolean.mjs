@@ -1,3 +1,4 @@
+import { ancestorsOf } from '../analysis/ancestry.mjs';
 import {
   jsdocOptionSchema,
   triStateBooleanTags,
@@ -52,6 +53,18 @@ function resolvedType(node) {
 function isTriState(annotation) {
   const type = annotation?.typeAnnotation;
   return type !== undefined && isTriStateUnion(resolvedType(type));
+}
+
+const PROPS_NAME = /Props$/;
+const TYPE_OWNERS = new Set(['TSTypeAliasDeclaration', 'TSInterfaceDeclaration']);
+
+function isPropsType(node) {
+  const owner = ancestorsOf(node).find((ancestor) => TYPE_OWNERS.has(ancestor.type));
+  return owner !== undefined && PROPS_NAME.test(owner.id.name);
+}
+
+function isOptionalBooleanMember(node) {
+  return node.optional === true && node.typeAnnotation?.typeAnnotation.type === 'TSBooleanKeyword';
 }
 
 function isOverride(owner) {
@@ -121,7 +134,8 @@ export const rule = {
     }
 
     function checkMember(node) {
-      if (isTriState(node.typeAnnotation) && !isOverride(node)) {
+      const optionalBoolean = isOptionalBooleanMember(node) && !isPropsType(node);
+      if ((isTriState(node.typeAnnotation) || optionalBoolean) && !isOverride(node)) {
         report(node, `\`${node.key?.name ?? 'this member'}\``);
       }
     }

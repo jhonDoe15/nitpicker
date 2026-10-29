@@ -40,9 +40,9 @@ export function signatureFailureMessageCases({ typedConfig, typedFile }) {
         'const copy = [...items]',
       ],
       [
-        'logical or on a nullable names nullish coalescing',
-        'export function pick(name: string | undefined) { return name || "none"; }',
-        'nullish coalescing',
+        'falsy default names the nullish coalescing operator',
+        'export function pick(limit: number | undefined) { return limit || 10; }',
+        '`limit ?? DEFAULT_LIMIT`',
       ],
     ].map(([name, banned, allowed]) => ({
       name,

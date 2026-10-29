@@ -19,6 +19,26 @@ function declaredNames(declaration) {
   );
 }
 
+function exportedName(specifier) {
+  return specifier.exported.name ?? specifier.exported.value;
+}
+
+function isOwnName(specifier) {
+  return specifier.local.name === exportedName(specifier);
+}
+
+function specifierAliases(statement) {
+  if (statement.source !== null || statement.declaration !== null) {
+    return [];
+  }
+  return statement.specifiers
+    .filter((specifier) => !isOwnName(specifier) && exportedName(specifier) !== 'default')
+    .map((specifier) => ({
+      node: specifier,
+      found: { alias: exportedName(specifier), target: specifier.local.name },
+    }));
+}
+
 function exportedNamesOf(program) {
   return new Set(
     program.body.flatMap((statement) => {
@@ -26,7 +46,7 @@ function exportedNamesOf(program) {
         return [];
       }
       return statement.source === null && statement.declaration === null
-        ? statement.specifiers.map(({ local }) => local.name)
+        ? statement.specifiers.filter(isOwnName).map(({ local }) => local.name)
         : declaredNames(statement.declaration);
     }),
   );
@@ -62,15 +82,17 @@ function reportDeprecatedTags(context) {
 
 function reportAliases(context, program) {
   const exported = exportedNamesOf(program);
-  const aliases = program.body
-    .filter((statement) => statement.type === 'ExportNamedDeclaration')
-    .map((statement) => ({ statement, found: aliasOf(statement.declaration) }))
-    .filter(
-      ({ found }) =>
-        found !== undefined && found.alias !== found.target && exported.has(found.target),
-    );
-  for (const { statement, found } of aliases) {
-    context.report({ node: statement, messageId: 'aliasExport', data: found });
+  const exports = program.body.filter((statement) => statement.type === 'ExportNamedDeclaration');
+  const declared = exports.map((statement) => ({
+    node: statement,
+    found: aliasOf(statement.declaration),
+  }));
+  const aliases = [...declared, ...exports.flatMap(specifierAliases)].filter(
+    ({ found }) =>
+      found !== undefined && found.alias !== found.target && exported.has(found.target),
+  );
+  for (const { node, found } of aliases) {
+    context.report({ node, messageId: 'aliasExport', data: found });
   }
 }
 
