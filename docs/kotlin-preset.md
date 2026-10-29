@@ -410,7 +410,7 @@ with `fun main`, the `@SpringBootApplication` class or a Ktor module) may read `
 `SpreadOperator` findings in a Spring project; JPA and Spring Data entities are not asked to become
 data classes; parameters with an annotation (`@RequestParam`, `@PathVariable`) are not boolean flags.
 
-The Java preset's Spring architecture rules (feature layout, layering, bean lifetimes, and the
+The Java preset's Spring architecture rules (feature layout, layering, bean lifetimes, request data in singletons (a `companion object` property counts as a static field), and the
 jMolecules aggregate rules, which also run without Spring; "Spring architecture rules" in
 [java-preset.md](java-preset.md)) read compiled classes, so they check Kotlin classes the same way, with the same `archunit/<rule>` exceptions and the same `spring.roles` config
 key.
@@ -1139,10 +1139,26 @@ facade belong to that file. A class that no file lists is its own module.
 
 ## Failure policy
 
-As for Java: a Gradle failure on either snapshot (Kotlin does not compile, a test fails, a tool
-crashes, a tool jar cannot be downloaded, no `gradle` on the PATH) is one `kotlin/gradle-failure`
-finding with classification `tool-error`, which the comparison reports for that snapshot, skipping
-the comparison and exiting with 2. Nothing is silently skipped and nothing throws.
+As for Java: a Gradle failure on either snapshot (Kotlin does not compile, a tool crashes, a tool
+jar cannot be downloaded, no `gradle` on the PATH) is one `kotlin/gradle-failure` finding with
+classification `tool-error`, which the comparison reports for that snapshot, skipping the
+comparison and exiting with 2. Nothing is silently skipped and nothing throws.
+
+**A base whose tests fail (decision).** Failing tests are not a Gradle failure on the base when the
+fresh test reports of a `Test` task name them. The base runs with `--continue`, then once more
+with `-Pnitpicker.testsFailed=<project dirs>`: the init script disables every checked test task, the per-task PIT, the aggregate PIT and JaCoCo of the
+failing Gradle projects and sets `testsFailed` in their manifest, and the other checks (detekt,
+ktlint, PMD, SpotBugs, structure, duplicates, coupling) run as usual. The failing projects get one
+`kotlin/tests-failed` tool error each, which the core reads as a red base and writes to
+`notes.json` instead of exiting with 2. The coverage-dependent results of the Kotlin sources of
+those projects (`changed-branch-coverage`, `crap-score-limit`, `crap-coverage-unknown`, `mutant-*`,
+`slow-test`, `test-console-output`) are unknown on the base: a head finding of them is new when
+the change adds or edits its lines, else unchanged. A failing root project covers only its own
+source and test directories, so the other Gradle projects keep their comparison. A project that
+does not compile, a run that exits non-zero without a named failing test and a run that times out
+stay `kotlin/gradle-failure`. A change that deletes tests, or removes more test lines than it
+adds, gets no help from the red base. A head whose tests fail stays a `kotlin/gradle-failure`.
+See "A base whose tests fail" in `usage.md`.
 
 ## Config keys
 
@@ -1219,6 +1235,10 @@ fails only when it grows, and a package folder moved to a new path is matched to
   allowed form and end with the exception route; the rule keys and pins of `nitpicker-detekt.yml`
   against `ONE_WAY_RULES`; the suppression scan, with its string and comment traps;
   `core/command/java/java-cli.test.mjs` runs an exception through the CLI.
+- `languages/java/adapters/kotlin-e2e/red-base/kotlin-red-base.e2e.test.mjs` (its Java twin is
+  `java-e2e/red-base/java-red-base.e2e.test.mjs`, under `NITPICKER_JAVA_E2E=1`): a base whose tests
+  fail and a head that repairs them. See "A base whose tests fail" in `usage.md`.
+  `red-base/tests-failed.test.mjs` covers the rerun with a fake Gradle.
 - `languages/java/adapters/kotlin-e2e/**/*.e2e.test.mjs`: real Gradle, behind `NITPICKER_KOTLIN_E2E=1`
   (`npm run test:kotlin`). Needs Java 21, Gradle and network access
   to Maven Central and the Gradle plugin portal. A mixed Kotlin and Java fixture project
