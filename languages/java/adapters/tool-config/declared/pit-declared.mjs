@@ -50,7 +50,16 @@ const LOOKED =
   'PIT settings in the build (a pitest block in a build.gradle(.kts), or the configuration of pitest-maven in a pom.xml)';
 
 function numberIn(text) {
-  return Number(/\d+(?:\.\d+)?/u.exec(text)?.[0]);
+  const bare = text
+    .trim()
+    .replace(/^BigDecimal\.valueOf\(/u, '')
+    .replace(/\)+$/u, '');
+  const literal = /^(\d[\d_]*(?:\.\d+)?)[DFLdfl]?$/u.exec(bare)?.[1];
+  return literal === undefined ? Number.NaN : Number(literal.replaceAll('_', ''));
+}
+
+function pieces(values) {
+  return values.flatMap((value) => value.split(',')).map((value) => value.trim());
 }
 
 function gradleDeclarations(scripts) {
@@ -59,9 +68,16 @@ function gradleDeclarations(scripts) {
     names: [...GRADLE_NAMES.keys()],
   }).map((found) => {
     const setting = GRADLE_NAMES.get(found.name);
-    const values = quotedStrings(found.value);
+    const values =
+      setting === 'jvmArgs' ? quotedStrings(found.value) : pieces(quotedStrings(found.value));
     const value = NUMBERS.includes(setting) ? numberIn(found.value) : values;
-    return { file: found.file, text: found.text.trim(), setting, value };
+    return {
+      file: found.file,
+      text: found.text.trim(),
+      setting,
+      value,
+      conditional: found.conditional,
+    };
   });
 }
 
@@ -74,6 +90,13 @@ function elementValues(configuration, element) {
   return children.length > 0 ? [children] : [[found.text?.trim()].filter(Boolean)];
 }
 
+function mavenValue(setting, value) {
+  if (setting === 'argLine') {
+    return value.flatMap((text) => text.split(/\s+/u));
+  }
+  return NUMBERS.includes(setting) || setting === 'jvmArgs' ? value : pieces(value);
+}
+
 function mavenSetting({ poms, pom, configuration }, [element, setting]) {
   const texts = NUMBERS.includes(setting)
     ? textsOf(configuration, element).map((text) => numberIn(mavenText(poms, pom, text)))
@@ -84,7 +107,7 @@ function mavenSetting({ poms, pom, configuration }, [element, setting]) {
     file: pom.file,
     text: `<${element}>`,
     setting: setting === 'argLine' ? 'jvmArgs' : setting,
-    value: setting === 'argLine' ? value.flatMap((text) => text.split(/\s+/u)) : value,
+    value: mavenValue(setting, value),
   }));
 }
 
@@ -104,15 +127,21 @@ export function pitDeclarations(build) {
   return [...gradleDeclarations(build.scripts), ...mavenDeclarations(build.poms)];
 }
 
-function usable(value) {
-  return typeof value !== 'string' || !(value.includes('$') || value.includes('@{'));
+function usable(value, setting) {
+  if (typeof value === 'number') {
+    return setting !== 'threads' || (Number.isInteger(value) && value >= 1);
+  }
+  const everything = /^[*.?]+$/u.test(value) && LISTS.includes(setting);
+  const removal = setting === 'mutators' && /^[-!]/u.test(value);
+  const split = setting === 'jvmArgs' && value.includes(',');
+  return !(value.includes('$') || value.includes('@{') || everything || removal || split);
 }
 
 function valuesOf(declarations, setting) {
   return declarations
-    .filter((declaration) => declaration.setting === setting)
+    .filter((declaration) => declaration.setting === setting && declaration.conditional !== true)
     .flatMap((declaration) => declaration.value)
-    .filter((value) => value !== undefined && !Number.isNaN(value) && usable(value));
+    .filter((value) => value !== undefined && !Number.isNaN(value) && usable(value, setting));
 }
 
 function highest(declarations, setting) {
@@ -145,20 +174,18 @@ function lowered(declaration, numbers) {
 function notApplied(declarations, { projectWins, numbers }) {
   return declarations.filter(
     (declaration) =>
+      declaration.conditional === true ||
       KEPT.includes(declaration.setting) ||
       lowered(declaration, numbers) ||
       (declaration.setting === 'threads' && !projectWins) ||
-      (declaration.setting === 'mutators' &&
-        (!projectWins || declaration.value.some((name) => name.startsWith('-')))) ||
-      (Array.isArray(declaration.value) && !declaration.value.every(usable)),
+      (declaration.setting === 'mutators' && !projectWins) ||
+      [declaration.value].flat().some((value) => !usable(value, declaration.setting)),
   );
 }
 
 export function pitLayers(declarations, { projectWins }) {
   const numbers = chosenNumbers(declarations, projectWins);
-  const mutators = projectWins
-    ? valuesOf(declarations, 'mutators').filter((name) => !name.startsWith('-'))
-    : [];
+  const mutators = projectWins ? valuesOf(declarations, 'mutators') : [];
   return {
     ...numbers,
     mutators: [...new Set([...PIT_DEFAULT_MUTATORS, ...mutators])],
