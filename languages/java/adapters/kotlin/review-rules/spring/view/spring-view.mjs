@@ -1,6 +1,7 @@
 import { declaredNames, nameResolver, resolvesTo } from '../spring-names.mjs';
 import { declaresLocally, implicitReceiver, receiverOf, typeOf } from './local-types.mjs';
 import {
+  isJavaEnum,
   isRepositoryType,
   membersOfClass,
   metaAnnotated,
@@ -38,6 +39,7 @@ function fileView(file, context) {
     is: (text, fqns) => resolvesTo(resolve, text, fqns),
     isRepository: (text) => isRepositoryType(context, resolve, text),
     projectClass: (text) => projectClass(context, resolve(text)),
+    isJavaEnum: (candidates) => isJavaEnum(context, candidates),
     metaAnnotated: (text, fqns) => metaAnnotated(context, resolve(text), fqns),
     functionOf: (scope) =>
       scope === undefined ? undefined : functions.get(`${scope.name}:${String(scope.line)}`),

@@ -12,6 +12,12 @@ const SOURCE_BASE_FILES = new Set([
   'src/main/java/shop/LegacyRepository.java',
 ]);
 const SPRING = new Set(SPRING_RULES);
+const BUILD_PLUGIN = {
+  annotations: ['Entity', 'MappedSuperclass', 'Embeddable'].map(
+    (name) => `jakarta.persistence.${name}`,
+  ),
+  presets: ['spring'],
+};
 
 export const BAD_FILES = 'src/main/kotlin/shop/bad/*';
 export const PINNED_SPRING_LINES = JSON.parse(
@@ -61,7 +67,7 @@ export function recordedFindings() {
   );
   return springFindings(files, {
     finding: findingFactory(),
-    manifest: { spring: true, kotlinAllOpen: { annotations: [], presets: ['spring'] } },
+    manifest: { spring: true, kotlinAllOpen: BUILD_PLUGIN },
     projectFiles: files,
     projectRoot: FIXTURE,
     javaRoots: ['src/main/java'],
