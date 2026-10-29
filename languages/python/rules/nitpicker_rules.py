@@ -17,7 +17,8 @@ def load_checks():
     from boundary import domain_types, guards, paths
     from checks import comments, declarations, shell, state
     from discovery import helpers, uncollected
-    from environment import environment, purity
+    from effects import import_time, reach
+    from environment import domain_imports, environment, purity
     from errors import errors
     from honesty import assertions, isolation, skipped
     from security import hashes, loading
@@ -26,6 +27,7 @@ def load_checks():
     from security.tls import check as tls
     from silent_tests import unasserted
     from smells import literals, loops, names, secret_logs, secrets
+    from tasks import cleanup, lifetimes
 
     return [
         declarations,
@@ -33,6 +35,9 @@ def load_checks():
         comments,
         environment,
         purity,
+        reach,
+        domain_imports,
+        import_time,
         state,
         shell,
         sql,
@@ -54,6 +59,8 @@ def load_checks():
         isolation,
         uncollected,
         helpers,
+        lifetimes,
+        cleanup,
     ]
 
 
@@ -86,7 +93,7 @@ def parse_file(path):
 
 
 def is_guarded(module):
-    return module.__name__.startswith("security.")
+    return getattr(module, "GUARDED", False) or module.__name__.startswith("security.")
 
 
 def check_failure(module, context, error):

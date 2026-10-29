@@ -29,9 +29,13 @@ const IMPLIED_DISTRIBUTIONS = [
 const SETTINGS_ENTRY_FILES = ['manage.py', 'wsgi.py', 'asgi.py'];
 const SETTINGS_MODULE = /DJANGO_SETTINGS_MODULE["']\s*,\s*["']([\w.]+)["']/gu;
 const SETTINGS_NAME = /(?:^|\.)settings(?:\.|$)/u;
-const SETTINGS_RULES = new Set(['process-env-access', 'F403']);
+const SETTINGS_RULES = new Set(['process-env-access', 'import-time-effect', 'F403']);
 const ROUTER_RULES = new Set(['pydantic-boundary']);
-const ENTRY_POINT_RULES = new Set(['crap-coverage-unknown', 'process-env-access']);
+const ENTRY_POINT_RULES = new Set([
+  'crap-coverage-unknown',
+  'process-env-access',
+  'import-time-effect',
+]);
 
 function topImports(statements = []) {
   return statements.flatMap((statement) => {
