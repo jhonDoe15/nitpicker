@@ -1,12 +1,14 @@
-import { execFileSync } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { execFileSync, spawnSync } from 'node:child_process';
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { openOutputFile, spawnSyncWithOutputFile } from './output-file.mjs';
+import { removeTrackedTemporaryPaths } from './temporary-files.mjs';
 
 const REPORT_BYTES = 3 * 1024 * 1024;
 const GIT_TIMEOUT_MS = 30_000;
+const LARGE_BUFFER = 16 * 1024 * 1024;
 const GIT_ENVIRONMENT = {
   ...process.env,
   GIT_CONFIG_GLOBAL: '/dev/null',
@@ -47,26 +49,51 @@ describe('reading a child report through a file instead of a pipe', () => {
   });
 
   it('returns the whole stdout of a multi-megabyte report as spawnSync would', () => {
-    const result = catBlob({ encoding: 'utf8' });
+    const result = catBlob({ encoding: 'utf8', maxBuffer: LARGE_BUFFER });
 
     expect(result.error).toBeUndefined();
     expect(result.status).toBe(0);
     expect(result.stdout).toBe(report);
     expect(result.stderr).toBe('');
+    expect(result.output).toEqual([null, report, '']);
   });
 
   it('returns a Buffer without an encoding', () => {
-    const result = catBlob({});
+    const result = catBlob({ maxBuffer: LARGE_BUFFER });
 
     expect(Buffer.isBuffer(result.stdout)).toBe(true);
     expect(result.stdout.length).toBe(Buffer.byteLength(report));
   });
 
-  it('reports ENOBUFS and no output when the report is larger than maxBuffer', () => {
+  it('reports ENOBUFS with the stdout cut at maxBuffer, as spawnSync does', () => {
     const result = catBlob({ encoding: 'utf8', maxBuffer: 1024 });
 
+    expect(result.error).toMatchObject({
+      code: 'ENOBUFS',
+      syscall: 'spawnSync git',
+      path: 'git',
+    });
+    expect(result.error.errno).toBeLessThan(0);
+    expect(result.stdout).toBe(report.slice(0, 1024));
+  });
+
+  it('applies the 1 MiB maxBuffer of spawnSync when none is given', () => {
+    const result = catBlob({ encoding: 'utf8' });
+
     expect(result.error.code).toBe('ENOBUFS');
-    expect(result.stdout).toBe('');
+    expect(result.stdout.length).toBe(1024 * 1024);
+  });
+
+  it('returns the spawnSync result unchanged when the command cannot start', () => {
+    const missing = 'nitpicker-missing-command';
+    const native = spawnSync(missing, [], { encoding: 'utf8', timeout: GIT_TIMEOUT_MS });
+    const result = spawnSyncWithOutputFile(missing, [], {
+      encoding: 'utf8',
+      timeout: GIT_TIMEOUT_MS,
+    });
+
+    expect(result.error.code).toBe('ENOENT');
+    expect([result.stdout, result.output]).toEqual([native.stdout, native.output]);
   });
 
   it('keeps the other streams, so input still reaches the child', () => {
@@ -81,13 +108,22 @@ describe('reading a child report through a file instead of a pipe', () => {
     expect(result.stdout.trim()).toBe(blob);
   });
 
-  it('removes the temporary file once it is read', () => {
+  it('removes the temporary directory once it is read', () => {
     const file = openOutputFile();
     writeFileSync(file.descriptor, 'written');
 
     expect(file.read('utf8')).toBe('written');
     expect(file.size()).toBe('written'.length);
     file.remove();
-    expect(() => file.size()).toThrow(/ENOENT/u);
+    expect(existsSync(file.directory)).toBe(false);
+  });
+
+  it('leaves no directory behind when the process ends before the file is removed', () => {
+    const file = openOutputFile();
+
+    removeTrackedTemporaryPaths();
+
+    expect(existsSync(file.directory)).toBe(false);
+    file.remove();
   });
 });
