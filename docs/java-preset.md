@@ -473,7 +473,7 @@ classpath and its `test` task, and adds no test library to the project.
     names the feature folders `co-change` reads), and `layout.sharedRoots` is accepted once the
     Java preset registers the rule that reads it (`shared-used-by-one-feature`) in
     `shared/project-rules/fact-rules.mjs`. `testConsole` is accepted because the registry lists Java and
-    Kotlin for `test-console-output`. `tools` takes `pmd`, `checkstyle` and `spotbugs`.
+    Kotlin for `test-console-output`. `tools` takes `pmd`, `checkstyle`, `spotbugs` and `errorprone`.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
   ships.
@@ -613,8 +613,9 @@ under every ordering when nitpicker leaves the check at Error Prone's default, a
 project first when `checks.json` turns it off; a check nitpicker already runs is left alone. A
 project never turns a check off, sets NullAway's severity (nitpicker runs it on main code and turns it
 off in tests), replaces the packages nitpicker measures, or narrows NullAway; NullAway's annotation
-lists are joined with nitpicker's, and `excludedPaths` (several declarations become one alternation)
-and `disableWarningsInGeneratedCode` apply like the SpotBugs exclude filter. The run names every flag
+lists are joined with nitpicker's, NullAway options that only add findings apply, and `excludedPaths`
+(several declarations become one alternation) applies like the SpotBugs exclude filter when it leaves
+the `src/main` sources checked. The run names every flag
 it left out. Findings of the checks the project adds go through the same messages, exemptions and
 `exceptions` as nitpicker's.
 
