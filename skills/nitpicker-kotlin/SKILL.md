@@ -95,10 +95,8 @@ Before you change code other modules use, or fix a bug, read
   `detekt.yml` has no effect. Generated code belongs in `exclude`: ask the maintainer to add it.
 - A project may add forbidden calls to `ForbiddenMethodCall.methods` in its `detekt.yml`; they join
   the preset's. Do not call anything the project lists there.
-- With Spring, the Spring rules of the Java preset run on Kotlin under the same `pmd/Spring...` ids,
-  and each finding names the Kotlin form. JPA entities and Spring Data repositories are not checked
-  in Kotlin yet: follow the JPA and Spring Data part of the `spring.md` page of the `nitpicker-java`
-  skill there.
+- With Spring, the Spring, JPA and Spring Data rules of the Java preset run on Kotlin under the same
+  `pmd/...` ids, and each finding names the Kotlin form.
 
 ## Repository files
 
