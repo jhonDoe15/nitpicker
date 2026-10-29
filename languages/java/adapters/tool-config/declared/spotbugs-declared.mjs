@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import path from 'node:path';
 import { parseXml } from '../../../../../shared/ingest/common.mjs';
 import { resolveInside } from '../../../../../shared/conventions/read-inside.mjs';
 import { missingProjectConfig } from '../../../../../shared/conventions/tool-precedence.mjs';
@@ -41,7 +42,7 @@ function choiceIn(value, names) {
 }
 
 function gradleDeclaration(found) {
-  const base = { file: found.file, text: found.text.trim() };
+  const base = { file: found.file, text: found.text.trim(), conditional: found.conditional };
   if (found.name === 'effort') {
     return { ...base, setting: 'effort', value: choiceIn(found.value, EFFORTS) };
   }
@@ -137,6 +138,7 @@ function raised({ declarations, setting, order, projectWins }) {
 function notApplied(declarations, { effort, threshold }) {
   return declarations.filter(
     (declaration) =>
+      declaration.conditional === true ||
       DROPPING.includes(declaration.setting) ||
       (declaration.setting === 'effort' && declaration.value !== effort) ||
       (declaration.setting === 'threshold' && declaration.value !== threshold),
@@ -148,18 +150,29 @@ export function spotbugsArguments({ effort, threshold }, filters = []) {
 }
 
 export function spotbugsLayers(declarations, { projectWins }) {
-  const effort = raised({ declarations, setting: 'effort', order: EFFORTS, projectWins });
-  const threshold = raised({ declarations, setting: 'threshold', order: THRESHOLDS, projectWins });
+  const plain = declarations.filter((declaration) => declaration.conditional !== true);
+  const effort = raised({ declarations: plain, setting: 'effort', order: EFFORTS, projectWins });
+  const threshold = raised({
+    declarations: plain,
+    setting: 'threshold',
+    order: THRESHOLDS,
+    projectWins,
+  });
   return {
     effort,
     threshold,
-    filters: declarations.filter((declaration) => declaration.setting === 'excludeFilter'),
+    filters: plain.filter((declaration) => declaration.setting === 'excludeFilter'),
     notApplied: notApplied(declarations, { effort, threshold }),
   };
 }
 
 const SPOTBUGS_LOOKED =
   'SpotBugs settings in the build (excludeFilter, effort or reportLevel of a spotbugs block in a build.gradle(.kts), or excludeFilterFile, effort or threshold of spotbugs-maven-plugin in a pom.xml)';
+
+function linksInside(root, file) {
+  const base = realpathSync(root);
+  return realpathSync(file).startsWith(base + path.sep);
+}
 
 function spotbugsFilter(filter, root) {
   if (filter.path === undefined) {
@@ -168,7 +181,7 @@ function spotbugsFilter(filter, root) {
     );
   }
   const absolute = resolveInside(root, filter.path);
-  if (absolute === undefined || !existsSync(absolute)) {
+  if (absolute === undefined || !existsSync(absolute) || !linksInside(root, absolute)) {
     throw new Error(
       missingProjectConfig(
         'spotbugs',

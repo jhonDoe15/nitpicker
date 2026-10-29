@@ -965,7 +965,7 @@ finding's `identity` as printed in `new-findings.json`: up to `count` occurrence
 baselined, and raising a `count` (or adding a site) on head over the base fails as
 `baseline-expansion`. `react` and `i18n` describe React and message libraries, have no Java meaning, and stay a config
 error with this preset; `layout` is an error too until the Java preset runs the rule that reads it (`shared-used-by-one-feature`).
-`testConsole.allow` applies to the console output of the JUnit tests. `tools` takes `pmd` and `checkstyle`; see
+`testConsole.allow` applies to the console output of the JUnit tests. `tools` takes `pmd`, `checkstyle` and `spotbugs`; see
 [Your project's tool configs](#your-projects-tool-configs). `exceptions` takes a finding as printed
 (`pmd/UnusedPrivateField`) or a rule nitpicker adds; see
 [Exceptions for rules nitpicker adds](#exceptions-for-rules-nitpicker-adds). Details:
@@ -1454,12 +1454,15 @@ project's config" is what the build files declare for the tool's own Gradle or M
 `pom.xml` (`<plugins>` and `<pluginManagement>`, with `${...}` properties of the POMs in the
 repository resolved). nitpicker reads them as text from the head checkout, the way it reads the ktfmt
 style a build names, and does not run the project's plugin: the forms in the table are the ones read,
-and a value written another way (a variable, a list built in code) is not read. Settings declared in
-several build files are combined. The settings apply to both sides of the comparison, so editing them
+and a value written another way (a variable, a list built in code) is not read. A setting inside a
+condition (`if`, `when`, `else`, `onlyIf`) is not applied, and the run names it; the build files of a
+git submodule are not read. Settings declared in several build files are combined and apply to every
+module of the project, so an exclude filter declared by one module drops matching findings in all of
+them. The settings apply to both sides of the comparison, so editing them
 never turns unchanged code into new findings, and an edit of them (or of a file they name) is a
 policy change a person reviews; other edits of the same build file are not. Listing `"project"` when
 the build declares none of them, or with a filter file that is missing, is not valid XML or cannot be
-resolved to a file in the project, is a tool error. Without the opt-in the run prints one line such
+resolved to a file in the project (a link that leads outside it included), is a tool error. Without the opt-in the run prints one line such
 as `Ignoring the SpotBugs settings in build.gradle; opt in with "tools": { "spotbugs": { "precedence": ["project", "nitpicker"] } }`,
 and with it, one line naming the settings it left out.
 
