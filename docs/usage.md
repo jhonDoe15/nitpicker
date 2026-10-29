@@ -845,9 +845,11 @@ shows its console output in the run's log. Jest keeps only the first argument of
 `console.assert` (`console.assert(false, 'bad %s', 'input')` gives `Assertion failed: bad %s`). With
 `node:test`, tests of one file that run concurrently can swap the test name. With
 `--experimental-test-isolation=none` (every file in the runner's own process) a call belongs to the
-file whose test, hook or top-level code started the work, read from the async resource node:test runs
-each of them in, as Vitest without isolation names the file; it names no test, as with Jest, and work
-a file started still belongs to it when it prints after that file's tests. Mocha runs every
+file whose test or top-level code started the work (a hook's call to the file that declares the hook),
+read from the async resource node:test runs each of them in, and names no test, as with Jest. Work a
+file started keeps that file, also when it prints while a later file runs or after the file's tests,
+as long as the runner process lives; Vitest without isolation gives such a timer to the file running
+when it fires, and Mocha does not see it. Mocha runs every
 spec file in one process (one per worker with `--parallel`); a root hook from a `--require` file
 belongs to no test file and is not seen, but what the work it started prints while a test runs (a
 server it started handling the test's request) belongs to that test, as with Vitest. Work another spec
@@ -860,7 +862,8 @@ It does not see:
   a test starts, on every runner (a `worker_threads` Worker prints through its own console, whose
   output the parent receives as a stream);
 - output printed after a test file has finished (after its last `after`/`afterAll` hook), such as a
-  dangling timer that fires later, or with Mocha a timer that fires while another file's tests run;
+  dangling timer that fires later, or with Mocha a timer that fires while another file's tests run
+  (`node:test` with isolation off is the exception above);
   with Jest such a call prints "Cannot log after tests are done", which fails a run in band only when
   it would fail without nitpicker too, and only when Jest's report shows no other failure (a failed
   test or suite, or an obsolete or unwritten snapshot);

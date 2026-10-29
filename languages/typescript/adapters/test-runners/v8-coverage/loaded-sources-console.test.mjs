@@ -304,9 +304,15 @@ describe('the node:test console capture', () => {
       parent: pick,
       loc: { file: hookFile },
     });
-    root.runInAsyncScope(() => {
+    const loadTimeWork = root.runInAsyncScope(async () => {
       target.warn('while loading');
+      await new Promise((resolve) => {
+        setImmediate(resolve);
+      });
+      target.warn('after loading');
     });
+    root.entryFile = path.resolve('test/b.test.js');
+    await loadTimeWork;
     hook.runInAsyncScope(() => {
       target.warn('in a hook');
     });
@@ -322,6 +328,7 @@ describe('the node:test console capture', () => {
       '5',
       [
         ['test/a.test.js', '', 'while loading'],
+        ['test/a.test.js', '', 'after loading'],
         ['test/a.test.js', '', 'in a hook'],
         ['test/a.test.js', '', 'after a wait'],
       ],
