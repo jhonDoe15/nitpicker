@@ -3,21 +3,13 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { runJava } from '../maven-command.mjs';
+import { moduleEffectsOptions } from '../../adapters/effects/effects-options.mjs';
 import { compiledProgram, programSources } from '../programs/helper-programs.mjs';
 
 const EFFECTS_DIRECTORY = path.join(GRADLE_DIRECTORY, 'effects');
 const TOOL = 'The effects engine';
 const NAME = 'effects';
-const ASM_ARTIFACTS = ['asm', 'asm-tree', 'asm-analysis'];
-
-export function effectsTool(pinned) {
-  return [
-    {
-      name: NAME,
-      coordinates: ASM_ARTIFACTS.map((artifact) => `org.ow2.asm:${artifact}:${pinned.asm}`),
-    },
-  ];
-}
+const RELEASE = 17;
 
 function inputLines({ module, classpaths, options }) {
   return [
@@ -27,7 +19,7 @@ function inputLines({ module, classpaths, options }) {
     ...classpaths.mainCompile
       .filter((entry) => existsSync(entry))
       .map((entry) => `classpath ${entry}`),
-    ...options.map((option) => `option ${option}`),
+    ...moduleEffectsOptions(options, module.basedir).map((option) => `option ${option}`),
   ];
 }
 
@@ -41,6 +33,7 @@ export function runEffects({ module, reportDir, tools, classpaths, pinned, optio
     sources: programSources(EFFECTS_DIRECTORY, { recursive: true }),
     version: pinned.asm,
     root: EFFECTS_DIRECTORY,
+    release: RELEASE,
     libraries,
     cwd: module.basedir,
     spawn,

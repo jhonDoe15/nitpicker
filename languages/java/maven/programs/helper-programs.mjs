@@ -24,7 +24,20 @@ function jdkIdentity(tool, spawn) {
     }
     return line.slice(name.length + PROPERTY_SEPARATOR.length);
   }
-  return `${property('java.vendor')}|${property('java.version')}`;
+  return { vendor: property('java.vendor'), version: property('java.version') };
+}
+
+function majorOf(version) {
+  const [first, second] = version.split(/[.+_-]/u).map((part) => Number.parseInt(part, 10));
+  return first === 1 ? second : first;
+}
+
+function requireRelease(tool, jdk, release) {
+  if (release !== undefined && !(majorOf(jdk.version) >= release)) {
+    throw new Error(
+      `${tool} needs JDK ${String(release)} or newer, but java reports ${jdk.version}; point JAVA_HOME at JDK ${String(release)} or newer`,
+    );
+  }
 }
 
 export function programSources(directory, { recursive = false } = {}) {
@@ -35,7 +48,7 @@ export function programSources(directory, { recursive = false } = {}) {
     .map((name) => path.join(directory, name));
 }
 
-function cacheKey({ tool, sources, version, root, spawn }) {
+function cacheKey({ sources, version, root, jdk, release }) {
   const digest = createHash('sha256');
   for (const source of sources) {
     if (root !== undefined) {
@@ -43,7 +56,7 @@ function cacheKey({ tool, sources, version, root, spawn }) {
     }
     digest.update(readFileSync(source));
   }
-  digest.update(`${version}|${jdkIdentity(tool, spawn)}`);
+  digest.update(`${version}|${jdk.vendor}|${jdk.version}|${String(release ?? '')}`);
   return digest.digest('hex');
 }
 
@@ -64,13 +77,16 @@ export function compiledProgram({
   sources,
   version,
   root,
+  release,
   libraries,
   cwd,
   spawn = spawnSync,
 }) {
+  const jdk = jdkIdentity(tool, spawn);
+  requireRelease(tool, jdk, release);
   const cache = cacheDirectory(name);
   mkdirSync(cache, { recursive: true });
-  const classes = path.join(cache, cacheKey({ tool, sources, version, root, spawn }));
+  const classes = path.join(cache, cacheKey({ sources, version, root, jdk, release }));
   if (existsSync(classes)) {
     return classes;
   }
@@ -80,7 +96,13 @@ export function compiledProgram({
     runJava({
       tool,
       java: javaCommand('javac'),
-      jvmArgs: ['-proc:none', '-nowarn', '-d', staging],
+      jvmArgs: [
+        '-proc:none',
+        '-nowarn',
+        ...(release === undefined ? [] : ['--release', String(release)]),
+        '-d',
+        staging,
+      ],
       classpath: libraries,
       args: sources,
       cwd,

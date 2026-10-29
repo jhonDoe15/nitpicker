@@ -22,13 +22,14 @@ import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
 import { copyTestResults, requireTestngRun } from './results/maven-test-results.mjs';
 import {
   archunitTool,
+  effectsTool,
   formatTool,
   jacocoPlugin,
   MAVEN_PLUGINS,
   resolveTools,
 } from './maven-tools.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
-import { effectsTool, runEffects } from './effects/maven-effects.mjs';
+import { runEffects } from './effects/maven-effects.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { runJdepsMetrics, runStructure } from './metrics/maven-metrics.mjs';
@@ -143,7 +144,15 @@ function analyzeSources(context, project) {
   runJdepsMetrics(module, reportDir, spawn);
   runGuardJdeps(module, reportDir, spawn);
   runGuards({ module, reportDir, tools, classpaths, spawn }, project);
-  runEffects({ module, reportDir, tools, classpaths, pinned, options: context.effectsOptions, spawn });
+  runEffects({
+    module,
+    reportDir,
+    tools,
+    classpaths,
+    pinned,
+    options: context.effectsOptions,
+    spawn,
+  });
 }
 
 function analyzeTests(context, testsRan) {
@@ -224,7 +233,7 @@ function extraTools({ modules, analyzed, policy, pinned }) {
   ];
 }
 
-export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn, effectsOptions }) {
+export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn, ...options }) {
   if (policy.preset === 'kotlin') {
     throw new Error(
       'The kotlin preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources',
@@ -259,7 +268,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
         since,
         project,
         spawn,
-        effectsOptions,
+        effectsOptions: options.effectsOptions,
         style: {
           javaStyle: policy.javaStyle,
           indentation: checkstyleIndentation(policy.conventions),

@@ -56,6 +56,19 @@ export function archunitTool(spring, pinned) {
     : [];
 }
 
+export function effectsTool(pinned) {
+  return [
+    {
+      name: 'effects',
+      coordinates: [
+        `org.ow2.asm:asm:${pinned.asm}`,
+        `org.ow2.asm:asm-tree:${pinned.asm}`,
+        `org.ow2.asm:asm-analysis:${pinned.asm}`,
+      ],
+    },
+  ];
+}
+
 export function toolDependencies(pinned, launcherVersions = [], extraTools = []) {
   return {
     pmd: [
