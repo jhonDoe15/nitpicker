@@ -1,37 +1,32 @@
 import {
-  COUNT,
   countInMessage,
+  countPattern,
   withCountRatchets,
 } from '../../../../../shared/rules/counts/count-ratchet.mjs';
 
 const DETEKT_TOOL = 'detekt';
 
-const inMessage = (template, unit) => ({
-  pattern: new RegExp(template.replace('{count}', COUNT), 'du'),
-  unit,
-});
-
 const MESSAGE_COUNTS = new Map([
-  ['ReturnCount', inMessage('has {count} return statements', 'return statements')],
-  ['LongMethod', inMessage(String.raw`is too long \({count}\)`, 'lines')],
+  ['ReturnCount', countPattern('has {count} return statements', 'return statements')],
+  ['LongMethod', countPattern(String.raw`is too long \({count}\)`, 'lines')],
   [
     'CyclomaticComplexMethod',
-    inMessage(String.raw`\(complexity: {count}\)`, 'cyclomatic complexity'),
+    countPattern(String.raw`\(complexity: {count}\)`, 'cyclomatic complexity'),
   ],
   [
     'CognitiveComplexMethod',
-    inMessage(String.raw`\(complexity: {count}\)`, 'cognitive complexity'),
+    countPattern(String.raw`\(complexity: {count}\)`, 'cognitive complexity'),
   ],
-  ['ComplexCondition', inMessage(String.raw`too complex \({count}\)`, 'condition complexity')],
-  ['TooManyFunctions', inMessage("with '{count}' functions", 'functions')],
+  ['ComplexCondition', countPattern(String.raw`too complex \({count}\)`, 'condition complexity')],
+  ['TooManyFunctions', countPattern("with '{count}' functions", 'functions')],
   [
     'NestedScopeFunctions',
-    inMessage(String.raw`nested too deeply \('{count}'\)`, 'scope function nesting'),
+    countPattern(String.raw`nested too deeply \('{count}'\)`, 'scope function nesting'),
   ],
-  ['MethodOverloading', inMessage('overloaded {count} times', 'overloads')],
+  ['MethodOverloading', countPattern('overloaded {count} times', 'overloads')],
   [
     'DestructuringDeclarationWithTooManyEntries',
-    inMessage('contains {count} but', 'destructured entries'),
+    countPattern('contains {count} but', 'destructured entries'),
   ],
 ]);
 
@@ -57,7 +52,7 @@ function measuredIndex(detektCounts) {
       [entry.file, entry.rule, entry.line],
     ]) {
       const id = JSON.stringify(key);
-      index.set(id, index.has(id) ? null : entry.value);
+      index.set(id, [...(index.get(id) ?? []), entry.value]);
     }
   }
   return index;
@@ -69,8 +64,8 @@ function measuredValue(index, finding, rule) {
     [finding.path, rule, line, column],
     [finding.path, rule, line],
   ]
-    .map((key) => index.get(JSON.stringify(key)))
-    .find((value) => value !== undefined && value !== null);
+    .map((key) => index.get(JSON.stringify(key)) ?? [])
+    .find((values) => values.length === 1)?.[0];
 }
 
 export function withDetektCountRatchets(findings, detektCounts = []) {

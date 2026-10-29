@@ -59,18 +59,25 @@ function compare(base, head) {
   });
 }
 
-const methodLength = (lines) => (root) =>
-  checkstyleOf(
-    root,
-    'sizes.MethodLengthCheck',
-    `Method pick length is ${String(lines)} lines (max allowed is 150).`,
-  );
-const literal = (times, line) => (root) =>
-  pmdOf(
-    root,
-    'AvoidDuplicateLiterals',
-    `The String literal "x" appears ${String(times)} times in this file; the first occurrence is on line ${String(line)}`,
-  );
+function methodLength(lines) {
+  return (root) => {
+    checkstyleOf(
+      root,
+      'sizes.MethodLengthCheck',
+      `Method pick length is ${String(lines)} lines (max allowed is 150).`,
+    );
+  };
+}
+
+function literal(times, line) {
+  return (root) => {
+    pmdOf(
+      root,
+      'AvoidDuplicateLiterals',
+      `The String literal "x" appears ${String(times)} times in this file; the first occurrence is on line ${String(line)}`,
+    );
+  };
+}
 
 describe('Java count findings on legacy code', () => {
   it('fails a Checkstyle method length that grew and says from what', () => {
