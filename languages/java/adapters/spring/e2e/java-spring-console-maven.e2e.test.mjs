@@ -12,7 +12,7 @@ import {
 } from '../__tests__/spring-project.mjs';
 
 describe.skipIf(!enabled)('New console output of tests on Maven builds', () => {
-  let findings = [];
+  let findings;
 
   beforeAll(() => {
     findings = consoleChange({ maven, policy: {} }, 'build.gradle', 'settings.gradle');
