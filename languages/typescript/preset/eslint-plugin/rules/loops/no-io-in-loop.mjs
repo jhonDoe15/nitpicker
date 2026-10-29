@@ -1,4 +1,4 @@
-import { wordsOf } from '../support/identifier-words.mjs';
+import { wordsOf } from '../../../../../../shared/naming/secret-words.mjs';
 import { isPushedForConcurrency } from './concurrent-batches.mjs';
 import { enclosingLoop, isPagingLoop, isRetryAttempt } from './loop-shapes.mjs';
 

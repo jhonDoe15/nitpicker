@@ -5,7 +5,7 @@ import {
   CONTAINER_NAME_WORDS,
   GENERIC_NAME_WORDS,
 } from '../../../../../../shared/naming/smell-words.mjs';
-import { wordsOf } from '../support/identifier-words.mjs';
+import { wordsOf } from '../../../../../../shared/naming/secret-words.mjs';
 
 const GENERIC_WORDS = new Set(GENERIC_NAME_WORDS);
 const CONTAINER_WORDS = new Set(CONTAINER_NAME_WORDS);
