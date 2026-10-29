@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { comparisonKey } from '../../../../core/diff/comparison/fingerprint.mjs';
+import { baseMoves, comparisonKey } from '../../../../core/diff/comparison/fingerprint.mjs';
 import { ingestCoverageJson } from './coverage-json.mjs';
 
 const report = readFileSync(path.join(import.meta.dirname, '..', 'fixtures/coverage.json'), 'utf8');
@@ -129,7 +129,7 @@ describe('coverage.py JSON ingester', () => {
     const keysAt = (module, renames) =>
       ingestCoverageJson(
         JSON.stringify({ files: { [module]: file(4, 0, { audit: fn(4, 0) }) } }),
-      ).findings.map((finding) => comparisonKey(finding, renames));
+      ).findings.map((finding) => comparisonKey(finding, renames && baseMoves(renames)));
     const before = 'src/shop/service/audit.py';
     const after = 'src/shop/audit/records.py';
 

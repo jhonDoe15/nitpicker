@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { comparisonKey } from '../../../core/diff/comparison/fingerprint.mjs';
+import { baseMoves, comparisonKey } from '../../../core/diff/comparison/fingerprint.mjs';
 import { ingestCheckstyle } from './formatting/checkstyle.mjs';
 import { ingestJacoco } from './coverage-reports/jacoco.mjs';
 
@@ -20,7 +20,7 @@ function jacocoReport(packageName, { sourceFile, className, method }) {
 }
 
 function keys(findings, renames) {
-  return findings.map((finding) => comparisonKey(finding, renames));
+  return findings.map((finding) => comparisonKey(finding, renames && baseMoves(renames)));
 }
 
 describe('findings of classes moved to another package', () => {
@@ -37,6 +37,12 @@ describe('findings of classes moved to another package', () => {
   it.each([
     { language: 'Java', root: 'src/main/java', sourceFile: 'Audit.java', className: 'Audit' },
     { language: 'Kotlin', root: 'src/main/kotlin', sourceFile: 'Audit.kt', className: 'AuditKt' },
+    {
+      language: 'Kotlin non-file',
+      root: 'src/main/kotlin',
+      sourceFile: 'Models.kt',
+      className: 'Order',
+    },
   ])('keeps uncovered $language methods whose class and parameter types moved', (scenario) => {
     const file = (packageName, name = scenario.sourceFile) =>
       `${scenario.root}/${packageName.replaceAll('.', '/')}/${name}`;

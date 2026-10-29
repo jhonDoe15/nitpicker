@@ -1,32 +1,45 @@
 import { createHash } from 'node:crypto';
 import { normalizeGitPath } from '../git/normalize.mjs';
 import { remapRootPrefix } from '../git/patches/renames.mjs';
-import { qualifiedNameMoves, remapQualifiedNames } from './moved-names/qualified-names.mjs';
+import {
+  packageMoves,
+  qualifiedNameMoves,
+  remapQualifiedNames,
+} from './moved-names/qualified-names.mjs';
 
-export function comparisonKey(
-  finding,
-  baseToHeadRenames = new Map(),
-  baseToHeadDirectories = new Map(),
-  names = qualifiedNameMoves(baseToHeadRenames),
-) {
+const NO_MOVES = baseMoves(new Map());
+
+export function baseMoves(baseToHeadRenames, baseToHeadDirectories = new Map()) {
+  return {
+    files: baseToHeadRenames,
+    longestFirst: [...baseToHeadRenames].sort(
+      ([leftPath], [rightPath]) => rightPath.length - leftPath.length,
+    ),
+    directories: baseToHeadDirectories,
+    names: qualifiedNameMoves(baseToHeadRenames),
+  };
+}
+
+export function comparisonKey(finding, moves = NO_MOVES) {
   const normalizedPath = normalizeGitPath(finding.path);
+  const movedPath = moves.files.get(normalizedPath);
+  const packages = packageMoves(normalizedPath, movedPath);
   const cycle = parseCycleIdentity(finding.identity);
   const canonical =
     cycle === undefined
       ? {
-          path: baseToHeadRenames.get(normalizedPath) ?? normalizedPath,
+          path: movedPath ?? normalizedPath,
           identity: remapQualifiedNames(
-            remapRootPrefix(
-              remapIdentityPaths(finding.identity, baseToHeadRenames),
-              baseToHeadDirectories,
-            ),
-            names,
+            remapRootPrefix(remapIdentityPaths(finding.identity, moves), moves.directories),
+            moves.names,
+            packages,
           ),
         }
-      : remapCycle(cycle, baseToHeadRenames, names);
+      : remapCycle(cycle, moves);
   const symbol = remapQualifiedNames(
-    remapIdentityPaths(finding.symbol ?? '', baseToHeadRenames),
-    names,
+    remapIdentityPaths(finding.symbol ?? '', moves),
+    moves.names,
+    packages,
   );
   return JSON.stringify([
     finding.tool,
@@ -44,9 +57,9 @@ function parseCycleIdentity(identity) {
   return match === null ? undefined : { members: match[1].split('>'), suffix: match.at(2) ?? '' };
 }
 
-function remapCycle({ members, suffix }, baseToHeadRenames, names) {
+function remapCycle({ members, suffix }, moves) {
   const remapped = members.map(
-    (member) => baseToHeadRenames.get(member) ?? remapQualifiedNames(member, names),
+    (member) => moves.files.get(member) ?? remapQualifiedNames(member, moves.names),
   );
   const rotations = remapped.map((_, index) => [
     ...remapped.slice(index),
@@ -61,12 +74,9 @@ function remapCycle({ members, suffix }, baseToHeadRenames, names) {
   };
 }
 
-function remapIdentityPaths(identity, baseToHeadRenames) {
+function remapIdentityPaths(identity, moves) {
   let remappedIdentity = identity;
-  const renames = [...baseToHeadRenames].sort(
-    ([leftPath], [rightPath]) => rightPath.length - leftPath.length,
-  );
-  for (const [oldPath, newPath] of renames) {
+  for (const [oldPath, newPath] of moves.longestFirst) {
     remappedIdentity = remappedIdentity.replaceAll(oldPath, newPath);
   }
   return remappedIdentity;

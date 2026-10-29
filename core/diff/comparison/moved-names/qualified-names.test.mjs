@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { qualifiedNameMoves, remapQualifiedNames } from './qualified-names.mjs';
+import { packageMoves, qualifiedNameMoves, remapQualifiedNames } from './qualified-names.mjs';
 
 const MOVED = new Map([
   ['src/main/java/shop/service/Audit.java', 'src/main/java/shop/audit/Audit.java'],
@@ -66,5 +66,35 @@ describe('qualified names of moved sources', () => {
     ]);
 
     expect(remapped('class:Root shop.guide', renames)).toBe('class:Root shop.guide');
+  });
+
+  it('maps object types after primitive parameters in descriptors', () => {
+    expect(
+      remapped('shop.service.Audit#agent(IZLshop/service/Request;JLshop/service/Audit;)V'),
+    ).toBe('shop.audit.Audit#agent(IZLshop/audit/web/Request;JLshop/audit/Audit;)V');
+  });
+
+  it('follows a move from a flat layout into a src layout, and from Java to Kotlin roots', () => {
+    const renames = new Map([
+      ['shop/service/tax.py', 'src/shop/billing/tax.py'],
+      ['src/main/java/shop/a/Audit.kt', 'src/main/kotlin/shop/b/Audit.kt'],
+    ]);
+
+    expect(remapped('module-cycle:shop.service.tax', renames)).toBe(
+      'module-cycle:shop.billing.tax',
+    );
+    expect(remapped('class:shop.a.Audit', renames)).toBe('class:shop.b.Audit');
+  });
+
+  it('moves the subject class of a moved file by its package, and only the subject', () => {
+    const packages = packageMoves(
+      'src/main/kotlin/shop/service/Models.kt',
+      'src/main/kotlin/shop/audit/Models.kt',
+    );
+
+    expect(
+      remapQualifiedNames('shop.service.Order#total(Lshop/service/Stays;)I', new Map(), packages),
+    ).toBe('shop.audit.Order#total(Lshop/service/Stays;)I');
+    expect(packageMoves('src/main/kotlin/shop/service/Models.kt', undefined).size).toBe(0);
   });
 });
