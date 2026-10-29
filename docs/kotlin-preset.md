@@ -833,7 +833,8 @@ reading Kover's own report is a follow-up only if it is wanted.
 The rule and its differential mechanics are the Java ones (see
 [java-preset.md](java-preset.md#slice-8-gate-on-changed-coverage)): per source line, JaCoCo's covered
 and missed branch outcomes; a line below 95% is an enforceable `jacoco` finding whose identity is a
-hash of the line's source text, and it is new when its line is in a range `git diff` says changed.
+hash of the line's source text without formatting (tokens: spacing and a trailing comma do not
+count, so a ktlint or ktfmt run keeps it), and it is new when its line is in a changed range.
 For Kotlin the source text is read from the `.kt` files under `kotlinSourceRoots` (before KT4 only
 `.java` files were read), so a changed `if`, `when` entry, elvis or `&&` that no test takes fails, also when the statement spans
 lines.

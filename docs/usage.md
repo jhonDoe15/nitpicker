@@ -312,10 +312,13 @@ nitpicker cache publish [--analyzer <name>]...
 
 ### Findings cache
 
-The base side of a comparison is cached per analyzer; the head side always runs. The key covers the
+The base side of a comparison is cached per analyzer; the head side always runs. The key covers a
+hash of the nitpicker code that analyzed it (its `package.json` and shipped files), the
 merge-base commit, project path, analyzer name and version, the analyzer's configuration hash, the
 config-file overrides and the head policy (`exclude`, `layout`, `exceptions`, `thresholds`, `react`, `i18n`, `testConsole`, `history`) with the
-legacy inventory path, so changing any of them is a miss. Only clean reports are stored.
+legacy inventory path, so changing any of them is a miss: a remote cache published by another
+nitpicker build is never reused. Only clean reports are stored. A run that reuses cached findings
+names the cache on stderr (the directory, or `NITPICKER_CACHE_URL`).
 
 - `NITPICKER_CACHE_DIR`: local cache directory (relative to the project root). Default:
   `node_modules/.cache/nitpicker`.
@@ -1201,7 +1204,8 @@ new and touched code must comply.
   the file, the finding counts as new and fails the run, and its message says so (the base already
   had it; leave the line as it was, or bring it up to the rule). A line whose only change is what
   a formatter does (whitespace, line breaks, quote style, trailing commas, semicolons), or that git
-  shows as deleted and re-added because code was inserted above it, is not an edited line. When
+  shows as deleted and re-added because code was inserted above it, is not an edited line; a
+  reformat into another form (an added or removed bracket pair) still is. When
   several findings share a message in a file, the one on the added or edited line is the new one.
   Pure renames and moves stay baselined.
   Findings of descriptive metrics (CRAP, duplication, coupling) keep their delta logic.
