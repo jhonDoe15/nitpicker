@@ -13,16 +13,20 @@ import {
 const MAPPERS = 'map|mapNotNull|mapIndexed|flatMap|forEach|forEachIndexed|onEach';
 const SCOPE = new RegExp(String.raw`\.\s*(?:${MAPPERS})\s*\{|\bfor\s*\(`, 'g');
 const STARTER =
-  /(?<![\w.])(?:[\w.]+\s*\.\s*)?(async|launch|supplyAsync|runAsync)\s*(\((?:[^()]|\([^()]*\))*\))?\s*\{/g;
+  /(?<![\w.])(?:[\w.]+\s*\.\s*)?(async|launch|supplyAsync|runAsync)\s*(?:(\((?:[^()]|\([^()]*\))*\))\s*)?\{/g;
 const WAITS = /\.\s*(?:await|join)\s*\(\s*\)/;
-const FIXED =
-  /\b(?:listOf|setOf|arrayOf|mapOf|listOfNotNull|chunked|windowed|take|subList|enumValues)\s*[(<]|\.entries\b|\.values\s*\(\s*\)|^\d+\s*(?:\.\.|until)\s*\d+$/;
-const FOR_HEADER = /^\s*\(\s*(?:\(([^)]*)\)|([A-Za-z_]\w*))(?:\s*:[^)]*?)?\s+in\s+/;
-const LAMBDA_PARAMETERS = /^\{\s*([\w\s,()]*?)\s*->/;
+const FIXED_BUILDERS =
+  'listOf|setOf|arrayOf|mapOf|listOfNotNull|chunked|windowed|take|subList|enumValues';
+const FIXED = new RegExp(
+  String.raw`\b(?:${FIXED_BUILDERS})\s*[(<]|\.entries\b|\.values\s*\(\s*\)|^\d+\s*(?:\.\.|until)\s*\d+$`,
+);
+const FOR_VARIABLES = /^\s*\(\s*(?:\(([^)]*)\)|([A-Za-z_]\w*))/;
+const IN_KEYWORD = /\sin\s/;
+const LAMBDA_PARAMETERS = /^\{([\w\s,()]*)->/;
 const CONSEQUENCE =
   'at once, with no bound on how many run together, so a large collection exhausts connections, rate limits or the remote service.';
 const ADVICE =
-  'Bound it: take a permit around each call (`val permits = Semaphore(8)` created once, then `permits.withPermit { send(it) }`), work through fixed-size chunks (`items.chunked(20).forEach { chunk -> chunk.map { async { send(it) } }.awaitAll() }`), use `flatMapMerge(concurrency = 8)` on a flow,, run blocking calls on `Dispatchers.IO.limitedParallelism(8)`, or send one batch request when the API has one. A limit constant that no semaphore or dispatcher uses bounds nothing.';
+  'Bound it: take a permit around each call (`val permits = Semaphore(8)` created once, then `permits.withPermit { send(it) }`), work through fixed-size chunks (`items.chunked(20).forEach { chunk -> chunk.map { async { send(it) } }.awaitAll() }`), use `flatMapMerge(concurrency = 8)` on a flow, run blocking calls on `Dispatchers.IO.limitedParallelism(8)`, or send one batch request when the API has one. A limit constant that no semaphore or dispatcher uses bounds nothing.';
 export const FAN_OUT_MESSAGES = {
   UnboundedFanOut: `This starts a remote or message call for every element of a collection ${CONSEQUENCE} ${ADVICE}`,
 };
@@ -30,8 +34,11 @@ function blockOf(code, open) {
   return { open, close: closingIndex(code, open) };
 }
 
-const CHAIN_END =
-  /(?:[A-Za-z_]\w*\s*(?:\((?:[^()]|\([^()]*\))*\)|\[[^[\]]*\])?\s*(?:\?|!!)?\s*\.\s*)*[A-Za-z_]\w*\s*(?:\((?:[^()]|\([^()]*\))*\)|\[[^[\]]*\])?\s*$/;
+const CALL_ARGUMENTS = String.raw`(?:\((?:[^()]|\([^()]*\))*\)|\[[^[\]]*\])`;
+const CHAIN_LINK = String.raw`[A-Za-z_]\w*(?:\s*${CALL_ARGUMENTS})?`;
+const CHAIN_END = new RegExp(
+  String.raw`(?:${CHAIN_LINK}(?:\s*(?:\?|!!))?\s*\.\s*)*${CHAIN_LINK}\s*$`,
+);
 const LOOKBACK = 300;
 function receiverBefore(code, end) {
   const before = code.slice(Math.max(0, end - LOOKBACK), end);
@@ -43,23 +50,32 @@ function receiverBefore(code, end) {
   return { text: chain[0].trim(), start: end - chain[0].length + leading };
 }
 
+function parseForHeader(header) {
+  const variables = FOR_VARIABLES.exec(header);
+  if (variables === null) {
+    return undefined;
+  }
+  const rest = header.slice(variables[0].length);
+  const keyword = IN_KEYWORD.exec(rest);
+  const before = keyword === null ? '' : rest.slice(0, keyword.index).trim();
+  if (keyword === null || !(before === '' || before.startsWith(':'))) {
+    return undefined;
+  }
+  return {
+    variables: (variables[1] ?? variables[2]).split(',').map((name) => name.trim()),
+    collection: rest.slice(keyword.index + keyword[0].length).trim(),
+  };
+}
+
 function forScope(code, match) {
   const headerOpen = match.index + match[0].length - 1;
   const headerClose = closingIndex(code, headerOpen);
-  const header = code.slice(headerOpen, headerClose);
-  const parsed = FOR_HEADER.exec(header);
+  const parsed = parseForHeader(code.slice(headerOpen, headerClose));
   const brace = /^\s*\{/.exec(code.slice(headerClose + 1));
-  if (parsed === null || brace === null) {
+  if (parsed === undefined || brace === null) {
     return undefined;
   }
-  const variables = (parsed[1] ?? parsed[2]).split(',').map((name) => name.trim());
-  const block = blockOf(code, headerClose + brace[0].length);
-  return {
-    ...block,
-    start: match.index,
-    collection: header.slice(parsed[0].length).trim(),
-    variables,
-  };
+  return { ...blockOf(code, headerClose + brace[0].length), start: match.index, ...parsed };
 }
 
 function lambdaScope(code, match) {

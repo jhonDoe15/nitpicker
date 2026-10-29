@@ -69,6 +69,18 @@ function isWithin(node, root) {
   return chainOf(node, (current) => current.parent).includes(root);
 }
 
+function isUnboundedPMap(moduleRef, call) {
+  const callee = skipped(call.callee);
+  const ref = callee.type === 'Identifier' ? moduleRef(callee, callee.name) : undefined;
+  const options = call.arguments[2] === undefined ? undefined : skipped(call.arguments[2]);
+  const open =
+    options === undefined ||
+    (options.type === 'ObjectExpression' &&
+      options.properties.every((property) => property.type === 'Property') &&
+      !hasProperty(options, 'concurrency'));
+  return ref?.source === 'p-map' && ref.imported === 'default' && open;
+}
+
 export function createBounds(context) {
   const { originOf, moduleRef } = createOrigins(context, limiterSpec);
 
@@ -110,37 +122,36 @@ export function createBounds(context) {
     );
   }
 
-  function isUnboundedPMap(call) {
-    const callee = skipped(call.callee);
-    const ref = callee.type === 'Identifier' ? moduleRef(callee, callee.name) : undefined;
-    const options = call.arguments[2] === undefined ? undefined : skipped(call.arguments[2]);
-    const open =
-      options === undefined ||
-      (options.type === 'ObjectExpression' &&
-        options.properties.every((property) => property.type === 'Property') &&
-        !hasProperty(options, 'concurrency'));
-    return ref?.source === 'p-map' && ref.imported === 'default' && open;
-  }
-
-  return { wrapsInFunction, acquiresIn, limiterAt, isUnboundedPMap };
+  return {
+    wrapsInFunction,
+    acquiresIn,
+    limiterAt,
+    isUnboundedPMap: (call) => isUnboundedPMap(moduleRef, call),
+  };
 }
 
-function numeric(context, node, depth = 0) {
-  const target = resolveConstant(context, skipped(node));
-  if (depth > MAX_DEPTH || target === undefined) {
-    return false;
-  }
+function numericParts(target) {
   if (target.type === 'Literal') {
-    return typeof target.value === 'number';
+    return typeof target.value === 'number' ? [] : undefined;
   }
   if (target.type === 'UnaryExpression') {
-    return numeric(context, target.argument, depth + 1);
+    return [target.argument];
   }
-  return (
-    target.type === 'BinaryExpression' &&
-    numeric(context, target.left, depth + 1) &&
-    numeric(context, target.right, depth + 1)
-  );
+  return target.type === 'BinaryExpression' ? [target.left, target.right] : undefined;
+}
+
+function numeric(context, node) {
+  const pending = [{ node, depth: 0 }];
+  for (const entry of pending) {
+    const target = resolveConstant(context, skipped(entry.node));
+    const parts =
+      target === undefined || entry.depth > MAX_DEPTH ? undefined : numericParts(target);
+    if (parts === undefined) {
+      return false;
+    }
+    pending.push(...parts.map((part) => ({ node: part, depth: entry.depth + 1 })));
+  }
+  return true;
 }
 
 function explicitSize(node) {
@@ -179,14 +190,14 @@ function isChunkVariable(context, identifier) {
   return loop?.type === 'ForOfStatement' && isChunkCall(context, loop.right);
 }
 
-function fixedCall(context, call, depth) {
+function fixedCall(context, call) {
   const name = call.callee.type === 'MemberExpression' ? memberName(call.callee) : call.callee.name;
   const owner = call.callee.type === 'MemberExpression' ? skipped(call.callee.object) : undefined;
   if (['slice', 'splice'].includes(name)) {
     return sizedWindow(context, call);
   }
   if (owner?.name === 'Object' && OBJECT_VIEWS.has(name)) {
-    return isFixedCollection(context, call.arguments[0], depth + 1);
+    return { next: call.arguments[0] };
   }
   if (owner?.name === 'Array' && name === 'from') {
     return sizedByLength(context, call.arguments[0]);
@@ -194,16 +205,10 @@ function fixedCall(context, call, depth) {
   if (name === 'Array' && call.arguments.length === 1) {
     return numeric(context, call.arguments[0]);
   }
-  return (
-    KEEPS_SIZE.has(name) && owner !== undefined && isFixedCollection(context, owner, depth + 1)
-  );
+  return KEEPS_SIZE.has(name) && owner !== undefined ? { next: owner } : false;
 }
 
-export function isFixedCollection(context, node, depth = 0) {
-  const target = resolveConstant(context, skipped(node));
-  if (target === undefined || depth > MAX_DEPTH) {
-    return false;
-  }
+function fixedStep(context, target) {
   if (target.type === 'ArrayExpression') {
     return (
       target.elements.length > 0 &&
@@ -217,7 +222,7 @@ export function isFixedCollection(context, node, depth = 0) {
     );
   }
   if (target.type === 'CallExpression') {
-    return fixedCall(context, target, depth);
+    return fixedCall(context, target);
   }
   if (target.type === 'NewExpression') {
     return (
@@ -227,4 +232,20 @@ export function isFixedCollection(context, node, depth = 0) {
     );
   }
   return target.type === 'Identifier' && isChunkVariable(context, target);
+}
+
+export function isFixedCollection(context, node) {
+  const pending = [{ node, depth: 0 }];
+  for (const entry of pending) {
+    const target = resolveConstant(context, skipped(entry.node));
+    if (target === undefined || entry.depth > MAX_DEPTH) {
+      return false;
+    }
+    const step = fixedStep(context, target);
+    if (typeof step === 'boolean') {
+      return step;
+    }
+    pending.push({ node: step.next, depth: entry.depth + 1 });
+  }
+  return false;
 }

@@ -81,11 +81,13 @@ const PLAIN_CALL = /(?<![\w.])(?:this\s*\.\s*)?([a-z_]\w*)\s*\(/g;
 const FUNCTION = /\bfun\s+(?:<[^>]*>\s*)?(?:[\w.]+\.)?([a-z_]\w*)\s*\(/g;
 export const BOUND = /\.\s*withPermit\s*\{|\.\s*acquire\s*\(|\blimitedParallelism\s*\(/;
 const HELPER_DEPTH = 3;
-const DECLARED_TYPE = (name) =>
-  new RegExp(
+function declaredType(name) {
+  return new RegExp(
     String.raw`(?<![\w.])${name}\s*:\s*([A-Z]\w*)|\b(?:val|var)\s+${name}\s*=\s*([A-Z]\w*)\s*[.(<]`,
     'g',
   );
+}
+
 export function importsOf(code) {
   return [...code.matchAll(/^[ \t]*import\s+([\w.]+(?:\.\*)?)/gm)].map((match) => match[1]);
 }
@@ -99,7 +101,7 @@ function isImported(imports, type, packages) {
 }
 
 export function receiverType(code, name, imports) {
-  const types = [...code.matchAll(DECLARED_TYPE(name))].map((match) => match[1] ?? match[2]);
+  const types = [...code.matchAll(declaredType(name))].map((match) => match[1] ?? match[2]);
   const [first] = types;
   const spec = CLIENTS.get(first);
   const agreed = first !== undefined && types.every((type) => type === first);
@@ -118,14 +120,25 @@ export function callKind(spec, method) {
   return spec.methods === ANY || spec.methods?.includes(method) ? REMOTE_KIND : undefined;
 }
 
+function declarationStart(tail) {
+  const token = /[={]/.exec(tail);
+  if (token === null) {
+    return undefined;
+  }
+  const signature = tail.slice(0, token.index).trim();
+  const returnType = signature.slice(1).trim();
+  const plain = signature === '' || (signature.startsWith(':') && !returnType.includes('\n'));
+  return plain ? { offset: token.index, token: token[0] } : undefined;
+}
+
 export function functionBodies(code) {
   const bodies = new Map();
   for (const match of code.matchAll(FUNCTION)) {
     const close = closingIndex(code, match.index + match[0].length - 1);
-    const rest = /^\s*(?::\s*[^={\n]+)?\s*([={])/.exec(code.slice(close + 1));
-    if (rest !== null) {
-      const start = close + 1 + rest[0].length - 1;
-      const end = rest[1] === '{' ? closingIndex(code, start) : code.indexOf('\n', start);
+    const declaration = declarationStart(code.slice(close + 1));
+    if (declaration !== undefined) {
+      const start = close + 1 + declaration.offset;
+      const end = declaration.token === '{' ? closingIndex(code, start) : code.indexOf('\n', start);
       bodies.set(match[1], [
         ...(bodies.get(match[1]) ?? []),
         code.slice(start, end < 0 ? undefined : end),
@@ -146,27 +159,42 @@ function directCall(text, file) {
   return undefined;
 }
 
-export function remoteCall(text, file, depth = 0) {
-  const direct = directCall(text, file);
-  if (direct !== undefined || depth >= HELPER_DEPTH) {
-    return direct;
+function helperBodies(text, file) {
+  return [...text.matchAll(PLAIN_CALL)].flatMap(([, name]) =>
+    (file.functions.get(name) ?? []).map((body) => ({ name, body })),
+  );
+}
+
+function nextEntries(entry, file) {
+  if (entry.depth >= HELPER_DEPTH) {
+    return [];
   }
-  for (const [, name] of text.matchAll(PLAIN_CALL)) {
-    const found = (file.functions.get(name) ?? [])
-      .map((body) => remoteCall(body, file, depth + 1))
-      .find(Boolean);
-    if (found !== undefined) {
-      return { ...found, helper: depth === 0 ? `${name}()` : found.helper };
+  return helperBodies(entry.text, file).map(({ name, body }) => ({
+    text: body,
+    depth: entry.depth + 1,
+    helper: entry.depth === 0 ? `${name}()` : entry.helper,
+  }));
+}
+
+export function remoteCall(text, file) {
+  const pending = [{ text, depth: 0, helper: '' }];
+  for (const entry of pending) {
+    const direct = directCall(entry.text, file);
+    if (direct !== undefined) {
+      return entry.depth === 0 ? direct : { ...direct, helper: entry.helper };
     }
+    pending.push(...nextEntries(entry, file));
   }
   return undefined;
 }
 
-export function isBounded(text, file, depth = 0) {
-  if (BOUND.test(text) || depth >= HELPER_DEPTH) {
-    return BOUND.test(text);
+export function isBounded(text, file) {
+  const pending = [{ text, depth: 0, helper: '' }];
+  for (const entry of pending) {
+    if (BOUND.test(entry.text)) {
+      return true;
+    }
+    pending.push(...nextEntries(entry, file));
   }
-  return [...text.matchAll(PLAIN_CALL)].some(([, name]) =>
-    (file.functions.get(name) ?? []).some((body) => isBounded(body, file, depth + 1)),
-  );
+  return false;
 }

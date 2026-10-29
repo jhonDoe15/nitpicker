@@ -22,6 +22,16 @@ const HEADER = [
   '    suspend fun page(url: String): String = client.get(url).bodyAsText()',
   '',
 ];
+const MESSAGE = [
+  '`async` starts `client.get` (a remote call) for every element of `urls` at once, with no bound on how many',
+  ' run together, so a large collection exhausts connections, rate limits or the remote service. Bound it:',
+  ' take a permit around each call (`val permits = Semaphore(8)` created once, then',
+  ' `permits.withPermit { send(it) }`), work through fixed-size chunks',
+  ' (`items.chunked(20).forEach { chunk -> chunk.map { async { send(it) } }.awaitAll() }`), use',
+  ' `flatMapMerge(concurrency = 8)` on a flow, run blocking calls on `Dispatchers.IO.limitedParallelism(8)`,',
+  ' or send one batch request when the API has one. A limit constant that no semaphore or dispatcher uses',
+  ' bounds nothing.',
+].join('');
 const FIRST_LINE = HEADER.length + 2;
 
 function source(lines) {
@@ -61,6 +71,11 @@ describe('unboundedFanOut', () => {
       'urls launch page()',
     ],
     [
+      'a typed loop variable',
+      ['for (url: String in urls) {', '    launch { page(url) }', '}'],
+      'urls launch page()',
+    ],
+    [
       'a named parameter',
       ['urls.mapIndexed { i, url -> async { page(url) } }'],
       'urls async page()',
@@ -76,14 +91,7 @@ describe('unboundedFanOut', () => {
       scanKotlinSource(source(['urls.map { async { client.get(it) } }'])),
     );
 
-    expect(reported.message).toMatch(
-      /^`async` starts `client\.get` \(a remote call\) for every element of `urls` at once, with no bound/u,
-    );
-    expect(reported.message).toMatch(/permits\.withPermit/u);
-    expect(reported.message).toMatch(/chunked\(20\)/u);
-    expect(reported.message).toMatch(
-      /A limit constant that no semaphore or dispatcher uses bounds nothing\.$/u,
-    );
+    expect(reported.message).toBe(MESSAGE);
   });
 
   it.each([
