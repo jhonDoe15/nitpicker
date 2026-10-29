@@ -1,4 +1,5 @@
 import { precedenceLayers } from '../../../../../shared/conventions/tool-precedence.mjs';
+import { listOf } from '../../../preset/project-tools/config-values.mjs';
 
 const ADDED_LISTS = [
   'ignore',
@@ -45,13 +46,6 @@ const ROOT_KEYS = new Set([
   'treatTagHintsAsErrors',
 ]);
 const ROOT_WORKSPACE = '.';
-
-function listOf(value) {
-  if (value === undefined) {
-    return [];
-  }
-  return Array.isArray(value) ? value : [value];
-}
 
 function isNegated(pattern) {
   return typeof pattern === 'string' && pattern.startsWith('!');
