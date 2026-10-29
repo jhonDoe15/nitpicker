@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { variableNamed } from '../analysis/ancestry.mjs';
 import { isComponentName } from '../../../syntax/component-names.mjs';
 
