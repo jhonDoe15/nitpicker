@@ -304,17 +304,17 @@
   {
     "primary": ["pmd/SwallowedInterrupt"],
     "secondary": ["errorprone/EmptyCatch", "pmd/EmptyCatchBlock", "checkstyle/EmptyCatchBlock"],
-    "scope": "line"
+    "scope": "catch"
   },
   {
     "primary": ["errorprone/EmptyCatch"],
     "secondary": ["pmd/EmptyCatchBlock", "checkstyle/EmptyCatchBlock"],
-    "scope": "line"
+    "scope": "catch"
   },
   {
     "primary": ["pmd/EmptyCatchBlock"],
     "secondary": ["checkstyle/EmptyCatchBlock"],
-    "scope": "line"
+    "scope": "catch"
   },
   {
     "primary": ["errorprone/MultiVariableDeclaration"],

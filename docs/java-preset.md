@@ -1299,6 +1299,9 @@ primary rule and the secondary rules it stands for, with a scope:
 - `javadoc`: the same Javadoc comment, whichever of its lines each tool names (Checkstyle's
   `SummaryJavadoc` reports the comment's first line, Error Prone's `MissingSummary` can name a
   later one, such as the line of an `@author` tag).
+- `catch`: the same `catch` clause, named by the line of its `catch` keyword, so a finding on the
+  line of the parameter or the brace of a clause laid out over several lines still meets one on
+  the keyword's line (Checkstyle's `EmptyCatchBlock` names the line of the block's brace).
 - `class`: the same class; a nested class is its own class.
 - `field`: the same class and field name. SpotBugs names a field `pkg.Class.field` and often gives
   it no line, or the line of a write.
@@ -1388,9 +1391,9 @@ table:
 - line: `errorprone/FallThrough` over `pmd/ImplicitSwitchFallThrough`, `checkstyle/FallThrough`
 - line: `pmd/ImplicitSwitchFallThrough` over `checkstyle/FallThrough`
 - member: `errorprone/FallThrough`, `pmd/ImplicitSwitchFallThrough`, `checkstyle/FallThrough` over `spotbugs/SF_SWITCH_FALLTHROUGH`
-- line: `pmd/SwallowedInterrupt` over `errorprone/EmptyCatch`, `pmd/EmptyCatchBlock`, `checkstyle/EmptyCatchBlock`
-- line: `errorprone/EmptyCatch` over `pmd/EmptyCatchBlock`, `checkstyle/EmptyCatchBlock`
-- line: `pmd/EmptyCatchBlock` over `checkstyle/EmptyCatchBlock`
+- catch: `pmd/SwallowedInterrupt` over `errorprone/EmptyCatch`, `pmd/EmptyCatchBlock`, `checkstyle/EmptyCatchBlock`
+- catch: `errorprone/EmptyCatch` over `pmd/EmptyCatchBlock`, `checkstyle/EmptyCatchBlock`
+- catch: `pmd/EmptyCatchBlock` over `checkstyle/EmptyCatchBlock`
 - line: `errorprone/MultiVariableDeclaration` over `pmd/OneDeclarationPerLine`, `checkstyle/MultipleVariableDeclarations`
 - line: `pmd/OneDeclarationPerLine` over `checkstyle/MultipleVariableDeclarations`
 - line: `errorprone/InterruptedExceptionSwallowed` over `pmd/AvoidCatchingGenericException`
