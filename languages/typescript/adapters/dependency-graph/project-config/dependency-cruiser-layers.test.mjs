@@ -51,14 +51,23 @@ describe('layered dependency-cruiser config', () => {
 
   it('lays a project rule over the nitpicker rule of its name when the project comes first', () => {
     const config = layered(['project', 'nitpicker']);
-    expect(config.forbidden).toEqual([
-      { ...POLICY.forbidden[0], severity: 'warn', comment: 'Ours' },
-      PROJECT.forbidden[1],
-      POLICY.forbidden[1],
-    ]);
+    expect(config).toEqual({
+      forbidden: [
+        { ...POLICY.forbidden[0], severity: 'warn', comment: 'Ours' },
+        PROJECT.forbidden[1],
+        POLICY.forbidden[1],
+      ],
+      required: PROJECT.required,
+      allowed: PROJECT.allowed,
+      allowedSeverity: 'warn',
+      options: {
+        ...POLICY.options,
+        combinedDependencies: true,
+        doNotFollow: { path: 'node_modules|^vendor', dependencyTypes: ['npm'] },
+        enhancedResolveOptions: { extensions: ['.ts', '.js'], conditionNames: ['import'] },
+      },
+    });
     expect(layered(['project'])).toEqual(config);
-    expect(config.required).toEqual(PROJECT.required);
-    expect(config).toMatchObject({ allowed: PROJECT.allowed, allowedSeverity: 'warn' });
   });
 
   it('keeps the nitpicker values of a shared rule when nitpicker comes first', () => {

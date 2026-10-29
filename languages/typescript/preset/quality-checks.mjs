@@ -104,7 +104,7 @@ function entryPointsCheckFor(layout, exclusions) {
       'languages/typescript/preset/dependency-graph/cruise.mjs',
       ARCHITECTURE_CONFIG,
       POLICY_TYPESCRIPT_CONFIG,
-      'languages/typescript/adapters/dependency-graph/dependency-cruiser-layers.mjs',
+      'languages/typescript/adapters/dependency-graph/project-config/dependency-cruiser-layers.mjs',
       ...PROJECT_TOOL_FILES,
     ],
   };
@@ -171,7 +171,7 @@ function typeAndArchitectureChecksFor(layout) {
         'languages/typescript/preset/architecture/domain-packages.mjs',
         'languages/typescript/preset/architecture/strict-layout.mjs',
         'languages/typescript/preset/defaults/tsconfig.quality.json',
-        'languages/typescript/adapters/dependency-graph/dependency-cruiser-layers.mjs',
+        'languages/typescript/adapters/dependency-graph/project-config/dependency-cruiser-layers.mjs',
         'languages/typescript/adapters/dependency-graph/project-dependency-graph.mjs',
         ...PROJECT_TOOL_FILES,
       ],

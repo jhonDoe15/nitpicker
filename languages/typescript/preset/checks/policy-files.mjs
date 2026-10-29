@@ -141,7 +141,7 @@ export const DEPENDENCY_GRAPH_FILES = [
   ARCHITECTURE_CONFIG,
   'languages/typescript/preset/dependency-graph/cruise.mjs',
   POLICY_TYPESCRIPT_CONFIG,
-  'languages/typescript/adapters/dependency-graph/dependency-cruiser-layers.mjs',
+  'languages/typescript/adapters/dependency-graph/project-config/dependency-cruiser-layers.mjs',
   'languages/typescript/adapters/dependency-graph/project-dependency-graph.mjs',
   ...PROJECT_TOOL_FILES,
 ];

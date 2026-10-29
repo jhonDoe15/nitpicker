@@ -13,12 +13,12 @@ import { revivedExpression } from '../../preset/project-tools/config-values.mjs'
 import { DEPENDENCY_CRUISER_TOOL } from '../../preset/project-tools/project-config-files.mjs';
 import { projectToolLayer } from '../../preset/project-tools/project-tool-policy.mjs';
 import { layoutTransformFor } from '../../preset/tool-configs.mjs';
-import { projectExcludePaths } from './dependency-cruiser-layers.mjs';
+import { projectExcludePaths } from './project-config/dependency-cruiser-layers.mjs';
 
 const MAX_OUTPUT_BYTES = 100 * 1024 * 1024;
 const TSCONFIG_NAME = 'tsconfig.quality.json';
 const LAYERS_MODULE = pathToFileURL(
-  path.join(import.meta.dirname, 'dependency-cruiser-layers.mjs'),
+  path.join(import.meta.dirname, 'project-config', 'dependency-cruiser-layers.mjs'),
 ).href;
 
 export function loadDependencyGraph(request) {
@@ -93,7 +93,7 @@ function graphKey(cruise) {
     policyTypeScriptConfig,
     cruise.exclusion,
     cruise.tool,
-    cruise.projectLayer ?? null,
+    cruise.projectLayer,
   ];
   return createHash('sha256').update(JSON.stringify(identity)).digest('hex').slice(0, 32);
 }
