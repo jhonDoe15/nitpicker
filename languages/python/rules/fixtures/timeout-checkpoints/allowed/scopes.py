@@ -78,3 +78,23 @@ async def wait_for_a_coroutine_that_suspends():
 async def no_checkpoint_at_all():
     async with asyncio.timeout(5):
         work()
+
+
+class Response:
+    def __init__(self, body):
+        self.body = body
+
+
+async def early_return_of_a_built_value(cache, key):
+    with trio.fail_after(5):
+        if key in cache:
+            return Response(cache[key])
+        return await fetch()
+
+
+async def joined_text(flag, parts):
+    with trio.fail_after(5):
+        if flag:
+            await fetch()
+        else:
+            return ", ".join(parts)

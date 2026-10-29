@@ -3,6 +3,7 @@ import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { RUFF_CONFIG } from '../../../adapters/configuration/python-ruff-config.mjs';
 import { createScripts } from '../../test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
@@ -23,10 +24,12 @@ function ruffLines(code) {
     writeFileSync(path.join(directory, 'mod.py'), code);
     const run = spawnSync(
       ruff,
-      ['check', '--isolated', '--select', 'ASYNC100', '--output-format', 'json', 'mod.py'],
+      ['check', '--config', RUFF_CONFIG, '--output-format', 'json', 'mod.py'],
       { cwd: directory, encoding: 'utf8', timeout: RUFF_TIMEOUT_MS },
     );
-    return JSON.parse(run.stdout).map((entry) => entry.location.row);
+    return JSON.parse(run.stdout)
+      .filter((entry) => entry.code === 'ASYNC100')
+      .map((entry) => entry.location.row);
   } finally {
     rmSync(directory, { recursive: true, force: true });
   }
@@ -218,6 +221,22 @@ describe.skipIf(!enabled)('timeout scopes with a path that has no checkpoint', (
         [],
       ],
       [
+        'an early return that only builds a value',
+        inAsync(
+          `${TRIO}\n\n\nclass Response:\n    pass`,
+          '    with trio.fail_after(5):\n        if flag in items:\n            return Response(items[flag])\n        return await fetch()\n',
+        ),
+        [],
+      ],
+      [
+        'a string join and an imported value class on the other branch',
+        inAsync(
+          `${TRIO}\nfrom decimal import Decimal`,
+          '    with trio.fail_after(5):\n        if flag:\n            await fetch()\n        else:\n            return ", ".join(items), Decimal(1)\n',
+        ),
+        [],
+      ],
+      [
         'logging on the other branch',
         inAsync(
           TRIO,
@@ -273,6 +292,72 @@ describe.skipIf(!enabled)('timeout scopes with a path that has no checkpoint', (
     expect(actual).toEqual(expected);
   });
 
+  it('reports blocking calls whose method names are also cheap container methods', () => {
+    const branch = (head, call) =>
+      inAsync(
+        `${TRIO}\n${head}`,
+        `    with trio.fail_after(5):\n        if flag:\n            await fetch()\n        else:\n            ${call}\n`,
+      );
+    const [actual, expected] = outcomes([
+      [
+        'requests.get on an imported module',
+        branch('import requests', 'requests.get("https://example.com", timeout=5)'),
+        [`${RULE}:6 trio.fail_after: requests.get()`],
+      ],
+      [
+        'get on a client the module creates',
+        branch(
+          'import requests\nsession = requests.Session()',
+          'session.get("https://example.com", timeout=5)',
+        ),
+        [`${RULE}:7 trio.fail_after: session.get()`],
+      ],
+      [
+        'os.remove on an imported module',
+        branch('import os', 'os.remove("a")'),
+        [`${RULE}:6 trio.fail_after: os.remove()`],
+      ],
+      [
+        'a future result',
+        branch('', 'items.result()'),
+        [`${RULE}:6 trio.fail_after: items.result()`],
+      ],
+      ['a thread join', branch('', 'items.join()'), [`${RULE}:6 trio.fail_after: items.join()`]],
+      [
+        'a thread join with a timeout',
+        branch('', 'items.join(5)'),
+        [`${RULE}:6 trio.fail_after: items.join()`],
+      ],
+      [
+        'a blocking queue get',
+        branch('', 'items.get()'),
+        [`${RULE}:6 trio.fail_after: items.get()`],
+      ],
+      [
+        'a client constructor',
+        branch('from requests import Session', 'Session()'),
+        [`${RULE}:6 trio.fail_after: requests.Session()`],
+      ],
+    ]);
+
+    expect(actual).toEqual(expected);
+  });
+
+  it('does not count yield as a checkpoint', () => {
+    const [actual, expected] = outcomes([
+      [
+        'an async generator that yields on one branch',
+        inAsync(
+          TRIO,
+          '    with trio.fail_after(5):\n        if flag:\n            yield render()\n        else:\n            await fetch()\n',
+        ),
+        finding(5, 'trio.fail_after: render()'),
+      ],
+    ]);
+
+    expect(actual).toEqual(expected);
+  });
+
   it('treats an await of a coroutine that never suspends as no checkpoint', () => {
     const quiet =
       'import asyncio\n\n\nasync def quiet():\n    return render()\n\n\nasync def loud():\n    await asyncio.sleep(0)\n';
@@ -314,7 +399,7 @@ describe.skipIf(!enabled)('timeout scopes with a path that has no checkpoint', (
 });
 
 describe.skipIf(!enabled)('timeout scopes that Ruff ASYNC100 reports', () => {
-  it('never reports a scope without any checkpoint, which Ruff owns', () => {
+  it('never reports a scope without any checkpoint, which the preset Ruff config reports', () => {
     const code = [
       'import asyncio',
       'import trio',

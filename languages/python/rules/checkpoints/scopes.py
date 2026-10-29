@@ -1,6 +1,11 @@
 import ast
 
-from checkpoints.effects import module_coroutines, quiet_coroutines, sees_checkpoint
+from checkpoints.effects import (
+    Cheapness,
+    module_coroutines,
+    quiet_coroutines,
+    sees_checkpoint,
+)
 from checkpoints.paths import CLEAN, Analysis, is_dirty
 from checks.common import dotted_name, finding
 
@@ -87,6 +92,10 @@ def wait_for_scopes(context, analysis, coroutines):
 def check(context):
     if context.tests:
         return []
-    analysis = Analysis(context.aliases, quiet_coroutines(context.tree))
+    analysis = Analysis(
+        context.aliases, quiet_coroutines(context.tree), Cheapness(context)
+    )
     coroutines = module_coroutines(context.tree)
-    return with_scopes(context, analysis) + wait_for_scopes(context, analysis, coroutines)
+    return with_scopes(context, analysis) + wait_for_scopes(
+        context, analysis, coroutines
+    )

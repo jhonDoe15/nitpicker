@@ -952,18 +952,28 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   to a coroutine defined once, undecorated, at module level of the same file (the coroutine body is
   the scope). A `CancelScope(shield=True)` without a `deadline` is not a timeout and is skipped.
   A checkpoint is an `await` that can suspend, `async for`, `async with` (and async comprehensions);
+  a `yield` is not one (as in flake8-async, the consumer of an async generator decides when it
+  resumes, so the scope's deadline cannot interrupt the code before the `yield`);
   the path analysis follows `if`, `match`, `for`, `while`, `try`/`except`/`else`/`finally`,
   `return`, `break` and `continue`, and `raise` ends a path. An `await` of a coroutine defined in
   the same module whose body never suspends is not a checkpoint. A path is reported only when it
-  runs a call that is not on a short list of cheap ones (builtins such as `len` and `sorted`,
-  `append`, `get`, logger methods, `start_soon`, `create_task`); a branch that only logs or returns
-  a cached value is allowed. The allowed forms are to await the slow work
+  runs a call that is not on a short list of cheap ones: builtins such as `len` and `sorted`, a
+  constructor of a class the module defines or imports (`Response(cache[key])`, `Decimal(1)`, not
+  a client such as `requests.Session()`), a method of a string literal (`", ".join(parts)`), and
+  container and bookkeeping methods (`append`, `pop`, `get(key)`, `join(parts)`, logger methods,
+  `start_soon`, `create_task`). A method is cheap only on a receiver that is not an imported module
+  (`os.remove`, `requests.get`, `logging.info`), not a client the module creates or imports
+  (`session = requests.Session()`), and not an I/O owner the `io-in-loop` rule recognizes
+  (`self.repo.find`, `db.query`); `get()` without a key or with a `True` block flag (a blocking
+  queue) and `join()` without an argument or with a timeout (a thread) count as work, and so does
+  `result()` (a future). A branch that only logs or returns a cached or built value is allowed. The allowed forms are to await the slow work
   (`await asyncio.to_thread(work)`, `await trio.to_thread.run_sync(work)`,
   `await anyio.to_thread.run_sync(work)`), an explicit checkpoint before it
   (`await asyncio.sleep(0)`, `await trio.lowlevel.checkpoint()`), or moving the path out of the
-  scope. Overlap with Ruff: a scope that contains no checkpoint at all is Ruff's `ASYNC100`
+  scope. Overlap with Ruff: a `with` scope that contains no checkpoint at all is Ruff's `ASYNC100`
   and is never reported here (the rule requires at least one checkpoint in the scope), so the
-  two never report the same scope. Test files are not checked. The identity is the scope and the
+  two never report the same scope. `asyncio.wait_for` is not a `with` scope and `ASYNC100` does
+  not look at it, so `wait_for` of a coroutine whose body never suspends is reported here. Test files are not checked. The identity is the scope and the
   first offending call. Limits: only calls resolved by name are judged, a callee imported from
   another module is assumed to be a real call but not to suspend, a loop is unrolled four rounds,
   and a scope held in a variable (`scope = trio.move_on_after(5)`, then `with scope:`) is not

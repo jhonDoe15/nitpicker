@@ -1,9 +1,12 @@
 import ast
+import builtins
 
 from checks.common import dotted_name
+from smells.io_index import CLIENT_FACTORIES, IoScope, chain_names, io_index
 
 NESTED_SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)
-CHECKPOINTS = (ast.Await, ast.Yield, ast.YieldFrom)
+BUILTIN_CLASSES = {name for name in dir(builtins) if name[:1].isupper()}
+POSITIONAL_LOOKUPS = {"get", "join"}
 PURE_BUILTINS = {
     "abs",
     "all",
@@ -61,19 +64,16 @@ CHEAP_METHODS = {
     "exception",
     "extend",
     "format",
-    "get",
     "get_nowait",
     "info",
     "is_set",
     "items",
-    "join",
     "keys",
     "log",
     "lower",
     "pop",
     "put_nowait",
     "remove",
-    "result",
     "set",
     "setdefault",
     "split",
@@ -96,7 +96,7 @@ def is_async_comprehension(node):
 def is_checkpoint(node):
     return (
         isinstance(node, (ast.AsyncFor, ast.AsyncWith))
-        or isinstance(node, CHECKPOINTS)
+        or isinstance(node, ast.Await)
         or is_async_comprehension(node)
     )
 
@@ -117,21 +117,68 @@ def walk_visible(node):
         current = pending.pop()
         yield current
         for child in ast.iter_child_nodes(current):
-            if not isinstance(child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)):
+            if not isinstance(
+                child, (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef)
+            ):
                 pending.append(child)
 
 
 def sees_checkpoint(statements):
     return any(
-        is_checkpoint(node) for statement in statements for node in walk_visible(statement)
+        is_checkpoint(node)
+        for statement in statements
+        for node in walk_visible(statement)
     )
 
 
-def is_cheap(call):
-    function = call.func
-    if isinstance(function, ast.Name):
-        return function.id in PURE_BUILTINS
-    return isinstance(function, ast.Attribute) and function.attr in CHEAP_METHODS
+def is_lookup(call):
+    first = call.args[0] if call.args else None
+    waits = isinstance(first, ast.Constant) and isinstance(
+        first.value, (bool, int, float)
+    )
+    return first is not None and not waits
+
+
+class Cheapness:
+    def __init__(self, context):
+        self.aliases = context.aliases
+        self.scope = IoScope(context, io_index(context.project))
+        self.classes = {
+            node.name
+            for node in ast.walk(context.tree)
+            if isinstance(node, ast.ClassDef)
+        }
+
+    def is_cheap(self, call):
+        function = call.func
+        if isinstance(function, ast.Name):
+            return function.id in PURE_BUILTINS or self.is_constructor(function.id)
+        if not isinstance(function, ast.Attribute):
+            return False
+        if isinstance(function.value, (ast.Constant, ast.JoinedStr)):
+            return True
+        return self.is_cheap_method(call, function.attr)
+
+    def is_constructor(self, name):
+        if not name[:1].isupper() or name in self.scope.imported:
+            return False
+        imported = self.aliases[0].get(name)
+        if imported is not None:
+            return imported not in CLIENT_FACTORIES
+        return name in self.classes or name in BUILTIN_CLASSES
+
+    def is_cheap_method(self, call, method):
+        if method not in CHEAP_METHODS and method not in POSITIONAL_LOOKUPS:
+            return False
+        if method in POSITIONAL_LOOKUPS and not is_lookup(call):
+            return False
+        root = (chain_names(call.func) or [None])[0]
+        return not (
+            root in self.aliases[1]
+            or root in self.scope.imported
+            or root in self.scope.clients
+            or self.scope.is_io(call)
+        )
 
 
 def awaited_name(node):
