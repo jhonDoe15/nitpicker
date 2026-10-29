@@ -1583,6 +1583,8 @@ Findings match the project's own TypeScript, with the same messages, positions a
 - TypeScript adds "Did you mean ...?" to a limited number of unknown-name errors. TypeScript 7
   checks files on several checkers, each with its own limit, so it adds the suggestion to more of
   them.
+- A misspelled compiler option close to a real one is TS5025 ("Did you mean ...?") on TypeScript 5
+  and 6 and TS5023 on TypeScript 7.
 - A "file is in the program because" note names the include pattern or `files` entry that
   matched, where the project's TypeScript says "Root file specified for compilation".
 - A few messages are worded differently, such as "No overload matches this call" details and
@@ -1593,13 +1595,14 @@ Switching engines therefore shows those findings as new once. Paths inside messa
 to the project, so they are the same on both sides of the comparison.
 
 Config diagnostics, such as a removed or unknown compiler option, are reported against the
-project's own config, the one nitpicker's type check config extends (`tsconfig.json`, the config
-`tools.typescript.project` names, or the referenced config of a solution `tsconfig.json`), so an
-exception can name that path. An unknown option is reported at its line in the config that sets it;
-other option diagnostics are reported on the file, without a line. An unknown option is reported and the type check still runs, as
-`tsc` does; TypeScript 5 and 6 may add "Did you mean ...?" to it where TypeScript 7 does not. Any
-other config error, such as broken JSON or an `extends` that names a missing file, stops the
-analyzer, and the message names the project's config.
+project's own config, the one nitpicker's type check config extends (`tsconfig.json`,
+`jsconfig.json` in a JavaScript project, the config `tools.typescript.project` names, or the
+referenced config of a solution `tsconfig.json`), so an exception can name that path. A project without one gets
+nitpicker's own config, `languages/typescript/preset/defaults/tsconfig.quality.json`, as the path.
+An unknown option is reported at its line in the config that sets it, and the type check still runs,
+as `tsc` does; other option diagnostics are reported on the file, without a line. Any other config
+error, such as broken JSON or an `extends` that names a missing file, stops the analyzer, and the
+message names the project's config.
 
 Both sides of the comparison are type checked with the TypeScript of the current checkout, so their
 findings come from the same compiler. On a branch that upgrades TypeScript, the base is checked

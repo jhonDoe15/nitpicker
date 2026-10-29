@@ -1,4 +1,12 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
@@ -249,18 +257,38 @@ describe('a project whose own typescript is TypeScript 7', () => {
     );
   });
 
-  it('reports an unknown option and still type checks, as tsc does', async () => {
-    writeConfig('tsconfig.own-base.json', { ...STRICT, types: [], fooBar: 1 });
+  it('reports unknown options and still type checks, as tsc does', async () => {
+    const base = writeConfig('tsconfig.own-base.json', { ...STRICT, types: [], fooBar: 1 });
     const configPath = path.join(root, 'tsconfig.own-unknown.json');
-    writeFileSync(configPath, JSON.stringify({ extends: './tsconfig.own-base.json', fooBaz: 1 }));
+    writeFileSync(
+      configPath,
+      JSON.stringify({
+        extends: './tsconfig.own-base.json',
+        compilerOptions: { types: [], lib: ['ES2022'], fooBaz: 1 },
+      }),
+    );
+    const located = readFileSync(base, 'utf8').indexOf('"fooBar"');
 
     const own = await described('project', configPath, projectNative);
 
     expect(own).toEqual([
-      finding('tsconfig.own-base.json', 5023, undefined, [0, 132], UNKNOWN_OPTION),
+      configNote(5023, "Unknown compiler option 'fooBaz'."),
+      finding('tsconfig.own-base.json', 5023, undefined, [0, located], UNKNOWN_OPTION),
       ...SOURCE_FINDINGS,
     ]);
     expect(await described('project', configPath)).toEqual(own);
+    expect(await described('native', configPath)).toEqual(own);
+  });
+
+  it('reports an unknown option when the config matches no files', async () => {
+    const configPath = writeConfig('tsconfig.own-none.json', { ...STRICT, types: [], fooBar: 1 }, [
+      'none',
+    ]);
+    const expected = [configNote(5023, UNKNOWN_OPTION)];
+
+    expect(await described('project', configPath, projectNative)).toEqual(expected);
+    expect(await described('project', configPath)).toEqual(expected);
+    expect(await described('native', configPath)).toEqual(expected);
   });
 
   it('names the project config and keeps the snapshot folder out of config errors', async () => {

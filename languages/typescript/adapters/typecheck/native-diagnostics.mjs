@@ -110,15 +110,8 @@ function ownDiagnostics(ts, { hasRootFiles, configErrors, diagnostics }) {
   if (fatalErrors.length > 0) {
     throw configFailure(fatalErrors.map(({ text }) => text).join('\n'));
   }
-  if (!hasRootFiles) {
-    return { diagnostics: [] };
-  }
-  return {
-    diagnostics: [
-      ...shapedDiagnostics(ts, configErrors).diagnostics,
-      ...shapedDiagnostics(ts, diagnostics).diagnostics,
-    ],
-  };
+  const reported = configErrors.filter(({ code }) => code !== NO_INPUTS_CODE);
+  return shapedDiagnostics(ts, hasRootFiles ? diagnostics : [], reported);
 }
 
 export function isNonFatalConfigCode(code) {
@@ -129,22 +122,26 @@ export function configFailure(message) {
   return Object.assign(new Error(message), { configError: true });
 }
 
-function shapedDiagnostics(ts, diagnostics) {
-  const sourceFileOf = sourceFileReader(ts);
+function shapedDiagnostics(ts, diagnostics, configErrors = []) {
+  const sourceFileOf = sourceFileReader(ts, { withPath: true });
+  const configFileOf = sourceFileReader(ts, { withPath: false });
   return {
-    diagnostics: ts.sortAndDeduplicateDiagnostics(
-      diagnostics.map((diagnostic) => typeScriptShaped(diagnostic, sourceFileOf)),
-    ),
+    diagnostics: ts.sortAndDeduplicateDiagnostics([
+      ...configErrors.map((diagnostic) => typeScriptShaped(diagnostic, configFileOf)),
+      ...diagnostics.map((diagnostic) => typeScriptShaped(diagnostic, sourceFileOf)),
+    ]),
   };
 }
 
-function sourceFileReader(ts) {
+function sourceFileReader(ts, { withPath }) {
   const sourceFiles = new Map();
   return (fileName) => {
     if (!sourceFiles.has(fileName)) {
       const text = ts.sys.readFile(fileName);
       const sourceFile = ts.createSourceFile(fileName, text, ts.ScriptTarget.Latest, true);
-      sourceFile.path = ts.sys.useCaseSensitiveFileNames ? fileName : fileName.toLowerCase();
+      if (withPath) {
+        sourceFile.path = ts.sys.useCaseSensitiveFileNames ? fileName : fileName.toLowerCase();
+      }
       sourceFiles.set(fileName, sourceFile);
     }
     return sourceFiles.get(fileName);
