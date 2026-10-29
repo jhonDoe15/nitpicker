@@ -53,6 +53,32 @@ const TERNARY = [
   '    return chosen_label_for_the_report',
   '',
 ].join('\n');
+const GOOGLE_DOCSTRING = [
+  '"""Fetch values."""',
+  '',
+  '',
+  'def fetch(key):',
+  '    """Fetch a key.',
+  '',
+  '    Args:',
+  '        key: The key.',
+  '',
+  '    Returns:',
+  '        The value.',
+  '    """',
+  '    return key',
+  '',
+].join('\n');
+const TYPED_IMPORT = [
+  'from __future__ import annotations',
+  '',
+  'from shop.models import Item',
+  '',
+  '',
+  'def name(item: Item) -> str:',
+  '    return str(item)',
+  '',
+].join('\n');
 const UNUSED_VARIADIC = ['ARG001 src/shop/app.py', 'ARG002 src/shop/app.py'];
 
 function findings(precedence, options = {}) {
@@ -83,8 +109,39 @@ describe.skipIf(!pythonE2eEnabled)('ruff lint with the project config end to end
 
   it('keeps the rules nitpicker ignores off and its option values when nitpicker is first', () => {
     expect(findings(['nitpicker', 'project'])).toEqual(
-      [...PROJECT_RULES, ...NITPICKER_RULES].toSorted(),
+      ['N802 src/shop/app.py', ...PROJECT_RULES, ...NITPICKER_RULES].toSorted(),
     );
+  });
+
+  it('lets ruff resolve the project selection, with its docstring convention', () => {
+    const files = {
+      'src/shop/fetch.py': GOOGLE_DOCSTRING,
+      'ruff.toml': '[lint]\nextend-select = ["D"]\n\n[lint.pydocstyle]\nconvention = "google"\n',
+    };
+
+    expect(realLintFindings({ files, toolPrecedence: { ruff: ['project', 'nitpicker'] } })).toEqual(
+      [],
+    );
+  });
+
+  it('follows the codes ruff redirects, in the selection and in the per-file ignores', () => {
+    const files = {
+      'src/shop/models.py': 'class Item:\n    pass\n',
+      'src/shop/view.py': TYPED_IMPORT,
+      'src/shop/other.py': TYPED_IMPORT,
+      'ruff.toml': [
+        '[lint]',
+        'extend-select = ["TCH"]',
+        '',
+        '[lint.per-file-ignores]',
+        '"src/shop/other.py" = ["TCH001"]',
+        '',
+      ].join('\n'),
+    };
+
+    expect(realLintFindings({ files, toolPrecedence: { ruff: ['project'] } })).toEqual([
+      'TC001 src/shop/view.py',
+    ]);
   });
 
   it('reads the config from the head checkout and resolves its paths in the snapshot', () => {

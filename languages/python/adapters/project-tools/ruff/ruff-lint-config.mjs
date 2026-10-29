@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { listRuffRules, ruffConfigFor } from '../../configuration/python-ruff-config.mjs';
+import { RUFF_CONFIG, ruffConfigFor } from '../../configuration/python-ruff-config.mjs';
 import { PYTHON_SETTING_IDS } from '../../../conventions/python-conventions.mjs';
 import { followed } from '../../formatting/format-options.mjs';
 import { readRuffLayers } from '../../formatting/project-format-config.mjs';
@@ -12,19 +12,15 @@ import {
   toolLayers,
   unique,
 } from '../project-tool-layers.mjs';
-import { mergeTables, projectLint } from './ruff-project-lint.mjs';
-import { expandSelectors, resolveSelection, ruleCatalog } from './ruff-selection.mjs';
+import { optionsBesideNitpicker, optionsOverNitpicker } from './ruff-option-linters.mjs';
+import { layoutGlobals, mergeTables, projectLint } from './ruff-project-lint.mjs';
+import { resolvedLint } from './ruff-settings.mjs';
 
 const RUFF_TOOL = 'ruff';
 const LAYERED_CONFIG = 'nitpicker-ruff-layered.toml';
 const LOOKED = [
   'a ruff config (.ruff.toml, ruff.toml, or pyproject.toml with a [tool.ruff] table,',
   'in the project folder or a parent up to the repository root)',
-].join(' ');
-const NO_RULES = [
-  'ruff could not list its rules (ruff rule --all --output-format json),',
-  "which layering the project lint config on nitpicker's needs:",
-  'install a ruff that can, or remove "project" from tools.ruff.precedence',
 ].join(' ');
 
 function readProject(configRoot) {
@@ -35,10 +31,10 @@ function readProject(configRoot) {
   return value;
 }
 
-function filteredIgnores(perFileIgnores, { catalog, extra }) {
+function filteredIgnores(perFileIgnores, extra) {
   const codes = new Map();
-  for (const { pattern, selectors } of perFileIgnores) {
-    const kept = [...expandSelectors(selectors, catalog)].filter((code) => extra.has(code));
+  for (const { pattern, codes: ignored } of perFileIgnores) {
+    const kept = ignored.filter((code) => extra.has(code));
     codes.set(pattern, unique([...(codes.get(pattern) ?? []), ...kept]));
   }
   return Object.fromEntries(
@@ -53,26 +49,35 @@ function nonEmpty(key, value) {
   return empty ? {} : { [key]: value };
 }
 
-function layeredConfig({ nitpicker, project, catalog, nitpickerFirst }) {
-  const { select = [], ignore = [], ...nitpickerOptions } = nitpicker.lint ?? {};
-  const stable = catalog.filter((rule) => rule.preview !== true);
-  const own = resolveSelection([{ select, extendSelect: [], ignore }], { catalog: stable });
-  const ignoredByNitpicker = expandSelectors(ignore, catalog);
+function nitpickerIgnores(ignore, enabled) {
+  return new Set(
+    [...enabled].filter((code) => ignore.some((selector) => code.startsWith(selector))),
+  );
+}
+
+function layeredConfig({ nitpicker, project, own, resolved, nitpickerFirst }) {
+  const { ignore = [], ...rest } = nitpicker.lint ?? {};
+  const nitpickerOptions = Object.fromEntries(
+    Object.entries(rest).filter(([key]) => key !== 'select'),
+  );
+  const ignoredByNitpicker = nitpickerIgnores(ignore, resolved.enabled);
   const extra = new Set(
-    [...resolveSelection(project.selection, { catalog, preview: project.preview })]
+    [...resolved.enabled]
       .filter((code) => !own.has(code))
       .filter((code) => !nitpickerFirst || !ignoredByNitpicker.has(code)),
   );
   const options = nitpickerFirst
-    ? mergeTables(nitpickerOptions, project.options, { joinLists: true })
+    ? mergeTables(nitpickerOptions, optionsBesideNitpicker(project.options, own), {
+        joinLists: false,
+      })
     : mergeTables(project.options, nitpickerOptions, { joinLists: true });
   return {
-    ...project.globals,
+    ...(nitpickerFirst ? layoutGlobals(project.globals) : project.globals),
     ...nonEmpty('extend-exclude', project.exclude),
     lint: {
       ...options,
       select: [...own, ...extra].toSorted(),
-      ...nonEmpty('per-file-ignores', filteredIgnores(project.perFileIgnores, { catalog, extra })),
+      ...nonEmpty('per-file-ignores', filteredIgnores(resolved.perFileIgnores, extra)),
       ...nonEmpty('exclude', project.lintExclude),
     },
   };
@@ -98,10 +103,6 @@ export function ruffLintConfig(context) {
     looked: LOOKED,
     configRoot: layers.configRoot,
   });
-  const rules = listRuffRules(context);
-  if (rules === undefined) {
-    throw new Error(NO_RULES);
-  }
   const project = projectLint(found.layers, {
     policyRoot: layers.configRoot,
     projectRoot: context.projectRoot,
@@ -109,7 +110,12 @@ export function ruffLintConfig(context) {
   const config = layeredConfig({
     nitpicker: parseToml(readFileSync(nitpickerFile, 'utf8')),
     project,
-    catalog: ruleCatalog(rules),
+    own: resolvedLint(context, { file: nitpickerFile }).enabled,
+    resolved: resolvedLint(context, {
+      file: found.file,
+      configRoot: layers.configRoot,
+      preview: !layers.nitpickerFirst,
+    }),
     nitpickerFirst: layers.nitpickerFirst,
   });
   const file = path.join(context.reportRoot, LAYERED_CONFIG);
@@ -119,4 +125,14 @@ export function ruffLintConfig(context) {
     setsTargetVersion: config['target-version'] !== undefined,
     lineLength: lineLength(context, { layers, own: config['line-length'] }),
   };
+}
+
+export function optionsOverNitpickerRules(root) {
+  const project = readRuffLayers(root);
+  if (project === undefined) {
+    return [];
+  }
+  const { options } = projectLint(project.layers, { policyRoot: root, projectRoot: root });
+  const selected = parseToml(readFileSync(RUFF_CONFIG, 'utf8')).lint?.select ?? [];
+  return optionsOverNitpicker(options, new Set(selected));
 }

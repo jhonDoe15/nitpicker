@@ -299,8 +299,9 @@ effect only with the opt-in.
 The run prints, once at the start, the command that formats the code the way nitpicker checks it
 (for example `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .`;
 black prints `<empty file>` for the config it writes), and one line when a project config is
-ignored: `Ignoring [tool.ruff] in pyproject.toml; opt in with "tools": { "ruff": { "precedence":
-["project", "nitpicker"] } }`. Each format finding refers to the command and names
+ignored: `Ignoring [tool.ruff] in pyproject.toml except lint.flake8-pytest-style; opt in with
+"tools": { "ruff": { "precedence": ["project", "nitpicker"] } }` (the flake8-pytest-style options
+are read without the opt-in). Each format finding refers to the command and names
 `python.formatter` (when detected), the setting that changes the formatter.
 
 **Opt-in.** `"tools": { "ruff": { "precedence": ["project", "nitpicker"] } }` (or `black`) reads the
