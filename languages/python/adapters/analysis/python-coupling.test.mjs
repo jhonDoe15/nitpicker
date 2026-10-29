@@ -8,6 +8,8 @@ import {
   readCouplingFindings,
   scanImports,
 } from './python-coupling.mjs';
+import { libraryProject } from '../../../../shared/rules/stability/test-support/library-project.mjs';
+import { libraryModules } from './test-support/library-modules.mjs';
 
 const roots = [];
 
@@ -349,6 +351,33 @@ describe('analyzing the import graph', () => {
         metric: { name: 'fanOut', value: 1 },
       },
     ]);
+  });
+});
+
+describe('a feature that reuses three others through their __init__.py', () => {
+  const { features, uses } = libraryProject({ withFines: true });
+  const graph = libraryModules(features, uses);
+
+  it('passes stability direction: each feature is one unit and its facade edges stay inside', () => {
+    expect(analyzePythonCoupling(graph).stabilityDirection).toEqual([]);
+  });
+
+  it('reports each facade edge, members on an untouched file, when the layout has no features', () => {
+    const reportRoot = temporaryRoot();
+    writeFileSync(path.join(reportRoot, 'imports.json'), JSON.stringify(graph));
+
+    const findings = readCouplingFindings(reportRoot, { layout: { featureRoots: [] } });
+
+    expect(
+      findings
+        .filter(({ classification }) => classification === 'enforceable')
+        .map(({ path: file, identity }) => `${file} ${identity}`),
+    ).toEqual(
+      ['members', 'catalog', 'loans', 'fines'].map(
+        (name) =>
+          `src/app/features/${name}/__init__.py package-edge:app.features.${name}->app.features.${name}.adapters`,
+      ),
+    );
   });
 });
 
