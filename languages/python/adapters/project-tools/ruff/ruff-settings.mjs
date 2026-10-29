@@ -3,17 +3,23 @@ import path from 'node:path';
 import { execute } from '../../execution/python-process.mjs';
 
 const PROBE = 'nitpicker-ruff-probe.py';
+const EMPTY = { ']': '[]', '}': '{}' };
 const CODE = /\(([A-Z]+\d+)\)/gu;
 const IGNORE_ENTRY =
   /absolute_matcher = (".*")\nbasename_matcher = (".*")\nnegated = (true|false)\ndata = \[([^\]]*)\]/gu;
 
 function block(output, heading, close) {
-  const start = output.indexOf(`\n${heading} = `);
+  const opening = `\n${heading} = `;
+  const start = output.indexOf(opening);
   if (start === -1) {
     return undefined;
   }
-  const end = output.indexOf(`\n${close}`, start + 1);
-  return end === -1 ? undefined : output.slice(start, end);
+  const rest = output.slice(start + opening.length);
+  if (rest.startsWith(EMPTY[close])) {
+    return '';
+  }
+  const end = rest.indexOf(`\n${close}`);
+  return end === -1 ? undefined : rest.slice(0, end);
 }
 
 function codesIn(text) {
@@ -50,11 +56,9 @@ function parsedSettings(output, roots) {
 export function resolvedLint(context, { file, configRoot = context.reportRoot, preview = true }) {
   const probe = path.join(context.reportRoot, PROBE);
   writeFileSync(probe, '');
+  const shown = ['ruff', 'check', '--show-settings', '--config'];
   const command = [
-    'ruff',
-    'check',
-    '--show-settings',
-    '--config',
+    ...shown,
     file,
     ...(preview ? [] : ['--no-preview']),
     '--no-force-exclude',
@@ -69,7 +73,7 @@ export function resolvedLint(context, { file, configRoot = context.reportRoot, p
   if (settings === undefined) {
     const reason = (result.stderr ?? result.error?.message ?? '').trim();
     throw new Error(
-      `ruff could not resolve the lint settings of ${file} (${command.slice(0, 4).join(' ')}): ${reason}`,
+      `ruff could not resolve the lint settings of ${file} (${shown.join(' ')}): ${reason}`,
     );
   }
   return settings;
