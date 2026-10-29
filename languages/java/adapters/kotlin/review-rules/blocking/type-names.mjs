@@ -10,7 +10,7 @@ export function resolverFor(file) {
       explicit.set(alias ?? path.slice(path.lastIndexOf('.') + 1), path);
     }
   }
-  const candidates = (name) => {
+  function candidates(name) {
     if (name.includes('.')) {
       return [name];
     }
@@ -18,7 +18,7 @@ export function resolverFor(file) {
       return [explicit.get(name)];
     }
     return [...wildcards, ...IMPLICIT_PACKAGES].map((pkg) => `${pkg}.${name}`);
-  };
+  }
   return {
     isType: (name, qualified) => name !== undefined && candidates(name).includes(qualified),
     importsFrom: (prefix) => file.imports.some(({ path }) => path.startsWith(prefix)),

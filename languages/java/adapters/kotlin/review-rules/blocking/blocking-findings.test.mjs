@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import { findingFactory } from '../review-finding.mjs';
-import { file, fn, klass, routeOf, summary } from '../test-support/facts.mjs';
-import { BLOCKING_RULE, blockingFindings } from './blocking-findings.mjs';
-import { TIMEOUT_RULE } from './timeouts.mjs';
+import { file, fn, klass, routed, summary } from '../test-support/facts.mjs';
+import { BLOCKING_RULE, blockingFindings, blockingMessage } from './blocking-findings.mjs';
+import { TIMEOUT_RULE, timeoutMessage } from './timeouts.mjs';
 
 const IMPORTS = [
   { path: 'kotlinx.coroutines.', alias: undefined, all: true },
@@ -44,9 +44,9 @@ describe('blocking calls in Kotlin coroutine code', () => {
     const findings = findingsFor({ calls: [filesCall()], timeouts: [] });
 
     expect(summary(findings)).toEqual([`${BLOCKING_RULE} load.Files.readString 5`]);
-    expect(findings[0].message).toContain('withContext(Dispatchers.IO)');
-    expect(findings[0].message).toContain('a cancellation cannot interrupt it');
-    expect(routeOf(findings[0].message)).toContain('"rule":"pmd/BlockingCallInCoroutine"');
+    expect(findings[0].message).toBe(
+      routed(blockingMessage('Files.readString', 'Files is a blocking API', 'load'), BLOCKING_RULE),
+    );
   });
 
   it.each([
@@ -141,7 +141,9 @@ describe('timeout blocks without a suspension point in Kotlin', () => {
     const findings = findingsFor({ calls: [entry], timeouts: [timeout([entry])] });
 
     expect(summary(findings)).toEqual([`${TIMEOUT_RULE} load.withTimeout 4`]);
-    expect(findings[0].message).toContain('runInterruptible(Dispatchers.IO)');
+    expect(findings[0].message).toBe(
+      routed(timeoutMessage('withTimeout', 'Files.readString'), TIMEOUT_RULE),
+    );
   });
 
   it('reports a block that calls a plain function of the project', () => {

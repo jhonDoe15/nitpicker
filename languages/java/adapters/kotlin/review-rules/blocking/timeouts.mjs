@@ -29,7 +29,7 @@ function workOf(call, resolver, project) {
 function isKnownPlain(call, resolver, project) {
   return (
     workOf(call, resolver, project) !== undefined ||
-    NON_SUSPENDING_STANDARD.has(call.name) ||
+    NON_SUSPENDING_STANDARD.includes(call.name) ||
     (call.qualifier === undefined && project.constructors.has(call.name))
   );
 }
@@ -47,24 +47,24 @@ function timeoutWork(timeout, resolver, project) {
   return calls.map((call) => workOf(call, resolver, project)).find((name) => name !== undefined);
 }
 
-export function timeoutFindings(files, { finding, project }) {
-  const reported = new Set();
-  const findings = [];
-  for (const file of files.filter(({ test }) => !test)) {
-    const resolver = resolverFor(file);
-    if (!resolver.importsFrom(COROUTINES_PACKAGE)) {
-      continue;
+export function callKey(file, call) {
+  return `${file.file}:${String(call.line)}:${call.name}`;
+}
+
+function fileTimeouts(file, { finding, project }) {
+  const resolver = resolverFor(file);
+  if (!resolver.importsFrom(COROUTINES_PACKAGE)) {
+    return [];
+  }
+  return (file.coroutines?.timeouts ?? []).flatMap((timeout) => {
+    const work = timeoutWork(timeout, resolver, project);
+    if (work === undefined) {
+      return [];
     }
-    for (const timeout of file.coroutines?.timeouts ?? []) {
-      const work = timeoutWork(timeout, resolver, project);
-      if (work === undefined) {
-        continue;
-      }
-      for (const call of timeout.calls) {
-        reported.add(`${file.file}:${String(call.line)}:${call.name}`);
-      }
-      findings.push(
-        finding({
+    return [
+      {
+        keys: timeout.calls.map((call) => callKey(file, call)),
+        finding: finding({
           rule: TIMEOUT_RULE,
           file: file.file,
           line: timeout.line,
@@ -72,8 +72,17 @@ export function timeoutFindings(files, { finding, project }) {
           key: `${timeout.function}:${timeout.builder}:${work}`,
           message: timeoutMessage(timeout.builder, work),
         }),
-      );
-    }
-  }
-  return { findings, reported };
+      },
+    ];
+  });
+}
+
+export function timeoutFindings(files, { finding, project }) {
+  const entries = files
+    .filter(({ test }) => !test)
+    .flatMap((file) => fileTimeouts(file, { finding, project }));
+  return {
+    findings: entries.map((entry) => entry.finding),
+    reported: new Set(entries.flatMap((entry) => entry.keys)),
+  };
 }

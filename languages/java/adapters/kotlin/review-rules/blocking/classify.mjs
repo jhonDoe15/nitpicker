@@ -8,8 +8,13 @@ import {
 
 const TYPE_ALIASES = new Map([['java.nio.file.Path', ['kotlin.io.path.Path']]]);
 
-const covers = (names, name) => names === EVERY || names.includes(name);
-const simpleName = (name) => name.slice(name.lastIndexOf('.') + 1);
+function covers(names, name) {
+  return names === EVERY || names.includes(name);
+}
+
+function simpleName(name) {
+  return name.slice(name.lastIndexOf('.') + 1);
+}
 
 function isOneOf(resolver, name, qualified) {
   return [qualified, ...(TYPE_ALIASES.get(qualified) ?? [])].some((candidate) =>
@@ -73,7 +78,7 @@ function evidenceCall(call, resolver) {
 function standardInput(call, project) {
   return call.qualifier === undefined &&
     call.arguments === 0 &&
-    STANDARD_INPUT.has(call.name) &&
+    STANDARD_INPUT.includes(call.name) &&
     !project.declares(call.name)
     ? { subject: call.name, basis: 'it reads from standard input' }
     : undefined;

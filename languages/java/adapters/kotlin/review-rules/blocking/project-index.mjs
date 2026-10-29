@@ -7,38 +7,40 @@ function lastSegment(name) {
   return name.slice(name.lastIndexOf('.') + 1);
 }
 
-function derivesFromData(klass, file, resolver, known) {
-  return klass.supers.some((entry) => {
-    const simple = lastSegment(entry);
-    if (known.has(simple)) {
+function isDataBase(entry, { file, resolver }) {
+  return (
+    BLOCKING_REPOSITORY_BASES.includes(lastSegment(entry)) &&
+    (entry.startsWith(SPRING_DATA) ||
+      resolver.importsFrom(SPRING_DATA) ||
+      file.imports.length === 0)
+  );
+}
+
+function derivesFromData(root, byName) {
+  const seen = new Set();
+  const pending = [root];
+  for (const current of pending) {
+    if (seen.has(current)) {
+      continue;
+    }
+    seen.add(current);
+    if (current.klass.supers.some((entry) => isDataBase(entry, current))) {
       return true;
     }
-    return (
-      BLOCKING_REPOSITORY_BASES.has(simple) &&
-      (entry.startsWith(SPRING_DATA) ||
-        resolver.importsFrom(SPRING_DATA) ||
-        file.imports.length === 0)
-    );
-  });
+    pending.push(...current.klass.supers.flatMap((entry) => byName.get(lastSegment(entry)) ?? []));
+  }
+  return false;
 }
 
 function repositoryNames(files) {
-  const known = new Set();
   const classes = files.flatMap((file) => {
     const resolver = resolverFor(file);
     return file.classes.map((klass) => ({ klass, file, resolver }));
   });
-  let grew = true;
-  while (grew) {
-    grew = false;
-    for (const { klass, file, resolver } of classes) {
-      if (!known.has(klass.name) && derivesFromData(klass, file, resolver, known)) {
-        known.add(klass.name);
-        grew = true;
-      }
-    }
-  }
-  return known;
+  const byName = Map.groupBy(classes, ({ klass }) => klass.name);
+  return new Set(
+    classes.filter((entry) => derivesFromData(entry, byName)).map(({ klass }) => klass.name),
+  );
 }
 
 export function projectIndex(files) {
