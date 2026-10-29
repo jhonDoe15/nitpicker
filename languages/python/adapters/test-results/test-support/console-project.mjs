@@ -5,6 +5,12 @@ import { test } from '../../test-runs/test-step.mjs';
 import { createToolContext } from '../../python-tools.mjs';
 import { readConsoleReport } from '../console-output.mjs';
 
+function sortedEntries(entries) {
+  return entries.toSorted(
+    (left, right) => left.file.localeCompare(right.file) || left.test.localeCompare(right.test),
+  );
+}
+
 export function createConsoleProjects() {
   const roots = [];
 
@@ -33,7 +39,8 @@ export function createConsoleProjects() {
     });
     const outcome = {};
     test(context, outcome);
-    return { root, report: readConsoleReport(reportRoot).report, outcome };
+    const { report } = readConsoleReport(reportRoot);
+    return { root, report: { ...report, entries: sortedEntries(report.entries) }, outcome };
   }
 
   function cleanup() {

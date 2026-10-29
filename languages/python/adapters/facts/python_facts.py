@@ -1,9 +1,9 @@
 import ast
 import io
-import re
 import tokenize
 
 from python_docs import doc_comments, is_script
+from python_references import attribute_uses, fetched_names, references_of
 
 SKIPPED_TOKENS = {
     tokenize.COMMENT,
@@ -17,7 +17,6 @@ SKIPPED_TOKENS = {
 CLOSERS = {")", "]", "}"}
 LITERAL_TYPES = (ast.Constant, ast.Tuple, ast.List, ast.Set, ast.Dict, ast.UnaryOp)
 PACKAGE_FILE = "__init__.py"
-MODULE_PATH = re.compile(r"[A-Za-z_]\w*(\.[A-Za-z_]\w*)*")
 
 
 def decoded(source):
@@ -236,25 +235,6 @@ def reexports_of(tree, relative, exported_names):
     return found
 
 
-def dotted_reference(node):
-    if isinstance(node, ast.Constant) and isinstance(node.value, str):
-        return node.value if "." in node.value and MODULE_PATH.fullmatch(node.value) else None
-    first = node.values[0] if isinstance(node, ast.JoinedStr) and node.values else None
-    prefix = first.value if isinstance(first, ast.Constant) else None
-    if isinstance(prefix, str) and prefix.endswith(".") and MODULE_PATH.fullmatch(prefix[:-1]):
-        return prefix + "*"
-    return None
-
-
-def dotted_references(tree):
-    found = {}
-    for node in ast.walk(tree):
-        reference = dotted_reference(node)
-        if reference is not None and reference not in found:
-            found[reference] = {"name": reference, "line": node.lineno}
-    return list(found.values())
-
-
 def facts_of(relative, tree, text, imports):
     lines = [line.rstrip("\r\n") + "\n" for line in io.StringIO(text, newline="").readlines()]
     bindings = import_bindings(tree)
@@ -267,7 +247,9 @@ def facts_of(relative, tree, text, imports):
             "all": exported_names,
             "reexports": reexports_of(tree, relative, exported_names),
         },
-        "references": dotted_references(tree),
+        "references": references_of(tree),
+        "attributeUses": attribute_uses(tree, bindings),
+        "fetchedNames": fetched_names(tree),
         "script": is_script(tree),
         "docComments": doc_comments(tree),
     }

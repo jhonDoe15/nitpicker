@@ -1,3 +1,4 @@
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { pythonE2eEnabled } from '../e2e/test-support/python-e2e-support.mjs';
@@ -62,6 +63,43 @@ def test_echo_handler():
     log.addHandler(handler)
     log.warning("echoed warning")
     log.removeHandler(handler)
+`;
+
+const COPIES_TESTS = `import logging
+import sys
+
+LOG = logging.getLogger("app")
+
+
+def test_substring():
+    LOG.warning("failed")
+    print("Upload failed: connection refused", file=sys.stderr)
+
+
+def test_print_then_handler():
+    log = logging.getLogger("net")
+    handler = logging.StreamHandler(sys.stderr)
+    log.addHandler(handler)
+    print("connection timeout after 5s", file=sys.stderr)
+    log.warning("timeout")
+    log.removeHandler(handler)
+
+
+def test_caplog_then_print(caplog):
+    caplog.set_level(logging.INFO)
+    LOG.info("saved")
+    print("saved draft could not be synced to the server", file=sys.stderr)
+    assert "saved" in caplog.text
+
+
+def test_same_text_twice():
+    LOG.warning("disk almost full")
+    print("disk almost full", file=sys.stderr)
+
+
+def test_short_record():
+    LOG.warning("1")
+    print("Error: 1 file could not be removed", file=sys.stderr)
 `;
 
 describe.skipIf(!pythonE2eEnabled)('the pytest console plugin and test outcomes', () => {
@@ -157,9 +195,9 @@ def server():
     const { report } = consoleReport({ 'tests/test_handlers.py': HANDLER_TESTS });
 
     expect(report.entries.map(({ test, messages }) => [test, messages])).toEqual([
-      ['test_queue_listener', ['WARNING queued: queued warning']],
       ['test_dev_stderr', ['WARNING device: device warning']],
       ['test_echo_handler', ['WARNING echo: echoed warning']],
+      ['test_queue_listener', ['WARNING queued: queued warning']],
     ]);
   });
 
@@ -193,5 +231,39 @@ def test_plain():
     expect(report.entries.map(({ test, messages }) => [test, messages])).toEqual([
       ['test_plain', ['plain warning']],
     ]);
+  });
+
+  it('drops a stderr line only when it is the whole copy of a record', () => {
+    const { report } = consoleReport({ 'tests/test_copies.py': COPIES_TESTS });
+
+    expect(report.entries.map(({ test, messages }) => [test, messages])).toEqual([
+      ['test_caplog_then_print', ['saved draft could not be synced to the server']],
+      ['test_print_then_handler', ['connection timeout after 5s', 'timeout']],
+      ['test_same_text_twice', ['WARNING app: disk almost full']],
+      ['test_short_record', ['WARNING app: 1', 'Error: 1 file could not be removed']],
+      ['test_substring', ['WARNING app: failed', 'Upload failed: connection refused']],
+    ]);
+  });
+
+  it("reads pytest's warning record from the warnings context when warnings are context-aware", () => {
+    const result = spawnSync(
+      'python',
+      [
+        '-B',
+        '-c',
+        [
+          'import sys, types',
+          `sys.path.insert(0, ${JSON.stringify(path.join(import.meta.dirname, '../test-runs'))})`,
+          'import pytest_console as plugin',
+          'log = []',
+          'context = types.SimpleNamespace(log=log)',
+          'plugin.warnings = types.SimpleNamespace(_get_context=lambda: context)',
+          'print(plugin.warning_log() is log)',
+        ].join('\n'),
+      ],
+      { encoding: 'utf8', timeout: 60_000 },
+    );
+
+    expect(result.stdout.trim()).toBe('True');
   });
 });

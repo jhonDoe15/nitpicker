@@ -250,6 +250,26 @@ describe.skipIf(!enabled)('negative-wait-in-test', () => {
       'import pytest, subprocess\ndef test_a():\n    with pytest.raises(subprocess.TimeoutExpired):\n        subprocess.run(["sleep", "5"], timeout=0.1)\n',
       ['negative-wait-in-test tests/test_mod.py:4 subprocess.run'],
     ],
+    [
+      'a project wait helper with a timeout',
+      'import pytest\nfrom helpers import wait_until\ndef test_a():\n    with pytest.raises(TimeoutError):\n        wait_until(lambda: False, timeout=2)\n',
+      ['negative-wait-in-test tests/test_mod.py:5 helpers.wait_until'],
+    ],
+    [
+      'a project helper without a timeout',
+      'import pytest\ndef test_a(retry_until):\n    with pytest.raises(TimeoutError):\n        retry_until(lambda: False)\n',
+      [],
+    ],
+    [
+      'a real wait next to a mocked sibling attribute',
+      'import queue\nfrom unittest import mock\nclass T:\n    def test_a(self):\n        self.api = mock.Mock()\n        self.api.return_value = 1\n        self.jobs = queue.Queue()\n        with self.assertRaises(queue.Empty):\n            self.jobs.get(timeout=2)\n',
+      ['negative-wait-in-test tests/test_mod.py:9 self.jobs.get'],
+    ],
+    [
+      'a name rebound from a mock to a real queue',
+      'import pytest, queue\nfrom unittest import mock\ndef test_a():\n    q = mock.Mock()\n    q.get.side_effect = queue.Empty\n    with pytest.raises(queue.Empty):\n        q.get(timeout=1)\n    q = queue.Queue()\n    with pytest.raises(queue.Empty):\n        q.get(timeout=2)\n',
+      ['negative-wait-in-test tests/test_mod.py:10 q.get'],
+    ],
   ])('%s', (_name, code, expected) => {
     expect(waits(code)).toEqual(expected);
   });

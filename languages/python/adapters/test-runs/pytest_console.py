@@ -63,39 +63,58 @@ def reaches_root(logger):
     return True
 
 
-def note_emitted(key, text, reported):
-    line = next((line.strip() for line in str(text).splitlines() if HAS_TEXT.search(line)), "")
-    if line:
-        STATE["emitted"].setdefault(key, []).append([line, reported])
+def note_emitted(key, copies, reported):
+    if copies:
+        STATE["emitted"].setdefault(key, []).append([copies, reported])
 
 
 def copied(key, message):
-    matches = [entry for entry in STATE["emitted"].get(key, []) if entry[0] in message]
+    matches = [entry for entry in STATE["emitted"].get(key, []) if message in entry[0]]
     fresh = next((entry for entry in matches if not entry[1]), None)
     if fresh is not None:
         fresh[1] = True
     return fresh is None and bool(matches)
 
 
+def handlers_on_path(logger, record):
+    while logger is not None:
+        yield from (handler for handler in logger.handlers if record.levelno >= handler.level)
+        logger = logger.parent if logger.propagate else None
+
+
+def formatted(handler, record):
+    try:
+        return handler.format(record)
+    except Exception:
+        return ""
+
+
+def stderr_copies(logger, record):
+    texts = [record.getMessage()]
+    texts.extend(formatted(handler, record) for handler in handlers_on_path(logger, record))
+    return {messages[0] for messages in map(stderr_messages, texts) if messages}
+
+
 def log_message(logger, record):
     if printed_to_stderr(logger, record):
-        return record.getMessage(), None
+        return None
     message = f"{record.levelname} {record.name}: {record.getMessage()}"
     if record.exc_info and record.exc_info[1] is not None:
         error = record.exc_info[1]
         message = f"{message} {type(error).__name__}: {error}"
-    return record.getMessage(), message
+    return message
 
 
 def record_log(logger, record):
     key = STATE["current"]
-    if key is None or STATE["quiet_logs"]:
+    if key is None:
         return
     try:
-        text, message = log_message(logger, record)
+        copies = stderr_copies(logger, record)
+        message = None if STATE["quiet_logs"] else log_message(logger, record)
     except Exception:
         return
-    note_emitted(key, text, message is not None)
+    note_emitted(key, copies, STATE["quiet_logs"] or message is not None)
     if message is not None:
         add_message(key, message)
 
@@ -166,7 +185,10 @@ def fixture_key(fixturedef):
 
 
 def warning_log():
-    log = getattr(getattr(warnings, "_showwarnmsg_impl", None), "__self__", None)
+    get_context = getattr(warnings, "_get_context", None)
+    log = getattr(get_context(), "log", None) if callable(get_context) else None
+    if not isinstance(log, list):
+        log = getattr(getattr(warnings, "_showwarnmsg_impl", None), "__self__", None)
     return log if isinstance(log, list) else None
 
 
@@ -232,18 +254,6 @@ def pytest_fixture_setup(fixturedef, request):
     finally:
         leave_fixture()
         fixturedef.addfinalizer(lambda: enter_fixture(key))
-
-
-@pytest.hookimpl(hookwrapper=True)
-def pytest_runtest_makereport(item, call):
-    caplog = (getattr(item, "funcargs", None) or {}).get("caplog")
-    try:
-        records = [] if caplog is None else caplog.get_records(call.when)
-        for record in records:
-            note_emitted(item.nodeid, record.getMessage(), True)
-    except Exception:
-        pass
-    yield
 
 
 def pytest_runtest_logfinish(nodeid, location):

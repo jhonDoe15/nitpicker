@@ -1,4 +1,5 @@
 import ast
+import re
 
 from checks.common import call_name, finding, last_name
 from honesty.sleeps import SCOPES, is_zero
@@ -14,6 +15,7 @@ MOCKS = {"Mock", "MagicMock", "AsyncMock", "NonCallableMock", "create_autospec",
 PROCESSES = {"Popen", "create_subprocess_exec", "create_subprocess_shell"}
 MOCK_ATTRIBUTES = {"side_effect", "return_value"}
 MOCKED = "Mock"
+HELPER_WAIT = re.compile(r"wait_\w+|\w+_until|poll\w*")
 
 
 def delay_of(call):
@@ -28,28 +30,48 @@ def delay_of(call):
     return None
 
 
-def root_name(node):
-    while isinstance(node, (ast.Attribute, ast.Subscript, ast.Call)):
-        node = node.func if isinstance(node, ast.Call) else node.value
-    return node.id if isinstance(node, ast.Name) else None
+def dotted_path(node):
+    parts = []
+    while isinstance(node, ast.Attribute):
+        parts.append(node.attr)
+        node = node.value
+    return ".".join([node.id, *reversed(parts)]) if isinstance(node, ast.Name) else None
 
 
-def bound_kinds(target, value, kinds):
-    if isinstance(target, ast.Name) and isinstance(value, ast.Call):
-        kinds[target.id] = last_name(value.func)
-    elif isinstance(target, ast.Attribute) and target.attr in MOCK_ATTRIBUTES:
-        kinds[root_name(target)] = MOCKED
+def bound_kind(target, value):
+    if isinstance(target, (ast.Name, ast.Attribute)) and isinstance(value, ast.Call):
+        return dotted_path(target), last_name(value.func)
+    if isinstance(target, ast.Attribute) and target.attr in MOCK_ATTRIBUTES:
+        return dotted_path(target.value), MOCKED
+    return None, None
 
 
-def scope_kinds(function):
-    kinds = {}
+def scope_bindings(function):
+    bindings = []
     for node in ast.walk(function):
+        pairs = []
         if isinstance(node, ast.Assign):
-            for target in node.targets:
-                bound_kinds(target, node.value, kinds)
+            pairs = [(target, node.value) for target in node.targets]
         elif isinstance(node, ast.withitem) and node.optional_vars is not None:
-            bound_kinds(node.optional_vars, node.context_expr, kinds)
-    return kinds
+            pairs = [(node.optional_vars, node.context_expr)]
+        for target, value in pairs:
+            path, kind = bound_kind(target, value)
+            if path is not None:
+                bindings.append(((target.lineno, target.col_offset), path, kind))
+    return bindings
+
+
+def kind_of(callee, scope):
+    path = dotted_path(callee)
+    if path is None:
+        return None
+    position = (callee.lineno, callee.col_offset)
+    reaching = [
+        (where, kind)
+        for where, bound, kind in scope["kinds"]
+        if where < position and (path == bound or path.startswith(f"{bound}."))
+    ]
+    return max(reaching, default=(None, None))[1]
 
 
 def is_wait(node, scope):
@@ -59,11 +81,13 @@ def is_wait(node, scope):
     unbounded = isinstance(delay, ast.Constant) and delay.value is None
     if delay is None or unbounded or is_zero(delay):
         return False
-    kind = scope["kinds"].get(root_name(node.func)) if isinstance(node.func, ast.Attribute) else None
-    if kind in MOCKS:
+    if kind_of(node.func, scope) in MOCKS:
         return False
+    name = last_name(node.func)
     return (
-        call_name(node, scope["aliases"]) in PROCESS_RUNS or last_name(node.func) in WAIT_CALLS
+        call_name(node, scope["aliases"]) in PROCESS_RUNS
+        or name in WAIT_CALLS
+        or (name is not None and HELPER_WAIT.fullmatch(name) is not None)
     )
 
 
@@ -93,8 +117,7 @@ def first_wait(statements, scope):
 def waits_out(node, scope):
     if not is_wait(node, scope) or last_name(node.func) not in FALSE_RESULTS:
         return None
-    kind = scope["kinds"].get(root_name(node.func))
-    return None if kind in PROCESSES else node
+    return None if kind_of(node.func, scope) in PROCESSES else node
 
 
 def is_false(node):
@@ -132,11 +155,11 @@ def negative_wait(node, scope):
 
 
 def scoped_nodes(tree):
-    pending = [(tree, {})]
+    pending = [(tree, [])]
     while pending:
         node, kinds = pending.pop()
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            kinds = {**kinds, **scope_kinds(node)}
+            kinds = [*kinds, *scope_bindings(node)]
         yield node, kinds
         pending.extend((child, kinds) for child in ast.iter_child_nodes(node))
 

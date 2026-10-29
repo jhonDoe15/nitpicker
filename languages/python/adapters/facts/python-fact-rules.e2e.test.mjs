@@ -237,6 +237,10 @@ describe.skipIf(!pythonE2eEnabled)('exported-name-collision over imports', () =>
         'src/app/use.py': importer,
       }),
     );
+  const BOTH = [
+    ['exported-name-collision', 'src/app/fast.py', 'collision:loads'],
+    ['exported-name-collision', 'src/app/pure.py', 'collision:loads'],
+  ];
 
   it.each([
     [
@@ -244,24 +248,52 @@ describe.skipIf(!pythonE2eEnabled)('exported-name-collision over imports', () =>
       'import sys\n\nif sys.platform == "win32":\n    from app.fast import loads\nelse:\n    from app.pure import loads\n',
     ],
     [
+      'a version gate with elif',
+      'import sys\n\nif sys.version_info >= (3, 12):\n    from app.fast import loads\nelif sys.version_info >= (3, 10):\n    from app.pure import loads\nelse:\n    loads = None\n',
+    ],
+    [
       'a try/except ImportError fallback',
       'try:\n    from app.fast import loads\nexcept ImportError:\n    from app.pure import loads\n',
+    ],
+    [
+      'a try/except ModuleNotFoundError fallback',
+      'try:\n    from app.fast import loads\nexcept (ModuleNotFoundError, OSError):\n    from app.pure import loads\n',
+    ],
+    [
+      'dotted strings in a registry',
+      'PARSERS = {"fast": "app.fast.loads", "pure": "app.pure.loads"}\n',
+    ],
+  ])('spares alternative implementations and references: %s', (_name, importer) => {
+    expect(collisions(importer)).toEqual([]);
+  });
+
+  it.each([
+    [
+      'two module-level imports',
+      'from app.fast import loads\nfrom app.pure import loads as pure_loads\n',
+    ],
+    [
+      'a second import in the same function',
+      'def read(t):\n    from app.fast import loads\n    from app.pure import loads\n    return loads(t)\n',
+    ],
+    [
+      'a function-local import that shadows a module-level one',
+      'from app.fast import loads\n\n\ndef read(t):\n    from app.pure import loads\n    return loads(t)\n',
     ],
     [
       'imports inside two functions',
       'def a(t):\n    from app.fast import loads\n    return loads(t)\n\n\ndef b(t):\n    from app.pure import loads\n    return loads(t)\n',
     ],
-  ])('spares alternative implementations: %s', (_name, importer) => {
-    expect(collisions(importer)).toEqual([]);
-  });
-
-  it('reports two module-level imports of the name', () => {
-    expect(
-      collisions('from app.fast import loads\nfrom app.pure import loads as pure_loads\n'),
-    ).toEqual([
-      ['exported-name-collision', 'src/app/fast.py', 'collision:loads'],
-      ['exported-name-collision', 'src/app/pure.py', 'collision:loads'],
-    ]);
+    [
+      'an import under the main block',
+      'from app.fast import loads\n\nif __name__ == "__main__":\n    from app.pure import loads\n',
+    ],
+    [
+      'an except clause that is not about imports',
+      'try:\n    from app.fast import loads\nexcept ValueError:\n    from app.pure import loads\n',
+    ],
+  ])('reports %s', (_name, importer) => {
+    expect(collisions(importer)).toEqual(BOTH);
   });
 });
 
@@ -283,78 +315,148 @@ describe.skipIf(!pythonE2eEnabled)('duplicate-definition over overloads', () => 
   });
 });
 
+const MANAGE = 'import sys\n\nif __name__ == "__main__":\n    sys.exit(0)\n';
 const DJANGO_APP = {
-  'manage.py': 'import sys\n\nif __name__ == "__main__":\n    sys.exit(0)\n',
+  'manage.py': MANAGE,
   'src/shop/__init__.py': '',
   'src/shop/admin.py': 'class OrderAdmin:\n    pass\n',
   'src/shop/templatetags/__init__.py': '',
   'src/shop/templatetags/money.py': 'def cents(value):\n    return value * 100\n',
-  'src/shop/models.py': 'def upload_to(instance, name):\n    return name\n',
+  'src/shop/models.py':
+    'def upload_to(instance, name):\n    return name\n\n\ndef get_version():\n    return 1\n',
   'src/shop/migrations/__init__.py': '',
   'src/shop/migrations/0001_initial.py':
     'import shop.models\n\n\nclass Migration:\n    fields = [shop.models.upload_to]\n',
   'tests/test_shop.py':
-    'from shop.admin import OrderAdmin\nfrom shop.models import upload_to\nfrom shop.templatetags.money import cents\nfrom app.plugins.csv_export import export\nfrom app.settings_names import WIDGET\n\n\ndef test_all():\n    assert OrderAdmin and upload_to and cents and export and WIDGET\n',
+    'from shop.admin import OrderAdmin\nfrom shop.models import get_version, upload_to\nfrom shop.templatetags.money import cents\n\n\ndef test_all():\n    assert OrderAdmin and upload_to and cents and get_version\n',
 };
+const TEST_ONLY_GET_VERSION = [['test-only-export', 'src/shop/models.py', 'exports:get_version']];
+
+function testOnly(files) {
+  return rows(findingsOf('test-only-export', files));
+}
 
 describe.skipIf(!pythonE2eEnabled)('test-only-export and modules a framework loads', () => {
-  it('counts Django convention modules, migration and dotted-path references and importlib', () => {
-    const findings = findingsOf('test-only-export', {
-      ...DJANGO_APP,
-      'src/app/__init__.py': '',
-      'src/app/plugins/__init__.py':
-        'import importlib\n\n\ndef load(name):\n    return importlib.import_module(f"app.plugins.{name}")\n',
-      'src/app/plugins/csv_export.py': 'def export(rows):\n    return rows\n',
-      'src/app/settings_names.py': 'WIDGET = 1\n',
-      'src/app/settings.py': 'INSTALLED = ["app.settings_names.WIDGET"]\n',
-      'src/app/main.py': 'from app.plugins import load\n\nload("csv_export")\n',
-    });
+  it('counts Django convention modules and only the attributes a migration uses', () => {
+    expect(testOnly(DJANGO_APP)).toEqual(TEST_ONLY_GET_VERSION);
+  });
 
-    expect(rows(findings)).toEqual([]);
+  it('counts a dotted string only for the name it spells', () => {
+    expect(
+      testOnly({
+        ...DJANGO_APP,
+        'src/app/__init__.py': '',
+        'src/app/settings_names.py': 'WIDGET = 1\n\n\ndef preview():\n    return 2\n',
+        'src/app/billing.py': 'def refund():\n    return 3\n',
+        'src/app/registry.py':
+          'import logging\n\nWIDGETS = ["app.settings_names.WIDGET"]\nlog = logging.getLogger("app.billing")\n',
+        'src/shop/views.py':
+          'def check(request, action):\n    return request.user.has_perm(f"shop.{action}_order")\n',
+        'tests/test_app.py':
+          'from app.billing import refund\nfrom app.settings_names import WIDGET, preview\n\n\ndef test_app():\n    assert WIDGET and preview and refund\n',
+      }),
+    ).toEqual([
+      ['test-only-export', 'src/app/billing.py', 'exports:refund'],
+      ['test-only-export', 'src/app/settings_names.py', 'exports:preview'],
+      ...TEST_ONLY_GET_VERSION,
+    ]);
+  });
+
+  it('counts the names a dynamic import fetches from the modules it loads', () => {
+    expect(
+      testOnly({
+        'src/app/__init__.py': '',
+        'src/app/plugins/__init__.py':
+          'import importlib\n\n\ndef load(name):\n    return getattr(importlib.import_module(f"app.plugins.{name}"), "export")\n',
+        'src/app/plugins/csv_export.py':
+          'def export(rows):\n    return rows\n\n\ndef preview(rows):\n    return rows\n',
+        'src/app/main.py': 'from app.plugins import load\n\nload("csv_export")\n',
+        'tests/test_plugins.py':
+          'from app.plugins.csv_export import export, preview\n\n\ndef test_export():\n    assert export and preview\n',
+      }),
+    ).toEqual([['test-only-export', 'src/app/plugins/csv_export.py', 'exports:preview']]);
+  });
+
+  it('applies framework names and convention modules only to a Django application', () => {
+    const library = {
+      'pyproject.toml':
+        '[project]\nname = "lib"\nversion = "1"\n\n[project.optional-dependencies]\ndjango = ["django"]\n\n[dependency-groups]\ndev = ["pytest-django"]\n',
+      'src/lib/__init__.py': '',
+      'src/lib/settings.py': 'class Config:\n    debug = True\n',
+      'tests/test_lib.py':
+        'from lib.settings import Config\n\n\ndef test_config():\n    assert Config.debug\n',
+    };
+    const reported = [['test-only-export', 'src/lib/settings.py', 'files:src/lib/settings.py']];
+
+    expect(testOnly(library)).toEqual(reported);
+    expect(
+      testOnly({
+        ...library,
+        'pyproject.toml': '[project]\nname = "lib"\nversion = "1"\ndependencies = ["django>=5"]\n',
+      }),
+    ).toEqual([]);
+    expect(testOnly({ ...library, 'manage.py': MANAGE })).toEqual([]);
   });
 
   it('still reports a project module only the tests use', () => {
     expect(
-      rows(
-        findingsOf('test-only-export', {
-          ...DJANGO_APP,
-          'src/shop/helpers.py': 'def helper():\n    return 1\n',
-          'tests/test_helpers.py':
-            'from shop.helpers import helper\n\n\ndef test_h():\n    assert helper()\n',
-        }),
-      ),
-    ).toEqual([['test-only-export', 'src/shop/helpers.py', 'files:src/shop/helpers.py']]);
+      testOnly({
+        ...DJANGO_APP,
+        'src/shop/helpers.py': 'def helper():\n    return 1\n',
+        'tests/test_helpers.py':
+          'from shop.helpers import helper\n\n\ndef test_h():\n    assert helper()\n',
+      }),
+    ).toEqual([
+      ['test-only-export', 'src/shop/helpers.py', 'files:src/shop/helpers.py'],
+      ...TEST_ONLY_GET_VERSION,
+    ]);
   });
 });
 
-describe.skipIf(!pythonE2eEnabled)('sibling-copy-edit scope', () => {
-  const COMMAND = TOTAL.replace('def total', 'class Command:\n    def handle');
+describe.skipIf(!pythonE2eEnabled)('copy scope', () => {
+  const COMMAND = `class Command:\n${TOTAL.replace('def total(', 'def handle(self, ')
+    .split('\n')
+    .map((line) => (line === '' ? line : `    ${line}`))
+    .join('\n')}`;
+  const siblingRows = (head, base) => rows(findingsOf('sibling-copy-edit', head, { base }));
+  const base = {
+    'src/blog/__init__.py': '',
+    'src/blog/a.py': TOTAL,
+    'src/blog/cmd.py': COMMAND,
+    'src/shop/__init__.py': '',
+    'src/shop/a.py': TOTAL,
+    'src/shop/cmd.py': COMMAND,
+  };
+  const head = { ...base, 'src/shop/cmd.py': COMMAND.replace('2)', '3)') };
 
-  it('compares within one top-level package, and skips names a framework requires', () => {
-    const base = {
-      'src/blog/__init__.py': '',
-      'src/blog/a.py': TOTAL,
-      'src/blog/cmd.py': COMMAND,
-      'src/shop/__init__.py': '',
-      'src/shop/a.py': TOTAL,
-      'src/shop/cmd.py': COMMAND,
-      'src/shop/other_cmd.py': COMMAND,
-    };
-    const head = {
-      ...base,
-      'src/shop/a.py': EDITED_TOTAL,
-      'src/shop/cmd.py': COMMAND.replace('2)', '3)'),
+  it('compares sibling copies across the packages of one distribution', () => {
+    expect(siblingRows({ ...head, 'src/shop/a.py': EDITED_TOTAL }, base)).toEqual([
+      ['sibling-copy-edit', 'src/shop/a.py', 'sibling-copy:total'],
+      ['sibling-copy-edit', 'src/shop/cmd.py', 'sibling-copy:Command'],
+    ]);
+  });
+
+  it('skips the names Django requires in a Django application', () => {
+    expect(siblingRows({ ...head, 'manage.py': MANAGE }, { ...base, 'manage.py': MANAGE })).toEqual(
+      [],
+    );
+  });
+
+  it('keeps sibling copies within a distribution, and duplicates across them', () => {
+    const PYPROJECT = '[project]\nname = "part"\nversion = "1"\n';
+    const parts = {
+      'src/one/pyproject.toml': PYPROJECT,
+      'src/one/a.py': TOTAL,
+      'src/two/pyproject.toml': PYPROJECT,
+      'src/two/a.py': TOTAL,
+      'src/one/main.py': 'from one.a import total\n\nprint(total([], 0))\n',
+      'src/two/main.py': 'from two.a import total\n\nprint(total([], 0))\n',
     };
 
-    expect(findingsOf('sibling-copy-edit', head, { base })).toEqual([]);
-    expect(
-      rows(
-        findingsOf(
-          'sibling-copy-edit',
-          { ...head, 'src/shop/b.py': TOTAL },
-          { base: { ...base, 'src/shop/b.py': TOTAL } },
-        ),
-      ),
-    ).toEqual([['sibling-copy-edit', 'src/shop/a.py', 'sibling-copy:total']]);
+    expect(siblingRows({ ...parts, 'src/one/a.py': EDITED_TOTAL }, parts)).toEqual([]);
+    expect(rows(findingsOf('duplicate-definition', parts))).toEqual([
+      ['duplicate-definition', 'src/one/a.py', 'duplicate:total'],
+      ['duplicate-definition', 'src/two/a.py', 'duplicate:total'],
+    ]);
   });
 });
