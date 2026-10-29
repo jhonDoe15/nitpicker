@@ -151,6 +151,12 @@ public final class Decisions {
       return;
     }
     Tally tally = new Tally(comparisons, null);
+    if (collect(head, tally) && tally.subject != null) {
+      emit(head, tally);
+    }
+  }
+
+  private boolean collect(KtIfExpression head, Tally tally) {
     KtIfExpression current = head;
     while (current != null) {
       Equality found = comparisons.equality(current.getCondition());
@@ -162,14 +168,12 @@ public final class Decisions {
       consumed.add(current);
       if (!tally.accept(found)) {
         consumed.remove(current);
-        return;
+        return false;
       }
       tally.groups.add(found.constants);
       current = next(current, tally);
     }
-    if (tally.subject != null) {
-      emit(head, tally);
-    }
+    return true;
   }
 
   private KtIfExpression next(KtIfExpression current, Tally tally) {

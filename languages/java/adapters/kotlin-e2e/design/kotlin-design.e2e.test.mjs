@@ -4,14 +4,8 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { validateFacts } from '../../../../../shared/rules/facts/schema.mjs';
 import { kotlinDesignBundle } from '../../kotlin/review-rules/design/kotlin-design.mjs';
+import { DEEP_CHAIN } from '../../test-support/kotlin-metrics-sources.mjs';
 import { prepareCompiler, runPsiProgram } from '../../test-support/kotlin-psi-program.mjs';
-
-// Runs kotlin-psi on the Kotlin sources of fixtures/kotlin-design and compares the design facts it
-// writes with the recorded design-facts.json. It needs Java 21 and either Gradle with network
-// access to Maven Central or NITPICKER_KOTLIN_COMPILER_CLASSPATH (the jars of the pinned
-// kotlin-compiler-embeddable), so it only runs with NITPICKER_KOTLIN_E2E=1 (`npm run test:kotlin`).
-// After a change to the program, record the facts again: run the program on the fixture sources and
-// write the `design` key of its facts file to design-facts.json.
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -101,6 +95,44 @@ describe.skipIf(!enabled)('Kotlin design facts from the PSI program', () => {
     );
 
     expect(published).toEqual([]);
+  });
+
+  it('skips a callable that is too deeply nested to read and keeps the others', () => {
+    const project = projectWith('stack-skip', {
+      'src/Deep.kt': DEEP_CHAIN,
+      'src/Small.kt': 'package demo\n\nfun small() = 1\n',
+    });
+
+    const { status, log, facts } = runPsiProgram(
+      compiler,
+      project,
+      ['src'],
+      ['nitpicker.stackBytes=1000000'],
+    );
+
+    expect(status, log).toBe(0);
+    expect(log).toContain('src/Deep.kt: nested is too deeply nested for design facts');
+    expect(facts.design.callables.map(({ id }) => id)).toEqual(['src/Small.kt#small']);
+  });
+
+  it('writes the error and still writes the other reports when the design pass fails', () => {
+    const project = projectWith('design-failure', {
+      'src/Main.kt': 'package demo\n\nfun small() = 1\n',
+    });
+
+    const { status, log, metrics, facts } = runPsiProgram(
+      compiler,
+      project,
+      ['src'],
+      ['nitpicker.failDesign=true'],
+    );
+
+    expect(status, log).toBe(0);
+    expect(log).toContain('design facts failed: java.lang.IllegalStateException');
+    expect(metrics.functions.map(({ name }) => name)).toEqual(['small']);
+    expect(facts.design).toEqual({
+      error: 'java.lang.IllegalStateException: design facts were asked to fail',
+    });
   });
 
   it('writes empty design facts when the project has only test sources', () => {

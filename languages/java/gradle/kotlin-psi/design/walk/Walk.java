@@ -1,12 +1,14 @@
 package nitpicker.kotlinpsi.design.walk;
 
-import static nitpicker.kotlinpsi.common.Psi.m;
-
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import nitpicker.kotlinpsi.design.Ctx;
+import nitpicker.kotlinpsi.design.collect.Branches;
+import nitpicker.kotlinpsi.design.collect.Reads;
+import nitpicker.kotlinpsi.design.collect.Uses;
 import nitpicker.kotlinpsi.design.model.Fun;
 import nitpicker.kotlinpsi.design.model.Owner;
 import nitpicker.kotlinpsi.design.model.Prop;
@@ -21,8 +23,7 @@ import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
 
 public final class Walk {
-
-  public final List<Object> calls = new ArrayList<>();
+  public final List<Object> calls;
   public final Set<String> own = new LinkedHashSet<>();
   public final Set<String> references = new LinkedHashSet<>();
   public final Reads reads = new Reads();
@@ -30,19 +31,20 @@ public final class Walk {
   private final Ctx ctx;
   private final Fun function;
   private final Source source;
-  private final Keys keys;
-  private final Mutations mutations;
   private final Scope scope;
-  private int finallyDepth;
+  private final Recorder recorder;
+  private final Arguments arguments;
+  private final Set<String> opaque = new LinkedHashSet<>();
 
   public Walk(Ctx ctx, Fun function) {
     this.ctx = ctx;
     this.function = function;
     this.source = function.owner.source;
     this.uses = new Uses(ctx, function);
-    this.mutations = new Mutations(ctx, function);
     this.scope = new Scope(ctx, function);
-    this.keys = new Keys(ctx, function, mutations);
+    this.recorder = new Recorder(ctx, function);
+    this.calls = recorder.calls;
+    this.arguments = new Arguments(scope, uses, this::visit);
   }
 
   public void run() {
@@ -52,6 +54,7 @@ public final class Walk {
     for (PsiElement root : function.roots) {
       visit(root);
     }
+    calls.removeIf(call -> opaque.contains(((Map<?, ?>) call).get("receiver")));
   }
 
   private void declared() {
@@ -84,17 +87,39 @@ public final class Walk {
       bare((KtNameReferenceExpression) element, false);
     } else if (element instanceof KtTryExpression) {
       tryExpression((KtTryExpression) element);
-    } else if (element instanceof KtCallableReferenceExpression) {
+    } else if (element instanceof KtLambdaExpression) {
+      lambda((KtLambdaExpression) element);
+    } else {
+      other(element);
+    }
+  }
+
+  private void other(PsiElement element) {
+    if (element instanceof KtCallableReferenceExpression) {
       reference((KtCallableReferenceExpression) element);
     } else if (element instanceof KtSuperTypeCallEntry) {
       KtSuperTypeCallEntry entry = (KtSuperTypeCallEntry) element;
-      delegation(entry.getTypeReference(), entry.getValueArguments());
+      delegation(ctx.names.resolve(entry.getTypeReference(), source), entry.getValueArguments());
     } else if (element instanceof KtConstructorDelegationCall) {
       selfDelegation((KtConstructorDelegationCall) element);
+    } else if (Branches.conditional(element)) {
+      recorder.branches.visit(element, this::visit);
     } else {
-      for (PsiElement child : element.getChildren()) {
-        visit(child);
-      }
+      children(element);
+    }
+  }
+
+  private void children(PsiElement element) {
+    for (PsiElement child : element.getChildren()) {
+      visit(child);
+    }
+  }
+
+  private void lambda(KtLambdaExpression lambda) {
+    int outer = ctx.lambdas.transparent(lambda) ? -1 : recorder.suspendFinally();
+    children(lambda);
+    if (outer >= 0) {
+      recorder.resumeFinally(outer);
     }
   }
 
@@ -120,44 +145,27 @@ public final class Walk {
       visit(clause.getCatchBody());
     }
     if (expression.getFinallyBlock() != null) {
-      finallyDepth++;
+      recorder.enterFinally();
       visit(expression.getFinallyBlock().getFinalExpression());
-      finallyDepth--;
+      recorder.leaveFinally();
     }
   }
 
-  private void delegation(KtTypeReference reference, List<? extends ValueArgument> arguments) {
-    Ty type = ctx.names.resolve(reference, source);
-    List<Arity.Arg> args = new ArrayList<>();
-    for (ValueArgument argument : arguments) {
-      String name = argument.getArgumentName() == null ? null : argument.getArgumentName().getAsName().asString();
-      args.add(new Arity.Arg(name, argument instanceof KtLambdaArgument, argument.getArgumentExpression()));
-    }
+  private void delegation(Ty type, List<? extends ValueArgument> values) {
+    List<Arity.Arg> args = Arguments.args(values);
     Fun target = type.project() ? ctx.calls.constructor(type.owner, args).target : null;
-    arguments(arguments, args, target);
+    arguments.forward(values, args, target);
   }
 
   private void selfDelegation(KtConstructorDelegationCall call) {
-    Owner owner = function.owner;
-    List<Arity.Arg> args = new ArrayList<>();
-    for (ValueArgument argument : call.getValueArguments()) {
-      String name = argument.getArgumentName() == null ? null : argument.getArgumentName().getAsName().asString();
-      args.add(new Arity.Arg(name, argument instanceof KtLambdaArgument, argument.getArgumentExpression()));
-    }
-    Fun target = call.isCallToThis() ? ctx.calls.constructor(owner, args).target : null;
-    arguments(call.getValueArguments(), args, target);
+    delegation(call.isCallToThis() ? Ty.of(function.owner) : Ty.UNKNOWN, call.getValueArguments());
   }
 
   private void qualified(KtQualifiedExpression q) {
     KtExpression receiver = q.getReceiverExpression();
     KtExpression selector = q.getSelectorExpression();
     if (ctx.typer.staticOwner(receiver) == null) {
-      KtExpression plain = Ps.parens(receiver);
-      if (plain instanceof KtNameReferenceExpression) {
-        bare((KtNameReferenceExpression) plain, true);
-      } else {
-        visit(receiver);
-      }
+      receiver(receiver);
     }
     if (selector instanceof KtCallExpression) {
       call((KtCallExpression) selector, receiver);
@@ -168,49 +176,72 @@ public final class Walk {
     }
   }
 
+  private void receiver(KtExpression receiver) {
+    KtExpression plain = Ps.parens(receiver);
+    if (plain instanceof KtNameReferenceExpression) {
+      bare((KtNameReferenceExpression) plain, true);
+    } else {
+      visit(receiver);
+    }
+  }
+
+  private void staticMember(KtQualifiedExpression q, Owner staticOwner, String name) {
+    Owner holder = ctx.typer.objectOwner(staticOwner);
+    Prop prop = holder == null ? null : ctx.members.prop(holder, name);
+    if (prop != null && prop.getter != null && holder != function.owner) {
+      recorder.accessor(prop.getter, null, q);
+    }
+    if (prop != null) {
+      table(prop);
+    }
+  }
+
   private void member(KtQualifiedExpression q, KtExpression receiver, KtNameReferenceExpression selector) {
     String name = selector.getReferencedName();
     Owner staticOwner = ctx.typer.staticOwner(receiver);
     if (staticOwner != null) {
-      Owner holder = ctx.typer.objectOwner(staticOwner);
-      Prop prop = holder == null ? null : ctx.members.prop(holder, name);
-      if (prop != null && prop.getter != null && holder != function.owner) {
-        accessor(prop.getter, null, q);
-      }
-      if (prop != null) {
-        table(prop);
-      }
+      staticMember(q, staticOwner, name);
       return;
     }
     Ty type = ctx.typer.typeOf(receiver);
     Prop prop = type.project() ? ctx.members.prop(type.owner, name) : null;
     Scope.Value value = scope.value(receiver);
-    if (value != null && value.param >= 0 && uses.tracked(value.param)) {
-      if (scope.escapes(q) || prop == null && !(type.project() && ctx.members.hasMember(type.owner, name))) {
-        uses.opaque(value.param);
-      } else {
-        uses.field(value.param, name);
-      }
-    }
-    if (prop == null) {
-      return;
-    }
-    if (value != null && value.type.project()) {
-      reads.record(value.id, value.type.owner, new Reads.Access(name, Conditions.decided(q), source.line(selector)));
-    }
-    if (scope.thisField(receiver) != null && prop.owner == function.owner) {
-      own.add(name);
-    } else if (prop.getter != null) {
-      accessor(prop.getter, receiver, q);
+    boolean known = prop != null || type.project() && ctx.members.hasMember(type.owner, name);
+    use(value, q, known ? name : null);
+    if (prop != null) {
+      fieldAccess(q, value, prop);
     }
   }
 
-  private void accessor(Fun getter, KtExpression receiver, KtQualifiedExpression value) {
-    String key = receiver == null ? null : keys.of(receiver);
-    calls.add(
-        m(
-            "target", getter.id, "line", source.line(value.getSelectorExpression()), "receiver", key,
-            "cleanup", finallyDepth > 0 ? Boolean.TRUE : null, "mutation", mutations.of(value)));
+  private void track(KtCallExpression call, String name, KtExpression receiver) {
+    Scope.Value value = receiver == null ? null : scope.value(receiver);
+    boolean member = value != null && value.type.project() && ctx.members.hasMember(value.type.owner, name);
+    use(value, call, member ? name : null);
+  }
+
+  private void use(Scope.Value value, KtExpression at, String field) {
+    if (value == null || value.param < 0 || !uses.tracked(value.param)) {
+      return;
+    }
+    if (scope.escapes(at) || field == null) {
+      uses.opaque(value.param);
+    } else {
+      uses.field(value.param, field);
+    }
+  }
+
+  private void fieldAccess(KtQualifiedExpression q, Scope.Value value, Prop prop) {
+    KtExpression receiver = q.getReceiverExpression();
+    KtExpression selector = q.getSelectorExpression();
+    if (value != null && value.type.project()) {
+      Reads.Access access = new Reads.Access(prop.name, Conditions.decided(q), source.line(selector));
+      reads.record(value.id, value.type.owner, access);
+    }
+    if (scope.thisField(receiver) != null && prop.owner == function.owner) {
+      own.add(prop.name);
+    } else if (prop.getter != null) {
+      recorder.accessor(prop.getter, receiver, q);
+    }
   }
 
   private void bare(KtNameReferenceExpression ref, boolean asReceiver) {
@@ -221,77 +252,42 @@ public final class Walk {
         uses.opaque(index);
       }
     } else if (binding.kind == Binding.Kind.FIELD) {
-      if (!binding.receiver) {
-        table(binding.prop);
-      }
-      if (binding.receiver && function.receiver != null) {
-        Ty receiver = ctx.names.resolve(function.receiver, source);
-        reads.record(
-            function, receiver.owner, new Reads.Access(binding.prop.name, Conditions.decided(ref), source.line(ref)));
-      } else if (binding.prop.owner == function.owner) {
-        own.add(binding.prop.name);
-      }
+      field(ref, binding);
+    }
+  }
+
+  private void field(KtNameReferenceExpression ref, Binding binding) {
+    if (!binding.receiver) {
+      table(binding.prop);
+    }
+    if (binding.receiver && function.receiver != null) {
+      Ty receiver = ctx.names.resolve(function.receiver, source);
+      reads.record(
+          function, receiver.owner, new Reads.Access(binding.prop.name, Conditions.decided(ref), source.line(ref)));
+    } else if (binding.prop.owner == function.owner) {
+      own.add(binding.prop.name);
     }
   }
 
   private void call(KtCallExpression call, KtExpression receiver) {
     String name = Ps.name(call);
     if (name == null) {
-      for (PsiElement child : call.getChildren()) {
-        visit(child);
-      }
+      children(call);
       return;
     }
     CallResolver.Resolved resolved = ctx.calls.resolve(call);
     boolean typed = receiver != null && ctx.typer.staticOwner(receiver) == null;
-    Scope.Value value = typed ? scope.value(receiver) : null;
-    if (value != null && value.param >= 0 && uses.tracked(value.param)) {
-      boolean member = value.type.project() && ctx.members.hasMember(value.type.owner, name);
-      if (scope.escapes(call) || !member) {
-        uses.opaque(value.param);
-      } else {
-        uses.field(value.param, name);
-      }
-    }
-    arguments(call.getValueArguments(), Arity.args(call), resolved.target);
+    track(call, name, typed ? receiver : null);
+    arguments.forward(call.getValueArguments(), Arity.args(call), resolved.target);
     if ("use".equals(name) && typed) {
-      closeAfterUse(receiver, call);
+      recorder.closeAfterUse(receiver, call);
+    }
+    String hidden = recorder.hiddenKey(resolved);
+    if (hidden != null) {
+      opaque.add(hidden);
     }
     if (resolved.target != null) {
-      String key = receiver == null ? (resolved.viaThis ? "this" : null) : typed ? keys.of(receiver) : null;
-      calls.add(
-          m(
-              "target", resolved.target.id, "line", source.line(call.getCalleeExpression()), "receiver", key,
-              "cleanup", finallyDepth > 0 ? Boolean.TRUE : null,
-              "mutation", resolved.target.constructor() ? null : mutations.of(Ps.selectorCall(call))));
+      recorder.call(call, resolved, recorder.keyOf(receiver, typed, resolved));
     }
   }
-
-  private void closeAfterUse(KtExpression receiver, KtCallExpression call) {
-    Ty type = ctx.typer.typeOf(receiver);
-    Fun close = type.project() ? ctx.members.close(type.owner) : null;
-    if (close != null) {
-      calls.add(m("target", close.id, "line", source.line(call.getCalleeExpression()), "receiver", keys.of(receiver),
-          "cleanup", Boolean.TRUE));
-    }
-  }
-
-  private void arguments(List<? extends ValueArgument> arguments, List<Arity.Arg> args, Fun target) {
-    int[] mapping = target == null ? null : Arity.bind(target.params, args);
-    for (int i = 0; i < arguments.size(); i++) {
-      KtExpression expression = Ps.parens(arguments.get(i).getArgumentExpression());
-      int index = -1;
-      if (expression instanceof KtNameReferenceExpression) {
-        index = scope.parameterOf((KtNameReferenceExpression) expression);
-      }
-      if (index < 0 || !uses.tracked(index)) {
-        visit(expression);
-      } else if (scope.escapes(expression) || mapping == null || arguments.get(i).getSpreadElement() != null) {
-        uses.opaque(index);
-      } else {
-        uses.forward(index, target.id, mapping[i]);
-      }
-    }
-  }
-
 }

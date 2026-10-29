@@ -36,6 +36,7 @@ const NESTED = {
     line: isLine,
     receiver: optional(isNonEmpty),
     cleanup: optional(isBoolean),
+    branch: optional(isStrings),
     mutation: optional(isNonEmpty),
   },
   paramUses: {

@@ -16,10 +16,6 @@ import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.psi.*;
 
-/**
- * Project callables used as values: {@code ::foo} and {@code Foo::bar}, resolved by name when exactly one
- * callable fits, and the tables ({@code val} of a file or companion) that hold such references.
- */
 public final class References {
   private final Ctx ctx;
   private final Map<Prop, Set<Fun>> tables = new IdentityHashMap<>();

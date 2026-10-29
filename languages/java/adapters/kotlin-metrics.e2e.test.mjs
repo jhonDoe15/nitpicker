@@ -20,6 +20,7 @@ import { prepareCompiler, runPsiProgram } from './test-support/kotlin-psi-progra
 import {
   BOM,
   BROKEN,
+  CALLEE_NOT_A_NAME,
   CRLF,
   DEEP_CHAIN,
   FLAT,
@@ -316,6 +317,16 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
     expect([status, log.includes('StackOverflow')]).toEqual([0, false]);
     expect(metrics.functions[0].name).toBe('nested');
     expect(facts.files.map(({ file }) => file)).toEqual(['src/Deep.kt']);
+    expect(facts.design.callables.map(({ id }) => id)).toEqual(['src/Deep.kt#nested']);
+  });
+
+  it('reads a call whose callee is not a plain name', () => {
+    const { status, log, facts } = measure(
+      writeSources('callee', { 'src/Callee.kt': CALLEE_NOT_A_NAME }),
+    );
+
+    expect([status, log.includes('NullPointerException')]).toEqual([0, false]);
+    expect(facts.design.callables.map(({ name }) => name)).toEqual(['make', 'twice']);
   });
 
   it('names a predicate in a property initializer after the property and keeps backticked constants', () => {

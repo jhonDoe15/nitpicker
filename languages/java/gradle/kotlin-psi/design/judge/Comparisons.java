@@ -14,7 +14,6 @@ import org.jetbrains.kotlin.KtNodeTypes;
 import org.jetbrains.kotlin.lexer.KtTokens;
 import org.jetbrains.kotlin.psi.*;
 
-/** Reads comparisons against constants and the subject (an enum or a field of a project type) they test. */
 public final class Comparisons {
   private static final Set<String> COLLECTIONS =
       Set.of("setOf", "listOf", "arrayOf", "hashSetOf", "linkedSetOf", "mutableSetOf", "mutableListOf");
@@ -48,28 +47,38 @@ public final class Comparisons {
   public Equality equality(KtExpression condition) {
     KtExpression e = Ps.parens(condition);
     if (e instanceof KtBinaryExpression) {
-      KtBinaryExpression binary = (KtBinaryExpression) e;
-      Object token = binary.getOperationToken();
-      if (token == KtTokens.OROR) {
-        return merged(equality(binary.getLeft()), equality(binary.getRight()));
-      }
-      if (token == KtTokens.EQEQ || token == KtTokens.EQEQEQ) {
-        return compare(binary.getLeft(), binary.getRight());
-      }
-      if (token == KtTokens.IN_KEYWORD) {
-        List<String> constants = collection(binary.getRight(), null);
-        return constants == null ? null : new Equality(binary.getLeft(), constants);
-      }
+      return binary((KtBinaryExpression) e);
     }
-    if (e instanceof KtDotQualifiedExpression
-        && ((KtDotQualifiedExpression) e).getSelectorExpression() instanceof KtCallExpression) {
-      KtCallExpression call = (KtCallExpression) ((KtDotQualifiedExpression) e).getSelectorExpression();
-      if ("equals".equals(Ps.name(call)) && call.getValueArguments().size() == 1) {
-        return compare(((KtDotQualifiedExpression) e).getReceiverExpression(),
-            call.getValueArguments().get(0).getArgumentExpression());
-      }
+    if (e instanceof KtDotQualifiedExpression) {
+      return equalsCall((KtDotQualifiedExpression) e);
     }
     return null;
+  }
+
+  private Equality binary(KtBinaryExpression binary) {
+    Object token = binary.getOperationToken();
+    if (token == KtTokens.OROR) {
+      return merged(equality(binary.getLeft()), equality(binary.getRight()));
+    }
+    if (token == KtTokens.EQEQ || token == KtTokens.EQEQEQ) {
+      return compare(binary.getLeft(), binary.getRight());
+    }
+    if (token != KtTokens.IN_KEYWORD) {
+      return null;
+    }
+    List<String> constants = collection(binary.getRight(), null);
+    return constants == null ? null : new Equality(binary.getLeft(), constants);
+  }
+
+  private Equality equalsCall(KtDotQualifiedExpression dot) {
+    if (!(dot.getSelectorExpression() instanceof KtCallExpression)) {
+      return null;
+    }
+    KtCallExpression call = (KtCallExpression) dot.getSelectorExpression();
+    if (!"equals".equals(Ps.name(call)) || call.getValueArguments().size() != 1) {
+      return null;
+    }
+    return compare(dot.getReceiverExpression(), call.getValueArguments().get(0).getArgumentExpression());
   }
 
   private Equality merged(Equality left, Equality right) {

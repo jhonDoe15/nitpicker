@@ -2,11 +2,12 @@ package nitpicker.kotlinpsi.design.index;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Stream;
+import nitpicker.kotlinpsi.design.declare.Properties;
 import nitpicker.kotlinpsi.design.model.Fun;
 import nitpicker.kotlinpsi.design.model.Owner;
 import nitpicker.kotlinpsi.design.model.Prop;
 import nitpicker.kotlinpsi.design.model.Source;
-import nitpicker.kotlinpsi.design.syntax.Mutables;
 import nitpicker.kotlinpsi.design.syntax.Ps;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
@@ -25,7 +26,7 @@ public final class Declarer {
       declareFile(source);
     }
     for (Owner owner : new ArrayList<>(index.owners)) {
-      aliasAccessors(owner);
+      Properties.aliasAccessors(owner);
     }
   }
 
@@ -49,7 +50,7 @@ public final class Declarer {
   }
 
   private void topProperty(Source source, KtProperty declaration) {
-    Prop prop = property(index.module(source), declaration);
+    Prop prop = Properties.property(index.module(source), declaration);
     if (prop != null) {
       index.addTop(source, prop);
     }
@@ -64,7 +65,7 @@ public final class Declarer {
     boolean companion = klass instanceof KtObjectDeclaration && ((KtObjectDeclaration) klass).isCompanion();
     String name = klass.getName() != null ? klass.getName() : "Companion";
     Owner owner = new Owner(new Owner.Place(source, outer), name, klass);
-    owner.exported = !Ps.isPrivate(klass) && (outer == null || outer.exported);
+    owner.exported = !Ps.hidden(klass) && (outer == null || outer.exported);
     index.register(owner);
     if (outer != null) {
       outer.nested.put(name, owner);
@@ -76,29 +77,29 @@ public final class Declarer {
   }
 
   private void members(Owner owner, KtClassOrObject klass, Source source) {
-    List<String> cases = new ArrayList<>();
     for (KtParameter parameter : klass.getPrimaryConstructorParameters()) {
       if (parameter.hasValOrVar() && parameter.getName() != null) {
-        constructorProperty(owner, parameter);
+        Properties.constructorProperty(owner, parameter);
       }
     }
     for (KtDeclaration declaration : klass.getDeclarations()) {
-      if (declaration instanceof KtEnumEntry) {
-        cases.add(declaration.getName());
-      } else if (declaration instanceof KtNamedFunction) {
-        owner.funs.add(function(owner, Fun.METHOD, (KtNamedFunction) declaration));
-      } else if (declaration instanceof KtProperty) {
-        property(owner, (KtProperty) declaration);
-      } else if (declaration instanceof KtSecondaryConstructor) {
-        owner.constructors.add(secondary(owner, (KtSecondaryConstructor) declaration));
-      } else if (declaration instanceof KtClassOrObject) {
-        type((KtClassOrObject) declaration, owner, source);
-      }
-    }
-    if (klass instanceof KtClass && ((KtClass) klass).isEnum()) {
-      owner.cases = cases;
+      member(owner, declaration, source);
     }
     primary(owner, klass);
+  }
+
+  private void member(Owner owner, KtDeclaration declaration, Source source) {
+    if (declaration instanceof KtEnumEntry) {
+      owner.cases = Stream.concat(owner.cases.stream(), Stream.of(declaration.getName())).toList();
+    } else if (declaration instanceof KtNamedFunction) {
+      owner.funs.add(function(owner, Fun.METHOD, (KtNamedFunction) declaration));
+    } else if (declaration instanceof KtProperty) {
+      Properties.property(owner, (KtProperty) declaration);
+    } else if (declaration instanceof KtSecondaryConstructor) {
+      owner.constructors.add(secondary(owner, (KtSecondaryConstructor) declaration));
+    } else if (declaration instanceof KtClassOrObject) {
+      type((KtClassOrObject) declaration, owner, source);
+    }
   }
 
   private Fun function(Owner owner, String kind, KtNamedFunction declaration) {
@@ -107,6 +108,7 @@ public final class Declarer {
     shape.receiver = declaration.getReceiverTypeReference();
     shape.returns = declaration.getTypeReference();
     shape.isPrivate = Ps.isPrivate(declaration);
+    shape.isProtected = Ps.isProtected(declaration);
     shape.isOverride = declaration.hasModifier(KtTokens.OVERRIDE_KEYWORD);
     shape.hasBody = declaration.hasBody();
     Fun function = new Fun(owner, declaration, shape.named(declaration.getName(), kind));
@@ -120,6 +122,7 @@ public final class Declarer {
     Fun.Shape shape = new Fun.Shape();
     shape.params = declaration.getValueParameters();
     shape.isPrivate = Ps.isPrivate(declaration);
+    shape.isProtected = Ps.isProtected(declaration);
     shape.hasBody = true;
     Fun function = new Fun(owner, declaration, shape.named(owner.name, Fun.CONSTRUCTOR));
     if (!declaration.hasImplicitDelegationCall()) {
@@ -131,12 +134,36 @@ public final class Declarer {
     return function;
   }
 
+  private boolean plain(KtClassOrObject klass) {
+    if (!(klass instanceof KtClass)) {
+      return false;
+    }
+    KtClass type = (KtClass) klass;
+    return !type.isData() && !type.isEnum() && !type.isInterface();
+  }
+
   private void primary(Owner owner, KtClassOrObject klass) {
-    boolean plain = klass instanceof KtClass && !((KtClass) klass).isData() && !((KtClass) klass).isEnum()
-        && !((KtClass) klass).isInterface();
-    if (!plain) {
+    if (!plain(klass)) {
       return;
     }
+    List<PsiElement> roots = initializerRoots(klass);
+    for (KtSuperTypeListEntry entry : klass.getSuperTypeListEntries()) {
+      if (entry instanceof KtSuperTypeCallEntry) {
+        roots.add(entry);
+      }
+    }
+    boolean explicit = klass.getPrimaryConstructor() != null && !klass.getPrimaryConstructorParameters().isEmpty();
+    if (explicit || active(roots)) {
+      owner.constructors.add(primaryConstructor(owner, klass, roots));
+    }
+  }
+
+  private boolean active(List<PsiElement> roots) {
+    return roots.stream().anyMatch(root -> PsiTreeUtil.findChildOfType(root, KtCallExpression.class) != null
+        || root instanceof KtBlockExpression);
+  }
+
+  private List<PsiElement> initializerRoots(KtClassOrObject klass) {
     List<PsiElement> roots = new ArrayList<>();
     for (KtDeclaration declaration : klass.getDeclarations()) {
       if (declaration instanceof KtClassInitializer) {
@@ -146,116 +173,24 @@ public final class Declarer {
         addIfPresent(roots, ((KtProperty) declaration).getDelegateExpression());
       }
     }
-    for (KtSuperTypeListEntry entry : klass.getSuperTypeListEntries()) {
-      if (entry instanceof KtSuperTypeCallEntry) {
-        roots.add(entry);
-      }
-    }
-    boolean explicit = klass.getPrimaryConstructor() != null && !klass.getPrimaryConstructorParameters().isEmpty();
-    boolean active = roots.stream().anyMatch(root -> PsiTreeUtil.findChildOfType(root, KtCallExpression.class) != null
-        || root instanceof KtBlockExpression);
-    if (!explicit && !active) {
-      return;
-    }
+    return roots;
+  }
+
+  private Fun primaryConstructor(Owner owner, KtClassOrObject klass, List<PsiElement> roots) {
+    KtPrimaryConstructor declared = klass.getPrimaryConstructor();
     Fun.Shape shape = new Fun.Shape();
     shape.params = klass.getPrimaryConstructorParameters();
-    shape.isPrivate = klass.getPrimaryConstructor() != null && Ps.isPrivate(klass.getPrimaryConstructor());
+    shape.isPrivate = declared != null && Ps.isPrivate(declared);
+    shape.isProtected = declared != null && Ps.isProtected(declared);
     shape.hasBody = true;
     Fun constructor = new Fun(owner, klass, shape.named(owner.name, Fun.CONSTRUCTOR));
     constructor.roots.addAll(roots);
-    owner.constructors.add(constructor);
+    return constructor;
   }
 
   private void addIfPresent(List<PsiElement> roots, PsiElement element) {
     if (element != null) {
       roots.add(element);
     }
-  }
-
-  private void constructorProperty(Owner owner, KtParameter parameter) {
-    Prop.Shape shape = new Prop.Shape();
-    shape.type = parameter.getTypeReference();
-    shape.isVar = parameter.isMutable();
-    shape.isPrivate = Ps.isPrivate(parameter);
-    shape.field = true;
-    shape.constructorParameter = true;
-    owner.props.put(parameter.getName(), new Prop(owner, parameter, shape));
-  }
-
-  private Prop property(Owner owner, KtProperty declaration) {
-    if (declaration.getName() == null || declaration.getReceiverTypeReference() != null) {
-      return null;
-    }
-    boolean computed = declaration.getAccessors().stream().anyMatch(KtPropertyAccessor::hasBody);
-    boolean abstractOwner = owner.psi instanceof KtClass && ((KtClass) owner.psi).isInterface();
-    Prop.Shape shape = new Prop.Shape();
-    shape.type = declaration.getTypeReference();
-    shape.init = declaration.getInitializer();
-    shape.isVar = declaration.isVar();
-    shape.isPrivate = Ps.isPrivate(declaration);
-    shape.delegated = declaration.hasDelegate();
-    shape.field = !abstractOwner && !declaration.hasModifier(KtTokens.ABSTRACT_KEYWORD)
-        && !declaration.hasModifier(KtTokens.CONST_KEYWORD)
-        && (declaration.hasInitializer() || declaration.hasDelegate()
-            || declaration.hasModifier(KtTokens.LATEINIT_KEYWORD) || !computed);
-    Prop prop = new Prop(owner, declaration, shape);
-    owner.props.put(prop.name, prop);
-    accessor(owner, prop, declaration);
-    return prop;
-  }
-
-  private void accessor(Owner owner, Prop prop, KtProperty declaration) {
-    KtPropertyAccessor getter = declaration.getGetter();
-    Fun.Shape shape = new Fun.Shape();
-    shape.returns = declaration.getTypeReference();
-    shape.isOverride = declaration.hasModifier(KtTokens.OVERRIDE_KEYWORD);
-    shape.hasBody = true;
-    if (getter != null && getter.hasBody()) {
-      shape.isPrivate = prop.isPrivate || Ps.isPrivate(getter);
-      Fun function = new Fun(owner, getter, shape.named(prop.name, Fun.ACCESSOR));
-      function.roots.add(getter.getBodyExpression());
-      link(owner, prop, function);
-    } else if (!prop.isPrivate && !prop.isVar && prop.field && !prop.constructorParameter
-        && Mutables.created(prop.init) && !Mutables.readOnlyType(prop.type)) {
-      Fun function = new Fun(owner, declaration, shape.named(prop.name, Fun.ACCESSOR));
-      function.returnsField = prop.name;
-      link(owner, prop, function);
-    }
-  }
-
-  private void link(Owner owner, Prop prop, Fun function) {
-    function.property = prop;
-    prop.getter = function;
-    owner.funs.add(function);
-  }
-
-  private void aliasAccessors(Owner owner) {
-    for (Prop prop : new ArrayList<>(owner.props.values())) {
-      if (prop.getter != null || prop.isPrivate || prop.isVar || prop.constructorParameter || prop.init == null) {
-        continue;
-      }
-      String target = fieldName(prop.init);
-      Prop backing = target == null ? null : owner.props.get(target);
-      if (backing != null && backing != prop && !backing.isVar && backing.field && !backing.constructorParameter
-          && Mutables.created(backing.init) && prop.psi instanceof KtProperty) {
-        Fun.Shape shape = new Fun.Shape();
-        shape.returns = prop.type;
-        shape.hasBody = true;
-        Fun function = new Fun(owner, (KtProperty) prop.psi, shape.named(prop.name, Fun.ACCESSOR));
-        function.returnsField = backing.name;
-        link(owner, prop, function);
-      }
-    }
-  }
-
-  private String fieldName(KtExpression initializer) {
-    KtExpression expression = Ps.strip(initializer);
-    if (expression instanceof KtDotQualifiedExpression
-        && ((KtDotQualifiedExpression) expression).getReceiverExpression() instanceof KtThisExpression) {
-      expression = ((KtDotQualifiedExpression) expression).getSelectorExpression();
-    }
-    return expression instanceof KtNameReferenceExpression
-        ? ((KtNameReferenceExpression) expression).getReferencedName()
-        : null;
   }
 }

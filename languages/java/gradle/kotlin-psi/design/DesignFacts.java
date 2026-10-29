@@ -12,37 +12,48 @@ import nitpicker.kotlinpsi.design.model.Fun;
 import nitpicker.kotlinpsi.design.model.Owner;
 import nitpicker.kotlinpsi.design.model.Source;
 
-/**
- * The design facts of a module: its production files, the types they declare and the callables of those types,
- * resolved from declarations, imports and written types alone (the sources are parsed, never compiled). When
- * {@code published} is set the module is a published library, so its exported types and top-level functions carry
- * {@code published: true}, unless the module has a {@code main} entry and is an application.
- */
 public final class DesignFacts {
   private DesignFacts() {}
 
   public static Map<String, Object> build(List<Source> sources, boolean published) {
     Ctx ctx = new Ctx(new Index(sources));
     ctx.library = published && Published.library(ctx);
+    Set<String> failed = new HashSet<>();
+    List<Map<String, Object>> callables = callables(ctx, failed);
+    List<Object> types = TypeFacts.build(ctx);
+    dropFailed(callables, types, failed);
+    return m("modules", modules(sources), "types", types, "callables", new ArrayList<Object>(callables));
+  }
+
+  private static List<Object> modules(List<Source> sources) {
     List<Object> modules = new ArrayList<>();
     for (Source source : sources) {
       modules.add(m("file", source.path, "role", "production"));
     }
+    return modules;
+  }
+
+  private static List<Map<String, Object>> callables(Ctx ctx, Set<String> failed) {
     List<Map<String, Object>> callables = new ArrayList<>();
-    Set<String> failed = new HashSet<>();
     for (Owner owner : ctx.index.owners) {
       if (owner.listed) {
         callables.addAll(callablesOf(ctx, owner, failed));
       }
     }
-    if (!failed.isEmpty()) {
-      for (Map<String, Object> callable : callables) {
-        CallableFacts.dropTargets(callable, failed);
-      }
+    return callables;
+  }
+
+  @SuppressWarnings("unchecked")
+  private static void dropFailed(List<Map<String, Object>> callables, List<Object> types, Set<String> failed) {
+    if (failed.isEmpty()) {
+      return;
     }
-    List<Object> types = TypeFacts.build(ctx);
-    dropFromTypes(types, failed);
-    return m("modules", modules, "types", types, "callables", new ArrayList<Object>(callables));
+    for (Map<String, Object> callable : callables) {
+      CallableFacts.dropTargets(callable, failed);
+    }
+    for (Object type : types) {
+      TypeFacts.dropTargets((Map<String, Object>) type, failed);
+    }
   }
 
   private static List<Map<String, Object>> callablesOf(Ctx ctx, Owner owner, Set<String> failed) {
@@ -58,14 +69,5 @@ public final class DesignFacts {
       }
     }
     return callables;
-  }
-
-  @SuppressWarnings("unchecked")
-  private static void dropFromTypes(List<Object> types, Set<String> failed) {
-    if (!failed.isEmpty()) {
-      for (Object type : types) {
-        TypeFacts.dropTargets((Map<String, Object>) type, failed);
-      }
-    }
   }
 }

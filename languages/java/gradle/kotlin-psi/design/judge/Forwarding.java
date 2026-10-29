@@ -23,21 +23,22 @@ public final class Forwarding {
     if (body == null) {
       return null;
     }
-    KtExpression expression = body;
-    boolean returned = true;
-    if (declaration.hasBlockBody()) {
-      List<KtExpression> statements = ((KtBlockExpression) body).getStatements();
-      KtExpression only = statements.size() == 1 ? statements.get(0) : null;
-      if (only == null) {
-        return null;
-      }
-      returned = only instanceof KtReturnExpression;
-      expression = returned ? ((KtReturnExpression) only).getReturnedExpression() : only;
-      if (!returned && !returnsUnit(declaration)) {
-        return null;
-      }
+    Body single = declaration.hasBlockBody()
+        ? blockBody(declaration, (KtBlockExpression) body)
+        : new Body(Ps.parens(body), true);
+    return single == null ? null : forward(ctx, function, single);
+  }
+
+  private static Body blockBody(KtNamedFunction declaration, KtBlockExpression block) {
+    List<KtExpression> statements = block.getStatements();
+    if (statements.size() != 1) {
+      return null;
     }
-    return forward(ctx, function, new Body(Ps.parens(expression), returned));
+    KtExpression only = statements.get(0);
+    if (only instanceof KtReturnExpression) {
+      return new Body(Ps.parens(((KtReturnExpression) only).getReturnedExpression()), true);
+    }
+    return returnsUnit(declaration) ? new Body(Ps.parens(only), false) : null;
   }
 
   private static boolean returnsUnit(KtNamedFunction declaration) {
@@ -48,21 +49,29 @@ public final class Forwarding {
   private record Body(KtExpression expression, boolean returned) {}
 
   private static Map<String, Object> forward(Ctx ctx, Fun function, Body body) {
-    KtExpression expression = body.expression();
-    KtCallExpression call;
-    if (expression instanceof KtDotQualifiedExpression
-        && ((KtDotQualifiedExpression) expression).getSelectorExpression() instanceof KtCallExpression
-        && plainReceiver(((KtDotQualifiedExpression) expression).getReceiverExpression())) {
-      call = (KtCallExpression) ((KtDotQualifiedExpression) expression).getSelectorExpression();
-    } else if (expression instanceof KtCallExpression) {
-      call = (KtCallExpression) expression;
-    } else {
-      return null;
-    }
-    Fun target = ctx.calls.target(call);
+    KtCallExpression call = callOf(body.expression());
+    Fun target = call == null ? null : ctx.calls.target(call);
     if (target == null || target == function) {
       return null;
     }
+    List<Object> arguments = arguments(ctx, function, call);
+    return arguments == null ? null : m("target", target.id, "arguments", arguments, "returned", body.returned());
+  }
+
+  private static KtCallExpression callOf(KtExpression expression) {
+    if (expression instanceof KtCallExpression) {
+      return (KtCallExpression) expression;
+    }
+    if (!(expression instanceof KtDotQualifiedExpression)) {
+      return null;
+    }
+    KtDotQualifiedExpression dot = (KtDotQualifiedExpression) expression;
+    boolean plain = dot.getSelectorExpression() instanceof KtCallExpression
+        && plainReceiver(dot.getReceiverExpression());
+    return plain ? (KtCallExpression) dot.getSelectorExpression() : null;
+  }
+
+  private static List<Object> arguments(Ctx ctx, Fun function, KtCallExpression call) {
     List<Object> arguments = new ArrayList<>();
     boolean passes = false;
     for (ValueArgument argument : call.getValueArguments()) {
@@ -73,10 +82,7 @@ public final class Forwarding {
       passes |= index >= 0;
       arguments.add(index);
     }
-    if (!arguments.isEmpty() && !passes) {
-      return null;
-    }
-    return m("target", target.id, "arguments", arguments, "returned", body.returned());
+    return arguments.isEmpty() || passes ? arguments : null;
   }
 
   private static int parameter(Ctx ctx, Fun function, KtExpression expression) {
@@ -98,11 +104,10 @@ public final class Forwarding {
 
   private static boolean plainReceiver(KtExpression expression) {
     KtExpression e = Ps.parens(expression);
-    if (e instanceof KtThisExpression || e instanceof KtNameReferenceExpression) {
-      return true;
+    while (e instanceof KtDotQualifiedExpression
+        && ((KtDotQualifiedExpression) e).getSelectorExpression() instanceof KtNameReferenceExpression) {
+      e = Ps.parens(((KtDotQualifiedExpression) e).getReceiverExpression());
     }
-    return e instanceof KtDotQualifiedExpression
-        && ((KtDotQualifiedExpression) e).getSelectorExpression() instanceof KtNameReferenceExpression
-        && plainReceiver(((KtDotQualifiedExpression) e).getReceiverExpression());
+    return e instanceof KtThisExpression || e instanceof KtNameReferenceExpression;
   }
 }

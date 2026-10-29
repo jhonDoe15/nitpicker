@@ -164,12 +164,17 @@ public final class Bindings {
 
   private Binding topLevel(String name, PsiElement at, Source source) {
     String imported = source.imports.get(name);
-    if (imported != null) {
-      int dot = imported.lastIndexOf('.');
-      String pkg = dot < 0 ? "" : imported.substring(0, dot);
-      Binding found = single(ctx.index.topProps(pkg, imported.substring(dot + 1)), source);
-      return found != null ? found : typeBinding(name, at, source);
-    }
+    Binding found = imported != null ? importedProp(imported, source) : sameOrStar(name, source);
+    return found != null ? found : typeBinding(name, at, source);
+  }
+
+  private Binding importedProp(String imported, Source source) {
+    int dot = imported.lastIndexOf('.');
+    String pkg = dot < 0 ? "" : imported.substring(0, dot);
+    return single(ctx.index.topProps(pkg, imported.substring(dot + 1)), source);
+  }
+
+  private Binding sameOrStar(String name, Source source) {
     Binding same = single(ctx.index.topProps(source.pkg, name), source);
     if (same != null) {
       return same;
@@ -182,7 +187,7 @@ public final class Bindings {
       }
       star = candidate != null ? candidate : star;
     }
-    return star != null ? star : typeBinding(name, at, source);
+    return star;
   }
 
   private Binding single(List<Prop> props, Source source) {

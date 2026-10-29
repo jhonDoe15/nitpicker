@@ -21,8 +21,6 @@ import org.jetbrains.kotlin.psi.*;
 public final class Typer {
   private static final Set<String> RECEIVER_RETURNING = Set.of("also", "apply", "takeIf", "takeUnless", "onEach");
 
-  private static final Set<String> VALUE_LAMBDAS = Set.of("use", "let", "also", "takeIf", "takeUnless");
-
   private final Ctx ctx;
   private final Map<PsiElement, Ty> memo = new IdentityHashMap<>();
   private final Set<PsiElement> active = new HashSet<>();
@@ -65,6 +63,10 @@ public final class Typer {
     if (e instanceof KtBinaryExpressionWithTypeRHS) {
       return ctx.names.resolve(((KtBinaryExpressionWithTypeRHS) e).getRight(), ctx.sourceOf(e));
     }
+    return computeNamed(e);
+  }
+
+  private Ty computeNamed(KtExpression e) {
     if (e instanceof KtBinaryExpression && ((KtBinaryExpression) e).getOperationToken() == KtTokens.ELVIS) {
       Ty left = typeOf(((KtBinaryExpression) e).getLeft());
       return left.known() ? left : typeOf(((KtBinaryExpression) e).getRight());
@@ -133,20 +135,7 @@ public final class Typer {
       return Ty.UNKNOWN;
     }
     try {
-      Ty type = Ty.UNKNOWN;
-      if (declaration instanceof KtProperty) {
-        KtProperty property = (KtProperty) declaration;
-        type = property.getTypeReference() != null
-            ? ctx.names.resolve(property.getTypeReference(), ctx.sourceOf(property))
-            : property.hasDelegate() ? Ty.UNKNOWN : typeOf(property.getInitializer());
-      } else if (declaration instanceof KtParameter) {
-        KtParameter parameter = (KtParameter) declaration;
-        type = parameter.getTypeReference() != null
-            ? ctx.names.resolve(parameter.getTypeReference(), ctx.sourceOf(declaration))
-            : lambdaValue(parameter.getParent() == null ? null : parameter.getParent().getParent(), parameter);
-      } else if (declaration instanceof KtFunctionLiteral) {
-        type = lambdaValue(declaration, null);
-      }
+      Ty type = declaredType(declaration);
       memo.put(declaration, type);
       return type;
     } finally {
@@ -154,23 +143,29 @@ public final class Typer {
     }
   }
 
-  private Ty lambdaValue(PsiElement literal, KtParameter parameter) {
-    KtExpression receiver = valueReceiver(literal, parameter);
-    return receiver == null ? Ty.UNKNOWN : typeOf(receiver);
+  private Ty declaredType(PsiElement declaration) {
+    if (declaration instanceof KtProperty) {
+      KtProperty property = (KtProperty) declaration;
+      return property.getTypeReference() != null
+          ? ctx.names.resolve(property.getTypeReference(), ctx.sourceOf(property))
+          : property.hasDelegate() ? Ty.UNKNOWN : typeOf(property.getInitializer());
+    }
+    if (declaration instanceof KtParameter) {
+      KtParameter parameter = (KtParameter) declaration;
+      return parameter.getTypeReference() != null
+          ? ctx.names.resolve(parameter.getTypeReference(), ctx.sourceOf(declaration))
+          : lambdaValue(parameter.getParent() == null ? null : parameter.getParent().getParent(), parameter);
+    }
+    return declaration instanceof KtFunctionLiteral ? lambdaValue(declaration, null) : Ty.UNKNOWN;
   }
 
-  public KtExpression valueReceiver(PsiElement literal, KtParameter parameter) {
-    if (!(literal instanceof KtFunctionLiteral) || !(literal.getParent() instanceof KtLambdaExpression)) {
-      return null;
+  private Ty lambdaValue(PsiElement literal, KtParameter parameter) {
+    KtExpression receiver = ctx.lambdas.valueReceiver(literal, parameter);
+    KtExpression elements = receiver == null ? ctx.lambdas.elementsOf(literal, parameter) : null;
+    if (receiver == null) {
+      return elements == null ? Ty.UNKNOWN : ctx.elements.of(elements);
     }
-    KtFunctionLiteral function = (KtFunctionLiteral) literal;
-    if (function.getValueParameters().size() > 1
-        || parameter != null && function.getValueParameters().get(0) != parameter) {
-      return null;
-    }
-    KtCallExpression host = ctx.lambdas.host((KtLambdaExpression) literal.getParent());
-    String name = host == null ? null : Ps.name(host);
-    return name != null && VALUE_LAMBDAS.contains(name) ? Ps.receiverOf(host) : null;
+    return typeOf(receiver);
   }
 
   public Ty propType(Prop prop) {
@@ -274,7 +269,20 @@ public final class Typer {
       return null;
     }
     List<String> parts = new ArrayList<>();
-    KtExpression current = e;
+    KtExpression root = qualifier(e, parts);
+    if (!(root instanceof KtNameReferenceExpression)) {
+      return null;
+    }
+    parts.add(0, ((KtNameReferenceExpression) root).getReferencedName());
+    Binding first = ctx.bindings.bind((KtNameReferenceExpression) root);
+    if (first.kind == Binding.Kind.LOCAL || first.kind == Binding.Kind.FIELD) {
+      return null;
+    }
+    return ctx.names.chain(parts, e, ctx.sourceOf(e));
+  }
+
+  private KtExpression qualifier(KtExpression expression, List<String> parts) {
+    KtExpression current = expression;
     while (current instanceof KtDotQualifiedExpression) {
       KtExpression selector = ((KtDotQualifiedExpression) current).getSelectorExpression();
       if (!(selector instanceof KtNameReferenceExpression)) {
@@ -283,14 +291,6 @@ public final class Typer {
       parts.add(0, ((KtNameReferenceExpression) selector).getReferencedName());
       current = Ps.parens(((KtDotQualifiedExpression) current).getReceiverExpression());
     }
-    if (!(current instanceof KtNameReferenceExpression)) {
-      return null;
-    }
-    parts.add(0, ((KtNameReferenceExpression) current).getReferencedName());
-    Binding first = ctx.bindings.bind((KtNameReferenceExpression) current);
-    if (first.kind == Binding.Kind.LOCAL || first.kind == Binding.Kind.FIELD) {
-      return null;
-    }
-    return ctx.names.chain(parts, e, ctx.sourceOf(e));
+    return current;
   }
 }

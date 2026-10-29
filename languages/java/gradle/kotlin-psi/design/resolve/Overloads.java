@@ -7,7 +7,6 @@ import nitpicker.kotlinpsi.design.model.Fun;
 import nitpicker.kotlinpsi.design.model.Ty;
 import org.jetbrains.kotlin.psi.KtParameter;
 
-/** Picks the one candidate whose parameters accept the arguments of a call. */
 public final class Overloads {
   private final Ctx ctx;
 

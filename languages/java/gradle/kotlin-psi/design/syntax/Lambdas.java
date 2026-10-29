@@ -19,6 +19,13 @@ public final class Lambdas {
           "sumBy", "distinctBy", "zip", "runningFold", "scan");
   private static final Set<String> RECEIVER =
       Set.of("run", "apply", "with", "buildString", "buildList", "buildMap", "buildSet", "runCatching");
+  private static final Set<String> VALUE = Set.of("use", "let", "also", "takeIf", "takeUnless");
+  private static final Set<String> ELEMENTS =
+      Set.of(
+          "forEach", "onEach", "map", "mapNotNull", "flatMap", "filter", "filterNot", "any", "all", "none", "count",
+          "find", "first", "firstOrNull", "last", "lastOrNull", "sumOf", "groupBy", "associateBy", "associateWith",
+          "partition", "takeWhile", "dropWhile", "removeIf", "distinctBy", "minByOrNull", "maxByOrNull", "sortedBy",
+          "sortedByDescending", "sortBy", "indexOfFirst", "indexOfLast");
   private static final Set<String> NO_RECEIVER_ESCAPING =
       Set.of("lazy", "computeIfAbsent", "computeIfPresent", "compute", "merge", "replaceAll", "thenBy",
           "compareBy", "Comparator", "Runnable", "Callable");
@@ -38,6 +45,38 @@ public final class Lambdas {
     PsiElement call = parent instanceof KtLambdaArgument ? parent.getParent()
         : parent instanceof KtValueArgument && parent.getParent() != null ? parent.getParent().getParent() : null;
     return call instanceof KtCallExpression ? (KtCallExpression) call : null;
+  }
+
+  public KtExpression valueReceiver(PsiElement literal, KtParameter parameter) {
+    return hostReceiver(literal, parameter, VALUE);
+  }
+
+  public KtExpression elementsOf(PsiElement literal, KtParameter parameter) {
+    return hostReceiver(literal, parameter, ELEMENTS);
+  }
+
+  private KtExpression hostReceiver(PsiElement literal, KtParameter parameter, Set<String> hosts) {
+    if (!(literal instanceof KtFunctionLiteral) || !(literal.getParent() instanceof KtLambdaExpression)) {
+      return null;
+    }
+    KtFunctionLiteral function = (KtFunctionLiteral) literal;
+    if (function.getValueParameters().size() > 1
+        || parameter != null && function.getValueParameters().get(0) != parameter) {
+      return null;
+    }
+    KtCallExpression host = host((KtLambdaExpression) literal.getParent());
+    String name = host == null ? null : Ps.name(host);
+    return name != null && hosts.contains(name) ? Ps.receiverOf(host) : null;
+  }
+
+  public KtExpression implicitReceiver(KtLambdaExpression lambda) {
+    KtCallExpression host = host(lambda);
+    String name = host == null ? null : Ps.name(host);
+    if ("apply".equals(name) || "run".equals(name)) {
+      return Ps.receiverOf(host);
+    }
+    boolean with = "with".equals(name) && !host.getValueArguments().isEmpty();
+    return with ? host.getValueArguments().get(0).getArgumentExpression() : null;
   }
 
   public boolean transparent(KtLambdaExpression lambda) {

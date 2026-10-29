@@ -1,7 +1,9 @@
 package nitpicker.kotlinpsi.design.walk;
 
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import nitpicker.kotlinpsi.design.Ctx;
@@ -18,6 +20,7 @@ public final class Keys {
   private final Ctx ctx;
   private final Fun function;
   private final Map<String, Set<PsiElement>> declarations = new HashMap<>();
+  private final List<PsiElement> literals = new ArrayList<>();
   private final Mutations mutations;
 
   public Keys(Ctx ctx, Fun function, Mutations mutations) {
@@ -29,6 +32,7 @@ public final class Keys {
     }
     for (PsiElement root : function.roots) {
       declareLocals(root);
+      literals.addAll(PsiTreeUtil.findChildrenOfType(root, KtFunctionLiteral.class));
     }
   }
 
@@ -43,7 +47,7 @@ public final class Keys {
 
   private void declare(String name, PsiElement declaration) {
     if (name != null) {
-      declarations.computeIfAbsent(name, key -> new HashSet<>()).add(declaration);
+      declarations.computeIfAbsent(name, key -> new LinkedHashSet<>()).add(declaration);
     }
   }
 
@@ -91,28 +95,29 @@ public final class Keys {
       return of(receiver, depth + 1);
     }
     if (declaration instanceof KtFunctionLiteral) {
-      return ref.getReferencedName() + "@" + ctx.sourceOf(declaration).line(declaration);
+      return ref.getReferencedName() + "@" + (literals.indexOf(declaration) + 1);
     }
     if (declaration instanceof KtProperty) {
-      KtProperty property = (KtProperty) declaration;
-      if (property.isVar() && mutations.reassigned(property)) {
-        return null;
-      }
-      String alias = depth < 4 && property.getInitializer() != null ? aliasKey(property.getInitializer(), depth) : null;
-      if (alias != null) {
-        return alias;
-      }
+      return propertyKey(ref, (KtProperty) declaration, depth);
     }
     return unique(ref.getReferencedName(), declaration);
   }
 
+  private String propertyKey(KtNameReferenceExpression ref, KtProperty property, int depth) {
+    if (property.isVar() && mutations.reassigned(property)) {
+      return null;
+    }
+    String alias = depth < 4 && property.getInitializer() != null ? aliasKey(property.getInitializer(), depth) : null;
+    return alias != null ? alias : unique(ref.getReferencedName(), property);
+  }
+
   private KtExpression valueLambdaReceiver(PsiElement declaration) {
     if (declaration instanceof KtFunctionLiteral) {
-      return ctx.typer.valueReceiver(declaration, null);
+      return ctx.lambdas.valueReceiver(declaration, null);
     }
     PsiElement list = declaration instanceof KtParameter ? declaration.getParent() : null;
     PsiElement literal = list == null ? null : list.getParent();
-    return literal == null ? null : ctx.typer.valueReceiver(literal, (KtParameter) declaration);
+    return literal == null ? null : ctx.lambdas.valueReceiver(literal, (KtParameter) declaration);
   }
 
   private String aliasKey(KtExpression initializer, int depth) {
@@ -137,6 +142,6 @@ public final class Keys {
     if (all.size() <= 1) {
       return name;
     }
-    return name + "@" + ctx.sourceOf(declaration).line(declaration);
+    return name + "@" + (new ArrayList<>(all).indexOf(declaration) + 1);
   }
 }

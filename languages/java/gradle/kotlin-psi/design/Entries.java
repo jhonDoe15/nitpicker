@@ -10,7 +10,7 @@ public final class Entries {
 
   private Entries() {}
 
-  public static boolean of(Ctx ctx, Fun function) {
+  public static boolean of(Fun function) {
     Owner owner = function.owner;
     if (function.constructor()) {
       return owner.psi != null && !owner.psi.getAnnotationEntries().isEmpty();
@@ -21,10 +21,7 @@ public final class Entries {
     if (annotated(function)) {
       return true;
     }
-    if ("main".equals(function.name) && (owner.module() || owner.psi instanceof KtObjectDeclaration)) {
-      return true;
-    }
-    return !owner.module() && ctx.hierarchy.external(owner) && !VALUE_METHODS.contains(function.name);
+    return "main".equals(function.name) && (owner.module() || owner.psi instanceof KtObjectDeclaration);
   }
 
   private static boolean annotated(Fun function) {
