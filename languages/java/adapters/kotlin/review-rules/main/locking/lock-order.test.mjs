@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { file, klass, parameter, property, run, summary } from '../../test-support/facts.mjs';
-import { LOCK_ORDER_RULE, lockOrderFindings } from './lock-order.mjs';
+import { LOCK_ORDER_RULE } from '../../../../../messages/locking/lock-evidence.mjs';
+import { lockOrderFindings } from './lock-order.mjs';
 
 const CLASS_SCOPE = {
   k: 'class',
@@ -78,9 +79,12 @@ describe('lock-order inversions in Kotlin', () => {
       `${LOCK_ORDER_RULE} Ledger.swap: audit -> LOCK 7`,
       `${LOCK_ORDER_RULE} Ledger.swap: LOCK -> audit 8`,
     ]);
-    expect(findings[2].message).toMatch(
-      /^`swap` takes `LOCK` while it holds `audit`, and another nesting in `swap` takes `audit`/u,
-    );
+    expect(findings.map(({ message }) => message.slice(0, message.indexOf(': ')))).toEqual([
+      '`transfer` takes `accounts` while it holds `this`, and `inspect` takes `this` while it holds `accounts`',
+      '`inspect` takes `this` while it holds `accounts`, and `transfer` takes `accounts` while it holds `this`',
+      '`swap` takes `LOCK` while it holds `audit`, and another nesting in `swap` takes `audit` while it holds `LOCK`',
+      '`swap` takes `audit` while it holds `LOCK`, and another nesting in `swap` takes `LOCK` while it holds `audit`',
+    ]);
   });
 
   it('follows an aliased import of withLock and keeps a type-qualified lock of another object', () => {

@@ -9,7 +9,7 @@ import { ingestSarif, prepareSarif } from '../../../../../shared/ingest/sarif.mj
 import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../../messages/wait-advice.mjs';
 import { dropSleepsInFakes } from '../../../messages/latency-fakes.mjs';
 import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
-import { withLockEvidence } from '../../../messages/lock-evidence.mjs';
+import { withLockEvidence } from '../../../messages/locking/lock-evidence.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 const EMPTY_SARIF = { version: '2.1.0', runs: [] };

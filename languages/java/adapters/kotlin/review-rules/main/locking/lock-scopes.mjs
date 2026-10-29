@@ -52,10 +52,11 @@ export function heldLocks(item, { klass, site }) {
     const source = Object.hasOwn(hosts, scope.host ?? '')
       ? LOCK_SOURCES[hosts[scope.host]]
       : undefined;
-    if (scope.k === 'lambda' && source !== undefined) {
-      held.push(lockKey(scope[source] ?? '', { klass, locals: item.locals, site }) ?? '?');
-    } else if (scope.k === 'lambda') {
+    if (scope.k === 'lambda' && source === undefined) {
       return { held, opaque: true };
+    }
+    if (scope.k === 'lambda') {
+      held.push(lockKey(scope[source] ?? '', { klass, locals: item.locals, site }) ?? '?');
     } else if (scope.k !== 'loop' && scope.k !== 'foreach') {
       break;
     }

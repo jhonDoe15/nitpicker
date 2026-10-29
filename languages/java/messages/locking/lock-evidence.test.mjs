@@ -2,10 +2,10 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'nod
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ingestSarif } from '../../../shared/ingest/sarif.mjs';
+import { ingestSarif } from '../../../../shared/ingest/sarif.mjs';
 import { FIELD_LOCKING_RULE, LOCK_ORDER_RULE, withLockEvidence } from './lock-evidence.mjs';
 
-const RULESET = path.resolve(import.meta.dirname, '../gradle/pmd-ruleset.xml');
+const RULESET = path.resolve(import.meta.dirname, '../../gradle/pmd-ruleset.xml');
 const FILE = 'src/main/java/shop/Ledger.java';
 const SOURCE = `package shop;
 
@@ -97,10 +97,10 @@ function project(source) {
 }
 
 function result(source, [rule, snippet, nth = 0]) {
-  let offset = -1;
-  for (let index = 0; index <= nth; index += 1) {
-    offset = source.indexOf(snippet, offset + 1);
-  }
+  const offset = Array.from({ length: nth + 1 }).reduce(
+    (from) => source.indexOf(snippet, from + 1),
+    -1,
+  );
   const before = source.slice(0, offset).split('\n');
   return {
     ruleId: rule,
@@ -160,8 +160,13 @@ describe('lock evidence in Java PMD findings', () => {
       'fp:nitpicker/subject=Ledger.swap(): Registry.LOCK -> audit',
       'fp:nitpicker/subject=Ledger.swap(): audit -> Registry.LOCK',
     ]);
-    expect(named[0].message).toMatch(
-      /: two threads that run both can each hold one lock and wait forever/u,
+    expect(named[0].message).toBe(
+      'transfer() takes `audit` while it holds `accounts`, and report() takes `accounts` while it holds ' +
+        '`audit`: two threads that run both can each hold one lock and wait forever for the other, a ' +
+        'deadlock that no test reliably shows. Take nested locks in one order everywhere in the class (if ' +
+        'any path takes a and then b, no path takes b and then a), or guard the state with one lock. Only ' +
+        'locks held in fields of the class, this, Type.class and Type.FIELD are compared; a lock passed ' +
+        'in, held in a local or taken in a called method is not followed.',
     );
   });
 
