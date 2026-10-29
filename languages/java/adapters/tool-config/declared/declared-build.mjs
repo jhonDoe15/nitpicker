@@ -46,11 +46,13 @@ function walk(root) {
   const pending = [''];
   for (const directory of pending) {
     const entries = readdirSync(path.join(root, directory), { withFileTypes: true });
+    if (directory !== '' && entries.some((entry) => entry.name === '.git')) {
+      continue;
+    }
     pending.push(
       ...entries
         .filter((entry) => entry.isDirectory() && !skipped(entry.name, directory))
-        .map((entry) => relativeOf(directory, entry.name))
-        .filter((relative) => !existsSync(path.join(root, relative, '.git'))),
+        .map((entry) => relativeOf(directory, entry.name)),
     );
     found.push(
       ...entries
