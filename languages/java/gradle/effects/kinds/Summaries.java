@@ -8,6 +8,8 @@ import java.util.Map;
 import nitpicker.effects.flow.MethodFlow;
 import nitpicker.effects.flow.Program;
 import nitpicker.effects.flow.Walker;
+import nitpicker.effects.classes.Annotations;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.MethodInsnNode;
@@ -18,12 +20,14 @@ public final class Summaries {
     Map<String, List<String>> direct(Summaries summaries, Call call);
   }
 
+  private static final String ASYNC = "Lorg/springframework/scheduling/annotation/Async;";
   private static final int ROUNDS = 40;
   private static final int LONGEST = 6;
   private final Program program;
   private final Classifier classifier;
   private final Map<String, Map<String, List<String>>> sums = new HashMap<>();
   private final Map<String, List<Call>> sites = new LinkedHashMap<>();
+  private final Map<String, Map<String, List<String>>> memo = new HashMap<>();
 
   public Summaries(Program program) {
     this(program, Summaries::byKind);
@@ -43,6 +47,10 @@ public final class Summaries {
     Walker walker = new Walker(program, false);
     for (MethodFlow flow : program.all()) {
       List<Call> found = new ArrayList<>();
+      sites.put(Program.key(flow.owner.name, flow.method.name, flow.method.desc), found);
+      if (detached(flow)) {
+        continue;
+      }
       walker.walk(flow, Walker.Ctx.NONE, new Walker.Visitor() {
         @Override
         public void visit(MethodFlow at, int index, MethodInsnNode call, Walker.Ctx ctx) {
@@ -54,11 +62,11 @@ public final class Summaries {
           found.add(new Call(at, index, owner, name, desc));
         }
       });
-      sites.put(Program.key(flow.owner.name, flow.method.name, flow.method.desc), found);
     }
     boolean changed = true;
     for (int round = 0; changed && round < ROUNDS; round++) {
       changed = false;
+      memo.clear();
       for (Map.Entry<String, List<Call>> entry : sites.entrySet()) {
         for (Call site : entry.getValue()) {
           for (Map.Entry<String, List<String>> kind : at(site).entrySet()) {
@@ -67,6 +75,14 @@ public final class Summaries {
         }
       }
     }
+    memo.clear();
+    sites.clear();
+  }
+
+  private static boolean detached(MethodFlow flow) {
+    boolean visible = (flow.method.access & Opcodes.ACC_PUBLIC) != 0;
+    return Annotations.find(ASYNC, flow.method.visibleAnnotations, flow.method.invisibleAnnotations) != null
+        || (visible && Annotations.find(ASYNC, flow.owner.visibleAnnotations, flow.owner.invisibleAnnotations) != null);
   }
 
   public Map<String, List<String>> at(Call call) {
@@ -94,6 +110,16 @@ public final class Summaries {
   }
 
   public Map<String, List<String>> of(String owner, String name, String desc) {
+    String key = Program.key(owner, name, desc);
+    Map<String, List<String>> known = memo.get(key);
+    if (known == null) {
+      known = resolve(owner, name, desc);
+      memo.put(key, known);
+    }
+    return known;
+  }
+
+  private Map<String, List<String>> resolve(String owner, String name, String desc) {
     String declaration = program.declaration(owner, name, desc);
     if (declaration == null) {
       return Map.of();

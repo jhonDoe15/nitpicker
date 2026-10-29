@@ -19,9 +19,12 @@ final class KindTable {
   static final String REMOTE = "remote";
   static final String MESSAGE = "message";
   private static final String DEFAULT_EXCLUDE =
-      "(?!getBy|getAll|getOne|getReference|getFor)(get|is|has|set)[A-Z]\\w*|mutate|close|unwrap|builder|newBuilder";
+      "(?!get\\w*By[A-Z]|getFirst|getTop|getAll|getOne|getReference|getFor)(get|is|has|set)[A-Z]\\w*"
+          + "|mutate|close|unwrap|builder|newBuilder";
   private static final String REDIS_EXCLUDE =
       "opsFor\\w+|bound\\w+|getOperations|getConnectionFactory|get\\w*Serializer";
+  private static final String REDIS_CLIENT_EXCLUDE = "close|isConnected|isBroken|getClient|getConnection\\w*"
+      + "|pipelined|multi|getDB|getPool|resetState|setDataSource";
   private static final String AWS_EXCLUDE = "serviceName|close|utilities|waiter|serviceClientConfiguration";
   private static final String AWS = "software/amazon/awssdk/services/";
 
@@ -54,6 +57,10 @@ final class KindTable {
       redis("ListOperations"),
       redis("SetOperations"),
       redis("ZSetOperations"),
+      redisClient("redis/clients/jedis/Jedis"),
+      redisClient("redis/clients/jedis/UnifiedJedis"),
+      redisClient("io/lettuce/core/api/sync/RedisCommands"),
+      redisClient("io/lettuce/core/cluster/api/sync/RedisAdvancedClusterCommands"),
       data("org/springframework/r2dbc/core/DatabaseClient", "sql"),
       data("org/jetbrains/exposed/sql/QueriesKt", null),
       data("org/jetbrains/exposed/v1/jdbc/QueriesKt", null),
@@ -126,6 +133,10 @@ final class KindTable {
 
   private static Entry redis(String type) {
     return new Entry("org/springframework/data/redis/core/" + type, DATABASE, null, Pattern.compile(REDIS_EXCLUDE));
+  }
+
+  private static Entry redisClient(String type) {
+    return new Entry(type, DATABASE, null, Pattern.compile(REDIS_CLIENT_EXCLUDE));
   }
 
   private static Entry entry(String type, String kind, String include) {

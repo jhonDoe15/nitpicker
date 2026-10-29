@@ -55,9 +55,10 @@ public final class Effects {
     try (ClassPath path = new ClassPath(lookup)) {
       ClassIndex index = new ClassIndex(path);
       for (String directory : mainDirectories) {
-        load(index, Path.of(directory));
+        load(index, Path.of(directory), report);
       }
       run(new Program(index), report, options);
+      report.unreadableLibraries(index.unreadable());
     }
     Files.writeString(Path.of(args[0]), report.toJson(), StandardCharsets.UTF_8);
   }
@@ -84,7 +85,7 @@ public final class Effects {
     }
   }
 
-  private static void load(ClassIndex index, Path directory) throws IOException {
+  private static void load(ClassIndex index, Path directory, Report report) throws IOException {
     if (!Files.isDirectory(directory)) {
       return;
     }
@@ -94,7 +95,9 @@ public final class Effects {
           ClassNode node = new ClassNode();
           new ClassReader(Files.readAllBytes(file)).accept(node, 0);
           index.addProject(node);
+          report.loaded(1);
         } catch (RuntimeException unreadable) {
+          report.skipped(1);
           System.err.println("Effects skipped " + file + ": " + unreadable);
         }
       }

@@ -25,7 +25,7 @@ public record Loop(int start, int end, boolean paging, List<int[]> attempts) {
     return false;
   }
 
-  public static List<Loop> find(MethodFlow flow, IntPredicate io) {
+  public static List<Loop> find(MethodFlow flow, IntPredicate io, IntPredicate element) {
     Map<Integer, Integer> regions = new TreeMap<>();
     for (int index = 0; index < flow.insns.length; index++) {
       if (flow.insns[index] instanceof JumpInsnNode jump) {
@@ -39,17 +39,19 @@ public record Loop(int start, int end, boolean paging, List<int[]> attempts) {
     for (Map.Entry<Integer, Integer> region : regions.entrySet()) {
       int start = region.getKey();
       int end = region.getValue();
-      loops.add(new Loop(start, end, paging(flow, start, end, io), attempts(flow, start, end)));
+      loops.add(new Loop(start, end, paging(flow, start, end, io, element), attempts(flow, start, end)));
     }
     return loops;
   }
 
-  private static boolean paging(MethodFlow flow, int start, int end, IntPredicate io) {
+  private static boolean paging(MethodFlow flow, int start, int end, IntPredicate io, IntPredicate element) {
     if (!flow.analyzed()) {
       return false;
     }
     Origins origins = new Origins(flow);
-    IntPredicate inside = index -> index >= start && index <= end && io.test(index);
+    IntPredicate elements = index -> index >= start && index <= end && element.test(index);
+    IntPredicate inside = index -> index >= start && index <= end && io.test(index)
+        && !takesElement(flow, origins, index, elements);
     for (int index = start; index <= end; index++) {
       if (!conditional(flow.insns[index]) || !exits(flow, index, start, end)) {
         continue;
@@ -58,6 +60,15 @@ public record Loop(int start, int end, boolean paging, List<int[]> attempts) {
         if (origins.dependsOn(operand, inside)) {
           return true;
         }
+      }
+    }
+    return false;
+  }
+
+  private static boolean takesElement(MethodFlow flow, Origins origins, int call, IntPredicate elements) {
+    for (SourceValue operand : flow.operands(call)) {
+      if (origins.dependsOn(operand, elements)) {
+        return true;
       }
     }
     return false;

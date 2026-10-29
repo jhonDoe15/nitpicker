@@ -1,51 +1,94 @@
 package nitpicker.effects;
 
+import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Deque;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import nitpicker.effects.flow.MethodFlow;
+import nitpicker.effects.flow.Origins;
 
 public final class Report {
   private final List<Map<String, Object>> violations = new ArrayList<>();
+  private final List<Map<String, Object>> covered = new ArrayList<>();
   private final Set<String> seen = new HashSet<>();
+  private int classes;
+  private int skipped;
+  private int unreadableLibraries;
 
   public void add(String rule, MethodFlow flow, int index, String detail, Map<String, Object> extra) {
     String className = topLevel(flow.owner.name).replace('/', '.');
     int line = flow.line(index);
-    if (line <= 0 || !seen.add(rule + '\0' + className + '\0' + flow.owner.sourceFile + '\0' + line)) {
+    if (line <= 0 || !seen.add(String.join("\0", rule, className, flow.file, String.valueOf(line), detail))) {
       return;
     }
     Map<String, Object> entry = new LinkedHashMap<>();
     entry.put("rule", rule);
     entry.put("className", className);
-    entry.put("fileName", flow.owner.sourceFile == null ? "" : flow.owner.sourceFile);
+    entry.put("fileName", flow.file);
     entry.put("line", line);
+    entry.put("firstLine", firstLine(flow, index, line));
     entry.put("method", methodName(flow));
     entry.put("detail", detail);
     entry.putAll(extra);
     violations.add(entry);
   }
 
+  public void cover(String rule, MethodFlow flow, int index, String kind, String form, boolean owned) {
+    int line = flow.line(index);
+    if (line <= 0) {
+      return;
+    }
+    Map<String, Object> fact = new LinkedHashMap<>();
+    fact.put("rule", rule);
+    fact.put("className", topLevel(flow.owner.name).replace('/', '.'));
+    fact.put("fileName", flow.file);
+    fact.put("line", line);
+    fact.put("firstLine", firstLine(flow, index, line));
+    fact.put("kind", kind);
+    fact.put("form", form);
+    fact.put("verdict", owned ? "owned" : "exempt");
+    if (seen.add(fact.toString())) {
+      covered.add(fact);
+    }
+  }
+
+  public void skipped(int classes) {
+    skipped += classes;
+  }
+
+  public void loaded(int count) {
+    classes += count;
+  }
+
+  public void unreadableLibraries(int count) {
+    unreadableLibraries = count;
+  }
+
+  private static int firstLine(MethodFlow flow, int index, int line) {
+    int first = line;
+    Deque<Integer> queue = new ArrayDeque<>(List.of(index));
+    Set<Integer> visited = new HashSet<>();
+    Origins origins = new Origins(flow);
+    while (!queue.isEmpty() && visited.size() < 200) {
+      int at = queue.poll();
+      if (!visited.add(at)) {
+        continue;
+      }
+      int own = flow.line(at);
+      first = own > 0 && own < first && line - own < 20 ? own : first;
+      if (at == index || !Origins.isLoad(flow.insns[at])) {
+        flow.operands(at).forEach(operand -> queue.addAll(origins.sources(operand)));
+      }
+    }
+    return first;
+  }
+
   public static String methodName(MethodFlow flow) {
-    String owner = topLevel(flow.owner.name);
-    String simple = owner.substring(owner.lastIndexOf('/') + 1);
-    String name = flow.method.name;
-    if (!owner.equals(flow.owner.name)) {
-      String segment = flow.owner.name.substring(owner.length() + 1).split("\\$")[0];
-      boolean numbered = segment.matches("\\d+");
-      name = !numbered ? segment : flow.owner.outerMethod != null ? flow.owner.outerMethod : name;
-    }
-    int lambda = name.indexOf("$lambda");
-    if (name.startsWith("lambda$")) {
-      String[] parts = name.split("\\$");
-      name = parts.length > 1 ? parts[1] : name;
-    } else if (lambda > 0) {
-      name = name.substring(0, lambda);
-    }
-    return simple + "." + name;
+    return flow.name;
   }
 
   static String topLevel(String internalName) {
@@ -54,7 +97,9 @@ public final class Report {
   }
 
   public String toJson() {
-    StringBuilder out = new StringBuilder("{\"violations\":[");
+    StringBuilder out = new StringBuilder("{\"classes\":").append(classes).append(",\"skipped\":").append(skipped)
+        .append(",\"unreadableLibraries\":").append(unreadableLibraries);
+    out.append(",\"covered\":").append(value(covered)).append(",\"violations\":[");
     for (int index = 0; index < violations.size(); index++) {
       out.append(index == 0 ? "\n" : ",\n").append(value(violations.get(index)));
     }

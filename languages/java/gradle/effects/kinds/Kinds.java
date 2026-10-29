@@ -28,6 +28,9 @@ public final class Kinds {
       "Lorg/springframework/web/service/annotation/DeleteExchange;",
       "Lorg/springframework/web/service/annotation/PatchExchange;",
       "Lorg/springframework/web/service/annotation/HttpExchange;");
+  private static final Set<String> REDIS_TYPES = Set.of("RedisOperations", "RedisTemplate", "StringRedisTemplate",
+      "ValueOperations", "HashOperations", "ListOperations", "SetOperations", "ZSetOperations", "Jedis",
+      "UnifiedJedis", "JedisPooled", "JedisCluster", "RedisCommands", "RedisAdvancedClusterCommands");
   private final ClassIndex index;
   private final Map<String, String> cache = new HashMap<>();
 
@@ -46,6 +49,10 @@ public final class Kinds {
     String kind = resolve(owner, name, desc);
     cache.put(key, kind);
     return kind;
+  }
+
+  public boolean isRedis(String label) {
+    return REDIS_TYPES.contains(label.substring(0, Math.max(0, label.indexOf('.'))));
   }
 
   public boolean isRepository(String owner) {
@@ -77,8 +84,7 @@ public final class Kinds {
   }
 
   private boolean declarativeClient(String owner, String name, String desc) {
-    ClassNode node = index.node(owner);
-    if (node == null || !index.header(owner).isInterface()) {
+    if (!index.header(owner).isInterface()) {
       return false;
     }
     for (String type : CLIENT_TYPES) {
@@ -86,7 +92,9 @@ public final class Kinds {
         return true;
       }
     }
-    MethodNode method = index.declared(owner, name, desc);
+    ClassNode node = index.library(owner);
+    MethodNode method = node == null ? null
+        : node.methods.stream().filter(m -> m.name.equals(name) && m.desc.equals(desc)).findFirst().orElse(null);
     return method != null
         && Annotations.findAny(CLIENT_METHODS, method.visibleAnnotations, method.invisibleAnnotations) != null;
   }

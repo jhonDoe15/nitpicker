@@ -1,5 +1,6 @@
 package nitpicker.effects.rules;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -13,6 +14,8 @@ import nitpicker.effects.flow.Program;
 import nitpicker.effects.flow.Walker;
 import nitpicker.effects.jpa.Entities;
 import nitpicker.effects.jpa.Queries;
+import nitpicker.effects.kinds.Summaries;
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.MethodInsnNode;
@@ -32,6 +35,7 @@ public final class LazyRelation {
   private final Walker walker;
   private final Report report;
   private final Map<MethodFlow, Outer> outers = new HashMap<>();
+  private final Map<String, Map<Integer, List<Entities.Relation>>> touches = new HashMap<>();
 
   public LazyRelation(Program program, Entities entities, Report report) {
     this.program = program;
@@ -50,11 +54,111 @@ public final class LazyRelation {
         }
       }
     }
+    for (int round = 0; round < 3; round++) {
+      flows.stream().filter(MethodFlow::analyzed).forEach(this::summarize);
+    }
     for (MethodFlow flow : flows) {
       if (flow.analyzed()) {
         check(flow);
+        helpers(flow);
       }
     }
+  }
+
+  private void summarize(MethodFlow flow) {
+    String key = Program.key(flow.owner.name, flow.method.name, flow.method.desc);
+    Origins origins = new Origins(flow);
+    for (int index = 0; index < flow.insns.length; index++) {
+      if (!(flow.insns[index] instanceof MethodInsnNode call)) {
+        continue;
+      }
+      Entities.Relation relation = call.getOpcode() == Opcodes.INVOKESTATIC ? null
+          : entities.relation(call.owner, call.name, call.desc);
+      if (relation != null && !relation.batched() && initialized(flow, origins, index, relation)) {
+        touch(key, parameter(flow, origins, flow.receiver(index)), relation);
+      }
+      for (Map.Entry<Integer, List<Entities.Relation>> entry : touched(call.owner, call.name, call.desc).entrySet()) {
+        int parameter = parameter(flow, origins, flow.argument(index, entry.getKey()));
+        entry.getValue().forEach(found -> touch(key, parameter, found));
+      }
+    }
+  }
+
+  private void touch(String key, int parameter, Entities.Relation relation) {
+    if (parameter < 0) {
+      return;
+    }
+    List<Entities.Relation> known = touches.computeIfAbsent(key, ignored -> new HashMap<>())
+        .computeIfAbsent(parameter, ignored -> new ArrayList<>());
+    if (!known.contains(relation)) {
+      known.add(relation);
+    }
+  }
+
+  private Map<Integer, List<Entities.Relation>> touched(String owner, String name, String desc) {
+    String declaration = program.index.isProject(owner) ? program.declaration(owner, name, desc) : null;
+    return declaration == null ? Map.of() : touches.getOrDefault(declaration, Map.of());
+  }
+
+  private static int parameter(MethodFlow flow, Origins origins, SourceValue value) {
+    if (value == null) {
+      return -1;
+    }
+    Set<Integer> slots = origins.identity(value).parameters();
+    int count = Type.getArgumentTypes(flow.method.desc).length;
+    for (int position = 0; position < count; position++) {
+      if (slots.contains(flow.parameterSlot(position))) {
+        return position;
+      }
+    }
+    return -1;
+  }
+
+  private void helpers(MethodFlow flow) {
+    Origins origins = new Origins(flow);
+    for (int index = 0; index < flow.insns.length; index++) {
+      if (flow.insns[index] instanceof MethodInsnNode call) {
+        for (Map.Entry<Integer, List<Entities.Relation>> entry : touched(call.owner, call.name, call.desc)
+            .entrySet()) {
+          Queries.Origin origin = element(flow, origins, flow.argument(index, entry.getKey()));
+          report(flow, index, origin, entry.getValue(), call);
+        }
+      }
+    }
+    for (Lambdas.Use use : program.lambdas(flow)) {
+      Handle handle = use.reference();
+      boolean unbound = handle != null && handle.getTag() != Opcodes.H_INVOKESTATIC && use.captured() == 0;
+      if (handle == null || unbound || use.consumer() < 0
+          || !walker.iterating((MethodInsnNode) flow.insns[use.consumer()])) {
+        continue;
+      }
+      List<Entities.Relation> relations = touched(handle.getOwner(), handle.getName(), handle.getDesc()).get(0);
+      if (relations != null) {
+        Queries.Origin origin = source(flow, origins, receiverOf(flow, use.consumer()), 0);
+        MethodInsnNode via = new MethodInsnNode(Opcodes.INVOKEVIRTUAL, handle.getOwner(), handle.getName(),
+            handle.getDesc());
+        report(flow, use.index(), origin, relations, via);
+      }
+    }
+  }
+
+  private void report(MethodFlow flow, int index, Queries.Origin origin, List<Entities.Relation> relations,
+      MethodInsnNode via) {
+    Entities.Relation relation = origin == null ? null : relations.stream()
+        .filter(candidate -> !origin.fetched().contains(candidate.name())).findFirst().orElse(null);
+    if (relation == null) {
+      return;
+    }
+    String entity = simple(relation.entity());
+    Map<String, Object> extra = new LinkedHashMap<>();
+    extra.put("entity", entity);
+    extra.put("relation", relation.name());
+    extra.put("collection", relation.collection());
+    extra.put("origin", origin.label());
+    if (via != null) {
+      extra.put("via", Summaries.label(via.owner, via.name, via.desc));
+    }
+    report.add(RULE, flow, index, Report.methodName(flow) + "|" + entity + "." + relation.name(), extra);
   }
 
   private void check(MethodFlow flow) {
@@ -71,16 +175,7 @@ public final class LazyRelation {
       if (!initialized(flow, origins, index, relation)) {
         continue;
       }
-      Queries.Origin origin = element(flow, origins, flow.receiver(index));
-      if (origin != null && !origin.fetched().contains(relation.name())) {
-        String entity = simple(relation.entity());
-        Map<String, Object> extra = new LinkedHashMap<>();
-        extra.put("entity", entity);
-        extra.put("relation", relation.name());
-        extra.put("collection", relation.collection());
-        extra.put("origin", origin.label());
-        report.add(RULE, flow, index, Report.methodName(flow) + "|" + entity + "." + relation.name(), extra);
-      }
+      report(flow, index, element(flow, origins, flow.receiver(index)), List.of(relation), null);
     }
   }
 
@@ -107,9 +202,13 @@ public final class LazyRelation {
   }
 
   private Queries.Origin element(MethodFlow flow, Origins origins, SourceValue value) {
+    if (value == null) {
+      return null;
+    }
     Origins.Identity identity = origins.identity(value);
     for (int terminal : identity.terminals()) {
-      if (!(flow.insns[terminal] instanceof MethodInsnNode call)) {
+      if (!(flow.insns[terminal] instanceof MethodInsnNode call)
+          || program.loops(flow).stream().noneMatch(loop -> loop.contains(terminal))) {
         continue;
       }
       boolean next = call.name.equals("next") && program.index.isSubtype(call.owner, "java/util/Iterator");

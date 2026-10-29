@@ -9,13 +9,19 @@ import nitpicker.effects.classes.Annotations;
 import nitpicker.effects.flow.Lambdas;
 import nitpicker.effects.flow.Loop;
 import nitpicker.effects.flow.MethodFlow;
+import nitpicker.effects.flow.Origins;
 import nitpicker.effects.flow.Program;
 import nitpicker.effects.flow.Walker;
 import nitpicker.effects.kinds.Call;
 import nitpicker.effects.kinds.Summaries;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.AnnotationNode;
+import org.objectweb.asm.tree.ClassNode;
+import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.TypeInsnNode;
 
 public final class Scopes {
   public record Scope(String label, MethodFlow flow, int start, int end) {}
@@ -32,8 +38,6 @@ public final class Scopes {
       "org/jetbrains/exposed/sql/transactions/ThreadLocalTransactionManagerKt",
       Set.of("transaction", "transaction$default"),
       "org/jetbrains/exposed/v1/jdbc/transactions/TransactionApiKt", Set.of("transaction", "transaction$default"));
-  private static final List<String> LOCKS = List.of("java/util/concurrent/locks/Lock", "kotlinx/coroutines/sync/Mutex");
-  private static final Set<String> ACQUIRE = Set.of("lock", "lockInterruptibly", "tryLock");
   private static final List<String> RETRYABLE = List.of("Lorg/springframework/retry/annotation/Retryable;",
       "Lorg/springframework/resilience/annotation/Retryable;", "Lio/github/resilience4j/retry/annotation/Retry;");
   private static final Map<String, String> RETRY_CALLS = Map.of(
@@ -46,10 +50,12 @@ public final class Scopes {
   private static final int DEPTH = 6;
   private final Program program;
   private final Walker walker;
+  private final Locks locks;
 
   public Scopes(Program program) {
     this.program = program;
     this.walker = new Walker(program, false);
+    this.locks = new Locks(program);
   }
 
   public List<Scope> transactions() {
@@ -64,30 +70,17 @@ public final class Scopes {
           found.add(new Scope(Summaries.label(call.owner, call.name, call.desc), flow, use.index(), use.index()));
         }
       }
-      found.addAll(ranges(flow, "java/sql/Connection", "setAutoCommit", Set.of("commit", "rollback")));
     }
+    found.addAll(locks.commits());
     return found;
   }
 
   public List<Scope> locks() {
-    List<Scope> found = new ArrayList<>();
-    for (MethodFlow flow : program.all()) {
-      if ((flow.method.access & Opcodes.ACC_SYNCHRONIZED) != 0) {
-        found.add(new Scope("synchronized", flow, 0, flow.insns.length - 1));
-      }
-      for (int index = 0; index < flow.insns.length; index++) {
-        if (flow.insns[index].getOpcode() == Opcodes.MONITORENTER) {
-          int exit = monitorExit(flow, index);
-          found.add(new Scope("synchronized", flow, index, exit < 0 ? flow.insns.length - 1 : exit));
-        }
-      }
-      for (String type : LOCKS) {
-        for (String acquire : ACQUIRE) {
-          found.addAll(ranges(flow, type, acquire, Set.of("unlock")));
-        }
-      }
-    }
-    return found;
+    return locks.locks();
+  }
+
+  public boolean fillOnce(Scope scope, Call site) {
+    return locks.fillOnce(scope, site);
   }
 
   public List<Scope> retries() {
@@ -99,7 +92,8 @@ public final class Scopes {
         found.add(new Scope(label, flow, 0, flow.insns.length - 1));
       }
       for (Lambdas.Use use : program.lambdas(flow)) {
-        if (use.consumer() >= 0 && retrying((MethodInsnNode) flow.insns[use.consumer()])) {
+        if (use.consumer() >= 0 && retrying((MethodInsnNode) flow.insns[use.consumer()])
+            && withRetryPolicy(flow, use.consumer())) {
           MethodInsnNode call = (MethodInsnNode) flow.insns[use.consumer()];
           found.add(new Scope(Summaries.label(call.owner, call.name, call.desc), flow, use.index(), use.index()));
         }
@@ -130,7 +124,7 @@ public final class Scopes {
     }
     for (Lambdas.Use use : program.lambdas(flow)) {
       boolean inside = use.index() >= start && use.index() <= end;
-      if (!inside || (use.consumer() >= 0 && walker.async((MethodInsnNode) flow.insns[use.consumer()]))) {
+      if (!inside || walker.detached(flow, use)) {
         continue;
       }
       if (use.reference() != null) {
@@ -143,6 +137,56 @@ public final class Scopes {
     }
   }
 
+  private boolean withRetryPolicy(MethodFlow flow, int consumer) {
+    MethodInsnNode call = (MethodInsnNode) flow.insns[consumer];
+    if (!call.owner.endsWith("/FailsafeExecutor") || !flow.analyzed()) {
+      return true;
+    }
+    Origins origins = new Origins(flow);
+    List<Integer> fields = new ArrayList<>();
+    boolean direct = origins.dependsOn(flow.receiver(consumer), at -> {
+      if (flow.insns[at] instanceof FieldInsnNode field && field.getOpcode() == Opcodes.GETFIELD) {
+        fields.add(at);
+      }
+      return retryPolicy(flow.insns[at]);
+    });
+    return direct || mentionsRetryPolicy(flow) || fields.stream().anyMatch(at -> assignedWithPolicy(flow, at));
+  }
+
+  private boolean assignedWithPolicy(MethodFlow flow, int read) {
+    FieldInsnNode field = (FieldInsnNode) flow.insns[read];
+    for (MethodFlow other : program.bodies(flow.owner)) {
+      for (AbstractInsnNode insn : other.insns) {
+        if (insn instanceof FieldInsnNode put && put.getOpcode() == Opcodes.PUTFIELD && put.name.equals(field.name)
+            && mentionsRetryPolicy(other)) {
+          return true;
+        }
+      }
+    }
+    for (MethodNode method : flow.owner.methods) {
+      if (method.name.equals("<init>") && mentionsRetryPolicy(program.flow(flow.owner, method))) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean mentionsRetryPolicy(MethodFlow flow) {
+    for (AbstractInsnNode insn : flow.insns) {
+      if (retryPolicy(insn)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
+  private static boolean retryPolicy(AbstractInsnNode insn) {
+    String text = insn instanceof MethodInsnNode call ? call.owner + call.desc
+        : insn instanceof TypeInsnNode type ? type.desc
+        : insn instanceof FieldInsnNode field ? field.desc : "";
+    return text.contains("failsafe/RetryPolicy");
+  }
+
   private boolean retrying(MethodInsnNode call) {
     for (Map.Entry<String, String> entry : RETRY_CALLS.entrySet()) {
       if (call.name.matches(entry.getValue()) && program.index.isSubtype(call.owner, entry.getKey())) {
@@ -153,15 +197,30 @@ public final class Scopes {
   }
 
   private static AnnotationNode annotated(MethodFlow flow, List<String> descs) {
-    int generated = Opcodes.ACC_SYNTHETIC | Opcodes.ACC_BRIDGE | Opcodes.ACC_STATIC;
-    if ((flow.method.access & generated) != 0 || flow.method.name.startsWith("<")) {
+    return annotated(flow.owner, flow.method, descs);
+  }
+
+  private static AnnotationNode annotated(ClassNode owner, MethodNode method, List<String> descs) {
+    int generated = Opcodes.ACC_SYNTHETIC | Opcodes.ACC_BRIDGE | Opcodes.ACC_STATIC | Opcodes.ACC_PRIVATE;
+    if ((method.access & generated) != 0 || method.name.startsWith("<")) {
       return null;
     }
-    AnnotationNode own = Annotations.findAny(descs, flow.method.visibleAnnotations, flow.method.invisibleAnnotations);
-    if (own != null || (flow.method.access & Opcodes.ACC_PUBLIC) == 0) {
+    AnnotationNode own = Annotations.findAny(descs, method.visibleAnnotations, method.invisibleAnnotations);
+    if (own != null || (method.access & Opcodes.ACC_PUBLIC) == 0) {
       return own;
     }
-    return Annotations.findAny(descs, flow.owner.visibleAnnotations, flow.owner.invisibleAnnotations);
+    return Annotations.findAny(descs, owner.visibleAnnotations, owner.invisibleAnnotations);
+  }
+
+  public boolean suspends(Call site) {
+    String declaration = program.declaration(site.owner(), site.name(), site.desc());
+    MethodNode method = declaration == null ? null : program.method(declaration);
+    if (method == null) {
+      return false;
+    }
+    ClassNode owner = program.index.node(declaration.substring(0, declaration.indexOf('.')));
+    AnnotationNode annotation = annotated(owner, method, TRANSACTIONAL);
+    return annotation != null && !active(annotation);
   }
 
   private boolean callback(MethodInsnNode call) {
@@ -182,46 +241,6 @@ public final class Scopes {
     String propagation = Annotations.enumValue(annotation, "propagation");
     String type = Annotations.enumValue(annotation, "value");
     return (propagation == null || !SUSPENDED.contains(propagation)) && (type == null || !SUSPENDED.contains(type));
-  }
-
-  private List<Scope> ranges(MethodFlow flow, String type, String open, Set<String> close) {
-    List<Scope> found = new ArrayList<>();
-    for (int index = 0; index < flow.insns.length; index++) {
-      if (flow.insns[index] instanceof MethodInsnNode call && call.name.equals(open)
-          && program.index.isSubtype(call.owner, type) && opens(flow, index)) {
-        int end = closing(flow, index, type, close);
-        String label = simple(call.owner) + "." + open + "()";
-        found.add(new Scope(label, flow, index, end < 0 ? flow.insns.length - 1 : end));
-      }
-    }
-    return found;
-  }
-
-  private static boolean opens(MethodFlow flow, int index) {
-    MethodInsnNode call = (MethodInsnNode) flow.insns[index];
-    if (!call.name.equals("setAutoCommit")) {
-      return true;
-    }
-    return index > 0 && flow.insns[index - 1].getOpcode() == Opcodes.ICONST_0;
-  }
-
-  private static int monitorExit(MethodFlow flow, int from) {
-    for (int index = from + 1; index < flow.insns.length; index++) {
-      if (flow.insns[index].getOpcode() == Opcodes.MONITOREXIT) {
-        return index;
-      }
-    }
-    return -1;
-  }
-
-  private int closing(MethodFlow flow, int from, String type, Set<String> names) {
-    for (int index = from + 1; index < flow.insns.length; index++) {
-      if (flow.insns[index] instanceof MethodInsnNode call && names.contains(call.name)
-          && program.index.isSubtype(call.owner, type)) {
-        return index;
-      }
-    }
-    return -1;
   }
 
   static String simple(String type) {

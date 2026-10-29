@@ -1,10 +1,14 @@
 package nitpicker.effects.rules;
 
 import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import nitpicker.effects.Report;
+import nitpicker.effects.flow.Lambdas;
 import nitpicker.effects.flow.MethodFlow;
 import nitpicker.effects.flow.Origins;
 import nitpicker.effects.flow.Program;
@@ -13,7 +17,9 @@ import nitpicker.effects.kinds.Call;
 import nitpicker.effects.kinds.Kinds;
 import nitpicker.effects.kinds.Summaries;
 import nitpicker.effects.writes.Events;
+import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.MethodInsnNode;
+import org.objectweb.asm.tree.VarInsnNode;
 import org.objectweb.asm.tree.analysis.SourceValue;
 
 public final class DualWrite {
@@ -32,17 +38,19 @@ public final class DualWrite {
   private final Events events;
   private final Summaries effects;
   private final Report report;
+  private final Walker walker;
+  private Map<MethodFlow, Call> outers;
 
   public DualWrite(Program program, Report report) {
     this.program = program;
     this.events = new Events(program);
     this.effects = new Summaries(program, events);
     this.report = report;
+    this.walker = new Walker(program, false);
   }
 
   public void run() {
     effects.compute();
-    Walker walker = new Walker(program, false);
     for (MethodFlow entry : program.entries()) {
       List<Effect> found = new ArrayList<>();
       walker.walk(entry, Walker.Ctx.NONE, new Walker.Visitor() {
@@ -76,11 +84,13 @@ public final class DualWrite {
 
   private void check(MethodFlow entry, List<Effect> found) {
     List<Effect> single = found.stream().filter(effect -> !(effect.has(Events.WRITE) && effect.publishes())).toList();
-    Effect write = single.stream().filter(effect -> effect.has(Events.WRITE)).findFirst().orElse(null);
-    List<Effect> published = single.stream().filter(Effect::publishes).filter(effect -> !relayed(effect)).toList();
-    if (write == null || published.isEmpty()) {
+    List<Effect> writes = single.stream().filter(effect -> effect.has(Events.WRITE)).toList();
+    List<Effect> published = single.stream().filter(Effect::publishes).filter(effect -> !relayed(effect, writes))
+        .toList();
+    if (writes.isEmpty() || published.isEmpty()) {
       return;
     }
+    Effect write = writes.get(0);
     Effect inline = published.stream().filter(effect -> effect.has(Events.MESSAGE)).findFirst().orElse(null);
     Effect message = inline != null ? inline : published.get(0);
     String form = inline != null ? Events.MESSAGE : Events.DEFERRED;
@@ -93,20 +103,64 @@ public final class DualWrite {
     report.add(RULE, message.call().flow(), message.call().index(), detail, extra);
   }
 
-  private boolean relayed(Effect effect) {
-    MethodFlow flow = effect.call().flow();
-    int index = effect.call().index();
-    boolean looped = program.loops(flow).stream().anyMatch(loop -> loop.contains(index));
-    if (!looped || !flow.analyzed() || !(flow.insns[index] instanceof MethodInsnNode)) {
+  private boolean relayed(Effect published, List<Effect> writes) {
+    Set<String> rows = rows(published.call());
+    if (rows.isEmpty()) {
       return false;
     }
-    Origins origins = new Origins(flow);
-    for (SourceValue operand : flow.operands(index)) {
-      if (origins.dependsOn(operand, source -> read(flow, source))) {
-        return true;
+    for (Effect write : writes) {
+      Call call = write.call();
+      boolean after = call.flow() == published.call().flow() && call.index() > published.call().index();
+      Set<String> written = rows(call);
+      written.retainAll(rows);
+      if (!after || written.isEmpty()) {
+        return false;
       }
     }
-    return false;
+    return true;
+  }
+
+  private Set<String> rows(Call call) {
+    MethodFlow flow = call.flow();
+    Set<String> found = new HashSet<>();
+    if (!flow.analyzed() || !(flow.insns[call.index()] instanceof MethodInsnNode)) {
+      return found;
+    }
+    Origins origins = new Origins(flow);
+    for (SourceValue operand : flow.operands(call.index())) {
+      origins.dependsOn(operand, source -> {
+        if (read(flow, source)) {
+          found.add(System.identityHashCode(flow) + ":" + source);
+        } else if (element(flow, source)) {
+          found.addAll(outerRows(flow));
+        }
+        return false;
+      });
+    }
+    return found;
+  }
+
+  private boolean element(MethodFlow flow, int index) {
+    int parameters = Type.getArgumentTypes(flow.method.desc).length;
+    return parameters > 0 && flow.insns[index] instanceof VarInsnNode load && Origins.isLoad(load)
+        && load.var == flow.parameterSlot(parameters - 1)
+        && (flow.method.name.contains("lambda$") || program.anonymous(flow.owner.name));
+  }
+
+  private Set<String> outerRows(MethodFlow body) {
+    if (outers == null) {
+      outers = new HashMap<>();
+      for (MethodFlow flow : program.all()) {
+        for (Lambdas.Use use : program.lambdas(flow)) {
+          use.bodies().forEach(inner -> outers.putIfAbsent(inner, new Call(flow, use.consumer(), "", "", "")));
+        }
+      }
+    }
+    Call outer = outers.get(body);
+    if (outer == null || outer.index() < 0 || !walker.iterating((MethodInsnNode) outer.flow().insns[outer.index()])) {
+      return Set.of();
+    }
+    return rows(outer);
   }
 
   private boolean read(MethodFlow flow, int index) {

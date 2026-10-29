@@ -1,5 +1,6 @@
 package nitpicker.effects.flow;
 
+import java.lang.ref.SoftReference;
 import java.util.ArrayList;
 import java.util.List;
 import nitpicker.effects.classes.Lines;
@@ -22,15 +23,19 @@ public final class MethodFlow {
   public final MethodNode method;
   public final AbstractInsnNode[] insns;
   public final int[] lines;
-  final Frame<SourceValue>[] frames;
+  public final String file;
+  public final String name;
+  private SoftReference<Frame<SourceValue>[]> frames;
+  private boolean unanalyzable;
   private List<Loop> loops;
 
-  MethodFlow(ClassNode owner, MethodNode method, Lines lines) {
+  MethodFlow(ClassNode owner, MethodNode method, Lines lines, String name) {
     this.owner = owner;
+    this.name = name;
     this.method = method;
     this.insns = method.instructions.toArray();
     this.lines = lines.of(method);
-    this.frames = analyze(owner.name, method);
+    this.file = lines.file() != null ? lines.file() : owner.sourceFile == null ? "" : owner.sourceFile;
   }
 
   private static Frame<SourceValue>[] analyze(String owner, MethodNode method) {
@@ -44,12 +49,22 @@ public final class MethodFlow {
     }
   }
 
+  private Frame<SourceValue>[] frames() {
+    Frame<SourceValue>[] found = frames == null ? null : frames.get();
+    if (found == null && !unanalyzable) {
+      found = analyze(owner.name, method);
+      unanalyzable = found == null;
+      frames = found == null ? null : new SoftReference<>(found);
+    }
+    return found;
+  }
+
   public boolean analyzed() {
-    return frames != null;
+    return frames() != null;
   }
 
   public boolean kotlin() {
-    return owner.sourceFile != null && owner.sourceFile.endsWith(".kt");
+    return file.endsWith(".kt");
   }
 
   public int index(AbstractInsnNode insn) {
@@ -69,7 +84,8 @@ public final class MethodFlow {
   }
 
   public Frame<SourceValue> frame(int index) {
-    return frames == null || index < 0 || index >= frames.length ? null : frames[index];
+    Frame<SourceValue>[] all = frames();
+    return all == null || index < 0 || index >= all.length ? null : all[index];
   }
 
   public List<SourceValue> operands(int index) {
@@ -111,6 +127,12 @@ public final class MethodFlow {
     if (opcode >= Opcodes.IALOAD && opcode <= Opcodes.SALOAD) {
       return 2;
     }
+    if (opcode >= Opcodes.IASTORE && opcode <= Opcodes.SASTORE) {
+      return 3;
+    }
+    if (opcode == Opcodes.PUTFIELD) {
+      return 2;
+    }
     if ((opcode >= Opcodes.IADD && opcode <= Opcodes.DREM) || (opcode >= Opcodes.ISHL && opcode <= Opcodes.LXOR)
         || (opcode >= Opcodes.LCMP && opcode <= Opcodes.DCMPG)
         || (opcode >= Opcodes.IF_ICMPEQ && opcode <= Opcodes.IF_ACMPNE)) {
@@ -121,7 +143,8 @@ public final class MethodFlow {
           Opcodes.LNEG, Opcodes.I2L, Opcodes.L2I, Opcodes.IFEQ, Opcodes.IFNE, Opcodes.IFLT, Opcodes.IFGE,
           Opcodes.IFGT, Opcodes.IFLE, Opcodes.IFNULL, Opcodes.IFNONNULL, Opcodes.ARETURN, Opcodes.IRETURN,
           Opcodes.ASTORE, Opcodes.ISTORE, Opcodes.LSTORE, Opcodes.TABLESWITCH, Opcodes.LOOKUPSWITCH,
-          Opcodes.MONITORENTER, Opcodes.MONITOREXIT, Opcodes.ATHROW -> 1;
+          Opcodes.MONITORENTER, Opcodes.MONITOREXIT, Opcodes.ATHROW, Opcodes.PUTSTATIC, Opcodes.LRETURN,
+          Opcodes.FRETURN, Opcodes.DRETURN, Opcodes.FSTORE, Opcodes.DSTORE -> 1;
       default -> 0;
     };
   }

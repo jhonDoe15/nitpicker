@@ -15,6 +15,7 @@ import nitpicker.effects.kinds.Kinds;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.InnerClassNode;
+import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 
 public final class Program {
@@ -40,7 +41,29 @@ public final class Program {
 
   public MethodFlow flow(ClassNode owner, MethodNode method) {
     return flows.computeIfAbsent(key(owner.name, method.name, method.desc),
-        key -> new MethodFlow(owner, method, lines.computeIfAbsent(owner.name, name -> Lines.of(owner))));
+        key -> new MethodFlow(owner, method, lines.computeIfAbsent(owner.name, name -> Lines.of(owner)),
+            displayName(owner, method.name)));
+  }
+
+  private String displayName(ClassNode owner, String method) {
+    String name = method;
+    String type = owner.name;
+    ClassNode node = owner;
+    for (int depth = 0; depth < 12 && node != null && anonymous(node.name); depth++) {
+      name = node.outerMethod != null ? node.outerMethod : name;
+      int dollar = node.name.lastIndexOf('$');
+      type = node.outerClass != null ? node.outerClass : dollar > 0 ? node.name.substring(0, dollar) : node.name;
+      node = index.node(type);
+    }
+    if (name.startsWith("lambda$")) {
+      String[] parts = name.split("\\$");
+      name = parts.length > 1 ? parts[1] : name;
+    }
+    for (String marker : List.of("$lambda", "$default", "$suspendImpl")) {
+      int at = name.indexOf(marker);
+      name = at > 0 ? name.substring(0, at) : name;
+    }
+    return type.substring(type.lastIndexOf('/') + 1).replace('$', '.') + "." + name;
   }
 
   public MethodFlow flow(String key) {
@@ -105,9 +128,23 @@ public final class Program {
 
   public List<Loop> loops(MethodFlow flow) {
     if (flow.loops() == null) {
-      flow.setLoops(Loop.find(flow, index -> io.test(flow, index)));
+      flow.setLoops(Loop.find(flow, index -> io.test(flow, index), index -> element(flow, index)));
     }
     return flow.loops();
+  }
+
+  public boolean element(MethodFlow flow, int at) {
+    int opcode = flow.insns[at].getOpcode();
+    if (opcode >= Opcodes.IALOAD && opcode <= Opcodes.SALOAD) {
+      return true;
+    }
+    if (!(flow.insns[at] instanceof MethodInsnNode call)) {
+      return false;
+    }
+    return (call.name.equals("next") && index.isSubtype(call.owner, "java/util/Iterator"))
+        || (call.name.equals("get") && index.isSubtype(call.owner, "java/util/List"))
+        || ((call.name.equals("getKey") || call.name.equals("getValue"))
+            && index.isSubtype(call.owner, "java/util/Map$Entry"));
   }
 
   public String declaration(String owner, String name, String desc) {

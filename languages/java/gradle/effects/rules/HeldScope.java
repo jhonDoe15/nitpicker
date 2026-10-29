@@ -27,13 +27,13 @@ public final class HeldScope {
 
   public void run() {
     for (Scopes.Scope scope : scopes.transactions()) {
-      List<Call> sites = scopes.sites(scope);
+      List<Call> sites = scopes.sites(scope).stream().filter(site -> !scopes.suspends(site)).toList();
       if (sites.stream().anyMatch(site -> path(site, Kinds.DATABASE) != null)) {
         report(TRANSACTION, scope, sites);
       }
     }
     for (Scopes.Scope scope : scopes.locks()) {
-      report(LOCK, scope, scopes.sites(scope));
+      report(LOCK, scope, scopes.sites(scope).stream().filter(site -> !scopes.fillOnce(scope, site)).toList());
     }
   }
 
