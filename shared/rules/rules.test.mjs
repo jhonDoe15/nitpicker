@@ -6,7 +6,7 @@ import { crapFindings } from './crap.mjs';
 import { evaluateDuplicates } from './duplicates.mjs';
 import { mutantFindings } from './mutation.mjs';
 import { evaluateStructure } from './structure.mjs';
-import { evaluateTestRuntime } from './test-runtime.mjs';
+import { evaluateTestRuntime } from './test-runtime/evaluate.mjs';
 
 const byRule = (findings, rule) => findings.filter((finding) => finding.rule === rule);
 

@@ -1,6 +1,6 @@
 import { evaluateBaselineExpansions } from '../../../../../shared/rules/baseline-expansion.mjs';
 import { evaluateCoupling } from '../../../preset/coupling/evaluate-coupling.mjs';
-import { evaluateTestRuntime } from '../../../../../shared/rules/test-runtime.mjs';
+import { evaluateTestRuntime } from '../../../../../shared/rules/test-runtime/evaluate.mjs';
 import { evaluateStructure } from '../../../../../shared/rules/structure.mjs';
 
 const STRUCTURE_HINTS = {
