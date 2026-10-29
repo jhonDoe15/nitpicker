@@ -84,3 +84,59 @@ export const COLORS_TEST = lines(
   '    assert colors.name(colors.Color.RED) == "red"',
   '    assert colors.name(colors.Color.BLUE) == "blue"',
 );
+
+export const COLORS_EXTRA = lines(
+  ...COLOR_NAME,
+  '        case _:',
+  '            assert_never(color)',
+  '            return "other"',
+);
+
+export const LOOKALIKES = lines(
+  'from typing import assert_never',
+  '',
+  '',
+  'def sign(x: int) -> int:',
+  '    if (',
+  '        x > 0',
+  '    ):',
+  '        ...',
+  '        return 1',
+  '    return -1',
+  '',
+  '',
+  'def label(flag: bool) -> str:',
+  '    if flag:',
+  '        return "on"',
+  '    else:',
+  '        assert_never(flag)',
+);
+
+export const LOOKALIKES_TEST = lines(
+  'from demo import lookalikes',
+  '',
+  '',
+  'def test_one_side():',
+  '    assert lookalikes.sign(1) == 1',
+  '    assert lookalikes.label(True) == "on"',
+);
+
+export const INLINE_NEVER = lines(
+  'from typing import assert_never',
+  '',
+  '',
+  'def pick(a: int) -> int:',
+  '    if a == 1:',
+  '        return 1',
+  '    assert_never(a) if a > 100 else print(a)',
+  '    return 3',
+);
+
+export const INLINE_NEVER_TEST = lines(
+  'from demo import inline',
+  '',
+  '',
+  'def test_pick():',
+  '    assert inline.pick(1) == 1',
+  '    assert inline.pick(2) == 3',
+);

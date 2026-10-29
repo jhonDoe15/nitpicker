@@ -5,16 +5,19 @@ import { toml } from '../../../libraries/project-files.mjs';
 import { parseIni } from '../ini-parser.mjs';
 import { coverageTestOmits } from '../../execution/python-test-files.mjs';
 import { isDjangoProject } from '../pytest/collection-options.mjs';
+import { ASSERT_NEVER_ARM } from '../../../ingest/coverage-reports/exhaustive-match.mjs';
 
 const COVERAGE_CONFIG = 'coveragerc';
-const UNTESTABLE_LINES = [
+export const UNTESTABLE_LINES = [
   String.raw`^\s*if (typing\.)?TYPE_CHECKING:`,
   String.raw`^\s*if __name__ == .__main__.:`,
   String.raw`^\s*@(typing\.)?overload\b`,
   String.raw`^\s*raise NotImplementedError\b`,
-  String.raw`^\s*(?:(?:async\s+)?def\b|\)).*:\s*\.\.\.\s*(?:#.*)?$`,
-  String.raw`^\s*case _:\s*\n\s*(?:\w+\.)?assert_never\(`,
-  String.raw`^\s*(?:\w+\.)?assert_never\(`,
+  [
+    String.raw`^[ \t]*(?:async[ \t]+)?def[ \t]+\w+[ \t]*(?:\[[^\]\n]*\])?[ \t]*`,
+    String.raw`\((?:[^()]|\((?:[^()]|\([^()]*\))*\))*\)[ \t]*(?:->[^:]+)?:[ \t]*\.\.\.[ \t]*(?:#.*)?$`,
+  ].join(''),
+  ASSERT_NEVER_ARM,
 ];
 const CARRIED_KEYS = ['concurrency', 'patch', 'plugins'];
 const PROJECT_FILES = [

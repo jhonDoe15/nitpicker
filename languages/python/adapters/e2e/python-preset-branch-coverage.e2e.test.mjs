@@ -13,8 +13,11 @@ import {
 import {
   COLORS_DEFAULT,
   COLORS_EXHAUSTIVE,
+  COLORS_EXTRA,
   COLORS_OPEN,
   COLORS_TEST,
+  LOOKALIKES,
+  LOOKALIKES_TEST,
   PORTS,
   PORTS_TEST,
 } from './test-support/python-coverage-idioms-data.mjs';
@@ -72,10 +75,15 @@ describe.skipIf(!pythonE2eEnabled)('Python changed-branch coverage end to end', 
       'src/demo/ports.py': PORTS,
       'tests/test_ports.py': PORTS_TEST,
     });
+    commitBranch(project, 'lookalikes', {
+      'src/demo/lookalikes.py': LOOKALIKES,
+      'tests/test_lookalikes.py': LOOKALIKES_TEST,
+    });
     for (const [name, source] of Object.entries({
       'colors-open': COLORS_OPEN,
       'colors-exhaustive': COLORS_EXHAUSTIVE,
       'colors-default': COLORS_DEFAULT,
+      'colors-extra': COLORS_EXTRA,
     })) {
       commitBranch(project, name, {
         'src/demo/colors.py': source,
@@ -147,5 +155,18 @@ describe.skipIf(!pythonE2eEnabled)('Python changed-branch coverage end to end', 
     const result = gate(project, 'colors-default');
 
     expect(branchFindings(result)).toEqual(['src/demo/colors.py:14']);
+  });
+  it('still fails a wildcard arm that does more than assert_never', () => {
+    const result = gate(project, 'colors-extra');
+
+    expect(branchFindings(result)).toEqual(['src/demo/colors.py:14']);
+  });
+  it('still counts a wrapped condition with an ellipsis body and an assert_never in an else', () => {
+    const result = gate(project, 'lookalikes');
+
+    expect(branchFindings(result)).toEqual([
+      'src/demo/lookalikes.py:5',
+      'src/demo/lookalikes.py:14',
+    ]);
   });
 });

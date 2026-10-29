@@ -9,7 +9,12 @@ import {
   PRICING_TEST,
   PRICING_WITH_UNUSED,
 } from './test-support/python-preset-data.mjs';
-import { COLORS_EXHAUSTIVE, COLORS_TEST } from './test-support/python-coverage-idioms-data.mjs';
+import {
+  COLORS_EXHAUSTIVE,
+  COLORS_TEST,
+  INLINE_NEVER,
+  INLINE_NEVER_TEST,
+} from './test-support/python-coverage-idioms-data.mjs';
 import {
   commitBranch,
   fixture,
@@ -74,6 +79,10 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
     commitBranch(project, 'exhaustive', {
       'src/demo/colors.py': COLORS_EXHAUSTIVE,
       'tests/test_colors.py': COLORS_TEST,
+    });
+    commitBranch(project, 'inline-never', {
+      'src/demo/inline.py': INLINE_NEVER,
+      'tests/test_inline.py': INLINE_NEVER_TEST,
     });
   });
   afterAll(removeRepositories);
@@ -148,6 +157,16 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
     const result = gate(project, 'exhaustive');
 
     expect(mutantFindings(result), result.text).toEqual([]);
+  });
+  it('keeps the mutants of a line that only starts with assert_never', () => {
+    const result = gate(project, 'inline-never');
+
+    expect(
+      mutantFindings(result).some(
+        ({ path: file, location }) => file === 'src/demo/inline.py' && location?.line === 7,
+      ),
+      result.text,
+    ).toBe(true);
   });
   it('reuses the base mutants for a source-only change and still fails a new survivor', () => {
     const result = gate(project, 'weaker-source');
