@@ -29,6 +29,19 @@ public class VarargsService {
     remove(1L, 2L);
   }
 
+  @Transactional
+  public void archiveAll(List<Long> ids) {
+    for (Long id : ids) {
+      archive(id); // violation: SpringDataSaveInLoopHelper
+    }
+  }
+
+  private void archive(Long id, String... reasons) {
+    if (reasons.length == 0) {
+      products.deleteById(id);
+    }
+  }
+
   private void remove(Long... ids) {
     try {
       products.deleteAllById(List.of(ids));
