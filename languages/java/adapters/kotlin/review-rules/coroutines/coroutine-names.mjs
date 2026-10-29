@@ -20,6 +20,7 @@ const EXTENSIONS = new Map([
   ['joinAll', `${COROUTINES}.joinAll`],
   ['cancelAndJoin', `${COROUTINES}.cancelAndJoin`],
   ['withLock', `${SYNC}.withLock`],
+  ['withPermit', `${SYNC}.withPermit`],
 ]);
 const TYPES = new Map(
   [
@@ -49,6 +50,7 @@ const BUILDERS = new Map([
   ['call:MutableSharedFlow', ['MutableSharedFlow', `${FLOW}.MutableSharedFlow`]],
   ['call:MutableStateFlow', ['MutableStateFlow', `${FLOW}.MutableStateFlow`]],
 ]);
+const LAUNCH_BUILDERS = new Set(['launch', 'async']);
 const SCOPE_TYPE = `${COROUTINES}.CoroutineScope`;
 const CALL_PREFIX = 'call:';
 const SCOPE_BUILDERS = new Map([
@@ -146,18 +148,23 @@ export function isScope(resolves, file, written) {
   );
 }
 
-export function isGlobalScope(resolves, name) {
-  return name === 'GlobalScope' && resolves(name, `${COROUTINES}.GlobalScope`);
+export function isGlobalScopeAlias(resolves, name) {
+  return (
+    name !== 'GlobalScope' &&
+    resolves.realName(name) === 'GlobalScope' &&
+    resolves(name, `${COROUTINES}.GlobalScope`)
+  );
 }
 
 export function isScopeClass(resolves, file, owner) {
   return file.classes.some((klass) => klass.qualified === owner && extendsScope(resolves, klass));
 }
 
-export function isScopeExtension(resolves, receiver) {
-  return receiver === 'CoroutineScope' && resolves(receiver, SCOPE_TYPE);
+export function isScopeExtension(resolves) {
+  return resolves('CoroutineScope', SCOPE_TYPE);
 }
 
-export function resolvesAs(resolves, name, kind) {
-  return resolves(name, `${COROUTINES}.${kind}`);
+export function launchBuilder(resolves, name) {
+  const real = resolves.realName(name);
+  return LAUNCH_BUILDERS.has(real) && resolves(name, `${COROUTINES}.${real}`) ? real : undefined;
 }

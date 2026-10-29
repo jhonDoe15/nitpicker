@@ -147,6 +147,7 @@ export function useLaunch(overrides = {}) {
     line: 9,
     launch: 'launch',
     resource: 'reader',
+    opened: 'source',
     owner: 'Store',
     function: 'copy',
     scope: 'scope',

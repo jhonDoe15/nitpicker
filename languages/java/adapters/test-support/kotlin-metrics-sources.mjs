@@ -267,13 +267,25 @@ class Holder(private val scope: CoroutineScope, private val gate: Mutex) : Corou
         }
     }
 
-    fun uses(resource: Closeable, other: CoroutineScope) {
+    private suspend fun shieldedRelease() = withContext(Shield) { delay(8) }
+
+    suspend fun releases() {
+        try {
+            work()
+        } finally {
+            shieldedRelease()
+        }
+    }
+
+    suspend fun uses(resource: Closeable, other: CoroutineScope) {
         resource.use { reader -> other.launch { reader.close() } }
         resource.use { launch { println(it) } }
         resource.use { reader -> other.launch { reader.close() }.join() }
         resource.use { reader -> runBlocking { launch { reader.close() } } }
         resource.use { reader -> val inner = CoroutineScope(Dispatchers.IO); inner.launch { reader.close() } }
         resource.use { reader -> other.launch { println("done") } }
+        resource.use { reader -> val job = other.launch { reader.close() }; job.join() }
+        resource.use { reader -> val job = other.launch { reader.close() }; if (reader.hashCode() > 0) { job.join() } }
     }
 
     private fun work() {}

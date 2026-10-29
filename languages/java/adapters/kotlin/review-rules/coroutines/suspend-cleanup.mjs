@@ -14,7 +14,7 @@ function finallyMessage(call) {
   return `This \`finally\` block calls the suspending \`${call}\`, which throws as soon as the coroutine is cancelled, so the rest of the cleanup is skipped and the resource stays open. Make the release non-suspending (a blocking \`close()\`), or ${BOUNDED}.`;
 }
 function catchMessage(call) {
-  return `This \`catch (CancellationException)\` block calls the suspending \`${call}\`, but the coroutine is already cancelled, so the call throws at once and the rest of the handler is skipped. Rethrow after non-suspending cleanup, or ${BOUNDED}.`;
+  return `This \`catch (CancellationException)\` block calls the suspending \`${call}\`; when the exception is this coroutine's own cancellation (not a child's or a timeout's), the call throws at once and the rest of the handler is skipped. Rethrow after non-suspending cleanup, or ${BOUNDED}.`;
 }
 const CANCELLABLE_CONTEXT_TERMS = [
   /^(?:kotlinx\.coroutines\.)?Dispatchers\.\w+(?:\.limitedParallelism\(.*\))?$/u,
@@ -33,9 +33,14 @@ function declaredSuspend(file, call) {
   const declared = file.functions.filter(
     ({ name, owner }) => name === call.name && owners.has(owner),
   );
-  return declared.length === 0
-    ? undefined
-    : declared.every(({ modifiers }) => modifiers.includes('suspend'));
+  return declared.length === 0 ? undefined : isCancellable(declared);
+}
+
+function isCancellable(declared) {
+  return (
+    declared.every(({ modifiers }) => modifiers.includes('suspend')) &&
+    !declared.some(({ shielded }) => shielded === true)
+  );
 }
 
 function memberSuspend(files, type, name) {
@@ -52,7 +57,7 @@ function memberSuspend(files, type, name) {
   const declared = candidate.functions.filter(
     ({ owner, name: declaredName }) => owner === klass.qualified && declaredName === name,
   );
-  return declared.length > 0 && declared.every(({ modifiers }) => modifiers.includes('suspend'));
+  return declared.length > 0 && isCancellable(declared);
 }
 
 function cancellableContext(context) {

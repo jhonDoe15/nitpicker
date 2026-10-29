@@ -85,6 +85,17 @@ describe('suspending cleanup in finally', () => {
     ).toHaveLength(4);
   });
 
+  it('reports Semaphore.withPermit like Mutex.withLock', () => {
+    const permit = cleanupCall('withPermit', {
+      receiver: 'name',
+      qualifier: 'permits',
+      receiverType: 'Semaphore',
+    });
+
+    expect(findingsFor([permit], { imports: [SYNC] })).toHaveLength(1);
+    expect(findingsFor([permit], { imports: [importOf('my.app.withPermit')] })).toEqual([]);
+  });
+
   it('reports extensions only with the import that names them', () => {
     const lock = cleanupCall('withLock', {
       receiver: 'name',
@@ -134,7 +145,7 @@ describe('suspending cleanup in finally', () => {
 
     expect(findings[0].message).toBe(
       sourceRouted(
-        `This \`catch (CancellationException)\` block calls the suspending \`delay()\`, but the coroutine is already cancelled, so the call throws at once and the rest of the handler is skipped. Rethrow after non-suspending cleanup, or ${BOUNDED}`,
+        `This \`catch (CancellationException)\` block calls the suspending \`delay()\`; when the exception is this coroutine's own cancellation (not a child's or a timeout's), the call throws at once and the rest of the handler is skipped. Rethrow after non-suspending cleanup, or ${BOUNDED}`,
         SUSPEND_CLEANUP_RULE,
       ),
     );
@@ -199,6 +210,37 @@ describe('cleanup the rule leaves alone', () => {
       findingsFor(
         [cleanupCall('close', { receiver: 'name', qualifier: 'cache', receiverType: 'Cache' })],
         { classes: [klass('Cache')], functions: [fn('close', { owner: 'Cache' })] },
+      ),
+    ).toEqual([]);
+  });
+
+  it('allows a same-file suspend function whose whole body runs in NonCancellable', () => {
+    const shielded = suspendFun('release', { shielded: true });
+
+    expect(findingsFor([cleanupCall('release')], { functions: [shielded] })).toEqual([]);
+    expect(
+      findingsFor([cleanupCall('release', { receiver: 'this', qualifier: 'this' })], {
+        functions: [shielded],
+      }),
+    ).toEqual([]);
+    expect(
+      findingsFor([cleanupCall('release')], {
+        functions: [shielded, suspendFun('release', { shielded: false })],
+      }),
+    ).toEqual([]);
+    expect(
+      findingsFor([cleanupCall('release')], { functions: [suspendFun('release')] }),
+    ).toHaveLength(1);
+  });
+
+  it('allows a shielded suspend member of a class declared in the file', () => {
+    expect(
+      findingsFor(
+        [cleanupCall('close', { receiver: 'name', qualifier: 'cache', receiverType: 'Cache' })],
+        {
+          classes: [klass('Cache')],
+          functions: [suspendFun('close', { owner: 'Cache', shielded: true })],
+        },
       ),
     ).toEqual([]);
   });

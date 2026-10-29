@@ -100,6 +100,11 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
 
     expect(result.failed).toBe(true);
     expect(coroutineFindings(result.newEnforceable)).toEqual(EXPECTED_COROUTINE_FINDINGS);
+    expect(
+      result.newEnforceable.filter(
+        ({ rule, path: file }) => rule === 'CoroutineEscapesTest' && file.endsWith('CopierTest.kt'),
+      ),
+    ).toEqual([]);
   });
 
   it('lifts the coroutine rules for some paths with the exception their messages name', () => {
@@ -115,8 +120,10 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
       },
     });
 
-    expect(coroutineFindings(result.newEnforceable)).toEqual([
-      'ChildCoroutineOutlivesResource Copier.detached:reader:launch',
-    ]);
+    expect(coroutineFindings(result.newEnforceable)).toEqual(
+      EXPECTED_COROUTINE_FINDINGS.filter((entry) =>
+        entry.startsWith('ChildCoroutineOutlivesResource'),
+      ),
+    );
   });
 });

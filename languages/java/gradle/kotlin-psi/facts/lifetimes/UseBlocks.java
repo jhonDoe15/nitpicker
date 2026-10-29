@@ -8,9 +8,6 @@ import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
 
 final class UseBlocks {
-  private static final Set<String> JOINING =
-      Hosts.names("join", "await", "joinAll", "awaitAll", "cancelAndJoin");
-  private static final Set<String> LAUNCHES = Hosts.names("launch", "async");
   private static final Set<String> NESTED_SCOPES =
       Hosts.names("coroutineScope", "supervisorScope", "runBlocking", "withContext", "withTimeout",
           "withTimeoutOrNull");
@@ -22,13 +19,20 @@ final class UseBlocks {
           "map", "mapNotNull", "filter");
   private static final String SCOPE = "CoroutineScope";
 
-  private record Use(Set<String> names, String implicit, KtLambdaExpression body, Map<String, Object> function) {}
+  private record Use(
+      Set<String> names,
+      String implicit,
+      String opened,
+      KtLambdaExpression body,
+      Map<String, Object> function) {}
 
   private final IntUnaryOperator lines;
+  private final Set<String> launchNames;
   final List<Object> launches = new ArrayList<>();
 
-  UseBlocks(IntUnaryOperator lines) {
+  UseBlocks(KtFile file, IntUnaryOperator lines) {
     this.lines = lines;
+    this.launchNames = Hosts.aliases(file, "launch", "async");
   }
 
   void call(KtCallExpression call, Map<String, Object> function) {
@@ -38,10 +42,12 @@ final class UseBlocks {
     }
     KtLambdaExpression body = lambdas.get(0);
     Set<String> names = resourceNames(call, body);
-    if (names.isEmpty() || containsJoin(body.getBodyExpression())) {
+    if (names.isEmpty()) {
       return;
     }
-    scan(body.getBodyExpression(), new Use(names, implicitScope(call), body, function), false);
+    KtExpression receiver = Hosts.receiverOf(call);
+    String opened = receiver == null ? "this" : clip(receiver);
+    scan(body.getBodyExpression(), new Use(names, implicitScope(call), opened, body, function), false);
   }
 
   private static Set<String> resourceNames(KtCallExpression call, KtLambdaExpression body) {
@@ -59,19 +65,6 @@ final class UseBlocks {
     return names;
   }
 
-  private static boolean containsJoin(PsiElement element) {
-    if (element instanceof KtCallExpression
-        && JOINING.contains(nameOf(((KtCallExpression) element).getCalleeExpression()))) {
-      return true;
-    }
-    for (PsiElement child : element.getChildren()) {
-      if (containsJoin(child)) {
-        return true;
-      }
-    }
-    return false;
-  }
-
   private void scan(PsiElement element, Use use, boolean inner) {
     if (element == null || element instanceof KtLambdaExpression || Hosts.isBoundary(element)) {
       return;
@@ -85,7 +78,7 @@ final class UseBlocks {
     KtCallExpression call = (KtCallExpression) element;
     String name = nameOf(call.getCalleeExpression());
     List<KtLambdaExpression> lambdas = Hosts.lambdas(call);
-    if (LAUNCHES.contains(name) && !lambdas.isEmpty()) {
+    if (launchNames.contains(name) && !lambdas.isEmpty()) {
       candidate(call, lambdas.get(lambdas.size() - 1), use, inner);
       return;
     }
@@ -103,11 +96,11 @@ final class UseBlocks {
 
   private void candidate(KtCallExpression call, KtLambdaExpression task, Use use, boolean inner) {
     String resource = referenced(task, use.names());
-    if (resource == null) {
+    if (resource == null || !Joins.outlives(call, use.body())) {
       return;
     }
     Map<String, Object> fact = m("line", lines.applyAsInt(call.getTextOffset()),
-        "launch", nameOf(call.getCalleeExpression()), "resource", resource);
+        "launch", nameOf(call.getCalleeExpression()), "resource", resource, "opened", use.opened());
     fact.putAll(use.function());
     KtExpression receiver = Hosts.receiverOf(call);
     if (receiver == null || receiver instanceof KtThisExpression) {

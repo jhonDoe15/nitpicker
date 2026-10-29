@@ -373,12 +373,22 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       'finally cleanup runCatching',
       'finally cleanup yield',
       'catch cancelled delay',
+      'finally releases shieldedRelease',
+    ]);
+    expect(lifetimes.functions.filter(({ shielded }) => shielded).map(({ name }) => name)).toEqual([
+      'shielded',
+      'shieldedRelease',
     ]);
     expect(
-      lifetimes.useLaunches.map(({ function: name, resource, scope, scopeType, implicit }) =>
-        `${name} ${resource} ${scope ?? implicit} ${scopeType ?? ''}`.trim(),
+      lifetimes.useLaunches.map(
+        ({ function: name, resource, opened, scope, scopeType, implicit }) =>
+          `${name} ${resource} ${opened} ${scope ?? implicit} ${scopeType ?? ''}`.trim(),
       ),
-    ).toEqual(['uses reader other CoroutineScope', 'uses it class']);
+    ).toEqual([
+      'uses reader resource other CoroutineScope',
+      'uses it resource class',
+      'uses reader resource other CoroutineScope',
+    ]);
   });
 
   it('names a predicate in a property initializer after the property and keeps backticked constants', () => {

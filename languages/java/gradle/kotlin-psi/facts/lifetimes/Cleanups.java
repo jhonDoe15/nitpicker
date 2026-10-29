@@ -6,34 +6,72 @@ import java.util.*;
 import java.util.function.IntUnaryOperator;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
-import org.jetbrains.kotlin.resolve.ImportPath;
 
 final class Cleanups {
   private static final String CANCELLATION = "CancellationException";
+  private static final String SHIELD = "NonCancellable";
   private static final Set<String> INLINE =
       Hosts.names("let", "run", "also", "apply", "with", "use", "runCatching", "repeat", "forEach",
           "forEachIndexed", "map", "mapNotNull", "filter", "takeIf", "takeUnless", "synchronized");
 
-  private final Shields shields;
   private final IntUnaryOperator lines;
-  private final Set<String> cancellations = Hosts.names(CANCELLATION);
+  private final Set<String> cancellations;
+  private final Set<String> shieldNames;
   private final Set<Integer> seen = new HashSet<>();
   final List<Object> calls = new ArrayList<>();
 
-  Cleanups(KtFile file, Shields shields, IntUnaryOperator lines) {
-    this.shields = shields;
+  Cleanups(KtFile file, IntUnaryOperator lines) {
     this.lines = lines;
-    for (KtImportDirective directive : file.getImportDirectives()) {
-      ImportPath path = directive.getImportPath();
-      if (path != null && !path.isAllUnder() && path.getAlias() != null
-          && path.getFqName().shortName().asString().equals(CANCELLATION)) {
-        cancellations.add(path.getAlias().asString());
+    this.cancellations = Hosts.aliases(file, CANCELLATION);
+    this.shieldNames = Hosts.aliases(file, SHIELD);
+  }
+
+  boolean shieldsWholeBody(KtNamedFunction function) {
+    KtExpression body = function.getBodyExpression();
+    if (body instanceof KtBlockExpression) {
+      List<KtExpression> statements = ((KtBlockExpression) body).getStatements();
+      body = statements.size() == 1 ? statements.get(0) : null;
+    }
+    if (body instanceof KtReturnExpression) {
+      body = ((KtReturnExpression) body).getReturnedExpression();
+    }
+    body = Hosts.unwrap(body);
+    return body instanceof KtCallExpression
+        && "withContext".equals(nameOf(((KtCallExpression) body).getCalleeExpression()))
+        && shields((KtCallExpression) body);
+  }
+
+  private boolean shields(KtCallExpression call) {
+    if (Hosts.lambdas(call).isEmpty()) {
+      return false;
+    }
+    for (ValueArgument argument : call.getValueArguments()) {
+      KtExpression expression = argument.getArgumentExpression();
+      if (expression != null && !(expression instanceof KtLambdaExpression)
+          && Hosts.mentions(expression, shieldNames)) {
+        return true;
       }
     }
+    return false;
+  }
+
+  private boolean insideShield(PsiElement element) {
+    for (PsiElement parent = element.getParent(); parent != null; parent = parent.getParent()) {
+      if (Hosts.isBoundary(parent)) {
+        return false;
+      }
+      if (parent instanceof KtLambdaExpression) {
+        KtCallExpression host = Hosts.of((KtLambdaExpression) parent);
+        if (host != null && shields(host)) {
+          return true;
+        }
+      }
+    }
+    return false;
   }
 
   void tryExpression(KtTryExpression expression, Map<String, Object> function) {
-    if (shields.inside(expression)) {
+    if (insideShield(expression)) {
       return;
     }
     KtFinallySection section = expression.getFinallyBlock();
@@ -84,7 +122,7 @@ final class Cleanups {
   }
 
   private void call(KtCallExpression call, String section, Map<String, Object> function) {
-    if (shields.shields(call)) {
+    if (shields(call)) {
       return;
     }
     String name = nameOf(call.getCalleeExpression());

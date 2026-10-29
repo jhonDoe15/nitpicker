@@ -69,7 +69,8 @@ public final class FactsCollector {
 
   private Frame enter(PsiElement element, Frame frame) {
     if (element instanceof KtNamedFunction) {
-      Frame inner = declarations.declareFunction((KtNamedFunction) element, frame);
+      Frame inner = declarations.declareFunction(
+          (KtNamedFunction) element, frame, lifetimes.shieldsWholeBody((KtNamedFunction) element));
       bodies.function(inner, (KtNamedFunction) element);
       return inner;
     }
