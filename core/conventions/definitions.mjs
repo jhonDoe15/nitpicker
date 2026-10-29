@@ -9,6 +9,7 @@ import {
   JAVASCRIPT_CONVENTIONS,
   TYPESCRIPT_CONVENTIONS,
 } from '../../languages/typescript/conventions/typescript-conventions.mjs';
+import { scriptProjectStyle } from '../../languages/typescript/preset/project-configs/ignored-notices.mjs';
 
 const BY_PRESET = new Map([
   ['typescript', TYPESCRIPT_CONVENTIONS],
@@ -32,8 +33,8 @@ function jscpdStyle({ config, projectRoot }) {
 }
 
 const STYLES_BY_PRESET = new Map([
-  ['typescript', [jscpdStyle]],
-  ['javascript', [jscpdStyle]],
+  ['typescript', [scriptProjectStyle, jscpdStyle]],
+  ['javascript', [scriptProjectStyle, jscpdStyle]],
   ['java', [javaProjectStyle, jscpdStyle]],
   ['kotlin', [javaProjectStyle, kotlinStyle, jscpdStyle]],
   ['python', [pythonStyle, jscpdStyle]],

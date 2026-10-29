@@ -26,6 +26,7 @@ import { detectLibraries } from './libraries/project-libraries.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { hasPrettierConventions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
+import { headToolConfigFacts, withHeadToolConfigs } from './project-configs/head-tool-configs.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -75,10 +76,16 @@ export function resolveHeadPolicy(config = {}, projectRoot) {
 function withProjectFacts(policy, config, projectRoot) {
   const prettier = policy.tools?.prettier;
   const jscpd = resolveJscpdPolicy(policy.tools?.jscpd, projectRoot);
-  const tools = { ...policy.tools, ...(jscpd === undefined ? {} : { jscpd }) };
+  const tools =
+    policy.tools === undefined
+      ? undefined
+      : {
+          ...withHeadToolConfigs(policy.tools, projectRoot),
+          ...(jscpd === undefined ? {} : { jscpd }),
+        };
   return {
     ...policy,
-    ...(jscpd === undefined ? {} : { tools }),
+    ...(tools === undefined ? {} : { tools }),
     ...(SCOPED_PRESETS.includes(config.preset)
       ? {
           ...withDetectedScopes(policy, projectRoot),
@@ -180,7 +187,11 @@ function headTestPlacement(policy, headPolicy) {
     : {};
 }
 
-export function withHeadCheckoutFacts(policy, headPolicy = {}) {
+export function withHeadCheckoutFacts(basePolicy, headPolicy = {}) {
+  const policy =
+    basePolicy.tools === undefined
+      ? basePolicy
+      : { ...basePolicy, tools: headToolConfigFacts(basePolicy.tools, headPolicy.tools) };
   return {
     ...policy,
     ...headTestPlacement(policy, headPolicy),

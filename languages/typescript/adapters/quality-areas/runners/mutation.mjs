@@ -29,6 +29,10 @@ import {
 } from '../../test-runners/mutation-runner-config.mjs';
 import { runnableTestFiles } from '../../test-runners/test-run.mjs';
 import { strykerPlugins } from '../../mutation-checker/plugin.mjs';
+import {
+  layeredStrykerConfig,
+  withoutProjectIgnoredMutants,
+} from '../../../preset/project-configs/stryker-project-config.mjs';
 
 const UNSUPPORTED_RUNNER_RULE = 'mutation-unsupported-runner';
 
@@ -78,7 +82,7 @@ async function mutationReport(options, targets) {
     }
     return {
       report: withMutationSourceHashes(
-        readMutationReport(options.projectRoot),
+        withoutProjectIgnoredMutants(readMutationReport(options.projectRoot)),
         options.projectRoot,
       ),
     };
@@ -145,7 +149,7 @@ function writeStrykerConfig({
   testRunner,
 }) {
   const config = strykerRunConfig(
-    runnerConfig({ options, sourceConfig, createdFiles, testRunner }),
+    layeredStrykerConfig(runnerConfig({ options, sourceConfig, createdFiles, testRunner })),
     { snapshot: options.snapshot, targets },
   );
   writeTemporaryFile(

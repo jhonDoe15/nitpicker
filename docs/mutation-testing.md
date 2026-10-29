@@ -16,6 +16,9 @@ disable` comment would hide is reported as an enforceable `mutant-ignored` findi
 cannot be used to switch mutation off, not even for a path with a `nitpicker/no-comments` exception.
 Code that must stay out of mutation testing gets a reviewed `exceptions` entry for `mutant-ignored`
 with its paths in `nitpicker.config.json` instead; that entry is the only way to lift the finding.
+A project that opts into its own Stryker config with `tools.stryker.precedence` can also leave whole
+mutators out with `mutator.excludedMutations`; an edit of that config is a policy change too (see
+[Mutation testing config](usage.md#mutation-testing-config-typescript-and-javascript-presets)).
 `nitpicker --all` mutates that whole area.
 
 ## Scope in a comparison

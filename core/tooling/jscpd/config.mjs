@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
-import { isPlainObject } from '../../../shared/config.mjs';
+import { isPlainObject, isStringList } from '../../../shared/config.mjs';
 import {
   JSCPD_PROJECT_FILE,
   missingProjectConfig,
@@ -13,9 +13,6 @@ export const JSCPD_SIZE = /^(\d+(?:\.\d+)?)\s*(b|kb?|mb?|gb?)?$/iu;
 const AT_LEAST_ONE = 'a whole number of 1 or more';
 function isPositive(value) {
   return Number.isInteger(value) && value >= 1;
-}
-function isStringList(value) {
-  return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
 }
 function isRegex(entry) {
   try {
