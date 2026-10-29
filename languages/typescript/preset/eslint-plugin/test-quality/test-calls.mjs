@@ -70,20 +70,27 @@ function extendedFrom(definition) {
   return init === undefined || init === null ? undefined : rootIdentifierOf(init);
 }
 
+function bindingOf(context, identifier, depth) {
+  return { identifier, depth, variable: findVariable(context, identifier, identifier.name) };
+}
+
+function extensionOf(context, { variable, depth }) {
+  const definition = variable?.defs.length === 1 ? variable.defs[0] : undefined;
+  const next =
+    depth < MAX_EXTENSION_DEPTH && definition !== undefined && !isTestSource(definition)
+      ? extendedFrom(definition)
+      : undefined;
+  return next === undefined ? undefined : bindingOf(context, next, depth + 1);
+}
+
 function isTestBinding(context, identifier) {
-  let current = identifier;
-  for (let depth = 0; depth <= MAX_EXTENSION_DEPTH && current !== undefined; depth += 1) {
-    const variable = findVariable(context, current, current.name);
-    if (variable === undefined || variable.defs.length === 0) {
-      return CASE_NAMES.has(current.name);
-    }
-    const [definition] = variable.defs;
-    if (isTestSource(definition)) {
-      return true;
-    }
-    current = variable.defs.length === 1 ? extendedFrom(definition) : undefined;
+  const { identifier: last, variable } = chainOf(bindingOf(context, identifier, 0), (binding) =>
+    extensionOf(context, binding),
+  ).at(-1);
+  if (variable === undefined || variable.defs.length === 0) {
+    return CASE_NAMES.has(last.name);
   }
-  return false;
+  return isTestSource(variable.defs[0]);
 }
 
 export function isTestFunctionChain(node) {
