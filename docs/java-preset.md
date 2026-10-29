@@ -553,6 +553,23 @@ filter, `onlyAnalyze`, `visitors`, `omitVisitors` and a baseline file; the run n
 out. Everything SpotBugs reports stays enforceable, the lower-confidence findings a `low` threshold
 adds included.
 
+**The project's Error Prone flags.** A project sets Error Prone up in its build too: the
+`net.ltgt.errorprone` Gradle plugin (`options.errorprone { disable(...); option(...) }`, its
+`nullaway { }` extension, `errorproneArgs`) or the `-Xplugin:ErrorProne ...` argument of
+`maven-compiler-plugin`. With `tools.errorprone.precedence` listing `"project"`, nitpicker reads those
+flags from the head checkout and appends them to the plugin argument its runner builds from
+`checks.json`, after nitpicker's own flags, on Gradle and Maven alike and for the Kotlin preset's Java
+sources (Error Prone takes the last flag for a check or an option, which the e2e test checks). The
+flags are normalized first: a check the project turns on runs as a warning like every other check,
+under every ordering when nitpicker leaves the check at Error Prone's default, and only with the
+project first when `checks.json` turns it off; a check nitpicker already runs is left alone. A
+project never turns a check off, sets NullAway's severity (nitpicker runs it on main code and turns it
+off in tests), replaces the packages nitpicker measures, or narrows NullAway; NullAway's annotation
+lists are joined with nitpicker's, and `excludedPaths` (several declarations become one alternation)
+and `disableWarningsInGeneratedCode` apply like the SpotBugs exclude filter. The run names every flag
+it left out. Findings of the checks the project adds go through the same messages, exemptions and
+`exceptions` as nitpicker's.
+
 **PMD rules tuned by nitpicker.** These rules of the rule set allow a narrower form than PMD's
 default, and their messages name it:
 
@@ -1767,7 +1784,9 @@ Checkstyle tasks after the build script runs, so a `checkstyle { configFile = ..
 project's build does not replace it either. The same holds for the SpotBugs settings a build
 declares (an exclude filter, effort, threshold): nitpicker runs its own SpotBugs task and SpotBugs
 jar, so a `spotbugs { }` block or `spotbugs-maven-plugin` configuration changes nothing until
-`tools.spotbugs` opts in, and the run says it ignored them.
+`tools.spotbugs` opts in, and the run says it ignored them. Error Prone flags in
+`options.errorprone`, a `nullaway { }` block or `maven-compiler-plugin`'s `compilerArgs` are ignored
+the same way until `tools.errorprone` opts in: nitpicker's runner compiles with its own flags only.
 
 **Test sources are linted too.** PMD, Checkstyle (`checkstyleTest`, reported in
 `checkstyle-test.xml`), Error Prone, google-java-format and the inline suppression scan cover

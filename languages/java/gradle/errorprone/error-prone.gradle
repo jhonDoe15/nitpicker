@@ -79,6 +79,11 @@ def runnerJava = { Collection<JavaCompile> compiles ->
     }
 }
 
+def projectFlags = {
+    def file = gradle.startParameter.projectProperties['nitpicker.errorprone.settings']
+    file == null ? [] : new groovy.json.JsonSlurper().parse(new File(file.toString()), 'UTF-8')
+}
+
 def classDirectories = { Collection<File> directories ->
     "--own-classes=${directories*.absolutePath.join(File.pathSeparator)}".toString()
 }
@@ -98,7 +103,8 @@ def writeArguments = { String name, JavaCompile compile, Collection<File> errorP
                  '-processorpath', (errorProne + processors).collect { it.absolutePath }.join(File.pathSeparator),
                  '-XDcompilePolicy=simple', '-XDaddTypeAnnotationsToSymbol=true', '--should-stop=ifError=FLOW',
                  '-Xmaxwarns', '1000000', '-Xmaxerrs', '1000000', classDirectories(own)] +
-        projectOptions(compile) + (test ? ['--test-only'] : []) + ['--sources'] + sources*.absolutePath
+        projectOptions(compile) + projectFlags().collect { "--errorprone-flag=${it}".toString() } +
+        (test ? ['--test-only'] : []) + ['--sources'] + sources*.absolutePath
     def file = workDir.get().file("${name}.args").asFile
     file.setText(lines.collect { it + '\n' }.join(''), 'UTF-8')
     sources.isEmpty() ? null : file
