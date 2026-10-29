@@ -54,6 +54,8 @@ about your code is explained in [troubleshooting](https://github.com/jhonDoe15/n
   manager: pnpm, Yarn or Bun, not only npm (#282).
 - `"history": { "coChange": true }` turns on a report-only `change-history/co-change` analyzer in
   every preset: it names production modules that keep changing together in the Git history (#492).
+- `report-baseline.sarif` adds the held findings as `unchanged` next to `report.sarif`, which keeps
+  only the new findings for code scanning, and `--all` writes `report.sarif` too (#517).
 - `nitpicker changelog [<version>]` prints what changed in a version, from this changelog, which now
   ships in the package.
 - `repository-hygiene` fails a change that commits `.env` files, private keys, archives, binaries,
@@ -85,9 +87,9 @@ Stricter rules, which can fail code that passed before:
   (Gradle `sourceSets` or `exclude`, Maven source directories and surefire excludes, pytest
   `testpaths` and `--ignore`, `do_not_mutate`, opted-in tool configs) is a policy loosening that a
   person must accept, as in TypeScript (#385).
-- Kotlin: the Spring bean, configuration, proxy, transaction, web and security rules of the Java
-  preset run on Kotlin sources too, with the same rule ids, so one exception covers both languages
-  (#398).
+- Kotlin: the Spring bean, configuration, proxy, transaction, web, security, JPA and Spring Data
+  rules of the Java preset run on Kotlin sources too, with the same rule ids, so one exception covers
+  both languages (#398, #513).
 - Java and Kotlin Spring projects: a controller that holds another controller, a repository that
   depends on a service, and a singleton bean that takes a request or session scoped bean without a
   scoped proxy now fail (#486).
@@ -122,6 +124,8 @@ Stricter rules, which can fail code that passed before:
 - Import-only clones are no longer reported, and an `exclude` on either file of a clone lifts it
   (#231).
 - A branch that changes `layout` no longer reports existing test-helper findings as new (#386).
+- SARIF locations are relative to the repository root, so code scanning resolves them in a project
+  in a subfolder, and the files hold no absolute path of the machine that ran them (#517).
 
 ### Upgrade notes
 
