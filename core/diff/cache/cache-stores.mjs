@@ -117,7 +117,8 @@ export function resolveCacheStore({ projectRoot, environment = process.env, writ
     local === undefined && remote === undefined
       ? undefined
       : createLayeredStore({ local, remote, writeRemote });
-  return { store, remote, warnings };
+  const location = directory ?? (remote === undefined ? undefined : 'NITPICKER_CACHE_URL');
+  return { store, remote, warnings, location };
 }
 
 function resolveRemoteStore(environment, warnings) {

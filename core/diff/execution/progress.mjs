@@ -20,8 +20,9 @@ export function startLine({ label, total }) {
   return `nitpicker: ${label}: running ${countAnalyzers(total)}\n`;
 }
 
-export function cachedLine({ label, count }) {
-  return `nitpicker: ${label} ${countAnalyzers(count)} cached\n`;
+export function cachedLine({ label, count, location }) {
+  const from = location === undefined ? '' : ` from ${location}`;
+  return `nitpicker: ${label} ${countAnalyzers(count)} cached${from} (--no-cache analyzes it again)\n`;
 }
 
 const QUIET_BELOW_MS = 10_000;
