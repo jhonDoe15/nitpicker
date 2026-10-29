@@ -57,6 +57,7 @@ for `--all`):
   location and message.
 - `resolved-findings.json` and `changed-metrics.json`: informational.
 - `tool-errors.json`: the tool errors, whatever the exit code.
+- `notes.json`: notes such as a base whose tests fail, which the run reports but does not fail on.
 - `held-findings.json`: findings that were already there and are no worse than before. Allowed, but
   any increase fails.
 - `summary.json`, `report.junit.xml` and `report.sarif`: totals and CI output. `report.sarif` has
