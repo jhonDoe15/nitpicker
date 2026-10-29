@@ -182,6 +182,9 @@ describe('standardStreams', () => {
     ['a qualified System.out', 'java.lang.System.out.append(text)'],
     ['a stream passed on', 'show(System.out)'],
     ['a method reference', 'items.forEach(System.out::println)'],
+    ['a string template', 'val text = "${System.out}"'],
+    ['a safe call', 'System?.out?.append(text)'],
+    ['a backticked name', '`System`.out.append(text)'],
     ['an import of the stream', 'import java.lang.System.out'],
     ['an import renamed', 'import java.lang.System.err as stderr'],
   ])('flags %s outside the entry point', (_name, line) => {
@@ -197,6 +200,14 @@ describe('standardStreams', () => {
     ['a string', 'val a = "System.out"\n'],
     ['the entry point', 'fun main() {\n    show(System.out, System.err)\n}\n'],
     ['the entry point with a reference', 'fun main() = items.forEach(System.out::println)\n'],
+    [
+      'an object main',
+      'object Cli {\n    @JvmStatic\n    fun main(args: Array<String>) = show(System.out)\n}\n',
+    ],
+    [
+      'a companion main',
+      'class Cli {\n    companion object {\n        @JvmStatic fun main(args: Array<String>) = show(System.err)\n    }\n}\n',
+    ],
     ['a Spring application', '@SpringBootApplication\nclass App {\n    val out = System.out\n}\n'],
   ])('passes %s', (_name, source) => {
     expect(found(standardStreams, source)).toEqual([]);

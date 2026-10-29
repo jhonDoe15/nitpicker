@@ -203,6 +203,17 @@ describe('withFrameworkAllowances', () => {
     ]);
   });
 
+  it('lets a static main in an object read the environment', () => {
+    const project = projectWith({
+      'src/main/kotlin/Cli.kt':
+        'package demo\n\nobject Cli {\n    @JvmStatic\n    fun main(args: Array<String>) = run(System.getenv("HOME"))\n}\n',
+    });
+
+    expect(
+      withFrameworkAllowances([environment('src/main/kotlin/Cli.kt')], { projectRoot: project }),
+    ).toEqual([]);
+  });
+
   it('lets a Spring project spread the arguments into runApplication only', () => {
     const project = root();
     const findings = [spread('src/main/kotlin/App.kt', 4), spread('src/main/kotlin/App.kt', 5)];
