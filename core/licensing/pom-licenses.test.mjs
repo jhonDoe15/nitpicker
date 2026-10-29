@@ -123,13 +123,14 @@ describe('the tool jars to read', () => {
     expect(toolsWithoutCoordinates(pinned)).toEqual([]);
   });
 
-  it('adds the formatters, ArchUnit and the Kotlin tools, which only the Gradle init script names', () => {
+  it('adds the formatters, ArchUnit, ASM and the Kotlin tools, which only the Gradle init script names', () => {
     const names = extraTools(pinned).map(({ name }) => name);
 
     expect(names).toEqual([
       'format',
       'format-palantir',
       'archunit',
+      'asm-analysis',
       'kotlin-compiler-embeddable',
       'detekt-cli',
       'kotlin-stdlib',

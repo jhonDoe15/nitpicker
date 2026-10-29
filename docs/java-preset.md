@@ -2120,8 +2120,8 @@ Spring projects (same detection as the Spring ruleset: `spring-context` or `spri
 compile classpath, `spring: true` in the manifest) also get nitpicker's own ArchUnit rules, and so
 does a module with `jmolecules-ddd` on its main compile classpath (for the aggregate rules below). They are
 separate from the project's own `*ArchTest` classes of slice 4 and need nothing from the project:
-the init script's `nitpickerSpringArch` task resolves ArchUnit 1.5.1 (Apache-2.0, pinned in the
-`pinned` map) into its own configuration, compiles the rule classes in
+the init script's `nitpickerSpringArch` task resolves ArchUnit 1.5.1 (Apache-2.0) and ASM's
+`asm-analysis` 9.9 (BSD-3-Clause), both pinned in the `pinned` map, into its own configuration, compiles the rule classes in
 [`languages/java/gradle/archunit/`](../languages/java/gradle/archunit/) with the JDK that runs Gradle
 and runs them once, in one separate JVM, over the compiled main and test classes. That is one extra
 JVM per side (base and head), a few seconds. The compiled rule classes are cached in the Gradle

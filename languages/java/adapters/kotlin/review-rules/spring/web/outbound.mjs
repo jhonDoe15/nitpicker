@@ -37,8 +37,8 @@ function annotations(declared) {
   return declared?.annotationEntries ?? declared?.annotations ?? [];
 }
 
-function typed(view, scope, text, fqns) {
-  const root = ROOT.exec(text ?? '')?.[0];
+function typed(view, { scope, receiver }, fqns) {
+  const root = ROOT.exec(receiver ?? '')?.[0];
   if (root === undefined) {
     return false;
   }
@@ -52,23 +52,18 @@ function inUriLambda(view, invocation) {
 }
 
 function urlArgument(view, invocation) {
-  const { name, receiver, scope, arguments: [first] = [] } = invocation;
+  const { name, receiver, arguments: [first] = [] } = invocation;
   if (first === undefined || first.lambda === true) {
     return undefined;
   }
   const sink =
-    (TEMPLATE_CALLS.has(name) && typed(view, scope, receiver, REST_OPERATIONS)) ||
+    (TEMPLATE_CALLS.has(name) && typed(view, invocation, REST_OPERATIONS)) ||
     (name === 'uri' &&
-      typed(view, scope, receiver, new Set([...SPRING_CLIENT_FACTORIES, ...HTTP_REQUEST]))) ||
+      typed(view, invocation, new Set([...SPRING_CLIENT_FACTORIES, ...HTTP_REQUEST]))) ||
     (name === 'create' && view.is(receiver, SPRING_CLIENT_FACTORIES)) ||
     (name === 'newBuilder' && view.is(receiver, HTTP_REQUEST)) ||
     (BASE_URL_CALLS.has(name) &&
-      typed(
-        view,
-        scope,
-        receiver,
-        new Set([...SPRING_CLIENT_FACTORIES, ...SPRING_CLIENT_BUILDERS]),
-      )) ||
+      typed(view, invocation, new Set([...SPRING_CLIENT_FACTORIES, ...SPRING_CLIENT_BUILDERS]))) ||
     (name === 'host' && inUriLambda(view, invocation));
   return sink ? first.text : undefined;
 }
