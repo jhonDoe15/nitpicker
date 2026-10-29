@@ -1,32 +1,37 @@
 import { realpathSync } from 'node:fs';
 import { resolveProjectRoot } from '../../tooling/tool-resolution.mjs';
-import { planMonorepo } from './plan.mjs';
+import { isGitWorkTree, memberProjectOf } from '../plan/member-root.mjs';
+import { planMonorepo } from '../plan/inspect.mjs';
+import { oneProjectCommandMessage } from './messages.mjs';
+
+function rootOf(cli) {
+  return cli.currentProjectRoot === undefined
+    ? resolveProjectRoot(cli.workingDirectory)
+    : realpathSync(cli.currentProjectRoot);
+}
 
 function monorepoAt(cli) {
   try {
-    const root =
-      cli.currentProjectRoot === undefined
-        ? resolveProjectRoot()
-        : realpathSync(cli.currentProjectRoot);
-    return { plan: planMonorepo({ root }) };
-  } catch {
-    return { plan: undefined };
+    const root = rootOf(cli);
+    return { plan: isGitWorkTree(root) ? planMonorepo({ root }) : undefined };
+  } catch (error) {
+    return { plan: undefined, error };
   }
 }
 
-export function monorepoRefusal(cli, command) {
+export function oneProjectScope(cli, command) {
   if (cli.arguments_.includes('--help')) {
-    return undefined;
+    return { currentProjectRoot: cli.currentProjectRoot };
   }
   const { plan } = monorepoAt(cli);
   if (plan === undefined) {
-    return undefined;
+    return { currentProjectRoot: cli.currentProjectRoot };
   }
-  const folders = plan.projects.map(({ path }) => path).join(', ');
-  cli.stderr.write(
-    `nitpicker: "${command}" works on one project, ` +
-      `and ${plan.root} holds ${String(plan.projects.length)} (${folders}). ` +
-      `Run it inside each project instead: cd <project> && nitpicker ${command} ...\n`,
-  );
-  return 2;
+  const member =
+    cli.currentProjectRoot === undefined ? memberProjectOf(plan, cli.workingDirectory) : undefined;
+  if (member !== undefined) {
+    return { currentProjectRoot: member.absolute };
+  }
+  cli.stderr.write(oneProjectCommandMessage(plan, command));
+  return { exitCode: 2 };
 }

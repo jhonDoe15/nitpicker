@@ -57,6 +57,18 @@ describe('JavaScript workspace dependencies', () => {
     ).toEqual({ 'libs/core': [], app: ['libs/core'] });
   });
 
+  it('follows an npm alias to the workspace package it names', () => {
+    expect(
+      edges(
+        {
+          'ui/package.json': manifest('@acme/ui'),
+          'web/package.json': manifest('web', { ui: 'npm:@acme/ui@^1.0.0', left: 'npm:leftpad@1' }),
+        },
+        ['ui', 'web'],
+      ),
+    ).toEqual({ ui: [], web: ['ui'] });
+  });
+
   it('copes with a manifest that cannot be read or has no name', () => {
     expect(
       edges({ 'a/package.json': '{ broken', 'b/package.json': '[]', 'c/package.json': '{}' }, [

@@ -9,6 +9,12 @@ const DEPENDENCY_FIELDS = [
   'optionalDependencies',
 ];
 const LOCAL_SPECIFIER = /^(?:file|link|portal):(?<target>.+)$/u;
+const ALIAS_SPECIFIER = /^npm:(?<name>@?[^@]+)/u;
+
+function neededNames([name, specifier]) {
+  const alias = ALIAS_SPECIFIER.exec(String(specifier))?.groups.name;
+  return alias === undefined ? [`npm:${name}`] : [`npm:${name}`, `npm:${alias}`];
+}
 
 function parsedManifest(file) {
   try {
@@ -37,7 +43,7 @@ export function javascriptUnit(directory) {
   const dependencies = declaredDependencies(manifest);
   return {
     names: typeof manifest.name === 'string' ? [`npm:${manifest.name}`] : [],
-    needs: dependencies.map(([name]) => `npm:${name}`),
+    needs: dependencies.flatMap(neededNames),
     folders: dependencies.flatMap(([, specifier]) => {
       const target = LOCAL_SPECIFIER.exec(String(specifier))?.groups.target;
       return target === undefined ? [] : [target];

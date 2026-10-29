@@ -66,15 +66,21 @@ export function useMonorepoFixtures() {
   function run(
     root,
     extra = [],
-    { environment = {}, currentProjectRoot = root, command, withoutBase = false } = {},
+    {
+      environment = {},
+      workingDirectory,
+      command,
+      withoutBase = false,
+      analyzers = [fakeAnalyzer()],
+    } = {},
   ) {
     const output = captureOutput();
     const reports = path.join(git.temporaryRoot('nitpicker-monorepo-out-'), 'reports');
     const exitCode = runCli({
       arguments_: argumentsOf({ extra, reports, command, withoutBase }),
       environment: { NO_COLOR: '1', ...environment },
-      currentProjectRoot,
-      analyzers: [fakeAnalyzer()],
+      ...(workingDirectory === undefined ? { currentProjectRoot: root } : { workingDirectory }),
+      analyzers,
       stdout: output.stdout,
       stderr: output.stderr,
       progress: { write: () => undefined },

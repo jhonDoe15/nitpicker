@@ -134,6 +134,7 @@ describe.skipIf(!pythonE2eEnabled)(
         passed: 1,
         failed: 1,
         errored: 0,
+        incomplete: 0,
         skipped: 1,
       });
       expect(summaryOf(result).newEnforceableFindings).toBeGreaterThan(0);

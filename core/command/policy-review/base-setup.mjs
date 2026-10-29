@@ -29,7 +29,8 @@ export function baseSetupResolver(cli, headConfig, headPolicy) {
     headConfig,
     headPolicy,
     injectedAnalyzers: cli.injectedAnalyzers,
-    overlay: cli.configOverlay,
+    overlay: cli.baseConfigOverlay,
+    repositoryLoosenings: cli.repositoryLoosenings,
     warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
 }
@@ -39,6 +40,7 @@ export function createBaseSetupResolver({
   headPolicy = {},
   injectedAnalyzers,
   overlay,
+  repositoryLoosenings = [],
   warn = () => undefined,
 }) {
   return ({ baseProjectRoot, headSnapshotRoot, moves, analyzers }) => {
@@ -62,7 +64,7 @@ export function createBaseSetupResolver({
             injectedAnalyzers,
             analyzers,
           })),
-      ...policyChangeFields(compared, headConfig, scope),
+      ...policyChangeFields(compared, headConfig, scope, repositoryLoosenings),
     };
   };
 }

@@ -66,8 +66,9 @@ point that covers a new code file; see the policy changes in [docs/usage.md](doc
 self-gate fails with a `nitpicker-config/policy-loosened` finding that names a 12-character digest.
 A repository admin who agrees with the loosening copies the digest from that CI run's log (a local
 run can give another digest, since CI checks the pull request merged into `main`), sets the
-repository variable `NITPICKER_ACCEPT_POLICY_CHANGE` to exactly that value (Settings > Secrets and
-variables > Actions > Variables), and runs the self-gate again by removing and re-adding the
+repository variable `NITPICKER_ACCEPT_POLICY_CHANGE` to exactly that value (several digests, as a
+monorepo run prints them, are joined by commas with no spaces: `aaaaaaaaaaaa,bbbbbbbbbbbb`)
+(Settings > Secrets and variables > Actions > Variables), and runs the self-gate again by removing and re-adding the
 `run-ci` label. The digest covers those loosenings and the content of the files they hide, so a
 different loosening needs a new digest. Delete the variable once the pull request is merged. The
 self-gate runs the pull request's own code and workflow, so changes to `.github/workflows/`,

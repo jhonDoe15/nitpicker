@@ -2,11 +2,19 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { parse } from 'smol-toml';
 import { isPlainObject } from '../../../shared/config.mjs';
-import { isSkippedLocation, outermost } from './repository-files.mjs';
 import { workspaceMembers } from './javascript-workspaces.mjs';
 
 const UV_ORIGIN = 'uv workspace';
-const PYPROJECT_ORIGIN = 'pyproject.toml';
+export const PYTHON_MARKERS = [
+  'pyproject.toml',
+  'setup.py',
+  'setup.cfg',
+  'Pipfile',
+  'requirements.txt',
+];
+export const PYTHON_PROJECT_MARKERS = PYTHON_MARKERS.filter(
+  (marker) => marker !== 'requirements.txt',
+);
 
 function parsedPyproject(file) {
   try {
@@ -32,24 +40,24 @@ function uvPatterns(workspace) {
   ];
 }
 
-function nestedProjects(directories) {
-  return outermost(
-    directories.filter((directory) => directory !== '.' && !isSkippedLocation(directory)),
-  ).map((directory) => ({ path: directory, origin: PYPROJECT_ORIGIN }));
+function isPythonPackage(pyproject) {
+  return isPlainObject(pyproject?.project) || isPlainObject(pyproject?.tool?.poetry);
 }
 
-export function pythonProjects(root, pyprojectDirectories) {
-  const rootProject = readPyproject(root);
-  const workspace = rootProject?.tool?.uv?.workspace;
-  const own = isPlainObject(rootProject?.project)
-    ? [{ path: '.', origin: isPlainObject(workspace) ? UV_ORIGIN : PYPROJECT_ORIGIN }]
-    : [];
-  if (isPlainObject(workspace)) {
-    const members = workspaceMembers(uvPatterns(workspace), pyprojectDirectories);
-    return {
-      declared: true,
-      members: [...own, ...members.map((directory) => ({ path: directory, origin: UV_ORIGIN }))],
-    };
+function uvWorkspaceOf(directory) {
+  const workspace = readPyproject(directory)?.tool?.uv?.workspace;
+  return isPlainObject(workspace) ? workspace : undefined;
+}
+
+export function pythonWorkspace(root, pythonDirectories) {
+  const workspace = uvWorkspaceOf(root);
+  if (workspace === undefined) {
+    return { declared: false, members: [] };
   }
-  return { declared: false, members: [...own, ...nestedProjects(pyprojectDirectories)] };
+  const own = isPythonPackage(readPyproject(root)) ? [{ path: '.', origin: UV_ORIGIN }] : [];
+  const members = workspaceMembers(uvPatterns(workspace), pythonDirectories);
+  return {
+    declared: true,
+    members: [...own, ...members.map((directory) => ({ path: directory, origin: UV_ORIGIN }))],
+  };
 }

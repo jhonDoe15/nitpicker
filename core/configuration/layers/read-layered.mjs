@@ -13,7 +13,7 @@ function relabel(error, label) {
 
 function checkLayer(layer) {
   if (!isPlainObject(layer.config)) {
-    throw configError(`${layer.label}: must be a JSON object`);
+    throw new Error(`${layer.label}: must be a JSON object`);
   }
   try {
     validateKeys(layer.config);
@@ -23,6 +23,13 @@ function checkLayer(layer) {
   } catch (error) {
     throw relabel(error, layer.label);
   }
+}
+
+function withExcludes(merged, overlay) {
+  if (overlay?.exclude === undefined) {
+    return merged;
+  }
+  return { ...merged, exclude: [...new Set([...(merged.exclude ?? []), ...overlay.exclude])] };
 }
 
 function withOverlay(merged, overlay) {
@@ -73,5 +80,5 @@ export function readLayeredConfig(projectRoot, { overlay, repositoryRoot } = {})
   }
   const withSettings = layers.map((layer) => ({ ...layer, settings: settingsOf(layer.config) }));
   const merged = mergeLayers(withSettings.map(({ settings }) => settings));
-  return validateMerged(withOverlay(merged, overlay), withSettings);
+  return validateMerged(withExcludes(withOverlay(merged, overlay), overlay), withSettings);
 }

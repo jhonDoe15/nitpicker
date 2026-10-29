@@ -48,13 +48,14 @@ describe('a run at the top of a monorepo', () => {
       source: 'declared',
       overallStatus: 'completed',
       newEnforceableFindings: 1,
-      counts: { projects: 3, run: 1, failed: 1, skipped: 2, passed: 0, errored: 0 },
+      counts: { projects: 3, run: 1, failed: 1, skipped: 2, passed: 0, errored: 0, incomplete: 0 },
       projects: [
         {
           path: 'web',
           preset: 'typescript',
           status: 'failed',
           reason: '1 changed file',
+          overallStatus: 'completed',
           exitCode: 1,
           newEnforceableFindings: 1,
           toolErrors: 0,
@@ -65,6 +66,7 @@ describe('a run at the top of a monorepo', () => {
         { path: 'tools/app', preset: 'java', status: 'skipped', reason: 'no changed files' },
       ],
       outsideProjects: [],
+      notices: [],
       elapsedMs: expect.any(Number),
     });
   });
@@ -140,10 +142,10 @@ describe('a run at the top of a monorepo', () => {
 
     expect(result.exitCode).toBe(2);
     expect(result.err).toBe(
-      'nitpicker failed: Sharding splits the analyzers of one project, ' +
-        'so it does not apply at the top of a monorepo. ' +
-        'Run one CI job per project with --project <path> (repeatable), ' +
-        'or run nitpicker inside each project.\n',
+      'nitpicker failed: Sharding splits the analyzers of one project, so it does not apply at the top ' +
+        'of a monorepo of 3 projects (web, api, tools/app). Run one CI job per project with ' +
+        '--project <path>, shard a project from its folder (cd web && nitpicker --shard-count ...), ' +
+        'or set "projects": [] in the root nitpicker.config.json to gate the repository as one project.\n',
     );
   });
 
@@ -151,7 +153,7 @@ describe('a run at the top of a monorepo', () => {
     const root = monorepo();
     writeFiles(root, { 'web/src/a.ts': violation('web-finding') });
 
-    const result = run(root, [], { currentProjectRoot: `${root}/web` });
+    const result = run(root, [], { workingDirectory: `${root}/web` });
 
     expect(result.exitCode).toBe(1);
     expect(result.out).not.toContain('Monorepo');

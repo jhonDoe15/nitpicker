@@ -44,16 +44,20 @@ export function renderPlan({ plan, rows, outside }) {
   return `${[introduction(plan), ...rows.map(planLine), ...outsideLine(outside)].join('\n')}\n`;
 }
 
-function resultText({ status, newEnforceableFindings, reason, error }) {
+function resultText({ status, newEnforceableFindings, reason, error, overallStatus }) {
   if (status === 'skipped') {
     return `skipped (${reason})`;
   }
   if (status === 'error') {
     return error === undefined ? 'tool errors, the run is incomplete' : `failed to run: ${error}`;
   }
-  return status === 'failed'
-    ? count(newEnforceableFindings, 'new enforceable violation')
-    : 'no new violations';
+  if (status === 'passed') {
+    return 'no new violations';
+  }
+  const found = count(newEnforceableFindings, 'new enforceable violation');
+  return overallStatus === 'tool-error'
+    ? `${found}, and tool errors: the run is incomplete`
+    : found;
 }
 
 function headline({ counts }) {
@@ -68,16 +72,36 @@ function headline({ counts }) {
   return `Monorepo summary: ${parts.join(', ')} (${count(counts.projects, 'project')})`;
 }
 
-function acceptanceLine(projects) {
-  const digests = projects.flatMap(({ policyDigest }) =>
+function repositoryLines(repository) {
+  if (repository === undefined) {
+    return [];
+  }
+  const mark = repository.accepted ? '✓' : '✖';
+  const state = repository.accepted ? 'accepted' : 'not accepted';
+  return repository.policyLoosenings.map(
+    (text) => `  ${mark} repository policy (${state}, digest ${repository.policyDigest}): ${text}`,
+  );
+}
+
+function acceptanceLine(projects, repository) {
+  const own = projects.flatMap(({ policyDigest }) =>
     policyDigest === undefined ? [] : [policyDigest],
   );
-  return digests.length < 2
-    ? []
-    : [
-        `Policy loosenings in ${String(digests.length)} projects. ` +
-          `A person who accepts them all sets NITPICKER_ACCEPT_POLICY_CHANGE=${digests.join(',')} in CI.`,
-      ];
+  const pending = repository === undefined || repository.accepted ? [] : [repository.policyDigest];
+  const digests = [...own, ...pending];
+  if (digests.length < 2 && pending.length === 0) {
+    return [];
+  }
+  const places =
+    pending.length === 0
+      ? `${String(own.length)} projects`
+      : ['the repository policy', ...(own.length === 0 ? [] : [count(own.length, 'project')])].join(
+          ' and ',
+        );
+  return [
+    `Policy loosenings in ${places}. ` +
+      `A person who accepts them all sets NITPICKER_ACCEPT_POLICY_CHANGE=${digests.join(',')} in CI.`,
+  ];
 }
 
 export function renderSummary({ summary, summaryPath }) {
@@ -85,7 +109,14 @@ export function renderSummary({ summary, summaryPath }) {
     (entry) => `  ${MARKS[entry.status]} ${entry.path} (${entry.preset}): ${resultText(entry)}`,
   );
   const closing = `Combined report: ${summaryPath}`;
-  const all = [headline(summary), ...lines, ...acceptanceLine(summary.projects), closing];
+  const repository = summary.repositoryPolicy;
+  const all = [
+    headline(summary),
+    ...lines,
+    ...repositoryLines(repository),
+    ...acceptanceLine(summary.projects, repository),
+    closing,
+  ];
   return `\n${all.join('\n')}\n`;
 }
 

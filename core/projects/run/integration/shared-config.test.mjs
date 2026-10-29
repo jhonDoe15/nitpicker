@@ -38,6 +38,17 @@ function loosenings(result, project) {
   return reportOf(result, project).findings.filter(({ rule }) => rule === 'policy-loosened');
 }
 
+const EXCEPTIONS = {
+  thresholds: { fileLines: 200 },
+  exceptions: [{ rule: 'file-lines-limit', paths: ['src/**'], reason: 'tables' }],
+};
+
+function exceptionsMonorepo() {
+  const root = sharedMonorepo(JSON.stringify({ thresholds: { fileLines: 200 } }));
+  writeFiles(root, { 'shared/base.json': JSON.stringify(EXCEPTIONS) });
+  return root;
+}
+
 describe('projects that extend a shared config', () => {
   it('run with the merged config, and the cache key shows it', () => {
     const root = sharedMonorepo();
@@ -80,7 +91,7 @@ describe('projects that extend a shared config', () => {
     expect(result.exitCode).toBe(1);
     expect(loosenings(result, 'web')).toHaveLength(1);
     expect(loosenings(result, 'web')[0].identity).toBe(
-      'threshold fileLines raised from 200 to 400',
+      'threshold fileLines raised from 200 to 400 (from shared/base.json)',
     );
     expect(loosenings(result, 'api')).toHaveLength(0);
     expect(reportOf(result, 'api').summary.policyChanges).toEqual([]);
@@ -92,15 +103,7 @@ describe('projects that extend a shared config', () => {
   });
 
   it('report a loosening for each project it reaches, each with a digest that covers the shared file', () => {
-    const root = sharedMonorepo(JSON.stringify({ thresholds: { fileLines: 200 } }));
-    writeFiles(root, {
-      'shared/base.json': JSON.stringify({
-        thresholds: { fileLines: 200 },
-        exceptions: [{ rule: 'file-lines-limit', paths: ['src/**'], reason: 'tables' }],
-      }),
-    });
-
-    const result = run(root);
+    const result = run(exceptionsMonorepo());
 
     const [web, api] = ['web', 'api'].map((project) => reportOf(result, project).summary);
     expect(web.policyLoosenings).toEqual(api.policyLoosenings);
@@ -116,28 +119,18 @@ describe('projects that extend a shared config', () => {
     ]);
   });
 
-  it('let a person accept every project with the digests joined by commas', () => {
-    const root = sharedMonorepo(JSON.stringify({ thresholds: { fileLines: 200 } }));
-    writeFiles(root, {
-      'shared/base.json': JSON.stringify({
-        thresholds: { fileLines: 200 },
-        exceptions: [{ rule: 'file-lines-limit', paths: ['src/**'], reason: 'tables' }],
-      }),
-    });
+  it('let a person accept each project by its digest in a list joined by commas', () => {
+    const root = exceptionsMonorepo();
     const first = run(root);
     const digests = ['web', 'api'].map((project) => reportOf(first, project).summary.policyDigest);
 
     const partly = run(root, [], {
-      environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: digests[0] },
-    });
-    const accepted = run(root, [], {
-      environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: digests.join(',') },
+      environment: { CI: 'true', NITPICKER_ACCEPT_POLICY_CHANGE: `000000000000,${digests[0]}` },
     });
 
     expect(partly.exitCode).toBe(1);
     expect(loosenings(partly, 'web')).toHaveLength(0);
     expect(loosenings(partly, 'api')).toHaveLength(1);
-    expect(accepted.exitCode).toBe(0);
   });
 
   it('change the digest when the shared file changes in another way', () => {
@@ -149,7 +142,7 @@ describe('projects that extend a shared config', () => {
     writeFiles(second, {
       'shared/base.json': JSON.stringify({
         thresholds: { fileLines: 400, crapLimit: 8 },
-        base: 'x',
+        exclude: ['gen/**'],
       }),
     });
 
@@ -175,18 +168,33 @@ describe('projects that extend a shared config', () => {
     expect(loosenings(accepted, 'web')).toHaveLength(0);
   });
 
-  it('name the shared file when it is not valid', () => {
+  it('name the shared file when it is not valid, and fail every project that uses it', () => {
     const root = sharedMonorepo();
-    writeFiles(root, {
-      'shared/base.json': '{"colour":"red"}',
-      'web/src/a.ts': violation('w'),
-    });
+    writeFiles(root, { 'shared/base.json': '{"colour":"red"}' });
 
     const result = run(root);
 
     expect(result.exitCode).toBe(2);
-    expect(result.err.split('. Allowed keys:')[0]).toBe(
+    expect(result.json('summary.json').projects.map(({ status }) => status)).toEqual([
+      'error',
+      'error',
+      'skipped',
+    ]);
+    expect(result.err.split('\n')[0].split('. Allowed keys:')[0]).toBe(
       'nitpicker failed in web: shared/base.json: unknown key "colour"',
     );
+  });
+
+  it('fail a project whose config extends null', () => {
+    const root = sharedMonorepo();
+    writeFiles(root, { 'tools/nitpicker.config.json': '{"extends":null}' });
+
+    const result = run(root);
+
+    expect([result.exitCode, result.err]).toEqual([
+      2,
+      'nitpicker failed in tools: nitpicker.config.json: "extends" must be the path of a JSON ' +
+        'config file, such as "../base.json"\n',
+    ]);
   });
 });

@@ -33,7 +33,7 @@ import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { runMonorepo } from './projects/run/monorepo.mjs';
-import { monorepoRefusal } from './projects/run/refusal.mjs';
+import { oneProjectScope } from './projects/run/refusal.mjs';
 
 export function runCli(options = {}) {
   const cli = withCliDefaults(options);
@@ -46,11 +46,12 @@ export function runCli(options = {}) {
     });
   }
   if (cli.arguments_[0] === 'aggregate') {
+    const scope = oneProjectScope(cli, 'aggregate');
     return (
-      monorepoRefusal(cli, 'aggregate') ??
+      scope.exitCode ??
       runAggregateCli({
         arguments_: cli.arguments_.slice(1),
-        currentProjectRoot: cli.currentProjectRoot,
+        currentProjectRoot: scope.currentProjectRoot,
         analyzers: cli.analyzers,
         stdout: cli.stdout,
         stderr: cli.stderr,
@@ -91,12 +92,13 @@ function withCliDefaults(options) {
 
 function runCommand(cli) {
   if (cli.arguments_[0] === 'cache') {
+    const scope = oneProjectScope(cli, 'cache');
     return (
-      monorepoRefusal(cli, 'cache') ??
+      scope.exitCode ??
       runCacheCommand({
         arguments_: cli.arguments_.slice(1),
         environment: cli.environment,
-        currentProjectRoot: cli.currentProjectRoot,
+        currentProjectRoot: scope.currentProjectRoot,
         analyzers: cli.analyzers,
         stdout: cli.stdout,
         stderr: cli.stderr,
@@ -113,9 +115,10 @@ function runCommand(cli) {
 }
 
 function runProjectOf(cli) {
-  return (project, options) =>
+  return (project, options, extraCli) =>
     runConfigured({
       ...cli,
+      ...extraCli,
       options,
       currentProjectRoot: project.absolute,
       configOverlay: project.overlay,
@@ -124,19 +127,22 @@ function runProjectOf(cli) {
 }
 
 function runConfigured(cli) {
-  const { options, stdout, runTasks } = cli;
   const currentProjectRoot =
     cli.currentProjectRoot === undefined
-      ? resolveProjectRoot()
+      ? resolveProjectRoot(cli.workingDirectory)
       : realpathSync(cli.currentProjectRoot);
-  const monorepoExitCode = runMonorepo({
-    cli,
-    currentProjectRoot,
-    runProject: runProjectOf(cli),
-  });
-  if (monorepoExitCode !== undefined) {
-    return monorepoExitCode;
+  const monorepo = runMonorepo({ cli, currentProjectRoot, runProject: runProjectOf(cli) });
+  if (monorepo.exitCode !== undefined) {
+    return monorepo.exitCode;
   }
+  return runSingle(
+    { ...cli, repositoryLoosenings: monorepo.repositoryLoosenings },
+    currentProjectRoot,
+  );
+}
+
+function runSingle(cli, currentProjectRoot) {
+  const { options, stdout, runTasks } = cli;
   const config = loadConfig(currentProjectRoot, { overlay: cli.configOverlay });
   const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
@@ -171,12 +177,14 @@ function runComparisonCli(cli) {
   const repositoryRoot = realpathSync(
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
-  const base = resolveBase({
-    repositoryRoot,
-    explicitBase: options.baseRef,
-    configuredBase: config.base,
-    environment: cli.environment,
-  });
+  const base =
+    cli.sharedBase ??
+    resolveBase({
+      repositoryRoot,
+      explicitBase: options.baseRef,
+      configuredBase: config.base,
+      environment: cli.environment,
+    });
   const outputRoot =
     options.outputRoot === undefined
       ? path.join(currentProjectRoot, 'reports/quality/diff')
