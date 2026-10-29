@@ -74,6 +74,15 @@ describe('quick profile analyzer selection per preset', () => {
     ).toEqual(['tests', 'coverage', 'crap', 'test-runtime']);
   });
 
+  it('lists the checks of the analyzers a selected analyzer depends on', () => {
+    const [java, structure] = namedAnalyzers('java', 'structure');
+    const analyzers = [java, { ...structure, dependencies: ['java', 'missing'] }];
+
+    expect(
+      applyRunProfile(analyzers, { quick: true, analyzerNames: ['structure'] }).quick.skipped,
+    ).toEqual(['tests', 'jacoco', 'crap', 'pit', 'test-runtime']);
+  });
+
   it.each(['java', 'kotlin'])('lists the test tools inside the %s analyzer', (preset) => {
     const { analyzers, quick } = quickRun(preset);
 
