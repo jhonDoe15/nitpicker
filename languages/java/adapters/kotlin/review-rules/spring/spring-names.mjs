@@ -118,6 +118,10 @@ export function typeName(text) {
 
 const DEPTH_STEP = { '<': 1, '>': -1 };
 
+export function simpleTypeName(text) {
+  return typeName(text).split('.').at(-1);
+}
+
 export function typeArguments(text) {
   const compact = (text ?? '').replaceAll(/\s+/gu, '').replace(/\?$/u, '');
   const open = compact.indexOf('<');
