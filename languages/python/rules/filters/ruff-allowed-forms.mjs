@@ -82,7 +82,7 @@ export function withoutAllowedForms(
     supportFiles = [],
     allowed = [],
     lineOf = () => undefined,
-    keepsOwner = () => true,
+    keepsOwner = Boolean,
   } = {},
 ) {
   const context = {
