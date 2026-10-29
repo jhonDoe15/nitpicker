@@ -1,10 +1,16 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { pathInside } from '../../../../review-rules/java-sources.mjs';
+import { javaFilesUnder, pathInside } from '../../../../review-rules/java-sources.mjs';
 import { nameResolver, resolvesTo, typeName } from '../spring-names.mjs';
 import { DATA_REPOSITORIES } from '../spring-types.mjs';
 
 const SEARCH_LIMIT = 64;
 const META_DEPTH = 3;
+const AUTO_APPLY = String.raw`@Converter\s*\(\s*(?:autoApply\s*=\s*)?true\s*\)`;
+const JAVA_CONVERTER = new RegExp(
+  String.raw`${AUTO_APPLY}[^{]*?\bimplements\s+(?:[\w.]+\.)?AttributeConverter\s*<\s*([\w.]+)`,
+  'gu',
+);
+const DATA_REPOSITORY = /^org\.springframework\.data\.(?:[a-z]\w*\.)+\w*Repository$/u;
 
 function javaExtends(name) {
   return new RegExp(String.raw`\binterface\s+${name}\b[^{]*?\bextends\s+([^{]+)\{`, 'u');
@@ -64,10 +70,18 @@ function supersOf(context, candidate) {
   return kotlin.declared.supers.flatMap((type) => resolve(typeName(type)));
 }
 
+function dataRepository(context, candidate) {
+  return (
+    DATA_REPOSITORY.test(candidate) &&
+    !context.classes.has(candidate) &&
+    javaSource(context, candidate) === undefined
+  );
+}
+
 function reachesRepository(context, start) {
   const queue = [...start];
   for (const candidate of queue) {
-    if (DATA_REPOSITORIES.has(candidate)) {
+    if (DATA_REPOSITORIES.has(candidate) || dataRepository(context, candidate)) {
       return true;
     }
     if (queue.length < SEARCH_LIMIT) {
@@ -75,6 +89,18 @@ function reachesRepository(context, start) {
     }
   }
   return false;
+}
+
+export function javaConverted(context) {
+  if (context.converted === undefined) {
+    context.converted = new Set(
+      context.javaRoots
+        .flatMap((root) => javaFilesUnder(pathInside(context.projectRoot, root)))
+        .flatMap((file) => [...readFileSync(file, 'utf8').matchAll(JAVA_CONVERTER)])
+        .map((match) => match[1].split('.').at(-1)),
+    );
+  }
+  return context.converted;
 }
 
 export function projectContext({ projectFiles, declared, projectRoot, javaRoots }) {
@@ -102,17 +128,40 @@ export function isRepositoryType(context, resolve, text) {
   return context.repositories.get(key);
 }
 
+function enclosingFiles(candidate) {
+  const parts = candidate.split('.');
+  return parts.slice(1).map((_, index) => parts.slice(0, parts.length - index).join('.'));
+}
+
 export function isJavaEnum(context, candidates) {
   return candidates.some((candidate) => {
     const simple = candidate.split('.').at(-1);
-    return new RegExp(String.raw`\benum\s+${simple}\b`, 'u').test(
-      javaSource(context, candidate) ?? '',
+    const declaration = new RegExp(String.raw`\benum\s+${simple}\b`, 'u');
+    return enclosingFiles(candidate).some((file) =>
+      declaration.test(javaSource(context, file) ?? ''),
     );
   });
 }
 
 export function projectClass(context, candidates) {
   return candidates.map((candidate) => context.classes.get(candidate)).find(Boolean);
+}
+
+export function projectFunctions(context, candidates, name) {
+  const queue = [projectClass(context, candidates)].filter(Boolean);
+  for (const found of queue) {
+    const owners = ownersOf(found.file, found.declared.qualified);
+    const declared = found.file.functions.filter((fn) => fn.name === name && owners.has(fn.owner));
+    if (declared.length > 0) {
+      return declared;
+    }
+    const resolve = resolverOf(context, found.file);
+    const supers = found.declared.supers
+      .map((type) => projectClass(context, resolve(typeName(type))))
+      .filter((next) => next !== undefined && !queue.includes(next));
+    queue.push(...(queue.length < SEARCH_LIMIT ? supers : []));
+  }
+  return [];
 }
 
 export function ownersOf(file, qualified) {

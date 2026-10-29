@@ -40,6 +40,31 @@ function summary(findings) {
 }
 
 const EXPECTED = [
+  'bad/Batches.kt:24 JpaEnumString Ledger.grade',
+  'bad/Batches.kt:26 JpaEnumString Ledger.status',
+  'bad/Batches.kt:29 JpaEnumString Ledger.seen',
+  'bad/Batches.kt:32 JpaManyToManySet Ledger.linked',
+  'bad/Batches.kt:35 JpaManyToManySet Ledger.qualified',
+  'bad/Batches.kt:39 SpringDataDerivedQuery AuditedLedgers.findByStatus',
+  'bad/Batches.kt:43 SpringDataDerivedQuery LedgerStore.findByGrade',
+  'bad/Batches.kt:48 SpringDataQueryTextBlock LedgerRepository.byStatus',
+  'bad/Batches.kt:51 SpringDataQueryTextBlock LedgerRepository.byGrade',
+  'bad/Batches.kt:64 SpringDataBatchOfOne LedgerService.importAll.saveAll',
+  'bad/Batches.kt:65 SpringDataBatchOfOne LedgerService.importAll.saveAll',
+  'bad/Batches.kt:68 SpringDataBatchOfOne LedgerService.importAll.saveAll',
+  'bad/Batches.kt:70 SpringDataSaveInLoopHelper LedgerService.importAll.persist',
+  'bad/Batches.kt:71 SpringDataSaveInLoopHelper LedgerService.importAll.keepCompanion',
+  'bad/Batches.kt:72 SpringDataSaveInLoopHelper LedgerService.importAll.keepTop',
+  'bad/Batches.kt:73 SpringDataNoSaveInLoop LedgerService.importAll.save',
+  'bad/Batches.kt:75 SpringDataNoSaveInLoop LedgerService.importAll.save',
+  'bad/Batches.kt:76 SpringDataNoSaveInLoop LedgerService.importAll.delete',
+  'bad/Batches.kt:77 SpringDataNoSaveInLoop LedgerService.importAll.save',
+  'bad/Batches.kt:78 SpringDataNoSaveInLoop LedgerService.importAll.save',
+  'bad/Batches.kt:79 SpringDataNoSaveInLoop LedgerService.importAll.save',
+  'bad/Batches.kt:81 SpringDataNoSaveInLoop LedgerService.importAll.save',
+  'bad/Batches.kt:87 SpringDataRowWriteInLoop LedgerService.touchAll.executeUpdate',
+  'bad/Batches.kt:90 SpringDataRowWriteInLoop LedgerService.touchAll.executeUpdate',
+  'bad/Batches.kt:95 SpringDataFilterInQuery LedgerService.graded.findAll',
   'bad/Beans.kt:21 SpringConstructorInjection FieldInjected.orders',
   'bad/Beans.kt:21 SpringImmutableBeans FieldInjected.orders',
   'bad/Beans.kt:24 SpringConstructorInjection FieldInjected.token',
@@ -250,6 +275,12 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
       'bad/Proxies.kt:71 SpringProxyMethodVisibility Mailer.send',
     ]);
     expect(withoutPlugin.filter((line) => line.startsWith('good/'))).toEqual([
+      'good/Batches.kt:32 JpaEntityClass Swatch',
+      'good/Batches.kt:56 SpringProxyMethodVisibility SwatchService.recolor',
+      'good/Batches.kt:73 SpringProxyMethodVisibility SwatchService.sweep',
+      'good/Batches.kt:84 SpringProxyMethodVisibility SwatchService.lookups',
+      'good/Batches.kt:91 SpringProxyMethodVisibility SwatchService.batches',
+      'good/Batches.kt:109 SpringProxyMethodVisibility SwatchService.chunkUpdates',
       'good/Clients.kt:85 SpringProxyMethodVisibility Ledger.total',
       'good/Clients.kt:88 SpringProxyMethodVisibility Ledger.settle',
       'good/Clients.kt:102 SpringProxyMethodVisibility Ledger.close',
@@ -316,6 +347,7 @@ describe('Kotlin Spring rules that read the rest of the project', () => {
     );
 
     expect(EXPECTED.filter((line) => !viaJava.includes(line))).toEqual([
+      'bad/Batches.kt:24 JpaEnumString Ledger.grade',
       'bad/Clients.kt:41 SpringNoPostConstructIo Loader.warm.findAll',
       'bad/Clients.kt:53 SpringNoPostConstructIo Ledger.prime.count',
       'bad/Clients.kt:58 SpringTransactionalReadOnlyWrite Ledger.total.deleteAll',

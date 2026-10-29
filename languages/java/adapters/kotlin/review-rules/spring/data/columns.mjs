@@ -1,5 +1,5 @@
 import { annotationIn, typeArguments, typeName } from '../spring-names.mjs';
-import { entriesOf, report } from '../spring-scopes.mjs';
+import { entriesOf, factoryType, report } from '../spring-scopes.mjs';
 import {
   COLUMN_HOLDERS,
   ELEMENT_COLLECTION,
@@ -30,23 +30,50 @@ function projectEnums(projectFiles) {
   );
 }
 
-function autoApplied(projectFiles) {
-  return new Set(
-    projectFiles
-      .flatMap((file) => file.classes)
-      .filter((declared) =>
-        declared.annotations.some(
-          (annotation) =>
-            simpleName(annotation.type ?? annotation.name) === 'Converter' &&
-            annotation.arguments.some(
-              ({ name, text }) => AUTO_APPLY.test(name ?? '') && text === 'true',
-            ),
-        ),
-      )
-      .flatMap((declared) => declared.genericSupers ?? [])
-      .filter((text) => simpleName(text) === 'AttributeConverter')
-      .map((text) => simpleName(typeArguments(text)[0])),
+function autoApply(declared) {
+  return declared.annotations.some(
+    (annotation) =>
+      simpleName(annotation.type ?? annotation.name) === 'Converter' &&
+      annotation.arguments.some(
+        ({ name, text }) => (name === undefined || AUTO_APPLY.test(name)) && text === 'true',
+      ),
   );
+}
+
+function convertedType(classes, declared) {
+  const supers = declared.genericSupers ?? [];
+  const direct = supers.find((text) => simpleName(text) === 'AttributeConverter');
+  if (direct !== undefined) {
+    return simpleName(typeArguments(direct)[0]);
+  }
+  const base = supers.find((text) =>
+    (classes.get(simpleName(text))?.genericSupers ?? []).some(
+      (inherited) => simpleName(inherited) === 'AttributeConverter',
+    ),
+  );
+  return base === undefined ? undefined : simpleName(typeArguments(base)[0]);
+}
+
+function autoApplied(view, projectFiles) {
+  const declared = projectFiles.flatMap((file) => file.classes);
+  const classes = new Map(declared.map((entry) => [entry.name, entry]));
+  return new Set([
+    ...view.javaConverted(),
+    ...declared
+      .filter((entry) => autoApply(entry))
+      .map((entry) => convertedType(classes, entry))
+      .filter((type) => type !== undefined),
+  ]);
+}
+
+function inferredType(member) {
+  if (member.type !== undefined) {
+    return member.type;
+  }
+  const factory = factoryType(member.initializer);
+  return factory !== undefined && member.initializerTypeArguments !== undefined
+    ? `${factory}${member.initializerTypeArguments}`
+    : member.initializerQualifier;
 }
 
 function stored(view, member, fqns) {
@@ -79,11 +106,12 @@ function isEnumType(view, context, type) {
 function enumColumns(view, member, context) {
   const isEnum = isEnumType.bind(undefined, view, context);
   const string = stored(view, member, ENUMERATED);
+  const type = inferredType(member);
   if (annotatedWith(view, member, ELEMENT_COLLECTION) === undefined) {
-    return isEnum(member.type) && !string ? ['value'] : [];
+    return isEnum(type) && !string ? ['value'] : [];
   }
-  const [first, second] = typeArguments(member.type);
-  if (!MAPS.has(simpleName(member.type))) {
+  const [first, second] = typeArguments(type);
+  if (!MAPS.has(simpleName(type))) {
     return isEnum(first) && !string ? ['value'] : [];
   }
   return [
@@ -99,7 +127,7 @@ function holders(view, fqns) {
 }
 
 function enumStrings(view, { projectFiles }) {
-  const context = { enums: projectEnums(projectFiles), converted: autoApplied(projectFiles) };
+  const context = { enums: projectEnums(projectFiles), converted: autoApplied(view, projectFiles) };
   return holders(view, COLUMN_HOLDERS).flatMap((declared) =>
     membersOf(view, declared)
       .filter((member) => annotatedWith(view, member, NOT_COLUMNS) === undefined)

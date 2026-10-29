@@ -98,7 +98,8 @@ public final class Bodies {
     }
     locals.add(m("name", local.getName(), "scope", scopes.id(frame), "line", lineOf(local),
         "type", clip(local.getTypeReference()), "initializer", Initializers.callee(local),
-        "alias", Initializers.alias(local)));
+        "alias", Initializers.alias(local), "initializerTypeArguments",
+        Initializers.typeArguments(local.getInitializer())));
   }
 
   private void destructured(KtDestructuringDeclaration declaration, Frame frame) {
@@ -204,6 +205,7 @@ public final class Bodies {
       data.put("elvis", clip(((KtBinaryExpression) parent).getRight()));
     }
     data.put("statement", parent instanceof KtBlockExpression ? Boolean.TRUE : null);
+    data.put("result", lambdaResult(parent, outer) ? Boolean.TRUE : null);
     data.put("returned", parent instanceof KtReturnExpression
         || (parent instanceof KtDeclarationWithBody && ((KtDeclarationWithBody) parent).getBodyExpression() == outer)
         ? Boolean.TRUE : null);
@@ -213,6 +215,14 @@ public final class Bodies {
         && ((KtBinaryExpression) parent).getOperationToken() == KtTokens.EQ) {
       data.put("assignedTo", clip(((KtBinaryExpression) parent).getLeft()));
     }
+  }
+
+  private static boolean lambdaResult(PsiElement parent, KtExpression outer) {
+    if (!(parent instanceof KtBlockExpression) || !(parent.getParent() instanceof KtFunctionLiteral)) {
+      return false;
+    }
+    List<KtExpression> statements = ((KtBlockExpression) parent).getStatements();
+    return statements.get(statements.size() - 1) == outer;
   }
 
   private void assignment(KtBinaryExpression expression, Frame frame) {

@@ -149,8 +149,15 @@ export const DATA_REPOSITORIES = group(
   inPackage(`${DATA}.jpa.repository`, 'JpaRepository'),
   inPackage(`${DATA}.mongodb.repository`, 'MongoRepository', 'ReactiveMongoRepository'),
   inPackage(`${DATA}.r2dbc.repository`, 'R2dbcRepository'),
+  inPackage(`${DATA}.jpa.repository.support`, 'JpaRepositoryImplementation'),
+  inPackage(`${DATA}.repository.history`, 'RevisionRepository'),
+  inPackage(`${DATA}.cassandra.repository`, 'CassandraRepository', 'ReactiveCassandraRepository'),
+  inPackage(`${DATA}.elasticsearch.repository`, 'ElasticsearchRepository'),
+  inPackage(`${DATA}.neo4j.repository`, 'Neo4jRepository', 'ReactiveNeo4jRepository'),
+  inPackage(`${DATA}.couchbase.repository`, 'CouchbaseRepository', 'ReactiveCouchbaseRepository'),
+  inPackage(`${DATA}.keyvalue.repository`, 'KeyValueRepository'),
 );
-export const ENTITY_MANAGER = group(twins('persistence.EntityManager'));
+export const ENTITY_MANAGER = group(twins('persistence.EntityManager'), ['org.hibernate.Session']);
 export const JDBC = group(
   inPackage(`${SPRING}.jdbc.core`, 'JdbcTemplate', 'JdbcOperations'),
   inPackage(
