@@ -63,14 +63,25 @@ def pairs_within(expression):
     ]
 
 
+def arguments(call, names):
+    keywords = {keyword.arg: keyword.value for keyword in call.keywords}
+    positional = call.args[: len(names)]
+    return [
+        *positional,
+        *(keywords[name] for name in names[len(positional) :] if name in keywords),
+    ]
+
+
 def method_pairs(call):
-    if not isinstance(call.func, ast.Attribute) or not call.args:
+    if not isinstance(call.func, ast.Attribute):
         return []
     method = call.func.attr
-    if method in EQUALITY_METHODS and len(call.args) >= 2:
-        return [(call.args[0], call.args[1])]
-    if method in TRUTH_METHODS:
-        return pairs_within(call.args[0])
+    compared = arguments(call, ["first", "second"])
+    if method in EQUALITY_METHODS and len(compared) == 2:
+        return [tuple(compared)]
+    condition = arguments(call, ["expr"])
+    if method in TRUTH_METHODS and condition:
+        return pairs_within(condition[0])
     return []
 
 
@@ -92,12 +103,18 @@ def subject(context, literal):
     return ast.get_source_segment(context.text, literal) or repr(literal.value)
 
 
+def reported_literals(tree):
+    literals = {}
+    for node in ast.walk(tree):
+        for pair in equality_pairs(node):
+            literals.update((id(literal), literal) for literal in exact_fractions(pair))
+    return literals.values()
+
+
 def check(context):
     if not context.tests:
         return []
     return [
         finding(context.path, RULE, subject(context, literal), literal)
-        for node in ast.walk(context.tree)
-        for pair in equality_pairs(node)
-        for literal in exact_fractions(pair)
+        for literal in reported_literals(context.tree)
     ]

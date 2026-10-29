@@ -829,7 +829,9 @@ hop, and type-only imports do not count.
   `assert.equal` from chai). `toEqual`, `toStrictEqual`, `deepEqual`, `deepStrictEqual`, `eql` and
   `.deep.equal` also look inside array and object literals. An `===`, `==`, `!==` or `!=` comparison
   with such a literal inside `assert(...)`, `assert.ok`, chai `isTrue`/`isFalse` or `expect(...)` is
-  reported too (`expect(total === 0.1).toBe(true)`). Use `toBeCloseTo(0.1)`,
+  reported too (`expect(total === 0.1).toBe(true)`), also inside a call or an arrow-function
+  callback in that condition (`assert.ok(values.every((value) => value === 0.5))`). Use
+  `toBeCloseTo(0.1)`,
   `expect.closeTo(0.1)` inside the expected value, chai `closeTo`, or
   `assert.ok(Math.abs(actual - 0.1) < tolerance)`. Integral literals such as `1.0` or `2e3`, `BigInt`,
   `NaN`, infinities and ordering comparisons are allowed. A value that is exact by construction needs

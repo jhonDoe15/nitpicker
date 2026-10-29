@@ -22,6 +22,7 @@ const ASSERT_FUNCTIONS = new Map([
   ['notDeepStrictEqual', true],
 ]);
 const TRUTH_FUNCTIONS = new Set(['ok', 'isTrue', 'isFalse', 'isOk', 'isNotOk']);
+const SIGNS = new Set(['-', '+']);
 const EQUALITY_OPERATORS = new Set(['===', '==', '!==', '!=']);
 const ASSERT_MODULES = new Set([
   'assert',
@@ -50,7 +51,7 @@ function unwrap(node) {
 function isNonIntegral(node) {
   const literal = unwrap(node);
   const operand =
-    literal.type === 'UnaryExpression' && literal.operator === '-'
+    literal.type === 'UnaryExpression' && SIGNS.has(literal.operator)
       ? unwrap(literal.argument)
       : literal;
   return (
@@ -84,20 +85,44 @@ function firstFloat(candidates, deep) {
   return undefined;
 }
 
+function callbackBodies(call) {
+  return call.arguments
+    .filter((argument) => argument.type === 'ArrowFunctionExpression' && argument.expression)
+    .map((argument) => argument.body);
+}
+
+function conditionParts(node) {
+  if (node.type === 'LogicalExpression') {
+    return [node.left, node.right];
+  }
+  if (node.type === 'CallExpression') {
+    return [
+      node.callee,
+      ...node.arguments.filter((argument) => argument.type !== 'SpreadElement'),
+      ...callbackBodies(node),
+    ];
+  }
+  if (node.type === 'MemberExpression') {
+    return [node.object];
+  }
+  return node.type === 'UnaryExpression' && node.operator === '!' ? [node.argument] : [];
+}
+
+function equalityFloat(node) {
+  return node.type === 'BinaryExpression' && EQUALITY_OPERATORS.has(node.operator)
+    ? [node.left, node.right].find(isNonIntegral)
+    : undefined;
+}
+
 function comparedFloat(expression) {
   const pending = [expression];
   for (const node of pending) {
     const current = unwrap(node);
-    if (current.type === 'LogicalExpression') {
-      pending.push(current.left, current.right);
-    } else if (current.type === 'UnaryExpression' && current.operator === '!') {
-      pending.push(current.argument);
-    } else if (current.type === 'BinaryExpression' && EQUALITY_OPERATORS.has(current.operator)) {
-      const literal = [current.left, current.right].find(isNonIntegral);
-      if (literal !== undefined) {
-        return literal;
-      }
+    const literal = equalityFloat(current);
+    if (literal !== undefined) {
+      return literal;
     }
+    pending.push(...conditionParts(current));
   }
   return undefined;
 }
