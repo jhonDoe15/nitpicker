@@ -28,7 +28,7 @@ if (
   import.meta.url === pathToFileURL(path.resolve(invokedPath)).href
 ) {
   try {
-    const options = parseArguments(process.argv.slice(2));
+    const options = parseArguments(process.argv.slice(2), process.env);
     const findings = runEslint(options);
     process.stdout.write(`${JSON.stringify({ findings })}\n`);
   } catch (error) {

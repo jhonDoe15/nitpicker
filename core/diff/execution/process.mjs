@@ -1,6 +1,9 @@
 import { spawn } from 'node:child_process';
 import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
-import { ANALYZER_TIMEOUT_KEY } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import {
+  ANALYZER_TIMEOUT_KEY,
+  ANALYZER_TIMEOUT_VARIABLE,
+} from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -11,10 +14,13 @@ const activeChildren = new Set();
 
 const HOST_CI_OUTPUT_VARIABLES = ['GITHUB_STEP_SUMMARY'];
 
-function analyzerEnvironment(environment) {
-  return Object.fromEntries(
-    Object.entries(environment).filter(([name]) => !HOST_CI_OUTPUT_VARIABLES.includes(name)),
-  );
+function analyzerEnvironment(environment, task) {
+  return Object.fromEntries([
+    ...Object.entries(environment).filter(([name]) => !HOST_CI_OUTPUT_VARIABLES.includes(name)),
+    ...(task.configuredTimeout === true
+      ? [[ANALYZER_TIMEOUT_VARIABLE, String(task.timeoutMs)]]
+      : []),
+  ]);
 }
 
 function settleClose(task, { failure, status, signal, stdout, stderr }, { resolve, reject }) {
@@ -39,7 +45,7 @@ function settleClose(task, { failure, status, signal, stdout, stderr }, { resolv
 function spawnAnalyzer(task) {
   const child = spawn(task.invocation.command, task.invocation.args, {
     cwd: task.invocation.cwd,
-    env: analyzerEnvironment(task.invocation.env ?? process.env),
+    env: analyzerEnvironment(task.invocation.env ?? process.env, task),
     detached: process.platform !== 'win32',
     stdio: ['ignore', 'pipe', 'pipe'],
   });

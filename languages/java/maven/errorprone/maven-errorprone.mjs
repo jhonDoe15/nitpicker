@@ -75,7 +75,7 @@ function writeArguments(work, { name, roots, classpath, own, processors, compile
   return [file];
 }
 
-export function runErrorProne({ module, reportDir, tools, classpaths, spawn }) {
+export function runErrorProne({ module, reportDir, tools, classpaths, spawn, timeoutMs }) {
   const report = path.join(reportDir, 'errorprone.json');
   const work = path.join(reportDir, 'errorprone');
   rmSync(work, { recursive: true, force: true });
@@ -113,6 +113,7 @@ export function runErrorProne({ module, reportDir, tools, classpaths, spawn }) {
   runJava({
     java: errorProneJava({ preview, spawn }),
     spawn,
+    timeoutMs,
     tool: 'Error Prone',
     jvmArgs: JVM_FLAGS,
     args: [

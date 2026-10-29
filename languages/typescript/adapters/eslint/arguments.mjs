@@ -6,7 +6,7 @@ import { realpathSync, statSync } from 'node:fs';
 import { normalizedRelativePath, assertContainedPath } from './paths.mjs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { commandTimeoutMs } from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import { analyzerDeadlineMs } from '../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 const DEFAULT_ESLINT_TIMEOUT_MS = 4 * 60 * 1000;
 
@@ -75,7 +75,7 @@ function prefixedValues(values, prefix) {
     .map(([name, value]) => [name.slice(prefix.length), value]);
 }
 
-export function parseArguments(arguments_) {
+export function parseArguments(arguments_, processEnvironment = {}) {
   const { values, patterns } = collectArguments(arguments_);
   if (patterns.length === 0) {
     throw new Error('ESLint adapter requires at least one --pattern');
@@ -96,7 +96,11 @@ export function parseArguments(arguments_) {
     toolRoot: validatedToolRoot(requiredArgument(values, '--tool-root')),
     configRelativePath: normalizedRelativePath(requiredArgument(values, '--config'), '--config'),
     timeoutMs: positiveInteger(
-      Number(values.get('--timeout-ms') ?? commandTimeoutMs(DEFAULT_ESLINT_TIMEOUT_MS)),
+      Number(
+        values.get('--timeout-ms') ??
+          analyzerDeadlineMs(processEnvironment) ??
+          DEFAULT_ESLINT_TIMEOUT_MS,
+      ),
       '--timeout-ms',
     ),
     eslintCliPath:

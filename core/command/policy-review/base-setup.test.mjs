@@ -109,9 +109,7 @@ describe('createBaseSetupResolver', () => {
       ['custom', 30 * 60_000],
       ['other', undefined],
     ]);
-    expect(setup.analyzers[0].createInvocation({}).env).toEqual({
-      NITPICKER_ANALYZER_TIMEOUT_MS: String(30 * 60_000),
-    });
+    expect(setup.analyzers[0].configuredTimeout).toBe(true);
     expect(setup.policyChanges).toEqual(['analyzer enabled: crap']);
   });
 });

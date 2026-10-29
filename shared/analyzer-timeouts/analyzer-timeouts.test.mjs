@@ -1,15 +1,15 @@
 import { describe, expect, it } from 'vitest';
 import {
+  analyzerDeadlineMs,
   applyAnalyzerTimeouts,
-  commandTimeoutMs,
   minutesSetting,
   validateAnalyzerTimeouts,
 } from './analyzer-timeouts.mjs';
 
 const MINUTE_MS = 60_000;
 
-function analyzer(name, invocation = { command: 'node', args: [] }) {
-  return { name, timeoutMs: 1000, createInvocation: () => invocation };
+function analyzer(name) {
+  return { name, timeoutMs: 1000 };
 }
 
 describe('validateAnalyzerTimeouts', () => {
@@ -39,31 +39,16 @@ describe('validateAnalyzerTimeouts', () => {
 });
 
 describe('applyAnalyzerTimeouts', () => {
-  it('sets the deadline and passes it to the analyzer process', () => {
+  it('sets the deadline of the named analyzers and marks it as configured', () => {
     const [eslint, java] = applyAnalyzerTimeouts(
-      [analyzer('eslint'), analyzer('java', { command: 'node', args: [], env: { A: '1' } })],
+      [analyzer('eslint'), analyzer('java')],
       { java: 45 },
       ['eslint', 'java'],
     );
 
-    expect(eslint.timeoutMs).toBe(1000);
-    expect(eslint.createInvocation({}).env).toBeUndefined();
+    expect(eslint).toEqual(analyzer('eslint'));
     expect(java.timeoutMs).toBe(45 * MINUTE_MS);
-    expect(java.createInvocation({}).env).toEqual({
-      A: '1',
-      NITPICKER_ANALYZER_TIMEOUT_MS: String(45 * MINUTE_MS),
-    });
-  });
-
-  it('keeps the parent environment when the invocation sets none', () => {
-    const [custom] = applyAnalyzerTimeouts([analyzer('house-rules')], { 'house-rules': 2 }, [
-      'house-rules',
-    ]);
-
-    expect(custom.createInvocation({}).env).toMatchObject({
-      PATH: process.env.PATH,
-      NITPICKER_ANALYZER_TIMEOUT_MS: String(2 * MINUTE_MS),
-    });
+    expect(java.configuredTimeout).toBe(true);
   });
 
   it('names an unknown analyzer and the known ones', () => {
@@ -79,17 +64,15 @@ describe('applyAnalyzerTimeouts', () => {
   });
 });
 
-describe('commandTimeoutMs', () => {
-  it('follows the analyzer deadline when one is configured', () => {
-    expect(commandTimeoutMs(4 * MINUTE_MS, { NITPICKER_ANALYZER_TIMEOUT_MS: '600000' })).toBe(
-      600_000,
-    );
+describe('analyzerDeadlineMs', () => {
+  it('reads the deadline nitpicker passes to a configured analyzer', () => {
+    expect(analyzerDeadlineMs({ NITPICKER_ANALYZER_TIMEOUT_MS: '600000' })).toBe(600_000);
   });
 
   it.each([{}, { NITPICKER_ANALYZER_TIMEOUT_MS: '' }, { NITPICKER_ANALYZER_TIMEOUT_MS: '1e3' }])(
-    'keeps the default for %j',
+    'is undefined for %j',
     (environment) => {
-      expect(commandTimeoutMs(4 * MINUTE_MS, environment)).toBe(4 * MINUTE_MS);
+      expect(analyzerDeadlineMs(environment)).toBeUndefined();
     },
   );
 });

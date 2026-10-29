@@ -143,6 +143,32 @@ describe('ESLint snapshot isolation and failures', () => {
     expect(report.summary.overallStatus).toBe('completed');
     expect(report.toolErrors).toEqual([]);
   });
+  it('gives ESLint the configured analyzer deadline, else its own 4 minutes', () => {
+    const root = temporaryRoot('nitpicker-diff-');
+    const projectRoot = path.join(root, 'base/project');
+    writeFiles(projectRoot, { 'package.json': '{"name":"fixture"}\n' });
+    const parse = (environment) =>
+      parseArguments(
+        [
+          '--analyzer-name',
+          'eslint-lint',
+          '--project-root',
+          projectRoot,
+          '--policy-root',
+          projectRoot,
+          '--tool-root',
+          toolRoot,
+          '--config',
+          'eslint.config.mjs',
+          '--pattern',
+          'src/main/**/*.ts',
+        ],
+        environment,
+      ).timeoutMs;
+
+    expect(parse({})).toBe(240_000);
+    expect(parse({ NITPICKER_ANALYZER_TIMEOUT_MS: '1200000' })).toBe(1_200_000);
+  });
   it('rejects direct filesystem roots outside generated worktrees', () => {
     const untrustedRoot = temporaryRoot('eslint-untrusted-root-');
 

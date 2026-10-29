@@ -4,7 +4,7 @@ export const ANALYZER_TIMEOUT_KEY = 'analyzerTimeoutMinutes';
 export const ANALYZER_TIMEOUT_VARIABLE = 'NITPICKER_ANALYZER_TIMEOUT_MS';
 export const MINUTE_MS = 60_000;
 export const MAX_TIMER_MS = 2 ** 31 - 1;
-export const MAX_ANALYZER_TIMEOUT_MINUTES = Math.floor(MAX_TIMER_MS / MINUTE_MS);
+const MAX_ANALYZER_TIMEOUT_MINUTES = Math.floor(MAX_TIMER_MS / MINUTE_MS);
 const WHOLE_NUMBER = /^[1-9]\d*$/u;
 
 export function validateAnalyzerTimeouts(timeouts) {
@@ -23,9 +23,9 @@ export function validateAnalyzerTimeouts(timeouts) {
   }
 }
 
-export function commandTimeoutMs(defaultMs, environment = process.env) {
+export function analyzerDeadlineMs(environment) {
   const value = environment[ANALYZER_TIMEOUT_VARIABLE];
-  return value !== undefined && WHOLE_NUMBER.test(value) ? Number(value) : defaultMs;
+  return value !== undefined && WHOLE_NUMBER.test(value) ? Number(value) : undefined;
 }
 
 export function minutesSetting(environment, variable, { fallbackMs, maxMinutes }) {
@@ -40,21 +40,9 @@ export function minutesSetting(environment, variable, { fallbackMs, maxMinutes }
 }
 
 export function withConfiguredTimeout(analyzer, timeouts = {}) {
-  if (timeouts[analyzer.name] === undefined) {
-    return analyzer;
-  }
-  const timeoutMs = timeouts[analyzer.name] * MINUTE_MS;
-  return {
-    ...analyzer,
-    timeoutMs,
-    createInvocation(context) {
-      const invocation = analyzer.createInvocation(context);
-      return {
-        ...invocation,
-        env: { ...(invocation.env ?? process.env), [ANALYZER_TIMEOUT_VARIABLE]: String(timeoutMs) },
-      };
-    },
-  };
+  return timeouts[analyzer.name] === undefined
+    ? analyzer
+    : { ...analyzer, timeoutMs: timeouts[analyzer.name] * MINUTE_MS, configuredTimeout: true };
 }
 
 export function applyAnalyzerTimeouts(analyzers, timeouts, knownNames) {

@@ -949,9 +949,9 @@ project, give it more time:
 
 Each value is a whole number of minutes from 1 to 35791, the longest Node.js timer. A name must be
 an analyzer of the preset or a custom analyzer (a disabled one is accepted); another name is a
-config error that lists the known ones. The long commands inside the analyzer (ESLint, jscpd, the
-Python tools, their installs and mutation run, and the Gradle and Maven commands) then get the same
-deadline in place of their own shorter default. `NITPICKER_GRADLE_TIMEOUT_MINUTES` and
+config error that lists the known ones. The long commands inside the analyzer (the ESLint run, the
+Python tools and mutation run, and the Gradle and Maven commands and the tools run on a Maven build)
+then get the same deadline in place of their own shorter default. `NITPICKER_GRADLE_TIMEOUT_MINUTES` and
 `NITPICKER_MAVEN_TIMEOUT_MINUTES` still set each Gradle or Maven command when they are set.
 
 A timeout is not policy: changing it is not listed as a policy change, and a pull request that

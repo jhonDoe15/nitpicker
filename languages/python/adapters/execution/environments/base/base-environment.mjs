@@ -21,7 +21,6 @@ import {
   VENV_DIRECTORY,
 } from './installers.mjs';
 import { safeRequirements } from './requirements.mjs';
-import { commandTimeoutMs } from '../../../../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 
 const INSTALL_TIMEOUT_MS = 20 * 60 * 1000;
 const MESSAGE_TAIL = 1500;
@@ -91,7 +90,7 @@ function failure(step, result, projectRoot) {
 
 function runStep(step, projectRoot) {
   const result = execute({ launcher: DIRECT_LAUNCHER, projectRoot, env: {} }, step.command, {
-    timeout: commandTimeoutMs(INSTALL_TIMEOUT_MS),
+    timeout: INSTALL_TIMEOUT_MS,
     env: step.variables,
   });
   if (result.error !== undefined || result.status !== 0) {
