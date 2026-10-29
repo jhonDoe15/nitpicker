@@ -139,20 +139,49 @@ describe('the Error Prone flags each precedence runs with', () => {
     const flags = [
       '-XepExcludedPaths:.*/gen/.*',
       '-XepExcludedPaths:.*/proto/.*',
-      '-XepDisableWarningsInGeneratedCode',
       '-XepOpt:NullAway:ExcludedFieldAnnotations=com.example.Wired',
       '-XepOpt:Var:Strict=true',
     ];
     const result = layered(flags, false).flags;
 
-    expect(result.slice(0, 2)).toEqual([
-      '-XepDisableWarningsInGeneratedCode',
-      '-XepOpt:Var:Strict=true',
-    ]);
-    expect(result[2]).toMatch(
+    expect(result[0]).toBe('-XepOpt:Var:Strict=true');
+    expect(result[1]).toMatch(
       /^-XepOpt:NullAway:ExcludedFieldAnnotations=.*org\.mockito\.Mock,.*com\.example\.Wired$/u,
     );
-    expect(result[3]).toBe('-XepExcludedPaths:(?:.*/gen/.*)|(?:.*/proto/.*)');
+    expect(result[2]).toBe('-XepExcludedPaths:(?:.*/gen/.*)|(?:.*/proto/.*)');
+    expect(result).toHaveLength(3);
+  });
+
+  it('applies only the NullAway options and excluded paths that keep every source checked', () => {
+    const kept = ['-XepOpt:NullAway:JSpecifyMode=true', '-XepOpt:NullAway:CheckContracts=true'];
+    const dropped = [
+      '-XepOpt:NullAway:SuppressionNameAliases=Quiet',
+      '-XepOpt:NullAway:CastToNonNullMethod=com.example.Cast.of',
+      '-XepOpt:NullAway:CheckOptionalEmptiness=false',
+      '-XepExcludedPaths:.*',
+      '-XepExcludedPaths:.*/src/main/.*',
+      '-XepExcludedPaths:(x',
+      '-XepDisableWarningsInGeneratedCode',
+    ];
+    const result = layered([...kept, ...dropped], true);
+
+    expect(result.flags).toEqual(kept);
+    expect(result.notApplied.map(({ setting }) => setting)).toEqual(dropped);
+    expect(flagsOf({ 'build.gradle': 'nullaway { jspecifyMode = true }\n' })).toEqual([
+      '-XepOpt:NullAway:JSpecifyMode=true',
+    ]);
+  });
+
+  it('applies no flag declared under a condition', () => {
+    const build =
+      "tasks.withType(JavaCompile) { if (ci) { options.errorprone { enable('Var') } } }\n";
+    const declarations = errorproneDeclarations(
+      readDeclaredBuild(sourceOf({ 'build.gradle': build })),
+    );
+    const result = errorproneLayers(declarations, { projectWins: true });
+
+    expect(result.flags).toEqual([]);
+    expect(result.notApplied.map(({ setting }) => setting)).toEqual(["enable('Var')"]);
   });
 
   it('honours the suppression switches only when the project wins', () => {
@@ -171,7 +200,7 @@ describe('the notice about Error Prone flags', () => {
     ];
 
     expect(ERRORPRONE.notice(declarations, { nitpickerFirst: false })).toEqual([
-      "Error Prone runs nitpicker's checks with your flags laid over them; not applied from your build, because they turn a check off, narrow NullAway or name no check nitpicker's Error Prone has: -Xep:ReferenceEquality:OFF (build.gradle)",
+      "Error Prone runs nitpicker's checks with your flags laid over them; not applied from your build, because they would drop findings or name no check nitpicker's Error Prone has: -Xep:ReferenceEquality:OFF (build.gradle)",
     ]);
     expect(ERRORPRONE.notice(declarations.slice(1), { nitpickerFirst: false })).toEqual([]);
   });
