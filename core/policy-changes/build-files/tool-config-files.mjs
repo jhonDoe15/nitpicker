@@ -156,8 +156,7 @@ function eslintReview(head, prints, replacedOptions) {
 export function readToolConfigs(
   base,
   head,
-  gitBlobId,
-  { replacedOptions = replacedEslintOptions } = {},
+  { gitBlobId, replacedOptions = replacedEslintOptions },
 ) {
   return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier', 'jscpd', 'eslint']
     .filter((tool) => isOptedIn(tool, head.config))

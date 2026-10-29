@@ -1,4 +1,4 @@
-import { isPlainObject } from '../../../../shared/config.mjs';
+import { isPlainObject, sameJson } from '../../../../shared/config.mjs';
 
 const OFF_SEVERITIES = new Set([0, '0', 'off']);
 const LIST_OPTION_RULES = new Set([
@@ -31,10 +31,6 @@ function parts(setting) {
   return Array.isArray(setting) ? [setting[0], setting.slice(1)] : [setting, []];
 }
 
-function same(left, right) {
-  return JSON.stringify(left) === JSON.stringify(right);
-}
-
 function limitOf(option) {
   if (typeof option === 'number') {
     return { limit: option, rest: {} };
@@ -53,18 +49,18 @@ function clamped(nitpicker, project) {
     return undefined;
   }
   const limit = Math.min(own.limit, theirs.limit);
-  if (!same(own.rest, theirs.rest)) {
+  if (!sameJson(own.rest, theirs.rest)) {
     return undefined;
   }
   return [typeof nitpicker[0] === 'number' ? limit : { ...own.rest, max: limit }];
 }
 
 function mergedOptions(ruleId, nitpicker, project) {
-  if (project.length === 0 || same(nitpicker, project)) {
+  if (project.length === 0 || sameJson(nitpicker, project)) {
     return { options: nitpicker, replaced: false };
   }
   if (LIST_OPTION_RULES.has(ruleId)) {
-    const added = project.filter((option) => !nitpicker.some((own) => same(own, option)));
+    const added = project.filter((option) => !nitpicker.some((own) => sameJson(own, option)));
     return { options: [...nitpicker, ...added], replaced: false };
   }
   const limited = THRESHOLD_RULE.test(ruleId) ? clamped(nitpicker, project) : undefined;
