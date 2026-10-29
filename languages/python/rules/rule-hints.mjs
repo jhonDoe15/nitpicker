@@ -85,8 +85,10 @@ export function describeRuleFinding(
   );
 }
 
-function allowedText(hint, subject, libraries) {
-  return typeof hint.allowed === 'function' ? hint.allowed(subject, libraries) : hint.allowed;
+function allowedText(hint, finding, libraries) {
+  return typeof hint.allowed === 'function'
+    ? hint.allowed(finding.subject, libraries, finding.path)
+    : hint.allowed;
 }
 
 export const PYTHON_RULES_IDS = RULE_HINTS.filter(({ tool }) => tool === RULES_TOOL).flatMap(
@@ -118,7 +120,9 @@ export function withHint(finding, libraries = DEFAULT_LIBRARIES) {
   });
   const sentences = [
     `${rest.message.replace(/\.$/, '')}.`,
-    ...(hint?.allowed === undefined ? [] : [allowedText(hint, subject, libraries)]),
+    ...(hint?.allowed === undefined
+      ? []
+      : [allowedText(hint, { subject, path: rest.path }, libraries)]),
     ...(routed ? [] : [lifted]),
   ];
   return { ...rest, message: sentences.join(' ') };

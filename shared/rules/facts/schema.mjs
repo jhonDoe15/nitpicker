@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { isCount } from '../../config.mjs';
 
 const ROLES = ['production', 'test'];
 const KINDS = ['function', 'class', 'const', 'type', 'interface', 'enum'];
@@ -16,10 +17,6 @@ function isNonEmpty(value) {
 
 function isLine(value) {
   return Number.isInteger(value) && value > 0;
-}
-
-function isCount(value) {
-  return Number.isInteger(value) && value >= 0;
 }
 
 function isBoolean(value) {

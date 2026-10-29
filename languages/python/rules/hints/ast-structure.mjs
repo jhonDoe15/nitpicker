@@ -3,6 +3,25 @@ import { validatorNamed } from '../libraries/library-tables.mjs';
 import { validatorsOf } from '../libraries/project-libraries.mjs';
 import { RULES_TOOL } from './tool.mjs';
 
+const HELPER_CHAIN = ' -> ';
+
+function isHelperChain(subject = '') {
+  return subject.includes(HELPER_CHAIN);
+}
+
+function helperTakesItToo(subject) {
+  return isHelperChain(subject) ? ' (the helper takes it the same way)' : '';
+}
+
+function randomDescription(subject = '') {
+  if (isHelperChain(subject)) {
+    return `\`${subject}\` draws randomness through a project helper called from domain code`;
+  }
+  return subject.startsWith('import ')
+    ? `\`${subject}\` brings an id or random-data library into domain code`
+    : `\`${subject}()\` draws randomness in domain code`;
+}
+
 const IN_TEST = 'In a test, use `pytest.raises(SpecificError)` (`self.assertRaises` in unittest).';
 
 const HANDLE_EXCEPTION = `Catch the specific exception and handle it, or re-raise it with its cause (\`raise DomainError(...) from error\`); \`contextlib.suppress(SpecificError)\` ignores one expected error. ${IN_TEST}`;
@@ -15,6 +34,13 @@ const CAUGHT_LOG_ADVICE = {
   loguru:
     'Keep the traceback: `logger.exception("message")` or `logger.opt(exception=True).error("message")`; the exception as an argument drops it. Re-raising after the log also passes.',
 };
+
+const DOMAIN_CAUGHT_LOG_ADVICE =
+  'Domain code does not log: re-raise the error with its cause (`raise DomainError(...) from error`) or return a failure, and let the caller in `adapters/` or the composition root log it with its traceback.';
+
+function isDomainPath(path = '') {
+  return path.split('/').slice(0, -1).includes('domain');
+}
 
 function validatorForm(name) {
   return `${name} (\`${validatorNamed(name).call}\`)`;
@@ -60,7 +86,10 @@ export const STRUCTURE_HINTS = [
     tool: RULES_TOOL,
     rules: ['catch-log-without-exception'],
     describe: (subject) => `\`${subject}\` logs a caught error without its traceback`,
-    allowed: (_subject, libraries) => CAUGHT_LOG_ADVICE[libraries?.logging ?? 'logging'],
+    allowed: (_subject, libraries, path) =>
+      isDomainPath(path)
+        ? DOMAIN_CAUGHT_LOG_ADVICE
+        : CAUGHT_LOG_ADVICE[libraries?.logging ?? 'logging'],
   },
   {
     tool: RULES_TOOL,
@@ -131,23 +160,55 @@ export const STRUCTURE_HINTS = [
   {
     tool: RULES_TOOL,
     rules: ['clock-now'],
-    describe: (subject) => `\`${subject}()\` reads the clock in domain code`,
-    allowed:
-      'Take the time as a parameter or a `Callable[[], datetime]` and call `datetime.now(tz=UTC)` in the composition root.',
+    describe: (subject) =>
+      isHelperChain(subject)
+        ? `\`${subject}\` reads the clock through a project helper called from domain code`
+        : `\`${subject}()\` reads the clock in domain code`,
+    allowed: (subject) =>
+      `Take the time as a parameter or a \`Callable[[], datetime]\`${helperTakesItToo(subject)} and call \`datetime.now(tz=UTC)\` in the composition root.`,
   },
   {
     tool: RULES_TOOL,
     rules: ['random-in-domain'],
-    describe: (subject) => `\`${subject}()\` draws randomness in domain code`,
-    allowed:
-      'Take the value, a `random.Random` or an id factory as a parameter and create it in the composition root.',
+    describe: (subject) => randomDescription(subject),
+    allowed: (subject) =>
+      `Take the value, a \`random.Random\` or an id factory as a parameter${helperTakesItToo(subject)} and create it in the composition root.`,
   },
   {
     tool: RULES_TOOL,
     rules: ['io-in-domain'],
-    describe: (subject) => `\`${subject}\` does input or output in domain code`,
+    describe: (subject) =>
+      isHelperChain(subject)
+        ? `\`${subject}\` does input or output through a project helper called from domain code`
+        : `\`${subject}\` does input or output in domain code`,
+    allowed: (subject) =>
+      isHelperChain(subject)
+        ? 'Keep `domain/` pure: call the helper from `adapters/` or the composition root and pass its result in, or define a `Protocol` in the domain, implement it in `adapters/` and pass the adapter in.'
+        : 'Keep `domain/` pure: define a `Protocol` in the domain and implement it in `adapters/`, then pass the adapter in.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['logger-in-domain'],
+    describe: (subject) => `\`${subject}\` is imported into domain code`,
     allowed:
-      'Keep `domain/` pure: define a `Protocol` in the domain and implement it in `adapters/`, then pass the adapter in.',
+      'Return a result that says what happened, or raise a domain error, and let `adapters/` or the composition root log it.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['module-state-in-domain'],
+    describe: (subject) => `Domain code uses the module state \`${subject}\``,
+    allowed:
+      'Receive the state as a parameter and return the new value; the composition root creates the object and passes it in.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['import-time-effect'],
+    describe: (subject) =>
+      isHelperChain(subject)
+        ? `\`${subject}\` runs an external effect when the module is imported, so every import, tests included, performs it`
+        : `\`${subject}()\` runs when the module is imported, so every import, tests included, performs it`,
+    allowed:
+      'Move the call into a function and call that from the composition root (`main.py`, a `create_app` factory) or under `if __name__ == "__main__":`, passing the result in.',
   },
   {
     tool: RULES_TOOL,
