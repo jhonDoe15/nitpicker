@@ -44,6 +44,22 @@ describe('failingTestsOf', () => {
     );
   });
 
+  it('names the base snapshot when the base tests fail', () => {
+    const { root, reportBase } = gradleRun({
+      suites: {
+        'shop.CartTest': `<testsuite name="shop.CartTest"><testcase classname="shop.CartTest" name="adds"><failure message="no"/></testcase></testsuite>`,
+      },
+    });
+
+    expect(failingTestsOf(root, { reportBase, since: 0, snapshot: 'base' }).message).toBe(
+      [
+        `Tests fail in the base snapshot (${root}); nitpicker needs a passing test suite for coverage and mutation testing:`,
+        '  shop.CartTest.adds: no',
+        linkSentence('baseTestsFail'),
+      ].join('\n'),
+    );
+  });
+
   it('leaves the build failure as it is when no test failed or the run wrote no list', () => {
     const { root, reportBase } = gradleRun({
       suites: {

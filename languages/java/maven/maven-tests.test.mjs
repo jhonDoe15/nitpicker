@@ -226,6 +226,30 @@ describe('collectTestResults', () => {
     expect(run(`${surefire}/.`)).toThrow(failing('  shop.OrderTest.totals: no'));
   });
 
+  it('names the base snapshot when the base tests fail', () => {
+    const reports = tree({
+      'TEST-shop.OrderTest.xml': suite('shop.OrderTest', [['totals', 'no']]),
+    });
+
+    expect(() => {
+      collectTestResults({
+        module: { basedir: '/m', surefireReports: reports, failsafeReports: reports },
+        reportDir: tree({}),
+        since,
+        isArchunit: archunitMatcher(),
+        snapshot: 'base',
+      });
+    }).toThrow(
+      new Error(
+        [
+          'Tests fail in the base snapshot (/m); nitpicker needs a passing test suite for coverage and mutation testing:',
+          '  shop.OrderTest.totals: no',
+          linkSentence('baseTestsFail'),
+        ].join('\n'),
+      ),
+    );
+  });
+
   it('reports whether any test ran', () => {
     const run = (files) =>
       collectTestResults({

@@ -62,4 +62,24 @@ describe('failingTestsError', () => {
       linkSentence('testsFail'),
     ]);
   });
+
+  it('names the snapshot whose tests fail and links the entry for it', () => {
+    const failures = ['shop.T.t: no'];
+    const message = (snapshot) => failingTestsError('/repo', failures, snapshot).message;
+
+    expect(message('base')).toBe(
+      [
+        'Tests fail in the base snapshot (/repo); nitpicker needs a passing test suite for coverage and mutation testing:',
+        '  shop.T.t: no',
+        linkSentence('baseTestsFail'),
+      ].join('\n'),
+    );
+    expect(message('head')).toBe(
+      [
+        'Tests fail in the head snapshot (/repo); nitpicker needs a passing test suite for coverage and mutation testing:',
+        '  shop.T.t: no',
+        linkSentence('testsFail'),
+      ].join('\n'),
+    );
+  });
 });
