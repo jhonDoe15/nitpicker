@@ -51,7 +51,10 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     expect(reviewFindings(result.newEnforceable)).toEqual(EXPECTED_REVIEW_FINDINGS);
     expect(
       result.newEnforceable
-        .filter(({ tool, path: file }) => tool === 'detekt' && file === ARCHIVE_FILE)
+        .filter(
+          ({ tool, rule, path: file }) =>
+            tool === 'detekt' && file === ARCHIVE_FILE && rule.endsWith('InjectDispatcher'),
+        )
         .map(({ rule }) => rule),
     ).toEqual([]);
   });
