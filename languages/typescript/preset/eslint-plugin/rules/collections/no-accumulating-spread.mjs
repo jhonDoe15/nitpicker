@@ -1,4 +1,8 @@
 import { ancestorsOf, chainOf } from '../analysis/ancestry.mjs';
+import {
+  accumulatingSpreadMessageId,
+  accumulatingSpreadMessages,
+} from './accumulating-spread-messages.mjs';
 
 const REDUCE_METHODS = new Set(['reduce', 'reduceRight']);
 const FUNCTION_TYPES = new Set([
@@ -24,18 +28,6 @@ const LITERAL_KINDS = new Map([
   ['ArrayExpression', 'Array'],
   ['ObjectExpression', 'Object'],
 ]);
-
-const QUADRATIC =
-  'Spreading the accumulator copies it again on every step, which is quadratic once it grows with the input';
-const OUTSIDE_DOMAIN = 'outside domain/, a const accumulator that a for...of loop fills also works';
-
-export const accumulatingSpreadMessages = {
-  reduceObject: `${QUADRATIC}: build the object in one pass with Object.fromEntries(xs.map((x) => [x.key, x.value])), Object.assign({}, ...xs), Object.groupBy or new Map(xs.map((x) => [x.key, x])); ${OUTSIDE_DOMAIN}.`,
-  reduceArray: `${QUADRATIC}: build the array in one pass with xs.flatMap((x) => x.items), xs.map or xs.filter; ${OUTSIDE_DOMAIN}.`,
-  reduce: `${QUADRATIC}: build the value in one pass with map, flatMap or filter and wrap it once (Object.fromEntries, new Set, new Map); ${OUTSIDE_DOMAIN}.`,
-  loopArray: `${QUADRATIC}: build the array with xs.map, xs.flatMap or xs.filter, or declare it const before the loop and push onto it.`,
-  loopObject: `${QUADRATIC}: build the object with Object.fromEntries(xs.map((x) => [x.key, x.value])) or Object.assign({}, ...parts), or declare it const (or a Map) before the loop and set its keys.`,
-};
 
 function innerExpression(node) {
   return chainOf(node, (current) =>
@@ -83,7 +75,7 @@ function formalParameters(fn) {
   );
 }
 
-function reduceMessageId(call) {
+function reduceKind(call) {
   const initial = call.arguments[1];
   const kind =
     initial === undefined || initial.type === 'SpreadElement'
@@ -103,7 +95,7 @@ function reduceReport(definition, spread) {
     return undefined;
   }
   return ancestorsOf(spread).find((node) => FUNCTION_TYPES.has(node.type)) === fn
-    ? { descriptor: { node: spread, messageId: reduceMessageId(call) } }
+    ? { kind: reduceKind(call), descriptor: { node: spread } }
     : undefined;
 }
 
@@ -143,11 +135,43 @@ function loopReport({ definition, variable, spread, sourceCode }) {
     ? undefined
     : {
         declarator: definition.node,
-        descriptor: {
-          loc: declaredNameLocation(sourceCode, definition.node.id),
-          messageId: `loop${kind}`,
-        },
+        kind: `loop${kind}`,
+        descriptor: { loc: declaredNameLocation(sourceCode, definition.node.id) },
       };
+}
+
+function isNumber(node) {
+  const literal = node?.type === 'UnaryExpression' && node.operator === '-' ? node.argument : node;
+  return literal?.type === 'Literal' && typeof literal.value === 'number';
+}
+
+function isBoundingSlice(array) {
+  const member = array.parent;
+  const call = member.parent;
+  if (
+    member.type !== 'MemberExpression' ||
+    member.object !== array ||
+    member.computed ||
+    member.property.name !== 'slice' ||
+    call.type !== 'CallExpression' ||
+    call.callee !== member
+  ) {
+    return false;
+  }
+  const [start, end] = call.arguments;
+  return call.arguments.length === 2
+    ? isNumber(start) && isNumber(end)
+    : call.arguments.length === 1 && start.type === 'UnaryExpression' && isNumber(start);
+}
+
+function isFixedShape(spread) {
+  const container = spread.parent;
+  if (container.type === 'ObjectExpression') {
+    return container.properties.every(
+      (property) => property === spread || (property.type === 'Property' && !property.computed),
+    );
+  }
+  return container.type === 'ArrayExpression' && isBoundingSlice(container);
 }
 
 function resolvedVariable(sourceCode, identifier) {
@@ -183,17 +207,20 @@ export const rule = {
   },
   create(context) {
     const { sourceCode } = context;
-    const reportedDeclarators = new Set();
+    const seenDeclarators = new Set();
     return {
       SpreadElement(spread) {
         const report = spreadReport(spread, sourceCode);
-        if (report === undefined || reportedDeclarators.has(report.declarator)) {
+        if (report === undefined || seenDeclarators.has(report.declarator)) {
           return;
         }
         if (report.declarator !== undefined) {
-          reportedDeclarators.add(report.declarator);
+          seenDeclarators.add(report.declarator);
         }
-        context.report(report.descriptor);
+        if (!isFixedShape(spread)) {
+          const messageId = accumulatingSpreadMessageId(report.kind, context.filename);
+          context.report({ ...report.descriptor, messageId });
+        }
       },
     };
   },

@@ -17,7 +17,7 @@ describe('withoutSupersededMessages', () => {
   });
 
   it('drops a loop accumulator report inside a let declaration that no-let already reports', () => {
-    const messages = [noLet, spread('loopArray', 4, 7), spread('loopObject', 4, 40)];
+    const messages = [noLet, spread('loopArray', 4, 7), spread('domainLoopObject', 4, 40)];
     expect(withoutSupersededMessages(messages)).toEqual([noLet]);
   });
 

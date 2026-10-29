@@ -5,7 +5,7 @@ const SAME_START_SUPERSEDING = new Map([
 const ENCLOSING_SUPERSEDING = [
   {
     ruleId: 'nitpicker/no-accumulating-spread',
-    messageIds: new Set(['loopArray', 'loopObject']),
+    messageIds: new Set(['loopArray', 'loopObject', 'domainLoopArray', 'domainLoopObject']),
     supersededBy: 'functional/no-let',
   },
 ];

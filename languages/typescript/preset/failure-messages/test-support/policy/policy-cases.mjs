@@ -121,14 +121,14 @@ export const policyFailureMessageCases = [
     'as a parameter',
   ),
   domainCase(
-    'reduce spreading its accumulator names Object.fromEntries',
+    'reduce spreading its accumulator names the as const entries form',
     'export const byId = (xs) => xs.reduce((index, x) => ({ ...index, [x.id]: x }), {});',
-    'Object.fromEntries(xs.map((x) => [x.key, x.value]))',
+    'new Map(xs.map((x) => [x.key, x] as const))',
   ),
   adapterCase(
     'loop spreading its accumulator names push onto a const array',
     'export function all(xs) { let out = []; for (const x of xs) { out = [...out, x]; } return out; }',
-    'declare it const before the loop and push onto it',
+    'declare the array const before the loop and push onto it',
   ),
   domainCase(
     'domain Reflect.set names spread',

@@ -24,7 +24,11 @@ const ESLINT_ADAPTER_FILES = [
   'languages/typescript/adapters/eslint/analyzer.mjs',
   'languages/typescript/adapters/eslint-runner.mjs',
   'languages/typescript/adapters/eslint-wrapper.config.mjs',
+  'languages/typescript/adapters/lint-engine/overlapping-reports.mjs',
+  'languages/typescript/adapters/oxlint/native/accumulating-spread-check.mjs',
+  'languages/typescript/adapters/oxlint/native/owned-native-rules.mjs',
   'languages/typescript/adapters/oxlint/oxlint-bridge.mjs',
+  'languages/typescript/adapters/oxlint/oxlint-diagnostics.mjs',
   'languages/typescript/adapters/oxlint/oxlint-plan.mjs',
 ];
 const ENTRY_POINT_ADAPTER_FILES = [
