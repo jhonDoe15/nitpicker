@@ -159,7 +159,9 @@ describe('Spring Data rules on the forms the regression review found', () => {
   });
 
   it('still reports an executeUpdate that binds the loop variable beside a list parameter', () => {
-    expect(reportedIn('bad/Rows.kt')).toContain('66 SpringDataRowWriteInLoop');
+    expect(reportedIn('bad/Rows.kt').filter((line) => line.startsWith('66 '))).toEqual([
+      '66 SpringDataRowWriteInLoop',
+    ]);
   });
 
   it('keeps a mapped value, chunk updates, a plain DAO, converted enums and mapped collections', () => {

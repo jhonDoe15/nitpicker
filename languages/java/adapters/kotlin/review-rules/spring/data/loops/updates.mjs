@@ -40,7 +40,7 @@ const NARROWING = new Set([
   'toSet',
   'toMutableSet',
 ]);
-const CAST = /^([\s\S]+?)\s+as\??\s+[\p{L}_][\p{L}\p{N}_.<>?, ]*$/u;
+const CAST = /\sas\??\s+[\p{L}_][\p{L}\p{N}_.<>?, ]*$/u;
 const SOURCE_DEPTH = 8;
 const QUERY_CREATORS = new Set(['createQuery', 'createNamedQuery', 'createNativeQuery']);
 const QUERY_BUILDERS = new Set([
@@ -58,7 +58,7 @@ function singleArgument(values) {
   return only !== undefined && rest.length === 0 && only.spread !== true && only.lambda !== true;
 }
 
-export function oneElementCall(invocation) {
+function oneElementCall(invocation) {
   return (
     singleArgument(invocation.arguments) &&
     ONE_ELEMENT.has([invocation.receiver, invocation.name].filter(Boolean).join('.'))
@@ -68,7 +68,8 @@ export function oneElementCall(invocation) {
 function sourceCollection(text) {
   const steps = [text.trim()];
   for (const current of steps) {
-    const inner = unwrapped(current) ?? CAST.exec(current)?.[1];
+    const cast = CAST.exec(current);
+    const inner = unwrapped(current) ?? (cast === null ? undefined : current.slice(0, cast.index));
     const parts = inner === undefined ? lastSelector(current) : undefined;
     const call = parts === undefined ? undefined : parseSelector(parts.selector);
     const next =
