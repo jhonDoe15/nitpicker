@@ -1,6 +1,9 @@
+import importlib.machinery
 import os
+import sys
 
 ROOT_MARKERS = {".", ""}
+SCRIPT_ROOT = os.path.dirname(os.path.dirname(os.path.realpath(__file__)))
 
 
 def module_parts(path):
@@ -23,6 +26,8 @@ class Project:
         self.memos = {}
         self.names = {}
         self.suffixes = {}
+        self.packages = set()
+        self.outside = {}
         roots = sorted(options.get("sourceRoots") or ["."], key=len, reverse=True)
         for path in paths:
             self.index_path(path, roots)
@@ -33,6 +38,7 @@ class Project:
             filter(None, (under_root(parts, root) for root in roots)), parts
         )
         self.names.setdefault(".".join(relative), path)
+        self.packages.update(path.split("/")[:-1])
         for start in range(len(parts)):
             self.suffixes.setdefault(".".join(parts[start:]), []).append(path)
 
@@ -47,8 +53,17 @@ class Project:
     def module_path(self, dotted):
         if dotted in self.names:
             return self.names[dotted]
+        if not self.may_be_suffix(dotted.split(".")[0]):
+            return None
         matches = self.suffixes.get(dotted, [])
         return matches[0] if len(matches) == 1 else None
+
+    def may_be_suffix(self, first):
+        if first in sys.stdlib_module_names or first not in self.packages:
+            return False
+        if first not in self.outside:
+            self.outside[first] = installed_elsewhere(first)
+        return not self.outside[first]
 
     def module_name(self, path):
         parts = module_parts(path)
@@ -81,3 +96,20 @@ class Project:
             if path is not None:
                 return path, parts[size]
         return None
+
+
+def installed_elsewhere(name):
+    search = [
+        entry for entry in sys.path if os.path.realpath(entry or ".") != SCRIPT_ROOT
+    ]
+    try:
+        spec = importlib.machinery.PathFinder.find_spec(name, search)
+    except (ImportError, ValueError):
+        return False
+    origin = getattr(spec, "origin", None) if spec else None
+    locations = list(getattr(spec, "submodule_search_locations", None) or [])
+    places = [origin] if origin else locations
+    root = os.path.realpath(os.getcwd())
+    return bool(places) and not any(
+        os.path.realpath(place).startswith(root + os.sep) for place in places
+    )

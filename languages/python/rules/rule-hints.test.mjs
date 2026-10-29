@@ -339,6 +339,15 @@ describe('hints follow the libraries of the project', () => {
     },
   );
 
+  it('tell domain code to raise instead of logging a caught error', () => {
+    const rule = 'catch-log-without-exception';
+    const finding = { ...sample({ tool: 'python-rules', rule }), path: 'shop/domain/orders.py' };
+
+    expect(withHint({ ...finding, subject: 'logger.error(...)' }).message).toBe(
+      `The base message. Domain code does not log: re-raise the error with its cause (\`raise DomainError(...) from error\`) or return a failure, and let the caller in \`adapters/\` or the composition root log it with its traceback. ${exceptionRoute({ rule, path: 'shop/domain/orders.py', key: 'python.exceptions' })}`,
+    );
+  });
+
   it('describe the rules for caught logs and silent tests by their subject', () => {
     expect(describeRuleFinding('catch-log-without-exception', 'logger.error(...)')).toBe(
       '`logger.error(...)` logs a caught error without its traceback',

@@ -39,17 +39,18 @@ function described({ rule, subject, data }, libraries) {
 
 export function ingestRulesReport(text, libraries) {
   const identify = createIdentities();
-  return JSON.parse(text).map(({ rule, path, subject, line, data, error }) => {
+  return JSON.parse(text).map(({ rule, path, subject, line, data, error, via }) => {
     if (rule === CHECK_FAILED_RULE || rule === SKIPPED_RULE) {
       return toolError({ rule, path, subject, error });
     }
+    const shown = via ?? subject;
     return {
       tool: RULES_TOOL,
       rule,
       path,
       identity: identify({ path, rule, subject }),
-      subject,
-      ...described({ rule, subject, data }, libraries),
+      subject: shown,
+      ...described({ rule, subject: shown, data }, libraries),
       location: { line },
     };
   });
