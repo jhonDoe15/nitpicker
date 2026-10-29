@@ -1,4 +1,6 @@
-const words = (text) => text.trim().split(/\s+/u);
+function words(text) {
+  return text.trim().split(/\s+/u);
+}
 
 const REST_OPERATIONS = words(`
   getForObject getForEntity headForHeaders postForLocation postForObject postForEntity put

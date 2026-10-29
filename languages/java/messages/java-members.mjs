@@ -5,7 +5,7 @@ const ASSIGNMENT = /(?<![=!<>+\-*/%&|^])=(?!=)/u;
 const NAME_BEFORE = /([A-Za-z_$][\w$]*)\s*(?:\[\s*\]\s*)*$/u;
 const FIRST_NAME = /^\s*([A-Za-z_$][\w$]*)/u;
 const CALL_NAME = /([A-Za-z_$][\w$]*)\s*(?:<[^<>]*>\s*)?$/u;
-const ANONYMOUS_TAIL = /\bnew\s+[\w$.]+\s*(?:<[^()]*>)?\s*$/u;
+const ANONYMOUS_TAIL = /\bnew\s+[\w$.]+(?:\s*<[^()]*>)?\s*$/u;
 const DEPTH = { '(': 1, '[': 1, ')': -1, ']': -1 };
 const BACKWARD_DEPTH = { ')': 1, '(': -1 };
 

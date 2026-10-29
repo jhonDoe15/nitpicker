@@ -146,18 +146,18 @@ describe('class-load effect parity between the Java and Kotlin rules', () => {
   const kotlin = kotlinPairs();
 
   it('reads the effect pairs of the Java rule', () => {
-    expect(java).toEqual(
-      expect.arrayContaining([
-        'java.sql.DriverManager#getConnection',
-        'java.nio.file.Files#*',
-        'java.util.concurrent.Executors#new*',
-        'java.io.File#mkdirs',
-        'org.springframework.web.client.RestOperations#getForObject',
-        'org.springframework.web.client.RestClient.RequestHeadersSpec#retrieve',
-        'org.reactivestreams.Publisher#block',
-        'java.util.Timer#new',
-      ]),
-    );
+    const expected = [
+      'java.sql.DriverManager#getConnection',
+      'java.nio.file.Files#*',
+      'java.util.concurrent.Executors#new*',
+      'java.io.File#mkdirs',
+      'org.springframework.web.client.RestOperations#getForObject',
+      'org.springframework.web.client.RestClient.RequestHeadersSpec#retrieve',
+      'org.reactivestreams.Publisher#block',
+      'java.util.Timer#new',
+    ];
+
+    expect(expected.filter((pair) => !java.includes(pair))).toEqual([]);
     expect(java).not.toContain('java.lang.String#new');
   });
 
