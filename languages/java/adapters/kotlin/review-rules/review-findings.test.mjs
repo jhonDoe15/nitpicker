@@ -190,6 +190,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/ExhaustiveEnumPredicate',
       'pmd/StaticForwardingWrapper',
       'pmd/SingularAndPluralMember',
+      'pmd/ClassLoadEffect',
       ...SPRING_RULES.map((rule) => `pmd/${rule}`),
       'pmd/SpringQueryConcatenation',
       'unused-option',
@@ -204,5 +205,25 @@ describe('Kotlin exception rules for the review rules', () => {
         validateKotlinOptions(config);
       }).not.toThrow();
     }
+  });
+
+  const onKotlinSource = (rule) => ({
+    preset: 'kotlin',
+    exceptions: [{ rule, paths: ['src/main/kotlin/demo/A.kt'], reason: 'x' }],
+  });
+
+  it.each(['pmd/SpringConstructorInjection', 'pmd/JpaLazyFetching', 'pmd/SpringDataNoSaveInLoop'])(
+    'accepts an exception for %s on a Kotlin source, where the Kotlin rule reports it',
+    (rule) => {
+      expect(() => {
+        validateKotlinOptions(onKotlinSource(rule));
+      }).not.toThrow();
+    },
+  );
+
+  it('rejects a pmd id no Kotlin rule prints when its paths name only Kotlin sources', () => {
+    expect(() => {
+      validateKotlinOptions(onKotlinSource('pmd/SpringFieldInjection'));
+    }).toThrow('reported in .java files only: its paths name Kotlin sources');
   });
 });

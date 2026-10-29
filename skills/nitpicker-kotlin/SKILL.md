@@ -52,7 +52,8 @@ Before you change code other modules use, or fix a bug, read
 - With Spring, the architecture rules (`archunit/spring-...`) read the compiled Kotlin classes: package
   by feature; controllers call services, never repositories or another controller; a repository calls
   no service; a request- or session-scoped bean reaches a singleton only as `ObjectProvider<T>` or
-  through a scoped proxy (`@RequestScope`).
+  through a scoped proxy (`@RequestScope`); request data never lands in a singleton's property or a
+  `companion object`: pass it through parameters and return values.
 - With jMolecules (`AggregateRoot`, `Entity`, `ValueObject` or their annotations; also without Spring),
   the `archunit/ddd-...` rules hold aggregate boundaries: refer to another aggregate's root by its
   identifier or an `Association`, keep each entity in one aggregate, and keep entities and roots out of
@@ -69,7 +70,9 @@ Before you change code other modules use, or fix a bug, read
   `Throwable` (also in tests: `TooGenericExceptionCaught`), and pass the caught exception on as the cause (`SwallowedException`). Use
   `require(...)` and `check(...)` instead of throwing `IllegalArgumentException` and
   `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private
-  members and parameters.
+  members and parameters (an override, a function with a framework annotation and a name starting
+  `ignored` or `unused` are skipped). A public function's `Boolean` parameter that picks a behavior
+  becomes two functions or an enum (`BooleanFlagParameter`).
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
   declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`
@@ -79,6 +82,13 @@ Before you change code other modules use, or fix a bug, read
   `of` or `from` are fine.
 - A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
+- In main code, nothing with an outside effect runs while a file, `object`, companion object or
+  enum class loads (`pmd/ClassLoadEffect`): no connection, request, file access, pool, timer,
+  coroutine launch or JVM-wide setting in a top-level property, an `object`'s properties or `init`,
+  an enum entry, or a class its companion creates, nor in a function they call. Do the work in a
+  function `main` or the framework calls after startup (a `@Bean` method, an `ApplicationRunner`, a
+  Ktor module) and pass the result in, or defer it with `by lazy { }`. Constants, loggers, `Regex`
+  and collections can stay.
 - A private or `internal` function or constructor does not declare a default parameter that no
   call in the project sets (`unused-option`): remove the parameter, or pass it from a real call.
 - Never `@Suppress` a detekt or ktlint rule (its name, `all`, a ruleset, `detekt:...`, `ktlint:...`):
@@ -92,10 +102,8 @@ Before you change code other modules use, or fix a bug, read
   `detekt.yml` has no effect. Generated code belongs in `exclude`: ask the maintainer to add it.
 - A project may add forbidden calls to `ForbiddenMethodCall.methods` in its `detekt.yml`; they join
   the preset's. Do not call anything the project lists there.
-- With Spring, the Spring rules of the Java preset run on Kotlin under the same `pmd/Spring...` ids,
-  and each finding names the Kotlin form. JPA entities and Spring Data repositories are not checked
-  in Kotlin yet: follow the JPA and Spring Data part of the `spring.md` page of the `nitpicker-java`
-  skill there.
+- With Spring, the Spring, JPA and Spring Data rules of the Java preset run on Kotlin under the same
+  `pmd/...` ids, and each finding names the Kotlin form.
 
 ## Repository files
 
@@ -156,3 +164,6 @@ Before you change code other modules use, or fix a bug, read
   constructor in a unit test, or use a slice (`pmd/SpringUnusedContext`).
 - A function or file already over a limit may be edited but must not get worse: put new code in a
   new function or file and call it.
+- A string of five characters or more used three times in a main file gets one
+  `private const val NAME = "..."` (`kotlin-source/RepeatedStringLiteral`); annotation arguments,
+  `when` labels, named arguments, map keys and message keys are not counted.
