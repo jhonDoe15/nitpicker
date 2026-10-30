@@ -51,10 +51,10 @@ A callback breaks its protocol: `source-loader-does-not-merge-published-state`, 
 
 A doc comment that only restates its declaration name, or whose description is longer than the limit.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `coding-standards`
+- **Presets:** TypeScript, JavaScript, Java and Kotlin
+- **Analyzers:** `coding-standards` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin)
 - **Why it is on:** A comment that repeats the name adds noise; a long one belongs in names and types.
-- **Threshold:** a doc comment that only restates its declaration name, or a description longer than 5 lines, code examples not counted (TypeScript and JavaScript report it as `nitpicker/no-comments`)
+- **Threshold:** a doc comment or docstring that only restates its declaration name (a tag or section with text, such as `@param id the account` or `Args:`, says more), or a description longer than 5 lines, tags, sections and code examples not counted (TypeScript and JavaScript report it as `nitpicker/no-comments`)
 - **Exception:** If this is intended, add `{"rule":"doc-comment-content","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. With the TypeScript and JavaScript presets: If this is intended, add `{"rule":"nitpicker/no-comments","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - `restatingDocComment`: Delete it, or say what the name cannot: a unit, a limit, an edge case or why.
@@ -225,11 +225,11 @@ An import of a package that `package.json` does not list.
 
 An import that resolves to no file and no package.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `dead-code`
+- **Presets:** TypeScript, JavaScript and Python
+- **Analyzers:** `dead-code` (TypeScript and JavaScript); `python` (Python)
 - **Why it is on:** It fails when the code runs.
 - **Allowed form:** Fix the path, or install the package and list it in `package.json`.
-- **Exception:** If this is intended, add `{"rule":"unresolved-import","paths":["<path>"],"packages":["<package>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Exception:** If this is intended, add `{"rule":"unresolved-import","paths":["<path>"],"packages":["<package>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. With the Python preset: If this is intended, add `{"rule":"unresolved-import","paths":["<path>"],"packages":["<package>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="dead-code-unused-dependency"></a>
 
@@ -414,8 +414,8 @@ A component file without a story, in a package that has Storybook.
 
 A used literal constant, function or type with the same name and text in two modules of a package.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `structure`
+- **Presets:** TypeScript, JavaScript, Java and Kotlin
+- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin)
 - **Scope:** The JavaScript preset enforces this check only in part.
 - **Why it is on:** Two copies of one definition drift apart.
 - **Allowed form:** Define it once in one module and import it where it is used.
@@ -427,8 +427,8 @@ A used literal constant, function or type with the same name and text in two mod
 
 Two different exports with one name, imported by the same module, which keeps the name for one of them.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `structure`
+- **Presets:** TypeScript, JavaScript, Java and Kotlin
+- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin)
 - **Scope:** The JavaScript preset enforces this check only in part.
 - **Why it is on:** Two things with one name make an import ambiguous to read.
 - **Allowed form:** Rename one of the exports.
@@ -594,11 +594,11 @@ A component named like one the project already renders from a dependency.
 
 A function or class edited so that it drifts from its same-named copy in another module while that copy is left unedited.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `structure`
+- **Presets:** TypeScript, JavaScript, Java and Kotlin
+- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin)
 - **Why it is on:** Editing one of two near-identical copies leaves the other with the old bug.
 - **Allowed form:** Edit it there too, or merge the copies.
-- **Threshold:** a function or class edited so that it drifts from its same-named copy in another module of the package, at least 80% the same tokens before and after, while that copy is left unedited
+- **Threshold:** a function or class edited so that it drifts from its same-named copy in another module of the package, at least 80% the same tokens before and after, while that copy is left unedited (Java and Kotlin: top-level classes and static, `object` and top-level functions)
 - **Exception:** If this is intended, add `{"rule":"sibling-copy-edit","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="structure-unused-option"></a>

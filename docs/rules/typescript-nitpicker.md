@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 80 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 85 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -134,6 +134,19 @@ Enforce naming conventions for everything across a codebase.
   - {{type}} name `{{name}}` must not have a {{position}} underscore.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/naming-convention)
 
+<a id="eslint-nitpicker-no-assertion-in-loop"></a>
+
+### `eslint/nitpicker/no-assertion-in-loop`
+
+Ban assertions inside loops and iterating callbacks in a test.
+
+- **Printed as:** `eslint-lint/nitpicker/no-assertion-in-loop`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-assertion-in-loop","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - This assertion sits in a `{{construct}}` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.
+  - This assertion runs once per row of a literal table in a `{{construct}}`: in Vitest, Jest and Mocha write the table as `it.each([...])('name', (row) => { ... })` (or `test.each`), so each row is its own test and a table that comes up empty cannot pass unnoticed; in node:test register one subtest per row (`for (const row of [...]) { await t.test(row.name, () => { ... }); }`). To check one collection instead, assert it whole (`expect(rows).toEqual([...])`). An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.
+  - These node:test subtests are registered in a `{{construct}}` over a collection that can be empty, so no case may run and the test can pass without asserting anything. Register them from a literal, non-empty table (`for (const row of [...]) { await t.test(row.name, () => { ... }); }`, or a same-file const holding that array), or assert the whole collection at once. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.
+
 <a id="eslint-nitpicker-no-branch-in-composition-root"></a>
 
 ### `eslint/nitpicker/no-branch-in-composition-root`
@@ -167,6 +180,18 @@ Allow only non-suppression tool directives as comments, plus doc comments on exp
   - This doc comment only restates {{name}}. Delete it, or say what the name cannot: a unit, a limit, an edge case or why.
   - This doc comment's description is {{lines}} lines (limit {{limit}}). Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types.
   - Doc comments are allowed only on exported declarations and the members of exported types. Remove this one and put the intent in code: a descriptive identifier, a named function, or a type.
+
+<a id="eslint-nitpicker-no-compatibility-shim"></a>
+
+### `eslint/nitpicker/no-compatibility-shim`
+
+Disallow deprecated declarations and second names for an exported API.
+
+- **Printed as:** `eslint-lint/nitpicker/no-compatibility-shim`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-compatibility-shim","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - A `@deprecated` declaration keeps the old API next to its replacement. Delete it and update its callers to the replacement in the same change.
+  - `{{ alias }}` is a second exported name for `{{ target }}`. Delete `{{ alias }}` and update its callers to import `{{ target }}`.
 
 <a id="eslint-nitpicker-no-copy-pasted-tests"></a>
 
@@ -227,6 +252,17 @@ Tests requiring external executables belong in the integration project.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-external-executables-in-unit-tests","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - Tests requiring external executables belong in the integration project.
+
+<a id="eslint-nitpicker-no-falsy-default"></a>
+
+### `eslint/nitpicker/no-falsy-default`
+
+Disallow replacing a falsy parameter with a default through || or a ternary.
+
+- **Printed as:** `eslint-lint/nitpicker/no-falsy-default`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-falsy-default","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `{{ name }}` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`.
 
 <a id="eslint-nitpicker-no-first-test-charged-setup"></a>
 
@@ -407,6 +443,17 @@ Disallow null outside the allowed library forms.
 - **Allowed forms by message:**
   - Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument. An exception fits only when a framework or library requires it.
   - Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument. An exception fits only when a framework or library requires it. Type it as optional with `undefined`.
+
+<a id="eslint-nitpicker-no-parameter-mutation"></a>
+
+### `eslint/nitpicker/no-parameter-mutation`
+
+Disallow changing an array, Set, Map or indexed object that a parameter holds in place.
+
+- **Printed as:** `eslint-lint/nitpicker/no-parameter-mutation`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-parameter-mutation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `{{ name }}` changes the value the caller passed in. Build and return a new value instead (`[...items, item]`, `new Set([...set, item])`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).
 
 <a id="eslint-nitpicker-no-partial-output-assertion"></a>
 
@@ -637,6 +684,17 @@ Disallow throw so expected failures are returned as discriminated unions.
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-throw","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - Return a discriminated-union failure result (for example { kind: "failed", reason }) instead of throwing.
+
+<a id="eslint-nitpicker-no-tri-state-boolean"></a>
+
+### `eslint/nitpicker/no-tri-state-boolean`
+
+Disallow a boolean that can also be undefined or null.
+
+- **Printed as:** `eslint-lint/nitpicker/no-tri-state-boolean`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-tri-state-boolean","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - {{ name }} is a boolean that can also be absent, so it has three states: true, false and nothing. Take a required `boolean`, or name each state in a union of string literals (`'on' | 'off' | 'auto'`).
 
 <a id="eslint-nitpicker-no-ui-framework-in-domain"></a>
 

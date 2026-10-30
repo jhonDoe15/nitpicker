@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 54 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 58 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -94,6 +94,15 @@ A package that is in a dependency cycle with other packages.
 - **Allowed form:** Take the time as a parameter or a `Callable[[], datetime]` and call `datetime.now(tz=UTC)` in the composition root.
 - **Exception:** If this is intended, add `{"rule":"clock-now","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
+<a id="python-rules-compatibility-shim"></a>
+
+### `python-rules/compatibility-shim`
+
+`<name>` keeps an old name working.
+
+- **Allowed form:** When code moves or is renamed, change every caller in the same change and delete the old name: keep no alias, forwarding function, module `__getattr__`, `@deprecated` marker or deprecation warning. A published library keeps the deprecation of its public names, and that path takes an exception.
+- **Exception:** If this is intended, add `{"rule":"compatibility-shim","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
 <a id="python-rules-credential-shape"></a>
 
 ### `python-rules/credential-shape`
@@ -111,6 +120,15 @@ A string has the shape of a credential.
 
 - **Allowed form:** Declare an enum: `class Status(enum.StrEnum): ACTIVE = "active"` on Python 3.11+, otherwise `class Status(str, enum.Enum)`.
 - **Exception:** If this is intended, add `{"rule":"enum-string-constants","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-falsy-default"></a>
+
+### `python-rules/falsy-default`
+
+`<name>` replaces a falsy argument with a default, so `0`, `""`, `[]` and `False` count as not given.
+
+- **Allowed form:** Test for `None` only: `limit if limit is not None else DEFAULT_LIMIT`, or `if limit is None: limit = DEFAULT_LIMIT`.
+- **Exception:** If this is intended, add `{"rule":"falsy-default","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-frozen-dataclass"></a>
 
@@ -247,6 +265,15 @@ Inline suppression `# <name>`.
 - **Allowed form:** Put the code in the normal flow; `if TYPE_CHECKING:` is only for imports that annotations need.
 - **Exception:** If this is intended, add `{"rule":"not-type-checking","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
+<a id="python-rules-parameter-mutation"></a>
+
+### `python-rules/parameter-mutation`
+
+`<name>` changes the argument the caller passed in.
+
+- **Allowed form:** Build and return a new value (`[*items, item]`, `{**table, key: value}`), or copy the argument first (`items = [*items]`) when the function needs a working copy; do not hand a result back through a parameter.
+- **Exception:** If this is intended, add `{"rule":"parameter-mutation","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
 <a id="python-rules-process-env-access"></a>
 
 ### `python-rules/process-env-access`
@@ -379,7 +406,7 @@ The string "\<name>" is repeated three times or more.
 
 `<name>` swallows the error: it only logs it or returns a default, and carries on.
 
-- **Allowed form:** Re-raise it with its cause (`raise DomainError(...) from error`), return a failure result that carries the error (`return Rejected(str(error))`), or collect it for the caller (`errors.append(error)`); logging alone is not handling. `contextlib.suppress(SpecificError)` ignores one expected error. In a test, use `pytest.raises(SpecificError)` (`self.assertRaises` in unittest).
+- **Allowed form:** Re-raise it with its cause (`raise DomainError(...) from error`), return a failure result that carries the error (`return Rejected(str(error))`), or return the errors the function builds along with its result (`return results, errors`); logging alone is not handling. `contextlib.suppress(SpecificError)` ignores one expected error. In a test, use `pytest.raises(SpecificError)` (`self.assertRaises` in unittest).
 - **Exception:** If this is intended, add `{"rule":"swallowed-exception","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-task-outlives-resource"></a>
@@ -435,6 +462,15 @@ The task marker `<name>` has no issue.
 
 - **Allowed form:** Name the issue right after the marker (`# TODO(#123): ...`, `# TODO PROJ-123: ...` or a link), or delete the comment and track the work in the issue tracker.
 - **Exception:** If this is intended, add `{"rule":"todo-without-issue","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-tri-state-boolean"></a>
+
+### `python-rules/tri-state-boolean`
+
+`<name>` is a boolean that can also be `None`, a third state.
+
+- **Allowed form:** Name the three states with an enum (`class Consent(Enum)` with `GRANTED`, `DENIED` and `UNKNOWN`), or take a keyword-only `bool` with a default (`*, urgent: bool = False`) when `None` only means false. A method that overrides a base class takes `@typing.override` and keeps the base signature.
+- **Exception:** If this is intended, add `{"rule":"tri-state-boolean","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-uncollected-tests"></a>
 

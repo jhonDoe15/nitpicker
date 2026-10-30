@@ -1,6 +1,6 @@
 # Python: ruff rules
 
-The ruff rules in nitpicker's own ruff config, by rule code. This page lists 362 rules. [All pages](README.md).
+The ruff rules in nitpicker's own ruff config, by rule code. This page lists 372 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -1202,6 +1202,188 @@ Checks for unnecessary dict comprehension when creating a dictionary from an ite
 
 - **Exception:** If this is intended, add `{"rule":"C420","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 - **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/unnecessary-dict-comprehension-for-iterable/)
+
+<a id="ruff-dtz001"></a>
+
+### `ruff/DTZ001`
+
+Checks for `datetime` instantiations that do not specify a timezone.
+
+- **Why it is on:** `datetime` objects are "naive" by default, in that they do not include timezone information. "Naive" objects are easy to understand, but ignore some aspects of reality, which can lead to subtle bugs. Timezone-aware `datetime` objects are preferred, as they represent a specific moment in time, unlike "naive" objects. By providing a non-`None` value for `tzinfo`, a `datetime` can be made timezone-aware. Selected in the ruff config of the Python preset, with the flake8-datetimez rules (`call-datetime-without-tzinfo`).
+- **Allowed form:** Give the datetime a zone: `datetime(2024, 1, 1, tzinfo=timezone.utc)`. A datetime without one cannot be compared with an aware one.
+- **Example of the allowed form:**
+
+  ```python
+  import datetime
+
+  datetime.datetime(2000, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"DTZ001","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/call-datetime-without-tzinfo/)
+
+<a id="ruff-dtz002"></a>
+
+### `ruff/DTZ002`
+
+Checks for usage of `datetime.datetime.today()`.
+
+- **Why it is on:** `datetime` objects are "naive" by default, in that they do not include timezone information. "Naive" objects are easy to understand, but ignore some aspects of reality, which can lead to subtle bugs. Timezone-aware `datetime` objects are preferred, as they represent a specific moment in time, unlike "naive" objects. `datetime.datetime.today()` creates a "naive" object; instead, use `datetime.datetime.now(tz=...)` to create a timezone-aware object. Selected in the ruff config of the Python preset, with the flake8-datetimez rules (`call-datetime-today`).
+- **Allowed form:** Read the time in a zone: `datetime.now(tz=timezone.utc)`. In domain code take the clock as a parameter.
+- **Example of the allowed form:**
+
+  ```python
+  import datetime
+
+  datetime.datetime.now(tz=datetime.timezone.utc)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"DTZ002","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/call-datetime-today/)
+
+<a id="ruff-dtz003"></a>
+
+### `ruff/DTZ003`
+
+Checks for usage of `datetime.datetime.utcnow()`.
+
+- **Why it is on:** Python datetime objects can be naive or timezone-aware. While an aware object represents a specific moment in time, a naive object does not contain enough information to unambiguously locate itself relative to other datetime objects. Since this can lead to errors, it is recommended to always use timezone-aware objects. `datetime.datetime.utcnow()` returns a naive datetime object; instead, use `datetime.datetime.now(tz=...)` to create a timezone-aware object. Selected in the ruff config of the Python preset, with the flake8-datetimez rules (`call-datetime-utcnow`).
+- **Allowed form:** Call `datetime.now(tz=timezone.utc)`; `utcnow()` returns a datetime without a zone.
+- **Example of the allowed form:**
+
+  ```python
+  import datetime
+
+  datetime.datetime.now(tz=datetime.timezone.utc)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"DTZ003","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/call-datetime-utcnow/)
+
+<a id="ruff-dtz004"></a>
+
+### `ruff/DTZ004`
+
+Checks for usage of `datetime.datetime.utcfromtimestamp()`.
+
+- **Why it is on:** Python datetime objects can be naive or timezone-aware. While an aware object represents a specific moment in time, a naive object does not contain enough information to unambiguously locate itself relative to other datetime objects. Since this can lead to errors, it is recommended to always use timezone-aware objects. `datetime.datetime.utcfromtimestamp()` returns a naive datetime object; instead, use `datetime.datetime.fromtimestamp(ts, tz=...)` to create a timezone-aware object. Selected in the ruff config of the Python preset, with the flake8-datetimez rules (`call-datetime-utcfromtimestamp`).
+- **Allowed form:** Pass the zone: `datetime.fromtimestamp(timestamp, tz=timezone.utc)`.
+- **Example of the allowed form:**
+
+  ```python
+  import datetime
+
+  datetime.datetime.fromtimestamp(946684800, tz=datetime.timezone.utc)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"DTZ004","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/call-datetime-utcfromtimestamp/)
+
+<a id="ruff-dtz005"></a>
+
+### `ruff/DTZ005`
+
+Checks for usages of `datetime.datetime.now()` that do not specify a timezone.
+
+- **Why it is on:** Python datetime objects can be naive or timezone-aware. While an aware object represents a specific moment in time, a naive object does not contain enough information to unambiguously locate itself relative to other datetime objects. Since this can lead to errors, it is recommended to always use timezone-aware objects. `datetime.datetime.now()` or `datetime.datetime.now(tz=None)` returns a naive datetime object. Instead, use `datetime.datetime.now(tz=<timezone>)` to create a timezone-aware object. Selected in the ruff config of the Python preset, with the flake8-datetimez rules (`call-datetime-now-without-tzinfo`).
+- **Allowed form:** Read the time in a zone: `datetime.now(tz=timezone.utc)`. In domain code take the clock as a parameter.
+- **Example of the allowed form:**
+
+  ```python
+  import datetime
+
+  datetime.datetime.now(tz=datetime.timezone.utc)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"DTZ005","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/call-datetime-now-without-tzinfo/)
+
+<a id="ruff-dtz006"></a>
+
+### `ruff/DTZ006`
+
+Checks for usage of `datetime.datetime.fromtimestamp()` that do not specify a timezone.
+
+- **Why it is on:** Python datetime objects can be naive or timezone-aware. While an aware object represents a specific moment in time, a naive object does not contain enough information to unambiguously locate itself relative to other datetime objects. Since this can lead to errors, it is recommended to always use timezone-aware objects. `datetime.datetime.fromtimestamp(ts)` or `datetime.datetime.fromtimestamp(ts, tz=None)` returns a naive datetime object. Instead, use `datetime.datetime.fromtimestamp(ts, tz=<timezone>)` to create a timezone-aware object. Selected in the ruff config of the Python preset, with the flake8-datetimez rules (`call-datetime-fromtimestamp`).
+- **Allowed form:** Pass the zone: `datetime.fromtimestamp(timestamp, tz=timezone.utc)`.
+- **Example of the allowed form:**
+
+  ```python
+  import datetime
+
+  datetime.datetime.fromtimestamp(946684800, tz=datetime.timezone.utc)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"DTZ006","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/call-datetime-fromtimestamp/)
+
+<a id="ruff-dtz007"></a>
+
+### `ruff/DTZ007`
+
+Checks for uses of `datetime.datetime.strptime()` that lead to naive datetime objects.
+
+- **Why it is on:** Python datetime objects can be naive or timezone-aware. While an aware object represents a specific moment in time, a naive object does not contain enough information to unambiguously locate itself relative to other datetime objects. Since this can lead to errors, it is recommended to always use timezone-aware objects. `datetime.datetime.strptime()` without `%z` returns a naive datetime object. Follow it with `.replace(tzinfo=<timezone>)` or `.astimezone()`. Selected in the ruff config of the Python preset, with the flake8-datetimez rules (`call-datetime-strptime-without-zone`).
+- **Allowed form:** For a calendar value parse with `date.fromisoformat(text)` or `time.fromisoformat(text)` (or `.date()` / `.time()` of the parsed result); for an instant put `%z` in the format, or call `.replace(tzinfo=timezone.utc)` on the result.
+- **Exception:** If this is intended, add `{"rule":"DTZ007","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/call-datetime-strptime-without-zone/)
+
+<a id="ruff-dtz011"></a>
+
+### `ruff/DTZ011`
+
+Checks for usage of `datetime.date.today()`.
+
+- **Why it is on:** Python date objects are naive, that is, not timezone-aware. While an aware object represents a specific moment in time, a naive object does not contain enough information to unambiguously locate itself relative to other datetime objects. Since this can lead to errors, it is recommended to always use timezone-aware objects. `datetime.date.today` returns a naive date object without taking timezones into account. Instead, use `datetime.datetime.now(tz=...).date()` to create a timezone-aware object and retrieve its date component. Selected in the ruff config of the Python preset, with the flake8-datetimez rules (`call-date-today`).
+- **Allowed form:** Read the date in a zone: `datetime.now(tz=timezone.utc).date()`, or `datetime.now().astimezone().date()` when the local date is wanted. In domain code take the clock as a parameter.
+- **Example of the allowed form:**
+
+  ```python
+  import datetime
+
+  datetime.datetime.now(tz=datetime.timezone.utc).date()
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"DTZ011","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/call-date-today/)
+
+<a id="ruff-dtz012"></a>
+
+### `ruff/DTZ012`
+
+Checks for usage of `datetime.date.fromtimestamp()`.
+
+- **Why it is on:** Python date objects are naive, that is, not timezone-aware. While an aware object represents a specific moment in time, a naive object does not contain enough information to unambiguously locate itself relative to other datetime objects. Since this can lead to errors, it is recommended to always use timezone-aware objects. `datetime.date.fromtimestamp(ts)` returns a naive date object. Instead, use `datetime.datetime.fromtimestamp(ts, tz=...).date()` to create a timezone-aware datetime object and retrieve its date component. Selected in the ruff config of the Python preset, with the flake8-datetimez rules (`call-date-fromtimestamp`).
+- **Allowed form:** Pass the zone: `datetime.fromtimestamp(timestamp, tz=timezone.utc).date()`.
+- **Example of the allowed form:**
+
+  ```python
+  import datetime
+
+  datetime.datetime.fromtimestamp(946684800, tz=datetime.timezone.utc).date()
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"DTZ012","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/call-date-fromtimestamp/)
+
+<a id="ruff-dtz901"></a>
+
+### `ruff/DTZ901`
+
+Checks for uses of `datetime.datetime.min` and `datetime.datetime.max`.
+
+- **Why it is on:** `datetime.min` and `datetime.max` are non-timezone-aware datetime objects. As such, operations on `datetime.min` and `datetime.max` may behave unexpectedly, as in: Selected in the ruff config of the Python preset, with the flake8-datetimez rules (`datetime-min-max`).
+- **Allowed form:** Give the bound a zone: `datetime.min.replace(tzinfo=timezone.utc)`, `datetime.max.replace(tzinfo=timezone.utc)`.
+- **Example of the allowed form:**
+
+  ```python
+  import datetime
+
+  datetime.datetime.max.replace(tzinfo=datetime.UTC)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"DTZ901","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/datetime-min-max/)
 
 <a id="ruff-e401"></a>
 

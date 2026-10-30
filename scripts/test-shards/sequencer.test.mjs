@@ -66,11 +66,10 @@ describe('enabled end-to-end timing profiles', () => {
 
 describe('assignShards', () => {
   it('puts every file in exactly one shard', () => {
-    for (const count of [1, 2, 3, 6]) {
-      const shards = assignShards(files, durations, count);
-      expect(shards).toHaveLength(count);
-      expect(shards.flat().toSorted()).toEqual(files);
-    }
+    const counts = [1, 2, 3, 6];
+    const assignments = counts.map((count) => assignShards(files, durations, count));
+    expect(assignments.map((shards) => shards.length)).toEqual(counts);
+    expect(assignments.map((shards) => shards.flat().toSorted())).toEqual(counts.map(() => files));
   });
 
   it('gives each shard the heaviest file left when it is the lightest', () => {

@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { layeredPolicy } from './lint-engine/project-layer.mjs';
 
 const policyConfigPath = requiredEnvironmentPath('NITPICKER_DIFF_ESLINT_POLICY_CONFIG');
 const projectRoot = requiredEnvironmentPath('NITPICKER_DIFF_ESLINT_PROJECT_ROOT');
@@ -12,7 +13,7 @@ if (!Array.isArray(policyModule.default)) {
 
 const selectedRules = selectedRuleIds(process.env.NITPICKER_DIFF_ESLINT_ONLY_RULES);
 
-export default policyModule.default.map((entry) =>
+export default (await layeredPolicy(policyModule.default, process.env)).map((entry) =>
   rebaseTypeScriptProject(entry, projectRoot, projectConfigPath),
 );
 

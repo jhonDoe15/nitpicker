@@ -567,6 +567,95 @@
       "useInstead": "dict.fromkeys(iterable)\ndict.fromkeys(iterable, 1)"
     },
     {
+      "code": "DTZ001",
+      "name": "call-datetime-without-tzinfo",
+      "linter": "flake8-datetimez",
+      "summary": "`datetime.datetime()` called without a `tzinfo` argument",
+      "whatItDoes": "Checks for `datetime` instantiations that do not specify a timezone.",
+      "why": "`datetime` objects are \"naive\" by default, in that they do not include timezone information. \"Naive\" objects are easy to understand, but ignore some aspects of reality, which can lead to subtle bugs. Timezone-aware `datetime` objects are preferred, as they represent a specific moment in time, unlike \"naive\" objects. By providing a non-`None` value for `tzinfo`, a `datetime` can be made timezone-aware.",
+      "useInstead": "import datetime\n\ndatetime.datetime(2000, 1, 1, 0, 0, 0, tzinfo=datetime.timezone.utc)"
+    },
+    {
+      "code": "DTZ002",
+      "name": "call-datetime-today",
+      "linter": "flake8-datetimez",
+      "summary": "`datetime.datetime.today()` used",
+      "whatItDoes": "Checks for usage of `datetime.datetime.today()`.",
+      "why": "`datetime` objects are \"naive\" by default, in that they do not include timezone information. \"Naive\" objects are easy to understand, but ignore some aspects of reality, which can lead to subtle bugs. Timezone-aware `datetime` objects are preferred, as they represent a specific moment in time, unlike \"naive\" objects. `datetime.datetime.today()` creates a \"naive\" object; instead, use `datetime.datetime.now(tz=...)` to create a timezone-aware object.",
+      "useInstead": "import datetime\n\ndatetime.datetime.now(tz=datetime.timezone.utc)"
+    },
+    {
+      "code": "DTZ003",
+      "name": "call-datetime-utcnow",
+      "linter": "flake8-datetimez",
+      "summary": "`datetime.datetime.utcnow()` used",
+      "whatItDoes": "Checks for usage of `datetime.datetime.utcnow()`.",
+      "why": "Python datetime objects can be naive or timezone-aware. While an aware object represents a specific moment in time, a naive object does not contain enough information to unambiguously locate itself relative to other datetime objects. Since this can lead to errors, it is recommended to always use timezone-aware objects. `datetime.datetime.utcnow()` returns a naive datetime object; instead, use `datetime.datetime.now(tz=...)` to create a timezone-aware object.",
+      "useInstead": "import datetime\n\ndatetime.datetime.now(tz=datetime.timezone.utc)"
+    },
+    {
+      "code": "DTZ004",
+      "name": "call-datetime-utcfromtimestamp",
+      "linter": "flake8-datetimez",
+      "summary": "`datetime.datetime.utcfromtimestamp()` used",
+      "whatItDoes": "Checks for usage of `datetime.datetime.utcfromtimestamp()`.",
+      "why": "Python datetime objects can be naive or timezone-aware. While an aware object represents a specific moment in time, a naive object does not contain enough information to unambiguously locate itself relative to other datetime objects. Since this can lead to errors, it is recommended to always use timezone-aware objects. `datetime.datetime.utcfromtimestamp()` returns a naive datetime object; instead, use `datetime.datetime.fromtimestamp(ts, tz=...)` to create a timezone-aware object.",
+      "useInstead": "import datetime\n\ndatetime.datetime.fromtimestamp(946684800, tz=datetime.timezone.utc)"
+    },
+    {
+      "code": "DTZ005",
+      "name": "call-datetime-now-without-tzinfo",
+      "linter": "flake8-datetimez",
+      "summary": "`datetime.datetime.now()` called without a `tz` argument",
+      "whatItDoes": "Checks for usages of `datetime.datetime.now()` that do not specify a timezone.",
+      "why": "Python datetime objects can be naive or timezone-aware. While an aware object represents a specific moment in time, a naive object does not contain enough information to unambiguously locate itself relative to other datetime objects. Since this can lead to errors, it is recommended to always use timezone-aware objects. `datetime.datetime.now()` or `datetime.datetime.now(tz=None)` returns a naive datetime object. Instead, use `datetime.datetime.now(tz=<timezone>)` to create a timezone-aware object.",
+      "useInstead": "import datetime\n\ndatetime.datetime.now(tz=datetime.timezone.utc)"
+    },
+    {
+      "code": "DTZ006",
+      "name": "call-datetime-fromtimestamp",
+      "linter": "flake8-datetimez",
+      "summary": "`datetime.datetime.fromtimestamp()` called without a `tz` argument",
+      "whatItDoes": "Checks for usage of `datetime.datetime.fromtimestamp()` that do not specify a timezone.",
+      "why": "Python datetime objects can be naive or timezone-aware. While an aware object represents a specific moment in time, a naive object does not contain enough information to unambiguously locate itself relative to other datetime objects. Since this can lead to errors, it is recommended to always use timezone-aware objects. `datetime.datetime.fromtimestamp(ts)` or `datetime.datetime.fromtimestamp(ts, tz=None)` returns a naive datetime object. Instead, use `datetime.datetime.fromtimestamp(ts, tz=<timezone>)` to create a timezone-aware object.",
+      "useInstead": "import datetime\n\ndatetime.datetime.fromtimestamp(946684800, tz=datetime.timezone.utc)"
+    },
+    {
+      "code": "DTZ007",
+      "name": "call-datetime-strptime-without-zone",
+      "linter": "flake8-datetimez",
+      "summary": "Naive datetime constructed using `datetime.datetime.strptime()` without %z",
+      "whatItDoes": "Checks for uses of `datetime.datetime.strptime()` that lead to naive datetime objects.",
+      "why": "Python datetime objects can be naive or timezone-aware. While an aware object represents a specific moment in time, a naive object does not contain enough information to unambiguously locate itself relative to other datetime objects. Since this can lead to errors, it is recommended to always use timezone-aware objects. `datetime.datetime.strptime()` without `%z` returns a naive datetime object. Follow it with `.replace(tzinfo=<timezone>)` or `.astimezone()`."
+    },
+    {
+      "code": "DTZ011",
+      "name": "call-date-today",
+      "linter": "flake8-datetimez",
+      "summary": "`datetime.date.today()` used",
+      "whatItDoes": "Checks for usage of `datetime.date.today()`.",
+      "why": "Python date objects are naive, that is, not timezone-aware. While an aware object represents a specific moment in time, a naive object does not contain enough information to unambiguously locate itself relative to other datetime objects. Since this can lead to errors, it is recommended to always use timezone-aware objects. `datetime.date.today` returns a naive date object without taking timezones into account. Instead, use `datetime.datetime.now(tz=...).date()` to create a timezone-aware object and retrieve its date component.",
+      "useInstead": "import datetime\n\ndatetime.datetime.now(tz=datetime.timezone.utc).date()"
+    },
+    {
+      "code": "DTZ012",
+      "name": "call-date-fromtimestamp",
+      "linter": "flake8-datetimez",
+      "summary": "`datetime.date.fromtimestamp()` used",
+      "whatItDoes": "Checks for usage of `datetime.date.fromtimestamp()`.",
+      "why": "Python date objects are naive, that is, not timezone-aware. While an aware object represents a specific moment in time, a naive object does not contain enough information to unambiguously locate itself relative to other datetime objects. Since this can lead to errors, it is recommended to always use timezone-aware objects. `datetime.date.fromtimestamp(ts)` returns a naive date object. Instead, use `datetime.datetime.fromtimestamp(ts, tz=...).date()` to create a timezone-aware datetime object and retrieve its date component.",
+      "useInstead": "import datetime\n\ndatetime.datetime.fromtimestamp(946684800, tz=datetime.timezone.utc).date()"
+    },
+    {
+      "code": "DTZ901",
+      "name": "datetime-min-max",
+      "linter": "flake8-datetimez",
+      "summary": "Use of `datetime.datetime.{min_max}` without timezone information",
+      "whatItDoes": "Checks for uses of `datetime.datetime.min` and `datetime.datetime.max`.",
+      "why": "`datetime.min` and `datetime.max` are non-timezone-aware datetime objects. As such, operations on `datetime.min` and `datetime.max` may behave unexpectedly, as in:",
+      "useInstead": "import datetime\n\ndatetime.datetime.max.replace(tzinfo=datetime.UTC)"
+    },
+    {
       "code": "E401",
       "name": "multiple-imports-on-one-line",
       "linter": "pycodestyle",

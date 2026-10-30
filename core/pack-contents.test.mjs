@@ -37,12 +37,11 @@ function sourceFiles(directory) {
 }
 
 function assertRuntimeFiles(files) {
-  for (const relative of [
-    'package.json',
-    ...['core', 'shared', 'languages'].flatMap(sourceFiles),
-  ]) {
-    expect(files.has(relative), `missing runtime file ${relative}`).toBe(true);
-  }
+  const expected = ['package.json', ...['core', 'shared', 'languages'].flatMap(sourceFiles)];
+  expect(
+    expected.filter((relative) => !files.has(relative)),
+    'missing runtime file',
+  ).toEqual([]);
 }
 
 describe('npm package contents', () => {

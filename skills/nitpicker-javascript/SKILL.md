@@ -123,7 +123,7 @@ line) is a finding.
   checks the types already rule out. Indexing (`list[0]`, `record[key]`) may be `undefined`: check
   the value you got.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
-  over unions.
+  over unions, with no `default`.
 - `const` or `let`, never `var`. Rest parameters (`...args`) instead of `arguments[i]`, and spread
   instead of `.apply`.
 - Template literals take strings only: `${String(count)}`.
@@ -143,6 +143,13 @@ line) is a finding.
 - `async`/`await`, never `.then()`. No floating promises.
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
+- Signatures: a value with three states is a union of string literals, not `{boolean|undefined}`,
+  `{boolean=}` or a `@param {boolean} [force]` with no default (the type-aware rules read your
+  JSDoc types, so write them); default only `undefined` with `??`, never `||` on an optional parameter that can be `0`, `''` or
+  `false`; return a
+  new array, `Set`, `Map` or object instead of changing a parameter (`[...items, item]`,
+  `items.toSorted()`). When code moves, change every caller and delete the old name: no
+  `@deprecated` declaration and no `export const Old = New` alias.
 - CommonJS is allowed: `require()` of a module, and `module.exports = { f }`, `module.exports.f = f`
   or `exports.f = f`. In `domain/`,
   destructure a `require`: `const { basename } = require('node:path');`, not
@@ -210,8 +217,11 @@ line) is a finding.
 - Test data typed from a literal widens (`status: string`): write the array as
   `/** @type {const} */ ([...])`, or annotate the `const` with the typedef.
 - Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
-  Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
-  not loops. The rules above (`for...of` only, no `.then()`, no casts) apply to tests too.
+  Write `expect` in the test body; asserting helpers don't count. Do not assert inside a loop,
+  `forEach` or `map` callback: an empty collection passes without asserting, so assert the whole
+  collection (`expect(orders).toEqual([...])`) and put cases in `it.each`
+  (`nitpicker/no-assertion-in-loop`). The rules above (`for...of` only, no `.then()`, no casts) apply
+  to tests too.
 - Tests assert exact values and are deterministic and fast; each finding names the allowed form.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/lines.js`, or in a `test-support/` folder beside the code when the tests sit next to it.
   When an existing test defines the same helper, make it import the shared one.

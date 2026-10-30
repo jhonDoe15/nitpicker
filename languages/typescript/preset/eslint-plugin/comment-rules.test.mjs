@@ -32,6 +32,9 @@ ruleTester.run('no-comments', noComments, {
       '/** Retries up to three times, then throws ApiError. */\nexport function fetchUser() { return 1; }',
       '/**\n * Gets the user name.\n * Falls back to the email when no name is set.\n */\nexport function getUserName() { return 1; }',
       '/** @param id the order id */\nexport function loadOrder(id: string) { return id; }',
+      '/**\n * Gets the user name.\n * @param id the account\n * @returns something else entirely\n */\nexport function getUserName(id: string) { return id; }',
+      '/**\n * Gets the user name.\n * @throws {RangeError} when the id is negative\n */\nexport function getUserName() { return 1; }',
+      '/**\n * Gets the user name.\n * @returns\n *   the display name, never empty\n */\nexport function getUserName() { return 1; }',
       '/** @deprecated */\nexport function getUserName() { return 1; }',
       '/** */\nexport function getUserName() { return 1; }',
       '/** Gets the user name. */\nexport { getUserName };',
@@ -81,8 +84,12 @@ ruleTester.run('no-comments', noComments, {
       ],
       ['/** Parse the v2 url */\nexport function parseV2Url() { return 1; }', 'parseV2Url'],
       [
-        '/**\n * Gets the user name.\n * @param id the account\n * @returns something else entirely\n */\nexport function getUserName(id: string) { return id; }',
+        '/**\n * Gets the user name.\n * @param {string} id\n * @returns {string}\n * @throws {Error}\n * @deprecated\n */\nexport function getUserName(id: string) { return id; }',
         'getUserName',
+      ],
+      [
+        '/**\n * Loads the user.\n * @param [id=1] -\n */\nexport function loadUser(id = 1) { return id; }',
+        'loadUser',
       ],
       ['/** The {@link User} record. */\nexport type UserRecord = string;', 'UserRecord'],
       ['/** Order id. */\nexport default function orderId() { return 1; }', 'orderId'],

@@ -84,7 +84,7 @@ To learn why a rule is on and what form it allows before you write or change cod
   don't add `??`, `?.` or checks the types already rule out. Indexing (`list[0]`, `record[key]`)
   may be `undefined`: check the value you got.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
-  over unions.
+  over unions, with no `default`.
 - Template literals take strings only: `${String(count)}`.
 - Sort IDs, codes and ISO dates with `toSorted()` and no comparator; names and titles with
   `a.localeCompare(b, 'en')`. Objects in plain string order share one `compareText(a, b)` that
@@ -101,6 +101,12 @@ To learn why a rule is on and what form it allows before you write or change cod
   starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
+- Signatures: a value with three states is a union of string literals, not `boolean | undefined`
+  or `flag?: boolean` (also as an optional property); default only `undefined` with `??`, never `||` on an optional parameter that can be `0`, `''` or
+  `false`; return a
+  new array, `Set`, `Map` or object instead of changing a parameter (`[...items, item]`,
+  `items.toSorted()`). When code moves, change every caller and delete the old name: no
+  `@deprecated` declaration and no `export const Old = New` alias.
 
 ## Production rules
 
@@ -157,8 +163,11 @@ To learn why a rule is on and what form it allows before you write or change cod
   and give it a real temp file (`mkdtemp`) rather than `vi.mock` of `node:` modules. The gate
   restores spies; restore fake timers with `vi.useRealTimers()` in `afterEach`.
 - Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
-  Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
-  not loops. The rules above (`for...of` only, no `.then()`, no `as`) apply to tests too.
+  Write `expect` in the test body; asserting helpers don't count. Do not assert inside a loop,
+  `forEach` or `map` callback: an empty collection passes without asserting, so assert the whole
+  collection (`expect(orders).toEqual([...])`) and put cases in `it.each`
+  (`nitpicker/no-assertion-in-loop`). The rules above (`for...of` only, no `.then()`, no `as`) apply
+  to tests too.
 - Tests assert exact values and are deterministic and fast; each finding names the allowed form.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`, or in a `test-support/` folder beside the code when the tests sit next to it.
   When an existing test defines the same helper, make it import the shared one.
