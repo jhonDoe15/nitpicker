@@ -10,6 +10,9 @@ only in the nitpicker config file, where it changes the policy hash and appears 
 Existing code that violates a rule is baselined by the differential gate. New and touched code must
 comply.
 
+CI recipes for this preset (Node.js, the project's install, GitHub Actions, GitLab CI, Jenkins) are in
+[nitpicker in CI](ci.md#toolchains-by-preset).
+
 The rules are modeled on publicly described "one paved road" conventions, such as Lauren Tan's talks
 on her Dune conventions: one allowed form per construct, repeated review feedback turned into lint
 rules, mechanically enforced boundaries, and exceptions handled as reviewed changes. No code is
