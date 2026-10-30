@@ -16,12 +16,31 @@ function fileChange(tool, file, { base, head, evidence, optsIn }) {
     : { changed: `${tool} project config removed: ${file}` };
 }
 
+function replacedOptionChanges({ replacedOptions, head }) {
+  if (replacedOptions === undefined) {
+    return [];
+  }
+  const files = [...head.keys()].slice(0, 1);
+  const texts =
+    replacedOptions.error === undefined
+      ? replacedOptions.rules.map(
+          (rule) => `eslint project config replaces the options of nitpicker rule ${rule}`,
+        )
+      : [
+          `eslint project config could not be loaded to list the nitpicker rules whose options it replaces: ${replacedOptions.error}`,
+        ];
+  return texts.map((text) => ({ loosened: { text, kind: 'tool-config', files } }));
+}
+
 function fileChanges(entry) {
   if (entry.applied !== undefined) {
     return jscpdConfigChanges(entry.applied);
   }
   const files = [...new Set([...entry.base.keys(), ...entry.head.keys()])].toSorted();
-  return files.map((file) => fileChange(entry.tool, file, entry));
+  return [
+    ...files.map((file) => fileChange(entry.tool, file, entry)),
+    ...replacedOptionChanges(entry),
+  ];
 }
 
 export function toolConfigChanges(scope) {
