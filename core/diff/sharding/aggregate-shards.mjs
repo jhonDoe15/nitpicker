@@ -121,7 +121,7 @@ export function runAggregateCli({
     if (options.kind === 'help') {
       stdout.write(
         'Usage: node core/diff/sharding/aggregate-shards.mjs --input-root <directory>' +
-          ' --shard-count <count> [--output <directory>] [--policy-root <directory>]\n',
+          ' --shard-count <count> [--output <directory>] [--policy-root <directory>] [--details]\n',
       );
       return 0;
     }
@@ -138,7 +138,14 @@ export function runAggregateCli({
       analyzers,
       policyRoot,
     });
-    return reportExitCode(report, { stdout, stderr, environment, outputRoot, currentProjectRoot });
+    return reportExitCode(report, {
+      stdout,
+      stderr,
+      environment,
+      outputRoot,
+      currentProjectRoot,
+      details: options.details,
+    });
   } catch (error) {
     if (outputRoot !== undefined) {
       clearDiffReports(outputRoot);
@@ -216,10 +223,14 @@ function configuredReport(options, { currentProjectRoot, outputRoot, analyzers, 
   });
 }
 
-function reportExitCode(report, { stdout, stderr, environment, outputRoot, currentProjectRoot }) {
+function reportExitCode(
+  report,
+  { stdout, stderr, environment, outputRoot, currentProjectRoot, details },
+) {
   stdout.write(
     renderConsoleSummary(report, {
       color: environment.NO_COLOR === undefined,
+      details,
       diagnosticsPath: absoluteTextReportPath(outputRoot),
     }),
   );

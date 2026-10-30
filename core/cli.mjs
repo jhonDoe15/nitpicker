@@ -268,6 +268,7 @@ function writeComparisonOutcome({ cli, report, base, outputRoot }) {
   stdout.write(
     renderConsoleSummary(report, {
       color: environment.NO_COLOR === undefined,
+      details: options.details,
       diagnosticsPath: absoluteTextReportPath(outputRoot),
     }),
   );

@@ -174,6 +174,36 @@ first there). A lockfile that does not match its `package.json` fails the frozen
 tool error carries the manager's message. Installing the base is not supported on native Windows
 (run nitpicker in WSL).
 
+### Console summary
+
+A comparison run prints a short summary. New violations are grouped by rule, in the order to fix
+them: format, type check, lint, structure, then tests, coverage, CRAP and mutation. Each rule prints
+its advice once, then one line per place (`path:line:col` and only the part of the message that
+differs between findings), then once the `exceptions` entry that accepts it, with `<path>` (or
+`<function>`) where the findings of the rule differ. A count per area follows the headline:
+
+```text
+Quality gate summary
+✖ 5 new enforceable violations
+  by area: lint 4 · coverage 1
+  eslint-lint/nitpicker/no-magic-numbers: Name it with a module-level constant.
+    src/main/pricing.ts:4:20 No magic number: 3.
+    src/main/pricing.ts:5:24 No magic number: 4.
+    If this is intended, add {"rule":"nitpicker/no-magic-numbers","paths":["src/main/pricing.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
+  eslint-lint/@typescript-eslint/no-unsafe-member-access: Have adapters/ parse it into a typed object.
+    src/main/pricing.ts:4:14, 6:23 Unsafe member access .qty on an `any` value.
+    If this is intended, add {"rule":"@typescript-eslint/no-unsafe-member-access","paths":["src/main/pricing.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
+  coverage/changed-branch-coverage: Branch coverage is 0.00%; minimum is 95%. Test it, or remove it if it can't happen.
+    src/main/pricing.ts:4 Not taken: the true arm of the if at 4:5.
+    If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/pricing.ts"],"function":"price","reason":"..."} to "exceptions" in nitpicker.config.json.
+Full diagnostics: reports/quality/diff/report.txt
+```
+
+Findings that are allowed because the base already had them ("still over a limit", "existing lint
+findings in edited code") are listed after the violations, at most 10 of each, without their
+exception entries. `--details` prints every finding with its full message instead, the layout
+`report.txt`, the JSON reports and SARIF always keep.
+
 ### Reports
 
 A comparison run writes these files to `reports/quality/diff/`:
@@ -284,11 +314,11 @@ automatically.
 
 ```text
 nitpicker [--base <ref>] [--output <dir>] [--all | --fix]
-          [--analyzer <name>]... [--rule <substring>]...
+          [--analyzer <name>]... [--rule <substring>]... [--details]
           [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]
           [--accept-policy-change=<digest>] [--help]
 nitpicker aggregate --input-root <dir> --shard-count <n>
-          [--output <dir>] [--policy-root <dir>]
+          [--output <dir>] [--policy-root <dir>] [--details]
 nitpicker cache publish [--analyzer <name>]...
           [--shard-count <n> --shard-index <i>]
 nitpicker base [--base <ref>]
@@ -302,6 +332,8 @@ nitpicker base [--base <ref>]
 - `--base <ref>`: the ref to compare against.
 - `--analyzer <name>`: run only this analyzer (repeatable). Cannot be combined with sharding.
 - `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable).
+- `--details`: print every new finding with its full message, and every held finding, in the
+  console summary (see [Console summary](#console-summary)).
 - `--output <dir>`: where reports go.
 
 - `--no-cache`: do not read or write the findings cache for this run (local and remote).
