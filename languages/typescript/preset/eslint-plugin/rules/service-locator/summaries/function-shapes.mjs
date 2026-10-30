@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../../typescript-api/typescript-api.mjs';
 import { chainOf } from '../../analysis/ancestry.mjs';
 
 const ALIAS_DEPTH = 5;

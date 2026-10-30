@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { containerApiOf, isLookupMemberName } from './container-apis.mjs';
 
 export function memberNameNode(expression) {
