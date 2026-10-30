@@ -41,7 +41,9 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   included when it applies it; paths in findings are relative to the directory Gradle runs in, so a
   subproject's findings carry its folder (`lib/src/main/java/...`). A build where no project applies
   the plugin, or a project whose reports are missing, is a tool error, never a pass. Projects of
-  an `includeBuild` composite build and `buildSrc` are separate builds and are not analyzed. Each project
+  an `includeBuild` composite build (in `settings.gradle` or in `pluginManagement`, such as a
+  `build-logic` convention-plugin build) and `buildSrc` are separate builds: they are neither
+  analyzed nor configured, so Gradle builds their plugins as it would without nitpicker. Each project
   runs every tool (tests, JaCoCo, PIT included) in the one Gradle invocation, so a build of several
   projects costs about the sum of single-project runs; Gradle's own `--parallel` setting applies.
   File limits and coupling (with the stability direction) are evaluated once over all projects, as
@@ -458,7 +460,8 @@ classpath and its `test` task, and adds no test library to the project.
     `folder-depth-limit`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`, the structure rules (`function-lines-limit`,
     `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`),
     `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
-    `mutant-nocoverage` and `stability-direction`, and the
+    `mutant-nocoverage` and `stability-direction`, the reuse rules `duplicate-definition`,
+    `sibling-copy-edit` and `exported-name-collision` (see "Reuse rules"), and the
     [dependency and repository checks](usage.md#dependency-and-repository-checks). `function` names one method
     (`Big.run`, parameter lists ignored; matched exactly, so `run` alone does not accept
     `Big.run`) for the structure, CRAP, coverage and mutation rules, and is required for
@@ -2511,6 +2514,56 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
 sets) are not checked: builders are filled by reflection (Jackson's `@Jacksonized`, MapStruct,
 Spring binding) as often as by calls, and a text match on `.name(` collides with every method of
 that name, so the rule would need compiler symbol facts to stay precise.
+
+## Reuse rules
+
+`duplicate-definition`, `sibling-copy-edit` and `exported-name-collision` are the shared rules of
+the TypeScript preset (see `typescript-strict-preset.md`), written once over neutral facts
+(`shared/rules/facts/`). The Java and Kotlin presets produce those facts from source, on Gradle and
+Maven alike, in the project-wide step (`builds/project-wide.mjs`), so they need no build output.
+The findings have tool `structure` and are lifted with the top-level `exceptions`.
+
+- **Producer.** `adapters/reuse/jvm-reuse-facts.mjs` reads every `.java` file (and `.kt` file with
+  `preset: "kotlin"`) under the main source roots the build reports for each module, leaving out
+  roots under `build/` and files matched by `exclude`. One tokenizer
+  (`adapters/reuse/source/jvm-tokens.mjs`) serves both languages: each string, text block, raw string
+  or character literal is one token, comments are dropped, Kotlin block comments nest and Kotlin
+  string templates are read for the names they use. A source file is a module and a Gradle or Maven
+  module is a package, so copies are compared within one build module.
+- **Definitions.** Top-level types (Java `class` and `record` as `class`, `interface`, `enum`,
+  `@interface` as `type`; Kotlin classes and `object`s as `class`, `interface`, `enum class`,
+  `annotation class` and `typealias` as `type`), and the members that need no instance: Java
+  `static` methods and `static final` fields (every interface field), Kotlin top-level `fun`, `val`
+  and `const val`, and the functions and `val`s of a top-level `object` or of a class's `companion
+object`. Instance methods are left to the duplicates check, as class methods are in the
+  TypeScript preset. A member is named `Owner.name` (`Money.of`), with its parameter types when it
+  is overloaded (`Money.of(long)`), so two classes' copies of a helper stay apart in findings;
+  copies are grouped by the plain name. Everything but `private` counts as exported, since
+  package-private Java code is usable from the package. A `main` function, and a type that holds
+  one, is an entry, which `sibling-copy-edit` skips.
+- **Uses.** A name in a file resolves the way javac and kotlinc resolve it: an explicit import
+  first, then a type (or Kotlin top-level declaration) of the same package, then a star import; a
+  fully qualified name (`shop.billing.Money`) resolves directly. `Type.member` and `Type::member`
+  uses a static member, a Kotlin extension call (`order.toDto()`) uses the imported or same-package
+  function, and a static or `object` import (`import static shop.util.Strings.trim;`) uses that
+  member. These uses decide whether a definition is used (an unused one is the dead-code checks'
+  business), and the free names of each definition, resolved this way, are part of its identity,
+  so two copies that use different library types (`java.util.Date` and `java.sql.Date`) are not
+  duplicates. A name of the copy's own file other than a literal constant (a helper, a mutable
+  field, a nested type) is its own, so two `capped()` copies that call their class's `limit()`
+  are not duplicates either; the helper is reported, if it is a copy. A static member that reads an
+  upper-case name the file does not declare (an inherited constant) also takes its class's
+  supertypes into its identity. Kotlin `expect` and `actual` declarations and `override` members
+  are left out.
+- **`exported-name-collision`.** In Java a file cannot import two classes of one simple name, so the
+  collision is a class imported (or of the same package) while another class of that name is
+  written fully qualified; in Kotlin it is that too, or an `import ... as` alias, as in TypeScript. The Java
+  message tells to rename one or to use both by their fully qualified names. Functions are left out
+  in both languages: two same-named functions imported into one file are overloads, and extension
+  functions of one name on different receivers are idiomatic Kotlin.
+- **`sibling-copy-edit`.** On the head run of a change the runner reads each changed file of the
+  base checkout (`--baseline-root`) again, following renames from `--baseline-moves-file`, and
+  compares the edited definition with its base copy and its same-named siblings in the module.
 
 ## Rule messages
 
