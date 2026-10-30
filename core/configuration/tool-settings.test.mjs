@@ -11,7 +11,26 @@ describe('tool precedence', () => {
       ['nitpicker', 'project'],
     ]) {
       expect(validateConfig({ tools: { prettier: { precedence } } })).toBeDefined();
+      expect(validateConfig({ preset: 'javascript', tools: { eslint: { precedence } } })).toEqual({
+        preset: 'javascript',
+        tools: { eslint: { precedence } },
+      });
     }
+  });
+
+  it('takes the ESLint precedence next to its engine and checks both', () => {
+    const tools = { eslint: { engine: 'eslint', precedence: ['nitpicker', 'project'] } };
+    expect(validateConfig({ tools })).toEqual({ tools });
+    expect(() =>
+      validateConfig({ tools: { eslint: { engine: 'oxlint', precedence: ['eslint'] } } }),
+    ).toThrow(
+      new Error(
+        'nitpicker.config.json: "tools.eslint.precedence" must list "project", "nitpicker" or both, each once, highest first',
+      ),
+    );
+    expect(() =>
+      validateConfig({ tools: { eslint: { engine: 'biome', precedence: ['project'] } } }),
+    ).toThrow('"tools.eslint.engine" must be "oxlint" or "eslint"');
   });
 
   it.each([
@@ -26,12 +45,6 @@ describe('tool precedence', () => {
         `"tools.${tool}.engine" must be "${engines[0]}" or "${engines[1]}"`,
       );
     }
-  });
-
-  it('rejects a precedence for eslint', () => {
-    expect(() => validateConfig({ tools: { eslint: { precedence: ['project'] } } })).toThrow(
-      '"tools.eslint" has unknown key "precedence"',
-    );
   });
 
   it('rejects unknown tools, unknown keys and malformed precedence lists', () => {
