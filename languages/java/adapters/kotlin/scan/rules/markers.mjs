@@ -32,12 +32,10 @@ const LEADING_MODIFIER = new RegExp(String.raw`^(?:${DECLARATION_MODIFIERS.join(
 const LEADING_ANNOTATION = /^@(?:[A-Za-z_]\w*:)?[\w.]+/;
 const DECLARATION_KEYWORD = /^(?:(?:class|interface|object|fun|constructor)\b|(?:get|set)\s*\()/;
 const MUTATION_MARKERS = new Set(['DoNotMutate', 'CoverageIgnore']);
-const GENERATED_ADVICE =
-  "Generated code belongs in exclude in nitpicker.config.json; put JPA's @GeneratedValue on the field.";
 const GENERATED_HEADER = /@generated\b|\bgenerated\b[\s\S]*\bdo not (?:edit|modify)\b/i;
 
 export const MARKER_MESSAGES = {
-  GeneratedOnHandWrittenCode: `Remove the annotation from hand-written code: JaCoCo skips code carrying an annotation whose name contains Generated, and PIT skips @Generated, so this is not measured. ${GENERATED_ADVICE}`,
+  GeneratedOnHandWrittenCode: `Remove the annotation from hand-written code: JaCoCo skips code carrying an annotation whose name contains Generated, and PIT skips @Generated, so this is not measured. Put the JPA @GeneratedValue on the field.`,
   JvmSyntheticOnHandWrittenCode:
     'Remove @JvmSynthetic: JaCoCo skips synthetic functions, so this is not measured. An exception fits only a library function that must stay hidden from Java callers.',
   MutationIgnoreMarker:
