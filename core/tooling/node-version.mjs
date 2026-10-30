@@ -27,3 +27,8 @@ export function unsupportedNodeMessage(nodeVersion, range) {
   const major = minimum.split('.')[0];
   return `nitpicker needs Node.js ${minimum} or newer, and this is Node.js ${nodeVersion.replace(/^v/u, '')}. Install a newer Node.js (for example with nvm install ${major}).`;
 }
+
+export function unloadableNodeMessage(nodeVersion, range, error) {
+  const minimum = minimumNodeVersion(range) ?? range;
+  return `nitpicker could not load on Node.js ${nodeVersion.replace(/^v/u, '')}: ${error.message}. Use an LTS release of Node.js ${minimum} or newer.`;
+}

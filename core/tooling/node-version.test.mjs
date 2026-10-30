@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { minimumNodeVersion, unsupportedNodeMessage } from './node-version.mjs';
+import {
+  minimumNodeVersion,
+  unloadableNodeMessage,
+  unsupportedNodeMessage,
+} from './node-version.mjs';
 
 describe('unsupportedNodeMessage', () => {
   it.each([
@@ -31,5 +35,17 @@ describe('minimumNodeVersion', () => {
       '22.14',
       undefined,
     ]);
+  });
+});
+
+describe('unloadableNodeMessage', () => {
+  it('names the Node.js version and the load error', () => {
+    const error = new SyntaxError(
+      "The requested module 'node:module' does not provide an export named 'findPackageJSON'",
+    );
+
+    expect(unloadableNodeMessage('23.1.0', '>=22.14', error)).toBe(
+      "nitpicker could not load on Node.js 23.1.0: The requested module 'node:module' does not provide an export named 'findPackageJSON'. Use an LTS release of Node.js 22.14 or newer.",
+    );
   });
 });
