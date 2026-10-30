@@ -1,5 +1,5 @@
 import { changedByDiff } from './base-red/unknown-base.mjs';
-import { comparisonKey } from './fingerprint.mjs';
+import { baseMoves, comparisonKey } from './fingerprint.mjs';
 import { matchSimilarFindings } from './similar/match.mjs';
 import { matchAnchoredFindings } from './anchored/match.mjs';
 import { grewFinding, holdRatchetedFindings, withGrowthAdvice } from './ratchet/ratchet.mjs';
@@ -13,36 +13,26 @@ export function compareFindings({
   touchedCode,
   unknownOnBase,
 }) {
-  const baseByKey = indexFindings({
-    findings: baseFindings,
-    renames: baseToHeadRenames,
-    directories: baseToHeadDirectories,
-    snapshot: 'base',
-  });
+  const moves = baseMoves(baseToHeadRenames, baseToHeadDirectories);
+  const baseByKey = indexFindings({ findings: baseFindings, moves, snapshot: 'base' });
   const headByKey = indexFindings({ findings: headFindings, snapshot: 'head' });
   const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode, unknownOnBase });
   const withoutExactMatch = [...baseByKey]
     .filter(([key]) => !headByKey.has(key))
     .map(([, baseFinding]) => baseFinding);
   const unmatchedBase = moveAnchoredFindings(present, {
-    baseFindings: moveSimilarFindings(present, withoutExactMatch, baseToHeadRenames),
+    baseFindings: moveSimilarFindings(present, withoutExactMatch, moves.files),
     snapshots: { base: baseFindings, head: headFindings },
-    renames: baseToHeadRenames,
+    renames: moves.files,
     touchedCode,
   });
   const ratcheted = holdRatchetedFindings({
     newFindings: present.newFindings,
     unmatchedBase,
-    renames: baseToHeadRenames,
-    directories: baseToHeadDirectories,
+    moves,
     touchedCode,
   });
-  present.newFindings = withGrowthAdvice({
-    findings: ratcheted.newFindings,
-    baseFindings,
-    renames: baseToHeadRenames,
-    directories: baseToHeadDirectories,
-  });
+  present.newFindings = withGrowthAdvice({ findings: ratcheted.newFindings, baseFindings, moves });
   present.unchangedFindings.push(...ratcheted.heldFindings);
   const resolvedFindings = unmatchedBase.filter((finding) => !ratcheted.matchedBase.has(finding));
 
@@ -138,10 +128,10 @@ function changedMetricOf(baseFinding, headFinding) {
   };
 }
 
-function indexFindings({ findings, renames = new Map(), directories = new Map(), snapshot }) {
+function indexFindings({ findings, moves, snapshot }) {
   const indexed = new Map();
   for (const finding of findings) {
-    const key = comparisonKey(finding, renames, directories);
+    const key = comparisonKey(finding, moves);
     if (indexed.has(key)) {
       throw new Error(
         `${snapshot} analyzer output contains duplicate stable identity for ${finding.tool}/${finding.rule} at ${finding.path}`,
