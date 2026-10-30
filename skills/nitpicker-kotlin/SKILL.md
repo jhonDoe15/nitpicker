@@ -76,6 +76,15 @@ Before you change code other modules use, or fix a bug, read
   members and parameters (an override, a function with a framework annotation and a name starting
   `ignored` or `unused` are skipped). A public function's `Boolean` parameter that picks a behavior
   becomes two functions or an enum (`BooleanFlagParameter`).
+- Signatures: a value with three states is an `enum class`, not a `Boolean?` parameter, return
+  type or property (`kotlin-source/TriStateBoolean`; a property or parameter a framework fills,
+  such as `@Column`, `@JsonProperty`, `@SerialName` or an `@Entity` property, is exempt); a public
+  function returns a new collection instead of changing a `MutableList`, `MutableMap` or array
+  parameter (`items.add`, `table[key] = v`, `counts[0]++`, also through `val alias = items`;
+  `kotlin-source/ParameterMutation`; private and local functions are exempt). When code moves,
+  change every caller and delete the old name: no `@Deprecated` delegate or `typealias Old = New`
+  (`kotlin-source/CompatibilityShim`). Time comes from an injected `Clock`; `Calendar`, `Date` and
+  `SimpleDateFormat` are banned.
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
   declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`

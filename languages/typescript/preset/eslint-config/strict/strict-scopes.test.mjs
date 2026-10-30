@@ -37,18 +37,21 @@ describe('no-restricted-syntax lists are unified across scopes', () => {
   });
 
   it('applies the control-flow bans to shared and plain source files, not to tests', () => {
-    for (const file of ['src/main/shared/run.ts', 'src/run.ts', 'src/main/features/x/service.ts']) {
-      expect(messages('export function run() { while (more()) { step(); } }', file)).toEqual([
-        'for...of is the only loop; iterate the items with for...of.',
-      ]);
-      expect(messages(thenChain, file)).toEqual([
+    const files = ['src/main/shared/run.ts', 'src/run.ts', 'src/main/features/x/service.ts'];
+    const whileLoop = 'export function run() { while (more()) { step(); } }';
+    const sameFor = (code) => files.map((file) => messages(code, file));
+    expect(sameFor(whileLoop)).toEqual(
+      files.map(() => ['for...of is the only loop; iterate the items with for...of.']),
+    );
+    expect(sameFor(thenChain)).toEqual(
+      files.map(() => [
         'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work. An exception fits only when a framework or library requires it.',
-      ]);
-      expect(messages('export const same = a == b;', file)).toEqual([
-        "Expected '===' and instead saw '=='.",
-      ]);
-      expect(messages(loop, file)).toEqual([]);
-    }
+      ]),
+    );
+    expect(sameFor('export const same = a == b;')).toEqual(
+      files.map(() => ["Expected '===' and instead saw '=='."]),
+    );
+    expect(sameFor(loop)).toEqual(files.map(() => []));
     expect(messages('export function run() { while (more()) {} }', 'src/run.test.ts')).toEqual([
       'No matching configuration found for src/run.test.ts.',
     ]);
@@ -60,15 +63,16 @@ describe('no-restricted-syntax lists are unified across scopes', () => {
     expect(messages(recursive, 'src/main/features/x/domain/run.ts')).toEqual([
       "'retry' calls itself. domain/ has no loops and no recursion, so a walk over data of unknown depth (a tree) belongs in adapters/: for...of over a worklist, pushing each node's children onto it. Pass domain/ the flat result; flat data uses map, filter, flatMap or Object.fromEntries. An exception fits only when the recursion is bounded and deliberate.",
     ]);
-    for (const file of [
+    const files = [
       'src/main/features/x/adapters/run.ts',
       'src/main/composition-root.ts',
       'src/main/shared/run.ts',
-    ]) {
-      expect(messages(recursive, file)).toEqual([
+    ];
+    expect(files.map((file) => messages(recursive, file))).toEqual(
+      files.map(() => [
         "'retry' calls itself. Retry or poll: loop with for...of over attempt numbers. Tree walk (directories, AST, JSON): for...of over a worklist, pushing each node's children onto it (for (const node of pending) { pending.push(...children) }). Flat data: map, filter, flatMap or Object.fromEntries. A component that renders itself in JSX is not reported. An exception fits only when the recursion is bounded and deliberate.",
-      ]);
-    }
+      ]),
+    );
     expect(messages(recursive, 'src/run.test.ts')).toEqual([
       'No matching configuration found for src/run.test.ts.',
     ]);
