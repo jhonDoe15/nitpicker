@@ -7,7 +7,8 @@ including modules that mix Java and Kotlin, with the same differential gate as t
 [Java preset](java-preset.md): run the tools on the merge base and on head, turn each report into
 findings, fail only on new enforceable findings. It is not a second implementation. It shares the
 Gradle init script, the runner, the ingesters, the failure policy and the cache with the Java
-preset, and adds Kotlin tools next to the Java ones.
+preset, and adds Kotlin tools next to the Java ones. The JDK and Gradle a CI job needs, and recipes for
+GitHub Actions, GitLab CI and Jenkins, are in [nitpicker in CI](ci.md#toolchains-by-preset).
 
 ## Selection
 
@@ -897,17 +898,34 @@ and strings (including the implicit throwing `else`), default-argument bridges (
 `suspend` functions. What it leaves is the coroutine state machines of suspend lambdas:
 `sequence { yield(1) }`, `flow { emit(1) }`, `coroutineScope { ... }`, `a.await()` each report one to
 three missed outcomes (the "call returned `COROUTINE_SUSPENDED`" arm no test can take): 9 lines in
-the fixture.
+the fixture. It also leaves the branches of the `@InlineOnly` standard library functions, which the
+compiler copies into the caller under the caller's line (no SMAP entry, so JaCoCo's inline filter
+cannot see them). Measured on Kotlin 2.4.21 with JaCoCo 0.8.12, one function per line, the branch
+count (`mb + cb`) each call adds to its line is: `.orEmpty()` 2 on a `String?`, `List?`, `Set?`,
+`Collection?`, `Map?` or `Sequence?` and 0 on an `Array?`; `.isNullOrEmpty()` 4 on a `String?`,
+`CharSequence?`, `List?` or `Map?` and 6 on an `Array?`; `.isNullOrBlank()` 4. `maxOf` and `minOf`
+(two or three `Int`, `Long`, `Double` or `String` arguments), `coerceIn`, `coerceAtLeast`, `let`,
+`also` and `use { }` add none. What the author writes around a call adds its own: a negation
+(`!x.isNullOrBlank()`, `.not()`, `== false`) adds 2, an `if (x.isNullOrEmpty())` adds 2, and so do
+`runCatching { }.getOrNull()`, `repeat(n) { }`, a comparison and a lambda with a comparison.
 
-One filter removes them, in `kotlin-branches.mjs`, and it fails open: **a Kotlin line is dropped
-only when it calls a suspension function and contains nothing that can branch**. The suspension
+Two filters remove them, in `kotlin-branches.mjs`, and both fail open. **A Kotlin line is dropped
+when its branch count equals the sum of the counts of the library calls on it**: `.orEmpty()` 2,
+`.isNullOrEmpty()` 4 and `.isNullOrBlank()` 4, each called on a receiver with no arguments, in the
+code of the line (string literals and comments removed) and not the name of a `fun` the line
+declares. So `text.orEmpty().trim()`, `a.orEmpty() + b.orEmpty()` and `list.map { it.orEmpty() }`
+are dropped, and a line whose count is higher keeps every branch, wherever the rest comes from: the
+operand line of a wrapped `if (` or `while (` condition or of a trailing `&&`, a negation, a
+`getOrNull()`, a `repeat`. **A line with a suspension call is dropped when it contains nothing that
+can branch**. The suspension
 calls are `emit`, `emitAll`, `yield`, `yieldAll`, `delay`, `await`, `awaitAll`, `withContext`,
 `withTimeout`, `withTimeoutOrNull`, `coroutineScope`, `supervisorScope`, `flow`, `channelFlow`,
 `callbackFlow` and `sequence` followed by `(` or `{`. What can branch is `if`, `when`, `while`,
 `for`, `do`, `is`, `in`, `as`, `&&`, `||`, `?.`, `?:`, any of `<`, `>`, `!`, `==`, a call to
 `require`, `check`, `assert`, `requireNotNull`, `checkNotNull`, or an inline standard library
-function that branches (`takeIf`, `takeUnless`, `ifEmpty`, `ifBlank`, `orEmpty`, `getOrElse`,
-`maxOf`, `minOf`, `coerce*`). The line is judged on its code alone: string literals, comments, type
+function that runs a condition or lambda of the author's on one arm (`takeIf`, `takeUnless`,
+`ifEmpty`, `ifBlank`, `getOrElse`, `coerce*`): those stay counted, as do `?:` and `?.` on a
+platform type. The line is judged on its code alone: string literals, comments, type
 arguments and `->` are removed first, and a line with a string template (`${`) is always kept.
 Every other line is kept, including the continuation lines JaCoCo attributes a branch to when a
 statement spans lines (the operand after a trailing `&&`, the `?:` on the next line, the condition
@@ -920,8 +938,14 @@ report of a generated outcome on a line that also branches. It is never a missed
 Limits. A line that branches and also suspends (`if (ready) emit(1)`, `for (n in 1..2) emit(n)`)
 counts the generated outcome too, so it can fail with every branch the author wrote taken. The
 message then names the call (`Not taken: emit suspending (move the call to its own line if no
-branch of yours is untested)`); put the suspension call on a line of its own, or, when that is not
-possible, accept the function with an `exceptions` entry for `changed-branch-coverage` that names it
+branch of yours is untested)`); put the call on a line of its own. A line that branches and calls
+one of the library functions (`if (!name.isNullOrBlank())`) counts the library's arms too, and its
+message says so: `Not taken: a branch of this line or of isNullOrBlank, which is inlined from the
+standard library (pass null to take its null arm)`. Those arms are real inputs (null, empty,
+blank), so a test that passes them covers the line. Two receiver types do not match the counts: an
+`Array?.isNullOrEmpty()` (6) is kept and reported on a line of its own, and an `Array?.orEmpty()`
+(0) beside exactly one two-way branch of the author's (`items.orEmpty().size > limit`) is dropped
+with it. When none of this is possible, accept the function with an `exceptions` entry for `changed-branch-coverage` that names it
 (`function` is required; the name is the one the structure findings print, from the Kotlin metrics,
 and only that function's branches are accepted), or `exclude` the file in `nitpicker.config.json`
 (path-level, so it also stops gating every other finding of that file). A line is judged as a whole, as for Java, and a
@@ -1167,6 +1191,13 @@ clones that only repeat one or two statements (DTO mappers, `when` tables, `if` 
 `pmd-kotlin` lexer ignores the identifier and literal flags. The message names the same route as for
 any clone: add either file of the pair to `exclude`.
 
+The reuse rules `duplicate-definition`, `sibling-copy-edit` and `exported-name-collision` run on
+Kotlin and Java sources together, the way the Java preset runs them (see "Reuse rules" in
+`java-preset.md`): top-level functions and properties, the members of `object`s and companion
+objects, and top-level classes are compared within one Gradle module; an `import ... as` alias or a
+fully qualified name that keeps two different classes of one name apart is a collision, and same-named functions, which
+overload, are not.
+
 ## Coupling
 
 The stability-direction rule runs on Kotlin. `nitpickerJdeps` runs the JDK's `jdeps` over every main
@@ -1268,7 +1299,14 @@ fails only when it grows, and a package folder moved to a new path is matched to
   (`fixtures/jacoco-kotlin.xml`, class elements dropped; the project is
   `fixtures/kotlin-measurement`) that yields exactly the real misses, and a recorded report of
   statements that span lines (`fixtures/jacoco-kotlin-multiline.xml` with its sources in
-  `fixtures/kotlin-multiline`).
+  `fixtures/kotlin-multiline`), and the measured branch counts of lines that call an inlined
+  library function: dropped when the count is the library's, kept with the null-arm hint
+  otherwise (negation, wrapped `if (` and `&&` operands, `getOrNull`, `repeat`, an `Array?`
+  receiver, a `fun` named like the call). The gated e2e test changes lines that call `orEmpty`,
+  `isNullOrBlank` and `maxOf` and expects only the untested `?:`, a `!isNullOrBlank()` and the
+  operand of a wrapped `if (` to fail; a second branch adds an `interface`, a `fun interface` and
+  exhaustive `when`s over a sealed interface and an enum, all tested, and expects no coverage
+  finding.
 - `languages/java/adapters/kotlin/kotlin-tools.test.mjs`: formatter and ktfmt style detection (Spotless
   blocks, comments, `.editorconfig`, the override), detekt config detection and the override, and
   the Gradle arguments (including `--no-configuration-cache`).
