@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 import { runAggregateCli } from './diff/sharding/aggregate-shards.mjs';
 import { reportingProgress } from './diff/execution/progress.mjs';
-import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
+import { runScheduler } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
 import { runBaseCommand } from './command/base.mjs';
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
-import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
 import { realpathSync } from 'node:fs';
 import {
   describeConfigOverrides,
@@ -30,14 +29,14 @@ import { clearDiffReports, absoluteTextReportPath } from './diff/reporting/repor
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
 import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
-import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
+import { selectComparisonAnalyzers } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { writeGithubOutput } from './diff/reporting/github/emit.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { runMonorepo } from './projects/run/monorepo.mjs';
-import { oneProjectScope } from './projects/run/refusal.mjs';
+import { rootOf, runScoped } from './projects/run/refusal.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 
 const CHECK_COMMANDS = { hygiene: runHygieneCli, history: runHistoryCli };
@@ -55,18 +54,15 @@ export function runCli(options = {}) {
     });
   }
   if (cli.arguments_[0] === 'aggregate') {
-    const scope = oneProjectScope(cli, 'aggregate');
-    return (
-      scope.exitCode ??
+    return runScoped(cli, 'aggregate', (scope) =>
       runAggregateCli({
         arguments_: cli.arguments_.slice(1),
-        currentProjectRoot: scope.currentProjectRoot,
-        configOverlay: scope.configOverlay,
+        ...scope,
         analyzers: cli.analyzers,
         stdout: cli.stdout,
         stderr: cli.stderr,
         environment: cli.environment,
-      })
+      }),
     );
   }
   try {
@@ -103,19 +99,16 @@ function withCliDefaults(options) {
 
 function runCommand(cli) {
   if (cli.arguments_[0] === 'cache') {
-    const scope = oneProjectScope(cli, 'cache');
-    return (
-      scope.exitCode ??
+    return runScoped(cli, 'cache', (scope) =>
       runCacheCommand({
         arguments_: cli.arguments_.slice(1),
         environment: cli.environment,
-        currentProjectRoot: scope.currentProjectRoot,
-        configOverlay: scope.configOverlay,
+        ...scope,
         analyzers: cli.analyzers,
         stdout: cli.stdout,
         stderr: cli.stderr,
         runTasks: cli.runTasks,
-      })
+      }),
     );
   }
   if (cli.arguments_[0] === 'base') {
@@ -134,15 +127,9 @@ function runProjectOf(cli) {
 }
 
 function runConfigured(cli) {
-  const currentProjectRoot =
-    cli.currentProjectRoot === undefined
-      ? resolveProjectRoot(cli.workingDirectory)
-      : realpathSync(cli.currentProjectRoot);
+  const currentProjectRoot = rootOf(cli);
   const monorepo = runMonorepo({ cli, currentProjectRoot, runProject: runProjectOf(cli) });
-  if (monorepo.exitCode !== undefined) {
-    return monorepo.exitCode;
-  }
-  return runSingle({ ...cli, ...monorepo.extraCli }, currentProjectRoot);
+  return monorepo.exitCode ?? runSingle({ ...cli, ...monorepo.extraCli }, currentProjectRoot);
 }
 
 function runSingle(cli, currentProjectRoot) {
@@ -264,19 +251,6 @@ function resolveRunCacheStore(cli) {
     }
   }
   return cli.options.cache ? store : undefined;
-}
-
-function selectComparisonAnalyzers({ options, analyzers }) {
-  const selectedAnalyzers =
-    options.shardCount === undefined
-      ? selectAnalyzers(analyzers, options.analyzerNames)
-      : selectAnalyzerShard(analyzers, options.shardCount, options.shardIndex);
-  if (selectedAnalyzers.length === 0) {
-    throw new Error(
-      'No quality analyzers are configured. The comparison framework is ready, but real analyzer adapters are a later phase.',
-    );
-  }
-  return selectedAnalyzers;
 }
 
 function writeComparisonOutcome({ cli, report, base, outputRoot }) {

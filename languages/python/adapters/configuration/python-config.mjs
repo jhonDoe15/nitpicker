@@ -43,7 +43,9 @@ export function validatePythonConfig(config, typescriptOnlyKeys) {
     );
   }
   if (config.python !== undefined) {
-    validateSettings(config.python);
+    validateSettings(config.python, {
+      projectRuff: (config.tools?.ruff?.precedence ?? []).includes('project'),
+    });
   }
 }
 
@@ -66,7 +68,7 @@ function validateChoices(settings) {
   }
 }
 
-function validateSettings(settings) {
+function validateSettings(settings, options) {
   if (!isPlainObject(settings)) {
     throw configError('"python" must be an object');
   }
@@ -82,12 +84,12 @@ function validateSettings(settings) {
     validateEntryPoints(settings.entryPoints);
   }
   if (settings.exceptions !== undefined) {
-    validateRuleIds(settings.exceptions);
+    validateRuleIds(settings.exceptions, options);
     validateExceptions(settings.exceptions, 'python.exceptions', { preset: 'python' });
   }
 }
 
-function validateRuleIds(exceptions) {
+function validateRuleIds(exceptions, options) {
   if (!Array.isArray(exceptions)) {
     return;
   }
@@ -100,7 +102,7 @@ function validateRuleIds(exceptions) {
         `"python.exceptions[${String(index)}].rule" is "${rule}", a rule that every preset reports with a function or a path: lift it in the top-level "exceptions" instead`,
       );
     }
-    const problem = ruleIdProblem(rule);
+    const problem = ruleIdProblem(rule, options);
     if (problem !== undefined) {
       throw configError(
         `"python.exceptions[${String(index)}].rule" names no rule nitpicker reports: "${rule}"; ${problem}`,
