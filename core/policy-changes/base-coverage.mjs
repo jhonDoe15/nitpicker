@@ -6,6 +6,7 @@ import {
 } from '../../languages/typescript/preset/layout.mjs';
 import { THRESHOLD_DEFAULTS } from './loosenings.mjs';
 import { canonicalRule } from '../../shared/exceptions/rule-names.mjs';
+import { sameJson } from '../../shared/config.mjs';
 
 const UNSET_ROOTS = { sourceRoots, testRoots: defaultResolvedLayout.executedTestRoots };
 const DEFAULT_LAYOUT = {
@@ -21,10 +22,6 @@ function union(base, head) {
 
 function common(base, head) {
   return base.filter((entry) => head.includes(entry));
-}
-
-function same(left, right) {
-  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 function coveringLayout(baseLayout, headLayout) {
@@ -43,7 +40,7 @@ function coveringLayout(baseLayout, headLayout) {
     Object.entries({ ...roots, excludedGlobs, entryPoints }).filter(
       ([key, value]) =>
         baseLayout[key] !== undefined ||
-        (headLayout[key] !== undefined && !same(value, DEFAULT_LAYOUT[key])),
+        (headLayout[key] !== undefined && !sameJson(value, DEFAULT_LAYOUT[key])),
     ),
   );
 }

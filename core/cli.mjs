@@ -4,6 +4,7 @@ import { reportingProgress } from './diff/execution/progress.mjs';
 import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
 import { runChangelogCommand } from './command/changelog/changelog.mjs';
+import { runBaseCommand } from './command/base.mjs';
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
 import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
 import { realpathSync } from 'node:fs';
@@ -31,6 +32,7 @@ import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
+import { writeGithubOutput } from './diff/reporting/github/emit.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
@@ -112,6 +114,9 @@ function runCommand(cli) {
       runTasks: cli.runTasks,
     });
   }
+  if (cli.arguments_[0] === 'base') {
+    return runBaseCommand({ ...cli, arguments_: cli.arguments_.slice(1) });
+  }
   const options = parseArguments(cli.arguments_);
   if (options.help) {
     cli.stdout.write(USAGE_TEXT);
@@ -144,6 +149,8 @@ function runConfigured(cli) {
         analyzers,
         headPolicy: snapshotPolicy({ config, currentProjectRoot, headPolicy, stdout }),
         stdout,
+        stderr: cli.stderr,
+        environment: cli.environment,
         runTasks,
       });
     }
@@ -264,6 +271,16 @@ function writeComparisonOutcome({ cli, report, base, outputRoot }) {
     }),
   );
   stdout.write(renderClosingSections(cli, report));
+  if (options.shardCount === undefined) {
+    writeGithubOutput({
+      kind: 'diff',
+      report,
+      projectRoot: cli.currentProjectRoot,
+      environment,
+      stdout,
+      stderr: cli.stderr,
+    });
+  }
   if (options.deferExit) {
     return 0;
   }

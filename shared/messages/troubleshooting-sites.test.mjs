@@ -22,7 +22,7 @@ const EDGE_PUNCTUATION = /^[\s.:;,(]+|[\s.:;,(]+$/gu;
 const MESSAGES_BUILT_ELSEWHERE = [
   'core/diff/execution/process.mjs',
   'core/diff/sharding/aggregate-shards.mjs',
-  'core/fix/run-fix.mjs',
+  'core/fix/fixer-error.mjs',
   'languages/java/adapters/red-base/tests-failed.mjs',
 ];
 const symptoms = new Map(pageEntries().map(({ slug, symptom }) => [slug, symptom]));

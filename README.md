@@ -99,7 +99,9 @@ sources adds `nitpicker-java` too. For an agent without skills, add the
 [agent snippet](docs/agents-snippet.md) to your `AGENTS.md`.
 
 In CI, run `npx nitpicker` as a step and fetch enough history to contain the merge base (for
-example `fetch-depth: 0`). It exits non-zero when a change adds a problem.
+example `fetch-depth: 0`). It exits non-zero when a change adds a problem. On GitHub Actions the
+`jhonDoe15/nitpicker` action does the setup, the cache, the job summary and the annotations;
+[nitpicker in CI](docs/ci.md) has that and the GitLab CI and Jenkins recipes.
 
 > nitpicker is pre-1.0. Rules and messages can change between versions, so pin the version you
 > use.
@@ -117,6 +119,8 @@ are chosen.
 - [Mindset](docs/mindset.md): what nitpicker enforces and why.
 - [Usage](docs/usage.md): the command line, reports, exit codes, configuration, caching and
   sharding in CI.
+- [nitpicker in CI](docs/ci.md): GitHub Actions (the action and plain steps), GitLab CI, Jenkins,
+  the toolchain each preset needs.
 - [Checks](spec/checks.md): every check and rule, and what fails.
 - [Troubleshooting](docs/troubleshooting.md): the cause and fix for a run that exits 2, a tool that
   cannot start, a base that cannot be analyzed, and the other failures that are not findings.

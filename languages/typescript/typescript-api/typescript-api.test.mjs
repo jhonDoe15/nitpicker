@@ -57,14 +57,23 @@ describe('choosing the TypeScript API nitpicker reads source files with', () => 
   it('still reports the bundled API once the redirect sends typescript to it', () => {
     const resolve = resolverOf({ typescript: bundledFile, 'typescript-js-api': bundledFile });
 
-    expect(selectTypeScriptApi(resolve)).toEqual({ file: bundledFile, bundled: true });
+    expect(selectTypeScriptApi(resolve, nativeRoot)).toEqual({ file: bundledFile, bundled: true });
+  });
+
+  it('reports an installed TypeScript 6 as installed when it shares its files with the bundled API', () => {
+    const resolve = resolverOf({ typescript: bundledFile, 'typescript-js-api': bundledFile });
+
+    expect(selectTypeScriptApi(resolve, bundledRoot)).toEqual({
+      file: bundledFile,
+      bundled: false,
+    });
   });
 
   it('uses the bundled TypeScript 6 when the installed one is TypeScript 7', () => {
     const resolve = resolverOf({ typescript: nativeMain, 'typescript-js-api': bundledFile });
 
     expect(hasJavaScriptApi(nativeMain)).toBe(false);
-    expect(selectTypeScriptApi(resolve)).toEqual({ file: bundledFile, bundled: true });
+    expect(selectTypeScriptApi(resolve, nativeRoot)).toEqual({ file: bundledFile, bundled: true });
   });
 
   it('uses the bundled TypeScript 6 when no typescript is installed', () => {

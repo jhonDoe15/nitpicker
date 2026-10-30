@@ -122,7 +122,7 @@ line) is a finding.
   checks the types already rule out. Indexing (`list[0]`, `record[key]`) may be `undefined`: check
   the value you got.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
-  over unions.
+  over unions, with no `default`.
 - `const` or `let`, never `var`. Rest parameters (`...args`) instead of `arguments[i]`, and spread
   instead of `.apply`.
 - Template literals take strings only: `${String(count)}`.
