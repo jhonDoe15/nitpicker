@@ -96,6 +96,7 @@ function readOptions(policy = {}) {
     testConsoleAllow: policy.testConsoleAllow,
     javaStyle: policy.javaStyle,
     baselineRoot: policy.baselineRoot,
+    baselineMovesFile: policy.baselineMovesFile,
     baseline: { snapshot: policy.snapshot, baselineRoot: policy.baselineRoot },
   };
 }
