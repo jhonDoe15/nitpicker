@@ -222,6 +222,7 @@ function fixIfRequested(cli, repositoryRoot, base) {
     headPolicy: cli.headPolicy,
     config: cli.config,
     environment: cli.environment,
+    spawnEnvironment: { ...process.env, ...cli.environment },
   });
   cli.stdout.write(
     `Fixed files:\n${fixResult.fixedFiles.length === 0 ? '(none)\n' : `${fixResult.fixedFiles.join('\n')}\n`}`,
