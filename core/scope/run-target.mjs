@@ -34,8 +34,13 @@ function git(cwd, args) {
 function repositoryOf(base) {
   try {
     return git(base, ['rev-parse', '--show-toplevel']).trim();
-  } catch {
-    throw new Error(`${base} is not in a Git repository; run nitpicker from inside the repository`);
+  } catch (error) {
+    throw new Error(
+      `${base} is not in a Git repository; run nitpicker from inside the repository`,
+      {
+        cause: error,
+      },
+    );
   }
 }
 
