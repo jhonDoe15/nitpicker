@@ -64,9 +64,10 @@ Contributor notes on formats and protocols that code and names cannot carry. Sou
   not count. A rule marked enforced that no adapter emits, and a rule an adapter emits that is marked not enforced, fail
   the test, and so does a rule marked enforced for Kotlin but not Java that no file with `kotlin` in its path emits
   (other Kotlin claims can still be met by a Java file the Kotlin pipeline runs, or by a shared one guarded by a preset
-  check). Each failure names the catalog file to fix. The only allowed second case is a rule the adapter emits as
-  report-only (Kotlin mutants) or that is switched off for a preset by a guard in the code (JavaScript projects skip
-  `unused-prop`, `unused-option` and `javascript-in-typescript-project`); the test lists each in
+  check). Each failure names the catalog file to fix. The only allowed second case is a rule the adapter emits that is
+  switched off for a preset by a guard in the code (the Java and Kotlin facts run only the reuse rules, Go has no
+  inheritance, JavaScript projects skip `unused-prop`, `unused-option` and `javascript-in-typescript-project`); the
+  test lists each in
   `NOT_ENFORCED_ALTHOUGH_EMITTED` with the file and the pattern that proves it. `reports-docs.test.mjs` in
   `core/diff/reporting/` does the same for the report files: the lists in `docs/usage.md` and `docs/agents-snippet.md`
   must equal the reporters' lists, and every report file name in `README.md` or any `docs/*.md` page must be one the
