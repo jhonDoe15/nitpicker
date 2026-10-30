@@ -1,5 +1,5 @@
 import { readFileSync } from 'node:fs';
-import { describe, expect, it } from 'vitest';
+import { beforeAll, describe, expect, it } from 'vitest';
 import { RUFF_SELECT } from '../adapters/configuration/python-rule-ids.mjs';
 import { installedRuffRules } from '../reference/ruff-selection.mjs';
 
@@ -10,10 +10,17 @@ function identities(rules) {
 }
 
 describe.skipIf(!enabled)('the ruff rule snapshot of the rule reference', () => {
-  const committed = JSON.parse(readFileSync(new URL('./ruff-rules.json', import.meta.url), 'utf8'));
-  const live = installedRuffRules(process.env.NITPICKER_RUFF ?? 'ruff');
-  const snapshot = identities(committed.rules);
-  const installed = identities(live.rules);
+  let committed;
+  let live;
+  let snapshot;
+  let installed;
+
+  beforeAll(() => {
+    committed = JSON.parse(readFileSync(new URL('./ruff-rules.json', import.meta.url), 'utf8'));
+    live = installedRuffRules(process.env.NITPICKER_RUFF ?? 'ruff') ?? { rules: [] };
+    snapshot = identities(committed.rules);
+    installed = identities(live.rules);
+  });
 
   it('comes from the ruff the e2e job installs', () => {
     expect(live.version).toBe(committed.version);
