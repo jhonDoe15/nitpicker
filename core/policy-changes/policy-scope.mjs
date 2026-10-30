@@ -249,6 +249,7 @@ export function readPolicyScope({
   baseProjectRoot,
   headProjectRoot,
   moves,
+  replacedOptions,
 }) {
   const files = listedFiles(headProjectRoot);
   const baseFiles = listedFiles(baseProjectRoot);
@@ -275,7 +276,7 @@ export function readPolicyScope({
     toolConfigs: readToolConfigs(
       { config: baseConfig, root: baseProjectRoot, files: baseFiles },
       { config: headConfig, root: headProjectRoot, files },
-      gitBlobId,
+      { gitBlobId, replacedOptions },
     ),
     reach: () => productionReachOf({ headProjectRoot, headConfig, files, headRoots, headSources }),
     blobOf: blobReader(headProjectRoot),
