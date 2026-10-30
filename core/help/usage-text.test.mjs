@@ -28,12 +28,14 @@ const EXPECTED_USAGE = [
   '       nitpicker init [--agents-md] [--ci github] [--help]',
   '       nitpicker aggregate --input-root <dir> --shard-count <n> [--output <dir>] [--policy-root <dir>]',
   '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]',
+  '       nitpicker base [--base <ref>]',
   '',
   'Commands:',
   '  nitpicker                Compare your changes with the merge base and fail on the problems they add.',
   '  nitpicker init           Detect the project and set it up: config, install command, agent skill.',
   '  nitpicker aggregate      Combine the reports of sharded runs into one result.',
   '  nitpicker cache publish  Upload the findings of HEAD to the remote cache.',
+  '  nitpicker base           Print the base ref a run would compare with.',
   '',
   'Options:',
   '  --all                            Report every finding in the checkout, with no baseline.',
@@ -151,6 +153,7 @@ describe('nitpicker --help', () => {
       'nitpicker init',
       'nitpicker aggregate',
       'nitpicker cache publish',
+      'nitpicker base',
     ]);
   });
 
