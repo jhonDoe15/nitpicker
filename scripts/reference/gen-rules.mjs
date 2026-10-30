@@ -6,25 +6,28 @@ import {
   formattedText,
   referenceFiles,
   staleReferenceFiles,
-} from '../core/reference/generate.mjs';
+} from '../../core/reference/generate.mjs';
 import {
   installedRuffRules,
   isOlderVersion,
   withSelectedNewerRules,
-} from '../languages/python/reference/ruff-selection.mjs';
-import { readRuffSnapshot, RUFF_RULES_FILE } from '../languages/python/reference/ruff-entries.mjs';
+} from '../../languages/python/reference/ruff-selection.mjs';
+import {
+  readRuffSnapshot,
+  RUFF_RULES_FILE,
+} from '../../languages/python/reference/ruff-entries.mjs';
 import {
   liveToolText,
   TOOL_TEXT_TOOLS,
   toolTextFile,
-} from '../languages/java/reference/tool-text/tool-text.mjs';
+} from '../../languages/java/reference/tool-text/tool-text.mjs';
 import {
   eslintInventoryPath,
   liveEslintInventory,
   writeEslintInventory,
-} from '../languages/typescript/reference/eslint-inventory.mjs';
+} from '../../languages/typescript/reference/eslint-inventory.mjs';
 
-const repositoryRoot = path.resolve(import.meta.dirname, '..');
+const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 
 async function refreshRuff(ruff, stderr) {
   const snapshot = installedRuffRules(ruff);
@@ -85,7 +88,7 @@ function writeGenerated(generated) {
 const FLAGS = ['--check', '--refresh-eslint', '--refresh-jvm'];
 const RUFF_OPTION = /^--refresh-ruff(?:=(.+))?$/u;
 const USAGE =
-  'Usage: node scripts/gen-rules.mjs [--check] [--refresh-eslint] [--refresh-jvm] [--refresh-ruff[=<path>]]\n';
+  'Usage: node scripts/reference/gen-rules.mjs [--check] [--refresh-eslint] [--refresh-jvm] [--refresh-ruff[=<path>]]\n';
 
 async function refreshSnapshots(options, stderr) {
   const ruffOption = options.map((option) => RUFF_OPTION.exec(option)).find(Boolean);
