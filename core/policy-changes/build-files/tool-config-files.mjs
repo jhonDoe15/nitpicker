@@ -19,10 +19,12 @@ import { replacedEslintOptions } from '../../../languages/typescript/adapters/li
 import { toolConfigText } from './tool-config-text.mjs';
 import { readImportLinterConfig } from '../../../languages/python/adapters/analysis/import-linter/import-linter-config.mjs';
 import { attempt } from '../../../languages/python/adapters/project-tools/project-tool-layers.mjs';
+import { GOLANGCI_FILES } from '../../../languages/go/adapters/formatting/go-formatters.mjs';
 import { PYTHON_TOOLS, pythonConfigEntries } from './python-tool-configs.mjs';
 
 const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
+const GO_TOOLS = ['gofumpt', 'goimports'];
 const SCRIPT_PRESETS = new Set([undefined, 'typescript', 'javascript']);
 
 function usesProjectConfig(config, tool) {
@@ -101,6 +103,9 @@ function candidates(tool, side) {
   const { config, files } = side;
   if (KOTLIN_TOOLS.includes(tool)) {
     return config.preset === 'kotlin' ? kotlinFiles(tool, side) : [];
+  }
+  if (GO_TOOLS.includes(tool)) {
+    return config.preset === 'go' ? GOLANGCI_FILES : [];
   }
   if (tool === 'prettier') {
     return SCRIPT_PRESETS.has(config.preset) ? PRETTIER_PROJECT_FILES : [];
@@ -201,7 +206,16 @@ export function readToolConfigs(base, head, readers) {
 }
 
 function toolEntries(base, head, { gitBlobId, replacedOptions = replacedEslintOptions }) {
-  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier', 'jscpd', 'eslint', ...PYTHON_TOOLS]
+  return [
+    'pmd',
+    'checkstyle',
+    ...KOTLIN_TOOLS,
+    ...GO_TOOLS,
+    'prettier',
+    'jscpd',
+    'eslint',
+    ...PYTHON_TOOLS,
+  ]
     .filter((tool) => isOptedIn(tool, head.config))
     .map((tool) => {
       const prints = {
