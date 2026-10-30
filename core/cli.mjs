@@ -27,6 +27,7 @@ import { resolveBase } from './diff/git/repository/base-ref.mjs';
 import { detachLocalGitVariables } from './diff/git/environment/local-variables.mjs';
 import path from 'node:path';
 import { clearDiffReports, absoluteTextReportPath } from './diff/reporting/reporters.mjs';
+import { partialRunOf } from './diff/reporting/partial-run/partial-run.mjs';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
 import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
@@ -181,8 +182,8 @@ function runComparisonCli(cli) {
     options.outputRoot === undefined
       ? path.join(currentProjectRoot, 'reports/quality/diff')
       : path.resolve(currentProjectRoot, options.outputRoot);
-  clearDiffReports(outputRoot);
   const analyzers = selectComparisonAnalyzers(cli);
+  clearDiffReports(outputRoot);
   const headPolicy = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
   const fixResult = fixIfRequested({ ...cli, headPolicy }, repositoryRoot, base);
   const cacheStore = resolveRunCacheStore(cli);
@@ -193,6 +194,7 @@ function runComparisonCli(cli) {
     requestedBaseRef: base.baseRef,
     outputRoot,
     analyzers,
+    partialRun: partialRunOf(options.analyzerNames, cli.analyzers, analyzers),
     cacheStore,
     includeWorkingTree: true,
     additionalToolErrors: fixResult.toolErrors,

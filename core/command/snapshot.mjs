@@ -16,6 +16,7 @@ import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
+import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
 
 export function runSnapshotCli({
   options,
@@ -31,11 +32,11 @@ export function runSnapshotCli({
     options.outputRoot === undefined
       ? path.join(currentProjectRoot, 'reports/quality/snapshot')
       : path.resolve(currentProjectRoot, options.outputRoot);
-  clearSnapshotReports(outputRoot);
   const selectedAnalyzers = selectAnalyzers(analyzers, options.analyzerNames);
   if (selectedAnalyzers.length === 0) {
     throw new Error('No quality analyzers are configured.');
   }
+  clearSnapshotReports(outputRoot);
 
   const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(currentProjectRoot);
   const report = withTemporaryWorktree(repositoryRoot, capturedSha, (worktreeRoot) =>
@@ -46,6 +47,10 @@ export function runSnapshotCli({
       headPolicy,
       runTasks,
     }),
+  );
+  Object.assign(
+    report.summary,
+    partialRunField(partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers)),
   );
   report.text = writeSnapshotReports(outputRoot, report, { projectPath: relativeProjectPath });
   stdout.write(report.text);

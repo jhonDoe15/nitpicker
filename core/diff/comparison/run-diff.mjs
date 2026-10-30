@@ -3,6 +3,7 @@ import {
   mustMeetOnEditedLines,
 } from '../../../languages/typescript/preset/strict-rules.mjs';
 import { writeDiffReports } from '../reporting/reporters.mjs';
+import { partialRunField } from '../reporting/partial-run/partial-run.mjs';
 import path from 'node:path';
 import { resolveComparison, captureWorkingTree } from '../git/repository/git.mjs';
 import { readRepositoryChanges } from '../git/patches/changes.mjs';
@@ -35,6 +36,7 @@ export function runQualityDiff(options) {
     compareSnapshots({ settings, comparison, layout, roots, startedAt }),
   );
   report.summary.elapsedMs = Date.now() - startedAt;
+  Object.assign(report.summary, partialRunField(settings.partialRun));
   report.text = writeDiffReports(settings.outputRoot, report, {
     projectPath: settings.projectRelativePath,
   });
