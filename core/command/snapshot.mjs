@@ -26,6 +26,7 @@ export function runSnapshotCli({
   stderr,
   environment,
   runTasks,
+  scope,
 }) {
   const outputRoot =
     options.outputRoot === undefined
@@ -45,6 +46,7 @@ export function runSnapshotCli({
       currentProjectRoot,
       headPolicy,
       runTasks,
+      scope,
     }),
   );
   report.text = writeSnapshotReports(outputRoot, report, { projectPath: relativeProjectPath });
@@ -70,6 +72,7 @@ function runInSnapshotWorktree({
   currentProjectRoot,
   headPolicy,
   runTasks,
+  scope,
 }) {
   const needsDependencies = selectedAnalyzers.some((analyzer) => analyzer.requiresDependencies);
   const dependencies = needsDependencies
@@ -88,6 +91,7 @@ function runInSnapshotWorktree({
       liveProjectRoot: currentProjectRoot,
       headPolicy,
       runTasks,
+      scope,
     });
   } finally {
     removeSnapshotDependencies(dependencies);

@@ -14,6 +14,13 @@ If your change edits a function that existed before it, read
 Before you change code other modules use, fix a bug, or add a UI state, read
 [beyond-the-gate.md](beyond-the-gate.md).
 
+## Check one file or folder
+
+To look at one file or folder, for example before you change it, pass its path: `npx nitpicker --all
+src/orders` lists every finding in it, and `npx nitpicker src/orders/order.ts` gates only your
+change to that file. Paths are read from the current folder. The analysis still covers the whole
+project, so it takes as long as a full run; finish with the plain run below.
+
 ## Finish with the gate
 
 1. Run your tests with the project's runner (its `test` script). Failing tests stop coverage, CRAP

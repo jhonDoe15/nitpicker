@@ -5,7 +5,7 @@ import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mj
 import { runCacheCommand } from './command/cache.mjs';
 import { runBaseCommand } from './command/base.mjs';
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
-import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
+import { resolveRunTarget } from './scope/run-target.mjs';
 import { realpathSync } from 'node:fs';
 import {
   describeConfigOverrides,
@@ -128,10 +128,7 @@ function runCommand(cli) {
 
 function runConfigured(cli) {
   const { options, stdout, runTasks } = cli;
-  const currentProjectRoot =
-    cli.currentProjectRoot === undefined
-      ? resolveProjectRoot()
-      : realpathSync(cli.currentProjectRoot);
+  const { currentProjectRoot, scope } = resolveRunTarget(cli);
   const config = loadConfig(currentProjectRoot);
   const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
@@ -153,6 +150,7 @@ function runConfigured(cli) {
         stderr: cli.stderr,
         environment: cli.environment,
         runTasks,
+        scope,
       });
     }
     return runComparisonCli({
@@ -162,6 +160,7 @@ function runConfigured(cli) {
       injectedAnalyzers: cli.analyzers,
       config,
       headPolicy,
+      scope,
     });
   });
 }
@@ -201,6 +200,7 @@ function runComparisonCli(cli) {
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
     describeNotices: noticeDescriber(config, headPolicy, currentProjectRoot),
     ...acceptanceOf(cli),
+    scope: cli.scope,
     progress: cli.progress,
     runTasks: cli.runTasks,
   });
@@ -229,6 +229,7 @@ function fixIfRequested(cli, repositoryRoot, base) {
     baseRef: base.baseRef,
     executeFixCommand: cli.executeFixCommand,
     headPolicy: cli.headPolicy,
+    scope: cli.scope,
   });
   cli.stdout.write(
     `Fixed files:\n${fixResult.fixedFiles.length === 0 ? '(none)\n' : `${fixResult.fixedFiles.join('\n')}\n`}`,

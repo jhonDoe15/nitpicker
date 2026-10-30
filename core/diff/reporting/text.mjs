@@ -3,6 +3,7 @@ import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { noteSectionLines } from './format/notes.mjs';
 import { noticeSection } from './review/notices.mjs';
 import { policyChangeSection } from './review/policy-changes.mjs';
+import { scopeLine } from '../../scope/scope-findings.mjs';
 
 export function renderTextReport(report) {
   const lines = [
@@ -28,6 +29,7 @@ function summaryLines(report) {
     `Merge base: ${report.summary.mergeBaseSha}`,
     `Head: ${report.summary.headSha}`,
     `Status: ${report.summary.overallStatus}`,
+    ...scopeLine(report.summary),
     `New enforceable findings: ${String(report.summary.newEnforceableFindings)}`,
     `New findings: ${String(report.newFindings.length)}`,
     `Resolved findings: ${String(report.resolvedFindings.length)}`,

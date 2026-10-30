@@ -18,6 +18,7 @@ import {
   projectLayerValue,
 } from '../../languages/typescript/adapters/lint-engine/project-layer.mjs';
 import { spawnSync } from 'node:child_process';
+import { isInScope } from '../scope/scope-findings.mjs';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
 
@@ -35,13 +36,11 @@ export function fixWorkingTree({ headPolicy = resolveHeadPolicy(), ...options })
 }
 
 function fixWithPolicy(settings) {
-  const { repositoryRoot, projectRoot, baseRef, layout } = settings;
-  const { comparison, changes } = collectWorkingTreeChanges({
-    repositoryRoot,
-    projectRoot,
-    baseRef,
-  });
-  const files = changes.filter(({ isFile, path: name }) => isFile && !layout.isExcluded(name));
+  const { projectRoot, layout, scope } = settings;
+  const { comparison, changes } = collectWorkingTreeChanges(settings);
+  const files = changes.filter(
+    ({ isFile, path: name }) => isFile && !layout.isExcluded(name) && isInScope(name, scope),
+  );
   const before = new Map(
     files.map(({ path: name }) => [name, readFileSync(path.join(projectRoot, name))]),
   );
