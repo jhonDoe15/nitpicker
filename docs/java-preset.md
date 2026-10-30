@@ -280,7 +280,8 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   profile can produce enforceable findings.
 - **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the test
   plugins the project's framework needs (`pitest-junit5-plugin` 1.2.1, `pitest-testng-plugin`
-  1.0.0, both pinned, added on the conditions below), nitpicker's mutator list (see [Mutators](mutation-testing.md#java-and-kotlin-mutators)), XML output, two threads, to
+  1.0.0, both pinned, added on the conditions below), nitpicker's mutator list (see
+  [Mutators](mutation-testing.md#java-and-kotlin-mutators)), XML output, two threads, to
   `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`), and
   `--mutableCodePaths` limits mutation to the main classes. Every test task the build checks (`test`
   and each task `check` depends on) is a run of its own, `nitpickerPit<Task>`, with that task's test
@@ -304,7 +305,8 @@ a passing test suite ...`) instead of Gradle's own failure output. Projects with
   TestNG of its own: PIT refuses to run a TestNG project without it. Maven builds put the same
   plugins on PIT's classpath on the same conditions. See [Test frameworks](#test-frameworks).
 - **Equivalent mutants.** A survived mutant's message names the common equivalent cases (a
-  `compareTo` boundary, a discarded lambda return) and the way out: simplify the code, or add an
+  `compareTo` boundary, a discarded lambda return, a field set to the value it already has, a
+  redundant `trim()` or `sorted()`) and the way out: simplify the code, or add an
   exception for `pit/mutant-survived`.
 - **Ingester.** `languages/java/ingest/pit.mjs` (`ingestPit`). PIT statuses map to the names the
   Stryker-based area uses: `SURVIVED` and `NO_COVERAGE` give enforceable `mutant-survived` and

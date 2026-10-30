@@ -107,10 +107,12 @@ Maven build reads with `readPitMutators` (`languages/java/builds/java-build.mjs`
 | ArrowFunction, return values                        | `TRUE_RETURNS`, `FALSE_RETURNS`, `PRIMITIVE_RETURNS`, `EMPTY_RETURNS`, `NULL_RETURNS`            |
 | ConditionalExpression, LogicalOperator              | `REMOVE_CONDITIONALS` (equality and order checks forced either way)                              |
 | MethodExpression                                    | `EXPERIMENTAL_NAKED_RECEIVER` (a call that returns its receiver's type replaced by the receiver) |
-| BlockStatement, switch cases                        | `REMOVE_SWITCH`, `EXPERIMENTAL_SWITCH`, `REMOVE_INCREMENTS`, `EXPERIMENTAL_MEMBER_VARIABLE`      |
+| BlockStatement                                      | `VOID_METHOD_CALLS`, `REMOVE_INCREMENTS`, `EXPERIMENTAL_MEMBER_VARIABLE`                         |
+| switch cases                                        | `REMOVE_SWITCH`, `EXPERIMENTAL_SWITCH`                                                           |
 | ArithmeticOperator on `BigDecimal` and `BigInteger` | `EXPERIMENTAL_BIG_DECIMAL`, `EXPERIMENTAL_BIG_INTEGER`                                           |
 
-StringLiteral, ArrayDeclaration, ObjectLiteral, Regex and OptionalChaining have no PIT
+BooleanLiteral is covered where `true` or `false` is returned or decides a branch, not as an
+argument. StringLiteral, ArrayDeclaration, ObjectLiteral, Regex and OptionalChaining have no PIT
 counterpart. PIT's own groups do not fit: `DEFAULTS` has no `NEGATE_CONDITIONALS`, and `STRONGER`
 builds on `DEFAULTS`. Left out on purpose:
 

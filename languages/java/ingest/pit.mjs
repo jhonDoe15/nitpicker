@@ -2,7 +2,7 @@ import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { decodeEntities } from '../../../shared/ingest/common.mjs';
 
 const PIT_WAY_OUT =
-  'If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears.';
+  'If no input can tell the two apart (a compareTo boundary, a discarded lambda return, a field set to the value it already has, a redundant trim() or sorted()), simplify the code so this mutant disappears.';
 
 const STATUS_NAMES = {
   KILLED: 'Killed',
