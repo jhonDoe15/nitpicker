@@ -40,7 +40,11 @@ import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 
-const CHECK_COMMANDS = { hygiene: runHygieneCli, history: runHistoryCli };
+const CHECK_COMMANDS = {
+  hygiene: runHygieneCli,
+  history: runHistoryCli,
+  [GO_ANALYZER_COMMAND]: runGoCli,
+};
 
 export function runCli(options = {}) {
   detachLocalGitVariables(process.env);
@@ -48,14 +52,6 @@ export function runCli(options = {}) {
   const checkCommand = CHECK_COMMANDS[cli.arguments_[0]];
   if (checkCommand !== undefined) {
     return checkCommand({
-      commandArguments: cli.arguments_.slice(1),
-      stdout: cli.stdout,
-      stderr: cli.stderr,
-      environment: cli.environment,
-    });
-  }
-  if (cli.arguments_[0] === GO_ANALYZER_COMMAND) {
-    return runGoCli({
       commandArguments: cli.arguments_.slice(1),
       stdout: cli.stdout,
       stderr: cli.stderr,
@@ -107,11 +103,7 @@ function withCliDefaults(options) {
 
 function runCommand(cli) {
   if (cli.arguments_[0] === 'changelog') {
-    return runChangelogCommand({
-      commandArguments: cli.arguments_.slice(1),
-      stdout: cli.stdout,
-      stderr: cli.stderr,
-    });
+    return runChangelogCommand({ ...cli, arguments_: cli.arguments_.slice(1) });
   }
   redirectToBundledTypeScriptApi(cli.environment);
   if (cli.arguments_[0] === 'cache') {

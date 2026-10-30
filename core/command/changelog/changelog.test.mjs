@@ -151,7 +151,7 @@ describe('nitpicker changelog', () => {
     try {
       expect(
         runChangelogCommand({
-          commandArguments: ['Unreleased'],
+          arguments_: ['Unreleased'],
           stdout: output.stdout,
           stderr: output.stderr,
           packageRoot,
