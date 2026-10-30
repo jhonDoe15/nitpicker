@@ -180,7 +180,8 @@ A comparison run prints a short summary. New violations are grouped by rule, in 
 them: format, type check, lint, structure, then tests, coverage, CRAP and mutation. Each rule prints
 its advice once, then one line per place (`path:line:col` and only the part of the message that
 differs between findings), then once the `exceptions` entry that accepts it, with `<path>` (or
-`<function>`) where the findings of the rule differ. A count per area follows the headline:
+`<function>`) where the findings of the rule differ; a line then names its own function, for example
+`(function price)`. A count per area follows the headline:
 
 ```text
 Quality gate summary
@@ -202,7 +203,8 @@ Full diagnostics: reports/quality/diff/report.txt
 Findings that are allowed because the base already had them ("still over a limit", "existing lint
 findings in edited code") are listed after the violations, at most 10 of each, without their
 exception entries. `--details` prints every finding with its full message instead, the layout
-`report.txt`, the JSON reports and SARIF always keep.
+`report.txt`, the JSON reports and SARIF always keep. `--all` prints `report.txt` itself, so
+`--details` changes nothing there.
 
 ### Reports
 

@@ -55,14 +55,6 @@ const MAX_HELD_LINES = 10;
 
 function appendHeldSummary(lines, unchangedFindings, { color, details, diagnosticsPath }) {
   const { metrics, lint } = heldFindings(unchangedFindings);
-  const heldList = (findings) => {
-    const shown = details ? findings : findings.slice(0, MAX_HELD_LINES);
-    const rest = findings.length - shown.length;
-    return [
-      ...shown.map((finding) => `  ${heldLine(details ? finding : withoutRoute(finding))}`),
-      ...(rest === 0 ? [] : [`  … ${String(rest)} more; see ${diagnosticsPath}`]),
-    ];
-  };
   if (metrics.length > 0) {
     lines.push(
       style(
@@ -70,7 +62,7 @@ function appendHeldSummary(lines, unchangedFindings, { color, details, diagnosti
         [ANSI.dim],
         color,
       ),
-      ...heldList(metrics),
+      ...heldList(metrics, { details, diagnosticsPath }),
     );
   }
   if (lint.length > 0) {
@@ -80,9 +72,18 @@ function appendHeldSummary(lines, unchangedFindings, { color, details, diagnosti
         [ANSI.dim],
         color,
       ),
-      ...heldList(lint),
+      ...heldList(lint, { details, diagnosticsPath }),
     );
   }
+}
+
+function heldList(findings, { details, diagnosticsPath }) {
+  const shown = details ? findings : findings.slice(0, MAX_HELD_LINES);
+  const rest = findings.length - shown.length;
+  return [
+    ...shown.map((finding) => `  ${heldLine(details ? finding : withoutRoute(finding))}`),
+    ...(rest === 0 ? [] : [`  … ${String(rest)} more; see ${diagnosticsPath}`]),
+  ];
 }
 
 function appendNoteSummary(lines, notes, color) {

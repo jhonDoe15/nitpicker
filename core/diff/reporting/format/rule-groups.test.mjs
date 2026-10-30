@@ -118,8 +118,8 @@ describe('console summary grouped by rule', () => {
 
     expect(lines.slice(3, -2)).toEqual([
       '  crap/crap-score-limit: Test its uncovered branches.',
-      '    src/main/java/demo/A.java:8 price has CRAP 30.00; score must be below 9.',
-      '    src/main/java/demo/B.java:3 total has CRAP 30.00; score must be below 9.',
+      '    src/main/java/demo/A.java:8 (function price) price has CRAP 30.00; score must be below 9.',
+      '    src/main/java/demo/B.java:3 (function total) total has CRAP 30.00; score must be below 9.',
       `    ${route({ rule: 'crap-score-limit', paths: ['<path>'], function: '<function>' })}`,
     ]);
   });
@@ -189,6 +189,66 @@ describe('console summary grouped by rule', () => {
     expect(summaryLines([unplaced, unplaced]).slice(3, -2)).toEqual([
       '  custom/text: Text file.',
       '    a.txt (2 times)',
+    ]);
+  });
+
+  it('keeps the glob suffix of folder entries in the placeholder', () => {
+    const folder = (file) =>
+      finding({
+        tool: 'structure',
+        rule: 'folder-files-limit',
+        file,
+        message: 'Folder has 7 files (limit 6).',
+        entry: { rule: 'folder-files-limit', paths: [`${file}/*`] },
+      });
+
+    expect(summaryLines([folder('src/a'), folder('src/b')]).at(-3)).toBe(
+      `    ${route({ rule: 'folder-files-limit', paths: ['<path>/*'] })}`,
+    );
+  });
+
+  it('names the differing function of each place and keeps places without a location', () => {
+    const branch = (line, name) =>
+      finding({
+        tool: 'coverage',
+        rule: 'changed-branch-coverage',
+        file: 'src/x.ts',
+        line,
+        message: 'Branch coverage is 0.00%.',
+        entry: { rule: 'changed-branch-coverage', paths: ['src/x.ts'], function: name },
+      });
+    const { location: _location, ...unplaced } = branch(1, 'total');
+
+    expect(summaryLines([branch(9, 'price'), branch(3, 'price'), unplaced]).slice(3, -2)).toEqual([
+      '  coverage/changed-branch-coverage: Branch coverage is 0.00%.',
+      '    src/x.ts (function total)',
+      '    src/x.ts:3, 9 (function price)',
+      `    ${route({ rule: 'changed-branch-coverage', paths: ['src/x.ts'], function: '<function>' })}`,
+    ]);
+  });
+
+  it('marks the path a placeholder when some places have no exception entry', () => {
+    const rule = (file, entry) =>
+      finding({ tool: 'python-rules', rule: 'r', file, line: 1, message: 'Fix it.', entry });
+    const lines = summaryLines([rule('a.py', { rule: 'r', paths: ['a.py'] }), rule('c.py')]);
+
+    expect(lines.at(-3)).toBe(`    ${route({ rule: 'r', paths: ['<path>'] })}`);
+  });
+
+  it('counts repeats of one place and places without a location next to placed ones', () => {
+    const dependency = (line) =>
+      finding({
+        tool: 'dead-code',
+        rule: 'dependencies',
+        file: 'package.json',
+        line,
+        message: 'Unused.',
+      });
+    const { location: _location, ...unplaced } = dependency(1);
+
+    expect(summaryLines([dependency(1), dependency(1), unplaced]).slice(3, -2)).toEqual([
+      '  dead-code/dependencies: Unused.',
+      '    package.json:1 (2 times) (+1 without a location)',
     ]);
   });
 
@@ -296,7 +356,7 @@ describe('finding areas', () => {
       'coverage-py',
       'mutmut',
     ],
-    go: ['gofumpt', 'goimports', 'build', 'vet', 'tests'],
+    go: ['gofmt', 'gofumpt', 'goimports', 'build', 'vet', 'tests', 'facts'],
   };
 
   it.each(Object.entries(PRESET_TOOLS))(

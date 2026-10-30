@@ -1,5 +1,6 @@
 import {
   ROUTE_SENTENCE,
+  escapeGlob,
   exceptionSentence,
 } from '../../../../shared/messages/exception-sentence.mjs';
 import { areaRank } from './finding-areas.mjs';
@@ -8,7 +9,7 @@ import { singleLine } from './text.mjs';
 const SENTENCE_END = /[.!?](?=\s|$)/gu;
 const ABBREVIATION = /\b(?:e\.g|i\.e)\.$/iu;
 const LIST_KEY = /to "(?<list>(?:python\.)?exceptions)" in nitpicker\.config\.json\.$/u;
-const PLACEHOLDERS = { paths: ['<path>'], packages: ['<package>'] };
+const TAG_KEYS = ['function', 'name', 'packages'];
 
 export function byFixOrder(left, right) {
   return areaRank(left.tool) - areaRank(right.tool) || byPosition(left, right);
@@ -16,10 +17,17 @@ export function byFixOrder(left, right) {
 
 function byPosition(left, right) {
   return (
-    left.path.localeCompare(right.path) ||
+    compareText(left.path, right.path) ||
     (left.location?.line ?? 0) - (right.location?.line ?? 0) ||
     (left.location?.column ?? 0) - (right.location?.column ?? 0)
   );
+}
+
+function compareText(left, right) {
+  if (left === right) {
+    return 0;
+  }
+  return left < right ? -1 : 1;
 }
 
 export function ruleGroupLines(findings, styleLabel) {
@@ -44,47 +52,75 @@ function groupLines(label, members) {
   const sharedSet = new Set(shared);
   const details = split.map((list) => list.filter((sentence) => !sharedSet.has(sentence)));
   const advice = shared.join(' ');
-  const route = groupRoute(parts);
+  const differing = differingKeys(parts);
+  const route = groupRoute(members, parts, differing);
   return [
     advice === '' ? `  ${label}` : `  ${label}: ${advice}`,
-    ...locationLines(members, details),
+    ...locationLines(members, details, parts, differing),
     ...(route === undefined ? [] : [`    ${route}`]),
   ];
 }
 
-function locationLines(members, details) {
+function locationLines(members, details, parts, differing) {
   const rows = new Map();
-  members.forEach((finding, index) => {
+  for (const [index, finding] of members.entries()) {
     const detail = details[index].join(' ');
-    const key = `${finding.path}\0${detail}`;
-    const row = rows.get(key) ?? { path: finding.path, detail, positions: [], unplaced: 0 };
+    const tag = entryTags(parts[index].entry, differing);
+    const key = `${finding.path}\0${detail}\0${tag}`;
+    const row = rows.get(key) ?? {
+      path: finding.path,
+      detail,
+      tag,
+      positions: new Map(),
+      unplaced: 0,
+    };
     if (finding.location === undefined) {
       row.unplaced += 1;
     } else {
-      row.positions.push(position(finding.location));
+      const text = position(finding.location);
+      row.positions.set(text, (row.positions.get(text) ?? 0) + 1);
     }
     rows.set(key, row);
+  }
+  return [...rows.values()].map(({ path, detail, tag, positions, unplaced }, index, all) => {
+    const shownTag = tag === '' || all[index - 1]?.tag === tag ? '' : ` ${tag}`;
+    return `    ${place(path, positions, unplaced)}${shownTag}${detail === '' ? '' : ` ${detail}`}`;
   });
-  return [...rows.values()].map(({ path, detail, positions, unplaced }) => {
-    const place = positions.length === 0 ? path : `${path}:${positions.join(', ')}`;
-    const times = unplaced > 1 && positions.length === 0 ? ` (${String(unplaced)} times)` : '';
-    return `    ${place}${times}${detail === '' ? '' : ` ${detail}`}`;
-  });
+}
+
+function place(path, positions, unplaced) {
+  if (positions.size === 0) {
+    return unplaced > 1 ? `${path} (${String(unplaced)} times)` : path;
+  }
+  const listed = [...positions].map(([text, count]) =>
+    count > 1 ? `${text} (${String(count)} times)` : text,
+  );
+  const rest = unplaced === 0 ? '' : ` (+${String(unplaced)} without a location)`;
+  return `${path}:${listed.join(', ')}${rest}`;
 }
 
 function position({ line, column }) {
   return column === undefined ? String(line) : `${String(line)}:${String(column)}`;
 }
 
+function entryTags(entry, differing) {
+  if (entry === undefined) {
+    return '';
+  }
+  return TAG_KEYS.filter((key) => differing.has(key) && key in entry)
+    .map((key) => `(${key} ${[entry[key]].flat().join(', ')})`)
+    .join(' ');
+}
+
 function splitRoute(text) {
   const route = ROUTE_SENTENCE.exec(text);
-  const entry = route === null ? undefined : parseEntry(route.groups.entry);
-  if (entry === undefined) {
+  const parsed = route === null ? { kind: 'no-route' } : parseEntry(route.groups.entry);
+  if (parsed.kind !== 'entry') {
     return { body: text };
   }
   return {
     body: text.slice(0, route.index).trim(),
-    entry,
+    entry: parsed.entry,
     list: LIST_KEY.exec(route[0]).groups.list,
   };
 }
@@ -92,30 +128,56 @@ function splitRoute(text) {
 function parseEntry(text) {
   try {
     const entry = JSON.parse(text);
-    return typeof entry === 'object' && entry !== null && !Array.isArray(entry) ? entry : undefined;
+    return typeof entry === 'object' && entry !== null && !Array.isArray(entry)
+      ? { kind: 'entry', entry }
+      : { kind: 'not-an-object' };
   } catch {
-    return undefined;
+    return { kind: 'malformed-json' };
   }
 }
 
-function groupRoute(parts) {
-  const routed = parts.filter(({ entry }) => entry !== undefined);
+function differingKeys(parts) {
+  const entries = parts.flatMap(({ entry }) => (entry === undefined ? [] : [entry]));
+  const [first] = entries;
+  const keys = [...new Set(entries.flatMap((entry) => Object.keys(entry)))];
+  const differing = keys.filter(
+    (key) =>
+      !entries.every(
+        (entry) => key in entry && JSON.stringify(entry[key]) === JSON.stringify(first[key]),
+      ),
+  );
+  return new Set(entries.length < parts.length ? [...differing, 'paths'] : differing);
+}
+
+function groupRoute(members, parts, differing) {
+  const routed = parts.flatMap((part, index) =>
+    part.entry === undefined ? [] : [{ ...part, path: members[index].path }],
+  );
   if (routed.length === 0) {
     return undefined;
   }
-  const entries = routed.map(({ entry }) => entry);
-  const keys = [...new Set(entries.flatMap((entry) => Object.keys(entry)))];
+  const keys = [...new Set(routed.flatMap(({ entry }) => Object.keys(entry)))];
   const merged = Object.fromEntries(
-    keys.map((key) => [key, sharedValue(entries, key) ?? PLACEHOLDERS[key] ?? `<${key}>`]),
+    keys.map((key) => [key, differing.has(key) ? placeholder(key, routed) : routed[0].entry[key]]),
   );
   return exceptionSentence(JSON.stringify(merged), routed[0].list);
 }
 
-function sharedValue(entries, key) {
-  const [first] = entries;
-  const text = JSON.stringify(first[key]);
-  const same = entries.every((entry) => key in entry && JSON.stringify(entry[key]) === text);
-  return same ? first[key] : undefined;
+function placeholder(key, routed) {
+  if (key === 'paths') {
+    const suffixes = new Set(routed.map(({ entry, path }) => globSuffix(entry.paths, path)));
+    const [suffix] = suffixes;
+    return [`<path>${suffixes.size === 1 && suffix !== undefined ? suffix : ''}`];
+  }
+  return key === 'packages' ? ['<package>'] : `<${key}>`;
+}
+
+function globSuffix(paths, path) {
+  if (!Array.isArray(paths) || paths.length !== 1 || typeof paths[0] !== 'string') {
+    return undefined;
+  }
+  const base = escapeGlob(path);
+  return paths[0].startsWith(base) ? paths[0].slice(base.length) : undefined;
 }
 
 function sentences(text) {
