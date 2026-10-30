@@ -124,3 +124,7 @@ Four Python files (`ruff/ruff-rules`, `ruff/ruff-groups`, `adapters/formatting/f
 `adapters/configuration/python-ruff-config`, six cases) were gated on the Python flag but selected
 by no script. They are now in `test:python` with a weight of one second each: they only run the
 installed ruff and black, and took under four seconds together locally.
+
+The ruff lint precedence file (`adapters/project-tools/ruff/ruff-lint`, ten cases) is in
+`test:python` with a planning weight of 15 seconds: it runs only the installed ruff on small
+projects, and took about six seconds locally.
