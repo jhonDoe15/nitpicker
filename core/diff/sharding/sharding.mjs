@@ -1,3 +1,5 @@
+import { selectAnalyzers } from '../execution/run-analyzers.mjs';
+
 export function planAnalyzerShards(analyzers, shardCount) {
   validateShardCount(shardCount);
   validateAnalyzers(analyzers);
@@ -120,4 +122,17 @@ function validateAnalyzerEntry(analyzer, analyzersByName) {
   ) {
     throw new TypeError(`${analyzer.name} dependencies must contain non-empty strings`);
   }
+}
+
+export function selectComparisonAnalyzers({ options, analyzers }) {
+  const selectedAnalyzers =
+    options.shardCount === undefined
+      ? selectAnalyzers(analyzers, options.analyzerNames)
+      : selectAnalyzerShard(analyzers, options.shardCount, options.shardIndex);
+  if (selectedAnalyzers.length === 0) {
+    throw new Error(
+      'No quality analyzers are configured. The comparison framework is ready, but real analyzer adapters are a later phase.',
+    );
+  }
+  return selectedAnalyzers;
 }

@@ -180,6 +180,7 @@ const presetConfig = defineConfig(
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
   ...testHonestyConfigFor(layout, {
+    assertionFunctionNames: assertionFunctionNames(policy.conventions),
     setupFiles: setupFilesIn(analyzedProjectRoot()),
     stubRestores: stubRestoresIn(analyzedProjectRoot()),
     testRootsOnDisk: existingRoots(analyzedProjectRoot(), layout.testRoots),

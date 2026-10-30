@@ -5,7 +5,7 @@ import { enclosingMember } from '../plan/enclosing.mjs';
 import { planMonorepo } from '../plan/inspect.mjs';
 import { oneProjectCommandMessage } from './messages.mjs';
 
-function rootOf(cli) {
+export function rootOf(cli) {
   return cli.currentProjectRoot === undefined
     ? resolveProjectRoot(cli.workingDirectory)
     : realpathSync(cli.currentProjectRoot);
@@ -50,4 +50,12 @@ export function oneProjectScope(cli, command) {
   }
   cli.stderr.write(oneProjectCommandMessage(plan, command));
   return { exitCode: 2 };
+}
+
+export function runScoped(cli, command, run) {
+  const scope = oneProjectScope(cli, command);
+  return (
+    scope.exitCode ??
+    run({ currentProjectRoot: scope.currentProjectRoot, configOverlay: scope.configOverlay })
+  );
 }
