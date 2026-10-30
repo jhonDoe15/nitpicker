@@ -1,4 +1,4 @@
-import { mkdirSync, readFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mjs';
@@ -41,6 +41,27 @@ function readReport(outputRoot, name) {
   return readFileSync(path.join(outputRoot, name), 'utf8');
 }
 
+function readSummary(outputRoot) {
+  return JSON.parse(readReport(outputRoot, 'summary.json'));
+}
+
+function comparisonOutput({ repository, outputRoot }, lines) {
+  return [
+    `Base: ${repository.baseRef} (argument)`,
+    '',
+    'Quality gate summary',
+    ...lines,
+    `Full diagnostics: ${path.join(outputRoot, 'report.txt')}`,
+    '',
+  ].join('\n');
+}
+
+const ORDER_VIOLATION = [
+  '✖ 1 new enforceable violation',
+  '  fake-quality-analyzer/fixture-rule src/orders/order.ts:1',
+  '    Fixture finding',
+];
+
 describe('nitpicker with paths', () => {
   it('gates a comparison only on findings under a folder and counts the rest', () => {
     const repository = repositoryWithTwoFolders();
@@ -51,34 +72,51 @@ describe('nitpicker with paths', () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(output.stdoutText).toContain(
-      'Quality gate summary\nScope: src/orders (1 finding outside it not shown)\n',
+    expect(output.stdoutText).toBe(
+      comparisonOutput({ repository, outputRoot }, [
+        'Scope: src/orders (1 finding outside it not shown)',
+        ...ORDER_VIOLATION,
+      ]),
     );
-    expect(output.stdoutText).toContain('src/orders/order.ts:1');
-    expect(output.stdoutText).not.toContain('src/billing');
-    const summary = JSON.parse(readReport(outputRoot, 'summary.json'));
-    expect(summary.scope).toEqual({ paths: ['src/orders'], outside: 1 });
-    expect(summary.newEnforceableFindings).toBe(1);
-    expect(summary.tools[0]).toMatchObject({ new: 1 });
-    expect(readReport(outputRoot, 'report.txt')).toContain(
+    const summary = readSummary(outputRoot);
+    expect([summary.scope, summary.newEnforceableFindings]).toEqual([
+      { paths: ['src/orders'], outside: 1 },
+      1,
+    ]);
+    expect(summary.tools.map((tool) => [tool.name, tool.head, tool.new])).toEqual([
+      ['fake-quality-analyzer', 2, 1],
+    ]);
+    expect(readReport(outputRoot, 'report.txt').split('\n').slice(4, 7)).toEqual([
+      'Status: completed',
       'Scope: src/orders (1 finding outside it not shown)',
-    );
-    expect(readReport(outputRoot, 'report.sarif')).not.toContain('src/billing');
-    expect(JSON.parse(readReport(outputRoot, 'new-findings.json'))).toHaveLength(1);
+      'New enforceable findings: 1',
+    ]);
+    const sarif = JSON.parse(readReport(outputRoot, 'report.sarif'));
+    expect(
+      sarif.runs.flatMap((run) =>
+        run.results.map((result) => result.locations[0].physicalLocation.artifactLocation.uri),
+      ),
+    ).toEqual(['src/orders/order.ts']);
+    expect(
+      JSON.parse(readReport(outputRoot, 'new-findings.json')).map((entry) => entry.path),
+    ).toEqual(['src/orders/order.ts']);
     expect(output.stderrText).toBe('');
   });
 
   it('passes when every new finding is outside the paths', () => {
     const repository = repositoryWithTwoFolders();
 
-    const { exitCode, output } = runScoped({
+    const { exitCode, output, outputRoot } = runScoped({
       repository,
       arguments_: ['src/orders/clean.ts', '--base', repository.baseRef],
     });
 
     expect(exitCode).toBe(0);
-    expect(output.stdoutText).toContain(
-      'Scope: src/orders/clean.ts (2 findings outside it not shown)\n✓ No new enforceable violations',
+    expect(output.stdoutText).toBe(
+      comparisonOutput({ repository, outputRoot }, [
+        'Scope: src/orders/clean.ts (2 findings outside it not shown)',
+        '✓ No new enforceable violations',
+      ]),
     );
   });
 
@@ -92,7 +130,7 @@ describe('nitpicker with paths', () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(JSON.parse(readReport(outputRoot, 'summary.json')).scope).toEqual({
+    expect(readSummary(outputRoot).scope).toEqual({
       paths: ['src/orders/order.ts'],
       outside: 1,
     });
@@ -101,14 +139,14 @@ describe('nitpicker with paths', () => {
   it('runs the whole project when a path is the project folder', () => {
     const repository = repositoryWithTwoFolders();
 
-    const { exitCode, output, outputRoot } = runScoped({
+    const { exitCode, outputRoot } = runScoped({
       repository,
       arguments_: ['.', '--base', repository.baseRef],
     });
 
     expect(exitCode).toBe(1);
-    expect(output.stdoutText).not.toContain('Scope:');
-    expect(JSON.parse(readReport(outputRoot, 'summary.json')).newEnforceableFindings).toBe(2);
+    const summary = readSummary(outputRoot);
+    expect([summary.scope, summary.newEnforceableFindings]).toEqual([undefined, 2]);
   });
 
   it('finds the project from the first path when run from the repository top', () => {
@@ -127,7 +165,7 @@ describe('nitpicker with paths', () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(JSON.parse(readReport(outputRoot, 'summary.json')).scope).toEqual({
+    expect(readSummary(outputRoot).scope).toEqual({
       paths: ['src/order.ts'],
       outside: 1,
     });
@@ -142,12 +180,24 @@ describe('nitpicker with paths', () => {
     });
 
     expect(exitCode).toBe(1);
-    expect(output.stdoutText).toContain(
-      'Status: violations\nScope: src/billing (1 finding outside it not shown)\nEnforceable findings: 1\n',
+    expect(output.stdoutText).toBe(
+      [
+        'Nitpicker quality snapshot',
+        'Status: violations',
+        'Scope: src/billing (1 finding outside it not shown)',
+        'Enforceable findings: 1',
+        'Descriptive findings: 0',
+        'Tool errors: 0',
+        '',
+        'Per-tool counts:',
+        'fake-quality-analyzer: total=1 enforceable=1 descriptive=0',
+        '',
+        'Enforceable findings:',
+        'fake-quality-analyzer/fixture-rule src/billing/bill.ts:1 Fixture finding',
+        '',
+      ].join('\n'),
     );
-    expect(output.stdoutText).toContain('fake-quality-analyzer: total=1 enforceable=1');
-    expect(output.stdoutText).not.toContain('src/orders/order.ts');
-    expect(JSON.parse(readReport(outputRoot, 'summary.json')).scope).toEqual({
+    expect(readSummary(outputRoot).scope).toEqual({
       paths: ['src/billing'],
       outside: 1,
     });
@@ -162,21 +212,24 @@ describe('nitpicker with paths', () => {
   });
 
   it.each([
-    ['a path that does not exist', ['src/missing.ts'], 'src/missing.ts matches no file'],
+    ['a path that does not exist', ['src/missing.ts'], () => 'src/missing.ts matches no file'],
     [
       'a folder with no checked file',
       ['empty'],
-      'empty matches no file that nitpicker checks (none tracked or untracked)',
+      () => 'empty matches no file that nitpicker checks (none tracked or untracked)',
     ],
+    ['a path outside the repository', ['..'], (root) => `.. is outside the repository ${root}`],
     [
       'a path outside the project of the first path',
       ['services/orders/src', 'src/orders'],
-      'src/orders is outside the project',
+      (root) =>
+        `src/orders is outside the project ${root}/services/orders; give paths in one project`,
     ],
     [
       'a path in another project',
       ['src/orders', 'services/orders/src'],
-      'services/orders/src is in the project',
+      (root) =>
+        `services/orders/src is in the project ${root}/services/orders, not in ${root}; give paths in one project`,
     ],
   ])('refuses %s', (_case, paths, message) => {
     const repository = repositoryWithTwoFolders({
@@ -191,7 +244,7 @@ describe('nitpicker with paths', () => {
     });
 
     expect(exitCode).toBe(2);
-    expect(output.stderrText).toContain(`nitpicker failed: ${message}`);
+    expect(output.stderrText).toBe(`nitpicker failed: ${message(realpathSync(repository.root))}\n`);
   });
 
   it('refuses paths with --shard-count', () => {
@@ -203,6 +256,8 @@ describe('nitpicker with paths', () => {
     });
 
     expect(exitCode).toBe(2);
-    expect(output.stderrText).toContain('Paths cannot be combined with --shard-count');
+    expect(output.stderrText).toBe(
+      'nitpicker failed: Paths cannot be combined with --shard-count; shards always cover the whole project\n',
+    );
   });
 });

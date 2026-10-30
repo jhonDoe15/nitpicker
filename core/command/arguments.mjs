@@ -38,15 +38,19 @@ function readFlag(options, argument) {
   return flag !== undefined;
 }
 
+function readPath(options, argument) {
+  if (argument.startsWith('-')) {
+    return false;
+  }
+  options.paths.push(argument);
+  return true;
+}
+
 function remainingOptions(arguments_) {
   const options = { all: false, fix: false, help: false, cache: true, paths: [] };
   const remaining = arguments_.values();
   for (const argument of remaining) {
-    if (readFlag(options, argument)) {
-      continue;
-    }
-    if (!argument.startsWith('-')) {
-      options.paths.push(argument);
+    if (readFlag(options, argument) || readPath(options, argument)) {
       continue;
     }
     const property = VALUES.get(argument);
