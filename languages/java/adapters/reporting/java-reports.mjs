@@ -28,6 +28,7 @@ import {
   structureFunctions,
 } from './function-locator.mjs';
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
+import { readDocCommentFindings } from '../doc-comments/doc-comment-findings.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
@@ -152,6 +153,7 @@ function readModuleFindings(context, crapLimit) {
     ...ifTested(jacoco, (report) => crapFindings(context, report, crapLimit)),
     ...(context.quick ? [] : pitFindings(context)),
     ...readJavaStructureFindings(reportRoot, projectRoot),
+    ...readDocCommentFindings({ projectRoot, manifest: context.manifest, kotlin }),
     ...readClassLimitFindings(reportRoot, context.classLimits),
     ...ifTested(jacoco, (report) => branchFindings(context, report)),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
