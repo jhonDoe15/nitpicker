@@ -143,15 +143,15 @@ describe.skipIf(!enabled)('Java preset on each test framework', () => {
       args: ['--quiet', 'test', '-Dmaven.test.failure.ignore=true'],
     });
     const reports = path.join(root, 'target/surefire-reports');
-    for (const [className, reportedClass] of [
+    const reportedClasses = [
       ['demo.CalcTest', 'demo.CalcTest'],
       ['demo.NamingArchTest', 'NamingArchTest'],
-    ]) {
+    ];
+    const reportedBy = reportedClasses.map(([className]) => {
       const report = parseXml(readFileSync(path.join(reports, `TEST-${className}.xml`), 'utf8'));
-      expect(childrenNamed(report, 'testcase').map(({ attrs }) => attrs.classname)).toEqual([
-        reportedClass,
-      ]);
-    }
+      return childrenNamed(report, 'testcase').map(({ attrs }) => attrs.classname);
+    });
+    expect(reportedBy).toEqual(reportedClasses.map(([, reportedClass]) => [reportedClass]));
     requireTestngRun({
       module: {
         basedir: root,
