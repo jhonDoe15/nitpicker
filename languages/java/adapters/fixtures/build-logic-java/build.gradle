@@ -1,0 +1,4 @@
+plugins {
+    id 'demo.java-conventions'
+    id 'demo.test-conventions'
+}

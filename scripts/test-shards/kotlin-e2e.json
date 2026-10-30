@@ -5,7 +5,7 @@
   "languages/java/adapters/kotlin-e2e/kotest.e2e.test.mjs": 99,
   "languages/java/adapters/kotlin-e2e/kotlin-preset-guards.e2e.test.mjs": 100,
   "languages/java/adapters/kotlin-e2e/kotlin-preset-review-rules.e2e.test.mjs": 170,
-  "languages/java/adapters/kotlin-e2e/kotlin-preset-toolchain.e2e.test.mjs": 66,
+  "languages/java/adapters/kotlin-e2e/kotlin-preset-toolchain.e2e.test.mjs": 110,
   "languages/java/adapters/kotlin-e2e/kotlin-spring-arch.e2e.test.mjs": 120,
   "languages/java/adapters/kotlin-e2e/kotlin-spring-rules.e2e.test.mjs": 144,
   "languages/java/adapters/kotlin-e2e/lint/kotlin-preset-lint-baseline.e2e.test.mjs": 137,
