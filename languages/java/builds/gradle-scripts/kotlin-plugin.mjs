@@ -1,6 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { parse } from 'smol-toml';
+import { createRequire } from 'node:module';
 import { filesUnder, pathInside } from '../../../../shared/filesystem.mjs';
 
 const KOTLIN_JVM_PLUGIN = 'org.jetbrains.kotlin.jvm';
@@ -45,6 +45,7 @@ function catalogPlugins(projectRoot, catalog) {
     return [];
   }
   try {
+    const { parse } = createRequire(import.meta.url)('smol-toml');
     const plugins = parse(readFileSync(file, 'utf8')).plugins ?? {};
     return Object.entries(plugins).map(([alias, entry]) => ({
       reference: `${catalog.name}.${accessorOf(alias)}`,
