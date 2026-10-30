@@ -11,6 +11,9 @@ which the conformance suite in [`spec/conformance`](../spec/conformance/README.m
 Python side contributes only two things: producing reports inside the project's own environment,
 and converting them into findings.
 
+The Python and `uv` (or poetry) setup a CI job needs, and recipes for GitHub Actions, GitLab CI and
+Jenkins, are in [nitpicker in CI](ci.md#toolchains-by-preset).
+
 The purpose is the same as everywhere else: narrow a flexible language to roughly one allowed way
 of doing each thing. That "one way" lives in the code and architecture rules (slices 2 to 5), not in
 which tools a project uses, so the preset detects the tools a project already has (uv, poetry,
@@ -1447,8 +1450,21 @@ or remove it if it can't happen. If this is intended, add
   `exclude_lines` does not list them and `partial_branches` is empty), and the project's own
   report settings are ignored, so the one measurement is the same everywhere. Only idioms that are
   never testable are excluded, with the same list on every coverage.py version: `if TYPE_CHECKING:`
-  (also `typing.TYPE_CHECKING`), `if __name__ == "__main__":`, `@overload` (also `typing.overload`)
-  and `raise NotImplementedError`. A branch of a function that legitimately cannot be tested is
+  (also `typing.TYPE_CHECKING`), `if __name__ == "__main__":`, `@overload` (also `typing.overload`),
+  `raise NotImplementedError`, a function whose body is `...` right after the colon of its
+  signature (a `Protocol` method, an `@abstractmethod` stub: `def write(self, text: str) -> object: ...`,
+  also with a wrapped signature or a `-> T` return; a `...` on the next line, a wrapped `if (`,
+  `except (` or `with (` header and a lambda are not stubs), and a `case _:` arm whose only
+  statement is `assert_never(name)` (also `typing.assert_never` and
+  `typing_extensions.assert_never`) on the line below it. That arm is the one allowed way to close a
+  `match` over every member of an enum or union: without a wildcard, coverage.py counts the jump out
+  of the `match` when no case matches, which no test can take, and the finding for it says to end
+  the `match` with `case _:` and `assert_never(subject)`. Nothing else is excluded: an
+  `assert_never` in an `else`, one inside a longer expression, `case _: assert_never(x)` on one
+  line, an argument that is not a name and a `case _:` arm with another statement are all counted.
+  The type checker reports an `assert_never` it cannot prove unreachable, so a missing case still
+  fails when the function is checked (mypy skips the body of an unannotated function), and an
+  untested `case _:` that does something else is still reported. A branch of a function that legitimately cannot be tested is
   accepted with an `exceptions` entry for `changed-branch-coverage` that names the function
   (`"function": "Service.wide"`), which keeps every other finding of the file. Only a branch in no
   function (module-level code) is lifted with `exclude` in `nitpicker.config.json` (a path glob),
@@ -1456,9 +1472,12 @@ or remove it if it can't happen. If this is intended, add
 - **Tests.** `languages/python/ingest/coverage-reports/coverage-branches.test.mjs` (the ingester on a recorded
   coverage.py report, identity stability, baselined / touched / added cases through
   `compareFindings`); `core/command/python/python-cli-*.test.mjs` (the CLI with fake tools); the gated e2e test adds
-  six cases on a real project (moved gap baselined, edited line fails, edited and tested passes,
+  twelve cases on a real project (moved gap baselined, edited line fails, edited and tested passes,
   new untested branch fails while the old gap stays baselined, a pragma hides nothing, new tested
-  branch passes).
+  branch passes, `Protocol` and abstract stubs pass, a `match` closed with `assert_never` passes,
+  one with no wildcard fails naming that form, an untested `case _:` default fails, a `case _:` arm
+  with a statement after `assert_never` fails, and a wrapped `if (` with a `...` body and an
+  `else: assert_never(x)` both stay counted).
 
 ## Slice 5: duplicates, coupling and import contracts
 
@@ -1571,7 +1590,8 @@ new `Survived` mutant fails as `mutant-survived`, a new `NoCoverage` mutant fail
 is a descriptive finding that never fails. A mutant is identified by its function (`Class.method`),
 the original and the mutated text and its occurrence among identical mutants of that status in the
 function, never by a line number, so edits above a survivor keep it baselined. The line is only the
-location.
+location: the line of the first token the mutant changes, so a mutant that removes a `case` arm is
+reported at the arm's `case` line, not at the end of the arm before it.
 
 - **Tool: mutmut 3.x**, in the project's environment like the other tools. This is the one
   supported range (developed and tested against 3.8): the major version is checked before the run,
@@ -1629,7 +1649,10 @@ location.
   patterns still count as `mutant-ignored`, listed or not); `["nitpicker", "project"]` is the
   unlisted behavior. A project listed without a table is a tool error.
 - **Equivalent mutants.** mutmut also mutates strings and logging, so some survivors cannot be
-  killed by any test. The ways out are an `exceptions` entry for `mutant-survived` or
+  killed by any test. Mutants that change nothing but the `case _:` arm that closes an exhaustive
+  `match` (the arm the coverage settings exclude, matched by the same pattern in
+  `languages/python/ingest/coverage-reports/exhaustive-match.mjs`) are left out: the type checker
+  proves that code unreachable. A mutant of any other `assert_never` line is reported. The ways out are an `exceptions` entry for `mutant-survived` or
   `mutant-nocoverage` (with `function` to name one function; the message prints the entry), a
   `python.exceptions` entry for `mutant-ignored` (below) with the path, or `exclude` (the mutants of
   the file are dropped).
