@@ -51,6 +51,9 @@ Before you change code other modules use, or fix a bug, read
 - Inject a dispatcher (`dispatcher: CoroutineDispatcher = Dispatchers.IO`) instead of naming `Dispatchers.IO`
   in main code; no `suspend` on a function that never suspends or returns a `Flow`; no `suspend`
   `CoroutineScope` extension; `delay`, never `Thread.sleep`, in a `suspend` function.
+- Fan-out: bound concurrent remote or message calls. One `Semaphore(8)` with `withPermit { ... }` around each call,
+  `chunked(n)`, or `flatMapMerge(concurrency = n)`; never `items.map { async { client.get(it) } }.awaitAll()` over a
+  runtime collection. `limitedParallelism(n)` caps threads, not suspending calls in flight.
 - Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
   A class with `var`s is not flagged, nor a JPA or Spring Data entity; the project adds other
   annotations to `UseDataClass`'s `excludeAnnotatedClasses` in its `detekt.yml`.

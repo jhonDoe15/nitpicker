@@ -54,8 +54,9 @@ describe('configureAnalyzers', () => {
     );
 
     expect(configured.map(({ name }) => name)).toEqual(['python', 'mutation']);
-    for (const [index, part] of ['python', 'mutation'].entries()) {
-      expect(configured[index].createInvocation(context).args).toEqual([
+    const parts = ['python', 'mutation'];
+    expect(configured.map((analyzer) => analyzer.createInvocation(context).args)).toEqual(
+      parts.map((part) => [
         expect.stringMatching(/python-runner\.mjs$/),
         '--part',
         part,
@@ -69,8 +70,8 @@ describe('configureAnalyzers', () => {
         'base',
         '--legacy-inventory',
         'nitpicker.legacy.json',
-      ]);
-    }
+      ]),
+    );
   });
 
   it('leaves the mutation analyzer of another preset alone', () => {
