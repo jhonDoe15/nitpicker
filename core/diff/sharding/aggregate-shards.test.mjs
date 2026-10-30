@@ -1,5 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { readJson } from '../git/test-support/fixture-files.mjs';
@@ -225,6 +226,51 @@ ${HELD_STRUCTURE_NOTE}
 
     expect(report.summary.overallStatus).toBe('completed');
     expect(report.summary.tools[0].configurationHash).toBe(headPolicyHash);
+  });
+  it.each([
+    ['a repository subfolder', 'project', 'project/src/a.ts'],
+    ['the repository root', '.', 'src/a.ts'],
+  ])('gives the SARIF source root and paths of a project in %s', (_name, folder, uri) => {
+    const fixture = createFixture();
+    const { root: repositoryRoot } = createGitRepository(
+      { 'project/README.md': 'project\n' },
+      { prefix: 'nitpicker-shard-source-root-' },
+    );
+    const finding = {
+      tool: 'first',
+      rule: 'example',
+      path: 'src/a.ts',
+      identity: 'example',
+      message: 'example finding',
+      classification: 'enforceable',
+    };
+    writeShard(fixture.inputRoot, 0, { tools: ['first'], findings: [finding] });
+
+    aggregateShardReports({
+      ...fixture,
+      analyzers: [analyzer('first')],
+      shardCount: 1,
+      liveProjectRoot: path.join(repositoryRoot, folder),
+    });
+
+    const [run] = readJson(fixture.outputRoot, 'report.sarif').runs;
+    expect(
+      run.results.map((result) => result.locations[0].physicalLocation.artifactLocation),
+    ).toEqual([{ uri, uriBaseId: '%SRCROOT%' }]);
+    expect(run.originalUriBaseIds).toEqual({
+      '%SRCROOT%': {
+        uri: `${pathToFileURL(repositoryRoot).href}/`,
+        description: { text: 'The root of the git repository the findings are in.' },
+      },
+    });
+  });
+  it('writes no SARIF source root without the live project root', () => {
+    const fixture = createFixture();
+    writeShard(fixture.inputRoot, 0, { tools: ['first'] });
+
+    aggregateShardReports({ ...fixture, analyzers: [analyzer('first')], shardCount: 1 });
+
+    expect(readJson(fixture.outputRoot, 'report.sarif').runs[0].originalUriBaseIds).toBeUndefined();
   });
   it('records shard-classified analyzer tool errors without aborting aggregation', () => {
     const fixture = createFixture();

@@ -65,7 +65,11 @@
       "additionalProperties": false,
       "properties": {
         "line": { "type": "integer", "minimum": 1 },
-        "column": { "type": "integer", "minimum": 1 },
+        "column": {
+          "description": "1-based column in UTF-16 code units, a tab counting as one; adapters convert the columns of tools that count code points, UTF-8 bytes or tab stops.",
+          "type": "integer",
+          "minimum": 1
+        },
         "endLine": { "type": "integer", "minimum": 1 }
       }
     },
