@@ -6,6 +6,7 @@ export const COMMANDS = [
   ['nitpicker init', 'Detect the project and set it up: config, install command, agent skill.'],
   ['nitpicker aggregate', 'Combine the reports of sharded runs into one result.'],
   ['nitpicker cache publish', 'Upload the findings of HEAD to the remote cache.'],
+  ['nitpicker base', 'Print the base ref a run would compare with.'],
 ];
 
 export const FLAGS = [
@@ -60,6 +61,7 @@ const USAGE_LINES = [
   INIT_USAGE,
   AGGREGATE_USAGE,
   CACHE_PUBLISH_USAGE,
+  'nitpicker base [--base <ref>]',
 ];
 
 function table(rows) {
