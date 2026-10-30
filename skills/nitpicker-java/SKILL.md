@@ -127,6 +127,10 @@ Before you change code other modules use, or fix a bug, read
   coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods.
 - A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails, also
   when the copy has other names and literals: extract a method.
+- Smaller copies fail too: a static helper or a constant with the same code in two classes of one
+  module (`duplicate-definition`), and editing one of two near-identical copies while leaving the
+  other (`sibling-copy-edit`). Keep one and call it. Don't give two classes one name and use both in
+  one file, one fully qualified (`exported-name-collision`): rename one.
 
 ## Tests
 

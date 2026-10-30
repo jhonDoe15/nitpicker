@@ -82,7 +82,7 @@ Before you change code other modules use, fix a bug, or add a UI state, read
   don't add `??`, `?.` or checks the types already rule out. Indexing (`list[0]`, `record[key]`)
   may be `undefined`: check the value you got.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
-  over unions.
+  over unions, with no `default`.
 - Template literals take strings only: `${String(count)}`.
 - Sort IDs, codes and ISO dates with `toSorted()` and no comparator; names and titles with
   `a.localeCompare(b, 'en')`. Objects in plain string order share one `compareText(a, b)` that

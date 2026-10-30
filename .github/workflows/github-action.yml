@@ -1,0 +1,146 @@
+name: github-action
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'action.yml'
+      - 'core/**'
+      - 'shared/**'
+      - 'languages/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/sample-project/**'
+      - '.github/sample-python/**'
+      - '.github/sample-seed/**'
+      - '.github/workflows/github-action.yml'
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+
+# Pull requests are checked locally with `npm run check` (CONTRIBUTING.md). On a pull request CI runs
+# only when the `run-ci` label is added; a newer request cancels the older run, other labels do not.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+permissions:
+  contents: read
+
+jobs:
+  # Runs the composite action (`uses: ./`) on the sample project in .github/sample-project: a commit on
+  # top of the checkout seeds a finding, so the job shows the annotations and the job summary. The
+  # gate is expected to exit 1; this job is a demonstration and a check of the action, not a required check.
+  sample-project:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - name: Seed a finding
+        id: seed
+        run: |
+          echo "base=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          cp .github/sample-seed/shout.js .github/sample-project/src/main/features/greeting/domain/shout.js
+          git add .github/sample-project/src
+          git -c user.name=sample -c user.email=sample@example.invalid commit --quiet -m 'Seed a finding'
+      - name: nitpicker on the sample project
+        id: nitpicker
+        uses: ./
+        continue-on-error: true
+        with:
+          working-directory: .github/sample-project
+          base-ref: ${{ steps.seed.outputs.base }}
+          install-command: npm ci && npm install --no-save "$GITHUB_WORKSPACE"
+          artifact-name: nitpicker-sample-report-${{ matrix.os }}
+      - name: The action reported the seeded finding
+        env:
+          EXIT_CODE: ${{ steps.nitpicker.outputs.exit-code }}
+          REPORT_DIRECTORY: ${{ steps.nitpicker.outputs.report-directory }}
+          BASE: ${{ steps.seed.outputs.base }}
+        run: |
+          test "$EXIT_CODE" = 1
+          workspace="$GITHUB_WORKSPACE"
+          if command -v cygpath > /dev/null; then
+            workspace="$(cygpath -m "$workspace")"
+          fi
+          test "$REPORT_DIRECTORY" = "$workspace/.github/sample-project/reports/quality/diff"
+          test -f "$REPORT_DIRECTORY/summary.json"
+          test "$(node -p "require('$REPORT_DIRECTORY/summary.json').requestedBaseRef")" = "$BASE"
+          grep -q 'eslint-lint/no-var' "$REPORT_DIRECTORY/report.txt"
+          test -s "$REPORT_DIRECTORY/report.sarif"
+          grep -q '"path": ".github/sample-project/src/' "$REPORT_DIRECTORY/codequality.json"
+
+  # The same on a Python project, which has no package.json: the action runs the tarball of this
+  # checkout through the package input and installs nothing itself (uv sync runs before it).
+  sample-python:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7.0.1
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v7.1.0
+        with:
+          node-version: 24
+      - name: Pack this checkout
+        id: pack
+        run: |
+          npm pack --silent --pack-destination "$RUNNER_TEMP" > "$RUNNER_TEMP/packed.txt"
+          echo "tarball=$RUNNER_TEMP/$(tail -n 1 "$RUNNER_TEMP/packed.txt")" >> "$GITHUB_OUTPUT"
+      - uses: actions/setup-python@v7.1.0
+        with:
+          python-version: '3.12'
+      - uses: astral-sh/setup-uv@v7.6.0
+      - run: uv sync --frozen
+        working-directory: .github/sample-python
+      - name: Seed a finding
+        id: seed
+        run: |
+          echo "base=$(git rev-parse HEAD)" >> "$GITHUB_OUTPUT"
+          cp .github/sample-seed/python/shout.py .github/sample-python/src/greeting/shout.py
+          git add .github/sample-python/src
+          git -c user.name=sample -c user.email=sample@example.invalid commit --quiet -m 'Seed a finding'
+      - name: nitpicker on the Python sample project
+        id: nitpicker
+        uses: ./
+        continue-on-error: true
+        with:
+          working-directory: .github/sample-python
+          base-ref: ${{ steps.seed.outputs.base }}
+          arguments: |
+            --analyzer
+            python
+          install-command: none
+          package: ${{ steps.pack.outputs.tarball }}
+          report-directory: reports/nitpicker
+          artifact-name: nitpicker-sample-python-report
+      - name: The action reported the seeded finding
+        env:
+          EXIT_CODE: ${{ steps.nitpicker.outputs.exit-code }}
+          REPORT_DIRECTORY: ${{ steps.nitpicker.outputs.report-directory }}
+          BASE: ${{ steps.seed.outputs.base }}
+        run: |
+          test "$EXIT_CODE" = 1
+          test "$REPORT_DIRECTORY" = "$GITHUB_WORKSPACE/.github/sample-python/reports/nitpicker"
+          summary="$REPORT_DIRECTORY/summary.json"
+          test "$(node -p "require('$summary').requestedBaseRef")" = "$BASE"
+          test "$(node -p "require('$summary').tools.map((tool) => tool.name).join()")" = python
+          grep -q 'ruff/F401' "$REPORT_DIRECTORY/report.txt"
+          grep -q '"path": ".github/sample-python/src/greeting/shout.py"' "$REPORT_DIRECTORY/codequality.json"

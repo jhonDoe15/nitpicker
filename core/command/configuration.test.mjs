@@ -169,6 +169,31 @@ describe('nitpicker config file', () => {
       : undefined;
     return { exitCode, output, summary, outputRoot };
   }
+  it('names the ESLint config it ignores until the project opts in', () => {
+    const notice =
+      'Ignoring eslint.config.mjs; opt in with "tools": { "eslint": { "precedence": ["project", "nitpicker"] } }';
+    const run = (config) => {
+      const repository = createRepository({
+        'quality-policy.json': policy(),
+        'src/main/clean.ts': 'export const clean = true;\n',
+        'eslint.config.mjs': 'export default [];\n',
+        'nitpicker.config.json': JSON.stringify(config),
+      });
+      const output = captureOutput();
+      runCli({
+        arguments_: ['--output', makeOutputRoot(), '--base', 'HEAD'],
+        environment: {},
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        stdout: output.stdout,
+        stderr: output.stderr,
+      });
+      return output.stdoutText.split('\n').filter((line) => line.startsWith('Ignoring'));
+    };
+
+    expect(run({})).toEqual([notice]);
+    expect(run({ tools: { eslint: { precedence: ['nitpicker', 'project'] } } })).toEqual([]);
+  });
   it('reports a strict exception and changes the policy hash', () => {
     const exception = {
       rule: 'nitpicker/preserve-error-cause',
