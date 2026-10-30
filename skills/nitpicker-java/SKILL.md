@@ -71,9 +71,24 @@ Before you change code other modules use, or fix a bug, read
   `if`; `-1`, `0`, `1` and `2` are fine.
 - Parameters and loops: never reassign a parameter or a catch variable; copy to a local. Use
   for-each where the index is unused. Remove unused fields, locals, private methods, assignments.
+- Fan-out: bound concurrent remote or message calls. Run the tasks on a fixed pool
+  (`Executors.newFixedThreadPool(8)`), take a `Semaphore` permit around each call, or work through
+  fixed-size batches; never `supplyAsync` per element on the default pool or a cached or
+  virtual-thread executor.
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
+- Signatures: a value with three states is an `enum`, not a boxed `Boolean` parameter, field,
+  return type or record component (`pmd/TriStateBoolean`; a field or parameter that a framework
+  fills, such as `@RequestParam`, `@JsonProperty` or an `@Entity` field, is exempt); a public
+  method returns a new collection or array instead of changing a parameter (`items.add`,
+  `Arrays.sort(names)`, `counts[0] = 0`, also through `this.items = items`;
+  `pmd/ParameterMutation`; private helpers and queues shared between threads are exempt). When code
+  moves, change every caller and delete the old name: no `@Deprecated` delegate
+  (`pmd/CompatibilityShim`; a Javadoc `@deprecated` without the annotation is no way around it).
+  Time comes from `java.time` with a `Clock` or a zone; `Calendar.getInstance()`,
+  `new GregorianCalendar()` and `new SimpleDateFormat(...)` without a time zone are flagged
+  (`pmd/LegacyCalendarApi`).
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
 - Enums: to sort the constants of one of your enums into two groups, classify every constant: a
@@ -98,6 +113,9 @@ Before you change code other modules use, or fix a bug, read
   never call `System.exit`. A trailing array parameter is varargs (`String... names`).
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
+  It says what the name cannot (a unit, a limit, an edge case or why), never only restates the
+  name, and keeps the description to 5 lines, tags and `<pre>` blocks not counted
+  (`doc-comment-content`).
 - nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,
   security and a broad-catch rule) and Google checks. A project's `config/pmd/ruleset.xml` or
   `config/checkstyle/checkstyle.xml` counts only when `nitpicker.config.json` opts in under

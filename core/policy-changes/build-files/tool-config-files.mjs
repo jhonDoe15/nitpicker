@@ -17,9 +17,12 @@ import {
 } from '../../../languages/typescript/preset/eslint-project/project-config.mjs';
 import { replacedEslintOptions } from '../../../languages/typescript/adapters/lint-engine/replaced-options.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
+import { GOLANGCI_FILES } from '../../../languages/go/adapters/formatting/go-formatters.mjs';
+import { PYTHON_TOOLS, pythonConfigEntries } from './python-tool-configs.mjs';
 
 const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
+const GO_TOOLS = ['gofumpt', 'goimports'];
 const SCRIPT_PRESETS = new Set([undefined, 'typescript', 'javascript']);
 
 function usesProjectConfig(config, tool) {
@@ -99,6 +102,9 @@ function candidates(tool, side) {
   if (KOTLIN_TOOLS.includes(tool)) {
     return config.preset === 'kotlin' ? kotlinFiles(tool, side) : [];
   }
+  if (GO_TOOLS.includes(tool)) {
+    return config.preset === 'go' ? GOLANGCI_FILES : [];
+  }
   if (tool === 'prettier') {
     return SCRIPT_PRESETS.has(config.preset) ? PRETTIER_PROJECT_FILES : [];
   }
@@ -119,6 +125,27 @@ function isOptedIn(tool, config) {
     usesProjectConfig(config, tool) ||
     (tool === 'detekt' && config.kotlin?.detektConfig !== undefined)
   );
+}
+
+function sideFingerprints(tool, side, gitBlobId) {
+  if (!PYTHON_TOOLS.includes(tool)) {
+    return fingerprints(tool, { root: side.root, files: candidates(tool, side) }, gitBlobId);
+  }
+  return new Map(pythonEntries(tool, side).map(({ file, text }) => [file, gitBlobId(text)]));
+}
+
+function pythonEntries(tool, side) {
+  return side.config.preset === 'python' ? pythonConfigEntries(tool, side.root) : [];
+}
+
+function evidenceOf(tool, head, gitBlobId) {
+  return PYTHON_TOOLS.includes(tool)
+    ? {
+        evidence: new Map(
+          pythonEntries(tool, head).map(({ file, content }) => [file, gitBlobId(content)]),
+        ),
+      }
+    : {};
 }
 
 function appliedSide(side, optedIn) {
@@ -158,22 +185,29 @@ export function readToolConfigs(
   head,
   { gitBlobId, replacedOptions = replacedEslintOptions },
 ) {
-  return ['pmd', 'checkstyle', ...KOTLIN_TOOLS, 'prettier', 'jscpd', 'eslint']
+  return [
+    'pmd',
+    'checkstyle',
+    ...KOTLIN_TOOLS,
+    ...GO_TOOLS,
+    'prettier',
+    'jscpd',
+    'eslint',
+    ...PYTHON_TOOLS,
+  ]
     .filter((tool) => isOptedIn(tool, head.config))
     .map((tool) => {
       const prints = {
-        base: fingerprints(
-          tool,
-          { root: base.root, files: isOptedIn(tool, base.config) ? candidates(tool, base) : [] },
-          gitBlobId,
-        ),
-        head: fingerprints(tool, { root: head.root, files: candidates(tool, head) }, gitBlobId),
+        base: isOptedIn(tool, base.config) ? sideFingerprints(tool, base, gitBlobId) : new Map(),
+        head: sideFingerprints(tool, head, gitBlobId),
       };
       return {
         tool,
+        optsIn: !isOptedIn(tool, base.config),
         ...prints,
         ...(tool === 'jscpd' ? appliedConfigs(base, head) : {}),
         ...(tool === 'eslint' ? eslintReview(head, prints, replacedOptions) : {}),
+        ...evidenceOf(tool, head, gitBlobId),
       };
     });
 }

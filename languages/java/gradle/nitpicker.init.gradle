@@ -128,12 +128,15 @@ def testRulesOnTestSources = { File testRules, File rulesetDir, boolean spring, 
 }
 
 allprojects {
+    if (gradle.parent != null) {
+        return
+    }
     plugins.withId('java') {
         pluginManager.apply('jacoco')
         pluginManager.apply('checkstyle')
 
         def moduleKey = project == rootProject ? 'root' : 'module-' + project.path.substring(1).replace('_', '_u').replace(':', '_c')
-        def reportDir = reportBase && gradle.parent == null
+        def reportDir = reportBase
             ? objects.directoryProperty().fileValue(new File(reportBase.toString(), moduleKey))
             : layout.buildDirectory.dir('nitpicker')
         if (project.projectDir.toPath().startsWith(analysisRoot.toPath())) {
@@ -561,7 +564,7 @@ allprojects {
                 pitStatusOrder.contains(node.@status) ? pitStatusOrder.indexOf(node.@status) : pitStatusOrder.size()
             }
             parts.each { part ->
-                new XmlParser().parse(part).mutation.each { mutation ->
+                new groovy.xml.XmlParser().parse(part).mutation.each { mutation ->
                     def key = pitKey.collect { mutation."${it}".text() }.join('|')
                     if (!best.containsKey(key) || rank(mutation) < rank(best[key])) {
                         best[key] = mutation
