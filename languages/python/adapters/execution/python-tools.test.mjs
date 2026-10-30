@@ -65,6 +65,14 @@ describe('tool context', () => {
       entryPoints: [],
     });
   });
+  it('checks both snapshots with the formatter the head chose, so adopting black flags no untouched file', () => {
+    const base = project();
+    const head = project({ 'pyproject.toml': '[tool.black]\n' });
+
+    const context = createToolContext({ projectRoot: base, liveRoot: head, policyRoot: head });
+
+    expect(context.project.formatter).toBe('black');
+  });
 });
 describe('running the tools', () => {
   it('writes the ruff, format and coverage reports of a clean project', () => {

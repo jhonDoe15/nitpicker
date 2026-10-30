@@ -44,7 +44,7 @@ describe('the react key', () => {
 
 describe('react keys', () => {
   it('accepts enabled and every styling approach', () => {
-    for (const react of [
+    const reactKeys = [
       {},
       { enabled: true },
       { enabled: false },
@@ -52,9 +52,10 @@ describe('react keys', () => {
       { styling: 'css-in-js' },
       { styling: 'inline-style' },
       { enabled: true, styling: 'css-in-js' },
-    ]) {
-      expect(validateConfig({ react })).toEqual({ react });
-    }
+    ];
+    expect(reactKeys.map((react) => validateConfig({ react }))).toEqual(
+      reactKeys.map((react) => ({ react })),
+    );
   });
 
   it.each([

@@ -168,6 +168,10 @@ const FIXTURES = {
     synthetic({ preset: 'kotlin' }, { preset: 'kotlin', kotlin: { formatter: 'none' } }),
   'kotlin-detekt-config': () =>
     synthetic({ preset: 'kotlin' }, { preset: 'kotlin', kotlin: { detektConfig: 'detekt.yml' } }),
+  'go-formatters-dropped': () =>
+    synthetic({ preset: 'go', go: { formatters: ['gofumpt'] } }, { preset: 'go' }),
+  'go-build-tags-dropped': () =>
+    synthetic({ preset: 'go', go: { buildTags: ['integration'] } }, { preset: 'go' }),
   'tool-precedence': () => synthetic({}, { tools: { prettier: PROJECT } }),
   'spring-roles-shrank': () =>
     synthetic(
@@ -226,10 +230,13 @@ describe('policy guidance kinds', () => {
       const fields = run();
 
       expect(fields.policyLoosenings.length).toBeGreaterThan(0);
-      for (const text of fields.policyLoosenings) {
-        expect(typeof fields.policyKinds[text], text).toBe('string');
-        expect(hasSpecificGuidance(fields.policyKinds[text]), text).toBe(true);
-      }
+      expect(
+        fields.policyLoosenings.map((text) => [
+          text,
+          typeof fields.policyKinds[text],
+          hasSpecificGuidance(fields.policyKinds[text]),
+        ]),
+      ).toEqual(fields.policyLoosenings.map((text) => [text, 'string', true]));
       expect(fields.policyLoosenings.map((text) => fields.policyKinds[text])).toContain(kind);
     },
   );

@@ -3,6 +3,8 @@ import { describeConfigOverrides } from './config.mjs';
 import { validateConfig } from './validate.mjs';
 import { policyHash } from '../diff/reporting/report-model.mjs';
 
+const ALL_PRESETS = ['typescript', 'javascript', 'python', 'java', 'kotlin'];
+
 describe('config file', () => {
   it('accepts an empty config and the documented keys', () => {
     expect(validateConfig({})).toEqual({});
@@ -180,12 +182,9 @@ describe('config file', () => {
 
     it('accepts the bare slow-test exception with every preset', () => {
       const slowTest = { ...exception, rule: 'slow-test' };
-      for (const preset of ['typescript', 'javascript', 'python', 'java', 'kotlin']) {
-        expect(validateConfig({ preset, exceptions: [slowTest] })).toEqual({
-          preset,
-          exceptions: [slowTest],
-        });
-      }
+      expect(
+        ALL_PRESETS.map((preset) => validateConfig({ preset, exceptions: [slowTest] })),
+      ).toEqual(ALL_PRESETS.map((preset) => ({ preset, exceptions: [slowTest] })));
     });
 
     it('names the rules that can be lifted when the rule is not one a Kotlin finding prints', () => {
@@ -208,10 +207,10 @@ describe('config file', () => {
     expect(() => validateConfig({ preset: 'java', thresholds: { crapLimit: 0 } })).toThrow(
       /positive number/,
     );
-    for (const preset of ['typescript', 'javascript', 'python', 'java', 'kotlin']) {
-      const thresholds = { unitTestSeconds: 2, integrationTestSeconds: 20 };
-      expect(validateConfig({ preset, thresholds })).toEqual({ preset, thresholds });
-    }
+    const thresholds = { unitTestSeconds: 2, integrationTestSeconds: 20 };
+    expect(ALL_PRESETS.map((preset) => validateConfig({ preset, thresholds }))).toEqual(
+      ALL_PRESETS.map((preset) => ({ preset, thresholds })),
+    );
     expect(() => validateConfig({ preset: 'python', thresholds: { unitTestSeconds: 0 } })).toThrow(
       '"thresholds.unitTestSeconds" must be a positive number',
     );
@@ -225,17 +224,17 @@ describe('config file', () => {
       { rule: 'pmd/SpringConstructorInjection', paths: ['src/main/**'], reason: 'Legacy wiring' },
     ];
     expect(validateConfig({ preset: 'java', exceptions })).toEqual({ preset: 'java', exceptions });
-    for (const rule of [
-      'SpringConstructorInjection',
-      'eslint/no-var',
-      'pmd/',
-      'java/gradle-failure',
-    ]) {
-      expect(() =>
-        validateConfig({ preset: 'java', exceptions: [{ ...exceptions[0], rule }] }),
-      ).toThrow('"exceptions[0].rule" must name a finding as it is printed');
-    }
   });
+
+  it.each(['SpringConstructorInjection', 'eslint/no-var', 'pmd/', 'java/gradle-failure'])(
+    'rejects the java exception rule %s that is not a printed Java rule',
+    (rule) => {
+      const exceptions = [{ rule, paths: ['src/main/**'], reason: 'Legacy wiring' }];
+      expect(() => validateConfig({ preset: 'java', exceptions })).toThrow(
+        '"exceptions[0].rule" must name a finding as it is printed',
+      );
+    },
+  );
 
   it.each([
     ['java', 'react'],
@@ -299,9 +298,9 @@ describe('config file', () => {
 
   it('accepts the folders the duplicate scan skips, for every preset', () => {
     const duplicates = { skippedFolders: ['dist', 'generated'] };
-    for (const preset of ['typescript', 'javascript', 'java', 'kotlin', 'python']) {
-      expect(validateConfig({ preset, duplicates })).toEqual({ preset, duplicates });
-    }
+    expect(ALL_PRESETS.map((preset) => validateConfig({ preset, duplicates }))).toEqual(
+      ALL_PRESETS.map((preset) => ({ preset, duplicates })),
+    );
     expect(validateConfig({ duplicates: { skippedFolders: [] } })).toEqual({
       duplicates: { skippedFolders: [] },
     });
@@ -369,16 +368,12 @@ describe('config file', () => {
 });
 
 describe('tool precedence', () => {
-  it('accepts every ordering of the project and nitpicker configs', () => {
-    for (const precedence of [
-      ['nitpicker'],
-      ['project'],
-      ['project', 'nitpicker'],
-      ['nitpicker', 'project'],
-    ]) {
+  it.each([[['nitpicker']], [['project']], [['project', 'nitpicker']], [['nitpicker', 'project']]])(
+    'accepts the ordering %j of the project and nitpicker configs',
+    (precedence) => {
       expect(validateConfig({ tools: { prettier: { precedence } } })).toBeDefined();
-    }
-  });
+    },
+  );
 
   it('rejects unknown tools, unknown keys and malformed precedence lists', () => {
     expect(() => validateConfig({ tools: { stylelint: { precedence: ['project'] } } })).toThrow(
@@ -387,13 +382,6 @@ describe('tool precedence', () => {
     expect(() => validateConfig({ tools: { prettier: { config: 'project' } } })).toThrow(
       '"tools.prettier" has unknown key "config"',
     );
-    for (const precedence of [[], ['project', 'project'], ['workspace'], 'project', undefined]) {
-      expect(() => validateConfig({ tools: { prettier: { precedence } } })).toThrow(
-        new Error(
-          'nitpicker.config.json: "tools.prettier.precedence" must list "project", "nitpicker" or both, each once, highest first',
-        ),
-      );
-    }
     expect(() => validateConfig({ preset: 'java', tools: { pmd: { precedence: [] } } })).toThrow(
       new Error(
         'nitpicker.config.json: "tools.pmd.precedence" must list "project", "nitpicker" or both, each once',
@@ -401,6 +389,17 @@ describe('tool precedence', () => {
     );
     expect(() => validateConfig({ tools: [] })).toThrow('"tools" must be an object');
   });
+
+  it.each([[[]], [['project', 'project']], [['workspace']], ['project'], [undefined]])(
+    'rejects the malformed precedence %j',
+    (precedence) => {
+      expect(() => validateConfig({ tools: { prettier: { precedence } } })).toThrow(
+        new Error(
+          'nitpicker.config.json: "tools.prettier.precedence" must list "project", "nitpicker" or both, each once, highest first',
+        ),
+      );
+    },
+  );
 
   it('lists the tools setting among the config overrides', () => {
     const tools = { prettier: { precedence: ['project', 'nitpicker'] } };

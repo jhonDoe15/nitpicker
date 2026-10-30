@@ -201,25 +201,32 @@ describe('Gradle failure diagnostics', () => {
 
     expect(result.exitCode).toBe(2);
     expect(errors.map(({ snapshot }) => snapshot).sort()).toEqual(['base', 'head']);
-    for (const error of errors) {
-      const log = /Full Gradle log: ([^\n]+)/u.exec(error.message)?.[1];
-      expect(log).toBeDefined();
+    const paths = errors.map((error) => /Full Gradle log: ([^\n]+)/u.exec(error.message)?.[1]);
+    expect(paths).toHaveLength(2);
+    expect(paths).not.toContain(undefined);
+    const texts = paths.map((log) => {
       try {
-        const text = readFileSync(log, 'utf8');
-        expect(text).toBe(`=== stdout ===\nfull stdout marker\n=== stderr ===\n${failure}\n`);
-        expect(error.message).toEqual(
-          expect.stringMatching(exactText`Full Gradle log: ${log}
+        return readFileSync(log, 'utf8');
+      } finally {
+        rmSync(path.dirname(log), { recursive: true, force: true });
+      }
+    });
+    expect(texts).toEqual(
+      paths.map(() => `=== stdout ===\nfull stdout marker\n=== stderr ===\n${failure}\n`),
+    );
+    expect(errors.map(({ message }) => message)).toEqual(
+      errors.map((error, index) =>
+        expect.stringMatching(exactText`Full Gradle log: ${paths[index]}
 Java preset failed in ${error.snapshot}: FAILURE: Build failed with an exception.
 * What went wrong:
 Execution failed for task ':test'.
 > There were failing tests. See the report at: build/reports/tests/test/index.html
 ...
 ${/(?:warning: ordinary compiler noise\n)+warning: [a-z ]+/}`),
-        );
-        expect(error.message.length).toBeLessThanOrEqual(4003);
-      } finally {
-        rmSync(path.dirname(log), { recursive: true, force: true });
-      }
-    }
+      ),
+    );
+    expect(errors.map(({ message }) => message.length).filter((length) => length > 4003)).toEqual(
+      [],
+    );
   });
 });
