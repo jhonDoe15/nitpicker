@@ -47,10 +47,37 @@ describe('resolveBase', () => {
       'origin/merge-target',
     ],
     [{ CHANGE_TARGET: 'origin/release', GITHUB_BASE_REF: 'github-base' }, 'origin/release'],
+    [
+      { GITHUB_BASE_REF: '', CI_MERGE_REQUEST_TARGET_BRANCH_NAME: 'release/1.x' },
+      'origin/release/1.x',
+    ],
+    [{ CHANGE_TARGET: 'release/1.x' }, 'origin/release/1.x'],
+    [{ SYSTEM_PULLREQUEST_TARGETBRANCH: 'refs/heads/main' }, 'origin/main'],
+    [{ SYSTEM_PULLREQUEST_TARGETBRANCH: 'refs/heads/team/main' }, 'origin/team/main'],
+    [{ BITBUCKET_PR_DESTINATION_BRANCH: 'develop' }, 'origin/develop'],
+    [
+      { BUILDKITE_PULL_REQUEST_BASE_BRANCH: 'main', BITBUCKET_PR_DESTINATION_BRANCH: '' },
+      'origin/main',
+    ],
   ])('resolves the first non-empty CI target: %s', (environment, expected) => {
     expect(resolveBase({ repositoryRoot: createRepository(), environment })).toEqual({
       baseRef: expected,
       source: 'ci',
+    });
+  });
+
+  it.each([
+    [{ GITHUB_BASE_REF: '' }],
+    [{ CI_MERGE_REQUEST_TARGET_BRANCH_NAME: '', CHANGE_TARGET: '' }],
+    [{ SYSTEM_PULLREQUEST_TARGETBRANCH: '', BITBUCKET_PR_DESTINATION_BRANCH: '' }],
+  ])('ignores empty CI targets on a branch build: %j', (environment) => {
+    const repositoryRoot = createRepository();
+    addRemote(repositoryRoot, 'origin');
+    setRemoteHead(repositoryRoot, 'origin', 'main');
+
+    expect(resolveBase({ repositoryRoot, environment })).toEqual({
+      baseRef: 'origin/main',
+      source: 'remote-head',
     });
   });
 
