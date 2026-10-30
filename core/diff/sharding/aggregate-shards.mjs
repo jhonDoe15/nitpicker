@@ -19,6 +19,7 @@ import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs'
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
 import { renderConsoleSummary } from '../reporting/summary.mjs';
+import { writeGithubOutput } from '../reporting/github/emit.mjs';
 
 function resolvePolicyRoot({ policyRoot, optionsPolicyRoot, currentProjectRoot }) {
   if (policyRoot !== undefined) {
@@ -139,7 +140,7 @@ export function runAggregateCli({
       analyzers,
       policyRoot,
     });
-    return reportExitCode(report, { stdout, environment, outputRoot });
+    return reportExitCode(report, { stdout, stderr, environment, outputRoot, currentProjectRoot });
   } catch (error) {
     if (outputRoot !== undefined) {
       clearDiffReports(outputRoot);
@@ -218,13 +219,21 @@ function configuredReport(options, context) {
   });
 }
 
-function reportExitCode(report, { stdout, environment, outputRoot }) {
+function reportExitCode(report, { stdout, stderr, environment, outputRoot, currentProjectRoot }) {
   stdout.write(
     renderConsoleSummary(report, {
       color: environment.NO_COLOR === undefined,
       diagnosticsPath: absoluteTextReportPath(outputRoot),
     }),
   );
+  writeGithubOutput({
+    kind: 'diff',
+    report,
+    projectRoot: currentProjectRoot,
+    environment,
+    stdout,
+    stderr,
+  });
   if (report.summary.newEnforceableFindings > 0) {
     return 1;
   }
