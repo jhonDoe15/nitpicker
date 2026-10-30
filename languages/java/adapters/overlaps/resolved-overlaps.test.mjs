@@ -109,6 +109,7 @@ describe('overlaps on the probe project', () => {
       ['Obsolete.java:12', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
       ['Obsolete.java:13', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
       ['OldTest.java:14', ['errorprone/RedundantNullCheck', 'pmd/SimplifiableTestAssertion']],
+      ['P2Inner.java:7', ['errorprone/NonFinalStaticField', 'pmd/LegacyCalendarApi']],
       [
         'P2Strings.java:21',
         [
@@ -117,6 +118,10 @@ describe('overlaps on the probe project', () => {
         ],
       ],
       ['SelfAssign.java:7', ['errorprone/SelfAssignment', 'pmd/AvoidReassigningParameters']],
+      [
+        'V1Style.java:8',
+        ['errorprone/AnnotationPosition', 'errorprone/FieldCanBeStatic', 'pmd/CompatibilityShim'],
+      ],
     ]);
   });
 
