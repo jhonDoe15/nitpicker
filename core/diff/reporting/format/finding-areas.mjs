@@ -8,6 +8,7 @@ const AREA_TOOLS = [
       'google-java-format',
       'palantir-java-format',
       'ktfmt',
+      'gofmt',
       'gofumpt',
       'goimports',
     ],
@@ -34,6 +35,7 @@ const AREA_TOOLS = [
       'entry-points',
       'dependency-architecture',
       'dead-code',
+      'facts',
     ],
   ],
   ['structure', ['structure', 'duplicates', 'coupling', 'repository-hygiene', 'change-history']],
@@ -44,7 +46,7 @@ const AREA_TOOLS = [
   ['mutation', ['mutation', 'pit', 'mutmut']],
 ];
 
-export const AREAS = AREA_TOOLS.map(([area]) => area);
+const AREAS = AREA_TOOLS.map(([area]) => area);
 
 const AREA_OF_TOOL = new Map(
   AREA_TOOLS.flatMap(([area, tools]) => tools.map((tool) => [tool, area])),
