@@ -61,8 +61,8 @@ for `--all`):
 - `notes.json`: notes such as a base whose tests fail, which the run reports but does not fail on.
 - `held-findings.json`: findings that were already there and are no worse than before. Allowed, but
   any increase fails.
-- `summary.json`, `report.junit.xml` and `report.sarif`: totals and CI output. `report.sarif` has
-  the new findings only; `report-baseline.sarif` adds the held ones.
+- `summary.json`, `report.junit.xml`, `report.sarif` and `codequality.json`: totals and CI output.
+  `report.sarif` has the new findings only; `report-baseline.sarif` adds the held ones.
 
 `--all` has no baseline: it writes `findings.json` (every finding) in place of the four JSON files
 above that compare with the base, and no `report-baseline.sarif`.

@@ -28,7 +28,10 @@ export function runQuickHead({ settings, comparison, roots, layout }, run) {
     }),
     analyzers,
     run,
-    onCached: (count) => settings.progress?.write(cachedLine({ label: 'head', count })),
+    onCached: (count) =>
+      settings.progress?.write(
+        cachedLine({ label: 'head', count, directory: settings.cacheStore.directory }),
+      ),
     resolveContext: {
       liveProjectRoot: settings.headProjectRoot,
       policyRoot: roots.headSnapshotRoot,

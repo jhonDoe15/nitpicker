@@ -15,8 +15,13 @@ function stagedRunNotice(projectRoot, indexFile) {
   }
 }
 
-export function stagedCapture({ staged, indexFile, projectRoot, stderr }) {
-  if (!staged) {
+export function withIndexFile(cli, detached) {
+  const { GIT_INDEX_FILE: indexFile = detached.GIT_INDEX_FILE } = cli.environment;
+  return { ...cli, indexFile };
+}
+
+export function stagedCapture({ options, indexFile, stderr }, projectRoot) {
+  if (!options.staged) {
     return undefined;
   }
   stderr.write(stagedRunNotice(projectRoot, indexFile));

@@ -3,6 +3,7 @@ import { runAggregateCli } from './diff/sharding/aggregate-shards.mjs';
 import { reportingProgress } from './diff/execution/progress.mjs';
 import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
+import { runBaseCommand } from './command/base.mjs';
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
 import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
 import { realpathSync } from 'node:fs';
@@ -23,6 +24,7 @@ import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
 import { runGit } from './diff/git/repository/command.mjs';
 import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mjs';
+import { detachLocalGitVariables } from './diff/git/environment/local-variables.mjs';
 import path from 'node:path';
 import { clearDiffReports, absoluteTextReportPath } from './diff/reporting/reporters.mjs';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
@@ -30,10 +32,11 @@ import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
+import { writeGithubOutput } from './diff/reporting/github/emit.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { applyRunProfile } from './quick/profile.mjs';
 import { stagedHeader } from './quick/summary.mjs';
-import { stagedCapture } from './staged/capture-index.mjs';
+import { stagedCapture, withIndexFile } from './staged/capture-index.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
@@ -41,7 +44,8 @@ import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescri
 const CHECK_COMMANDS = { hygiene: runHygieneCli, history: runHistoryCli };
 
 export function runCli(options = {}) {
-  const cli = detachIndexFile(withCliDefaults(options));
+  const detached = detachLocalGitVariables(process.env);
+  const cli = withIndexFile(withCliDefaults(options), detached);
   const checkCommand = CHECK_COMMANDS[cli.arguments_[0]];
   if (checkCommand !== undefined) {
     return checkCommand({
@@ -70,12 +74,6 @@ export function runCli(options = {}) {
     );
     return 2;
   }
-}
-
-function detachIndexFile(cli) {
-  const { GIT_INDEX_FILE: indexFile } = cli.environment;
-  delete process.env.GIT_INDEX_FILE;
-  return { ...cli, indexFile };
 }
 
 function isTerminal(stream) {
@@ -111,6 +109,9 @@ function runCommand(cli) {
       runTasks: cli.runTasks,
     });
   }
+  if (cli.arguments_[0] === 'base') {
+    return runBaseCommand({ ...cli, arguments_: cli.arguments_.slice(1) });
+  }
   const options = parseArguments(cli.arguments_);
   if (options.help) {
     cli.stdout.write(USAGE_TEXT);
@@ -128,16 +129,10 @@ function runConfigured(cli) {
   const config = loadConfig(currentProjectRoot);
   const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
-  const captureHead = stagedCapture({
-    staged: cli.options.staged,
-    indexFile: cli.indexFile,
-    projectRoot: currentProjectRoot,
-    stderr: cli.stderr,
-  });
-  const { analyzers, quick } = applyRunProfile(
-    configureAnalyzers(presetSet, config, headPolicy),
-    options,
-  );
+  const setup = {
+    ...applyRunProfile(configureAnalyzers(presetSet, config, headPolicy), options),
+    captureHead: stagedCapture(cli, currentProjectRoot),
+  };
   for (const note of describeDisableCascade(presetSet, config)) {
     cli.stderr.write(`nitpicker: ${note}\n`);
   }
@@ -149,20 +144,18 @@ function runConfigured(cli) {
       return runSnapshotCli({
         options,
         currentProjectRoot,
-        analyzers,
-        quick,
-        captureHead,
+        ...setup,
         headPolicy: snapshotPolicy({ config, currentProjectRoot, headPolicy, stdout }),
         stdout,
+        stderr: cli.stderr,
+        environment: cli.environment,
         runTasks,
       });
     }
     return runComparisonCli({
       ...cli,
       currentProjectRoot,
-      analyzers,
-      quick,
-      captureHead,
+      ...setup,
       injectedAnalyzers: cli.analyzers,
       config,
       headPolicy,
@@ -280,6 +273,16 @@ function writeComparisonOutcome({ cli, report, base, outputRoot }) {
     }),
   );
   stdout.write(renderClosingSections(cli, report));
+  if (options.shardCount === undefined) {
+    writeGithubOutput({
+      kind: 'diff',
+      report,
+      projectRoot: cli.currentProjectRoot,
+      environment,
+      stdout,
+      stderr: cli.stderr,
+    });
+  }
   if (options.deferExit) {
     return 0;
   }
