@@ -76,13 +76,13 @@ describe('Python conventions with the ruff config of the project', () => {
       conventions: undefined,
       printed:
         `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n` +
-        'Ignoring ruff.toml; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }\n',
+        'Ignoring ruff.toml except lint.flake8-pytest-style; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }\n',
     });
     expect(
       follow({ preset: 'python' }, { 'pyproject.toml': '[tool.ruff]\nline-length = 99\n' }).printed,
     ).toBe(
       `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .\n` +
-        'Ignoring [tool.ruff] in pyproject.toml; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }\n',
+        'Ignoring [tool.ruff] in pyproject.toml except lint.flake8-pytest-style; opt in with "tools": { "ruff": { "precedence": ["project", "nitpicker"] } }\n',
     );
     expect(follow({ preset: 'python' }, { 'a.py': DOUBLE_QUOTED }).printed).not.toContain(
       'Ignoring',

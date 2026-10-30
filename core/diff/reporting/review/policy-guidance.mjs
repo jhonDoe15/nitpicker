@@ -84,6 +84,10 @@ export const POLICY_GUIDANCE = {
     'An edited project config now applies to this tool, and nitpicker does not judge whether the edit is stricter.',
     'Restore the file, or have a person review the edit.',
   ].join(' '),
+  'tool-config-opt-in': [
+    'The change opts this tool into a project config, which nitpicker does not judge.',
+    'Remove "project" from the tool\'s precedence, or have a person review the config.',
+  ].join(' '),
   'test-timeout': [
     'Raises or removes a test time limit, or moves tests into a project with its own limits, so slower tests pass.',
     'Restore the base limits and speed up the tests, unless a person confirms.',

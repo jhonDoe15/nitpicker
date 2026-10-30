@@ -32,8 +32,8 @@ function synthetic(base, head, options = {}) {
   return policyChangeFields(base, head, scope);
 }
 
-function gitBacked({ base, head, config }) {
-  return () => between({ base, head, config });
+function gitBacked({ base, head, config, baseConfig = config }) {
+  return () => between({ base, head, config, baseConfig });
 }
 
 const exception = { rule: 'nitpicker/no-comments', paths: ['src/legacy/**'], reason: 'Legacy' };
@@ -141,6 +141,12 @@ const FIXTURES = {
   'tool-config': gitBacked({
     base: { 'config/pmd/ruleset.xml': '<ruleset a="1"/>', 'src/main/java/A.java': 'class A {}\n' },
     head: { 'config/pmd/ruleset.xml': '<ruleset a="2"/>', 'src/main/java/A.java': 'class A {}\n' },
+    config: { preset: 'java', tools: { pmd: PROJECT } },
+  }),
+  'tool-config-opt-in': gitBacked({
+    base: { 'config/pmd/ruleset.xml': '<ruleset a="1"/>', 'src/main/java/A.java': 'class A {}\n' },
+    head: { 'config/pmd/ruleset.xml': '<ruleset a="1"/>', 'src/main/java/A.java': 'class A {}\n' },
+    baseConfig: { preset: 'java' },
     config: { preset: 'java', tools: { pmd: PROJECT } },
   }),
   'test-timeout': () => synthetic({}, slowTimeouts),
