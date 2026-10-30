@@ -89,6 +89,8 @@ describe('npm package contents', () => {
   });
   it('ships the complete runtime tree without tests, fixtures, test support, bytecode or the lockfile', () => {
     assertRuntimeFiles(packedFiles);
+    expect(packedFiles.has('core/bin.mjs')).toBe(true);
+    expect(packedFiles.has('core/tooling/node-version.mjs')).toBe(true);
     expect(packedFiles.has('core/fix/run-fix.mjs')).toBe(true);
     expect(packedFiles.has('languages/java/gradle/nitpicker.init.gradle')).toBe(true);
     expect(packedFiles.has('languages/java/detekt/nitpicker-detekt.yml')).toBe(true);
