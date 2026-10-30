@@ -55,7 +55,8 @@ below (pushes to `main` that touch the paths they list, a manual run, and the `r
 `github-action` workflow, which runs the composite action in `action.yml` on the sample project in
 `.github/sample-project`, follows them too; it is not a required check.
 The TypeScript red-base test (`npm run test:typescript`, which runs real vitest through the CLI) is
-not in CI: run it after changing `core/diff/comparison/base-red/` or a test runner's failure report.
+not in CI: run it after changing `core/diff/comparison/base-red/`, a test runner's failure report or how
+the Stryker report is read.
 
 CI (the `typescript` workflow) runs:
 
