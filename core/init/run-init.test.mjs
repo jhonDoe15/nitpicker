@@ -44,7 +44,11 @@ const YARN_WORKFLOW = [
   '          node-version: 24',
   '      - run: yarn install --frozen-lockfile',
   '      - name: nitpicker',
-  '        run: yarn nitpicker',
+  `        uses: jhonDoe15/nitpicker@v${packageVersion()}`,
+  '        with:',
+  "          node-version: ''",
+  '          install-command: none',
+  `          accept-policy-change: ${'$'}{{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}`,
   '',
 ].join('\n');
 

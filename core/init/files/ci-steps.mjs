@@ -9,6 +9,7 @@ import {
 } from '../../../languages/python/adapters/execution/environments/managed.mjs';
 import { MINIMUM_PYTHON } from '../../../languages/python/ingest/rules-report.mjs';
 
+const ACTION = 'jhonDoe15/nitpicker';
 const STEP = '      - ';
 const DETAIL = '        ';
 const DEFAULT_PNPM = 10;
@@ -258,9 +259,14 @@ const FAMILY_STEPS = {
   }),
 };
 
-function runCommand(root, { project, version }) {
+function gateInputs(root, { project, version, repository }) {
+  const folder = repositoryPath(repository, root);
   const ownsNodeProject = project.family === 'node' && hasProjectFile(root, 'package.json');
-  return ownsNodeProject ? project.packageManager.run : `npx nitpicker@${version}`;
+  const inputs = {
+    ...(folder === '' ? {} : { 'working-directory': folder }),
+    ...(ownsNodeProject ? {} : { package: `nitpicker@${version}` }),
+  };
+  return Object.entries(inputs).map(([key, value]) => `${DETAIL}  ${key}: ${String(yamlScalar(value))}`);
 }
 
 export function workflowParts(root, context) {
@@ -273,7 +279,8 @@ export function workflowParts(root, context) {
   return {
     ENVIRONMENT_STEPS: environment,
     INSTALL_STEPS: install,
-    RUN: runCommand(root, context),
+    ACTION: `${ACTION}@v${context.version}`,
+    GATE_INPUTS: gateInputs(root, context),
     runDefaults,
     notes,
   };
