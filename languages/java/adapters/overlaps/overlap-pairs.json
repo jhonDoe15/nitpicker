@@ -508,7 +508,8 @@
     "secondary": [
       "pmd/AvoidCalendarDateCreation",
       "pmd/SimpleDateFormatNeedsLocale",
-      "errorprone/DefaultLocale"
+      "errorprone/DefaultLocale",
+      "errorprone/DateFormatConstant"
     ],
     "scope": "line"
   },

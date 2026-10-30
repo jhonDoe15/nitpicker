@@ -1464,7 +1464,7 @@ The pairs:
 - line: `errorprone/JdkObsolete` over `errorprone/StringCharset`
 - line: `errorprone/NonOverridingEquals` over `pmd/SuspiciousEqualsMethodName`
 - line: `errorprone/DefaultLocale` over `pmd/SimpleDateFormatNeedsLocale`
-- line: `pmd/LegacyCalendarApi` over `pmd/AvoidCalendarDateCreation`, `pmd/SimpleDateFormatNeedsLocale`, `errorprone/DefaultLocale`
+- line: `pmd/LegacyCalendarApi` over `pmd/AvoidCalendarDateCreation`, `pmd/SimpleDateFormatNeedsLocale`, `errorprone/DefaultLocale`, `errorprone/DateFormatConstant`
 - line: `pmd/UseLocaleWithCaseConversions` over `errorprone/StringCaseLocaleUsage`
 - line: `spotbugs/ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD` over `errorprone/StaticAssignmentInConstructor`, `pmd/AssignmentToNonFinalStatic`
 - line: `errorprone/StaticAssignmentInConstructor` over `pmd/AssignmentToNonFinalStatic`

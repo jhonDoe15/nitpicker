@@ -1593,9 +1593,21 @@
     },
     {
       "tool": "pmd",
+      "rule": "LegacyCalendarApi",
+      "path": "src/main/java/probe/Locales.java",
+      "line": 9
+    },
+    {
+      "tool": "pmd",
       "rule": "SimpleDateFormatNeedsLocale",
       "path": "src/main/java/probe/Locales.java",
       "line": 9
+    },
+    {
+      "tool": "pmd",
+      "rule": "LegacyCalendarApi",
+      "path": "src/main/java/probe/Locks.java",
+      "line": 11
     },
     {
       "tool": "pmd",
@@ -1689,6 +1701,12 @@
     },
     {
       "tool": "pmd",
+      "rule": "LegacyCalendarApi",
+      "path": "src/main/java/probe/P2Inner.java",
+      "line": 7
+    },
+    {
+      "tool": "pmd",
       "rule": "SimpleDateFormatNeedsLocale",
       "path": "src/main/java/probe/P2Inner.java",
       "line": 7
@@ -1755,6 +1773,18 @@
     },
     {
       "tool": "pmd",
+      "rule": "LegacyCalendarApi",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 10
+    },
+    {
+      "tool": "pmd",
+      "rule": "LegacyCalendarApi",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 11
+    },
+    {
+      "tool": "pmd",
       "rule": "UnsynchronizedStaticFormatter",
       "path": "src/main/java/probe/Shared.java",
       "line": 16
@@ -1767,7 +1797,19 @@
     },
     {
       "tool": "pmd",
+      "rule": "LegacyCalendarApi",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 28
+    },
+    {
+      "tool": "pmd",
       "rule": "AvoidCalendarDateCreation",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 32
+    },
+    {
+      "tool": "pmd",
+      "rule": "LegacyCalendarApi",
       "path": "src/main/java/probe/Shared.java",
       "line": 32
     },
@@ -1782,6 +1824,12 @@
       "rule": "UseNotifyAllInsteadOfNotify",
       "path": "src/main/java/probe/Shared.java",
       "line": 38
+    },
+    {
+      "tool": "pmd",
+      "rule": "LegacyCalendarApi",
+      "path": "src/main/java/probe/Shared.java",
+      "line": 9
     },
     {
       "tool": "pmd",
@@ -1800,6 +1848,12 @@
       "rule": "UnsynchronizedStaticFormatter",
       "path": "src/main/java/probe/Stamps.java",
       "line": 11
+    },
+    {
+      "tool": "pmd",
+      "rule": "LegacyCalendarApi",
+      "path": "src/main/java/probe/Stamps.java",
+      "line": 8
     },
     {
       "tool": "pmd",
@@ -1920,6 +1974,12 @@
       "rule": "CompareObjectsWithEquals",
       "path": "src/main/java/probe/V1Style.java",
       "line": 85
+    },
+    {
+      "tool": "pmd",
+      "rule": "CompatibilityShim",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 8
     },
     {
       "tool": "pmd",
