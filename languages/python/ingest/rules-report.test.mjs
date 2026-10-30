@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ingestRulesReport } from './rules-report.mjs';
+import { FAN_OUT_SEPARATOR } from '../rules/hints/ast-smells.mjs';
 
 const entry = (overrides) => ({
   rule: 'frozen-dataclass',
@@ -149,6 +150,11 @@ describe('rules script report', () => {
     ['credential-shape', 'credential', 'A string has the shape of a credential'],
     ['secret-in-log', 'token', '`token` is a secret and is passed to a log call'],
     ['io-in-loop', 'requests.get()', '`requests.get()` runs once per item of a loop'],
+    [
+      'unbounded-fan-out',
+      ['asyncio.gather', 'a | b', 'fetch()', 'client.get()', 'message'].join(FAN_OUT_SEPARATOR),
+      '`asyncio.gather` starts `fetch()` (which publishes through `client.get()`) for every element of `a | b` at once',
+    ],
     [
       'task-outlives-resource',
       'stream passed to nursery.start_soon',
