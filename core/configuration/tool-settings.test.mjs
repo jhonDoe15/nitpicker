@@ -6,11 +6,13 @@ describe('tool precedence', () => {
   it.each([[['nitpicker']], [['project']], [['project', 'nitpicker']], [['nitpicker', 'project']]])(
     'accepts the ordering %j of the project and nitpicker configs',
     (precedence) => {
-      for (const preset of [undefined, 'javascript']) {
-        for (const tool of ['prettier', 'knip', 'dependency-cruiser']) {
-          expect(validateConfig({ preset, tools: { [tool]: { precedence } } })).toBeDefined();
-        }
-      }
+      const configs = [{}, { preset: 'javascript' }].flatMap((preset) =>
+        ['prettier', 'knip', 'dependency-cruiser'].map((tool) => ({
+          ...preset,
+          tools: { [tool]: { precedence } },
+        })),
+      );
+      expect(configs.map((config) => validateConfig(config))).toEqual(configs);
       expect(validateConfig({ preset: 'javascript', tools: { eslint: { precedence } } })).toEqual({
         preset: 'javascript',
         tools: { eslint: { precedence } },
