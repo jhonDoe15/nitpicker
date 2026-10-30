@@ -332,7 +332,14 @@ reports are stored. When the base is reused, the progress line names the local c
 (or the remote cache when there is no local directory); use `--no-cache` to rerun the analysis.
 
 - `NITPICKER_CACHE_DIR`: local cache directory (relative to the project root). Default:
-  `node_modules/.cache/nitpicker`.
+  `node_modules/.cache/nitpicker` when the project has `node_modules`, else `nitpicker/cache` in the
+  repository's Git directory (`git rev-parse --git-common-dir`, Git 2.31 or newer), which every worktree shares and
+  Git never lists as untracked. That default covers Java, Kotlin, Python and Go projects. When no
+  writable folder is found, the run prints one line saying the base side runs every time.
+  The Java and Kotlin analyzer version includes the output of `java -version` (from `JAVA_HOME`,
+  else the `PATH`), as Python and Go include their interpreter and toolchain versions, so switching
+  JDKs is a miss. A Gradle or Maven version that is not pinned in the repository (no wrapper) is not
+  in the key; use `--no-cache` after changing it.
 - `NITPICKER_CACHE_URL`: remote cache prefix; an entry is `GET`/`PUT` at `<url>/<key>.json`.
   Optional `NITPICKER_CACHE_AUTH_HEADER` and `NITPICKER_CACHE_TIMEOUT_MS`. Comparison runs only
   read the remote; give write credentials only to the job that runs `cache publish` on `main`.
@@ -1881,5 +1888,7 @@ npx nitpicker aggregate --input-root shards --shard-count 3
   missing or inconsistent shard is a tool error (exit 2). It reads the same
   `nitpicker.config.json`, writes to `reports/quality/diff/combined` unless `--output` is given,
   and takes the policy from the head commit recorded in the shards (or from `--policy-root`).
+  Analyzer versions include the runtime for Java and Kotlin (the JDK), Python and Go, so run the
+  aggregate job with the same toolchain as the shards.
 - Set `NITPICKER_MAX_PARALLEL` to a positive integer to cap how many analyzers run at once within
   one job.
