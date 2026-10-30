@@ -67,14 +67,17 @@ describe('SARIF reports of a project in a repository subfolder', () => {
 
     expect(exitCode).toBe(1);
     expect(readdirSync(outputRoot).toSorted()).toEqual(REPORT_FILE_NAMES.toSorted());
-    for (const name of ['report.sarif', 'report-baseline.sarif']) {
-      const log = readSarif(outputRoot, name);
-      expectValidSarif(log);
-      expect(log.runs[0].originalUriBaseIds).toEqual(sourceRootOf(repository));
-      expect(locations(log)).toEqual([
-        ['new', { uri: 'packages/my%20app/src/new.ts', uriBaseId: '%SRCROOT%' }],
-      ]);
-    }
+    const current = readSarif(outputRoot, 'report.sarif');
+    const baseline = readSarif(outputRoot, 'report-baseline.sarif');
+    const logs = [current, baseline];
+    expectValidSarif(current);
+    expectValidSarif(baseline);
+    expect(logs.map((log) => log.runs[0].originalUriBaseIds)).toEqual(
+      logs.map(() => sourceRootOf(repository)),
+    );
+    expect(logs.map(locations)).toEqual(
+      logs.map(() => [['new', { uri: 'packages/my%20app/src/new.ts', uriBaseId: '%SRCROOT%' }]]),
+    );
   });
   it('writes every finding of the full run without a baseline state', () => {
     const repository = subfolderRepository();
