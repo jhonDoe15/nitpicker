@@ -81,10 +81,29 @@ describe('runs narrowed with --analyzer', () => {
     ]);
 
     expect(narrowed.exitCode).toBe(0);
-    expect(narrowed.stdoutText).toContain(`✓ No new enforceable violations\n${MESSAGE}\n`);
-    expect(readFileSync(path.join(repository.outputRoot, 'report.txt'), 'utf8')).toContain(
-      `Tool errors: 0\n${MESSAGE}\n`,
+    expect(narrowed.stdoutText).toBe(
+      [
+        `Base: ${repository.baseRef} (argument)`,
+        '',
+        'Quality gate summary',
+        '✓ No new enforceable violations',
+        MESSAGE,
+        `Full diagnostics: ${path.join(repository.outputRoot, 'report.txt')}`,
+        '',
+      ].join('\n'),
     );
+    expect(
+      readFileSync(path.join(repository.outputRoot, 'report.txt'), 'utf8').split('\n').slice(4, 12),
+    ).toEqual([
+      'Status: completed',
+      'New enforceable findings: 0',
+      'New findings: 0',
+      'Resolved findings: 0',
+      'Unchanged findings: 0',
+      'Changed metrics: 0',
+      'Tool errors: 0',
+      MESSAGE,
+    ]);
     expect(readJson(repository.outputRoot, 'summary.json').partialRun).toEqual({
       ran: ['quiet-analyzer'],
       skipped: ['fake-quality-analyzer'],
@@ -105,7 +124,20 @@ describe('runs narrowed with --analyzer', () => {
     const narrowed = run(repository, ['--all', '--analyzer', 'quiet-analyzer'], outputRoot);
 
     expect(narrowed.exitCode).toBe(0);
-    expect(narrowed.stdoutText).toContain(`Tool errors: 0\n${MESSAGE}\n`);
+    expect(narrowed.stdoutText).toBe(
+      [
+        'Nitpicker quality snapshot',
+        'Status: clean',
+        'Enforceable findings: 0',
+        'Descriptive findings: 0',
+        'Tool errors: 0',
+        MESSAGE,
+        '',
+        'Per-tool counts:',
+        'quiet-analyzer: total=0 enforceable=0 descriptive=0',
+        '',
+      ].join('\n'),
+    );
     expect(readJson(repository.root, path.join(outputRoot, 'summary.json')).partialRun).toEqual({
       ran: ['quiet-analyzer'],
       skipped: ['fake-quality-analyzer'],
@@ -114,18 +146,38 @@ describe('runs narrowed with --analyzer', () => {
   });
 
   it.each([
-    ['comparison', (repository) => ['--base', repository.baseRef], 'reports/quality/diff'],
-    ['--all', () => ['--all'], 'reports/quality/snapshot'],
-  ])('puts the line under the GitHub step summary headline of a %s run', (_, mode, outputRoot) => {
-    const repository = repositoryWithNewFinding();
-    const summaryPath = path.join(repository.root, outputRoot, '..', 'step-summary.md');
+    [
+      'comparison',
+      (repository) => ['--base', repository.baseRef],
+      'reports/quality/diff',
+      ['## nitpicker', '**✓ No new enforceable findings**'],
+    ],
+    [
+      '--all',
+      () => ['--all'],
+      'reports/quality/snapshot',
+      ['## nitpicker full run', '**✓ No enforceable findings**'],
+    ],
+  ])(
+    'puts the line under the GitHub step summary headline of a %s run',
+    (_, mode, outputRoot, [heading, headline]) => {
+      const repository = repositoryWithNewFinding();
+      const summaryPath = path.join(repository.root, outputRoot, '..', 'step-summary.md');
 
-    run(repository, [...mode(repository), '--analyzer', 'quiet-analyzer'], outputRoot, {
-      GITHUB_STEP_SUMMARY: summaryPath,
-    });
+      run(repository, [...mode(repository), '--analyzer', 'quiet-analyzer'], outputRoot, {
+        GITHUB_STEP_SUMMARY: summaryPath,
+      });
 
-    expect(readFileSync(summaryPath, 'utf8')).toContain(`**\n\n> ${MESSAGE}\n`);
-  });
+      expect(readFileSync(summaryPath, 'utf8').split('\n').slice(0, 6)).toEqual([
+        heading,
+        '',
+        headline,
+        '',
+        `> ${MESSAGE}`,
+        '',
+      ]);
+    },
+  );
 
   it.each([
     ['comparison', (repository) => ['--base', repository.baseRef], 'reports/quality/diff'],
@@ -138,7 +190,9 @@ describe('runs narrowed with --analyzer', () => {
     const typo = run(repository, [...mode(repository), '--analyzer', 'mutant'], outputRoot);
 
     expect(typo.exitCode).toBe(2);
-    expect(typo.stderrText).toContain('Unknown --analyzer: mutant.');
+    expect(typo.stderrText).toBe(
+      'nitpicker failed: Unknown --analyzer: mutant. Known analyzers: fake-quality-analyzer, quiet-analyzer\n',
+    );
     expect(readReports(path.join(repository.root, outputRoot))).toEqual(previous);
   });
 });
