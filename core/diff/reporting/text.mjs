@@ -3,6 +3,7 @@ import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { noteSectionLines } from './format/notes.mjs';
 import { noticeSection } from './review/notices.mjs';
 import { policyChangeSection } from './review/policy-changes.mjs';
+import { partialRunLines } from './partial-run/partial-run.mjs';
 
 export function renderTextReport(report) {
   const lines = [
@@ -34,6 +35,7 @@ function summaryLines(report) {
     `Unchanged findings: ${String(sumToolCount(report.summary.tools, 'unchanged'))}`,
     `Changed metrics: ${String(report.changedMetrics.length)}`,
     `Tool errors: ${String(report.toolErrors.length)}`,
+    ...partialRunLines(report.summary),
   ];
 }
 
