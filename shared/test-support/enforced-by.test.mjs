@@ -10,22 +10,19 @@ const REPORT_ONLY_KOTLIN_MUTANTS = {
   file: 'languages/java/adapters/reporting/kotlin-reports.mjs',
   evidence: /reportOnlyKotlinMutants/u,
 };
-const DOC_COMMENTS_ONLY = {
-  file: 'languages/java/adapters/doc-comments/doc-comment-findings.mjs',
-  evidence: /rules: \[RULE_IDS\.docCommentContent\]/u,
+const JVM_REUSE_RULES_ONLY = {
+  file: 'languages/java/adapters/reuse/jvm-reuse-facts.mjs',
+  evidence: /rules: REUSE_RULES/u,
 };
 const JVM_FACT_RULES_NOT_RUN = {
-  'duplicate-definition': DOC_COMMENTS_ONLY,
-  'exported-name-collision': DOC_COMMENTS_ONLY,
-  'sibling-copy-edit': DOC_COMMENTS_ONLY,
-  'shared-used-by-one-feature': DOC_COMMENTS_ONLY,
+  'shared-used-by-one-feature': JVM_REUSE_RULES_ONLY,
 };
 const NOT_ENFORCED_ALTHOUGH_EMITTED = {
   java: JVM_FACT_RULES_NOT_RUN,
   kotlin: {
+    ...JVM_FACT_RULES_NOT_RUN,
     'mutant-survived': REPORT_ONLY_KOTLIN_MUTANTS,
     'mutant-nocoverage': REPORT_ONLY_KOTLIN_MUTANTS,
-    ...JVM_FACT_RULES_NOT_RUN,
   },
   javascript: {
     'unused-prop': {
