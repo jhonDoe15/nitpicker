@@ -20,6 +20,7 @@ import {
   testEnvironmentNotices,
   testEnvironmentsFor,
 } from '../preset/test-environment/resolve-environment.mjs';
+import { describeError } from '../../../shared/messages/error-chain.mjs';
 
 const invokedPath = process.argv[1];
 
@@ -32,9 +33,7 @@ if (
     const findings = runEslint(options);
     process.stdout.write(`${JSON.stringify({ findings })}\n`);
   } catch (error) {
-    process.stderr.write(
-      `ESLint differential adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    process.stderr.write(`ESLint differential adapter failed: ${describeError(error)}\n`);
     process.exitCode = 2;
   }
 }

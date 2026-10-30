@@ -20,6 +20,7 @@ export function publishBaseSnapshot({
   configOverrides = [],
   headPolicy = {},
   runTasks,
+  warn,
 }) {
   const commitSha = runGit(repositoryRoot, ['rev-parse', 'HEAD^{commit}']).trim();
   const cache = createFindingsCache({
@@ -31,30 +32,35 @@ export function publishBaseSnapshot({
   });
   const published = [];
   const skipped = [];
-  withTemporaryWorktree(repositoryRoot, commitSha, (worktreeRoot) => {
-    const projectRoot = path.join(worktreeRoot, projectRelativePath);
-    const dependencies = analyzers.some((analyzer) => analyzer.requiresDependencies)
-      ? prepareSnapshotDependencies({ projectRoot, liveProjectRoot, toolRoot: PACKAGE_ROOT })
-      : undefined;
-    try {
-      const run = withHeadPolicyFile(headPolicy, (headPolicyFile) =>
-        runAnalyzers({
-          analyzers,
-          projectRoot,
-          policyRoot: projectRoot,
-          toolRoot: PACKAGE_ROOT,
-          liveProjectRoot,
-          headPolicyFile,
-          snapshot: 'base',
-          runTasks,
-        }),
-      );
-      for (const [index, analyzer] of analyzers.entries())
-        publishAnalyzer(analyzer, index, { run, cache, published, skipped });
-    } finally {
-      removeSnapshotDependencies(dependencies);
-    }
-  });
+  withTemporaryWorktree(
+    repositoryRoot,
+    commitSha,
+    (worktreeRoot) => {
+      const projectRoot = path.join(worktreeRoot, projectRelativePath);
+      const dependencies = analyzers.some((analyzer) => analyzer.requiresDependencies)
+        ? prepareSnapshotDependencies({ projectRoot, liveProjectRoot, toolRoot: PACKAGE_ROOT })
+        : undefined;
+      try {
+        const run = withHeadPolicyFile(headPolicy, (headPolicyFile) =>
+          runAnalyzers({
+            analyzers,
+            projectRoot,
+            policyRoot: projectRoot,
+            toolRoot: PACKAGE_ROOT,
+            liveProjectRoot,
+            headPolicyFile,
+            snapshot: 'base',
+            runTasks,
+          }),
+        );
+        for (const [index, analyzer] of analyzers.entries())
+          publishAnalyzer(analyzer, index, { run, cache, published, skipped });
+      } finally {
+        removeSnapshotDependencies(dependencies);
+      }
+    },
+    { warn },
+  );
   return { commitSha, published, skipped };
 }
 
