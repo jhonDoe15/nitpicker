@@ -339,4 +339,110 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="TriStateBoolean" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A boxed Boolean can be true, false or null, so this has three states that the type does not name. Use an enum that names each state (Mode.ON, Mode.OFF, Mode.AUTO), or a primitive boolean when absence means nothing.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $mapped := ('RequestParam', 'RequestBody', 'RequestHeader', 'PathVariable', 'JsonProperty', 'Column', 'Field'),
+    $mappedClass := ('Entity', 'Embeddable', 'MappedSuperclass', 'Document')
+return (
+  //MethodDeclaration[not(ModifierList/Annotation[@SimpleName = 'Override'])]/ClassType
+  | //MethodDeclaration[not(ModifierList/Annotation[@SimpleName = 'Override'])]
+      /FormalParameters/FormalParameter[not(ModifierList/Annotation[@SimpleName = $mapped])]/ClassType
+  | //ConstructorDeclaration/FormalParameters/FormalParameter[not(ModifierList/Annotation[@SimpleName = $mapped])]/ClassType
+  | //FieldDeclaration[not(ModifierList/Annotation[@SimpleName = $mapped])]
+      [not(ancestor::ClassDeclaration[1]/ModifierList/Annotation[@SimpleName = $mappedClass])]/ClassType
+  | //RecordComponent[not(ModifierList/Annotation[@SimpleName = $mapped])]/ClassType
+)[@SimpleName = 'Boolean'][not(TypeArguments)]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="ParameterMutation" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This changes the collection, map or array the caller passed in. Build and return a new one (List.copyOf, a stream, new ArrayList&lt;&gt;(items) filled and returned), or copy the parameter first and change the copy.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $mutators := ('add', 'addAll', 'addFirst', 'addLast', 'remove', 'removeAll', 'removeIf', 'removeFirst',
+                  'removeLast', 'retainAll', 'clear', 'put', 'putAll', 'putIfAbsent', 'merge', 'compute',
+                  'computeIfAbsent', 'computeIfPresent', 'replaceAll', 'sort', 'set', 'push', 'pop', 'poll',
+                  'offer'),
+    $statics := ('sort', 'parallelSort', 'fill', 'setAll', 'shuffle', 'reverse', 'swap', 'rotate',
+                 'replaceAll', 'addAll'),
+    $copies := ('copyOf', 'copyOfRange', 'clone', 'collect', 'toList', 'toArray', 'toSet', 'toMap'),
+    $shared := ('java.util.concurrent.BlockingQueue', 'java.util.concurrent.BlockingDeque',
+                'java.util.concurrent.TransferQueue', 'java.util.concurrent.ConcurrentMap',
+                'java.util.concurrent.ConcurrentLinkedQueue', 'java.util.concurrent.ConcurrentLinkedDeque',
+                'java.util.concurrent.CopyOnWriteArrayList', 'java.util.concurrent.CopyOnWriteArraySet',
+                'java.util.concurrent.ConcurrentSkipListSet')
+return (
+  //MethodCall[@MethodName = $mutators]
+    /*[1][self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression]]]
+      [pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')]
+  | //MethodCall[*[1][self::TypeExpression/ClassType[@SimpleName = ('Arrays', 'Collections')]]]
+      [@MethodName = $statics]/ArgumentList/*[1][self::VariableAccess]
+  | //AssignmentExpression/*[1][self::ArrayAccess]/*[1][self::VariableAccess]
+  | //AssignmentExpression/*[1][self::ArrayAccess]/*[1][self::ArrayAccess]/*[1][self::VariableAccess]
+  | //AssignmentExpression/*[1][self::ArrayAccess]/*[1][self::ArrayAccess]/*[1][self::ArrayAccess]/*[1][self::VariableAccess]
+  | //UnaryExpression[@Operator = ('++', '--')]/ArrayAccess/*[1][self::VariableAccess]
+  | //UnaryExpression[@Operator = ('++', '--')]/ArrayAccess/*[1][self::ArrayAccess]/*[1][self::VariableAccess]
+)[let $name := @Name,
+      $at := ., 
+      $method := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1],
+      $params := $method/FormalParameters/FormalParameter/VariableId/@Name
+  return exists($method)
+    and not($method[pmd-java:modifiers() = 'private'] or $method/ModifierList/Annotation[@SimpleName = 'Override'])
+    and not($method/ancestor::*[self::AnonymousClassDeclaration or self::LocalClassStatement
+                                or self::ClassDeclaration[pmd-java:modifiers() = 'private']])
+    and ((self::VariableAccess and $name = $params)
+         or exists($method//VariableDeclarator[VariableId/@Name = $name][*[2][self::VariableAccess[@Name = $params]]])
+         or exists($method//AssignmentExpression[@Operator = '=']
+                     [*[1][self::FieldAccess or self::VariableAccess][@Name = $name]]
+                     [*[2][self::VariableAccess[@Name = $params]]]))
+    and not(some $kind in $shared satisfies pmd-java:typeIs($kind))
+    and not($method//AssignmentExpression[@Operator = '=']
+              [*[1][self::VariableAccess[@Name = $name]]]
+              [*[2][self::ConstructorCall or self::ArrayAllocation or self::MethodCall[@MethodName = $copies]]]
+              [*[2]/descendant-or-self::VariableAccess[@Name = $name]]
+              [@BeginLine < $at/@BeginLine or (@BeginLine = $at/@BeginLine and @BeginColumn < $at/@BeginColumn)])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="CompatibilityShim" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A @Deprecated declaration keeps the old API next to its replacement. Delete it and change its callers to the replacement in the same change.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//ModifierList/Annotation[@SimpleName = 'Deprecated']
+  [not(parent::ModifierList/parent::MethodDeclaration/ModifierList/Annotation[@SimpleName = 'Override'])]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="LegacyCalendarApi" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Calendar.getInstance() and new GregorianCalendar() without a time zone, and new SimpleDateFormat(...) without setTimeZone, read the default time zone and are not thread-safe. Use java.time with an explicit zone: Instant, or ZonedDateTime.now(clock), and a DateTimeFormatter with withZone(zone). Passing a TimeZone to Calendar.getInstance or the GregorianCalendar constructor is allowed.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+(
+  //MethodCall[@MethodName = 'getInstance'][*[1][self::TypeExpression/ClassType[@SimpleName = 'Calendar']]]
+    [not(ArgumentList/*[pmd-java:typeIs('java.util.TimeZone')])]
+  | //ConstructorCall[ClassType[@SimpleName = 'GregorianCalendar']]
+    [not(ArgumentList/*[pmd-java:typeIs('java.util.TimeZone')])]
+  | //ConstructorCall[ClassType[@SimpleName = 'SimpleDateFormat']]
+    [let $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::ClassBody][1],
+         $format := parent::VariableDeclarator/VariableId/@Name
+     return empty($format)
+       or not($scope//MethodCall[@MethodName = 'setTimeZone']/*[1][self::VariableAccess[@Name = $format]])]
+)
+]]></value>
+      </property>
+    </properties>
+  </rule>
 </ruleset>
