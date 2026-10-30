@@ -1,8 +1,7 @@
 import { existsSync, realpathSync, statSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { resolveProjectRoot } from '../tooling/tool-resolution.mjs';
-import { runGit } from '../diff/git/repository/command.mjs';
-import { normalizeGitPath } from '../diff/git/normalize.mjs';
 
 export function resolveRunTarget({ options, currentProjectRoot, workingDirectory }) {
   const paths = options.paths ?? [];
@@ -12,9 +11,11 @@ export function resolveRunTarget({ options, currentProjectRoot, workingDirectory
         currentProjectRoot === undefined ? resolveProjectRoot() : realpathSync(currentProjectRoot),
     };
   }
+  const base = realpathSync(workingDirectory ?? process.cwd());
+  const repositoryRoot = git(base, ['rev-parse', '--show-toplevel']).trim();
   const targets = paths.map((given) => ({
     given,
-    absolute: existingPath(workingDirectory ?? process.cwd(), given),
+    absolute: existingPath({ base, repositoryRoot, given }),
   }));
   const projectRoot = projectOf(targets[0].absolute);
   const relativePaths = targets.map((target) => scopePath(projectRoot, target));
@@ -24,8 +25,15 @@ export function resolveRunTarget({ options, currentProjectRoot, workingDirectory
   };
 }
 
-function existingPath(workingDirectory, given) {
-  const absolute = path.resolve(workingDirectory, given);
+function git(cwd, args) {
+  return execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
+}
+
+function existingPath({ base, repositoryRoot, given }) {
+  const absolute = path.resolve(base, given);
+  if (path.relative(repositoryRoot, absolute).startsWith('..')) {
+    throw new Error(`${given} is outside the repository ${repositoryRoot}`);
+  }
   if (!existsSync(absolute)) {
     throw new Error(`${given} matches no file`);
   }
@@ -47,7 +55,7 @@ function scopePath(projectRoot, { given, absolute }) {
       `${given} is in the project ${ownProject}, not in ${projectRoot}; give paths in one project`,
     );
   }
-  const scoped = normalizeGitPath(relative || '.');
+  const scoped = relative === '' ? '.' : relative.split(path.sep).join('/');
   if (!hasCheckedFile(projectRoot, scoped)) {
     throw new Error(`${given} matches no file that nitpicker checks (none tracked or untracked)`);
   }
@@ -55,14 +63,13 @@ function scopePath(projectRoot, { given, absolute }) {
 }
 
 function hasCheckedFile(projectRoot, scoped) {
-  return (
-    runGit(projectRoot, [
-      'ls-files',
-      '--cached',
-      '--others',
-      '--exclude-standard',
-      '--',
-      `:(literal)${scoped}`,
-    ]).trim() !== ''
-  );
+  const listed = git(projectRoot, [
+    'ls-files',
+    '--cached',
+    '--others',
+    '--exclude-standard',
+    '--',
+    `:(literal)${scoped}`,
+  ]);
+  return listed.trim() !== '';
 }
