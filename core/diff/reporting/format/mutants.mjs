@@ -1,6 +1,6 @@
 import { RULE_IDS } from '../../../../shared/policy.mjs';
 
-export const SURVIVOR_LIMIT = 3;
+const SURVIVOR_LIMIT = 3;
 
 export function foldMutants(findings) {
   const groups = new Map();
@@ -55,13 +55,15 @@ function capSurvivors(mutants) {
   if (mutants.length <= SURVIVOR_LIMIT) {
     return mutants;
   }
-  const hidden = mutants.length - SURVIVOR_LIMIT;
-  const noun = hidden === 1 ? 'mutant' : 'mutants';
+  const hidden = mutants.slice(SURVIVOR_LIMIT);
+  const noun = hidden.length === 1 ? 'mutant' : 'mutants';
+  const line = hidden[0].location?.line;
+  const from = line === undefined ? '' : ` from line ${String(line)}`;
   return [
     ...mutants.slice(0, SURVIVOR_LIMIT),
     {
       ...entryOf(mutants[0]),
-      message: `and ${String(hidden)} more surviving ${noun} in ${functionLabel(mutants[0].symbol)} (listed in the diagnostics file)`,
+      message: `and ${String(hidden.length)} more surviving ${noun} in ${functionLabel(mutants[0].symbol)}${from} (listed in the diagnostics file)`,
     },
   ];
 }

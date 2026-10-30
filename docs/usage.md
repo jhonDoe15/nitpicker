@@ -206,9 +206,13 @@ one kind: changed code files that lie outside the roots the preset checks. For T
 `layout.sourceRoots`); for Python, `python.sourceRoots`; for Java and Kotlin, the build's source
 sets (`src/<set>/java` or `src/<set>/kotlin` of a module, or a directory the build file declares).
 To leave files unchecked, list them in `exclude`. Choose another directory with `--output <dir>`.
+
 The console summary shortens mutation findings: the mutants that no test runs print as one entry
 per function (with their count and lines), and a function prints at most three surviving mutants,
-then how many more there are. The reports above list every mutant. Set `NO_COLOR` to disable colored console output. On GitHub Actions the run also writes a job
+then how many more there are. The headline still counts every mutant, and the reports above list
+each one.
+
+Set `NO_COLOR` to disable colored console output. On GitHub Actions the run also writes a job
 summary and `::error` annotations for the new enforceable findings (see
 [Job summary and annotations](ci.md#job-summary-and-annotations)).
 
