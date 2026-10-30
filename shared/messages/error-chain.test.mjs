@@ -52,6 +52,24 @@ describe('describeError', () => {
     );
   });
 
+  it('ignores a null cause, reads a plain object message and drops an empty message', () => {
+    expect(describeError(new Error('wrapper', { cause: null }))).toBe('wrapper');
+    expect(describeError(new Error('wrapper', { cause: { message: 'inner' } }))).toBe(
+      'wrapper\n  caused by: inner',
+    );
+    expect(describeError(new Error('', { cause: new Error('inner') }))).toBe('  caused by: inner');
+  });
+
+  it('prints at most ten causes of an AggregateError', () => {
+    const members = Array.from({ length: 12 }, (_, index) => new Error(`member ${String(index)}`));
+
+    expect(describeError(new AggregateError(members, 'all failed')).split('\n')).toEqual([
+      'all failed',
+      ...members.slice(0, 10).map(({ message }) => `  caused by: ${message}`),
+      '  ... and 2 more causes',
+    ]);
+  });
+
   it('stops after three levels of causes', () => {
     const chain = ['d', 'c', 'b', 'a'].reduce(
       (cause, name) => new Error(`level ${name}`, { cause }),

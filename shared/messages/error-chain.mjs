@@ -1,7 +1,11 @@
 const MAX_CAUSE_DEPTH = 3;
+const MAX_CAUSE_LINES = 10;
 
 function messageOf(error) {
-  return error instanceof Error ? error.message : String(error);
+  if (typeof error?.message === 'string') {
+    return error.message;
+  }
+  return String(error);
 }
 
 function firstLine(text) {
@@ -13,7 +17,9 @@ function innerErrors(error) {
     return [];
   }
   const aggregated = error instanceof AggregateError ? error.errors : [];
-  return error.cause === undefined ? aggregated : [...aggregated, error.cause];
+  return error.cause === undefined || error.cause === null
+    ? aggregated
+    : [...aggregated, error.cause];
 }
 
 export function firstErrorLine(error) {
@@ -32,10 +38,13 @@ function causeLines(error, message) {
       pending.push(...innerErrors(inner).map((next) => ({ inner: next, depth: depth + 1 })));
     }
   }
-  return shown.slice(1).map((line) => `  caused by: ${line}`);
+  const causes = shown.slice(1);
+  const lines = causes.slice(0, MAX_CAUSE_LINES).map((line) => `  caused by: ${line}`);
+  const hidden = causes.length - lines.length;
+  return hidden > 0 ? [...lines, `  ... and ${String(hidden)} more causes`] : lines;
 }
 
 export function describeError(error) {
   const message = messageOf(error);
-  return [message, ...causeLines(error, message)].join('\n');
+  return [message, ...causeLines(error, message)].filter((part) => part.length > 0).join('\n');
 }

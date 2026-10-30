@@ -75,11 +75,18 @@ export function withNamedTemporaryWorktree(
     temporaryRoot,
     created: added.ok,
   });
-  if (cleanupError !== undefined) {
-    warn(leftoverWarning(temporaryRoot, cleanupError));
-  }
+  const warning =
+    cleanupError === undefined ? undefined : leftoverWarning(temporaryRoot, cleanupError);
   if (!outcome.ok) {
+    attempt(() => {
+      if (warning !== undefined) {
+        warn(warning);
+      }
+    });
     throw outcome.error;
+  }
+  if (warning !== undefined) {
+    warn(warning);
   }
   return outcome.value;
 }
