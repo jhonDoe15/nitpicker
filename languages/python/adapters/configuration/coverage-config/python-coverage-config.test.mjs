@@ -255,8 +255,9 @@ describe('the project coverage config under tools.coverage', () => {
     expect(text).toBe(expected(projectRoot, {}));
   });
 
-  it('adds the project exclusions and run options when the project is listed first', () => {
-    for (const precedence of [['project', 'nitpicker'], ['project']]) {
+  it.each([[['project', 'nitpicker']], [['project']]])(
+    'adds the project exclusions and run options when the project is listed first (%j)',
+    (precedence) => {
       const { text, projectRoot } = written(precedence);
 
       expect(text).toBe(
@@ -266,8 +267,8 @@ describe('the project coverage config under tools.coverage', () => {
           ...OPTED_EXCLUSIONS,
         }),
       );
-    }
-  });
+    },
+  );
 
   it('keeps the nitpicker exclusions and omits alone when nitpicker is listed first', () => {
     const { text, projectRoot } = written(['nitpicker', 'project']);
