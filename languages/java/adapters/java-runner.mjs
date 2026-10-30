@@ -5,6 +5,7 @@ import { detectJavaBuild } from '../builds/java-build.mjs';
 import { parseJavaRunnerArguments } from './java-policy.mjs';
 import { javaStyle } from './style/java-style.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
+import { describeError } from '../../../shared/messages/error-chain.mjs';
 
 export const GRADLE_FAILURE_RULE = 'gradle-failure';
 export const MAVEN_FAILURE_RULE = 'maven-failure';
@@ -84,9 +85,7 @@ if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === import.me
   try {
     main(process.argv.slice(2));
   } catch (error) {
-    process.stderr.write(
-      `Java differential adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    process.stderr.write(`Java differential adapter failed: ${describeError(error)}\n`);
     process.exitCode = 2;
   }
 }

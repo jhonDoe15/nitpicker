@@ -203,28 +203,35 @@ function collectBothSnapshots({
   comparison,
   options,
   policy,
+  warn,
 }) {
-  return withTemporaryWorktree(repositoryRoot, comparison.headSha, (headWorktree) => {
-    const policyRoot = path.join(headWorktree, projectRelativePath);
-    function collectIn(worktreeRoot, snapshot) {
-      return collectJavaFindings(path.join(worktreeRoot, projectRelativePath), {
-        ...options,
-        policy: { ...policy, snapshot, policyRoot },
-      });
-    }
-    const headFindings = collectIn(headWorktree, 'head');
-    const collectedBase = withTemporaryWorktree(
-      repositoryRoot,
-      comparison.mergeBaseSha,
-      (baseWorktree) => collectIn(baseWorktree, 'base'),
-    );
-    const notes = testFailuresOf({ findings: collectedBase });
-    return {
-      notes,
-      baseFindings: collectedBase.filter((finding) => !notes.includes(finding)),
-      headFindings,
-    };
-  });
+  return withTemporaryWorktree(
+    repositoryRoot,
+    comparison.headSha,
+    (headWorktree) => {
+      const policyRoot = path.join(headWorktree, projectRelativePath);
+      function collectIn(worktreeRoot, snapshot) {
+        return collectJavaFindings(path.join(worktreeRoot, projectRelativePath), {
+          ...options,
+          policy: { ...policy, snapshot, policyRoot },
+        });
+      }
+      const headFindings = collectIn(headWorktree, 'head');
+      const collectedBase = withTemporaryWorktree(
+        repositoryRoot,
+        comparison.mergeBaseSha,
+        (baseWorktree) => collectIn(baseWorktree, 'base'),
+        { warn },
+      );
+      const notes = testFailuresOf({ findings: collectedBase });
+      return {
+        notes,
+        baseFindings: collectedBase.filter((finding) => !notes.includes(finding)),
+        headFindings,
+      };
+    },
+    { warn },
+  );
 }
 
 export function runJavaDiff({
@@ -249,12 +256,14 @@ export function runJavaDiff({
     projectRelativePath,
   };
   const baseToHeadRenames = readRenameMap(range);
+  const warnings = [];
   const { notes, baseFindings, headFindings } = collectBothSnapshots({
     repositoryRoot,
     projectRelativePath,
     comparison,
     options: { gradle, maven, spawn, initScript },
     policy,
+    warn: (message) => warnings.push(message),
   });
   const touchedCode = {
     changedLines: readChangedLines(range),
@@ -271,5 +280,12 @@ export function runJavaDiff({
   const newEnforceable = result.newFindings.filter(
     (finding) => finding.classification === 'enforceable',
   );
-  return { comparison, ...result, notes, newEnforceable, failed: newEnforceable.length > 0 };
+  return {
+    comparison,
+    ...result,
+    notes,
+    warnings,
+    newEnforceable,
+    failed: newEnforceable.length > 0,
+  };
 }

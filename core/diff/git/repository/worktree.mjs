@@ -2,6 +2,10 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { runGit } from './command.mjs';
+import { firstErrorLine } from '../../../../shared/messages/error-chain.mjs';
+
+const REMOVAL_RETRIES = 10;
+const REMOVAL_RETRY_DELAY_MS = 100;
 
 function attempt(operation) {
   try {
@@ -11,42 +15,50 @@ function attempt(operation) {
   }
 }
 
+function unregisterWorktree(repositoryRoot, worktreeRoot) {
+  const removed = attempt(() =>
+    runGit(repositoryRoot, ['worktree', 'remove', '--force', worktreeRoot]),
+  );
+  if (!removed.ok) {
+    runGit(repositoryRoot, ['worktree', 'prune']);
+  }
+}
+
 function removeWorktree(repositoryRoot, { worktreeRoot, temporaryRoot, created }) {
-  try {
-    if (created) {
-      runGit(repositoryRoot, ['worktree', 'remove', '--force', worktreeRoot]);
-    }
-    return undefined;
-  } catch (error) {
-    return error;
-  } finally {
-    rmSync(temporaryRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 200 });
+  const removed = created
+    ? attempt(() => runGit(repositoryRoot, ['worktree', 'remove', '--force', worktreeRoot]))
+    : { ok: true };
+  const deleted = attempt(() =>
+    rmSync(temporaryRoot, {
+      recursive: true,
+      force: true,
+      maxRetries: REMOVAL_RETRIES,
+      retryDelay: REMOVAL_RETRY_DELAY_MS,
+    }),
+  );
+  if (!deleted.ok) {
+    return deleted.error;
   }
+  return removed.ok
+    ? undefined
+    : attempt(() => unregisterWorktree(repositoryRoot, worktreeRoot)).error;
 }
 
-function cleanupFailure(outcome, cleanupError) {
-  if (!outcome.ok) {
-    return new AggregateError(
-      [outcome.error, cleanupError],
-      'Quality comparison and temporary worktree cleanup both failed',
-    );
-  }
-  return new Error('Failed to remove the temporary quality-comparison worktree', {
-    cause: cleanupError,
-  });
+function leftoverWarning(temporaryRoot, error) {
+  return `could not remove the temporary worktree ${temporaryRoot} (${firstErrorLine(error)}); delete it and run git worktree prune once the build has stopped`;
 }
 
-export function withTemporaryWorktree(repositoryRoot, commitSha, operation) {
+export function withTemporaryWorktree(repositoryRoot, commitSha, operation, { warn }) {
   return withNamedTemporaryWorktree(
     repositoryRoot,
-    { commitSha, directoryName: 'base' },
+    { commitSha, directoryName: 'base', warn },
     operation,
   );
 }
 
 export function withNamedTemporaryWorktree(
   repositoryRoot,
-  { commitSha, directoryName },
+  { commitSha, directoryName, warn },
   operation,
 ) {
   const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
@@ -61,7 +73,7 @@ export function withNamedTemporaryWorktree(
     created: added.ok,
   });
   if (cleanupError !== undefined) {
-    throw cleanupFailure(outcome, cleanupError);
+    warn(leftoverWarning(temporaryRoot, cleanupError));
   }
   if (!outcome.ok) {
     throw outcome.error;

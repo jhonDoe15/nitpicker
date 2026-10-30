@@ -9,6 +9,7 @@ import { existingRoots } from '../preset/layout.mjs';
 import { readLayout } from '../preset/head-policy.mjs';
 import { EXCLUDED_PATH_PATTERN } from '../preset/dependency-graph/cruise.mjs';
 import { loadDependencyGraph } from './dependency-graph/project-dependency-graph.mjs';
+import { describeError } from '../../../shared/messages/error-chain.mjs';
 
 const TRUSTED_TOOL_ROOT = PACKAGE_ROOT;
 const ARGUMENT_NAMES = ['--project-root', '--policy-root', '--tool-root', '--source-root'];
@@ -25,11 +26,7 @@ try {
   );
   process.stdout.write(`${JSON.stringify({ findings })}\n`);
 } catch (error) {
-  process.stderr.write(
-    `Entry-point differential adapter failed: ${
-      error instanceof Error ? error.message : String(error)
-    }\n`,
-  );
+  process.stderr.write(`Entry-point differential adapter failed: ${describeError(error)}\n`);
   process.exitCode = 2;
 }
 

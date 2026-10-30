@@ -5,6 +5,7 @@ import { createWeightedSemaphore } from './capacity.mjs';
 import { createProgressReporter, writeToDescriptor } from './progress.mjs';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
+import { describeError } from '../../../shared/messages/error-chain.mjs';
 
 const DEFAULT_MAX_PARALLEL = 4;
 
@@ -201,9 +202,7 @@ if (
     const result = await runTaskGraph(input.tasks, { signal: shutdownController.signal });
     process.stdout.write(`${JSON.stringify(result)}\n`);
   } catch (error) {
-    process.stderr.write(
-      `Analyzer scheduler failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    process.stderr.write(`Analyzer scheduler failed: ${describeError(error)}\n`);
     process.exitCode = 2;
   }
 }
@@ -230,7 +229,7 @@ async function executeTimedTask(task, { execute, signal }) {
   } catch (error) {
     return {
       name: task.name,
-      error: error instanceof Error ? error.message : String(error),
+      error: describeError(error),
       elapsedMs: Date.now() - startedAt,
     };
   }

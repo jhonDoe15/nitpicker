@@ -5,6 +5,7 @@ import path from 'node:path';
 import { parseArguments } from './quality-areas/arguments.mjs';
 import { applyAreaExceptions } from './exceptions/area-exceptions.mjs';
 import { hasProjectTests } from './test-runners/test-run.mjs';
+import { describeError } from '../../../shared/messages/error-chain.mjs';
 
 export async function runQualityArea(options) {
   const runner = QUALITY_AREA_RUNNERS.get(options.kind);
@@ -47,9 +48,7 @@ if (
     const findings = await runQualityArea(options);
     process.stdout.write(`${JSON.stringify({ findings })}\n`);
   } catch (error) {
-    process.stderr.write(
-      `Quality area adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    process.stderr.write(`Quality area adapter failed: ${describeError(error)}\n`);
     process.exitCode = 2;
   }
 }
