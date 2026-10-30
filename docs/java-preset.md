@@ -280,7 +280,7 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   profile can produce enforceable findings.
 - **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the test
   plugins the project's framework needs (`pitest-junit5-plugin` 1.2.1, `pitest-testng-plugin`
-  1.0.0, both pinned, added on the conditions below), default mutators, XML output, two threads, to
+  1.0.0, both pinned, added on the conditions below), nitpicker's mutator list (see [Mutators](mutation-testing.md#java-and-kotlin-mutators)), XML output, two threads, to
   `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`), and
   `--mutableCodePaths` limits mutation to the main classes. Every test task the build checks (`test`
   and each task `check` depends on) is a run of its own, `nitpickerPit<Task>`, with that task's test

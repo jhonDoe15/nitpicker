@@ -24,6 +24,15 @@ export function readPinnedTools(initScript = INIT_SCRIPT) {
   return pinned;
 }
 
+export function readPitMutators(initScript = INIT_SCRIPT) {
+  const block = /def pitMutators = \[([^\]]*)\]/u.exec(readFileSync(initScript, 'utf8'));
+  const mutators = [...(block?.[1] ?? '').matchAll(/'(\w+)'/gu)].map(([, name]) => name);
+  if (mutators.length === 0) {
+    throw new Error(`No PIT mutators found in ${initScript}`);
+  }
+  return mutators;
+}
+
 export function detectJavaBuild(projectRoot) {
   const present = new Set(
     ['pom.xml', 'mvnw', 'gradlew', ...GRADLE_BUILD_FILES].filter((name) =>

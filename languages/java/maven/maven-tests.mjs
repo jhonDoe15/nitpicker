@@ -11,6 +11,7 @@ import path from 'node:path';
 import { globMatcher } from '../../../shared/paths/glob.mjs';
 import { runJava } from './maven-command.mjs';
 import { failedCases, failingTestsError, freshReports } from '../builds/test-failures.mjs';
+import { readPitMutators } from '../builds/java-build.mjs';
 
 const DEFAULT_ARCHUNIT_INCLUDES = '**/*ArchTest.class,**/*ArchitectureTest.class';
 const JUNIT_ENGINE_JAR = /^junit-platform-engine-.+\.jar$/u;
@@ -230,6 +231,8 @@ export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn
       [...new Set(classpaths.testRuntime)].filter((entry) => existsSync(entry)).join(','),
       '--mutableCodePaths',
       module.outputDirectory,
+      '--mutators',
+      readPitMutators().join(','),
       '--outputFormats',
       'XML',
       '--timestampedReports',
