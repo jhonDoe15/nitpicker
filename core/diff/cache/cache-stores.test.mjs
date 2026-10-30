@@ -200,15 +200,17 @@ describe('findings cache over a remote store', () => {
       ...cacheOptions,
     });
 
-    for (const body of [
+    const bodies = [
       '{not json',
       JSON.stringify({ key, findings: [{ tool: 'a' }] }),
       JSON.stringify({ key: 'another-key', findings: [] }),
       JSON.stringify({ findings: [] }),
-    ]) {
+    ];
+    const reads = bodies.map((body) => {
       remoteStore.put(key, body);
-      expect(cache.read(analyzer)).toBeUndefined();
-    }
+      return cache.read(analyzer);
+    });
+    expect(reads).toEqual(bodies.map(() => undefined));
     expect(readdirSync(directory)).toHaveLength(0);
   });
 

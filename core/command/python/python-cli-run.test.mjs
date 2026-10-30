@@ -84,10 +84,10 @@ describe('nitpicker with "preset": "python" running the project', () => {
     expect(testRuns).toHaveLength(2);
     const [first, second] = testRuns;
     expect(first.cwd).not.toBe(second.cwd);
-    for (const testRun of testRuns) {
-      expect(testRun.pythonPath.split(path.delimiter)[0]).toBe(path.join(testRun.cwd, 'src'));
-      expect(testRun.cwd).not.toBe(root);
-    }
+    expect(testRuns.map(({ pythonPath }) => pythonPath.split(path.delimiter)[0])).toEqual(
+      testRuns.map(({ cwd }) => path.join(cwd, 'src')),
+    );
+    expect(testRuns.map(({ cwd }) => cwd)).not.toContain(root);
   });
   it.each([
     ['in the test process', false],

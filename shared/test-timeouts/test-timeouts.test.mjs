@@ -66,11 +66,6 @@ describe('test timeout policy', () => {
       },
     };
     expect(validateConfig(config)).toEqual(config);
-    for (const value of [0, -1, 0.5, Infinity, '300']) {
-      expect(() =>
-        validateConfig({ tools: { tests: { timeouts: { defaults: { testTimeoutMs: value } } } } }),
-      ).toThrow('positive integer');
-    }
     expect(() =>
       validateConfig({
         tools: { tests: { timeouts: { projects: { jvm: { language: 'java', include: [] } } } } },
@@ -82,6 +77,12 @@ describe('test timeout policy', () => {
     expect(() =>
       validateConfig({ tools: { tests: { timeouts: { defaults: { testMs: 500 } } } } }),
     ).toThrow('unknown');
+  });
+
+  it.each([0, -1, 0.5, Infinity, '300'])('rejects the default test timeout %j', (value) => {
+    expect(() =>
+      validateConfig({ tools: { tests: { timeouts: { defaults: { testTimeoutMs: value } } } } }),
+    ).toThrow('positive integer');
   });
 
   it('rejects ambiguous membership and mismatched explicit projects instead of taking a larger budget', () => {
