@@ -225,7 +225,7 @@ describe('custom layout through the command line', () => {
     const output = chunks.join('');
     expect(exitCode).toBe(1);
     expect(output).toEqual(
-      'nitpicker: head: running 1 analyzer\nNitpicker quality snapshot\nStatus: violations\nEnforceable findings: 1\nDescriptive findings: 0\nTool errors: 0\n\nPer-tool counts:\ndependency-architecture: total=1 enforceable=1 descriptive=0\n\nEnforceable findings:\ndependency-architecture/no-production-to-test lib/live/uses-spec.ts lib/live/uses-spec.ts must not depend on spec/helper.ts. If this is intended, add {"rule":"no-production-to-test","paths":["lib/live/uses-spec.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.\n',
+      'nitpicker: head: running 1 analyzer\nNitpicker quality snapshot\nStatus: violations\nEnforceable findings: 1\nDescriptive findings: 0\nTool errors: 0\nRan only: dependency-architecture. Run nitpicker without --analyzer before you finish.\n\nPer-tool counts:\ndependency-architecture: total=1 enforceable=1 descriptive=0\n\nEnforceable findings:\ndependency-architecture/no-production-to-test lib/live/uses-spec.ts lib/live/uses-spec.ts must not depend on spec/helper.ts. If this is intended, add {"rule":"no-production-to-test","paths":["lib/live/uses-spec.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.\n',
     );
     expect(output).not.toContain('lib/legacy');
   });
