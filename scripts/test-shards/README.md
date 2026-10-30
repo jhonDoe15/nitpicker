@@ -139,3 +139,7 @@ which put its shard over five minutes. They are now two files: `integration-chec
 wired to `check`, Gradle against Failsafe, three builds) and `integration-unchecked` (an unwired
 suite, a skipped task and a failing one, four builds), measured locally at 159 and 185 seconds.
 Every assertion is unchanged; the fixture helpers moved to `java-e2e/test-support/`.
+
+The ruff lint precedence file (`adapters/project-tools/ruff/ruff-lint`, ten cases) is in
+`test:python` with a planning weight of 15 seconds: it runs only the installed ruff on small
+projects, and took about six seconds locally.
