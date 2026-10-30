@@ -24,9 +24,9 @@ describe('Error Prone check policy', () => {
   });
 
   it('names only reviewed checks, and keeps each list sorted and free of repeats', () => {
-    for (const name of LISTS) {
-      expect(CHECKS[name]).toStrictEqual([...new Set(CHECKS[name])].sort());
-    }
+    expect(LISTS.map((name) => CHECKS[name])).toStrictEqual(
+      LISTS.map((name) => [...new Set(CHECKS[name])].sort()),
+    );
     const unreviewed = LISTS.slice(1).flatMap((name) =>
       CHECKS[name].filter((check) => !CHECKS.reviewedChecks.includes(check)),
     );
@@ -55,8 +55,9 @@ describe('Error Prone check policy', () => {
     expect(exempted).toStrictEqual([...new Set(exempted)].sort());
     expect(exempted.filter((name) => !CHECKS.reviewedChecks.includes(name))).toStrictEqual([]);
     expect(documentedChecks(SPARED)).toStrictEqual(exempted);
-    for (const annotations of Object.values(CHECKS.classExemptions)) {
-      expect(annotations).toStrictEqual([...new Set(annotations)].sort());
-    }
+    const annotationLists = Object.values(CHECKS.classExemptions);
+    expect(annotationLists).toStrictEqual(
+      annotationLists.map((annotations) => [...new Set(annotations)].sort()),
+    );
   });
 });

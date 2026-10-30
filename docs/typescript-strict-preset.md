@@ -964,6 +964,75 @@ hop, and type-only imports do not count.
     `expect.assertions(n)` exempts the test whichever callback the assertions are in, and a
     `hasAssertions` in a global `beforeEach` is not seen. A tagged-template `it.each` table is not
     read as a table, and a computed template member name (``obj[`on${name}`]``) is not matched.
+- `nitpicker/no-assertion-in-loop`: an assertion inside a loop or an iterating callback of a test body
+  runs once per element, so an empty collection (a bug in the code under test) makes the test pass
+  without asserting anything. It is the loop counterpart of `vitest/no-conditional-expect`, and the
+  TypeScript and JavaScript form of Python's `conditional-assertion-in-test` and Kotlin's
+  `AssertionInControlFlow`. It works for Vitest, Jest, `node:test` and Mocha (`it`, `test`,
+  `specify`, `xit`, `fit` and `xtest`, also `test.each` with a tagged template, a named function
+  as the callback, and a callback wrapped in a call such as `it('x', withFixture(async () => ...))`),
+  with `expect` (also `expect.soft`, `expect.poll`, `.resolves`/`.rejects` chains and imported
+  aliases such as `import { expect as ex }`), `node:assert` and `assert/strict` (imported under any
+  name), Chai `assert`/`expect`/`should`, the `t.assert` of `node:test`, a chained `.expect(...)`
+  call (supertest), any imported function whose name starts with `assert` or `expect`, and the
+  project's `assertionFunctionNames` convention. Matcher builders (`expect.not.arrayContaining`,
+  `expect.any`), `chai.use` and `chai.should()` are not assertions. `it` and `test` count as test
+  registrations only when they are unbound globals or come from `vitest`, `jest`, `node:test`,
+  `mocha`, `@jest/globals` or `@playwright/test` (or from a `const test = base.extend(...)` of
+  such an import), so a local `const test = load()` or a helper parameter named `test` hides
+  nothing. The rule is shared by the ESLint and oxlint engines through the plugin. Reported, once
+  per outermost loop of a test, at its first assertion:
+  - the loops `for`, `for...of`, `for await...of`, `for...in` and `while`, and the callbacks of
+    `forEach`, `map`, `flatMap`, `filter`, `some`, `every`, `reduce`, `reduceRight`, `find`,
+    `findIndex`, `findLast`, `findLastIndex` and `Array.from(items, callback)`, also on
+    `Object.entries(...)` and the like and inside
+    `await Promise.all(items.map(async (item) => ...))`; a callback given to `new X(callback)` is
+    read like a call argument;
+  - a call to a helper that asserts (a function of the same file, found through `const check = ...`
+    or `function check`, also when it asserts through another helper), made in a loop or handed to
+    an iterating call (`orders.forEach(check)`), whether the helper sits in the test or at module
+    level;
+  - a loop of assertions inside such a helper that a test calls, reported at the assertion in the
+    helper's loop (once, however many tests call the helper, and also when the helper reaches the
+    loop through other same-file helpers);
+  - a loop over a literal table (`for (const row of [[1, 2], [3, 4]])`), with a message that points
+    at `it.each` (or, in `node:test`, at subtests registered from the table): a table that is not
+    empty today is still a loop that checks nothing when the table is emptied or filtered;
+  - a loop whose assertion does not read the loop variable (`expect(config.mode).toBe('strict')`),
+    since it has the same hole. The rule does not follow data flow, as in the Python and Kotlin
+    rules;
+  - `node:test` subtests registered in a loop (`await t.test(name, () => ...)`, `t.it`) over a
+    collection that is not a literal, non-empty array: an empty collection registers no subtest and
+    the test passes.
+
+  Allowed, and named by the message:
+  - asserting the whole collection (`expect(orders).toEqual([...])`,
+    `assert.deepStrictEqual(orders, [...])`); `expect(orders.every((o) => o.paid)).toBe(true)` is
+    also true for an empty `orders`, so pair it with `expect(orders).not.toHaveLength(0)`;
+  - a parameterized test for a table of cases (`it.each`/`test.each`); in `node:test`, which has no
+    table API, a loop over a literal, non-empty array (written inline, or a same-file `const`
+    initialised with an array literal) that registers one subtest per row with
+    `await t.test(name, () => ...)`; a loop outside any test that registers `it(...)` calls is not
+    in a test body and is not reported either;
+  - a loop whose body always runs at least once and so cannot pass on an empty collection:
+    `for (let i = 0; i < 3; i++)` with a literal start and a literal bound that holds at the start,
+    `Array.from({ length: 3 }, ...)` (and `Array.from({ length: 3 }).forEach(...)`) with a literal
+    positive length, and `do ... while`, whose body runs once before the condition is read;
+  - a loop that only builds data before an unconditional assertion.
+
+  `expect.assertions(n)` and `expect.hasAssertions()` do not exempt a loop. They catch an empty
+  loop only when `n` is exact for today's data and nobody keeps it in step with the table, so the
+  rule reports the loop anyway and the message sends the test to the allowed forms. Limits: only
+  same-file functions are followed, called by name (`check(x)`) or handed to an iterating call;
+  methods (`helpers.check(x)`), object-method helpers and helpers imported from another file are
+  not followed; a helper that no test calls, or that only a hook calls, is not read, and neither is
+  a function defined inside a test that nothing calls. A `test` imported from a local fixture file
+  (`import { test } from './fixtures'`) is not recognised as a test registration. Hooks,
+  `describe` bodies and `test.step` callbacks are not tests (a step in a loop is judged as part of
+  its test). A chained property assertion without a call (`value.should.be.true`) is not an
+  assertion call and is not seen; `value.should.equal(1)` is. A tagged-template `it.each` table is
+  not read as a table, but its test body is read.
+
 - `slow-test` (coverage check, head only): an added or edited test fails above 5 s, or 30 s in an integration/e2e test folder. All supported runners share this policy. Suspected slow tests are rerun without coverage instrumentation, using the existing head policy's thresholds and reviewed exceptions; unchanged test calls do not add findings.
 - `nitpicker/no-real-time-random-or-network`: in tests, no `Date.now()`, `new Date()` without an
   argument or `Math.random()` (fake the clock with `vi.useFakeTimers()` and `vi.setSystemTime`, or
@@ -1003,6 +1072,7 @@ hop, and type-only imports do not count.
 - `vitest/no-conditional-expect` (from the vitest recommended set) reports an `expect` inside a `catch` or a branch; the message adds that a test asserts a failure with `expect(() => run()).toThrow(Specific)` or `await expect(promise).rejects.toThrow(Specific)`.
 - `vitest/no-conditional-in-test` is enabled for test files: no `if`, ternary or `&&`/`||` branching
   inside a test body. Give each outcome its own `it.each` table row instead of branching on it.
+  Assertions inside loops are `nitpicker/no-assertion-in-loop`.
 - The vitest config nitpicker runs tests with (`defaults/vitest.quality.config.ts`, used for
   coverage and mutation) sets `restoreMocks: true`, so a `vi.spyOn` spy is restored after every test
   even when an assertion fails, and cannot leak into the next test. It also overrides a

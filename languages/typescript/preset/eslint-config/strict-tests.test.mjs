@@ -49,11 +49,12 @@ describe('strict test rules', () => {
   });
 
   it('apply to test files under the test roots and next to sources', () => {
-    for (const file of ['test/a.test.ts', 'tests/unit/a.spec.ts', 'src/a.test.ts']) {
-      expect(messages(raisedTimeout, file)).toEqual([
+    const files = ['test/a.test.ts', 'tests/unit/a.spec.ts', 'src/a.test.ts'];
+    expect(files.map((file) => messages(raisedTimeout, file))).toEqual(
+      files.map(() => [
         'Keep the test timeout between 1 and 10000 ms for this test project. Make the test faster or configure its named project timeout in tools.tests.timeouts.',
-      ]);
-    }
+      ]),
+    );
     expect(messages(raisedTimeout, 'src/__tests__/helpers.ts')).toHaveLength(1);
   });
 
@@ -87,9 +88,8 @@ describe('strict test rules', () => {
     ['as', 'export const name = lookup() as string;', asMessage],
     ['<Type>', 'export const name = <string>lookup();', angleMessage],
   ])('ban %s in test files and name the allowed form', (_name, code, message) => {
-    for (const file of ['test/a.test.ts', 'src/a.spec.ts', 'tests/support/helpers.ts']) {
-      expect(messages(code, file)).toEqual([message]);
-    }
+    const files = ['test/a.test.ts', 'src/a.spec.ts', 'tests/support/helpers.ts'];
+    expect(files.map((file) => messages(code, file))).toEqual(files.map(() => [message]));
   });
 
   it('allow for...of, async/await and as const in test files', () => {
@@ -98,9 +98,7 @@ describe('strict test rules', () => {
       "it('x', async () => { await run(); });",
       "export const modes = ['a', 'b'] as const;",
     ];
-    for (const code of allowed) {
-      expect(messages(code, 'test/a.test.ts')).toEqual([]);
-    }
+    expect(allowed.map((code) => messages(code, 'test/a.test.ts'))).toEqual(allowed.map(() => []));
   });
 
   it('follow the layout test roots', () => {
@@ -119,10 +117,10 @@ describe('strict test rules', () => {
     const presetRules = strictPresetConfig(resolveLayout(), {}).flatMap((entry) =>
       Object.keys(entry.rules ?? {}),
     );
-    for (const rule of Object.keys({ ...strictTestRules, ...strictTestHelperRules })) {
-      expect(presetRules).toContain(rule);
-      expect(isStrictRule(rule)).toBe(true);
-    }
+    const testRules = Object.keys({ ...strictTestRules, ...strictTestHelperRules });
+    expect(testRules).not.toHaveLength(0);
+    expect(testRules.filter((rule) => !presetRules.includes(rule))).toEqual([]);
+    expect(testRules.filter((rule) => !isStrictRule(rule))).toEqual([]);
   });
 
   it('keeps declaration ceilings separate from resolved runtime deadlines', () => {
