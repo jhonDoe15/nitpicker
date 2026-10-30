@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { createScripts } from '../../test-support/python-script-helpers.mjs';
-import { FAN_OUT_SEPARATOR as S } from '../../hints/ast-smells.mjs';
+import { FAN_OUT_SEPARATOR as S } from '../../hints/ast/ast-smells.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
 const { cleanup, outcomes, findingsOf } = createScripts();
