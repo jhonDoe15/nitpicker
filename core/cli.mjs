@@ -24,6 +24,7 @@ import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
 import { runGit } from './diff/git/repository/command.mjs';
 import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mjs';
+import { detachLocalGitVariables } from './diff/git/environment/local-variables.mjs';
 import path from 'node:path';
 import { clearDiffReports, absoluteTextReportPath } from './diff/reporting/reporters.mjs';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
@@ -35,15 +36,25 @@ import { writeGithubOutput } from './diff/reporting/github/emit.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
+import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 
 const CHECK_COMMANDS = { hygiene: runHygieneCli, history: runHistoryCli };
 
 export function runCli(options = {}) {
+  detachLocalGitVariables(process.env);
   const cli = withCliDefaults(options);
   const checkCommand = CHECK_COMMANDS[cli.arguments_[0]];
   if (checkCommand !== undefined) {
     return checkCommand({
+      commandArguments: cli.arguments_.slice(1),
+      stdout: cli.stdout,
+      stderr: cli.stderr,
+      environment: cli.environment,
+    });
+  }
+  if (cli.arguments_[0] === GO_ANALYZER_COMMAND) {
+    return runGoCli({
       commandArguments: cli.arguments_.slice(1),
       stdout: cli.stdout,
       stderr: cli.stderr,

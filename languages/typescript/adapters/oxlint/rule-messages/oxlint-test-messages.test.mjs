@@ -34,6 +34,7 @@ const SOURCES = {
     "it('timers', () => { vi.useFakeTimers(); expect(run()).toBe(1); });",
     "it('stub', () => { vi.stubGlobal('fetch', run); expect(run()).toBe(1); });",
     "it.fails('known bug', () => { expect(run()).toBe(2); });",
+    "it('loop', () => { for (const order of orders) { expect(order.paid).toBe(true); } });",
     '',
   ].join('\n'),
   'test/clock.test.ts': "it('clock', () => { expect(run(Date.now())).toBe(Math.random()); });\n",
@@ -69,6 +70,9 @@ beforeAll(() => {
 afterAll(() => {
   rmSync(root, { recursive: true, force: true });
 });
+
+const ALLOWED_LOOP_MESSAGE =
+  'This assertion sits in a `for...of` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.';
 
 const routed = (message, rule, file) =>
   `${message} If this is intended, add {"rule":"${rule}","paths":["${file}"],"reason":"..."} to "exceptions" in nitpicker.config.json.`;
@@ -138,6 +142,7 @@ describe('test rule messages under the oxlint engine', () => {
           'nitpicker/fake-timers-require-restore',
           'This stubbed global stays stubbed for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllGlobals(); });`, or stub it once in a setup file.',
         ],
+        ['test/a.test.ts', 12, 'nitpicker/no-assertion-in-loop', ALLOWED_LOOP_MESSAGE],
         [
           'test/clock.test.ts',
           1,
