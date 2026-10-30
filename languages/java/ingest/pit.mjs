@@ -46,10 +46,10 @@ function groupMutants(mutants, resolvePath) {
       continue;
     }
     const key = [
-      simpleClassName(mutant.className),
-      `${mutant.method}${simpleDescriptor(mutant.methodDescription)}`,
+      withoutSyntheticNumbers(simpleClassName(mutant.className)),
+      `${withoutSyntheticNumbers(mutant.method)}${simpleDescriptor(mutant.methodDescription)}`,
       mutator(mutant.mutator),
-      withoutPackages(mutant.description),
+      withoutSyntheticNumbers(withoutPackages(mutant.description)),
     ].join('|');
     const groupKey = `${status}\0${filePath}\0${key}`;
     const group = groups.get(groupKey) ?? [];
@@ -108,6 +108,10 @@ function simpleDescriptor(descriptor) {
 
 function withoutPackages(text) {
   return text.replaceAll(/(?:[\w$]+\/)+([\w$]+)/g, '$1');
+}
+
+function withoutSyntheticNumbers(name) {
+  return name.replaceAll(/\$\d+(?!\w)/gu, '');
 }
 
 function mutator(qualifiedName) {
