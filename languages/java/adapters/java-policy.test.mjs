@@ -202,13 +202,14 @@ describe('the baseline moves file', () => {
     ).not.toHaveProperty('baselineMovesFile');
   });
 
-  it('rejects the option without an existing file', () => {
-    for (const rest of [[], ['/missing/moves.json'], [tmpdir()]]) {
+  it.each([[[]], [['/missing/moves.json']], [[tmpdir()]]])(
+    'rejects the option without an existing file (%j)',
+    (rest) => {
       expect(() =>
         parseJavaRunnerArguments(['--project-root', '/p', '--baseline-moves-file', ...rest]),
       ).toThrow('--baseline-moves-file must be a file');
-    }
-  });
+    },
+  );
 });
 
 describe('project tool configs', () => {
