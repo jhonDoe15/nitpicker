@@ -76,8 +76,10 @@ describe('python quick mode', () => {
     const tools = new Set(findings.map(({ tool }) => tool));
     expect(tools.has('ruff')).toBe(true);
     expect(findings.map(({ rule }) => rule)).not.toContain('no-tests-ran');
-    for (const tool of ['coverage-py', 'coverage', 'crap', 'tests', 'test-runtime']) {
-      expect(tools.has(tool)).toBe(false);
-    }
+    expect(
+      ['coverage-py', 'coverage', 'crap', 'tests', 'test-runtime'].filter((tool) =>
+        tools.has(tool),
+      ),
+    ).toEqual([]);
   });
 });
