@@ -385,10 +385,7 @@ describe('describePolicyChanges', () => {
     expect(script(['project'], ['project', 'nitpicker'])).toEqual([]);
     expect(script(['project', 'nitpicker'], ['nitpicker', 'project'])).toEqual([]);
     expect(
-      loosened(
-        { tools: { 'dependency-cruiser': { precedence: ['nitpicker'] } } },
-        { tools: { 'dependency-cruiser': { precedence: ['nitpicker', 'project'] } } },
-      ),
+      precedence('dependency-cruiser', ['nitpicker'], ['nitpicker', 'project'], 'typescript'),
     ).toHaveLength(1);
     expect(precedence('checkstyle', ['project'], ['nitpicker'])).toEqual([]);
     expect(precedence('checkstyle', ['nitpicker'], ['project'])).toEqual([
