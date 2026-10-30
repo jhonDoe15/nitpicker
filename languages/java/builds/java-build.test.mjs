@@ -74,7 +74,13 @@ describe('readPinnedTools', () => {
 describe('readPitMutators', () => {
   it('reads the PIT mutators listed in the Gradle init script', () => {
     expect(readPitMutators()).toEqual([
-      ...['INVERT_NEGS', 'MATH', 'VOID_METHOD_CALLS', 'NEGATE_CONDITIONALS', 'CONDITIONALS_BOUNDARY'],
+      ...[
+        'INVERT_NEGS',
+        'MATH',
+        'VOID_METHOD_CALLS',
+        'NEGATE_CONDITIONALS',
+        'CONDITIONALS_BOUNDARY',
+      ],
       ...['INCREMENTS', 'TRUE_RETURNS', 'FALSE_RETURNS', 'PRIMITIVE_RETURNS', 'EMPTY_RETURNS'],
       ...['NULL_RETURNS', 'REMOVE_CONDITIONALS', 'EXPERIMENTAL_SWITCH', 'REMOVE_SWITCH'],
       ...['REMOVE_INCREMENTS', 'EXPERIMENTAL_NAKED_RECEIVER', 'EXPERIMENTAL_MEMBER_VARIABLE'],
@@ -85,8 +91,6 @@ describe('readPitMutators', () => {
   it('fails when the init script lists no mutators', () => {
     const script = path.join(project({ 'init.gradle': 'def other = 1\n' }), 'init.gradle');
 
-    expect(() => readPitMutators(script)).toThrow(
-      new Error(`No PIT mutators found in ${script}`),
-    );
+    expect(() => readPitMutators(script)).toThrow(new Error(`No PIT mutators found in ${script}`));
   });
 });
