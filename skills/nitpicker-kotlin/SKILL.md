@@ -85,6 +85,9 @@ Before you change code other modules use, or fix a bug, read
   `of` or `from` are fine.
 - A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
+- A validation annotation on a constructor property takes the field target:
+  `data class OrderRequest(@field:NotBlank val item: String)`, not `@NotBlank val item`, which
+  lands on the constructor parameter where `@Valid` never looks (`pmd/ValidationAnnotationTarget`).
 - In main code, nothing with an outside effect runs while a file, `object`, companion object or
   enum class loads (`pmd/ClassLoadEffect`): no connection, request, file access, pool, timer,
   coroutine launch or JVM-wide setting in a top-level property, an `object`'s properties or `init`,
