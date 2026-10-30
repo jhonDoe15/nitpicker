@@ -24,16 +24,18 @@ export function readPinnedTools(initScript = INIT_SCRIPT) {
   return pinned;
 }
 
-const PIT_MUTATOR_LIST = /^(?:\s*'[A-Z_]+'\s*,)*\s*'[A-Z_]+'\s*,?\s*$/u;
+const PIT_MUTATOR = /^'[A-Z_]+'$/u;
 
 export function readPitMutators(initScript = INIT_SCRIPT) {
   const block = /def pitMutators = \[([^\]]*)\]/u.exec(readFileSync(initScript, 'utf8'));
-  if (block === null || !PIT_MUTATOR_LIST.test(block[1])) {
+  const entries = (block?.[1] ?? '').split(',').map((entry) => entry.trim());
+  const names = entries.at(-1) === '' ? entries.slice(0, -1) : entries;
+  if (names.length === 0 || !names.every((name) => PIT_MUTATOR.test(name))) {
     throw new Error(
       `No PIT mutators found in ${initScript}: list them as quoted names in def pitMutators`,
     );
   }
-  return [...block[1].matchAll(/'(\w+)'/gu)].map(([, name]) => name);
+  return names.map((name) => name.slice(1, -1));
 }
 
 export function detectJavaBuild(projectRoot) {
