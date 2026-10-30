@@ -413,7 +413,10 @@ describe('mutation type-check config', () => {
     });
 
     expect(stryker(projectRoot)).toEqual({
-      config: { extends: './tsconfig.json', compilerOptions: { skipLibCheck: true } },
+      config: {
+        extends: './tsconfig.json',
+        compilerOptions: { noCheck: false, skipLibCheck: true },
+      },
       baselineErrors: false,
     });
   });
@@ -425,7 +428,10 @@ describe('mutation type-check config', () => {
       'src/first.ts': "export const legacy: number = 'oops';\n",
     });
     expect(stryker(projectRoot)).toEqual({
-      config: { extends: './tsconfig.json', compilerOptions: { skipLibCheck: true } },
+      config: {
+        extends: './tsconfig.json',
+        compilerOptions: { noCheck: false, skipLibCheck: true },
+      },
       baselineErrors: true,
     });
   });

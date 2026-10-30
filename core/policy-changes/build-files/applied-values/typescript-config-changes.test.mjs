@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { between, changesOf } from './test-support/policy-fixtures.mjs';
+import { between, changesOf } from '../test-support/policy-fixtures.mjs';
 
 const PROJECT = { precedence: ['project', 'nitpicker'] };
 const NONE = { policyLoosenings: [], policyChanges: [] };
@@ -132,15 +132,15 @@ describe('the TypeScript compiler options the project opted into', () => {
       'packages/app/src/a.ts': 'export const a = 1;\n',
     });
     const config = { tools: { typescript: PROJECT } };
-    const directory = 'packages/app';
+    const folder = 'packages/app';
 
     const loosening = 'typescript tsconfig.json noUncheckedIndexedAccess: true -> false';
 
     expect(
-      changesOf(between({ base: monorepo(STRICT), head: monorepo(RELAXED), config, directory })),
+      changesOf(between({ base: monorepo(STRICT), head: monorepo(RELAXED), config, folder })),
     ).toEqual({ policyLoosenings: [loosening], policyChanges: [loosening] });
     expect(
-      changesOf(between({ base: monorepo(STRICT), head: monorepo(STRICT), config, directory })),
+      changesOf(between({ base: monorepo(STRICT), head: monorepo(STRICT), config, folder })),
     ).toEqual(NONE);
   });
 

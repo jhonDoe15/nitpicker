@@ -9,6 +9,7 @@ import {
   JAVASCRIPT_CONVENTIONS,
   TYPESCRIPT_CONVENTIONS,
 } from '../../languages/typescript/conventions/typescript-conventions.mjs';
+import { eslintConfigStyle } from '../../languages/typescript/preset/eslint-project/eslint-style.mjs';
 import {
   strykerIgnoredNotices,
   typescriptIgnoredNotices,
@@ -44,8 +45,8 @@ const scriptStyle = noticeStyle((context) => [
 ]);
 
 const STYLES_BY_PRESET = new Map([
-  ['typescript', [scriptStyle, jscpdStyle]],
-  ['javascript', [scriptStyle, jscpdStyle]],
+  ['typescript', [scriptStyle, eslintConfigStyle, jscpdStyle]],
+  ['javascript', [scriptStyle, eslintConfigStyle, jscpdStyle]],
   ['java', [javaProjectStyle, jscpdStyle]],
   ['kotlin', [javaProjectStyle, kotlinStyle, jscpdStyle]],
   ['python', [pythonStyle, jscpdStyle]],
