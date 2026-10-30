@@ -279,7 +279,9 @@ The formatter is `black` when `pyproject.toml`, `setup.cfg`, `tox.ini`, `Pipfile
 `[tool.black]` table, `black` as a dependency (a requirements line, a poetry key or an entry of any
 TOML dependency array), a `tox` command, or the `psf/black` or `black-pre-commit-mirror` repository
 or the `black` hook id, and none of them configures ruff's formatter (`[tool.ruff.format]`, a
-`[format]` table in `ruff.toml`, the `ruff-format` hook).
+`[format]` table in `ruff.toml`, the `ruff-format` hook). The choice is read from the head checkout
+for both snapshots, so a change that switches formatter is checked against a merge base formatted
+the same way, and only the files it touches can fail.
 
 **The format check follows the project's code, not its formatter config.** A project whose
 `[tool.ruff]`, `ruff.toml` or `[tool.black]` set the line length, quote style or indentation is
@@ -626,7 +628,8 @@ are listed at the end.
 | Defaulting parameters    | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                      | `falsy-default` (script)                                                                                                                             |
 | Changing an argument     | build and return a new value, or copy the argument first                                                                                                                             | `parameter-mutation` (script)                                                                                                                        |
 | Compatibility shims      | change every caller in the same change and delete the old name                                                                                                                       | `compatibility-shim` (script)                                                                                                                        |
-| Input or output per item | one batch call, or `asyncio.gather`                                                                                                                                                  | `io-in-loop` (script)                                                                                                                                |
+| Input or output per item | one batch call, or `asyncio.gather` bounded by a shared `asyncio.Semaphore`                                                                                                          | `io-in-loop` (script)                                                                                                                                |
+| Concurrent remote calls  | `asyncio.Semaphore` acquired in the task, or chunks of fixed size, or one batch call                                                                                                 | `unbounded-fan-out` (script)                                                                                                                         |
 | Task lifetimes           | open the resource around the whole task group, or inside the child; await the task first                                                                                             | `task-outlives-resource` (script)                                                                                                                    |
 | Trio/AnyIO cleanup       | `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()`                                                                                      | `unshielded-cleanup-await` (script)                                                                                                                  |
 | Task markers             | `# TODO(#123): ...` with an issue                                                                                                                                                    | `todo-without-issue` (script)                                                                                                                        |
@@ -935,8 +938,40 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `secret-in-log` reports such a name passed to a logger call. Placeholders, environment variable
   names, header names and URLs are not secrets.
 - `io-in-loop` reports an HTTP, database or repository call once per item of a `for`, `while` or
-  comprehension; `asyncio.gather` over a comprehension, a paging loop (the condition reads a
-  variable the body assigns) and a retry (a `try` in the loop that returns on success) are not.
+  comprehension; `asyncio.gather` over a comprehension, a call that `unbounded-fan-out` reports
+  at the same site (so one remote call has one owner), a worker task started once per slot of a
+  count (`for _ in range(workers)`), a paging loop (the condition reads a variable the body
+  assigns) and a retry (a `try` in the loop that returns on success) are not. A remote call in a
+  task that is bounded or awaited one at a time keeps this finding, with the batching remedy.
+- `unbounded-fan-out` reports `asyncio.gather`, `asyncio.wait` and `asyncio.as_completed` over a
+  generator, a list comprehension, `map(f, xs)`, a name bound to one, or a list filled by
+  `append` in a `for` loop, and `asyncio.create_task`, `ensure_future`, `tg.create_task` and
+  `nursery.start_soon` inside a loop or comprehension, when the coroutine makes a remote call
+  (`requests`, `httpx`, `aiohttp`, `urllib3`, `urllib.request.urlopen`, `boto3` clients, OpenAI and
+  Anthropic clients) or publishes to a broker (`aiokafka`, `kafka`, `confluent_kafka`, `pika`,
+  `aio_pika`, `redis` `publish`, `nats`, Pub/Sub, `paho.mqtt`, SQS, SNS, EventBridge and Kinesis
+  through `boto3`) and runs over a collection that is not fixed. The client factories are the ones
+  `io-in-loop` uses, from one table. The coroutine is resolved when it is a client call, a nested
+  or module-level `async def` of the project, a method of the same class or an imported project
+  function, up to three calls deep. A client is recognized from its factory (`httpx.AsyncClient()`
+  in an assignment or `async with`, also `self.x`), or from a parameter, `self` attribute or
+  variable annotated with the library type. Database calls are the business of `io-in-loop`.
+  Allowed: an `asyncio.Semaphore`, `BoundedSemaphore`, `Lock`, anyio or trio `CapacityLimiter` or
+  `Semaphore`, `aiolimiter.AsyncLimiter` created outside the task and entered in the task body
+  (`async with limit:`); a parameter annotated with one of those types, or one the caller passes a
+  limiter it created; a parameter or imported name whose name ends in `sem`, `semaphore`, `limit`,
+  `limiter`, `throttle`, `throttler`, `capacity` or `gate`; an `await gate.acquire()` on such a
+  limiter or a `gather` that drains a window inside the loop; a literal or constant collection,
+  the members of an `Enum` class of the project, a slice or `islice` with an explicit size, and
+  chunks from `batched`, `chunked`, `chunks` or `partition_all` with a size. A worker pool is
+  bounded by its count: `range(workers)` and `range(3)` pass, while `range(len(xs))` stays a
+  fan-out over `xs`. A semaphore created inside the task, or a limit constant that nothing
+  acquires, bounds nothing. `asyncio.to_thread` and `loop.run_in_executor(None, ...)` run on the
+  default thread pool, which has a fixed size, so they are not reported. Test files are exempt.
+  Limits: an unannotated `client` parameter, a callable wrapped in `functools.partial` and a
+  library outside the list are not recognized, a limiter is recognized from an unannotated
+  parameter or import by its name only, and a collection that is small in practice but not by
+  construction is reported; lift such a path with a `python.exceptions` entry.
 - `task-outlives-resource` reports a resource that a `with` or `async with` opened inside a task
   group closes while a child task can still use it. Task groups are `trio.open_nursery()`,
   `anyio.create_task_group()` and `asyncio.TaskGroup()` (also through import aliases and a group

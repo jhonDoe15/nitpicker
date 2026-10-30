@@ -7,7 +7,7 @@ import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 const root = PACKAGE_ROOT;
 
 const TEST_ONLY_PATH =
-  /(?:^|\/)(?:fixtures|test-support|__tests__|__pycache__)\/|\.test\.mjs$|\.pyc$/u;
+  /(?:^|\/)(?:fixtures|test-support|__tests__|__pycache__)\/|\.test\.mjs$|_test\.go$|\.pyc$/u;
 const GENERATOR_ONLY_PATH = new RegExp(
   [
     '^core/reference/',
@@ -71,7 +71,7 @@ describe('npm package contents', () => {
       assertRuntimeFiles(files);
     }).toThrow('missing runtime file');
   });
-  it('classifies test-only paths, generator-only reference sources and Python bytecode by folder and file name', () => {
+  it('classifies test-only paths, Go test files, generator-only reference sources and Python bytecode by folder and file name', () => {
     expect(
       [
         'core/cli.mjs',
@@ -92,6 +92,8 @@ describe('npm package contents', () => {
         'languages/typescript/reference/eslint-inventory.json',
         'languages/python/ruff/ruff-rules.json',
         'languages/java/reference/kotlin/detekt-default-rules.json',
+        'languages/go/inspect/inspect_test.go',
+        'languages/go/inspect/body.go',
       ].filter(isNotShipped),
     ).toEqual([
       'core/cli.test.mjs',
@@ -107,6 +109,7 @@ describe('npm package contents', () => {
       'languages/typescript/reference/eslint-inventory.json',
       'languages/python/ruff/ruff-rules.json',
       'languages/java/reference/kotlin/detekt-default-rules.json',
+      'languages/go/inspect/inspect_test.go',
     ]);
   });
   it('ships the complete runtime tree without tests, fixtures, test support, bytecode or the lockfile', () => {
@@ -128,6 +131,8 @@ describe('npm package contents', () => {
     expect(packedFiles.has('languages/java/gradle/pmd-ruleset.xml')).toBe(true);
     expect(packedFiles.has('shared/reference/rules/java-pmd.json')).toBe(true);
     expect(packedFiles.has('core/command/reference/reference.mjs')).toBe(true);
+    expect(packedFiles.has('languages/go/inspect/go.mod')).toBe(true);
+    expect(packedFiles.has('languages/go/inspect/main.go')).toBe(true);
     expect(
       [...packedFiles].filter((file) => isNotShipped(file) || file === 'package-lock.json'),
     ).toEqual([]);
