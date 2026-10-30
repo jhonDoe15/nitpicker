@@ -13,16 +13,17 @@ describe('repository JVM suite deadlines', () => {
       const files = Object.keys(
         JSON.parse(readFileSync(new URL(`./${language}-e2e.json`, import.meta.url), 'utf8')),
       );
-      for (const file of files) {
-        expect(resolveTestTimeouts(config, { file })).toEqual({
+      expect(files).not.toHaveLength(0);
+      expect(files.map((file) => resolveTestTimeouts(config, { file }))).toEqual(
+        files.map(() => ({
           project: `${language}-e2e`,
           language,
           testTimeoutMs: 180_000,
           testDeclarationCeilingMs: 180_000,
           hookTimeoutMs: language === 'java' ? 300_000 : 180_000,
           hookDeclarationCeilingMs: language === 'java' ? 300_000 : 180_000,
-        });
-      }
+        })),
+      );
     },
   );
   it('keeps ordinary checks strict without turning the JVM rule off', () => {
