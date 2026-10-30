@@ -277,7 +277,9 @@ The formatter is `black` when `pyproject.toml`, `setup.cfg`, `tox.ini`, `Pipfile
 `[tool.black]` table, `black` as a dependency (a requirements line, a poetry key or an entry of any
 TOML dependency array), a `tox` command, or the `psf/black` or `black-pre-commit-mirror` repository
 or the `black` hook id, and none of them configures ruff's formatter (`[tool.ruff.format]`, a
-`[format]` table in `ruff.toml`, the `ruff-format` hook).
+`[format]` table in `ruff.toml`, the `ruff-format` hook). The choice is read from the head checkout
+for both snapshots, so a change that switches formatter is checked against a merge base formatted
+the same way, and only the files it touches can fail.
 
 **The format check follows the project's code, not its formatter config.** A project whose
 `[tool.ruff]`, `ruff.toml` or `[tool.black]` set the line length, quote style or indentation is

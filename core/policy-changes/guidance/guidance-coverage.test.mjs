@@ -168,6 +168,10 @@ const FIXTURES = {
     synthetic({ preset: 'kotlin' }, { preset: 'kotlin', kotlin: { formatter: 'none' } }),
   'kotlin-detekt-config': () =>
     synthetic({ preset: 'kotlin' }, { preset: 'kotlin', kotlin: { detektConfig: 'detekt.yml' } }),
+  'go-formatters-dropped': () =>
+    synthetic({ preset: 'go', go: { formatters: ['gofumpt'] } }, { preset: 'go' }),
+  'go-build-tags-dropped': () =>
+    synthetic({ preset: 'go', go: { buildTags: ['integration'] } }, { preset: 'go' }),
   'tool-precedence': () => synthetic({}, { tools: { prettier: PROJECT } }),
   'spring-roles-shrank': () =>
     synthetic(
