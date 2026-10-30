@@ -461,12 +461,12 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(versions['eslint-lint']).toBe(
           expectedEslintVersion(manifest.devDependencies.typescript),
         );
-        for (const peer of ['typescript', 'vitest', '@vitest/coverage-v8']) {
-          const installed = JSON.parse(
-            readFileSync(path.join(root, 'node_modules', peer, 'package.json')),
-          );
-          expect(installed.version).toBe(manifest.devDependencies[peer]);
-        }
+        const peers = ['typescript', 'vitest', '@vitest/coverage-v8'];
+        const installedVersions = peers.map(
+          (peer) =>
+            JSON.parse(readFileSync(path.join(root, 'node_modules', peer, 'package.json'))).version,
+        );
+        expect(installedVersions).toEqual(peers.map((peer) => manifest.devDependencies[peer]));
       });
       it('keeps the policy hash stable across two runs', () => {
         expect(second.status, second.output).toBe(1);
