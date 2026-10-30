@@ -6,6 +6,7 @@ import { runCli as nitpickerCli } from '../../cli.mjs';
 import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
 import {
+  unusedFieldConsoleEntry,
   unusedFieldMessage,
   useGradleFixtures,
   useMavenFixtures,
@@ -46,8 +47,7 @@ const addedFieldOutput = expect.stringMatching(exactText`Base: comparison-base (
 
 Quality gate summary
 ✖ 1 new enforceable violation
-  pmd/UnusedPrivateField src/main/java/demo/A.java:4
-    ${addedField}
+${unusedFieldConsoleEntry('added', 4)}
 Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `);
 
@@ -200,8 +200,8 @@ describe.each([
 
 Quality gate summary
 ✖ 1 new enforceable violation
-  duplicates/duplicate-clone src/main/java/demo/First.java:3
-    ${CLONE_MESSAGE}
+  duplicates/duplicate-clone: ${CLONE_MESSAGE}
+    src/main/java/demo/First.java:3
 Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     });
