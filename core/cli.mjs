@@ -4,7 +4,7 @@ import { reportingProgress } from './diff/execution/progress.mjs';
 import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
 import { runBaseCommand } from './command/base.mjs';
-import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
+import { parseArguments } from './command/arguments.mjs';
 import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
 import { realpathSync } from 'node:fs';
 import {
@@ -35,7 +35,7 @@ import { writeGithubOutput } from './diff/reporting/github/emit.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
-import { packageVersion } from './help/package-version.mjs';
+import { printedInformation } from './help/printed-information.mjs';
 import { runInitCommand } from './init/run-init.mjs';
 import { javascriptPresetHint } from './configuration/project-checks/preset-detection.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
@@ -114,15 +114,7 @@ function runCommand(cli) {
     return runBaseCommand({ ...cli, arguments_: cli.arguments_.slice(1) });
   }
   const options = parseArguments(cli.arguments_);
-  if (options.help) {
-    cli.stdout.write(USAGE_TEXT);
-    return 0;
-  }
-  if (options.version) {
-    cli.stdout.write(`${packageVersion()}\n`);
-    return 0;
-  }
-  return runConfigured({ ...cli, options });
+  return printedInformation(options, cli.stdout) ? 0 : runConfigured({ ...cli, options });
 }
 
 function writePresetHint(stderr, config, projectRoot) {

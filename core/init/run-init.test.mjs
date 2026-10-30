@@ -48,7 +48,7 @@ const YARN_WORKFLOW = [
   '        with:',
   "          node-version: ''",
   '          install-command: none',
-  `          accept-policy-change: ${'$'}{{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}`,
+  '          accept-policy-change: ${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}',
   '',
 ].join('\n');
 
