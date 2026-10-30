@@ -394,6 +394,23 @@ describe('describePolicyChanges', () => {
     ]);
   });
 
+  it('counts any ESLint opt-in that lists the project, since its ignores apply with nitpicker first too', () => {
+    const eslint = (before, after) =>
+      loosened(
+        { tools: { eslint: { precedence: before } } },
+        { tools: { eslint: { precedence: after } } },
+      );
+
+    expect(eslint(['nitpicker'], ['nitpicker', 'project'])).toEqual([
+      'tools.eslint.precedence: ["nitpicker"] -> ["nitpicker","project"]',
+    ]);
+    expect(eslint(['nitpicker', 'project'], ['project'])).toEqual([
+      'tools.eslint.precedence: ["nitpicker","project"] -> ["project"]',
+    ]);
+    expect(eslint(['project'], ['project', 'nitpicker'])).toEqual([]);
+    expect(eslint(['project', 'nitpicker'], ['nitpicker', 'project'])).toEqual([]);
+  });
+
   it('counts python and kotlin switches that turn a check off, not a swapped tool', () => {
     expect(
       changes(
