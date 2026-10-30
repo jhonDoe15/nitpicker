@@ -1804,6 +1804,40 @@ EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` fold
   or `UploadFile`; Flask: `python-dotenv`; pydantic: `email-validator` with `EmailStr`); dynamic or `setup.py`-only
   dependencies switch the checks off. On Python before 3.10 the checks are one
   `dependencies/tool-skipped` tool error and the other analyzers still run.
+- **Unresolved imports.** `dependencies/unresolved-import` (`imports/unresolved-imports.mjs`), worded
+  like the TypeScript (knip) finding, in production modules and in the test files pytest collects
+  (`test_*.py`, `*_test.py`, `conftest.py`, `tests.py`, not under a `fixtures`, `data`, `testdata`,
+  `test_data`, `outputs`, `samples`, `resources` or `snapshots` folder). Files a tool outside the
+  environment runs are left out: `conf.py` anywhere, and `setup.py`, `noxfile.py`, `fabfile.py`,
+  `dodo.py`, `pavement.py`, `hatch_build.py`, `build.py` and `tasks.py` at the project root.
+  - An absolute import is unresolved when its top-level name is not in the standard library, not
+    provided by an installed distribution, not found by `importlib.util.find_spec` in the
+    environment (editable installs, `.pth` paths), not the name of a folder or `.py` file of the
+    project, not a module file (`.so`, `.pyx`, ...) in the importing file's folder or a folder
+    above it, and not a declared or `build-system` requirement. A requirement matches by name
+    (`markdown_it` matches `markdown-it-py`, `dateutil` matches `python-dateutil`, `environ`
+    matches `django-environ`) or by a table of known import names (`PIL`, `cv2`, `sklearn`,
+    `yaml`, `bs4`, `win32api` and the other pywin32 modules, the pyobjc frameworks, ...). When the
+    environment has no distribution installed at all, this half is off.
+  - Under a regular package of the project (one with `__init__.py`, in any source root), and for
+    a relative import from the importing file's folder, each dotted part must exist on disk: a
+    folder, or for the last part a module file (`.py`, `.pyi`, `.pyx`, `.so`, `.pyd`, ...).
+    `from pkg import name` checks `pkg` only, since `name` can be an attribute. A relative import
+    that climbs to or above the project root is left to Python. Trusted: a package whose
+    `__init__.py` or any module touches `__path__`, `sys.modules` or `declare_namespace`;
+    generated modules (`_version`, `__version__`, `version`, `*_pb2`, `*_pb2_grpc`); and a
+    missing last part when the project builds compiled extensions (`meson-python`,
+    `scikit-build-core`, `maturin`, `setuptools-rust`, `pybind11`, `nanobind`, `cython` or `cffi`
+    in `build-system.requires`, or a root `meson.build`, `CMakeLists.txt` or `Cargo.toml`).
+  - Not checked: imports under `if TYPE_CHECKING:`; in a `try` that catches `ImportError`,
+    `ModuleNotFoundError`, `Exception` or everything (its body and handlers); in the `else` of any
+    `try`; under `with suppress(ImportError)`; under an `if` that tests the environment (`sys.*`,
+    `os.name`, `os.environ`, `getenv`, `platform`, `version_info`, `find_spec`, an all-caps flag
+    such as `PY2` or `_HAS_NUMPY`, a name assigned from one of those, or a name a guarded `try`
+    binds by import or to a constant, such as `has_simplejson`); and function-local imports in
+    test files (tests that write a module and then import it).
+  - mypy and pyright report missing imports too, but a project's `ignore_missing_imports`
+    silences them; TypeScript likewise reports both `tsc` and knip.
 - **Frameworks.** Django, FastAPI and Flask are detected from the dependencies or the production
   imports (`dependencies/python-frameworks.mjs`). Django settings modules (named `settings`, or
   named by `DJANGO_SETTINGS_MODULE` in `manage.py`, `wsgi.py` or `asgi.py`) may read the
