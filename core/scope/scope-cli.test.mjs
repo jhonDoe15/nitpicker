@@ -347,6 +347,22 @@ describe('nitpicker with paths', () => {
     expect(fixed).toEqual(['./src/orders/order.ts']);
   });
 
+  it('refuses paths when the current folder is not in a repository', () => {
+    const repository = repositoryWithTwoFolders();
+    const outside = realpathSync(makeTemporaryRoot('nitpicker-no-repository-'));
+
+    const { exitCode, output } = runScoped({
+      repository,
+      arguments_: [path.join(repository.root, 'src/orders')],
+      workingDirectory: outside,
+    });
+
+    expect(exitCode).toBe(2);
+    expect(output.stderrText).toBe(
+      `nitpicker failed: ${outside} is not in a Git repository; run nitpicker from inside the repository\n`,
+    );
+  });
+
   it('refuses paths with --shard-count', () => {
     const repository = repositoryWithTwoFolders();
 
