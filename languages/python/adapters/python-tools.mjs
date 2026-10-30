@@ -18,7 +18,7 @@ import {
   importRoots,
 } from './execution/python-project.mjs';
 import { formatCommand, ruffExclusions } from './formatting/format-command.mjs';
-import { ruffConfigFor } from './configuration/python-ruff-config.mjs';
+import { ruffLintConfig } from './project-tools/ruff/ruff-lint-config.mjs';
 import { detectTestRunner, pytestLabel, testRunnerLabel } from './execution/python-test-runner.mjs';
 import { mutationRunnerLabels } from './mutation/test-run/python-mutation-runner.mjs';
 import { test } from './test-runs/test-step.mjs';
@@ -147,12 +147,15 @@ export function runPythonTools(context) {
 }
 
 export function lintOptions(context) {
+  const config = ruffLintConfig(context);
+  const style = pytestStyle(context.projectRoot, undefined, context.policyRoot);
   return [
     '--config',
-    ruffConfigFor(context),
-    '--target-version',
-    context.project.targetVersion,
-    ...pytestStyleFlags(pytestStyle(context.projectRoot)),
+    config.file,
+    ...(config.setsTargetVersion ? [] : ['--target-version', context.project.targetVersion]),
+    '--line-length',
+    config.lineLength,
+    ...pytestStyleFlags(style),
     '--ignore-noqa',
     '--no-cache',
     ...ruffExclusions(context),
