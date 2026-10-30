@@ -7,7 +7,8 @@ including modules that mix Java and Kotlin, with the same differential gate as t
 [Java preset](java-preset.md): run the tools on the merge base and on head, turn each report into
 findings, fail only on new enforceable findings. It is not a second implementation. It shares the
 Gradle init script, the runner, the ingesters, the failure policy and the cache with the Java
-preset, and adds Kotlin tools next to the Java ones.
+preset, and adds Kotlin tools next to the Java ones. The JDK and Gradle a CI job needs, and recipes for
+GitHub Actions, GitLab CI and Jenkins, are in [nitpicker in CI](ci.md#toolchains-by-preset).
 
 ## Selection
 
@@ -1154,6 +1155,13 @@ declarations only (data class fields, also with defaults that call a function, e
 clones that only repeat one or two statements (DTO mappers, `when` tables, `if` ladders). PMD CPD would not do this better: the
 `pmd-kotlin` lexer ignores the identifier and literal flags. The message names the same route as for
 any clone: add either file of the pair to `exclude`.
+
+The reuse rules `duplicate-definition`, `sibling-copy-edit` and `exported-name-collision` run on
+Kotlin and Java sources together, the way the Java preset runs them (see "Reuse rules" in
+`java-preset.md`): top-level functions and properties, the members of `object`s and companion
+objects, and top-level classes are compared within one Gradle module; an `import ... as` alias or a
+fully qualified name that keeps two different classes of one name apart is a collision, and same-named functions, which
+overload, are not.
 
 ## Coupling
 
