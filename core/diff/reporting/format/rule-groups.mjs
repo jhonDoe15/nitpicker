@@ -17,17 +17,10 @@ export function byFixOrder(left, right) {
 
 function byPosition(left, right) {
   return (
-    compareText(left.path, right.path) ||
+    Number(left.path > right.path) - Number(left.path < right.path) ||
     (left.location?.line ?? 0) - (right.location?.line ?? 0) ||
     (left.location?.column ?? 0) - (right.location?.column ?? 0)
   );
-}
-
-function compareText(left, right) {
-  if (left === right) {
-    return 0;
-  }
-  return left < right ? -1 : 1;
 }
 
 export function ruleGroupLines(findings, styleLabel) {
@@ -56,16 +49,20 @@ function groupLines(label, members) {
   const route = groupRoute(members, parts, differing);
   return [
     advice === '' ? `  ${label}` : `  ${label}: ${advice}`,
-    ...locationLines(members, details, parts, differing),
+    ...locationLines(
+      members,
+      details,
+      parts.map(({ entry }) => entryTags(entry, differing)),
+    ),
     ...(route === undefined ? [] : [`    ${route}`]),
   ];
 }
 
-function locationLines(members, details, parts, differing) {
+function locationLines(members, details, tags) {
   const rows = new Map();
   for (const [index, finding] of members.entries()) {
     const detail = details[index].join(' ');
-    const tag = entryTags(parts[index].entry, differing);
+    const tag = tags[index];
     const key = `${finding.path}\0${detail}\0${tag}`;
     const row = rows.get(key) ?? {
       path: finding.path,

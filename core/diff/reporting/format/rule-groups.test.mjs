@@ -217,7 +217,7 @@ describe('console summary grouped by rule', () => {
         message: 'Branch coverage is 0.00%.',
         entry: { rule: 'changed-branch-coverage', paths: ['src/x.ts'], function: name },
       });
-    const { location: _location, ...unplaced } = branch(1, 'total');
+    const unplaced = branch(undefined, 'total');
 
     expect(summaryLines([branch(9, 'price'), branch(3, 'price'), unplaced]).slice(3, -2)).toEqual([
       '  coverage/changed-branch-coverage: Branch coverage is 0.00%.',
@@ -244,7 +244,7 @@ describe('console summary grouped by rule', () => {
         line,
         message: 'Unused.',
       });
-    const { location: _location, ...unplaced } = dependency(1);
+    const unplaced = dependency(undefined);
 
     expect(summaryLines([dependency(1), dependency(1), unplaced]).slice(3, -2)).toEqual([
       '  dead-code/dependencies: Unused.',
