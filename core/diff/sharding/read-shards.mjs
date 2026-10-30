@@ -40,6 +40,27 @@ export function readAndValidateShard(inputRoot, index, expectedAnalyzers) {
   return report;
 }
 
+export function readUnchangedShards(inputRoot, shardCount) {
+  const shards = Array.from({ length: shardCount }, (_, index) => {
+    const shardRoot = path.join(inputRoot, String(index));
+    return {
+      summary: readJson(shardRoot, 'summary.json', index),
+      toolErrors: readJson(shardRoot, 'tool-errors.json', index),
+    };
+  });
+  if (!shards.some(({ summary }) => summary.noChanges === true)) {
+    return undefined;
+  }
+  validateCommonSummaries(shards);
+  const changed = shards.findIndex(({ summary }) => summary.noChanges !== true);
+  if (changed !== -1) {
+    throw new Error(
+      `Quality shard ${String(changed)} ran the analyzers, but another shard found no changes`,
+    );
+  }
+  return shards;
+}
+
 function readOptionalJson(root, fileName, shardIndex) {
   return existsSync(path.join(root, fileName)) ? readJson(root, fileName, shardIndex) : undefined;
 }

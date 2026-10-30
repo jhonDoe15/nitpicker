@@ -373,6 +373,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
     const binary = path.join(temporaryRoot('nitpicker-java-none-'), 'no-build-tool');
     build.missingBinary.stub(binary);
     const root = repository();
+    writeFiles(root, { 'notes.txt': 'edited\n' });
 
     const result = run(root);
 

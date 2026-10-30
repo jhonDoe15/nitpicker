@@ -19,6 +19,50 @@ const HELD_STRUCTURE_NOTE = [
 ].join(' ');
 
 describe('quality shard aggregation', () => {
+  it('reports no changes when the shards found nothing changed since the base', () => {
+    const fixture = createFixture();
+    const analyzers = [analyzer('first'), analyzer('second')];
+    for (const [index, elapsedMs] of [20, 30].entries()) {
+      writeShard(fixture.inputRoot, index, { tools: [], elapsedMs, carried: { noChanges: true } });
+    }
+
+    const report = aggregateShardReports({ ...fixture, analyzers, shardCount: 2 });
+
+    expect(report.summary).toEqual({
+      requestedBaseRef: 'origin/master',
+      resolvedBaseSha: 'base',
+      mergeBaseSha: 'merge-base',
+      headSha: 'head',
+      renamedPaths: 0,
+      policyHash: expect.any(String),
+      configOverrides: [],
+      policyChanges: [],
+      policyLoosenings: [],
+      policyChangeAccepted: false,
+      notices: [],
+      tools: [],
+      exclusions: ['generated/**'],
+      elapsedMs: 30,
+      overallStatus: 'completed',
+      newEnforceableFindings: 0,
+      noChanges: true,
+    });
+    expect(readJson(fixture.outputRoot, 'summary.json')).toEqual(report.summary);
+    expect(readJson(fixture.outputRoot, 'new-findings.json')).toEqual([]);
+  });
+  it('refuses to combine a no-change shard with a shard that ran its analyzers', () => {
+    const fixture = createFixture();
+    writeShard(fixture.inputRoot, 0, { tools: [], carried: { noChanges: true } });
+    writeShard(fixture.inputRoot, 1, { tools: ['second'] });
+
+    expect(() =>
+      aggregateShardReports({
+        ...fixture,
+        analyzers: [analyzer('first'), analyzer('second')],
+        shardCount: 2,
+      }),
+    ).toThrow('Quality shard 1 ran the analyzers, but another shard found no changes');
+  });
   it('merges complete shards into one ordered report and final gate', () => {
     const fixture = createFixture();
     const analyzers = [
