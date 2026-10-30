@@ -114,9 +114,10 @@ export function describePolicyChanges(baseConfig, headConfig, scope) {
 
 function evidenceDigest(loosened, scope) {
   const files = [...new Set(loosened.flatMap((entry) => entry.files))].toSorted();
+  const blobs = new Map(loosened.flatMap((entry) => Object.entries(entry.blobs ?? {})));
   return policyDigest({
     loosenings: loosened.map(({ key }) => key),
-    files: files.map((file) => [file, scope.blobOf(file)]),
+    files: files.map((file) => [file, blobs.get(file) ?? scope.blobOf(file)]),
   });
 }
 
