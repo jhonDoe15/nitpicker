@@ -13,7 +13,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
-import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
+import { analyzeWithIncludedBuild, GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
 import { pathsOutsideProject } from './test-support/project-paths.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -115,6 +115,24 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
     ]);
   });
 });
+
+describe.skipIf(!enabled)(
+  'a Gradle build whose plugins come from an included build-logic build and buildSrc',
+  () => {
+    it('leaves both plugin builds unconfigured and analyzes the root build', () => {
+      const result = analyzeWithIncludedBuild(
+        path.join(import.meta.dirname, '..', 'fixtures', 'build-logic-java'),
+        { gradle, policy: { preset: 'java' } },
+      );
+
+      expect([result.status, result.mutations], result.output).toEqual([0, []]);
+      expect(located(result.findings, 'pmd', 'UnusedPrivateField')).toEqual([
+        'src/main/java/demo/Counter.java',
+      ]);
+      expect(result.nested).toEqual([]);
+    }, 180_000);
+  },
+);
 
 describe.skipIf(!enabled)('Java coverage with architecture tests', () => {
   it('keeps merged execution data valid and counts only application tests toward coverage', () => {
