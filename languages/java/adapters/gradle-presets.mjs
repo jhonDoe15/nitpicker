@@ -10,6 +10,7 @@ export const BUILD_DECLARED_TOOLS = ['spotbugs'];
 const STYLE_TOOLS = new Map([
   ['python', ['ruff', 'black', 'pyright', 'mypy', 'mutmut']],
   ['kotlin', ['ktlint', 'ktfmt', 'detekt']],
+  ['go', ['gofumpt', 'goimports']],
 ]);
 
 export function styleToolsOf(preset) {

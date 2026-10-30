@@ -31,9 +31,10 @@ describe('jscpd clones', () => {
   });
 
   it('adds no prefix for the project root or several roots', () => {
-    for (const configured of [['.'], ['./'], ['a', 'b'], undefined]) {
-      expect(jscpdClones(report, configured)[0].second.file).toBe('app/b.py');
-    }
+    const configured = [['.'], ['./'], ['a', 'b'], undefined];
+    expect(configured.map((roots) => jscpdClones(report, roots)[0].second.file)).toEqual(
+      configured.map(() => 'app/b.py'),
+    );
   });
 
   it('carries the size and the cloned text', () => {
