@@ -61,6 +61,31 @@ The project is the nearest directory, up to the repository root, that holds a `p
 Java `service/`, runs nitpicker once in each directory, and each reads its own
 `nitpicker.config.json`. A Java project needs only that config file, no `package.json`.
 
+### One file or folder
+
+Pass files or folders to look at only part of the project:
+
+```sh
+npx nitpicker src/orders/order.ts    # gate your change to one file
+npx nitpicker --all src/orders       # every finding in one folder
+```
+
+Paths are read relative to the current folder, and the project is the one that holds the first
+path, so `npx nitpicker services/orders/src/main/java/Order.java` works from the repository top.
+All paths must be in that project. The analyzers still run over the whole project, so cross-file
+rules (dead code, unused exports, coupling, the type check, architecture) keep their full context
+and the run takes as long as a whole-project run. Only the findings in files under the paths fail
+the run and appear in the console and the reports. Tool errors and
+`nitpicker-config/policy-loosened` findings (a loosened config changes the whole gate) still count
+wherever they come from. Findings about the whole project (path `.`) count only when a path is the
+project folder itself. The summary names the scope and how many findings it
+left out, for example `Scope: src/orders (12 findings outside it not shown)`, and `summary.json`
+records it as `scope: { "paths": [...], "outside": <count> }`. With `--fix`, only the changed files
+under the paths are fixed. A path that does not exist or holds no tracked or untracked file, a path
+outside the project and a path in another project are errors. Paths cannot be combined with
+sharding. A folder named like a subcommand (`base`, `cache`, `aggregate`, `hygiene`, `history`)
+needs a `./` in front.
+
 Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into your
 `AGENTS.md`.
 
@@ -283,7 +308,7 @@ automatically.
 ## Command line
 
 ```text
-nitpicker [--base <ref>] [--output <dir>] [--all | --fix]
+nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix]
           [--analyzer <name>]... [--rule <substring>]...
           [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]
           [--accept-policy-change=<digest>] [--help]
@@ -294,6 +319,8 @@ nitpicker cache publish [--analyzer <name>]...
 nitpicker base [--base <ref>]
 ```
 
+- `<path>...`: show and gate only the findings in these files or folders; see
+  [One file or folder](#one-file-or-folder).
 - `--all`: report every finding in the current checkout, with no baseline. Exits 1 on any violation.
   Cannot be combined with `--base`, `--fix`, sharding or `--defer-exit`.
 - `--fix`: apply ESLint and Prettier fixes to the changed files in your checkout, using the gate's
