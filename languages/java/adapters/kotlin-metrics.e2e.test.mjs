@@ -340,7 +340,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
 
   it('collects the calls that run while a file or object loads, and the rule reports their effects', () => {
     const { facts } = measure(
-      writeSources('load', {
+      writeSources(workspace, 'load', {
         'src/Load.kt': LOAD_EFFECTS,
         'src/Singletons.kt': LOAD_SINGLETONS,
         'src/Helpers.kt': LOAD_HELPERS,
