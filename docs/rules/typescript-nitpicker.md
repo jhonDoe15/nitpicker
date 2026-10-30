@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 85 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 86 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -525,7 +525,7 @@ Disallow then, catch and finally promise chains.
 - **Printed as:** `eslint-lint/nitpicker/no-promise-chain`
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-promise-chain","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
-  - Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work. An exception fits only when a framework or library requires it.
+  - Use async/await (with try/catch) instead of promise chains, and Promise.all with a limiter for concurrent work. An exception fits only when a framework or library requires it.
 
 <a id="eslint-nitpicker-no-raised-test-timeout"></a>
 
@@ -1086,3 +1086,14 @@ A tsconfig a test writes must set compilerOptions.types and compilerOptions.lib 
 - **Exception:** If this is intended, add `{"rule":"nitpicker/test-tsconfig-pins-lib-and-types","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - A tsconfig a test writes must set compilerOptions.types and compilerOptions.lib (or noLib), for example types: [] and lib: ['ES2022'], so tsc does not load every @types package and the full default lib.
+
+<a id="eslint-nitpicker-unbounded-fan-out"></a>
+
+### `eslint/nitpicker/unbounded-fan-out`
+
+Bound the concurrency of remote calls started per element.
+
+- **Printed as:** `eslint-lint/nitpicker/unbounded-fan-out`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/unbounded-fan-out","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - {{combinator}} starts {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Run each call through a limiter created once outside the loop (`const limit = pLimit(8)`, then `limit(() => send(item))`), await fixed-size chunks, or make one batch call when the API has one. An exception fits only when the collection is always small.

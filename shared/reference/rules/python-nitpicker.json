@@ -225,7 +225,7 @@
     "Name the three states with an enum (`class Consent(Enum)` with `GRANTED`, `DENIED` and `UNKNOWN`), or take a keyword-only `bool` with a default (`*, urgent: bool = False`) when `None` only means false. A method that overrides a base class takes `@typing.override` and keeps the base signature.",
     "unbounded-fan-out",
     { "key": "python.exceptions", "rule": "unbounded-fan-out" },
-    "`<name>` starts `` for every element of `` at once",
+    "`<name>` starts `<call>` for every element of `<collection>` at once",
     "A large collection exhausts the remote service's connections or rate limit. Hold one `asyncio.Semaphore(8)` created outside the tasks with `async with limit:` around each call, gather fixed-size slices (`items[i : i + 20]`), or make one batch call when the API has one.",
     "uncollected-tests",
     { "key": "python.exceptions", "rule": "uncollected-tests" },

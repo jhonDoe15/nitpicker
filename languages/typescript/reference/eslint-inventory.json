@@ -1161,7 +1161,7 @@
       "tools": ["eslint-lint"],
       "forms": [
         {
-          "message": "Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work. An exception fits only when a framework or library requires it."
+          "message": "Use async/await (with try/catch) instead of promise chains, and Promise.all with a limiter for concurrent work. An exception fits only when a framework or library requires it."
         }
       ],
       "description": "Disallow then, catch and finally promise chains"
@@ -1442,6 +1442,14 @@
       "forms": [],
       "messages": [
         "A tsconfig a test writes must set compilerOptions.types and compilerOptions.lib (or noLib), for example types: [] and lib: ['ES2022'], so tsc does not load every @types package and the full default lib."
+      ]
+    },
+    "nitpicker/unbounded-fan-out": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Bound the concurrency of remote calls started per element",
+      "messages": [
+        "{{combinator}} starts {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Run each call through a limiter created once outside the loop (`const limit = pLimit(8)`, then `limit(() => send(item))`), await fixed-size chunks, or make one batch call when the API has one. An exception fits only when the collection is always small."
       ]
     },
     "no-async-promise-executor": {
@@ -3901,7 +3909,7 @@
       "tools": ["eslint-lint"],
       "forms": [
         {
-          "message": "Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work. An exception fits only when a framework or library requires it."
+          "message": "Use async/await (with try/catch) instead of promise chains, and Promise.all with a limiter for concurrent work. An exception fits only when a framework or library requires it."
         }
       ],
       "description": "Disallow then, catch and finally promise chains"
@@ -4287,6 +4295,14 @@
       "forms": [],
       "messages": [
         "A tsconfig a test writes must set compilerOptions.types and compilerOptions.lib (or noLib), for example types: [] and lib: ['ES2022'], so tsc does not load every @types package and the full default lib."
+      ]
+    },
+    "nitpicker/unbounded-fan-out": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Bound the concurrency of remote calls started per element",
+      "messages": [
+        "{{combinator}} starts {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Run each call through a limiter created once outside the loop (`const limit = pLimit(8)`, then `limit(() => send(item))`), await fixed-size chunks, or make one batch call when the API has one. An exception fits only when the collection is always small."
       ]
     },
     "no-async-promise-executor": {
@@ -6947,7 +6963,7 @@
       "tools": ["eslint-lint"],
       "forms": [
         {
-          "message": "Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work. An exception fits only when a framework or library requires it."
+          "message": "Use async/await (with try/catch) instead of promise chains, and Promise.all with a limiter for concurrent work. An exception fits only when a framework or library requires it."
         }
       ],
       "description": "Disallow then, catch and finally promise chains"
@@ -7228,6 +7244,14 @@
       "forms": [],
       "messages": [
         "A tsconfig a test writes must set compilerOptions.types and compilerOptions.lib (or noLib), for example types: [] and lib: ['ES2022'], so tsc does not load every @types package and the full default lib."
+      ]
+    },
+    "nitpicker/unbounded-fan-out": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Bound the concurrency of remote calls started per element",
+      "messages": [
+        "{{combinator}} starts {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Run each call through a limiter created once outside the loop (`const limit = pLimit(8)`, then `limit(() => send(item))`), await fixed-size chunks, or make one batch call when the API has one. An exception fits only when the collection is always small."
       ]
     },
     "no-async-promise-executor": {
