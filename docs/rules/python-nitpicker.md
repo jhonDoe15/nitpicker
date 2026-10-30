@@ -476,7 +476,7 @@ The task marker `<name>` has no issue.
 
 ### `python-rules/unbounded-fan-out`
 
-`<name>` starts `` for every element of `` at once.
+`<name>` starts `<call>` for every element of `<collection>` at once.
 
 - **Allowed form:** A large collection exhausts the remote service's connections or rate limit. Hold one `asyncio.Semaphore(8)` created outside the tasks with `async with limit:` around each call, gather fixed-size slices (`items[i : i + 20]`), or make one batch call when the API has one.
 - **Exception:** If this is intended, add `{"rule":"unbounded-fan-out","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
