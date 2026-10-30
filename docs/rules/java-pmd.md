@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 246 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 247 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -2331,6 +2331,17 @@ In main sources: a boxed `Boolean` (not `Boolean` inside `Optional<...>`, `List<
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
 - **Allowed form:** A boxed Boolean can be true, false or null, so this has three states that the type does not name. Use an enum that names each state (Mode.ON, Mode.OFF, Mode.AUTO), or a primitive boolean when absence means nothing.
 - **Exception:** If this is intended, add `{"rule":"pmd/TriStateBoolean","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="pmd-unboundedfanout"></a>
+
+### `pmd/UnboundedFanOut`
+
+In main sources: a stream `map`/`forEach`/`flatMap` lambda (also a `this::helper` reference), an enhanced `for`, or an indexed `for` up to `size()`/`length` over a collection, whose element work starts a task that makes a remote or message call: `CompletableFuture.supplyAsync`/`runAsync` on the default pool or a cached, per-task or virtual-thread executor, `submit`/`execute`/`invokeAll`/`invokeAny` on such an executor, `Thread.startVirtualThread`, `Thread.ofVirtual().start`, `new Thread(...).start()`, or `HttpClient.sendAsync`.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** This loop or stream starts a remote or message call on a new task for every element of a collection at once, so a large collection exhausts the connections or rate limit of the remote service. Run the tasks on a fixed pool (Executors.newFixedThreadPool(8) passed to supplyAsync or used for submit), take a Semaphore permit around each call, or work through fixed-size batches (Lists.partition(items, 20)). An exception fits only when the collection is always small.
+- **Exception:** If this is intended, add `{"rule":"pmd/UnboundedFanOut","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-unconditionalifstatement"></a>
 
