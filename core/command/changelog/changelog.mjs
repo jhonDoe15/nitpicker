@@ -43,7 +43,7 @@ function missingEntry(text, version, section) {
 }
 
 export function runChangelogCommand({
-  commandArguments,
+  arguments_: commandArguments,
   stdout,
   stderr,
   packageRoot = PACKAGE_ROOT,
