@@ -291,11 +291,15 @@ describe('a project whose own typescript is TypeScript 7', () => {
     expect(await described('native', configPath)).toEqual(expected);
   });
 
-  it('names the project config and keeps the snapshot folder out of config errors', async () => {
-    const configPath = path.join(root, 'tsconfig.own-missing.json');
-    writeFileSync(configPath, JSON.stringify({ extends: './missing.json', include: ['src'] }));
+  it.each([
+    ['TypeScript 7', projectNative],
+    ['TypeScript 6', undefined],
+  ])(
+    "names the project config and keeps the snapshot folder out of config errors on the project's %s",
+    async (_, projectTypeScriptRoot) => {
+      const configPath = path.join(root, 'tsconfig.own-missing.json');
+      writeFileSync(configPath, JSON.stringify({ extends: './missing.json', include: ['src'] }));
 
-    for (const projectTypeScriptRoot of [projectNative, undefined]) {
       await expect(
         preEmitDiagnostics({
           ts,
@@ -308,8 +312,8 @@ describe('a project whose own typescript is TypeScript 7', () => {
       ).rejects.toThrow(
         /^TypeScript config tsconfig\.json is invalid: Cannot read file 'missing\.json'/u,
       );
-    }
-  });
+    },
+  );
 
   it('reads source files with the API nitpicker selected and type checks with the project one', () => {
     const consumer = path.join(root, 'ts7-consumer');
