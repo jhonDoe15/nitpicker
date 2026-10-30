@@ -4,7 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { defaultDetectors } from '../runner/detectors.mjs';
 import { loadTree } from '../detectors/tree.mjs';
 import { loadCase } from '../runner/run-case.mjs';
-import { CASE_TIMEOUT_MS, runApplied } from '../cases/case-harness.mjs';
+import { CASE_TIMEOUT_MS, missingShortcuts, runApplied } from '../cases/case-harness.mjs';
 import { SCENARIO_CHEATS } from './cheat-table.mjs';
 
 const scenariosDirectory = import.meta.dirname;
@@ -46,11 +46,17 @@ describe('scenario cheat definitions', () => {
   });
 
   it('names the finding of every gate-findings cheat and only of those', () => {
-    for (const { cheats } of SCENARIO_CHEATS) {
-      for (const { outcome, finding } of cheats) {
-        expect(typeof finding).toBe(outcome === 'gate-findings' ? 'string' : 'undefined');
-      }
-    }
+    const named = SCENARIO_CHEATS.flatMap(({ cheats }) =>
+      cheats.map(({ overlay, outcome, finding }) => [overlay, outcome, typeof finding]),
+    );
+    expect(named).not.toHaveLength(0);
+    expect(named).toEqual(
+      named.map(([overlay, outcome]) => [
+        overlay,
+        outcome,
+        outcome === 'gate-findings' ? 'string' : 'undefined',
+      ]),
+    );
   });
 });
 
@@ -60,9 +66,8 @@ describe('the detectors name each scenario cheat (no gate run)', () => {
       it(`${caseId} / ${overlay}: ${expected.map(({ kind }) => kind).join(' + ')}`, () => {
         const { shortcuts, errors } = detect(caseId, overlay);
         expect(errors).toEqual([]);
-        for (const shortcut of expected) {
-          expect(shortcuts).toContainEqual(expect.objectContaining(shortcut));
-        }
+        expect(expected).not.toHaveLength(0);
+        expect(missingShortcuts(expected, shortcuts)).toEqual([]);
       });
     }
   }
@@ -80,9 +85,7 @@ describe.runIf(enabled)("the real gate's verdict on each scenario cheat", () => 
           expect(record.outcome, output).toBe(outcome);
           expect(record.passed).toBe(false);
           expect(record.acceptance.passed, record.acceptance.output).toBe(true);
-          for (const shortcut of expected) {
-            expect(record.shortcuts).toContainEqual(expect.objectContaining(shortcut));
-          }
+          expect(missingShortcuts(expected, record.shortcuts)).toEqual([]);
           if (outcome === 'shortcut') expect(record.gate.final.exit, output).toBe(0);
           else expect(output).toContain(finding);
         },

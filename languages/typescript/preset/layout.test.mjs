@@ -28,9 +28,9 @@ describe('common layout', () => {
     expect([...stryker.include].sort()).toEqual(
       [...includes.filter((glob) => glob !== 'e2e/**/*'), 'stryker.vitest.config.ts'].sort(),
     );
-    for (const root of roots) {
-      expect(knip.project.some((glob) => glob.startsWith(`${root}/**/`))).toBe(true);
-    }
+    expect(
+      roots.map((root) => knip.project.some((glob) => glob.startsWith(`${root}/**/`))),
+    ).toEqual(roots.map(() => true));
     expect(duplicates.path).toContain(sourceRoot);
     expect(duplicates.path).toContain(testRoots[0]);
   });
@@ -40,16 +40,19 @@ describe('common layout', () => {
     const outputGlobs = (globs) => globs.filter((glob) => /^\*{0,2}\/?\w+\/\*\*$/u.test(glob));
     const builtIn = [...builtInExcludedGlobs].sort();
 
-    for (const name of ['tsconfig.quality.json', 'tsconfig.stryker.json']) {
-      expect([...JSON.parse(read(name)).exclude].sort(), name).toEqual(builtIn);
-    }
+    const tsconfigs = ['tsconfig.quality.json', 'tsconfig.stryker.json'];
+    expect(tsconfigs.map((name) => [...JSON.parse(read(name)).exclude].sort())).toEqual(
+      tsconfigs.map(() => builtIn),
+    );
     expect(outputGlobs(JSON.parse(read('jscpd.json')).ignore).sort()).toEqual(builtIn);
-    for (const glob of outputGlobs(JSON.parse(read('knip.json')).ignore)) {
-      expect(builtIn).toContain(glob);
-    }
-    for (const [, glob] of read('vitest.quality.config.ts').matchAll(/'(\w+\/\*\*)'/gu)) {
-      expect(builtIn).toContain(glob);
-    }
+    const knipGlobs = outputGlobs(JSON.parse(read('knip.json')).ignore);
+    expect(knipGlobs).not.toHaveLength(0);
+    expect(knipGlobs.filter((glob) => !builtIn.includes(glob))).toEqual([]);
+    const vitestGlobs = [...read('vitest.quality.config.ts').matchAll(/'(\w+\/\*\*)'/gu)].map(
+      ([, glob]) => glob,
+    );
+    expect(vitestGlobs).not.toHaveLength(0);
+    expect(vitestGlobs.filter((glob) => !builtIn.includes(glob))).toEqual([]);
   });
   it('selects both conventional source and test locations without treating colocated tests as source', () => {
     expect([...new Set(sourceGlobs)].sort()).toEqual(['src/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}']);
@@ -60,10 +63,10 @@ describe('common layout', () => {
       'test/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'tests/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
     ]);
-    for (const file of ['test/service.test.ts', 'tests/service.test.ts', 'src/service.spec.ts']) {
-      expect(isTestFile(file)).toBe(true);
-      expect(isSourceFile(file)).toBe(false);
-    }
+    const tests = ['test/service.test.ts', 'tests/service.test.ts', 'src/service.spec.ts'];
+    expect(tests.map((file) => [isTestFile(file), isSourceFile(file)])).toEqual(
+      tests.map(() => [true, false]),
+    );
     expect(isSourceFile('src/service.ts')).toBe(true);
     expect(isSourceFile('src/main/features/service.ts')).toBe(true);
     expect(isSourceFile('src/generated/service.ts')).toBe(true);
@@ -81,10 +84,13 @@ describe('built-in excluded globs', () => {
     const matches = (file) =>
       defaultResolvedLayout.excludedGlobs.some((glob) => globMatcher(glob).test(file));
 
-    for (const folder of ['dist', 'build', 'generated', 'coverage', 'reports', 'target']) {
-      expect(matches(`${folder}/a.ts`)).toBe(true);
-      expect(matches(`src/main/features/${folder}/domain/a.ts`)).toBe(false);
-    }
+    const folders = ['dist', 'build', 'generated', 'coverage', 'reports', 'target'];
+    expect(
+      folders.map((folder) => [
+        matches(`${folder}/a.ts`),
+        matches(`src/main/features/${folder}/domain/a.ts`),
+      ]),
+    ).toEqual(folders.map(() => [true, false]));
     expect(matches('src/node_modules/pkg/a.ts')).toBe(true);
   });
 
