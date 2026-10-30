@@ -19,6 +19,15 @@ import {
   hardcodedSecrets,
   secretsInLogs,
 } from './rules/secrets.mjs';
+import {
+  COMPATIBILITY_SHIM_MESSAGES,
+  compatibilityShims,
+} from './signatures/compatibility-shims.mjs';
+import {
+  PARAMETER_MUTATION_MESSAGES,
+  parameterMutations,
+} from './signatures/parameter-mutation.mjs';
+import { TRI_STATE_MESSAGES, triStateBooleans } from './signatures/tri-state.mjs';
 import { TEST_MESSAGES, testClassesWithoutTests, testHelpersInSource } from './rules/tests.mjs';
 import { CLIENT_MESSAGES, httpWithoutTimeout, unsafeDeserialization } from './security/clients.mjs';
 import { CRYPTO_MESSAGES, disabledTlsVerification, weakHashes } from './security/crypto.mjs';
@@ -39,6 +48,9 @@ const MESSAGES = {
   ...CRYPTO_MESSAGES,
   ...CLIENT_MESSAGES,
   ...FAN_OUT_MESSAGES,
+  ...TRI_STATE_MESSAGES,
+  ...PARAMETER_MUTATION_MESSAGES,
+  ...COMPATIBILITY_SHIM_MESSAGES,
   RepeatedStringLiteral: REPEATED_STRING_MESSAGE,
 };
 
@@ -65,6 +77,9 @@ const MAIN_RULES = [
   disabledTlsVerification,
   httpWithoutTimeout,
   unsafeDeserialization,
+  triStateBooleans,
+  parameterMutations,
+  compatibilityShims,
   repeatedStringLiterals,
 ];
 const TEST_RULES = [testClassesWithoutTests];
