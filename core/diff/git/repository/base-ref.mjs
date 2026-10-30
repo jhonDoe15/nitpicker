@@ -2,6 +2,17 @@ import { configError } from '../../../../shared/config.mjs';
 import { GitCommandError, runGit } from './command.mjs';
 
 const COMMIT_ID = /^[0-9a-f]{7,40}$/iu;
+export const CI_TARGET_VARIABLES = [
+  'CHANGE_TARGET',
+  'GITHUB_BASE_REF',
+  'CI_MERGE_REQUEST_TARGET_BRANCH_NAME',
+  'SYSTEM_PULLREQUEST_TARGETBRANCH',
+  'BITBUCKET_PR_DESTINATION_BRANCH',
+  'BUILDKITE_PULL_REQUEST_BASE_BRANCH',
+];
+
+const BRANCH_REF_PREFIX = 'refs/heads/';
+
 const HEAD_SYNTAX = /^(?:HEAD|@)(?:$|[~^@{])|@\{/u;
 
 export function resolveBase({
@@ -15,11 +26,10 @@ export function resolveBase({
     return { baseRef: explicitBase, source: 'argument' };
   }
 
-  const ciTarget = [
-    environment.CHANGE_TARGET,
-    environment.GITHUB_BASE_REF,
-    environment.CI_MERGE_REQUEST_TARGET_BRANCH_NAME,
-  ].find(isNonEmpty);
+  const ciTarget = CI_TARGET_VARIABLES.map((name) => environment[name])
+    .filter(isNonEmpty)
+    .map(branchName)
+    .find(isNonEmpty);
   if (ciTarget !== undefined) {
     return {
       baseRef: ciTarget.startsWith('origin/') ? ciTarget : `origin/${ciTarget}`,
@@ -108,6 +118,10 @@ function commitOf(repositoryRoot, ref) {
     '--quiet',
     `${ref}^{commit}`,
   ])?.trim();
+}
+
+function branchName(target) {
+  return target.startsWith(BRANCH_REF_PREFIX) ? target.slice(BRANCH_REF_PREFIX.length) : target;
 }
 
 function isNonEmpty(value) {

@@ -40,7 +40,10 @@ function setup() {
     );
     return {
       exitCode,
-      progress: output.stderrText.split('\n').filter(Boolean),
+      progress: output.stderrText
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => line.replace(` (${cacheDirectory}; use --no-cache to rerun)`, '')),
       newFindings: newFindings.map(({ identity }) => identity),
       writeHead: (files) => {
         writeFiles(repository.root, files);

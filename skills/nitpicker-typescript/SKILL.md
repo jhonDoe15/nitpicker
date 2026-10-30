@@ -86,7 +86,7 @@ full run below.
   don't add `??`, `?.` or checks the types already rule out. Indexing (`list[0]`, `record[key]`)
   may be `undefined`: check the value you got.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
-  over unions.
+  over unions, with no `default`.
 - Template literals take strings only: `${String(count)}`.
 - Sort IDs, codes and ISO dates with `toSorted()` and no comparator; names and titles with
   `a.localeCompare(b, 'en')`. Objects in plain string order share one `compareText(a, b)` that
@@ -99,6 +99,8 @@ full run below.
   extract a function, also when the copy has other names and literals.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
+- Remove a parameter the body does not read. One that a callback or override signature requires
+  starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
 

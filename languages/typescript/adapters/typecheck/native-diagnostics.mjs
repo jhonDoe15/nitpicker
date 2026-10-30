@@ -9,15 +9,22 @@ const ENGINE_HINT =
   'Set "tools": { "typescript": { "engine": "project" } } in nitpicker.config.json ' +
   "to type check with the project's own TypeScript instead.";
 
+export function apiEntry(versions = process.versions) {
+  return versions.deno === undefined && versions.bun === undefined
+    ? 'typescript/unstable/sync'
+    : 'typescript/unstable/async';
+}
+
 export async function nativeDiagnostics({
   ts,
   configPath,
   projectRoot,
   apiRoot,
   engineHint = true,
+  entry = apiEntry(),
 }) {
   const own = apiRoot !== undefined;
-  const { api, startError } = await startedApi(projectRoot, apiRoot);
+  const { api, startError } = await startedApi({ projectRoot, apiRoot, entry });
   if (startError !== undefined) {
     if (own) {
       throw ownStartError(startError);
@@ -26,14 +33,14 @@ export async function nativeDiagnostics({
   }
   let collected;
   try {
-    collected = collectedDiagnostics(api, configPath);
+    collected = await collectedDiagnostics(api, configPath);
   } catch (error) {
     const hint = own || !engineHint ? '' : `\n${ENGINE_HINT}`;
     throw new Error(`TypeScript 7 type check failed: ${String(error.message)}${hint}`, {
       cause: error,
     });
   } finally {
-    api.close();
+    await api.close();
   }
   return own ? ownDiagnostics(ts, collected) : settledDiagnostics(ts, collected);
 }
@@ -46,35 +53,39 @@ function ownStartError(cause) {
   );
 }
 
-async function startedApi(projectRoot, apiRoot = resolveTool('typescript-native').root) {
-  const apiPath = createRequire(path.join(apiRoot, 'package.json')).resolve(
-    'typescript/unstable/sync',
-  );
+async function startedApi({ projectRoot, apiRoot = resolveTool('typescript-native').root, entry }) {
+  const apiPath = createRequire(path.join(apiRoot, 'package.json')).resolve(entry);
   const { API } = await import(pathToFileURL(apiPath).href);
+  let api;
   try {
-    return { api: new API({ cwd: projectRoot }) };
+    api = new API({ cwd: projectRoot });
+    await api.ensureInitialized();
+    return { api };
   } catch (error) {
+    await api?.close();
     return { startError: error };
   }
 }
 
-function collectedDiagnostics(api, configPath) {
-  const [project] = api.updateSnapshot({ openProjects: [configPath] }).getProjects();
+async function collectedDiagnostics(api, configPath) {
+  const snapshot = await api.updateSnapshot({ openProjects: [configPath] });
+  const [project] = snapshot.getProjects();
   const { program, compilerOptions } = project;
   const emitsDeclarations =
     compilerOptions.declaration === true || compilerOptions.composite === true;
-  return {
-    hasRootFiles: project.rootFiles.length > 0,
-    configErrors: program.getConfigFileParsingDiagnostics(),
-    diagnostics: [
-      ...program.getProgramDiagnostics().map(withoutConfigLocation),
-      ...program.getSyntacticDiagnostics(),
-      ...program.getGlobalDiagnostics(),
-      ...program.getBindDiagnostics(),
-      ...program.getSemanticDiagnostics(),
-      ...(emitsDeclarations ? program.getDeclarationDiagnostics() : []),
-    ],
-  };
+  const requests = [
+    () => program.getSyntacticDiagnostics(),
+    () => program.getGlobalDiagnostics(),
+    () => program.getBindDiagnostics(),
+    () => program.getSemanticDiagnostics(),
+    ...(emitsDeclarations ? [() => program.getDeclarationDiagnostics()] : []),
+  ];
+  const configErrors = await program.getConfigFileParsingDiagnostics();
+  const diagnostics = (await program.getProgramDiagnostics()).map(withoutConfigLocation);
+  for (const request of requests) {
+    diagnostics.push(...(await request()));
+  }
+  return { hasRootFiles: project.rootFiles.length > 0, configErrors, diagnostics };
 }
 
 function withoutConfigLocation(diagnostic) {
