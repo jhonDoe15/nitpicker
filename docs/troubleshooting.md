@@ -137,7 +137,9 @@ branch (`fetch-depth: 0` in GitHub Actions) so that `origin/<branch>` exists, or
 
 ### Base ref not found
 
-**Symptom.** `Cannot resolve base ref "origin/main". Fetch it before running the comparison.`
+**Symptom.** `Cannot resolve base ref "origin/main". Run <command> and retry.`, where the command is
+the fetch that brings the ref in, such as `git fetch origin main` (`git fetch --unshallow origin main`
+in a shallow clone).
 
 **Cause.** The ref exists in the config or on the command line, but not in this clone. A shallow or
 single-branch clone, a mistyped name, or a remote that was never fetched all look like this.

@@ -1,10 +1,14 @@
-import { createRequire } from 'node:module';
+import { createRequire, findPackageJSON } from 'node:module';
 import path from 'node:path';
-import { hasJavaScriptApi, redirectTypeScriptApi } from './api-redirect.mjs';
+import {
+  hasJavaScriptApi,
+  packageHasJavaScriptApi,
+  redirectTypeScriptApi,
+} from './api-redirect.mjs';
 
-function resolvedOrUndefined(resolve, name) {
+function resolvedTypeScript(resolve) {
   try {
-    return resolve(name);
+    return resolve('typescript');
   } catch (error) {
     if (error?.code === 'MODULE_NOT_FOUND') {
       return undefined;
@@ -13,12 +17,29 @@ function resolvedOrUndefined(resolve, name) {
   }
 }
 
-export function selectTypeScriptApi(resolve = createRequire(import.meta.url).resolve) {
-  const resolved = resolvedOrUndefined(resolve, 'typescript');
-  const bundled = resolvedOrUndefined(resolve, 'typescript-js-api');
-  return resolved !== undefined && resolved !== bundled && hasJavaScriptApi(resolved)
+function installedTypeScriptRoot() {
+  try {
+    const packageFile = findPackageJSON('typescript', import.meta.url);
+    return packageFile === undefined ? undefined : path.dirname(packageFile);
+  } catch (error) {
+    if (error?.code === 'ERR_MODULE_NOT_FOUND') {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
+export function selectTypeScriptApi(
+  resolve = createRequire(import.meta.url).resolve,
+  installedRoot = installedTypeScriptRoot(),
+) {
+  const resolved = resolvedTypeScript(resolve);
+  return resolved !== undefined &&
+    hasJavaScriptApi(resolved) &&
+    installedRoot !== undefined &&
+    packageHasJavaScriptApi(installedRoot)
     ? { file: resolved, bundled: false }
-    : { file: bundled ?? resolve('typescript-js-api'), bundled: true };
+    : { file: resolve('typescript-js-api'), bundled: true };
 }
 
 export function redirectToBundledTypeScriptApi(environment, selected = selectTypeScriptApi()) {

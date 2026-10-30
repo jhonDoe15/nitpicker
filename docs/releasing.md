@@ -16,6 +16,13 @@ a maintainer.
   release time, never ahead of it.
 - Pre-releases use a suffix (`v0.2.0-rc.1`) and are published with
   `npm publish --tag next`.
+- Floating tags let workflows follow a release line of the GitHub action (`action.yml`):
+  `v0.<minor>` before 1.0 (a minor bump may break, so the line is the minor) and `v<major>` from
+  1.0. A stable release moves its floating tag to the release commit; a pre-release never does,
+  so `uses: jhonDoe15/nitpicker@v0.2` never runs a release candidate. A floating tag only moves
+  forward: a release whose commit does not contain the commit the tag points at leaves it alone
+  and fails, so a fix released on an older line cannot pull a workflow back. Workflows that need
+  a fixed version pin a full tag (`@v0.2.1`) or a full commit SHA instead.
 
 ## Checklist
 
@@ -61,10 +68,14 @@ Work from a clean checkout of `main` with full history.
 4. **Dry run.** `npm pack --dry-run` from the repository root. Confirm `LICENSE`, `README.md`,
    `CHANGELOG.md`, `package.json`, `core/`, `shared/` and `languages/` are listed, and no tests, fixtures,
    `node_modules` or reports are. Then `npm publish --dry-run`.
-5. **Tag** the merged release commit and push the tag:
+5. **Tag** the merged release commit and push the tag, and for a stable release move its floating
+   tag (`v0.<minor>` before 1.0, `v<major>` from 1.0) to the same commit:
    ```sh
    git tag v<new-version> <commit>
    git push origin v<new-version>
+   git fetch --no-tags origin '+refs/tags/v0.<minor>:refs/tags/v0.<minor>'  # skip if it does not exist yet
+   git merge-base --is-ancestor v0.<minor> <commit>   # must succeed: the tag only moves forward
+   git tag -f v0.<minor> <commit> && git push --force origin refs/tags/v0.<minor>
    ```
 6. **Publish** from the repository root:
    ```sh
@@ -97,12 +108,16 @@ Work from a clean checkout of `main` with full history.
    [Install from a GitHub release](usage.md#from-a-github-release) shows.
 
    The `github-release` workflow does the same from the Actions tab: run it with the full SHA of the
-   release commit on `main`. It differs in two ways: it creates the tag `v<version>` from that
-   commit's `package.json` instead of needing step 5, and it reads the release notes file from `main`
-   when the commit does not have it. It checks the `CHANGELOG.md` entry in a step of its own before
-   packing and stops with an error annotation when the entry is missing or empty.
-   `nitpicker changelog` loads no installed package, so the workflow needs no `npm ci`. Write the
-   notes without personal names: generated notes credit PR authors.
+   release commit on `main`. It creates the tag `v<version>` from that commit's `package.json`,
+   attaches the tarball and `SHA256SUMS`, moves the floating tag unless `prerelease` is set or
+   the version has a suffix (the step runs after the release is created, so when it fails, for
+   example because the tag would move backwards or a tag ruleset of the repository blocks the
+   forced push, the release stays published and the floating tag is moved by hand as in step 5),
+   and takes its notes from `.github/release-notes/v<version>.md` on `main`, or from the released
+   commit when `main` does not have it. It checks the `CHANGELOG.md` entry in a step of its own
+   before packing, stops with an error annotation when the entry is missing or empty, and appends
+   the entry to the notes. `nitpicker changelog` loads no installed package, so the workflow needs
+   no `npm ci`. Write the notes without personal names: generated notes credit PR authors.
 
 ## Container image
 

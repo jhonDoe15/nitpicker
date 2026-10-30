@@ -169,7 +169,7 @@ function appendToolErrorSummary(lines, toolErrors, color) {
   }
 }
 
-function withoutSkipNotices(toolErrors) {
+export function withoutSkipNotices(toolErrors) {
   const listedSnapshots = new Set(
     toolErrors.filter(({ rule }) => rule === TESTS_FAILED_RULE).map(({ snapshot }) => snapshot),
   );
@@ -194,7 +194,7 @@ function errorHeadline(message) {
   return link === undefined ? shown : `${shown} ${link}`;
 }
 
-function pluralize(noun, count) {
+export function pluralize(noun, count) {
   return count === 1 ? noun : `${noun}s`;
 }
 
