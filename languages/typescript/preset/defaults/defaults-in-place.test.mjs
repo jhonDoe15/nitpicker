@@ -120,7 +120,7 @@ describe('default configs used in place', () => {
       projectRoot,
     );
     expect(run.toolErrors).toEqual([]);
-    for (const name of names) expect(run.reports.get(name)?.findings, name).toEqual([]);
+    expect(names.map((name) => run.reports.get(name)?.findings)).toEqual(names.map(() => []));
   });
 
   // Tests that look at the same project share one run of all their analyzers, side by side, so the
@@ -161,8 +161,9 @@ describe('default configs used in place', () => {
     it('reports no error for every file-driven quality analyzer with no source or tests', () => {
       const run = runEmptyProject();
       const names = fileDrivenChecks.map(({ name }) => name);
+      expect(names).not.toHaveLength(0);
       expect(toolErrorsFor(run, names)).toEqual([]);
-      for (const name of names) expect(run.reports.get(name)?.findings, name).toEqual([]);
+      expect(names.map((name) => run.reports.get(name)?.findings)).toEqual(names.map(() => []));
     });
 
     it('reports no error for entry points and ESLint when both layouts are absent', () => {
@@ -175,7 +176,9 @@ describe('default configs used in place', () => {
     it('reports no error when source and test directories are absent', () => {
       const run = runEmptyProject();
       expect(toolErrorsFor(run, staticNames)).toEqual([]);
-      for (const name of staticNames) expect(run.reports.get(name)?.findings, name).toEqual([]);
+      expect(staticNames.map((name) => run.reports.get(name)?.findings)).toEqual(
+        staticNames.map(() => []),
+      );
     });
   });
 
