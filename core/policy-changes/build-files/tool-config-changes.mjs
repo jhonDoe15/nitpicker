@@ -1,6 +1,6 @@
 import { jscpdConfigChanges } from '../../tooling/jscpd/config-changes.mjs';
 
-function fileChange(tool, file, { base, head }) {
+function fileChange(tool, file, { base, head, evidence, optsIn }) {
   if (base.get(file) === head.get(file)) {
     return undefined;
   }
@@ -8,11 +8,28 @@ function fileChange(tool, file, { base, head }) {
     ? {
         loosened: {
           text: `${tool} project config changed: ${file}`,
-          kind: 'tool-config',
+          kind: optsIn === true ? 'tool-config-opt-in' : 'tool-config',
           files: [file],
+          ...(evidence?.has(file) ? { blobs: { [file]: evidence.get(file) } } : {}),
         },
       }
     : { changed: `${tool} project config removed: ${file}` };
+}
+
+function replacedOptionChanges({ replacedOptions, head }) {
+  if (replacedOptions === undefined) {
+    return [];
+  }
+  const files = [...head.keys()].slice(0, 1);
+  const texts =
+    replacedOptions.error === undefined
+      ? replacedOptions.rules.map(
+          (rule) => `eslint project config replaces the options of nitpicker rule ${rule}`,
+        )
+      : [
+          `eslint project config could not be loaded to list the nitpicker rules whose options it replaces: ${replacedOptions.error}`,
+        ];
+  return texts.map((text) => ({ loosened: { text, kind: 'tool-config', files } }));
 }
 
 function fileChanges(entry) {
@@ -20,7 +37,10 @@ function fileChanges(entry) {
     return jscpdConfigChanges(entry.applied);
   }
   const files = [...new Set([...entry.base.keys(), ...entry.head.keys()])].toSorted();
-  return files.map((file) => fileChange(entry.tool, file, entry));
+  return [
+    ...files.map((file) => fileChange(entry.tool, file, entry)),
+    ...replacedOptionChanges(entry),
+  ];
 }
 
 export function toolConfigChanges(scope) {

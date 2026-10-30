@@ -9,6 +9,7 @@ import {
   JAVASCRIPT_CONVENTIONS,
   TYPESCRIPT_CONVENTIONS,
 } from '../../languages/typescript/conventions/typescript-conventions.mjs';
+import { eslintConfigStyle } from '../../languages/typescript/preset/eslint-project/eslint-style.mjs';
 
 const BY_PRESET = new Map([
   ['typescript', TYPESCRIPT_CONVENTIONS],
@@ -32,8 +33,8 @@ function jscpdStyle({ config, projectRoot }) {
 }
 
 const STYLES_BY_PRESET = new Map([
-  ['typescript', [jscpdStyle]],
-  ['javascript', [jscpdStyle]],
+  ['typescript', [eslintConfigStyle, jscpdStyle]],
+  ['javascript', [eslintConfigStyle, jscpdStyle]],
   ['java', [javaProjectStyle, jscpdStyle]],
   ['kotlin', [javaProjectStyle, kotlinStyle, jscpdStyle]],
   ['python', [pythonStyle, jscpdStyle]],
