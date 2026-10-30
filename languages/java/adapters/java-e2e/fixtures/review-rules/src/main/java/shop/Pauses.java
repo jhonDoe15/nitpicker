@@ -1,8 +1,8 @@
 package shop;
 
-import java.util.List;
 import java.util.concurrent.BlockingQueue;
 import java.util.concurrent.CompletableFuture;
+import java.util.function.Consumer;
 import java.util.logging.Logger;
 
 public final class Pauses {
@@ -34,11 +34,11 @@ public final class Pauses {
     }
   }
 
-  public static void napAndDescribe(long millis, List<RuntimeException> errors) {
+  public static void napAndDescribe(long millis, Consumer<RuntimeException> errors) {
     try {
       Thread.sleep(millis);
     } catch (InterruptedException e) { // violation: SwallowedInterrupt
-      errors.add(new IllegalStateException("interrupted: " + e.getMessage()));
+      errors.accept(new IllegalStateException("interrupted: " + e.getMessage()));
     }
   }
 
@@ -133,11 +133,11 @@ public final class Pauses {
     }
   }
 
-  public static void napAndCollect(long millis, List<RuntimeException> errors) {
+  public static void napAndCollect(long millis, Consumer<RuntimeException> errors) {
     try {
       Thread.sleep(millis);
     } catch (InterruptedException e) {
-      errors.add(new IllegalStateException("interrupted", e));
+      errors.accept(new IllegalStateException("interrupted", e));
       Thread.currentThread().interrupt();
     }
   }
