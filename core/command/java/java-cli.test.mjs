@@ -1,7 +1,6 @@
-import { readFileSync, realpathSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
-import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
@@ -114,14 +113,6 @@ describe.each([
               "name": "UnusedPrivateField"
             }
           ]
-        }
-      },
-      "originalUriBaseIds": {
-        "%SRCROOT%": {
-          "uri": ${JSON.stringify(`${pathToFileURL(realpathSync(root)).href}/`)},
-          "description": {
-            "text": "The root of the git repository the findings are in."
-          }
         }
       },
       "columnKind": "utf16CodeUnits",

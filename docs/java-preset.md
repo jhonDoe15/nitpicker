@@ -1337,46 +1337,12 @@ always stay.
 on the probe project those are, among others, `LooseCoupling` and `JdkObsolete` on a `Vector`
 field, `HidingField` and `URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD`, `RandomModInteger` and
 `DMI_RANDOM_USED_ONLY_ONCE`, `ClassNewInstance` and `REFLC_REFLECTION_MAY_INCREASE_ACCESSIBILITY_OF_CLASS`,
-`SelfAssignment` and `AvoidReassigningParameters`. `adapters/overlaps/resolved-overlaps.test.mjs` pins every cross-tool line left
+`SelfAssignment` and `AvoidReassigningParameters`, and Checkstyle's `MemberName` with
+`FieldCanBeStatic`. `adapters/overlaps/resolved-overlaps.test.mjs` pins every cross-tool line left
 on the probe's findings (`fixtures/probe-findings.json`, every enabled check with nothing turned off
-for overlap), the pairs that drop a secondary on those findings (every pair of the table must have probe
-evidence, so a new pair comes with a probe source that makes both rules report the same site),
-the partial-coverage cases kept,
-and the policy order; `static-overlaps.test.mjs` checks each pair in its scope; a unit test checks
-that this list is the table.
-
-`fixtures/probe-findings.json` holds the probe sources (`sources`) and the findings of a full Java
-preset run over them with overlap resolution off (`findings`: tool, rule, path, line, and the symbol
-of a SpotBugs finding), sorted so a run is reproducible. Do not edit the findings by hand after a
-tool upgrade or a new pair: `npm run gen:overlap-probe` copies the sources into a throwaway Gradle
-project (`adapters/fixtures/gradle-project` with JUnit 4 and JSpecify added), runs the Java preset
-with the pinned tools on it (`collectJavaFindings` with `resolveOverlaps` set to the identity;
-this needs a JDK 21 and Gradle, and takes several minutes) and rewrites the file. `-- --build=maven`
-runs the same sources as a Maven project (`maven/fixtures/single/pom.xml` with the same two
-dependencies) instead, and `--gradle=<command>` or `--maven=<command>` names another Gradle or Maven.
-The overlap table serves both builds, so both must report the same findings. To probe a new case,
-add the source file to `sources` first and run the command. `node scripts/gen-overlap-probe.mjs
---check` writes nothing and exits 1 with the added and removed findings when the committed file
-differs from a fresh run; `adapters/java-e2e/overlap-probe.e2e.test.mjs` runs the same check for
-Gradle and for Maven in the Java end-to-end suite (`npm run test:java`), so the Java CI job fails on
-drift and on a finding one build reports and the other does not. After a regeneration, review the
-diff: a disappearing finding is a rule turned off or changed in the preset, and every pair must
-still match (the pair test above).
-
-Two pairs were dropped and one changed because the two rules could never report one site with the
-preset's configuration, found by probing each pair. `errorprone/AnnotationPosition` over
-Checkstyle's `AnnotationLocation` is gone: both suppression files turn `AnnotationLocation` off,
-so Checkstyle never reports it. `errorprone/HardCodedSdCardPath` over PMD `DoNotHardCodeSDCard`
-is gone: the Error Prone check reports only under the javac option `-XDandroidCompatible=true`,
-which the runner does not set, so only PMD reports a hard-coded `/sdcard` path.
-`errorprone/ClassName` over `checkstyle/OuterTypeFilename` has the `file` scope: Error Prone names
-the first line of the file and Checkstyle the class line. SpotBugs reports `MS_MUTABLE_ARRAY` and
-`MS_PKGPROTECT` for a public static final array only when something reads the field (outside its
-package for the first, inside it for the second), so the probe has a class that reads them.
-`pmd/ClassLoadEffect` over `spotbugs/SC_START_IN_CTOR` is matched by a constructor that starts a
-thread and runs for a static field: both name the `start()` line.
-
-The pairs:
+for overlap), the partial-coverage cases kept, and the policy order;
+`static-overlaps.test.mjs` checks each pair in its scope; a unit test checks that this list is the
+table:
 
 - line: `errorprone/ArrayHashCode` over `spotbugs/DMI_INVOKING_HASHCODE_ON_ARRAY`
 - line: `errorprone/ArrayEquals` over `spotbugs/EC_BAD_ARRAY_COMPARE`
@@ -1455,8 +1421,10 @@ The pairs:
 - line: `errorprone/NotJavadoc` over `checkstyle/InvalidJavadocPosition`
 - line: `errorprone/EmptyBlockTag` over `checkstyle/NonEmptyAtclauseDescription`
 - javadoc: `errorprone/MissingSummary` over `checkstyle/SummaryJavadoc`
-- file: `errorprone/ClassName` over `checkstyle/OuterTypeFilename`
+- line: `errorprone/AnnotationPosition` over `checkstyle/AnnotationLocationMostCases`, `checkstyle/AnnotationLocationVariables`
+- line: `errorprone/ClassName` over `checkstyle/OuterTypeFilename`
 - line: `errorprone/AssignmentExpression` over `pmd/AssignmentInOperand`
+- line: `errorprone/HardCodedSdCardPath` over `pmd/DoNotHardCodeSDCard`
 - line: `errorprone/ForEachIterable` over `pmd/ForLoopCanBeForeach`
 - line: `errorprone/Finally` over `pmd/DoNotThrowExceptionInFinally`, `pmd/ReturnFromFinallyBlock`
 - member: `errorprone/DoubleBraceInitialization` over `pmd/DoubleBraceInitialization`
@@ -1464,7 +1432,7 @@ The pairs:
 - line: `errorprone/JdkObsolete` over `errorprone/StringCharset`
 - line: `errorprone/NonOverridingEquals` over `pmd/SuspiciousEqualsMethodName`
 - line: `errorprone/DefaultLocale` over `pmd/SimpleDateFormatNeedsLocale`
-- line: `pmd/LegacyCalendarApi` over `pmd/AvoidCalendarDateCreation`, `pmd/SimpleDateFormatNeedsLocale`, `errorprone/DefaultLocale`, `errorprone/DateFormatConstant`
+- line: `pmd/LegacyCalendarApi` over `pmd/AvoidCalendarDateCreation`, `pmd/SimpleDateFormatNeedsLocale`, `errorprone/DefaultLocale`
 - line: `pmd/UseLocaleWithCaseConversions` over `errorprone/StringCaseLocaleUsage`
 - line: `spotbugs/ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD` over `errorprone/StaticAssignmentInConstructor`, `pmd/AssignmentToNonFinalStatic`
 - line: `errorprone/StaticAssignmentInConstructor` over `pmd/AssignmentToNonFinalStatic`
@@ -2409,8 +2377,6 @@ design rules (`ExhaustiveEnumPredicate`, `StaticForwardingWrapper`, `SingularAnd
 `exhaustive-union-predicate`, `no-forwarding-wrapper`, `no-singular-and-plural-prop`,
 `no-tri-state-boolean`, `no-parameter-mutation` and `no-compatibility-shim`, which run
 on production files only, they leave test helpers alone, since tests are not an API anyone calls.
-`UnboundedFanOut` is main-only too, like `unbounded-fan-out` in the other presets: a test that starts
-many calls at once talks to fakes.
 It also holds `ClassLoadEffect`, the counterpart of the TypeScript preset's
 `nitpicker/report-module-load-effects`: a test class may open a file or start a server in a static
 setup, production code may not.
@@ -2431,7 +2397,6 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
 | `pmd/ParameterMutation`         | In public methods and constructors: a change to a parameter in place: a mutating call on a `Collection` or `Map` parameter (`add`, `addAll`, `remove`, `removeIf`, `clear`, `put`, `putAll`, `merge`, `compute*`, `replaceAll`, `sort`, `set`, `push`, `pop`, `poll`, `offer` and the other mutators), `Arrays.sort`, `fill`, `setAll` or `Collections.sort`, `shuffle`, `reverse`, `swap`, `rotate`, `addAll` on a parameter, or a write to an element of an array parameter, also a multi-dimensional one (`counts[0] = 0`, `counts[1]++`, `grid[0][1] = 3`). A parameter stored in a field or a local variable and changed there (`this.items = items; this.items.add(x)`, `var alias = items; alias.add(x)`) counts. Reading an element (`v = values[0]`, `t += values[1]`) does not. Not flagged: private methods and constructors, methods of private, local or anonymous classes, concurrent types used to share work (`BlockingQueue`, `ConcurrentMap`, `CopyOnWrite*`), `@Override` methods, and a change made after the parameter was rebound to a copy of itself.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Build and return a new collection, or copy first: `new ArrayList<>(items)`, `List.copyOf(items)`, `Arrays.copyOf(counts, counts.length)`, and change the copy.                                                                                                                                                                                                                 |
 | `pmd/CompatibilityShim`         | In main sources: a `@Deprecated` annotation on a class, method, field or constructor. Methods with `@Override` are skipped, since overriding a deprecated method needs the annotation.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Delete the old declaration and change its callers in the same change.                                                                                                                                                                                                                                                                                                          |
 | `pmd/LegacyCalendarApi`         | In main sources: the overloads that read the default time zone: `Calendar.getInstance()` and `Calendar.getInstance(Locale)`, `new GregorianCalendar()` with no arguments, a `Locale` or date fields, and `new SimpleDateFormat(...)` unless the variable it is assigned to gets `setTimeZone(...)` in the same method or class. Passing a `TimeZone` is not flagged.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | `java.time` with an explicit zone: `Instant`, `ZonedDateTime.now(clock)`, a `DateTimeFormatter` with `withZone(zone)`. If the legacy class stays, pass a `TimeZone`.                                                                                                                                                                                                           |
-| `pmd/UnboundedFanOut`           | In main sources: a stream `map`/`forEach`/`flatMap` lambda (also a `this::helper` reference), an enhanced `for`, or an indexed `for` up to `size()`/`length` over a collection, whose element work starts a task that makes a remote or message call: `CompletableFuture.supplyAsync`/`runAsync` on the default pool or a cached, per-task or virtual-thread executor, `submit`/`execute`/`invokeAll`/`invokeAny` on such an executor, `Thread.startVirtualThread`, `Thread.ofVirtual().start`, `new Thread(...).start()`, or `HttpClient.sendAsync`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Run the tasks on a fixed pool, take a `Semaphore` permit around each call, or work through fixed-size batches (`Lists.partition(items, 20)`); or send one batch request.                                                                                                                                                                                                       |
 | `coupling/test-only-export`     | A main class that only test classes use.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Move it to the test sources, or use it from production code.                                                                                                                                                                                                                                                                                                                   |
 
 **Precision notes.**
@@ -2508,32 +2473,6 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   reported on the plural member. Method parameters and varargs record components
   (`record Keys(String key, String... keys)`) are not checked, as the Python preset leaves required
   parameters alone.
-- `UnboundedFanOut` is the rule the TypeScript and Python presets call `unbounded-fan-out`. A call
-  counts as remote or message by the resolved type of its receiver: `java.net.http.HttpClient`,
-  Spring's `RestOperations`, `RestClient` and `WebClient`, OkHttp, the Apache HTTP clients, gRPC
-  stubs, AWS SDK v2 clients, JAX-RS invocations, Retrofit calls, Kafka producers and
-  `KafkaOperations`, `AmqpTemplate`, `JmsOperations`, JMS producers, `MessageSendingOperations`,
-  `StreamBridge` and RabbitMQ channels. Database calls are left to the per-item I/O rules. The task
-  may reach the call through same-class helpers, up to three calls deep. An executor counts as
-  unbounded only when the field or local it is read from is always created by
-  `Executors.newCachedThreadPool`, `newVirtualThreadPerTaskExecutor`, `newThreadPerTaskExecutor`
-  or `ForkJoinPool.commonPool`; a parameter, an injected executor or a fixed pool is never
-  reported. These pass: a `Semaphore` acquired in the loop body, the task or a helper; a source
-  that is fixed (`List.of`, `Arrays.asList`, `Stream.of`, an array initializer, enum `values()`, a
-  `final` field holding one of those) or cut to size (`limit` or `subList` whose size does not
-  read the collection's own size, so `Math.min(20, items.size())` passes and `items.size()` does
-  not; a chunk variable over `partition`, `chunked` or `batches`; a local holding a cut list); a
-  worker pool sized by a count (`IntStream.range(0, workers)`, `for (int i = 0; i < workers; i++)`)
-  while a count read from a collection's size stays a fan-out over that collection; a body that
-  waits for the task (`join`, `get`, `Thread.join`) before the next element; and a stream whose
-  next lazy stage joins the futures (`.map(CompletableFuture::join)` before any
-  `collect`/`toList`). A task started per batch of `Lists.partition(items, 20)` is reported, since
-  the number of batches grows with the collection. The message names the iterated collection and
-  the call that starts the tasks (`messages/fan-out/fan-out-details.mjs`), read from the source at the
-  reported line. Limits: a `while (it.hasNext())` loop, a list of callables filled in a loop and
-  then passed to `invokeAll`, a `ThreadPoolExecutor` constructed with an unbounded maximum and
-  helpers of other classes are not followed; PMD resolves types from the compile classpath, so a
-  client type the build does not resolve is not recognized.
 - `TriStateBoolean` matches the simple name `Boolean` as the whole type, so `Optional<Boolean>`,
   `List<Boolean>` and a primitive `boolean` pass. Data mapped from outside is exempt in every
   preset: a Java parameter, field or record component carrying `@RequestParam`, `@RequestBody`,

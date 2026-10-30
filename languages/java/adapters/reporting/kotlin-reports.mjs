@@ -21,10 +21,7 @@ import {
 import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs';
 import { withFrameworkAllowances } from '../kotlin/scan/framework-allowances.mjs';
 import { readKotlinSourceFindings } from '../kotlin/scan/kotlin-scan.mjs';
-import {
-  readKotlinFanOutFindings,
-  readKotlinReviewFindings,
-} from '../kotlin/review-rules/review-findings.mjs';
+import { readKotlinReviewFindings } from '../kotlin/review-rules/review-findings.mjs';
 import { withoutCoveredSourceFindings } from '../kotlin/review-rules/spring/spring-findings.mjs';
 
 const DETEKT_TOOL = 'detekt';
@@ -101,20 +98,9 @@ export function reportOnlyKotlinMutants(findings) {
   );
 }
 
-function leftToFanOut(calls) {
-  return ({ rule, path: file, location }) =>
-    rule !== 'IoCallInLoop' || !calls.has(`${file}:${String(location?.line)}`);
-}
-
 export function readKotlinFindings(context, crapLimit) {
   const { reportRoot, manifest, projectRoot, jacoco, formatAdvice = DEFAULT_ADVICE } = context;
   const metrics = readKotlinMetrics(reportRoot);
-  const fanOut = readKotlinFanOutFindings({
-    reportRoot,
-    projectRoot,
-    manifest,
-    modules: context.modules,
-  });
   const testRoots = manifest.kotlinTestSourceRoots ?? [];
   const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
   const ruleFindings = applyKotlinRuleMessages([
@@ -123,8 +109,7 @@ export function readKotlinFindings(context, crapLimit) {
       spring: manifest.spring === true,
       testRoots,
     }),
-    ...readKotlinSourceFindings(projectRoot, manifest).filter(leftToFanOut(fanOut.calls)),
-    ...fanOut.findings,
+    ...readKotlinSourceFindings(projectRoot, manifest),
     ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? []),
   ]);
   return withoutCoveredSourceFindings(

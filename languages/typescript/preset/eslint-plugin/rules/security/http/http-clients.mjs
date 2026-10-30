@@ -1,26 +1,38 @@
 import { chainOf } from '../../analysis/ancestry.mjs';
-import { findVariable } from '../../analysis/constant-resolution.mjs';
+import { findVariable, resolveConstant } from '../../analysis/constant-resolution.mjs';
 import { bindingsOf, importedFunction } from '../imported-names.mjs';
 import { memberName, unwrapped } from '../security-values.mjs';
 import { configNodes, isCallback, isLocalUrl, lacksTimeout, typeNamed } from './http-config.mjs';
 import { axiosPosition, createdInstance } from './http-defaults.mjs';
-import {
-  AXIOS_MODULES,
-  FETCH_MODULES,
-  GOT_METHODS,
-  GOT_MODULES,
-  HTTP_MODULE_FUNCTIONS,
-  HTTP_MODULES,
-  NODE_FETCH_MODULES,
-  UNDICI_MODULES,
-  isGlobalFetch,
-} from './http-modules.mjs';
 
-const GOT_CALLS = new Set(GOT_METHODS);
-const HTTP_METHODS = new Set(HTTP_MODULE_FUNCTIONS);
+const FETCH_MODULES = new Set(['cross-fetch', 'isomorphic-fetch', 'isomorphic-unfetch']);
+const NODE_FETCH_MODULES = new Set(['node-fetch']);
+const UNDICI_MODULES = new Set(['undici']);
+const AXIOS_MODULES = new Set(['axios']);
+const GOT_MODULES = new Set(['got']);
+const HTTP_MODULES = new Set(['http', 'node:http', 'https', 'node:https']);
+const GLOBAL_OBJECTS = new Set(['globalThis', 'window', 'self', 'global']);
+const GOT_METHODS = new Set(['get', 'post', 'put', 'patch', 'delete', 'head', 'stream']);
+const HTTP_METHODS = new Set(['request', 'get']);
 const CHAINED_LISTENERS = new Set(['on', 'once', 'prependListener', 'setHeader', 'setNoDelay']);
 const REQUEST_NAME = /^(?:request|req)$/u;
 const TIMEOUT_KEYS = ['timeout', 'signal'];
+
+function isGlobalFetch(context, callee) {
+  const target = unwrapped(resolveConstant(context, unwrapped(callee)));
+  if (target.type === 'MemberExpression') {
+    const owner = unwrapped(target.object);
+    return (
+      owner.type === 'Identifier' &&
+      GLOBAL_OBJECTS.has(owner.name) &&
+      memberName(target) === 'fetch'
+    );
+  }
+  if (target.type !== 'Identifier' || target.name !== 'fetch') {
+    return false;
+  }
+  return (findVariable(context, target, 'fetch')?.defs.length ?? 0) === 0;
+}
 
 function chainedListener(call) {
   const owner = call.parent;
@@ -56,12 +68,12 @@ function hasSetTimeoutCall(context, call) {
 
 export function clientBindings(program) {
   return {
-    fetchModules: bindingsOf(program, new Set(FETCH_MODULES)),
-    nodeFetch: bindingsOf(program, new Set(NODE_FETCH_MODULES)),
-    undici: bindingsOf(program, new Set(UNDICI_MODULES)),
-    axios: bindingsOf(program, new Set(AXIOS_MODULES)),
-    got: bindingsOf(program, new Set(GOT_MODULES)),
-    http: bindingsOf(program, new Set(HTTP_MODULES)),
+    fetchModules: bindingsOf(program, FETCH_MODULES),
+    nodeFetch: bindingsOf(program, NODE_FETCH_MODULES),
+    undici: bindingsOf(program, UNDICI_MODULES),
+    axios: bindingsOf(program, AXIOS_MODULES),
+    got: bindingsOf(program, GOT_MODULES),
+    http: bindingsOf(program, HTTP_MODULES),
   };
 }
 
@@ -113,7 +125,7 @@ function checkGot({ context, got }, node) {
   const callee = unwrapped(node.callee);
   const method = importedFunction(context, callee, got);
   const direct = callee.type === 'Identifier' && got.namespaces.has(callee.name);
-  if (!direct && !GOT_CALLS.has(method) && method !== 'extend') {
+  if (!direct && !GOT_METHODS.has(method) && method !== 'extend') {
     return undefined;
   }
   const config = method === 'extend' ? [node.arguments[0]] : configNodes(context, node.arguments);
