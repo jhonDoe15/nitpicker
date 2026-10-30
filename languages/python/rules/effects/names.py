@@ -1,4 +1,4 @@
-from index.clients import PER_ITEM_CLIENT_FACTORIES
+from smells.io_index import CLIENT_FACTORIES
 
 HTTP_VERBS = ("get", "post", "put", "patch", "delete", "head", "options", "request")
 SUBPROCESS_CALLS = (
@@ -50,7 +50,7 @@ CONNECTING_CLIENTS = {
     "pymysql.connect",
     "pymongo.MongoClient",
 }
-LAZY_CLIENTS = frozenset(PER_ITEM_CLIENT_FACTORIES - CONNECTING_CLIENTS) | {
+LAZY_CLIENTS = frozenset(CLIENT_FACTORIES - CONNECTING_CLIENTS) | {
     "sqlalchemy.create_engine",
     "sqlalchemy.ext.asyncio.create_async_engine",
     "redis.StrictRedis",

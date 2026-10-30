@@ -24,11 +24,10 @@ export function clearSnapshotReports(outputRoot) {
   clearReports(outputRoot, SNAPSHOT_REPORT_FILE_NAMES);
 }
 
-export function writeSnapshotReports(outputRoot, report, { projectPath, repositoryRoot } = {}) {
-  return writeReports(outputRoot, SNAPSHOT_REPORTS, {
-    report,
-    options: { projectPath, repositoryRoot },
-  }).get('report.txt');
+export function writeSnapshotReports(outputRoot, report, { projectPath } = {}) {
+  return writeReports(outputRoot, SNAPSHOT_REPORTS, { report, options: { projectPath } }).get(
+    'report.txt',
+  );
 }
 
 function renderTextReport(report) {

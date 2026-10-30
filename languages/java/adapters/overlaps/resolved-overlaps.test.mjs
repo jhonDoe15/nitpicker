@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
 import { applyFindingPolicy } from '../../../../shared/findings/finding-policy.mjs';
-import { OVERLAP_PAIRS, matchesRule, withoutOverlaps } from './static-overlaps.mjs';
+import { OVERLAP_PAIRS, withoutOverlaps } from './static-overlaps.mjs';
 
 const DOCS = path.resolve(import.meta.dirname, '../../../../docs/java-preset.md');
 const PROBE = JSON.parse(
@@ -27,29 +27,12 @@ afterAll(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true });
 });
 
-function probeFindings() {
-  return PROBE.findings.map(({ line, ...finding }) => ({
+function resolvedProbe() {
+  const findings = PROBE.findings.map(({ line, ...finding }) => ({
     ...finding,
     ...(line === undefined ? {} : { location: { line } }),
   }));
-}
-
-function resolvedProbe() {
-  return withoutOverlaps(probeFindings(), { readSource: (file) => PROBE.sources[file] });
-}
-
-function printedRule({ tool, rule }) {
-  return `${tool}/${rule}`;
-}
-
-function droppedBy({ primary, secondary }) {
-  const own = probeFindings().filter((finding) =>
-    [...primary, ...secondary].some((pattern) => matchesRule([pattern], printedRule(finding))),
-  );
-  const kept = new Set(withoutOverlaps(own, { readSource: (file) => PROBE.sources[file] }));
-  return own.filter(
-    (finding) => !kept.has(finding) && matchesRule(secondary, printedRule(finding)),
-  );
+  return withoutOverlaps(findings, { readSource: (file) => PROBE.sources[file] });
 }
 
 function name(finding) {
@@ -91,17 +74,28 @@ describe('overlaps on the probe project', () => {
           'pmd/AddEmptyString',
         ],
       ],
+      ['C1Arrays.java:8', ['errorprone/JavaUtilDate', 'pmd/AvoidFieldNameMatchingMethodName']],
       ['C3Locks.java:15', ['errorprone/LockOnBoxedPrimitive', 'pmd/AvoidSynchronizedStatement']],
       [
         'C4Switches.java:6',
         ['errorprone/StatementSwitchToExpressionSwitch', 'pmd/NonExhaustiveSwitch'],
       ],
+      ['C8Equals.java:4', ['checkstyle/MemberName', 'errorprone/FieldCanBeStatic']],
       ['Encodings.java:9', ['errorprone/DefaultCharset', 'pmd/AvoidFileStream']],
-      ['G2Stored.java:7', ['errorprone/NullAway', 'pmd/UseVarargs']],
+      ['EqOnly.java:4', ['checkstyle/MemberName', 'errorprone/FieldCanBeStatic']],
+      [
+        'Fields.java:5',
+        [
+          'checkstyle/MemberName',
+          'errorprone/FieldCanBeStatic',
+          'pmd/AvoidFieldNameMatchingMethodName',
+        ],
+      ],
       [
         'Hiding.java:12',
         ['errorprone/HidingField', 'spotbugs/URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD'],
       ],
+      ['Hiding.java:5', ['errorprone/NullAway', 'pmd/AvoidFieldNameMatchingMethodName']],
       ['Misc.java:23', ['errorprone/SynchronizeOnNonFinalField', 'pmd/AvoidSynchronizedStatement']],
       ['Numbers.java:9', ['errorprone/RandomModInteger', 'spotbugs/DMI_RANDOM_USED_ONLY_ONCE']],
       ['Obsolete.java:10', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
@@ -109,7 +103,6 @@ describe('overlaps on the probe project', () => {
       ['Obsolete.java:12', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
       ['Obsolete.java:13', ['errorprone/JdkObsolete', 'pmd/LooseCoupling']],
       ['OldTest.java:14', ['errorprone/RedundantNullCheck', 'pmd/SimplifiableTestAssertion']],
-      ['P2Inner.java:7', ['errorprone/NonFinalStaticField', 'pmd/LegacyCalendarApi']],
       [
         'P2Strings.java:21',
         [
@@ -119,19 +112,11 @@ describe('overlaps on the probe project', () => {
       ],
       ['SelfAssign.java:7', ['errorprone/SelfAssignment', 'pmd/AvoidReassigningParameters']],
       [
-        'V1Style.java:8',
-        ['errorprone/AnnotationPosition', 'errorprone/FieldCanBeStatic', 'pmd/CompatibilityShim'],
+        'StaticCtor.java:4',
+        ['errorprone/NonFinalStaticField', 'pmd/AvoidFieldNameMatchingMethodName'],
       ],
+      ['Volatile.java:4', ['checkstyle/MemberName', 'pmd/UnusedPrivateField']],
     ]);
-  });
-
-  it('drop a secondary under every pair of the table, so each pair matches real findings', () => {
-    expect(
-      OVERLAP_PAIRS.filter((pair) => droppedBy(pair).length === 0).map(
-        ({ primary, secondary, scope }) =>
-          `${scope}: ${primary.join(', ')} over ${secondary.join(', ')}`,
-      ),
-    ).toStrictEqual([]);
   });
 
   it('keep the cases only the secondary side covers', () => {

@@ -245,7 +245,7 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `rule` is the rule as the finding prints it: any `detekt.<ruleset>.<Rule>`, a
 `kotlin-source/<Rule>` of the [source checks](#source-checks), `kotlinc/deprecation`,
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
-`pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/AssertionInControlFlow`,
+`pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/RetryInTest`, `pmd/AssertionInControlFlow`,
 `pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
 `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ValidationAnnotationTarget`, `pmd/ClassLoadEffect`, `unused-option`), a class limit, a file
 limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
@@ -475,6 +475,7 @@ skipped with a note on stderr.
 | `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`              | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during`                                                                                                                                                                                                                                                           |
 | `DisabledTest`                           | `review-rules/tests/honesty/`                    | a skipped test: `@Disabled`, `@Ignore`, `@Ignored` (also aliased or carried by an annotation), Kotest `xtest`, `xcontext`, `xdescribe`, `xit`, `xshould`, `xgiven`, a `!` name prefix, a `.config(...)` that never runs, a constant false condition or assumption                                                                                                                                                                |
 | `FocusedTest`                            | `review-rules/tests/honesty/`                    | a Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`                                                                                                                                                                                                                                                                                              |
+| `RetryInTest`                            | `review-rules/tests/honesty/retries/`            | a retry set in test code: `@RetryingTest`, `@RepeatedIfExceptionsTest`, TestNG `retryAnalyzer`, `IRetryAnalyzer`, `RetryAnalyzerCount`, `setRetryAnalyzer`, Kotest `retries`                                                                                                                                                                                                                                                     |
 | `AssertionInControlFlow`                 | `review-rules/tests/honesty/`                    | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                                                                                                                                                                                            |
 | `CoroutineEscapesTest`                   | `review-rules/tests/coroutines/`                 | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                                                                                                                                                                                          |
 | `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs`      | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                                                                                                                                                                                  |
@@ -484,7 +485,6 @@ skipped with a note on stderr.
 | `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`          | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                                                                                                                                                                                             |
 | `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`           | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                                                                                                                                                                                                                                                         |
 | `ClassLoadEffect`                        | `review-rules/main/load-effects.mjs`             | a call with an external effect (database, network, files, processes, threads and pools, JVM-wide settings) that runs while a file, `object`, companion object or enum class loads                                                                                                                                                                                                                                                |
-| `UnboundedFanOut` (tool `kotlin-source`) | `review-rules/main/fan-out/`                     | a task started for every element of a collection (`async`, `launch`, `supplyAsync`, `thread`) whose work makes a remote or message call; see the limits below                                                                                                                                                                                                                                                                    |
 
 Limits, all chosen to flag less rather than guess:
 
@@ -582,40 +582,6 @@ Limits, all chosen to flag less rather than guess:
   (`the companion object of Registry loads and creates a Registry (in load, which init calls)`), and
   the identity is the owner, member and call name, with no line number. Kotlin builds with Maven are
   not supported by the Kotlin preset; their Java files get the PMD rule through the Java preset.
-- Fan-out: `UnboundedFanOut` is the rule the TypeScript and Python presets call `unbounded-fan-out`,
-  printed as `kotlin-source/UnboundedFanOut` (the id an `exceptions` entry names). A task is an
-  `async` or `launch` lambda, `CompletableFuture.supplyAsync`/`runAsync` on the default pool or an
-  executor created by `newCachedThreadPool`, `newVirtualThreadPerTaskExecutor`,
-  `newThreadPerTaskExecutor` or `commonPool`, `submit`/`execute` on such an executor, `thread` or
-  `startVirtualThread`, started inside a `for` loop or an iterating lambda (`map`, `forEach`,
-  `flatMap`, `onEach`, `associate*`, the `*To` forms and their indexed variants) or `repeat`. Its
-  work is remote when a call in it, or in a function it calls (same class, a class of the project
-  through a typed receiver, a top-level function of the package or a `this::helper` reference, up
-  to three calls deep), has a receiver (a parameter, property, local or top-level `val`) typed as a Ktor or `java.net.http` `HttpClient`,
-  `OkHttpClient`, `RestTemplate`, `RestClient`, `WebClient`, `KafkaTemplate`, a Kafka producer,
-  `RabbitTemplate`, `AmqpTemplate`, `JmsTemplate`, `StreamBridge` or an AWS SQS or SNS client. The
-  receiver chain of the lambda is read from the syntax tree, so a chain such as
-  `urls.filter { ... }.map { ... }` or `(0 until urls.size).map { ... }` counts as a fan-out over
-  `urls`. These pass: the
-  call inside `withPermit { ... }` or after a semaphore's `acquire()` in the same task or helper
-  (a permit taken around other work does not count); `async`/`launch` on a dispatcher made with
-  `limitedParallelism`; a fixed collection (`listOf` and the other builders, enum `entries` or
-  `values()`, a `val` or property holding a builder); `take`, `takeLast`, `subList` or `slice`
-  whose size does not read the collection's own size (`minOf(10, urls.size)` passes,
-  `take(urls.size)` does not); a chunk variable over `chunked(n)` or `windowed(n)`; a count-driven
-  worker pool (`repeat(workers)`, `1..workers`, `0 until concurrency`), while a count taken from a
-  size (`repeat(urls.size)`, `urls.indices`) stays a fan-out over the collection; and a task
-  awaited (`await`, `join`, `get`) before the next element. A task started per chunk of
-  `chunked(n)` is reported, since the number of chunks grows with the collection. Limits:
-  `limitedParallelism` caps the threads that run the tasks, not the suspended calls in flight, so
-  a suspending client under such a dispatcher is still unbounded in practice; it is allowed as
-  [#439](https://github.com/jhonDoe15/nitpicker/issues/439) asks, and `withPermit` is the form
-  the message names. Flows (`flatMapMerge` without `concurrency`), an executor received as a
-  parameter or injected, an abstract or interface method (its implementations are not followed),
-  a receiver whose type the facts cannot name, and a count computed from data rather than read
-  from a size (`for (i in 0 until pages)`, which passes as a worker-pool count) are not reported. A call
-  that this rule reports is not reported again by `IoCallInLoop`; a bounded or awaited per-item
-  call keeps that finding.
 - Not covered: Android and Kotlin Multiplatform modules (the facts step is registered for
   `org.jetbrains.kotlin.jvm` only), and source-set `exclude` patterns (every `.kt` file under a source
   directory is read, as for detekt and the other Kotlin steps).
@@ -663,6 +629,23 @@ guessed at.
   assumption on a real condition depend on the environment and are not reported. Allowed: run the test,
   delete it, or limit it to the environment it needs.
 - `FocusedTest`: Kotest only (JUnit has no focus). Reported at the outermost focused registration.
+- `RetryInTest`: a retry set in test code, so a flaky test cannot pass on a later attempt. JVM forms, in
+  any test source: JUnit Pioneer `@RetryingTest` and rerunner-jupiter `@RepeatedIfExceptionsTest` (also
+  through an import alias or in an `@[...]` group; any retry annotation is reported, `@RetryingTest(1)`
+  included, and so is a meta-annotation declared with one, at its declaration), TestNG
+  `@Test(retryAnalyzer = ...)`, a class or object that implements `IRetryAnalyzer` or extends
+  `RetryAnalyzerCount`, and a `setRetryAnalyzer(...)` call (an `IAnnotationTransformer` doing it for every
+  test), but not a function declared with that name. Kotest forms: `retries` in `.config(...)` on a test or
+  a container, `retries = n` (or `this.retries = n`) as a statement of a spec body or `init` block (not an
+  argument of another call, not a property of another object), `override val retries` in a class that
+  extends `AbstractProjectConfig` or `AbstractPackageConfig`, also over several lines, with `get()` or
+  `by lazy`, and through a base class of the same file, and `retries` in `TestConfig(...)` or
+  `DefaultTestConfig(...)` when the name comes from `io.kotest` (an import, an alias, a star import or the
+  fully qualified name). Not reported: a literal `0` or `null`, a constant of the same file that is `0` or
+  `null`, `retryDelay` alone, and `@RepeatedTest`, which is not a retry because every repetition must pass.
+  A base config class in another file and a constant from another file are not followed. The Java preset
+  has the same rule id for the JVM forms. Fix the cause instead, for example wait on the condition instead
+  of a fixed delay or isolate shared state; use `exceptions` only for a test that must retry on purpose.
 - `AssertionInControlFlow`: an assertion inside a construct that can skip it, in a JUnit test or a Kotest
   test body: an `if` or `else`, a `when`, any loop (`for`, `while`, `do`, `repeat`, `forEach`,
   `forEachIndexed`, `onEach` and the other iteration calls), a safe call (`?.let`, `?.also`, `?.run`,
