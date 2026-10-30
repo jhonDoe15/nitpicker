@@ -98,6 +98,7 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - Remove a parameter the body does not read. One that a callback or override signature requires
   starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
+- Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. Never `Promise.all(items.map(send))` over a runtime collection.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
 - Signatures: a value with three states is a union of string literals, not `boolean | undefined`
   or `flag?: boolean` (also as an optional property); default only `undefined` with `??`, never `||` on an optional parameter that can be `0`, `''` or
@@ -161,8 +162,11 @@ Before you change code other modules use, fix a bug, or add a UI state, read
   and give it a real temp file (`mkdtemp`) rather than `vi.mock` of `node:` modules. The gate
   restores spies; restore fake timers with `vi.useRealTimers()` in `afterEach`.
 - Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
-  Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
-  not loops. The rules above (`for...of` only, no `.then()`, no `as`) apply to tests too.
+  Write `expect` in the test body; asserting helpers don't count. Do not assert inside a loop,
+  `forEach` or `map` callback: an empty collection passes without asserting, so assert the whole
+  collection (`expect(orders).toEqual([...])`) and put cases in `it.each`
+  (`nitpicker/no-assertion-in-loop`). The rules above (`for...of` only, no `.then()`, no `as`) apply
+  to tests too.
 - Tests assert exact values and are deterministic and fast; each finding names the allowed form.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`, or in a `test-support/` folder beside the code when the tests sit next to it.
   When an existing test defines the same helper, make it import the shared one.
