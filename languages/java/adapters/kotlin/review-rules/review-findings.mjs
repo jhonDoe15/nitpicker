@@ -3,6 +3,7 @@ import { hasAwaitility } from '../../../messages/wait-advice.mjs';
 import { pathInside, sourceFilesUnder } from '../../review-rules/java-sources.mjs';
 import { swallowedHandlerFindings } from './handlers/swallowed-handlers.mjs';
 import { enumPredicateFindings } from './main/enum-predicates.mjs';
+import { fanOutFindings } from './main/fan-out/fan-out.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
 import { loadEffectFindings } from './main/load-effects.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
@@ -56,6 +57,11 @@ function contextRoots(manifest, modules) {
     ...(entry?.kotlinSourceRoots ?? []),
     ...(entry?.kotlinTestSourceRoots ?? []),
   ]);
+}
+
+export function readKotlinFanOutFindings(context) {
+  const { own, projectFiles, javaRoots, projectRoot } = projectView(context);
+  return fanOutFindings({ own, projectFiles, projectRoot, javaRoots });
 }
 
 export function readKotlinReviewFindings(context) {
