@@ -100,6 +100,12 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - `async`/`await`, never `.then()`. No floating promises.
 - Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. Never `Promise.all(items.map(send))` over a runtime collection.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
+- Signatures: a value with three states is a union of string literals, not `boolean | undefined`
+  or `flag?: boolean` (also as an optional property); default only `undefined` with `??`, never `||` on an optional parameter that can be `0`, `''` or
+  `false`; return a
+  new array, `Set`, `Map` or object instead of changing a parameter (`[...items, item]`,
+  `items.toSorted()`). When code moves, change every caller and delete the old name: no
+  `@deprecated` declaration and no `export const Old = New` alias.
 
 ## Production rules
 
