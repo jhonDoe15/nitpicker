@@ -26,7 +26,6 @@ const BRANCH_STRICT_RULES = [
   'nitpicker/no-unsafe-path-join',
   'nitpicker/no-weak-hash',
   'nitpicker/require-http-timeout',
-  'nitpicker/unbounded-fan-out',
   'no-duplicate-imports',
   'no-eval',
   'no-param-reassign',

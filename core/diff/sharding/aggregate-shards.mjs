@@ -69,24 +69,21 @@ export function aggregateShardReports({
     toolErrors: sortByToolAndPath(toolErrors),
     notes: sortByToolAndPath(notes),
   };
-  report.text = writeDiffReports(outputRoot, report, repositoryLocationOf(liveProjectRoot));
+  report.text = writeDiffReports(outputRoot, report, {
+    projectPath: projectPathOf(liveProjectRoot),
+  });
   return report;
 }
 
-function repositoryLocationOf(liveProjectRoot) {
+function projectPathOf(liveProjectRoot) {
   if (liveProjectRoot === undefined) {
-    return {};
+    return undefined;
   }
   try {
-    const [repositoryRoot, projectPath] = runGit(liveProjectRoot, [
-      'rev-parse',
-      '--show-toplevel',
-      '--show-prefix',
-    ]).split('\n');
-    return { projectPath, repositoryRoot };
+    return runGit(liveProjectRoot, ['rev-parse', '--show-prefix']).trim();
   } catch (error) {
     if (error instanceof GitCommandError) {
-      return {};
+      return undefined;
     }
     throw error;
   }

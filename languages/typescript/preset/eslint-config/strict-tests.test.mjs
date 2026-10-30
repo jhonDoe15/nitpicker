@@ -17,7 +17,7 @@ const loopMessage =
   'for...of is the only loop; iterate the items with for...of, or give each case its own test with it.each.';
 const forEachMessage = 'Use a for...of loop instead of forEach.';
 const chainMessage =
-  'Use async/await (with try/catch) instead of promise chains, and Promise.all with a limiter for concurrent work.' +
+  'Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work.' +
   ' An exception fits only when a framework or library requires it.';
 const asMessage =
   'Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed.';

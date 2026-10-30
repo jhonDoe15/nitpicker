@@ -21,7 +21,6 @@ import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
-import { withJavaColumns } from './reporting/columns/java-columns.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
 import { runMavenPreset, MAVEN_REPORT_DIRECTORY } from '../maven/maven-build.mjs';
 import { detectJavaBuild, INIT_SCRIPT } from '../builds/java-build.mjs';
@@ -73,7 +72,16 @@ function runJavaPreset(
       testsFailedModules,
     });
     for (const stage of stages) {
-      runGradleStage({ args: stage(), projectRoot, gradle, budget, reportBase, since, spawn });
+      runGradleStage({
+        args: stage(),
+        projectRoot,
+        gradle,
+        budget,
+        reportBase,
+        since,
+        checkTests: testsFailedModules.length === 0,
+        spawn,
+      });
     }
   });
 }
@@ -178,20 +186,17 @@ export function collectJavaFindings(root, options = {}) {
   function readSource(file) {
     return sourceText(projectRoot, file);
   }
-  const parsed = parseAnalyzerReport(
-    {
-      findings: withJavaColumns(findings, { projectRoot, policy: options.policy, readSource }),
-    },
-    preset,
-  ).findings;
   const policed = applyFindingPolicy(
     withoutFollowedImports(
-      withProjectEnumPredicates(withoutGeneratedSources(parsed, projectRoot), projectRoot),
+      withProjectEnumPredicates(
+        withoutGeneratedSources(parseAnalyzerReport({ findings }, preset).findings, projectRoot),
+        projectRoot,
+      ),
       options.policy?.conventions,
       readSource,
     ),
     { ...options.policy, inventoryTool: preset, routeRule: javaRouteRule },
-    options.resolveOverlaps ?? ((reported) => withoutOverlaps(reported, { readSource })),
+    (reported) => withoutOverlaps(reported, { readSource }),
   );
   return withTestsFailures(policed, preset, testsFailures);
 }
