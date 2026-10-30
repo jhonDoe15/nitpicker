@@ -28,27 +28,30 @@ function removeWorktree(repositoryRoot, { worktreeRoot, temporaryRoot, created }
   const removed = created
     ? attempt(() => runGit(repositoryRoot, ['worktree', 'remove', '--force', worktreeRoot]))
     : { ok: true };
-  const deleted = attempt(() =>
+  const deleted = attempt(() => {
     rmSync(temporaryRoot, {
       recursive: true,
       force: true,
       maxRetries: REMOVAL_RETRIES,
       retryDelay: REMOVAL_RETRY_DELAY_MS,
-    }),
-  );
+    });
+  });
   if (!deleted.ok) {
     return deleted.error;
   }
-  return removed.ok
-    ? undefined
-    : attempt(() => unregisterWorktree(repositoryRoot, worktreeRoot)).error;
+  if (removed.ok) {
+    return undefined;
+  }
+  return attempt(() => {
+    unregisterWorktree(repositoryRoot, worktreeRoot);
+  }).error;
 }
 
 function leftoverWarning(temporaryRoot, error) {
   return `could not remove the temporary worktree ${temporaryRoot} (${firstErrorLine(error)}); delete it and run git worktree prune once the build has stopped`;
 }
 
-export function withTemporaryWorktree(repositoryRoot, commitSha, operation, { warn }) {
+export function withTemporaryWorktree(repositoryRoot, { commitSha, warn }, operation) {
   return withNamedTemporaryWorktree(
     repositoryRoot,
     { commitSha, directoryName: 'base', warn },

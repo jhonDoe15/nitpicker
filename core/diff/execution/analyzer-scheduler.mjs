@@ -202,7 +202,9 @@ if (
     const result = await runTaskGraph(input.tasks, { signal: shutdownController.signal });
     process.stdout.write(`${JSON.stringify(result)}\n`);
   } catch (error) {
-    process.stderr.write(`Analyzer scheduler failed: ${describeError(error)}\n`);
+    process.stderr.write(
+      `Analyzer scheduler failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
     process.exitCode = 2;
   }
 }

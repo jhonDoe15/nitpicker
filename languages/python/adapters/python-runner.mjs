@@ -15,7 +15,6 @@ import { mutationFindings } from './mutation/python-mutation.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
 import { readPythonFindings } from './python-reports.mjs';
 import { createToolContext, runPythonTools } from './python-tools.mjs';
-import { describeError } from '../../../shared/messages/error-chain.mjs';
 
 const UNEXPECTED_FAILURE_RULES = {
   [PYTHON_ANALYZER_NAME]: 'python-failed',
@@ -173,7 +172,9 @@ if (process.argv[1] !== undefined && realpathSync(process.argv[1]) === import.me
   try {
     main(process.argv.slice(2));
   } catch (error) {
-    process.stderr.write(`Python differential adapter failed: ${describeError(error)}\n`);
+    process.stderr.write(
+      `Python differential adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
     process.exitCode = 2;
   }
 }

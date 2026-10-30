@@ -205,33 +205,35 @@ function collectBothSnapshots({
   policy,
   warn,
 }) {
-  return withTemporaryWorktree(
-    repositoryRoot,
-    comparison.headSha,
-    (headWorktree) => {
-      const policyRoot = path.join(headWorktree, projectRelativePath);
-      function collectIn(worktreeRoot, snapshot) {
-        return collectJavaFindings(path.join(worktreeRoot, projectRelativePath), {
-          ...options,
-          policy: { ...policy, snapshot, policyRoot },
-        });
-      }
-      const headFindings = collectIn(headWorktree, 'head');
-      const collectedBase = withTemporaryWorktree(
-        repositoryRoot,
-        comparison.mergeBaseSha,
-        (baseWorktree) => collectIn(baseWorktree, 'base'),
-        { warn },
-      );
-      const notes = testFailuresOf({ findings: collectedBase });
-      return {
-        notes,
-        baseFindings: collectedBase.filter((finding) => !notes.includes(finding)),
-        headFindings,
-      };
-    },
-    { warn },
+  const head = { commitSha: comparison.headSha, warn };
+  return withTemporaryWorktree(repositoryRoot, head, (headWorktree) => {
+    const policyRoot = path.join(headWorktree, projectRelativePath);
+    function collectIn(worktreeRoot, snapshot) {
+      return collectJavaFindings(path.join(worktreeRoot, projectRelativePath), {
+        ...options,
+        policy: { ...policy, snapshot, policyRoot },
+      });
+    }
+    const headFindings = collectIn(headWorktree, 'head');
+    const collectedBase = withTemporaryWorktree(
+      repositoryRoot,
+      { commitSha: comparison.mergeBaseSha, warn },
+      (baseWorktree) => collectIn(baseWorktree, 'base'),
+    );
+    const notes = testFailuresOf({ findings: collectedBase });
+    return {
+      notes,
+      baseFindings: collectedBase.filter((finding) => !notes.includes(finding)),
+      headFindings,
+    };
+  });
+}
+
+function withEnforceable(outcome) {
+  const newEnforceable = outcome.newFindings.filter(
+    (finding) => finding.classification === 'enforceable',
   );
+  return { ...outcome, newEnforceable, failed: newEnforceable.length > 0 };
 }
 
 export function runJavaDiff({
@@ -277,15 +279,5 @@ export function runJavaDiff({
     touchedCode,
     unknownOnBase: unknownOnBaseFor(notes, touchedCode),
   });
-  const newEnforceable = result.newFindings.filter(
-    (finding) => finding.classification === 'enforceable',
-  );
-  return {
-    comparison,
-    ...result,
-    notes,
-    warnings,
-    newEnforceable,
-    failed: newEnforceable.length > 0,
-  };
+  return withEnforceable({ comparison, ...result, notes, warnings });
 }

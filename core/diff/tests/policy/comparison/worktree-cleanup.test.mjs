@@ -118,6 +118,7 @@ describe('quality diff temporary worktrees and reports', () => {
     });
     commitFiles(repository.root, { 'quality-policy.json': policy({ mode: 'hang' }) }, 'hang');
     const output = captureOutput();
+    const progress = captureOutput();
     keepWritingIntoWorktrees();
 
     const exitCode = runCli({
@@ -128,6 +129,7 @@ describe('quality diff temporary worktrees and reports', () => {
       analyzers: [fakeAnalyzer({ timeoutMs: 100 })],
       stdout: output.stdout,
       stderr: output.stderr,
+      progress: progress.stderr,
       runTasks: undefined,
     });
 
@@ -140,15 +142,14 @@ describe('quality diff temporary worktrees and reports', () => {
       'fake-quality-analyzer timed out after 100 ms',
       'fake-quality-analyzer timed out after 100 ms',
     ]);
-    expect(output.stdoutText).toContain('fake-quality-analyzer timed out after 100 ms');
-    expect(output.stderrText).not.toContain('nitpicker failed');
-    expect(
-      output.stderrText.split('\n').filter((line) => line.includes('could not remove')),
-    ).toEqual(
-      leftovers.map(
-        (leftover) =>
-          `nitpicker: could not remove the temporary worktree ${leftover} (ENOTEMPTY: directory not empty, rmdir '${leftover}'); delete it and run git worktree prune once the build has stopped`,
-      ),
+    expect(output.stdoutText.split('\n', 1)).toEqual([`Base: ${repository.baseRef} (argument)`]);
+    expect(output.stderrText).toBe(
+      leftovers
+        .map(
+          (leftover) =>
+            `nitpicker: could not remove the temporary worktree ${leftover} (ENOTEMPTY: directory not empty, rmdir '${leftover}'); delete it and run git worktree prune once the build has stopped\n`,
+        )
+        .join(''),
     );
     expect(leftovers).toHaveLength(2);
   });

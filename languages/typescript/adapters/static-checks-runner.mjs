@@ -15,7 +15,6 @@ import {
   REACH_THROUGH_SHARED_RULE,
   sharedReachPath,
 } from '../preset/architecture/strict-boundary-rules.mjs';
-import { describeError } from '../../../shared/messages/error-chain.mjs';
 
 const invokedPath = process.argv[1];
 
@@ -28,7 +27,9 @@ if (
     const findings = await runStaticCheck(options);
     process.stdout.write(`${JSON.stringify({ findings })}\n`);
   } catch (error) {
-    process.stderr.write(`Static quality adapter failed: ${describeError(error)}\n`);
+    process.stderr.write(
+      `Static quality adapter failed: ${error instanceof Error ? error.message : String(error)}\n`,
+    );
     process.exitCode = 2;
   }
 }
