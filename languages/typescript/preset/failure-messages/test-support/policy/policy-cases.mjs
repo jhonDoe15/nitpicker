@@ -39,16 +39,6 @@ export const policyFailureMessageCases = [
     'Promise.all',
   ),
   adapterCase(
-    'unbounded fan-out names the limiter',
-    'export async function load(urls: string[]) { await Promise.all(urls.map((url) => fetch(url))); }',
-    'pLimit(8)',
-  ),
-  adapterCase(
-    'unbounded fan-out names the chunked form',
-    'export async function load(urls: string[]) { await Promise.all(urls.map((url) => fetch(url))); }',
-    'fixed-size chunks',
-  ),
-  adapterCase(
     'Promise wrapper names Promise.resolve',
     'export function id(x) { return new Promise((resolve) => resolve(x)); }',
     'Promise.resolve',

@@ -60,11 +60,10 @@ export function clearDiffReports(outputRoot) {
   clearReports(outputRoot, REPORT_FILE_NAMES);
 }
 
-export function writeDiffReports(outputRoot, report, { projectPath, repositoryRoot } = {}) {
-  return writeReports(outputRoot, DIFF_REPORTS, {
-    report,
-    options: { projectPath, repositoryRoot },
-  }).get(TEXT_REPORT_FILE_NAME);
+export function writeDiffReports(outputRoot, report, { projectPath } = {}) {
+  return writeReports(outputRoot, DIFF_REPORTS, { report, options: { projectPath } }).get(
+    TEXT_REPORT_FILE_NAME,
+  );
 }
 
 export function absoluteTextReportPath(outputRoot) {

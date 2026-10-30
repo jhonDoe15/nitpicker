@@ -71,10 +71,6 @@ Before you change code other modules use, or fix a bug, read
   `if`; `-1`, `0`, `1` and `2` are fine.
 - Parameters and loops: never reassign a parameter or a catch variable; copy to a local. Use
   for-each where the index is unused. Remove unused fields, locals, private methods, assignments.
-- Fan-out: bound concurrent remote or message calls. Run the tasks on a fixed pool
-  (`Executors.newFixedThreadPool(8)`), take a `Semaphore` permit around each call, or work through
-  fixed-size batches; never `supplyAsync` per element on the default pool or a cached or
-  virtual-thread executor.
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
@@ -168,6 +164,10 @@ Before you change code other modules use, or fix a bug, read
   answer, a thread body or a test fake that implements or extends a main class is fine. To
   show something does not happen, give the code a `Clock` or scheduler the test moves forward, not
   `after(ms).never()` or `during(...)` (`NegativeWaitInTest`).
+- No retries in test code (`RetryInTest`): no `@RetryingTest`, `@RepeatedIfExceptionsTest`, TestNG
+  `retryAnalyzer`, `IRetryAnalyzer` or `RetryAnalyzerCount`, nor `setRetryAnalyzer(...)`. A test that
+  passes on a later attempt hides a flaky or racy test: wait on the condition instead of a fixed
+  delay, isolate shared state. `@RepeatedTest` is fine, since every repetition must pass.
 - Tests print nothing new (`test-runtime/test-console-output`): no `System.out`/`System.err`, and
   no new `WARN` or `ERROR` log line from the code under test. Fix the cause the line names.
 - In main code, nothing with an outside effect runs while a class loads (`ClassLoadEffect`): no
