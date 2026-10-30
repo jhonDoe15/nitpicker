@@ -17,7 +17,7 @@ export const PACKAGE_EXCEPTION_RULES = Object.values(PACKAGE_RULE_IDS);
 
 export const LARGE_FILE_BYTES = 1024 * 1024;
 
-const EVERY_LANGUAGE = { typescript: true, java: true, python: true, kotlin: true };
+const EVERY_LANGUAGE = { typescript: true, java: true, python: true, kotlin: true, go: true };
 const TYPESCRIPT_AND_PYTHON = { typescript: true, java: false, python: true, kotlin: false };
 
 export const HYGIENE_RULES = [
@@ -101,7 +101,7 @@ export const CO_CHANGE_EXAMPLES = 3;
 
 const PERCENT = 100;
 const REPORTED_EVERYWHERE = Object.fromEntries(
-  ['typescript', 'javascript', 'java', 'python', 'kotlin'].map((language) => [
+  ['typescript', 'javascript', 'java', 'python', 'kotlin', 'go'].map((language) => [
     language,
     'reported',
   ]),

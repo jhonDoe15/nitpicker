@@ -65,6 +65,25 @@ function settingsFor(precedence, project = PROJECT) {
   return resolveHeadPolicy({ tools: { stryker: { precedence } } }, root).tools.stryker;
 }
 
+const MALFORMED_CONFIGS = [
+  [{}, '"tools.stryker.precedence" lists "project" but a Stryker config (stryker.conf.json'],
+  [{ 'stryker.config.json': '{broken' }, 'stryker.config.json is not valid JSON'],
+  [{ 'stryker.config.json': '[]' }, 'stryker.config.json must contain a JSON object'],
+  [{ 'stryker.config.mjs': 'export default 3;' }, 'must export an object as its default'],
+  [
+    { 'stryker.config.mjs': "throw new Error('boom');" },
+    'stryker.config.mjs could not be loaded: boom',
+  ],
+  [{ 'stryker.config.json': '{"ignorePatterns":"x"}' }, '"ignorePatterns" must be an array'],
+  [
+    { 'stryker.config.json': '{"mutator":{"excludedMutations":[1]}}' },
+    '"mutator.excludedMutations" must be an array of strings',
+  ],
+  [{ 'stryker.config.json': '{"mutator":"all"}' }, '"mutator" must be an object'],
+  [{ 'stryker.config.json': '{"mutator":[]}' }, '"mutator" must be an object'],
+  [{ 'stryker.config.json': '{"timeoutMS":"fast"}' }, '"timeoutMS" must be a number'],
+];
+
 describe('the project Stryker config', () => {
   it.each(EACH_ORDERING)('layers %j over the config nitpicker needs', (precedence) => {
     const layered = layeredStrykerConfig(NITPICKER, settingsFor(precedence));
@@ -131,38 +150,23 @@ describe('the project Stryker config', () => {
     expect(readStrykerProjectConfig(cjs)).toEqual({ ignoreStatic: true, warnings: false });
   });
 
-  it('is a tool error when the config is missing, malformed or escapes the project', () => {
+  it.each(MALFORMED_CONFIGS)('is a tool error for %j', (files, message) => {
+    const root = projectWith(files);
+    const settings = resolveHeadPolicy({ tools: { stryker: { precedence: ['project'] } } }, root)
+      .tools.stryker;
+
+    expect(settings.projectConfigError).toContain(message);
+    expect(() => layeredStrykerConfig(NITPICKER, settings)).toThrow(message);
+  });
+
+  it('is a tool error when a symlink moves the config out of the project', () => {
     const outside = projectWith({ 'stryker.config.json': '{}' });
-    const cases = [
-      [{}, '"tools.stryker.precedence" lists "project" but a Stryker config (stryker.conf.json'],
-      [{ 'stryker.config.json': '{broken' }, 'stryker.config.json is not valid JSON'],
-      [{ 'stryker.config.json': '[]' }, 'stryker.config.json must contain a JSON object'],
-      [{ 'stryker.config.mjs': 'export default 3;' }, 'must export an object as its default'],
-      [
-        { 'stryker.config.mjs': "throw new Error('boom');" },
-        'stryker.config.mjs could not be loaded: boom',
-      ],
-      [{ 'stryker.config.json': '{"ignorePatterns":"x"}' }, '"ignorePatterns" must be an array'],
-      [
-        { 'stryker.config.json': '{"mutator":{"excludedMutations":[1]}}' },
-        '"mutator.excludedMutations" must be an array of strings',
-      ],
-      [{ 'stryker.config.json': '{"mutator":"all"}' }, '"mutator" must be an object'],
-      [{ 'stryker.config.json': '{"mutator":[]}' }, '"mutator" must be an object'],
-      [{ 'stryker.config.json': '{"timeoutMS":"fast"}' }, '"timeoutMS" must be a number'],
-    ];
-    for (const [files, message] of cases) {
-      const root = projectWith(files);
-      const settings = resolveHeadPolicy({ tools: { stryker: { precedence: ['project'] } } }, root)
-        .tools.stryker;
-      expect(settings.projectConfigError).toContain(message);
-      expect(() => layeredStrykerConfig(NITPICKER, settings)).toThrow(message);
-    }
     const linked = projectWith({});
     symlinkSync(
       path.join(outside, 'stryker.config.json'),
       path.join(linked, 'stryker.config.json'),
     );
+
     expect(() => readStrykerProjectConfig(linked)).toThrow('must stay inside the project');
   });
 
@@ -290,16 +294,22 @@ describe('mutants the project config excludes', () => {
 });
 
 describe('the Stryker precedence setting', () => {
-  it('accepts every ordering with the TypeScript and JavaScript presets only', () => {
-    for (const preset of [undefined, 'typescript', 'javascript']) {
-      for (const precedence of ORDERINGS) {
-        const config = { preset, tools: { stryker: { precedence } } };
-        expect(validateConfig(config)).toEqual(config);
-      }
+  it.each([[undefined], ['typescript'], ['javascript']])(
+    'accepts every ordering with the %s preset',
+    (preset) => {
+      const configs = ORDERINGS.map((precedence) => ({
+        preset,
+        tools: { stryker: { precedence } },
+      }));
+
+      expect(configs.map((config) => validateConfig(config))).toEqual(configs);
       expect(() => validateConfig({ preset, tools: { stryker: { precedence: [] } } })).toThrow(
         '"tools.stryker.precedence" must list "project", "nitpicker" or both, each once, highest first',
       );
-    }
+    },
+  );
+
+  it('is an unknown tool outside the TypeScript and JavaScript presets', () => {
     expect(() =>
       validateConfig({ preset: 'python', tools: { stryker: { precedence: ['project'] } } }),
     ).toThrow('"tools" names unknown tool "stryker"');
