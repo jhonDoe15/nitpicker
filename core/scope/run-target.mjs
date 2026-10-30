@@ -3,6 +3,8 @@ import { execFileSync } from 'node:child_process';
 import path from 'node:path';
 import { resolveProjectRoot } from '../tooling/tool-resolution.mjs';
 
+const GIT_OUTPUT_LIMIT_BYTES = 64 * 1024 * 1024;
+
 export function resolveRunTarget({ options, currentProjectRoot, workingDirectory }) {
   const paths = options.paths ?? [];
   if (paths.length === 0) {
@@ -12,7 +14,7 @@ export function resolveRunTarget({ options, currentProjectRoot, workingDirectory
     };
   }
   const base = realpathSync(workingDirectory ?? process.cwd());
-  const repositoryRoot = git(base, ['rev-parse', '--show-toplevel']).trim();
+  const repositoryRoot = repositoryOf(base);
   const targets = paths.map((given) => ({
     given,
     absolute: existingPath({ base, repositoryRoot, given }),
@@ -26,7 +28,15 @@ export function resolveRunTarget({ options, currentProjectRoot, workingDirectory
 }
 
 function git(cwd, args) {
-  return execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: 10 * 1024 * 1024 });
+  return execFileSync('git', args, { cwd, encoding: 'utf8', maxBuffer: GIT_OUTPUT_LIMIT_BYTES });
+}
+
+function repositoryOf(base) {
+  try {
+    return git(base, ['rev-parse', '--show-toplevel']).trim();
+  } catch {
+    throw new Error(`${base} is not in a Git repository; run nitpicker from inside the repository`);
+  }
 }
 
 function existingPath({ base, repositoryRoot, given }) {
@@ -37,7 +47,12 @@ function existingPath({ base, repositoryRoot, given }) {
   if (!existsSync(absolute)) {
     throw new Error(`${given} matches no file`);
   }
-  return realpathSync(absolute);
+  const target = realpathSync(absolute);
+  const inRepository = path.relative(repositoryRoot, target);
+  if (inRepository.startsWith('..') || inRepository.split(path.sep).includes('.git')) {
+    throw new Error(`${given} leads to ${target}, outside the files of ${repositoryRoot}`);
+  }
+  return target;
 }
 
 function projectOf(absolute) {

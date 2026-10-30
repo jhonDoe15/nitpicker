@@ -7,6 +7,7 @@ import {
   ruleTable,
   toolErrorList,
 } from './markdown.mjs';
+import { scopeLine } from '../../../scope/scope-findings.mjs';
 
 function headline(enforceable, toolErrors) {
   if (enforceable.length > 0) {
@@ -26,6 +27,7 @@ export function renderSnapshotSummary(report, context) {
     '',
     `**${headline(enforceable, report.toolErrors)}**`,
     '',
+    ...scopeLine(report.summary).flatMap((line) => [line, '']),
     `${pluralize(report.findings.length, 'finding')} in all, ` +
       `${String(report.findings.length - enforceable.length)} descriptive.`,
     '',

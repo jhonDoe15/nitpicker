@@ -1,13 +1,18 @@
-import { mkdirSync, readFileSync, realpathSync } from 'node:fs';
+import { mkdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mjs';
 import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mjs';
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
-import { fakeAnalyzer, useCliFixtures } from '../command/test-support/cli-harness.mjs';
+import {
+  crashingAnalyzer,
+  fakeAnalyzer,
+  useCliFixtures,
+} from '../command/test-support/cli-harness.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 
-const { createRepository, makeOutputRoot, runCli } = useCliFixtures(nitpickerCli);
+const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
+  useCliFixtures(nitpickerCli);
 
 function repositoryWithTwoFolders(extraFiles = {}) {
   const repository = createRepository({
@@ -22,17 +27,24 @@ function repositoryWithTwoFolders(extraFiles = {}) {
   return repository;
 }
 
-function runScoped({ repository, arguments_, workingDirectory = repository.root }) {
+function runScoped({
+  repository,
+  arguments_,
+  workingDirectory = repository.root,
+  environment = {},
+  ...overrides
+}) {
   const output = captureOutput();
   const outputRoot = makeOutputRoot();
   const exitCode = runCli({
     arguments_: [...arguments_, '--output', outputRoot],
-    environment: { NO_COLOR: '1' },
+    environment: { NO_COLOR: '1', ...environment },
     workingDirectory,
     analyzers: [fakeAnalyzer()],
     snapshotAnalyzers: [fakeAnalyzer()],
     stdout: output.stdout,
     stderr: output.stderr,
+    ...overrides,
   });
   return { exitCode, output, outputRoot };
 }
@@ -220,6 +232,18 @@ describe('nitpicker with paths', () => {
     ],
     ['a path outside the repository', ['..'], (root) => `.. is outside the repository ${root}`],
     [
+      'a link that leads outside the repository',
+      ['outlink'],
+      (root) =>
+        `outlink leads to ${realpathSync(path.dirname(root))}, outside the files of ${root}`,
+    ],
+    [
+      'the Git folder',
+      ['.git'],
+      (root) => `.git leads to ${root}/.git, outside the files of ${root}`,
+    ],
+    ['an empty path', [''], () => 'A path argument is empty; give a file or folder'],
+    [
       'a path outside the project of the first path',
       ['services/orders/src', 'src/orders'],
       (root) =>
@@ -237,6 +261,7 @@ describe('nitpicker with paths', () => {
       'services/orders/src/order.ts': 'export const order = 1;\n',
     });
     mkdirSync(path.join(repository.root, 'empty'));
+    symlinkSync(path.dirname(repository.root), path.join(repository.root, 'outlink'));
 
     const { exitCode, output } = runScoped({
       repository,
@@ -245,6 +270,81 @@ describe('nitpicker with paths', () => {
 
     expect(exitCode).toBe(2);
     expect(output.stderrText).toBe(`nitpicker failed: ${message(realpathSync(repository.root))}\n`);
+  });
+
+  it('names the scope in the GitHub step summary', () => {
+    const repository = repositoryWithTwoFolders();
+    const summaryPath = path.join(makeTemporaryRoot('nitpicker-step-summary-'), 'summary.md');
+    writeFileSync(summaryPath, '');
+
+    runScoped({
+      repository,
+      arguments_: ['src/orders', '--base', repository.baseRef],
+      environment: { GITHUB_STEP_SUMMARY: summaryPath },
+    });
+    runScoped({
+      repository,
+      arguments_: ['--all', 'src/billing'],
+      environment: { GITHUB_STEP_SUMMARY: summaryPath },
+    });
+
+    const lines = readFileSync(summaryPath, 'utf8').split('\n');
+    expect(lines.filter((line) => line.startsWith('Scope: '))).toEqual([
+      'Scope: src/orders (1 finding outside it not shown)',
+      'Scope: src/billing (1 finding outside it not shown)',
+    ]);
+  });
+
+  it('still fails on a tool error outside the paths', () => {
+    const repository = repositoryWithTwoFolders();
+
+    const { exitCode, outputRoot } = runScoped({
+      repository,
+      arguments_: ['src/orders/clean.ts', '--base', repository.baseRef],
+      analyzers: [crashingAnalyzer()],
+    });
+
+    expect(exitCode).toBe(2);
+    expect(readSummary(outputRoot).overallStatus).toBe('tool-error');
+  });
+
+  it('still fails on a config loosening outside the paths', () => {
+    const repository = repositoryWithTwoFolders({
+      'nitpicker.config.json': '{"exclude":["src/legacy/**"]}\n',
+    });
+    writeFiles(repository.root, {
+      'nitpicker.config.json': '{"exclude":["src/legacy/**","src/billing/**"]}\n',
+    });
+
+    const { exitCode, outputRoot } = runScoped({
+      repository,
+      arguments_: ['src/orders/clean.ts', '--base', repository.baseRef],
+    });
+
+    expect(exitCode).toBe(1);
+    expect(
+      JSON.parse(readReport(outputRoot, 'new-findings.json')).map(
+        (entry) => `${entry.tool}/${entry.rule}`,
+      ),
+    ).toEqual(['nitpicker-config/policy-loosened']);
+  });
+
+  it('fixes only the changed files under the paths', () => {
+    const repository = repositoryWithTwoFolders();
+    const fixed = [];
+
+    runScoped({
+      repository,
+      arguments_: ['--fix', 'src/orders', '--base', repository.baseRef],
+      executeFixCommand({ operation, args }) {
+        if (operation === 'eslint-fix') {
+          fixed.push(...args.slice(args.indexOf('--') + 1));
+        }
+        return { status: 0, stdout: '', stderr: '' };
+      },
+    });
+
+    expect(fixed).toEqual(['./src/orders/order.ts']);
   });
 
   it('refuses paths with --shard-count', () => {
