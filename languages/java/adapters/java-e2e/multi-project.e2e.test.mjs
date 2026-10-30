@@ -55,8 +55,16 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
     ]);
   });
 
-  it('reports @Generated on hand-written code, but not an annotation that only starts with it', () => {
+  it('reports an annotation whose name contains Generated on hand-written code', () => {
     expect(located(findings, 'pmd', 'GeneratedOnHandWrittenCode')).toEqual([
+      'app/src/main/java/demo/app/Stamped.java',
+      'app/src/main/java/demo/app/Stamped.java',
+      'lib/src/main/java/demo/lib/Counter.java',
+    ]);
+  });
+
+  it('reports @DoNotMutate, which PIT skips', () => {
+    expect(located(findings, 'pmd', 'MutationIgnoreMarker')).toEqual([
       'app/src/main/java/demo/app/Stamped.java',
     ]);
   });
