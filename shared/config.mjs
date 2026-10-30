@@ -67,6 +67,10 @@ export function picked(source, keys) {
   );
 }
 
+export function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
+}
+
 export function validateStringArray(value, name) {
   if (!Array.isArray(value) || !value.every(isNonEmptyString)) {
     throw configError(`"${name}" must be an array of non-empty strings`);
