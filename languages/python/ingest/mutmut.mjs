@@ -1,5 +1,6 @@
 import { addMetric } from '../../../shared/rules/finding-helpers.mjs';
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
+import { assertNeverArmLines } from './coverage-reports/exhaustive-match.mjs';
 
 export const SUPPORTED_MUTMUT = 'mutmut 3.x';
 
@@ -101,12 +102,12 @@ function describedMutants(file, mutants) {
   return mutants
     .filter((mutant) => mutant.status !== 'Killed')
     .sort((a, b) => a.number - b.number)
-    .map((mutant) => ({
-      path: file.path,
-      symbol: mutant.symbol,
-      status: mutant.status,
-      ...describeChange({ mutant, blocks, originalLines }),
-    }));
+    .flatMap((mutant) => {
+      const change = describeChange({ mutant, blocks, originalLines });
+      return change === undefined
+        ? []
+        : [{ path: file.path, symbol: mutant.symbol, status: mutant.status, ...change }];
+    });
 }
 
 function parseKey(key) {
@@ -171,6 +172,9 @@ function describeChange({ mutant, blocks, originalLines }) {
   if (change === undefined) {
     return { label: 'mutation' };
   }
+  if (insideAssertNeverArm(original, change)) {
+    return undefined;
+  }
   const start = locate(originalLines, original);
   return {
     original: change.original,
@@ -185,10 +189,8 @@ function changedRegion(original, mutated) {
   const after = mutated.match(TOKEN);
   const head = commonLength(before, after);
   const tail = commonLength(before.slice(head).reverse(), after.slice(head).reverse());
-  const removed = before
-    .slice(head, before.length - tail)
-    .join('')
-    .trim();
+  const removedText = before.slice(head, before.length - tail).join('');
+  const removed = removedText.trim();
   const added = after
     .slice(head, after.length - tail)
     .join('')
@@ -196,11 +198,19 @@ function changedRegion(original, mutated) {
   if (removed === '' && added === '') {
     return undefined;
   }
+  const leading = removed === '' ? '' : removedText.slice(0, removedText.indexOf(removed));
   return {
     original: removed,
     replacement: added,
-    lineOffset: before.slice(0, head).join('').split('\n').length - 1,
+    lineOffset: `${before.slice(0, head).join('')}${leading}`.split('\n').length - 1,
   };
+}
+
+function insideAssertNeverArm(original, change) {
+  const last = change.lineOffset + change.original.split('\n').length - 1;
+  return assertNeverArmLines(original.join('\n')).some(
+    (arm) => arm.first <= change.lineOffset && last <= arm.last,
+  );
 }
 
 function commonLength(left, right) {

@@ -43,7 +43,7 @@ function readerFor(tool, settings, context) {
 export function withHeadToolConfigs(policy, config, projectRoot) {
   const context = { policy, config };
   return Object.fromEntries(
-    Object.entries(policy.tools).map(([tool, settings]) => {
+    Object.entries(policy.tools ?? {}).map(([tool, settings]) => {
       const reader = readerFor(tool, settings, context);
       return [
         tool,

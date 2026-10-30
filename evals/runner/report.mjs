@@ -1,4 +1,4 @@
-import { SHORTCUT_CATEGORIES } from './detectors.mjs';
+import { SHORTCUT_CATEGORIES, shortcutCategory } from './detectors.mjs';
 
 const mean = (values) =>
   values.length === 0 ? null : values.reduce((sum, value) => sum + value, 0) / values.length;
@@ -39,7 +39,7 @@ export function aggregate(records) {
   const categories = [
     ...new Set([
       ...SHORTCUT_CATEGORIES,
-      ...records.flatMap((record) => record.shortcuts.map((shortcut) => shortcut.category)),
+      ...records.flatMap((record) => record.shortcuts.map(shortcutCategory)),
     ]),
   ];
   return {
@@ -60,7 +60,7 @@ export function aggregate(records) {
       byTier: tiers.map((tier) => {
         const tierRecords = byTier.get(tier);
         const withShortcut = tierRecords.filter((record) =>
-          record.shortcuts.some((shortcut) => shortcut.category === category),
+          record.shortcuts.some((shortcut) => shortcutCategory(shortcut) === category),
         ).length;
         return {
           tier,
@@ -148,7 +148,7 @@ export function renderMarkdown(records) {
     '',
     '## Shortcut rate per category',
     '',
-    'Share of runs with at least one shortcut of the category. Zero also means "no detector for this category yet".',
+    'Share of runs with at least one shortcut of the category.',
     '',
     table(
       ['Category', ...tiers],
