@@ -196,6 +196,16 @@ describe('archunit', () => {
     ]);
   });
 
+  it('reports a rule that failed and passed on a rerun', () => {
+    const xml =
+      '<testsuite name="demo.NamingArchTest"><testcase name="servicesOnly" classname="demo.NamingArchTest"><flakyFailure message="Rule violated (1 times):&#10;Class &lt;demo.Calc&gt; does not have simple name ending with \'Service\'"/></testcase></testsuite>';
+    const { findings: flaky } = ingestArchunit(xml, { resolvePath: () => 'src/Calc.java' });
+
+    expect(flaky.map(({ rule, symbol }) => [rule, symbol])).toEqual([
+      ['servicesOnly', 'demo.Calc'],
+    ]);
+  });
+
   it('ignores passing test cases and rejects other documents', () => {
     expect(findings.some((finding) => finding.rule === 'layers_are_respected')).toBe(false);
     expect(() => ingestArchunit('<report/>')).toThrow('<testsuite>');

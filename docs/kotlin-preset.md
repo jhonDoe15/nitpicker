@@ -10,6 +10,12 @@ Gradle init script, the runner, the ingesters, the failure policy and the cache 
 preset, and adds Kotlin tools next to the Java ones. The JDK and Gradle a CI job needs, and recipes for
 GitHub Actions, GitLab CI and Jenkins, are in [nitpicker in CI](ci.md#toolchains-by-preset).
 
+## Test retries
+
+The retry rules of the [Java preset](java-preset.md#how-it-works) apply to Kotlin on Gradle: the
+same init script switches off the test-retry and Develocity retries of every `Test` task and reads
+the JUnit XML after a successful build. Maven support is separate.
+
 ## Selection
 
 `"preset": "kotlin"` in `nitpicker.config.json`. Like `java`, it is explicit and never
@@ -484,7 +490,6 @@ skipped with a note on stderr.
 | `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`          | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                                                                                                                                                                                             |
 | `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`           | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                                                                                                                                                                                                                                                         |
 | `ClassLoadEffect`                        | `review-rules/main/load-effects.mjs`             | a call with an external effect (database, network, files, processes, threads and pools, JVM-wide settings) that runs while a file, `object`, companion object or enum class loads                                                                                                                                                                                                                                                |
-| `UnboundedFanOut` (tool `kotlin-source`) | `review-rules/main/fan-out/`                     | a task started for every element of a collection (`async`, `launch`, `supplyAsync`, `thread`) whose work makes a remote or message call; see the limits below                                                                                                                                                                                                                                                                    |
 
 Limits, all chosen to flag less rather than guess:
 
@@ -582,40 +587,6 @@ Limits, all chosen to flag less rather than guess:
   (`the companion object of Registry loads and creates a Registry (in load, which init calls)`), and
   the identity is the owner, member and call name, with no line number. Kotlin builds with Maven are
   not supported by the Kotlin preset; their Java files get the PMD rule through the Java preset.
-- Fan-out: `UnboundedFanOut` is the rule the TypeScript and Python presets call `unbounded-fan-out`,
-  printed as `kotlin-source/UnboundedFanOut` (the id an `exceptions` entry names). A task is an
-  `async` or `launch` lambda, `CompletableFuture.supplyAsync`/`runAsync` on the default pool or an
-  executor created by `newCachedThreadPool`, `newVirtualThreadPerTaskExecutor`,
-  `newThreadPerTaskExecutor` or `commonPool`, `submit`/`execute` on such an executor, `thread` or
-  `startVirtualThread`, started inside a `for` loop or an iterating lambda (`map`, `forEach`,
-  `flatMap`, `onEach`, `associate*`, the `*To` forms and their indexed variants) or `repeat`. Its
-  work is remote when a call in it, or in a function it calls (same class, a class of the project
-  through a typed receiver, a top-level function of the package or a `this::helper` reference, up
-  to three calls deep), has a receiver (a parameter, property, local or top-level `val`) typed as a Ktor or `java.net.http` `HttpClient`,
-  `OkHttpClient`, `RestTemplate`, `RestClient`, `WebClient`, `KafkaTemplate`, a Kafka producer,
-  `RabbitTemplate`, `AmqpTemplate`, `JmsTemplate`, `StreamBridge` or an AWS SQS or SNS client. The
-  receiver chain of the lambda is read from the syntax tree, so a chain such as
-  `urls.filter { ... }.map { ... }` or `(0 until urls.size).map { ... }` counts as a fan-out over
-  `urls`. These pass: the
-  call inside `withPermit { ... }` or after a semaphore's `acquire()` in the same task or helper
-  (a permit taken around other work does not count); `async`/`launch` on a dispatcher made with
-  `limitedParallelism`; a fixed collection (`listOf` and the other builders, enum `entries` or
-  `values()`, a `val` or property holding a builder); `take`, `takeLast`, `subList` or `slice`
-  whose size does not read the collection's own size (`minOf(10, urls.size)` passes,
-  `take(urls.size)` does not); a chunk variable over `chunked(n)` or `windowed(n)`; a count-driven
-  worker pool (`repeat(workers)`, `1..workers`, `0 until concurrency`), while a count taken from a
-  size (`repeat(urls.size)`, `urls.indices`) stays a fan-out over the collection; and a task
-  awaited (`await`, `join`, `get`) before the next element. A task started per chunk of
-  `chunked(n)` is reported, since the number of chunks grows with the collection. Limits:
-  `limitedParallelism` caps the threads that run the tasks, not the suspended calls in flight, so
-  a suspending client under such a dispatcher is still unbounded in practice; it is allowed as
-  [#439](https://github.com/jhonDoe15/nitpicker/issues/439) asks, and `withPermit` is the form
-  the message names. Flows (`flatMapMerge` without `concurrency`), an executor received as a
-  parameter or injected, an abstract or interface method (its implementations are not followed),
-  a receiver whose type the facts cannot name, and a count computed from data rather than read
-  from a size (`for (i in 0 until pages)`, which passes as a worker-pool count) are not reported. A call
-  that this rule reports is not reported again by `IoCallInLoop`; a bounded or awaited per-item
-  call keeps that finding.
 - Not covered: Android and Kotlin Multiplatform modules (the facts step is registered for
   `org.jetbrains.kotlin.jvm` only), and source-set `exclude` patterns (every `.kt` file under a source
   directory is read, as for detekt and the other Kotlin steps).

@@ -454,13 +454,26 @@
     "scope": "javadoc"
   },
   {
+    "primary": ["errorprone/AnnotationPosition"],
+    "secondary": [
+      "checkstyle/AnnotationLocationMostCases",
+      "checkstyle/AnnotationLocationVariables"
+    ],
+    "scope": "line"
+  },
+  {
     "primary": ["errorprone/ClassName"],
     "secondary": ["checkstyle/OuterTypeFilename"],
-    "scope": "file"
+    "scope": "line"
   },
   {
     "primary": ["errorprone/AssignmentExpression"],
     "secondary": ["pmd/AssignmentInOperand"],
+    "scope": "line"
+  },
+  {
+    "primary": ["errorprone/HardCodedSdCardPath"],
+    "secondary": ["pmd/DoNotHardCodeSDCard"],
     "scope": "line"
   },
   {
@@ -508,8 +521,7 @@
     "secondary": [
       "pmd/AvoidCalendarDateCreation",
       "pmd/SimpleDateFormatNeedsLocale",
-      "errorprone/DefaultLocale",
-      "errorprone/DateFormatConstant"
+      "errorprone/DefaultLocale"
     ],
     "scope": "line"
   },

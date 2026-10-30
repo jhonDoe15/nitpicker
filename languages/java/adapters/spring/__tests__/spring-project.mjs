@@ -73,7 +73,6 @@ const REVIEW_RULES = new Set([
   'SpringUnusedContext',
   'TestClassWithoutTestCases',
   'test-only-export',
-  'UnboundedFanOut',
 ]);
 const roots = [];
 const RECEIPT_TEST = `package shop;
