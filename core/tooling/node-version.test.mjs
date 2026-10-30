@@ -9,6 +9,7 @@ describe('unsupportedNodeMessage', () => {
     ['24.0.0', '>=22.14'],
     ['v22.14.0', '>= 22.14'],
     ['20.18.0', '^22.14'],
+    ['23.0.0-pre', '>=22.14'],
   ])('accepts Node.js %s for engines %s', (version, range) => {
     expect(unsupportedNodeMessage(version, range)).toBeUndefined();
   });

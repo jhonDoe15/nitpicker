@@ -1,7 +1,10 @@
 const MINIMUM_RANGE = /^>=\s*(?<version>\d+(?:\.\d+){0,2})$/u;
 
 function numbers(version) {
-  return version.replace(/^v/u, '').split('.').map(Number);
+  return version
+    .replace(/^v/u, '')
+    .split('.')
+    .map((part) => Number.parseInt(part, 10));
 }
 
 export function minimumNodeVersion(range) {
