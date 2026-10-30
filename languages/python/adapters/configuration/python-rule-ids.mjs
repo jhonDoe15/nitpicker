@@ -54,8 +54,9 @@ function isRuffRule(rule) {
   );
 }
 
-export function ruleIdProblem(rule) {
-  if (PYTHON_RULES_IDS.includes(rule) || PYRIGHT_RULE.test(rule) || isRuffRule(rule)) {
+export function ruleIdProblem(rule, { projectRuff = false } = {}) {
+  const ruffRule = projectRuff ? RUFF_SELECTOR.test(rule) : isRuffRule(rule);
+  if (PYTHON_RULES_IDS.includes(rule) || PYRIGHT_RULE.test(rule) || ruffRule) {
     return undefined;
   }
   if (Object.hasOwn(REPLACED_RULES, rule)) {
