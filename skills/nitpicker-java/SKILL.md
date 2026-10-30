@@ -73,6 +73,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   `if`; `-1`, `0`, `1` and `2` are fine.
 - Parameters and loops: never reassign a parameter or a catch variable; copy to a local. Use
   for-each where the index is unused. Remove unused fields, locals, private methods, assignments.
+- Fan-out: bound concurrent remote or message calls. Run the tasks on a fixed pool
+  (`Executors.newFixedThreadPool(8)`), take a `Semaphore` permit around each call, or work through
+  fixed-size batches; never `supplyAsync` per element on the default pool or a cached or
+  virtual-thread executor.
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
