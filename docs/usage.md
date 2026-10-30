@@ -130,14 +130,16 @@ SARIF file) and the run is judged as follows.
 The base ref is the first match of:
 
 1. `--base <ref>`
-2. the pull request target branch from CI (`CHANGE_TARGET`, `GITHUB_BASE_REF` or
-   `CI_MERGE_REQUEST_TARGET_BRANCH_NAME`)
+2. the pull request target branch from CI (`CHANGE_TARGET`, `GITHUB_BASE_REF`,
+   `CI_MERGE_REQUEST_TARGET_BRANCH_NAME`, `SYSTEM_PULLREQUEST_TARGETBRANCH`,
+   `BITBUCKET_PR_DESTINATION_BRANCH` or `BUILDKITE_PULL_REQUEST_BASE_BRANCH`)
 3. `base` in `nitpicker.config.json` (not `HEAD`, the branch you are on, or its commit)
 4. the remote's default branch (`refs/remotes/<remote>/HEAD`, using `upstream` if it exists and
    `origin` otherwise)
 5. `origin/main`, then `origin/master`
 
-In CI, fetch enough history to contain the merge base (for example `fetch-depth: 0`).
+In CI, fetch enough history to contain the merge base (for example `fetch-depth: 0`). Recipes for
+GitHub Actions (with a composite action), GitLab CI and Jenkins are in [nitpicker in CI](ci.md).
 
 **Dependencies of the base.** The base is checked out in a temporary worktree. The package
 manager's folder is the nearest folder from the project up to the repository root that holds a
@@ -190,10 +192,12 @@ A comparison run writes these files to `reports/quality/diff/`:
 - `report.sarif`: SARIF 2.1.0 with the new findings only, the file to upload to code scanning.
 - `report-baseline.sarif`: SARIF 2.1.0 with the new and the held findings, each marked with its
   `baselineState`, for tools that read it.
+- `codequality.json`: the new findings as a GitLab Code Quality report (see
+  [GitLab CI](ci.md#gitlab-ci)).
 
 `--all` has no baseline, so it writes `reports/quality/snapshot/` with `report.txt`, `summary.json`,
-`findings.json` (every finding in the checkout), `tool-errors.json`, `report.junit.xml` and
-`report.sarif`.
+`findings.json` (every finding in the checkout), `tool-errors.json`, `report.junit.xml`,
+`report.sarif` and `codequality.json`.
 
 The summary records every config override, a policy hash, the `policyChanges` the head config makes
 against the base and any `notices`. A notice is information that never fails the run. Today there is
@@ -202,7 +206,9 @@ one kind: changed code files that lie outside the roots the preset checks. For T
 `layout.sourceRoots`); for Python, `python.sourceRoots`; for Java and Kotlin, the build's source
 sets (`src/<set>/java` or `src/<set>/kotlin` of a module, or a directory the build file declares).
 To leave files unchecked, list them in `exclude`. Choose another directory with `--output <dir>`.
-Set `NO_COLOR` to disable colored console output.
+Set `NO_COLOR` to disable colored console output. On GitHub Actions the run also writes a job
+summary and `::error` annotations for the new enforceable findings (see
+[Job summary and annotations](ci.md#job-summary-and-annotations)).
 
 #### SARIF
 
@@ -231,7 +237,8 @@ repository, then the finding's path, percent-encoded, with `uriBaseId: "%SRCROOT
 repository root. A project in `packages/app` reports `packages/app/src/a.ts`, which is how code
 scanning matches a result to a file. The files hold no absolute path, so `originalUriBaseIds` is not
 written. When nitpicker cannot find the repository root (the `aggregate` command outside a git
-checkout), paths stay relative to the project and have no `uriBaseId`.
+checkout), paths stay relative to the project and have no `uriBaseId`. A finding about the whole
+project (no file) points at the project folder, or `.` for a project at the repository root.
 
 Upload the comparison file in pull requests with `github/codeql-action/upload-sarif`:
 
@@ -284,6 +291,7 @@ nitpicker aggregate --input-root <dir> --shard-count <n>
           [--output <dir>] [--policy-root <dir>]
 nitpicker cache publish [--analyzer <name>]...
           [--shard-count <n> --shard-index <i>]
+nitpicker base [--base <ref>]
 ```
 
 - `--all`: report every finding in the current checkout, with no baseline. Exits 1 on any violation.
@@ -309,6 +317,8 @@ nitpicker cache publish [--analyzer <name>]...
 - `nitpicker cache publish`: analyze the committed `HEAD` tree and upload its findings to the remote
   cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits 0 when
   everything was uploaded and 2 otherwise.
+- `nitpicker base [--base <ref>]`: print the base a comparison would use, picked as listed under
+  [What it compares](#what-it-compares), so a CI script can fetch it before the run.
 
 ### Findings cache
 
@@ -1006,7 +1016,8 @@ entry with the same shape as TypeScript's, for example
 
 Set `"preset": "javascript"` to gate a project of plain `.js`, `.mjs` and `.cjs` files with the same
 checks, rules and exit codes as the TypeScript preset; the keys `layout`, `exceptions` and `tools` work the same.
-It is never auto-detected. Types are written as JSDoc and checked by TypeScript with `allowJs` and
+It is never auto-detected. CI needs what the TypeScript preset needs
+([nitpicker in CI](ci.md#toolchains-by-preset)). Types are written as JSDoc and checked by TypeScript with `allowJs` and
 `checkJs`: nitpicker generates the tsconfig, layered over your `tsconfig.json` or `jsconfig.json` when you
 have one. `typescript` and `vitest` are peers as for TypeScript.
 
