@@ -312,7 +312,9 @@ conventions win instead for ruff; it is a config error for black, whose flags ca
 normalization back on. Listing `"project"` with no config file is a tool error that says to create it
 or remove `"project"` from `tools.<tool>.precedence`. The file is read from the head checkout for
 both sides of the comparison and passed to the formatter as `--config <file>`; the whole `extend`
-chain and the located files are part of the cache key. The line length that the conventions take from the config is read from the merge base in a comparison (its parent-folder configs and `extend`ed files included; the branch's own config only when the base has no Python sources), so a pull request cannot raise its own limit by editing the config. The format command then passes the followed value (`--line-length`, the quote style of ruff, indentation) wherever the head config says another one, and the printed command shows it. Which formatter applies which convention:
+chain and the located files are part of the cache key, and an edit of the opted-in settings (the
+`[tool.ruff]` or `[tool.black]` table, not the rest of `pyproject.toml`) is a policy change a person
+reviews; comments and layout do not count. The line length that the conventions take from the config is read from the merge base in a comparison (its parent-folder configs and `extend`ed files included; the branch's own config only when the base has no Python sources), so a pull request cannot raise its own limit by editing the config. The format command then passes the followed value (`--line-length`, the quote style of ruff, indentation) wherever the head config says another one, and the printed command shows it. Which formatter applies which convention:
 ruff format applies all three; black applies `python.lineLength` and `python.quotes` (it keeps single
 quotes as written, so it accepts both styles) and has no indentation option, so `python.indentation`
 is neither measured nor printed with black, and pinning it is a config error. A file votes a line
@@ -405,7 +407,9 @@ through the real tools.
   resolved against the checkout that is being checked, so the base run checks base files; `venv`,
   `venvPath` and `typeshedPath` stay where the environment is. With the opt-in pyright also looks
   for `pyrightconfig.json` or a `pyproject.toml` with the table in the parent directories up to
-  the repository root. The config files, the `extends` chain included, are part of the cache key.
+  the repository root. The config files, the `extends` chain included, are part of the cache key,
+  and an edit of the checker's own settings in them is a policy change a person reviews (see
+  [Type checker and mutation configs](usage.md#type-checker-and-mutation-configs-python-preset)).
   Naming `"project"` without a config is a tool error, and so is a config that cannot be parsed (the
   message says so and names the file). `["nitpicker", "project"]` reads only what the unlisted
   behavior reads. Without the opt-in the run prints
