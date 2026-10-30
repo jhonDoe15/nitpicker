@@ -1,11 +1,10 @@
 #!/usr/bin/env node
 import { runAggregateCli } from './diff/sharding/aggregate-shards.mjs';
 import { reportingProgress } from './diff/execution/progress.mjs';
-import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
+import { runScheduler } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
 import { runBaseCommand } from './command/base.mjs';
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
-import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
 import { realpathSync } from 'node:fs';
 import {
   describeConfigOverrides,
@@ -30,12 +29,14 @@ import { clearDiffReports, absoluteTextReportPath } from './diff/reporting/repor
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
 import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
-import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
+import { selectComparisonAnalyzers } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { writeGithubOutput } from './diff/reporting/github/emit.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
+import { runMonorepo } from './projects/run/monorepo.mjs';
+import { rootOf, runScoped } from './projects/run/refusal.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 
 const CHECK_COMMANDS = { hygiene: runHygieneCli, history: runHistoryCli };
@@ -53,14 +54,16 @@ export function runCli(options = {}) {
     });
   }
   if (cli.arguments_[0] === 'aggregate') {
-    return runAggregateCli({
-      arguments_: cli.arguments_.slice(1),
-      currentProjectRoot: cli.currentProjectRoot,
-      analyzers: cli.analyzers,
-      stdout: cli.stdout,
-      stderr: cli.stderr,
-      environment: cli.environment,
-    });
+    return runScoped(cli, 'aggregate', (scope) =>
+      runAggregateCli({
+        arguments_: cli.arguments_.slice(1),
+        ...scope,
+        analyzers: cli.analyzers,
+        stdout: cli.stdout,
+        stderr: cli.stderr,
+        environment: cli.environment,
+      }),
+    );
   }
   try {
     redirectToBundledTypeScriptApi(cli.environment);
@@ -96,15 +99,17 @@ function withCliDefaults(options) {
 
 function runCommand(cli) {
   if (cli.arguments_[0] === 'cache') {
-    return runCacheCommand({
-      arguments_: cli.arguments_.slice(1),
-      environment: cli.environment,
-      currentProjectRoot: cli.currentProjectRoot,
-      analyzers: cli.analyzers,
-      stdout: cli.stdout,
-      stderr: cli.stderr,
-      runTasks: cli.runTasks,
-    });
+    return runScoped(cli, 'cache', (scope) =>
+      runCacheCommand({
+        arguments_: cli.arguments_.slice(1),
+        environment: cli.environment,
+        ...scope,
+        analyzers: cli.analyzers,
+        stdout: cli.stdout,
+        stderr: cli.stderr,
+        runTasks: cli.runTasks,
+      }),
+    );
   }
   if (cli.arguments_[0] === 'base') {
     return runBaseCommand({ ...cli, arguments_: cli.arguments_.slice(1) });
@@ -117,13 +122,19 @@ function runCommand(cli) {
   return runConfigured({ ...cli, options });
 }
 
+function runProjectOf(cli) {
+  return (options, extraCli) => runConfigured({ ...cli, ...extraCli, options });
+}
+
 function runConfigured(cli) {
+  const currentProjectRoot = rootOf(cli);
+  const monorepo = runMonorepo({ cli, currentProjectRoot, runProject: runProjectOf(cli) });
+  return monorepo.exitCode ?? runSingle({ ...cli, ...monorepo.extraCli }, currentProjectRoot);
+}
+
+function runSingle(cli, currentProjectRoot) {
   const { options, stdout, runTasks } = cli;
-  const currentProjectRoot =
-    cli.currentProjectRoot === undefined
-      ? resolveProjectRoot()
-      : realpathSync(cli.currentProjectRoot);
-  const config = loadConfig(currentProjectRoot);
+  const config = loadConfig(currentProjectRoot, { overlay: cli.configOverlay });
   const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
   const analyzers = configureAnalyzers(presetSet, config, headPolicy);
@@ -162,12 +173,14 @@ function runComparisonCli(cli) {
   const repositoryRoot = realpathSync(
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
-  const base = resolveBase({
-    repositoryRoot,
-    explicitBase: options.baseRef,
-    configuredBase: config.base,
-    environment: cli.environment,
-  });
+  const base =
+    cli.sharedBase ??
+    resolveBase({
+      repositoryRoot,
+      explicitBase: options.baseRef,
+      configuredBase: config.base,
+      environment: cli.environment,
+    });
   const outputRoot =
     options.outputRoot === undefined
       ? path.join(currentProjectRoot, 'reports/quality/diff')
@@ -186,7 +199,7 @@ function runComparisonCli(cli) {
     analyzers,
     cacheStore,
     includeWorkingTree: true,
-    additionalToolErrors: fixResult.toolErrors,
+    additionalToolErrors: [...fixResult.toolErrors, ...(cli.repositoryToolErrors ?? [])],
     configOverrides: describeConfigOverrides(config),
     headPolicy,
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
@@ -238,19 +251,6 @@ function resolveRunCacheStore(cli) {
     }
   }
   return cli.options.cache ? store : undefined;
-}
-
-function selectComparisonAnalyzers({ options, analyzers }) {
-  const selectedAnalyzers =
-    options.shardCount === undefined
-      ? selectAnalyzers(analyzers, options.analyzerNames)
-      : selectAnalyzerShard(analyzers, options.shardCount, options.shardIndex);
-  if (selectedAnalyzers.length === 0) {
-    throw new Error(
-      'No quality analyzers are configured. The comparison framework is ready, but real analyzer adapters are a later phase.',
-    );
-  }
-  return selectedAnalyzers;
 }
 
 function writeComparisonOutcome({ cli, report, base, outputRoot }) {

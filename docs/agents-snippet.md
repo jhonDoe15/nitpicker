@@ -25,6 +25,9 @@ base and fails only on **new enforceable findings**. Existing debt is baselined 
   with `--base`, `--fix`, sharding or `--defer-exit`.
 - `--rule <substring>` lists the findings whose rule matches, after the summary. `--analyzer <name>`
   runs one analyzer only, which is faster while iterating.
+- In a monorepo, `npx nitpicker` at the top runs every project your change touches.
+  `--project <path>` (repeatable) checks only the named projects; running it inside a project folder
+  checks that project alone.
 
 ### Exit codes
 

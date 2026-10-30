@@ -29,6 +29,7 @@ import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18
 import { validateScope, validateTestConsole } from './scopes/scope-settings.mjs';
 import { validateHistory } from './scopes/history-settings.mjs';
 import { TYPESCRIPT_PRESETS, validateLayout } from './scopes/layout-settings.mjs';
+import { validateExtends, validateProjects } from './layers/settings.mjs';
 
 const OPTIONAL_VALIDATORS = [
   [
@@ -65,6 +66,8 @@ export const KEYS = [
   'spring',
   'conventions',
   'history',
+  'extends',
+  'projects',
 ];
 
 const REACT_KEYS = ['enabled', 'styling'];
@@ -91,10 +94,20 @@ export function validateConfig(config) {
   validateHistory(config.history);
   validateOptional(config);
   validateProjectConventions(config);
+  validateRepositorySettings(config);
   return config;
 }
 
-function validateKeys(config) {
+function validateRepositorySettings({ extends: extended, projects }) {
+  if (extended !== undefined) {
+    validateExtends(extended);
+  }
+  if (projects !== undefined) {
+    validateProjects(projects, SUPPORTED_PRESETS);
+  }
+}
+
+export function validateKeys(config) {
   for (const key of Object.keys(config)) {
     if (!KEYS.includes(key)) {
       throw configError(`unknown key "${key}". Allowed keys: ${KEYS.join(', ')}`);

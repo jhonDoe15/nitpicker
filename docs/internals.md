@@ -77,6 +77,79 @@ Contributor notes on formats and protocols that code and names cannot carry. Sou
 - **Temporary files.** Register before creating the file so it is removed on exit or interruption even if the runner's `finally` blocks never run.
 - **Presets.** `preset` is explicit; there is no auto-detection. `rejectUndeclaredPreset` (`core/configuration/project-checks/preset-detection.mjs`) only refuses a config without `preset` when the source roots have no `.ts`/`.js` family file (best-effort: `ASSET_FOLDERS` such as `resources`, `static`, `public`, `assets`, `webapp`, `wwwroot` and `*.min.js` files are skipped, so a Spring app's bundled scripts do not count) and a Gradle, Maven or Python marker (`pyproject.toml`, `setup.py`, `setup.cfg`, `Pipfile` or `requirements.txt`) is at the project root, so the TypeScript preset never runs on a Java or Python project and ends in tool errors; the message names the preset (Kotlin when `.kt`/`.kts` files outnumber `.java` ones, skipping dot folders, `node_modules`, `build`, `target` and `out`). Injected analyzers win over the preset. Within the Java preset the build tool is detected (`detectJavaBuild`): Maven when the root has a `pom.xml` and no Gradle build file, or both but only `mvnw` and no `gradlew`; Gradle otherwise.
 
+## Monorepos (`core/projects/`)
+
+`runConfigured` (`core/cli.mjs`) calls `runMonorepo` (`run/monorepo.mjs`) first. `inspectRepository` (`plan/inspect.mjs`) returns no plan for a single project, which falls through to the usual run: it names the nested folders that look like projects in one stderr hint, and when the base declared projects (`baseDeclaresProjects`, from `git ls-tree` and `git show`) it hands the lost split to the run as `repositoryLoosenings`. Run inside a member that has no `package.json` or config of its own, `memberProjectOf` (`plan/member-root.mjs`) picks that member and runs it alone, with the root's overlay and base and the repository loosenings (`asProjectLoosenings`: their declaration files' blob ids join the member's digest as `evidence`); `aggregate` and `cache` started there get the member as `currentProjectRoot` and its overlay as `configOverlay`. Otherwise `runMonorepo` selects the projects, runs each through `runConfigured` again with `singleProject: true`, the project as `currentProjectRoot`, a `configOverlay` (`{ preset, declared, exclude }`: a declared preset that disagrees with the project's own config is an error, a detected one only fills a missing preset, and `exclude` holds the folders of nested projects), the shared base (`sharedBase`) and the base side's overlay (`baseConfigOverlay`), then writes the combined files. Projects run one after another; one that throws is recorded with status `error` and the others still run.
+
+- **Discovery** (`discovery/`). `detectProjects` reads only declared workspaces: `package.json` workspaces, `pnpm-workspace.yaml` and uv workspaces (members found by `pyproject.toml`, `setup.py`, `setup.cfg`, `Pipfile` or `requirements.txt`; a root `pyproject.toml` with `[project]` or `[tool.poetry]` joins). A repository is a monorepo when a workspace names a non-root member or the root config lists `projects`; `"projects": []` opts out. `undeclaredProjects` lists the outermost Python projects and Gradle and Maven roots (`jvm-builds.mjs`: a root build swallows nested ones) that no project covers, for the hint. `resolveDeclaredProjects` expands the `projects` entries and their globs (any `*`, `?` or `{`) over the outermost folders that hold a project file, leaving out modules of another Gradle or Maven build.
+- **Plan** (`plan/`). `describeProject` reads each project's layered config (an error is kept as `configError`, which selects the project and fails its run), refuses a project `base` that differs from the root's, and refuses a `_root` folder next to a root project.
+- **Config layers** (`core/configuration/layers/`). `readLayeredConfig` (behind `readConfigFile` and `loadConfig`) follows `extends` with `readLayers` (cycles, targets outside the repository, targets that are not files, links that resolve outside the repository and values that do not name a `.json` file are errors named by their repository path; a link that resolves inside is followed), checks each layer's keys alone, merges with `mergeLayers` (shallow per top-level key, plain objects by their direct keys, arrays and scalars replace; `extends` and `projects` are dropped) and validates the result, blaming the layer that fails alone. The base side is read from the base worktree through the same function, so both sides see their own merged config. `configLayersOf` puts the git blob id of each shared file into `scope.sharedConfigs` and the labels of the layers whose blob changed into `scope.changedConfigLayers`, which name the file a loosening came from; `evidenceDigest` hashes the shared blobs with the loosening keys, and a project without `extends` keeps the digest it always had. Acceptance splits `NITPICKER_ACCEPT_POLICY_CHANGE` on commas.
+- **Repository policy** (`policy/`). `basePlanOf` inspects the base tree only when a change could change the plan (`planInputsChanged`: a changed plan file, or an added, deleted or untracked plan file or source file that detection counts); otherwise the head plan stands for it. `base-tree.mjs` lays out the base for it in a temporary folder from `git ls-tree` and `git cat-file --batch`: the plan files with their content, the sources detection counts as empty files and every folder of the tree, never a checkout. A base plan that cannot be read becomes a `nitpicker-projects` tool error. `plan/enclosing.mjs` finds the monorepo around a project folder that has no plan of its own (the nearest folder up to the git root that declares projects or a workspace), so a run started in a member is a member run. `reappeared.mjs` finds a removed project whose base files (by content, or by their path inside the project) now sit outside every project. `projectSetLoosenings` reports a project that is gone or a split that is gone; `repositoryPolicy` digests those loosenings with the declaration files and turns an unaccepted one into findings.
+- **Selection** (`selection/`). `changedFiles` is `git diff` against the merge base plus untracked files. `selectProjects` gives each file to the deepest project containing it, adds dependents from `dependencyGraph` (`dependencies/`: package manifests with npm aliases, uv and Poetry sources, Gradle `includeBuild`, Maven parents and modules outside the build), the projects whose shared config files changed, every project when the root config or a file it extends changed, the projects with a config error, and the projects of a preset family whose toolchain files (`toolchain-files.mjs`) changed outside any project. `--project` and `--all` replace the rule.
+
+### Monorepo summary
+
+The output folder holds `<project>/` with that project's usual reports (`_root/` for the project `.`), `report.txt`, a combined `summary.json`, and a combined `report.sarif`, `report-baseline.sarif` and `report.junit.xml` (`report/combined-files.mjs`: one SARIF run per project with `automationDetails.id` `nitpicker/<project>/` and the project's repository-root uris, plus a `nitpicker-repository/` run for the repository policy, a category no project can take; one JUnit suite per project and one named `(repository policy)`, with paths from the repository root, written also when only the repository policy has something to say). Folders of projects the previous summary named and this plan does not are removed.
+
+```json
+{
+  "source": "declared",
+  "overallStatus": "tool-error",
+  "newEnforceableFindings": 4,
+  "counts": {
+    "projects": 4,
+    "run": 3,
+    "passed": 0,
+    "failed": 2,
+    "errored": 1,
+    "incomplete": 2,
+    "skipped": 1
+  },
+  "projects": [
+    {
+      "path": "api",
+      "preset": "python",
+      "status": "failed",
+      "reason": "3 changed files",
+      "overallStatus": "completed",
+      "exitCode": 1,
+      "newEnforceableFindings": 3,
+      "toolErrors": 0,
+      "report": "api",
+      "summary": "api/summary.json",
+      "policyDigest": "0123456789ab"
+    },
+    {
+      "path": "web",
+      "preset": "typescript",
+      "status": "error",
+      "reason": "its config has an error",
+      "overallStatus": "tool-error",
+      "exitCode": 2,
+      "newEnforceableFindings": 0,
+      "toolErrors": 0,
+      "report": "web",
+      "summary": "web/summary.json",
+      "error": "nitpicker.config.json: unknown key \"colour\""
+    },
+    { "path": "service", "preset": "java", "status": "skipped", "reason": "no changed files" }
+  ],
+  "repositoryPolicy": {
+    "policyLoosenings": [
+      "project tools is no longer one of the projects of the monorepo, so nothing gates it with its own config"
+    ],
+    "policyDigest": "fedcba987654",
+    "accepted": false,
+    "newEnforceableFindings": 1
+  },
+  "outsideProjects": ["README.md"],
+  "notices": [],
+  "elapsedMs": 183000
+}
+```
+
+`source` is `declared` or `detected`. A project's `status` is `error` when it threw or reported tool errors without findings, else `failed` when it has new enforceable findings, else `passed`; a project that did not run is `skipped` with the `reason` it was skipped (or selected) for and carries no report fields. A project's `overallStatus` is `tool-error` when it threw, exited 2 or reported tool errors, findings or not; `counts.incomplete` counts those, and the top `overallStatus` is `tool-error` when any is. `error` holds the message of a project that threw. `policyDigest` appears only for a project with policy loosenings; `repositoryPolicy` only when the set of projects loosened; `notices` repeats the stderr hints. The console prints one `NITPICKER_ACCEPT_POLICY_CHANGE=<digests>` line when the repository policy or two or more projects have a digest. The exit code is 1 when any project failed or the repository policy is not accepted, else 2 when any project is incomplete, else 0; with `--defer-exit` it is 2 when any project is incomplete, else 0. `--shard-count` is refused at the root, and `aggregate` and `cache` refuse to run there (`run/refusal.mjs`) unless started inside a member.
+
 ## Shared rules (`shared/`, `spec/`)
 
 Findings follow `spec/findings.schema.json`. Identity (the part of the comparison key beyond rule and path) never contains line numbers, so edits above a finding do not change it.

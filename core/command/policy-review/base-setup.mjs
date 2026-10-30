@@ -10,12 +10,12 @@ import { policyChangeFields } from '../../policy-changes/describe-policy-changes
 import { readPolicyScope } from '../../policy-changes/policy-scope.mjs';
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
 
-function readBaseConfig(baseProjectRoot, warn) {
-  if (!existsSync(path.join(baseProjectRoot, CONFIG_FILE_NAME))) {
+function readBaseConfig(baseProjectRoot, warn, overlay) {
+  if (overlay === undefined && !existsSync(path.join(baseProjectRoot, CONFIG_FILE_NAME))) {
     return undefined;
   }
   try {
-    return readConfigFile(baseProjectRoot);
+    return readConfigFile(baseProjectRoot, { overlay });
   } catch (error) {
     warn(
       `The base's ${CONFIG_FILE_NAME} cannot be applied (${error instanceof Error ? error.message : String(error)}); the base is analysed with the head config, and the head config is compared with the defaults.`,
@@ -29,6 +29,9 @@ export function baseSetupResolver(cli, headConfig, headPolicy) {
     headConfig,
     headPolicy,
     injectedAnalyzers: cli.injectedAnalyzers,
+    overlay: cli.baseConfigOverlay,
+    inherits: cli.configOverlay?.inherits,
+    repositoryLoosenings: cli.repositoryLoosenings,
     warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
 }
@@ -37,10 +40,13 @@ export function createBaseSetupResolver({
   headConfig,
   headPolicy = {},
   injectedAnalyzers,
+  overlay,
+  inherits,
+  repositoryLoosenings = [],
   warn = () => undefined,
 }) {
   return ({ baseProjectRoot, headSnapshotRoot, moves, analyzers }) => {
-    const baseConfig = readBaseConfig(baseProjectRoot, warn);
+    const baseConfig = readBaseConfig(baseProjectRoot, warn, overlay);
     const compared = baseConfig ?? {};
     const scope = readPolicyScope({
       baseConfig: compared,
@@ -48,6 +54,7 @@ export function createBaseSetupResolver({
       baseProjectRoot,
       headProjectRoot: headSnapshotRoot,
       moves,
+      inherits,
     });
     const unchanged = JSON.stringify(compared) === JSON.stringify(headConfig);
     return {
@@ -60,7 +67,7 @@ export function createBaseSetupResolver({
             injectedAnalyzers,
             analyzers,
           })),
-      ...policyChangeFields(compared, headConfig, scope),
+      ...policyChangeFields(compared, headConfig, { ...scope, repositoryLoosenings }),
     };
   };
 }

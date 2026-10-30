@@ -1,4 +1,4 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { containedPath } from './contained-path.mjs';
 
@@ -48,11 +48,36 @@ function ancestorsToRepository(start) {
   return [directories[0]];
 }
 
+function declaresWorkspaces(directory) {
+  if (existsSync(containedPath(directory, 'pnpm-workspace.yaml'))) {
+    return true;
+  }
+  const workspaces = parsedManifest(readProjectText(directory, 'package.json')).workspaces;
+  return Array.isArray(workspaces) || Array.isArray(workspaces?.packages);
+}
+
 export function managerRoot(projectRoot) {
-  const holder = ancestorsToRepository(projectRoot).find((directory) =>
-    LOCKFILE_NAMES.some((file) => existsSync(containedPath(directory, file))),
-  );
+  const ancestors = ancestorsToRepository(projectRoot);
+  const holder =
+    ancestors.find((directory) =>
+      LOCKFILE_NAMES.some((file) => existsSync(containedPath(directory, file))),
+    ) ?? ancestors.find(declaresWorkspaces);
   return holder ?? path.resolve(projectRoot);
+}
+
+export function installedDependencies(projectRoot) {
+  const ancestors = ancestorsToRepository(projectRoot);
+  const root = managerRoot(projectRoot);
+  const upToRoot = ancestors.slice(0, Math.max(ancestors.indexOf(root), 0) + 1);
+  return upToRoot.map((directory) => containedPath(directory, 'node_modules')).find(holdsPackages);
+}
+
+function holdsPackages(candidate) {
+  return (
+    existsSync(candidate) &&
+    statSync(candidate).isDirectory() &&
+    readdirSync(candidate).some((entry) => !entry.startsWith('.'))
+  );
 }
 
 function parsedManifest(text) {

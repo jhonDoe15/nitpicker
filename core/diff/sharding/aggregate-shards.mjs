@@ -109,6 +109,7 @@ function mergeShardEntries(shardReports, analyzerResolutionErrors) {
 export function runAggregateCli({
   arguments_ = process.argv.slice(2),
   currentProjectRoot,
+  configOverlay,
   policyRoot,
   analyzers,
   stdout = process.stdout,
@@ -134,6 +135,7 @@ export function runAggregateCli({
     clearDiffReports(outputRoot);
     const report = configuredReport(options, {
       currentProjectRoot,
+      configOverlay,
       outputRoot,
       analyzers,
       policyRoot,
@@ -195,8 +197,9 @@ function aggregateSummary({ shardReports, analyzers, configOverrides, newFinding
   };
 }
 
-function configuredReport(options, { currentProjectRoot, outputRoot, analyzers, policyRoot }) {
-  const config = loadConfig(currentProjectRoot);
+function configuredReport(options, context) {
+  const { currentProjectRoot, configOverlay, outputRoot, analyzers, policyRoot } = context;
+  const config = loadConfig(currentProjectRoot, { overlay: configOverlay });
   return aggregateShardReports({
     inputRoot: path.resolve(currentProjectRoot, options.inputRoot),
     outputRoot,

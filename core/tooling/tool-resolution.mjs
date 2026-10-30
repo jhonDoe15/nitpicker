@@ -6,6 +6,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
+import { uvWorkspaceOf } from './uv-workspace.mjs';
 
 export const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
 const manifest = readManifest(path.join(PACKAGE_ROOT, 'package.json'));
@@ -99,6 +100,10 @@ export function toolNameForPath(relativeToolPath) {
 
 const PROJECT_MARKERS = ['package.json', CONFIG_FILE_NAME];
 
+function isUvWorkspaceRoot(directory) {
+  return uvWorkspaceOf(directory) !== undefined;
+}
+
 export function resolveProjectRoot(cwd = process.cwd()) {
   const current = realpathSync(cwd);
   const repositoryRoot = realpathSync(
@@ -111,8 +116,10 @@ export function resolveProjectRoot(cwd = process.cwd()) {
     const parent = path.dirname(directory);
     return directory === repositoryRoot || directory === parent ? undefined : parent;
   });
-  const projectRoot = directories.find((directory) =>
-    PROJECT_MARKERS.some((marker) => existsSync(path.join(directory, marker))),
+  const projectRoot = directories.find(
+    (directory) =>
+      PROJECT_MARKERS.some((marker) => existsSync(path.join(directory, marker))) ||
+      isUvWorkspaceRoot(directory),
   );
   if (projectRoot !== undefined) return projectRoot;
   throw new Error(
