@@ -194,15 +194,17 @@ describe('the rule reference', () => {
   });
 
   it('names a known preset and gives an exception shape or a reason for each entry', () => {
-    for (const entry of entries) {
-      expect(Object.keys(entry.analyzers).filter((preset) => !PRESETS.includes(preset))).toEqual(
-        [],
-      );
-      expect(Object.keys(entry.analyzers).length).toBeGreaterThan(0);
-      expect(entry.exception.key !== undefined || typeof entry.exception.note === 'string').toBe(
-        true,
-      );
-      expect(typeof entry.summary).toBe('string');
-    }
+    const malformed = entries
+      .filter(
+        (entry) =>
+          Object.keys(entry.analyzers).some((preset) => !PRESETS.includes(preset)) ||
+          Object.keys(entry.analyzers).length === 0 ||
+          (entry.exception.key === undefined && typeof entry.exception.note !== 'string') ||
+          typeof entry.summary !== 'string',
+      )
+      .map(({ id }) => id);
+
+    expect(entries.length).toBeGreaterThan(0);
+    expect(malformed).toEqual([]);
   });
 });
