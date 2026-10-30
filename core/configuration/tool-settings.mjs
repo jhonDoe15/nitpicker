@@ -64,12 +64,13 @@ const ORDERED_PRECEDENCE_TOOLS = ['prettier', 'jscpd', 'knip', 'dependency-cruis
 const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
 function toolSettingKeysOf(preset) {
-  if (GRADLE_PRESETS.includes(preset) || preset === 'python') {
+  if (GRADLE_PRESETS.includes(preset) || preset === 'python' || preset === 'go') {
     const names = [
       ...(GRADLE_PRESETS.includes(preset) ? PROJECT_TOOL_CONFIGS.keys() : []),
       ...styleToolsOf(preset),
     ];
-    return new Map([...names, 'jscpd'].map((tool) => [tool, PRECEDENCE_KEYS]));
+    const duplicateScan = preset === 'go' ? [] : ['jscpd'];
+    return new Map([...names, ...duplicateScan].map((tool) => [tool, PRECEDENCE_KEYS]));
   }
   return TOOL_SETTING_KEYS;
 }

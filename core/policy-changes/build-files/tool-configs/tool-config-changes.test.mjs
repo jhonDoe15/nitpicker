@@ -40,6 +40,23 @@ describe('project tool configs the project opted into', () => {
     });
   });
 
+  it('counts an edit of the golangci-lint config whose formatter options the Go project opted into', () => {
+    const go = { preset: 'go', tools: { gofumpt: PROJECT } };
+    const at = (golangci) => ({
+      '.golangci.yml': golangci,
+      'go.mod': 'module m\n',
+      'a.go': 'package a\n',
+    });
+
+    expect(
+      between({ base: at('extra: 1\n'), head: at('extra: 2\n'), config: go }).policyLoosenings,
+    ).toEqual(['gofumpt project config changed: .golangci.yml']);
+    expect(
+      between({ base: at('extra: 1\n'), head: at('extra: 2\n'), config: { preset: 'go' } })
+        .policyLoosenings,
+    ).toEqual([]);
+  });
+
   it('counts an edit of the detekt config and editorconfig the Kotlin project opted into', () => {
     const kotlin = { preset: 'kotlin', tools: { detekt: PROJECT, ktlint: PROJECT } };
     const at = (detekt, editorconfig) => ({
