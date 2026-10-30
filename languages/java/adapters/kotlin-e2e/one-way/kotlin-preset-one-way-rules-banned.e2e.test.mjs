@@ -28,28 +28,33 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
       );
 
       expect(found.length, summarize(result.newEnforceable).join('\n')).toBeGreaterThan(0);
-      for (const finding of found) {
-        expect(finding.message.toLowerCase()).toContain(testCase.allowedForm.toLowerCase());
-      }
+      expect(
+        found
+          .map(({ message }) => message)
+          .filter((message) => !message.toLowerCase().includes(testCase.allowedForm.toLowerCase())),
+      ).toEqual([]);
     },
   );
   it('reports the detekt message each case records and the hint that the gate adds', () => {
     const result = fixture.bannedResult;
 
-    for (const testCase of kotlinRuleCases.filter(({ rule }) => rule !== SUPPRESSION_RULE)) {
-      const [finding] = detektFindingsOf(result.newEnforceable, testCase).filter(
-        ({ rule }) => rule === testCase.rule,
-      );
-      const recorded = withKotlinRuleMessage({
-        tool: 'detekt',
-        rule: testCase.rule,
-        path: finding.path,
-        message: expectedMessage(testCase, 'banned'),
-        classification: 'enforceable',
+    const compared = kotlinRuleCases
+      .filter(({ rule }) => rule !== SUPPRESSION_RULE)
+      .map((testCase) => {
+        const [finding] = detektFindingsOf(result.newEnforceable, testCase).filter(
+          ({ rule }) => rule === testCase.rule,
+        );
+        const recorded = withKotlinRuleMessage({
+          tool: 'detekt',
+          rule: testCase.rule,
+          path: finding.path,
+          message: expectedMessage(testCase, 'banned'),
+          classification: 'enforceable',
+        });
+        return { actual: finding.message, recorded: recorded.message };
       });
 
-      expect(finding.message).toBe(recorded.message);
-    }
+    expect(compared.map(({ actual }) => actual)).toEqual(compared.map(({ recorded }) => recorded));
   });
   it('does not report the suppressed finding twice: the suppression is the finding', () => {
     const result = fixture.bannedResult;

@@ -60,9 +60,11 @@ describe('quality-area analyzer catalog', () => {
     expect(report.summary.tools[0].version).not.toBe('unresolved');
   });
   it('resolves a real version for every analyzer', () => {
-    for (const analyzer of packageAnalyzers) {
-      expect(analyzer.resolveVersion(PACKAGE_ROOT), analyzer.name).not.toBe('unresolved');
-    }
+    const unresolved = packageAnalyzers.map((analyzer) => [
+      analyzer.name,
+      analyzer.resolveVersion(PACKAGE_ROOT) === 'unresolved',
+    ]);
+    expect(unresolved).toEqual(packageAnalyzers.map((analyzer) => [analyzer.name, false]));
   });
   it.each([['single-command', packageAnalyzers]])(
     'runs coverage before CRAP when CRAP alone is selected in the %s dial',
