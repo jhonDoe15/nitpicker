@@ -205,6 +205,21 @@ describe('renderSarifReport', () => {
       uri: 'src/a.js',
     });
   });
+  it('points a finding about the whole project at the project folder', () => {
+    const locationIn = (options) =>
+      JSON.parse(renderSarifReport(report({ newFindings: [finding({ path: '' })] }), options))
+        .runs[0].results[0].locations[0].physicalLocation.artifactLocation;
+
+    expect([
+      locationIn({ projectPath: 'packages/my app/' }),
+      locationIn({ projectPath: '' }),
+      locationIn(undefined),
+    ]).toEqual([
+      { uri: 'packages/my%20app', uriBaseId: '%SRCROOT%' },
+      { uri: '.', uriBaseId: '%SRCROOT%' },
+      { uri: '.' },
+    ]);
+  });
 });
 
 describe('renderBaselineSarifReport', () => {

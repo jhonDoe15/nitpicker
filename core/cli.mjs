@@ -4,6 +4,7 @@ import { reportingProgress } from './diff/execution/progress.mjs';
 import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
 import { runExplainCommand, runRulesCommand } from './command/reference/reference.mjs';
+import { runBaseCommand } from './command/base.mjs';
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
 import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
 import { realpathSync } from 'node:fs';
@@ -24,6 +25,7 @@ import { comparisonPolicy, snapshotPolicy } from './conventions/resolve.mjs';
 import { runGit } from './diff/git/repository/command.mjs';
 import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mjs';
+import { detachLocalGitVariables } from './diff/git/environment/local-variables.mjs';
 import path from 'node:path';
 import { clearDiffReports, absoluteTextReportPath } from './diff/reporting/reporters.mjs';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
@@ -31,6 +33,7 @@ import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
+import { writeGithubOutput } from './diff/reporting/github/emit.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
@@ -39,6 +42,7 @@ import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescri
 const CHECK_COMMANDS = { hygiene: runHygieneCli, history: runHistoryCli };
 
 export function runCli(options = {}) {
+  detachLocalGitVariables(process.env);
   const cli = withCliDefaults(options);
   const checkCommand = CHECK_COMMANDS[cli.arguments_[0]];
   if (checkCommand !== undefined) {
@@ -109,6 +113,9 @@ function runCommand(cli) {
   if (cli.arguments_[0] === 'rules') {
     return runRulesCommand({ ...cli, commandArguments: cli.arguments_.slice(1) });
   }
+  if (cli.arguments_[0] === 'base') {
+    return runBaseCommand({ ...cli, arguments_: cli.arguments_.slice(1) });
+  }
   const options = parseArguments(cli.arguments_);
   if (options.help) {
     cli.stdout.write(USAGE_TEXT);
@@ -141,6 +148,8 @@ function runConfigured(cli) {
         analyzers,
         headPolicy: snapshotPolicy({ config, currentProjectRoot, headPolicy, stdout }),
         stdout,
+        stderr: cli.stderr,
+        environment: cli.environment,
         runTasks,
       });
     }
@@ -261,6 +270,16 @@ function writeComparisonOutcome({ cli, report, base, outputRoot }) {
     }),
   );
   stdout.write(renderClosingSections(cli, report));
+  if (options.shardCount === undefined) {
+    writeGithubOutput({
+      kind: 'diff',
+      report,
+      projectRoot: cli.currentProjectRoot,
+      environment,
+      stdout,
+      stderr: cli.stderr,
+    });
+  }
   if (options.deferExit) {
     return 0;
   }

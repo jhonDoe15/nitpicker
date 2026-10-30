@@ -130,3 +130,7 @@ The rule reference adds three files with planning weights. `java-e2e/tool-text/t
 text with the committed snapshots, and `errorprone/error-prone-report.e2e.test.mjs` (30 seconds)
 compiles and runs `ErrorProneReport.java` once. `ruff/ruff-snapshot.e2e.test.mjs` (one second)
 only asks the installed ruff for its rule list.
+
+The ruff lint precedence file (`adapters/project-tools/ruff/ruff-lint`, ten cases) is in
+`test:python` with a planning weight of 15 seconds: it runs only the installed ruff on small
+projects, and took about six seconds locally.

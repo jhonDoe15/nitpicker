@@ -1,12 +1,12 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 242 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 246 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
 The descriptions of PMD's own rules are from PMD 7.7.0, under its BSD-style licence.
 
-In the Java preset, an entry of `exceptions` names a finding as it prints, `<tool>/<rule>` with one of the tools `pmd`, `spotbugs`, `errorprone`, `archunit`, `google-java-format`, `palantir-java-format`, `jacoco`, `checkstyle`, `crap`, `duplicates`, `pit`, `structure`, `coupling`, `spring` and `test-runtime`, or one of these rules: `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`, `duplicate-clone`, `stability-direction`, `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`, `co-change`, `test-only-export`, `test-console-output`, `folder-depth-limit`, `class-methods-limit`, `class-fields-limit` and `inheritance-depth-limit`. The Kotlin preset takes the same `<tool>/<rule>` form for the Java sources of a mixed module.
+In the Java preset, an entry of `exceptions` names a finding as it prints, `<tool>/<rule>` with one of the tools `pmd`, `spotbugs`, `errorprone`, `archunit`, `google-java-format`, `palantir-java-format`, `jacoco`, `checkstyle`, `crap`, `duplicates`, `pit`, `structure`, `coupling`, `spring` and `test-runtime`, or one of these rules: `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`, `duplicate-clone`, `stability-direction`, `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`, `co-change`, `duplicate-definition`, `exported-name-collision`, `sibling-copy-edit`, `test-only-export`, `doc-comment-content`, `test-console-output`, `folder-depth-limit`, `class-methods-limit`, `class-fields-limit` and `inheritance-depth-limit`. The Kotlin preset takes the same `<tool>/<rule>` form for the Java sources of a mixed module.
 
 Unless an entry says otherwise:
 
@@ -585,6 +585,17 @@ Reports comparisons with double and float `NaN` (Not-a-Number) values.
 - **Allowed form:** Test with Double.isNaN(x) or Float.isNaN(x); a comparison with NaN is always false.
 - **Exception:** If this is intended, add `{"rule":"pmd/ComparisonWithNaN","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#comparisonwithnan)
+
+<a id="pmd-compatibilityshim"></a>
+
+### `pmd/CompatibilityShim`
+
+In main sources: a `@Deprecated` annotation on a class, method, field or constructor. Methods with `@Override` are skipped, since overriding a deprecated method needs the annotation.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** A @Deprecated declaration keeps the old API next to its replacement. Delete it and change its callers to the replacement in the same change.
+- **Exception:** If this is intended, add `{"rule":"pmd/CompatibilityShim","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-confusingargumenttovarargsmethod"></a>
 
@@ -1234,6 +1245,17 @@ In JUnit4, use the @Test(expected) annotation to denote tests that should throw 
 - **Exception:** If this is intended, add `{"rule":"pmd/JUnitUseExpected","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#junituseexpected)
 
+<a id="pmd-legacycalendarapi"></a>
+
+### `pmd/LegacyCalendarApi`
+
+In main sources: the overloads that read the default time zone: `Calendar.getInstance()` and `Calendar.getInstance(Locale)`, `new GregorianCalendar()` with no arguments, a `Locale` or date fields, and `new SimpleDateFormat(...)` unless the variable it is assigned to gets `setTimeZone(...)` in the same method or class. Passing a `TimeZone` is not flagged.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** Calendar.getInstance() and new GregorianCalendar() without a time zone, and new SimpleDateFormat(...) without setTimeZone, read the default time zone and are not thread-safe. Use java.time with an explicit zone: Instant, or ZonedDateTime.now(clock), and a DateTimeFormatter with withZone(zone). Passing a TimeZone to Calendar.getInstance or the GregorianCalendar constructor is allowed.
+- **Exception:** If this is intended, add `{"rule":"pmd/LegacyCalendarApi","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
 <a id="pmd-literalsfirstincomparisons"></a>
 
 ### `pmd/LiteralsFirstInComparisons`
@@ -1463,6 +1485,17 @@ Override both public boolean Object.equals(Object other), and public int Object.
 - **Allowed form:** Override equals and hashCode together, using Objects.hash and Objects.equals, or make the type a record.
 - **Exception:** If this is intended, add `{"rule":"pmd/OverrideBothEqualsAndHashcode","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#overridebothequalsandhashcode)
+
+<a id="pmd-parametermutation"></a>
+
+### `pmd/ParameterMutation`
+
+In public methods and constructors: a change to a parameter in place: a mutating call on a `Collection` or `Map` parameter (`add`, `addAll`, `remove`, `removeIf`, `clear`, `put`, `putAll`, `merge`, `compute*`, `replaceAll`, `sort`, `set`, `push`, `pop`, `poll`, `offer` and the other mutators), `Arrays.sort`, `fill`, `setAll` or `Collections.sort`, `shuffle`, `reverse`, `swap`, `rotate`, `addAll` on a parameter, or a write to an element of an array parameter, also a multi-dimensional one (`counts[0] = 0`, `counts[1]++`, `grid[0][1] = 3`). A parameter stored in a field or a local variable and changed there (`this.items = items; this.items.add(x)`, `var alias = items; alias.add(x)`) counts. Reading an element (`v = values[0]`, `t += values[1]`) does not. Not flagged: private methods and constructors, methods of private, local or anonymous classes, concurrent types used to share work (`BlockingQueue`, `ConcurrentMap`, `CopyOnWrite*`), `@Override` methods, and a change made after the parameter was rebound to a copy of itself.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** This changes the collection, map or array the caller passed in. Build and return a new one (List.copyOf, a stream, new ArrayList\<>(items) filled and returned), or copy the parameter first and change the copy.
+- **Exception:** If this is intended, add `{"rule":"pmd/ParameterMutation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-preservestacktrace"></a>
 
@@ -2287,6 +2320,17 @@ Switch statements are intended to be used to support complex branching behaviour
 - **Allowed form:** Write the decision as an if/else instead of a switch with fewer than three branches.
 - **Exception:** If this is intended, add `{"rule":"pmd/TooFewBranchesForASwitchStatement","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_performance.html#toofewbranchesforswitch)
+
+<a id="pmd-tristateboolean"></a>
+
+### `pmd/TriStateBoolean`
+
+In main sources: a boxed `Boolean` (not `Boolean` inside `Optional<...>`, `List<...>` or another type argument) as a method or constructor parameter, a method return type, a field or a record component. Methods with `@Override` are skipped, and so is data mapped from outside: a parameter, field or record component annotated `@RequestParam`, `@RequestBody`, `@RequestHeader`, `@PathVariable`, `@JsonProperty`, `@Column` or `@Field`, and a field of a class annotated `@Entity`, `@Embeddable`, `@MappedSuperclass` or `@Document`.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** A boxed Boolean can be true, false or null, so this has three states that the type does not name. Use an enum that names each state (Mode.ON, Mode.OFF, Mode.AUTO), or a primitive boolean when absence means nothing.
+- **Exception:** If this is intended, add `{"rule":"pmd/TriStateBoolean","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-unconditionalifstatement"></a>
 

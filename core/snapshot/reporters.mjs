@@ -2,6 +2,10 @@ import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mjs';
 import { clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
 import { ruleReferenceLines } from '../diff/reporting/text.mjs';
 import { withHelpUris } from '../../shared/reference/store.mjs';
+import {
+  CODE_QUALITY_REPORT_FILE_NAME,
+  renderCodeQualityReport,
+} from '../diff/reporting/format/codequality.mjs';
 
 const SNAPSHOT_REPORTS = [
   { name: 'summary.json', render: (report) => json(report.summary) },
@@ -13,6 +17,10 @@ const SNAPSHOT_REPORTS = [
   { name: 'report.txt', render: (report, { reference }) => renderTextReport(report, reference) },
   { name: 'report.junit.xml', render: (report) => renderJunitReport(report) },
   { name: 'report.sarif', render: renderSnapshotSarifReport },
+  {
+    name: CODE_QUALITY_REPORT_FILE_NAME,
+    render: (report, options) => renderCodeQualityReport(report.findings, options),
+  },
 ];
 
 export const SNAPSHOT_REPORT_FILE_NAMES = SNAPSHOT_REPORTS.map(({ name }) => name);

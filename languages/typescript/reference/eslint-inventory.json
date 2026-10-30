@@ -892,6 +892,16 @@
         "{{type}} name `{{name}}` must not have a {{position}} underscore."
       ]
     },
+    "nitpicker/no-assertion-in-loop": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Ban assertions inside loops and iterating callbacks in a test",
+      "messages": [
+        "This assertion sits in a `{{construct}}` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+        "This assertion runs once per row of a literal table in a `{{construct}}`: in Vitest, Jest and Mocha write the table as `it.each([...])('name', (row) => { ... })` (or `test.each`), so each row is its own test and a table that comes up empty cannot pass unnoticed; in node:test register one subtest per row (`for (const row of [...]) { await t.test(row.name, () => { ... }); }`). To check one collection instead, assert it whole (`expect(rows).toEqual([...])`). An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+        "These node:test subtests are registered in a `{{construct}}` over a collection that can be empty, so no case may run and the test can pass without asserting anything. Register them from a literal, non-empty table (`for (const row of [...]) { await t.test(row.name, () => { ... }); }`, or a same-file const holding that array), or assert the whole collection at once. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time."
+      ]
+    },
     "nitpicker/no-branch-in-composition-root": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -918,6 +928,15 @@
         "This doc comment only restates {{name}}. Delete it, or say what the name cannot: a unit, a limit, an edge case or why.",
         "This doc comment's description is {{lines}} lines (limit {{limit}}). Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types.",
         "Doc comments are allowed only on exported declarations and the members of exported types. Remove this one and put the intent in code: a descriptive identifier, a named function, or a type."
+      ]
+    },
+    "nitpicker/no-compatibility-shim": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow deprecated declarations and second names for an exported API",
+      "messages": [
+        "A `@deprecated` declaration keeps the old API next to its replacement. Delete it and update its callers to the replacement in the same change.",
+        "`{{ alias }}` is a second exported name for `{{ target }}`. Delete `{{ alias }}` and update its callers to import `{{ target }}`."
       ]
     },
     "nitpicker/no-copy-pasted-tests": {
@@ -961,6 +980,14 @@
       "tools": ["eslint-lint", "coding-standards"],
       "forms": [],
       "messages": ["Tests requiring external executables belong in the integration project."]
+    },
+    "nitpicker/no-falsy-default": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow replacing a falsy parameter with a default through || or a ternary",
+      "messages": [
+        "`{{ name }}` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`."
+      ]
     },
     "nitpicker/no-first-test-charged-setup": {
       "tools": ["eslint-lint"],
@@ -1087,6 +1114,14 @@
         }
       ],
       "description": "Disallow null outside the allowed library forms"
+    },
+    "nitpicker/no-parameter-mutation": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow changing an array, Set, Map or indexed object that a parameter holds in place",
+      "messages": [
+        "`{{ name }}` changes the value the caller passed in. Build and return a new value instead (`[...items, item]`, `new Set([...set, item])`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`)."
+      ]
     },
     "nitpicker/no-partial-output-assertion": {
       "tools": ["eslint-lint"],
@@ -1223,6 +1258,14 @@
       "description": "Disallow throw so expected failures are returned as discriminated unions",
       "messages": [
         "Return a discriminated-union failure result (for example { kind: \"failed\", reason }) instead of throwing."
+      ]
+    },
+    "nitpicker/no-tri-state-boolean": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow a boolean that can also be undefined or null",
+      "messages": [
+        "{{ name }} is a boolean that can also be absent, so it has three states: true, false and nothing. Take a required `boolean`, or name each state in a union of string literals (`'on' | 'off' | 'auto'`)."
       ]
     },
     "nitpicker/no-ui-framework-in-domain": {
@@ -3581,6 +3624,16 @@
         "{{type}} name `{{name}}` must not have a {{position}} underscore."
       ]
     },
+    "nitpicker/no-assertion-in-loop": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Ban assertions inside loops and iterating callbacks in a test",
+      "messages": [
+        "This assertion sits in a `{{construct}}` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+        "This assertion runs once per row of a literal table in a `{{construct}}`: in Vitest, Jest and Mocha write the table as `it.each([...])('name', (row) => { ... })` (or `test.each`), so each row is its own test and a table that comes up empty cannot pass unnoticed; in node:test register one subtest per row (`for (const row of [...]) { await t.test(row.name, () => { ... }); }`). To check one collection instead, assert it whole (`expect(rows).toEqual([...])`). An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+        "These node:test subtests are registered in a `{{construct}}` over a collection that can be empty, so no case may run and the test can pass without asserting anything. Register them from a literal, non-empty table (`for (const row of [...]) { await t.test(row.name, () => { ... }); }`, or a same-file const holding that array), or assert the whole collection at once. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time."
+      ]
+    },
     "nitpicker/no-branch-in-composition-root": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -3607,6 +3660,15 @@
         "This doc comment only restates {{name}}. Delete it, or say what the name cannot: a unit, a limit, an edge case or why.",
         "This doc comment's description is {{lines}} lines (limit {{limit}}). Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types.",
         "Doc comments are allowed only on exported declarations and the members of exported types. Remove this one and put the intent in code: a descriptive identifier, a named function, or a type."
+      ]
+    },
+    "nitpicker/no-compatibility-shim": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow deprecated declarations and second names for an exported API",
+      "messages": [
+        "A `@deprecated` declaration keeps the old API next to its replacement. Delete it and update its callers to the replacement in the same change.",
+        "`{{ alias }}` is a second exported name for `{{ target }}`. Delete `{{ alias }}` and update its callers to import `{{ target }}`."
       ]
     },
     "nitpicker/no-copy-pasted-tests": {
@@ -3650,6 +3712,14 @@
       "tools": ["eslint-lint", "coding-standards"],
       "forms": [],
       "messages": ["Tests requiring external executables belong in the integration project."]
+    },
+    "nitpicker/no-falsy-default": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow replacing a falsy parameter with a default through || or a ternary",
+      "messages": [
+        "`{{ name }}` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`."
+      ]
     },
     "nitpicker/no-first-test-charged-setup": {
       "tools": ["eslint-lint"],
@@ -3776,6 +3846,14 @@
         }
       ],
       "description": "Disallow null outside the allowed library forms"
+    },
+    "nitpicker/no-parameter-mutation": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow changing an array, Set, Map or indexed object that a parameter holds in place",
+      "messages": [
+        "`{{ name }}` changes the value the caller passed in. Build and return a new value instead (`[...items, item]`, `new Set([...set, item])`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`)."
+      ]
     },
     "nitpicker/no-partial-output-assertion": {
       "tools": ["eslint-lint"],
@@ -3936,6 +4014,14 @@
       "description": "Disallow throw so expected failures are returned as discriminated unions",
       "messages": [
         "Return a discriminated-union failure result (for example { kind: \"failed\", reason }) instead of throwing."
+      ]
+    },
+    "nitpicker/no-tri-state-boolean": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow a boolean that can also be undefined or null",
+      "messages": [
+        "{{ name }} is a boolean that can also be absent, so it has three states: true, false and nothing. Take a required `boolean`, or name each state in a union of string literals (`'on' | 'off' | 'auto'`)."
       ]
     },
     "nitpicker/no-ui-framework-in-domain": {
@@ -6600,6 +6686,16 @@
         "{{type}} name `{{name}}` must not have a {{position}} underscore."
       ]
     },
+    "nitpicker/no-assertion-in-loop": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Ban assertions inside loops and iterating callbacks in a test",
+      "messages": [
+        "This assertion sits in a `{{construct}}` whose body can run zero times (an empty collection, or a condition that is false at the start), so the test can pass without asserting anything. Assert the whole collection at once (`expect(orders).toEqual([...])`, `assert.deepStrictEqual(orders, [...])`), put a table of cases in a parameterized test (`it.each`/`test.each`, or node:test subtests registered from a literal table), or use the loop only to build data before an unconditional assertion. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+        "This assertion runs once per row of a literal table in a `{{construct}}`: in Vitest, Jest and Mocha write the table as `it.each([...])('name', (row) => { ... })` (or `test.each`), so each row is its own test and a table that comes up empty cannot pass unnoticed; in node:test register one subtest per row (`for (const row of [...]) { await t.test(row.name, () => { ... }); }`). To check one collection instead, assert it whole (`expect(rows).toEqual([...])`). An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time.",
+        "These node:test subtests are registered in a `{{construct}}` over a collection that can be empty, so no case may run and the test can pass without asserting anything. Register them from a literal, non-empty table (`for (const row of [...]) { await t.test(row.name, () => { ... }); }`, or a same-file const holding that array), or assert the whole collection at once. An exception fits only when the loop cannot be replaced by one of these, for example cases generated at run time."
+      ]
+    },
     "nitpicker/no-branch-in-composition-root": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -6626,6 +6722,15 @@
         "This doc comment only restates {{name}}. Delete it, or say what the name cannot: a unit, a limit, an edge case or why.",
         "This doc comment's description is {{lines}} lines (limit {{limit}}). Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types.",
         "Doc comments are allowed only on exported declarations and the members of exported types. Remove this one and put the intent in code: a descriptive identifier, a named function, or a type."
+      ]
+    },
+    "nitpicker/no-compatibility-shim": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow deprecated declarations and second names for an exported API",
+      "messages": [
+        "A `@deprecated` declaration keeps the old API next to its replacement. Delete it and update its callers to the replacement in the same change.",
+        "`{{ alias }}` is a second exported name for `{{ target }}`. Delete `{{ alias }}` and update its callers to import `{{ target }}`."
       ]
     },
     "nitpicker/no-copy-pasted-tests": {
@@ -6663,6 +6768,14 @@
       "description": "Disallow turning off TLS certificate verification",
       "messages": [
         "Turning off TLS certificate verification lets anyone on the network pose as the server, and turning it off by environment ships the switch to production. Keep verification on in every environment and trust the certificate authority instead: `new https.Agent({ ca: readFileSync(caPath) })`, `tlsCAFile` for MongoDB, or set NODE_EXTRA_CA_CERTS for a private CA; for browser automation against a local certificate pin it with `--ignore-certificate-errors-spki-list=<hash>`. A server that asks for optional client certificates sets `requestCert: true` and checks `socket.authorized`. An exception fits only when a contained case cannot do that."
+      ]
+    },
+    "nitpicker/no-falsy-default": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow replacing a falsy parameter with a default through || or a ternary",
+      "messages": [
+        "`{{ name }}` is replaced by the default whenever it is falsy, so `0`, `''` and `false` count as not given. Default only `undefined` with `??` (`limit ?? DEFAULT_LIMIT`), or test `limit === undefined`."
       ]
     },
     "nitpicker/no-first-test-charged-setup": {
@@ -6787,6 +6900,14 @@
         }
       ],
       "description": "Disallow null outside the allowed library forms"
+    },
+    "nitpicker/no-parameter-mutation": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow changing an array, Set, Map or indexed object that a parameter holds in place",
+      "messages": [
+        "`{{ name }}` changes the value the caller passed in. Build and return a new value instead (`[...items, item]`, `new Set([...set, item])`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`)."
+      ]
     },
     "nitpicker/no-partial-output-assertion": {
       "tools": ["eslint-lint"],
@@ -6923,6 +7044,14 @@
       "description": "Disallow throw so expected failures are returned as discriminated unions",
       "messages": [
         "Return a discriminated-union failure result (for example { kind: \"failed\", reason }) instead of throwing."
+      ]
+    },
+    "nitpicker/no-tri-state-boolean": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow a boolean that can also be undefined or null",
+      "messages": [
+        "{{ name }} is a boolean that can also be absent, so it has three states: true, false and nothing. Take a required `boolean`, or name each state in a union of string literals (`'on' | 'off' | 'auto'`)."
       ]
     },
     "nitpicker/no-ui-framework-in-domain": {
