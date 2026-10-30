@@ -124,13 +124,18 @@ describe('the baseline moves file', () => {
   });
 
   it.each([
-    ['python', () => createPythonAnalyzers(), 'python'],
     ['java', () => [createJavaAnalyzer()], 'java'],
     ['kotlin', () => [createJavaAnalyzer({ kotlin: true })], 'kotlin'],
-  ])(
-    'is not passed to the %s runner, which runs no rule that reads it yet',
-    (preset, analyzers, name) => {
-      expect(configuredArguments(preset, analyzers(), name)).not.toContain('--baseline-moves-file');
-    },
-  );
+  ])('reaches the %s runner, whose sibling-copy-edit reads the base', (preset, analyzers, name) => {
+    const args = configuredArguments(preset, analyzers(), name);
+    const at = args.indexOf('--baseline-moves-file');
+
+    expect(args.slice(at, at + 2)).toEqual(['--baseline-moves-file', '/tmp/moves.json']);
+  });
+
+  it('is not passed to the python runner, which runs no rule that reads it yet', () => {
+    expect(configuredArguments('python', createPythonAnalyzers(), 'python')).not.toContain(
+      '--baseline-moves-file',
+    );
+  });
 });

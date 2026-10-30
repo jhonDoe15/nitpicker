@@ -7,19 +7,43 @@ describe('tool precedence', () => {
     'accepts the ordering %j of the project and nitpicker configs',
     (precedence) => {
       expect(validateConfig({ tools: { prettier: { precedence } } })).toBeDefined();
+      expect(validateConfig({ preset: 'javascript', tools: { eslint: { precedence } } })).toEqual({
+        preset: 'javascript',
+        tools: { eslint: { precedence } },
+      });
     },
   );
 
+  it('takes the ESLint precedence next to its engine and checks both', () => {
+    const tools = { eslint: { engine: 'eslint', precedence: ['nitpicker', 'project'] } };
+    expect(validateConfig({ tools })).toEqual({ tools });
+    expect(() =>
+      validateConfig({ tools: { eslint: { engine: 'oxlint', precedence: ['eslint'] } } }),
+    ).toThrow(
+      new Error(
+        'nitpicker.config.json: "tools.eslint.precedence" must list "project", "nitpicker" or both, each once, highest first',
+      ),
+    );
+    expect(() =>
+      validateConfig({ tools: { eslint: { engine: 'biome', precedence: ['project'] } } }),
+    ).toThrow('"tools.eslint.engine" must be "oxlint" or "eslint"');
+  });
+
   it.each([
-    ['eslint', ['oxlint', 'eslint'], 'biome'],
-    ['typescript', ['native', 'project'], 'tsgo'],
+    ['eslint', ['oxlint', 'eslint']],
+    ['typescript', ['native', 'project']],
   ])('accepts the known %s engines', (tool, engines) => {
     const accepted = [...engines, undefined].map((engine) =>
       validateConfig({ tools: { [tool]: { engine } } }),
     );
-    expect(accepted).not.toContain(undefined);
-    expect(() => validateConfig({ tools: { [tool]: { precedence: ['project'] } } })).toThrow(
-      `"tools.${tool}" has unknown key "precedence"`,
+    expect(accepted).toEqual(
+      [...engines, undefined].map((engine) => ({ tools: { [tool]: { engine } } })),
+    );
+  });
+
+  it('has no precedence for the TypeScript compiler', () => {
+    expect(() => validateConfig({ tools: { typescript: { precedence: ['project'] } } })).toThrow(
+      '"tools.typescript" has unknown key "precedence"',
     );
   });
 

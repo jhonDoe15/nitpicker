@@ -10,8 +10,18 @@ const REPORT_ONLY_KOTLIN_MUTANTS = {
   file: 'languages/java/adapters/reporting/kotlin-reports.mjs',
   evidence: /reportOnlyKotlinMutants/u,
 };
+const JVM_REUSE_RULES_ONLY = {
+  file: 'languages/java/adapters/reuse/jvm-reuse-facts.mjs',
+  evidence: /rules: REUSE_RULES/u,
+};
+const JVM_FACT_RULES_NOT_RUN = {
+  'shared-used-by-one-feature': JVM_REUSE_RULES_ONLY,
+  'doc-comment-content': JVM_REUSE_RULES_ONLY,
+};
 const NOT_ENFORCED_ALTHOUGH_EMITTED = {
+  java: JVM_FACT_RULES_NOT_RUN,
   kotlin: {
+    ...JVM_FACT_RULES_NOT_RUN,
     'mutant-survived': REPORT_ONLY_KOTLIN_MUTANTS,
     'mutant-nocoverage': REPORT_ONLY_KOTLIN_MUTANTS,
   },
