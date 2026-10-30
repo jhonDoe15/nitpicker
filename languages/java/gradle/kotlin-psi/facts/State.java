@@ -14,6 +14,7 @@ final class State {
   final List<Object> classes = new ArrayList<>();
   final List<Object> functions = new ArrayList<>();
   final List<Object> properties = new ArrayList<>();
+  final List<Object> globals = new ArrayList<>();
   final List<Object> waits = new ArrayList<>();
   final List<Object> predicates = new ArrayList<>();
   final List<Object> lookups = new ArrayList<>();
@@ -71,7 +72,7 @@ final class State {
     return m(
         "file", relative, "test", test, "package", file.getPackageFqName().asString(),
         "imports", imports(), "classes", classes, "functions", functions, "properties", properties,
-        "waits", waits, "predicates", predicates, "typeAliases", typeAliases,
+        "globals", globals, "waits", waits, "predicates", predicates, "typeAliases", typeAliases,
         "lookups", lookups, "typed", lookups.isEmpty() ? List.of() : typed,
         "calls", new ArrayList<Object>(calls.stream().map(Json.Raw::new).toList()),
         "references", new ArrayList<Object>(references));
