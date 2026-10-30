@@ -121,7 +121,7 @@ line) is a finding.
   checks the types already rule out. Indexing (`list[0]`, `record[key]`) may be `undefined`: check
   the value you got.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
-  over unions.
+  over unions, with no `default`.
 - `const` or `let`, never `var`. Rest parameters (`...args`) instead of `arguments[i]`, and spread
   instead of `.apply`.
 - Template literals take strings only: `${String(count)}`.
@@ -141,6 +141,13 @@ line) is a finding.
 - `async`/`await`, never `.then()`. No floating promises.
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
+- Signatures: a value with three states is a union of string literals, not `{boolean|undefined}`,
+  `{boolean=}` or a `@param {boolean} [force]` with no default (the type-aware rules read your
+  JSDoc types, so write them); default only `undefined` with `??`, never `||` on an optional parameter that can be `0`, `''` or
+  `false`; return a
+  new array, `Set`, `Map` or object instead of changing a parameter (`[...items, item]`,
+  `items.toSorted()`). When code moves, change every caller and delete the old name: no
+  `@deprecated` declaration and no `export const Old = New` alias.
 - CommonJS is allowed: `require()` of a module, and `module.exports = { f }`, `module.exports.f = f`
   or `exports.f = f`. In `domain/`,
   destructure a `require`: `const { basename } = require('node:path');`, not

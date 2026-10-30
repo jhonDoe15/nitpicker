@@ -12,7 +12,7 @@ import { validateTestTimeouts } from '../../shared/test-timeouts/resolve.mjs';
 const TOOL_SETTING_KEYS = new Map([
   ['prettier', ['precedence']],
   ['jscpd', ['precedence']],
-  ['eslint', ['engine']],
+  ['eslint', ['engine', 'precedence']],
   ['typescript', ['engine', 'project']],
   ['tests', ['runner', 'timeouts']],
 ]);
@@ -59,7 +59,7 @@ const NITPICKER_FIRST_REJECTED = new Map([
     "black has no flag that switches string normalization back on, so nitpicker's quote style cannot win over the project's skip-string-normalization",
   ],
 ]);
-const ORDERED_PRECEDENCE_TOOLS = ['prettier', 'jscpd'];
+const ORDERED_PRECEDENCE_TOOLS = ['prettier', 'jscpd', 'eslint'];
 const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
 function toolSettingKeysOf(preset) {
@@ -103,7 +103,9 @@ function validateToolSettings(name, settings, toolSettingKeys) {
   }
   if (ENGINES.has(name)) {
     validateEngineSettings(name, settings);
-    return;
+    if (settings.precedence === undefined) {
+      return;
+    }
   }
   validatePrecedence(settings.precedence, name);
   validatePrecedenceOrder(settings.precedence, name);
