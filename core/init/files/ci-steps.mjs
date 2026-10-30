@@ -266,7 +266,9 @@ function gateInputs(root, { project, version, repository }) {
     ...(folder === '' ? {} : { 'working-directory': folder }),
     ...(ownsNodeProject ? {} : { package: `nitpicker@${version}` }),
   };
-  return Object.entries(inputs).map(([key, value]) => `${DETAIL}  ${key}: ${String(yamlScalar(value))}`);
+  return Object.entries(inputs).map(
+    ([key, value]) => `${DETAIL}  ${key}: ${String(yamlScalar(value))}`,
+  );
 }
 
 export function workflowParts(root, context) {

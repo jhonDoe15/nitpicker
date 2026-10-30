@@ -15,13 +15,18 @@ const PYTHON_PEERS = "coverage mypy pytest 'mutmut>=3,<4'";
 const ALL_PYTHON_PEERS = `python -m pip install ${PYTHON_PEERS}`;
 const ACTION = 'jhonDoe15/nitpicker@v1.2.3';
 const PINNED = { package: 'nitpicker@1.2.3' };
-const POLICY = `${'$'}{{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}`;
+const POLICY = '${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}';
 
 function gateStep(inputs) {
   return {
     name: 'nitpicker',
     uses: ACTION,
-    with: { ...inputs, 'node-version': '', 'install-command': 'none', 'accept-policy-change': POLICY },
+    with: {
+      ...inputs,
+      'node-version': '',
+      'install-command': 'none',
+      'accept-policy-change': POLICY,
+    },
   };
 }
 
@@ -71,11 +76,7 @@ describe('workflow for Node projects', () => {
     ['npm', { 'package-lock.json': '{}' }, ['npm ci', ACTION]],
     ['npm', {}, ['npm install', ACTION]],
     ['Yarn 1', { 'yarn.lock': '' }, ['yarn install --frozen-lockfile', ACTION]],
-    [
-      'Bun',
-      { 'bun.lock': '' },
-      ['oven-sh/setup-bun@v2', 'bun install --frozen-lockfile', ACTION],
-    ],
+    ['Bun', { 'bun.lock': '' }, ['oven-sh/setup-bun@v2', 'bun install --frozen-lockfile', ACTION]],
   ])(
     'installs frozen from the lockfile of %s, and plainly without one',
     (_name, lockfile, expected) => {
@@ -86,14 +87,8 @@ describe('workflow for Node projects', () => {
   it('installs plainly with every manager when there is no lockfile', () => {
     const declared = (field) => ({ 'package.json': JSON.stringify({ packageManager: field }) });
 
-    expect(nodeSteps(declared('pnpm@9.1.0')).slice(-2)).toEqual([
-      'pnpm install',
-      ACTION,
-    ]);
-    expect(nodeSteps(declared('yarn@1.22.22')).slice(-2)).toEqual([
-      'yarn install',
-      ACTION,
-    ]);
+    expect(nodeSteps(declared('pnpm@9.1.0')).slice(-2)).toEqual(['pnpm install', ACTION]);
+    expect(nodeSteps(declared('yarn@1.22.22')).slice(-2)).toEqual(['yarn install', ACTION]);
     const berry = { ...declared('yarn@4.5.0'), '.yarnrc.yml': 'nodeLinker: node-modules\n' };
 
     expect(nodeSteps(berry).slice(-2)).toEqual(['yarn install --no-immutable', ACTION]);
@@ -107,11 +102,7 @@ describe('workflow for Node projects', () => {
       'yarn.lock': '',
     };
 
-    expect(nodeSteps(files)).toEqual([
-      'corepack enable',
-      'yarn install --immutable',
-      ACTION,
-    ]);
+    expect(nodeSteps(files)).toEqual(['corepack enable', 'yarn install --immutable', ACTION]);
   });
 
   it('enables corepack for a project that declares packageManager', () => {
