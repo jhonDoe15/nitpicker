@@ -138,6 +138,7 @@ describe('readKotlinSourceFindings', () => {
         'HardcodedSecret',
         'HttpWithoutTimeout',
         'IoCallInLoop',
+        'JvmSyntheticOnHandWrittenCode',
         'LogStringConcatenation',
         'MutableModuleState',
         'MutationIgnoreMarker',
