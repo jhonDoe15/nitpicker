@@ -7,7 +7,7 @@ import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 const root = PACKAGE_ROOT;
 
 const NOT_SHIPPED_PATH =
-  /(?:^|\/)(?:fixtures|test-support|__tests__|__pycache__)\/|\.test\.mjs$|\.pyc$/u;
+  /(?:^|\/)(?:fixtures|test-support|__tests__|__pycache__)\/|\.test\.mjs$|_test\.go$|\.pyc$/u;
 
 function isNotShipped(relative) {
   return NOT_SHIPPED_PATH.test(relative);
@@ -62,7 +62,7 @@ describe('npm package contents', () => {
       assertRuntimeFiles(files);
     }).toThrow('missing runtime file');
   });
-  it('classifies test-only paths and Python bytecode by folder and file name', () => {
+  it('classifies test-only paths, Go test files and Python bytecode by folder and file name', () => {
     expect(
       [
         'core/cli.mjs',
@@ -74,6 +74,8 @@ describe('npm package contents', () => {
         'core/diff/execution/analyzer-scheduler.mjs',
         'languages/python/metrics/__pycache__/class_metrics.cpython-313.pyc',
         'languages/python/metrics/class_metrics.py',
+        'languages/go/inspect/inspect_test.go',
+        'languages/go/inspect/body.go',
       ].filter(isNotShipped),
     ).toEqual([
       'core/cli.test.mjs',
@@ -82,6 +84,7 @@ describe('npm package contents', () => {
       'languages/java/adapters/java-e2e/__tests__/java-preset-project.mjs',
       'languages/java/adapters/fixtures/fake-gradle.mjs',
       'languages/python/metrics/__pycache__/class_metrics.cpython-313.pyc',
+      'languages/go/inspect/inspect_test.go',
     ]);
   });
   it('ships the complete runtime tree without tests, fixtures, test support, bytecode or the lockfile', () => {
@@ -101,6 +104,8 @@ describe('npm package contents', () => {
     expect(packedFiles.has('languages/python/adapters/import-scan.py')).toBe(true);
     expect(packedFiles.has('languages/java/gradle/spring-ruleset.xml')).toBe(true);
     expect(packedFiles.has('languages/java/gradle/pmd-ruleset.xml')).toBe(true);
+    expect(packedFiles.has('languages/go/inspect/go.mod')).toBe(true);
+    expect(packedFiles.has('languages/go/inspect/main.go')).toBe(true);
     expect(
       [...packedFiles].filter((file) => isNotShipped(file) || file === 'package-lock.json'),
     ).toEqual([]);

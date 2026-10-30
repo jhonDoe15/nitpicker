@@ -46,6 +46,12 @@ function listShrank({ before = [], after = [] }) {
   return before.some((entry) => !after.includes(entry));
 }
 
+function formattersDropped({ before = [], after = [] }) {
+  return before.some((formatter) =>
+    formatter === 'gofmt' ? after.length === 0 : !after.includes(formatter),
+  );
+}
+
 function turnedOff(offValue) {
   return ({ before, after }) => after === offValue && before !== offValue;
 }
@@ -57,6 +63,8 @@ const LOOSENING_SETTINGS = [
   [/^python\.importLinter$/u, 'import-linter-disabled', turnedOff(false)],
   [/^kotlin\.formatter$/u, 'kotlin-formatter-off', turnedOff('none')],
   [/^kotlin\.detektConfig$/u, 'kotlin-detekt-config', () => true],
+  [/^go\.formatters$/u, 'go-formatters-dropped', formattersDropped],
+  [/^go\.buildTags$/u, 'go-build-tags-dropped', listShrank],
   [/^tools\.[^.]+\.precedence$/u, 'tool-precedence', precedenceLoosened],
   [/^spring\.roles\.[^.]+$/u, 'spring-roles-shrank', listShrank],
 ];
