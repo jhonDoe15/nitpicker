@@ -367,21 +367,17 @@ describe('describePolicyChanges', () => {
   });
 
   it('counts precedence by what the tool runs', () => {
-    const precedence = (tool, before, after) =>
+    const precedence = (tool, before, after, preset = 'java') =>
       loosened(
-        { preset: 'java', tools: { [tool]: { precedence: before } } },
-        { preset: 'java', tools: { [tool]: { precedence: after } } },
+        { preset, tools: { [tool]: { precedence: before } } },
+        { preset, tools: { [tool]: { precedence: after } } },
       );
 
     expect(precedence('pmd', ['nitpicker'], ['project', 'nitpicker'])).toEqual([]);
     expect(precedence('pmd', ['nitpicker', 'project'], ['project'])).toEqual([
       'tools.pmd.precedence: ["nitpicker","project"] -> ["project"]',
     ]);
-    const script = (before, after) =>
-      loosened(
-        { tools: { knip: { precedence: before } } },
-        { tools: { knip: { precedence: after } } },
-      );
+    const script = (before, after) => precedence('knip', before, after, 'typescript');
     expect(script(['nitpicker'], ['nitpicker', 'project'])).toEqual([
       'tools.knip.precedence: ["nitpicker"] -> ["nitpicker","project"]',
     ]);
