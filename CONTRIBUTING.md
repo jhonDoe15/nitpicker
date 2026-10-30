@@ -51,7 +51,9 @@ everything and merge or rebase on the latest `main` before the final run. A chan
 end-to-end behaviour also needs that language's suite (`npm run test:java`, `test:kotlin` or
 `test:python` or `test:go`), which needs the language's toolchain. CI runs all four, in the `java-e2e`,
 `kotlin-e2e`, `python-e2e` and `go-e2e` workflows, which follow the same triggers as the `typescript` workflow
-below (pushes to `main` that touch the paths they list, a manual run, and the `run-ci` label).
+below (pushes to `main` that touch the paths they list, a manual run, and the `run-ci` label). The
+`github-action` workflow, which runs the composite action in `action.yml` on the sample project in
+`.github/sample-project`, follows them too; it is not a required check.
 The TypeScript red-base test (`npm run test:typescript`, which runs real vitest through the CLI) is
 not in CI: run it after changing `core/diff/comparison/base-red/` or a test runner's failure report.
 
