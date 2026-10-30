@@ -28,6 +28,7 @@ import {
 } from '../../../languages/typescript/preset/eslint-project/project-config.mjs';
 import { replacedEslintOptions } from '../../../languages/typescript/adapters/lint-engine/replaced-options.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
+import { PYTHON_TOOLS, pythonConfigEntries } from './python-tool-configs.mjs';
 
 const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
@@ -128,6 +129,27 @@ function isOptedIn(tool, config) {
   );
 }
 
+function sideFingerprints(tool, side, gitBlobId) {
+  if (!PYTHON_TOOLS.includes(tool)) {
+    return fingerprints(tool, { root: side.root, files: candidates(tool, side) }, gitBlobId);
+  }
+  return new Map(pythonEntries(tool, side).map(({ file, text }) => [file, gitBlobId(text)]));
+}
+
+function pythonEntries(tool, side) {
+  return side.config.preset === 'python' ? pythonConfigEntries(tool, side.root) : [];
+}
+
+function evidenceOf(tool, head, gitBlobId) {
+  return PYTHON_TOOLS.includes(tool)
+    ? {
+        evidence: new Map(
+          pythonEntries(tool, head).map(({ file, content }) => [file, gitBlobId(content)]),
+        ),
+      }
+    : {};
+}
+
 function appliedSide(side, optedIn) {
   if (!optedIn) {
     return { kind: 'applied', config: {} };
@@ -172,23 +194,22 @@ export function readToolConfigs(
     'prettier',
     'jscpd',
     'eslint',
+    ...PYTHON_TOOLS,
     ...projectConfigTools(),
   ]
     .filter((tool) => isOptedIn(tool, head.config))
     .map((tool) => {
       const prints = {
-        base: fingerprints(
-          tool,
-          { root: base.root, files: isOptedIn(tool, base.config) ? candidates(tool, base) : [] },
-          gitBlobId,
-        ),
-        head: fingerprints(tool, { root: head.root, files: candidates(tool, head) }, gitBlobId),
+        base: isOptedIn(tool, base.config) ? sideFingerprints(tool, base, gitBlobId) : new Map(),
+        head: sideFingerprints(tool, head, gitBlobId),
       };
       return {
         tool,
+        optsIn: !isOptedIn(tool, base.config),
         ...prints,
         ...(tool === 'jscpd' ? appliedConfigs(base, head) : {}),
         ...(tool === 'eslint' ? eslintReview(head, prints, replacedOptions) : {}),
+        ...evidenceOf(tool, head, gitBlobId),
         ...(hasProjectConfigChanges(tool) && SCRIPT_PRESETS.has(head.config.preset)
           ? appliedProjectConfigs(tool, { base, head, baseOptedIn: isOptedIn(tool, base.config) })
           : {}),
