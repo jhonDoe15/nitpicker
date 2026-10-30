@@ -37,6 +37,7 @@ import { writeGithubOutput } from './diff/reporting/github/emit.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
+import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 
 const CHECK_COMMANDS = { hygiene: runHygieneCli, history: runHistoryCli };
@@ -47,6 +48,14 @@ export function runCli(options = {}) {
   const checkCommand = CHECK_COMMANDS[cli.arguments_[0]];
   if (checkCommand !== undefined) {
     return checkCommand({
+      commandArguments: cli.arguments_.slice(1),
+      stdout: cli.stdout,
+      stderr: cli.stderr,
+      environment: cli.environment,
+    });
+  }
+  if (cli.arguments_[0] === GO_ANALYZER_COMMAND) {
+    return runGoCli({
       commandArguments: cli.arguments_.slice(1),
       stdout: cli.stdout,
       stderr: cli.stderr,

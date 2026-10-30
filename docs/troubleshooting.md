@@ -111,10 +111,10 @@ that runs before the checkout step, and a checkout owned by another user, which 
 
 **Cause.** The project is the nearest directory, from where you ran nitpicker up to the repository
 root, that holds a `package.json` or a `nitpicker.config.json`. Neither exists on that path. A Java,
-Kotlin or Python project often has no `package.json`.
+Kotlin, Python or Go project often has no `package.json`.
 
 **Fix.** Run nitpicker from inside the project, or create the config with its preset at the project
-root: `{"preset": "java"}` (or `"kotlin"`, `"python"`, `"javascript"`, `"typescript"`). In a repository
+root: `{"preset": "java"}` (or `"kotlin"`, `"python"`, `"go"`, `"javascript"`, `"typescript"`). In a repository
 with several projects, run nitpicker once in each project directory.
 
 ## Git and the base
