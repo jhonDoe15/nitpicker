@@ -42,6 +42,9 @@ function readPath(options, argument) {
   if (argument.startsWith('-')) {
     return false;
   }
+  if (argument.trim() === '') {
+    throw new Error('A path argument is empty; give a file or folder');
+  }
   options.paths.push(argument);
   return true;
 }

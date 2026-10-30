@@ -80,9 +80,13 @@ the run and appear in the console and the reports. Tool errors and
 wherever they come from. Findings about the whole project (path `.`) count only when a path is the
 project folder itself. The summary names the scope and how many findings it
 left out, for example `Scope: src/orders (12 findings outside it not shown)`, and `summary.json`
-records it as `scope: { "paths": [...], "outside": <count> }`. With `--fix`, only the changed files
-under the paths are fixed. A path that does not exist or holds no tracked or untracked file, a path
-outside the project and a path in another project are errors. Paths cannot be combined with
+records it as `scope: { "paths": [...], "outside": <count> }`; `outside` counts the new findings of
+a comparison, or all findings with `--all`. The per-tool new, resolved, unchanged and changed-metric
+counts are narrowed too, while the per-tool base and head counts stay those of the whole analysis.
+The GitHub step summary names the scope as well. With `--fix`, only the changed files under the
+paths are fixed. A path that does not exist, holds no tracked or untracked file, or leads (through
+a link) outside the repository or into `.git`, a path outside the project, a path in another
+project and an empty path are errors. Paths cannot be combined with
 sharding. A folder named like a subcommand (`base`, `cache`, `aggregate`, `hygiene`, `history`)
 needs a `./` in front.
 
