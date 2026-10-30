@@ -177,27 +177,28 @@ describe('the project tsconfig compiler options', () => {
     });
   });
 
-  it('are a tool error when the tsconfig is missing or cannot be read', () => {
-    const cases = [
-      [{}, {}, '"tools.typescript.precedence" lists "project" but a tsconfig.json is missing'],
-      [{ preset: 'javascript' }, {}, 'but a tsconfig.json or jsconfig.json is missing'],
-      [{}, { 'tsconfig.json': '{"compilerOptions": [' }, 'tsconfig.json cannot be read'],
-      [
-        {},
-        { 'tsconfig.json': '{"extends": "./missing.json"}' },
-        `tsconfig.json cannot be read by TypeScript ${typescriptVersion()}: Cannot read file`,
-      ],
-    ];
-    for (const [config, files, message] of cases) {
+  it.each([
+    [{}, {}, '"tools.typescript.precedence" lists "project" but a tsconfig.json is missing'],
+    [{ preset: 'javascript' }, {}, 'but a tsconfig.json or jsconfig.json is missing'],
+    [{}, { 'tsconfig.json': '{"compilerOptions": [' }, 'tsconfig.json cannot be read'],
+    [
+      {},
+      { 'tsconfig.json': '{"extends": "./missing.json"}' },
+      `tsconfig.json cannot be read by TypeScript ${typescriptVersion()}: Cannot read file`,
+    ],
+  ])(
+    'are a tool error when the tsconfig is missing or cannot be read: %j %j',
+    (config, files, message) => {
       const root = projectWith(files);
       const policy = resolveHeadPolicy(
         { ...config, tools: { typescript: { precedence: ['project', 'nitpicker'] } } },
         root,
       );
-      expect(policy.tools.typescript.projectConfigError).toContain(message);
+
+      expect(policy.tools.typescript.projectConfigError.includes(message)).toBe(true);
       expect(() => generatedConfig('tsconfig.quality.json', policy, root)).toThrow(message);
-    }
-  });
+    },
+  );
 
   it('are a tool error when the tsconfig is a link that leaves the project', () => {
     const outside = projectWith({ 'shared.json': '{}' });
@@ -217,13 +218,18 @@ describe('the project tsconfig compiler options', () => {
 });
 
 describe('the TypeScript precedence setting', () => {
-  it('accepts every ordering with the TypeScript and JavaScript presets, but not a selected config', () => {
-    for (const preset of [undefined, 'typescript', 'javascript']) {
-      for (const precedence of ORDERINGS) {
-        const config = { preset, tools: { typescript: { engine: 'native', precedence } } };
-        expect(validateConfig(config)).toEqual(config);
-      }
-    }
+  const PRESETS = [undefined, 'typescript', 'javascript'];
+  const PRESET_ORDERINGS = PRESETS.flatMap((preset) =>
+    ORDERINGS.map((precedence) => [preset, precedence]),
+  );
+
+  it.each(PRESET_ORDERINGS)('accepts the ordering with the preset %j: %j', (preset, precedence) => {
+    const config = { preset, tools: { typescript: { engine: 'native', precedence } } };
+
+    expect(validateConfig(config)).toEqual(config);
+  });
+
+  it('rejects a repeated ordering entry and a selected config', () => {
     expect(() =>
       validateConfig({ tools: { typescript: { precedence: ['project', 'project'] } } }),
     ).toThrow('"tools.typescript.precedence" must list "project", "nitpicker" or both');
@@ -272,18 +278,18 @@ describe('the project tsconfig compiler options that nitpicker owns or does not 
     JSON.parse(readFileSync(generatedConfig(name, policyFor(precedence, root), root), 'utf8'))
       .compilerOptions;
 
-  it.each([
-    [{ allowJs: false, noCheck: true, noEmit: false, skipLibCheck: false }],
-    [{ allowJs: true, noCheck: false, noEmit: true, skipLibCheck: true }],
-  ])('keep %j out of the project values for every ordering', (compilerOptions) => {
-    for (const [precedence] of EACH_ORDERING) {
-      const root = strictness(compilerOptions);
-      const quality = compilerOptionsOf('tsconfig.quality.json', precedence, root);
-      const mutation = compilerOptionsOf('tsconfig.stryker.json', precedence, root);
+  it.each(
+    [
+      { allowJs: false, noCheck: true, noEmit: false, skipLibCheck: false },
+      { allowJs: true, noCheck: false, noEmit: true, skipLibCheck: true },
+    ].flatMap((compilerOptions) => ORDERINGS.map((precedence) => [compilerOptions, precedence])),
+  )('keep %j out of the project values with the ordering %j', (compilerOptions, precedence) => {
+    const root = strictness(compilerOptions);
+    const quality = compilerOptionsOf('tsconfig.quality.json', precedence, root);
+    const mutation = compilerOptionsOf('tsconfig.stryker.json', precedence, root);
 
-      expect(pickedOwned(quality)).toEqual(OWNED);
-      expect(pickedOwned(mutation)).toEqual({ noCheck: false, skipLibCheck: true });
-    }
+    expect(pickedOwned(quality)).toEqual(OWNED);
+    expect(pickedOwned(mutation)).toEqual({ noCheck: false, skipLibCheck: true });
   });
 
   it('still type checks when the project turns checking off', async () => {
@@ -353,14 +359,16 @@ describe('the head policy when the opt-in changes', () => {
   });
 
   it('does not read the tsconfig while nitpicker wins every option the project could set', () => {
-    const missing = projectWith({});
-    const broken = projectWith({ 'tsconfig.json': '{"compilerOptions": [' });
+    const roots = [projectWith({}), projectWith({ 'tsconfig.json': '{"compilerOptions": [' })];
+    const policies = roots.map((root) => policyFor(['nitpicker', 'project'], root));
+    const builds = roots.map(
+      (root, index) => () => generatedConfig('tsconfig.quality.json', policies[index], root),
+    );
 
-    for (const root of [missing, broken]) {
-      const policy = policyFor(['nitpicker', 'project'], root);
-
-      expect(policy.tools.typescript).toEqual({ precedence: ['nitpicker', 'project'] });
-      expect(() => generatedConfig('tsconfig.quality.json', policy, root)).not.toThrow();
-    }
+    expect(policies.map((policy) => policy.tools.typescript)).toEqual([
+      { precedence: ['nitpicker', 'project'] },
+      { precedence: ['nitpicker', 'project'] },
+    ]);
+    expect(builds.map((build) => build())).toHaveLength(2);
   });
 });
