@@ -89,17 +89,18 @@ describe('layered dependency-cruiser config', () => {
   });
 
   it('keeps the options nitpicker relies on and adds the project exclusions', () => {
-    for (const precedence of [['project'], ['nitpicker', 'project']]) {
-      const { options } = layered(precedence);
-      expect(options).toEqual({
-        preserveSymlinks: true,
-        doNotFollow: { path: 'node_modules|^vendor', dependencyTypes: ['npm'] },
-        tsConfig: { fileName: 'tsconfig.quality.json' },
-        tsPreCompilationDeps: 'specify',
-        combinedDependencies: true,
-        enhancedResolveOptions: { extensions: ['.ts', '.js'], conditionNames: ['import'] },
-      });
-    }
+    const owned = {
+      preserveSymlinks: true,
+      doNotFollow: { path: 'node_modules|^vendor', dependencyTypes: ['npm'] },
+      tsConfig: { fileName: 'tsconfig.quality.json' },
+      tsPreCompilationDeps: 'specify',
+      combinedDependencies: true,
+      enhancedResolveOptions: { extensions: ['.ts', '.js'], conditionNames: ['import'] },
+    };
+    expect([['project'], ['nitpicker', 'project']].map((order) => layered(order).options)).toEqual([
+      owned,
+      owned,
+    ]);
     expect(projectExcludePaths({ config: PROJECT })).toEqual(['^src/legacy', '^src/old']);
     expect(projectExcludePaths({ config: { options: { exclude: '^dist' } } })).toEqual(['^dist']);
   });

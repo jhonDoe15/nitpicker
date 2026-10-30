@@ -101,6 +101,17 @@ function kotlinFiles(tool, side) {
     .map((file) => path.relative(side.root, file));
 }
 
+function isScriptTool(tool) {
+  return tool === 'prettier' || tool === 'eslint' || isProjectConfigTool(tool);
+}
+
+function scriptCandidates(tool, side) {
+  if (tool === 'prettier') {
+    return PRETTIER_PROJECT_FILES;
+  }
+  return tool === 'eslint' ? eslintConfigFiles(side.root) : projectConfigCandidates(tool);
+}
+
 function candidates(tool, side) {
   const { config, files } = side;
   if (KOTLIN_TOOLS.includes(tool)) {
@@ -109,14 +120,8 @@ function candidates(tool, side) {
   if (GO_TOOLS.includes(tool)) {
     return config.preset === 'go' ? GOLANGCI_FILES : [];
   }
-  if (tool === 'prettier') {
-    return SCRIPT_PRESETS.has(config.preset) ? PRETTIER_PROJECT_FILES : [];
-  }
-  if (isProjectConfigTool(tool)) {
-    return SCRIPT_PRESETS.has(config.preset) ? projectConfigCandidates(tool) : [];
-  }
-  if (tool === 'eslint') {
-    return SCRIPT_PRESETS.has(config.preset) ? eslintConfigFiles(side.root) : [];
+  if (isScriptTool(tool)) {
+    return SCRIPT_PRESETS.has(config.preset) ? scriptCandidates(tool, side) : [];
   }
   if (tool === 'jscpd') {
     return [JSCPD_PROJECT_FILE];

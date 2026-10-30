@@ -214,12 +214,13 @@ describe('dependency-cruiser configs in the head policy', () => {
     const script = project({
       '.dependency-cruiser.cjs': `module.exports = ${JSON.stringify({ options })};`,
     });
-    for (const root of [json, script]) {
-      expect(settingsOf(root).projectConfig.options).toEqual({
+    const roots = [json, script];
+    expect(roots.map((root) => settingsOf(root).projectConfig.options)).toEqual(
+      roots.map((root) => ({
         webpackConfig: { fileName: path.join(root, 'webpack.config.js'), env: 'production' },
         babelConfig: { fileName: path.join(root, 'config/babel.json') },
-      });
-    }
+      })),
+    );
   });
 
   it('rejects extends and local requires that resolve outside the project', () => {
