@@ -82,7 +82,7 @@ Before you change code other modules use, fix a bug, or add a UI state, read
   don't add `??`, `?.` or checks the types already rule out. Indexing (`list[0]`, `record[key]`)
   may be `undefined`: check the value you got.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
-  over unions.
+  over unions, with no `default`.
 - Template literals take strings only: `${String(count)}`.
 - Sort IDs, codes and ISO dates with `toSorted()` and no comparator; names and titles with
   `a.localeCompare(b, 'en')`. Objects in plain string order share one `compareText(a, b)` that
@@ -99,6 +99,12 @@ Before you change code other modules use, fix a bug, or add a UI state, read
   starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
+- Signatures: a value with three states is a union of string literals, not `boolean | undefined`
+  or `flag?: boolean` (also as an optional property); default only `undefined` with `??`, never `||` on an optional parameter that can be `0`, `''` or
+  `false`; return a
+  new array, `Set`, `Map` or object instead of changing a parameter (`[...items, item]`,
+  `items.toSorted()`). When code moves, change every caller and delete the old name: no
+  `@deprecated` declaration and no `export const Old = New` alias.
 
 ## Production rules
 

@@ -185,6 +185,148 @@ describe('what an edit of .jscpd.json changes', () => {
   });
 });
 
+describe('the ESLint flat config the project opted into', () => {
+  const at = (config, rules = "export default { 'no-console': 'error' };\n") => ({
+    'eslint.config.mjs': config,
+    'eslint/rules.mjs': rules,
+    'eslint/unused.mjs': 'export default {};\n',
+    'src/a.ts': 'export const a = 1;\n',
+  });
+  const CONFIG = "import rules from './eslint/rules.mjs';\nexport default [{ rules }];\n";
+
+  it.each([
+    ['typescript', ['project', 'nitpicker']],
+    ['javascript', ['project']],
+    ['typescript', ['nitpicker', 'project']],
+  ])(
+    'counts an edit of the %s config or a local file it imports, listing %j',
+    (preset, precedence) => {
+      const config = { preset, tools: { eslint: { precedence } } };
+      const base = at(CONFIG);
+
+      expect(
+        between({ base, head: at(`// house rules\n${CONFIG}`), config }).policyLoosenings,
+      ).toEqual([]);
+      expect(
+        between({ base, head: at(CONFIG.replace('[{', '[{ ignores: ["src/**"] }, {')), config })
+          .policyLoosenings,
+      ).toEqual(['eslint project config changed: eslint.config.mjs']);
+      expect(
+        between({ base, head: at(CONFIG, "export default { 'no-console': 'off' };\n"), config })
+          .policyLoosenings,
+      ).toEqual(['eslint project config changed: eslint/rules.mjs']);
+      expect(
+        between({ base, head: { ...base, 'eslint/unused.mjs': 'export default 1;\n' }, config })
+          .policyLoosenings,
+      ).toEqual([]);
+    },
+  );
+
+  it('stays quiet while the project has not opted in, and lists a removed config', () => {
+    const optedIn = { tools: { eslint: { precedence: ['project', 'nitpicker'] } } };
+    const base = at(CONFIG);
+    const edited = at(CONFIG, "export default { 'no-console': 'off' };\n");
+
+    expect(between({ base, head: edited, config: { tools: {} } }).policyLoosenings).toEqual([]);
+    expect(
+      changesOf(between({ base, head: without(base, 'eslint.config.mjs'), config: optedIn })),
+    ).toEqual({
+      policyLoosenings: [],
+      policyChanges: [
+        'eslint project config removed: eslint.config.mjs',
+        'eslint project config removed: eslint/rules.mjs',
+      ],
+    });
+  });
+
+  it('lists every file an opt-in starts reading, the opt-in itself included', () => {
+    const files = { ...at(CONFIG), '.gitignore': 'dist/\n' };
+    const config = (precedence) => ({ tools: { eslint: { precedence } } });
+
+    expect(
+      between({
+        base: files,
+        head: files,
+        baseConfig: config(['nitpicker']),
+        config: config(['nitpicker', 'project']),
+      }).policyLoosenings,
+    ).toEqual([
+      'eslint project config changed: eslint.config.mjs',
+      'eslint project config changed: eslint/rules.mjs',
+      'tools.eslint.precedence: ["nitpicker"] -> ["nitpicker","project"]',
+    ]);
+  });
+
+  it('counts the ignore file the config reads, but not a comment after code', () => {
+    const optedIn = { tools: { eslint: { precedence: ['project'] } } };
+    const ignoring = (gitignore, config = 'export default [ignored];\n') => ({
+      ...at(
+        `import { includeIgnoreFile } from '@eslint/compat';\nconst ignored = includeIgnoreFile(new URL('.gitignore', import.meta.url).pathname);\n${config}`,
+      ),
+      '.gitignore': gitignore,
+    });
+    const base = ignoring('dist/\n');
+
+    expect(
+      between({
+        base,
+        head: ignoring('# build\ndist/\n', 'export default [ignored]; // house\n'),
+        config: optedIn,
+      }).policyLoosenings,
+    ).toEqual([]);
+    expect(
+      between({ base, head: ignoring('dist/\nsrc/\n'), config: optedIn }).policyLoosenings,
+    ).toEqual(['eslint project config changed: .gitignore']);
+  });
+
+  it('lists the nitpicker rules whose options the project replaces once a reviewed file changes', () => {
+    const config = (precedence) => ({ tools: { eslint: { precedence } } });
+    const base = at(CONFIG);
+    const head = at(
+      CONFIG,
+      "export default { 'no-empty': ['error', { allowEmptyCatch: true }] };\n",
+    );
+    const replacedOptions = () => ({ rules: ['no-empty'] });
+    const unloadable = () => ({
+      error: 'ESLint config eslint.config.mjs could not be loaded: boom',
+    });
+
+    expect(
+      between({ base, head, config: config(['project']), replacedOptions }).policyLoosenings,
+    ).toEqual([
+      'eslint project config changed: eslint/rules.mjs',
+      'eslint project config replaces the options of nitpicker rule no-empty',
+    ]);
+    expect(
+      between({ base, head, config: config(['project']), replacedOptions: unloadable })
+        .policyLoosenings,
+    ).toEqual([
+      'eslint project config changed: eslint/rules.mjs',
+      'eslint project config could not be loaded to list the nitpicker rules whose options it replaces: ESLint config eslint.config.mjs could not be loaded: boom',
+    ]);
+    expect(
+      between({ base, head: base, config: config(['project']), replacedOptions }).policyLoosenings,
+    ).toEqual([]);
+    expect(
+      between({ base, head, config: config(['nitpicker', 'project']), replacedOptions })
+        .policyLoosenings,
+    ).toEqual(['eslint project config changed: eslint/rules.mjs']);
+  });
+
+  it('follows the config file ESLint itself loads first', () => {
+    const optedIn = { tools: { eslint: { precedence: ['project'] } } };
+    const both = (javascript) => ({ ...at(CONFIG), 'eslint.config.js': javascript });
+
+    expect(
+      between({
+        base: both('export default [];\n'),
+        head: both('export default [{}];\n'),
+        config: optedIn,
+      }).policyLoosenings,
+    ).toEqual(['eslint project config changed: eslint.config.js']);
+  });
+});
+
 describe('what counts as an edit of a project tool config', () => {
   const java = { preset: 'java', tools: { checkstyle: PROJECT } };
   const checkstyle = (rules, extra = {}) => ({
@@ -265,165 +407,5 @@ describe('what counts as an edit of a project tool config', () => {
         config: typescript,
       }).policyLoosenings,
     ).toEqual(['prettier project config changed: .editorconfig']);
-  });
-});
-
-describe('what an edit of the Stryker config changes', () => {
-  const NONE = { policyLoosenings: [], policyChanges: [] };
-  const OPTED_IN = { tools: { stryker: PROJECT } };
-  const strykerAt = (file, config) => ({
-    [file]: JSON.stringify(config),
-    'src/a.ts': 'export const a = 1;\n',
-  });
-  const at = (config) => strykerAt('stryker.config.json', config);
-  const excluding = (...names) => ({ mutator: { excludedMutations: names } });
-
-  it.each([undefined, 'javascript'])(
-    'lists a loosened exclusion list with the %s preset',
-    (preset) => {
-      const config = { preset, ...OPTED_IN };
-      const { policyLoosenings } = between({
-        base: at(excluding()),
-        head: at(excluding('StringLiteral')),
-        config,
-      });
-
-      expect(policyLoosenings).toEqual([
-        'stryker stryker.config.json mutator.excludedMutations: [] -> ["StringLiteral"]',
-      ]);
-      expect(
-        between({ base: at(excluding()), head: at(excluding('StringLiteral')), config: { preset } })
-          .policyLoosenings,
-      ).toEqual([]);
-    },
-  );
-
-  it('follows the values a config imports, not its text', () => {
-    const module = (list) => ({
-      'stryker.config.mjs':
-        "import excluded from './excluded.mjs';\nexport default { mutator: { excludedMutations: excluded } };\n",
-      'excluded.mjs': `export default ${JSON.stringify(list)};\n`,
-      'src/a.ts': 'export const a = 1;\n',
-    });
-
-    expect(
-      between({
-        base: module([]),
-        head: module(['StringLiteral', 'ArrowFunction']),
-        config: OPTED_IN,
-      }).policyLoosenings,
-    ).toEqual([
-      'stryker stryker.config.mjs mutator.excludedMutations: [] -> ["StringLiteral","ArrowFunction"]',
-    ]);
-    expect(
-      changesOf(
-        between({ base: module([]), head: { ...module([]), 'notes.md': 'x\n' }, config: OPTED_IN }),
-      ),
-    ).toEqual(NONE);
-  });
-
-  it('counts a deleted winning config as loosening when a weaker one takes over', () => {
-    const base = {
-      ...strykerAt('stryker.conf.json', excluding()),
-      ...strykerAt('.stryker.conf.json', excluding('StringLiteral')),
-    };
-    const head = without(base, 'stryker.conf.json');
-
-    expect(between({ base, head, config: OPTED_IN }).policyLoosenings).toEqual([
-      'stryker .stryker.conf.json mutator.excludedMutations: [] -> ["StringLiteral"]',
-    ]);
-    expect(
-      changesOf(
-        between({ base: at(excluding('A')), head: { 'src/a.ts': 'x\n' }, config: OPTED_IN }),
-      ),
-    ).toEqual({
-      policyLoosenings: [],
-      policyChanges: ['stryker stryker.config.json mutator.excludedMutations: ["A"] -> not set'],
-    });
-  });
-
-  it('ignores edits to keys nitpicker does not read, comments and layout', () => {
-    const base = at({ concurrency: 2, mutate: ['src/**'], reporters: ['json'] });
-    const head = {
-      'stryker.config.json':
-        '{\n  "concurrency": 2,\n  "mutate": ["lib/**"],\n  "reporters": ["html"],\n  "thresholds": { "break": 0 }\n}\n',
-      'src/a.ts': 'export const a = 1;\n',
-    };
-
-    expect(changesOf(between({ base, head, config: OPTED_IN }))).toEqual(NONE);
-  });
-
-  it.each([
-    [{ ignoreStatic: true }, { ignoreStatic: false }, 'ignoreStatic: true -> false'],
-    [excluding('A', 'B'), excluding('A'), 'mutator.excludedMutations: ["A","B"] -> ["A"]'],
-    [
-      { ignorePatterns: ['a', 'b'] },
-      { ignorePatterns: ['a'] },
-      'ignorePatterns: ["a","b"] -> ["a"]',
-    ],
-    [{ timeoutMS: 1000 }, { timeoutMS: 90_000 }, 'timeoutMS: 1000 -> 90000'],
-  ])('reads %j -> %j as a plain change', (base, head, text) => {
-    expect(changesOf(between({ base: at(base), head: at(head), config: OPTED_IN }))).toEqual({
-      policyLoosenings: [],
-      policyChanges: [`stryker stryker.config.json ${text}`],
-    });
-  });
-
-  it.each([
-    [{}, { ignoreStatic: true }, 'ignoreStatic: not set -> true'],
-    [{}, { ignorePatterns: ['src'] }, 'ignorePatterns: not set -> ["src"]'],
-    [
-      { testRunnerNodeArgs: ['a'] },
-      { testRunnerNodeArgs: ['a', 'b'] },
-      'testRunnerNodeArgs: ["a"] -> ["a","b"]',
-    ],
-    [{}, { checkerNodeArgs: ['--x'] }, 'checkerNodeArgs: not set -> ["--x"]'],
-    [{}, { mutator: { plugins: ['p'] } }, 'mutator.plugins: not set -> ["p"]'],
-  ])('reads %j -> %j as loosening', (base, head, text) => {
-    expect(between({ base: at(base), head: at(head), config: OPTED_IN }).policyLoosenings).toEqual([
-      `stryker stryker.config.json ${text}`,
-    ]);
-  });
-
-  it('lists the values the config starts to apply when the change opts in', () => {
-    const files = at({ ignoreStatic: true, concurrency: 2, reporters: ['html'] });
-    const result = between({ base: files, head: files, baseConfig: {}, config: OPTED_IN });
-
-    expect(changesOf(result)).toEqual({
-      policyLoosenings: [
-        'stryker stryker.config.json ignoreStatic: not set -> true',
-        'tools.stryker.precedence: not set -> ["project","nitpicker"]',
-      ],
-      policyChanges: [
-        'stryker stryker.config.json ignoreStatic: not set -> true',
-        'tools.stryker.precedence: not set -> ["project","nitpicker"]',
-        'stryker stryker.config.json concurrency: not set -> 2',
-      ],
-    });
-  });
-
-  it('does not read the config once the change removes the opt-in', () => {
-    const files = at({ ignoreStatic: true });
-    const result = between({
-      base: files,
-      head: at({ ignoreStatic: false }),
-      baseConfig: OPTED_IN,
-      config: {},
-    });
-
-    expect(changesOf(result)).toEqual({
-      policyLoosenings: [],
-      policyChanges: ['tools.stryker.precedence: ["project","nitpicker"] -> not set'],
-    });
-  });
-
-  it('falls back to the file text when a side cannot be loaded', () => {
-    const broken = { 'stryker.config.mjs': "throw new Error('boom');\n", 'src/a.ts': 'x\n' };
-    const edited = { 'stryker.config.mjs': "throw new Error('bang');\n", 'src/a.ts': 'x\n' };
-
-    expect(between({ base: broken, head: edited, config: OPTED_IN }).policyLoosenings).toEqual([
-      'stryker project config changed: stryker.config.mjs',
-    ]);
-    expect(between({ base: broken, head: broken, config: OPTED_IN }).policyLoosenings).toEqual([]);
   });
 });

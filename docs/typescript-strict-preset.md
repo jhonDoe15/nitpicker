@@ -10,6 +10,9 @@ only in the nitpicker config file, where it changes the policy hash and appears 
 Existing code that violates a rule is baselined by the differential gate. New and touched code must
 comply.
 
+CI recipes for this preset (Node.js, the project's install, GitHub Actions, GitLab CI, Jenkins) are in
+[nitpicker in CI](ci.md#toolchains-by-preset).
+
 The rules are modeled on publicly described "one paved road" conventions, such as Lauren Tan's talks
 on her Dune conventions: one allowed form per construct, repeated review feedback turned into lint
 rules, mechanically enforced boundaries, and exceptions handled as reviewed changes. No code is
@@ -137,7 +140,7 @@ config file is an exception like any other.
 - Transforms use `map`, `filter`, `flatMap`, `reduce` with an initial value (`xs.reduce((sum, x) =>
 sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, `reduce` without
   an initial value, or `reduceRight`.
-- No classes and no `this`. No reassigning a parameter (`no-param-reassign`).
+- No classes and no `this`. No reassigning a parameter (`no-param-reassign`) and no changing one in place (`nitpicker/no-parameter-mutation`).
 - No clock, randomness or I/O, however it is written: `Date.now`, `Math.random` and
   `performance.now` are reported as properties, so `const now = Date.now`, `const { random } =
 Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setInterval`,
@@ -538,6 +541,55 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `export default`, or an export list) the message gives the re-export under the exported name,
   `export { fetchUser as loadUser }` or `export { fetchUser as default }`; for a local one it says to
   call the callee directly and delete the wrapper.
+- `nitpicker/no-tri-state-boolean`: a `boolean` that can also be `undefined` or `null` has three
+  states that the type does not name. Reported as the whole type of a parameter, return type
+  (also inside `Promise<...>`), type member or class field (`force: boolean | undefined`,
+  `true | false | undefined`), for an optional boolean parameter (`force?: boolean`, including in
+  function types and `declare` signatures) and for an optional boolean property
+  (`{ force?: boolean }`). Not reported: an optional property of a type named `*Props` (a React
+  component's props), a union with another type (`boolean | string`), a local variable, and a
+  method with `override`. The message names a required `boolean` or a union of string literals.
+  In the JavaScript preset the rule reads JSDoc types, so the type-aware rules need JSDoc types to
+  see anything: `@param {boolean|undefined}`, `{boolean=}`, `{?boolean}`, a bare
+  `@param {boolean} [force]` with no default, and `Promise<boolean|undefined>` in `@returns`.
+  `[force=false]` (a default given), `@property` tags and dotted option names
+  (`@param {boolean} [options.verbose]`) are not reported.
+- `nitpicker/no-parameter-mutation` (type-aware): a mutating method (`push`, `pop`, `splice`,
+  `sort`, `reverse`, `add`, `set`, `delete`, `clear` and the other array, `Set`, `Map` mutators of
+  `no-mutating-method-in-domain`) called on a parameter, or an assignment, `++` or `delete` on an
+  index or `length` of a parameter whose type has a writable index signature (arrays, typed
+  arrays, records), is flagged, also through `grid[0]!.push` and `counts['a']!++`. Only exported
+  functions and public methods are checked: a function that is not exported, a nested function and
+  a `private` or `#` method are helpers. Not flagged: a rest parameter, a copy
+  (`const copy = [...items]`, or `items = items.slice()` / `[...items]` / `structuredClone(items)`
+  before the call), an accumulator (the first parameter of a `reduce` or `reduceRight` callback,
+  inline or named, and a parameter defaulted to `[]`, `{}`, `new Set()` or `new Map()`), an immer
+  draft (a parameter inside `produce`, `produceWithPatches`, `createSlice`, `createReducer`,
+  `useImmer` or `useImmerReducer`), a `readonly` type (the compiler rejects the write), and plain
+  property assignment (`user.name = name`). `domain/` files keep the stricter
+  `no-mutating-method-in-domain` and do not get this rule. The shared method tables are in
+  `eslint-plugin/rules/analysis/mutation/mutating-methods.mjs`.
+- `nitpicker/no-falsy-default` (type-aware): `limit || DEFAULT_LIMIT` and `limit ? limit : DEFAULT`
+  on a parameter that is optional, defaulted to `undefined` or `null`, or typed
+  `| undefined` / `| null`, when its type also has a falsy value that is not absent (`number`,
+  `string`, `boolean`, `bigint`) turns `0`, `''` and `false` into the default. Write
+  `limit ?? DEFAULT_LIMIT`, or test `limit === undefined`. Not reported: a fallback equal to the
+  falsy value (`name || ''`, `count || 0`, `flag || false`, where `??` gives the same result), a
+  fallback of `undefined` or `null`, a condition (`if (a || b)`), and a value that is not a
+  parameter. In the JavaScript preset the type comes from JSDoc; without JSDoc types the rule sees
+  nothing.
+- `nitpicker/no-compatibility-shim`: a doc comment with a `@deprecated` tag, and an exported
+  `const Old = New`, `type Old = New` or `export { New as Old }` whose target `New` is also
+  exported from the same module (two public names for one thing). Generic aliases, aliases of
+  imports and of non-exported declarations are not reported, so `export { callee as wrapper }` of a
+  function that is not itself exported (the form `no-forwarding-wrapper` recommends) stays
+  allowed. Callers of a deprecated API are reported by `@typescript-eslint/no-deprecated`. In the
+  JavaScript preset the `@deprecated` tag is already rejected as an unsupported JSDoc tag, so only
+  the alias form is added.
+- Naive datetimes have no rule in this preset. A `Date` is a UTC instant: it has no naive form and
+  the standard library has no zone-aware replacement, so a check could only match literals. Reading
+  the clock is already limited by `Date.now()` and `new Date()` in `domain/`, and a clock is passed
+  in as a parameter.
 - No `as`, `any`, or non-null assertions.
 - `undefined` only for absent values. `null` only where a library or JSON requires it.
 - No comments, except doc comments (`/** ... */`) on exported declarations and the members of
@@ -1552,6 +1604,15 @@ from a real caller) and the `exceptions` entry that lifts it.
   `no-unsafe-type-assertion` (the `as`, class and member bans cover them), and `no-explicit-any` and
   `no-non-null-assertion` are off in production code because the strict selectors report the same
   sites with a message that names the allowed form.
+- A project that opts in with `tools.eslint.precedence` has its own `eslint.config.*` layered over these
+  configs (`layeredPolicy` in `languages/typescript/adapters/lint-engine/project-layer.mjs`), on both lint
+  engines and for the JavaScript preset too. It can add rules and tune nitpicker's, only on the files
+  nitpicker runs each rule on, and never switch one of them off. Its `no-restricted-syntax`,
+  `no-restricted-globals` and `no-restricted-properties` entries are added to nitpicker's, and a `max-*`
+  or `complexity` limit takes the lower of the two. Any other options replace nitpicker's for the files
+  the entry matches, which can weaken a rule (`allowEmptyCatch: true` for `no-empty`), so the policy
+  review lists each nitpicker rule whose options the project replaces; see
+  [ESLint configs](usage.md#eslint-configs-typescript-and-javascript-presets).
 - `no-restricted-syntax` is one rule with one list per scope. ESLint flat config replaces a rule's
   options when several config objects match the same file, so each scope carries the complete list:
   `restrictedSyntaxByScope` in `eslint-config/strict.mjs` has `source`, `configFile`, `domain` and `adapters`, and

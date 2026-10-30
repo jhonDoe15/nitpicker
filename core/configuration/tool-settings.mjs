@@ -12,7 +12,7 @@ const TOOL_SETTING_KEYS = new Map([
   ['prettier', ['precedence']],
   ['jscpd', ['precedence']],
   ['stryker', ['precedence']],
-  ['eslint', ['engine']],
+  ['eslint', ['engine', 'precedence']],
   ['typescript', ['engine', 'project', 'precedence']],
   ['tests', ['runner', 'timeouts', 'precedence']],
 ]);
@@ -59,7 +59,7 @@ const NITPICKER_FIRST_REJECTED = new Map([
     "black has no flag that switches string normalization back on, so nitpicker's quote style cannot win over the project's skip-string-normalization",
   ],
 ]);
-const ORDERED_PRECEDENCE_TOOLS = ['prettier', 'jscpd', 'stryker', 'typescript', 'tests'];
+const ORDERED_PRECEDENCE_TOOLS = ['prettier', 'jscpd', 'stryker', 'eslint', 'typescript', 'tests'];
 const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
 function toolSettingKeysOf(preset) {
@@ -101,7 +101,9 @@ function validateToolSettings(name, settings, toolSettingKeys) {
   }
   if (ENGINES.has(name)) {
     validateEngineSettings(name, settings);
-    return;
+    if (settings.precedence === undefined) {
+      return;
+    }
   }
   validatePrecedence(settings.precedence, name);
   validatePrecedenceOrder(settings.precedence, name);
