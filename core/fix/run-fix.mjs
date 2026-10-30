@@ -17,6 +17,10 @@ import { layoutTransformFor } from '../../languages/typescript/preset/tool-confi
 import { runFixCommand, fixerError } from './common/fix-command.mjs';
 import { rewrittenPaths } from './common/fix-files.mjs';
 import { languageFixers } from './language-fixers.mjs';
+import {
+  PROJECT_LAYER_VARIABLE,
+  projectLayerValue,
+} from '../../languages/typescript/adapters/lint-engine/project-layer.mjs';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
 
@@ -62,6 +66,7 @@ function fixTypeScript({ headPolicy = resolveHeadPolicy(), ...options }) {
     fixWithPolicy({
       ...options,
       layout: resolveLayoutFor(headPolicy),
+      eslintSettings: headPolicy.tools?.eslint,
       policyEnvironment: headPolicyEnvironment(policyFile),
     }),
   );
@@ -134,7 +139,8 @@ function removeLinkedFile(linked) {
   }
 }
 
-function runEslintFix({ projectRoot, policyEnvironment, executeFixCommand }, eslintFiles, linked) {
+function runEslintFix(settings, eslintFiles, linked) {
+  const { projectRoot, policyEnvironment, executeFixCommand } = settings;
   run({
     operation: 'eslint-fix',
     script: resolveTool('eslint', { bin: 'bin/eslint.js' }).binPath,
@@ -153,6 +159,10 @@ function runEslintFix({ projectRoot, policyEnvironment, executeFixCommand }, esl
       NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(PACKAGE_ROOT, eslintPolicy.configRelativePath),
       NITPICKER_DIFF_ESLINT_PROJECT_ROOT: projectRoot,
       NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: linked.targetPath,
+      [PROJECT_LAYER_VARIABLE]: projectLayerValue(settings.eslintSettings, {
+        liveProjectRoot: projectRoot,
+        addsRules: true,
+      }),
     },
     input: undefined,
     executeFixCommand,
