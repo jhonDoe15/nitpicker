@@ -19,9 +19,9 @@ export const THRESHOLD_KEYS = [
   'integrationTestSeconds',
 ];
 const THRESHOLD_PRESETS = {
-  folderDepth: ['typescript', 'javascript', 'java', 'kotlin', 'python'],
-  classMethods: ['java', 'kotlin', 'python'],
-  classFields: ['java', 'kotlin', 'python'],
+  folderDepth: ['typescript', 'javascript', 'java', 'kotlin', 'python', 'go'],
+  classMethods: ['java', 'kotlin', 'python', 'go'],
+  classFields: ['java', 'kotlin', 'python', 'go'],
   inheritanceDepth: ['java', 'kotlin', 'python'],
 };
 const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
