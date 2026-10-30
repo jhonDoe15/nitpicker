@@ -214,12 +214,6 @@ describe('the project coverage config under tools.coverage', () => {
     '',
   ].join('\n');
   const TEST_OMITS = ['*/test_*.py', '*/*_test.py', '*/conftest.py', '*/tests/*', '*/test/*'];
-  const UNTESTABLE = [
-    String.raw`^\s*if (typing\.)?TYPE_CHECKING:`,
-    String.raw`^\s*if __name__ == .__main__.:`,
-    String.raw`^\s*@(typing\.)?overload\b`,
-    String.raw`^\s*raise NotImplementedError\b`,
-  ];
   const OPTED_EXCLUSIONS = {
     excluded: ['pragma: no cover', 'def __repr__'],
     partial: ['pragma: no branch'],
@@ -237,7 +231,7 @@ describe('the project coverage config under tools.coverage', () => {
       ...listed('omit', [...TEST_OMITS, ...omit]),
       ...run,
       '[report]',
-      ...listed('exclude_lines', [...UNTESTABLE, ...excluded]),
+      ...listed('exclude_lines', [...UNTESTABLE_LINES, ...excluded]),
       ...listed('partial_branches', partial),
       '',
     ].join('\n');
