@@ -239,11 +239,13 @@ describe('the retry captured from the head checkout', () => {
     );
   });
 
-  it('accepts the four orderings next to the runner and rejects malformed ones', () => {
-    for (const precedence of ORDERINGS) {
-      const config = { tools: { tests: { runner: 'mocha', precedence } } };
-      expect(validateConfig(config)).toEqual(config);
-    }
+  it.each(EACH_ORDERING)('accepts the ordering %j next to the runner', (precedence) => {
+    const config = { tools: { tests: { runner: 'mocha', precedence } } };
+
+    expect(validateConfig(config)).toEqual(config);
+  });
+
+  it('rejects a malformed ordering next to the runner', () => {
     expect(() => validateConfig({ tools: { tests: { precedence: ['vitest'] } } })).toThrow(
       '"tools.tests.precedence" must list "project", "nitpicker" or both, each once, highest first',
     );

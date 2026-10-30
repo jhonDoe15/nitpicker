@@ -8,7 +8,7 @@ import {
 } from '../../../conventions/generator-marker.mjs';
 import { DEFAULT_FEATURE_LAYOUT, featureRoles } from '../../../rules/features/feature-roles.mjs';
 
-const CODE_FILE = /\.(?:tsx?|mts|cts|jsx?|mjs|cjs|py|java|kts?)$/u;
+const CODE_FILE = /\.(?:tsx?|mts|cts|jsx?|mjs|cjs|py|java|kts?|go)$/u;
 const DECLARATION_FILE = /\.d\.[cm]?ts$/u;
 const BUILD_FILE = new RegExp(
   [
@@ -39,6 +39,7 @@ const TEST_NAME = new RegExp(
     String.raw`\.(?:test|spec)\.[^/]+$`,
     String.raw`(?:^|/)(?:test_[^/]+\.py|[^/]+_test\.py|tests\.py|conftest\.py)$`,
     String.raw`(?:^|/)[^/]+(?:Tests?|IT|Spec)\.(?:java|kts?)$`,
+    String.raw`_test\.go$`,
   ].join('|'),
   'u',
 );

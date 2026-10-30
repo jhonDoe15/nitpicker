@@ -31,10 +31,12 @@ import {
 } from '../../../languages/typescript/preset/eslint-project/project-config.mjs';
 import { replacedEslintOptions } from '../../../languages/typescript/adapters/lint-engine/replaced-options.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
+import { GOLANGCI_FILES } from '../../../languages/go/adapters/formatting/go-formatters.mjs';
 import { PYTHON_TOOLS, pythonConfigEntries } from './python-tool-configs.mjs';
 
 const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
+const GO_TOOLS = ['gofumpt', 'goimports'];
 const SCRIPT_PRESETS = new Set([undefined, 'typescript', 'javascript']);
 const SCRIPT_TOOL_FILES = new Map([
   ['prettier', () => PRETTIER_PROJECT_FILES],
@@ -126,6 +128,9 @@ function candidates(tool, side) {
   const { config, files } = side;
   if (KOTLIN_TOOLS.includes(tool)) {
     return config.preset === 'kotlin' ? kotlinFiles(tool, side) : [];
+  }
+  if (GO_TOOLS.includes(tool)) {
+    return config.preset === 'go' ? GOLANGCI_FILES : [];
   }
   if (SCRIPT_TOOL_FILES.has(tool)) {
     return SCRIPT_PRESETS.has(config.preset) ? SCRIPT_TOOL_FILES.get(tool)(side) : [];
@@ -258,6 +263,7 @@ export function readToolConfigs(
     'pmd',
     'checkstyle',
     ...KOTLIN_TOOLS,
+    ...GO_TOOLS,
     ...SCRIPT_TOOL_FILES.keys(),
     'jscpd',
     'eslint',

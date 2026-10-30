@@ -109,14 +109,13 @@ describe('custom layout and exclude across runners and tools', () => {
       packageAnalyzers,
     );
     expect(defaultRun.toolErrors).toEqual([]);
-    for (const name of [
+    const names = [
       'dependency-architecture',
       'typescript-typecheck',
       'entry-points',
       'test-runtime',
-    ]) {
-      expect(findingPaths(defaultRun, name)).toEqual([]);
-    }
+    ];
+    expect(names.map((name) => findingPaths(defaultRun, name))).toEqual(names.map(() => []));
   });
 });
 
