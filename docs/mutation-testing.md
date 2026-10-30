@@ -16,7 +16,10 @@ disable` comment would hide is reported as an enforceable `mutant-ignored` findi
 cannot be used to switch mutation off, not even for a path with a `nitpicker/no-comments` exception.
 Code that must stay out of mutation testing gets a reviewed `exceptions` entry for `mutant-ignored`
 with its paths in `nitpicker.config.json` instead; that entry is the only way to lift the finding.
-`nitpicker --all` mutates that whole area.
+`nitpicker --all` mutates that whole area. When no test loads any mutated file, Stryker collects no
+coverage and runs every test against each mutant; a report with no coverage data and no killed or
+timed-out mutant is therefore read as `NoCoverage`, so unreached code gets the same finding in a
+comparison as in a full run.
 
 ## Scope in a comparison
 
