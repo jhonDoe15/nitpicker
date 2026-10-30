@@ -733,7 +733,7 @@ The called constructor accepts a parameter with the same name and type as one of
 
 ### `errorprone/CharacterGetNumericValue`
 
-GetNumericValue has unexpected behaviour: it interprets A-Z as base-36 digits with values 10-35, but also supports non-arabic numerals and miscellaneous numeric unicode characters like ?; consider using Character.digit or UCharacter.getUnicodeNumericValue instead.
+GetNumericValue has unexpected behaviour: it interprets A-Z as base-36 digits with values 10-35, but also supports non-arabic numerals and miscellaneous numeric unicode characters like ㊷; consider using Character.digit or UCharacter.getUnicodeNumericValue instead.
 
 - **Why it is on:** Error Prone rates this check a warning: the code it flags is likely a mistake or has a clearer form. The preset compiles the main and test sources a second time with Error Prone and reports it.
 - **Allowed form:** See the tool's documentation: [Error Prone bug pattern](https://errorprone.info/bugpattern/CharacterGetNumericValue).

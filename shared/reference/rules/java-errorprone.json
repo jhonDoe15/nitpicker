@@ -654,7 +654,7 @@
     ],
     { "key": "exceptions", "rule": "errorprone/ChainingConstructorIgnoresParameter" },
     "CharacterGetNumericValue",
-    "getNumericValue has unexpected behaviour: it interprets A-Z as base-36 digits with values 10-35, but also supports non-arabic numerals and miscellaneous numeric unicode characters like ?; consider using Character.digit or UCharacter.getUnicodeNumericValue instead",
+    "getNumericValue has unexpected behaviour: it interprets A-Z as base-36 digits with values 10-35, but also supports non-arabic numerals and miscellaneous numeric unicode characters like ㊷; consider using Character.digit or UCharacter.getUnicodeNumericValue instead",
     [
       {
         "label": "Error Prone bug pattern",

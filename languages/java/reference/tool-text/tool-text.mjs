@@ -101,7 +101,14 @@ function extract(tool, work, { maven, java }) {
   const [, artifactId] = artifacts(pinned)[0];
   const main = jars.find((jar) => path.basename(jar).startsWith(`${artifactId}-`));
   return JSON.parse(
-    run(java, ['-cp', jars.join(path.delimiter), EXTRACTOR, tool, ...(jarArgument ? [main] : [])]),
+    run(java, [
+      '-Dstdout.encoding=UTF-8',
+      '-cp',
+      jars.join(path.delimiter),
+      EXTRACTOR,
+      tool,
+      ...(jarArgument ? [main] : []),
+    ]),
   );
 }
 
