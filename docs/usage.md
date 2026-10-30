@@ -102,7 +102,13 @@ of lowercase letters, digits and single `-`, `_` or `.` as it is and joins folde
 hash of the original added (`Web App` gives `web-app-60d39972`), so no two folders share a file. It runs on pull requests, checks out with `fetch-depth: 0`, sets up Node.js 24 (plus
 Java 21 or Python for those presets: from `.python-version`, else the lower bound of
 `requires-python` or the poetry `python` dependency, raised to 3.10 when the range allows it, else
-3.13), installs the dependencies and runs nitpicker. Python 3.10 is the oldest one the python-rules,
+3.13), installs the dependencies and runs nitpicker through the
+[GitHub Action](ci.md#with-the-action) at the tag of the running version
+(`jhonDoe15/nitpicker@v<version>`), with `node-version: ''` and `install-command: none` so it keeps
+the Node.js and dependencies of the steps before it, `working-directory` for a project in a
+subfolder, `package: nitpicker@<version>` for a project without a `package.json`, and
+`accept-policy-change` mapped from the repository variable `vars.NITPICKER_ACCEPT_POLICY_CHANGE`.
+The action adds the findings cache, the job summary and annotations. Python 3.10 is the oldest one the python-rules,
 mutmut and dependency checks run on; when `.python-version` or a range that leaves 3.10 out asks
 for an older one, init prints a note that those checks report that they were skipped:
 

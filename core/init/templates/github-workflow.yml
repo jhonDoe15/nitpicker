@@ -20,4 +20,9 @@ jobs:
       - run: '{{ENVIRONMENT_STEPS}}'
       - run: '{{INSTALL_STEPS}}'
       - name: nitpicker
-        run: '{{RUN}}'
+        uses: '{{ACTION}}'
+        with:
+          '{{GATE_INPUTS}}': ''
+          node-version: ''
+          install-command: none
+          accept-policy-change: ${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}

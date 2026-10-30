@@ -13,6 +13,17 @@ const NO_PEERS = { missing: [], undeclared: [], installedOnly: [] };
 const PYTHON = { family: 'python', testRunner: 'pytest', typeChecker: 'mypy' };
 const PYTHON_PEERS = "coverage mypy pytest 'mutmut>=3,<4'";
 const ALL_PYTHON_PEERS = `python -m pip install ${PYTHON_PEERS}`;
+const ACTION = 'jhonDoe15/nitpicker@v1.2.3';
+const PINNED = { package: 'nitpicker@1.2.3' };
+const POLICY = `${'$'}{{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}`;
+
+function gateStep(inputs) {
+  return {
+    name: 'nitpicker',
+    uses: ACTION,
+    with: { ...inputs, 'node-version': '', 'install-command': 'none', 'accept-policy-change': POLICY },
+  };
+}
 
 function nodeContext(root, repository = root) {
   return {
@@ -57,13 +68,13 @@ describe('workflow for Node projects', () => {
   });
 
   it.each([
-    ['npm', { 'package-lock.json': '{}' }, ['npm ci', 'npx nitpicker']],
-    ['npm', {}, ['npm install', 'npx nitpicker']],
-    ['Yarn 1', { 'yarn.lock': '' }, ['yarn install --frozen-lockfile', 'yarn nitpicker']],
+    ['npm', { 'package-lock.json': '{}' }, ['npm ci', ACTION]],
+    ['npm', {}, ['npm install', ACTION]],
+    ['Yarn 1', { 'yarn.lock': '' }, ['yarn install --frozen-lockfile', ACTION]],
     [
       'Bun',
       { 'bun.lock': '' },
-      ['oven-sh/setup-bun@v2', 'bun install --frozen-lockfile', 'bunx nitpicker'],
+      ['oven-sh/setup-bun@v2', 'bun install --frozen-lockfile', ACTION],
     ],
   ])(
     'installs frozen from the lockfile of %s, and plainly without one',
@@ -77,16 +88,16 @@ describe('workflow for Node projects', () => {
 
     expect(nodeSteps(declared('pnpm@9.1.0')).slice(-2)).toEqual([
       'pnpm install',
-      'pnpm exec nitpicker',
+      ACTION,
     ]);
     expect(nodeSteps(declared('yarn@1.22.22')).slice(-2)).toEqual([
       'yarn install',
-      'yarn nitpicker',
+      ACTION,
     ]);
     const berry = { ...declared('yarn@4.5.0'), '.yarnrc.yml': 'nodeLinker: node-modules\n' };
 
-    expect(nodeSteps(berry).slice(-2)).toEqual(['yarn install --no-immutable', 'yarn nitpicker']);
-    expect(nodeSteps(declared('bun@1.1.0')).slice(-2)).toEqual(['bun install', 'bunx nitpicker']);
+    expect(nodeSteps(berry).slice(-2)).toEqual(['yarn install --no-immutable', ACTION]);
+    expect(nodeSteps(declared('bun@1.1.0')).slice(-2)).toEqual(['bun install', ACTION]);
   });
 
   it('enables corepack and installs immutably for Yarn 2 or newer', () => {
@@ -99,14 +110,14 @@ describe('workflow for Node projects', () => {
     expect(nodeSteps(files)).toEqual([
       'corepack enable',
       'yarn install --immutable',
-      'yarn nitpicker',
+      ACTION,
     ]);
   });
 
   it('enables corepack for a project that declares packageManager', () => {
     const files = { 'package.json': '{"packageManager":"npm@10.9.0"}', 'package-lock.json': '{}' };
 
-    expect(nodeSteps(files)).toEqual(['corepack enable', 'npm ci', 'npx nitpicker']);
+    expect(nodeSteps(files)).toEqual(['corepack enable', 'npm ci', ACTION]);
   });
 
   it('lets pnpm/action-setup read the declaring package.json at the repository root', () => {
@@ -117,7 +128,7 @@ describe('workflow for Node projects', () => {
       { run: 'corepack enable' },
       { uses: 'pnpm/action-setup@v4' },
       { run: 'pnpm install --frozen-lockfile' },
-      { name: 'nitpicker', run: 'pnpm exec nitpicker' },
+      gateStep({}),
     ]);
   });
 
@@ -147,8 +158,8 @@ describe('workflow for Node projects', () => {
     });
   });
 
-  it('runs the pinned package when there is no package.json to install from', () => {
-    expect(nodeSteps({ 'src/index.js': '' })).toEqual(['npx nitpicker@1.2.3']);
+  it('runs the action with the pinned package when there is no package.json to install from', () => {
+    expect(nodeSteps({ 'src/index.js': '' })).toEqual([ACTION]);
   });
 });
 
@@ -163,12 +174,12 @@ describe('workflow for Python projects', () => {
     return stepsOf(renderWorkflow(root, pythonContext(root, tool, undeclared))).slice(2, -1);
   }
 
-  it('sets Python up and runs the pinned package', () => {
+  it('sets Python up and runs the action with the pinned package', () => {
     const root = project({ 'pyproject.toml': '' });
     const steps = parse(renderWorkflow(root, pythonContext(root, 'pip'))).jobs.nitpicker.steps;
 
     expect(steps[2]).toEqual(pythonSetup);
-    expect(steps.at(-1)).toEqual({ name: 'nitpicker', run: 'npx nitpicker@1.2.3' });
+    expect(steps.at(-1)).toEqual(gateStep(PINNED));
   });
 
   it.each([
@@ -264,7 +275,7 @@ describe('workflow for Python projects', () => {
         },
       },
       { run: `conda install --yes --channel conda-forge ${PYTHON_PEERS}` },
-      { name: 'nitpicker', run: 'npx nitpicker@1.2.3' },
+      gateStep({ 'working-directory': 'api', ...PINNED }),
     ]);
   });
 
@@ -280,7 +291,7 @@ describe('workflow for Python projects', () => {
     });
     expect(job.steps.slice(3)).toEqual([
       { run: `conda install --yes --channel conda-forge ${PYTHON_PEERS}` },
-      { name: 'nitpicker', run: 'npx nitpicker@1.2.3' },
+      gateStep(PINNED),
     ]);
   });
 
@@ -303,7 +314,7 @@ describe('workflow for Java and Kotlin projects', () => {
 
     expect(parse(renderWorkflow(root, context)).jobs.nitpicker.steps.slice(2)).toEqual([
       { uses: 'actions/setup-java@v4', with: { distribution: 'temurin', 'java-version': 21 } },
-      { name: 'nitpicker', run: 'npx nitpicker@1.2.3' },
+      gateStep(PINNED),
     ]);
   });
 });
