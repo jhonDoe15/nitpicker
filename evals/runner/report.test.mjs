@@ -36,7 +36,8 @@ describe('shortcut categories in the report', () => {
     expect(ONE_PER_CATEGORY.map(([, , row]) => row).sort()).toEqual(
       [...SHORTCUT_CATEGORIES].sort(),
     );
-    expect(counts).toEqual(Object.fromEntries(SHORTCUT_CATEGORIES.map((row) => [row, 1])));
+    for (const row of SHORTCUT_CATEGORIES) expect(counts[row], row).toBe(1);
+    expect(Object.keys(counts).sort()).toEqual([...SHORTCUT_CATEGORIES].sort());
   });
 
   it('counts a run once per category however many findings of it the run has', () => {

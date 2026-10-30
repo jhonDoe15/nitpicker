@@ -139,7 +139,6 @@ line) is a finding.
 - Remove a parameter the body does not read. One that a callback or override signature requires
   starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
-- Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. Never `Promise.all(items.map(send))` over a runtime collection.
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
 - Signatures: a value with three states is a union of string literals, not `{boolean|undefined}`,
@@ -227,7 +226,8 @@ line) is a finding.
 - A surviving mutant no input can kill means the code is redundant: delete or restructure it.
   Don't pin call order or messages just to kill it. If an input can kill it, add that test (a
   padded value for a `.trim()`, two bad fields for a `join`); never delete a schema rule to silence it.
-- No per-test git repos, child processes, servers, fixed sleeps, or raised timeouts.
+- No per-test git repos, child processes, servers, fixed sleeps, raised timeouts, or test retries
+  (`retry`/`retries` options, `jest.retryTimes`, `this.retries(n)`); fix the flaky cause.
 - Wait for every callback that asserts: `await once(emitter, 'ready')`, await a promise the
   callback resolves, or advance fake timers in the test. An assertion in a timer, listener or
   error-first callback the test does not wait for runs after it ends and its failure is lost.

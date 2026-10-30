@@ -24,12 +24,6 @@ const methods = Array.from(
   (_, index) => `    fun m${String(index)}(): String = "m${String(index)}"`,
 );
 
-const HTTP = `${PACKAGE}import java.net.URI\nimport java.net.http.HttpClient\nimport java.net.http.HttpRequest\nimport java.net.http.HttpResponse\nimport java.time.Duration\nimport java.util.concurrent.CompletableFuture\n`;
-const BODY = `    private fun body(url: String): String {\n        val request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(5)).build()\n        return client.send(request, HttpResponse.BodyHandlers.ofString()).body()\n    }\n`;
-const prefetch = (task, extra = '') =>
-  `${HTTP}${extra === '' ? '' : 'import java.util.concurrent.Semaphore\n'}\nclass Prefetch(private val client: HttpClient) {\n${extra === '' ? '' : '    private val permits = Semaphore(8)\n\n'}    fun pages(urls: List<String>): List<CompletableFuture<String>> =\n        urls.map { url -> CompletableFuture.supplyAsync { ${task}(url) } }\n\n${extra}${BODY}}\n`;
-const LIMITED = `    private fun limited(url: String): String {\n        permits.acquire()\n        try {\n            return body(url)\n        } finally {\n            permits.release()\n        }\n    }\n\n`;
-
 const GUARD_ROOT = 'src/main/kotlin/demo/guards';
 const GUARD_TEST_ROOT = 'src/test/kotlin/demo/guards';
 
@@ -52,7 +46,6 @@ const BANNED_GUARDS = {
   'Deep.kt': `${PACKAGE}open class Failure : Exception()\n\nopen class OrderFailure : Failure()\n\nopen class PaymentFailure : OrderFailure()\n\nclass CardFailure : PaymentFailure()\n`,
   'Literals.kt': `${PACKAGE}fun labels(): List<String> = listOf("shipping", "shipping", "shipping")\n`,
   'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
-  'Prefetch.kt': prefetch('body'),
 };
 
 const BANNED_TESTS = {
@@ -76,7 +69,6 @@ const ALLOWED_GUARDS = {
   'Casts.kt': `${PACKAGE}fun next(): Int = 1\n\nfun names(value: Any): List<String> = (value as? List<*>).orEmpty().filterIsInstance<String>()\n\nfun same(value: String): String = value\n`,
   'Literals.kt': `${PACKAGE}private const val SHIPPING = "shipping"\n\nfun labels(): List<String> = listOf(SHIPPING, SHIPPING, SHIPPING)\n\nfun kind(text: String): Int = when (text) {\n    "shipping-pending" -> 1\n    "shipping-sent", "shipping-pending" -> 2\n    else -> 3\n}\n\nfun more(): Map<String, Int> = mapOf("shipping-pending" to 1)\n`,
   'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
-  'Prefetch.kt': prefetch('limited', LIMITED),
 };
 
 const ALLOWED_TESTS = {
@@ -111,7 +103,6 @@ const EXPECTED_BANNED = [
   'kotlin-source/RepeatedStringLiteral Literals.kt',
   'kotlin-source/GeneratedOnHandWrittenCode Marked.kt',
   'kotlin-source/TestClassWithoutTestCases EmptyTest.kt',
-  'kotlin-source/UnboundedFanOut Prefetch.kt',
   'kotlinc/deprecation Casts.kt',
   'kotlinc/unchecked Casts.kt',
   'kotlinc/cast Casts.kt',
