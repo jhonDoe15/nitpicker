@@ -25,7 +25,7 @@ const temporary = [];
 
 const CALC_FINDINGS = [
   `jacoco line-coverage ${CALC} line-coverage 66.67`,
-  `jacoco uncovered-method ${CALC} cov:4baacdbea5f88deb`,
+  `jacoco uncovered-method ${CALC} cov:demo.Calc#half(I)I`,
   `pit mutant-nocoverage ${CALC} Calc|half(I)I|MathMutator|Replaced integer division with multiplication#1`,
   `pit mutant-nocoverage ${CALC} Calc|half(I)I|PrimitiveReturnsMutator|replaced int return with 0 for Calc::half#1`,
   'pit mutation-summary . status:Killed 2',
