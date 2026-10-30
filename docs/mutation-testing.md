@@ -99,16 +99,16 @@ no test needs, a switch case no test takes. So every PIT run, on Gradle (Java an
 and on Maven, passes `--mutators` with the list in the init script's `def pitMutators`, which the
 Maven build reads with `readPitMutators` (`languages/java/builds/java-build.mjs`):
 
-| Stryker | PIT |
-|---|---|
-| ArithmeticOperator, AssignmentOperator | `MATH` |
-| EqualityOperator | `CONDITIONALS_BOUNDARY`, `NEGATE_CONDITIONALS` |
-| UnaryOperator, UpdateOperator | `INVERT_NEGS`, `INCREMENTS` |
-| ArrowFunction, return values | `TRUE_RETURNS`, `FALSE_RETURNS`, `PRIMITIVE_RETURNS`, `EMPTY_RETURNS`, `NULL_RETURNS` |
-| ConditionalExpression, LogicalOperator | `REMOVE_CONDITIONALS` (equality and order checks forced either way) |
-| MethodExpression | `EXPERIMENTAL_NAKED_RECEIVER` (a call that returns its receiver's type replaced by the receiver) |
-| BlockStatement, switch cases | `REMOVE_SWITCH`, `EXPERIMENTAL_SWITCH`, `REMOVE_INCREMENTS`, `EXPERIMENTAL_MEMBER_VARIABLE` |
-| ArithmeticOperator on `BigDecimal` and `BigInteger` | `EXPERIMENTAL_BIG_DECIMAL`, `EXPERIMENTAL_BIG_INTEGER` |
+| Stryker                                             | PIT                                                                                              |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| ArithmeticOperator, AssignmentOperator              | `MATH`                                                                                           |
+| EqualityOperator                                    | `CONDITIONALS_BOUNDARY`, `NEGATE_CONDITIONALS`                                                   |
+| UnaryOperator, UpdateOperator                       | `INVERT_NEGS`, `INCREMENTS`                                                                      |
+| ArrowFunction, return values                        | `TRUE_RETURNS`, `FALSE_RETURNS`, `PRIMITIVE_RETURNS`, `EMPTY_RETURNS`, `NULL_RETURNS`            |
+| ConditionalExpression, LogicalOperator              | `REMOVE_CONDITIONALS` (equality and order checks forced either way)                              |
+| MethodExpression                                    | `EXPERIMENTAL_NAKED_RECEIVER` (a call that returns its receiver's type replaced by the receiver) |
+| BlockStatement, switch cases                        | `REMOVE_SWITCH`, `EXPERIMENTAL_SWITCH`, `REMOVE_INCREMENTS`, `EXPERIMENTAL_MEMBER_VARIABLE`      |
+| ArithmeticOperator on `BigDecimal` and `BigInteger` | `EXPERIMENTAL_BIG_DECIMAL`, `EXPERIMENTAL_BIG_INTEGER`                                           |
 
 StringLiteral, ArrayDeclaration, ObjectLiteral, Regex and OptionalChaining have no PIT
 counterpart. PIT's own groups do not fit: `DEFAULTS` has no `NEGATE_CONDITIONALS`, and `STRONGER`
