@@ -2,7 +2,12 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readProjectCoverage, writeCoverageConfig } from './python-coverage-config.mjs';
+import {
+  readProjectCoverage,
+  UNTESTABLE_LINES,
+  writeCoverageConfig,
+} from './python-coverage-config.mjs';
+import { javascriptPattern } from '../../../ingest/coverage-reports/exhaustive-match.mjs';
 
 const roots = [];
 
@@ -153,13 +158,49 @@ describe('the coverage settings of the project', () => {
         'omit =',
         `    ${path.join(root, 'legacy/*')}`,
         'exclude_lines =',
-        String.raw`    ^\s*if (typing\.)?TYPE_CHECKING:`,
-        String.raw`    ^\s*if __name__ == .__main__.:`,
-        String.raw`    ^\s*@(typing\.)?overload\b`,
-        String.raw`    ^\s*raise NotImplementedError\b`,
+        ...UNTESTABLE_LINES.map((pattern) => `    ${pattern}`),
         'partial_branches =',
         '',
       ].join('\n'),
     );
+  });
+
+  it.each([
+    ['    def write(self, text: str) -> object: ...', true],
+    ['    async def read(self) -> bytes: ...  # stub', true],
+    ['    def writelines(\n        self,\n        rows: list[str],\n    ) -> object: ...', true],
+    ['    def get[T](self, key: Callable[[int], T] = f(1)) -> dict[str, T]: ...', true],
+    ['    def get(self) -> dict[\n        str, int\n    ]: ...', true],
+    ['        case _:\n            assert_never(color)', true],
+    ['        case _:  # all\n            typing_extensions.assert_never(c)\n\n    return 2', true],
+    ['    def write(self, text: str) -> object:', false],
+    ['def first(x):\n    ...\n    return compute(x)', false],
+    ['    except (\n        ValueError,\n    ):\n        ...\n        return -1', false],
+    ['    if (\n        x\n    ): ...', false],
+    ['    with (\n        open(a) as b,\n    ): ...', false],
+    ['class A(\n    Base,\n): ...', false],
+    ['def make(): return lambda: ...', false],
+    ['    return ...', false],
+    ['        case _:\n            return "other"', false],
+    ['        case _:\n            assert_never(c)\n            return 0', false],
+    ['        case _:\n            assert_never(c)\n\n            print(c)', false],
+    ['        case _: assert_never(c)', false],
+    ['        case _:\n            assert_never(compute())', false],
+    ['        case _:\n            mylib.assert_never(c)', false],
+    ['    else:\n        assert_never(x)', false],
+    ['    assert_never(a) if a > 100 else print(a)', false],
+    ['handler: Callable[..., int] = run', false],
+  ])('excludes %j only when no honest test can run it: %s', (source, excluded) => {
+    const config = readFileSync(
+      writeCoverageConfig({ projectRoot: project({}), reportRoot: project({}) }, ['src']),
+      'utf8',
+    );
+    const patterns = config
+      .split('exclude_lines =\n')[1]
+      .split('\npartial_branches')[0]
+      .split('\n')
+      .map((pattern) => javascriptPattern(pattern.trim(), 'mu'));
+
+    expect(patterns.some((pattern) => pattern.test(source))).toBe(excluded);
   });
 });
