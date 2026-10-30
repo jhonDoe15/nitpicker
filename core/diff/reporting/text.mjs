@@ -10,7 +10,7 @@ export function renderTextReport(report) {
     ...configOverrideLines(report.summary.configOverrides ?? []),
     ...policyChangeSection(report.summary),
     ...noticeSection(report.summary.notices),
-    ...toolCountLines(report.summary.tools),
+    ...toolCountLines(report.summary),
   ];
   appendFindingSection(lines, 'New findings', report.newFindings);
   appendHeldSection(lines, report.unchangedFindings);
@@ -44,7 +44,10 @@ function configOverrideLines(configOverrides) {
   return ['', 'Config overrides:', ...configOverrides.map((override) => `  ${override}`)];
 }
 
-function toolCountLines(tools) {
+function toolCountLines({ tools, noChanges }) {
+  if (noChanges === true) {
+    return ['Analyzers: none ran, the head has the same files as the merge base'];
+  }
   if (tools.length === 0) {
     return ['Analyzers: none configured'];
   }
