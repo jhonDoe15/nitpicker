@@ -138,7 +138,10 @@ describe('the shared fact rules', () => {
   });
 
   it('lets every preset lift a rule once a language besides TypeScript registers it', () => {
+    const jvmRules = ['duplicate-definition', 'exported-name-collision', 'sibling-copy-edit'];
+
     expect(sharedFactExceptionRules()).toEqual([
+      ...jvmRules,
       'test-only-export',
       'doc-comment-content',
       CONSOLE,
@@ -146,7 +149,7 @@ describe('the shared fact rules', () => {
     expect(registeredFactRules('python')).toEqual([]);
     withLanguageRegistered('sibling-copy-edit', 'python', () => {
       expect(sharedFactExceptionRules()).toEqual([
-        'sibling-copy-edit',
+        ...jvmRules,
         'test-only-export',
         'doc-comment-content',
         CONSOLE,
