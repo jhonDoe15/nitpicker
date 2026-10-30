@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { displayedLibrary, isModeledPackage } from './container-apis.mjs';
 import { rootFileMatcher, rootFileOptionsSchema } from './root-files.mjs';
 import { createResolverSummaries } from './summaries/resolver-summaries.mjs';

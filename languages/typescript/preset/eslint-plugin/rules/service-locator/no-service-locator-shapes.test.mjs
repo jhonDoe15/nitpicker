@@ -1,7 +1,7 @@
 import { ESLint } from 'eslint';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { afterAll, describe, expect, it } from 'vitest';
 import { strictConfig } from '../../../eslint-config/strict.mjs';
 import { rule } from './no-service-locator.mjs';
