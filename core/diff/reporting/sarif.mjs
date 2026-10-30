@@ -3,7 +3,7 @@ import { pathToFileURL } from 'node:url';
 import { comparisonKey } from '../comparison/fingerprint.mjs';
 import { noteText } from './format/notes.mjs';
 import { heldFindingsOf } from './report-model.mjs';
-import { joinRepositoryPath, repositoryPath } from '../git/paths.mjs';
+import { repositoryFindingPath } from '../git/paths.mjs';
 import {
   droppedResultsText,
   renderWithinUploadLimits,
@@ -26,9 +26,9 @@ function encodePath(findingPath) {
 function toSarifResult({ finding, baselineState }, projectPath) {
   const artifactLocation =
     projectPath === undefined
-      ? { uri: encodePath(finding.path) }
+      ? { uri: encodePath(repositoryFindingPath('.', finding.path)) }
       : {
-          uri: encodePath(joinRepositoryPath(repositoryPath(projectPath), finding.path)),
+          uri: encodePath(repositoryFindingPath(projectPath, finding.path)),
           uriBaseId: SOURCE_ROOT_ID,
         };
   const physicalLocation = { artifactLocation };

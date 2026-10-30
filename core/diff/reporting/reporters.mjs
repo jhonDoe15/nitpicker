@@ -4,6 +4,7 @@ import { renderTextReport } from './text.mjs';
 import { renderJunitReport } from './junit.mjs';
 import { renderBaselineSarifReport, renderSarifReport } from './sarif.mjs';
 import { heldFindingsOf } from './report-model.mjs';
+import { CODE_QUALITY_REPORT_FILE_NAME, renderCodeQualityReport } from './format/codequality.mjs';
 
 const TEXT_REPORT_FILE_NAME = 'report.txt';
 
@@ -23,6 +24,10 @@ const DIFF_REPORTS = [
   { name: 'report.junit.xml', render: renderJunitReport },
   { name: 'report.sarif', render: renderSarifReport },
   { name: 'report-baseline.sarif', render: renderBaselineSarifReport },
+  {
+    name: CODE_QUALITY_REPORT_FILE_NAME,
+    render: (report, options) => renderCodeQualityReport(report.newFindings, options),
+  },
 ];
 
 export const REPORT_FILE_NAMES = DIFF_REPORTS.map(({ name }) => name);
