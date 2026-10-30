@@ -63,6 +63,9 @@ Before you change code other modules use, or fix a bug, read
   duplicated string literals, spread operators and function names in backticks are not findings in a
   test. A test asserts on the specific exception (`assertFailsWith<IllegalStateException> { ... }`)
   instead of catching `Exception`, whatever the variable is called.
+- KDoc is optional. When you write it, say what the name cannot (a unit, a limit, an edge case or
+  why), never only restate the name, and keep the description to 5 lines, tags and code blocks not
+  counted (`doc-comment-content`).
 - detekt's defaults stay on. In main sources: lines of at most 120 characters, named constants
   instead of numbers other than -1, 0, 1 and 2 (`MagicNumber`), at most 2 `return` and 2 `throw`
   per function, conditions of at most 3 `&&`/`||` parts, no wildcard imports unless most of the project's files

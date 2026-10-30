@@ -98,6 +98,9 @@ Before you change code other modules use, or fix a bug, read
   never call `System.exit`. A trailing array parameter is varargs (`String... names`).
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
+  It says what the name cannot (a unit, a limit, an edge case or why), never only restates the
+  name, and keeps the description to 5 lines, tags and `<pre>` blocks not counted
+  (`doc-comment-content`).
 - nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,
   security and a broad-catch rule) and Google checks. A project's `config/pmd/ruleset.xml` or
   `config/checkstyle/checkstyle.xml` counts only when `nitpicker.config.json` opts in under
