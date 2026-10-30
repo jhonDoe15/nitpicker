@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 58 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 59 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -199,7 +199,7 @@ Dataclass \<name> is not frozen.
 
 `<name>` runs once per item of a loop.
 
-- **Allowed form:** Batch it: fetch or write all items in one call, or run the calls together with `asyncio.gather` or a `ThreadPoolExecutor.map` when there is no batch API.
+- **Allowed form:** Batch it: fetch or write all items in one call, or run the calls together with a bounded `asyncio.gather` (a shared `asyncio.Semaphore` acquired in the task) or a `ThreadPoolExecutor.map` when there is no batch API.
 - **Exception:** If this is intended, add `{"rule":"io-in-loop","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-logger-in-domain"></a>
@@ -471,6 +471,15 @@ The task marker `<name>` has no issue.
 
 - **Allowed form:** Name the three states with an enum (`class Consent(Enum)` with `GRANTED`, `DENIED` and `UNKNOWN`), or take a keyword-only `bool` with a default (`*, urgent: bool = False`) when `None` only means false. A method that overrides a base class takes `@typing.override` and keeps the base signature.
 - **Exception:** If this is intended, add `{"rule":"tri-state-boolean","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-unbounded-fan-out"></a>
+
+### `python-rules/unbounded-fan-out`
+
+`<name>` starts `` for every element of `` at once.
+
+- **Allowed form:** A large collection exhausts the remote service's connections or rate limit. Hold one `asyncio.Semaphore(8)` created outside the tasks with `async with limit:` around each call, gather fixed-size slices (`items[i : i + 20]`), or make one batch call when the API has one.
+- **Exception:** If this is intended, add `{"rule":"unbounded-fan-out","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-uncollected-tests"></a>
 

@@ -102,7 +102,7 @@
     "io-in-loop",
     { "key": "python.exceptions", "rule": "io-in-loop" },
     "`<name>` runs once per item of a loop",
-    "Batch it: fetch or write all items in one call, or run the calls together with `asyncio.gather` or a `ThreadPoolExecutor.map` when there is no batch API.",
+    "Batch it: fetch or write all items in one call, or run the calls together with a bounded `asyncio.gather` (a shared `asyncio.Semaphore` acquired in the task) or a `ThreadPoolExecutor.map` when there is no batch API.",
     "logger-in-domain",
     { "key": "python.exceptions", "rule": "logger-in-domain" },
     "`<name>` is imported into domain code",
@@ -223,6 +223,10 @@
     { "key": "python.exceptions", "rule": "tri-state-boolean" },
     "`<name>` is a boolean that can also be `None`, a third state",
     "Name the three states with an enum (`class Consent(Enum)` with `GRANTED`, `DENIED` and `UNKNOWN`), or take a keyword-only `bool` with a default (`*, urgent: bool = False`) when `None` only means false. A method that overrides a base class takes `@typing.override` and keeps the base signature.",
+    "unbounded-fan-out",
+    { "key": "python.exceptions", "rule": "unbounded-fan-out" },
+    "`<name>` starts `` for every element of `` at once",
+    "A large collection exhausts the remote service's connections or rate limit. Hold one `asyncio.Semaphore(8)` created outside the tasks with `async with limit:` around each call, gather fixed-size slices (`items[i : i + 20]`), or make one batch call when the API has one.",
     "uncollected-tests",
     { "key": "python.exceptions", "rule": "uncollected-tests" },
     "`<name>` defines tests that the test run does not collect",
@@ -314,7 +318,8 @@
     [18, 220, 2, 3, 221, 222, 22, 223, -1],
     [18, 224, 2, 3, 225, 226, 22, 227, -1],
     [18, 228, 2, 3, 229, 230, 22, 231, -1],
-    [232, 233, 2, 3, 234, 235, 236, 237, -1],
-    [238, 239, 2, 3, 240, 241, 242, 243, 244]
+    [18, 232, 2, 3, 233, 234, 22, 235, -1],
+    [236, 237, 2, 3, 238, 239, 240, 241, -1],
+    [242, 243, 2, 3, 244, 245, 246, 247, 248]
   ]
 }

@@ -377,7 +377,7 @@ A class with more instance fields than the limit.
 - **Analyzers:** `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Many fields mean a class holds state that belongs in separate types.
 - **Allowed form:** Group related fields into a record or a class of their own.
-- **Threshold:** more than 10 instance fields in a class of the main Java sources or the Python source roots; override with `thresholds.classFields`
+- **Threshold:** more than 10 instance fields in a class of the main Java sources or the Python source roots, or in a Go struct outside test files; override with `thresholds.classFields`
 - **Exception:** If this is intended, add `{"rule":"class-fields-limit","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="structure-class-methods-limit"></a>
@@ -390,7 +390,7 @@ A class with more methods than the limit.
 - **Analyzers:** `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** A class with many methods usually has more than one responsibility.
 - **Allowed form:** Split it into classes by responsibility.
-- **Threshold:** more than 20 methods in a class of the main Java sources or the Python source roots; override with `thresholds.classMethods`
+- **Threshold:** more than 20 methods in a class of the main Java sources or the Python source roots, or on a Go type outside test files; override with `thresholds.classMethods`
 - **Exception:** If this is intended, add `{"rule":"class-methods-limit","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="structure-component-story-missing"></a>
@@ -457,7 +457,7 @@ Code nested deeper below its feature folder or root package than the limit.
 - **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Deep trees hide where code belongs and make imports long.
 - **Allowed form:** Flatten the tree: move the code up to the feature or package that owns it.
-- **Threshold:** code more than 1 folder below `features/<feature>/<layer>/` (TypeScript), more than 4 packages below the root package (Java, Kotlin) or more than 4 packages below the root package (Python); override with `thresholds.folderDepth`
+- **Threshold:** code more than 1 folder below `features/<feature>/<layer>/` (TypeScript), more than 4 packages below the root package (Java, Kotlin), more than 4 packages below the root package (Python) or more than 4 packages below the module root, `internal` not counted (Go); override with `thresholds.folderDepth`
 - **Exception:** If this is intended, add `{"rule":"folder-depth-limit","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="structure-folder-files-limit"></a>
@@ -535,7 +535,7 @@ A class that extends more superclasses than the limit.
 - **Analyzers:** `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Deep inheritance spreads behaviour over many classes and couples them.
 - **Allowed form:** Hold the shared part as a field and delegate to it instead of extending.
-- **Threshold:** a class more than 3 superclasses deep in the main Java sources or the Python source roots; override with `thresholds.inheritanceDepth`
+- **Threshold:** a class more than 3 superclasses deep in the main Java sources or the Python source roots (Go has no inheritance); override with `thresholds.inheritanceDepth`
 - **Exception:** If this is intended, add `{"rule":"inheritance-depth-limit","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="structure-javascript-in-typescript-project"></a>
