@@ -23,7 +23,12 @@ function presetLoosened({ before, after, scope }) {
   return before !== undefined || to === 'javascript' || scope.presetRequired !== true;
 }
 
-function projectWeight(precedence) {
+const PROJECT_ANYWHERE_TOOLS = new Set(['eslint']);
+
+function projectWeight(precedence, tool) {
+  if (PROJECT_ANYWHERE_TOOLS.has(tool) && precedence.includes('project')) {
+    return precedence[0] === 'project' ? 2 : 1;
+  }
   if (precedence[0] !== 'project') {
     return 0;
   }
@@ -34,7 +39,7 @@ function precedenceLoosened({ before = DEFAULT_PRECEDENCE, after = DEFAULT_PRECE
   const tool = setting.split('.')[1];
   return UNION_PRECEDENCE_TOOLS.has(tool)
     ? before.includes('nitpicker') && !after.includes('nitpicker')
-    : projectWeight(after) > projectWeight(before);
+    : projectWeight(after, tool) > projectWeight(before, tool);
 }
 
 function listShrank({ before = [], after = [] }) {
