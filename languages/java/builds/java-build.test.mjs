@@ -88,9 +88,16 @@ describe('readPitMutators', () => {
     ]);
   });
 
-  it('fails when the init script lists no mutators', () => {
-    const script = path.join(project({ 'init.gradle': 'def other = 1\n' }), 'init.gradle');
+  it.each([
+    'def other = 1\n',
+    "def pitMutators = [\n    'MATH', // 'ALL'\n]\n",
+    'def pitMutators = ["MATH", \'-NEGATE_CONDITIONALS\']\n',
+    'def pitMutators = []\n',
+  ])('fails on an init script without a plain list of mutators: %j', (text) => {
+    const script = path.join(project({ 'init.gradle': text }), 'init.gradle');
 
-    expect(() => readPitMutators(script)).toThrow(new Error(`No PIT mutators found in ${script}`));
+    expect(() => readPitMutators(script)).toThrow(
+      new Error(`No PIT mutators found in ${script}: list them as quoted names in def pitMutators`),
+    );
   });
 });

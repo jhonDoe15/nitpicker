@@ -19,7 +19,9 @@ import {
   pitTests,
   freshExecFiles,
   runJacocoReport,
+  runPit,
 } from './maven-tests.mjs';
+import { readPitMutators } from '../builds/java-build.mjs';
 
 const roots = [];
 
@@ -347,5 +349,33 @@ describe('runJacocoReport', () => {
     expect(readFileSync(path.join(reportDir, 'jacoco.xml'), 'utf8')).toBe(
       '<?xml version="1.0"?><report name="shop:it"></report>',
     );
+  });
+});
+
+describe('runPit', () => {
+  it('passes the mutators listed in the Gradle init script', () => {
+    const root = tree({ 'classes/demo/A.class': '', 'test-classes/demo/ATest.class': '' });
+    const module = {
+      basedir: root,
+      outputDirectory: path.join(root, 'classes'),
+      testOutputDirectory: path.join(root, 'test-classes'),
+      sourceRoots: [],
+    };
+    const calls = [];
+    const spawn = (command, [argumentFile]) => {
+      calls.push(readFileSync(argumentFile.slice(1), 'utf8').split('\n'));
+      return { status: 0, stdout: '', stderr: '' };
+    };
+    runPit({
+      module,
+      reportDir: root,
+      tools: { pit: [] },
+      classpaths: { testRuntime: [] },
+      isArchunit: () => false,
+      spawn,
+    });
+    const [tokens] = calls;
+
+    expect(tokens[tokens.indexOf('"--mutators"') + 1]).toBe(`"${readPitMutators().join(',')}"`);
   });
 });

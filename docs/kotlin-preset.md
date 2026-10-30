@@ -1003,6 +1003,9 @@ generated property accessors of `val` constructor parameters that no test reads 
 of a suspend lambda's `invokeSuspend` (6), null-check intrinsics `Intrinsics.checkNotNull*`
 removed (3), the original body of an `inline fun` that tests only run inlined (2), a compatibility
 bridge and an interface `DefaultImpls` method (2), a negated conditional in a state machine (1).
+The mutator list of [Mutators](mutation-testing.md#java-and-kotlin-mutators) adds about 32 more on
+the whole fixture: the coroutine state fields (`label`, `L$0`, `I$0`) set to their default value
+(17), conditionals removed in `invokeSuspend` (12) and the state machine's switch cases removed (3).
 
 **Filters considered.**
 

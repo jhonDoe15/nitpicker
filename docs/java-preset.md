@@ -318,7 +318,10 @@ a passing test suite ...`) instead of Gradle's own failure output. Projects with
   package left out: the class is its simple name, `Lcom/shop/Order;` in the descriptor becomes
   `LOrder;` and `com/shop/Order::total` in the description becomes `Order::total` (the symbol
   likewise). The path already tells classes apart, and the gate maps a renamed path to its base
-  counterpart, so moving a class to another package keeps its legacy mutants matched. There is no
+  counterpart, so moving a class to another package keeps its legacy mutants matched. The numbers
+  javac gives synthetic names (`lambda$count$0`, the anonymous class `Order$1`) are dropped from the
+  class, the method and the description too, so adding a lambda or an anonymous class elsewhere in
+  the class, which renumbers the others, keeps their mutants matched. There is no
   line number: `n` is the mutant's position among those with the same key and status, ordered by
   line and then block index, so the numbering follows source order and not PIT's (multi-threaded)
   report order. Edits above a mutant keep it; a second identical mutation in the same method is a
@@ -326,6 +329,12 @@ a passing test suite ...`) instead of Gradle's own failure output. Projects with
   then shows as one resolved and one new; this mirrors the TypeScript area's occurrence counter.
   Unlike Stryker, PIT's report has no source text for the mutant, so the key cannot include a hash
   of the mutated expression.
+- **Timeouts.** A loop condition forced to `true` (`REMOVE_CONDITIONALS`) or a loop counter that no
+  longer moves (`REMOVE_INCREMENTS`) runs until PIT's timeout (4 s plus 1.25 times the normal test
+  time) or until the minion runs out of memory. Such mutants are descriptive `mutant-timeout` or
+  `mutant-runtimeerror` findings and never fail the gate, but loop-heavy code with slow tests makes
+  PIT take longer than the measurement in
+  [Mutators](mutation-testing.md#java-and-kotlin-mutators) suggests.
 - **Path.** The source file of the mutated class, found under the manifest's source roots from the
   class's package and PIT's `sourceFile`. Mutants of classes without a source file there
   (generated code) are skipped.
