@@ -128,3 +128,7 @@ installed ruff and black, and took under four seconds together locally.
 The coverage precedence file (`adapters/configuration/coverage-config/coverage-precedence`, five
 cases) is in `test:python` with a planning weight of 45 seconds: it installs coverage and pytest
 into one uv environment and runs the test step nine times, which took about 30 seconds locally.
+
+The ruff lint precedence file (`adapters/project-tools/ruff/ruff-lint`, ten cases) is in
+`test:python` with a planning weight of 15 seconds: it runs only the installed ruff on small
+projects, and took about six seconds locally.
