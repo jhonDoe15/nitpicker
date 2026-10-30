@@ -3,7 +3,7 @@
   "languages/java/adapters/errorprone/error-prone.e2e.test.mjs": 16,
   "languages/java/adapters/errorprone/lombok.e2e.test.mjs": 69,
   "languages/java/adapters/java-e2e/integration-tests.e2e.test.mjs": 290,
-  "languages/java/adapters/java-e2e/multi-project.e2e.test.mjs": 47,
+  "languages/java/adapters/java-e2e/multi-project.e2e.test.mjs": 70,
   "languages/java/adapters/java-e2e/overlap-probe.e2e.test.mjs": 330,
   "languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs": 9,
   "languages/java/adapters/java-e2e/preset/comparison/java-preset-baseline.e2e.test.mjs": 128,
