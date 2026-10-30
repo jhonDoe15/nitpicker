@@ -38,18 +38,18 @@ export function runSnapshotCli({
   }
 
   const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(currentProjectRoot);
-  const report = withTemporaryWorktree(
-    repositoryRoot,
-    capturedSha,
-    (worktreeRoot) =>
-      runInSnapshotWorktree({
-        snapshotRoot: path.join(worktreeRoot, relativeProjectPath),
-        selectedAnalyzers,
-        currentProjectRoot,
-        headPolicy,
-        runTasks,
-      }),
-    { warn: (message) => stderr.write(`nitpicker: ${message}\n`) },
+  const snapshot = {
+    commitSha: capturedSha,
+    warn: (message) => stderr.write(`nitpicker: ${message}\n`),
+  };
+  const report = withTemporaryWorktree(repositoryRoot, snapshot, (worktreeRoot) =>
+    runInSnapshotWorktree({
+      snapshotRoot: path.join(worktreeRoot, relativeProjectPath),
+      selectedAnalyzers,
+      currentProjectRoot,
+      headPolicy,
+      runTasks,
+    }),
   );
   report.text = writeSnapshotReports(outputRoot, report, { projectPath: relativeProjectPath });
   stdout.write(report.text);

@@ -44,9 +44,11 @@ describe('withTemporaryWorktree', () => {
     const repository = createGitRepository({ 'a.txt': 'a\n' });
     const warn = vi.fn();
 
-    const base = withTemporaryWorktree(repository.root, repository.baseSha, (root) => root, {
-      warn,
-    });
+    const base = withTemporaryWorktree(
+      repository.root,
+      { commitSha: repository.baseSha, warn },
+      (root) => root,
+    );
     const head = withNamedTemporaryWorktree(
       repository.root,
       { commitSha: repository.baseSha, directoryName: 'head', warn },
@@ -64,9 +66,11 @@ describe('withTemporaryWorktree', () => {
     const warn = vi.fn();
     failTemporaryRootRemoval();
 
-    const result = withTemporaryWorktree(repository.root, repository.baseSha, () => 'report', {
-      warn,
-    });
+    const result = withTemporaryWorktree(
+      repository.root,
+      { commitSha: repository.baseSha, warn },
+      () => 'report',
+    );
 
     expect(result).toBe('report');
     expect(warn.mock.calls).toEqual([
@@ -82,14 +86,9 @@ describe('withTemporaryWorktree', () => {
     failTemporaryRootRemoval();
 
     expect(() =>
-      withTemporaryWorktree(
-        repository.root,
-        repository.baseSha,
-        () => {
-          throw new Error('java timed out after 60000 ms');
-        },
-        { warn },
-      ),
+      withTemporaryWorktree(repository.root, { commitSha: repository.baseSha, warn }, () => {
+        throw new Error('java timed out after 60000 ms');
+      }),
     ).toThrow('java timed out after 60000 ms');
     expect(warn).toHaveBeenCalledTimes(1);
   });
@@ -100,12 +99,11 @@ describe('withTemporaryWorktree', () => {
 
     const worktreeRoot = withTemporaryWorktree(
       repository.root,
-      repository.baseSha,
+      { commitSha: repository.baseSha, warn },
       (root) => {
         writeFileSync(path.join(root, '.git'), 'gitdir: /nonexistent\n');
         return root;
       },
-      { warn },
     );
 
     expect(warn).not.toHaveBeenCalled();

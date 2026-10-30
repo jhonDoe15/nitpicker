@@ -63,11 +63,8 @@ function withHeadProjectRoot({ liveProjectRoot, headSha, warn }, operation) {
   ) {
     throw new Error('Live project root is outside its Git repository');
   }
-  return withTemporaryWorktree(
-    repositoryRoot,
-    headSha,
-    (headWorktreeRoot) => operation(path.join(headWorktreeRoot, projectRelativePath)),
-    { warn },
+  return withTemporaryWorktree(repositoryRoot, { commitSha: headSha, warn }, (headWorktreeRoot) =>
+    operation(path.join(headWorktreeRoot, projectRelativePath)),
   );
 }
 

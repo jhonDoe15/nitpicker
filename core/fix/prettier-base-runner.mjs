@@ -3,7 +3,6 @@ import { readFileSync } from 'node:fs';
 import * as prettier from 'prettier';
 import { prettierPrecedence } from '../../languages/typescript/preset/head-policy.mjs';
 import { layeredPrettierOptions } from '../../languages/typescript/adapters/prettier/prettier-layers.mjs';
-import { describeError } from '../../shared/messages/error-chain.mjs';
 
 try {
   const input = JSON.parse(await text(process.stdin));
@@ -32,6 +31,8 @@ try {
   );
   process.stdout.write(`${JSON.stringify({ results })}\n`);
 } catch (error) {
-  process.stderr.write(`Prettier base check failed: ${describeError(error)}\n`);
+  process.stderr.write(
+    `Prettier base check failed: ${error instanceof Error ? error.message : String(error)}\n`,
+  );
   process.exitCode = 2;
 }

@@ -110,20 +110,17 @@ function readSnapshotLayout({ repositoryRoot, projectRelativePath }, comparison)
 
 function withSnapshotRoots({ settings, comparison, layout }, operation) {
   const { repositoryRoot, projectRelativePath, warn } = settings;
-  return withTemporaryWorktree(
-    repositoryRoot,
-    comparison.mergeBaseSha,
-    (baseWorktreeRoot) =>
-      withNamedTemporaryWorktree(
-        repositoryRoot,
-        { commitSha: comparison.headSha, directoryName: 'head', warn },
-        (headWorktreeRoot) =>
-          operation({
-            baseProjectRoot: path.join(baseWorktreeRoot, layout.baseProjectRelativePath),
-            headSnapshotRoot: path.join(headWorktreeRoot, projectRelativePath),
-          }),
-      ),
-    { warn },
+  const base = { commitSha: comparison.mergeBaseSha, warn };
+  return withTemporaryWorktree(repositoryRoot, base, (baseWorktreeRoot) =>
+    withNamedTemporaryWorktree(
+      repositoryRoot,
+      { commitSha: comparison.headSha, directoryName: 'head', warn },
+      (headWorktreeRoot) =>
+        operation({
+          baseProjectRoot: path.join(baseWorktreeRoot, layout.baseProjectRelativePath),
+          headSnapshotRoot: path.join(headWorktreeRoot, projectRelativePath),
+        }),
+    ),
   );
 }
 
