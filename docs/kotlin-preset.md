@@ -962,7 +962,7 @@ are descriptive, next to the `mutation-summary` counts. The reason is measured, 
 Arcmutate Kotlin plugin, which exists for this problem, is a paid product and is not used.
 
 **What runs.** The Java preset's `nitpickerPit` (PIT 1.17.4 with the test plugins the project's
-framework needs, `pitest-junit5-plugin` 1.2.1 for Kotest and JUnit 5, default mutators, the
+framework needs, `pitest-junit5-plugin` 1.2.1 for Kotest and JUnit 5, the Java preset's mutator list, the
 project's own tests) now mutates `sourceSets.main.output.classesDirs`, which holds the Kotlin
 classes next to the Java ones; the other class tools keep to `compileJava`'s output. The
 ingester finds a class's source file under both kinds of source root from PIT's `sourceFile`
@@ -984,7 +984,7 @@ classes); both are open decisions.
 Kotlin files (about 330 lines: sealed classes and data classes, enums, `when` over each subject,
 nullables, default arguments, inline functions, loops, `use`, delegates, a value class, coroutines
 with `sequence`, `flow`, `async`) and tests for every behavior, though not for every boundary value.
-Measured in October 2026 with PIT 1.17.4 (default mutators), Kotlin 2.4.21, kotlinx-coroutines 1.9.0
+Measured in October 2026 with PIT 1.17.4 (PIT's implicit mutators, before the list in [Mutators](mutation-testing.md#java-and-kotlin-mutators); with that list the fixture has 486 mutants instead of 240, 85 of them surviving, in the same PIT time), Kotlin 2.4.21, kotlinx-coroutines 1.9.0
 and JaCoCo 0.8.12; the numbers are not checked by CI and move with the tool versions:
 
 | Mutants                                                    | Whole fixture | Without coroutine code |
