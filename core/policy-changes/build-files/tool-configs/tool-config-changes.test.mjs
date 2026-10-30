@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { between, changesOf, without } from './test-support/policy-fixtures.mjs';
+import { between, changesOf, without } from '../test-support/policy-fixtures.mjs';
 
 const PROJECT = { precedence: ['project', 'nitpicker'] };
 

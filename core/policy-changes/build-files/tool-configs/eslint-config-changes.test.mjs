@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { between, changesOf, without } from './test-support/policy-fixtures.mjs';
+import { between, changesOf, without } from '../test-support/policy-fixtures.mjs';
 
 describe('the ESLint flat config the project opted into', () => {
   const at = (config, rules = "export default { 'no-console': 'error' };\n") => ({
