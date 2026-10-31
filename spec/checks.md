@@ -167,3 +167,33 @@ Notes:
   `structure` and `duplicates` 1 minute.
 - "No threshold" means the gate is differential: the finding fails because it is new, not because
   it crosses a numeric limit.
+
+## Timeouts that abandon work
+
+One rule, `timeout-abandons-operation`, in every language that has a timeout construct which stops
+waiting without stopping the work.
+
+| Language   | Rule id                                   | Implementation                                                                         | Status      |
+| ---------- | ----------------------------------------- | -------------------------------------------------------------------------------------- | ----------- |
+| TypeScript | `nitpicker/timeout-abandons-operation`    | `languages/typescript/preset/eslint-plugin/rules/async/timeout-abandons-operation.mjs` | enforceable |
+| JavaScript | `nitpicker/timeout-abandons-operation`    | the same ESLint rule                                                                   | enforceable |
+| Python     | `python-rules/timeout-abandons-operation` | `languages/python/rules/waits/timeouts.py`                                             | enforceable |
+| Java       | `pmd/timeout-abandons-operation`          | `languages/java/gradle/pmd-main-ruleset.xml` (XPath, Gradle and Maven)                 | enforceable |
+| Kotlin     | `pmd/timeout-abandons-operation`          | `languages/java/adapters/kotlin/review-rules/main/timeouts/timeouts.mjs`               | enforceable |
+
+TypeScript and JavaScript: `Promise.race` of an operation and a timer that rejects, where the
+operation gets no `AbortSignal`, cancelling owner or cleanup in the timeout path (HTTP clients that
+`require-http-timeout` recognizes are left to it; a resolving sleep is a hedge, not a timeout).
+Python: `asyncio.wait(..., timeout=...)` or `return_when=FIRST_COMPLETED` whose pending tasks are not
+cancelled, awaited or handed on (directly or through the awaited collection), and
+`asyncio.wait_for(asyncio.shield(task), ...)` with nothing cancelling or awaiting the task afterwards;
+`asyncio.wait_for`, `asyncio.timeout`, task groups and Trio and AnyIO scopes cancel and are allowed.
+Java: `Future.get(timeout, unit)` whose `TimeoutException` handler neither rethrows nor hands the
+future on while the method never calls `cancel(true)` on it, `shutdownNow()` on its executor or
+`interrupt()` on its thread (`shutdown()` and `cancel(false)` let it finish), and `get`, `orTimeout`
+or `completeOnTimeout` on a `CompletableFuture` that `supplyAsync` or `runAsync` started, which no
+cancel interrupts (two PMD rules, one per message, printed under the one id). Kotlin: the same forms,
+plus `withTimeout { deferred.await() }` (or `awaitAll`) on a `Deferred` another scope started that the
+timeout path does not cancel. The precision limits are in
+[TypeScript](../docs/typescript-strict-preset.md), [Python](../docs/python-preset.md),
+[Java](../docs/java-preset.md) and [Kotlin](../docs/kotlin-preset.md).

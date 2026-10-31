@@ -46,6 +46,11 @@ To learn why a rule is on and what form it allows before you write or change cod
   `checkNotNull(value) { "why" }` when null is a bug; `x?.let { ... }`, not `if (x == null) null else ...`.
 - Coroutines: no `GlobalScope`, no `runBlocking` (a call, however it is imported). Make the caller `suspend`
   (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`; a test uses `runTest`.
+- A timeout stops waiting, not the work (`pmd/timeout-abandons-operation`): start the work inside
+  `withTimeout(ms) { ... }`, or catch `TimeoutCancellationException` and `cancel()` the `Deferred`
+  before rethrowing. `future.get(1, SECONDS)` needs `cancel(true)` on that future or a rethrow in
+  its `TimeoutException` handler; a `supplyAsync` future never interrupts its task (`get`, `orTimeout`
+  or `cancel(true)`), so run that work as a coroutine or on an `ExecutorService`.
 - Fan-out: bound concurrent remote or message calls. One `Semaphore(8)` with `withPermit { ... }` around each call,
   `chunked(n)`, or `flatMapMerge(concurrency = n)`; never `items.map { async { client.get(it) } }.awaitAll()` over a
   runtime collection. `limitedParallelism(n)` caps threads, not suspending calls in flight.

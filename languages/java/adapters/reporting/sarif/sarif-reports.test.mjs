@@ -32,7 +32,7 @@ function moduleReports(reports) {
   };
 }
 
-const PMD = (root) =>
+const PMD = (root, ruleId = 'FixedSleepInTest') =>
   JSON.stringify({
     version: '2.1.0',
     runs: [
@@ -40,7 +40,7 @@ const PMD = (root) =>
         tool: { driver: { name: 'PMD', rules: [] } },
         results: [
           {
-            ruleId: 'FixedSleepInTest',
+            ruleId,
             message: { text: 'A fixed sleep makes the test slow and flaky.' },
             locations: [
               {
@@ -64,6 +64,16 @@ describe('sarifFindings', () => {
     expect(sarifFindings(context).map(({ tool, rule, path: file }) => [tool, rule, file])).toEqual([
       ['pmd', 'FixedSleepInTest', 'src/test/java/shop/CartTest.java'],
     ]);
+  });
+
+  it('prints the CompletableFuture form of the timeout rule under the rule it belongs to', () => {
+    const context = moduleReports({ 'pmd.sarif': '', 'spotbugs.sarif': '' });
+    writeFileSync(
+      path.join(context.reportRoot, 'pmd.sarif'),
+      PMD(context.projectRoot, 'timeout-abandons-async-task'),
+    );
+
+    expect(sarifFindings(context).map(({ rule }) => rule)).toEqual(['timeout-abandons-operation']);
   });
 
   it('reads blank reports as empty logs and still rejects a truncated one', () => {

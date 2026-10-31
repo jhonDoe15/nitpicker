@@ -68,6 +68,7 @@ import { rule as noDisabledTlsVerification } from './rules/security/tls/no-disab
 import { rule as noSqlStringBuilding } from './rules/security/sql/no-sql-string-building.mjs';
 import { rule as noUnsafeDeserialization } from './rules/security/deserialization/no-unsafe-deserialization.mjs';
 import { rule as noWeakHash } from './rules/security/hash/no-weak-hash.mjs';
+import { rule as timeoutAbandonsOperation } from './rules/async/timeout-abandons-operation.mjs';
 import { rule as requireHttpTimeout } from './rules/security/http/require-http-timeout.mjs';
 import { rule as noUnknownMainFolder } from './rules/guards/no-unknown-main-folder.mjs';
 import { rule as noUnsafePathJoin } from './rules/guards/no-unsafe-path-join.mjs';
@@ -110,6 +111,7 @@ export const nitpickerRules = {
     'no-unsafe-deserialization': noUnsafeDeserialization,
     'no-weak-hash': noWeakHash,
     'require-http-timeout': requireHttpTimeout,
+    'timeout-abandons-operation': timeoutAbandonsOperation,
     'no-unknown-main-folder': noUnknownMainFolder,
     'unbounded-fan-out': unboundedFanOut,
     'no-magic-numbers': noMagicNumbers,

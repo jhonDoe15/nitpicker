@@ -31,6 +31,7 @@ def load_checks():
     from silent_tests import unasserted
     from smells import literals, loops, names, secret_logs, secrets
     from tasks import cleanup, lifetimes
+    from waits import timeouts as abandoned_waits
 
     return [
         declarations,
@@ -48,6 +49,7 @@ def load_checks():
         tls,
         hashes,
         timeouts,
+        abandoned_waits,
         loading,
         guards,
         domain_types,

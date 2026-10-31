@@ -2,7 +2,12 @@ import regexp from 'eslint-plugin-regexp';
 import tseslint from 'typescript-eslint';
 import { nitpickerRules } from '../../eslint-plugin/index.mjs';
 import { domainGlobsFor } from '../strict/strict-domain.mjs';
-import { SECURITY_RULES, securityRules, securitySupportGlobs } from './security-facts.mjs';
+import {
+  SECURITY_RULES,
+  httpClientOptions,
+  securityRules,
+  securitySupportGlobs,
+} from './security-facts.mjs';
 
 const JAVASCRIPT_FILES = '**/*.{js,jsx,mjs,cjs}';
 const MAGIC_NUMBER_ALLOWED = [-1, 0, 1, 2, 10, 100, 1000];
@@ -93,6 +98,7 @@ function productionGuardRules({ react, security }) {
     ],
     'nitpicker/no-shell-string-command': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
+    'nitpicker/timeout-abandons-operation': ['error', httpClientOptions({ react, security })],
     'nitpicker/unbounded-fan-out': 'error',
     ...securityRules({ react, security }),
   };
@@ -139,7 +145,9 @@ export function productionPolicyConfigFor(layout, options = {}) {
     {
       files: securitySupportGlobs(),
       plugins: { nitpicker: nitpickerRules },
-      rules: Object.fromEntries(SECURITY_RULES.map((rule) => [rule, 'off'])),
+      rules: Object.fromEntries(
+        [...SECURITY_RULES, 'nitpicker/timeout-abandons-operation'].map((rule) => [rule, 'off']),
+      ),
     },
     {
       files: layout.sourceGlobs,

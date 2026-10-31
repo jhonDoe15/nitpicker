@@ -103,6 +103,13 @@ export function securityFactsFor(projectRoot, isProductionFile) {
   };
 }
 
+export function httpClientOptions({ react, security = {} }) {
+  return {
+    fetch: !(react || security.browser === true),
+    nodeFetchTimeout: security.nodeFetchTimeout !== false,
+  };
+}
+
 export function securityRules({ react, security = {} }) {
   const sql = security.sqlLibrary === undefined ? {} : { sqlLibrary: security.sqlLibrary };
   const yaml = security.yamlMajor === undefined ? {} : { yamlMajor: security.yamlMajor };
@@ -113,11 +120,7 @@ export function securityRules({ react, security = {} }) {
     'nitpicker/no-weak-hash': 'error',
     'nitpicker/require-http-timeout': [
       'error',
-      {
-        fetch: !(react || security.browser === true),
-        nodeFetchTimeout: security.nodeFetchTimeout !== false,
-        projectDefaults: security.httpDefaults ?? [],
-      },
+      { ...httpClientOptions({ react, security }), projectDefaults: security.httpDefaults ?? [] },
     ],
   };
 }

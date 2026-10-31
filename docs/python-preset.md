@@ -638,6 +638,7 @@ are listed at the end.
 | TLS                      | verification on in every environment; a CA bundle (`verify=ca_path`, `cafile=`, `tlsCAFile=`)                                                                                        | ruff `S501`, `S323`, `tls-verification-off` (script)                                                                                                 |
 | Signatures               | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                                                        | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                            |
 | Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                                                     | ruff `S113`, `http-without-timeout` (script)                                                                                                         |
+| Abandoned work           | `asyncio.wait_for`, `asyncio.timeout` or a `TaskGroup`; cancel or hand off `pending` after `asyncio.wait(..., timeout=)`                                                             | `timeout-abandons-operation` (script)                                                                                                                |
 | Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                                                                 | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                                                          | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
 
@@ -763,6 +764,31 @@ ssl._create_unverified_context`; `check_hostname = False` and `verify_mode = ssl
   overrides `request` or `send` to set one, or binds `request` with `functools.partial(..., timeout=...)`.
   A call with `**kwargs` whose keys are unknown is not reported; `urlopen` is not reported when production
   code calls `socket.setdefaulttimeout` with a number.
+- `timeout-abandons-operation` reports a timeout that returns control while the work it bounded keeps
+  running. Two asyncio forms are modeled, in any function, through `import` aliases and `from asyncio
+import`: `done, pending = await asyncio.wait(tasks, timeout=...)` (or a `return_when` other than
+  `ALL_COMPLETED`) when `pending` is dropped (`_`, `*_`, a bare `await asyncio.wait(...)`) or only
+  read (`len(pending)`, `if pending:`, a log call, a loop that only logs, `pending.clear()`,
+  `pending.copy()`), and `asyncio.wait_for(asyncio.shield(x), seconds)` when `x` is a task created in
+  the same function (`asyncio.create_task(...)`, `ensure_future(...)`, also in an annotated
+  assignment) or a direct call, and nothing later awaits it, cancels it or hands it on. The pending
+  set counts as owned when a loop or comprehension over it calls `cancel()` or `add_done_callback()`
+  on each task or awaits it, when it is passed to a call that is not a log or sizing call
+  (`asyncio.gather(*pending)`, `owner.background.update(pending)`, a second `asyncio.wait(pending)`),
+  returned, stored on an attribute, or used by a nested function. The same reads of the awaited
+  collection count too: when the first argument of `asyncio.wait` is a plain name and the function
+  cancels its tasks (`for task in tasks: task.cancel()`, also in a `finally`) or hands it on, the
+  pending set is owned through it. A starred target (`done, *rest = ...`) is followed under its name
+  like `pending`; any other unpacking, or keeping the whole result in one name, is not followed and is
+  not reported. A shield over a parameter or an attribute is not reported, since its caller or object
+  owns that task, and neither is a `wait_for` whose timeout is `None`. `asyncio.wait_for` and
+  `asyncio.timeout` cancel the work on timeout, a `TaskGroup` owns its tasks, and Trio and AnyIO
+  cancel scopes (`move_on_after`, `fail_after`) cancel, so none of them is reported. `asyncio.wait`
+  without a timeout, or with `ALL_COMPLETED` and no timeout, has no pending set. Names must come from
+  an import; a local called `asyncio` is not the module. The subject, and so the identity, is the
+  construct with the keywords that make it return early (`asyncio.wait(timeout=...)`,
+  `asyncio.wait(return_when=FIRST_COMPLETED)`, `asyncio.wait_for(asyncio.shield(task))`), not the
+  line, and the message says what made it return.
 - `unsafe-deserialization` reports what ruff `S301`, `S302` and `S506` miss: `yaml.unsafe_load`,
   `yaml.full_load` and their `_all` forms, `yaml.load_all` without a safe loader (`SafeLoader`, `CSafeLoader`,
   `BaseLoader` or a project class deriving from one at any depth; `S506` covers `yaml.load` only, and its
