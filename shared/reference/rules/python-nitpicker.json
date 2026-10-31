@@ -59,6 +59,10 @@
     { "key": "python.exceptions", "rule": "compatibility-shim" },
     "`<name>` keeps an old name working",
     "When code moves or is renamed, change every caller in the same change and delete the old name: keep no alias, forwarding function, module `__getattr__`, `@deprecated` marker or deprecation warning. A published library keeps the deprecation of its public names, and that path takes an exception.",
+    "contract-infrastructure-type",
+    { "key": "python.exceptions", "rule": "contract-infrastructure-type" },
+    "Take a repository or a port (a `Protocol` the feature defines) and return frozen dataclasses or domain types from `<name>`: `<type>` is a persistence handle, so every importer of this feature depends on its database session",
+    "Keep a persistence handle inside a repository class, a module named for infrastructure (`adapters.py`, `persistence.py`, `repository.py`, `db.py`, `deps.py`) or a module whose name starts with `_`, and pass it in from the composition root; read a request in the route handler or view and pass the values in.",
     "credential-shape",
     { "key": "python.exceptions", "rule": "credential-shape" },
     "A string has the shape of a credential",
@@ -79,6 +83,10 @@
     { "key": "python.exceptions", "rule": "generic-name" },
     "`<name>` has a generic name",
     "Name it for its job (`price_rounding.py`, `OrderRepository`); shared logic that belongs to no feature lives in `shared/` under a name that says what it does.",
+    "handler-entity-type",
+    { "key": "python.exceptions", "rule": "handler-entity-type" },
+    "Take and return a separate schema (a Pydantic model or a frozen dataclass) in the return type of route handler `<name>` and map `<Entity>` to it in the service: `<Entity>` is a ORM entity, so the response serializes every column and loaded relation and ties the API to the database schema",
+    "A SQLModel class without `table=True` or a django-ninja `Schema` is a schema, not an entity.",
     "handwritten-boundary-guard",
     { "key": "python.exceptions", "rule": "handwritten-boundary-guard" },
     "`<name>` checks untrusted data by hand",
@@ -319,7 +327,9 @@
     [18, 224, 2, 3, 225, 226, 22, 227, -1],
     [18, 228, 2, 3, 229, 230, 22, 231, -1],
     [18, 232, 2, 3, 233, 234, 22, 235, -1],
-    [236, 237, 2, 3, 238, 239, 240, 241, -1],
-    [242, 243, 2, 3, 244, 245, 246, 247, 248]
+    [18, 236, 2, 3, 237, 238, 22, 239, -1],
+    [18, 240, 2, 3, 241, 242, 22, 243, -1],
+    [244, 245, 2, 3, 246, 247, 248, 249, -1],
+    [250, 251, 2, 3, 252, 253, 254, 255, 256]
   ]
 }

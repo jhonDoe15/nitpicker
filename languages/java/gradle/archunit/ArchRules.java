@@ -29,13 +29,15 @@ public final class ArchRules {
     if (root != null) {
       Layout.check(main, root, found);
     }
+    Roles roles = Roles.load();
     if (usesSpring()) {
-      Layers.check(main, Roles.load(), found);
+      Layers.check(main, roles, found);
       Lifetimes.check(main, found);
       RequestState.check(main, found);
       TestRules.check(unitTests, otherTests, found);
     }
     Aggregates.check(main, found);
+    Contracts.check(main, root, roles, found);
     String json =
         "{\"root\":" + (root == null ? "null" : "\"" + root + "\"") + ",\"violations\":["
             + found.stream().map(Found::toJson).collect(Collectors.joining(",")) + "]}\n";

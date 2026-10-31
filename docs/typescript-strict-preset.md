@@ -59,6 +59,47 @@ config file is an exception like any other.
   dependency rules keep out of `domain/`.
 - Shared code does not import features. Features do not import the composition root. Import cycles
   are not allowed.
+- A feature's `index.ts` is its contract, so it does not hand out a persistence handle or a web
+  request or response object (`nitpicker/contract-infrastructure-type`, type-aware): an exported
+  variable that holds one (`export const db = new PrismaClient()`), an exported function, a public
+  method of an exported class, a callable member of an exported interface or type, or a member of
+  the object an exported factory returns may not take or return a Prisma client or transaction, a
+  Knex, `pg`, `mysql`/`mysql2`, MongoDB, Mongoose, TypeORM (`DataSource`, `EntityManager`,
+  `Repository`, `QueryRunner`), Sequelize, Drizzle (`*Database`, `*Transaction`), Kysely, SQLite,
+  libSQL, `postgres` or MikroORM handle, or an Express, Fastify, Koa, Hono, Next.js or Node `http`
+  request, response or context. The type is resolved by the checker through generics, unions,
+  aliases, `Promise` and re-exports (`export *`), and its package is read from the declaration file,
+  so a project type with the same name never counts; a Prisma client generated to a custom `output`
+  counts as `@prisma/client` (the rule reads `generator` blocks with `provider = "prisma-client-js"`
+  or `"prisma-client"` in `prisma/schema.prisma`, `schema.prisma` or `prisma/schema/*.prisma` of the
+  folders above the generated file, and also knows a generated client folder by the `schema.prisma`
+  Prisma copies into it). Take a repository or a port interface, return a domain type or a plain
+  record and take plain values; keep the handle in the feature's `adapters/`. Only members the
+  project declares are read: the methods of an Express `Router` or app, a Hono app, a tRPC router
+  (`appRouter.createCaller`, `AppRouter`) and other library types are the library's signatures, so
+  exporting `router`, `app` or `AppRouter` is fine. Left out: a handler signature with a request or
+  context among its parameters (route handlers, middleware, and Express error middleware
+  `(err, req, res, next)`), the methods of a NestJS `@Controller`, constructors, and the parameters
+  of a factory: a function or static method that returns an object synchronously (not a `Promise`,
+  an array or a function) that holds no handle itself, such as `createOrders(db)` or
+  `authConfig(prisma)`; the composition root passes the handle in, and the methods of the object it
+  returns are checked. A function that returns a `Promise` is a query, so
+  `findUsers(db: PrismaClient): Promise<User[]>` is reported; a synchronous query that returns a record
+  (`getUser(db: Database, id): User` with `better-sqlite3`) looks like a factory and is not. An
+  optional transaction parameter (`insert(order, trx?: Knex.Transaction)`) is reported like any
+  other: a unit of work is an object the feature defines that holds the transaction and its
+  repositories. Exported class properties are not read, only methods.
+- A route handler does not take or return an ORM entity (`nitpicker/handler-entity-type`,
+  type-aware): the parameters and return type of a NestJS route method (`@Get`, `@Post`, ... in a
+  `@Controller`), also when the return type is inferred, the exported HTTP-verb functions of a
+  Next.js `route.ts`, the argument of `res.json`/`res.send`, `NextResponse.json` or `Response.json`,
+  and a Koa `ctx.body =`. Entities are TypeORM and MikroORM `@Entity` classes (also inherited),
+  Sequelize `Model` and Mongoose `Document` subclasses (a `HydratedDocument<Cat>` is named `Cat`),
+  and Prisma models: `User`, `Prisma.UserGetPayload<...>` and what `prisma.user.findMany()` returns,
+  recognized by their fields coming from Prisma's generated `$UserPayload`, also in a client
+  generated to a custom `output` (found as for `contract-infrastructure-type`). A Prisma `select`
+  projection is not an entity. Take and return a plain record (DTO) and map the entity to it in the
+  service.
 - Code under `src/main/` lives in `features/`, `shared/` or the composition root
   (`nitpicker/no-unknown-main-folder`): a `services/`, `utils/` or `models/` folder there is
   reported on every file, with the layout in the message, and so is a file directly in `src/main/`

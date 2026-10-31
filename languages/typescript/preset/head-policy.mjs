@@ -152,6 +152,7 @@ const HEAD_CHECKOUT_FACTS = [
   'frameworks',
   'libraries',
   'spring',
+  'featureFolders',
   'kotlin',
 ];
 const SCOPE_FACTS = [

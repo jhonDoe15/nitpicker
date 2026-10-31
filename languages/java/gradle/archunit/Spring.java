@@ -4,7 +4,8 @@ final class Spring {
   static final String ENTITY = "jakarta.persistence.Entity";
   static final String LEGACY_ENTITY = "javax.persistence.Entity";
   private static final String RESPONSE_ENTITY = "org.springframework.http.ResponseEntity";
-  private static final String KOTLIN_METADATA = "kotlin.Metadata";
+  static final String CONFIGURATION = "org.springframework.context.annotation.Configuration";
+  static final String KOTLIN_METADATA = "kotlin.Metadata";
   private static final int KOTLIN_FILE_FACADE = 2;
 
   private Spring() {}

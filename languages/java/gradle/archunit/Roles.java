@@ -31,7 +31,7 @@ final class Roles {
           "org.springframework.web.server.",
           "org.springframework.web.reactive.",
           "org.springframework.http.server.");
-  private static final List<String> DATA_ACCESS =
+  static final List<String> DATA_ACCESS =
       Arrays.asList(
           "org.springframework.jdbc.core.JdbcOperations",
           "org.springframework.jdbc.core.namedparam.NamedParameterJdbcOperations",

@@ -68,9 +68,25 @@ export function registeredFactRules(language) {
     .map(([rule]) => rule);
 }
 
+const OWN_RULE_SETTINGS = {
+  'contract-infrastructure-type': {
+    languages: ['java', 'kotlin', 'python'],
+    settings: FEATURE_LAYOUT_SETTINGS,
+  },
+};
+
+function ownRuleSettings(language) {
+  return Object.values(OWN_RULE_SETTINGS)
+    .filter(({ languages }) => languages.includes(language))
+    .flatMap(({ settings }) => settings);
+}
+
 export function factRuleSettings(language) {
   return [
-    ...new Set(registeredFactRules(language).flatMap((rule) => FACT_RULE_SETTINGS[rule] ?? [])),
+    ...new Set([
+      ...registeredFactRules(language).flatMap((rule) => FACT_RULE_SETTINGS[rule] ?? []),
+      ...ownRuleSettings(language),
+    ]),
   ];
 }
 

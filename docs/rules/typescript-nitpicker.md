@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 87 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 89 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -43,6 +43,18 @@ Pause a container inside a try block with a finally unpause, or use withPausedCo
 - **Allowed forms by message:**
   - Pause a container inside a try block with a finally unpause, or use withPausedContainer.
 
+<a id="eslint-nitpicker-contract-infrastructure-type"></a>
+
+### `eslint/nitpicker/contract-infrastructure-type`
+
+Keep persistence handles and request or response objects out of the exports of a feature index.
+
+- **Printed as:** `eslint-lint/nitpicker/contract-infrastructure-type`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/contract-infrastructure-type","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - Take a repository or a port interface and return a domain type or a plain record from {{member}}: {{type}} from {{package}} is a persistence handle, so every importer of feature {{feature}} depends on its database session. Keep {{type}} in the feature's adapters behind the index; a factory (a function that returns an object synchronously) that receives it from the composition root is fine. An exception fits only when the feature deliberately hands out the handle, such as a shared transaction helper.
+  - Take plain values and return a domain type or a plain record from {{member}}: {{type}} from {{package}} is a request or response object, so every importer of feature {{feature}} needs a live HTTP exchange. Read it in the route handler and pass the values in. An exception fits only when the export is a route handler or middleware the framework calls with a different first parameter.
+
 <a id="eslint-nitpicker-exhaustive-union-predicate"></a>
 
 ### `eslint/nitpicker/exhaustive-union-predicate`
@@ -79,6 +91,17 @@ Name files in the one casing the project's files already use.
 - **Allowed forms by message:**
   - File name "{{name}}" is not {{casing}}, which this project uses for file names. Rename it, pin a different casing with "conventions": { "typescript.fileNames": "camelCase" } in nitpicker.config.json. An exception fits only when the name is deliberate.
   - File name "{{name}}" is not {{casing}}, which most other files in this folder use. Rename it. An exception fits only when the name is deliberate.
+
+<a id="eslint-nitpicker-handler-entity-type"></a>
+
+### `eslint/nitpicker/handler-entity-type`
+
+Keep ORM entities out of route handler signatures and response bodies.
+
+- **Printed as:** `eslint-lint/nitpicker/handler-entity-type`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/handler-entity-type","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - Take and return a plain record (DTO) in {{site}} and map {{entity}} to it in the service: {{entity}} is a {{orm}} entity, so the response serializes every column and loaded relation and ties the API to the database schema. An exception fits only when the entity is deliberately the API model, such as a read-only projection.
 
 <a id="eslint-nitpicker-hermetic-git-in-tests"></a>
 

@@ -450,7 +450,10 @@ data classes; parameters with an annotation (`@RequestParam`, `@PathVariable`) a
 The Java preset's Spring architecture rules (feature layout, layering, bean lifetimes, request data in singletons (a `companion object` property counts as a static field), and the
 jMolecules aggregate rules, which also run without Spring; "Spring architecture rules" in
 [java-preset.md](java-preset.md)) read compiled classes, so they check Kotlin classes the same way, with the same `archunit/<rule>` exceptions and the same `spring.roles` config
-key.
+key. So does `archunit/contract-infrastructure-type` ([contract types](java-preset.md#contract-types)),
+also in a Kotlin project without Spring that has feature folders. It sees through type aliases
+(`typealias Rows = List<Connection>`) and leaves out property getters and setters, the `componentN` and
+`copy` functions of data classes, and `internal` functions.
 
 ## Review rules
 
@@ -1394,9 +1397,11 @@ the [one-way rules](#one-way-rules), the [source checks](#source-checks), the
 [dependency and repository checks](usage.md#dependency-and-repository-checks), `co-change` of the
 [change history](usage.md#change-history) check (with a `<module>/**` glob), stability, and the
 mutants of Java and Kotlin classes per path, and the structure, CRAP and coverage rules per function. Java rule
-ids are accepted for the Java sources of the project. `layout` takes only `featureRoots`, and only
-once `history.coChange` is on (it names the feature folders `co-change` reads); its other keys stay
-a config error until the Kotlin preset runs the rule that reads them (`shared-used-by-one-feature`).
+ids are accepted for the Java sources of the project. `layout` takes only `sharedRoots` and
+`featureRoots`, which `archunit/contract-infrastructure-type` reads (see
+[contract types](java-preset.md#contract-types)) and `co-change` reads once `history.coChange` is on
+(`featureRoots` names its feature folders); its other keys stay a config error until the Kotlin
+preset runs the rule that reads them (`shared-used-by-one-feature`).
 
 ## Slow tests
 

@@ -26,9 +26,15 @@ describe('nitpickerSpringArch in the init script', () => {
     ]);
   });
 
-  it('runs only for Spring or jMolecules projects, so other projects skip it', () => {
+  it('runs for Spring or jMolecules projects and for projects with a feature folder, so other projects skip it', () => {
     expect(/onlyIf \{[^}]*\}/.exec(taskBody('nitpickerSpringArch'))[0]).toBe(
       'onlyIf { runsArchRules() }',
+    );
+    expect(/def runsArchRules = (.+)/.exec(script)[1]).toBe(
+      '{ usesSpring() || usesJmolecules() || featureFoldersDeclared }',
+    );
+    expect(/def featureFoldersDeclared = (.+)/.exec(script)[1]).toBe(
+      "nitpickerArgument('nitpicker.featureFolders') == 'true'",
     );
   });
 

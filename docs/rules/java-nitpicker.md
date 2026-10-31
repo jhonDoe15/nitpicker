@@ -1,6 +1,6 @@
 # Java and Kotlin: nitpicker rules
 
-The rules nitpicker adds on top of the JVM tools: ArchUnit architecture rules, Spring configuration findings, the formatter check and the suppression scan, in Java and Kotlin projects. This page lists 31 rules. [All pages](README.md).
+The rules nitpicker adds on top of the JVM tools: ArchUnit architecture rules, Spring configuration findings, the formatter check and the suppression scan, in Java and Kotlin projects. This page lists 32 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -25,6 +25,18 @@ A rule of the project's own ArchUnit tests.
 - **Allowed form:** Fix the code the rule's message names.
 - **Exception:** If this is intended, add `{"rule":"archunit/<rule>","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Java preset guide](../java-preset.md#slice-4-archunit)
+
+<a id="archunit-contract-infrastructure-type"></a>
+
+### `archunit/contract-infrastructure-type`
+
+A public method of a `@Service`, a controller, or a public class directly in a feature package takes or returns a persistence handle (JPA `EntityManager`, `EntityManagerFactory`, `EntityTransaction`, `Query`; Hibernate `Session`, `StatelessSession`, `SessionFactory`; JDBC `Connection`, `Statement`, `ResultSet`, `DataSource`; `JdbcTemplate` and the other Spring JDBC, R2DBC and Mongo operations; R2DBC and MongoDB driver types; jOOQ `DSLContext`) or a web request or response object (servlet request, response, session and `Part`; `ServerWebExchange`; `ServerHttpRequest`/`ServerHttpResponse`; `WebRequest`; `MultipartFile`; WebFlux `ServerRequest`/`ServerResponse`; `HttpEntity` and `ResponseEntity`; JAX-RS `Response` and `ContainerRequestContext`; Micronaut `HttpRequest`/`HttpResponse`; Vert.x `RoutingContext`).
+
+- **Scope:** A project with Spring, or with feature folders, in its main sources.
+- **Why it is on:** One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes: it keeps the package-by-feature layout, the layering and the aggregate boundaries that the TypeScript preset keeps with its import rules.
+- **Allowed form:** Take a repository or a port interface and return a record (DTO) or a domain type from \<Class>.\<method>: \<PersistenceHandle> is a persistence handle, so every caller of this service depends on the database session. Keep \<PersistenceHandle> inside the repository or adapter that owns the transaction.
+- **Exception:** If this is intended, add `{"rule":"archunit/contract-infrastructure-type","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [Java preset guide](../java-preset.md#spring-architecture-rules)
 
 <a id="archunit-ddd-aggregate-reference"></a>
 

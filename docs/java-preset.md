@@ -129,8 +129,9 @@ by field. Per snapshot:
    directories). The versions are read from the init script's `pinned` map, so both builds always
    run the same tools.
    A module that uses Spring (`spring-context` or `spring-boot` on its main compile classpath) or
-   jMolecules (`jmolecules-ddd`) also runs the Spring architecture rules: ArchUnit is resolved with
-   the other tools, but only when some module runs them, and the rule classes are compiled once into
+   jMolecules (`jmolecules-ddd`), or any module when the head checkout has a feature folder (see
+   [Contract types](#contract-types)), also runs the Spring architecture rules: ArchUnit is resolved
+   with the other tools, but only when some module runs them, and the rule classes are compiled once into
    `$XDG_CACHE_HOME/nitpicker/spring-arch/<hash>` (else `~/.cache/nitpicker/spring-arch/<hash>`, private
    to the user; the hash is computed like Gradle's, but the cache is separate from Gradle's) and run in
    one extra JVM per module (`languages/java/maven/spring/maven-spring-arch.mjs`).
@@ -477,10 +478,10 @@ classpath and its `test` task, and adds no test library to the project.
     configuration hash. Every message of a rule nitpicker adds ends with the entry that accepts it, and so does every PMD,
     Checkstyle, SpotBugs and ArchUnit message (`pmd/<rule>`).
   - `layout` is a config error with `"preset": "java"` instead of being ignored: its source-folder
-    keys are TypeScript only, `layout.featureRoots` is accepted once `history.coChange` is on (it
-    names the feature folders `co-change` reads), and `layout.sharedRoots` is accepted once the
-    Java preset registers the rule that reads it (`shared-used-by-one-feature`) in
-    `shared/project-rules/fact-rules.mjs`. `testConsole` is accepted because the registry lists Java and
+    keys are TypeScript only, and `layout.featureRoots` and `layout.sharedRoots` are accepted
+    because the Java and Kotlin presets run a rule that reads them (`contract-infrastructure-type`,
+    listed in `OWN_RULE_SETTINGS` of `shared/project-rules/fact-rules.mjs`); once `history.coChange`
+    is on, `featureRoots` also names the feature folders `co-change` reads. `testConsole` is accepted because the registry lists Java and
     Kotlin for `test-console-output`. `tools` takes `pmd` and `checkstyle`.
 - **Packaging.** The init script moved to `languages/java/gradle/` and `languages/**` is in the npm `files`;
   the packed-contents test and the installed-package test assert that `languages/java/gradle/nitpicker.init.gradle`
@@ -2230,6 +2231,53 @@ A class referring to its own type (a root's `parent` of the same root type), a s
 supertype of it, or an entity holding its own root is not reported. The detail of `ddd-foreign-entity` is `<aggregate>:<entity>`, so its
 identity is `Order|Cart:CartLine`.
 
+<a id="contract-types"></a>**Contract types.** A class that other code calls through (a
+`@Service`, a `@Controller`, or any class directly in a feature package) keeps persistence handles
+and web request objects out of its public method signatures, so callers do not need a database
+session or a live HTTP exchange. The rule reads parameter and return types, generic arguments
+(`Supplier<List<Connection>>`), arrays and Kotlin type aliases included.
+
+| Rule                           | Fails when                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| ------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `contract-infrastructure-type` | a public method of a `@Service`, a controller, or a public class directly in a feature package takes or returns a persistence handle (JPA `EntityManager`, `EntityManagerFactory`, `EntityTransaction`, `Query`; Hibernate `Session`, `StatelessSession`, `SessionFactory`; JDBC `Connection`, `Statement`, `ResultSet`, `DataSource`; `JdbcTemplate` and the other Spring JDBC, R2DBC and Mongo operations; R2DBC and MongoDB driver types; jOOQ `DSLContext`) or a web request or response object (servlet request, response, session and `Part`; `ServerWebExchange`; `ServerHttpRequest`/`ServerHttpResponse`; `WebRequest`; `MultipartFile`; WebFlux `ServerRequest`/`ServerResponse`; `HttpEntity` and `ResponseEntity`; JAX-RS `Response` and `ContainerRequestContext`; Micronaut `HttpRequest`/`HttpResponse`; Vert.x `RoutingContext`) |
+
+Framework-owned signatures are left out: repositories (`@Repository` or a Spring Data `Repository`)
+own their handles, `@Configuration` classes and `@Bean` methods wire them, a web class that is not
+a controller (`@ControllerAdvice`) and a method that overrides a library type's method (a
+`RowMapper`, a servlet `Filter`) have signatures the framework fixed, and classes in a package
+segment `adapter`, `adapters`, `infrastructure`, `infra`, `persistence`, `repository`,
+`repositories`, `db`, `database`, `dependencies`, `deps`, `config`, `configuration` or `security`
+are where the handles belong (the same module names the Python and TypeScript presets treat as
+infrastructure). A controller's web types are framework-owned too: a Spring controller, a JAX-RS
+resource (`@Path`) or a Micronaut `@Controller` takes and returns what its framework hands it, so
+web types in a controller are never reported, and a Spring controller's data access is already
+`spring-controller-repository`. A service's web types are already `spring-service-web`. So that
+web entry points written without a controller annotation pass, a method whose first parameter is a
+request (`HttpServletRequest`, `ServerWebExchange`, WebFlux `ServerRequest`, JAX-RS
+`ContainerRequestContext`, Micronaut `HttpRequest`, Vert.x `RoutingContext`) may take and return
+web types (`Mono<ServerResponse> list(ServerRequest)`, `void list(RoutingContext)`); it is still
+reported for a persistence handle. A class whose name ends in `Client` calls another service, so its
+web types (`RequestEntity` in, `ResponseEntity` out) are outbound and not reported, and
+`RequestEntity` is never a web request object. A static factory method that returns a project type
+(`Accounts.of(DataSource)`) is the composition root's way in: only its return type is read. Record
+accessors and Kotlin property getters and setters are read through the record components and
+properties, not as methods, so a record or data class that holds a handle is not reported through
+its accessors.
+
+The rule runs where the other architecture rules run (Spring and jMolecules projects) and also in a
+project without Spring when the head checkout has a `.java` or `.kt` file of a main source set
+(`src/main/java`, `src/main/kotlin`) directly in a feature folder: `layout.featureRoots` (default
+`**/features`) and `layout.sharedRoots` (default `**/shared`) in `nitpicker.config.json`, the same
+keys the feature boundary rules read. Node checks this on the head checkout (`featureFolders` head
+fact) and passes it to both sides, so the base runs the same rules; on Gradle it is the
+`-Pnitpicker.featureFolders=true` property. Then every Gradle project and Maven module runs it,
+those without Spring included. What is a contract class: a `@Service` (or a class `spring.roles`
+maps to the service role), a controller, a public class directly in a feature package of the Spring
+root package, and any public class directly in a folder under `layout.featureRoots` (with or without
+Spring). `"featureRoots": []` only removes that last kind: in a Spring project services,
+controllers and the classes of the root package's feature packages are still checked; without
+Spring the rule then does not run, since no file is in a feature folder.
+
 **Tests that start a Spring context.** A concrete test class counts when it, an enclosing class or
 one of its superclasses (`class X extends AbstractIntegrationTest`) is annotated, directly or
 through a composed annotation, with `@SpringBootTest`, any slice test (`@DataJpaTest`, `@WebMvcTest`, ...; all carry
@@ -2249,7 +2297,11 @@ Java, not here.
 
 **Limits.** The rules read bytecode, so generated classes without a source file are skipped (no
 finding can be placed), and a use of another package's compile-time constant (`static final` of a
-primitive or `String`) is invisible, because `javac` inlines its value. Each Gradle project and Maven module that uses Spring or jMolecules is checked on its own,
+primitive or `String`) is invisible, because `javac` inlines its value. `contract-infrastructure-type`
+reads methods only, not fields, record components or Kotlin properties; it matches an override of a
+library method by name and parameter count; and a Kotlin `internal` class is public in bytecode, so
+it counts as public (its `internal` members are skipped). Each Gradle project and Maven module that
+uses Spring or jMolecules is checked on its own,
 over its main and test classes. Kotlin modules run the same rules on their compiled classes, and the
 findings point at the `.kt` files; the file facade of top-level functions (`ShopApplicationKt`, with
 `fun main`) next to the application or a `@Configuration` class in the root package is not a

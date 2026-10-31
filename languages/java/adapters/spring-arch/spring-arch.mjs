@@ -3,9 +3,11 @@ import path from 'node:path';
 import { createIdentityCounter } from '../../../../shared/ingest/common.mjs';
 import { exceptionHint } from '../../../../shared/rules/exceptions.mjs';
 import { isIntegrationTest } from '../test-times/integration-tests.mjs';
+import { CONTRACT_RULE, contractEntry, keepsContract, simpleName } from './contract-types.mjs';
 
 export const SPRING_ARCH_REPORT = 'spring-arch.json';
 const TOOL = 'archunit';
+const SPRING_RULE_PREFIX = 'spring-';
 
 export const SPRING_ARCH_MESSAGES = {
   'spring-layout': ({ simple, detail, root }) =>
@@ -72,10 +74,6 @@ const DEPENDENCY_RULES = new Set([
   'spring-service-web',
 ]);
 
-function simpleName(name) {
-  return name.slice(name.lastIndexOf('.') + 1);
-}
-
 function packageOf(name) {
   return name.includes('.') ? name.slice(0, name.lastIndexOf('.')) : '';
 }
@@ -103,6 +101,44 @@ function targetOf(detail, root) {
   return { packageName, rootPackage: `${root}.${segment}` };
 }
 
+function describeEntry({ rule, className, detail }, root) {
+  if (rule === CONTRACT_RULE) {
+    return contractEntry(className, detail);
+  }
+  const describe = SPRING_ARCH_MESSAGES[rule];
+  if (describe === undefined) {
+    throw new Error(`Unknown Spring architecture rule ${rule} in ${SPRING_ARCH_REPORT}`);
+  }
+  const simple = simpleName(className);
+  const short = shortDetail(rule, detail);
+  const key = identityDetail(rule, short);
+  return {
+    key: key === '' ? simple : `${simple}|${key}`,
+    symbol: simple,
+    message: describe({
+      simple,
+      detail: short,
+      root,
+      target: root === null ? undefined : targetOf(detail, root),
+    }),
+  };
+}
+
+function isKept(violation, filePath, options) {
+  const { rule, className, detail } = violation;
+  if (filePath === undefined) {
+    return false;
+  }
+  if (rule === CONTRACT_RULE) {
+    return keepsContract(detail, filePath, options.isFeatureFace ?? (() => false));
+  }
+  return (
+    (options.spring !== false || !rule.startsWith(SPRING_RULE_PREFIX)) &&
+    !(rule === PLACEMENT && isIntegrationTest({ className, unitSource: true })) &&
+    !(rule === BOUNDARY && options.shown.has(dependencyKey(violation)))
+  );
+}
+
 function violationPath(resolvePath, { className, fileName }) {
   return resolvePath(className, fileName === '' ? undefined : fileName);
 }
@@ -123,7 +159,8 @@ function shownDependencies(violations, resolvePath, isExcepted) {
   );
 }
 
-export function readSpringArchFindings(reportRoot, { resolvePath, isExcepted = () => false }) {
+export function readSpringArchFindings(reportRoot, options) {
+  const { resolvePath, isExcepted = () => false } = options;
   const file = path.join(reportRoot, SPRING_ARCH_REPORT);
   if (!existsSync(file)) {
     throw new Error(`The Spring architecture report ${SPRING_ARCH_REPORT} is missing`);
@@ -132,41 +169,23 @@ export function readSpringArchFindings(reportRoot, { resolvePath, isExcepted = (
   const shown = shownDependencies(violations, resolvePath, isExcepted);
   const counters = new Map();
   return violations.flatMap((violation) => {
-    const { rule, className, detail } = violation;
+    const { rule } = violation;
     const filePath = violationPath(resolvePath, violation);
-    const describe = SPRING_ARCH_MESSAGES[rule];
-    if (describe === undefined) {
-      throw new Error(`Unknown Spring architecture rule ${rule} in ${SPRING_ARCH_REPORT}`);
-    }
-    if (
-      filePath === undefined ||
-      (rule === PLACEMENT && isIntegrationTest({ className, unitSource: true })) ||
-      (rule === BOUNDARY && shown.has(dependencyKey(violation)))
-    ) {
+    const entry = describeEntry(violation, root);
+    if (!isKept(violation, filePath, { ...options, shown })) {
       return [];
     }
     const unique = counters.get(filePath) ?? createIdentityCounter();
     counters.set(filePath, unique);
-    const simple = simpleName(className);
-    const short = shortDetail(rule, detail);
-    const key = identityDetail(rule, short);
-    const message = describe({
-      simple,
-      detail: short,
-      root,
-      target: root === null ? undefined : targetOf(detail, root),
-    });
     return [
       {
         tool: TOOL,
         rule,
         path: filePath,
-        identity: unique(`${rule}:${key === '' ? simple : `${simple}|${key}`}`).slice(
-          rule.length + 1,
-        ),
-        message: `${message} ${exceptionHint(`${TOOL}/${rule}`, filePath)}`,
+        identity: unique(`${rule}:${entry.key}`).slice(rule.length + 1),
+        message: `${entry.message} ${exceptionHint(`${TOOL}/${rule}`, filePath)}`,
         classification: 'enforceable',
-        symbol: simple,
+        symbol: entry.symbol,
       },
     ];
   });

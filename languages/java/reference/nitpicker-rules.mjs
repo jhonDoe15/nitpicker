@@ -7,6 +7,7 @@ import {
   UNRUN_TEST_EXCEPTION_RULE,
 } from '../adapters/test-runs/unrun-tests.mjs';
 import { SPRING_ARCH_MESSAGES, SPRING_ARCH_RULES } from '../adapters/spring-arch/spring-arch.mjs';
+import { CONTRACT_RULE, contractEntry } from '../adapters/spring-arch/contract-types.mjs';
 import { JAVA_FORMATTER_TOOLS } from '../adapters/style/java-style.mjs';
 import { javaFormatMessage } from '../adapters/reporting/format-findings.mjs';
 import { INLINE_SUPPRESSION_MESSAGES } from '../adapters/suppressions/java-suppressions.mjs';
@@ -65,14 +66,30 @@ function archunitEntry(rule) {
   });
 }
 
+function contractTypeEntry() {
+  return ruleEntry({
+    ...JVM,
+    tool: 'archunit',
+    rule: CONTRACT_RULE,
+    summary: asSentence(guideCell(GUIDE, CONTRACT_RULE, 'fails when')),
+    why: ARCHUNIT_WHY,
+    allowed: contractEntry('<Class>', 'service|persistence|<method>:<PersistenceHandle>').message,
+    scope: 'A project with Spring, or with feature folders, in its main sources.',
+    exception: { key: 'exceptions', rule: `archunit/${CONTRACT_RULE}` },
+    docs: [{ label: 'Java preset guide', path: GUIDE, anchor: 'spring-architecture-rules' }],
+  });
+}
+
 function archunitEntries() {
+  const ownRules = [...SPRING_ARCH_RULES, CONTRACT_RULE];
   return [
     ...SPRING_ARCH_RULES.map(archunitEntry),
+    contractTypeEntry(),
     ruleEntry({
       ...JVM,
       tool: 'archunit',
       rule: '<rule>',
-      pattern: `^(?!(?:${SPRING_ARCH_RULES.join('|')})$)`,
+      pattern: `^(?!(?:${ownRules.join('|')})$)`,
       samples: ['archunit/noCyclesBetweenFeatures'],
       summary: "A rule of the project's own ArchUnit tests.",
       why: 'The project writes ArchUnit rules as tests named `*ArchTest` or `*ArchitectureTest`; nitpicker runs them and reports each violated rule by the name of its test field or method.',

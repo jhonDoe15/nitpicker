@@ -28,7 +28,11 @@ import {
 import { ownSourceRoots } from '../adapters/red-base/tests-failed.mjs';
 import { moduleManifest, relativeTo, writeManifest } from './manifest/maven-manifest.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
-import { buildRunsArchRules, withDeclaredSpring } from './spring/arch-rules-gate.mjs';
+import {
+  buildRunsArchRules,
+  withDeclaredSpring,
+  withFeatureFolders,
+} from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
@@ -173,9 +177,9 @@ function analyzeModule(options) {
   const { module, classpaths, pinned } = options;
   const reportDir = path.join(module.basedir, MAVEN_REPORT_DIRECTORY);
   const isArchunit = archunitMatcher(module.archunitIncludes);
-  const manifest = withDeclaredSpring(
-    moduleManifest({ module, classpaths, pinned }),
-    options.spring,
+  const manifest = withFeatureFolders(
+    withDeclaredSpring(moduleManifest({ module, classpaths, pinned }), options.spring),
+    options.featureFolders,
   );
   const { spring, springArch } = manifest;
   const { testsRan, failure } = readTestRuns({
@@ -278,6 +282,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
         tolerateFailures: policy.snapshot === 'base',
         projectRoot,
         spring: policy.spring,
+        featureFolders: policy.featureFolders,
         springRoles: writeSpringRoles(policy.springRoles, work),
       }),
     };

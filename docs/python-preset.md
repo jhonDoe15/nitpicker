@@ -156,8 +156,8 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 `inheritanceDepth`, and the test time limits `unitTestSeconds` and `integrationTestSeconds`), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), `history` (the opt-in
 [change history](usage.md#change-history) check), and the `python` object below.
-`layout.featureRoots` and `layout.sharedRoots` place the [feature folders](#feature-folders), and
-`featureRoots` also names the feature folders `co-change` reads (the other `layout` keys describe
+`layout.featureRoots` and `layout.sharedRoots` place the [feature folders](#feature-folders), which
+`contract-infrastructure-type` reads too, and `featureRoots` also names the feature folders `co-change` reads (the other `layout` keys describe
 TypeScript sources and are an error); `testConsole` stays a config error with this preset until it
 runs `test-console-output`. The
 top-level `exceptions` is accepted only for the rules shared with the other languages: the [feature folder rules](#feature-folders), the file and size limits
@@ -614,6 +614,8 @@ are listed at the end.
 | Boundary                 | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`                                                                                          | `handwritten-boundary-guard` (script)                                                                                                                |
 | Types in the domain      | real types, `Protocol`, frozen dataclasses                                                                                                                                           | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
 | Pure domain              | clock, ids, random values and results passed in; ports implemented in `adapters/`; no logger or module state                                                                         | `clock-now`, `random-in-domain`, `io-in-domain`, `logger-in-domain`, `module-state-in-domain` (script)                                               |
+| Feature contracts        | a frozen dataclass or a domain type; the session or request stays in an adapter or route handler                                                                                     | `contract-infrastructure-type` (script)                                                                                                              |
+| Route handlers           | a separate schema (a Pydantic model, a frozen dataclass) mapped from the entity                                                                                                      | `handler-entity-type` (script)                                                                                                                       |
 | Module state             | state in an object made in the composition root                                                                                                                                      | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
 | Import-time effects      | work done in a function the composition root calls, or under `if __name__ == "__main__":`                                                                                            | `import-time-effect` (script)                                                                                                                        |
 | Risky APIs               | JSON instead of pickle or marshal, `copy.deepcopy` to clone, a specific exception class                                                                                              | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
@@ -644,6 +646,72 @@ are listed at the end.
 
 Details that are decisions rather than the table:
 
+- `contract-infrastructure-type` reads the public face of each feature: its `__init__.py` and the
+  modules directly in the feature folder whose names do not start with `_` (`layout.featureRoots`,
+  default `**/features`; `layout.sharedRoots`, default `**/shared`). Their public functions, and the
+  public methods of their public classes (nested ones included, dunder methods such as `__init__`
+  left out), may not take or return a persistence handle (SQLAlchemy and SQLModel `Session`,
+  `AsyncSession`, `sessionmaker`, `Engine`, `Connection`, `Query`, `Result`; Django `QuerySet` and
+  `Manager`; DB-API connections and cursors of `sqlite3`, `psycopg`, `psycopg2`, `asyncpg`,
+  `aiosqlite`, `pymysql` and `MySQLdb`; `pymongo` and `motor` clients, databases and collections;
+  peewee, Tortoise and `databases` handles) or a web request or response object (Django, Django REST
+  framework, Starlette, FastAPI, Flask, Werkzeug, Quart, aiohttp, Litestar and Sanic requests,
+  responses, websockets and uploads). Every name an `__init__.py` imports from a project module
+  counts, reported on the import: from an internal module, a public one, or one named for
+  infrastructure (`from .repository import open_session` is reported, as `index.ts` re-exports are
+  in TypeScript), and `from ._queries import *` brings in the names of `__all__`, or every public
+  definition when there is no `__all__`. Annotations are resolved through the imports, string
+  annotations and module-level type aliases, also across modules; a name that does not resolve to
+  one of those libraries is never reported. The identity is the member and the type's simple name
+  (`get_order|persistence|Session`). Left out: a function with a route decorator (`@router.get`,
+  `@app.route` in a module that imports a web framework, or a decorator of the web framework itself,
+  such as `@api_view` or `@login_required`; `@transaction.atomic` is not one), a class that
+  subclasses a web framework type (a Django `View`, a DRF `APIView`) or a data access type (a
+  Django `Manager` or `QuerySet`, which own their handles as a repository does), a class named
+  `*Repository` or `*Repo`, a parameter FastAPI injects (`= Depends(...)`, `Security(...)`,
+  `Annotated[Session, Depends(get_db)]`, or a module-level alias of one such as
+  `SessionDep = Annotated[Session, Depends(get_db)]`), modules named `adapter`, `adapters`,
+  `infrastructure`, `infra`, `persistence`, `repository`, `repositories`, `db`, `database`,
+  `dependencies`, `deps`, `config`, `configuration` or `security` (the Java and Kotlin presets skip
+  packages with the same names), and tests. A function whose first parameter is a request (annotated
+  as one, or named `request` without an annotation, as a Django view is, in any module) and the
+  modules `views`, `routes`, `router`, `routers`, `api`, `endpoints`, `urls` and `middleware` may use
+  the web types, but not the persistence ones. Class and dataclass fields are not read, only
+  signatures.
+- The allowed shapes for the two common layouts. FastAPI: a route handler in `router.py` takes
+  `session: SessionDep` and `Depends(...)` values, which are never reported; it passes the session to
+  a repository built in `deps.py` or `repository.py` (`OrderRepository(session)`), and the feature's
+  `service.py` takes that repository, or a `Protocol` the feature declares for it, and returns
+  frozen dataclasses or Pydantic schemas. A `service.py` or `crud.py` function that takes
+  `db: Session` is reported: callers in other features would need a session. Django: a view in
+  `views.py` may take the request and return a response; queries live in a `Manager` or `QuerySet`
+  subclass, a module named for infrastructure or a `_queries.py` module, and the feature's
+  `selectors.py` or `services.py` returns lists of frozen dataclasses or model instances, not a
+  `QuerySet`, which would let callers run more queries. A unit of work is the same: a function that
+  takes an optional `Session` or a transaction to join one is reported; pass a unit-of-work object
+  (a class the feature defines, with `commit()` and the repositories it needs) and keep the session
+  inside it.
+- `handler-entity-type` reads route handlers: functions with a route decorator (`@router.get(...)`,
+  `@app.route(...)`, `@api.post(...)` in a module that imports a web framework, or a decorator of the
+  framework itself, such as Litestar's `@get` or DRF's `@api_view`), Django function views (a
+  module-level function whose first parameter is the request, in a module that imports
+  `django.http`, `django.shortcuts` or `django.views`) and the request methods (`get`, `post`, `put`,
+  `patch`, `delete`, `head`, `options`, and a ViewSet's `list`, `retrieve`, `create`, `update`,
+  `partial_update`, `destroy`) of a class that subclasses a Django, DRF, Flask or other web framework
+  view. A parameter, the return annotation, `response_model=` or django-ninja's `response=` that
+  names an ORM entity is reported once per handler and entity; parameters FastAPI injects with
+  `Depends` or `Security` are left out, and a `response_model=` or `response=` that is not `None`
+  replaces the return annotation, which is then not read. A handler without either also has its
+  `return` values read, and every handler the first argument of a response it builds
+  (`Response(order)`, `JsonResponse(...)`, `jsonify(...)`): an entity class, a chain on it
+  (`Order.objects.get(pk=pk)`, but not `.values()`, `.values_list()`, `.count()`, `.exists()` or
+  `.aggregate()`), a parameter annotated with one, or a local variable assigned one of those. A
+  serializer around the entity (`OrderSerializer(order).data`) is the allowed form. Entities are
+  SQLAlchemy mapped classes (a `__tablename__` or `__table__` under a `DeclarativeBase` or
+  `declarative_base()` base, and their subclasses), SQLModel classes with `table=True`, and Django,
+  Tortoise and peewee models that are not `abstract`, found across the project's modules.
+  Imperative mappings (`registry.map_imperatively`, `@registry.mapped`) and entities that come from
+  a call the rule cannot type (`return db.get(Order, order_id)`) are not seen.
 - `PLR2004` allows the same numbers as the TypeScript `no-magic-numbers` (`-1`, `0`, `1`, `2`, `10`,
   `100`, `1000`): findings for them are dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`),
   because ruff has no setting for it. Ruff already allows strings and bytes.

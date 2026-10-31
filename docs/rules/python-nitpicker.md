@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 59 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 61 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -103,6 +103,15 @@ A package that is in a dependency cycle with other packages.
 - **Allowed form:** When code moves or is renamed, change every caller in the same change and delete the old name: keep no alias, forwarding function, module `__getattr__`, `@deprecated` marker or deprecation warning. A published library keeps the deprecation of its public names, and that path takes an exception.
 - **Exception:** If this is intended, add `{"rule":"compatibility-shim","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
+<a id="python-rules-contract-infrastructure-type"></a>
+
+### `python-rules/contract-infrastructure-type`
+
+Take a repository or a port (a `Protocol` the feature defines) and return frozen dataclasses or domain types from `<name>`: `<type>` is a persistence handle, so every importer of this feature depends on its database session.
+
+- **Allowed form:** Keep a persistence handle inside a repository class, a module named for infrastructure (`adapters.py`, `persistence.py`, `repository.py`, `db.py`, `deps.py`) or a module whose name starts with `_`, and pass it in from the composition root; read a request in the route handler or view and pass the values in.
+- **Exception:** If this is intended, add `{"rule":"contract-infrastructure-type","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
 <a id="python-rules-credential-shape"></a>
 
 ### `python-rules/credential-shape`
@@ -147,6 +156,15 @@ Dataclass \<name> is not frozen.
 
 - **Allowed form:** Name it for its job (`price_rounding.py`, `OrderRepository`); shared logic that belongs to no feature lives in `shared/` under a name that says what it does.
 - **Exception:** If this is intended, add `{"rule":"generic-name","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-handler-entity-type"></a>
+
+### `python-rules/handler-entity-type`
+
+Take and return a separate schema (a Pydantic model or a frozen dataclass) in the return type of route handler `<name>` and map `<Entity>` to it in the service: `<Entity>` is a ORM entity, so the response serializes every column and loaded relation and ties the API to the database schema.
+
+- **Allowed form:** A SQLModel class without `table=True` or a django-ninja `Schema` is a schema, not an entity.
+- **Exception:** If this is intended, add `{"rule":"handler-entity-type","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-handwritten-boundary-guard"></a>
 

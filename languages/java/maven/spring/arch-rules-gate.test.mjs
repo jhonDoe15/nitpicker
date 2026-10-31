@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { runsArchRules, usesSpring, withDeclaredSpring } from './arch-rules-gate.mjs';
+import {
+  buildRunsArchRules,
+  runsArchRules,
+  usesSpring,
+  withDeclaredSpring,
+  withFeatureFolders,
+} from './arch-rules-gate.mjs';
+
+const jarsOn = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
 
 describe('usesSpring', () => {
   const classpaths = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
@@ -43,5 +51,32 @@ describe('withDeclaredSpring', () => {
       { spring: false, springArch: true },
       { spring: false, springArch: false },
     ]);
+  });
+});
+
+describe('withFeatureFolders', () => {
+  it('turns on the architecture rules for a checkout with feature folders and keeps the others', () => {
+    expect([
+      withFeatureFolders({ spring: false, springArch: false }, true),
+      withFeatureFolders({ spring: true, springArch: true }, undefined),
+      withFeatureFolders({ spring: false, springArch: false }, undefined),
+    ]).toEqual([
+      { spring: false, springArch: true },
+      { spring: true, springArch: true },
+      { spring: false, springArch: false },
+    ]);
+  });
+});
+
+describe('buildRunsArchRules', () => {
+  it('resolves ArchUnit for a declared Spring build, feature folders or a module that runs the rules', () => {
+    const plain = [{ classpaths: jarsOn('guava.jar') }];
+
+    expect([
+      buildRunsArchRules({ spring: true }, plain),
+      buildRunsArchRules({ featureFolders: true }, plain),
+      buildRunsArchRules({}, [{ classpaths: jarsOn('jmolecules-ddd-2.0.1.jar') }]),
+      buildRunsArchRules({}, plain),
+    ]).toEqual([true, true, true, false]);
   });
 });

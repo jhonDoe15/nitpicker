@@ -18,6 +18,7 @@ def load_checks():
     from boundary import domain_types, guards, paths
     from checks import comments, declarations, parameters, shell, state
     from concurrency import fan_out
+    from contracts import contract_types, handlers
     from discovery import helpers, uncollected
     from effects import import_time, reach
     from environment import domain_imports, environment, purity
@@ -51,6 +52,8 @@ def load_checks():
         loading,
         guards,
         domain_types,
+        contract_types,
+        handlers,
         paths,
         literals,
         names,
