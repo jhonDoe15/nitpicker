@@ -21,7 +21,7 @@ import {
 } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
 import {
   ENVIRONMENTS,
-  FORMATTERS,
+  FORMATTERS as PYTHON_FORMATTERS,
   PYTHON_TEST_RUNNERS,
   SETTING_KEYS,
   TYPE_CHECKERS,
@@ -227,7 +227,7 @@ const pythonProperties = {
       'The tool that manages the environment, or the directory of a virtual environment.',
     anyOf: [{ enum: ENVIRONMENTS }, { pattern: `^/|${WINDOWS_ABSOLUTE.source}` }, projectPath],
   },
-  formatter: enumeration('The format check to run.', FORMATTERS),
+  formatter: enumeration('The format check to run.', PYTHON_FORMATTERS),
   testRunner: enumeration('The test runner.', PYTHON_TEST_RUNNERS),
   typeChecker: enumeration('The type checker.', TYPE_CHECKERS),
   importLinter: { description: 'false turns the import-linter check off.', type: 'boolean' },

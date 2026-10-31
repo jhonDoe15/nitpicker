@@ -4,11 +4,10 @@ import {
   HELD_MESSAGES,
   MESSAGES,
   RULE_IDS,
-  allowedFormField,
-  definedField,
   messageFields,
   renderMessage,
 } from '../policy.mjs';
+import { allowedFormField, definedField } from '../messages/messages.mjs';
 import { positiveInteger } from './finding-helpers.mjs';
 import { exceptionRoute, normalizeFunctionName } from '../exceptions/rule-names.mjs';
 

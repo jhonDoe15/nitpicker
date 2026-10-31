@@ -1,5 +1,6 @@
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
-import { FUNCTION_EXCEPTION_RULES, definedField } from '../../../shared/policy.mjs';
+import { FUNCTION_EXCEPTION_RULES } from '../../../shared/policy.mjs';
+import { definedField } from '../../../shared/messages/messages.mjs';
 import { ASYNC_HINTS } from './hints/ast-async.mjs';
 import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
 import { SMELL_HINTS } from './hints/ast-smells.mjs';
