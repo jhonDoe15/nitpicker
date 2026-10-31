@@ -88,8 +88,9 @@ To learn why a rule is on and what form it allows before you write or change cod
   `nitpicker.config.json`. A ruff, type-checker, `python-rules`, import-linter, duplicate or coupling
   finding goes under `python.exceptions`, with an entry such as
   `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
-  message. A function, CRAP, changed-branch coverage, mutation, file or size finding goes under the
-  top-level `exceptions`
+  message. A function, CRAP, changed-branch coverage, mutation, file, size or feature folder
+  (`feature-internal-import`, `shared-imports-feature`, `feature-cycle`,
+  `shared-used-by-one-feature`) finding goes under the top-level `exceptions`
   (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`). Each
   message ends with the entry and the list that takes it; each list rejects the other's rules.
   Don't add one to get past the gate: stop and ask.
