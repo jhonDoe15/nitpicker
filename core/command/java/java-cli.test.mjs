@@ -37,6 +37,8 @@ const xmlText = (text) =>
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&apos;');
 
+const CLONE_SIZE_NOTE =
+  'duplicates/duplicate-clone-size src/main/java/demo/First.java:3 Duplicate with src/main/java/demo/Second.java';
 const CLONE_MESSAGE = [
   'This code repeats src/main/java/demo/Second.java:3 (30 lines).',
   'Keep one copy and call it from both places.',
@@ -223,6 +225,9 @@ Quality gate summary
 ✖ 1 new enforceable violation
   duplicates/duplicate-clone src/main/java/demo/First.java:3
     ${CLONE_MESSAGE}
+Design notes for review (not failing): 2 new
+  ${CLONE_SIZE_NOTE} (lines 30)
+  ${CLONE_SIZE_NOTE} (tokens 381)
 Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     });
@@ -426,10 +431,10 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         'Enforceable findings:',
         `pmd/UnusedPrivateField src/main/java/demo/A.java:3 ${unusedFieldMessage('legacy')}`,
         '',
-        'Descriptive findings:',
-        'coupling/coupling . dependencies summary',
-        'coupling/coupling . modules summary',
-        'coupling/coupling . packages summary',
+        'Design notes for review (not failing): 3 in the snapshot',
+        '  coupling/coupling . dependencies summary (dependencies 0)',
+        '  coupling/coupling . modules summary (modules 0)',
+        '  coupling/coupling . packages summary (packages 0)',
         '',
         `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
         '',

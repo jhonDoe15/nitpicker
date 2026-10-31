@@ -4,6 +4,7 @@ import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { foldMutants } from './format/mutants.mjs';
 import { noteSummaryLines } from './format/notes.mjs';
 import { singleLine } from './format/text.mjs';
+import { designNoteLines } from './format/design-notes.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
 import {
   TESTS_FAILED_RULE,
@@ -40,6 +41,7 @@ export function renderConsoleSummary(
     style(text, [ANSI.bold, ANSI.yellow], color),
   );
   appendHeldSummary(lines, report.unchangedFindings, color);
+  lines.push(...designNoteLines(report.newFindings, diagnosticsPath));
   appendNoteSummary(lines, report.notes, color);
   appendToolErrorSummary(lines, report.toolErrors, color);
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
