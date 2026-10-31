@@ -58,11 +58,14 @@ To learn why a rule is on and what form it allows before you write or change cod
   child task, never in a `with` inside the group that hands it to `start_soon`/`create_task`
   (`task-outlives-resource`). In Trio and AnyIO, an `await` in `finally:` or a cancellation handler
   needs `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True):` around it (`unshielded-cleanup-await`).
-- Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru), never `print`;
-  a `domain` package returns a result instead and leaves logging to `adapters/`. A
-  log in an `except` keeps the traceback (`logger.exception(...)` or `exc_info=True`); passing the
-  error as an argument or `str(error)` drops it. Logging alone is not handling: also re-raise the
-  error or return a failure that carries it.
+- Output: the project's logger (`logging.getLogger(__name__)`, structlog or loguru) for diagnostics,
+  never bare `print`; a `domain` package returns a result instead and leaves logging to `adapters/`.
+  A program's own output (what a command prints) goes through a `TextIO` parameter: `out.write(...)`
+  or `print(..., file=out)`. Only the entry point (`main.py`, `cli.py`, a `[project.scripts]` target
+  or the `if __name__ == "__main__":` block) names `sys.stdout` / `sys.stderr` and passes it in
+  (`process-stream-access`). A log in an `except` keeps the traceback (`logger.exception(...)` or
+  `exc_info=True`); passing the error as an argument or `str(error)` drops it. Logging alone is not
+  handling: also re-raise the error or return a failure that carries it.
 - Records: `@dataclass(frozen=True)`, and `dataclasses.replace` for a changed copy. The project's
   validation library (pydantic by default) only in an `adapters/` package, where untrusted input is
   parsed once; pass frozen dataclasses on from there.
@@ -84,12 +87,11 @@ To learn why a rule is on and what form it allows before you write or change cod
 - Dependencies: every package production code imports is a production dependency of the project
   (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
   dependency nothing uses.
-- A finding that flags legitimate code (a command line entry point that prints) is lifted in
-  `nitpicker.config.json`. A ruff, type-checker, `python-rules`, import-linter, duplicate or coupling
-  finding goes under `python.exceptions`, with an entry such as
-  `{ "rule": "T201", "paths": ["src/cli/**"], "reason": "..." }`, the rule being the id in the
-  message. A function, CRAP, changed-branch coverage, mutation, file or size finding goes under the
-  top-level `exceptions`
+- A finding that flags legitimate code is lifted in `nitpicker.config.json`. A ruff, type-checker,
+  `python-rules`, import-linter, duplicate or coupling finding goes under `python.exceptions`, with
+  an entry such as `{ "rule": "PERF203", "paths": ["src/jobs/**"], "reason": "..." }`, the rule being
+  the id in the message. A function, CRAP, changed-branch coverage, mutation, file or size finding
+  goes under the top-level `exceptions`
   (`{ "rule": "function-lines-limit", "paths": [...], "function": "name", "reason": "..." }`). Each
   message ends with the entry and the list that takes it; each list rejects the other's rules.
   Don't add one to get past the gate: stop and ask.

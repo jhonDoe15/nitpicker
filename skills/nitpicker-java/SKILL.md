@@ -65,7 +65,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   (`lock()` right before `try`, `unlock()` in `finally`) and wait on a `Condition` from it
   (`await()` in a loop, `signalAll()`).
 - Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with
-  `System.getLogger(Foo.class.getName())`, or the project's logger.
+  `System.getLogger(Foo.class.getName())`, or the project's logger. A command-line program takes a
+  `PrintStream`, `Writer` or `Appendable` parameter and writes to it; only `static void main`
+  passes `System.out`/`System.err` (`new Cli(System.out).run(args)`, `System.out::print`), and
+  that hop is not a finding and needs no test; branches in `main` still count.
 - Null: a method returning a collection returns an empty one (`List.of()`), never `null`. Any
   other value that may be absent is declared `@Nullable` (the project's annotation, JSpecify's
   `org.jspecify.annotations.Nullable` if it has none) and checked before use. Never assign `null`

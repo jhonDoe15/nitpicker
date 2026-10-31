@@ -51,6 +51,7 @@ const BANNED_GUARDS = {
   'Wide.kt': `${PACKAGE}class Wide {\n${methods.join('\n')}\n}\n`,
   'Deep.kt': `${PACKAGE}open class Failure : Exception()\n\nopen class OrderFailure : Failure()\n\nopen class PaymentFailure : OrderFailure()\n\nclass CardFailure : PaymentFailure()\n`,
   'Literals.kt': `${PACKAGE}fun labels(): List<String> = listOf("shipping", "shipping", "shipping")\n`,
+  'Stream.kt': `${PACKAGE}fun show(): Appendable = System.out.append("shown")\n`,
   'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
   'Prefetch.kt': prefetch('body'),
 };
@@ -71,11 +72,12 @@ const ALLOWED_GUARDS = {
   'Parser.kt': parser('logger.log(Level.WARNING, "parse failed", e)'),
   'Secrets.kt': `${PACKAGE}data class Credentials(val password: String)\n`,
   'PriceRounder.kt': `${PACKAGE}class PriceRounder {\n    fun round(cents: Int): Int = cents\n}\n`,
+  'Stream.kt': `${PACKAGE}fun show(out: Appendable): Appendable = out.append("shown")\n`,
   'Commented.kt': `${PACKAGE}// Totals are in cents, so rounding stays exact.\nfun subtotal(): Int = 1\n`,
   'Marked.kt': `${PACKAGE}fun keep(): Int = 1\n`,
   'Casts.kt': `${PACKAGE}fun next(): Int = 1\n\nfun names(value: Any): List<String> = (value as? List<*>).orEmpty().filterIsInstance<String>()\n\nfun same(value: String): String = value\n`,
   'Literals.kt': `${PACKAGE}private const val SHIPPING = "shipping"\n\nfun labels(): List<String> = listOf(SHIPPING, SHIPPING, SHIPPING)\n\nfun kind(text: String): Int = when (text) {\n    "shipping-pending" -> 1\n    "shipping-sent", "shipping-pending" -> 2\n    else -> 3\n}\n\nfun more(): Map<String, Int> = mapOf("shipping-pending" to 1)\n`,
-  'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
+  'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n    show(System.out)\n}\n`,
   'Prefetch.kt': prefetch('limited', LIMITED),
 };
 
@@ -98,6 +100,7 @@ const EXPECTED_BANNED = [
   'kotlin-source/MutableModuleState State.kt',
   'kotlin-source/LogStringConcatenation Audit.kt',
   'kotlin-source/ShellCommand Shell.kt',
+  'kotlin-source/StandardStreamOutsideEntryPoint Stream.kt',
   'kotlin-source/CatchOnlyLogsOrReturnsDefault Loader.kt',
   'detekt/catch-log-without-exception Parser.kt',
   'kotlin-source/BooleanFlagParameter Flags.kt',

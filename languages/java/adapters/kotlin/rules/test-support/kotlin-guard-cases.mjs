@@ -18,7 +18,7 @@ export const kotlinGuardCases = [
     rule: 'detekt.style.ForbiddenMethodCall',
     message: forbidden(
       'kotlin.io.println',
-      'Log through the application logger (`logger.info(...)`) instead of printing to the console.',
+      'Log through the application logger (`logger.info(...)`) instead of printing to the console. For program output, write to an `Appendable`, `PrintStream` or `Writer` parameter that the file with `fun main` passes as `System.out`.',
     ),
     allowedForm: 'logger.info(',
     banned: 'fun show() {\n    println("shown")\n}\n',

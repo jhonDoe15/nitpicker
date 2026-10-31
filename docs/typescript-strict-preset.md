@@ -530,8 +530,25 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   local binding of the same name. Any other condition, such as `import.meta.env.DEV`, a bare
   `import.meta.url`, a call or a comma expression inside the comparison, is still reported.
 
-- `nitpicker/no-production-console` also reports `console['error']` and, outside the composition
-  root, `process.stdout.write` and `process.stderr.write`.
+- `nitpicker/no-production-console` reports every reference to `console`, not only calls:
+  `console.log()`, `console['error']()`, `const log = console.log`, `const { log } = console`,
+  `items.forEach(console.log)`, `const c = console` and `globalThis.console`. `typeof console` and a
+  local binding named `console` are not findings.
+  It also reports every reference to `process.stdout` and `process.stderr` outside the composition
+  root, not only `.write()`: an alias (`const out = process.stdout`, `const p = process`,
+  `const g = globalThis`), a destructured `stdout`/`stderr` (also nested, assigned, or through a
+  `...rest`), an import or re-export from `node:process` (`export * from "node:process"` too), a
+  `require` or `await import()`, `globalThis.process`, a `as`, `satisfies`, `!` or `<T>` wrapper
+  around `process`, and an argument handed to a helper. A local binding named `process` is not the
+  global one, and type-only imports and exports are not findings. Code outside the root takes a
+  `{ write(text: string): void }` parameter; the composition root passes `process.stdout` and
+  `process.stderr` (or writes to them), and that line is not a finding. Files listed in
+  `layout.entryPoints` (and the detected framework entry) may reference the streams the same way;
+  `console.*` stays a finding there. Reading `isTTY`, `columns`, `rows` or `hasColors()` is a
+  reference too: the root reads the fact once and passes it down as a value, like the environment.
+  The JavaScript preset runs the same rule. The hop needs no coverage or mutation exemption: a test
+  calls the exported `main` with `vi.spyOn(process.stdout, 'write')` (as the eval fixtures do), so the
+  arrow that forwards to the stream is covered and killed.
 - Named functions use the `function` keyword; arrow functions only as callbacks.
 - `type`, never `interface`, except in a `declare module` or `declare global` augmentation, or at
   the top level of a global declaration file with no imports or exports (such as `ImportMetaEnv` in

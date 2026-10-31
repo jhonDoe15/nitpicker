@@ -27,6 +27,7 @@ import {
   structureFunctions,
 } from './function-locator.mjs';
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
+import { withoutMainMethodFindings } from './entry-point/main-method.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
 import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
 import { readUnrunTestFindings } from '../test-runs/unrun-tests.mjs';
@@ -96,7 +97,7 @@ export function readJavaFindings(projectRoot, options = {}) {
 function moduleContextFindings(projectRoot, module, { manifest, modules, options }) {
   const preset = options.preset ?? 'java';
   const { fileLimits: thresholds, exceptions, modulePath } = options;
-  return readModuleFindings(
+  const findings = readModuleFindings(
     {
       projectRoot,
       roots: projectRoots(projectRoot),
@@ -127,6 +128,7 @@ function moduleContextFindings(projectRoot, module, { manifest, modules, options
     },
     options.crapLimit,
   );
+  return withoutMainMethodFindings(findings, sourceTextReader(projectRoot));
 }
 
 function ifTested(jacoco, build) {

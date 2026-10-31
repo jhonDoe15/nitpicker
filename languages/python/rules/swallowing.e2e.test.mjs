@@ -80,7 +80,9 @@ describe.skipIf(!enabled)('swallowed-exception', () => {
   ])('flags a handler that only does %s', (_name, body) => {
     const code = `${LOGGERS}def ignore(error):\n    logger.warning("ignored %s", error)\n\n\n${tryBlock('except ValueError as error:', body)}`;
 
-    expect(single(code)).toEqual(['swallowed-exception src/mod.py:17 except ValueError']);
+    const swallowed = single(code).filter((finding) => finding.startsWith('swallowed-exception '));
+
+    expect(swallowed).toEqual(['swallowed-exception src/mod.py:17 except ValueError']);
   });
 
   it.each([

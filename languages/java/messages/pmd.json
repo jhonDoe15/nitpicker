@@ -576,7 +576,7 @@
     "mayBeIntended": false
   },
   "SystemPrintln": {
-    "fix": "Write through a logger, or take a PrintStream as a parameter so callers choose the stream.",
+    "fix": "Use a logger, or write to a PrintStream, Writer or Appendable parameter; only static void main passes System.out. An exception fits only without a main method.",
     "mayBeIntended": true
   },
   "TestClassWithoutTestCases": {
