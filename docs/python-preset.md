@@ -19,6 +19,8 @@ of doing each thing. That "one way" lives in the code and architecture rules (sl
 which tools a project uses, so the preset detects the tools a project already has (uv, poetry,
 pipenv, hatch, conda or a plain virtualenv; ruff or black; pytest, unittest, Django's `manage.py test` or nose2) and never makes adoption depend on switching.
 
+Every rule the preset can report has an entry in the [rule reference](rules/README.md): [ruff](rules/python-ruff.md), [nitpicker's own rules](rules/python-nitpicker.md) and [the type checkers and import contracts](rules/python-types.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
+
 ## How it works
 
 ```
@@ -1273,14 +1275,24 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   (the first of `.coveragerc`, `setup.cfg` `[coverage:run]`, `tox.ini` `[coverage:run]` and
   `[tool.coverage.run]` that has coverage settings, the order coverage.py reads them in) the run
   settings that decide what code gets measured at all are kept: `concurrency` (multiprocessing,
-  gevent, eventlet, ...), `patch` (subprocesses), `plugins`, and the `omit` of the run and of the
-  report section (where projects often list `migrations/*`), added to the test files. Lists may run
-  over several lines with comments and blank lines in between, as coverage.py reads them; relative
-  `omit` patterns and the `source` paths are made absolute, so they match whatever directory the
-  tests run from.
+  gevent, eventlet, ...), `patch` (subprocesses) and `plugins`. Lists may run over several lines with
+  comments and blank lines in between, as coverage.py reads them; the `source` paths and, with the
+  opt-in, relative `omit` patterns are made absolute, so they match whatever directory the tests run
+  from.
   When they make coverage.py write one data file per process, the files are combined before the
   report. Its `exclude_lines`, `exclude_also`, `partial_branches`, `branch` and `source` are
-  dropped, so the gate judges every project's code the same way. Test files are not scored for
+  dropped, so the gate judges every project's code the same way, until
+  `"tools": { "coverage": { "precedence": ["project", "nitpicker"] } }` opts the config in: then its
+  `exclude_lines`, `exclude_also`, `partial_branches` and `partial_also` are added to nitpicker's
+  (a project that lists `pragma: no cover` gets its pragma back), the `omit` of its run and report
+  sections (where projects often list `migrations/*`) is added to the test files, and its `timid`,
+  `cover_pylib`, `dynamic_context`, `sigterm`, `disable_warnings` and `core` apply, each checked to
+  be a value coverage.py takes; `branch`, `parallel`,
+  `source`, `include`, `data_file`, `[paths]` and the report settings stay nitpicker's.
+  `["nitpicker", "project"]` takes only those run options and keeps nitpicker's exclusions and
+  omits. The
+  opted-in config is read from the head checkout for both sides, and an edit of its coverage
+  settings is a policy change a person reviews. Test files are not scored for
   CRAP either, and a source file the project omits has unknown coverage
   (`crap-coverage-unknown`). Exit status 5 (no tests collected) is accepted; any other
   non-zero status is a tool error. A snapshot where no test ran has an enforceable
@@ -1494,7 +1506,8 @@ or remove it if it can't happen. If this is intended, add
   test changes which branches are covered on head.
 - **Exceptions.** `# pragma: no cover` and `# pragma: no branch` are not honored (the generated
   `exclude_lines` does not list them and `partial_branches` is empty), and the project's own
-  report settings are ignored, so the one measurement is the same everywhere. Only idioms that are
+  report settings are ignored, so the one measurement is the same everywhere (unless
+  `tools.coverage` opts the project's exclusions in, see the test step). Only idioms that are
   never testable are excluded, with the same list on every coverage.py version: `if TYPE_CHECKING:`
   (also `typing.TYPE_CHECKING`), `if __name__ == "__main__":`, `@overload` (also `typing.overload`),
   `raise NotImplementedError`, a function whose body is `...` right after the colon of its
@@ -1601,9 +1614,10 @@ the source root detection already does.
   Rust dependency only to produce what a few dozen lines of `ast` already give: module-to-module import
   edges. What grimp adds (external packages, import chains, squashed packages) is import-linter's
   job, and import-linter, which brings grimp, runs when the project uses it.
-- **import-linter.** When the snapshot has an import-linter config (`.importlinter`, or a
-  `[importlinter]` section in `setup.cfg` or `tox.ini`, or `[tool.importlinter]` in
-  `pyproject.toml`), `lint-imports --no-cache` runs in the project's environment, with the
+- **import-linter.** When the snapshot has an import-linter config, found the way import-linter
+  finds it (the first of `setup.cfg` and `.importlinter` with an `[importlinter]` section, then
+  `[tool.importlinter]` in `pyproject.toml`; import-linter never reads `tox.ini`),
+  `lint-imports --no-cache` runs in the project's environment, with the
   snapshot's sources on `PYTHONPATH` as for the other tools. The project's `import-linter` version
   (read from the installed package metadata, since `--version` only exists from 2.11) is part of
   the analyzer version. `python.importLinter` overrides the detection (`false` never runs it,
@@ -1622,7 +1636,22 @@ the source root detection already does.
   on a file end with the `python.exceptions` sentence for `contract-broken`. A run that checked no
   contract (missing config file, `lint-imports` not installed in the environment, which the
   message answers with `"python": { "importLinter": false }`) is an `import-linter-failed` tool
-  error, as `duplicates-failed` and `coupling-failed` are for the other two steps.
+  error, as `duplicates-failed` and `coupling-failed` are for the other two steps. There is no
+  `tools.import-linter`: the contracts are the project's own and nitpicker has none to layer them
+  on, so they run as written. Each snapshot runs its own contracts (the base cannot run contracts
+  for modules only the head has), so the policy review compares the contracts of the two sides,
+  contract by contract (by the `importlinter:<kind>:<id>` section name, or the `id` or `name` of a
+  `pyproject.toml` contract), with or without any opt-in. What weakens the check fails until a
+  person accepts it: the config removed (the file deleted, the section renamed or the table
+  dropped), a contract removed, a layer dropped or the layers reordered, an entry dropped from
+  `source_modules`, `forbidden_modules`, `modules`, `containers`, `protected_modules` or
+  `root_packages`, an entry added to `ignore_imports`, `allowed_importers` or `exhaustive_ignores`,
+  `allow_indirect_imports` or `exclude_type_checking_imports` turned on, `exhaustive` or
+  `as_packages` turned off, `unmatched_ignore_imports_alerting` relaxed (`error`, then `warn`, then
+  `none`), and any other changed key except `name`. What only adds checking is listed and does not
+  fail: the config or a contract added, a layer or module added, an ignored import removed.
+  Comments, layout and the other sections do not count. With `"python": { "importLinter": false }`
+  the contracts neither run nor count, and a change that turns them back on lists them as added.
 - **Policy.** `duplicate-clone` and `stability-direction` are enforced for Python in
   `shared/policy.mjs` (`spec/checks.md`). `contract-broken` is a Python-only tool rule and has no
   shared policy entry.

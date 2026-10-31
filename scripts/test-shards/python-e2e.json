@@ -1,4 +1,5 @@
 {
+  "languages/python/adapters/configuration/coverage-config/coverage-precedence.e2e.test.mjs": 45,
   "languages/python/adapters/configuration/python-ruff-config.e2e.test.mjs": 1,
   "languages/python/adapters/e2e/environments/python-base-environment.e2e.test.mjs": 9,
   "languages/python/adapters/e2e/python-preset-branch-coverage.e2e.test.mjs": 57,
@@ -21,6 +22,7 @@
   "languages/python/adapters/project-tools/ruff/ruff-lint.e2e.test.mjs": 15,
   "languages/python/ruff/ruff-groups.e2e.test.mjs": 1,
   "languages/python/ruff/ruff-rules.e2e.test.mjs": 1,
+  "languages/python/ruff/ruff-snapshot.e2e.test.mjs": 1,
   "languages/python/rules/e2e/boundary/guards.e2e.test.mjs": 1,
   "languages/python/rules/e2e/boundary/library-rules.e2e.test.mjs": 2,
   "languages/python/rules/e2e/boundary/paths.e2e.test.mjs": 1,
