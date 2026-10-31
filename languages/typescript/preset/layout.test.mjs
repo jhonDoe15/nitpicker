@@ -105,14 +105,25 @@ describe('built-in excluded globs', () => {
       (await prettier.getFileInfo(path.join(import.meta.dirname, 'defaults', file), { ignorePath }))
         .ignored;
     const fixExcluded = (file) => prettierExclusions.some((pattern) => pattern.test(file));
-    for (const file of ['reports/quality/diff/a.json', 'coverage/a.json', '.stryker-tmp/a.ts']) {
-      expect(await ignored(file), file).toBe(true);
-      expect(fixExcluded(file), file).toBe(true);
-    }
-    for (const file of ['reports/monthly.ts', 'src/reports/monthly.ts', 'src/coverage/a.ts']) {
-      expect(await ignored(file), file).toBe(false);
-      expect(fixExcluded(file), file).toBe(false);
-    }
+    const files = [
+      'reports/quality/diff/a.json',
+      'coverage/a.json',
+      '.stryker-tmp/a.ts',
+      'reports/monthly.ts',
+      'src/reports/monthly.ts',
+      'src/coverage/a.ts',
+    ];
+    const results = await Promise.all(
+      files.map(async (file) => [file, await ignored(file), fixExcluded(file)]),
+    );
+    expect(results).toEqual([
+      ['reports/quality/diff/a.json', true, true],
+      ['coverage/a.json', true, true],
+      ['.stryker-tmp/a.ts', true, true],
+      ['reports/monthly.ts', false, false],
+      ['src/reports/monthly.ts', false, false],
+      ['src/coverage/a.ts', false, false],
+    ]);
   });
 
   it('lint and type-check hand-written declaration files but keep them out of runtime checks', () => {
