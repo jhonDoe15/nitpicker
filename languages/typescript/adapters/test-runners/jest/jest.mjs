@@ -12,7 +12,7 @@ import {
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 import { assertSourcesCovered, coverageArguments, shownConfig } from './jest-coverage.mjs';
 import { jestTool } from './jest-launcher.mjs';
-import { consoleProducerPath, startTestConsole } from '../test-console-run.mjs';
+import { consoleProducerPath, jestAssertImport, startTestConsole } from '../test-console-run.mjs';
 
 const LATE_LOG = 'Cannot log after tests are done';
 
@@ -86,20 +86,29 @@ function spawnJest(options, command, nitpickerArguments) {
     options,
     ...launch.tool,
     nodeArguments: command.nodeArguments,
+    nodeOptions: command.nodeOptions,
     environment: command.environment,
     arguments_: jestArguments(command, nitpickerArguments, launch),
   });
 }
 
-function consoleArguments(options, testConsole) {
+function reporterArguments(options, testConsole) {
+  return [
+    '--reporters=default',
+    ...(testConsole.enabled
+      ? ['--silent=false', '--verbose=false', `--reporters=${consoleProducerPath(options, 'jest')}`]
+      : []),
+  ];
+}
+
+function consoleCommand(options, command, testConsole) {
   return testConsole.enabled
-    ? [
-        '--silent=false',
-        '--verbose=false',
-        '--reporters=default',
-        `--reporters=${consoleProducerPath(options, 'jest')}`,
-      ]
-    : [];
+    ? {
+        ...command,
+        nodeOptions: [jestAssertImport(options)],
+        environment: { ...command.environment, ...testConsole.environment },
+      }
+    : command;
 }
 
 function passedEverything(report) {
@@ -129,31 +138,27 @@ export function runJest(options, command) {
   const reportPath = temporaryProjectPath(options, 'jest-report.json');
   const testConsole = startTestConsole(options, { collectsLines: false });
   try {
-    const result = spawnJest(
-      options,
-      { ...command, environment: { ...command.environment, ...testConsole.environment } },
-      [
-        '--ci',
-        '--no-watchman',
-        '--passWithNoTests',
-        ...(options.rerun === undefined
-          ? coverageArguments(options, rootDir)
-          : [
-              '--coverage=false',
-              '--testNamePattern',
-              options.rerun.namePattern,
-              '--runTestsByPath',
-              ...rerunPaths(options, command),
-            ]),
-        '--json',
-        `--outputFile=${reportPath}`,
-        '--testLocationInResults',
-        `--testTimeout=${String(testTimeoutMs(options))}`,
-        '--restoreMocks',
-        ...workerArguments(options, command.arguments_),
-        ...consoleArguments(options, testConsole),
-      ],
-    );
+    const result = spawnJest(options, consoleCommand(options, command, testConsole), [
+      '--ci',
+      '--no-watchman',
+      '--passWithNoTests',
+      ...(options.rerun === undefined
+        ? coverageArguments(options, rootDir)
+        : [
+            '--coverage=false',
+            '--testNamePattern',
+            options.rerun.namePattern,
+            '--runTestsByPath',
+            ...rerunPaths(options, command),
+          ]),
+      '--json',
+      `--outputFile=${reportPath}`,
+      '--testLocationInResults',
+      `--testTimeout=${String(testTimeoutMs(options))}`,
+      '--restoreMocks',
+      ...workerArguments(options, command.arguments_),
+      ...reporterArguments(options, testConsole),
+    ]);
     const report = readTestReport(reportPath, result, RUNNER_NAMES.jest);
     const run = finishedRun({
       report,
