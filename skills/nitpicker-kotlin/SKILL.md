@@ -144,7 +144,10 @@ To learn why a rule is on and what form it allows before you write or change cod
 - A file stays within 300 lines (a test file 500). A package folder holds at most 6 files and 6
   test files directly: group the rest into subpackages by what they do. Java sources follow the
   `nitpicker-java` rules.
-- Every branch you add needs a test: changed-branch coverage runs on your change.
+- Every branch you add needs a test: changed-branch coverage runs on your change. A surviving or uncovered
+  mutant (`mutant-survived`, `mutant-nocoverage`) of your code fails as well: pin the boundary or the result
+  with an assertion, or test the function that nothing reaches. The mutants of code the compiler generates
+  (coroutine state machines, data class members, `inline` copies) are left out already.
 - Plan tests to be fast (`slow-test`): a test dispatcher or fake clock instead of
   waits, a test slice instead of a full context.
 - Never wait a fixed time in a test (`pmd/FixedSleepInTest`): no `Thread.sleep`, `TimeUnit.sleep`

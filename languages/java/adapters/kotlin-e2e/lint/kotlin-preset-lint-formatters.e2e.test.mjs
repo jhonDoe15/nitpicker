@@ -26,9 +26,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset detekt, ktlint and ktfmt end t
       policy: { preset: 'kotlin', kotlinFormatter: 'ktfmt' },
     });
 
-    expect(summarize(result.newEnforceable)).toEqual(
+    expect(summarize(result.newEnforceable.filter(({ tool }) => tool !== 'pit'))).toEqual(
       [...BAD_FINDINGS, 'ktfmt format Bad.kt'].sort(),
     );
+    expect([...new Set(fromTool(result.newEnforceable, 'pit'))]).toEqual([
+      'pit mutant-nocoverage Bad.kt',
+      'pit mutant-nocoverage Meta.kt',
+    ]);
     expect(fromTool(result.unchangedFindings, 'ktfmt')).toEqual(
       ['Greeter', 'GreeterTest', 'Legacy'].map((name) => `ktfmt format ${name}.kt`),
     );
