@@ -40,14 +40,14 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
       # Maven comes with the runner image; the cache keeps ~/.m2 between runs, keyed on the fixture poms.
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6.1.0
         with:
           distribution: temurin
           java-version: 21
@@ -55,13 +55,15 @@ jobs:
           cache-dependency-path: languages/java/maven/fixtures/**/pom.xml
       # Caches ~/.gradle: the Checkstyle, PMD, SpotBugs, Error Prone, palantir-java-format and PIT jars the init
       # script resolves, and the plugins the fixture projects use.
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6.4.1
         with:
           gradle-version: 8.14.3
+          # Keep caching on the MIT implementation; v6 defaults to a proprietary provider.
+          cache-provider: basic
       - run: npm ci
       - name: Java end-to-end suite
         run: npm run test:java -- --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=default --reporter=json --outputFile=reports/java-e2e/shard-${{ matrix.shard }}.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.2
         if: always()
         with:
           name: java-e2e-${{ matrix.shard }}-${{ github.run_attempt }}
@@ -75,8 +77,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm
