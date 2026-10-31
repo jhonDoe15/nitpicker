@@ -1,7 +1,7 @@
 import { SYNTAX_EXCEPTION_HINT } from '../rule-hints.mjs';
 
 const loopMessage = 'for...of is the only loop; iterate the items with for...of.';
-const promiseChainMessage = `Use async/await (with try/catch) instead of promise chains, and Promise.all for concurrent work.${SYNTAX_EXCEPTION_HINT}`;
+const promiseChainMessage = `Use async/await (with try/catch) instead of promise chains, and Promise.all with a limiter for concurrent work.${SYNTAX_EXCEPTION_HINT}`;
 
 export const loopSelectors = [
   { selector: 'ForStatement', message: loopMessage },

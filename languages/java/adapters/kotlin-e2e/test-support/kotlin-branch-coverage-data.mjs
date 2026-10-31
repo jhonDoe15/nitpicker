@@ -122,3 +122,104 @@ class GeneratedTest {
 `;
 
 export const BROKEN = 'package demo\n\nclass Broken {\n    fun incomplete(: Int\n}\n';
+
+export const LIBRARY_CALLS = `package demo
+
+class Library {
+    fun label(text: String?): String = text.orEmpty().trim()
+
+    fun items(list: List<Int>?): List<Int> = list.orEmpty().sorted()
+
+    fun blank(text: String?): Boolean = text.isNullOrBlank()
+
+    fun widest(first: Long, second: Long): Long = maxOf(first, second)
+
+    fun fallback(text: String?): String = text ?: "none"
+
+    fun present(text: String?): Boolean = !text.isNullOrBlank()
+
+    fun guard(text: String?): Int {
+        if (
+            text.isNullOrEmpty()
+        ) {
+            return -1
+        }
+        return 1
+    }
+}
+`;
+
+export const LIBRARY_CALLS_TEST = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class LibraryTest {
+    @Test
+    fun takesTheNonNullPaths() {
+        val library = Library()
+        assertEquals("a", library.label(" a "))
+        assertEquals(listOf(1, 2), library.items(listOf(2, 1)))
+        assertEquals(false, library.blank("a"))
+        assertEquals(2L, library.widest(1L, 2L))
+        assertEquals("a", library.fallback("a"))
+        assertEquals(true, library.present("a"))
+        assertEquals(1, library.guard("a"))
+    }
+}
+`;
+
+export const PORTS = `package demo
+
+interface Writer {
+    fun write(text: String): String
+}
+
+fun interface Mapper {
+    fun map(value: Int): Int
+}
+
+sealed interface Shape
+
+class Circle(val radius: Int) : Shape
+
+class Square(val side: Int) : Shape
+
+enum class Tone { LOW, HIGH }
+
+object Ports {
+    fun area(shape: Shape): Int =
+        when (shape) {
+            is Circle -> 3 * shape.radius * shape.radius
+            is Square -> shape.side * shape.side
+        }
+
+    fun name(tone: Tone): String =
+        when (tone) {
+            Tone.LOW -> "low"
+            Tone.HIGH -> "high"
+        }
+
+    fun send(mapper: Mapper, writer: Writer, value: Int): String = writer.write(mapper.map(value).toString())
+}
+`;
+
+export const PORTS_TEST = `package demo
+
+import kotlin.test.Test
+import kotlin.test.assertEquals
+
+class PortsTest {
+    @Test
+    fun takesEveryCase() {
+        assertEquals(3, Ports.area(Circle(1)))
+        assertEquals(4, Ports.area(Square(2)))
+        assertEquals("low", Ports.name(Tone.LOW))
+        assertEquals("high", Ports.name(Tone.HIGH))
+        val echo = object : Writer {
+            override fun write(text: String): String = text
+        }
+        assertEquals("2", Ports.send({ it + 1 }, echo, 1))
+    }
+}
+`;
