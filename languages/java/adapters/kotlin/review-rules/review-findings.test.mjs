@@ -189,6 +189,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/SpringUnusedContext',
       'pmd/ExhaustiveEnumPredicate',
       'pmd/StaticForwardingWrapper',
+      'pmd/ForwardingMethodAlias',
       'pmd/SingularAndPluralMember',
       'pmd/ValidationAnnotationTarget',
       'pmd/ClassLoadEffect',

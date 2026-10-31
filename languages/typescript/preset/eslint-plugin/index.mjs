@@ -42,6 +42,7 @@ import { rule as noProcessGlobalsOutsideMainGuard } from './rules/modules/no-pro
 import { rule as testTsconfigPinsLibAndTypes } from './rules/testing/types/test-tsconfig-pins-lib-and-types.mjs';
 import { rule as exhaustiveUnionPredicate } from './rules/api-shape/exhaustive-union-predicate.mjs';
 import { rule as hoverTestNeedsKeyboard } from './rules/react-tests/hover-test-needs-keyboard.mjs';
+import { rule as noForwardingMethodAlias } from './rules/api-shape/no-forwarding-method-alias.mjs';
 import { rule as noForwardingWrapper } from './rules/api-shape/no-forwarding-wrapper.mjs';
 import { rule as noCompatibilityShim } from './rules/signatures/no-compatibility-shim.mjs';
 import { rule as noFalsyDefault } from './rules/signatures/no-falsy-default.mjs';
@@ -144,6 +145,7 @@ export const nitpickerRules = {
     'test-tsconfig-pins-lib-and-types': testTsconfigPinsLibAndTypes,
     'exhaustive-union-predicate': exhaustiveUnionPredicate,
     'hover-test-needs-keyboard': hoverTestNeedsKeyboard,
+    'no-forwarding-method-alias': noForwardingMethodAlias,
     'no-forwarding-wrapper': noForwardingWrapper,
     'no-compatibility-shim': noCompatibilityShim,
     'no-falsy-default': noFalsyDefault,

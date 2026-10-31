@@ -9,10 +9,12 @@ import { readPytestConfig } from '../configuration/pytest/pytest-config.mjs';
 import { testFileMatcher } from './python-sources.mjs';
 import { entryFilesOf, readEntryModules } from '../../rules/libraries/entry-modules.mjs';
 import { boundaryRoots, detectLibraries } from '../../rules/libraries/project-libraries.mjs';
+import { dropGeneratedFindings } from '../../libraries/generated-files.mjs';
 
 export const RULES_REPORT = 'rules.json';
 export const ALLOWANCES_REPORT = 'rules-allowances.json';
 const RULES_FAILED_RULE = 'rules-failed';
+const GENERATED_EXEMPT_RULES = ['forwarding-method-alias'];
 const FILE_LIST = 'python-files.txt';
 const OPTIONS_FILE = 'rule-options.json';
 const RULES_SCRIPT = path.resolve(
@@ -68,4 +70,15 @@ export function checkRules(context) {
     ['python', '-I', RULES_SCRIPT, list, path.join(context.reportRoot, RULES_REPORT), options],
     { rule: RULES_FAILED_RULE },
   );
+  withoutGeneratedFindings(path.join(context.reportRoot, RULES_REPORT), context.projectRoot);
+}
+
+function withoutGeneratedFindings(report, projectRoot) {
+  if (existsSync(report)) {
+    const findings = JSON.parse(readFileSync(report, 'utf8'));
+    writeFileSync(
+      report,
+      JSON.stringify(dropGeneratedFindings(findings, projectRoot, GENERATED_EXEMPT_RULES)),
+    );
+  }
 }

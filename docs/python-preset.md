@@ -621,6 +621,7 @@ are listed at the end.
 | Repeated strings         | a constant or enum member                                                                                                                                                            | `repeated-string-literal` (script)                                                                                                                   |
 | Unused arguments         | remove the argument; `@override` on an override; a `_` prefix when a callback signature is fixed                                                                                     | ruff `ARG001`-`ARG005`                                                                                                                               |
 | Generic names            | a name for the job (`price_rounding.py`, `OrderRepository`)                                                                                                                          | `generic-name` (script)                                                                                                                              |
+| Method aliases           | call the target method directly and delete the alias                                                                                                                                 | `forwarding-method-alias` (script)                                                                                                                   |
 | Secrets                  | read from the environment; log only that a secret is set                                                                                                                             | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
 | Datetimes                | a datetime with a zone: `datetime.now(tz=timezone.utc)`, `datetime.fromtimestamp(ts, tz=timezone.utc)`, `%z` when parsing an instant, `date.fromisoformat(text)` for a calendar date | ruff `DTZ001`-`DTZ007`, `DTZ011`, `DTZ012`, `DTZ901`                                                                                                 |
 | Boolean flags            | keyword-only (`def send(message, *, urgent=False)`), two functions or an enum                                                                                                        | `boolean-flag-parameter` (script)                                                                                                                    |
@@ -906,6 +907,28 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
 - `generic-name` reports a file, a folder or a top-level class whose last word is `util`, `utils`,
   `helper`, `helpers`, `manager`, `common`, `misc` and the like; a class that extends a type with the
   same ending (`class SessionManager(CacheManager)`) is not reported.
+- `forwarding-method-alias` reports a method of a class whose only statement is `return self.target(...)`
+  (a bare `self.target(...)` when both return `None`, `return await` in an `async def`) passing its
+  own parameters unchanged and in order (keyword-only parameters by name, `*args` and `**kwargs`
+  spread) to a method of the same class with the same parameter names, kinds, annotations, defaults
+  and return annotation. Both methods must be fully annotated, plain (no decorator, so `property`,
+  `staticmethod`, `classmethod`, `overload`, `functools.cache` and `typing.override` pass) and
+  defined once; dunder methods, `of` and `from_` pass. A method whose name a base class in the
+  project defines (an override) passes, and so does every method of a class with a base the project
+  does not define, except `object`, `ABC`, `Generic`, enum, `NamedTuple` and `TypedDict` bases and
+  builtin exceptions (their own method names, such as `add_note`, are inherited names); an exception
+  base from another package, a class with keyword arguments other than `metaclass`, and a name that
+  is defined again under `if`, `try` or `with` in the class body, a name the class assigns as an
+  attribute (`self.total = ...`), and every method of a class with `__getattr__` or
+  `__getattribute__` are skipped. Test files are not
+  checked. Findings of this rule in generated files (the generated-file list of the size limits) are
+  dropped after the run, so a generated base class still counts for the classes that extend it. The
+  finding identity is the class and method name, not the target, so renaming the target keeps it
+  baselined. The message says to call the target directly and delete the alias; when a public alias
+  forwards to a `_private` method it says to rename the target to the alias name instead. A
+  structural `Protocol` implemented without inheriting from it cannot be seen, and an alias in a
+  base class that subclasses override is reported; add an exception (`python.exceptions` in
+  `nitpicker.config.json`) for a public alias that must stay.
 - `boolean-flag-parameter` reports a positional `bool` parameter (annotated `bool` or
   `Annotated[bool, ...]`, as a string too, or defaulted to `True` or `False`; `int | bool` is not one,
   and a nullable `bool | None` is a tri-state, not a flag) of a public function or method that is a condition: the test of an

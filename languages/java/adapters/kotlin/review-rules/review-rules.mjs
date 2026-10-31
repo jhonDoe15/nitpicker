@@ -1,6 +1,7 @@
 import { ENUM_PREDICATE_RULE } from '../../review-rules/enum-predicates.mjs';
 import { LOAD_EFFECT_RULE } from '../../../messages/load-effects.mjs';
-import { FORWARDING_RULE } from './main/forwarding-wrappers.mjs';
+import { FORWARDING_RULE } from './main/forwarding/forwarding-wrappers.mjs';
+import { METHOD_ALIAS_RULE } from './main/forwarding/method-aliases.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
 import { UNUSED_OPTION_RULE } from './main/unused-options.mjs';
 import { VALIDATION_TARGET_RULE } from './validation/validation-targets.mjs';
@@ -18,6 +19,7 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   SPRING_UNUSED_CONTEXT_RULE,
   ENUM_PREDICATE_RULE,
   FORWARDING_RULE,
+  METHOD_ALIAS_RULE,
   SINGULAR_PLURAL_RULE,
   VALIDATION_TARGET_RULE,
   LOAD_EFFECT_RULE,

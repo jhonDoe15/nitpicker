@@ -159,6 +159,7 @@ function strictTypedConfigFor(layout, parserOptions) {
         ...typedDeclarationRules,
         ...controlFlowTypedRules,
         'nitpicker/exhaustive-union-predicate': 'error',
+        'nitpicker/no-forwarding-method-alias': 'error',
         'nitpicker/no-forwarding-wrapper': 'error',
         'nitpicker/no-falsy-default': 'error',
       },

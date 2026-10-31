@@ -578,6 +578,29 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `export default`, or an export list) the message gives the re-export under the exported name,
   `export { fetchUser as loadUser }` or `export { fetchUser as default }`; for a local one it says to
   call the callee directly and delete the wrapper.
+- `nitpicker/no-forwarding-method-alias` (type-aware, same rule in the JavaScript preset): the
+  member counterpart of the rule above. A method of a class declaration whose body is one
+  `return this.target(a, b)` (or the same call as a statement when both methods return `void` or
+  `Promise<void>`, or `return await` in an `async` method) that passes exactly its own parameters,
+  in order and unchanged, to another method of the same class is flagged when the parameter types,
+  optional and rest forms and the return type are identical. Static methods that forward through
+  `this` and `#private` targets count. Not flagged: methods with decorators, an `override`
+  modifier or a `@deprecated` tag, `of` and `from`, overloads, generators, type parameters, type
+  predicates, getters, setters and constructors, default or destructured parameters, calls with
+  type arguments, optional calls, `async` wrappers around a callee that is not `async`, a target
+  inherited from a base class, class properties holding an arrow function (they bind `this`), class
+  expressions and object literal methods. Also not flagged: a parameter decorator, a bare call in
+  an `async` method (a floating promise), an `abstract` target, a name that a merged
+  interface declares, and a name the class writes through `this` (`this.sum = ...`, or any
+  computed `this[key] = ...`). A method whose name exists on a base class or an implemented interface is an
+  override or implementation and passes, and so does every method of a class whose base class or
+  interface the compiler cannot resolve (a structural interface the class does not declare with
+  `implements` cannot be seen; a base-class alias that subclasses override is reported). Callback
+  parameters count as equal when their function types are mutually assignable, and string-literal
+  keys are matched by name. When two methods forward to each other only the later is reported.
+  The message says to call the target directly and delete the alias; when the target is `private`,
+  `protected` or `#private` and the alias is more visible it says to rename the target to the alias
+  name instead. Add an exception for a public alias that must stay.
 - `nitpicker/no-tri-state-boolean`: a `boolean` that can also be `undefined` or `null` has three
   states that the type does not name. Reported as the whole type of a parameter, return type
   (also inside `Promise<...>`), type member or class field (`force: boolean | undefined`,

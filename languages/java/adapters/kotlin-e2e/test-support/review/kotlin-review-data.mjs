@@ -36,6 +36,21 @@ fun total(cents: Int) = scaled(cents)
 
 fun scaled(cents: Int): Int = cents * 2
 
+class Cart {
+    fun sum(items: List<Int>): Int = items.size
+
+    fun count(items: List<Int>): Int = sum(items)
+
+    fun withFee(items: List<Int>): Int = sum(items) + 1
+
+    @JvmName("legacyTotal")
+    fun legacy(items: List<Int>): Int = sum(items)
+
+    private fun hidden(items: List<Int>): Int = items.size
+
+    fun visible(items: List<Int>): Int = hidden(items)
+}
+
 data class Query(val tag: String, val tags: List<String>)
 
 data class Page(val tag: String, val size: Int)
@@ -194,6 +209,8 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'FixedSleepInTest WaitingTest.iterates',
   'FixedSleepInTest WaitingTest.sleeps',
   'FixedSleepInTest WaitingTest.sleeps',
+  'ForwardingMethodAlias Cart.count',
+  'ForwardingMethodAlias Cart.visible',
   'SingularAndPluralMember Query.tags',
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',

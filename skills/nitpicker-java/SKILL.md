@@ -97,7 +97,8 @@ To learn why a rule is on and what form it allows before you write or change cod
 - Enums: to sort the constants of one of your enums into two groups, classify every constant: a
   `switch` expression without `default`, or a field each constant declares (`PAID(true)`). Not
   `s == PAID || s == SHIPPED` or `EnumSet.of(...).contains(s)` (`ExhaustiveEnumPredicate`).
-- No static method that only passes its parameters on to another method; call that method.
+- No static method, and no instance method (`ForwardingMethodAlias`), that only passes its
+  parameters on to another method of the same class; call that method (or, when it is less visible, rename it to the alias's name and delete the alias).
   Factories named `of` or `from` and copies such as `List.copyOf` are fine.
 - A record or `@ConfigurationProperties` class (and the classes nested in it) has `tags` or `tag`,
   not both; one item is a one-element list.
@@ -184,8 +185,8 @@ To learn why a rule is on and what form it allows before you write or change cod
 - Tests get the same PMD, Checkstyle, Error Prone and formatter checks as main code, plus the file
   (500 lines) and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection
   read main sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply
-  to main sources only, as do the enum predicate, forwarding wrapper, singular-and-plural and
-  class-load rules.
+  to main sources only, as do the enum predicate, forwarding wrapper, method alias, singular-and-plural
+  and class-load rules.
   If a PMD rule or an Error Prone check flags test code that is right, ask a human for a reviewed
   exception for `pmd/<rule>` or `errorprone/<Check>`.
 

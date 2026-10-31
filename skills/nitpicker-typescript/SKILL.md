@@ -78,13 +78,16 @@ To learn why a rule is on and what form it allows before you write or change cod
 - `function` declarations for named functions, nested helpers too; arrows only as callbacks, with a block body when
   they return nothing: `(line) => { out.push(line); }`.
 - `type`, never `interface`; string-literal unions, never `enum`; no classes except `Error`
-  subclasses.
+  subclasses and what a framework requires (an instance method there that only forwards to a
+  sibling method is reported).
 - No `as`, `any` or `!`, and no `null` in your own types or values: read a library's `null` with
   `regex.exec(s)?.[0]` in one expression or a strict `!== null` check. Narrow with checks, and
   don't add `??`, `?.` or checks the types already rule out. Indexing (`list[0]`, `record[key]`)
   may be `undefined`: check the value you got.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
   over unions, with no `default`.
+- No method that only passes its parameters, in order, to another method of the same class
+  (`total(items) { return this.sum(items); }`): call that method directly (or, when it is less visible, rename it to the alias's name and delete the alias).
 - Template literals take strings only: `${String(count)}`.
 - Sort IDs, codes and ISO dates with `toSorted()` and no comparator; names and titles with
   `a.localeCompare(b, 'en')`. Objects in plain string order share one `compareText(a, b)` that

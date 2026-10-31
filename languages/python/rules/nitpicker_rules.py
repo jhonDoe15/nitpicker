@@ -15,6 +15,7 @@ GUARDED_PREFIXES = ("security.", "signatures.", "concurrency.")
 
 def load_checks():
     sys.path.insert(0, HERE)
+    from aliases import methods
     from boundary import domain_types, guards, paths
     from checks import comments, declarations, parameters, shell, state
     from concurrency import fan_out
@@ -34,6 +35,7 @@ def load_checks():
 
     return [
         declarations,
+        methods,
         parameters,
         errors,
         comments,

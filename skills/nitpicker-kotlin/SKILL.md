@@ -97,7 +97,8 @@ To learn why a rule is on and what form it allows before you write or change cod
   (`pmd/ExhaustiveEnumPredicate`).
 - No top-level or `object` function that only passes its parameters, in order, to another function
   with the same parameters (`pmd/StaticForwardingWrapper`); call that function. Factories named
-  `of` or `from` are fine.
+  `of` or `from` are fine. The same goes for a member that only passes its parameters to another
+  member of its class (`pmd/ForwardingMethodAlias`); when that member is less visible, rename it to the alias's name and delete the alias.
 - A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
 - A validation annotation on a constructor property takes the field target:
