@@ -61,15 +61,16 @@ describe('applyKotlinRuleMessages', () => {
     );
   });
 
-  it('routes only to rules that nitpicker.config.json accepts as exceptions', () => {
-    for (const rule of ['detekt.style.MagicNumber', ...KOTLIN_LISTED_RULES]) {
+  it.each(['detekt.style.MagicNumber', ...KOTLIN_LISTED_RULES])(
+    'routes to %s, which nitpicker.config.json accepts as an exception',
+    (rule) => {
       const config = { preset: 'kotlin', exceptions: [{ rule, paths: [file], reason: 'r' }] };
 
       expect(() => {
         validateKotlinOptions(config);
-      }, rule).not.toThrow();
-    }
-  });
+      }).not.toThrow();
+    },
+  );
 });
 
 describe('Kotlin finding messages', () => {

@@ -99,7 +99,7 @@ export function kotlinFiles(projectRoot, sourceRoot) {
     .map((entry) => path.posix.join(sourceRoot, entry.replaceAll('\\', '/')));
 }
 
-function suppressionMessage(file, token) {
+export function inlineSuppressionMessage(file, token) {
   if (isUnusedCodeSuppression(token)) {
     return `Suppressing "${token}" inline would hide an unused parameter. Remove the parameter, or use it; a name starting \`ignored\` or \`unused\` marks one a signature requires. When reflection or a framework calls it with that signature, remove the suppression and lift the rule for this path instead. ${exceptionHint('detekt.style.UnusedParameter', file)}`;
   }
@@ -116,7 +116,7 @@ function suppressionFinding(file, token, identity) {
     rule: SUPPRESSION_RULE,
     path: file,
     identity,
-    message: suppressionMessage(file, token),
+    message: inlineSuppressionMessage(file, token),
     classification: 'enforceable',
   };
 }

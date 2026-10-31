@@ -20,15 +20,25 @@ import {
   hardcodedSecrets,
   secretsInLogs,
 } from './rules/secrets.mjs';
+import {
+  COMPATIBILITY_SHIM_MESSAGES,
+  compatibilityShims,
+} from './signatures/compatibility-shims.mjs';
+import {
+  PARAMETER_MUTATION_MESSAGES,
+  parameterMutations,
+} from './signatures/parameter-mutation.mjs';
+import { TRI_STATE_MESSAGES, triStateBooleans } from './signatures/tri-state.mjs';
 import { TEST_MESSAGES, testClassesWithoutTests, testHelpersInSource } from './rules/tests.mjs';
 import { CLIENT_MESSAGES, httpWithoutTimeout, unsafeDeserialization } from './security/clients.mjs';
 import { CRYPTO_MESSAGES, disabledTlsVerification, weakHashes } from './security/crypto.mjs';
 import { SQL_MESSAGES, sqlStringBuilding } from './security/sql.mjs';
 import { kotlinDeclarations } from './security/sql-values.mjs';
+import { FAN_OUT_MESSAGES } from '../review-rules/main/fan-out/fan-out.mjs';
 
 const KOTLIN_SOURCE_TOOL = 'kotlin-source';
 
-const MESSAGES = {
+export const KOTLIN_SOURCE_MESSAGES = {
   ...MARKER_MESSAGES,
   ...DECLARATION_MESSAGES,
   ...CALL_MESSAGES,
@@ -39,10 +49,14 @@ const MESSAGES = {
   ...SQL_MESSAGES,
   ...CRYPTO_MESSAGES,
   ...CLIENT_MESSAGES,
+  ...FAN_OUT_MESSAGES,
+  ...TRI_STATE_MESSAGES,
+  ...PARAMETER_MUTATION_MESSAGES,
+  ...COMPATIBILITY_SHIM_MESSAGES,
   RepeatedStringLiteral: REPEATED_STRING_MESSAGE,
 };
 
-export const KOTLIN_SOURCE_RULES = Object.keys(MESSAGES).map(
+export const KOTLIN_SOURCE_RULES = Object.keys(KOTLIN_SOURCE_MESSAGES).map(
   (rule) => `${KOTLIN_SOURCE_TOOL}/${rule}`,
 );
 
@@ -66,6 +80,9 @@ const MAIN_RULES = [
   disabledTlsVerification,
   httpWithoutTimeout,
   unsafeDeserialization,
+  triStateBooleans,
+  parameterMutations,
+  compatibilityShims,
   repeatedStringLiterals,
 ];
 const TEST_RULES = [testClassesWithoutTests, unsafeCasts];
@@ -111,7 +128,7 @@ function finding({ file, scanned, occurrences }, reported) {
     rule: reported.rule,
     path: file,
     identity: `${reported.rule}:${hash(subject)}${occurrence === 1 ? '' : `#${String(occurrence)}`}`,
-    message: reported.message ?? MESSAGES[reported.rule],
+    message: reported.message ?? KOTLIN_SOURCE_MESSAGES[reported.rule],
     classification: 'enforceable',
     location: { line },
   };
