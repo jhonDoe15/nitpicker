@@ -12,9 +12,14 @@ describe('annotationMarkers', () => {
     ['@Generated', 'GeneratedOnHandWrittenCode'],
     ['@javax.annotation.processing.Generated("x")', 'GeneratedOnHandWrittenCode'],
     ['@lombok.Generated', 'GeneratedOnHandWrittenCode'],
+    ['@ExcludeFromJacocoGeneratedReport', 'GeneratedOnHandWrittenCode'],
+    ['@NoCoverageGenerated', 'GeneratedOnHandWrittenCode'],
     ['@DoNotMutate', 'MutationIgnoreMarker'],
     ['@com.arcmutate.DoNotMutate', 'MutationIgnoreMarker'],
     ['@CoverageIgnore', 'MutationIgnoreMarker'],
+    ['@JvmSynthetic', 'JvmSyntheticOnHandWrittenCode'],
+    ['@kotlin.jvm.JvmSynthetic', 'JvmSyntheticOnHandWrittenCode'],
+    ['@GeneratedValue', 'GeneratedOnHandWrittenCode'],
   ])('flags %s on hand-written code', (annotation, rule) => {
     expect(found(annotationMarkers, `${annotation}\nfun keep() = 1\n`)).toEqual([[rule, 1]]);
   });
@@ -26,13 +31,22 @@ describe('annotationMarkers', () => {
     ['a function', '@Generated\n@JvmStatic\nprivate suspend fun load() = 1\n'],
     ['a constructor', 'class Order @Generated constructor(val id: Long)\n'],
     ['a getter', 'class Order {\n  @get:Generated\n  val id: Long = 1\n}\n'],
+    [
+      'a constructor with a mapping name',
+      'class Order @GeneratedValue constructor(val id: Long)\n',
+    ],
+    [
+      'a getter through its target',
+      'class Order {\n  @get:GeneratedValue\n  val id: Long = 1\n}\n',
+    ],
+    ['an accessor', 'class Order {\n  val id: Long @Generated get() = 1\n}\n'],
   ])('flags @Generated on %s', (_name, source) => {
     expect(found(annotationMarkers, source).map(([rule]) => rule)).toEqual([
       'GeneratedOnHandWrittenCode',
     ]);
   });
 
-  it('passes JPA and Hibernate generated values on properties and other names that contain Generated', () => {
+  it('passes JPA and Hibernate generated values on properties', () => {
     const source = [
       '@Entity',
       'class Order(',
@@ -45,7 +59,7 @@ describe('annotationMarkers', () => {
       '  var total: Long = 0',
       '}',
       '@file:Generated',
-      '@ExcludeFromGeneratedReport',
+      'val outer = this@GeneratedService',
       'fun keep() = 1',
     ].join('\n');
 

@@ -1,5 +1,7 @@
 import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mjs';
 import { clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
+import { ruleReferenceLines } from '../diff/reporting/text.mjs';
+import { withHelpUris } from '../../shared/reference/store.mjs';
 import {
   CODE_QUALITY_REPORT_FILE_NAME,
   renderCodeQualityReport,
@@ -7,9 +9,12 @@ import {
 
 const SNAPSHOT_REPORTS = [
   { name: 'summary.json', render: (report) => json(report.summary) },
-  { name: 'findings.json', render: (report) => json(report.findings) },
+  {
+    name: 'findings.json',
+    render: (report, { reference }) => json(withHelpUris(report.findings, reference)),
+  },
   { name: 'tool-errors.json', render: (report) => json(report.toolErrors) },
-  { name: 'report.txt', render: (report) => renderTextReport(report) },
+  { name: 'report.txt', render: (report, { reference }) => renderTextReport(report, reference) },
   { name: 'report.junit.xml', render: (report) => renderJunitReport(report) },
   { name: 'report.sarif', render: renderSnapshotSarifReport },
   {
@@ -24,13 +29,14 @@ export function clearSnapshotReports(outputRoot) {
   clearReports(outputRoot, SNAPSHOT_REPORT_FILE_NAMES);
 }
 
-export function writeSnapshotReports(outputRoot, report, { projectPath } = {}) {
-  return writeReports(outputRoot, SNAPSHOT_REPORTS, { report, options: { projectPath } }).get(
-    'report.txt',
-  );
+export function writeSnapshotReports(outputRoot, report, { projectPath, repositoryRoot } = {}) {
+  return writeReports(outputRoot, SNAPSHOT_REPORTS, {
+    report,
+    options: { projectPath, repositoryRoot },
+  }).get('report.txt');
 }
 
-function renderTextReport(report) {
+function renderTextReport(report, reference) {
   const enforceable = report.findings.filter((finding) => finding.classification === 'enforceable');
   const descriptive = report.findings.filter((finding) => finding.classification === 'descriptive');
   const lines = [
@@ -54,6 +60,7 @@ function renderTextReport(report) {
 
   appendFindingSection(lines, 'Enforceable findings', enforceable);
   appendFindingSection(lines, 'Descriptive findings', descriptive);
+  lines.push(...ruleReferenceLines(report.findings, reference));
   appendToolErrorSection(lines, report.toolErrors);
   return `${lines.join('\n')}\n`;
 }

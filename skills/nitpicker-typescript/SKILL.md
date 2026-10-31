@@ -42,6 +42,8 @@ Before you change code other modules use, fix a bug, or add a UI state, read
    `reason`, to get past the gate: stop and ask a human, and quote the finding with its entry. A
    TypeScript compiler error has no entry; fix the type.
 
+To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/main/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
+
 ## Layout
 
 - A feature is `src/main/features/<name>/` with an `index.ts`. Import another feature only through
@@ -98,6 +100,7 @@ Before you change code other modules use, fix a bug, or add a UI state, read
 - Remove a parameter the body does not read. One that a callback or override signature requires
   starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
+- Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. Never `Promise.all(items.map(send))` over a runtime collection.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
 - Signatures: a value with three states is a union of string literals, not `boolean | undefined`
   or `flag?: boolean` (also as an optional property); default only `undefined` with `??`, never `||` on an optional parameter that can be `0`, `''` or
