@@ -198,7 +198,8 @@ To learn why a rule is on and what form it allows before you write or change cod
   and a new file in a new package.
 - A line you touch must have its branches covered, even if it was uncovered before.
 - Existing PMD, SpotBugs, Error Prone and Checkstyle findings stay baselined while their message is
-  unchanged; adding another of the same kind in the file is new. Don't rename or move a file that
+  unchanged; adding another of the same kind in the file is new. A count finding (a repeated
+  literal, a method length or complexity) stays baselined while its count does not grow. Don't rename or move a file that
   has findings: Checkstyle and CRAP findings don't follow renames and would count as new.
 
 ## Repository files
