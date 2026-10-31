@@ -1,13 +1,13 @@
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { TROUBLESHOOTING_ANCHORS } from './troubleshooting.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../troubleshooting.mjs';
 import {
   pageEntries,
   plainText,
   productionSources,
   read,
   stringConstants,
-} from './test-support/troubleshooting-page.mjs';
+} from '../test-support/troubleshooting-page.mjs';
 
 const LINKING_CALLS = new Set([
   'withTroubleshooting',
