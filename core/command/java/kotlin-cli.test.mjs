@@ -121,7 +121,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         tool: 'jacoco',
         rule: 'changed-branch-coverage',
         path: 'src/main/kotlin/demo/K.kt',
-        identity: 'branch-source:2523a9a20c75ac9a',
+        identity: 'branch-source:ba1af4e1a45c346d',
         message:
           'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',

@@ -22,8 +22,11 @@ with its paths in `nitpicker.config.json` instead; that entry is the only way to
 
 A comparison mutates only what the change wrote. On the head side, `mutate` becomes one
 `<file>:<first>-<last>` line range per changed hunk of a source file (from `git diff --unified=0
---find-renames` between the merge base and the head snapshot); test files, deleted lines and files
-outside the source roots are skipped, and a change with no source lines skips Stryker entirely. The
+--diff-algorithm=patience --find-renames --relative` between the merge base and the head
+snapshot); test files, deleted lines and files outside the source roots are skipped, and a change
+with no source lines skips Stryker entirely. The hunks are not aligned against the file sources the
+way the touched-code rule's are, so a line a formatter only reformatted is mutated too: that costs
+run time, never a missed mutant. The
 base side runs no mutants: a mutant on a line the change wrote has no counterpart on the base, so
 every surviving or uncovered mutant reported is new, which matches the touched-code rule for strict
 findings.

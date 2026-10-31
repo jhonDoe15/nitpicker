@@ -906,7 +906,8 @@ reading Kover's own report is a follow-up only if it is wanted.
 The rule and its differential mechanics are the Java ones (see
 [java-preset.md](java-preset.md#slice-8-gate-on-changed-coverage)): per source line, JaCoCo's covered
 and missed branch outcomes; a line below 95% is an enforceable `jacoco` finding whose identity is a
-hash of the line's source text, and it is new when its line is in a range `git diff` says changed.
+hash of the line's source text without formatting (tokens: spacing and a trailing comma do not
+count, so a ktlint or ktfmt run keeps it), and it is new when its line is in a changed range.
 For Kotlin the source text is read from the `.kt` files under `kotlinSourceRoots` (before KT4 only
 `.java` files were read), so a changed `if`, `when` entry, elvis or `&&` that no test takes fails, also when the statement spans
 lines.
@@ -973,7 +974,7 @@ with it. When none of this is possible, accept the function with an `exceptions`
 (`function` is required; the name is the one the structure findings print, from the Kotlin metrics,
 and only that function's branches are accepted), or `exclude` the file in `nitpicker.config.json`
 (path-level, so it also stops gating every other finding of that file). A line is judged as a whole, as for Java, and a
-reformatted line is a changed line. Lines of inline functions that the compiler copies into other
+line ktlint or ktfmt only reformatted is not a changed line. Lines of inline functions that the compiler copies into other
 files are not in the report (JaCoCo maps them outside the file).
 
 **Alternatives not used.** A newer JaCoCo does not remove the coroutine arms (the pin is 0.8.12, and

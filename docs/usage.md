@@ -1306,7 +1306,13 @@ new and touched code must comply.
   `flatMap` and friends, or a `for...of` loop for a retry outside `domain/`).
 - **Touched code**: a strict-rule finding that exists on the base stays baselined while its file's
   edited lines are elsewhere. When a change edits the line a strict-rule finding sits on, or adds
-  the file, the finding counts as new and fails the run. Pure renames and moves stay baselined.
+  the file, the finding counts as new and fails the run, and its message says so (the base already
+  had it; leave the line as it was, or bring it up to the rule). A line whose only change is what
+  a formatter does (whitespace, line breaks, quote style, trailing commas, semicolons), or that git
+  shows as deleted and re-added because code was inserted above it, is not an edited line; a
+  reformat into another form (an added or removed bracket pair) still is. When
+  several findings share a message in a file, the one on the added or edited line is the new one.
+  Pure renames and moves stay baselined.
   Findings of descriptive metrics (CRAP, duplication, coupling) keep their delta logic.
   Prettier works the same way: it reports one finding per unformatted region, located at the
   region's first line, so a legacy unformatted file stays baselined until a change edits a line

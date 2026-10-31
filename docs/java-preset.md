@@ -788,14 +788,16 @@ resolved plus a new finding, as in the TypeScript check.
   the base had it. An uncovered branch on an unchanged line stays baselined. The library entry
   `runJavaDiff` passes the same `touchedCode` as the CLI path. The TypeScript check of the same
   rule name is unaffected (its identity keys on branch source; the predicate is tool-scoped).
-- **Identity.** A hash of the line's source text (trimmed, whitespace collapsed), `branch-source:<16 hex>`,
+- **Identity.** A hash of the line's source text without formatting (tokens, so spacing, `;` and
+  trailing commas do not count), `branch-source:<16 hex>`,
   with `#2`, `#3` for identical lines in one file, in order. No line number: inserting code above
   keeps the finding baselined (the lines around it are not in a changed range), and a renamed file
   follows the rename map because the path is not part of the hash. Editing the line changes both
   the identity and the changed range, so it is new.
 - **Granularity and limits.** JaCoCo reports branch outcomes per line, so a line with several
   branches (`a && b || c`) is judged on all of its outcomes together; a method-level view is not
-  used. A line that is only reformatted counts as changed. Lines whose source text is empty after
+  used. A line that is only reformatted (google-java-format or palantir, with no line split or join
+  on the branch line itself) keeps its identity and does not count as changed. Lines whose source text is empty after
   trimming are ignored. Coverage comes from the tests of the snapshot being analyzed, so a test
   that is added or removed changes which branches are covered on head.
 - **Tests.** `languages/java/ingest/coverage-reports/jacoco-branches.test.mjs` (sample report, identity stability,
