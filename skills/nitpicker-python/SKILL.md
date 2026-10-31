@@ -28,6 +28,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
    `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
    `nitpicker-config/policy-loosened` finding is for a person to accept.
 
+To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/main/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
+
 ## Write it this way
 
 - Types: annotate every function, method and parameter; strict mypy, pyright or basedpyright (the project's own
@@ -37,6 +39,9 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - Paths: `pathlib.Path` with `/`, `.read_text()`, `.exists()`. No `os.path`, no `open(path)`.
 - Strings: f-strings only. No `.format()` and no `%`.
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.
+- Parameters: remove an unused one (`@override` marks an override; `_context` only when a callback
+  signature fixes it). A `bool` that picks a behavior is keyword-only
+  (`def send(message, *, urgent=False)`), two functions or an enum.
 - Errors: catch the specific exception and handle it, or re-raise it with its cause:
   `raise ParseError(text) from err`. No bare `except:` or `except Exception:`, and no `raise Exception(...)`.
 - Cancellation: after cleanup in an explicit asyncio, Trio or AnyIO cancellation handler, use
@@ -47,6 +52,7 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
   local first. Build a list with a comprehension, not `append` in a loop.
+- Fan-out: bound concurrent remote or message calls. Hold an `asyncio.Semaphore` (or `anyio.CapacityLimiter`) around each call, or `gather` fixed-size chunks. Never `asyncio.gather(*(fetch(u) for u in urls))` over a runtime collection.
 - Imports: name what you use. No `from module import *`.
 - Trio, AnyIO and `asyncio.TaskGroup`: open a resource around the whole task group or inside the
   child task, never in a `with` inside the group that hands it to `start_soon`/`create_task`
@@ -62,11 +68,30 @@ backstop. It fails only on findings your change adds, so leave code the task doe
   log in an `except` keeps the traceback (`logger.exception(...)` or `exc_info=True`); passing the
   error as an argument or `str(error)` drops it. Logging alone is not handling: also re-raise the
   error or return a failure that carries it.
+- Async: inside `async def`, `await asyncio.sleep(...)`, an async client (`httpx.AsyncClient`),
+  `asyncio.create_subprocess_exec`, and `await asyncio.to_thread(...)` for other blocking calls. No
+  `timeout` parameter: the caller wraps the call in `async with asyncio.timeout(...)`, and the scope
+  holds an `await`. Wait on an `asyncio.Event`, not a sleep loop.
+- Time: aware datetimes only: `datetime(2026, 1, 1, tzinfo=timezone.utc)`,
+  `datetime.now(tz=timezone.utc)`, `datetime.fromtimestamp(value, tz=timezone.utc)`. Parse with
+  `%z`, `.replace(tzinfo=...)` for a known zone, or `date.fromisoformat(text)` for a date-only
+  string. A date is `datetime.now(tz=zone).date()` in the zone it is meant in, not `date.today()`.
+  Domain code takes the clock as a parameter; tests pass a fixed aware datetime or freeze the time.
+- Loggers: `logging.getLogger(__name__)`, never `logging.Logger(...)` or the root `logging.info(...)`;
+  `logger.exception(...)` only inside an `except`, `logging.WARNING` rather than `WARN`.
+- Debugging and processes: remove debugger imports and breakpoints before committing. Pass
+  `check=True` to `subprocess.run`, or `check=False` and handle `returncode`.
+- Loops and calls: bind a new name rather than reassigning the loop variable; pass a function
+  itself (`key=str`), not `lambda x: str(x)`; one `max(a, b, c)`, not nested calls.
 - Records: `@dataclass(frozen=True)`, and `dataclasses.replace` for a changed copy. The project's
   validation library (pydantic by default) only in an `adapters/` package, where untrusted input is
   parsed once; pass frozen dataclasses on from there.
 - Constants: a fixed set of strings is an `enum.StrEnum` (`class X(str, Enum)` before Python 3.11),
   not `STATUS_ACTIVE = "active"` constants or a class holding them. Settings like `DB_HOST` are fine.
+- Signatures: a value with three states is an enum, not `bool | None`; test `None` with
+  `x if x is not None else default`, never `x or default`; return a new list or dict instead of
+  changing an argument (`items.append`). When code moves, change every caller and delete the old
+  name: no alias (`Old = New`), module `__getattr__`, `@deprecated` or `DeprecationWarning` shim.
 - Every other rule (logging, naming, environment access, the domain, paths, secrets, shell and SQL,
   test honesty) reports the allowed form in its message: follow the form the message names.
 - Tests: use the project's runner (pytest, unittest, Django or nose2). Every test asserts something. Every branch you add needs a test, and a

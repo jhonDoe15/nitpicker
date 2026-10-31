@@ -51,7 +51,7 @@ describe('shell commands', () => {
 describe('test files', () => {
   const inFile = (rule, path) => ({ ...finding(rule, 'm'), path });
 
-  it.each(['ARG001', 'FBT001', 'PLR2004', 'S105', 'S311'])(
+  it.each(['ARG001', 'ARG002', 'DTZ005', 'PLR2004', 'S105', 'S311', 'ASYNC251'])(
     'drop %s in a file the project runs as tests',
     (rule) => {
       expect(
@@ -118,6 +118,71 @@ describe('sites the rules script allowed', () => {
 
     expect(withoutAllowedForms([other], { allowed })).toEqual([other]);
   });
+
+  it.each([
+    ['DTZ005', 'clock-now'],
+    ['DTZ011', 'real-clock-in-test'],
+    ['ASYNC110', 'sleep-in-test'],
+    ['PLW1508', 'process-env-access'],
+    ['PLW0129', 'tautological-assert'],
+  ])('drop %s on a line where %s still reports', (rule, owner) => {
+    const owned = [{ rule, path: 'a.py', line: 7, owner }];
+    const keepsOwner = (site) => site.owner === owner;
+
+    expect(withoutAllowedForms([at(rule, 7), at(rule, 8)], { allowed: owned, keepsOwner })).toEqual(
+      [at(rule, 8)],
+    );
+  });
+
+  it.each([
+    ['DTZ005', 'clock-now'],
+    ['ASYNC110', 'sleep-in-test'],
+  ])('keep %s when an exception lifts its owner %s', (rule, owner) => {
+    const owned = [{ rule, path: 'a.py', line: 7, owner }];
+
+    expect(withoutAllowedForms([at(rule, 7)], { allowed: owned, keepsOwner: () => false })).toEqual(
+      [at(rule, 7)],
+    );
+  });
+
+  it('leave the decision on a site without an owner to keepsOwner', () => {
+    const keepsOwner = (site) => site.owner !== 'clock-now';
+
+    expect(withoutAllowedForms([at('S303', 4)], { allowed, keepsOwner })).toEqual([]);
+  });
+});
+
+describe('ruff rules that overlap on one line', () => {
+  const at = (rule, line) => ({
+    ...finding(rule, 'm'),
+    path: 'a.py',
+    location: { line, column: 1 },
+  });
+
+  it.each([
+    ['LOG015', 'G010'],
+    ['ASYNC230', 'PTH123'],
+    ['ASYNC240', 'PTH110'],
+    ['PLE0115', 'PLW0602'],
+    ['PLE0115', 'PLW0603'],
+  ])('keep %s and drop %s on its line', (owner, owned) => {
+    expect(withoutAllowedForms([at(owner, 3), at(owned, 3)])).toEqual([at(owner, 3)]);
+  });
+
+  it('keep G010 on another line', () => {
+    expect(withoutAllowedForms([at('LOG015', 3), at('G010', 4)])).toEqual([
+      at('LOG015', 3),
+      at('G010', 4),
+    ]);
+  });
+
+  it('keep G010 when an exception lifts LOG015', () => {
+    expect(
+      withoutAllowedForms([at('LOG015', 3), at('G010', 3)], {
+        keepsOwner: ({ owner }) => owner !== 'LOG015',
+      }),
+    ).toEqual([at('LOG015', 3), at('G010', 3)]);
+  });
 });
 
 describe('comment labels', () => {
@@ -154,5 +219,25 @@ describe('other findings', () => {
     ];
 
     expect(withoutAllowedForms(rest)).toEqual(rest);
+  });
+});
+
+describe('calendar parses', () => {
+  const parse = (line) => ({ tool: 'ruff', rule: 'DTZ007', path: 'a.py', location: { line } });
+  const lines = [
+    '',
+    'day = datetime.strptime(text, "%Y-%m-%d").date()',
+    'clock = datetime.datetime.strptime(text, "%H:%M").time()',
+    'moment = datetime.strptime(text, "%Y-%m-%d")',
+    'moment = datetime.strptime(text, "%Y-%m-%d").replace(year=1)',
+  ];
+  const lineOf = (_path, line) => lines[line];
+
+  it.each([1, 2])('allows strptime(...).date() and .time() on line %i', (line) => {
+    expect(withoutAllowedForms([parse(line)], { lineOf })).toEqual([]);
+  });
+
+  it.each([3, 4])('keeps a datetime parse on line %i', (line) => {
+    expect(withoutAllowedForms([parse(line)], { lineOf })).toEqual([parse(line)]);
   });
 });

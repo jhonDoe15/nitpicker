@@ -72,6 +72,27 @@ function uncollectedAllowed(subject = '') {
   );
 }
 
+export const FAN_OUT_SEPARATOR = '\u001f';
+
+function fanOutParts(subject = '') {
+  const [combinator = '', collection = '<collection>', operation = '<call>', via = '', kind = ''] =
+    subject.split(FAN_OUT_SEPARATOR);
+  return { combinator, collection, operation, via, kind };
+}
+
+function fanOutDescription(subject) {
+  const { combinator, collection, operation, via, kind } = fanOutParts(subject);
+  const verb = kind === 'message' ? 'publishes through' : 'calls';
+  const through = via === '' ? '' : ` (which ${verb} \`${via}\`)`;
+  return `\`${combinator}\` starts \`${operation}\`${through} for every element of \`${collection}\` at once`;
+}
+
+function fanOutAllowed(subject) {
+  const { kind } = fanOutParts(subject);
+  const target = kind === 'message' ? "the broker's" : "the remote service's";
+  return `A large collection exhausts ${target} connections or rate limit. Hold one \`asyncio.Semaphore(8)\` created outside the tasks with \`async with limit:\` around each call, gather fixed-size slices (\`items[i : i + 20]\`), or make one batch call when the API has one.`;
+}
+
 export const SMELL_HINTS = [
   {
     tool: RULES_TOOL,
@@ -93,6 +114,13 @@ export const SMELL_HINTS = [
     describe: (subject) => `\`${subject}\` has a generic name`,
     allowed:
       'Name it for its job (`price_rounding.py`, `OrderRepository`); shared logic that belongs to no feature lives in `shared/` under a name that says what it does.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['boolean-flag-parameter'],
+    describe: (subject) => `\`${subject}\` switches a public function between two behaviors`,
+    allowed:
+      'Make the flag keyword-only, `def send(message, *, urgent=False)`, split the function into two named for each behavior, or pass an enum. click, typer and FastAPI pass options by keyword, so `def command(*, verbose: bool)` works there. A method that overrides a base class takes `@typing.override` (`typing_extensions.override` before Python 3.12), which lifts the rule.',
   },
   {
     tool: RULES_TOOL,
@@ -120,7 +148,13 @@ export const SMELL_HINTS = [
     rules: ['io-in-loop'],
     describe: (subject) => `\`${subject}\` runs once per item of a loop`,
     allowed:
-      'Batch it: fetch or write all items in one call, or run the calls together with `asyncio.gather` or a `ThreadPoolExecutor.map` when there is no batch API.',
+      'Batch it: fetch or write all items in one call, or run the calls together with a bounded `asyncio.gather` (a shared `asyncio.Semaphore` acquired in the task) or a `ThreadPoolExecutor.map` when there is no batch API.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['unbounded-fan-out'],
+    describe: fanOutDescription,
+    allowed: fanOutAllowed,
   },
   {
     tool: RULES_TOOL,
@@ -154,7 +188,7 @@ export const SMELL_HINTS = [
     rules: ['real-clock-in-test'],
     describe: (subject) => `\`${subject}()\` reads the real clock in a test`,
     allowed:
-      'Freeze or inject the time: pass a fixed `datetime` in, use `freezegun` or `time_machine`, or patch the clock with `monkeypatch`.',
+      'Freeze or inject the time: pass a fixed aware `datetime` in (`datetime(2026, 1, 1, tzinfo=timezone.utc)`), use `freezegun` or `time_machine`, or patch the clock with `monkeypatch`.',
   },
   {
     tool: RULES_TOOL,
