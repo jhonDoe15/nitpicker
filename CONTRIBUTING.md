@@ -92,7 +92,7 @@ node scripts/test-shards/record-durations.mjs --maxWorkers=100%
 ```
 
 Java end-to-end CI uses 16 isolated runner shards and Kotlin uses 10, with files run serially in
-each shard. Independent behavior groups have separate fixture trees; the full 95 Java and 92
+each shard. Independent behavior groups have separate fixture trees; the full 102 Java and 98
 Kotlin cases remain selected. The final `java` or `kotlin` check passes only when all its shards
 pass. Reproduce a shard with `npm run test:java -- --shard=1/16` or
 `npm run test:kotlin -- --no-file-parallelism --shard=1/10`.
