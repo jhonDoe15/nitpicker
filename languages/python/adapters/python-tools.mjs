@@ -37,9 +37,9 @@ const PARSE_ERROR = {
   ruff: /^error: Failed to parse /,
 };
 
-function projectSettings({ projectRoot, liveRoot, settings, sourceRoots }) {
+function projectSettings({ projectRoot, liveRoot, policyRoot, settings, sourceRoots }) {
   return {
-    formatter: detectFormatter(projectRoot, settings.formatter),
+    formatter: detectFormatter(policyRoot ?? projectRoot, settings.formatter),
     formatterDetected: settings.formatter === undefined,
     typeCheckers: detectTypeCheckers(liveRoot, settings.typeChecker),
     testRunner: detectTestRunner(projectRoot, settings.testRunner),
@@ -91,7 +91,7 @@ export function createToolContext({
     exclude,
     duplicateSkippedFolders,
     pytestAddopts,
-    project: projectSettings({ projectRoot, liveRoot, settings, sourceRoots }),
+    project: projectSettings({ projectRoot, liveRoot, policyRoot, settings, sourceRoots }),
     env: {
       PYTHONPATH: pythonPath,
       PYTHONDONTWRITEBYTECODE: '1',

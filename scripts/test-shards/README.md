@@ -140,6 +140,16 @@ wired to `check`, Gradle against Failsafe, three builds) and `integration-unchec
 suite, a skipped task and a failing one, four builds), measured locally at 159 and 185 seconds.
 Every assertion is unchanged; the fixture helpers moved to `java-e2e/test-support/`.
 
+The coverage precedence file (`adapters/configuration/coverage-config/coverage-precedence`, five
+cases) is in `test:python` with a planning weight of 45 seconds: it installs coverage and pytest
+into one uv environment and runs the test step nine times, which took about 30 seconds locally.
+
+The rule reference adds three files with planning weights. `java-e2e/tool-text/tool-text.e2e.test.mjs`
+(120 seconds) resolves the pinned PMD, Error Prone, NullAway and detekt jars and compares their rule
+text with the committed snapshots, and `errorprone/error-prone-report.e2e.test.mjs` (30 seconds)
+compiles and runs `ErrorProneReport.java` once. `ruff/ruff-snapshot.e2e.test.mjs` (one second)
+only asks the installed ruff for its rule list.
+
 The ruff lint precedence file (`adapters/project-tools/ruff/ruff-lint`, ten cases) is in
 `test:python` with a planning weight of 15 seconds: it runs only the installed ruff on small
 projects, and took about six seconds locally.
