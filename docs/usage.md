@@ -206,6 +206,12 @@ one kind: changed code files that lie outside the roots the preset checks. For T
 `layout.sourceRoots`); for Python, `python.sourceRoots`; for Java and Kotlin, the build's source
 sets (`src/<set>/java` or `src/<set>/kotlin` of a module, or a directory the build file declares).
 To leave files unchecked, list them in `exclude`. Choose another directory with `--output <dir>`.
+
+The console summary shortens mutation findings: the mutants that no test runs print as one entry
+per function (with their count and lines), and a function prints at most three surviving mutants,
+then how many more there are. The headline still counts every mutant, and the reports above list
+each one.
+
 Set `NO_COLOR` to disable colored console output. On GitHub Actions the run also writes a job
 summary and `::error` annotations for the new enforceable findings (see
 [Job summary and annotations](ci.md#job-summary-and-annotations)).
@@ -218,7 +224,10 @@ The SARIF files have one run with one result per finding. `ruleId` is `<tool>/<r
 consumer matches a finding across runs when its line moves. A tool error makes the run's invocation
 unsuccessful and adds a notification; a note (such as a red base) adds a `note`-level notification
 without changing the outcome. Columns are counted in UTF-16 code units
-(`columnKind: "utf16CodeUnits"`).
+(`columnKind: "utf16CodeUnits"`), a tab counting as one: nitpicker converts the columns of ruff
+(code points), Error Prone (tabs expanded to every eighth column) and Checkstyle (tabs expanded to its
+`tabWidth`, 8 unless the project Checkstyle config the run uses sets it). mypy versions count
+columns differently, so a mypy finding on a line with non-ASCII text has a line and no column.
 
 | File                    | Run        | Results                                      | `baselineState`    |
 | ----------------------- | ---------- | -------------------------------------------- | ------------------ |
@@ -235,10 +244,19 @@ both snapshots and are not held are in no report file.
 A `uri` is relative to the root of the git repository: the folder of the project inside the
 repository, then the finding's path, percent-encoded, with `uriBaseId: "%SRCROOT%"` naming the
 repository root. A project in `packages/app` reports `packages/app/src/a.ts`, which is how code
-scanning matches a result to a file. The files hold no absolute path, so `originalUriBaseIds` is not
-written. When nitpicker cannot find the repository root (the `aggregate` command outside a git
-checkout), paths stay relative to the project and have no `uriBaseId`. A finding about the whole
-project (no file) points at the project folder, or `.` for a project at the repository root.
+scanning matches a result to a file. `originalUriBaseIds` gives `%SRCROOT%` the repository root as a
+`file://` URI, so other SARIF viewers can open the files; it is the absolute path of the checkout on
+the machine that ran nitpicker, so a SARIF file shared outside it shows where that checkout was.
+When nitpicker cannot find the repository root (the `aggregate` command outside a git checkout),
+paths stay relative to the project, with no `uriBaseId` and no `originalUriBaseIds`. A finding about
+the whole project (no file) points at the project folder, or `.` for a project at the repository
+root.
+
+GitHub code scanning rejects an upload whose run has more than 25,000 results or whose file is over
+10 MB gzipped. A SARIF file that would pass either limit lists only as many findings as fit, new
+findings first (so on a large legacy project `report-baseline.sarif` is the file that gets cut),
+and ends its notifications with a `warning` that gives the count and the JSON file that has every
+finding.
 
 Upload the comparison file in pull requests with `github/codeql-action/upload-sarif`:
 

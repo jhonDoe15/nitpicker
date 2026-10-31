@@ -39,6 +39,7 @@ export function runQualityDiff(options) {
   Object.assign(report.summary, partialRunField(settings.partialRun));
   report.text = writeDiffReports(settings.outputRoot, report, {
     projectPath: settings.projectRelativePath,
+    repositoryRoot: settings.repositoryRoot,
   });
   return report;
 }
