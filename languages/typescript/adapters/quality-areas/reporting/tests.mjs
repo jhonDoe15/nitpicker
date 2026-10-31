@@ -189,6 +189,34 @@ export function normalizeMutation(report, analyzerName) {
   return findings;
 }
 
+const CAUGHT_MUTANT_STATUSES = new Set(['Killed', 'Timeout']);
+
+function uncoveredWhenUnreached(mutant) {
+  return mutant.status === 'Survived' ? { ...mutant, status: 'NoCoverage', coveredBy: [] } : mutant;
+}
+
+export function withUnreachedMutantsUncovered(report, coverageAnalysis) {
+  const files = Object.entries(report.files ?? {});
+  const mutants = files.flatMap(([, file]) => file.mutants ?? []);
+  const coverageMissing = mutants.every((mutant) => mutant.coveredBy === undefined);
+  if (
+    coverageAnalysis === 'off' ||
+    !coverageMissing ||
+    mutants.some((mutant) => CAUGHT_MUTANT_STATUSES.has(mutant.status))
+  ) {
+    return report;
+  }
+  return {
+    ...report,
+    files: Object.fromEntries(
+      files.map(([filePath, file]) => [
+        filePath,
+        { ...file, mutants: (file.mutants ?? []).map(uncoveredWhenUnreached) },
+      ]),
+    ),
+  };
+}
+
 function collectFileMutants(file, { filePath, mutants, statusCounts, occurrences }) {
   for (const mutant of file.mutants ?? []) {
     const status = mutant.status ?? 'Unknown';
