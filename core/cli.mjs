@@ -29,7 +29,7 @@ import { detachLocalGitVariables } from './diff/git/environment/local-variables.
 import path from 'node:path';
 import { clearDiffReports, absoluteTextReportPath } from './diff/reporting/reporters.mjs';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
-import { fixWorkingTree } from './fix/run-fix.mjs';
+import { fixIfRequested } from './command/fix-request.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
 import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
@@ -186,7 +186,11 @@ function runComparisonCli(cli) {
   clearDiffReports(outputRoot);
   const analyzers = selectComparisonAnalyzers(cli);
   const headPolicy = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
-  const fixResult = fixIfRequested({ ...cli, headPolicy }, repositoryRoot, base);
+  const fixResult = fixIfRequested(
+    { ...cli, headPolicy, spawnEnvironment: { ...process.env, ...cli.environment } },
+    repositoryRoot,
+    base,
+  );
   const cacheStore = resolveRunCacheStore(cli);
   const report = runQualityDiff({
     repositoryRoot,
@@ -219,23 +223,6 @@ function acceptanceOf(cli) {
     cli.stderr.write(`nitpicker: ${ignoredAcceptance}\n`);
   }
   return acceptance;
-}
-
-function fixIfRequested(cli, repositoryRoot, base) {
-  if (!cli.options.fix) {
-    return { fixedFiles: [], toolErrors: [] };
-  }
-  const fixResult = fixWorkingTree({
-    repositoryRoot,
-    projectRoot: cli.currentProjectRoot,
-    baseRef: base.baseRef,
-    executeFixCommand: cli.executeFixCommand,
-    headPolicy: cli.headPolicy,
-  });
-  cli.stdout.write(
-    `Fixed files:\n${fixResult.fixedFiles.length === 0 ? '(none)\n' : `${fixResult.fixedFiles.join('\n')}\n`}`,
-  );
-  return fixResult;
 }
 
 function resolveRunCacheStore(cli) {

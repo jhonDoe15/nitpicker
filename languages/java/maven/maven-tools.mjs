@@ -2,12 +2,14 @@ import { createHash } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
+import { JAVA_FORMATTERS } from '../adapters/style/jvm-formatters.mjs';
 import { runMaven } from './maven-command.mjs';
 
 export const MAVEN_PLUGINS = {
   dependency: 'org.apache.maven.plugins:maven-dependency-plugin:3.8.1',
   help: 'org.apache.maven.plugins:maven-help-plugin:3.5.1',
 };
+const TOOLS_KEY_LENGTH = 16;
 const JUNIT_PLATFORM_EXCLUSIONS = [
   'org.junit.platform',
   'org.junit.jupiter',
@@ -19,7 +21,7 @@ export function jacocoPlugin(pinned) {
   return `org.jacoco:jacoco-maven-plugin:${pinned.jacoco}`;
 }
 
-function dependency(coordinates, exclusions = []) {
+export function dependency(coordinates, exclusions = []) {
   const [groupId, artifactId, version, classifier] = coordinates.split(':');
   const excluded = exclusions
     .map((group) => `<exclusion><groupId>${group}</groupId><artifactId>*</artifactId></exclusion>`)
@@ -34,20 +36,10 @@ function dependency(coordinates, exclusions = []) {
 }
 
 export function formatTool(javaStyle, pinned) {
-  if (javaStyle === 'none') {
-    return [];
-  }
-  const palantir = javaStyle === 'palantir';
-  return [
-    {
-      name: palantir ? 'format-palantir' : 'format',
-      coordinates: [
-        palantir
-          ? `com.palantir.javaformat:palantir-java-format:${pinned.palantirJavaFormat}`
-          : `com.google.googlejavaformat:google-java-format:${pinned.googleJavaFormat}`,
-      ],
-    },
-  ];
+  const formatter = JAVA_FORMATTERS[javaStyle ?? 'google'];
+  return formatter === undefined
+    ? []
+    : [{ name: formatter.classpath, coordinates: [formatter.coordinates(pinned)] }];
 }
 
 export function archunitTool(runsRules, pinned) {
@@ -126,7 +118,7 @@ function writeToolsProject(directory, tools) {
   writeFileSync(path.join(directory, 'pom.xml'), pom('tools', `<modules>${modules}</modules>`));
 }
 
-function readClasspaths(directory, names) {
+export function readClasspaths(directory, names) {
   return Object.fromEntries(
     names.map((name) => {
       const file = path.join(directory, name, 'classpath.txt');
@@ -136,10 +128,17 @@ function readClasspaths(directory, names) {
   );
 }
 
-function missing(classpaths) {
+export function missing(classpaths) {
   return Object.entries(classpaths)
     .filter(([, jars]) => jars.length === 0 || !jars.every((jar) => existsSync(jar)))
     .map(([name]) => name);
+}
+
+export function toolsKey(tools) {
+  return createHash('sha256')
+    .update(JSON.stringify(tools))
+    .digest('hex')
+    .slice(0, TOOLS_KEY_LENGTH);
 }
 
 export function cacheDirectory(name) {
@@ -148,10 +147,8 @@ export function cacheDirectory(name) {
   return path.join(root, name);
 }
 
-export function resolveTools({ projectRoot, maven, pinned, launcherVersions, extraTools, spawn }) {
-  const tools = toolDependencies(pinned, launcherVersions, extraTools);
-  const key = createHash('sha256').update(JSON.stringify(tools)).digest('hex').slice(0, 16);
-  const directory = cacheDirectory(`maven-tools-${key}`);
+export function resolveToolSet({ projectRoot, maven, tools, spawn }) {
+  const directory = cacheDirectory(`maven-tools-${toolsKey(tools)}`);
   const cached = readClasspaths(directory, Object.keys(tools));
   if (missing(cached).length === 0) {
     return cached;
@@ -177,4 +174,13 @@ export function resolveTools({ projectRoot, maven, pinned, launcherVersions, ext
     );
   }
   return resolved;
+}
+
+export function resolveTools({ projectRoot, maven, pinned, launcherVersions, extraTools, spawn }) {
+  return resolveToolSet({
+    projectRoot,
+    maven,
+    tools: toolDependencies(pinned, launcherVersions, extraTools),
+    spawn,
+  });
 }

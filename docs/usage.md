@@ -316,9 +316,17 @@ nitpicker rules [--preset <name>] [--tool <name>]
 
 - `--all`: report every finding in the current checkout, with no baseline. Exits 1 on any violation.
   Cannot be combined with `--base`, `--fix`, sharding or `--defer-exit`.
-- `--fix`: apply ESLint and Prettier fixes to the changed files in your checkout, using the gate's
-  own configs, then run the comparison. A fixer that fails is reported as a tool error; the other
-  fixer and the comparison still run. Cannot be combined with `--all`.
+- `--fix`: rewrite the changed files in your checkout with the fixers of the preset, using the
+  gate's own configs, then run the comparison: ESLint and Prettier for TypeScript and JavaScript;
+  `ruff check --fix` (safe fixes, nitpicker's rules only) and ruff format or black for Python;
+  google-java-format or palantir-java-format for Java; ktlint or ktfmt for Kotlin (see the Java,
+  Kotlin and Python sections). Only files whose bytes changed are listed under "Fixed files:", and a
+  formatter leaves alone a file that already failed its format check on the base (ktlint, whose
+  findings are per line, formats only the code around your change in such a file). The Python, Java
+  and Kotlin fixers keep CRLF line endings, replace a file in one step (a temporary file renamed
+  over it), leave alone a file that changed while they ran, and do not follow symbolic links; each
+  of these is named in a "Fix notes:" line. A fixer that fails is reported as a tool error; the
+  other fixers and the comparison still run. Cannot be combined with `--all`.
 - `--base <ref>`: the ref to compare against.
 - `--analyzer <name>`: run only this analyzer (repeatable). Cannot be combined with sharding.
 - `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable).
@@ -1026,6 +1034,34 @@ whose tests fail"). Maven runs through `mvnw` when the project has
 one, else `mvn` from the PATH; `NITPICKER_MAVEN=<command>` overrides both. See
 [Maven builds](java-preset.md#maven-builds).
 
+With `--fix`, the changed `.java` files are rewritten with the formatter the gate checks them
+with, the one the run names under "Following this project's conventions": google-java-format
+1.25.2 (`--aosp` for the 4-space style) or palantir-java-format 2.50.0. With no formatter signal at
+all, the convention is google, so `--fix` applies google-java-format to new files and to files that
+were formatted on the base, which is what the gate's format check then demands. The convention is
+`"none"` when `conventions` pins `"java.formatter"` to it, and also when nitpicker detects it: an
+Eclipse or Prettier formatter step in Spotless, build files that contradict each other, or measured
+evidence that the code follows no supported formatter. Then no Java file is rewritten and the run
+prints a "Fix notes:" line saying so. `--fix` does not run Spotless or fmt-maven-plugin: license
+headers, import order and a formatter version other than the pinned one stay with the project's own
+task.
+
+Only the files the gate's format check covers are rewritten: files in a module's source sets (the
+conventional `src/<set>/java` and `src/<set>/kotlin` folders and the source directories the build
+files declare), the same rule as the "outside the build's source sets" notice. Build scripts,
+folders such as `tools/` or `src/test/resources`, build output and generated sources are left
+alone. A file that is not UTF-8 text is left as it is, with a "Fix notes:" line. The formatter jars
+are resolved through a small build nitpicker writes under `~/.cache/nitpicker` (Maven: the same
+tool cache the gate uses; Gradle: a throwaway build run with the project's wrapper or `gradle`, so
+the project's build is never evaluated and does not have to compile), and reused on later runs while
+the jars exist. Maven resolves them through your `settings.xml`, mirrors included. The Gradle build
+copies the repositories the project declares (the `dependencyResolutionManagement` repositories of
+`settings.gradle(.kts)`, and the top-level, `allprojects` or `subprojects` repositories of the root
+`build.gradle(.kts)`) and the project's `gradle.properties`, so a company mirror and its credential
+properties apply; with no declared repository it uses Maven Central. Your Gradle user home
+(`~/.gradle/gradle.properties`, `~/.gradle/init.d`) applies as for any build. When resolution fails,
+the tool error names the build and the files its repositories came from.
+
 Needs Java 21. Gradle is run through the project's own wrapper (`gradlew`, `gradlew.bat` on Windows) when the
 project root has one (run with `sh` when it is not executable), else `gradle` from the PATH; `NITPICKER_GRADLE=<command>` overrides both.
 Config keys with this preset: `base`, `disable`, `analyzers`, and the keys shared with the other
@@ -1063,6 +1099,17 @@ the facts the filter needs). The project's
 detekt config is found in the usual places or set with `"kotlin": { "detektConfig": "path" }`. Config keys, Gradle
 requirements, exit codes and the Gradle-failure tool error are those of the Java preset, with the
 analyzer named `kotlin`. Details and the remaining slices: [kotlin-preset.md](kotlin-preset.md).
+
+With `--fix`, the changed `.kt` files in the build's source sets are rewritten with the formatter the
+check uses, the pinned ktlint 1.8.0 or ktfmt 0.64 with the same style and `.editorconfig` handling,
+under the same scope rules as Java files (build scripts such as `build.gradle.kts`, which the check
+does not cover, are left alone). A file the formatter cannot parse is left as it is and named in a
+"Fix notes:" line; the other files are still formatted. When no Kotlin formatter is found, the run
+prints a "Fix notes:" line saying so. In a file that already failed the check on the base, ktlint
+reports each unformatted line, so the gate flags the lines your change touched: there `--fix` keeps
+only the ktlint changes that meet a changed line (and the lines they move, such as a sorted import)
+and leaves the rest of the file as it was. ktfmt and the Java formatters check whole files, so such
+a file is left as it is. A file with CRLF line endings keeps them, although ktlint writes LF.
 
 The preset also narrows Kotlin to one way of writing the common many-ways spots, with detekt rules
 of its own that the project's detekt config cannot switch off: `!!` and unsafe casts of nullable
@@ -1174,6 +1221,18 @@ analyzer that ran it, never thrown: `python` for `ruff-failed`, `format-failed`,
 `mutation-failed` (exit 2 when there are no new findings). A mutation failure keeps the lint,
 format and coverage findings, and mutation testing is skipped when the `python` analyzer had a tool
 error.
+
+`--fix` runs inside that environment, on the changed `.py`, `.pyi` and `.ipynb` files, the files
+the gate's ruff and format checks cover: `ruff check --fix` with nitpicker's selected rules and
+ruff's safe fixes, then the formatter the run names (ruff format or black) with the options of the
+"Format with ..." command. `ruff check --fix` honours `# noqa` comments, so code you suppressed is
+never deleted (the gate's check ignores them, but only on the lines you change). Like ESLint on
+TypeScript, it fixes the whole changed file, not only the changed lines. Notebooks go to Black too,
+which formats them, as the gate checks them, only when its `jupyter` extra (`black[jupyter]`) is
+installed; without it a "Fix notes:" line names the notebooks it skipped. A file that does not
+parse, or is not UTF-8 text, is left as it is, and a file that already failed the format check on
+the base is not reformatted (Python indentation is code, so nitpicker does not format parts of it).
+A fixer that fails is reported as a tool error that names the missing or failing binary.
 
 The environment is detected: `uv.lock` (also the one of a uv workspace above a member) runs the
 tools with `uv run --no-sync`, `poetry.lock` uses the environment poetry reports, a `Pipfile` the one `pipenv --venv` reports,

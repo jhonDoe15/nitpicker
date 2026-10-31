@@ -183,7 +183,7 @@ function noTestsFinding() {
 function formatMessage({ formatter, formatterDetected }) {
   const base = `File is not formatted with ${formatter}`;
   const detected = formatterDetected ? ' (detected; set "python.formatter" if wrong)' : '';
-  return `${base}${detected}. Format it with the "Format with ${formatter}" command printed at the start of the run.`;
+  return `${base}${detected}. Run nitpicker --fix, or format it with the "Format with ${formatter}" command printed at the start of the run.`;
 }
 
 function formatFindings(text, { roots, manifest }) {

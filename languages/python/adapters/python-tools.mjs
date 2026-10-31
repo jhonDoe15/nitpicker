@@ -31,7 +31,7 @@ export const RUFF_REPORT = 'ruff.sarif';
 export const FORMAT_REPORT = 'format.txt';
 export const MANIFEST_REPORT = 'manifest.json';
 const COVERAGE_DATA = '.coverage';
-const FORMAT_FAILURE_STATUS = { black: 123, ruff: 2 };
+export const FORMAT_FAILURE_STATUS = { black: 123, ruff: 2 };
 const PARSE_ERROR = {
   black: /^error: cannot (?:format .+: cannot )?parse\b/i,
   ruff: /^error: Failed to parse /,
@@ -70,6 +70,7 @@ export function createToolContext({
     projectRoot,
     liveRoot,
     setting: settings.environment,
+    spawn,
   });
   const sourceRoots = detectSourceRoots(projectRoot, settings.sourceRoots);
   const pythonPath = [...importRoots(projectRoot, sourceRoots), process.env.PYTHONPATH]
@@ -145,23 +146,29 @@ export function runPythonTools(context) {
   return failures;
 }
 
-export function lint(context) {
+export function lintOptions(context) {
   const config = ruffLintConfig(context);
   const style = pytestStyle(context.projectRoot, undefined, context.policyRoot);
+  return [
+    '--config',
+    config.file,
+    ...(config.setsTargetVersion ? [] : ['--target-version', context.project.targetVersion]),
+    '--line-length',
+    config.lineLength,
+    ...pytestStyleFlags(style),
+    '--ignore-noqa',
+    '--no-cache',
+    ...ruffExclusions(context),
+  ];
+}
+
+export function lint(context) {
   run(
     context,
     [
       'ruff',
       'check',
-      '--config',
-      config.file,
-      ...(config.setsTargetVersion ? [] : ['--target-version', context.project.targetVersion]),
-      '--line-length',
-      config.lineLength,
-      ...pytestStyleFlags(style),
-      '--ignore-noqa',
-      '--no-cache',
-      ...ruffExclusions(context),
+      ...lintOptions(context),
       '--output-format',
       'sarif',
       '--output-file',

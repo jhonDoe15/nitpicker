@@ -14,23 +14,22 @@ forms below from the start; the gate is a backstop.
 
 1. Run the project's tests (`./gradlew test`, or `./mvnw test` on Maven). Failing tests or compile
    errors make the gate exit 2.
-2. Format with the formatter the run names under "Following this project's conventions": the
-   project's own formatter task, or google-java-format 1.25.2 with `--replace` (plus `--aosp` for
-   the aosp style), or palantir-java-format with `--palantir --replace`. When the run says no
-   Java formatter runs, there is nothing to run; keep the layout by hand. `npx nitpicker --fix`
-   does not touch Java.
-3. Run `npx nitpicker` as a background command you wait on, without a pipe: you need its exit
-   code. It runs the build on the merge base and on head and takes minutes. It uses the project's
-   `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the PATH
-   (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both).
-4. Act on the exit code:
+2. Run `npx nitpicker --fix` as a background command you wait on, without a pipe: you need its exit
+   code. It first rewrites the changed Java files with the formatter the run names under
+   "Following this project's conventions" (google-java-format 1.25.2, `--aosp` for the aosp style,
+   or palantir-java-format) and lists them under "Fixed files:"; re-read a file it lists before you
+   edit it again. When the run says no Java formatter runs, it leaves the files alone; keep the
+   layout by hand. Then it runs the build on the merge base and on head, which takes minutes, with
+   the project's `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the
+   PATH (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both).
+3. Act on the exit code:
    - 0: done.
    - 1: fix every new finding (printed as `tool/rule path:line`) and any tool error listed below
      them, then rerun.
    - 2: no new findings, but a tool failed (the build, a compile error, a test failure). Fix the
      cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
-5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
+4. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
    comments, coverage or mutation markers (`@Generated`, `@ExcludeFromJacocoGeneratedReport`,
    `@DoNotMutate`), config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. The one
    exception is `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a repository method with native
@@ -49,8 +48,8 @@ To learn why a rule is on and what form it allows before you write or change cod
 
 - Style is google-java-format, 100 columns, unless the project formats with palantir-java-format
   (120 columns, 4 spaces). Indent like the files around you (nitpicker follows the project's
-  formatter and majority, 2 spaces or 4 with `--aosp`); a misformatted file is one finding, so run the
-  formatter rather than fixing layout by hand. With no formatter, nitpicker still reports unused
+  formatter and majority, 2 spaces or 4 with `--aosp`); a misformatted file is one finding, so let
+  `npx nitpicker --fix` format it rather than fixing layout by hand. With no formatter, nitpicker still reports unused
   imports and bad indentation or whitespace; in a tab-indented project it checks neither tabs nor
   indentation.
 - Text: `"a".equals(x)` or `a.equals(b)`, never `==` on strings or other objects. Pass a charset and

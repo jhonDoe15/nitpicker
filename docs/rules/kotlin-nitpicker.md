@@ -351,7 +351,7 @@ A Kotlin compiler warning: `UNCHECKED_CAST`.
 A Kotlin file is not formatted with ktfmt.
 
 - **Why it is on:** When the project formats with ktfmt, the format check reports every file it would change.
-- **Allowed form:** File is not formatted with ktfmt. Format it with the "Format with ktfmt" command printed at the start of the run. Not your formatter: set kotlin.formatter.
+- **Allowed form:** File is not formatted with ktfmt. Run nitpicker --fix, or format it with the "Format with ktfmt" command printed at the start of the run. Not your formatter: set kotlin.formatter.
 - **Exception:** No exception applies: format the file, or choose another formatter with `kotlin.formatter`.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md)
 
@@ -365,7 +365,7 @@ A rule of the ktlint standard ruleset that a Kotlin file breaks.
 - **For example:** `ktlint/ktlint.standard:no-wildcard-imports`
 - **Why it is on:** When the project formats with ktlint, the format check reports each rule of the ktlint standard ruleset that a file breaks.
 - **Allowed form:** See the tool's documentation: [ktlint standard rules](https://pinterest.github.io/ktlint/latest/rules/standard/).
-- **Exception:** No exception applies. Lift this rule with ktlint_standard\_\<rule> = disabled in .editorconfig, which nitpicker reads only when ktlint lists "project" (see the start of the run). Not your formatter: set kotlin.formatter.
+- **Exception:** No exception applies. Run nitpicker --fix to apply the fixes ktlint has, or lift this rule with ktlint_standard\_\<rule> = disabled in .editorconfig, which nitpicker reads only when ktlint lists "project" (see the start of the run). Not your formatter: set kotlin.formatter.
 - **See also:** [Kotlin preset guide](../kotlin-preset.md), [ktlint standard rules](https://pinterest.github.io/ktlint/latest/rules/standard/)
 
 <a id="pmd-assertionincontrolflow"></a>
