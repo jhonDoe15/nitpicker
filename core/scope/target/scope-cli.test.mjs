@@ -1,15 +1,19 @@
 import { mkdirSync, readFileSync, realpathSync, symlinkSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { runCli as nitpickerCli } from '../cli.mjs';
-import { finding, findingLine, policy } from '../diff/execution/test-support/analyzer-findings.mjs';
-import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
+import { runCli as nitpickerCli } from '../../cli.mjs';
+import {
+  finding,
+  findingLine,
+  policy,
+} from '../../diff/execution/test-support/analyzer-findings.mjs';
+import { captureOutput } from '../../diff/reporting/test-support/output-capture.mjs';
 import {
   crashingAnalyzer,
   fakeAnalyzer,
   useCliFixtures,
-} from '../command/test-support/cli-harness.mjs';
-import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+} from '../../command/test-support/cli-harness.mjs';
+import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
@@ -243,6 +247,11 @@ describe('nitpicker with paths', () => {
       (root) => `.git leads to ${root}/.git, outside the files of ${root}`,
     ],
     ['an empty path', [''], () => 'A path argument is empty; give a file or folder'],
+    [
+      'a mistyped option that matches no file',
+      ['caches'],
+      () => 'caches matches no file. Did you mean cache? Run nitpicker --help for the options.',
+    ],
     [
       'a path outside the project of the first path',
       ['services/orders/src', 'src/orders'],

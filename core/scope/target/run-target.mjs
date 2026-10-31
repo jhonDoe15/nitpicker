@@ -1,7 +1,8 @@
 import { existsSync, realpathSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
-import { resolveProjectRoot } from '../tooling/tool-resolution.mjs';
+import { resolveProjectRoot } from '../../tooling/tool-resolution.mjs';
+import { missingPathHint } from '../../command/arguments.mjs';
 
 const GIT_OUTPUT_LIMIT_BYTES = 64 * 1024 * 1024;
 
@@ -50,7 +51,7 @@ function existingPath({ base, repositoryRoot, given }) {
     throw new Error(`${given} is outside the repository ${repositoryRoot}`);
   }
   if (!existsSync(absolute)) {
-    throw new Error(`${given} matches no file`);
+    throw new Error(`${given} matches no file${missingPathHint(given)}`);
   }
   const target = realpathSync(absolute);
   const inRepository = path.relative(repositoryRoot, target);

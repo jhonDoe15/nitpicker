@@ -6,7 +6,7 @@ import { runCacheCommand } from './command/cache.mjs';
 import { runExplainCommand, runRulesCommand } from './command/reference/reference.mjs';
 import { runBaseCommand } from './command/base.mjs';
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
-import { resolveRunTarget } from './scope/run-target.mjs';
+import { resolveRunTarget } from './scope/target/run-target.mjs';
 import { realpathSync } from 'node:fs';
 import {
   describeConfigOverrides,
