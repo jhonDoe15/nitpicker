@@ -207,8 +207,10 @@ function collectBothSnapshots({
   comparison,
   options,
   policy,
+  warn,
 }) {
-  return withTemporaryWorktree(repositoryRoot, comparison.headSha, (headWorktree) => {
+  const head = { commitSha: comparison.headSha, warn };
+  return withTemporaryWorktree(repositoryRoot, head, (headWorktree) => {
     const policyRoot = path.join(headWorktree, projectRelativePath);
     function collectIn(worktreeRoot, snapshot) {
       return collectJavaFindings(path.join(worktreeRoot, projectRelativePath), {
@@ -219,7 +221,7 @@ function collectBothSnapshots({
     const headFindings = collectIn(headWorktree, 'head');
     const collectedBase = withTemporaryWorktree(
       repositoryRoot,
-      comparison.mergeBaseSha,
+      { commitSha: comparison.mergeBaseSha, warn },
       (baseWorktree) => collectIn(baseWorktree, 'base'),
     );
     const notes = testFailuresOf({ findings: collectedBase });
@@ -229,6 +231,13 @@ function collectBothSnapshots({
       headFindings,
     };
   });
+}
+
+function withEnforceable(outcome) {
+  const newEnforceable = outcome.newFindings.filter(
+    (finding) => finding.classification === 'enforceable',
+  );
+  return { ...outcome, newEnforceable, failed: newEnforceable.length > 0 };
 }
 
 export function runJavaDiff({
@@ -253,12 +262,14 @@ export function runJavaDiff({
     projectRelativePath,
   };
   const baseToHeadRenames = readRenameMap(range);
+  const warnings = [];
   const { notes, baseFindings, headFindings } = collectBothSnapshots({
     repositoryRoot,
     projectRelativePath,
     comparison,
     options: { gradle, maven, spawn, initScript },
     policy,
+    warn: (message) => warnings.push(message),
   });
   const touchedCode = {
     changedLines: readChangedLines(range),
@@ -272,8 +283,5 @@ export function runJavaDiff({
     touchedCode,
     unknownOnBase: unknownOnBaseFor(notes, touchedCode),
   });
-  const newEnforceable = result.newFindings.filter(
-    (finding) => finding.classification === 'enforceable',
-  );
-  return { comparison, ...result, notes, newEnforceable, failed: newEnforceable.length > 0 };
+  return withEnforceable({ comparison, ...result, notes, warnings });
 }
