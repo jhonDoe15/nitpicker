@@ -2,7 +2,7 @@ import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { decodeEntities } from '../../../shared/ingest/common.mjs';
 
 const PIT_WAY_OUT =
-  'If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears.';
+  'If no input can tell the two apart (a compareTo boundary, a discarded lambda return, a field set to the value it already has, a redundant trim() or sorted()), simplify the code so this mutant disappears.';
 
 const STATUS_NAMES = {
   KILLED: 'Killed',
@@ -60,10 +60,10 @@ function groupMutants(mutants, { resolvePath, generated }) {
 
 function addToGroup(groups, { mutant, status, filePath }) {
   const key = [
-    simpleClassName(mutant.className),
-    `${mutant.method}${simpleDescriptor(mutant.methodDescription)}`,
+    withoutSyntheticNumbers(simpleClassName(mutant.className)),
+    `${withoutSyntheticNumbers(mutant.method)}${simpleDescriptor(mutant.methodDescription)}`,
     mutant.mutatorName,
-    withoutPackages(mutant.description),
+    withoutSyntheticNumbers(withoutPackages(mutant.description)),
   ].join('|');
   const groupKey = `${status}\0${filePath}\0${key}`;
   const group = groups.get(groupKey) ?? [];
@@ -136,6 +136,10 @@ function simpleDescriptor(descriptor) {
 
 function withoutPackages(text) {
   return text.replaceAll(/(?:[\w$]+\/)+([\w$]+)/g, '$1');
+}
+
+function withoutSyntheticNumbers(name) {
+  return name.replaceAll(/\$\d+(?!\w)/gu, '');
 }
 
 function mutator(qualifiedName) {

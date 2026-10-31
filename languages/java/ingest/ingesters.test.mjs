@@ -221,7 +221,7 @@ describe('pit', () => {
 
   it('names the equivalent-mutant cases in a survived mutant, whichever tool names it', () => {
     const message =
-      'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears.';
+      'Survived ConditionalsBoundaryMutator: changed conditional boundary: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return, a field set to the value it already has, a redundant trim() or sorted()), simplify the code so this mutant disappears.';
     const named = ingestPit(fixture('pit-mutations.xml'), {
       tool: 'custom',
       resolvePath: resolveMainPath,
@@ -268,6 +268,29 @@ describe('pit', () => {
     expect(symbolOf('lambda$new$0', functionAt)).toBe('src/main/java/demo/Wide.java:7:Wide.field');
     expect(symbolOf('lambda$new$0')).toBe('Wide#lambda$new$0()I');
     expect(symbolOf('lambda$run$0', functionAt)).toBe('Wide#lambda$run$0()I');
+  });
+
+  it('keeps the identity of a lambda or anonymous class mutant when javac renumbers it', () => {
+    const mutant = (className, method, line) =>
+      `<mutation detected='false' status='SURVIVED'><sourceFile>Idioms.java</sourceFile><mutatedClass>demo.${className}</mutatedClass><mutatedMethod>${method}</mutatedMethod><methodDescription>(Ljava/lang/String;)Z</methodDescription><lineNumber>${String(line)}</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.returns.BooleanTrueReturnValsMutator</mutator><description>replaced boolean return with true for demo/${className}::${method}</description></mutation>`;
+    const identities = (mutants) =>
+      ingestPit(`<mutations>${mutants.join('')}</mutations>`, { resolvePath: resolveMainPath })
+        .findings.filter((finding) => (finding.location?.line ?? 0) > 8)
+        .map((finding) => finding.identity);
+
+    expect(
+      identities([mutant('Idioms', 'lambda$count$0', 9), mutant('Idioms$1', 'test', 14)]),
+    ).toEqual(
+      identities([
+        mutant('Idioms', 'lambda$other$0', 5),
+        mutant('Idioms$1', 'apply', 6),
+        mutant('Idioms', 'lambda$count$1', 9),
+        mutant('Idioms$2', 'test', 14),
+      ]),
+    );
+    expect(identities([mutant('Idioms', 'lambda$count$0', 9)])).toEqual([
+      'Idioms|lambda$count(LString;)Z|BooleanTrueReturnValsMutator|replaced boolean return with true for Idioms::lambda$count#1',
+    ]);
   });
 
   it('matches the mutants of a class moved to another package, as a git rename', () => {

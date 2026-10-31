@@ -88,6 +88,50 @@ non-test `.py` files under a source root changed, and runs every mutant after an
 including every test change, because mutmut does not re-test results when a test changes. See
 [python-preset.md](python-preset.md#reusing-base-results-on-head).
 
+## Java and Kotlin mutators
+
+Stryker runs every one of its mutators. PIT, run with no `--mutators`, uses an implicit set of 11
+(`INVERT_NEGS`, `MATH`, `VOID_METHOD_CALLS`, `NEGATE_CONDITIONALS`, `CONDITIONALS_BOUNDARY`,
+`INCREMENTS` and the five return-value mutators), which misses what Stryker's
+`ConditionalExpression`, `MethodExpression` and `BlockStatement` catch: an error branch no test
+reaches (`if (parts == 0) throw ...` survives when its condition is forced to `false`), a `trim()`
+no test needs, a switch case no test takes. So every PIT run, on Gradle (Java and Kotlin presets)
+and on Maven, passes `--mutators` with the list in the init script's `def pitMutators`, which the
+Maven build reads with `readPitMutators` (`languages/java/builds/java-build.mjs`):
+
+| Stryker                                             | PIT                                                                                              |
+| --------------------------------------------------- | ------------------------------------------------------------------------------------------------ |
+| ArithmeticOperator, AssignmentOperator              | `MATH`                                                                                           |
+| EqualityOperator                                    | `CONDITIONALS_BOUNDARY`, `NEGATE_CONDITIONALS`                                                   |
+| UnaryOperator, UpdateOperator                       | `INVERT_NEGS`, `INCREMENTS`                                                                      |
+| ArrowFunction, return values                        | `TRUE_RETURNS`, `FALSE_RETURNS`, `PRIMITIVE_RETURNS`, `EMPTY_RETURNS`, `NULL_RETURNS`            |
+| ConditionalExpression, LogicalOperator              | `REMOVE_CONDITIONALS` (equality and order checks forced either way)                              |
+| MethodExpression                                    | `EXPERIMENTAL_NAKED_RECEIVER` (a call that returns its receiver's type replaced by the receiver) |
+| BlockStatement                                      | `VOID_METHOD_CALLS`, `REMOVE_INCREMENTS`, `EXPERIMENTAL_MEMBER_VARIABLE`                         |
+| switch cases                                        | `REMOVE_SWITCH`, `EXPERIMENTAL_SWITCH`                                                           |
+| ArithmeticOperator on `BigDecimal` and `BigInteger` | `EXPERIMENTAL_BIG_DECIMAL`, `EXPERIMENTAL_BIG_INTEGER`                                           |
+
+BooleanLiteral is covered where `true` or `false` is returned or decides a branch, not as an
+argument. StringLiteral, ArrayDeclaration, ObjectLiteral, Regex and OptionalChaining have no PIT
+counterpart. PIT's own groups do not fit: `DEFAULTS` has no `NEGATE_CONDITIONALS`, and `STRONGER`
+builds on `DEFAULTS`. Left out on purpose:
+
+- `NON_VOID_METHOD_CALLS` and `CONSTRUCTOR_CALLS` replace a call with `null` or `0`; nearly every
+  such mutant dies of a `NullPointerException`, Stryker has no counterpart, and they nearly double
+  the mutant count.
+- `EXPERIMENTAL_ARGUMENT_PROPAGATION` works on erased types, so `map.get(key)` becomes `key`.
+- `INLINE_CONSTS` changes numeric literals, which Stryker leaves alone.
+
+Both sides of a comparison run the same list, so mutants of unchanged code match by identity and
+only those in changed code are new. On a single-module Maven project of 3,400 lines and 432 tests,
+the list gave 830 mutants against 399 with the implicit set, 52 survivors against 15 (all 37 new
+ones were real test gaps: unreached error branches, untested whitespace, untaken switch cases), and
+PIT took 75 s against 42 s. On Kotlin the list also mutates what the compiler writes for coroutines (the state machine's
+conditionals, `switch` and fields) and the check of the last branch of an exhaustive `when`; the
+Kotlin filter leaves those out (see [Mutation](kotlin-preset.md#mutation) in the Kotlin preset), and on its
+measurement fixture the list adds 5 killable mutants to the 14 the implicit set left. The Python
+preset's mutmut has a fixed operator set.
+
 ## Question
 
 Should there be an optional, manually run, wider-scope mutation profile?

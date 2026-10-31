@@ -123,4 +123,30 @@ class Sink {
 value class Percent(val share: Int) {
     constructor(text: String) : this(text.length * 2)
 }
+
+fun word(flag: Boolean): String =
+    when (flag) {
+        true -> "yes"
+        false -> "no"
+    }
+
+fun mixed(flag: Boolean): Int =
+    when (flag) {
+        true -> 1
+        false -> if (flag) 2 else 0
+    }
+
+fun statement(flag: Boolean) {
+    when (flag) {
+        true -> println("y")
+        false -> println("n")
+    }
+}
+
+fun either(flag: Boolean?): Int =
+    when (flag) {
+        null -> 0
+        true,
+        false -> 1
+    }
 `;
