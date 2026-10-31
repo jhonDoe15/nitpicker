@@ -93,11 +93,6 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
       ...readImportLinterFindings(reportRoot),
       ...testFailureFindings(manifest, policy.snapshot),
       ...projectShapeFindings({ projectRoot, reportRoot, policy, imports, manifest }),
-      ...designFindings({
-        reportRoot,
-        analyzerName: PYTHON_ANALYZER_NAME,
-        headPolicy: policy.headPolicy,
-      }),
     ],
     libraries,
   );
@@ -140,6 +135,11 @@ function projectShapeFindings({ projectRoot, reportRoot, policy, imports, manife
     ...cycleFindings(imports),
     ...outsideRootsFindings(imports),
     ...readDependencyFindings({ reportRoot, projectRoot, snapshot: policy.snapshot }),
+    ...designFindings({
+      reportRoot,
+      analyzerName: PYTHON_ANALYZER_NAME,
+      headPolicy: policy.headPolicy,
+    }),
   ];
 }
 
