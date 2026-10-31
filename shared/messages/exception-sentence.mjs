@@ -38,8 +38,9 @@ export function exceptionSentence(entryText, key = 'exceptions') {
   return `If this is intended, add ${entryText} to "${key}" in nitpicker.config.json.`;
 }
 
-const ROUTE_SENTENCE =
-  /If this is intended, add \{.*\} to "(?:python\.)?exceptions" in nitpicker\.config\.json\.$/su;
+/** The exception sentence at the end of a message; group `entry` is the entry it names. */
+export const ROUTE_SENTENCE =
+  /If this is intended, add (?<entry>\{.*\}) to "(?:python\.)?exceptions" in nitpicker\.config\.json\.$/su;
 
 /** Whether `message` already ends with a sentence that names its exception entry. */
 export function hasExceptionRoute(message) {

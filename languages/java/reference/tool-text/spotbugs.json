@@ -1,0 +1,1988 @@
+{
+  "version": "4.9.3",
+  "rules": {
+    "AA_ASSERTION_OF_ARGUMENTS": {
+      "anchor": "aa-assertion-is-used-to-validate-an-argument-of-a-public-method-aa-assertion-of-arguments",
+      "category": "BAD_PRACTICE"
+    },
+    "AM_CREATES_EMPTY_JAR_FILE_ENTRY": {
+      "anchor": "am-creates-an-empty-jar-file-entry-am-creates-empty-jar-file-entry",
+      "category": "BAD_PRACTICE"
+    },
+    "AM_CREATES_EMPTY_ZIP_FILE_ENTRY": {
+      "anchor": "am-creates-an-empty-zip-file-entry-am-creates-empty-zip-file-entry",
+      "category": "BAD_PRACTICE"
+    },
+    "ASE_ASSERTION_WITH_SIDE_EFFECT": {
+      "anchor": "ase-expression-in-assertion-may-produce-a-side-effect-ase-assertion-with-side-effect",
+      "category": "SECURITY"
+    },
+    "ASE_ASSERTION_WITH_SIDE_EFFECT_METHOD": {
+      "anchor": "ase-method-invoked-in-assertion-may-produce-a-side-effect-ase-assertion-with-side-effect-method",
+      "category": "SECURITY"
+    },
+    "AT_NONATOMIC_64BIT_PRIMITIVE": {
+      "anchor": "at-this-write-of-this-64-bit-primitive-variable-may-not-atomic-at-nonatomic-64bit-primitive",
+      "category": "MT_CORRECTNESS"
+    },
+    "AT_NONATOMIC_OPERATIONS_ON_SHARED_VARIABLE": {
+      "anchor": "at-operation-on-shared-variable-is-not-atomic-at-nonatomic-operations-on-shared-variable",
+      "category": "MT_CORRECTNESS"
+    },
+    "AT_OPERATION_SEQUENCE_ON_CONCURRENT_ABSTRACTION": {
+      "anchor": "at-sequence-of-calls-to-concurrent-abstraction-may-not-be-atomic-at-operation-sequence-on-concurrent-abstraction",
+      "category": "MT_CORRECTNESS"
+    },
+    "AT_STALE_THREAD_WRITE_OF_PRIMITIVE": {
+      "anchor": "at-this-write-of-this-shared-primitive-variable-may-not-be-visible-to-other-threads-at-stale-thread-write-of-primitive",
+      "category": "MT_CORRECTNESS"
+    },
+    "AT_UNSAFE_RESOURCE_ACCESS_IN_THREAD": {
+      "anchor": "at-operation-on-resource-is-not-safe-in-a-multithreaded-context-at-unsafe-resource-access-in-thread",
+      "category": "MT_CORRECTNESS"
+    },
+    "BAC_BAD_APPLET_CONSTRUCTOR": {
+      "anchor": "bac-bad-applet-constructor-relies-on-uninitialized-appletstub-bac-bad-applet-constructor",
+      "category": "CORRECTNESS"
+    },
+    "BC_BAD_CAST_TO_ABSTRACT_COLLECTION": {
+      "anchor": "bc-questionable-cast-to-abstract-collection-bc-bad-cast-to-abstract-collection",
+      "category": "STYLE"
+    },
+    "BC_BAD_CAST_TO_CONCRETE_COLLECTION": {
+      "anchor": "bc-questionable-cast-to-concrete-collection-bc-bad-cast-to-concrete-collection",
+      "category": "STYLE"
+    },
+    "BC_EQUALS_METHOD_SHOULD_WORK_FOR_ALL_OBJECTS": {
+      "anchor": "bc-equals-method-should-not-assume-anything-about-the-type-of-its-argument-bc-equals-method-should-work-for-all-objects",
+      "category": "BAD_PRACTICE"
+    },
+    "BC_IMPOSSIBLE_CAST": {
+      "anchor": "bc-impossible-cast-bc-impossible-cast",
+      "category": "CORRECTNESS"
+    },
+    "BC_IMPOSSIBLE_CAST_PRIMITIVE_ARRAY": {
+      "anchor": "bc-impossible-cast-involving-primitive-array-bc-impossible-cast-primitive-array",
+      "category": "CORRECTNESS"
+    },
+    "BC_IMPOSSIBLE_DOWNCAST": {
+      "anchor": "bc-impossible-downcast-bc-impossible-downcast",
+      "category": "CORRECTNESS"
+    },
+    "BC_IMPOSSIBLE_DOWNCAST_OF_TOARRAY": {
+      "anchor": "bc-impossible-downcast-of-toarray-result-bc-impossible-downcast-of-toarray",
+      "category": "CORRECTNESS"
+    },
+    "BC_IMPOSSIBLE_INSTANCEOF": {
+      "anchor": "bc-instanceof-will-always-return-false-bc-impossible-instanceof",
+      "category": "CORRECTNESS"
+    },
+    "BC_UNCONFIRMED_CAST": {
+      "anchor": "bc-unchecked-unconfirmed-cast-bc-unconfirmed-cast",
+      "category": "STYLE"
+    },
+    "BC_UNCONFIRMED_CAST_OF_RETURN_VALUE": {
+      "anchor": "bc-unchecked-unconfirmed-cast-of-return-value-from-method-bc-unconfirmed-cast-of-return-value",
+      "category": "STYLE"
+    },
+    "BC_VACUOUS_INSTANCEOF": {
+      "anchor": "bc-instanceof-will-always-return-true-bc-vacuous-instanceof",
+      "category": "STYLE"
+    },
+    "BIT_ADD_OF_SIGNED_BYTE": {
+      "anchor": "bit-bitwise-add-of-signed-byte-value-bit-add-of-signed-byte",
+      "category": "CORRECTNESS"
+    },
+    "BIT_AND": { "anchor": "bit-incompatible-bit-masks-bit-and", "category": "CORRECTNESS" },
+    "BIT_AND_ZZ": { "anchor": "bit-check-to-see-if-0-0-bit-and-zz", "category": "CORRECTNESS" },
+    "BIT_IOR": { "anchor": "bit-incompatible-bit-masks-bit-ior", "category": "CORRECTNESS" },
+    "BIT_IOR_OF_SIGNED_BYTE": {
+      "anchor": "bit-bitwise-or-of-signed-byte-value-bit-ior-of-signed-byte",
+      "category": "CORRECTNESS"
+    },
+    "BIT_SIGNED_CHECK": {
+      "anchor": "bit-check-for-sign-of-bitwise-operation-bit-signed-check",
+      "category": "BAD_PRACTICE"
+    },
+    "BIT_SIGNED_CHECK_HIGH_BIT": {
+      "anchor": "bit-check-for-sign-of-bitwise-operation-involving-negative-number-bit-signed-check-high-bit",
+      "category": "CORRECTNESS"
+    },
+    "BOA_BADLY_OVERRIDDEN_ADAPTER": {
+      "anchor": "boa-class-overrides-a-method-implemented-in-super-class-adapter-wrongly-boa-badly-overridden-adapter",
+      "category": "CORRECTNESS"
+    },
+    "BSHIFT_WRONG_ADD_PRIORITY": {
+      "anchor": "bshift-possible-bad-parsing-of-shift-operation-bshift-wrong-add-priority",
+      "category": "CORRECTNESS"
+    },
+    "BX_BOXING_IMMEDIATELY_UNBOXED": {
+      "anchor": "bx-primitive-value-is-boxed-and-then-immediately-unboxed-bx-boxing-immediately-unboxed",
+      "category": "PERFORMANCE"
+    },
+    "BX_BOXING_IMMEDIATELY_UNBOXED_TO_PERFORM_COERCION": {
+      "anchor": "bx-primitive-value-is-boxed-then-unboxed-to-perform-primitive-coercion-bx-boxing-immediately-unboxed-to-perform-coercion",
+      "category": "PERFORMANCE"
+    },
+    "BX_UNBOXED_AND_COERCED_FOR_TERNARY_OPERATOR": {
+      "anchor": "bx-primitive-value-is-unboxed-and-coerced-for-ternary-operator-bx-unboxed-and-coerced-for-ternary-operator",
+      "category": "PERFORMANCE"
+    },
+    "BX_UNBOXING_IMMEDIATELY_REBOXED": {
+      "anchor": "bx-boxed-value-is-unboxed-and-then-immediately-reboxed-bx-unboxing-immediately-reboxed",
+      "category": "PERFORMANCE"
+    },
+    "CAA_COVARIANT_ARRAY_ELEMENT_STORE": {
+      "anchor": "caa-possibly-incompatible-element-is-stored-in-covariant-array-caa-covariant-array-element-store",
+      "category": "CORRECTNESS"
+    },
+    "CAA_COVARIANT_ARRAY_FIELD": {
+      "anchor": "caa-covariant-array-assignment-to-a-field-caa-covariant-array-field",
+      "category": "STYLE"
+    },
+    "CAA_COVARIANT_ARRAY_LOCAL": {
+      "anchor": "caa-covariant-array-assignment-to-a-local-variable-caa-covariant-array-local",
+      "category": "STYLE"
+    },
+    "CAA_COVARIANT_ARRAY_RETURN": {
+      "anchor": "caa-covariant-array-is-returned-from-the-method-caa-covariant-array-return",
+      "category": "STYLE"
+    },
+    "CD_CIRCULAR_DEPENDENCY": {
+      "anchor": "cd-test-for-circular-dependencies-among-classes-cd-circular-dependency",
+      "category": "STYLE"
+    },
+    "CI_CONFUSED_INHERITANCE": {
+      "anchor": "ci-class-is-final-but-declares-protected-field-ci-confused-inheritance",
+      "category": "STYLE"
+    },
+    "CNT_ROUGH_CONSTANT_VALUE": {
+      "anchor": "cnt-rough-value-of-known-constant-found-cnt-rough-constant-value",
+      "category": "BAD_PRACTICE"
+    },
+    "CN_IDIOM": {
+      "anchor": "cn-class-implements-cloneable-but-does-not-define-or-use-clone-method-cn-idiom",
+      "category": "BAD_PRACTICE"
+    },
+    "CN_IDIOM_NO_SUPER_CALL": {
+      "anchor": "cn-clone-method-does-not-call-super-clone-cn-idiom-no-super-call",
+      "category": "BAD_PRACTICE"
+    },
+    "CN_IMPLEMENTS_CLONE_BUT_NOT_CLONEABLE": {
+      "anchor": "cn-class-defines-clone-but-doesn-t-implement-cloneable-cn-implements-clone-but-not-cloneable",
+      "category": "BAD_PRACTICE"
+    },
+    "CO_ABSTRACT_SELF": {
+      "anchor": "co-abstract-class-defines-covariant-compareto-method-co-abstract-self",
+      "category": "BAD_PRACTICE"
+    },
+    "CO_COMPARETO_INCORRECT_FLOATING": {
+      "anchor": "co-compareto-compare-incorrectly-handles-float-or-double-value-co-compareto-incorrect-floating",
+      "category": "BAD_PRACTICE"
+    },
+    "CO_COMPARETO_RESULTS_MIN_VALUE": {
+      "anchor": "co-compareto-compare-returns-integer-min-value-co-compareto-results-min-value",
+      "category": "BAD_PRACTICE"
+    },
+    "CO_SELF_NO_OBJECT": {
+      "anchor": "co-covariant-compareto-method-defined-co-self-no-object",
+      "category": "BAD_PRACTICE"
+    },
+    "CT_CONSTRUCTOR_THROW": {
+      "anchor": "ct-be-wary-of-letting-constructors-throw-exceptions-ct-constructor-throw",
+      "category": "BAD_PRACTICE"
+    },
+    "DB_DUPLICATE_BRANCHES": {
+      "anchor": "db-method-uses-the-same-code-for-two-branches-db-duplicate-branches",
+      "category": "STYLE"
+    },
+    "DB_DUPLICATE_SWITCH_CLAUSES": {
+      "anchor": "db-method-uses-the-same-code-for-two-switch-clauses-db-duplicate-switch-clauses",
+      "category": "STYLE"
+    },
+    "DCN_NULLPOINTER_EXCEPTION": {
+      "anchor": "dcn-nullpointerexception-caught-dcn-nullpointer-exception",
+      "category": "STYLE"
+    },
+    "DC_DOUBLECHECK": {
+      "anchor": "dc-possible-double-check-of-field-dc-doublecheck",
+      "category": "MT_CORRECTNESS"
+    },
+    "DC_PARTIALLY_CONSTRUCTED": {
+      "anchor": "dc-possible-exposure-of-partially-initialized-object-dc-partially-constructed",
+      "category": "MT_CORRECTNESS"
+    },
+    "DE_MIGHT_DROP": {
+      "anchor": "de-method-might-drop-exception-de-might-drop",
+      "category": "BAD_PRACTICE"
+    },
+    "DE_MIGHT_IGNORE": {
+      "anchor": "de-method-might-ignore-exception-de-might-ignore",
+      "category": "BAD_PRACTICE"
+    },
+    "DLS_DEAD_LOCAL_INCREMENT_IN_RETURN": {
+      "anchor": "dls-useless-increment-in-return-statement-dls-dead-local-increment-in-return",
+      "category": "CORRECTNESS"
+    },
+    "DLS_DEAD_LOCAL_STORE": {
+      "anchor": "dls-dead-store-to-local-variable-dls-dead-local-store",
+      "category": "STYLE"
+    },
+    "DLS_DEAD_LOCAL_STORE_IN_RETURN": {
+      "anchor": "dls-useless-assignment-in-return-statement-dls-dead-local-store-in-return",
+      "category": "STYLE"
+    },
+    "DLS_DEAD_LOCAL_STORE_OF_NULL": {
+      "anchor": "dls-dead-store-of-null-to-local-variable-dls-dead-local-store-of-null",
+      "category": "STYLE"
+    },
+    "DLS_DEAD_LOCAL_STORE_SHADOWS_FIELD": {
+      "anchor": "dls-dead-store-to-local-variable-that-shadows-field-dls-dead-local-store-shadows-field",
+      "category": "STYLE"
+    },
+    "DLS_DEAD_STORE_OF_CLASS_LITERAL": {
+      "anchor": "dls-dead-store-of-class-literal-dls-dead-store-of-class-literal",
+      "category": "CORRECTNESS"
+    },
+    "DLS_OVERWRITTEN_INCREMENT": {
+      "anchor": "dls-overwritten-increment-dls-overwritten-increment",
+      "category": "CORRECTNESS"
+    },
+    "DL_SYNCHRONIZATION_ON_BOOLEAN": {
+      "anchor": "dl-synchronization-on-boolean-dl-synchronization-on-boolean",
+      "category": "MT_CORRECTNESS"
+    },
+    "DL_SYNCHRONIZATION_ON_BOXED_PRIMITIVE": {
+      "anchor": "dl-synchronization-on-boxed-primitive-dl-synchronization-on-boxed-primitive",
+      "category": "MT_CORRECTNESS"
+    },
+    "DL_SYNCHRONIZATION_ON_INTERNED_STRING": {
+      "anchor": "dl-synchronization-on-interned-string-dl-synchronization-on-interned-string",
+      "category": "MT_CORRECTNESS"
+    },
+    "DL_SYNCHRONIZATION_ON_SHARED_CONSTANT": {
+      "anchor": "dl-synchronization-on-string-literal-dl-synchronization-on-shared-constant",
+      "category": "MT_CORRECTNESS"
+    },
+    "DL_SYNCHRONIZATION_ON_UNSHARED_BOXED_PRIMITIVE": {
+      "anchor": "dl-synchronization-on-boxed-primitive-values-dl-synchronization-on-unshared-boxed-primitive",
+      "category": "MT_CORRECTNESS"
+    },
+    "DMI_ANNOTATION_IS_NOT_VISIBLE_TO_REFLECTION": {
+      "anchor": "dm-cannot-use-reflection-to-check-for-presence-of-annotation-without-runtime-retention-dmi-annotation-is-not-visible-to-reflection",
+      "category": "CORRECTNESS"
+    },
+    "DMI_ARGUMENTS_WRONG_ORDER": {
+      "anchor": "dmi-reversed-method-arguments-dmi-arguments-wrong-order",
+      "category": "CORRECTNESS"
+    },
+    "DMI_BAD_MONTH": {
+      "anchor": "dmi-bad-constant-value-for-month-dmi-bad-month",
+      "category": "CORRECTNESS"
+    },
+    "DMI_BIGDECIMAL_CONSTRUCTED_FROM_DOUBLE": {
+      "anchor": "dmi-bigdecimal-constructed-from-double-that-isn-t-represented-precisely-dmi-bigdecimal-constructed-from-double",
+      "category": "CORRECTNESS"
+    },
+    "DMI_BLOCKING_METHODS_ON_URL": {
+      "anchor": "dm-the-equals-and-hashcode-methods-of-url-are-blocking-dmi-blocking-methods-on-url",
+      "category": "PERFORMANCE"
+    },
+    "DMI_CALLING_NEXT_FROM_HASNEXT": {
+      "anchor": "dmi-hasnext-method-invokes-next-dmi-calling-next-from-hasnext",
+      "category": "CORRECTNESS"
+    },
+    "DMI_COLLECTIONS_SHOULD_NOT_CONTAIN_THEMSELVES": {
+      "anchor": "dmi-collections-should-not-contain-themselves-dmi-collections-should-not-contain-themselves",
+      "category": "CORRECTNESS"
+    },
+    "DMI_COLLECTION_OF_URLS": {
+      "anchor": "dm-maps-and-sets-of-urls-can-be-performance-hogs-dmi-collection-of-urls",
+      "category": "PERFORMANCE"
+    },
+    "DMI_CONSTANT_DB_PASSWORD": {
+      "anchor": "dm-hardcoded-constant-database-password-dmi-constant-db-password",
+      "category": "SECURITY"
+    },
+    "DMI_DOH": {
+      "anchor": "dmi-d-oh-a-nonsensical-method-invocation-dmi-doh",
+      "category": "CORRECTNESS"
+    },
+    "DMI_EMPTY_DB_PASSWORD": {
+      "anchor": "dm-empty-database-password-dmi-empty-db-password",
+      "category": "SECURITY"
+    },
+    "DMI_ENTRY_SETS_MAY_REUSE_ENTRY_OBJECTS": {
+      "anchor": "dmi-adding-elements-of-an-entry-set-may-fail-due-to-reuse-of-entry-objects-dmi-entry-sets-may-reuse-entry-objects",
+      "category": "BAD_PRACTICE"
+    },
+    "DMI_FUTILE_ATTEMPT_TO_CHANGE_MAXPOOL_SIZE_OF_SCHEDULED_THREAD_POOL_EXECUTOR": {
+      "anchor": "dm-futile-attempt-to-change-max-pool-size-of-scheduledthreadpoolexecutor-dmi-futile-attempt-to-change-maxpool-size-of-scheduled-thread-pool-executor",
+      "category": "CORRECTNESS"
+    },
+    "DMI_HARDCODED_ABSOLUTE_FILENAME": {
+      "anchor": "dmi-code-contains-a-hard-coded-reference-to-an-absolute-pathname-dmi-hardcoded-absolute-filename",
+      "category": "STYLE"
+    },
+    "DMI_INVOKING_HASHCODE_ON_ARRAY": {
+      "anchor": "dmi-invocation-of-hashcode-on-an-array-dmi-invoking-hashcode-on-array",
+      "category": "CORRECTNESS"
+    },
+    "DMI_INVOKING_TOSTRING_ON_ANONYMOUS_ARRAY": {
+      "anchor": "useless-string-invocation-of-tostring-on-an-unnamed-array-dmi-invoking-tostring-on-anonymous-array",
+      "category": "CORRECTNESS"
+    },
+    "DMI_INVOKING_TOSTRING_ON_ARRAY": {
+      "anchor": "useless-string-invocation-of-tostring-on-an-array-dmi-invoking-tostring-on-array",
+      "category": "CORRECTNESS"
+    },
+    "DMI_LONG_BITS_TO_DOUBLE_INVOKED_ON_INT": {
+      "anchor": "dmi-double-longbitstodouble-invoked-on-an-int-dmi-long-bits-to-double-invoked-on-int",
+      "category": "CORRECTNESS"
+    },
+    "DMI_NONSERIALIZABLE_OBJECT_WRITTEN": {
+      "anchor": "dmi-non-serializable-object-written-to-objectoutput-dmi-nonserializable-object-written",
+      "category": "STYLE"
+    },
+    "DMI_RANDOM_USED_ONLY_ONCE": {
+      "anchor": "dmi-random-object-created-and-used-only-once-dmi-random-used-only-once",
+      "category": "BAD_PRACTICE"
+    },
+    "DMI_SCHEDULED_THREAD_POOL_EXECUTOR_WITH_ZERO_CORE_THREADS": {
+      "anchor": "dm-creation-of-scheduledthreadpoolexecutor-with-zero-core-threads-dmi-scheduled-thread-pool-executor-with-zero-core-threads",
+      "category": "CORRECTNESS"
+    },
+    "DMI_THREAD_PASSED_WHERE_RUNNABLE_EXPECTED": {
+      "anchor": "dm-thread-passed-where-runnable-expected-dmi-thread-passed-where-runnable-expected",
+      "category": "STYLE"
+    },
+    "DMI_UNSUPPORTED_METHOD": {
+      "anchor": "dm-call-to-unsupported-method-dmi-unsupported-method",
+      "category": "STYLE"
+    },
+    "DMI_USELESS_SUBSTRING": {
+      "anchor": "dmi-invocation-of-substring-0-which-returns-the-original-value-dmi-useless-substring",
+      "category": "STYLE"
+    },
+    "DMI_USING_REMOVEALL_TO_CLEAR_COLLECTION": {
+      "anchor": "dmi-don-t-use-removeall-to-clear-a-collection-dmi-using-removeall-to-clear-collection",
+      "category": "BAD_PRACTICE"
+    },
+    "DMI_VACUOUS_CALL_TO_EASYMOCK_METHOD": {
+      "anchor": "dm-useless-vacuous-call-to-easymock-method-dmi-vacuous-call-to-easymock-method",
+      "category": "CORRECTNESS"
+    },
+    "DMI_VACUOUS_SELF_COLLECTION_CALL": {
+      "anchor": "dmi-vacuous-call-to-collections-dmi-vacuous-self-collection-call",
+      "category": "CORRECTNESS"
+    },
+    "DM_BOOLEAN_CTOR": {
+      "anchor": "dm-method-invokes-inefficient-boolean-constructor-use-boolean-valueof-instead-dm-boolean-ctor",
+      "category": "PERFORMANCE"
+    },
+    "DM_BOXED_PRIMITIVE_FOR_COMPARE": {
+      "anchor": "bx-boxing-a-primitive-to-compare-dm-boxed-primitive-for-compare",
+      "category": "PERFORMANCE"
+    },
+    "DM_BOXED_PRIMITIVE_FOR_PARSING": {
+      "anchor": "bx-boxing-unboxing-to-parse-a-primitive-dm-boxed-primitive-for-parsing",
+      "category": "PERFORMANCE"
+    },
+    "DM_BOXED_PRIMITIVE_TOSTRING": {
+      "anchor": "bx-method-allocates-a-boxed-primitive-just-to-call-tostring-dm-boxed-primitive-tostring",
+      "category": "PERFORMANCE"
+    },
+    "DM_CONVERT_CASE": {
+      "anchor": "dm-consider-using-locale-parameterized-version-of-invoked-method-dm-convert-case",
+      "category": "I18N"
+    },
+    "DM_DEFAULT_ENCODING": {
+      "anchor": "dm-reliance-on-default-encoding-dm-default-encoding",
+      "category": "I18N"
+    },
+    "DM_EXIT": { "anchor": "dm-method-invokes-system-exit-dm-exit", "category": "BAD_PRACTICE" },
+    "DM_FP_NUMBER_CTOR": {
+      "anchor": "bx-method-invokes-inefficient-floating-point-number-constructor-use-static-valueof-instead-dm-fp-number-ctor",
+      "category": "PERFORMANCE"
+    },
+    "DM_GC": {
+      "anchor": "dm-explicit-garbage-collection-extremely-dubious-except-in-benchmarking-code-dm-gc",
+      "category": "PERFORMANCE"
+    },
+    "DM_INVALID_MIN_MAX": {
+      "anchor": "dm-incorrect-combination-of-math-max-and-math-min-dm-invalid-min-max",
+      "category": "CORRECTNESS"
+    },
+    "DM_MONITOR_WAIT_ON_CONDITION": {
+      "anchor": "dm-monitor-wait-called-on-condition-dm-monitor-wait-on-condition",
+      "category": "MT_CORRECTNESS"
+    },
+    "DM_NEW_FOR_GETCLASS": {
+      "anchor": "dm-method-allocates-an-object-only-to-get-the-class-object-dm-new-for-getclass",
+      "category": "PERFORMANCE"
+    },
+    "DM_NEXTINT_VIA_NEXTDOUBLE": {
+      "anchor": "dm-use-the-nextint-method-of-random-rather-than-nextdouble-to-generate-a-random-integer-dm-nextint-via-nextdouble",
+      "category": "PERFORMANCE"
+    },
+    "DM_NUMBER_CTOR": {
+      "anchor": "bx-method-invokes-inefficient-number-constructor-use-static-valueof-instead-dm-number-ctor",
+      "category": "PERFORMANCE"
+    },
+    "DM_RUN_FINALIZERS_ON_EXIT": {
+      "anchor": "dm-method-invokes-dangerous-method-runfinalizersonexit-dm-run-finalizers-on-exit",
+      "category": "BAD_PRACTICE"
+    },
+    "DM_STRING_CTOR": {
+      "anchor": "dm-method-invokes-inefficient-new-string-string-constructor-dm-string-ctor",
+      "category": "PERFORMANCE"
+    },
+    "DM_STRING_TOSTRING": {
+      "anchor": "dm-method-invokes-tostring-method-on-a-string-dm-string-tostring",
+      "category": "PERFORMANCE"
+    },
+    "DM_STRING_VOID_CTOR": {
+      "anchor": "dm-method-invokes-inefficient-new-string-constructor-dm-string-void-ctor",
+      "category": "PERFORMANCE"
+    },
+    "DM_USELESS_THREAD": {
+      "anchor": "dm-a-thread-was-created-using-the-default-empty-run-method-dm-useless-thread",
+      "category": "MT_CORRECTNESS"
+    },
+    "DP_CREATE_CLASSLOADER_INSIDE_DO_PRIVILEGED": {
+      "anchor": "dp-classloaders-should-only-be-created-inside-doprivileged-block-dp-create-classloader-inside-do-privileged",
+      "category": "MALICIOUS_CODE"
+    },
+    "DP_DO_INSIDE_DO_PRIVILEGED": {
+      "anchor": "dp-method-invoked-that-should-be-only-be-invoked-inside-a-doprivileged-block-dp-do-inside-do-privileged",
+      "category": "MALICIOUS_CODE"
+    },
+    "EC_ARRAY_AND_NONARRAY": {
+      "anchor": "ec-equals-used-to-compare-array-and-nonarray-ec-array-and-nonarray",
+      "category": "CORRECTNESS"
+    },
+    "EC_BAD_ARRAY_COMPARE": {
+      "anchor": "ec-invocation-of-equals-on-an-array-which-is-equivalent-to-ec-bad-array-compare",
+      "category": "CORRECTNESS"
+    },
+    "EC_INCOMPATIBLE_ARRAY_COMPARE": {
+      "anchor": "ec-equals-used-to-compare-incompatible-arrays-ec-incompatible-array-compare",
+      "category": "CORRECTNESS"
+    },
+    "EC_NULL_ARG": { "anchor": "ec-call-to-equals-null-ec-null-arg", "category": "CORRECTNESS" },
+    "EC_UNRELATED_CLASS_AND_INTERFACE": {
+      "anchor": "ec-call-to-equals-comparing-unrelated-class-and-interface-ec-unrelated-class-and-interface",
+      "category": "CORRECTNESS"
+    },
+    "EC_UNRELATED_INTERFACES": {
+      "anchor": "ec-call-to-equals-comparing-different-interface-types-ec-unrelated-interfaces",
+      "category": "CORRECTNESS"
+    },
+    "EC_UNRELATED_TYPES": {
+      "anchor": "ec-call-to-equals-comparing-different-types-ec-unrelated-types",
+      "category": "CORRECTNESS"
+    },
+    "EC_UNRELATED_TYPES_USING_POINTER_EQUALITY": {
+      "anchor": "ec-using-pointer-equality-to-compare-different-types-ec-unrelated-types-using-pointer-equality",
+      "category": "CORRECTNESS"
+    },
+    "EI_EXPOSE_BUF": {
+      "anchor": "ei-may-expose-internal-representation-by-returning-a-buffer-sharing-non-public-data-ei-expose-buf",
+      "category": "MALICIOUS_CODE"
+    },
+    "EI_EXPOSE_BUF2": {
+      "anchor": "ei2-may-expose-internal-representation-by-creating-a-buffer-which-incorporates-reference-to-array-ei-expose-buf2",
+      "category": "MALICIOUS_CODE"
+    },
+    "EI_EXPOSE_REP": {
+      "anchor": "ei-may-expose-internal-representation-by-returning-reference-to-mutable-object-ei-expose-rep",
+      "category": "MALICIOUS_CODE"
+    },
+    "EI_EXPOSE_REP2": {
+      "anchor": "ei2-may-expose-internal-representation-by-incorporating-reference-to-mutable-object-ei-expose-rep2",
+      "category": "MALICIOUS_CODE"
+    },
+    "EI_EXPOSE_STATIC_BUF2": {
+      "anchor": "ms-may-expose-internal-static-state-by-creating-a-buffer-which-stores-an-external-array-into-a-static-field-ei-expose-static-buf2",
+      "category": "MALICIOUS_CODE"
+    },
+    "EI_EXPOSE_STATIC_REP2": {
+      "anchor": "ms-may-expose-internal-static-state-by-storing-a-mutable-object-into-a-static-field-ei-expose-static-rep2",
+      "category": "MALICIOUS_CODE"
+    },
+    "ENV_USE_PROPERTY_INSTEAD_OF_ENV": {
+      "anchor": "env-it-is-preferable-to-use-portable-java-property-instead-of-environment-variable-env-use-property-instead-of-env",
+      "category": "BAD_PRACTICE"
+    },
+    "EOS_BAD_END_OF_STREAM_CHECK": {
+      "anchor": "eos-data-read-is-converted-before-comparison-to-1-eos-bad-end-of-stream-check",
+      "category": "CORRECTNESS"
+    },
+    "EQ_ABSTRACT_SELF": {
+      "anchor": "eq-abstract-class-defines-covariant-equals-method-eq-abstract-self",
+      "category": "BAD_PRACTICE"
+    },
+    "EQ_ALWAYS_FALSE": {
+      "anchor": "eq-equals-method-always-returns-false-eq-always-false",
+      "category": "CORRECTNESS"
+    },
+    "EQ_ALWAYS_TRUE": {
+      "anchor": "eq-equals-method-always-returns-true-eq-always-true",
+      "category": "CORRECTNESS"
+    },
+    "EQ_CHECK_FOR_OPERAND_NOT_COMPATIBLE_WITH_THIS": {
+      "anchor": "eq-equals-checks-for-incompatible-operand-eq-check-for-operand-not-compatible-with-this",
+      "category": "BAD_PRACTICE"
+    },
+    "EQ_COMPARETO_USE_OBJECT_EQUALS": {
+      "anchor": "eq-class-defines-compareto-and-uses-object-equals-eq-compareto-use-object-equals",
+      "category": "BAD_PRACTICE"
+    },
+    "EQ_COMPARING_CLASS_NAMES": {
+      "anchor": "eq-equals-method-compares-class-names-rather-than-class-objects-eq-comparing-class-names",
+      "category": "CORRECTNESS"
+    },
+    "EQ_DOESNT_OVERRIDE_EQUALS": {
+      "anchor": "eq-class-doesn-t-override-equals-in-superclass-eq-doesnt-override-equals",
+      "category": "STYLE"
+    },
+    "EQ_DONT_DEFINE_EQUALS_FOR_ENUM": {
+      "anchor": "eq-covariant-equals-method-defined-for-enum-eq-dont-define-equals-for-enum",
+      "category": "CORRECTNESS"
+    },
+    "EQ_GETCLASS_AND_CLASS_CONSTANT": {
+      "anchor": "eq-equals-method-fails-for-subtypes-eq-getclass-and-class-constant",
+      "category": "BAD_PRACTICE"
+    },
+    "EQ_OTHER_NO_OBJECT": {
+      "anchor": "eq-equals-method-defined-that-doesn-t-override-equals-object-eq-other-no-object",
+      "category": "CORRECTNESS"
+    },
+    "EQ_OTHER_USE_OBJECT": {
+      "anchor": "eq-equals-method-defined-that-doesn-t-override-object-equals-object-eq-other-use-object",
+      "category": "CORRECTNESS"
+    },
+    "EQ_OVERRIDING_EQUALS_NOT_SYMMETRIC": {
+      "anchor": "eq-equals-method-overrides-equals-in-superclass-and-may-not-be-symmetric-eq-overriding-equals-not-symmetric",
+      "category": "CORRECTNESS"
+    },
+    "EQ_SELF_NO_OBJECT": {
+      "anchor": "eq-covariant-equals-method-defined-eq-self-no-object",
+      "category": "BAD_PRACTICE"
+    },
+    "EQ_SELF_USE_OBJECT": {
+      "anchor": "eq-covariant-equals-method-defined-object-equals-object-inherited-eq-self-use-object",
+      "category": "CORRECTNESS"
+    },
+    "EQ_UNUSUAL": { "anchor": "eq-unusual-equals-method-eq-unusual", "category": "STYLE" },
+    "ES_COMPARING_PARAMETER_STRING_WITH_EQ": {
+      "anchor": "es-comparison-of-string-parameter-using-or-es-comparing-parameter-string-with-eq",
+      "category": "BAD_PRACTICE"
+    },
+    "ES_COMPARING_STRINGS_WITH_EQ": {
+      "anchor": "es-comparison-of-string-objects-using-or-es-comparing-strings-with-eq",
+      "category": "BAD_PRACTICE"
+    },
+    "ESync_EMPTY_SYNC": {
+      "anchor": "esync-empty-synchronized-block-esync-empty-sync",
+      "category": "MT_CORRECTNESS"
+    },
+    "FB_MISSING_EXPECTED_WARNING": {
+      "anchor": "fb-missing-expected-or-desired-warning-from-spotbugs-fb-missing-expected-warning",
+      "category": "CORRECTNESS"
+    },
+    "FB_UNEXPECTED_WARNING": {
+      "anchor": "fb-unexpected-undesired-warning-from-spotbugs-fb-unexpected-warning",
+      "category": "CORRECTNESS"
+    },
+    "FE_FLOATING_POINT_EQUALITY": {
+      "anchor": "fe-test-for-floating-point-equality-fe-floating-point-equality",
+      "category": "STYLE"
+    },
+    "FE_TEST_IF_EQUAL_TO_NOT_A_NUMBER": {
+      "anchor": "fe-doomed-test-for-equality-to-nan-fe-test-if-equal-to-not-a-number",
+      "category": "CORRECTNESS"
+    },
+    "FI_EMPTY": {
+      "anchor": "fi-empty-finalizer-should-be-deleted-fi-empty",
+      "category": "BAD_PRACTICE"
+    },
+    "FI_EXPLICIT_INVOCATION": {
+      "anchor": "fi-explicit-invocation-of-finalizer-fi-explicit-invocation",
+      "category": "BAD_PRACTICE"
+    },
+    "FI_FINALIZER_NULLS_FIELDS": {
+      "anchor": "fi-finalizer-nulls-fields-fi-finalizer-nulls-fields",
+      "category": "BAD_PRACTICE"
+    },
+    "FI_FINALIZER_ONLY_NULLS_FIELDS": {
+      "anchor": "fi-finalizer-only-nulls-fields-fi-finalizer-only-nulls-fields",
+      "category": "BAD_PRACTICE"
+    },
+    "FI_MISSING_SUPER_CALL": {
+      "anchor": "fi-finalizer-does-not-call-superclass-finalizer-fi-missing-super-call",
+      "category": "BAD_PRACTICE"
+    },
+    "FI_NULLIFY_SUPER": {
+      "anchor": "fi-finalizer-nullifies-superclass-finalizer-fi-nullify-super",
+      "category": "BAD_PRACTICE"
+    },
+    "FI_PUBLIC_SHOULD_BE_PROTECTED": {
+      "anchor": "fi-finalizer-should-be-protected-not-public-fi-public-should-be-protected",
+      "category": "MALICIOUS_CODE"
+    },
+    "FI_USELESS": {
+      "anchor": "fi-finalizer-does-nothing-but-call-superclass-finalizer-fi-useless",
+      "category": "BAD_PRACTICE"
+    },
+    "FL_FLOATS_AS_LOOP_COUNTERS": {
+      "anchor": "fl-do-not-use-floating-point-variables-as-loop-counters-fl-floats-as-loop-counters",
+      "category": "CORRECTNESS"
+    },
+    "FL_MATH_USING_FLOAT_PRECISION": {
+      "anchor": "fl-method-performs-math-using-floating-point-precision-fl-math-using-float-precision",
+      "category": "CORRECTNESS"
+    },
+    "FS_BAD_DATE_FORMAT_FLAG_COMBO": {
+      "anchor": "fs-date-format-strings-may-lead-to-unexpected-behavior-fs-bad-date-format-flag-combo",
+      "category": "BAD_PRACTICE"
+    },
+    "GC_UNCHECKED_TYPE_IN_GENERIC_CALL": {
+      "anchor": "gc-unchecked-type-in-generic-call-gc-unchecked-type-in-generic-call",
+      "category": "BAD_PRACTICE"
+    },
+    "GC_UNRELATED_TYPES": {
+      "anchor": "gc-no-relationship-between-generic-parameter-and-method-argument-gc-unrelated-types",
+      "category": "CORRECTNESS"
+    },
+    "HE_EQUALS_NO_HASHCODE": {
+      "anchor": "he-class-defines-equals-but-not-hashcode-he-equals-no-hashcode",
+      "category": "BAD_PRACTICE"
+    },
+    "HE_EQUALS_USE_HASHCODE": {
+      "anchor": "he-class-defines-equals-and-uses-object-hashcode-he-equals-use-hashcode",
+      "category": "BAD_PRACTICE"
+    },
+    "HE_HASHCODE_NO_EQUALS": {
+      "anchor": "he-class-defines-hashcode-but-not-equals-he-hashcode-no-equals",
+      "category": "BAD_PRACTICE"
+    },
+    "HE_HASHCODE_USE_OBJECT_EQUALS": {
+      "anchor": "he-class-defines-hashcode-and-uses-object-equals-he-hashcode-use-object-equals",
+      "category": "BAD_PRACTICE"
+    },
+    "HE_INHERITS_EQUALS_USE_HASHCODE": {
+      "anchor": "he-class-inherits-equals-and-uses-object-hashcode-he-inherits-equals-use-hashcode",
+      "category": "BAD_PRACTICE"
+    },
+    "HE_SIGNATURE_DECLARES_HASHING_OF_UNHASHABLE_CLASS": {
+      "anchor": "he-signature-declares-use-of-unhashable-class-in-hashed-construct-he-signature-declares-hashing-of-unhashable-class",
+      "category": "CORRECTNESS"
+    },
+    "HE_USE_OF_UNHASHABLE_CLASS": {
+      "anchor": "he-use-of-class-without-a-hashcode-method-in-a-hashed-data-structure-he-use-of-unhashable-class",
+      "category": "CORRECTNESS"
+    },
+    "HRS_REQUEST_PARAMETER_TO_COOKIE": {
+      "anchor": "hrs-http-cookie-formed-from-untrusted-input-hrs-request-parameter-to-cookie",
+      "category": "SECURITY"
+    },
+    "HRS_REQUEST_PARAMETER_TO_HTTP_HEADER": {
+      "anchor": "hrs-http-response-splitting-vulnerability-hrs-request-parameter-to-http-header",
+      "category": "SECURITY"
+    },
+    "HSC_HUGE_SHARED_STRING_CONSTANT": {
+      "anchor": "hsc-huge-string-constants-is-duplicated-across-multiple-class-files-hsc-huge-shared-string-constant",
+      "category": "PERFORMANCE"
+    },
+    "HSM_HIDING_METHOD": {
+      "anchor": "hsm-method-hiding-should-be-avoided-hsm-hiding-method",
+      "category": "CORRECTNESS"
+    },
+    "IA_AMBIGUOUS_INVOCATION_OF_INHERITED_OR_OUTER_METHOD": {
+      "anchor": "ia-potentially-ambiguous-invocation-of-either-an-inherited-or-outer-method-ia-ambiguous-invocation-of-inherited-or-outer-method",
+      "category": "STYLE"
+    },
+    "ICAST_BAD_SHIFT_AMOUNT": {
+      "anchor": "bshift-32-bit-int-shifted-by-an-amount-not-in-the-range-31-31-icast-bad-shift-amount",
+      "category": "CORRECTNESS"
+    },
+    "ICAST_IDIV_CAST_TO_DOUBLE": {
+      "anchor": "icast-integral-division-result-cast-to-double-or-float-icast-idiv-cast-to-double",
+      "category": "STYLE"
+    },
+    "ICAST_INTEGER_MULTIPLY_CAST_TO_LONG": {
+      "anchor": "icast-result-of-integer-multiplication-cast-to-long-icast-integer-multiply-cast-to-long",
+      "category": "STYLE"
+    },
+    "ICAST_INT_2_LONG_AS_INSTANT": {
+      "anchor": "icast-int-value-converted-to-long-and-used-as-absolute-time-icast-int-2-long-as-instant",
+      "category": "CORRECTNESS"
+    },
+    "ICAST_INT_CAST_TO_DOUBLE_PASSED_TO_CEIL": {
+      "anchor": "icast-integral-value-cast-to-double-and-then-passed-to-math-ceil-icast-int-cast-to-double-passed-to-ceil",
+      "category": "CORRECTNESS"
+    },
+    "ICAST_INT_CAST_TO_FLOAT_PASSED_TO_ROUND": {
+      "anchor": "icast-int-value-cast-to-float-and-then-passed-to-math-round-icast-int-cast-to-float-passed-to-round",
+      "category": "CORRECTNESS"
+    },
+    "ICAST_QUESTIONABLE_UNSIGNED_RIGHT_SHIFT": {
+      "anchor": "bshift-unsigned-right-shift-cast-to-short-byte-icast-questionable-unsigned-right-shift",
+      "category": "STYLE"
+    },
+    "IC_INIT_CIRCULARITY": {
+      "anchor": "ic-initialization-circularity-ic-init-circularity",
+      "category": "STYLE"
+    },
+    "IC_SUPERCLASS_USES_SUBCLASS_DURING_INITIALIZATION": {
+      "anchor": "ic-superclass-uses-subclass-during-initialization-ic-superclass-uses-subclass-during-initialization",
+      "category": "BAD_PRACTICE"
+    },
+    "IIL_ELEMENTS_GET_LENGTH_IN_LOOP": {
+      "anchor": "iil-nodelist-getlength-called-in-a-loop-iil-elements-get-length-in-loop",
+      "category": "PERFORMANCE"
+    },
+    "IIL_PATTERN_COMPILE_IN_LOOP": {
+      "anchor": "iil-method-calls-pattern-compile-in-a-loop-iil-pattern-compile-in-loop",
+      "category": "PERFORMANCE"
+    },
+    "IIL_PATTERN_COMPILE_IN_LOOP_INDIRECT": {
+      "anchor": "iil-method-compiles-the-regular-expression-in-a-loop-iil-pattern-compile-in-loop-indirect",
+      "category": "PERFORMANCE"
+    },
+    "IIL_PREPARE_STATEMENT_IN_LOOP": {
+      "anchor": "iil-method-calls-preparestatement-in-a-loop-iil-prepare-statement-in-loop",
+      "category": "PERFORMANCE"
+    },
+    "IIO_INEFFICIENT_INDEX_OF": {
+      "anchor": "iio-inefficient-use-of-string-indexof-string-iio-inefficient-index-of",
+      "category": "PERFORMANCE"
+    },
+    "IIO_INEFFICIENT_LAST_INDEX_OF": {
+      "anchor": "iio-inefficient-use-of-string-lastindexof-string-iio-inefficient-last-index-of",
+      "category": "PERFORMANCE"
+    },
+    "IJU_ASSERT_METHOD_INVOKED_FROM_RUN_METHOD": {
+      "anchor": "iju-junit-assertion-in-run-method-will-not-be-noticed-by-junit-iju-assert-method-invoked-from-run-method",
+      "category": "CORRECTNESS"
+    },
+    "IJU_BAD_SUITE_METHOD": {
+      "anchor": "iju-testcase-declares-a-bad-suite-method-iju-bad-suite-method",
+      "category": "CORRECTNESS"
+    },
+    "IJU_NO_TESTS": {
+      "anchor": "iju-testcase-has-no-tests-iju-no-tests",
+      "category": "CORRECTNESS"
+    },
+    "IJU_SETUP_NO_SUPER": {
+      "anchor": "iju-testcase-defines-setup-that-doesn-t-call-super-setup-iju-setup-no-super",
+      "category": "CORRECTNESS"
+    },
+    "IJU_SUITE_NOT_STATIC": {
+      "anchor": "iju-testcase-implements-a-non-static-suite-method-iju-suite-not-static",
+      "category": "CORRECTNESS"
+    },
+    "IJU_TEARDOWN_NO_SUPER": {
+      "anchor": "iju-testcase-defines-teardown-that-doesn-t-call-super-teardown-iju-teardown-no-super",
+      "category": "CORRECTNESS"
+    },
+    "IL_CONTAINER_ADDED_TO_ITSELF": {
+      "anchor": "il-a-collection-is-added-to-itself-il-container-added-to-itself",
+      "category": "CORRECTNESS"
+    },
+    "IL_INFINITE_LOOP": {
+      "anchor": "il-an-apparent-infinite-loop-il-infinite-loop",
+      "category": "CORRECTNESS"
+    },
+    "IL_INFINITE_RECURSIVE_LOOP": {
+      "anchor": "il-an-apparent-infinite-recursive-loop-il-infinite-recursive-loop",
+      "category": "CORRECTNESS"
+    },
+    "IMA_INEFFICIENT_MEMBER_ACCESS": {
+      "anchor": "ima-method-accesses-a-private-member-variable-of-owning-class-ima-inefficient-member-access",
+      "category": "PERFORMANCE"
+    },
+    "IMSE_DONT_CATCH_IMSE": {
+      "anchor": "imse-dubious-catching-of-illegalmonitorstateexception-imse-dont-catch-imse",
+      "category": "BAD_PRACTICE"
+    },
+    "IM_AVERAGE_COMPUTATION_COULD_OVERFLOW": {
+      "anchor": "im-computation-of-average-could-overflow-im-average-computation-could-overflow",
+      "category": "STYLE"
+    },
+    "IM_BAD_CHECK_FOR_ODD": {
+      "anchor": "im-check-for-oddness-that-won-t-work-for-negative-numbers-im-bad-check-for-odd",
+      "category": "STYLE"
+    },
+    "IM_MULTIPLYING_RESULT_OF_IREM": {
+      "anchor": "im-integer-multiply-of-result-of-integer-remainder-im-multiplying-result-of-irem",
+      "category": "CORRECTNESS"
+    },
+    "INT_BAD_COMPARISON_WITH_INT_VALUE": {
+      "anchor": "int-bad-comparison-of-int-value-with-long-constant-int-bad-comparison-with-int-value",
+      "category": "CORRECTNESS"
+    },
+    "INT_BAD_COMPARISON_WITH_NONNEGATIVE_VALUE": {
+      "anchor": "int-bad-comparison-of-nonnegative-value-with-negative-constant-or-zero-int-bad-comparison-with-nonnegative-value",
+      "category": "CORRECTNESS"
+    },
+    "INT_BAD_COMPARISON_WITH_SIGNED_BYTE": {
+      "anchor": "int-bad-comparison-of-signed-byte-int-bad-comparison-with-signed-byte",
+      "category": "CORRECTNESS"
+    },
+    "INT_BAD_REM_BY_1": {
+      "anchor": "int-integer-remainder-modulo-1-int-bad-rem-by-1",
+      "category": "STYLE"
+    },
+    "INT_VACUOUS_BIT_OPERATION": {
+      "anchor": "int-vacuous-bit-mask-operation-on-integer-value-int-vacuous-bit-operation",
+      "category": "STYLE"
+    },
+    "INT_VACUOUS_COMPARISON": {
+      "anchor": "int-vacuous-comparison-of-integer-value-int-vacuous-comparison",
+      "category": "STYLE"
+    },
+    "IO_APPENDING_TO_OBJECT_OUTPUT_STREAM": {
+      "anchor": "io-doomed-attempt-to-append-to-an-object-output-stream-io-appending-to-object-output-stream",
+      "category": "CORRECTNESS"
+    },
+    "IP_PARAMETER_IS_DEAD_BUT_OVERWRITTEN": {
+      "anchor": "ip-a-parameter-is-dead-upon-entry-to-a-method-but-overwritten-ip-parameter-is-dead-but-overwritten",
+      "category": "CORRECTNESS"
+    },
+    "IS2_INCONSISTENT_SYNC": {
+      "anchor": "is-inconsistent-synchronization-is2-inconsistent-sync",
+      "category": "MT_CORRECTNESS"
+    },
+    "ISC_INSTANTIATE_STATIC_CLASS": {
+      "anchor": "isc-needless-instantiation-of-class-that-only-supplies-static-methods-isc-instantiate-static-class",
+      "category": "BAD_PRACTICE"
+    },
+    "IS_FIELD_NOT_GUARDED": {
+      "anchor": "is-field-not-guarded-against-concurrent-access-is-field-not-guarded",
+      "category": "MT_CORRECTNESS"
+    },
+    "IS_INCONSISTENT_SYNC": {
+      "anchor": "is-inconsistent-synchronization-is-inconsistent-sync",
+      "category": "MT_CORRECTNESS"
+    },
+    "ITA_INEFFICIENT_TO_ARRAY": {
+      "anchor": "ita-method-uses-toarray-with-zero-length-array-argument-ita-inefficient-to-array",
+      "category": "PERFORMANCE"
+    },
+    "IT_NO_SUCH_ELEMENT": {
+      "anchor": "it-iterator-next-method-cannot-throw-nosuchelementexception-it-no-such-element",
+      "category": "BAD_PRACTICE"
+    },
+    "J2EE_STORE_OF_NON_SERIALIZABLE_OBJECT_INTO_SESSION": {
+      "anchor": "j2ee-store-of-non-serializable-object-into-httpsession-j2ee-store-of-non-serializable-object-into-session",
+      "category": "BAD_PRACTICE"
+    },
+    "JCIP_FIELD_ISNT_FINAL_IN_IMMUTABLE_CLASS": {
+      "anchor": "jcip-fields-of-immutable-classes-should-be-final-jcip-field-isnt-final-in-immutable-class",
+      "category": "BAD_PRACTICE"
+    },
+    "JLM_JSR166_LOCK_MONITORENTER": {
+      "anchor": "jlm-synchronization-performed-on-lock-jlm-jsr166-lock-monitorenter",
+      "category": "MT_CORRECTNESS"
+    },
+    "JLM_JSR166_UTILCONCURRENT_MONITORENTER": {
+      "anchor": "jlm-synchronization-performed-on-util-concurrent-instance-jlm-jsr166-utilconcurrent-monitorenter",
+      "category": "MT_CORRECTNESS"
+    },
+    "JML_JSR166_CALLING_WAIT_RATHER_THAN_AWAIT": {
+      "anchor": "jlm-using-monitor-style-wait-methods-on-util-concurrent-abstraction-jml-jsr166-calling-wait-rather-than-await",
+      "category": "MT_CORRECTNESS"
+    },
+    "JUA_DONT_ASSERT_INSTANCEOF_IN_TESTS": {
+      "anchor": "jua-asserting-value-of-instanceof-in-tests-is-not-recommended-jua-dont-assert-instanceof-in-tests",
+      "category": "BAD_PRACTICE"
+    },
+    "LG_LOST_LOGGER_DUE_TO_WEAK_REFERENCE": {
+      "anchor": "lg-potential-lost-logger-changes-due-to-weak-reference-in-openjdk-lg-lost-logger-due-to-weak-reference",
+      "category": "EXPERIMENTAL"
+    },
+    "LI_LAZY_INIT_STATIC": {
+      "anchor": "li-incorrect-lazy-initialization-of-static-field-li-lazy-init-static",
+      "category": "MT_CORRECTNESS"
+    },
+    "LI_LAZY_INIT_UPDATE_STATIC": {
+      "anchor": "li-incorrect-lazy-initialization-and-update-of-static-field-li-lazy-init-update-static",
+      "category": "MT_CORRECTNESS"
+    },
+    "MC_OVERRIDABLE_METHOD_CALL_IN_CLONE": {
+      "anchor": "mc-an-overridable-method-is-called-from-the-clone-method-mc-overridable-method-call-in-clone",
+      "category": "MALICIOUS_CODE"
+    },
+    "MC_OVERRIDABLE_METHOD_CALL_IN_CONSTRUCTOR": {
+      "anchor": "mc-an-overridable-method-is-called-from-a-constructor-mc-overridable-method-call-in-constructor",
+      "category": "MALICIOUS_CODE"
+    },
+    "MC_OVERRIDABLE_METHOD_CALL_IN_READ_OBJECT": {
+      "anchor": "mc-an-overridable-method-is-called-from-the-readobject-method-mc-overridable-method-call-in-read-object",
+      "category": "MALICIOUS_CODE"
+    },
+    "ME_ENUM_FIELD_SETTER": {
+      "anchor": "me-public-enum-method-unconditionally-sets-its-field-me-enum-field-setter",
+      "category": "BAD_PRACTICE"
+    },
+    "ME_MUTABLE_ENUM_FIELD": {
+      "anchor": "me-enum-field-is-public-and-mutable-me-mutable-enum-field",
+      "category": "BAD_PRACTICE"
+    },
+    "MF_CLASS_MASKS_FIELD": {
+      "anchor": "mf-class-defines-field-that-masks-a-superclass-field-mf-class-masks-field",
+      "category": "CORRECTNESS"
+    },
+    "MF_METHOD_MASKS_FIELD": {
+      "anchor": "mf-method-defines-a-variable-that-obscures-a-field-mf-method-masks-field",
+      "category": "CORRECTNESS"
+    },
+    "ML_SYNC_ON_FIELD_TO_GUARD_CHANGING_THAT_FIELD": {
+      "anchor": "ml-synchronization-on-field-in-futile-attempt-to-guard-that-field-ml-sync-on-field-to-guard-changing-that-field",
+      "category": "MT_CORRECTNESS"
+    },
+    "ML_SYNC_ON_UPDATED_FIELD": {
+      "anchor": "ml-method-synchronizes-on-an-updated-field-ml-sync-on-updated-field",
+      "category": "MT_CORRECTNESS"
+    },
+    "MSF_MUTABLE_SERVLET_FIELD": {
+      "anchor": "msf-mutable-servlet-field-msf-mutable-servlet-field",
+      "category": "MT_CORRECTNESS"
+    },
+    "MS_CANNOT_BE_FINAL": {
+      "anchor": "ms-field-isn-t-final-and-cannot-be-protected-from-malicious-code-ms-cannot-be-final",
+      "category": "MALICIOUS_CODE"
+    },
+    "MS_EXPOSE_BUF": {
+      "anchor": "ms-may-expose-internal-representation-by-returning-a-buffer-sharing-non-public-data-ms-expose-buf",
+      "category": "MALICIOUS_CODE"
+    },
+    "MS_EXPOSE_REP": {
+      "anchor": "ms-public-static-method-may-expose-internal-representation-by-returning-a-mutable-object-or-array-ms-expose-rep",
+      "category": "MALICIOUS_CODE"
+    },
+    "MS_FINAL_PKGPROTECT": {
+      "anchor": "ms-field-should-be-both-final-and-package-protected-ms-final-pkgprotect",
+      "category": "MALICIOUS_CODE"
+    },
+    "MS_MUTABLE_ARRAY": {
+      "anchor": "ms-field-is-a-mutable-array-ms-mutable-array",
+      "category": "MALICIOUS_CODE"
+    },
+    "MS_MUTABLE_COLLECTION": {
+      "anchor": "ms-field-is-a-mutable-collection-ms-mutable-collection",
+      "category": "MALICIOUS_CODE"
+    },
+    "MS_MUTABLE_COLLECTION_PKGPROTECT": {
+      "anchor": "ms-field-is-a-mutable-collection-which-should-be-package-protected-ms-mutable-collection-pkgprotect",
+      "category": "MALICIOUS_CODE"
+    },
+    "MS_MUTABLE_HASHTABLE": {
+      "anchor": "ms-field-is-a-mutable-hashtable-ms-mutable-hashtable",
+      "category": "MALICIOUS_CODE"
+    },
+    "MS_OOI_PKGPROTECT": {
+      "anchor": "ms-field-should-be-moved-out-of-an-interface-and-made-package-protected-ms-ooi-pkgprotect",
+      "category": "MALICIOUS_CODE"
+    },
+    "MS_PKGPROTECT": {
+      "anchor": "ms-field-should-be-package-protected-ms-pkgprotect",
+      "category": "MALICIOUS_CODE"
+    },
+    "MS_SHOULD_BE_FINAL": {
+      "anchor": "ms-field-isn-t-final-but-should-be-ms-should-be-final",
+      "category": "MALICIOUS_CODE"
+    },
+    "MS_SHOULD_BE_REFACTORED_TO_BE_FINAL": {
+      "anchor": "ms-field-isn-t-final-but-should-be-refactored-to-be-so-ms-should-be-refactored-to-be-final",
+      "category": "MALICIOUS_CODE"
+    },
+    "MTIA_SUSPECT_SERVLET_INSTANCE_FIELD": {
+      "anchor": "mtia-class-extends-servlet-class-and-uses-instance-variables-mtia-suspect-servlet-instance-field",
+      "category": "STYLE"
+    },
+    "MTIA_SUSPECT_STRUTS_INSTANCE_FIELD": {
+      "anchor": "mtia-class-extends-struts-action-class-and-uses-instance-variables-mtia-suspect-struts-instance-field",
+      "category": "STYLE"
+    },
+    "MWN_MISMATCHED_NOTIFY": {
+      "anchor": "mwn-mismatched-notify-mwn-mismatched-notify",
+      "category": "MT_CORRECTNESS"
+    },
+    "MWN_MISMATCHED_WAIT": {
+      "anchor": "mwn-mismatched-wait-mwn-mismatched-wait",
+      "category": "MT_CORRECTNESS"
+    },
+    "NM_BAD_EQUAL": {
+      "anchor": "nm-class-defines-equal-object-should-it-be-equals-object-nm-bad-equal",
+      "category": "CORRECTNESS"
+    },
+    "NM_CLASS_NAMING_CONVENTION": {
+      "anchor": "nm-class-names-should-start-with-an-upper-case-letter-nm-class-naming-convention",
+      "category": "BAD_PRACTICE"
+    },
+    "NM_CLASS_NOT_EXCEPTION": {
+      "anchor": "nm-class-is-not-derived-from-an-exception-even-though-it-is-named-as-such-nm-class-not-exception",
+      "category": "BAD_PRACTICE"
+    },
+    "NM_CONFUSING": {
+      "anchor": "nm-confusing-method-names-nm-confusing",
+      "category": "BAD_PRACTICE"
+    },
+    "NM_FIELD_NAMING_CONVENTION": {
+      "anchor": "nm-non-final-field-names-should-start-with-a-lower-case-letter-final-fields-should-be-uppercase-with-words-separated-by-underscores-nm-field-naming-convention",
+      "category": "BAD_PRACTICE"
+    },
+    "NM_FUTURE_KEYWORD_USED_AS_IDENTIFIER": {
+      "anchor": "nm-use-of-identifier-that-is-a-keyword-in-later-versions-of-java-nm-future-keyword-used-as-identifier",
+      "category": "BAD_PRACTICE"
+    },
+    "NM_FUTURE_KEYWORD_USED_AS_MEMBER_IDENTIFIER": {
+      "anchor": "nm-use-of-identifier-that-is-a-keyword-in-later-versions-of-java-nm-future-keyword-used-as-member-identifier",
+      "category": "BAD_PRACTICE"
+    },
+    "NM_LCASE_HASHCODE": {
+      "anchor": "nm-class-defines-hashcode-should-it-be-hashcode-nm-lcase-hashcode",
+      "category": "CORRECTNESS"
+    },
+    "NM_LCASE_TOSTRING": {
+      "anchor": "nm-class-defines-tostring-should-it-be-tostring-nm-lcase-tostring",
+      "category": "CORRECTNESS"
+    },
+    "NM_METHOD_CONSTRUCTOR_CONFUSION": {
+      "anchor": "nm-apparent-method-constructor-confusion-nm-method-constructor-confusion",
+      "category": "CORRECTNESS"
+    },
+    "NM_METHOD_NAMING_CONVENTION": {
+      "anchor": "nm-method-names-should-start-with-a-lower-case-letter-nm-method-naming-convention",
+      "category": "BAD_PRACTICE"
+    },
+    "NM_SAME_SIMPLE_NAME_AS_INTERFACE": {
+      "anchor": "nm-class-names-shouldn-t-shadow-simple-name-of-implemented-interface-nm-same-simple-name-as-interface",
+      "category": "BAD_PRACTICE"
+    },
+    "NM_SAME_SIMPLE_NAME_AS_SUPERCLASS": {
+      "anchor": "nm-class-names-shouldn-t-shadow-simple-name-of-superclass-nm-same-simple-name-as-superclass",
+      "category": "BAD_PRACTICE"
+    },
+    "NM_VERY_CONFUSING": {
+      "anchor": "nm-very-confusing-method-names-nm-very-confusing",
+      "category": "CORRECTNESS"
+    },
+    "NM_VERY_CONFUSING_INTENTIONAL": {
+      "anchor": "nm-very-confusing-method-names-but-perhaps-intentional-nm-very-confusing-intentional",
+      "category": "BAD_PRACTICE"
+    },
+    "NM_WRONG_PACKAGE": {
+      "anchor": "nm-method-doesn-t-override-method-in-superclass-due-to-wrong-package-for-parameter-nm-wrong-package",
+      "category": "CORRECTNESS"
+    },
+    "NM_WRONG_PACKAGE_INTENTIONAL": {
+      "anchor": "nm-method-doesn-t-override-method-in-superclass-due-to-wrong-package-for-parameter-nm-wrong-package-intentional",
+      "category": "BAD_PRACTICE"
+    },
+    "NN_NAKED_NOTIFY": {
+      "anchor": "nn-naked-notify-nn-naked-notify",
+      "category": "MT_CORRECTNESS"
+    },
+    "NOISE_FIELD_REFERENCE": {
+      "anchor": "noise-bogus-warning-about-a-field-reference-noise-field-reference",
+      "category": "NOISE"
+    },
+    "NOISE_METHOD_CALL": {
+      "anchor": "noise-bogus-warning-about-a-method-call-noise-method-call",
+      "category": "NOISE"
+    },
+    "NOISE_NULL_DEREFERENCE": {
+      "anchor": "noise-bogus-warning-about-a-null-pointer-dereference-noise-null-dereference",
+      "category": "NOISE"
+    },
+    "NOISE_OPERATION": {
+      "anchor": "noise-bogus-warning-about-an-operation-noise-operation",
+      "category": "NOISE"
+    },
+    "NO_NOTIFY_NOT_NOTIFYALL": {
+      "anchor": "no-using-notify-rather-than-notifyall-no-notify-not-notifyall",
+      "category": "MT_CORRECTNESS"
+    },
+    "NP_ALWAYS_NULL": {
+      "anchor": "np-null-pointer-dereference-np-always-null",
+      "category": "CORRECTNESS"
+    },
+    "NP_ALWAYS_NULL_EXCEPTION": {
+      "anchor": "np-null-pointer-dereference-in-method-on-exception-path-np-always-null-exception",
+      "category": "CORRECTNESS"
+    },
+    "NP_ARGUMENT_MIGHT_BE_NULL": {
+      "anchor": "np-method-does-not-check-for-null-argument-np-argument-might-be-null",
+      "category": "CORRECTNESS"
+    },
+    "NP_BOOLEAN_RETURN_NULL": {
+      "anchor": "np-method-with-boolean-return-type-returns-explicit-null-np-boolean-return-null",
+      "category": "BAD_PRACTICE"
+    },
+    "NP_CLONE_COULD_RETURN_NULL": {
+      "anchor": "np-clone-method-may-return-null-np-clone-could-return-null",
+      "category": "BAD_PRACTICE"
+    },
+    "NP_CLOSING_NULL": {
+      "anchor": "np-close-invoked-on-a-value-that-is-always-null-np-closing-null",
+      "category": "CORRECTNESS"
+    },
+    "NP_DEREFERENCE_OF_READLINE_VALUE": {
+      "anchor": "np-dereference-of-the-result-of-readline-without-nullcheck-np-dereference-of-readline-value",
+      "category": "STYLE"
+    },
+    "NP_EQUALS_SHOULD_HANDLE_NULL_ARGUMENT": {
+      "anchor": "np-equals-method-does-not-check-for-null-argument-np-equals-should-handle-null-argument",
+      "category": "BAD_PRACTICE"
+    },
+    "NP_GUARANTEED_DEREF": {
+      "anchor": "np-null-value-is-guaranteed-to-be-dereferenced-np-guaranteed-deref",
+      "category": "CORRECTNESS"
+    },
+    "NP_GUARANTEED_DEREF_ON_EXCEPTION_PATH": {
+      "anchor": "np-value-is-null-and-guaranteed-to-be-dereferenced-on-exception-path-np-guaranteed-deref-on-exception-path",
+      "category": "CORRECTNESS"
+    },
+    "NP_IMMEDIATE_DEREFERENCE_OF_READLINE": {
+      "anchor": "np-immediate-dereference-of-the-result-of-readline-np-immediate-dereference-of-readline",
+      "category": "STYLE"
+    },
+    "NP_LOAD_OF_KNOWN_NULL_VALUE": {
+      "anchor": "np-load-of-known-null-value-np-load-of-known-null-value",
+      "category": "STYLE"
+    },
+    "NP_METHOD_PARAMETER_RELAXING_ANNOTATION": {
+      "anchor": "np-method-tightens-nullness-annotation-on-parameter-np-method-parameter-relaxing-annotation",
+      "category": "STYLE"
+    },
+    "NP_METHOD_PARAMETER_TIGHTENS_ANNOTATION": {
+      "anchor": "np-method-tightens-nullness-annotation-on-parameter-np-method-parameter-tightens-annotation",
+      "category": "STYLE"
+    },
+    "NP_METHOD_RETURN_RELAXING_ANNOTATION": {
+      "anchor": "np-method-relaxes-nullness-annotation-on-return-value-np-method-return-relaxing-annotation",
+      "category": "STYLE"
+    },
+    "NP_NONNULL_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR": {
+      "anchor": "np-non-null-field-is-not-initialized-np-nonnull-field-not-initialized-in-constructor",
+      "category": "CORRECTNESS"
+    },
+    "NP_NONNULL_PARAM_VIOLATION": {
+      "anchor": "np-method-call-passes-null-to-a-non-null-parameter-np-nonnull-param-violation",
+      "category": "CORRECTNESS"
+    },
+    "NP_NONNULL_RETURN_VIOLATION": {
+      "anchor": "np-method-may-return-null-but-is-declared-nonnull-np-nonnull-return-violation",
+      "category": "CORRECTNESS"
+    },
+    "NP_NULL_INSTANCEOF": {
+      "anchor": "np-a-known-null-value-is-checked-to-see-if-it-is-an-instance-of-a-type-np-null-instanceof",
+      "category": "CORRECTNESS"
+    },
+    "NP_NULL_ON_SOME_PATH": {
+      "anchor": "np-possible-null-pointer-dereference-np-null-on-some-path",
+      "category": "CORRECTNESS"
+    },
+    "NP_NULL_ON_SOME_PATH_EXCEPTION": {
+      "anchor": "np-possible-null-pointer-dereference-in-method-on-exception-path-np-null-on-some-path-exception",
+      "category": "CORRECTNESS"
+    },
+    "NP_NULL_ON_SOME_PATH_FROM_RETURN_VALUE": {
+      "anchor": "np-possible-null-pointer-dereference-due-to-return-value-of-called-method-np-null-on-some-path-from-return-value",
+      "category": "STYLE"
+    },
+    "NP_NULL_ON_SOME_PATH_MIGHT_BE_INFEASIBLE": {
+      "anchor": "np-possible-null-pointer-dereference-on-branch-that-might-be-infeasible-np-null-on-some-path-might-be-infeasible",
+      "category": "STYLE"
+    },
+    "NP_NULL_PARAM_DEREF": {
+      "anchor": "np-method-call-passes-null-for-non-null-parameter-np-null-param-deref",
+      "category": "CORRECTNESS"
+    },
+    "NP_NULL_PARAM_DEREF_ALL_TARGETS_DANGEROUS": {
+      "anchor": "np-method-call-passes-null-for-non-null-parameter-np-null-param-deref-all-targets-dangerous",
+      "category": "CORRECTNESS"
+    },
+    "NP_NULL_PARAM_DEREF_NONVIRTUAL": {
+      "anchor": "np-non-virtual-method-call-passes-null-for-non-null-parameter-np-null-param-deref-nonvirtual",
+      "category": "CORRECTNESS"
+    },
+    "NP_OPTIONAL_RETURN_NULL": {
+      "anchor": "np-method-with-optional-return-type-returns-explicit-null-np-optional-return-null",
+      "category": "CORRECTNESS"
+    },
+    "NP_PARAMETER_MUST_BE_NONNULL_BUT_MARKED_AS_NULLABLE": {
+      "anchor": "np-parameter-must-be-non-null-but-is-marked-as-nullable-np-parameter-must-be-nonnull-but-marked-as-nullable",
+      "category": "STYLE"
+    },
+    "NP_STORE_INTO_NONNULL_FIELD": {
+      "anchor": "np-store-of-null-value-into-field-annotated-nonnull-np-store-into-nonnull-field",
+      "category": "CORRECTNESS"
+    },
+    "NP_SYNC_AND_NULL_CHECK_FIELD": {
+      "anchor": "np-synchronize-and-null-check-on-the-same-field-np-sync-and-null-check-field",
+      "category": "MT_CORRECTNESS"
+    },
+    "NP_TOSTRING_COULD_RETURN_NULL": {
+      "anchor": "np-tostring-method-may-return-null-np-tostring-could-return-null",
+      "category": "BAD_PRACTICE"
+    },
+    "NP_UNWRITTEN_FIELD": {
+      "anchor": "np-read-of-unwritten-field-np-unwritten-field",
+      "category": "CORRECTNESS"
+    },
+    "NP_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD": {
+      "anchor": "np-read-of-unwritten-public-or-protected-field-np-unwritten-public-or-protected-field",
+      "category": "STYLE"
+    },
+    "NS_DANGEROUS_NON_SHORT_CIRCUIT": {
+      "anchor": "ns-potentially-dangerous-use-of-non-short-circuit-logic-ns-dangerous-non-short-circuit",
+      "category": "STYLE"
+    },
+    "NS_NON_SHORT_CIRCUIT": {
+      "anchor": "ns-questionable-use-of-non-short-circuit-logic-ns-non-short-circuit",
+      "category": "STYLE"
+    },
+    "OBL_UNSATISFIED_OBLIGATION": {
+      "anchor": "obl-method-may-fail-to-clean-up-stream-or-resource-obl-unsatisfied-obligation",
+      "category": "EXPERIMENTAL"
+    },
+    "OBL_UNSATISFIED_OBLIGATION_EXCEPTION_EDGE": {
+      "anchor": "obl-method-may-fail-to-clean-up-stream-or-resource-on-checked-exception-obl-unsatisfied-obligation-exception-edge",
+      "category": "EXPERIMENTAL"
+    },
+    "ODR_OPEN_DATABASE_RESOURCE": {
+      "anchor": "odr-method-may-fail-to-close-database-resource-odr-open-database-resource",
+      "category": "BAD_PRACTICE"
+    },
+    "ODR_OPEN_DATABASE_RESOURCE_EXCEPTION_PATH": {
+      "anchor": "odr-method-may-fail-to-close-database-resource-on-exception-odr-open-database-resource-exception-path",
+      "category": "BAD_PRACTICE"
+    },
+    "OS_OPEN_STREAM": {
+      "anchor": "os-method-may-fail-to-close-stream-os-open-stream",
+      "category": "BAD_PRACTICE"
+    },
+    "OS_OPEN_STREAM_EXCEPTION_PATH": {
+      "anchor": "os-method-may-fail-to-close-stream-on-exception-os-open-stream-exception-path",
+      "category": "BAD_PRACTICE"
+    },
+    "OVERRIDING_METHODS_MUST_INVOKE_SUPER": {
+      "anchor": "cn-super-method-is-annotated-with-overridingmethodsmustinvokesuper-but-the-overriding-method-isn-t-calling-the-super-method-overriding-methods-must-invoke-super",
+      "category": "CORRECTNESS"
+    },
+    "PA_PUBLIC_ARRAY_ATTRIBUTE": {
+      "anchor": "pa-array-type-field-is-public-pa-public-array-attribute",
+      "category": "BAD_PRACTICE"
+    },
+    "PA_PUBLIC_MUTABLE_OBJECT_ATTRIBUTE": {
+      "anchor": "pa-mutable-object-type-field-is-public-pa-public-mutable-object-attribute",
+      "category": "BAD_PRACTICE"
+    },
+    "PA_PUBLIC_PRIMITIVE_ATTRIBUTE": {
+      "anchor": "pa-primitive-field-is-public-pa-public-primitive-attribute",
+      "category": "BAD_PRACTICE"
+    },
+    "PERM_SUPER_NOT_CALLED_IN_GETPERMISSIONS": {
+      "anchor": "perm-custom-class-loader-does-not-call-its-superclass-s-getpermissions-perm-super-not-called-in-getpermissions",
+      "category": "MALICIOUS_CODE"
+    },
+    "PI_DO_NOT_REUSE_PUBLIC_IDENTIFIERS_CLASS_NAMES": {
+      "anchor": "pi-do-not-reuse-public-identifiers-from-jsl-as-class-name-pi-do-not-reuse-public-identifiers-class-names",
+      "category": "BAD_PRACTICE"
+    },
+    "PI_DO_NOT_REUSE_PUBLIC_IDENTIFIERS_FIELD_NAMES": {
+      "anchor": "pi-do-not-reuse-public-identifiers-from-jsl-as-field-name-pi-do-not-reuse-public-identifiers-field-names",
+      "category": "BAD_PRACTICE"
+    },
+    "PI_DO_NOT_REUSE_PUBLIC_IDENTIFIERS_LOCAL_VARIABLE_NAMES": {
+      "anchor": "pi-do-not-reuse-public-identifiers-from-jsl-as-method-name-pi-do-not-reuse-public-identifiers-local-variable-names",
+      "category": "BAD_PRACTICE"
+    },
+    "PI_DO_NOT_REUSE_PUBLIC_IDENTIFIERS_METHOD_NAMES": {
+      "anchor": "pi-do-not-reuse-public-identifiers-from-jsl-as-method-name-pi-do-not-reuse-public-identifiers-method-names",
+      "category": "BAD_PRACTICE"
+    },
+    "PS_PUBLIC_SEMAPHORES": {
+      "anchor": "ps-class-exposes-synchronization-and-semaphores-in-its-public-interface-ps-public-semaphores",
+      "category": "STYLE"
+    },
+    "PT_ABSOLUTE_PATH_TRAVERSAL": {
+      "anchor": "pt-absolute-path-traversal-in-servlet-pt-absolute-path-traversal",
+      "category": "SECURITY"
+    },
+    "PT_RELATIVE_PATH_TRAVERSAL": {
+      "anchor": "pt-relative-path-traversal-in-servlet-pt-relative-path-traversal",
+      "category": "SECURITY"
+    },
+    "PZLA_PREFER_ZERO_LENGTH_ARRAYS": {
+      "anchor": "pzla-consider-returning-a-zero-length-array-rather-than-null-pzla-prefer-zero-length-arrays",
+      "category": "STYLE"
+    },
+    "PZ_DONT_REUSE_ENTRY_OBJECTS_IN_ITERATORS": {
+      "anchor": "pz-don-t-reuse-entry-objects-in-iterators-pz-dont-reuse-entry-objects-in-iterators",
+      "category": "BAD_PRACTICE"
+    },
+    "QBA_QUESTIONABLE_BOOLEAN_ASSIGNMENT": {
+      "anchor": "qba-method-assigns-boolean-literal-in-boolean-expression-qba-questionable-boolean-assignment",
+      "category": "CORRECTNESS"
+    },
+    "QF_QUESTIONABLE_FOR_LOOP": {
+      "anchor": "qf-complicated-subtle-or-wrong-increment-in-for-loop-qf-questionable-for-loop",
+      "category": "STYLE"
+    },
+    "RANGE_ARRAY_INDEX": {
+      "anchor": "range-array-index-is-out-of-bounds-range-array-index",
+      "category": "CORRECTNESS"
+    },
+    "RANGE_ARRAY_LENGTH": {
+      "anchor": "range-array-length-is-out-of-bounds-range-array-length",
+      "category": "CORRECTNESS"
+    },
+    "RANGE_ARRAY_OFFSET": {
+      "anchor": "range-array-offset-is-out-of-bounds-range-array-offset",
+      "category": "CORRECTNESS"
+    },
+    "RANGE_STRING_INDEX": {
+      "anchor": "range-string-index-is-out-of-bounds-range-string-index",
+      "category": "CORRECTNESS"
+    },
+    "RCN_REDUNDANT_COMPARISON_OF_NULL_AND_NONNULL_VALUE": {
+      "anchor": "rcn-redundant-comparison-of-non-null-value-to-null-rcn-redundant-comparison-of-null-and-nonnull-value",
+      "category": "STYLE"
+    },
+    "RCN_REDUNDANT_COMPARISON_TWO_NULL_VALUES": {
+      "anchor": "rcn-redundant-comparison-of-two-null-values-rcn-redundant-comparison-two-null-values",
+      "category": "STYLE"
+    },
+    "RCN_REDUNDANT_NULLCHECK_OF_NONNULL_VALUE": {
+      "anchor": "rcn-redundant-nullcheck-of-value-known-to-be-non-null-rcn-redundant-nullcheck-of-nonnull-value",
+      "category": "STYLE"
+    },
+    "RCN_REDUNDANT_NULLCHECK_OF_NULL_VALUE": {
+      "anchor": "rcn-redundant-nullcheck-of-value-known-to-be-null-rcn-redundant-nullcheck-of-null-value",
+      "category": "STYLE"
+    },
+    "RCN_REDUNDANT_NULLCHECK_WOULD_HAVE_BEEN_A_NPE": {
+      "anchor": "rcn-nullcheck-of-value-previously-dereferenced-rcn-redundant-nullcheck-would-have-been-a-npe",
+      "category": "CORRECTNESS"
+    },
+    "RC_REF_COMPARISON": {
+      "anchor": "rc-suspicious-reference-comparison-rc-ref-comparison",
+      "category": "CORRECTNESS"
+    },
+    "RC_REF_COMPARISON_BAD_PRACTICE": {
+      "anchor": "rc-suspicious-reference-comparison-to-constant-rc-ref-comparison-bad-practice",
+      "category": "BAD_PRACTICE"
+    },
+    "RC_REF_COMPARISON_BAD_PRACTICE_BOOLEAN": {
+      "anchor": "rc-suspicious-reference-comparison-of-boolean-values-rc-ref-comparison-bad-practice-boolean",
+      "category": "BAD_PRACTICE"
+    },
+    "REC_CATCH_EXCEPTION": {
+      "anchor": "rec-exception-is-caught-when-exception-is-not-thrown-rec-catch-exception",
+      "category": "STYLE"
+    },
+    "REFLC_REFLECTION_MAY_INCREASE_ACCESSIBILITY_OF_CLASS": {
+      "anchor": "reflc-public-method-uses-reflection-to-create-a-class-it-gets-in-its-parameter-which-could-increase-the-accessibility-of-any-class-reflc-reflection-may-increase-accessibility-of-class",
+      "category": "MALICIOUS_CODE"
+    },
+    "REFLF_REFLECTION_MAY_INCREASE_ACCESSIBILITY_OF_FIELD": {
+      "anchor": "reflf-public-method-uses-reflection-to-modify-a-field-it-gets-in-its-parameter-which-could-increase-the-accessibility-of-any-class-reflf-reflection-may-increase-accessibility-of-field",
+      "category": "MALICIOUS_CODE"
+    },
+    "RE_BAD_SYNTAX_FOR_REGULAR_EXPRESSION": {
+      "anchor": "re-invalid-syntax-for-regular-expression-re-bad-syntax-for-regular-expression",
+      "category": "CORRECTNESS"
+    },
+    "RE_CANT_USE_FILE_SEPARATOR_AS_REGULAR_EXPRESSION": {
+      "anchor": "re-file-separator-used-for-regular-expression-re-cant-use-file-separator-as-regular-expression",
+      "category": "CORRECTNESS"
+    },
+    "RE_POSSIBLE_UNINTENDED_PATTERN": {
+      "anchor": "re-or-used-for-regular-expression-re-possible-unintended-pattern",
+      "category": "CORRECTNESS"
+    },
+    "RI_REDUNDANT_INTERFACES": {
+      "anchor": "ri-class-implements-same-interface-as-superclass-ri-redundant-interfaces",
+      "category": "STYLE"
+    },
+    "RR_NOT_CHECKED": {
+      "anchor": "rr-method-ignores-results-of-inputstream-read-rr-not-checked",
+      "category": "BAD_PRACTICE"
+    },
+    "RS_READOBJECT_SYNC": {
+      "anchor": "rs-class-s-readobject-method-is-synchronized-rs-readobject-sync",
+      "category": "MT_CORRECTNESS"
+    },
+    "RU_INVOKE_RUN": {
+      "anchor": "ru-invokes-run-on-a-thread-did-you-mean-to-start-it-instead-ru-invoke-run",
+      "category": "MT_CORRECTNESS"
+    },
+    "RV_01_TO_INT": {
+      "anchor": "rv-random-value-from-0-to-1-is-coerced-to-the-integer-0-rv-01-to-int",
+      "category": "CORRECTNESS"
+    },
+    "RV_ABSOLUTE_VALUE_OF_HASHCODE": {
+      "anchor": "rv-bad-attempt-to-compute-absolute-value-of-signed-32-bit-hashcode-rv-absolute-value-of-hashcode",
+      "category": "CORRECTNESS"
+    },
+    "RV_ABSOLUTE_VALUE_OF_RANDOM_INT": {
+      "anchor": "rv-bad-attempt-to-compute-absolute-value-of-signed-random-integer-rv-absolute-value-of-random-int",
+      "category": "CORRECTNESS"
+    },
+    "RV_CHECK_COMPARETO_FOR_SPECIFIC_RETURN_VALUE": {
+      "anchor": "rv-code-checks-for-specific-values-returned-by-compareto-rv-check-compareto-for-specific-return-value",
+      "category": "CORRECTNESS"
+    },
+    "RV_CHECK_FOR_POSITIVE_INDEXOF": {
+      "anchor": "rv-method-checks-to-see-if-result-of-string-indexof-is-positive-rv-check-for-positive-indexof",
+      "category": "STYLE"
+    },
+    "RV_DONT_JUST_NULL_CHECK_READLINE": {
+      "anchor": "rv-method-discards-result-of-readline-after-checking-if-it-is-non-null-rv-dont-just-null-check-readline",
+      "category": "STYLE"
+    },
+    "RV_EXCEPTION_NOT_THROWN": {
+      "anchor": "rv-exception-created-and-dropped-rather-than-thrown-rv-exception-not-thrown",
+      "category": "CORRECTNESS"
+    },
+    "RV_NEGATING_RESULT_OF_COMPARETO": {
+      "anchor": "rv-negating-the-result-of-compareto-compare-rv-negating-result-of-compareto",
+      "category": "BAD_PRACTICE"
+    },
+    "RV_REM_OF_HASHCODE": {
+      "anchor": "rv-remainder-of-hashcode-could-be-negative-rv-rem-of-hashcode",
+      "category": "STYLE"
+    },
+    "RV_REM_OF_RANDOM_INT": {
+      "anchor": "rv-remainder-of-32-bit-signed-random-integer-rv-rem-of-random-int",
+      "category": "STYLE"
+    },
+    "RV_RETURN_VALUE_IGNORED": {
+      "anchor": "rv-method-ignores-return-value-rv-return-value-ignored",
+      "category": "CORRECTNESS"
+    },
+    "RV_RETURN_VALUE_IGNORED_BAD_PRACTICE": {
+      "anchor": "rv-method-ignores-exceptional-return-value-rv-return-value-ignored-bad-practice",
+      "category": "BAD_PRACTICE"
+    },
+    "RV_RETURN_VALUE_IGNORED_INFERRED": {
+      "anchor": "rv-method-ignores-return-value-is-this-ok-rv-return-value-ignored-inferred",
+      "category": "STYLE"
+    },
+    "RV_RETURN_VALUE_IGNORED_NO_SIDE_EFFECT": {
+      "anchor": "rv-return-value-of-method-without-side-effect-is-ignored-rv-return-value-ignored-no-side-effect",
+      "category": "STYLE"
+    },
+    "RV_RETURN_VALUE_OF_PUTIFABSENT_IGNORED": {
+      "anchor": "rv-return-value-of-putifabsent-ignored-value-passed-to-putifabsent-reused-rv-return-value-of-putifabsent-ignored",
+      "category": "MT_CORRECTNESS"
+    },
+    "RpC_REPEATED_CONDITIONAL_TEST": {
+      "anchor": "rpc-repeated-conditional-tests-rpc-repeated-conditional-test",
+      "category": "CORRECTNESS"
+    },
+    "SA_FIELD_DOUBLE_ASSIGNMENT": {
+      "anchor": "sa-double-assignment-of-field-sa-field-double-assignment",
+      "category": "STYLE"
+    },
+    "SA_FIELD_SELF_ASSIGNMENT": {
+      "anchor": "sa-self-assignment-of-field-sa-field-self-assignment",
+      "category": "CORRECTNESS"
+    },
+    "SA_FIELD_SELF_COMPARISON": {
+      "anchor": "sa-self-comparison-of-field-with-itself-sa-field-self-comparison",
+      "category": "CORRECTNESS"
+    },
+    "SA_FIELD_SELF_COMPUTATION": {
+      "anchor": "sa-nonsensical-self-computation-involving-a-field-e-g-x-x-sa-field-self-computation",
+      "category": "CORRECTNESS"
+    },
+    "SA_LOCAL_DOUBLE_ASSIGNMENT": {
+      "anchor": "sa-double-assignment-of-local-variable-sa-local-double-assignment",
+      "category": "STYLE"
+    },
+    "SA_LOCAL_SELF_ASSIGNMENT": {
+      "anchor": "sa-self-assignment-of-local-variable-sa-local-self-assignment",
+      "category": "STYLE"
+    },
+    "SA_LOCAL_SELF_ASSIGNMENT_INSTEAD_OF_FIELD": {
+      "anchor": "sa-self-assignment-of-local-rather-than-assignment-to-field-sa-local-self-assignment-instead-of-field",
+      "category": "CORRECTNESS"
+    },
+    "SA_LOCAL_SELF_COMPARISON": {
+      "anchor": "sa-self-comparison-of-value-with-itself-sa-local-self-comparison",
+      "category": "CORRECTNESS"
+    },
+    "SA_LOCAL_SELF_COMPUTATION": {
+      "anchor": "sa-nonsensical-self-computation-involving-a-variable-e-g-x-x-sa-local-self-computation",
+      "category": "CORRECTNESS"
+    },
+    "SBSC_USE_STRINGBUFFER_CONCATENATION": {
+      "anchor": "sbsc-method-concatenates-strings-using-in-a-loop-sbsc-use-stringbuffer-concatenation",
+      "category": "PERFORMANCE"
+    },
+    "SC_START_IN_CTOR": {
+      "anchor": "sc-constructor-invokes-thread-start-sc-start-in-ctor",
+      "category": "MT_CORRECTNESS"
+    },
+    "SE_BAD_FIELD": {
+      "anchor": "se-non-transient-non-serializable-instance-field-in-serializable-class-se-bad-field",
+      "category": "BAD_PRACTICE"
+    },
+    "SE_BAD_FIELD_INNER_CLASS": {
+      "anchor": "se-non-serializable-class-has-a-serializable-inner-class-se-bad-field-inner-class",
+      "category": "BAD_PRACTICE"
+    },
+    "SE_BAD_FIELD_STORE": {
+      "anchor": "se-non-serializable-value-stored-into-instance-field-of-a-serializable-class-se-bad-field-store",
+      "category": "BAD_PRACTICE"
+    },
+    "SE_COMPARATOR_SHOULD_BE_SERIALIZABLE": {
+      "anchor": "se-comparator-doesn-t-implement-serializable-se-comparator-should-be-serializable",
+      "category": "BAD_PRACTICE"
+    },
+    "SE_INNER_CLASS": {
+      "anchor": "se-serializable-inner-class-se-inner-class",
+      "category": "BAD_PRACTICE"
+    },
+    "SE_METHOD_MUST_BE_PRIVATE": {
+      "anchor": "se-method-must-be-private-in-order-for-serialization-to-work-se-method-must-be-private",
+      "category": "CORRECTNESS"
+    },
+    "SE_NONFINAL_SERIALVERSIONID": {
+      "anchor": "se-serialversionuid-isn-t-final-se-nonfinal-serialversionid",
+      "category": "BAD_PRACTICE"
+    },
+    "SE_NONLONG_SERIALVERSIONID": {
+      "anchor": "se-serialversionuid-isn-t-long-se-nonlong-serialversionid",
+      "category": "BAD_PRACTICE"
+    },
+    "SE_NONSTATIC_SERIALVERSIONID": {
+      "anchor": "se-serialversionuid-isn-t-static-se-nonstatic-serialversionid",
+      "category": "BAD_PRACTICE"
+    },
+    "SE_NO_SERIALVERSIONID": {
+      "anchor": "snvi-class-is-serializable-but-doesn-t-define-serialversionuid-se-no-serialversionid",
+      "category": "BAD_PRACTICE"
+    },
+    "SE_NO_SUITABLE_CONSTRUCTOR": {
+      "anchor": "se-class-is-serializable-but-its-superclass-doesn-t-define-a-void-constructor-se-no-suitable-constructor",
+      "category": "BAD_PRACTICE"
+    },
+    "SE_NO_SUITABLE_CONSTRUCTOR_FOR_EXTERNALIZATION": {
+      "anchor": "se-class-is-externalizable-but-doesn-t-define-a-void-constructor-se-no-suitable-constructor-for-externalization",
+      "category": "BAD_PRACTICE"
+    },
+    "SE_PREVENT_EXT_OBJ_OVERWRITE": {
+      "anchor": "se-prevent-overwriting-of-externalizable-objects-se-prevent-ext-obj-overwrite",
+      "category": "BAD_PRACTICE"
+    },
+    "SE_PRIVATE_READ_RESOLVE_NOT_INHERITED": {
+      "anchor": "se-private-readresolve-method-not-inherited-by-subclasses-se-private-read-resolve-not-inherited",
+      "category": "STYLE"
+    },
+    "SE_READ_RESOLVE_IS_STATIC": {
+      "anchor": "se-the-readresolve-method-must-not-be-declared-as-a-static-method-se-read-resolve-is-static",
+      "category": "CORRECTNESS"
+    },
+    "SE_READ_RESOLVE_MUST_RETURN_OBJECT": {
+      "anchor": "se-the-readresolve-method-must-be-declared-with-a-return-type-of-object-se-read-resolve-must-return-object",
+      "category": "BAD_PRACTICE"
+    },
+    "SE_TRANSIENT_FIELD_NOT_RESTORED": {
+      "anchor": "se-transient-field-that-isn-t-set-by-deserialization-se-transient-field-not-restored",
+      "category": "BAD_PRACTICE"
+    },
+    "SE_TRANSIENT_FIELD_OF_NONSERIALIZABLE_CLASS": {
+      "anchor": "se-transient-field-of-class-that-isn-t-serializable-se-transient-field-of-nonserializable-class",
+      "category": "STYLE"
+    },
+    "SF_DEAD_STORE_DUE_TO_SWITCH_FALLTHROUGH": {
+      "anchor": "sf-dead-store-due-to-switch-statement-fall-through-sf-dead-store-due-to-switch-fallthrough",
+      "category": "CORRECTNESS"
+    },
+    "SF_DEAD_STORE_DUE_TO_SWITCH_FALLTHROUGH_TO_THROW": {
+      "anchor": "sf-dead-store-due-to-switch-statement-fall-through-to-throw-sf-dead-store-due-to-switch-fallthrough-to-throw",
+      "category": "CORRECTNESS"
+    },
+    "SF_SWITCH_FALLTHROUGH": {
+      "anchor": "sf-switch-statement-found-where-one-case-falls-through-to-the-next-case-sf-switch-fallthrough",
+      "category": "STYLE"
+    },
+    "SF_SWITCH_NO_DEFAULT": {
+      "anchor": "sf-switch-statement-found-where-default-case-is-missing-sf-switch-no-default",
+      "category": "STYLE"
+    },
+    "SIC_INNER_SHOULD_BE_STATIC": {
+      "anchor": "sic-should-be-a-static-inner-class-sic-inner-should-be-static",
+      "category": "PERFORMANCE"
+    },
+    "SIC_INNER_SHOULD_BE_STATIC_ANON": {
+      "anchor": "sic-could-be-refactored-into-a-named-static-inner-class-sic-inner-should-be-static-anon",
+      "category": "PERFORMANCE"
+    },
+    "SIC_INNER_SHOULD_BE_STATIC_NEEDS_THIS": {
+      "anchor": "sic-could-be-refactored-into-a-static-inner-class-sic-inner-should-be-static-needs-this",
+      "category": "PERFORMANCE"
+    },
+    "SIC_THREADLOCAL_DEADLY_EMBRACE": {
+      "anchor": "sic-deadly-embrace-of-non-static-inner-class-and-thread-local-sic-threadlocal-deadly-embrace",
+      "category": "CORRECTNESS"
+    },
+    "SING_SINGLETON_GETTER_NOT_SYNCHRONIZED": {
+      "anchor": "sing-instance-getter-method-of-class-using-singleton-design-pattern-is-not-synchronized-sing-singleton-getter-not-synchronized",
+      "category": "CORRECTNESS"
+    },
+    "SING_SINGLETON_HAS_NONPRIVATE_CONSTRUCTOR": {
+      "anchor": "sing-class-using-singleton-design-pattern-has-non-private-constructor-sing-singleton-has-nonprivate-constructor",
+      "category": "CORRECTNESS"
+    },
+    "SING_SINGLETON_IMPLEMENTS_CLONEABLE": {
+      "anchor": "sing-class-using-singleton-design-pattern-directly-implements-cloneable-interface-sing-singleton-implements-cloneable",
+      "category": "CORRECTNESS"
+    },
+    "SING_SINGLETON_IMPLEMENTS_CLONE_METHOD": {
+      "anchor": "sing-class-using-singleton-design-pattern-implements-clone-method-without-being-an-unconditional-clonenotsupportedexception-thrower-sing-singleton-implements-clone-method",
+      "category": "CORRECTNESS"
+    },
+    "SING_SINGLETON_IMPLEMENTS_SERIALIZABLE": {
+      "anchor": "sing-class-using-singleton-design-pattern-directly-or-indirectly-implements-serializable-interface-sing-singleton-implements-serializable",
+      "category": "CORRECTNESS"
+    },
+    "SING_SINGLETON_INDIRECTLY_IMPLEMENTS_CLONEABLE": {
+      "anchor": "sing-class-using-singleton-design-pattern-indirectly-implements-cloneable-interface-sing-singleton-indirectly-implements-cloneable",
+      "category": "CORRECTNESS"
+    },
+    "SIO_SUPERFLUOUS_INSTANCEOF": {
+      "anchor": "sio-unnecessary-type-check-done-using-instanceof-operator-sio-superfluous-instanceof",
+      "category": "CORRECTNESS"
+    },
+    "SI_INSTANCE_BEFORE_FINALS_ASSIGNED": {
+      "anchor": "si-static-initializer-creates-instance-before-all-static-final-fields-assigned-si-instance-before-finals-assigned",
+      "category": "BAD_PRACTICE"
+    },
+    "SKIPPED_CLASS_TOO_BIG": {
+      "anchor": "skipped-class-too-big-for-analysis-skipped-class-too-big",
+      "category": "EXPERIMENTAL"
+    },
+    "SP_SPIN_ON_FIELD": {
+      "anchor": "sp-method-spins-on-field-sp-spin-on-field",
+      "category": "MT_CORRECTNESS"
+    },
+    "SQL_BAD_PREPARED_STATEMENT_ACCESS": {
+      "anchor": "sql-method-attempts-to-access-a-prepared-statement-parameter-with-index-0-sql-bad-prepared-statement-access",
+      "category": "CORRECTNESS"
+    },
+    "SQL_BAD_RESULTSET_ACCESS": {
+      "anchor": "sql-method-attempts-to-access-a-result-set-field-with-index-0-sql-bad-resultset-access",
+      "category": "CORRECTNESS"
+    },
+    "SQL_NONCONSTANT_STRING_PASSED_TO_EXECUTE": {
+      "anchor": "sql-nonconstant-string-passed-to-execute-or-addbatch-method-on-an-sql-statement-sql-nonconstant-string-passed-to-execute",
+      "category": "SECURITY"
+    },
+    "SQL_PREPARED_STATEMENT_GENERATED_FROM_NONCONSTANT_STRING": {
+      "anchor": "sql-a-prepared-statement-is-generated-from-a-nonconstant-string-sql-prepared-statement-generated-from-nonconstant-string",
+      "category": "SECURITY"
+    },
+    "SR_NOT_CHECKED": {
+      "anchor": "rr-method-ignores-results-of-inputstream-skip-sr-not-checked",
+      "category": "BAD_PRACTICE"
+    },
+    "SSD_DO_NOT_USE_INSTANCE_LOCK_ON_SHARED_STATIC_DATA": {
+      "anchor": "ssd-instance-level-lock-was-used-on-a-shared-static-data-ssd-do-not-use-instance-lock-on-shared-static-data",
+      "category": "MT_CORRECTNESS"
+    },
+    "SS_SHOULD_BE_STATIC": {
+      "anchor": "ss-unread-field-should-this-field-be-static-ss-should-be-static",
+      "category": "PERFORMANCE"
+    },
+    "STCAL_INVOKE_ON_STATIC_CALENDAR_INSTANCE": {
+      "anchor": "stcal-call-to-static-calendar-stcal-invoke-on-static-calendar-instance",
+      "category": "MT_CORRECTNESS"
+    },
+    "STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE": {
+      "anchor": "stcal-call-to-static-dateformat-stcal-invoke-on-static-date-format-instance",
+      "category": "MT_CORRECTNESS"
+    },
+    "STCAL_STATIC_CALENDAR_INSTANCE": {
+      "anchor": "stcal-static-calendar-field-stcal-static-calendar-instance",
+      "category": "MT_CORRECTNESS"
+    },
+    "STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE": {
+      "anchor": "stcal-static-dateformat-stcal-static-simple-date-format-instance",
+      "category": "MT_CORRECTNESS"
+    },
+    "STI_INTERRUPTED_ON_CURRENTTHREAD": {
+      "anchor": "sti-unneeded-use-of-currentthread-call-to-call-interrupted-sti-interrupted-on-currentthread",
+      "category": "CORRECTNESS"
+    },
+    "STI_INTERRUPTED_ON_UNKNOWNTHREAD": {
+      "anchor": "sti-static-thread-interrupted-method-invoked-on-thread-instance-sti-interrupted-on-unknownthread",
+      "category": "CORRECTNESS"
+    },
+    "ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD": {
+      "anchor": "st-write-to-static-field-from-instance-method-st-write-to-static-from-instance-method",
+      "category": "STYLE"
+    },
+    "SWL_SLEEP_WITH_LOCK_HELD": {
+      "anchor": "swl-method-calls-thread-sleep-with-a-lock-held-swl-sleep-with-lock-held",
+      "category": "MT_CORRECTNESS"
+    },
+    "SW_SWING_METHODS_INVOKED_IN_SWING_THREAD": {
+      "anchor": "sw-certain-swing-methods-need-to-be-invoked-in-swing-thread-sw-swing-methods-invoked-in-swing-thread",
+      "category": "BAD_PRACTICE"
+    },
+    "TESTING": { "anchor": "test-testing-testing", "category": "EXPERIMENTAL" },
+    "TESTING1": { "anchor": "test-testing-1-testing1", "category": "EXPERIMENTAL" },
+    "TESTING2": { "anchor": "test-testing-2-testing2", "category": "EXPERIMENTAL" },
+    "TESTING3": { "anchor": "test-testing-3-testing3", "category": "EXPERIMENTAL" },
+    "THROWS_METHOD_THROWS_CLAUSE_BASIC_EXCEPTION": {
+      "anchor": "throws-method-lists-exception-in-its-throws-clause-but-it-could-be-more-specific-throws-method-throws-clause-basic-exception",
+      "category": "BAD_PRACTICE"
+    },
+    "THROWS_METHOD_THROWS_CLAUSE_THROWABLE": {
+      "anchor": "throws-method-lists-throwable-in-its-throws-clause-but-it-could-be-more-specific-throws-method-throws-clause-throwable",
+      "category": "BAD_PRACTICE"
+    },
+    "THROWS_METHOD_THROWS_RUNTIMEEXCEPTION": {
+      "anchor": "throws-method-intentionally-throws-runtimeexception-throws-method-throws-runtimeexception",
+      "category": "BAD_PRACTICE"
+    },
+    "TLW_TWO_LOCK_WAIT": {
+      "anchor": "tlw-wait-with-two-locks-held-tlw-two-lock-wait",
+      "category": "MT_CORRECTNESS"
+    },
+    "TQ_ALWAYS_VALUE_USED_WHERE_NEVER_REQUIRED": {
+      "anchor": "tq-value-annotated-as-carrying-a-type-qualifier-used-where-a-value-that-must-not-carry-that-qualifier-is-required-tq-always-value-used-where-never-required",
+      "category": "CORRECTNESS"
+    },
+    "TQ_COMPARING_VALUES_WITH_INCOMPATIBLE_TYPE_QUALIFIERS": {
+      "anchor": "tq-comparing-values-with-incompatible-type-qualifiers-tq-comparing-values-with-incompatible-type-qualifiers",
+      "category": "CORRECTNESS"
+    },
+    "TQ_EXPLICIT_UNKNOWN_SOURCE_VALUE_REACHES_ALWAYS_SINK": {
+      "anchor": "tq-value-required-to-have-type-qualifier-but-marked-as-unknown-tq-explicit-unknown-source-value-reaches-always-sink",
+      "category": "STYLE"
+    },
+    "TQ_EXPLICIT_UNKNOWN_SOURCE_VALUE_REACHES_NEVER_SINK": {
+      "anchor": "tq-value-required-to-not-have-type-qualifier-but-marked-as-unknown-tq-explicit-unknown-source-value-reaches-never-sink",
+      "category": "STYLE"
+    },
+    "TQ_MAYBE_SOURCE_VALUE_REACHES_ALWAYS_SINK": {
+      "anchor": "tq-value-that-might-not-carry-a-type-qualifier-is-always-used-in-a-way-requires-that-type-qualifier-tq-maybe-source-value-reaches-always-sink",
+      "category": "CORRECTNESS"
+    },
+    "TQ_MAYBE_SOURCE_VALUE_REACHES_NEVER_SINK": {
+      "anchor": "tq-value-that-might-carry-a-type-qualifier-is-always-used-in-a-way-prohibits-it-from-having-that-type-qualifier-tq-maybe-source-value-reaches-never-sink",
+      "category": "CORRECTNESS"
+    },
+    "TQ_NEVER_VALUE_USED_WHERE_ALWAYS_REQUIRED": {
+      "anchor": "tq-value-annotated-as-never-carrying-a-type-qualifier-used-where-value-carrying-that-qualifier-is-required-tq-never-value-used-where-always-required",
+      "category": "CORRECTNESS"
+    },
+    "TQ_UNKNOWN_VALUE_USED_WHERE_ALWAYS_STRICTLY_REQUIRED": {
+      "anchor": "tq-value-without-a-type-qualifier-used-where-a-value-is-required-to-have-that-qualifier-tq-unknown-value-used-where-always-strictly-required",
+      "category": "CORRECTNESS"
+    },
+    "UCF_USELESS_CONTROL_FLOW": {
+      "anchor": "ucf-useless-control-flow-ucf-useless-control-flow",
+      "category": "STYLE"
+    },
+    "UCF_USELESS_CONTROL_FLOW_NEXT_LINE": {
+      "anchor": "ucf-useless-control-flow-to-next-line-ucf-useless-control-flow-next-line",
+      "category": "STYLE"
+    },
+    "UC_USELESS_CONDITION": {
+      "anchor": "uc-condition-has-no-effect-uc-useless-condition",
+      "category": "STYLE"
+    },
+    "UC_USELESS_CONDITION_TYPE": {
+      "anchor": "uc-condition-has-no-effect-due-to-the-variable-type-uc-useless-condition-type",
+      "category": "STYLE"
+    },
+    "UC_USELESS_OBJECT": {
+      "anchor": "uc-useless-object-created-uc-useless-object",
+      "category": "STYLE"
+    },
+    "UC_USELESS_OBJECT_STACK": {
+      "anchor": "uc-useless-object-created-on-stack-uc-useless-object-stack",
+      "category": "STYLE"
+    },
+    "UC_USELESS_VOID_METHOD": {
+      "anchor": "uc-useless-non-empty-void-method-uc-useless-void-method",
+      "category": "STYLE"
+    },
+    "UG_SYNC_SET_UNSYNC_GET": {
+      "anchor": "ug-unsynchronized-get-method-synchronized-set-method-ug-sync-set-unsync-get",
+      "category": "MT_CORRECTNESS"
+    },
+    "UI_INHERITANCE_UNSAFE_GETRESOURCE": {
+      "anchor": "ui-usage-of-getresource-may-be-unsafe-if-class-is-extended-ui-inheritance-unsafe-getresource",
+      "category": "BAD_PRACTICE"
+    },
+    "UL_UNRELEASED_LOCK": {
+      "anchor": "ul-method-does-not-release-lock-on-all-paths-ul-unreleased-lock",
+      "category": "MT_CORRECTNESS"
+    },
+    "UL_UNRELEASED_LOCK_EXCEPTION_PATH": {
+      "anchor": "ul-method-does-not-release-lock-on-all-exception-paths-ul-unreleased-lock-exception-path",
+      "category": "MT_CORRECTNESS"
+    },
+    "UMAC_UNCALLABLE_METHOD_OF_ANONYMOUS_CLASS": {
+      "anchor": "umac-uncallable-method-defined-in-anonymous-class-umac-uncallable-method-of-anonymous-class",
+      "category": "CORRECTNESS"
+    },
+    "UM_UNNECESSARY_MATH": {
+      "anchor": "um-method-calls-static-math-class-method-on-a-constant-value-um-unnecessary-math",
+      "category": "PERFORMANCE"
+    },
+    "UNKNOWN": { "anchor": "test-unknown-bug-pattern-unknown", "category": "EXPERIMENTAL" },
+    "UPM_UNCALLED_PRIVATE_METHOD": {
+      "anchor": "upm-private-method-is-never-called-upm-uncalled-private-method",
+      "category": "PERFORMANCE"
+    },
+    "URF_UNREAD_FIELD": {
+      "anchor": "urf-unread-field-urf-unread-field",
+      "category": "PERFORMANCE"
+    },
+    "URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD": {
+      "anchor": "urf-unread-public-protected-field-urf-unread-public-or-protected-field",
+      "category": "STYLE"
+    },
+    "UR_UNINIT_READ": {
+      "anchor": "ur-uninitialized-read-of-field-in-constructor-ur-uninit-read",
+      "category": "CORRECTNESS"
+    },
+    "UR_UNINIT_READ_CALLED_FROM_SUPER_CONSTRUCTOR": {
+      "anchor": "ur-uninitialized-read-of-field-method-called-from-constructor-of-superclass-ur-uninit-read-called-from-super-constructor",
+      "category": "CORRECTNESS"
+    },
+    "USC_POTENTIAL_SECURITY_CHECK_BASED_ON_UNTRUSTED_SOURCE": {
+      "anchor": "usc-potential-security-check-based-on-untrusted-source-usc-potential-security-check-based-on-untrusted-source",
+      "category": "MALICIOUS_CODE"
+    },
+    "USM_USELESS_ABSTRACT_METHOD": {
+      "anchor": "usm-abstract-method-is-already-defined-in-implemented-interface-usm-useless-abstract-method",
+      "category": "STYLE"
+    },
+    "USM_USELESS_SUBCLASS_METHOD": {
+      "anchor": "usm-method-superfluously-delegates-to-parent-class-method-usm-useless-subclass-method",
+      "category": "STYLE"
+    },
+    "US_USELESS_SUPPRESSION_ON_CLASS": {
+      "anchor": "us-useless-suppression-on-a-class-us-useless-suppression-on-class",
+      "category": "STYLE"
+    },
+    "US_USELESS_SUPPRESSION_ON_FIELD": {
+      "anchor": "us-useless-suppression-on-a-field-us-useless-suppression-on-field",
+      "category": "STYLE"
+    },
+    "US_USELESS_SUPPRESSION_ON_METHOD": {
+      "anchor": "us-useless-suppression-on-a-method-us-useless-suppression-on-method",
+      "category": "STYLE"
+    },
+    "US_USELESS_SUPPRESSION_ON_METHOD_PARAMETER": {
+      "anchor": "us-useless-suppression-on-a-method-parameter-us-useless-suppression-on-method-parameter",
+      "category": "STYLE"
+    },
+    "US_USELESS_SUPPRESSION_ON_PACKAGE": {
+      "anchor": "us-useless-suppression-on-a-package-us-useless-suppression-on-package",
+      "category": "STYLE"
+    },
+    "UUF_UNUSED_FIELD": {
+      "anchor": "uuf-unused-field-uuf-unused-field",
+      "category": "PERFORMANCE"
+    },
+    "UUF_UNUSED_PUBLIC_OR_PROTECTED_FIELD": {
+      "anchor": "uuf-unused-public-or-protected-field-uuf-unused-public-or-protected-field",
+      "category": "STYLE"
+    },
+    "UWF_FIELD_NOT_INITIALIZED_IN_CONSTRUCTOR": {
+      "anchor": "uwf-field-not-initialized-in-constructor-but-dereferenced-without-null-check-uwf-field-not-initialized-in-constructor",
+      "category": "STYLE"
+    },
+    "UWF_NULL_FIELD": {
+      "anchor": "uwf-field-only-ever-set-to-null-uwf-null-field",
+      "category": "CORRECTNESS"
+    },
+    "UWF_UNWRITTEN_FIELD": {
+      "anchor": "uwf-unwritten-field-uwf-unwritten-field",
+      "category": "CORRECTNESS"
+    },
+    "UWF_UNWRITTEN_PUBLIC_OR_PROTECTED_FIELD": {
+      "anchor": "uwf-unwritten-public-or-protected-field-uwf-unwritten-public-or-protected-field",
+      "category": "STYLE"
+    },
+    "UW_UNCOND_WAIT": {
+      "anchor": "uw-unconditional-wait-uw-uncond-wait",
+      "category": "MT_CORRECTNESS"
+    },
+    "VA_FORMAT_STRING_USES_NEWLINE": {
+      "anchor": "fs-format-string-should-use-n-rather-than-n-va-format-string-uses-newline",
+      "category": "BAD_PRACTICE"
+    },
+    "VA_PRIMITIVE_ARRAY_PASSED_TO_OBJECT_VARARG": {
+      "anchor": "va-primitive-array-passed-to-function-expecting-a-variable-number-of-object-arguments-va-primitive-array-passed-to-object-vararg",
+      "category": "CORRECTNESS"
+    },
+    "VO_VOLATILE_INCREMENT": {
+      "anchor": "vo-an-increment-to-a-volatile-field-isn-t-atomic-vo-volatile-increment",
+      "category": "MT_CORRECTNESS"
+    },
+    "VO_VOLATILE_REFERENCE_TO_ARRAY": {
+      "anchor": "vo-a-volatile-reference-to-an-array-doesn-t-treat-the-array-elements-as-volatile-vo-volatile-reference-to-array",
+      "category": "MT_CORRECTNESS"
+    },
+    "VR_UNRESOLVABLE_REFERENCE": {
+      "anchor": "vr-class-makes-reference-to-unresolvable-class-or-method-vr-unresolvable-reference",
+      "category": "CORRECTNESS"
+    },
+    "VSC_VULNERABLE_SECURITY_CHECK_METHODS": {
+      "anchor": "vsc-non-private-and-non-final-security-check-methods-are-vulnerable-vsc-vulnerable-security-check-methods",
+      "category": "MALICIOUS_CODE"
+    },
+    "WA_AWAIT_NOT_IN_LOOP": {
+      "anchor": "wa-condition-await-not-in-loop-wa-await-not-in-loop",
+      "category": "MT_CORRECTNESS"
+    },
+    "WA_NOT_IN_LOOP": {
+      "anchor": "wa-wait-not-in-loop-wa-not-in-loop",
+      "category": "MT_CORRECTNESS"
+    },
+    "WL_USING_GETCLASS_RATHER_THAN_CLASS_LITERAL": {
+      "anchor": "wl-synchronization-on-getclass-rather-than-class-literal-wl-using-getclass-rather-than-class-literal",
+      "category": "MT_CORRECTNESS"
+    },
+    "WMI_WRONG_MAP_ITERATOR": {
+      "anchor": "wmi-inefficient-use-of-keyset-iterator-instead-of-entryset-iterator-wmi-wrong-map-iterator",
+      "category": "PERFORMANCE"
+    },
+    "WS_WRITEOBJECT_SYNC": {
+      "anchor": "ws-class-s-writeobject-method-is-synchronized-but-nothing-else-is-ws-writeobject-sync",
+      "category": "MT_CORRECTNESS"
+    },
+    "XFB_XML_FACTORY_BYPASS": {
+      "anchor": "xfb-method-directly-allocates-a-specific-implementation-of-xml-interfaces-xfb-xml-factory-bypass",
+      "category": "STYLE"
+    },
+    "XSS_REQUEST_PARAMETER_TO_JSP_WRITER": {
+      "anchor": "xss-jsp-reflected-cross-site-scripting-vulnerability-xss-request-parameter-to-jsp-writer",
+      "category": "SECURITY"
+    },
+    "XSS_REQUEST_PARAMETER_TO_SEND_ERROR": {
+      "anchor": "xss-servlet-reflected-cross-site-scripting-vulnerability-in-error-page-xss-request-parameter-to-send-error",
+      "category": "SECURITY"
+    },
+    "XSS_REQUEST_PARAMETER_TO_SERVLET_WRITER": {
+      "anchor": "xss-servlet-reflected-cross-site-scripting-vulnerability-xss-request-parameter-to-servlet-writer",
+      "category": "SECURITY"
+    }
+  }
+}
