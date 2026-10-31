@@ -32,11 +32,25 @@ describe('stability direction without feature folders', () => {
     const metrics = computeCoupling(libraryGraph(uses));
     const instability = new Map(metrics.packages.map((entry) => [entry.name, entry.instability]));
 
-    for (const direction of metrics.stabilityDirection) {
-      expect(direction.sourceInstability).toBe(instability.get(direction.source));
-      expect(direction.targetInstability).toBe(instability.get(direction.target));
-      expect(direction.message).toBeUndefined();
-    }
+    const measured = metrics.stabilityDirection.map((direction) => ({
+      pair: `${direction.source} -> ${direction.target}`,
+      sourceInstability: direction.sourceInstability,
+      targetInstability: direction.targetInstability,
+      message: direction.message,
+    }));
+
+    expect(measured.map(({ pair }) => pair).sort()).toEqual(FACADE_PAIRS);
+    expect(measured).toEqual(
+      measured.map(({ pair }) => {
+        const [source, target] = pair.split(' -> ');
+        return {
+          pair,
+          sourceInstability: instability.get(source),
+          targetInstability: instability.get(target),
+          message: undefined,
+        };
+      }),
+    );
   });
 });
 
