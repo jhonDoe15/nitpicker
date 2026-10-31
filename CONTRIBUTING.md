@@ -54,6 +54,9 @@ end-to-end behaviour also needs that language's suite (`npm run test:java`, `tes
 below (pushes to `main` that touch the paths they list, a manual run, and the `run-ci` label). The
 `github-action` workflow, which runs the composite action in `action.yml` on the sample project in
 `.github/sample-project`, follows them too; it is not a required check.
+The Java and Kotlin suites add Maven resolver retry options to `MAVEN_OPTS`, so a Maven Central
+HTTP 429 (rate limit) is retried up to six times, ten seconds apart, instead of failing the build
+under test. CI keeps `~/.m2` and `~/.gradle` between runs; locally they are your own caches.
 The TypeScript red-base test (`npm run test:typescript`, which runs real vitest through the CLI) is
 not in CI: run it after changing `core/diff/comparison/base-red/` or a test runner's failure report.
 
