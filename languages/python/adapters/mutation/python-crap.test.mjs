@@ -79,10 +79,18 @@ describe('reading the CRAP inputs', () => {
   });
 
   it('scores no function of a test file, which coverage does not measure', () => {
-    const { root } = project();
-    const testFunctions = ['src/polls/tests.py', 'src/demo/tests/test_a.py', 'test_b.py'].map(
-      (file) => ({ ...FUNCTIONS[0], file }),
-    );
+    const { root } = scratch.project({
+      files: {
+        'manage.py': '',
+        'pytest.ini': '[pytest]\npython_files = check_*.py test_*.py\n',
+      },
+    });
+    const testFunctions = [
+      'src/polls/tests.py',
+      'src/demo/tests/test_a.py',
+      'test_b.py',
+      'src/demo/check_c.py',
+    ].map((file) => ({ ...FUNCTIONS[0], file }));
 
     expect(
       readPythonCrapFindings({
@@ -92,6 +100,21 @@ describe('reading the CRAP inputs', () => {
         roots: [root],
       }),
     ).toEqual([]);
+  });
+
+  it('scores a tests.py outside a Django project, which pytest does not collect', () => {
+    const { root } = scratch.project({
+      files: { 'src/demo/tests.py': 'def f():\n    return 1\n' },
+    });
+
+    expect(
+      readPythonCrapFindings({
+        functions: [{ ...FUNCTIONS[0], file: 'src/demo/tests.py' }],
+        coverage: coverage(0).replace('src/demo/a.py', 'src/demo/tests.py'),
+        projectRoot: root,
+        roots: [root],
+      }).map(({ path: file }) => file),
+    ).toEqual(['src/demo/tests.py']);
   });
 
   it('keys the identity on the function text', () => {

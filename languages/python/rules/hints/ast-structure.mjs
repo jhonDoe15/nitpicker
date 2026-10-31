@@ -1,3 +1,4 @@
+import { renderMessage, UNUSED_OPTION_TEXT } from '../../../../shared/messages/messages.mjs';
 import { validatorNamed } from '../libraries/library-tables.mjs';
 import { validatorsOf } from '../libraries/project-libraries.mjs';
 import { RULES_TOOL } from './tool.mjs';
@@ -54,6 +55,15 @@ function importBoundaryAdvice(libraries) {
   const validators = validatorsOf(libraries);
   return `Use ${validators.join(' or ')} only in an \`adapters/\` package to parse untrusted input (\`${validatorNamed(validators[0]).call}\`), and pass frozen dataclasses on from there.`;
 }
+
+function ownerOf(subject) {
+  return subject.slice(0, subject.lastIndexOf('.'));
+}
+
+const UNUSED_OPTION_SCOPES = {
+  private: 'tests do not count',
+  published: "this package's own tests count",
+};
 
 export const STRUCTURE_HINTS = [
   {
@@ -241,5 +251,41 @@ export const STRUCTURE_HINTS = [
     describe: (subject) => `The pydantic model \`${subject}\` accepts unknown fields`,
     allowed:
       'Set `model_config = ConfigDict(extra="forbid")` (or leave the default `ignore`) and declare every field the model needs.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['singular-and-plural-field'],
+    describe: (subject, _libraries, { singular, plural, kind }) =>
+      `Optional ${kind} \`${singular}\` and \`${plural}\` of \`${ownerOf(subject)}\` are two ways to pass the same data`,
+    referenceData: { singular: '<item>', plural: '<items>', kind: 'fields' },
+    allowed: 'Keep the plural one and pass a single item as a one-element list.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['exhaustive-enum-predicate'],
+    describe: (_subject, _libraries, { union }) => {
+      const name = union === 'the Literal' ? union : `\`${union}\``;
+      return `These comparisons list only some members of ${name}, so a member added later is silently classified as the default`;
+    },
+    referenceData: { union: '<enum>' },
+    allowed:
+      'Classify every member with a `match` that ends in `case _: assert_never(value)` (or an `if`/`elif` chain that ends in `else: assert_never(value)`), so the type checker fails when a member is added.',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['forwarding-wrapper'],
+    describe: (subject, _libraries, { target }) =>
+      `\`${subject}\` only forwards its parameters to \`${target}\`, with the same parameter and return types`,
+    referenceData: { target: '<target>' },
+    allowed:
+      'Call the target directly and delete the wrapper; to keep the name, import the target under it (`from module import target as name`) or bind it (`name = target`).',
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['unused-option'],
+    describe: (subject, _libraries, { scope }) =>
+      renderMessage(UNUSED_OPTION_TEXT, { name: subject, scope: UNUSED_OPTION_SCOPES[scope] }),
+    referenceData: { scope: 'private' },
+    exception: 'top-level',
   },
 ];

@@ -30,6 +30,7 @@ export function coverageRc(root, sources, { carried = [], django = false } = {})
     '    */conftest.py',
     '    */tests/*',
     '    */test/*',
+    `    ${path.join(root, 'testing/*')}`,
     ...(django ? DJANGO_OMIT : []),
     ...carried,
     '[report]',

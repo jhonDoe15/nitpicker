@@ -44,6 +44,8 @@ const BASE_FILES = {
   'src/top.py': 'import core\n\n\ndef run():\n    return core.g(1)\n',
   'tests/test_a.py': 'def test_f():\n    pass\n',
   'uv.lock': 'lock\n',
+  'manage.py': '',
+  'pytest.ini': '[pytest]\npython_files = check_*.py test_*.py\n',
 };
 
 function inProject(prefix, files) {
@@ -176,6 +178,7 @@ describe('reusing the base mutation results on head', () => {
     ['a conftest', { 'src/conftest.py': 'x = 1\n' }],
     ['the tests.py of a Django app', { 'src/polls/tests.py': 'x = 1\n' }],
     ['a tests directory inside the sources', { 'src/pkg/tests/helper.py': 'x = 1\n' }],
+    ['a file the pytest python_files names', { 'src/pkg/check_b.py': 'x = 1\n' }],
     ['a dependency lock', { 'uv.lock': 'new lock\n' }],
     ['a file outside the source roots', { 'scripts/run.py': 'x = 1\n' }],
     ['a file that is not Python', { 'src/data.json': '{}\n' }],
