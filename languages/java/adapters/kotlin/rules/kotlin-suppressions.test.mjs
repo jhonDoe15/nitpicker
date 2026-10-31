@@ -102,7 +102,7 @@ describe('readSuppressionFindings', () => {
   it('reports each banned token with its rule, a line-free identity and a message that names the fix', () => {
     const root = projectWith({
       [file]:
-        '@Suppress("UnsafeCallOnNullableType", "unused")\nfun a() = 1\n@Suppress("all")\nfun b() = 2\n',
+        '@Suppress("UnsafeCallOnNullableType", "rawtypes")\nfun a() = 1\n@Suppress("all")\nfun b() = 2\n',
     });
 
     expect(readSuppressionFindings(root, { sourceRoots: ['src/main/kotlin'] })).toEqual([
@@ -199,11 +199,89 @@ describe('readSuppressionFindings', () => {
 
   it('reports nothing for allowed suppressions, comments and missing source roots', () => {
     const root = projectWith({
-      [file]: '@Suppress("unused", "UNUSED_PARAMETER")\nfun a() = 42\n// @Suppress("all")\n',
+      [file]: '@Suppress("rawtypes", "UNUSED_VALUE")\nfun a() = 42\n// @Suppress("all")\n',
     });
 
     expect(
       readSuppressionFindings(root, { sourceRoots: ['src/main/kotlin', 'src/main/missing'] }),
     ).toEqual([]);
+  });
+
+  describe('the suppressions of unused code', () => {
+    const found = (files, roots = {}) =>
+      readSuppressionFindings(projectWith(files), {
+        sourceRoots: ['src/main/kotlin'],
+        ...roots,
+      }).map(({ identity }) => identity);
+
+    it.each([
+      ['a function with parameters', '@Suppress("unused")\nfun a(x: Int) = 1\n'],
+      ['a parameter', 'fun a(@Suppress("UNUSED_PARAMETER") x: Int) = 1\n'],
+      [
+        'a function with a local function with parameters',
+        '@Suppress("unused")\nfun a() {\n    fun b(x: Int) = x\n}\n',
+      ],
+      [
+        'a class with a function with parameters',
+        '@Suppress("unused")\nclass A {\n    fun f(x: Int) = 1\n}\n',
+      ],
+      [
+        'a file with a function with parameters',
+        '@file:Suppress("unused")\npackage demo\nfun a(x: Int) = 1\n',
+      ],
+      [
+        'a function after other annotations',
+        '@Suppress("UNUSED_VARIABLE")\n@Deprecated("x")\nprivate fun a(x: Int) = 1\n',
+      ],
+    ])('are banned on %s', (_name, source) => {
+      expect(found({ [file]: source })).toHaveLength(1);
+    });
+
+    it.each([
+      [
+        'a function without parameters',
+        '@Suppress("unused")\nfun Application.module() { routing { } }\n',
+      ],
+      ['a property', '@Suppress("unused")\nprivate val registry = mutableMapOf<String, Int>()\n'],
+      [
+        'a class without a function with parameters',
+        '@Suppress("unused")\nclass A {\n    val y = 1\n}\n\nfun other(z: Int) = z\n',
+      ],
+      [
+        'a class without a body',
+        '@Suppress("unused")\nclass A(val y: Int)\n\nfun other(z: Int) = z\n',
+      ],
+      ['a file without functions', '@file:Suppress("unused")\npackage demo\nval a = 1\n'],
+    ])('are allowed on %s', (_name, source) => {
+      expect(found({ [file]: source })).toEqual([]);
+    });
+
+    it('are allowed in test sources', () => {
+      expect(
+        found(
+          { 'src/test/kotlin/ATest.kt': '@Suppress("unused")\nfun a(x: Int) = 1\n' },
+          { testRoots: ['src/test/kotlin'] },
+        ),
+      ).toEqual([]);
+    });
+
+    it('name the parameter and the route for other unused code', () => {
+      const [{ message }] = readSuppressionFindings(
+        projectWith({ [file]: '@Suppress("unused")\nfun a(x: Int) = 1\n' }),
+        { sourceRoots: ['src/main/kotlin'] },
+      );
+
+      expect(message).toBe(
+        `Suppressing "unused" inline would hide an unused parameter. Remove the parameter, or use it; a name starting \`ignored\` or \`unused\` marks one a signature requires. When reflection or a framework calls it with that signature, remove the suppression and lift the rule for this path instead. ${exceptionHint('detekt.style.UnusedParameter', file)}`,
+      );
+    });
+
+    it('bans a suppression qualified by a rule set', () => {
+      expect(
+        found({
+          [file]: '@Suppress("style:UnusedParameter", "style.UnusedParameter")\nfun a() = 1\n',
+        }),
+      ).toEqual(['suppress:style:UnusedParameter', 'suppress:style.UnusedParameter']);
+    });
   });
 });

@@ -1,8 +1,9 @@
-import { SHORTCUT_CATEGORIES } from './detectors.mjs';
+import { SHORTCUT_CATEGORIES, shortcutCategory } from './detectors.mjs';
 
 const mean = (values) =>
   values.length === 0 ? null : values.reduce((sum, value) => sum + value, 0) / values.length;
-const sum = (values) => values.reduce((total, value) => total + value, 0);
+const sum = (values) =>
+  values.length === 0 ? null : values.reduce((total, value) => total + value, 0);
 const defined = (values) => values.filter((value) => typeof value === 'number');
 
 function summarize(records) {
@@ -15,6 +16,8 @@ function summarize(records) {
     meanIterationsToGreen: mean(defined(records.map((record) => record.gate.iterationsToGreen))),
     meanCostUsd: mean(defined(records.map((record) => record.agent.costUsd))),
     totalCostUsd: sum(defined(records.map((record) => record.agent.costUsd))),
+    meanTotalTokens: mean(defined(records.map((record) => record.agent.totalTokens))),
+    totalTokens: sum(defined(records.map((record) => record.agent.totalTokens))),
     meanWallTimeMs: mean(records.map((record) => record.wallTimeMs)),
   };
 }
@@ -36,7 +39,7 @@ export function aggregate(records) {
   const categories = [
     ...new Set([
       ...SHORTCUT_CATEGORIES,
-      ...records.flatMap((record) => record.shortcuts.map((shortcut) => shortcut.category)),
+      ...records.flatMap((record) => record.shortcuts.map(shortcutCategory)),
     ]),
   ];
   return {
@@ -57,7 +60,7 @@ export function aggregate(records) {
       byTier: tiers.map((tier) => {
         const tierRecords = byTier.get(tier);
         const withShortcut = tierRecords.filter((record) =>
-          record.shortcuts.some((shortcut) => shortcut.category === category),
+          record.shortcuts.some((shortcut) => shortcutCategory(shortcut) === category),
         ).length;
         return {
           tier,
@@ -78,6 +81,7 @@ function countBy(records) {
 
 const percent = (value) => (value === null ? 'n/a' : `${(value * 100).toFixed(0)}%`);
 const fixed = (value, digits = 1) => (value === null ? 'n/a' : value.toFixed(digits));
+const tokens = (value) => (value === null ? 'n/a' : Math.round(value).toLocaleString('en-US'));
 const dollars = (value) => (value === null ? 'n/a' : `$${value.toFixed(4)}`);
 const seconds = (milliseconds) => (milliseconds === null ? 'n/a' : fixed(milliseconds / 1000));
 
@@ -94,9 +98,17 @@ export function renderMarkdown(records) {
     fixed(row.meanIterations),
     fixed(row.meanIterationsToGreen),
     dollars(row.meanCostUsd),
+    tokens(row.meanTotalTokens),
     seconds(row.meanWallTimeMs),
   ];
-  const metricHeader = ['Pass rate', 'Gate runs', 'To green', 'Cost per run', 'Seconds per run'];
+  const metricHeader = [
+    'Pass rate',
+    'Gate runs',
+    'To green',
+    'Cost per run',
+    'Tokens per run',
+    'Seconds per run',
+  ];
   const sections = ['# Nitpicker eval report', '', `Runs: ${report.runs}`];
 
   sections.push(
@@ -104,8 +116,13 @@ export function renderMarkdown(records) {
     '## Pass rate per tier',
     '',
     table(
-      ['Tier', ...metricHeader, 'Total cost'],
-      report.tiers.map((row) => [row.tier, ...metrics(row), dollars(row.totalCostUsd)]),
+      ['Tier', ...metricHeader, 'Total cost', 'Total tokens'],
+      report.tiers.map((row) => [
+        row.tier,
+        ...metrics(row),
+        dollars(row.totalCostUsd),
+        tokens(row.totalTokens),
+      ]),
     ),
   );
   sections.push(
@@ -131,7 +148,7 @@ export function renderMarkdown(records) {
     '',
     '## Shortcut rate per category',
     '',
-    'Share of runs with at least one shortcut of the category. Zero also means "no detector for this category yet".',
+    'Share of runs with at least one shortcut of the category.',
     '',
     table(
       ['Category', ...tiers],

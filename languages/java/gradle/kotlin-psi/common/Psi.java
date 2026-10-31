@@ -56,8 +56,10 @@ public final class Psi {
         String type = entry.getTypeReference() == null
             ? null
             : withoutTypeArguments(entry.getTypeReference().getText());
+        KtAnnotationUseSiteTarget target = entry.getUseSiteTarget();
         texts.add(
-            m("name", entry.getShortName().asString(), "arguments", annotationArguments(entry), "type", type));
+            m("name", entry.getShortName().asString(), "arguments", annotationArguments(entry), "type", type,
+                "target", target == null ? null : target.getAnnotationUseSiteTarget().getRenderName()));
       }
     }
     return texts;

@@ -82,14 +82,15 @@ function clonesWith(preset, root, precedence) {
 describe('jscpd precedence in the Java and Kotlin presets', () => {
   it.each(LANGUAGES)('layers the head .jscpd.json for %s', (preset, extension, source) => {
     const { root, first } = project(preset, extension, source, { minTokens: 10000 });
-    for (const [precedence, expected] of [
+    const orderings = [
       [['nitpicker'], [first]],
       [['project'], []],
       [['project', 'nitpicker'], []],
       [['nitpicker', 'project'], [first]],
-    ]) {
-      expect(clonesWith(preset, root, precedence)).toEqual(expected);
-    }
+    ];
+    expect(orderings.map(([precedence]) => clonesWith(preset, root, precedence))).toEqual(
+      orderings.map(([, expected]) => expected),
+    );
   });
 
   it.each(LANGUAGES)(

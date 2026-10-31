@@ -57,10 +57,9 @@ describe('recording console calls in a test process', () => {
     target.assert(true, 'fine');
     target.log('plain');
 
-    const contents = linesWritten().map(({ file, test, content }) => {
-      expect({ file, test }).toEqual(PLACE);
-      return content.split('\n')[0];
-    });
+    const written = linesWritten();
+    const contents = written.map(({ content }) => content.split('\n')[0]);
+    expect(written.map(({ file, test }) => ({ file, test }))).toEqual(written.map(() => PLACE));
     expect(contents).toEqual([
       'failed 3 times in the cart',
       'careful',

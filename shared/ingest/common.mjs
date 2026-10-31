@@ -54,7 +54,7 @@ export function uncoveredFinding({ tool, rule, path, symbol, message }) {
     tool,
     rule,
     path,
-    identity: hashIdentity('cov', [rule, path, symbol]),
+    identity: `cov:${symbol}`,
     message,
     classification: 'descriptive',
     symbol,

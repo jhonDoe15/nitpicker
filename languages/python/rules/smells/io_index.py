@@ -1,6 +1,7 @@
 import ast
 
 from checks.common import dotted_name, own_nodes, words_of
+from index.clients import PER_ITEM_CLIENT_FACTORIES
 
 INPUT_OUTPUT_MODULES = {
     "requests",
@@ -81,25 +82,6 @@ METHOD_NAMES = {
     "bulk_create",
     "bulk_update",
 }
-CLIENT_FACTORIES = {
-    "requests.Session",
-    "requests.session",
-    "httpx.Client",
-    "httpx.AsyncClient",
-    "aiohttp.ClientSession",
-    "urllib3.PoolManager",
-    "sqlite3.connect",
-    "psycopg.connect",
-    "psycopg2.connect",
-    "pymysql.connect",
-    "asyncpg.connect",
-    "asyncpg.create_pool",
-    "redis.Redis",
-    "redis.from_url",
-    "boto3.client",
-    "boto3.resource",
-    "pymongo.MongoClient",
-}
 PARTIALS = {"functools.partial", "partial"}
 PASSES = 4
 
@@ -164,7 +146,7 @@ def static_names(context):
             if not isinstance(target, ast.Name):
                 continue
             name = call_name_of(value, aliases)
-            if name in CLIENT_FACTORIES:
+            if name in PER_ITEM_CLIENT_FACTORIES:
                 clients.add(target.id)
             elif name in PARTIALS and bound_value(value).args:
                 partials[target.id] = bound_value(value).args[0]

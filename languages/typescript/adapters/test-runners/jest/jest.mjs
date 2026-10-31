@@ -32,7 +32,6 @@ const OPTIONS_NITPICKER_SETS = {
     '-f',
     '--lastCommit',
     '--changedFilesWithAncestor',
-    '--findRelatedTests',
     '--showConfig',
     '--listTests',
     '--clearCache',
@@ -40,11 +39,8 @@ const OPTIONS_NITPICKER_SETS = {
   valued: [
     '--outputFile',
     '--coverageDirectory',
-    '--coverageReporters',
     '--coverageProvider',
-    '--collectCoverageFrom',
     '--coverageThreshold',
-    '--reporters',
     '--testTimeout',
     '--maxWorkers',
     '-w',
@@ -53,26 +49,19 @@ const OPTIONS_NITPICKER_SETS = {
     '--testNamePattern',
     '-t',
   ],
+  variadic: [
+    '--findRelatedTests',
+    '--collectCoverageFrom',
+    '--coveragePathIgnorePatterns',
+    '--coverageReporters',
+    '--reporters',
+  ],
 };
 
 const SERIAL_OPTIONS = new Set(['--runInBand', '-i']);
 
-function withoutRelatedFiles(tokens) {
-  const kept = [];
-  let related = false;
-  for (const token of tokens) {
-    if (token.startsWith('-')) {
-      related = token === '--findRelatedTests';
-    }
-    if (!related || token.startsWith('-')) {
-      kept.push(token);
-    }
-  }
-  return kept;
-}
-
 function scriptArguments(command) {
-  return withoutOptions(withoutRelatedFiles(command.arguments_), OPTIONS_NITPICKER_SETS);
+  return withoutOptions(command.arguments_, OPTIONS_NITPICKER_SETS);
 }
 
 export function jestArguments(command, nitpickerArguments, { leading, trailing }) {

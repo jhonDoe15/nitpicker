@@ -85,15 +85,12 @@ describe('the i18n rules report the same on both lint engines', () => {
       cwd: root,
       overrideConfigFile: path.join(root, 'policy.mjs'),
     }).lintFiles(patterns);
-    for (const file of Object.keys(expected)) {
-      expect({ file, eslint: messagesIn(root, eslint, file) }).toEqual({
-        file,
-        eslint: expected[file],
-      });
-      expect({ file, oxlint: messagesIn(root, oxlint, file) }).toEqual({
-        file,
-        oxlint: expected[file],
-      });
-    }
+    const files = Object.keys(expected);
+    expect(files.map((file) => ({ file, eslint: messagesIn(root, eslint, file) }))).toEqual(
+      files.map((file) => ({ file, eslint: expected[file] })),
+    );
+    expect(files.map((file) => ({ file, oxlint: messagesIn(root, oxlint, file) }))).toEqual(
+      files.map((file) => ({ file, oxlint: expected[file] })),
+    );
   });
 });

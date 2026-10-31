@@ -15,17 +15,21 @@ const weight = Object.fromEntries(
 
 describe('shard weights', () => {
   it('gives every analyzer an explicit positive integer weight', () => {
-    for (const { name, shardWeight } of packageAnalyzers) {
-      expect(Number.isInteger(shardWeight) && shardWeight > 0, name).toBe(true);
-    }
+    expect(
+      packageAnalyzers.map(({ name, shardWeight }) => [
+        name,
+        Number.isInteger(shardWeight) && shardWeight > 0,
+      ]),
+    ).toEqual(packageAnalyzers.map(({ name }) => [name, true]));
   });
 
   it('ranks the test-running analyzers above the static ones', () => {
     expect(weight.mutation).toBeGreaterThan(weight.coverage);
     expect(weight.coverage).toBeGreaterThan(weight['eslint-errors']);
-    for (const cheap of ['duplicates', 'structure', 'dead-code']) {
-      expect(weight.coverage, cheap).toBeGreaterThan(weight[cheap]);
-    }
+    const cheap = ['duplicates', 'structure', 'dead-code'];
+    expect(cheap.map((name) => [name, weight.coverage > weight[name]])).toEqual(
+      cheap.map((name) => [name, true]),
+    );
     expect(Math.max(...Object.values(weight))).toBe(weight.mutation);
   });
 
@@ -34,9 +38,10 @@ describe('shard weights', () => {
   });
 
   it('weights the full lint above the focused lint checks', () => {
-    for (const focused of ['eslint-errors', 'eslint-logging', 'eslint-module-effects']) {
-      expect(weight['eslint-lint'], focused).toBeGreaterThan(weight[focused]);
-    }
+    const focused = ['eslint-errors', 'eslint-logging', 'eslint-module-effects'];
+    expect(focused.map((name) => [name, weight['eslint-lint'] > weight[name]])).toEqual(
+      focused.map((name) => [name, true]),
+    );
   });
 });
 

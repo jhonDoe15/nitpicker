@@ -107,17 +107,18 @@ describe('config exceptions', () => {
       );
     });
 
-    it('rejects a function on a rule that is not scoped to functions, or an empty one', () => {
+    it('rejects a function on a rule that is not scoped to functions', () => {
       expect(() =>
         validateConfig({ exceptions: [{ ...coverage, rule: 'nitpicker/no-throw' }] }),
       ).toThrow(
         '"exceptions[0].function" is only supported for these rules: function-lines-limit, function-statements-limit, function-control-nesting-limit, function-parameters-limit, crap-score-limit, crap-coverage-unknown, changed-branch-coverage, mutant-survived, mutant-nocoverage',
       );
-      for (const blank of ['', '  ']) {
-        expect(() => validateConfig({ exceptions: [{ ...coverage, function: blank }] })).toThrow(
-          '"exceptions[0].function" must be a non-blank name',
-        );
-      }
+    });
+
+    it.each(['', '  '])('rejects the blank function name %j', (blank) => {
+      expect(() => validateConfig({ exceptions: [{ ...coverage, function: blank }] })).toThrow(
+        '"exceptions[0].function" must be a non-blank name',
+      );
     });
 
     it('accepts a function on a mutant rule and a name on an export or type of dead code', () => {
@@ -264,12 +265,14 @@ describe('config exceptions', () => {
       expect(validateConfig({ preset, exceptions }).exceptions).toEqual(exceptions);
     });
 
-    it.each(['java', 'kotlin'])('reject a bare tool and an unknown tool in %s', (preset) => {
-      for (const rule of ['pmd/', 'pmd', 'bogus/Rule']) {
-        expect(() => validateConfig({ preset, exceptions: [printed(rule)] })).toThrow(
-          `"exceptions[0].rule"`,
-        );
-      }
+    it.each(
+      ['java', 'kotlin'].flatMap((preset) =>
+        ['pmd/', 'pmd', 'bogus/Rule'].map((rule) => [preset, rule]),
+      ),
+    )('reject a bare tool and an unknown tool in %s: %s', (preset, rule) => {
+      expect(() => validateConfig({ preset, exceptions: [printed(rule)] })).toThrow(
+        `"exceptions[0].rule"`,
+      );
     });
 
     it.each(['java', 'kotlin'])('reject a Checkstyle check named by its class in %s', (preset) => {

@@ -146,8 +146,9 @@ describe('rule catalogs', () => {
   });
 
   it('are part of the configuration hash, with the code that applies them', () => {
-    const files = readdirSync(import.meta.dirname)
-      .filter((name) => !name.includes('.test.'))
+    const files = readdirSync(import.meta.dirname, { recursive: true })
+      .map((name) => name.replaceAll('\\', '/'))
+      .filter((name) => /\.(?:mjs|json)$/u.test(name) && !name.includes('.test.'))
       .map((name) => `languages/java/messages/${name}`)
       .sort();
 

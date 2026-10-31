@@ -79,9 +79,10 @@ describe('splitBill', () => {
   });
 
   it('rejects a total that is not a whole number of cents', () => {
-    for (const total of [-1, 10.5, '100', Number.NaN]) {
-      expect(() => splitBill(total, ['Ann'])).toThrow('Total must be a whole number of cents');
-    }
+    expect(() => splitBill(-1, ['Ann'])).toThrow('Total must be a whole number of cents');
+    expect(() => splitBill(10.5, ['Ann'])).toThrow('Total must be a whole number of cents');
+    expect(() => splitBill('100', ['Ann'])).toThrow('Total must be a whole number of cents');
+    expect(() => splitBill(Number.NaN, ['Ann'])).toThrow('Total must be a whole number of cents');
   });
 
   it('rejects people that are not a list', () => {
