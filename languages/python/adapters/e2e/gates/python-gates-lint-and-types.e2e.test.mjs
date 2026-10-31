@@ -23,6 +23,7 @@ import {
   reportedFindings,
   withoutMutants,
 } from '../test-support/python-gate-support.mjs';
+import { helpUriProblems } from '../../../../../shared/reference/test-support/help-uris.mjs';
 
 describe.skipIf(!pythonE2eEnabled)('Python preset lint and type gates end to end', () => {
   let project;
@@ -73,6 +74,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint and type gates end to end
       'ruff F401 bad.py',
       'ruff-format format bad.py',
     ]);
+    expect(helpUriProblems(violation.json('new-findings.json'))).toEqual([]);
     const sarif = JSON.parse(readFileSync(path.join(violation.reports, 'report.sarif'), 'utf8'));
     expect(sarif.runs[0].results.map(({ ruleId }) => ruleId)).toEqual([
       'coupling/module-coupling',

@@ -12,40 +12,48 @@ Python uses `python-e2e.json` when `NITPICKER_PYTHON_E2E=1`.
 
 ## Where the weights come from
 
-Every weight is whole seconds measured in the run of commit `3fcaedfa` on the matrix before this
-one:
+The weights are whole seconds fitted to three green runs on `main` (commits `b35fdc2a`,
+`f2ebc984` and `e26d24d7`), which still used the unsplit files on 16 Java, 10 Kotlin and 4 Python
+shards:
 
-- [Java 39850506780](https://github.com/jhonDoe15/nitpicker/actions/runs/39850506780): 21 shards,
-  105-219 seconds of job time.
-- [Kotlin 39850506687](https://github.com/jhonDoe15/nitpicker/actions/runs/39850506687): 15
-  shards, 107-220 seconds.
-- [Python 39850506814](https://github.com/jhonDoe15/nitpicker/actions/runs/39850506814): 4
-  shards, 134-227 seconds.
+- Java [41194158038](https://github.com/jhonDoe15/nitpicker/actions/runs/41194158038),
+  [41194173446](https://github.com/jhonDoe15/nitpicker/actions/runs/41194173446) and
+  [41194187644](https://github.com/jhonDoe15/nitpicker/actions/runs/41194187644).
+- Kotlin [41194158042](https://github.com/jhonDoe15/nitpicker/actions/runs/41194158042),
+  [41194173526](https://github.com/jhonDoe15/nitpicker/actions/runs/41194173526) and
+  [41194187721](https://github.com/jhonDoe15/nitpicker/actions/runs/41194187721).
+- Python [41194187705](https://github.com/jhonDoe15/nitpicker/actions/runs/41194187705).
 
-The weight of a file is its own time in the shard log, which includes its hooks (for a Java shard
-with one file, its test step less two seconds of Vitest startup).
+For each shard of those runs the sequencer gives the files it ran, and the median of the three
+end-to-end step times gives what they took together. The method:
 
-- Java and Kotlin shards run their files one at a time. The first file of a shard also pays for
-  starting a Gradle daemon on cold caches: the first diff of the branches-exceptions file took 53
-  seconds and its second one 33. The first file of each shard therefore has 20 seconds
-  taken off, and a shard is expected to take the sum of its weights plus those 20 seconds. Setup
-  before the tests (checkout, Node, JDK, Gradle and Maven caches, `npm ci`) took 25-47 seconds per
-  JVM job. Each shard added to a matrix costs about 60 seconds of runner time for these two.
-- Python shards run two files at a time on four runners. A Python weight is the file's own time
-  with two workers, so a shard's test step takes about half its weight sum, and never less than
-  its longest file: the project-setups file (164 seconds) sets the length of its shard. Setup
-  took 45-66 seconds per Python job.
-- Files that arrived after that run carry estimates until a run measures them.
-  `kotlin-spring-rules.e2e.test.mjs` has 100 seconds: it runs two diffs of one project, and the
-  measured one-diff review rule files took 50-65. The Java `pmd-categories.e2e.test.mjs` (two PMD
-  builds of one project) keeps its author's 40 seconds, and the Python rule files
-  `errors/cancellation`, `errors/cancellation-scope`, `tasks/cleanup` and `tasks/lifetimes`
-  keep their authors' 4-6 seconds, in line with the measured rule files beside them.
+- Java and Kotlin shards run their files one at a time. Each step pays about 2 seconds of Vitest
+  startup, and its first file pays for starting a Gradle daemon on cold caches (the first diff of
+  the branches-exceptions file took 53 seconds and its second one 33), so 22 seconds come off the
+  step time. A shard is expected to take the sum of its weights plus those 22 seconds. Setup
+  before the tests (checkout, Node, JDK, Gradle and Maven caches, `npm ci`) took 50-90 seconds per
+  JVM job, so each shard added to a matrix costs about 60-90 seconds of runner time.
+- The split files of a shard start from their own per-file times in the run of commit `3fcaedfa`
+  ([Java 39850506780](https://github.com/jhonDoe15/nitpicker/actions/runs/39850506780),
+  [Kotlin 39850506687](https://github.com/jhonDoe15/nitpicker/actions/runs/39850506687)), and are
+  scaled together so that their sum matches the shard. The Java complexity and parity files and
+  the preset branches and violations files grew most (factors 1.8 and 1.45): `main` added cases to
+  them after that run.
+- A file new since that run gets what its shard has left after the others, and at least 10
+  seconds: the Java overlap probe (28), tool text and Error Prone report (10 each), and the Kotlin
+  fan-out (28), multi-project (85) and mutation facts (25) files. The Kotlin library-branches and
+  ports file holds the two coverage cases `main` added to the branches file; its 95 seconds are
+  what that shard grew by.
+- Python shards run two files at a time, so their step times do not separate files. Python keeps
+  the per-file times with two workers from run
+  [39850506814](https://github.com/jhonDoe15/nitpicker/actions/runs/39850506814), and files added
+  since then keep their authors' estimates, listed under the files moved into the suites below.
+  The four shards took 166-193 seconds of test step on `e26d24d7`.
 
-The same file varied by 30-60% between runs (Java style-and-clones 71 and then 116 seconds,
-Spring review 37 and 92, Spring architecture 41 and 8), so shards drift by about half a minute.
-Replace the weights from a new run when the spread grows: every shard uploads a JSON report under
-a language/shard/attempt-specific artifact name, also on test failure, and its log lists the time
+The same shard varied by 30-60% between runs (Java shard 8 took 145, 152 and 242 seconds, Kotlin
+shard 6 took 301, 367 and 425), so shards drift by about half a minute. Replace the weights from a
+new run when the spread grows: every shard uploads a JSON report under a
+language/shard/attempt-specific artifact name, also on test failure, and its log lists the time
 of each file. Do not use JSON assertion spans as hook measurements. The duration recorder uses
 Vitest module diagnostics, which include hooks, and writes sorted whole-second profiles.
 
@@ -55,22 +63,22 @@ The targets are 2-3 minutes of job time for a Java or Kotlin shard (#364, #365) 
 minutes for a Python shard (#366). The account runs at most about 20 jobs at once, so the counts
 are also weighed against queue time.
 
-- Java has 19 shards: 127-141 seconds of tests (about 2.5-3 minutes of job time), plus 175
+- Java has 19 shards: 125-133 seconds of tests (about 2.5-3 minutes of job time), plus 172
   seconds for the Spring console file, whose single case compares the full Gradle and Maven
-  findings of two builds and has a shard of its own. 20 or 21 shards would shorten the longest
-  regular shard by 8-10 seconds, and 21 shards and the plan job exceed the 20 concurrent jobs.
-  19 shards and the plan job fit.
-- Kotlin has 15 shards: 125-149 seconds of tests, plus 156 for the structure file alone. 14
-  shards would raise the longest to 163 seconds, and 16 would not shorten it.
-- Python has 4 shards: about 125 seconds of tests each, 165 for the shard with the project-setups
-  file, so about 3-3.6 minutes of job time.
+  findings of two builds and has a shard of its own (#478). 20 or 21 shards would shorten the
+  longest regular shard by about 9 seconds, and 21 shards and the plan job exceed the 20 concurrent
+  jobs. 19 shards and the plan job fit.
+- Kotlin has 15 shards: 129-163 seconds of tests, plus about 215 for the Kotlin red-base file
+  alone. 14 shards would raise the longest regular shard to 172 seconds, and 16 would shorten it
+  by 12 seconds for another 60-90 seconds of runner time.
+- Python has 4 shards of about 300 weighted seconds each, about 150 seconds of test step with two
+  workers, so about 3.5-4 minutes of job time.
 
 When the `run-ci` label starts every workflow at once, about 40 jobs compete for 20 runners, and
-the wall time is bounded by the total runner time divided by 20: about 3,300 seconds for Java,
-2,700 for Kotlin and 750 for Python, about 5.5 minutes in all. An extra shard adds about 60
-seconds of runner time, 3 seconds of wall time at that bound, and shortens nothing once the longest
-shard holds a single file. Queue time can still dominate: the jobs of the run above waited about
-56 minutes for runners before they started.
+the wall time is bounded by the total runner time divided by 20. An extra shard adds about 60-90
+seconds of runner time, 3-5 seconds of wall time at that bound, and shortens nothing once the
+longest shard holds a single file. Queue time can still dominate: the jobs of the runs above
+waited up to about 90 minutes for runners before they started.
 
 ## Splits
 
@@ -80,7 +88,7 @@ test framework and escape hatch files, the Kotlin guards, review rules, lint, co
 and one-way rules files, and the Python gate file. Identical builds repeated in one file now run
 once and are shared by the cases that read them. Kotlin one-way rules build only the banned,
 allowed or hostile-config snapshot their file needs. Spring keeps its three independent build
-hooks in separate files. Java has 94 cases and Kotlin 91, and every one stays selected.
+hooks in separate files. Every Java and Kotlin case stays selected.
 
 Named timeout projects select the Java/Kotlin test subject independently of the `.mjs` harness
 extension. Tests have a three-minute execution deadline; Java build hooks have five minutes and
@@ -105,7 +113,7 @@ splits above. The isolated-shard runs
 [Java 39827137379](https://github.com/jhonDoe15/nitpicker/actions/runs/39827137379),
 [Kotlin 39827137380](https://github.com/jhonDoe15/nitpicker/actions/runs/39827137380) and
 [Python 39827137436](https://github.com/jhonDoe15/nitpicker/actions/runs/39827137436) on
-`de8c1413` gave the weights the run above replaced.
+`de8c1413` gave the weights that the `3fcaedfa` run replaced.
 
 ## Checking the plan
 
@@ -161,3 +169,12 @@ Four Python files (`ruff/ruff-rules`, `ruff/ruff-groups`, `adapters/formatting/f
 `adapters/configuration/python-ruff-config`, six cases) were gated on the Python flag but selected
 by no script. They are now in `test:python` with a weight of one second each: they only run the
 installed ruff and black, and took under a second together in CI.
+
+The coverage precedence file (`adapters/configuration/coverage-config/coverage-precedence`, five
+cases) is in `test:python` with a planning weight of 45 seconds: it installs coverage and pytest
+into one uv environment and runs the test step nine times, which took about 30 seconds locally.
+The ruff lint precedence file (`adapters/project-tools/ruff/ruff-lint`, ten cases) has 15 seconds:
+it runs only the installed ruff on small projects, and took about six seconds locally.
+`ruff/ruff-snapshot` (one second) only asks the installed ruff for its rule list. The type
+analysis columns file has 15 seconds, and the fan-out and signature rule files 2-5 seconds, in
+line with the measured rule files beside them.

@@ -11,6 +11,7 @@ import {
   kotlinE2eEnabled,
   removeProject,
 } from '../test-support/kotlin-e2e-project.mjs';
+import { helpUriProblems } from '../../../../../shared/reference/test-support/help-uris.mjs';
 
 describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () => {
   let project;
@@ -28,5 +29,6 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
 
     expect(result.failed).toBe(true);
     expect(reviewFindings(result.newEnforceable)).toEqual(EXPECTED_REVIEW_FINDINGS);
+    expect(helpUriProblems(result.newFindings)).toEqual([]);
   });
 });
