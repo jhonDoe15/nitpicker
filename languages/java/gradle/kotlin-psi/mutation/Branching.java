@@ -105,11 +105,12 @@ final class Branching {
     List<KtWhenEntry> entries = expression.getEntries();
     KtWhenEntry exhaustiveLast = exhaustiveLastEntry(expression, entries);
     for (KtWhenEntry entry : entries) {
-      for (KtWhenCondition condition : entry.getConditions()) {
-        if (entry == exhaustiveLast) {
-          markLastEntry(condition);
+      KtWhenCondition[] conditions = entry.getConditions();
+      for (int index = 0; index < conditions.length; index++) {
+        if (entry == exhaustiveLast && index == conditions.length - 1) {
+          markLastEntry(conditions[index]);
         } else {
-          markEnds(condition);
+          markEnds(conditions[index]);
         }
       }
       if (entry.isElse()) {
