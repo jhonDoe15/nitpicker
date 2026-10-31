@@ -2,10 +2,12 @@ import { readFileSync } from 'node:fs';
 import { hasAwaitility } from '../../../messages/wait-advice.mjs';
 import { pathInside, sourceFilesUnder } from '../../review-rules/java-sources.mjs';
 import { enumPredicateFindings } from './main/enum-predicates.mjs';
+import { fanOutFindings } from './main/fan-out/fan-out.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
 import { loadEffectFindings } from './main/load-effects.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
 import { unusedOptionFindings } from './main/unused-options.mjs';
+import { validationTargetFindings } from './validation/validation-targets.mjs';
 import { readKotlinFacts } from './kotlin-facts.mjs';
 import { childLifetimeFindings } from './coroutines/resource-lifetime.mjs';
 import { suspendCleanupFindings } from './coroutines/suspend-cleanup.mjs';
@@ -58,6 +60,11 @@ function contextRoots(manifest, modules) {
   ]);
 }
 
+export function readKotlinFanOutFindings(context) {
+  const { own, projectFiles, javaRoots, projectRoot } = projectView(context);
+  return fanOutFindings({ own, projectFiles, projectRoot, javaRoots });
+}
+
 export function readKotlinReviewFindings(context) {
   const { manifest, projectRoot, modules = [] } = context;
   const { own, projectFiles, javaRoots } = projectView(context);
@@ -85,6 +92,7 @@ export function readKotlinReviewFindings(context) {
     ...singularPluralFindings(own, { finding }),
     ...suspendCleanupFindings(own, { finding, declaredIn: projectFiles }),
     ...childLifetimeFindings(own, { finding }),
+    ...validationTargetFindings(own, { finding }),
     ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...unusedOptionFindings(own, {
       finding,

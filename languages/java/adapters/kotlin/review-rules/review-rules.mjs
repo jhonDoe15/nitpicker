@@ -5,6 +5,7 @@ import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
 import { CHILD_OUTLIVES_RESOURCE_RULE } from './coroutines/resource-lifetime.mjs';
 import { SUSPEND_CLEANUP_RULE } from './coroutines/suspend-cleanup.mjs';
 import { UNUSED_OPTION_RULE } from './main/unused-options.mjs';
+import { VALIDATION_TARGET_RULE } from './validation/validation-targets.mjs';
 import { REVIEW_TOOL, SOURCE_TOOL } from './review-finding.mjs';
 import { JAVA_ONLY_SPRING_RULE, SPRING_RULES } from './spring/spring-messages.mjs';
 import { SPRING_UNUSED_CONTEXT_RULE } from './tests/spring-context.mjs';
@@ -20,6 +21,7 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   ENUM_PREDICATE_RULE,
   FORWARDING_RULE,
   SINGULAR_PLURAL_RULE,
+  VALIDATION_TARGET_RULE,
   LOAD_EFFECT_RULE,
   ...SPRING_RULES,
   JAVA_ONLY_SPRING_RULE,

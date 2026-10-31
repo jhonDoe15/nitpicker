@@ -24,7 +24,7 @@ const temporary = [];
 
 const CALC_FINDINGS = [
   `jacoco line-coverage ${CALC} line-coverage 66.67`,
-  `jacoco uncovered-method ${CALC} cov:4baacdbea5f88deb`,
+  `jacoco uncovered-method ${CALC} cov:demo.Calc#half(I)I`,
   `pit mutant-nocoverage ${CALC} Calc|half(I)I|MathMutator|Replaced integer division with multiplication#1`,
   `pit mutant-nocoverage ${CALC} Calc|half(I)I|PrimitiveReturnsMutator|replaced int return with 0 for Calc::half#1`,
   'pit mutation-summary . status:Killed 2',
@@ -143,15 +143,15 @@ describe.skipIf(!enabled)('Java preset on each test framework', () => {
       args: ['--quiet', 'test', '-Dmaven.test.failure.ignore=true'],
     });
     const reports = path.join(root, 'target/surefire-reports');
-    for (const [className, reportedClass] of [
+    const reportedClasses = [
       ['demo.CalcTest', 'demo.CalcTest'],
       ['demo.NamingArchTest', 'NamingArchTest'],
-    ]) {
+    ];
+    const reportedBy = reportedClasses.map(([className]) => {
       const report = parseXml(readFileSync(path.join(reports, `TEST-${className}.xml`), 'utf8'));
-      expect(childrenNamed(report, 'testcase').map(({ attrs }) => attrs.classname)).toEqual([
-        reportedClass,
-      ]);
-    }
+      return childrenNamed(report, 'testcase').map(({ attrs }) => attrs.classname);
+    });
+    expect(reportedBy).toEqual(reportedClasses.map(([, reportedClass]) => [reportedClass]));
     requireTestngRun({
       module: {
         basedir: root,

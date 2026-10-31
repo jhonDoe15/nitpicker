@@ -1,9 +1,11 @@
 {
   "languages/java/adapters/errorprone/checks/checks-catalog.e2e.test.mjs": 3,
+  "languages/java/adapters/errorprone/error-prone-report.e2e.test.mjs": 30,
   "languages/java/adapters/errorprone/error-prone.e2e.test.mjs": 16,
   "languages/java/adapters/errorprone/lombok.e2e.test.mjs": 69,
   "languages/java/adapters/java-e2e/integration-tests.e2e.test.mjs": 290,
-  "languages/java/adapters/java-e2e/multi-project.e2e.test.mjs": 47,
+  "languages/java/adapters/java-e2e/multi-project.e2e.test.mjs": 70,
+  "languages/java/adapters/java-e2e/overlap-probe.e2e.test.mjs": 330,
   "languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs": 9,
   "languages/java/adapters/java-e2e/preset/comparison/java-preset-baseline.e2e.test.mjs": 128,
   "languages/java/adapters/java-e2e/preset/comparison/java-preset-branches.e2e.test.mjs": 110,
@@ -15,7 +17,9 @@
   "languages/java/adapters/java-e2e/preset/quality/java-preset-style-and-clones.e2e.test.mjs": 111,
   "languages/java/adapters/java-e2e/preset/quality/java-preset-violations.e2e.test.mjs": 110,
   "languages/java/adapters/java-e2e/preset/quality/pmd-categories.e2e.test.mjs": 40,
+  "languages/java/adapters/java-e2e/red-base/java-red-base.e2e.test.mjs": 160,
   "languages/java/adapters/java-e2e/test-frameworks.e2e.test.mjs": 127,
+  "languages/java/adapters/java-e2e/tool-text/tool-text.e2e.test.mjs": 120,
   "languages/java/adapters/spring/e2e/java-spring-console.e2e.test.mjs": 150,
   "languages/java/adapters/spring/e2e/java-spring-review.e2e.test.mjs": 88,
   "languages/java/adapters/spring/e2e/java-spring-rules.e2e.test.mjs": 29,
@@ -28,5 +32,6 @@
   "languages/java/maven/preset/maven-preset-parity.e2e.test.mjs": 93,
   "languages/java/maven/preset/maven-preset-reactor.e2e.test.mjs": 124,
   "languages/java/maven/preset/maven-preset-spring-arch.e2e.test.mjs": 110,
+  "languages/java/maven/preset/red-base/maven-red-base.e2e.test.mjs": 150,
   "languages/java/messages/rule-catalog.e2e.test.mjs": 6
 }
