@@ -25,7 +25,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
      Gradle error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
      for that run; never kill it.
-4. Never suppress: no `@Suppress` of a detekt or ktlint rule, config `exclude`/`disable`/`exceptions`, legacy
+4. Never suppress: no `@Suppress` of a detekt or ktlint rule, coverage or mutation markers
+   (`@Generated`, `@ExcludeFromJacocoGeneratedReport`, `@DoNotMutate`), config `exclude`/`disable`/`exceptions`, legacy
    entries, or weakened tests. In Java files the Java rules apply: `@SuppressFBWarnings` and
    `@SuppressWarnings("PMD")` are findings, and a project's own PMD or Checkstyle config is used
    only when `nitpicker.config.json` opts in under `tools`. If a finding seems wrong, stop and ask.
@@ -35,6 +36,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 Before you change code other modules use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md).
 
+To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/main/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
+
 ## Write it this way
 
 - Scope functions: `let` for null (`value?.let { ... }`) and `apply` to configure an object you just
@@ -43,6 +46,9 @@ Before you change code other modules use, or fix a bug, read
   `checkNotNull(value) { "why" }` when null is a bug; `x?.let { ... }`, not `if (x == null) null else ...`.
 - Coroutines: no `GlobalScope`, no `runBlocking` (a call, however it is imported). Make the caller `suspend`
   (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`; a test uses `runTest`.
+- Fan-out: bound concurrent remote or message calls. One `Semaphore(8)` with `withPermit { ... }` around each call,
+  `chunked(n)`, or `flatMapMerge(concurrency = n)`; never `items.map { async { client.get(it) } }.awaitAll()` over a
+  runtime collection. `limitedParallelism(n)` caps threads, not suspending calls in flight.
 - Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
   A class with `var`s is not flagged, nor a JPA or Spring Data entity; the project adds other
   annotations to `UseDataClass`'s `excludeAnnotatedClasses` in its `detekt.yml`.
@@ -52,7 +58,8 @@ Before you change code other modules use, or fix a bug, read
 - With Spring, the architecture rules (`archunit/spring-...`) read the compiled Kotlin classes: package
   by feature; controllers call services, never repositories or another controller; a repository calls
   no service; a request- or session-scoped bean reaches a singleton only as `ObjectProvider<T>` or
-  through a scoped proxy (`@RequestScope`).
+  through a scoped proxy (`@RequestScope`); request data never lands in a singleton's property or a
+  `companion object`: pass it through parameters and return values.
 - With jMolecules (`AggregateRoot`, `Entity`, `ValueObject` or their annotations; also without Spring),
   the `archunit/ddd-...` rules hold aggregate boundaries: refer to another aggregate's root by its
   identifier or an `Association`, keep each entity in one aggregate, and keep entities and roots out of
@@ -62,6 +69,9 @@ Before you change code other modules use, or fix a bug, read
   duplicated string literals, spread operators and function names in backticks are not findings in a
   test. A test asserts on the specific exception (`assertFailsWith<IllegalStateException> { ... }`)
   instead of catching `Exception`, whatever the variable is called.
+- KDoc is optional. When you write it, say what the name cannot (a unit, a limit, an edge case or
+  why), never only restate the name, and keep the description to 5 lines, tags and code blocks not
+  counted (`doc-comment-content`).
 - detekt's defaults stay on. In main sources: lines of at most 120 characters, named constants
   instead of numbers other than -1, 0, 1 and 2 (`MagicNumber`), at most 2 `return` and 2 `throw`
   per function, conditions of at most 3 `&&`/`||` parts, no wildcard imports unless most of the project's files
@@ -69,7 +79,18 @@ Before you change code other modules use, or fix a bug, read
   `Throwable` (also in tests: `TooGenericExceptionCaught`), and pass the caught exception on as the cause (`SwallowedException`). Use
   `require(...)` and `check(...)` instead of throwing `IllegalArgumentException` and
   `IllegalStateException`; a top-level `val` holding a literal is `const val`. Remove unused private
-  members and parameters.
+  members and parameters (an override, a function with a framework annotation and a name starting
+  `ignored` or `unused` are skipped). A public function's `Boolean` parameter that picks a behavior
+  becomes two functions or an enum (`BooleanFlagParameter`).
+- Signatures: a value with three states is an `enum class`, not a `Boolean?` parameter, return
+  type or property (`kotlin-source/TriStateBoolean`; a property or parameter a framework fills,
+  such as `@Column`, `@JsonProperty`, `@SerialName` or an `@Entity` property, is exempt); a public
+  function returns a new collection instead of changing a `MutableList`, `MutableMap` or array
+  parameter (`items.add`, `table[key] = v`, `counts[0]++`, also through `val alias = items`;
+  `kotlin-source/ParameterMutation`; private and local functions are exempt). When code moves,
+  change every caller and delete the old name: no `@Deprecated` delegate or `typealias Old = New`
+  (`kotlin-source/CompatibilityShim`). Time comes from an injected `Clock`; `Calendar`, `Date` and
+  `SimpleDateFormat` are banned.
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
   declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`
@@ -79,6 +100,16 @@ Before you change code other modules use, or fix a bug, read
   `of` or `from` are fine.
 - A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
+- A validation annotation on a constructor property takes the field target:
+  `data class OrderRequest(@field:NotBlank val item: String)`, not `@NotBlank val item`, which
+  lands on the constructor parameter where `@Valid` never looks (`pmd/ValidationAnnotationTarget`).
+- In main code, nothing with an outside effect runs while a file, `object`, companion object or
+  enum class loads (`pmd/ClassLoadEffect`): no connection, request, file access, pool, timer,
+  coroutine launch or JVM-wide setting in a top-level property, an `object`'s properties or `init`,
+  an enum entry, or a class its companion creates, nor in a function they call. Do the work in a
+  function `main` or the framework calls after startup (a `@Bean` method, an `ApplicationRunner`, a
+  Ktor module) and pass the result in, or defer it with `by lazy { }`. Constants, loggers, `Regex`
+  and collections can stay.
 - A private or `internal` function or constructor does not declare a default parameter that no
   call in the project sets (`unused-option`): remove the parameter, or pass it from a real call.
 - Never `@Suppress` a detekt or ktlint rule (its name, `all`, a ruleset, `detekt:...`, `ktlint:...`):
@@ -109,11 +140,14 @@ Before you change code other modules use, or fix a bug, read
   a function. Complex code needs tests: the CRAP score of a function must
   stay below 9.
 - A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails: extract
-  a function, also when the copy has other names and literals. A package must not depend on a less stable one (`stability-direction`).
+  a function, also when the copy has other names and literals. Smaller copies fail too: a top-level or `object` function or constant with the same code in two files of one module (`duplicate-definition`), and editing one of two near-identical copies while leaving the other (`sibling-copy-edit`); keep one and call it. Don't import two classes of one name into a file with `import ... as` (`exported-name-collision`): rename one. A package must not depend on a less stable one (`stability-direction`).
 - A file stays within 300 lines (a test file 500). A package folder holds at most 6 files and 6
   test files directly: group the rest into subpackages by what they do. Java sources follow the
   `nitpicker-java` rules.
-- Every branch you add needs a test: changed-branch coverage runs on your change.
+- Every branch you add needs a test: changed-branch coverage runs on your change. A surviving or uncovered
+  mutant (`mutant-survived`, `mutant-nocoverage`) of your code fails as well: pin the boundary or the result
+  with an assertion, or test the function that nothing reaches. The mutants of code the compiler generates
+  (coroutine state machines, data class members, `inline` copies) are left out already.
 - Plan tests to be fast (`slow-test`): a test dispatcher or fake clock instead of
   waits, a test slice instead of a full context.
 - Never wait a fixed time in a test (`pmd/FixedSleepInTest`): no `Thread.sleep`, `TimeUnit.sleep`
@@ -154,3 +188,6 @@ Before you change code other modules use, or fix a bug, read
   constructor in a unit test, or use a slice (`pmd/SpringUnusedContext`).
 - A function or file already over a limit may be edited but must not get worse: put new code in a
   new function or file and call it.
+- A string of five characters or more used three times in a main file gets one
+  `private const val NAME = "..."` (`kotlin-source/RepeatedStringLiteral`); annotation arguments,
+  `when` labels, named arguments, map keys and message keys are not counted.

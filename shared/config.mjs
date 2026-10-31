@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { FACT_RULE_SETTINGS, factRuleSettings } from './project-rules/fact-rules.mjs';
+import { suggestionOrAllowed } from './messages/closest-match.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 
@@ -18,9 +19,9 @@ export const THRESHOLD_KEYS = [
   'integrationTestSeconds',
 ];
 const THRESHOLD_PRESETS = {
-  folderDepth: ['typescript', 'javascript', 'java', 'kotlin', 'python'],
-  classMethods: ['java', 'kotlin', 'python'],
-  classFields: ['java', 'kotlin', 'python'],
+  folderDepth: ['typescript', 'javascript', 'java', 'kotlin', 'python', 'go'],
+  classMethods: ['java', 'kotlin', 'python', 'go'],
+  classFields: ['java', 'kotlin', 'python', 'go'],
   inheritanceDepth: ['java', 'kotlin', 'python'],
 };
 const WHOLE_NUMBER_THRESHOLD_KEYS = new Set([
@@ -46,8 +47,29 @@ export function isNonEmptyString(value) {
   return typeof value === 'string' && value.length > 0;
 }
 
+export function isCount(value) {
+  return Number.isInteger(value) && value >= 0;
+}
+
 export function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+export function listOf(value) {
+  if (value === undefined) {
+    return [];
+  }
+  return Array.isArray(value) ? value : [value];
+}
+
+export function picked(source, keys) {
+  return Object.fromEntries(
+    keys.filter((key) => source[key] !== undefined).map((key) => [key, source[key]]),
+  );
+}
+
+export function sameJson(left, right) {
+  return JSON.stringify(left) === JSON.stringify(right);
 }
 
 export function validateStringArray(value, name) {
@@ -63,7 +85,7 @@ export function validateThresholds(thresholds, preset = 'typescript') {
   for (const [key, value] of Object.entries(thresholds)) {
     if (!THRESHOLD_KEYS.includes(key)) {
       throw configError(
-        `unknown threshold "${key}". Allowed thresholds: ${THRESHOLD_KEYS.join(', ')}`,
+        `unknown threshold "${key}"${suggestionOrAllowed(key, THRESHOLD_KEYS, 'Allowed thresholds')}`,
       );
     }
     if (THRESHOLD_PRESETS[key] !== undefined && !THRESHOLD_PRESETS[key].includes(preset)) {
@@ -89,7 +111,7 @@ export function validateDuplicates(duplicates) {
   for (const key of Object.keys(duplicates)) {
     if (!DUPLICATES_KEYS.includes(key)) {
       throw configError(
-        `unknown duplicates key "${key}". Allowed duplicates keys: ${DUPLICATES_KEYS.join(', ')}`,
+        `unknown duplicates key "${key}"${suggestionOrAllowed(key, DUPLICATES_KEYS, 'Allowed duplicates keys')}`,
       );
     }
   }
@@ -217,4 +239,8 @@ export function validateFactRuleSettings(config) {
   throw configError(
     `"${unsupported}" is not supported with "preset": "${language}": it configures ${rules.join(', ')}, which the ${language} preset does not run yet. Remove it`,
   );
+}
+
+export function shownSetting(value) {
+  return value === undefined ? 'not set' : JSON.stringify(value);
 }

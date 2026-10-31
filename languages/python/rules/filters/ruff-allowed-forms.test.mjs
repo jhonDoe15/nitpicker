@@ -51,7 +51,7 @@ describe('shell commands', () => {
 describe('test files', () => {
   const inFile = (rule, path) => ({ ...finding(rule, 'm'), path });
 
-  it.each(['ARG001', 'FBT001', 'PLR2004', 'S105', 'S311'])(
+  it.each(['ARG001', 'ARG002', 'DTZ005', 'PLR2004', 'S105', 'S311'])(
     'drop %s in a file the project runs as tests',
     (rule) => {
       expect(
@@ -154,5 +154,25 @@ describe('other findings', () => {
     ];
 
     expect(withoutAllowedForms(rest)).toEqual(rest);
+  });
+});
+
+describe('calendar parses', () => {
+  const parse = (line) => ({ tool: 'ruff', rule: 'DTZ007', path: 'a.py', location: { line } });
+  const lines = [
+    '',
+    'day = datetime.strptime(text, "%Y-%m-%d").date()',
+    'clock = datetime.datetime.strptime(text, "%H:%M").time()',
+    'moment = datetime.strptime(text, "%Y-%m-%d")',
+    'moment = datetime.strptime(text, "%Y-%m-%d").replace(year=1)',
+  ];
+  const lineOf = (_path, line) => lines[line];
+
+  it.each([1, 2])('allows strptime(...).date() and .time() on line %i', (line) => {
+    expect(withoutAllowedForms([parse(line)], { lineOf })).toEqual([]);
+  });
+
+  it.each([3, 4])('keeps a datetime parse on line %i', (line) => {
+    expect(withoutAllowedForms([parse(line)], { lineOf })).toEqual([parse(line)]);
   });
 });

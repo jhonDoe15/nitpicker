@@ -15,85 +15,47 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
+import {
+  checkoutOutput,
+  expectedDirtyFindings,
+  expectedDirtyOutput,
+  expectedSnapshotOutput,
+  installedHelpUri,
+  installedLinks,
+} from './test-support/installed-expectations.mjs';
 
 const enabled = process.env.NITPICKER_INSTALLED_TEST === '1';
 const packageRoot = PACKAGE_ROOT;
 const manifest = JSON.parse(readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
+const links = installedLinks(manifest);
 const layouts = [undefined, 'nested', 'linked'];
+const explained = ['pmd/UnusedLocalVariable', 'coverage', 'MagicNumber'];
 // npm 10.9 crashes resolving vitest's optional peers ("reading 'edgesOut'"), so
 // the consumer install is pinned to a newer npm.
 const installer = 'npm@11';
 const cleanSource = 'export function example() {\n  return 1;\n}\n';
 const violation = 'export function example(){\n  debugger;\n  return 1\n}\n';
 
-const expectedDirtyFindings = [
-  {
-    tool: 'eslint-lint',
-    rule: 'no-debugger',
-    path: 'src/main/example.ts',
-    identity:
-      'message:`debugger` statement is not allowed|node:LastStatement|syntax:c101e41c622a39ff619763e2|occurrence:1',
-    message: '`debugger` statement is not allowed',
-    classification: 'enforceable',
-    symbol: 'example',
-    location: { line: 2, column: 3 },
-    ratchet: {
-      key: 'count:`debugger` statement is not allowed',
-      value: 1,
-      existingCodeOnly: true,
-    },
-  },
-  {
-    tool: 'prettier-format',
-    rule: 'prettier/prettier',
-    path: 'src/main/example.ts',
-    identity: 'format-diff:3021261b8c9abc3d63b74d13',
-    message: 'Format these lines with Prettier',
-    classification: 'enforceable',
-    location: { line: 1, endLine: 1 },
-  },
-  {
-    tool: 'prettier-format',
-    rule: 'prettier/prettier',
-    path: 'src/main/example.ts',
-    identity: 'format-diff:92772ea69de4f061a708c457',
-    message: 'Format these lines with Prettier',
-    classification: 'enforceable',
-    location: { line: 3, endLine: 3 },
-  },
-];
-const expectedSnapshotOutput = [
-  "Following this project's conventions:",
-  '  Trailing commas: none (used by 1 of 1 measured files)',
-  'Nitpicker quality snapshot',
-  'Status: violations',
-  'Enforceable findings: 2',
-  'Descriptive findings: 0',
-  'Tool errors: 0',
-  '',
-  'Per-tool counts:',
-  'prettier-format: total=2 enforceable=2 descriptive=0',
-  '',
-  'Enforceable findings:',
-  'prettier-format/prettier/prettier src/main/example.ts:1 Format these lines with Prettier',
-  'prettier-format/prettier/prettier src/main/example.ts:3 Format these lines with Prettier',
-  'nitpicker: head: running 1 analyzer',
-  '',
-].join('\n');
-
-function expectedDirtyOutput(root) {
-  return `Base: main (argument)
-
-Quality gate summary
-✖ 3 new enforceable violations
-  eslint-lint/no-debugger src/main/example.ts:2
-    \`debugger\` statement is not allowed
-  prettier-format/prettier/prettier src/main/example.ts (2 times, lines 1, 3)
-    Format these lines with Prettier
-Full diagnostics: ${root}/reports/dirty/report.txt
-nitpicker: base 2 analyzers cached
-nitpicker: head: running 2 analyzers
-`;
+function expectedEslintVersion(typeScriptVersion) {
+  const plugins = [
+    '@eslint/js',
+    '@vitest/eslint-plugin',
+    'eslint-plugin-formatjs',
+    'eslint-plugin-functional',
+    'eslint-plugin-jsx-a11y-x',
+    'eslint-plugin-react-dom',
+    'eslint-plugin-react-hooks',
+    'eslint-plugin-react-web-api',
+    'eslint-plugin-react-x',
+    'eslint-plugin-regexp',
+    'eslint-plugin-testing-library',
+    'typescript-eslint',
+  ].map((name) => `${name}@${manifest.dependencies[name]}`);
+  return (
+    `eslint@${manifest.dependencies.eslint};typescript@${typeScriptVersion};` +
+    `plugins:${[...plugins, `nitpicker-plugin@${manifest.version}`].join(',')};` +
+    `oxlint@${manifest.dependencies.oxlint},oxlint-tsgolint@${manifest.dependencies['oxlint-tsgolint']}`
+  );
 }
 
 function command(cwd, executable, args) {
@@ -161,6 +123,109 @@ suite('packed nitpicker in a separate consumer', () => {
     if (packRoot) rmSync(packRoot, { recursive: true, force: true });
   });
 
+  describe('a consumer on TypeScript 7', () => {
+    const typeScript7 = manifest.dependencies['typescript-native'].replace('npm:typescript@', '');
+    const jsApi = manifest.dependencies['typescript-js-api'].replace('npm:typescript@', '');
+    const twiceSource = (expression) =>
+      `export function twice(value: number): number {\n  return ${expression};\n}\n`;
+    const analyzers = 'typescript-typecheck eslint-lint structure dependency-architecture'.split(
+      ' ',
+    );
+    let root;
+    const runs = {};
+    const output = (name) => path.join(root, 'reports', name);
+    const gate = (name) =>
+      command(root, 'npx', [
+        '--no-install',
+        'nitpicker',
+        '--base',
+        'main',
+        ...analyzers.flatMap((analyzer) => ['--analyzer', analyzer]),
+        '--output',
+        output(name),
+      ]);
+    const report = (name) =>
+      JSON.parse(readFileSync(path.join(output(name), 'summary.json'), 'utf8'));
+    const added = (name) =>
+      JSON.parse(readFileSync(path.join(output(name), 'new-findings.json'), 'utf8')).map(
+        ({ tool, rule }) => `${tool}/${rule}`,
+      );
+
+    beforeAll(() => {
+      root = mkdtempSync(path.join(tmpdir(), 'nitpicker consumer-ts7-'));
+      checked(root, 'git', ['init', '-b', 'main']);
+      write(root, '.gitignore', 'node_modules/\nreports/\n');
+      write(
+        root,
+        'package.json',
+        JSON.stringify({
+          name: 'nitpicker-installed-ts7-consumer',
+          private: true,
+          type: 'module',
+          devDependencies: {
+            nitpicker: `file:${tarball}`,
+            vitest: manifest.devDependencies.vitest,
+            typescript: typeScript7,
+          },
+        }),
+      );
+      write(root, 'src/main/example.ts', cleanSource);
+      write(root, 'src/main/cycle.ts', twiceSource('value * 2'));
+      checked(root, 'npx', ['--yes', installer, 'install', '--no-audit', '--no-fund']);
+      checked(root, 'git', ['add', '.']);
+      checked(root, 'git', [
+        '-c',
+        'user.name=Installed Test',
+        '-c',
+        'user.email=test@example.invalid',
+        'commit',
+        '-m',
+        'clean baseline',
+      ]);
+      checked(root, 'git', ['switch', '-c', 'feature']);
+      write(
+        root,
+        'src/main/example.ts',
+        "import { twice } from './cycle.js';\n\nexport function example(): number {\n" +
+          '  const unused = twice(1);\n  return "1";\n}\n',
+      );
+      write(
+        root,
+        'src/main/cycle.ts',
+        `import { example } from './example.js';\n\n${twiceSource('value * example()')}`,
+      );
+      runs.native = gate('native');
+      write(
+        root,
+        'nitpicker.config.json',
+        '{ "tools": { "typescript": { "engine": "project" } } }\n',
+      );
+      runs.project = gate('project');
+    }, 900_000);
+    afterAll(() => {
+      if (root) rmSync(root, { recursive: true, force: true });
+    }, 120_000);
+
+    it('type checks, lints and follows imports with no tool error', () => {
+      expect(runs.native.status, runs.native.output).toBe(1);
+      expect(report('native').overallStatus).toBe('completed');
+      expect(added('native')).toEqual([
+        'dependency-architecture/no-production-cycles',
+        'eslint-lint/@typescript-eslint/no-unused-vars',
+        'typescript-typecheck/TS2322',
+      ]);
+      expect(report('native').tools.find(({ name }) => name === 'eslint-lint').version).toBe(
+        expectedEslintVersion(`js-api-${jsApi}`),
+      );
+    });
+
+    it('reports the same findings when it type checks with the project compiler', () => {
+      expect(runs.project.status, runs.project.output).toBe(1);
+      expect(report('project').overallStatus).toBe('completed');
+      expect(added('project')).toEqual(added('native'));
+    });
+  });
+
   for (const strategy of layouts) {
     describe(`dependency layout: ${strategy ?? 'hoisted'}`, () => {
       let root;
@@ -171,6 +236,8 @@ suite('packed nitpicker in a separate consumer', () => {
       let subfolder;
       let snapshot;
       let fixed;
+      let rules;
+      let explanation;
       let packageLocation;
       const reports = (name) => path.join(root, 'reports', name);
       const invoke = (args, cwd = root) =>
@@ -278,6 +345,8 @@ suite('packed nitpicker in a separate consumer', () => {
           '--output',
           reports('snapshot'),
         ]);
+        rules = invoke(['rules', '--preset', 'java']);
+        explanation = invoke(['explain', ...explained]);
         fixed = invoke([
           '--base',
           'main',
@@ -322,7 +391,7 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(clean.status, clean.output).toBe(0);
         expect(dirty.status, dirty.output).toBe(1);
         expect(summary('dirty').overallStatus).toBe('completed');
-        expect(findings('dirty')).toEqual(expectedDirtyFindings);
+        expect(findings('dirty')).toEqual(expectedDirtyFindings(links));
         expect(dirty.output).toEqual(expectedDirtyOutput(root));
       });
       it('records pinned owned tool versions and the installed TypeScript peer', () => {
@@ -330,31 +399,15 @@ suite('packed nitpicker in a separate consumer', () => {
           summary('dirty').tools.map(({ name, version }) => [name, version]),
         );
         expect(versions['prettier-format']).toBe(manifest.dependencies.prettier);
-        const plugins = [
-          '@eslint/js',
-          '@vitest/eslint-plugin',
-          'eslint-plugin-formatjs',
-          'eslint-plugin-functional',
-          'eslint-plugin-jsx-a11y-x',
-          'eslint-plugin-react-dom',
-          'eslint-plugin-react-hooks',
-          'eslint-plugin-react-web-api',
-          'eslint-plugin-react-x',
-          'eslint-plugin-regexp',
-          'eslint-plugin-testing-library',
-          'typescript-eslint',
-        ].map((name) => `${name}@${manifest.dependencies[name]}`);
         expect(versions['eslint-lint']).toBe(
-          `eslint@${manifest.dependencies.eslint};typescript@${manifest.devDependencies.typescript};` +
-            `plugins:${[...plugins, `nitpicker-plugin@${manifest.version}`].join(',')};` +
-            `oxlint@${manifest.dependencies.oxlint},oxlint-tsgolint@${manifest.dependencies['oxlint-tsgolint']}`,
+          expectedEslintVersion(manifest.devDependencies.typescript),
         );
-        for (const peer of ['typescript', 'vitest', '@vitest/coverage-v8']) {
-          const installed = JSON.parse(
-            readFileSync(path.join(root, 'node_modules', peer, 'package.json')),
-          );
-          expect(installed.version).toBe(manifest.devDependencies[peer]);
-        }
+        const peers = ['typescript', 'vitest', '@vitest/coverage-v8'];
+        const installedVersions = peers.map(
+          (peer) =>
+            JSON.parse(readFileSync(path.join(root, 'node_modules', peer, 'package.json'))).version,
+        );
+        expect(installedVersions).toEqual(peers.map((peer) => manifest.devDependencies[peer]));
       });
       it('keeps the policy hash stable across two runs', () => {
         expect(second.status, second.output).toBe(1);
@@ -374,7 +427,21 @@ suite('packed nitpicker in a separate consumer', () => {
       });
       it('supports --all with the packed prettier analyzer', () => {
         expect(snapshot.status, snapshot.output).toBe(1);
-        expect(snapshot.output).toEqual(expectedSnapshotOutput);
+        expect(snapshot.output).toEqual(expectedSnapshotOutput(links));
+      });
+      it('lists and explains rules from the reference data the package ships, linking the release tag', () => {
+        expect(rules.status, rules.output).toBe(0);
+        expect(rules.output).toBe(checkoutOutput(links, ['rules', '--preset', 'java']));
+        expect(explanation.status, explanation.output).toBe(0);
+        expect(explanation.output).toBe(checkoutOutput(links, ['explain', ...explained]));
+        expect(
+          JSON.parse(readFileSync(path.join(reports('snapshot'), 'findings.json'))).map(
+            (finding) => finding.helpUri,
+          ),
+        ).toEqual([
+          installedHelpUri(links, 'prettier-format/prettier/prettier'),
+          installedHelpUri(links, 'prettier-format/prettier/prettier'),
+        ]);
       });
       it('fixes the consumer Prettier violation with --fix', () => {
         expect(fixed.status, fixed.output).toBe(0);

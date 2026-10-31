@@ -50,8 +50,11 @@ function featureBoundaryRule(findings) {
 
 const EVALUATORS = {
   'duplicate-definition': ({ modules, context }) => duplicateDefinitionFindings(modules, context),
-  'exported-name-collision': ({ facts, modules, context }) =>
-    exportedNameCollisionFindings(modules, facts.imports, context),
+  'exported-name-collision': ({ facts, modules, context, options }) =>
+    exportedNameCollisionFindings(modules, facts.imports, {
+      ...context,
+      fixFor: options.collisionFixFor,
+    }),
   'sibling-copy-edit': ({ modules, context, options }) =>
     siblingCopyEditFindings(modules, {
       ...context,

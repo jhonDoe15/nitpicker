@@ -65,6 +65,14 @@ describe('tool context', () => {
       entryPoints: [],
     });
   });
+  it('checks both snapshots with the formatter the head chose, so adopting black flags no untouched file', () => {
+    const base = project();
+    const head = project({ 'pyproject.toml': '[tool.black]\n' });
+
+    const context = createToolContext({ projectRoot: base, liveRoot: head, policyRoot: head });
+
+    expect(context.project.formatter).toBe('black');
+  });
 });
 describe('running the tools', () => {
   it('writes the ruff, format and coverage reports of a clean project', () => {
@@ -186,7 +194,7 @@ describe('running the tools', () => {
     expect(failures).toEqual(
       [
         ['format-failed', 'ruff format', 'ruff format'],
-        ['tests-failed', 'coverage run', 'coverage run'],
+        ['tests-not-run', 'coverage run', 'coverage run'],
         ['types-failed', 'mypy', 'mypy'],
         ['rules-failed', 'python', 'python'],
         ['structure-failed', `python ${structureScript}`, 'python'],
@@ -224,7 +232,7 @@ describe('running the tools', () => {
     expect(runPythonTools(context).map(({ rule }) => rule)).toEqual([
       'ruff-failed',
       'format-failed',
-      'tests-failed',
+      'tests-not-run',
       'rules-failed',
     ]);
   });
@@ -241,7 +249,7 @@ describe('running the tools', () => {
 
     expect(runPythonTools(context)).toEqual([
       {
-        rule: 'tests-failed',
+        rule: 'tests-not-run',
         message: 'coverage run exited 1 in the virtualenv environment:\n1 failed: test_greet',
       },
     ]);

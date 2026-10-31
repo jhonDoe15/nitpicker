@@ -1,8 +1,11 @@
-import { existsSync, readFileSync, symlinkSync } from 'node:fs';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { write } from '../lib/consumer.mjs';
+import { quickAnalyzersOf } from '../lib/presets.mjs';
+import { linkedTree, linkedWorkdir } from '../lib/workdirs.mjs';
 import { loadTree } from '../detectors/tree.mjs';
-import { copiedWorkdir, loadCase, referenceTree, runCase } from '../runner/run-case.mjs';
+import { loadCase, referenceTree, runCase } from '../runner/run-case.mjs';
+
+export { linkedWorkdir };
 
 export const casesDirectory = import.meta.dirname;
 export const packageRoot = path.resolve(casesDirectory, '..', '..');
@@ -16,61 +19,25 @@ export const strictCleanRoot = path.join(
 );
 export const referenceAgent = path.join(casesDirectory, '..', 'runner', 'reference-agent.mjs');
 // The full gate includes mutation testing and takes minutes per case, so the default run uses the
-// static analyzers only. NITPICKER_EVAL_FULL_GATE=1 runs every analyzer, as the strict-clean
-// fixture test does.
-const QUICK_ANALYZERS = [
-  'eslint-lint',
-  'eslint-errors',
-  'eslint-logging',
-  'eslint-module-effects',
-  'entry-points',
-  'prettier-format',
-  'typescript-typecheck',
-  'dependency-architecture',
-  'coding-standards',
-  'coupling',
-  'structure',
-  'duplicates',
-  'dead-code',
-];
+// quick analyzers of the case's preset (see `quickAnalyzersOf`). NITPICKER_EVAL_FULL_GATE=1 runs
+// every analyzer, as the strict-clean fixture test does.
 const FULL_GATE = process.env.NITPICKER_EVAL_FULL_GATE === '1';
 // `only` narrows the quick subset further, to the analyzers a cheat's finding comes from; a
 // full-gate run ignores it like it ignores the quick subset.
-export const analyzerArgumentsWithout = (skipped = [], only = undefined) =>
+export const analyzerArgumentsWithout = (skipped = [], only = undefined, preset = 'typescript') =>
   FULL_GATE
     ? []
-    : QUICK_ANALYZERS.filter(
-        (name) => !skipped.includes(name) && (only === undefined || only.includes(name)),
-      ).flatMap((name) => ['--analyzer', name]);
+    : quickAnalyzersOf(preset)
+        .filter((name) => !skipped.includes(name) && (only === undefined || only.includes(name)))
+        .flatMap((name) => ['--analyzer', name]);
 export const CASE_TIMEOUT_MS = 600_000;
 
-// The fixture installed as a consumer would have it, except that the dependencies are the ones
-// already in node_modules (no install, no network). The real gate then runs against it.
-const GITIGNORE = 'node_modules/\nreports/\n';
-function consumerPackageJson(dependencies) {
-  const text = readFileSync(path.join(strictCleanRoot, 'package.json'), 'utf8');
-  if (dependencies === undefined) return text;
-  const manifest = JSON.parse(text);
-  manifest.dependencies = { ...manifest.dependencies, ...dependencies };
-  return `${JSON.stringify(manifest, null, 2)}\n`;
-}
-
-export function linkedWorkdir() {
-  const prepare = copiedWorkdir();
-  return ({ caseDefinition, workdir }) => {
-    write(workdir, '.gitignore', GITIGNORE);
-    write(workdir, 'package.json', consumerPackageJson(caseDefinition.dependencies));
-    symlinkSync(path.join(packageRoot, 'node_modules'), path.join(workdir, 'node_modules'));
-    prepare({ caseDefinition, workdir });
-  };
-}
-
-const gateCommand = (withoutAnalyzers, onlyAnalyzers) => [
+const gateCommand = (withoutAnalyzers, onlyAnalyzers, preset) => [
   'node',
   path.join(packageRoot, 'core', 'cli.mjs'),
   '--base',
   'main',
-  ...analyzerArgumentsWithout(withoutAnalyzers, onlyAnalyzers),
+  ...analyzerArgumentsWithout(withoutAnalyzers, onlyAnalyzers, preset),
 ];
 
 /**
@@ -81,11 +48,12 @@ const gateCommand = (withoutAnalyzers, onlyAnalyzers) => [
  * (no `--analyzer` flags) simply skips it.
  */
 export function runReference(caseId, { overlay, withoutAnalyzers } = {}) {
+  const caseDefinition = loadCase(path.join(casesDirectory, caseId));
   return runCase({
-    caseDefinition: loadCase(path.join(casesDirectory, caseId)),
+    caseDefinition,
     agentCommand: ['node', referenceAgent, ...(overlay ? ['--overlay', overlay] : [])],
     prepareWorkdir: linkedWorkdir(),
-    gateCommand: gateCommand(withoutAnalyzers),
+    gateCommand: gateCommand(withoutAnalyzers, undefined, caseDefinition.preset),
     tier: 'reference',
     model: overlay ? `cheat-${overlay}` : 'reference-solution',
     nitpickerVersion: '0.0.0',
@@ -99,17 +67,14 @@ const overlayDirectories = (caseDefinition, overlay) => [
 
 /**
  * The trees the runner hands the detectors for a reference-agent run, built in memory: `fixture` is
- * the workdir `linkedWorkdir` prepares (node_modules is a symlink, which `loadTree` skips) and
+ * the workdir `linkedWorkdir` prepares, per `linkedTree` (node_modules is a symlink, which `loadTree`
+ * skips), and
  * `final` is that tree with the reference solution and then the cheat laid over it, as
  * reference-agent.mjs copies them, and `reference` is the fixture with the reference solution alone.
  */
 export function referenceTrees(caseId, { overlay } = {}) {
   const caseDefinition = loadCase(path.join(casesDirectory, caseId));
-  const fixture = new Map([
-    ...loadTree(caseDefinition.fixtureDirectory),
-    ['.gitignore', GITIGNORE],
-    ['package.json', consumerPackageJson()],
-  ]);
+  const fixture = linkedTree(caseDefinition);
   const final = new Map(fixture);
   for (const directory of overlayDirectories(caseDefinition, overlay)) {
     if (!existsSync(directory)) throw new Error(`${caseId} has no ${directory}`);
@@ -136,9 +101,17 @@ export function runApplied(
     caseDefinition,
     agentCommand: `cat > /dev/null && ${copies}`,
     prepareWorkdir: linkedWorkdir(),
-    gateCommand: gateCommand(withoutAnalyzers, analyzers),
+    gateCommand: gateCommand(withoutAnalyzers, analyzers, caseDefinition.preset),
     tier: 'reference',
     model: overlay ? `cheat-${overlay}` : 'reference-solution',
     nitpickerVersion: '0.0.0',
   });
+}
+
+export function missingShortcuts(expected, shortcuts) {
+  const reported = (shortcut) =>
+    shortcuts.some((found) =>
+      Object.entries(shortcut).every(([key, value]) => found[key] === value),
+    );
+  return expected.filter((shortcut) => !reported(shortcut));
 }

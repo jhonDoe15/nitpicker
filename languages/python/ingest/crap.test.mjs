@@ -44,7 +44,7 @@ describe('ingestPythonCrap', () => {
       message: `${renderMessage(MESSAGES.crapScoreLimit, { name: 'B.go', crap: '6.00', limit: 4 })}${ROUTE}`,
       classification: 'enforceable',
       symbol: 'B.go',
-      location: { line: 2 },
+      location: { line: 2, endLine: 5 },
       ratchet: {
         key: 'function:B.go:crap',
         value: 6,
@@ -95,7 +95,7 @@ describe('ingestPythonCrap', () => {
         message:
           'f has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If this is intended, add {"rule":"crap-coverage-unknown","paths":["other.py"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
-        location: { line: 1 },
+        location: { line: 1, endLine: 2 },
       },
     ]);
   });
@@ -115,7 +115,7 @@ describe('ingestPythonCrap', () => {
         message:
           'coro has CRAP 2.00; score must be below 2. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["never.py"],"function":"coro","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
-        location: { line: 8 },
+        location: { line: 8, endLine: 9 },
         ratchet: {
           key: 'function:coro:crap',
           value: 2,
@@ -129,9 +129,8 @@ describe('ingestPythonCrap', () => {
   });
 
   it('puts no line number in the identity', () => {
-    for (const finding of ingest({ limit: 4 })) {
-      expect(finding.identity).not.toMatch(/\d{2,}/);
-    }
+    expect(ingest({ limit: 4 })).not.toHaveLength(0);
+    expect(ingest({ limit: 4 }).filter((finding) => /\d{2,}/.test(finding.identity))).toEqual([]);
   });
 
   it('does not take the coverage of a same-named entry whose lines lie outside the range of the function', () => {
