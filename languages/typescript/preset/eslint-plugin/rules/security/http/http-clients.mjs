@@ -1,5 +1,5 @@
 import { chainOf } from '../../analysis/ancestry.mjs';
-import { findVariable } from '../../analysis/constant-resolution.mjs';
+import { findVariable, resolveConstant } from '../../analysis/constant-resolution.mjs';
 import { bindingsOf, importedFunction } from '../imported-names.mjs';
 import { memberName, unwrapped } from '../security-values.mjs';
 import { configNodes, isCallback, isLocalUrl, lacksTimeout, typeNamed } from './http-config.mjs';
@@ -209,7 +209,7 @@ function isInstanceCall(scope, callee) {
   if (instance === 'axios') {
     return method === undefined || axiosPosition(method) !== undefined;
   }
-  return instance === 'got' && (method === undefined || GOT_METHODS.has(method));
+  return instance === 'got' && (method === undefined || GOT_CALLS.has(method));
 }
 
 export function isClientCall(scope, node) {
@@ -220,7 +220,7 @@ export function isClientCall(scope, node) {
     isDirectCall(callee, scope.axios) ||
     axiosPosition(importedFunction(context, callee, scope.axios)) !== undefined ||
     isDirectCall(callee, scope.got) ||
-    GOT_METHODS.has(importedFunction(context, callee, scope.got)) ||
+    GOT_CALLS.has(importedFunction(context, callee, scope.got)) ||
     HTTP_METHODS.has(importedFunction(context, node.callee, scope.http)) ||
     isInstanceCall(scope, callee)
   );
