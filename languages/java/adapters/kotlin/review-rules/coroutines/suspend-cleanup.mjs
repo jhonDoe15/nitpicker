@@ -13,6 +13,9 @@ const BOUNDED =
 function finallyMessage(call) {
   return `This \`finally\` block calls the suspending \`${call}\`, which throws as soon as the coroutine is cancelled, so the rest of the cleanup is skipped and the resource stays open. Make the release non-suspending (a blocking \`close()\`), or ${BOUNDED}.`;
 }
+export const SUSPEND_CLEANUP_MESSAGES = {
+  [SUSPEND_CLEANUP_RULE]: `A suspending call in a \`finally\` block, or in a \`catch (CancellationException)\` block, throws as soon as the coroutine is cancelled, so the rest of the cleanup is skipped and the resource stays open. Make the release non-suspending (a blocking \`close()\`), or ${BOUNDED}.`,
+};
 function catchMessage(call) {
   return `This \`catch (CancellationException)\` block calls the suspending \`${call}\`; when the exception is this coroutine's own cancellation (not a child's or a timeout's), the call throws at once and the rest of the handler is skipped. Rethrow after non-suspending cleanup, or ${BOUNDED}.`;
 }

@@ -34,6 +34,8 @@ import { CRYPTO_MESSAGES, disabledTlsVerification, weakHashes } from './security
 import { SQL_MESSAGES, sqlStringBuilding } from './security/sql.mjs';
 import { kotlinDeclarations } from './security/sql-values.mjs';
 import { FAN_OUT_MESSAGES } from '../review-rules/main/fan-out/fan-out.mjs';
+import { CHILD_LIFETIME_MESSAGES } from '../review-rules/coroutines/resource-lifetime.mjs';
+import { SUSPEND_CLEANUP_MESSAGES } from '../review-rules/coroutines/suspend-cleanup.mjs';
 
 const KOTLIN_SOURCE_TOOL = 'kotlin-source';
 
@@ -48,6 +50,8 @@ export const KOTLIN_SOURCE_MESSAGES = {
   ...CRYPTO_MESSAGES,
   ...CLIENT_MESSAGES,
   ...FAN_OUT_MESSAGES,
+  ...SUSPEND_CLEANUP_MESSAGES,
+  ...CHILD_LIFETIME_MESSAGES,
   ...TRI_STATE_MESSAGES,
   ...PARAMETER_MUTATION_MESSAGES,
   ...COMPATIBILITY_SHIM_MESSAGES,
