@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 248 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 249 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -2286,6 +2286,17 @@ A suspicious octal escape sequence was found inside a String literal.
 - **Allowed form:** Write the character as a unicode escape (\u0008) or a three-digit octal escape so the digits are not read together.
 - **Exception:** If this is intended, add `{"rule":"pmd/SuspiciousOctalEscape","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#suspiciousoctalescape)
+
+<a id="pmd-swallowedinterrupt"></a>
+
+### `pmd/SwallowedInterrupt`
+
+A `catch` of `InterruptedException` (alone or in a multi-catch) in main or test sources whose handler can complete, `return`, `break` or `continue` on a path that neither throws, calls `Thread.currentThread().interrupt()`, nor passes the caught variable itself to a call or constructor that is not a logging call (`future.completeExceptionally(e)`, `new IllegalStateException("x", e)`).
+
+- **Scope:** Main and test sources.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** This catch of InterruptedException can complete without rethrowing it or restoring the interrupt, so the interrupt status of the thread is lost and work that was asked to stop keeps running.
+- **Exception:** If this is intended, add `{"rule":"pmd/SwallowedInterrupt","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-switchstmtsshouldhavedefault"></a>
 

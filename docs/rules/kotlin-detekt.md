@@ -1,12 +1,12 @@
 # Kotlin: detekt rules
 
-detekt's default rules and the one-way rules nitpicker pins on top of them (`detekt.<ruleset>.<Rule>`). This page lists 124 rules. [All pages](README.md).
+detekt's default rules and the one-way rules nitpicker pins on top of them (`detekt.<ruleset>.<Rule>`). This page lists 126 rules. [All pages](README.md).
 
 The guide for these rules: [docs/kotlin-preset.md#one-way-rules](../kotlin-preset.md#one-way-rules).
 
 The descriptions of detekt's rules are from detekt 1.23.8, under the Apache License 2.0.
 
-In the Kotlin preset, an entry of `exceptions` names a detekt rule as `detekt.<ruleset>.<Rule>`, one of these rules: `catch-log-without-exception`, `test-without-assertion`, `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`, `duplicate-clone`, `stability-direction`, `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`, `co-change`, `duplicate-definition`, `exported-name-collision`, `sibling-copy-edit`, `test-only-export`, `doc-comment-content`, `test-console-output`, `folder-depth-limit`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`, `test-runtime/slow-test`, `test-runtime/test-console-output`, `test-runtime/test-not-run`, `coupling/test-only-export`, `kotlin-source/GeneratedOnHandWrittenCode`, `kotlin-source/JvmSyntheticOnHandWrittenCode`, `kotlin-source/MutationIgnoreMarker`, `kotlin-source/CommentedOutCode`, `kotlin-source/MutableModuleState`, `kotlin-source/GenericTypeName`, `kotlin-source/GenericPackageName`, `kotlin-source/LogStringConcatenation`, `kotlin-source/ShellCommand`, `kotlin-source/IoCallInLoop`, `kotlin-source/CatchOnlyLogsOrReturnsDefault`, `kotlin-source/BooleanFlagParameter`, `kotlin-source/HardcodedSecret`, `kotlin-source/CredentialLiteral`, `kotlin-source/SecretInLog`, `kotlin-source/TestClassWithoutTestCases`, `kotlin-source/DetachedTestCase`, `kotlin-source/TestHelperInSource`, `kotlin-source/SqlStringBuilding`, `kotlin-source/WeakHash`, `kotlin-source/TlsVerificationOff`, `kotlin-source/HttpWithoutTimeout`, `kotlin-source/UnsafeDeserialization`, `kotlin-source/UnboundedFanOut`, `kotlin-source/TriStateBoolean`, `kotlin-source/ParameterMutation`, `kotlin-source/CompatibilityShim`, `kotlin-source/RepeatedStringLiteral`, `kotlinc/deprecation`, `kotlinc/unchecked`, `kotlinc/cast`, `kotlinc/lint-not-run`, `pmd/FixedSleepInTest`, `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/AssertionInControlFlow`, `pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`, `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ValidationAnnotationTarget`, `pmd/ClassLoadEffect`, `pmd/SpringConstructorInjection`, `pmd/SpringImmutableBeans`, `pmd/SpringNoServiceLocator`, `pmd/SpringNoLazyInjection`, `pmd/SpringLiteConfiguration`, `pmd/SpringNoComponentScan`, `pmd/SpringBeanCollectionState`, `pmd/SpringHttpClientPerCall`, `pmd/SpringHttpClientTimeouts`, `pmd/SpringNoPostConstructIo`, `pmd/SpringTypedConfiguration`, `pmd/SpringValueSecretDefault`, `pmd/SpringProfileOnConfiguration`, `pmd/SpringProxyMethodVisibility`, `pmd/SpringProxySelfCall`, `pmd/SpringTransactionalAnnotation`, `pmd/SpringNoTransactionalController`, `pmd/SpringNoRequiresNew`, `pmd/SpringNoSwallowedTransactionException`, `pmd/SpringTransactionalCheckedRollback`, `pmd/SpringTransactionalReadOnlyWrite`, `pmd/SpringAsyncExecutor`, `pmd/SpringScheduledFixedDelay`, `pmd/SpringComposedMapping`, `pmd/SpringRestController`, `pmd/SpringValidRequestBody`, `pmd/SpringTypedResponse`, `pmd/SpringTypedRequestBody`, `pmd/SpringNoErrorLeak`, `pmd/SpringNoCrossOrigin`, `pmd/SpringCorsWildcard`, `pmd/SpringPasswordEncoder`, `pmd/SpringPermitAllAnyRequest`, `pmd/SpringCsrfDisabled`, `pmd/SpringHardcodedUser`, `pmd/JpaLazyFetching`, `pmd/JpaEntityClass`, `pmd/JpaManyToManyCascade`, `pmd/JpaManyToManySet`, `pmd/JpaVersion`, `pmd/JpaSequenceIds`, `pmd/JpaEnumString`, `pmd/JpaIdentityHashCode`, `pmd/SpringDataDerivedQuery`, `pmd/SpringDataNativeQuery`, `pmd/SpringDataModifyingQuery`, `pmd/SpringDataNoSaveInLoop`, `pmd/SpringDataNoFlush`, `pmd/SpringDataNamedParameters`, `pmd/SpringDataQueryTextBlock`, `pmd/SpringDataBatchOfOne`, `pmd/SpringDataRowWriteInLoop`, `pmd/SpringDataSaveInLoopHelper`, `pmd/SpringDataFilterInQuery`, `pmd/SpringQueryConcatenation` and `unused-option`, or, for the Java sources of the project, a finding as it prints, `<tool>/<rule>` with one of the tools `pmd`, `spotbugs`, `errorprone`, `archunit`, `google-java-format`, `palantir-java-format`, `jacoco`, `checkstyle`, `crap`, `duplicates`, `pit`, `structure`, `coupling`, `spring` and `test-runtime`.
+In the Kotlin preset, an entry of `exceptions` names a detekt rule as `detekt.<ruleset>.<Rule>`, one of these rules: `catch-log-without-exception`, `test-without-assertion`, `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`, `duplicate-clone`, `stability-direction`, `file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `committed-env-file`, `committed-private-key`, `committed-binary`, `large-file`, `committed-build-output`, `co-change`, `duplicate-definition`, `exported-name-collision`, `sibling-copy-edit`, `test-only-export`, `doc-comment-content`, `test-console-output`, `folder-depth-limit`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`, `test-runtime/slow-test`, `test-runtime/test-console-output`, `test-runtime/test-not-run`, `coupling/test-only-export`, `kotlin-source/GeneratedOnHandWrittenCode`, `kotlin-source/JvmSyntheticOnHandWrittenCode`, `kotlin-source/MutationIgnoreMarker`, `kotlin-source/CommentedOutCode`, `kotlin-source/MutableModuleState`, `kotlin-source/GenericTypeName`, `kotlin-source/GenericPackageName`, `kotlin-source/LogStringConcatenation`, `kotlin-source/ShellCommand`, `kotlin-source/IoCallInLoop`, `kotlin-source/CatchOnlyLogsOrReturnsDefault`, `kotlin-source/BooleanFlagParameter`, `kotlin-source/HardcodedSecret`, `kotlin-source/CredentialLiteral`, `kotlin-source/SecretInLog`, `kotlin-source/TestClassWithoutTestCases`, `kotlin-source/DetachedTestCase`, `kotlin-source/TestHelperInSource`, `kotlin-source/SqlStringBuilding`, `kotlin-source/WeakHash`, `kotlin-source/TlsVerificationOff`, `kotlin-source/HttpWithoutTimeout`, `kotlin-source/UnsafeDeserialization`, `kotlin-source/UnboundedFanOut`, `kotlin-source/TriStateBoolean`, `kotlin-source/ParameterMutation`, `kotlin-source/CompatibilityShim`, `kotlin-source/RepeatedStringLiteral`, `kotlinc/deprecation`, `kotlinc/unchecked`, `kotlinc/cast`, `kotlinc/lint-not-run`, `pmd/FixedSleepInTest`, `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/AssertionInControlFlow`, `pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`, `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/SwallowedInterrupt`, `pmd/SwallowedCancellation`, `pmd/ValidationAnnotationTarget`, `pmd/ClassLoadEffect`, `pmd/SpringConstructorInjection`, `pmd/SpringImmutableBeans`, `pmd/SpringNoServiceLocator`, `pmd/SpringNoLazyInjection`, `pmd/SpringLiteConfiguration`, `pmd/SpringNoComponentScan`, `pmd/SpringBeanCollectionState`, `pmd/SpringHttpClientPerCall`, `pmd/SpringHttpClientTimeouts`, `pmd/SpringNoPostConstructIo`, `pmd/SpringTypedConfiguration`, `pmd/SpringValueSecretDefault`, `pmd/SpringProfileOnConfiguration`, `pmd/SpringProxyMethodVisibility`, `pmd/SpringProxySelfCall`, `pmd/SpringTransactionalAnnotation`, `pmd/SpringNoTransactionalController`, `pmd/SpringNoRequiresNew`, `pmd/SpringNoSwallowedTransactionException`, `pmd/SpringTransactionalCheckedRollback`, `pmd/SpringTransactionalReadOnlyWrite`, `pmd/SpringAsyncExecutor`, `pmd/SpringScheduledFixedDelay`, `pmd/SpringComposedMapping`, `pmd/SpringRestController`, `pmd/SpringValidRequestBody`, `pmd/SpringTypedResponse`, `pmd/SpringTypedRequestBody`, `pmd/SpringNoErrorLeak`, `pmd/SpringNoCrossOrigin`, `pmd/SpringCorsWildcard`, `pmd/SpringPasswordEncoder`, `pmd/SpringPermitAllAnyRequest`, `pmd/SpringCsrfDisabled`, `pmd/SpringHardcodedUser`, `pmd/JpaLazyFetching`, `pmd/JpaEntityClass`, `pmd/JpaManyToManyCascade`, `pmd/JpaManyToManySet`, `pmd/JpaVersion`, `pmd/JpaSequenceIds`, `pmd/JpaEnumString`, `pmd/JpaIdentityHashCode`, `pmd/SpringDataDerivedQuery`, `pmd/SpringDataNativeQuery`, `pmd/SpringDataModifyingQuery`, `pmd/SpringDataNoSaveInLoop`, `pmd/SpringDataNoFlush`, `pmd/SpringDataNamedParameters`, `pmd/SpringDataQueryTextBlock`, `pmd/SpringDataBatchOfOne`, `pmd/SpringDataRowWriteInLoop`, `pmd/SpringDataSaveInLoopHelper`, `pmd/SpringDataFilterInQuery`, `pmd/SpringQueryConcatenation` and `unused-option`, or, for the Java sources of the project, a finding as it prints, `<tool>/<rule>` with one of the tools `pmd`, `spotbugs`, `errorprone`, `archunit`, `google-java-format`, `palantir-java-format`, `jacoco`, `checkstyle`, `crap`, `duplicates`, `pit`, `structure`, `coupling`, `spring` and `test-runtime`.
 
 Unless an entry says otherwise:
 
@@ -108,10 +108,10 @@ The usage of the `GlobalScope` instance is highly discouraged.
 
 Don't hardcode dispatchers when creating new coroutines or calling `withContext`.
 
-- **Why it is on:** Use dependency injection for dispatchers to make testing easier. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
-- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/coroutines#injectdispatcher).
+- **Why it is on:** Use dependency injection for dispatchers to make testing easier. A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Allowed form:** Inject the dispatcher (`dispatcher: CoroutineDispatcher = Dispatchers.IO` as a parameter default), so a test can pass a test dispatcher.
 - **Exception:** If this is intended, add `{"rule":"detekt.coroutines.InjectDispatcher","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/coroutines#injectdispatcher)
+- **See also:** [detekt rule](https://detekt.dev/docs/rules/coroutines#injectdispatcher)
 
 <a id="detekt-detekt-coroutines-redundantsuspendmodifier"></a>
 
@@ -119,10 +119,10 @@ Don't hardcode dispatchers when creating new coroutines or calling `withContext`
 
 The `suspend` modifier is only needed for functions that contain suspending calls.
 
-- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
-- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/coroutines#redundantsuspendmodifier).
+- **Why it is on:** A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Allowed form:** Remove the `suspend` modifier, or call a suspending function in the body.
 - **Exception:** If this is intended, add `{"rule":"detekt.coroutines.RedundantSuspendModifier","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/coroutines#redundantsuspendmodifier)
+- **See also:** [detekt rule](https://detekt.dev/docs/rules/coroutines#redundantsuspendmodifier)
 
 <a id="detekt-detekt-coroutines-sleepinsteadofdelay"></a>
 
@@ -130,10 +130,32 @@ The `suspend` modifier is only needed for functions that contain suspending call
 
 Usage of `Thread.sleep()` in coroutines can potentially halt multiple coroutines at once.
 
-- **Why it is on:** One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
-- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/coroutines#sleepinsteadofdelay).
+- **Why it is on:** A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Allowed form:** Use `delay`, which suspends the coroutine instead of blocking its thread (in a test, `delay` under `runTest` runs in virtual time).
 - **Exception:** If this is intended, add `{"rule":"detekt.coroutines.SleepInsteadOfDelay","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/coroutines#sleepinsteadofdelay)
+- **See also:** [detekt rule](https://detekt.dev/docs/rules/coroutines#sleepinsteadofdelay)
+
+<a id="detekt-detekt-coroutines-suspendfunswallowedcancellation"></a>
+
+### `detekt/detekt.coroutines.SuspendFunSwallowedCancellation`
+
+`runCatching` does not propagate `CancellationException`, don't use it with `suspend` lambda blocks.
+
+- **Why it is on:** A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Allowed form:** Make a direct suspend call and catch only the specific exception you expect, so cancellation still reaches the coroutine.
+- **Exception:** If this is intended, add `{"rule":"detekt.coroutines.SuspendFunSwallowedCancellation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [detekt rule](https://detekt.dev/docs/rules/coroutines#suspendfunswallowedcancellation)
+
+<a id="detekt-detekt-coroutines-suspendfunwithcoroutinescopereceiver"></a>
+
+### `detekt/detekt.coroutines.SuspendFunWithCoroutineScopeReceiver`
+
+The `suspend` modifier should not be used for functions that use a CoroutinesScope as receiver.
+
+- **Why it is on:** You should use suspend functions without the receiver or use plain functions and use coroutineScope { } instead. A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Allowed form:** Either keep `suspend` and use `coroutineScope { ... }` inside, or drop `suspend` for an extension that only launches coroutines in the receiver scope.
+- **Exception:** If this is intended, add `{"rule":"detekt.coroutines.SuspendFunWithCoroutineScopeReceiver","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [detekt rule](https://detekt.dev/docs/rules/coroutines#suspendfunwithcoroutinescopereceiver)
 
 <a id="detekt-detekt-coroutines-suspendfunwithflowreturntype"></a>
 
@@ -141,10 +163,10 @@ Usage of `Thread.sleep()` in coroutines can potentially halt multiple coroutines
 
 The `suspend` modifier should not be used for functions that return a Coroutines Flow type.
 
-- **Why it is on:** Flows are cold streams and invoking a function that returns one should not produce any side effects. One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.
-- **Allowed form:** See the tool's documentation: [detekt rule](https://detekt.dev/docs/rules/coroutines#suspendfunwithflowreturntype).
+- **Why it is on:** Flows are cold streams and invoking a function that returns one should not produce any side effects. A one-way rule: nitpicker's detekt file turns it on and pins it, so a project cannot switch it off, lower its severity or exclude paths in detekt.yml. It narrows a spot where Kotlin offers several ways to the one allowed form.
+- **Allowed form:** Remove `suspend` and return the Flow from a plain function: a Flow is cold, and collecting it is what suspends.
 - **Exception:** If this is intended, add `{"rule":"detekt.coroutines.SuspendFunWithFlowReturnType","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
-- **See also:** [Kotlin preset guide](../kotlin-preset.md), [detekt rule](https://detekt.dev/docs/rules/coroutines#suspendfunwithflowreturntype)
+- **See also:** [detekt rule](https://detekt.dev/docs/rules/coroutines#suspendfunwithflowreturntype)
 
 <a id="detekt-detekt-empty-blocks-emptycatchblock"></a>
 
