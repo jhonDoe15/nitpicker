@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { between, changesOf, without } from './test-support/policy-fixtures.mjs';
+import { between, changesOf, without } from '../test-support/policy-fixtures.mjs';
 
 const PROJECT = { precedence: ['project', 'nitpicker'] };
 
@@ -122,6 +122,126 @@ describe('project tool configs the project opted into', () => {
     ).toEqual(['prettier project config changed: package.json']);
   });
 
+  it.each([undefined, 'javascript'])(
+    'reads what an edit of the knip config a %s project opted into applies, imports included',
+    (preset) => {
+      const config = { ...(preset === undefined ? {} : { preset }), tools: { knip: PROJECT } };
+      const at = (files) => ({ 'src/a.ts': 'export const a = 1;\n', ...files });
+      const manifest = (extra) => JSON.stringify({ name: 'x', ...extra });
+      const base = at({
+        'knip.ts': "import ignore from './tools/ignore.js';\nexport default { ignore };\n",
+        'tools/ignore.js': 'export default [];\n',
+        'package.json': manifest(),
+      });
+      const edited = (files) => between({ base, head: at({ ...base, ...files }), config });
+
+      expect(changesOf(edited({ 'tools/ignore.js': "export default ['src/**'];\n" }))).toEqual({
+        policyLoosenings: ['knip knip.ts ignore: [] -> ["src/**"]'],
+        policyChanges: ['knip knip.ts ignore: [] -> ["src/**"]'],
+      });
+      expect(edited({ 'package.json': manifest({ version: '2.0.0' }) }).policyLoosenings).toEqual(
+        [],
+      );
+      expect(
+        edited({ 'package.json': manifest({ knip: { entry: ['src/a.ts'] } }) }).policyLoosenings,
+      ).toEqual(['knip knip.ts and package.json entry: not set -> ["src/a.ts"]']);
+      expect(
+        between({
+          base,
+          head: at({ ...base, 'knip.json': '{"ignore":["src/**"]}' }),
+          config: { tools: {} },
+        }).policyLoosenings,
+      ).toEqual([]);
+    },
+  );
+  it('reads a knip.jsonc edit per key, without comments, order or removed ignores loosening', () => {
+    const config = { preset: 'typescript', tools: { knip: PROJECT } };
+    const at = (knip) => ({ 'knip.jsonc': knip, 'src/a.ts': 'export const a = 1;\n' });
+    const base = at('{ "ignore": ["a/**", "b/**"], "entry": ["x.ts"] }');
+    const changes = (knip) => changesOf(between({ base, head: at(knip), config }));
+
+    expect(changes('// ours\n{ "entry": ["x.ts"], "ignore": ["b/**", "a/**"], }')).toEqual({
+      policyLoosenings: [],
+      policyChanges: [],
+    });
+    expect(changes('{ "ignore": ["a/**"], "entry": ["x.ts"] }')).toEqual({
+      policyLoosenings: [],
+      policyChanges: ['knip knip.jsonc ignore: ["a/**","b/**"] -> ["a/**"]'],
+    });
+    expect(changes('{ "ignore": ["a/**", "b/**"], "entry": ["x.ts"], "$schema": "x" }')).toEqual({
+      policyLoosenings: [],
+      policyChanges: [],
+    });
+  });
+  it('falls back to the files when a side of the knip config cannot be read', () => {
+    const config = { preset: 'typescript', tools: { knip: PROJECT } };
+    const at = (knip) => ({ 'knip.json': knip, 'src/a.ts': 'export const a = 1;\n' });
+    expect(
+      between({ base: at('{ "ignore": [] }'), head: at('{ "ignore": ['), config }).policyLoosenings,
+    ).toEqual(['knip project config changed: knip.json']);
+  });
+  it.each([undefined, 'javascript'])(
+    'reads what an edit of the dependency-cruiser config a %s project opted into applies',
+    (preset) => {
+      const config = {
+        ...(preset === undefined ? {} : { preset }),
+        tools: { 'dependency-cruiser': PROJECT },
+      };
+      const rule = "{ name: 'no-lib', from: { path: '^src' }, to: { path: '^lib' } }";
+      const at = (rules) => ({
+        'src/a.ts': 'export const a = 1;\n',
+        'tools/rules.cjs': `module.exports = [${rules}];\n`,
+        '.dependency-cruiser.cjs':
+          "// ours\nmodule.exports = { forbidden: require('./tools/rules.cjs') };\n",
+      });
+      const dropped =
+        'dependency-cruiser .dependency-cruiser.cjs forbidden: ' +
+        '[{"name":"no-lib","from":{"path":"^src"},"to":{"path":"^lib"}}] -> []';
+      expect(changesOf(between({ base: at(rule), head: at(''), config }))).toEqual({
+        policyLoosenings: [dropped],
+        policyChanges: [dropped],
+      });
+    },
+  );
+  it('reads a .dependency-cruiser.json edit per key, without the options nitpicker owns', () => {
+    const config = { preset: 'typescript', tools: { 'dependency-cruiser': PROJECT } };
+    const rule = { name: 'no-lib', from: { path: '^src' }, to: { path: '^lib' } };
+    const unnamed = { from: { path: '^src' }, to: { path: '^vendor' } };
+    const at = (cruiser) => ({
+      'src/a.ts': 'export const a = 1;\n',
+      '.dependency-cruiser.json': JSON.stringify({ forbidden: [rule], ...cruiser }),
+    });
+    const changes = (cruiser) => changesOf(between({ base: at({}), head: at(cruiser), config }));
+    const label = 'dependency-cruiser .dependency-cruiser.json';
+
+    expect(changes({ options: { tsPreCompilationDeps: false, outputType: 'dot' } })).toEqual({
+      policyLoosenings: [],
+      policyChanges: [],
+    });
+    expect(changes({ options: { exclude: { path: '^gen' } } })).toEqual({
+      policyLoosenings: [`${label} options.exclude: not set -> ["path ^gen"]`],
+      policyChanges: [`${label} options.exclude: not set -> ["path ^gen"]`],
+    });
+    const added = `${label} forbidden: ${JSON.stringify([rule])} -> ${JSON.stringify([rule, unnamed])}`;
+    expect(changes({ forbidden: [unnamed, rule] })).toEqual({
+      policyLoosenings: [],
+      policyChanges: [added],
+    });
+  });
+  it('shows the knip config a change opts into in the same change', () => {
+    const files = { 'knip.json': '{"ignore":["src/**"]}', 'src/a.ts': 'export const a = 1;\n' };
+    expect(
+      between({
+        base: files,
+        head: files,
+        baseConfig: { preset: 'typescript' },
+        config: { preset: 'typescript', tools: { knip: PROJECT } },
+      }).policyLoosenings,
+    ).toEqual([
+      'knip knip.json ignore: not set -> ["src/**"]',
+      'tools.knip.precedence: not set -> ["project","nitpicker"]',
+    ]);
+  });
   it.each(['typescript', 'python', 'java', 'kotlin'])(
     'counts an edit of the opted-in .jscpd.json with the %s preset, not a reformat',
     (preset) => {
@@ -199,148 +319,6 @@ describe('what an edit of .jscpd.json changes', () => {
     expect(
       between({ base: at({ minTokens: 50 }), head: at({ minTokens: 0 }), config }).policyLoosenings,
     ).toEqual(['jscpd project config changed: .jscpd.json']);
-  });
-});
-
-describe('the ESLint flat config the project opted into', () => {
-  const at = (config, rules = "export default { 'no-console': 'error' };\n") => ({
-    'eslint.config.mjs': config,
-    'eslint/rules.mjs': rules,
-    'eslint/unused.mjs': 'export default {};\n',
-    'src/a.ts': 'export const a = 1;\n',
-  });
-  const CONFIG = "import rules from './eslint/rules.mjs';\nexport default [{ rules }];\n";
-
-  it.each([
-    ['typescript', ['project', 'nitpicker']],
-    ['javascript', ['project']],
-    ['typescript', ['nitpicker', 'project']],
-  ])(
-    'counts an edit of the %s config or a local file it imports, listing %j',
-    (preset, precedence) => {
-      const config = { preset, tools: { eslint: { precedence } } };
-      const base = at(CONFIG);
-
-      expect(
-        between({ base, head: at(`// house rules\n${CONFIG}`), config }).policyLoosenings,
-      ).toEqual([]);
-      expect(
-        between({ base, head: at(CONFIG.replace('[{', '[{ ignores: ["src/**"] }, {')), config })
-          .policyLoosenings,
-      ).toEqual(['eslint project config changed: eslint.config.mjs']);
-      expect(
-        between({ base, head: at(CONFIG, "export default { 'no-console': 'off' };\n"), config })
-          .policyLoosenings,
-      ).toEqual(['eslint project config changed: eslint/rules.mjs']);
-      expect(
-        between({ base, head: { ...base, 'eslint/unused.mjs': 'export default 1;\n' }, config })
-          .policyLoosenings,
-      ).toEqual([]);
-    },
-  );
-
-  it('stays quiet while the project has not opted in, and lists a removed config', () => {
-    const optedIn = { tools: { eslint: { precedence: ['project', 'nitpicker'] } } };
-    const base = at(CONFIG);
-    const edited = at(CONFIG, "export default { 'no-console': 'off' };\n");
-
-    expect(between({ base, head: edited, config: { tools: {} } }).policyLoosenings).toEqual([]);
-    expect(
-      changesOf(between({ base, head: without(base, 'eslint.config.mjs'), config: optedIn })),
-    ).toEqual({
-      policyLoosenings: [],
-      policyChanges: [
-        'eslint project config removed: eslint.config.mjs',
-        'eslint project config removed: eslint/rules.mjs',
-      ],
-    });
-  });
-
-  it('lists every file an opt-in starts reading, the opt-in itself included', () => {
-    const files = { ...at(CONFIG), '.gitignore': 'dist/\n' };
-    const config = (precedence) => ({ tools: { eslint: { precedence } } });
-
-    expect(
-      between({
-        base: files,
-        head: files,
-        baseConfig: config(['nitpicker']),
-        config: config(['nitpicker', 'project']),
-      }).policyLoosenings,
-    ).toEqual([
-      'eslint project config changed: eslint.config.mjs',
-      'eslint project config changed: eslint/rules.mjs',
-      'tools.eslint.precedence: ["nitpicker"] -> ["nitpicker","project"]',
-    ]);
-  });
-
-  it('counts the ignore file the config reads, but not a comment after code', () => {
-    const optedIn = { tools: { eslint: { precedence: ['project'] } } };
-    const ignoring = (gitignore, config = 'export default [ignored];\n') => ({
-      ...at(
-        `import { includeIgnoreFile } from '@eslint/compat';\nconst ignored = includeIgnoreFile(new URL('.gitignore', import.meta.url).pathname);\n${config}`,
-      ),
-      '.gitignore': gitignore,
-    });
-    const base = ignoring('dist/\n');
-
-    expect(
-      between({
-        base,
-        head: ignoring('# build\ndist/\n', 'export default [ignored]; // house\n'),
-        config: optedIn,
-      }).policyLoosenings,
-    ).toEqual([]);
-    expect(
-      between({ base, head: ignoring('dist/\nsrc/\n'), config: optedIn }).policyLoosenings,
-    ).toEqual(['eslint project config changed: .gitignore']);
-  });
-
-  it('lists the nitpicker rules whose options the project replaces once a reviewed file changes', () => {
-    const config = (precedence) => ({ tools: { eslint: { precedence } } });
-    const base = at(CONFIG);
-    const head = at(
-      CONFIG,
-      "export default { 'no-empty': ['error', { allowEmptyCatch: true }] };\n",
-    );
-    const replacedOptions = () => ({ rules: ['no-empty'] });
-    const unloadable = () => ({
-      error: 'ESLint config eslint.config.mjs could not be loaded: boom',
-    });
-
-    expect(
-      between({ base, head, config: config(['project']), replacedOptions }).policyLoosenings,
-    ).toEqual([
-      'eslint project config changed: eslint/rules.mjs',
-      'eslint project config replaces the options of nitpicker rule no-empty',
-    ]);
-    expect(
-      between({ base, head, config: config(['project']), replacedOptions: unloadable })
-        .policyLoosenings,
-    ).toEqual([
-      'eslint project config changed: eslint/rules.mjs',
-      'eslint project config could not be loaded to list the nitpicker rules whose options it replaces: ESLint config eslint.config.mjs could not be loaded: boom',
-    ]);
-    expect(
-      between({ base, head: base, config: config(['project']), replacedOptions }).policyLoosenings,
-    ).toEqual([]);
-    expect(
-      between({ base, head, config: config(['nitpicker', 'project']), replacedOptions })
-        .policyLoosenings,
-    ).toEqual(['eslint project config changed: eslint/rules.mjs']);
-  });
-
-  it('follows the config file ESLint itself loads first', () => {
-    const optedIn = { tools: { eslint: { precedence: ['project'] } } };
-    const both = (javascript) => ({ ...at(CONFIG), 'eslint.config.js': javascript });
-
-    expect(
-      between({
-        base: both('export default [];\n'),
-        head: both('export default [{}];\n'),
-        config: optedIn,
-      }).policyLoosenings,
-    ).toEqual(['eslint project config changed: eslint.config.js']);
   });
 });
 

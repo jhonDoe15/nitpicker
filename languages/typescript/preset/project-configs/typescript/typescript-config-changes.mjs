@@ -1,4 +1,4 @@
-import { shownValue } from '../../../../../core/tooling/config-value-changes.mjs';
+import { shownValue } from '../../project-tools/config-values.mjs';
 
 export function typescriptConfigChanges({ base, head, file, files }) {
   const keys = [...new Set([...Object.keys(base), ...Object.keys(head)])].toSorted();
