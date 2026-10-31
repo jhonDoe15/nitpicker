@@ -1,12 +1,16 @@
 import { existsSync, realpathSync, statSync } from 'node:fs';
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
-import { resolveProjectRoot } from '../../tooling/tool-resolution.mjs';
-import { missingPathHint } from '../../command/arguments.mjs';
+import { resolveProjectRoot } from '../tooling/tool-resolution.mjs';
 
 const GIT_OUTPUT_LIMIT_BYTES = 64 * 1024 * 1024;
 
-export function resolveRunTarget({ options, currentProjectRoot, workingDirectory }) {
+export function resolveRunTarget({
+  options,
+  currentProjectRoot,
+  workingDirectory,
+  missingPathHint,
+}) {
   const paths = options.paths ?? [];
   if (paths.length === 0) {
     return {
@@ -18,7 +22,7 @@ export function resolveRunTarget({ options, currentProjectRoot, workingDirectory
   const repositoryRoot = repositoryOf(base);
   const targets = paths.map((given) => ({
     given,
-    absolute: existingPath({ base, repositoryRoot, given }),
+    absolute: existingPath({ base, repositoryRoot, given, missingPathHint }),
   }));
   const projectRoot = projectOf(targets[0].absolute);
   const relativePaths = targets.map((target) => scopePath(projectRoot, target));
@@ -45,7 +49,7 @@ function repositoryOf(base) {
   }
 }
 
-function existingPath({ base, repositoryRoot, given }) {
+function existingPath({ base, repositoryRoot, given, missingPathHint }) {
   const absolute = path.resolve(base, given);
   if (path.relative(repositoryRoot, absolute).startsWith('..')) {
     throw new Error(`${given} is outside the repository ${repositoryRoot}`);
