@@ -130,6 +130,7 @@ export function readKotlinFindings(context, crapLimit) {
     projectRoot,
     manifest,
     modules: context.modules,
+    buildViews: context.kotlinBuild,
   });
   const testRoots = manifest.kotlinTestSourceRoots ?? [];
   const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
@@ -156,7 +157,13 @@ export function readKotlinFindings(context, crapLimit) {
       }),
       ...readTestAssertionFindings(projectRoot, testRoots, helpers),
       ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
-      ...readKotlinReviewFindings({ reportRoot, projectRoot, manifest, modules: context.modules }),
+      ...readKotlinReviewFindings({
+        reportRoot,
+        projectRoot,
+        manifest,
+        modules: context.modules,
+        buildViews: context.kotlinBuild,
+      }),
       ...readKotlinStructureFindings(metrics, projectRoot),
       ...readKotlinClassLimitFindings(metrics, context.classLimits),
       ...(jacoco === undefined

@@ -110,8 +110,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   function `main` or the framework calls after startup (a `@Bean` method, an `ApplicationRunner`, a
   Ktor module) and pass the result in, or defer it with `by lazy { }`. Constants, loggers, `Regex`
   and collections can stay.
-- A private or `internal` function or constructor does not declare a default parameter that no
-  call in the project sets (`unused-option`): remove the parameter, or pass it from a real call.
+- A public top-level, `object` or companion function, or a private or `internal` function or
+  constructor, does not declare a default parameter that no call sets (`unused-option`): remove the
+  parameter, or pass it from a real call. Tests count only for private and `internal` declarations
+  and published modules.
 - Never `@Suppress` a detekt or ktlint rule (its name, `all`, a ruleset, `detekt:...`, `ktlint:...`):
   fix the code. The compiler warnings `UNCHECKED_CAST`, `DEPRECATION` and `USELESS_CAST` are
   findings too and are not suppressed either. If a rule flags legitimate code, stop and ask: the

@@ -29,8 +29,9 @@ const wrapper = (overrides = {}) =>
     ...overrides,
   });
 
+const COMPONENT = [{ path: 'org.springframework.stereotype.Component', all: false }];
 const findingsFor = (functions, classes = []) =>
-  run(forwardingWrapperFindings, [file({ functions, classes })]);
+  run(forwardingWrapperFindings, [file({ functions, classes, imports: COMPONENT })]);
 
 describe('forwarding wrapper in Kotlin', () => {
   it('reports a top-level function that only passes its parameter to a same-signature function', () => {
@@ -168,5 +169,22 @@ describe('forwarding wrapper in Kotlin', () => {
     });
 
     expect(findingsFor([twice], [service, inner])).toEqual([]);
+  });
+
+  it('resolves the stereotype through the Spring names, a fully qualified one included', () => {
+    const twice = fn('twice', {
+      owner: 'Setup',
+      parameters: params('a'),
+      forward: forward('abs', ['a'], { qualifier: 'Math' }),
+    });
+    const annotated = (name, type) =>
+      findingsFor([twice], [klass('Setup', { kind: 'object', annotations: [{ name, type }] })]);
+
+    expect(
+      annotated('AutoConfiguration', 'org.springframework.boot.autoconfigure.AutoConfiguration'),
+    ).toEqual([]);
+    expect(summary(annotated('Suppress', 'Suppress'))).toEqual([
+      `${FORWARDING_RULE} Setup.twice 1`,
+    ]);
   });
 });
