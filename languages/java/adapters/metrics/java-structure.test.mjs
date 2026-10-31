@@ -1,6 +1,10 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { RULE_IDS } from '../../../../shared/policy.mjs';
 import { readJavaFileLimitFindings, readJavaStructureFindings } from './java-structure.mjs';
@@ -9,6 +13,7 @@ const FILE = 'src/main/java/demo/Big.java';
 const SOURCE = ['class Big {', '  int big(int a) {', '    return a;', '  }', '}', ''].join('\n');
 
 let projectRoot;
+const { gitCheckout } = useGitCheckouts();
 let reportRoot;
 
 const method = (overrides = {}) => ({
@@ -384,5 +389,25 @@ describe('Java file limits', () => {
 
   it('skips source roots that do not exist', () => {
     expect(readJavaFileLimitFindings(projectRoot, { manifest })).toEqual([]);
+  });
+});
+
+describe('Java files measured in a Git checkout', () => {
+  it('are those of the checkout, not ignored folders or nested checkouts', () => {
+    const long = `class A { ${'int a; '.repeat(40)}}\n`;
+    const root = gitCheckout(
+      {
+        'src/main/java/demo/A.java': long,
+        'src/main/java/gen/G.java': long,
+        ...nestedCheckout('src/main/java/agent', { 'X.java': long }),
+      },
+      ['src/main/java/gen/'],
+    );
+
+    const found = readJavaFileLimitFindings(root, {
+      manifest: { sourceRoots: ['src/main/java'] },
+    });
+
+    expect(found.map(({ path: file }) => file)).toEqual(['src/main/java/demo/A.java']);
   });
 });

@@ -1,10 +1,15 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readUnrunTestFindings } from './unrun-tests.mjs';
 
 const roots = [];
+const { gitCheckout } = useGitCheckouts();
 const JAVA_IT = 'package shop;\n\nclass OrderIT {\n  @Test\n  void runs() {}\n}\n';
 const MAVEN_MESSAGE =
   'Bind the integration-test and verify goals of maven-failsafe-plugin in this module so OrderIT runs: Surefire skips classes named IT*, *IT and *ITCase, and Failsafe does not run here, so its tests never run.';
@@ -164,5 +169,26 @@ describe('readUnrunTestFindings on Gradle', () => {
     expect(
       read({ 'src/test/java/shop/OrderIT.java': JAVA_IT }, { unrunTestSourceSets: [] }),
     ).toEqual([]);
+  });
+});
+
+describe('readUnrunTestFindings in a Git checkout', () => {
+  it('reads the test classes of the checkout, not ignored folders or nested checkouts', () => {
+    const root = gitCheckout(
+      {
+        'src/test/java/shop/OrderIT.java': JAVA_IT,
+        'src/test/java/gen/GenIT.java': JAVA_IT.replace('OrderIT', 'GenIT'),
+        ...nestedCheckout('src/test/java/agent', { 'AgentIT.java': JAVA_IT }),
+      },
+      ['src/test/java/gen/'],
+    );
+
+    const found = readUnrunTestFindings({
+      projectRoot: root,
+      reportRoot: path.join(root, 'target/nitpicker'),
+      manifest: maven(false),
+    });
+
+    expect(found.map(({ path: file }) => file)).toEqual(['src/test/java/shop/OrderIT.java']);
   });
 });

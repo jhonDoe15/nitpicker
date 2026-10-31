@@ -1,4 +1,4 @@
-import { runGit } from '../diff/git/repository/command.mjs';
+import { projectFilePaths } from '../../shared/project-files/project-files.mjs';
 import { renderRuleFilterSection } from '../diff/reporting/text.mjs';
 import { exceptionsMatchingNoPath } from '../../shared/exceptions/finding-exceptions.mjs';
 import { canonicalRule } from '../../shared/exceptions/rule-names.mjs';
@@ -17,17 +17,8 @@ function listedExceptions(config) {
   ];
 }
 
-function gitFiles(projectRoot, options) {
-  return runGit(projectRoot, ['ls-files', '-z', ...options])
-    .split('\0')
-    .filter((file) => file !== '');
-}
-
 function headFiles(projectRoot) {
-  const deleted = new Set(gitFiles(projectRoot, ['--deleted']));
-  return gitFiles(projectRoot, ['--cached', '--others', '--exclude-standard']).filter(
-    (file) => !deleted.has(file),
-  );
+  return projectFilePaths(projectRoot, { includeLinks: true });
 }
 
 export function staleExceptionLines(config, projectRoot) {

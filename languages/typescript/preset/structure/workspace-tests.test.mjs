@@ -2,7 +2,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { uncollectedWorkspaceTestFindings } from './workspace-tests.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const temporaryRoots = [];
 const TEST = "it('x', () => {});\n";
@@ -142,5 +148,26 @@ describe('workspace packages whose tests nothing runs', () => {
 
     expect(findings({}, [exception])).toEqual([]);
     expect(findings({ 'package.json': '{}' })).toEqual([]);
+  });
+
+  it('look at the files of the Git checkout, not at ignored folders or nested checkouts', () => {
+    const root = gitCheckout(
+      {
+        'package.json': JSON.stringify({ workspaces: ['packages/*'] }),
+        'packages/web/package.json': '{}',
+        'packages/web/src/a.test.ts': TEST,
+        'packages/web/generated/b.test.ts': TEST,
+        'packages/ignored/package.json': '{}',
+        'packages/ignored/src/c.test.ts': TEST,
+        ...nestedCheckout('packages/agent', { 'package.json': '{}', 'src/d.test.ts': TEST }),
+      },
+      ['packages/web/generated/', 'packages/ignored/'],
+    );
+
+    const found = uncollectedWorkspaceTestFindings(root, { analyzerName: 'structure' });
+
+    expect(found.map(({ path: file, identity }) => [file, identity])).toEqual([
+      ['packages/web/package.json', 'uncollected-workspace-tests:1'],
+    ]);
   });
 });

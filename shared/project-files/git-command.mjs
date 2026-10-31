@@ -1,0 +1,46 @@
+import { spawnSync } from 'node:child_process';
+
+const ENV_PROGRAM = 'env';
+const MISSING_PROGRAM = 'ENOENT';
+const SCRUBBED_VARIABLES = [
+  'GIT_DIR',
+  'GIT_WORK_TREE',
+  'GIT_INDEX_FILE',
+  'GIT_COMMON_DIR',
+  'GIT_PREFIX',
+];
+const NEUTRAL_ENVIRONMENT = [...SCRUBBED_VARIABLES.flatMap((name) => ['-u', name]), 'LC_ALL=C'];
+const NEUTRAL_CONFIGURATION = ['-c', 'core.excludesFile=', '-c', 'safe.directory=*'];
+const NOT_A_REPOSITORY =
+  /not a git repository|gitfile does not point to a valid repository|invalid gitfile format/iu;
+const SUCCESS = 0;
+
+function spawnGit(directory, args) {
+  const options = { cwd: directory, encoding: 'utf8', maxBuffer: Number.POSITIVE_INFINITY };
+  const gitArgs = ['git', ...NEUTRAL_CONFIGURATION, ...args];
+  const scrubbed = spawnSync(ENV_PROGRAM, [...NEUTRAL_ENVIRONMENT, ...gitArgs], options);
+  if (scrubbed.error?.code !== MISSING_PROGRAM) {
+    return scrubbed;
+  }
+  const [program, ...rest] = gitArgs;
+  return spawnSync(program, rest, options);
+}
+
+export function neutralGit(directory, args, { accepted = [SUCCESS] } = {}) {
+  const result = spawnGit(directory, args);
+  if (result.error !== undefined) {
+    throw new Error(`Cannot run git in ${directory}: ${result.error.message}`, {
+      cause: result.error,
+    });
+  }
+  if (accepted.includes(result.status)) {
+    return { status: result.status, stdout: result.stdout };
+  }
+  if (NOT_A_REPOSITORY.test(result.stderr)) {
+    return undefined;
+  }
+  const outcome = result.status ?? result.signal;
+  throw new Error(
+    `git ${args[0]} failed in ${directory} (${String(outcome)}): ${result.stderr.trim()}`,
+  );
+}

@@ -2,6 +2,10 @@ import { nitpickerCheckstyleConfig } from './configuration/checkstyle-config.mjs
 import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../core/diff/git/test-support/git-checkout.mjs';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { GRADLE_DIRECTORY } from '../builds/java-build.mjs';
 import { javaFiles, runFormat, runPmd, writeCheckstyleSetup } from './maven-lint.mjs';
@@ -9,6 +13,7 @@ import { toolDependencies } from './maven-tools.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 
 const roots = [];
+const { gitCheckout } = useGitCheckouts();
 
 function dependency(groupId, artifactId, version, extra = '') {
   const id = `<groupId>${groupId}</groupId><artifactId>${artifactId}</artifactId>`;
@@ -324,5 +329,21 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       main: [shipped('pmd-main-ruleset.xml')],
       tests: [shipped('pmd-test-ruleset.xml')],
     });
+  });
+});
+
+describe('javaFiles in a Git checkout', () => {
+  it('lists the files of the checkout, not ignored folders or nested checkouts', () => {
+    const root = gitCheckout(
+      {
+        'src/A.java': '',
+        'src/gen/G.java': '',
+        ...nestedCheckout('src/agent', { 'X.java': '' }),
+      },
+      ['src/gen/'],
+    );
+
+    expect(javaFiles([path.join(root, 'src')])).toEqual([path.join(root, 'src/A.java')]);
+    expect(javaFiles([path.join(root, 'src/gen')])).toEqual([]);
   });
 });

@@ -1,4 +1,4 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { globMatcher } from '../../../../shared/paths/glob.mjs';
 import {
@@ -9,6 +9,7 @@ import { collectFileLimitFindings } from '../../../../shared/rules/file-limits.m
 import { javaFolderDepthFindings } from '../size/folder-depth.mjs';
 import { javaLineLengthFindings } from '../size/line-length.mjs';
 import { javaLineLength } from '../style/java-style.mjs';
+import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
 
 export function readJavaStructureFindings(reportRoot, projectRoot) {
   return readStructureFindings(reportRoot, projectRoot);
@@ -77,15 +78,13 @@ function javaFiles(projectRoot, entries) {
 
 function codeFiles(projectRoot, { roots, kind, kotlin }) {
   const extensions = kotlin ? ['.java', '.kt'] : ['.java'];
-  return [...new Set(roots)]
-    .filter((root) => existsSync(path.join(projectRoot, root)))
-    .flatMap((root) =>
-      readdirSync(path.join(projectRoot, root), { recursive: true })
-        .filter((file) => extensions.includes(path.extname(file)))
-        .map((file) => ({
-          path: path.posix.join(root, file.split(path.sep).join('/')),
-          packagePath: path.posix.dirname(file.split(path.sep).join('/')).replace(/^\.$/u, ''),
-          kind,
-        })),
-    );
+  return [...new Set(roots)].flatMap((root) =>
+    projectFilePaths(path.join(projectRoot, root))
+      .filter((file) => extensions.includes(path.extname(file)))
+      .map((file) => ({
+        path: path.posix.join(root, file),
+        packagePath: path.posix.dirname(file).replace(/^\.$/u, ''),
+        kind,
+      })),
+  );
 }

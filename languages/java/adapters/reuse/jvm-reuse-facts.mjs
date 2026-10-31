@@ -25,7 +25,9 @@ function sourceRootsOf(project, kotlin) {
 function projectSources(projectRoot, { project, kotlin }) {
   const extensions = kotlin ? ['.java', '.kt'] : ['.java'];
   return [...new Set(sourceRootsOf(project, kotlin))]
-    .flatMap((root) => sourceFilesUnder(pathInside(projectRoot, root), extensions, NOTHING_SKIPPED))
+    .flatMap((root) =>
+      sourceFilesUnder(pathInside(projectRoot, root), extensions, { skipped: NOTHING_SKIPPED }),
+    )
     .map((full) => [path.relative(projectRoot, full).replaceAll('\\', '/'), project]);
 }
 
