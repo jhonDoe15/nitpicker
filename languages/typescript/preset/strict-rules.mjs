@@ -46,6 +46,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-shell-string-command',
   'nitpicker/no-silent-catch',
   'nitpicker/no-sql-string-building',
+  'nitpicker/no-test-retry',
   'nitpicker/no-throw',
   'nitpicker/no-tri-state-boolean',
   'nitpicker/no-uninjectable-delay',

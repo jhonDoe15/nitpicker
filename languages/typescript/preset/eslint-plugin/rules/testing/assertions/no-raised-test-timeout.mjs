@@ -1,26 +1,19 @@
 import path from 'node:path';
 import { readHeadPolicyFile } from '../../../../../../../shared/head-policy.mjs';
 import { resolveTestTimeouts } from '../../../../../../../shared/test-timeouts/resolve.mjs';
-import { constantNumber, resolveConstant } from '../../analysis/test-code-analysis.mjs';
-import { chainOf } from '../../analysis/ancestry.mjs';
+import {
+  constantNumber,
+  registrationRoot,
+  resolveConstant,
+  isTestFactoryMember,
+  isTestFunctionName,
+} from '../../analysis/test-code-analysis.mjs';
+import { isFunctionNode } from '../../analysis/constant-resolution.mjs';
 
 export { TEST_TIMEOUT_CEILING_MS } from '../../../../../../../shared/test-timeouts/resolve.mjs';
 
-const TEST_FUNCTIONS = new Set(['it', 'test', 'describe', 'suite']);
 const HOOKS = new Set(['beforeAll', 'beforeEach', 'afterAll', 'afterEach']);
 const TIMEOUT_KEYS = new Set(['timeout', 'testTimeout', 'hookTimeout', 'teardownTimeout']);
-
-function rootName(callee) {
-  const current = chainOf(callee, (link) => {
-    if (link.type === 'MemberExpression') return link.object;
-    return link.type === 'CallExpression' ? link.callee : undefined;
-  }).at(-1);
-  return current?.type === 'Identifier' ? current.name : undefined;
-}
-
-function isFunction(node) {
-  return node?.type === 'ArrowFunctionExpression' || node?.type === 'FunctionExpression';
-}
 
 function timeoutProperties(context, node) {
   const resolved = resolveConstant(context, node);
@@ -52,20 +45,20 @@ function timeoutNodes(context, node) {
       hook: ['hookTimeout', 'teardownTimeout'].includes(property.key.name),
     }));
   }
-  const root = rootName(node.callee);
+  const root = registrationRoot(node.callee);
   if (
     node.callee.type === 'MemberExpression' &&
     !node.callee.computed &&
-    ['each', 'for', 'runIf', 'skipIf', 'extend'].includes(node.callee.property.name)
+    isTestFactoryMember(node.callee.property.name)
   ) {
     return [];
   }
   if (HOOKS.has(root) && node.callee.type === 'Identifier') {
     return node.arguments.slice(1, 2).map((node) => ({ node, hook: true }));
   }
-  if (!TEST_FUNCTIONS.has(root) || !node.arguments.some(isFunction)) return [];
+  if (!isTestFunctionName(root) || !node.arguments.some(isFunctionNode)) return [];
   return node.arguments.slice(1).flatMap((argument) => {
-    if (isFunction(argument)) return [];
+    if (isFunctionNode(argument)) return [];
     const properties = timeoutProperties(context, argument);
     if (properties.length > 0) {
       return properties.map((property) => ({
