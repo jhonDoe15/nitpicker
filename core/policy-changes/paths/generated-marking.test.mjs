@@ -50,6 +50,14 @@ const PRESETS = [
     ],
   },
   {
+    name: 'Go',
+    config: { preset: 'go' },
+    build: { 'go.mod': 'module example.com/app\n\ngo 1.22\n' },
+    file: 'billing/billing.go',
+    text: 'package billing\n\nfunc Total(a int) int {\n\treturn a * 3\n}\n',
+    marks: [['a generator header', (text) => `${HEADER}\n${text}`]],
+  },
+  {
     name: 'TypeScript',
     config: { preset: 'typescript' },
     build: { 'package.json': '{"name":"app","type":"module"}\n' },

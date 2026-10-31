@@ -11,10 +11,15 @@ which the conformance suite in [`spec/conformance`](../spec/conformance/README.m
 Python side contributes only two things: producing reports inside the project's own environment,
 and converting them into findings.
 
+The Python and `uv` (or poetry) setup a CI job needs, and recipes for GitHub Actions, GitLab CI and
+Jenkins, are in [nitpicker in CI](ci.md#toolchains-by-preset).
+
 The purpose is the same as everywhere else: narrow a flexible language to roughly one allowed way
 of doing each thing. That "one way" lives in the code and architecture rules (slices 2 to 5), not in
 which tools a project uses, so the preset detects the tools a project already has (uv, poetry,
 pipenv, hatch, conda or a plain virtualenv; ruff or black; pytest, unittest, Django's `manage.py test` or nose2) and never makes adoption depend on switching.
+
+Every rule the preset can report has an entry in the [rule reference](rules/README.md): [ruff](rules/python-ruff.md), [nitpicker's own rules](rules/python-nitpicker.md) and [the type checkers and import contracts](rules/python-types.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
 
 ## How it works
 
@@ -261,16 +266,22 @@ handed to ruff or black either. The rules most likely to flag code that is right
 each item) and `F401` (an `__init__.py` that re-exports): lift them for the path with
 `python.exceptions`, or `exclude` the path, for example
 `"exclude": ["src/demo/cli.py", "**/__init__.py"]`. The project's own ruff configuration
-(`[tool.ruff]`, `ruff.toml`) is not read for linting, and of the coverage configuration only the
-settings that say how the tests run are kept (see the test step below), so the result means the
-same on every project; there is no override key for them.
+(`[tool.ruff]`, `ruff.toml`) is not read for linting until `"tools": { "ruff": { "precedence":
+["project", "nitpicker"] } }` opts it in; then the rules it selects run next to nitpicker's (never
+instead of them: an `ignore` or `per-file-ignores` entry for a nitpicker rule is dropped, and
+`python.exceptions` lifts those) and its rule options merge with nitpicker's (see
+[Formatter and detekt configs](usage.md#formatter-and-detekt-configs-python-and-kotlin-presets)). Of
+the coverage configuration only the settings that say how the tests run are kept (see the test step
+below), so the result means the same on every project; there is no override key for them.
 
 The formatter is `black` when `pyproject.toml`, `setup.cfg`, `tox.ini`, `Pipfile`,
 `.pre-commit-config.yaml` or a requirements file (`requirements*.txt`, `requirements/*.txt`) has a
 `[tool.black]` table, `black` as a dependency (a requirements line, a poetry key or an entry of any
 TOML dependency array), a `tox` command, or the `psf/black` or `black-pre-commit-mirror` repository
 or the `black` hook id, and none of them configures ruff's formatter (`[tool.ruff.format]`, a
-`[format]` table in `ruff.toml`, the `ruff-format` hook).
+`[format]` table in `ruff.toml`, the `ruff-format` hook). The choice is read from the head checkout
+for both snapshots, so a change that switches formatter is checked against a merge base formatted
+the same way, and only the files it touches can fail.
 
 **The format check follows the project's code, not its formatter config.** A project whose
 `[tool.ruff]`, `ruff.toml` or `[tool.black]` set the line length, quote style or indentation is
@@ -295,8 +306,9 @@ effect only with the opt-in.
 The run prints, once at the start, the command that formats the code the way nitpicker checks it
 (for example `Format with ruff: ruff format --isolated --target-version py38 --line-length 88 --config 'format.quote-style = "double"' --config 'indent-width = 4' .`;
 black prints `<empty file>` for the config it writes), and one line when a project config is
-ignored: `Ignoring [tool.ruff] in pyproject.toml; opt in with "tools": { "ruff": { "precedence":
-["project", "nitpicker"] } }`. Each format finding refers to the command and names
+ignored: `Ignoring [tool.ruff] in pyproject.toml except lint.flake8-pytest-style; opt in with
+"tools": { "ruff": { "precedence": ["project", "nitpicker"] } }` (the flake8-pytest-style options
+are read without the opt-in). Each format finding refers to the command and names
 `python.formatter` (when detected), the setting that changes the formatter.
 
 **Opt-in.** `"tools": { "ruff": { "precedence": ["project", "nitpicker"] } }` (or `black`) reads the
@@ -309,7 +321,9 @@ conventions win instead for ruff; it is a config error for black, whose flags ca
 normalization back on. Listing `"project"` with no config file is a tool error that says to create it
 or remove `"project"` from `tools.<tool>.precedence`. The file is read from the head checkout for
 both sides of the comparison and passed to the formatter as `--config <file>`; the whole `extend`
-chain and the located files are part of the cache key. The line length that the conventions take from the config is read from the merge base in a comparison (its parent-folder configs and `extend`ed files included; the branch's own config only when the base has no Python sources), so a pull request cannot raise its own limit by editing the config. The format command then passes the followed value (`--line-length`, the quote style of ruff, indentation) wherever the head config says another one, and the printed command shows it. Which formatter applies which convention:
+chain and the located files are part of the cache key, and an edit of the opted-in settings (the
+`[tool.ruff]` or `[tool.black]` table, not the rest of `pyproject.toml`) is a policy change a person
+reviews; comments and layout do not count. The line length that the conventions take from the config is read from the merge base in a comparison (its parent-folder configs and `extend`ed files included; the branch's own config only when the base has no Python sources), so a pull request cannot raise its own limit by editing the config. The format command then passes the followed value (`--line-length`, the quote style of ruff, indentation) wherever the head config says another one, and the printed command shows it. Which formatter applies which convention:
 ruff format applies all three; black applies `python.lineLength` and `python.quotes` (it keeps single
 quotes as written, so it accepts both styles) and has no indentation option, so `python.indentation`
 is neither measured nor printed with black, and pinning it is a config error. A file votes a line
@@ -402,7 +416,9 @@ through the real tools.
   resolved against the checkout that is being checked, so the base run checks base files; `venv`,
   `venvPath` and `typeshedPath` stay where the environment is. With the opt-in pyright also looks
   for `pyrightconfig.json` or a `pyproject.toml` with the table in the parent directories up to
-  the repository root. The config files, the `extends` chain included, are part of the cache key.
+  the repository root. The config files, the `extends` chain included, are part of the cache key,
+  and an edit of the checker's own settings in them is a policy change a person reviews (see
+  [Type checker and mutation configs](usage.md#type-checker-and-mutation-configs-python-preset)).
   Naming `"project"` without a config is a tool error, and so is a config that cannot be parsed (the
   message says so and names the file). `["nitpicker", "project"]` reads only what the unlisted
   behavior reads. Without the opt-in the run prints
@@ -414,10 +430,10 @@ through the real tools.
   form) and `RUF100` (every `noqa` is already a finding). `S110` and `S112` are not selected:
   `swallowed-exception` reports what they did, and more, once and under one id. The shared
   one-way rules add the groups `G` (logging calls), `N` (PEP 8 naming), `ERA` (commented-out
-  code), `ARG` (unused arguments), `PT` (pytest style), `S` (security) and `TRY` (exceptions), and
+  code), `ARG` (unused arguments), `DTZ` (datetimes without a zone), `PT` (pytest style), `S` (security) and `TRY` (exceptions), and
   the single rules `PLR2004`, `PLW0602` and `PLW0603`; the last section of this
   slice lists each one with its allowed form and the rules of those groups that are left off.
-  The groups `RUF`, `G`, `N`, `PT`, `S` and `TRY` are selected by listing their stable codes, not
+  The groups `RUF`, `G`, `N`, `DTZ`, `PT`, `S` and `TRY` are selected by listing their stable codes, not
   by prefix, so a later ruff cannot add a rule (or a preview rule) to the gate. `ruffConfigFor`
   (`adapters/configuration/python-ruff-config.mjs`) writes the toml into the report directory
   without the codes that the installed ruff does not know or lists as preview or removed
@@ -425,8 +441,8 @@ through the real tools.
   a prefix such as `E4` or `T20` stays when a known rule starts with it. Test files are the ones
   pytest collects (the `python_files` patterns, `testpaths`, `conftest.py`, any `tests` or `test`
   folder, `test_*.py`, `*_test.py`, and the Django names in a Django project, see
-  [runner parity](#runner-parity)): ruff's `ARG`, `PLR2004` and `S` findings in them are
-  dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`). Security findings (ruff `S` and the
+  [runner parity](#runner-parity)): ruff's `ARG`, `DTZ`, `PLR2004` and `S` findings in them are
+  dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`). The `DTZ` codes are not in the touched-code list of `touched-rules.mjs`, like `ARG`: a datetime site that is added on an edited line is new only when its identity differs from the base's, so the base's findings of the same code in that file stay baselined. `datetime.strptime(...).date()` and `.time()` are allowed (`DTZ007`), since a calendar value has no zone. Security findings (ruff `S` and the
   `sql-string-formatting`, `tls-verification-off`, `weak-hmac`, `http-without-timeout` and
   `unsafe-deserialization` rules) are also dropped in test support that pytest does not collect, as in the
   TypeScript preset. Test support is every file under a test root (the configured pytest `testpaths`, and
@@ -585,39 +601,45 @@ under `languages/python/rules/`: `checks`, `boundary`, `smells`, `honesty`); the
 rules. Rules that are not enforced because they flag idiomatic code with no clean alternative
 are listed at the end.
 
-| Concern                  | Allowed form                                                                                                                                     | Rule                                                                                                                                                 |
-| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Logging                  | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below)                                           | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                               |
-| Environment              | read once in a composition root, pass values in                                                                                                  | `process-env-access` (script)                                                                                                                        |
-| Shell                    | a list: `subprocess.run(["git", "status"], check=True)`                                                                                          | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                        |
-| SQL                      | parameters: `cursor.execute("select * from t where id = %s", (id,))`; placeholder lists, fixed lookups, `Literal`/`Enum` names, `sql.Identifier` | `sql-string-formatting` (script), ruff `S610`, `S611`                                                                                                |
-| Path traversal           | `target = (base / name).resolve()`, then `target.is_relative_to(base)`                                                                           | `unsafe-path-join` (script)                                                                                                                          |
-| Magic numbers            | a named constant                                                                                                                                 | ruff `PLR2004`                                                                                                                                       |
-| Naming                   | PEP 8: `CapWords`, `snake_case`, `UPPER_SNAKE_CASE`, `...Error`                                                                                  | ruff `N`                                                                                                                                             |
-| Boundary                 | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`                                                      | `handwritten-boundary-guard` (script)                                                                                                                |
-| Types in the domain      | real types, `Protocol`, frozen dataclasses                                                                                                       | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
-| Pure domain              | clock, ids, random values and results passed in; ports implemented in `adapters/`; no logger or module state                                     | `clock-now`, `random-in-domain`, `io-in-domain`, `logger-in-domain`, `module-state-in-domain` (script)                                               |
-| Module state             | state in an object made in the composition root                                                                                                  | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
-| Import-time effects      | work done in a function the composition root calls, or under `if __name__ == "__main__":`                                                        | `import-time-effect` (script)                                                                                                                        |
-| Risky APIs               | JSON instead of pickle or marshal, `copy.deepcopy` to clone, a specific exception class                                                          | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
-| Deserialization          | `yaml.safe_load`, `torch.load(path, weights_only=True)`, `numpy.load` without `allow_pickle`                                                     | ruff `S506`, `unsafe-deserialization` (script)                                                                                                       |
-| Deprecated APIs          | the replacement the deprecation notice names                                                                                                     | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                       |
-| Repeated strings         | a constant or enum member                                                                                                                        | `repeated-string-literal` (script)                                                                                                                   |
-| Unused arguments         | remove the argument; `@override` on an override; a `_` prefix when a callback signature is fixed                                                 | ruff `ARG001`-`ARG005`                                                                                                                               |
-| Generic names            | a name for the job (`price_rounding.py`, `OrderRepository`)                                                                                      | `generic-name` (script)                                                                                                                              |
-| Secrets                  | read from the environment; log only that a secret is set                                                                                         | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
-| Boolean flags            | keyword-only (`def send(message, *, urgent=False)`), two functions or an enum                                                                    | `boolean-flag-parameter` (script)                                                                                                                    |
-| Input or output per item | one batch call, or `asyncio.gather`                                                                                                              | `io-in-loop` (script)                                                                                                                                |
-| Task lifetimes           | open the resource around the whole task group, or inside the child; await the task first                                                         | `task-outlives-resource` (script)                                                                                                                    |
-| Trio/AnyIO cleanup       | `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()`                                                  | `unshielded-cleanup-await` (script)                                                                                                                  |
-| Task markers             | `# TODO(#123): ...` with an issue                                                                                                                | `todo-without-issue` (script)                                                                                                                        |
-| Commented-out code       | delete it                                                                                                                                        | ruff `ERA001`                                                                                                                                        |
-| Security sinks           | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`                                                         | ruff `S` (see below)                                                                                                                                 |
-| TLS                      | verification on in every environment; a CA bundle (`verify=ca_path`, `cafile=`, `tlsCAFile=`)                                                    | ruff `S501`, `S323`, `tls-verification-off` (script)                                                                                                 |
-| Signatures               | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                    | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                            |
-| Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                 | ruff `S113`, `http-without-timeout` (script)                                                                                                         |
-| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                             | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
-| Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                      | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
+| Concern                  | Allowed form                                                                                                                                                                         | Rule                                                                                                                                                 |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Logging                  | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below)                                                                               | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                               |
+| Environment              | read once in a composition root, pass values in                                                                                                                                      | `process-env-access` (script)                                                                                                                        |
+| Shell                    | a list: `subprocess.run(["git", "status"], check=True)`                                                                                                                              | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                        |
+| SQL                      | parameters: `cursor.execute("select * from t where id = %s", (id,))`; placeholder lists, fixed lookups, `Literal`/`Enum` names, `sql.Identifier`                                     | `sql-string-formatting` (script), ruff `S610`, `S611`                                                                                                |
+| Path traversal           | `target = (base / name).resolve()`, then `target.is_relative_to(base)`                                                                                                               | `unsafe-path-join` (script)                                                                                                                          |
+| Magic numbers            | a named constant                                                                                                                                                                     | ruff `PLR2004`                                                                                                                                       |
+| Naming                   | PEP 8: `CapWords`, `snake_case`, `UPPER_SNAKE_CASE`, `...Error`                                                                                                                      | ruff `N`                                                                                                                                             |
+| Boundary                 | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`                                                                                          | `handwritten-boundary-guard` (script)                                                                                                                |
+| Types in the domain      | real types, `Protocol`, frozen dataclasses                                                                                                                                           | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
+| Pure domain              | clock, ids, random values and results passed in; ports implemented in `adapters/`; no logger or module state                                                                         | `clock-now`, `random-in-domain`, `io-in-domain`, `logger-in-domain`, `module-state-in-domain` (script)                                               |
+| Module state             | state in an object made in the composition root                                                                                                                                      | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
+| Import-time effects      | work done in a function the composition root calls, or under `if __name__ == "__main__":`                                                                                            | `import-time-effect` (script)                                                                                                                        |
+| Risky APIs               | JSON instead of pickle or marshal, `copy.deepcopy` to clone, a specific exception class                                                                                              | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
+| Deserialization          | `yaml.safe_load`, `torch.load(path, weights_only=True)`, `numpy.load` without `allow_pickle`                                                                                         | ruff `S506`, `unsafe-deserialization` (script)                                                                                                       |
+| Deprecated APIs          | the replacement the deprecation notice names                                                                                                                                         | mypy `deprecated`, pyright and basedpyright `reportDeprecated`                                                                                       |
+| Repeated strings         | a constant or enum member                                                                                                                                                            | `repeated-string-literal` (script)                                                                                                                   |
+| Unused arguments         | remove the argument; `@override` on an override; a `_` prefix when a callback signature is fixed                                                                                     | ruff `ARG001`-`ARG005`                                                                                                                               |
+| Generic names            | a name for the job (`price_rounding.py`, `OrderRepository`)                                                                                                                          | `generic-name` (script)                                                                                                                              |
+| Secrets                  | read from the environment; log only that a secret is set                                                                                                                             | `hardcoded-secret`, `credential-shape`, `secret-in-log` (script)                                                                                     |
+| Datetimes                | a datetime with a zone: `datetime.now(tz=timezone.utc)`, `datetime.fromtimestamp(ts, tz=timezone.utc)`, `%z` when parsing an instant, `date.fromisoformat(text)` for a calendar date | ruff `DTZ001`-`DTZ007`, `DTZ011`, `DTZ012`, `DTZ901`                                                                                                 |
+| Boolean flags            | keyword-only (`def send(message, *, urgent=False)`), two functions or an enum                                                                                                        | `boolean-flag-parameter` (script)                                                                                                                    |
+| Tri-state booleans       | an enum that names the three states, or a keyword-only `bool` with a default (`*, urgent=False`)                                                                                     | `tri-state-boolean` (script)                                                                                                                         |
+| Defaulting parameters    | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                      | `falsy-default` (script)                                                                                                                             |
+| Changing an argument     | build and return a new value, or copy the argument first                                                                                                                             | `parameter-mutation` (script)                                                                                                                        |
+| Compatibility shims      | change every caller in the same change and delete the old name                                                                                                                       | `compatibility-shim` (script)                                                                                                                        |
+| Input or output per item | one batch call, or `asyncio.gather` bounded by a shared `asyncio.Semaphore`                                                                                                          | `io-in-loop` (script)                                                                                                                                |
+| Concurrent remote calls  | `asyncio.Semaphore` acquired in the task, or chunks of fixed size, or one batch call                                                                                                 | `unbounded-fan-out` (script)                                                                                                                         |
+| Task lifetimes           | open the resource around the whole task group, or inside the child; await the task first                                                                                             | `task-outlives-resource` (script)                                                                                                                    |
+| Trio/AnyIO cleanup       | `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()`                                                                                      | `unshielded-cleanup-await` (script)                                                                                                                  |
+| Task markers             | `# TODO(#123): ...` with an issue                                                                                                                                                    | `todo-without-issue` (script)                                                                                                                        |
+| Commented-out code       | delete it                                                                                                                                                                            | ruff `ERA001`                                                                                                                                        |
+| Security sinks           | parameterized queries, `sha256`, verified TLS, a timeout, `yaml.safe_load`, `defusedxml`                                                                                             | ruff `S` (see below)                                                                                                                                 |
+| TLS                      | verification on in every environment; a CA bundle (`verify=ca_path`, `cafile=`, `tlsCAFile=`)                                                                                        | ruff `S501`, `S323`, `tls-verification-off` (script)                                                                                                 |
+| Signatures               | `hmac.new(key, message, hashlib.sha256)`; HMAC-SHA1 where a protocol fixes it                                                                                                        | ruff `S324`, `S303`, `weak-hmac` (script)                                                                                                            |
+| Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                                                     | ruff `S113`, `http-without-timeout` (script)                                                                                                         |
+| Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                                                                 | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
+| Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                                                          | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
 
 Details that are decisions rather than the table:
 
@@ -946,8 +968,40 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   module name used as a key of a documentation table (`'pwd': 'pwd#module-pwd'`) is a false
   positive; add an exception for the file.
 - `io-in-loop` reports an HTTP, database or repository call once per item of a `for`, `while` or
-  comprehension; `asyncio.gather` over a comprehension, a paging loop (the condition reads a
-  variable the body assigns) and a retry (a `try` in the loop that returns on success) are not.
+  comprehension; `asyncio.gather` over a comprehension, a call that `unbounded-fan-out` reports
+  at the same site (so one remote call has one owner), a worker task started once per slot of a
+  count (`for _ in range(workers)`), a paging loop (the condition reads a variable the body
+  assigns) and a retry (a `try` in the loop that returns on success) are not. A remote call in a
+  task that is bounded or awaited one at a time keeps this finding, with the batching remedy.
+- `unbounded-fan-out` reports `asyncio.gather`, `asyncio.wait` and `asyncio.as_completed` over a
+  generator, a list comprehension, `map(f, xs)`, a name bound to one, or a list filled by
+  `append` in a `for` loop, and `asyncio.create_task`, `ensure_future`, `tg.create_task` and
+  `nursery.start_soon` inside a loop or comprehension, when the coroutine makes a remote call
+  (`requests`, `httpx`, `aiohttp`, `urllib3`, `urllib.request.urlopen`, `boto3` clients, OpenAI and
+  Anthropic clients) or publishes to a broker (`aiokafka`, `kafka`, `confluent_kafka`, `pika`,
+  `aio_pika`, `redis` `publish`, `nats`, Pub/Sub, `paho.mqtt`, SQS, SNS, EventBridge and Kinesis
+  through `boto3`) and runs over a collection that is not fixed. The client factories are the ones
+  `io-in-loop` uses, from one table. The coroutine is resolved when it is a client call, a nested
+  or module-level `async def` of the project, a method of the same class or an imported project
+  function, up to three calls deep. A client is recognized from its factory (`httpx.AsyncClient()`
+  in an assignment or `async with`, also `self.x`), or from a parameter, `self` attribute or
+  variable annotated with the library type. Database calls are the business of `io-in-loop`.
+  Allowed: an `asyncio.Semaphore`, `BoundedSemaphore`, `Lock`, anyio or trio `CapacityLimiter` or
+  `Semaphore`, `aiolimiter.AsyncLimiter` created outside the task and entered in the task body
+  (`async with limit:`); a parameter annotated with one of those types, or one the caller passes a
+  limiter it created; a parameter or imported name whose name ends in `sem`, `semaphore`, `limit`,
+  `limiter`, `throttle`, `throttler`, `capacity` or `gate`; an `await gate.acquire()` on such a
+  limiter or a `gather` that drains a window inside the loop; a literal or constant collection,
+  the members of an `Enum` class of the project, a slice or `islice` with an explicit size, and
+  chunks from `batched`, `chunked`, `chunks` or `partition_all` with a size. A worker pool is
+  bounded by its count: `range(workers)` and `range(3)` pass, while `range(len(xs))` stays a
+  fan-out over `xs`. A semaphore created inside the task, or a limit constant that nothing
+  acquires, bounds nothing. `asyncio.to_thread` and `loop.run_in_executor(None, ...)` run on the
+  default thread pool, which has a fixed size, so they are not reported. Test files are exempt.
+  Limits: an unannotated `client` parameter, a callable wrapped in `functools.partial` and a
+  library outside the list are not recognized, a limiter is recognized from an unannotated
+  parameter or import by its name only, and a collection that is small in practice but not by
+  construction is reported; lift such a path with a `python.exceptions` entry.
 - `task-outlives-resource` reports a resource that a `with` or `async with` opened inside a task
   group closes while a child task can still use it. Task groups are `trio.open_nursery()`,
   `anyio.create_task_group()` and `asyncio.TaskGroup()` (also through import aliases and a group
@@ -1008,6 +1062,66 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   comment or followed by `:` or `(`, not directly followed by `#123`, `PROJ-123` or a link. `TD` and
   `FIX` from ruff are not used, because they ask for an author and a date, which the TypeScript and
   Java presets do not.
+- `tri-state-boolean` owns every nullable boolean: `bool | None`, `None | bool`, `Optional[bool]` and
+  `Union[bool, None]` (also as a string, inside `Annotated`, `Final` or `ClassVar`) on a parameter, a
+  return value, a class or module field and a `self.x: bool | None` attribute. `boolean-flag-parameter`
+  reports only a plain `bool` parameter, so a parameter is never reported by both. A union with
+  another type (`bool | str | None`) is not a tri-state boolean. Local variables, type aliases,
+  overloads, `@override` methods, a method that overrides a base class of the module or whose base
+  comes from another module (the base fixes the signature; name `@override` on it), the protocol hooks
+  `__exit__`, `__aexit__` and `eof_received`, `pytest_*` hooks and test files are skipped. Fields of
+  data that is mapped from outside are skipped too: a class that derives from a pydantic
+  `BaseModel` or `BaseSettings`, `SQLModel`, a Django `Model`, a SQLAlchemy `DeclarativeBase` or
+  `Base`, `Document`, `Schema` or `TypedDict` (also through a base class of the module). The allowed
+  form is an enum that names the third state (`Consent.UNKNOWN`), or a keyword-only `bool` with a
+  default (`*, urgent: bool = False`) when `None` only meant false.
+- `falsy-default` reports a parameter whose annotation can be falsy (`int`, `float`, `str`, `bytes`,
+  `bool`, a list, dict, set or tuple type, a `Sequence`, `Mapping`, `Decimal`, `timedelta`) and is
+  `None` by default or by its type, when the body writes `param or default` or
+  `param if param else default` in a value position: an assignment, a return, an argument. A default
+  that is itself empty (`or []`, `or {}`, `or ""`, `or 0`, `or ()`, `or set()`) is not reported,
+  since the falsy value is already what it becomes. A parameter the function compares with `None`
+  anywhere, a condition (`if a or b`, `while`, `assert`, `bool(...)`, `not`, an `and` chain, a
+  comprehension filter), an unannotated parameter and a parameter of a class that is never falsy
+  (`Path`, a project class) are not reported. The allowed form tests `None` only:
+  `limit if limit is not None else DEFAULT_LIMIT`.
+- `parameter-mutation` reports a parameter annotated as a `list`, `dict`, `set`, `deque`,
+  `bytearray`, `defaultdict`, `OrderedDict`, `Counter`, `MutableSequence`, `MutableMapping` or
+  `MutableSet` (also `Optional` and `|` members, `typing` aliases and strings) that the function
+  changes in place: `.append`, `.extend`, `.insert`, `.remove`, `.pop`, `.clear`, `.sort`, `.reverse`,
+  `.update`, `.setdefault`, `.popitem`, `.add`, `.discard` and the other mutating methods of its type,
+  an item or slice assignment (`p[k] = v`, `p[:] = x`, `p[k][j] = v`), `del p[k]`, an in-place operator
+  that the type implements as mutation (`p += [x]` on a list, `p |= other` on a set or dict) and
+  `random.shuffle`, `heapq.heappush`, `heapq.heappop`, `heapq.heapify`, `heapq.heapreplace`,
+  `heapq.heappushpop` and `bisect.insort*` on it, a call on a nested item (`table[k].append(x)`),
+  every target of `del a[0], b[k]` and of a tuple assignment, and the same operations on a one-hop
+  alias (`alias = items`, `self.items = items`). A rebind makes the parameter a copy only when the
+  right side is one (`list(p)`, `[*p]`, `{**p}`, `p.copy()`, `sorted(p)`, `p[:]`, `p + [x]`,
+  `copy.copy`, `copy.deepcopy`, a comprehension) and it comes before the first change; `p = p or []`
+  and `if p is None: p = []` keep the caller's list on the other branch and are reported. A
+  comprehension variable or lambda parameter named like the parameter is its own scope. Not
+  reported: `self` and `cls`, unannotated and read-only (`Sequence`, `Mapping`) parameters,
+  queues (`queue.Queue`, `asyncio.Queue`, which are not list-like types here), `pytest_*` hooks,
+  `@override` and `@overload`, private helpers (`_name`) and functions nested in another function
+  (the hazard is a public function that changes the caller's data), and test files. A constructor
+  that changes its argument is reported like any other function. The allowed form returns a new
+  value (`[*items, item]`, `{**table, key: value}`) or copies the argument first.
+- `compatibility-shim` reports four ways to keep an old name alive: a module-level `def
+__getattr__` that warns or maps removed names to new ones (a PEP 562 lazy import through
+  `importlib.import_module` is not a shim), a `warnings.warn` (or `warn_explicit`) call whose category
+  or first argument is `DeprecationWarning`, `PendingDeprecationWarning`, `FutureWarning` or a class
+  named `...DeprecationWarning`, a `@deprecated` decorator
+  (`typing_extensions`, `warnings`, `deprecated`, `deprecation`, or a project one) on a function
+  or class, and a top-level `OldName = NewName` statement where `NewName` is a function or class
+  defined in the module or a name imported with `from ... import`, when the alias casing matches the
+  target (a lowercase `backend_class = Backend` is a configuration value). Underscore-prefixed names
+  (`_Alias`, `Public = _Private`, `__version__`), a name published in `pyproject.toml`
+  `[project.scripts]`, `[project.gui-scripts]` or `[project.entry-points]`, aliases inside `if`, `try`, functions and classes (the
+  `try: import fast / except ImportError: fast = slow` fallback and `__radd__ = add`) and test
+  files are skipped. A finding on a line the change touches is new (see Touched code), so only a
+  shim the change adds or edits fails. mypy's `deprecated` and pyright's `reportDeprecated` (the Deprecated APIs row)
+  report a call to a deprecated name; this rule reports the definition that keeps one alive. A
+  published library that has to keep a deprecation takes an exception for its public modules.
 - `ERA001` finds commented-out code by a heuristic: a comment that parses as a statement. Prose
   that happens to parse is reported too; reword it.
 - The `S` group is selected by code, without the rules left off below; `S324`, `S501`,
@@ -1026,7 +1140,9 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
 - The advice follows the project when two forms are valid. Pytest style: the parentheses of
   `@pytest.fixture` (`PT001`) and marks (`PT023`) and the shape of `parametrize` (`PT006`,
   `PT007`) are read from the project's `[tool.ruff.lint.flake8-pytest-style]` table (`pyproject.toml`,
-  `ruff.toml`), and where it sets nothing from the majority of the project's own test code
+  `ruff.toml`; from the head checkout for both sides of a comparison, so editing the table does not
+  turn unchanged tests into new findings), and where it sets nothing from the majority of the
+  project's own test code
   (`rules/libraries/pytest-style.mjs`); a tie leaves ruff's default. Ruff gets the result as
   `--config` flags, so the gate and the advice agree. Logging and validation: `project-libraries.mjs`
   reads the dependencies (`pyproject.toml`, `Pipfile`, `requirements*.txt`) and words the logging
@@ -1150,16 +1266,16 @@ backends.
 
 ## Slice 1: tools, reports and identities
 
-- **Lint: ruff.** `ruff check --config <report dir>/nitpicker-ruff.toml --ignore-noqa
---no-cache --output-format sarif`, where the toml is `languages/python/ruff/nitpicker-ruff.toml`
+- **Lint: ruff.** `ruff check --config <report dir>/nitpicker-ruff.toml --line-length <python.lineLength>
+--ignore-noqa --no-cache --output-format sarif`, where the toml is `languages/python/ruff/nitpicker-ruff.toml`
   without the codes the installed ruff lacks (`ruffConfigFor`). The rule set is nitpicker's, not
   the project's, so the gate means the same on every project: pyflakes (`F`), the error rules of
   pycodestyle that are not formatting (`E4`, `E7`, `E9`), bugbear (`B`), comprehensions (`C4`),
   `SIM`, `PIE`, `RET`, `PERF`, a list of the stable `RUF` rules (without `RUF001`, `RUF002`,
   `RUF003` and `RUF012`: non-ASCII text and mutable class attributes, both common in correct
   code) and `T20` (no `print`), without `B008` (a call in an argument default, which the web
-  frameworks need). Slice 2 adds the shared one-way groups `G`, `N`, `ERA`, `ARG`, `PT`, `S`, `TRY`
-  and `PLR2004`. The target version follows the project's
+  frameworks need). Slice 2 adds the shared one-way groups `G`, `N`, `ERA`, `ARG`, `PT`, `S`, `TRY`,
+  `PLR2004` and `DTZ`. The target version follows the project's
   `requires-python` (or poetry's `python`, or `python_requires`): its lowest version, never lower
   than 3.8, and 3.8 when none is declared, so a rule that exists only on newer versions (`B905`,
   `zip(strict=)`) cannot flag code that must run on an older one. The SARIF goes through the existing generic ingester; identity is the
@@ -1189,14 +1305,24 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   (the first of `.coveragerc`, `setup.cfg` `[coverage:run]`, `tox.ini` `[coverage:run]` and
   `[tool.coverage.run]` that has coverage settings, the order coverage.py reads them in) the run
   settings that decide what code gets measured at all are kept: `concurrency` (multiprocessing,
-  gevent, eventlet, ...), `patch` (subprocesses), `plugins`, and the `omit` of the run and of the
-  report section (where projects often list `migrations/*`), added to the test files. Lists may run
-  over several lines with comments and blank lines in between, as coverage.py reads them; relative
-  `omit` patterns and the `source` paths are made absolute, so they match whatever directory the
-  tests run from.
+  gevent, eventlet, ...), `patch` (subprocesses) and `plugins`. Lists may run over several lines with
+  comments and blank lines in between, as coverage.py reads them; the `source` paths and, with the
+  opt-in, relative `omit` patterns are made absolute, so they match whatever directory the tests run
+  from.
   When they make coverage.py write one data file per process, the files are combined before the
   report. Its `exclude_lines`, `exclude_also`, `partial_branches`, `branch` and `source` are
-  dropped, so the gate judges every project's code the same way. Test files are not scored for
+  dropped, so the gate judges every project's code the same way, until
+  `"tools": { "coverage": { "precedence": ["project", "nitpicker"] } }` opts the config in: then its
+  `exclude_lines`, `exclude_also`, `partial_branches` and `partial_also` are added to nitpicker's
+  (a project that lists `pragma: no cover` gets its pragma back), the `omit` of its run and report
+  sections (where projects often list `migrations/*`) is added to the test files, and its `timid`,
+  `cover_pylib`, `dynamic_context`, `sigterm`, `disable_warnings` and `core` apply, each checked to
+  be a value coverage.py takes; `branch`, `parallel`,
+  `source`, `include`, `data_file`, `[paths]` and the report settings stay nitpicker's.
+  `["nitpicker", "project"]` takes only those run options and keeps nitpicker's exclusions and
+  omits. The
+  opted-in config is read from the head checkout for both sides, and an edit of its coverage
+  settings is a policy change a person reviews. Test files are not scored for
   CRAP either, and a source file the project omits has unknown coverage
   (`crap-coverage-unknown`). Exit status 5 (no tests collected) is accepted; any other
   non-zero status is a tool error. A snapshot where no test ran has an enforceable
@@ -1410,10 +1536,24 @@ or remove it if it can't happen. If this is intended, add
   test changes which branches are covered on head.
 - **Exceptions.** `# pragma: no cover` and `# pragma: no branch` are not honored (the generated
   `exclude_lines` does not list them and `partial_branches` is empty), and the project's own
-  report settings are ignored, so the one measurement is the same everywhere. Only idioms that are
+  report settings are ignored, so the one measurement is the same everywhere (unless
+  `tools.coverage` opts the project's exclusions in, see the test step). Only idioms that are
   never testable are excluded, with the same list on every coverage.py version: `if TYPE_CHECKING:`
-  (also `typing.TYPE_CHECKING`), `if __name__ == "__main__":`, `@overload` (also `typing.overload`)
-  and `raise NotImplementedError`. A branch of a function that legitimately cannot be tested is
+  (also `typing.TYPE_CHECKING`), `if __name__ == "__main__":`, `@overload` (also `typing.overload`),
+  `raise NotImplementedError`, a function whose body is `...` right after the colon of its
+  signature (a `Protocol` method, an `@abstractmethod` stub: `def write(self, text: str) -> object: ...`,
+  also with a wrapped signature or a `-> T` return; a `...` on the next line, a wrapped `if (`,
+  `except (` or `with (` header and a lambda are not stubs), and a `case _:` arm whose only
+  statement is `assert_never(name)` (also `typing.assert_never` and
+  `typing_extensions.assert_never`) on the line below it. That arm is the one allowed way to close a
+  `match` over every member of an enum or union: without a wildcard, coverage.py counts the jump out
+  of the `match` when no case matches, which no test can take, and the finding for it says to end
+  the `match` with `case _:` and `assert_never(subject)`. Nothing else is excluded: an
+  `assert_never` in an `else`, one inside a longer expression, `case _: assert_never(x)` on one
+  line, an argument that is not a name and a `case _:` arm with another statement are all counted.
+  The type checker reports an `assert_never` it cannot prove unreachable, so a missing case still
+  fails when the function is checked (mypy skips the body of an unannotated function), and an
+  untested `case _:` that does something else is still reported. A branch of a function that legitimately cannot be tested is
   accepted with an `exceptions` entry for `changed-branch-coverage` that names the function
   (`"function": "Service.wide"`), which keeps every other finding of the file. Only a branch in no
   function (module-level code) is lifted with `exclude` in `nitpicker.config.json` (a path glob),
@@ -1421,9 +1561,12 @@ or remove it if it can't happen. If this is intended, add
 - **Tests.** `languages/python/ingest/coverage-reports/coverage-branches.test.mjs` (the ingester on a recorded
   coverage.py report, identity stability, baselined / touched / added cases through
   `compareFindings`); `core/command/python/python-cli-*.test.mjs` (the CLI with fake tools); the gated e2e test adds
-  six cases on a real project (moved gap baselined, edited line fails, edited and tested passes,
+  twelve cases on a real project (moved gap baselined, edited line fails, edited and tested passes,
   new untested branch fails while the old gap stays baselined, a pragma hides nothing, new tested
-  branch passes).
+  branch passes, `Protocol` and abstract stubs pass, a `match` closed with `assert_never` passes,
+  one with no wildcard fails naming that form, an untested `case _:` default fails, a `case _:` arm
+  with a statement after `assert_never` fails, and a wrapped `if (` with a `...` body and an
+  `else: assert_never(x)` both stay counted).
 
 ## Slice 5: duplicates, coupling and import contracts
 
@@ -1501,9 +1644,10 @@ the source root detection already does.
   Rust dependency only to produce what a few dozen lines of `ast` already give: module-to-module import
   edges. What grimp adds (external packages, import chains, squashed packages) is import-linter's
   job, and import-linter, which brings grimp, runs when the project uses it.
-- **import-linter.** When the snapshot has an import-linter config (`.importlinter`, or a
-  `[importlinter]` section in `setup.cfg` or `tox.ini`, or `[tool.importlinter]` in
-  `pyproject.toml`), `lint-imports --no-cache` runs in the project's environment, with the
+- **import-linter.** When the snapshot has an import-linter config, found the way import-linter
+  finds it (the first of `setup.cfg` and `.importlinter` with an `[importlinter]` section, then
+  `[tool.importlinter]` in `pyproject.toml`; import-linter never reads `tox.ini`),
+  `lint-imports --no-cache` runs in the project's environment, with the
   snapshot's sources on `PYTHONPATH` as for the other tools. The project's `import-linter` version
   (read from the installed package metadata, since `--version` only exists from 2.11) is part of
   the analyzer version. `python.importLinter` overrides the detection (`false` never runs it,
@@ -1522,7 +1666,22 @@ the source root detection already does.
   on a file end with the `python.exceptions` sentence for `contract-broken`. A run that checked no
   contract (missing config file, `lint-imports` not installed in the environment, which the
   message answers with `"python": { "importLinter": false }`) is an `import-linter-failed` tool
-  error, as `duplicates-failed` and `coupling-failed` are for the other two steps.
+  error, as `duplicates-failed` and `coupling-failed` are for the other two steps. There is no
+  `tools.import-linter`: the contracts are the project's own and nitpicker has none to layer them
+  on, so they run as written. Each snapshot runs its own contracts (the base cannot run contracts
+  for modules only the head has), so the policy review compares the contracts of the two sides,
+  contract by contract (by the `importlinter:<kind>:<id>` section name, or the `id` or `name` of a
+  `pyproject.toml` contract), with or without any opt-in. What weakens the check fails until a
+  person accepts it: the config removed (the file deleted, the section renamed or the table
+  dropped), a contract removed, a layer dropped or the layers reordered, an entry dropped from
+  `source_modules`, `forbidden_modules`, `modules`, `containers`, `protected_modules` or
+  `root_packages`, an entry added to `ignore_imports`, `allowed_importers` or `exhaustive_ignores`,
+  `allow_indirect_imports` or `exclude_type_checking_imports` turned on, `exhaustive` or
+  `as_packages` turned off, `unmatched_ignore_imports_alerting` relaxed (`error`, then `warn`, then
+  `none`), and any other changed key except `name`. What only adds checking is listed and does not
+  fail: the config or a contract added, a layer or module added, an ignored import removed.
+  Comments, layout and the other sections do not count. With `"python": { "importLinter": false }`
+  the contracts neither run nor count, and a change that turns them back on lists them as added.
 - **Policy.** `duplicate-clone` and `stability-direction` are enforced for Python in
   `shared/policy.mjs` (`spec/checks.md`). `contract-broken` is a Python-only tool rule and has no
   shared policy entry.
@@ -1536,7 +1695,8 @@ new `Survived` mutant fails as `mutant-survived`, a new `NoCoverage` mutant fail
 is a descriptive finding that never fails. A mutant is identified by its function (`Class.method`),
 the original and the mutated text and its occurrence among identical mutants of that status in the
 function, never by a line number, so edits above a survivor keep it baselined. The line is only the
-location.
+location: the line of the first token the mutant changes, so a mutant that removes a `case` arm is
+reported at the arm's `case` line, not at the end of the arm before it.
 
 - **Tool: mutmut 3.x**, in the project's environment like the other tools. This is the one
   supported range (developed and tested against 3.8): the major version is checked before the run,
@@ -1594,7 +1754,10 @@ location.
   patterns still count as `mutant-ignored`, listed or not); `["nitpicker", "project"]` is the
   unlisted behavior. A project listed without a table is a tool error.
 - **Equivalent mutants.** mutmut also mutates strings and logging, so some survivors cannot be
-  killed by any test. The ways out are an `exceptions` entry for `mutant-survived` or
+  killed by any test. Mutants that change nothing but the `case _:` arm that closes an exhaustive
+  `match` (the arm the coverage settings exclude, matched by the same pattern in
+  `languages/python/ingest/coverage-reports/exhaustive-match.mjs`) are left out: the type checker
+  proves that code unreachable. A mutant of any other `assert_never` line is reported. The ways out are an `exceptions` entry for `mutant-survived` or
   `mutant-nocoverage` (with `function` to name one function; the message prints the entry), a
   `python.exceptions` entry for `mutant-ignored` (below) with the path, or `exclude` (the mutants of
   the file are dropped).
@@ -1811,6 +1974,40 @@ EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` fold
   or `UploadFile`; Flask: `python-dotenv`; pydantic: `email-validator` with `EmailStr`); dynamic or `setup.py`-only
   dependencies switch the checks off. On Python before 3.10 the checks are one
   `dependencies/tool-skipped` tool error and the other analyzers still run.
+- **Unresolved imports.** `dependencies/unresolved-import` (`imports/unresolved-imports.mjs`), worded
+  like the TypeScript (knip) finding, in production modules and in the test files pytest collects
+  (`test_*.py`, `*_test.py`, `conftest.py`, `tests.py`, not under a `fixtures`, `data`, `testdata`,
+  `test_data`, `outputs`, `samples`, `resources` or `snapshots` folder). Files a tool outside the
+  environment runs are left out: `conf.py` anywhere, and `setup.py`, `noxfile.py`, `fabfile.py`,
+  `dodo.py`, `pavement.py`, `hatch_build.py`, `build.py` and `tasks.py` at the project root.
+  - An absolute import is unresolved when its top-level name is not in the standard library, not
+    provided by an installed distribution, not found by `importlib.util.find_spec` in the
+    environment (editable installs, `.pth` paths), not the name of a folder or `.py` file of the
+    project, not a module file (`.so`, `.pyx`, ...) in the importing file's folder or a folder
+    above it, and not a declared or `build-system` requirement. A requirement matches by name
+    (`markdown_it` matches `markdown-it-py`, `dateutil` matches `python-dateutil`, `environ`
+    matches `django-environ`) or by a table of known import names (`PIL`, `cv2`, `sklearn`,
+    `yaml`, `bs4`, `win32api` and the other pywin32 modules, the pyobjc frameworks, ...). When the
+    environment has no distribution installed at all, this half is off.
+  - Under a regular package of the project (one with `__init__.py`, in any source root), and for
+    a relative import from the importing file's folder, each dotted part must exist on disk: a
+    folder, or for the last part a module file (`.py`, `.pyi`, `.pyx`, `.so`, `.pyd`, ...).
+    `from pkg import name` checks `pkg` only, since `name` can be an attribute. A relative import
+    that climbs to or above the project root is left to Python. Trusted: a package whose
+    `__init__.py` or any module touches `__path__`, `sys.modules` or `declare_namespace`;
+    generated modules (`_version`, `__version__`, `version`, `*_pb2`, `*_pb2_grpc`); and a
+    missing last part when the project builds compiled extensions (`meson-python`,
+    `scikit-build-core`, `maturin`, `setuptools-rust`, `pybind11`, `nanobind`, `cython` or `cffi`
+    in `build-system.requires`, or a root `meson.build`, `CMakeLists.txt` or `Cargo.toml`).
+  - Not checked: imports under `if TYPE_CHECKING:`; in a `try` that catches `ImportError`,
+    `ModuleNotFoundError`, `Exception` or everything (its body and handlers); in the `else` of any
+    `try`; under `with suppress(ImportError)`; under an `if` that tests the environment (`sys.*`,
+    `os.name`, `os.environ`, `getenv`, `platform`, `version_info`, `find_spec`, an all-caps flag
+    such as `PY2` or `_HAS_NUMPY`, a name assigned from one of those, or a name a guarded `try`
+    binds by import or to a constant, such as `has_simplejson`); and function-local imports in
+    test files (tests that write a module and then import it).
+  - mypy and pyright report missing imports too, but a project's `ignore_missing_imports`
+    silences them; TypeScript likewise reports both `tsc` and knip.
 - **Frameworks.** Django, FastAPI and Flask are detected from the dependencies or the production
   imports (`dependencies/python-frameworks.mjs`). Django settings modules (named `settings`, or
   named by `DJANGO_SETTINGS_MODULE` in `manage.py`, `wsgi.py` or `asgi.py`) may read the
