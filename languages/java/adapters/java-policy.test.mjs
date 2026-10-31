@@ -262,6 +262,28 @@ describe('project tool configs', () => {
     expect(configured.resolveConfigurationHash(root)).not.toBe(before);
   });
 
+  it('hands a build-declared tool to the runner and hashes only the settings it reads', () => {
+    const spotbugs = { spotbugs: { precedence: ['project'] } };
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), { tools: spotbugs });
+    const root = projectWith({
+      'build.gradle': "spotbugs { effort = 'max' }\n",
+      'settings.gradle': '',
+    });
+
+    const parsed = parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1));
+    const before = configured.resolveConfigurationHash(root);
+    writeFileSync(
+      path.join(root, 'build.gradle'),
+      "dependencies { }\nspotbugs { effort = 'max' }\n",
+    );
+    const unchanged = configured.resolveConfigurationHash(root);
+    writeFileSync(path.join(root, 'build.gradle'), "spotbugs { effort = 'more' }\n");
+
+    expect(parsed.policy.toolPrecedence).toEqual({ spotbugs: ['project'] });
+    expect(unchanged).toBe(before);
+    expect(configured.resolveConfigurationHash(root)).not.toBe(before);
+  });
+
   it('chains the project files into the legacy inventory hash', () => {
     const configured = configureJavaAnalyzer(createJavaAnalyzer(), {
       tools,
