@@ -2470,7 +2470,7 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   type arguments, reorder or drop parameters.
 - `ForwardingMethodAlias` is the instance counterpart of `StaticForwardingWrapper`. It skips static,
   abstract, `synchronized`, `native`, `strictfp` and generic methods, interface methods, methods
-  with an annotation on the method or on a parameter (a `@Deprecated` alias, a framework callback),
+  with an annotation on the method or on a parameter (a framework callback; `CompatibilityShim` reports a `@Deprecated` one),
   methods PMD resolves as overriding or implementing another (`@Overridden`, with or without
   `@Override`), `of` and `from`, methods without parameters, calls that add type arguments,
   reorder, drop or change a parameter, aliases or targets declared more than once under one name

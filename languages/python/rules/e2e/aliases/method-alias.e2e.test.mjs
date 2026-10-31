@@ -124,6 +124,23 @@ describe.skipIf(!enabled)('forwarding-method-alias', () => {
         withSum('def total(self, items: list[int]) -> int:\n        self._sum(items)\n'),
         [],
       ],
+      [
+        'a target replaced on the instance',
+        withSum(`${ALIAS}\n    def reset(self) -> None:\n        self._sum = len\n`),
+        [],
+      ],
+      [
+        'an alias replaced on the instance',
+        withSum(`${ALIAS}\n    def __init__(self) -> None:\n        self.total = self._sum\n`),
+        [],
+      ],
+      [
+        'a class with __getattribute__',
+        withSum(
+          `${ALIAS}\n    def __getattribute__(self, name: str) -> object:\n        return object.__getattribute__(self, name)\n`,
+        ),
+        [],
+      ],
     ]);
 
     expect(actual).toEqual(expected);

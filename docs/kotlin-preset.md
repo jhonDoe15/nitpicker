@@ -527,8 +527,8 @@ Limits, all chosen to flag less rather than guess:
   (an expression body without a declared type counts as the target's type; a block body without one
   returns `Unit`; an alias that declares a type over a target that does not is skipped). The owner is a `class` or `enum class`; in an `object` or `companion` only the call
   through `this` counts, since the call without a receiver is the static rule's. Skipped: interfaces and
-  local classes, overloaded names (the alias or the target declared twice), annotations (so a
-  `@Deprecated` alias passes), `override`, `operator`, `infix`, `inline`, `open`, `abstract`, `actual`
+  local classes, overloaded names (the alias or the target declared twice), annotations (a
+  `@Deprecated` alias is `CompatibilityShim`'s), `override`, `operator`, `infix`, `inline`, `open`, `abstract`, `actual`
   and `expect` members, aliases with an annotated parameter, receivers, type parameters, defaults,
   varargs, no parameters, calls with type arguments, spread or lambda arguments, targets that are
   `abstract` or `inline` or have varargs or defaults, and the names `of`, `from`, `invoke` and

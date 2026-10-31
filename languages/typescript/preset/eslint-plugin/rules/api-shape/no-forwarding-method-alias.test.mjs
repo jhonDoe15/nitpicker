@@ -102,6 +102,9 @@ const allowedMembers = [
   "  sum(id: string): number { return id.length; }\n  total(id: 'a' | 'b'): number { return this.sum(id); }",
   '  sum(id: string): number;\n  sum(id: string, more: string): number;\n  sum(id: string): number { return id.length; }\n  total(id: string): number { return this.sum(id); }',
   '  isItem(value: unknown): value is Item { return true; }\n  check(value: unknown): value is Item { return this.isItem(value); }',
+  `${SUM}\n${TOTAL}\n  reset(): void { this.sum = (items: Item[]): number => items.length + 1; }`,
+  `${SUM}\n${TOTAL}\n  constructor() { this.total = this.sum.bind(this); }`,
+  `${SUM}\n${TOTAL}\n  patch(key: 'sum' | 'total'): void { this[key] = (): number => 0; }`,
 ];
 
 const inheritedMembers = [

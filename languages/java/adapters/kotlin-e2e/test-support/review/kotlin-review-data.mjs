@@ -43,7 +43,7 @@ class Cart {
 
     fun withFee(items: List<Int>): Int = sum(items) + 1
 
-    @Deprecated("Use sum")
+    @JvmName("legacyTotal")
     fun legacy(items: List<Int>): Int = sum(items)
 
     private fun hidden(items: List<Int>): Int = items.size

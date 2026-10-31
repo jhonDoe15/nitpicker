@@ -590,8 +590,9 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   type arguments, optional calls, `async` wrappers around a callee that is not `async`, a target
   inherited from a base class, class properties holding an arrow function (they bind `this`), class
   expressions and object literal methods. Also not flagged: a parameter decorator, a bare call in
-  an `async` method (a floating promise), an `abstract` target, and a name that a merged
-  interface declares. A method whose name exists on a base class or an implemented interface is an
+  an `async` method (a floating promise), an `abstract` target, a name that a merged
+  interface declares, and a name the class writes through `this` (`this.sum = ...`, or any
+  computed `this[key] = ...`). A method whose name exists on a base class or an implemented interface is an
   override or implementation and passes, and so does every method of a class whose base class or
   interface the compiler cannot resolve (a structural interface the class does not declare with
   `implements` cannot be seen; a base-class alias that subclasses override is reported). Callback
