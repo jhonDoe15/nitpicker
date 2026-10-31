@@ -78,6 +78,7 @@ export function fixTypeScript({ headPolicy = resolveHeadPolicy(), ...options }) 
     fixWithPolicy({
       ...options,
       layout: resolveLayoutFor(headPolicy),
+      eslintSettings: headPolicy.tools?.eslint,
       policyEnvironment: headPolicyEnvironment(policyFile),
     }),
   );

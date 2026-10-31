@@ -31,7 +31,8 @@ export function fixWorkingTree(options) {
   const settings = {
     ...options,
     executeFixCommand: (invocation) =>
-      options.executeFixCommand?.(invocation) ?? spawnInvocation(invocation, options.environment),
+      options.executeFixCommand?.(invocation) ??
+      spawnInvocation(invocation, options.spawnEnvironment),
   };
   const fixer = languageFixers[settings.config?.preset];
   return fixer === undefined ? fixTypeScript(settings) : fixer(settings);

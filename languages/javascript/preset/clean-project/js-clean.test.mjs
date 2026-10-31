@@ -2,6 +2,7 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { docsUrl } from '../../../../shared/messages/docs-url.mjs';
 import {
   createCleanProject,
   git,
@@ -76,6 +77,8 @@ const PLANTED_OUTPUT = [
   'Descriptive findings:',
   'duplicates/duplicate-clone-size src/main/dup/a.js:5 Duplicate with src/main/dup/b.js',
   'duplicates/duplicate-clone-size src/main/dup/a.js:5 Duplicate with src/main/dup/b.js',
+  '',
+  `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
   '',
 ].join('\n');
 const FAILING_COVERAGE_OUTPUT = [
@@ -314,6 +317,9 @@ it('fails on purpose', () => {
           [
             'Fixed files:',
             'src/main/changed.js',
+            'Fix notes:',
+            '  eslint --fix rewrote src/main/changed.js',
+            '  prettier rewrote src/main/changed.js',
             'Base: main (argument)',
             '',
             'Quality gate summary',
