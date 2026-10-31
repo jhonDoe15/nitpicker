@@ -7,6 +7,7 @@ import { runCli as nitpickerCli } from '../../cli.mjs';
 import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
 import { commit, fixtureGit } from '../../diff/git/test-support/git-repository.mjs';
 import {
+  unusedFieldFields,
   unusedFieldMessage,
   useGradleFixtures,
   useMavenFixtures,
@@ -102,6 +103,7 @@ describe.each([
         path: 'src/main/java/demo/A.java',
         identity: 'fp:nitpicker/subject=Avoid unused field: added',
         message: addedField,
+        ...unusedFieldFields(),
         classification: 'enforceable',
         location: { line: 4 },
       },

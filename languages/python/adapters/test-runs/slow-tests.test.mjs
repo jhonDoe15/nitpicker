@@ -62,6 +62,10 @@ describe('slow pytest tests', () => {
           'registered in the pytest config) if it is one. If this is intended, add ' +
           '{"rule":"slow-test","paths":["tests/test_a.py"],"reason":"..."} ' +
           'to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Remove time.sleep and other waits (patch the clock) and fake network, database and disk ' +
+          'access, or move it to an integration test (an integration or e2e folder, or an ' +
+          'integration or e2e marker registered in the pytest config) if it is one.',
       },
     ]);
   });

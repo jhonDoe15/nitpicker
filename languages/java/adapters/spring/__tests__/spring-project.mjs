@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 
 import { runJavaDiff } from '../../java-diff.mjs';
+import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { commitBranch, runGitIn } from '../../test-support/gradle-e2e.mjs';
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -152,7 +153,9 @@ function consoleChange(build, ...left) {
     'src/test/java/shop/ReceiptTest.java': RECEIPT_TEST,
     'src/test/java/shop/FilterTest.java': readFileSync(filterTest, 'utf8').replace('42', '43'),
   });
-  const result = runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', ...build });
+  const result = schemaChecked(
+    runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', ...build }),
+  );
   return result.newFindings.filter(({ rule }) => rule === 'test-console-output');
 }
 export {

@@ -4,7 +4,13 @@ import {
   PROJECT_TOOL_CONFIGS,
   styleToolsOf,
 } from '../../languages/java/adapters/gradle-presets.mjs';
-import { configError, isPlainObject } from '../../shared/config.mjs';
+import {
+  configError,
+  DRIVE_LETTER,
+  GLOB_CHARACTER,
+  isPlainObject,
+  PARENT_SEGMENT,
+} from '../../shared/config.mjs';
 import { TEST_RUNNERS } from '../../languages/typescript/preset/test-runner/runners.mjs';
 import { validateTestTimeouts } from '../../shared/test-timeouts/resolve.mjs';
 import { suggestionOrAllowed } from '../../shared/messages/closest-match.mjs';
@@ -61,10 +67,16 @@ const NITPICKER_FIRST_REJECTED = new Map([
     "black has no flag that switches string normalization back on, so nitpicker's quote style cannot win over the project's skip-string-normalization",
   ],
 ]);
-const ORDERED_PRECEDENCE_TOOLS = ['prettier', 'jscpd', 'knip', 'dependency-cruiser', 'eslint'];
-const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
+export const ORDERED_PRECEDENCE_TOOLS = [
+  'prettier',
+  'jscpd',
+  'knip',
+  'dependency-cruiser',
+  'eslint',
+];
+export const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
-function toolSettingKeysOf(preset) {
+export function toolSettingKeysOf(preset) {
   if (GRADLE_PRESETS.includes(preset) || preset === 'python' || preset === 'go') {
     const names = [
       ...(GRADLE_PRESETS.includes(preset) ? PROJECT_TOOL_CONFIGS.keys() : []),
@@ -110,6 +122,16 @@ function validateToolSettings(name, settings, toolSettingKeys) {
   }
   validatePrecedence(settings.precedence, name);
   validatePrecedenceOrder(settings.precedence, name);
+}
+
+/** The engine setting of `tool`, as { key, values, meaning }; undefined for a tool without one. */
+export function engineOf(tool) {
+  return ENGINES.get(tool);
+}
+
+/** Why `tool` must list "project" before "nitpicker"; undefined when either order works. */
+export function nitpickerFirstReason(tool) {
+  return NITPICKER_FIRST_REJECTED.get(tool);
 }
 
 function validateEngineSettings(name, settings) {
@@ -168,9 +190,9 @@ function validateTypeScriptProject(project) {
     normalized.trim().length === 0 ||
     normalized.includes('\0') ||
     path.posix.isAbsolute(normalized) ||
-    /^[A-Za-z]:/.test(normalized) ||
-    normalized.split('/').includes('..') ||
-    /[*?{}[\]]/.test(normalized) ||
+    DRIVE_LETTER.test(normalized) ||
+    PARENT_SEGMENT.test(normalized) ||
+    GLOB_CHARACTER.test(normalized) ||
     !normalized.endsWith('.json')
   ) {
     throw configError('"tools.typescript.project" must name a JSON config file inside the project');

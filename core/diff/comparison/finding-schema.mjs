@@ -1,4 +1,6 @@
 import { normalizeGitPath } from '../git/normalize.mjs';
+import { routeFields } from '../../../shared/messages/exception-sentence.mjs';
+import { adviceProblems } from '../../../shared/messages/finding-advice.mjs';
 
 const CLASSIFICATIONS = new Set(['enforceable', 'descriptive', 'tool-error']);
 const HTTP_URL = /^https?:\/\/\S+$/u;
@@ -42,7 +44,11 @@ export function parseFinding(value, context = 'finding') {
     classification,
   };
 
-  return { ...finding, ...parseOptionalFields(value, classification, context) };
+  return {
+    ...finding,
+    ...parseOptionalFields(value, classification, context),
+    ...parseAdvice(value, message, context),
+  };
 }
 
 function parseOptionalFields(value, classification, context) {
@@ -76,6 +82,24 @@ function parseLaterFields(value, context) {
   };
 }
 
+function parseAdvice(value, message, context) {
+  const advice = {
+    ...(value.allowedForm === undefined
+      ? {}
+      : { allowedForm: requiredString(value.allowedForm, `${context}.allowedForm`) }),
+    ...(value.exception === undefined && value.exceptionList === undefined
+      ? routeFields(message)
+      : { exception: value.exception, exceptionList: value.exceptionList }),
+  };
+  const [problem] = adviceProblems({ message, ...advice });
+  if (problem !== undefined) {
+    throw new TypeError(
+      `${context} (${String(value.tool)} ${String(value.rule)} in ${String(value.path)}): ${problem}`,
+    );
+  }
+  return advice;
+}
+
 function parseLocation(value, context) {
   if (!isRecord(value)) {
     throw new TypeError(`${context} must be an object`);
@@ -105,8 +129,35 @@ function parseMetric(value, context) {
   };
 }
 
-const RATCHET_TEXT_FIELDS = ['worseMessage', 'growthAdvice', 'heldMessage'];
+const RATCHET_TEXT_FIELDS = [
+  'worseMessage',
+  'worseAllowedForm',
+  'growthAdvice',
+  'growthAllowedForm',
+  'heldMessage',
+];
+const RATCHET_PARTS = [
+  ['worseAllowedForm', 'worseMessage'],
+  ['growthAllowedForm', 'growthAdvice'],
+];
 const RATCHET_FLAGS = ['existingCodeOnly', 'pathIsFolder'];
+
+function ratchetTexts(value, context) {
+  return Object.fromEntries(
+    RATCHET_TEXT_FIELDS.filter((name) => value[name] !== undefined).map((name) => [
+      name,
+      requiredString(value[name], `${context}.${name}`),
+    ]),
+  );
+}
+
+function checkRatchetParts(ratchet, context) {
+  for (const [part, whole] of RATCHET_PARTS) {
+    if (ratchet[part] !== undefined && !(ratchet[whole] ?? '').includes(ratchet[part])) {
+      throw new TypeError(`${context}.${part} is not part of ${whole}`);
+    }
+  }
+}
 
 function parseRatchet(value, context) {
   if (!isRecord(value)) {
@@ -119,11 +170,8 @@ function parseRatchet(value, context) {
   if (value.folderFiles !== undefined) {
     ratchet.folderFiles = positiveInteger(value.folderFiles, `${context}.folderFiles`);
   }
-  for (const name of RATCHET_TEXT_FIELDS) {
-    if (value[name] !== undefined) {
-      ratchet[name] = requiredString(value[name], `${context}.${name}`);
-    }
-  }
+  Object.assign(ratchet, ratchetTexts(value, context));
+  checkRatchetParts(ratchet, context);
   for (const name of RATCHET_FLAGS.filter((flag) => value[flag] !== undefined)) {
     if (typeof value[name] !== 'boolean') {
       throw new TypeError(`${context}.${name} must be a boolean`);

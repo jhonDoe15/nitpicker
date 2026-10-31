@@ -23,6 +23,11 @@ reused; those conventions aren't published as code.
 The preset fixes the layout below, so the boundary rules can be generic. A `layout` override in the
 config file is an exception like any other.
 
+With `"$schema": "./node_modules/nitpicker/spec/config.schema.json"` as the first line of
+`nitpicker.config.json`, the editor completes the `layout`, `exceptions`, `react`, `i18n`, `tools` and
+`conventions` keys and flags a mistake before the run does; see
+[Editor support](usage.md#editor-support).
+
 ## Layout and boundaries
 
 - Each feature lives in `src/main/features/<name>/` and exposes a public `index.ts`. Other code
@@ -1925,7 +1930,9 @@ than on the base, and fails once the count rises. Lines the change added, and ev
 file, stay fully strict. Formatting is the exception: `prettier/prettier` is strict on every edited
 line (`mustMeetOnEditedLines` in `strict-rules.mjs`).
 A finding that fails in a function whose base already had findings of the same rule and kind can carry
-`ratchet.growthAdvice`; the report appends it to the message with `{base}` replaced by the base count.
+`ratchet.growthAdvice` and `ratchet.growthAllowedForm`, the part of the advice that names the allowed
+form; the report puts the advice in the message before its exception sentence, with `{base}` replaced
+by the base count, and adds `growthAllowedForm` to the finding's `allowedForm`.
 `nitpicker/no-throw` uses it to say a new failure can go through an existing throw statement.
 
 Prettier findings use the same promotion: the formatter reports one finding per differing region

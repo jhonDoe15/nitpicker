@@ -2,6 +2,7 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { findingsSchemaErrors } from '../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { docsUrl } from '../../../../shared/messages/docs-url.mjs';
 import {
   createCleanProject,
@@ -25,7 +26,7 @@ const unknownFolder = (file, line) =>
   routed('nitpicker/no-unknown-main-folder', `src/main/${file}`);
 const unusedFile = (file) =>
   `dead-code/files src/main/${file} Unused file: src/main/${file}. ` +
-  `Nothing imports it: delete it, or import it where it is needed. ${routed('files', `src/main/${file}`)}`;
+  `Nothing imports it. Delete it, or import it where it is needed. ${routed('files', `src/main/${file}`)}`;
 const PLANTED_OUTPUT = [
   'Nitpicker quality snapshot',
   'Status: violations',
@@ -208,6 +209,7 @@ describe('the js-clean fixture project', () => {
       expect(stderrText).toBe('');
       expect(findings.filter(({ classification }) => classification === 'enforceable')).toEqual([]);
       expect(toolErrors).toEqual([]);
+      expect(findingsSchemaErrors(findings)).toEqual([]);
       expect(summary.overallStatus).toBe('clean');
       expect(summary.tools.length).toBeGreaterThan(10);
       expect(
@@ -223,7 +225,7 @@ describe('the js-clean fixture project', () => {
     it('each report a problem planted in .js and .cjs files', () => {
       const root = createProject(plantedProblems);
 
-      const { exitCode, stdoutText, summary } = runSnapshot(root, [
+      const { exitCode, stdoutText, summary, findings } = runSnapshot(root, [
         '--analyzer',
         'typescript-typecheck',
         '--analyzer',
@@ -247,6 +249,7 @@ describe('the js-clean fixture project', () => {
         'typescript-typecheck',
       ]);
       expect(stdoutText).toBe(PLANTED_OUTPUT);
+      expect(findingsSchemaErrors(findings)).toEqual([]);
       expect(exitCode).toBe(1);
     });
 

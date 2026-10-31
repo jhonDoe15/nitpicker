@@ -152,6 +152,8 @@ describe.skipIf(!pythonE2eEnabled)(
             `only they accept exactly these loosenings, with --accept-policy-change=${digest}`,
             `at an interactive terminal or NITPICKER_ACCEPT_POLICY_CHANGE=${digest} in CI.`,
           ].join(' '),
+          allowedForm:
+            'Removes matching files from the checks, so their findings are not reported. Remove the entry and fix the findings, or have a person confirm it.',
           classification: 'enforceable',
           policyKind: 'exclusion',
         },
@@ -174,6 +176,8 @@ describe.skipIf(!pythonE2eEnabled)(
           path: 'legacy/old.py',
           identity: expect.any(String),
           message: expect.any(String),
+          exception: { rule: 'invalid-syntax', paths: ['legacy/old.py'], reason: '...' },
+          exceptionList: 'python.exceptions',
           classification: 'enforceable',
           location: { line: 1, column: 7 },
         },

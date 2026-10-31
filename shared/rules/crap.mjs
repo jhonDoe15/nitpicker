@@ -4,8 +4,10 @@ import {
   HELD_MESSAGES,
   MESSAGES,
   RULE_IDS,
+  messageFields,
   renderMessage,
 } from '../policy.mjs';
+import { allowedFormField, definedField } from '../messages/messages.mjs';
 import { positiveInteger } from './finding-helpers.mjs';
 import { exceptionRoute, normalizeFunctionName } from '../exceptions/rule-names.mjs';
 
@@ -32,23 +34,23 @@ export function crapFindings(
     const rule = unknown ? RULE_IDS.crapCoverageUnknown : RULE_IDS.crapScoreLimit;
     const shown = normalizeFunctionName(fn.name);
     const route = exceptionRoute({ rule, path: fn.path, function: shown });
+    const text = unknown
+      ? messageFields(unknownMessage, { name: shown })
+      : messageFields(
+          fn.covered === true ? MESSAGES.crapScoreLimitCovered : MESSAGES.crapScoreLimit,
+          {
+            name: shown,
+            crap: fn.crap.toFixed(2),
+            limit,
+          },
+        );
     const finding = {
       tool,
       rule,
       path: fn.path,
       identity: fn.identity,
-      message: `${
-        unknown
-          ? renderMessage(unknownMessage, { name: shown })
-          : renderMessage(
-              fn.covered === true ? MESSAGES.crapScoreLimitCovered : MESSAGES.crapScoreLimit,
-              {
-                name: shown,
-                crap: fn.crap.toFixed(2),
-                limit,
-              },
-            )
-      } ${route}`,
+      message: `${text.message} ${route}`,
+      ...allowedFormField(text.allowedForm),
       classification: 'enforceable',
       symbol: fn.name,
       ...locationOf(fn),
@@ -74,17 +76,14 @@ function locationOf({ line, endLine }) {
 // The score is rounded to what the message shows, so noise below that never counts as a rise.
 function withRatchet({ finding, fn, limit, route, shown }) {
   const crap = Number(fn.crap.toFixed(2));
+  const worse = messageFields(GREW_MESSAGES.crap, { name: shown, crap, limit, base: '{base}' });
   return {
     ...finding,
     ratchet: {
       key: fn.ratchetKey,
       value: crap,
-      worseMessage: `${renderMessage(GREW_MESSAGES.crap, {
-        name: shown,
-        crap,
-        limit,
-        base: '{base}',
-      })} ${route}`,
+      worseMessage: `${worse.message} ${route}`,
+      ...definedField('worseAllowedForm', worse.allowedForm),
       heldMessage: renderMessage(HELD_MESSAGES.crap, {
         name: shown,
         crap: fn.crap.toFixed(2),

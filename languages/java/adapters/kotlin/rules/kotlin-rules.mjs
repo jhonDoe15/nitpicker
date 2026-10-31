@@ -107,5 +107,9 @@ export function withAllowedForm(finding) {
   if (finding.tool !== DETEKT_TOOL || rule?.allowed === undefined) {
     return finding;
   }
-  return { ...finding, message: appendSentence(finding.message, rule.allowed) };
+  return {
+    ...finding,
+    message: appendSentence(finding.message, rule.allowed),
+    allowedForm: rule.allowed,
+  };
 }

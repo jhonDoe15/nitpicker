@@ -1,8 +1,10 @@
 import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
 import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
+import { definedField } from '../../../../shared/messages/messages.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
 import { UNUSED_PARAMETER_HINT } from '../../preset/eslint-config/policy/unused-parameters.mjs';
-import { immutableTypesMessage } from './immutable-types-hint.mjs';
+import { immutableTypesParts } from './immutable-types-hint.mjs';
+import { withStatedForm } from './stated-form.mjs';
 import { restrictedMatchers } from '../../preset/eslint-config/test-honesty/restricted-matchers.mjs';
 
 const IMMUTABLE_TYPES_PREFIX =
@@ -42,7 +44,7 @@ const THROW_ERROR_TEST_HINT = `${THROW_ERROR_HINT} A test double that must throw
 
 const NO_ASSERTIONS_TEXT = 'Test has no assertions';
 
-const NO_ASSERTIONS_HINT = `${NO_ASSERTIONS_TEXT}. Call \`expect\` in the test body: asserting helpers do not count, so return the value and \`expect\` it in the test.`;
+const NO_ASSERTIONS_HINT = `. Call \`expect\` in the test body: asserting helpers do not count, so return the value and \`expect\` it in the test.`;
 
 const DUPLICATE_CONSTITUENTS_HINT =
   ' The members are now the same type: use the one type the feature exports (e.g. `import type { Message }`), not a `ReturnType<...>` alias.';
@@ -100,22 +102,25 @@ const ARGUMENT_TYPE_HINT = ' Write the parameter type in the signature: `(rows: 
 
 const DUPLICATE_IMPORT_HINT = ' Merge the imports of one module into a single import statement.';
 
+const UNUSED_VARIABLE_HINT = ' Remove it, or use it.';
+
 const DEPRECATED_HINT = ` Call the replacement that the deprecation names instead of the deprecated API. An exception fits only when it names none and the API cannot be avoided.`;
 
-const GROWTH_ADVICE = new Map([
-  [
-    'nitpicker/no-throw',
-    'This function had {base} of these at base and the count may not grow: a throw on a new line counts as new even when the count holds, so edit an existing throw line in place to throw a reason a new helper returns, or return a union from a new helper function.',
-  ],
-]);
+function hinted(text, hint) {
+  return { message: `${text}${hint}`, allowedForm: hint.replace(/^[.\s]+/u, '') };
+}
+
+function directive(message) {
+  return { message, allowedForm: message };
+}
 
 function immutableTypesRewrite({ text, node, sourceFile }) {
   const kind = IMMUTABLE_TYPES_PREFIX.exec(text)?.[1];
-  return kind === undefined ? text : immutableTypesMessage({ kind, node, sourceFile });
+  return kind === undefined ? text : immutableTypesParts({ kind, node, sourceFile });
 }
 
 function rejectErrorsMessage({ text, relativePath }) {
-  return readLayout().isTestFile(relativePath) ? `${text}${REJECT_ERRORS_TEST_HINT}` : text;
+  return readLayout().isTestFile(relativePath) ? hinted(text, REJECT_ERRORS_TEST_HINT) : text;
 }
 
 function legacyAnyHint(relativePath) {
@@ -128,78 +133,81 @@ function legacyAnyHint(relativePath) {
 
 function unsafeAnyMessage({ text, relativePath }) {
   if (UNRESOLVED_TYPE.test(text)) {
-    return `${text}${UNRESOLVED_TYPE_HINT}`;
+    return hinted(text, UNRESOLVED_TYPE_HINT);
   }
   if (readLayout().isTestFile(relativePath)) {
-    return `${text}${ASYMMETRIC_MATCHER_HINT}`;
+    return hinted(text, ASYMMETRIC_MATCHER_HINT);
   }
-  return `${text}${legacyAnyHint(relativePath)}`;
+  return hinted(text, legacyAnyHint(relativePath));
 }
 
 function onlyThrowErrorMessage({ text, relativePath }) {
   if (text !== ONLY_THROW_ERROR_TEXT) {
     return text;
   }
-  return readLayout().isTestFile(relativePath) ? THROW_ERROR_TEST_HINT : THROW_ERROR_HINT;
+  return directive(
+    readLayout().isTestFile(relativePath) ? THROW_ERROR_TEST_HINT : THROW_ERROR_HINT,
+  );
 }
 
 function expectExpectMessage({ text }) {
-  return text === NO_ASSERTIONS_TEXT ? NO_ASSERTIONS_HINT : text;
+  return text === NO_ASSERTIONS_TEXT ? hinted(NO_ASSERTIONS_TEXT, NO_ASSERTIONS_HINT) : text;
 }
 
 function duplicateConstituentsMessage({ text }) {
-  return `${text}${DUPLICATE_CONSTITUENTS_HINT}`;
+  return hinted(text, DUPLICATE_CONSTITUENTS_HINT);
 }
 
 function invalidVoidMessage({ text }) {
-  return `${text}${INVALID_VOID_HINT}`;
+  return hinted(text, INVALID_VOID_HINT);
 }
 
 function switchExhaustivenessMessage({ text }) {
   return text.startsWith(SWITCH_NOT_EXHAUSTIVE_TEXT)
-    ? `${text}${SWITCH_NOT_EXHAUSTIVE_HINT}`
+    ? hinted(text, SWITCH_NOT_EXHAUSTIVE_HINT)
     : text;
 }
 
 function disabledTestMessage({ text }) {
-  return `${text.replace(DISABLED_TEST_TAIL, '').replace(/\.$/u, '')}${DISABLED_TEST_HINT}`;
+  return hinted(text.replace(DISABLED_TEST_TAIL, '').replace(/\.$/u, ''), DISABLED_TEST_HINT);
 }
 
 function restrictedMatcherMessage({ text }) {
   const matcher = BACKTICKED_MATCHER.exec(text)?.[1];
-  return (matcher === undefined ? undefined : restrictedMatchers[matcher]) ?? text;
+  const replacement = matcher === undefined ? undefined : restrictedMatchers[matcher];
+  return replacement === undefined ? text : directive(replacement);
 }
 
 function floatingPromiseMessage({ text }) {
-  return FLOATING_PROMISE_TEXT.test(text) ? FLOATING_PROMISE_MESSAGE : text;
+  return FLOATING_PROMISE_TEXT.test(text) ? directive(FLOATING_PROMISE_MESSAGE) : text;
 }
 
 function boundaryTypesMessage({ text }) {
   return RETURN_TYPE_TEXT.test(text)
-    ? RETURN_TYPE_MESSAGE
-    : `${text.replace(/\.?$/u, '.')}${ARGUMENT_TYPE_HINT}`;
+    ? directive(RETURN_TYPE_MESSAGE)
+    : hinted(text.replace(/\.?$/u, '.'), ARGUMENT_TYPE_HINT);
 }
 
 function unusedVariableMessage({ text }) {
   return UNUSED_PARAMETER_TAIL.test(text)
-    ? `${text.replace(UNUSED_PARAMETER_TAIL, '')}${UNUSED_PARAMETER_HINT}`
-    : text;
+    ? hinted(text.replace(UNUSED_PARAMETER_TAIL, ''), UNUSED_PARAMETER_HINT)
+    : hinted(text, UNUSED_VARIABLE_HINT);
 }
 
 function appendHint(hint) {
-  return ({ text }) => `${text}${hint}`;
+  return ({ text }) => hinted(text, hint);
 }
 
 function nodeTestMessage({ text }) {
-  return `${text}${NODE_TEST_HINT}`;
+  return hinted(text, NODE_TEST_HINT);
 }
 
 const MESSAGE_REWRITERS = new Map([
   ['vitest/no-import-node-test', nodeTestMessage],
   ['vitest/no-disabled-tests', disabledTestMessage],
   ['vitest/no-restricted-matchers', restrictedMatcherMessage],
-  ['vitest/prefer-called-with', () => PREFER_CALLED_WITH_TEXT],
-  ['vitest/require-to-throw-message', () => THROW_MESSAGE_TEXT],
+  ['vitest/prefer-called-with', () => directive(PREFER_CALLED_WITH_TEXT)],
+  ['vitest/require-to-throw-message', () => directive(THROW_MESSAGE_TEXT)],
   ['functional/prefer-immutable-types', immutableTypesRewrite],
   ['@typescript-eslint/prefer-promise-reject-errors', rejectErrorsMessage],
   ['@typescript-eslint/no-unsafe-member-access', unsafeAnyMessage],
@@ -216,13 +224,14 @@ const MESSAGE_REWRITERS = new Map([
   ['@typescript-eslint/no-floating-promises', floatingPromiseMessage],
   ['nitpicker/naming-convention', appendHint(NAMING_HINT)],
   ['@typescript-eslint/explicit-module-boundary-types', boundaryTypesMessage],
-  ['no-eval', () => EVAL_MESSAGE],
+  ['no-eval', () => directive(EVAL_MESSAGE)],
   ['no-param-reassign', appendHint(PARAM_REASSIGN_HINT)],
   ['@typescript-eslint/no-unused-vars', unusedVariableMessage],
   ['curly', appendHint(CURLY_HINT)],
   ['no-duplicate-imports', appendHint(DUPLICATE_IMPORT_HINT)],
   ['regexp/no-super-linear-backtracking', appendHint(REGEXP_HINT)],
   ['@typescript-eslint/no-deprecated', appendHint(DEPRECATED_HINT)],
+  ['no-unused-vars', unusedVariableMessage],
 ]);
 
 const NO_ROUTE_RULES = new Set([
@@ -238,27 +247,35 @@ function withEslintRoute(text, finding) {
   return appendSentence(text, eslintRoute(finding));
 }
 
-export function metricWorseMessage(finding, plan) {
-  return withEslintRoute(
-    `${finding.symbol ?? 'This function'} ${plan.label} grew from {base} to ${String(plan.value)}. Put new code in a new function.`,
-    finding,
-  );
+const METRIC_GROWTH_ADVICE = 'Put new code in a new function.';
+
+export function metricGrowth(finding, plan) {
+  return {
+    worseMessage: withEslintRoute(
+      `${finding.symbol ?? 'This function'} ${plan.label} grew from {base} to ${String(plan.value)}. ${METRIC_GROWTH_ADVICE}`,
+      finding,
+    ),
+    worseAllowedForm: METRIC_GROWTH_ADVICE,
+  };
 }
 
-export function eslintMessageWithHint({ ruleId, text, relativePath, node, sourceFile }) {
+function eslintHint({ ruleId, text, relativePath, node, sourceFile }) {
   const rewrite = MESSAGE_REWRITERS.get(ruleId);
-  return rewrite === undefined ? text : rewrite({ text, relativePath, node, sourceFile });
+  const rewritten =
+    rewrite === undefined ? text : rewrite({ text, relativePath, node, sourceFile });
+  return withStatedForm(ruleId, typeof rewritten === 'string' ? { message: rewritten } : rewritten);
 }
 
-export function routedEslintMessage(options) {
-  return withEslintRoute(eslintMessageWithHint(options), {
-    rule: options.ruleId,
-    path: options.relativePath,
-  });
+export function eslintMessageWithHint(options) {
+  return eslintHint(options).message;
 }
 
-export function growthAdviceFor(ruleId) {
-  return GROWTH_ADVICE.get(ruleId);
+export function routedEslintFields(options) {
+  const { message, allowedForm } = eslintHint(options);
+  return {
+    message: withEslintRoute(message, { rule: options.ruleId, path: options.relativePath }),
+    ...definedField('allowedForm', allowedForm),
+  };
 }
 
 const UNSUPPORTED_DIRECTIVE_TEXT = '/* eslint-env */ comments are no longer supported';

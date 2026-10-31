@@ -17,6 +17,13 @@ Every rule the preset can report has an entry in the [rule reference](rules/READ
 `"preset": "kotlin"` in `nitpicker.config.json`. Like `java`, it is explicit and never
 auto-detected.
 
+A `$schema` line in the file gives the editor completion and inline errors for this preset's keys
+(`kotlin.formatter`, `kotlin.detektConfig`, `tools.ktlint`, `tools.ktfmt`, `tools.detekt`, the `java.*`
+and `kotlin.*` conventions, the printed `detekt.<ruleset>.<Rule>` ids). A Kotlin project has no
+`node_modules`, so it points at the published file:
+`"$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json"`. nitpicker ignores the line; see
+[Editor support](usage.md#editor-support).
+
 **Why a preset of its own and not the Java preset covering Kotlin sources (decision).** The Java
 preset already builds a Kotlin module, because the Kotlin plugin applies `java`, but it would
 change meaning for every project that already uses it with a Kotlin module the moment it started

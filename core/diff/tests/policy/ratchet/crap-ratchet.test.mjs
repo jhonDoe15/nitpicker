@@ -40,11 +40,20 @@ describe('CRAP limit on edited legacy functions', () => {
         identity: 'function:priceOf:occurrence:1:source:after',
         message:
           'priceOf has CRAP 15.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/price.ts"],"function":"priceOf","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Test its uncovered branches, or split a branchy part into its own function.',
+        exception: {
+          rule: 'crap-score-limit',
+          paths: ['src/price.ts'],
+          function: 'priceOf',
+          reason: '...',
+        },
+        exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'priceOf',
         ratchet: {
           key: 'function:priceOf:occurrence:1:crap',
           value: 15,
+          worseAllowedForm: 'Put new code in a new function and cover it with tests.',
           worseMessage:
             'priceOf CRAP rose from {base} to 15 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/price.ts"],"function":"priceOf","reason":"..."} to "exceptions" in nitpicker.config.json.',
           heldMessage:
@@ -135,6 +144,15 @@ describe('CRAP limit on edited legacy functions', () => {
         identity: 'function:priceOf:occurrence:1:source:after',
         message:
           'priceOf has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/price.ts"],"function":"priceOf","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
+        exception: {
+          rule: 'crap-coverage-unknown',
+          paths: ['src/price.ts'],
+          function: 'priceOf',
+          reason: '...',
+        },
+        exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'priceOf',
       },

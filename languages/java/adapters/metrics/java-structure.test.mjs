@@ -100,6 +100,7 @@ describe('Java structure findings', () => {
         value: 51,
         worseMessage:
           'Big.big grew from {base} to 51 lines (limit 50). Put new code in a new function. If this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        worseAllowedForm: 'Put new code in a new function.',
         heldMessage:
           'Big.big: 51 lines (limit 50), allowed because base was {base}; any increase fails.',
       },

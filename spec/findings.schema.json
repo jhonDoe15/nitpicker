@@ -40,7 +40,23 @@
           "description": "enforceable findings fail the gate when new; descriptive findings are report-only; tool-error findings mark an analyzer failure.",
           "enum": ["enforceable", "descriptive", "tool-error"]
         },
+        "allowedForm": {
+          "description": "What to write instead, as the message states it: the sentence or sentences that name the accepted form of the code. It must be part of `message`; left out when the rule states none apart from the problem.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "exception": {
+          "description": "The entry that accepts this finding when it is intended, as the message prints it. The engine fills it in from the sentence the message ends with (`If this is intended, add {...} to \"exceptions\" in nitpicker.config.json.`) when the analyzer leaves it out, and refuses one that differs from that sentence or that a message without the sentence carries. Its `reason` is a placeholder to replace.",
+          "$ref": "#/$defs/exception"
+        },
+        "exceptionList": {
+          "description": "The list of nitpicker.config.json that takes `exception`: `exceptions`, or `python.exceptions` for the Python rules the top-level list does not take.",
+          "enum": ["exceptions", "python.exceptions"]
+        },
         "symbol": { "$ref": "#/$defs/nonEmptyString" },
+        "policyKind": {
+          "description": "On a policy-loosened finding of a report: which kind of policy change it is, which picks the guidance its message gives.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
         "location": { "$ref": "#/$defs/location" },
         "metric": { "$ref": "#/$defs/metric" },
         "ratchet": { "$ref": "#/$defs/ratchet" },
@@ -54,9 +70,36 @@
           "allOf": [{ "$ref": "#/$defs/nonEmptyString" }, { "pattern": "^https?://\\S+$" }]
         }
       },
+      "allOf": [
+        {
+          "if": { "required": ["exception"] },
+          "then": { "required": ["exceptionList"] }
+        },
+        {
+          "if": { "required": ["exceptionList"] },
+          "then": { "required": ["exception"] }
+        }
+      ],
       "if": { "required": ["metric"] },
       "then": {
         "properties": { "classification": { "const": "descriptive" } }
+      }
+    },
+    "exception": {
+      "description": "An entry of the `exceptions` list of nitpicker.config.json.",
+      "type": "object",
+      "required": ["rule", "paths", "reason"],
+      "properties": {
+        "rule": { "$ref": "#/$defs/nonEmptyString" },
+        "paths": {
+          "type": "array",
+          "minItems": 1,
+          "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "reason": { "$ref": "#/$defs/nonEmptyString" },
+        "packages": { "type": "array", "items": { "type": "string" } },
+        "function": { "type": "string" },
+        "name": { "type": "string" }
       }
     },
     "location": {
@@ -82,11 +125,19 @@
         "key": { "$ref": "#/$defs/nonEmptyString" },
         "value": { "type": "number" },
         "worseMessage": {
-          "description": "Message to report instead of `message` when the finding is new only because its value grew past the base value; `{base}` is replaced with the base value.",
+          "description": "Message to report instead of `message` (with `worseAllowedForm` for `allowedForm`) when the finding is new only because its value grew past the base value; `{base}` is replaced with the base value.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "worseAllowedForm": {
+          "description": "The `allowedForm` to report together with `worseMessage`; `{base}` is replaced with the base value.",
           "$ref": "#/$defs/nonEmptyString"
         },
         "growthAdvice": {
-          "description": "Text appended to `message` when the finding is new while the base already had findings under the same ratchet key; `{base}` is replaced with the base value.",
+          "description": "Text added to `message`, before its exception sentence, when the finding is new while the base already had findings under the same ratchet key; `{base}` is replaced with the base value.",
+          "$ref": "#/$defs/nonEmptyString"
+        },
+        "growthAllowedForm": {
+          "description": "The part of `growthAdvice` that names the allowed form; it is appended to `allowedForm` when `growthAdvice` is added to `message`.",
           "$ref": "#/$defs/nonEmptyString"
         },
         "heldMessage": {

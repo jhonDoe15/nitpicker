@@ -174,6 +174,14 @@ describe.skipIf(!pythonE2eEnabled)(
             identity: expect.any(String),
             message:
               'wide grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.',
+            allowedForm: 'Group related parameters into one object instead of adding another.',
+            exception: {
+              rule: 'function-parameters-limit',
+              paths: ['src/demo/wide.py'],
+              function: 'wide',
+              reason: '...',
+            },
+            exceptionList: 'exceptions',
             classification: 'enforceable',
             location: { line: 1 },
             ratchet: {
@@ -181,6 +189,8 @@ describe.skipIf(!pythonE2eEnabled)(
               value: 5,
               worseMessage:
                 'wide grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.',
+              worseAllowedForm:
+                'Group related parameters into one object instead of adding another.',
               heldMessage:
                 'wide: 5 parameters (limit 3), allowed because base was {base}; any increase fails.',
             },
@@ -200,6 +210,14 @@ describe.skipIf(!pythonE2eEnabled)(
             identity: expect.any(String),
             message:
               'pipeline.score has CRAP 10.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/pipeline.py"],"function":"pipeline.score","reason":"..."} to "exceptions" in nitpicker.config.json.',
+            allowedForm: 'Reduce its branches: split a branchy part into its own function.',
+            exception: {
+              rule: 'crap-score-limit',
+              paths: ['src/demo/pipeline.py'],
+              function: 'pipeline.score',
+              reason: '...',
+            },
+            exceptionList: 'exceptions',
             classification: 'enforceable',
             location: { line: 2, endLine: 12 },
             ratchet: {
@@ -207,6 +225,7 @@ describe.skipIf(!pythonE2eEnabled)(
               value: 10,
               worseMessage:
                 'pipeline.score CRAP rose from {base} to 10 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/pipeline.py"],"function":"pipeline.score","reason":"..."} to "exceptions" in nitpicker.config.json.',
+              worseAllowedForm: 'Put new code in a new function and cover it with tests.',
               heldMessage:
                 'pipeline.score: CRAP 10.00 (limit 9), allowed because base was {base}; any increase fails.',
             },
@@ -226,6 +245,15 @@ describe.skipIf(!pythonE2eEnabled)(
             identity: expect.any(String),
             message:
               'pick has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
+            allowedForm:
+              'Test its uncovered branches, or split a branchy part into its own function.',
+            exception: {
+              rule: 'crap-score-limit',
+              paths: ['src/demo/branchy.py'],
+              function: 'pick',
+              reason: '...',
+            },
+            exceptionList: 'exceptions',
             classification: 'enforceable',
             location: { line: 1, endLine: 8 },
             ratchet: {
@@ -233,6 +261,7 @@ describe.skipIf(!pythonE2eEnabled)(
               value: 20,
               worseMessage:
                 'pick CRAP rose from {base} to 20 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
+              worseAllowedForm: 'Put new code in a new function and cover it with tests.',
               heldMessage:
                 'pick: CRAP 20.00 (limit 9), allowed because base was {base}; any increase fails.',
             },

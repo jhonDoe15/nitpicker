@@ -3,11 +3,11 @@ export const SOURCE_RULE_IDS = {
   javascriptInTypescriptProject: 'javascript-in-typescript-project',
 };
 
-export function sourceRuleMessages(exceptionHint) {
+export function sourceRuleMessages(exceptionHint, allowed) {
   return {
-    componentStoryMissing: `Most components in this project have a story. Add {story} for {name}. ${exceptionHint}`,
-    componentStoryMissingUnenforced: `{name} has no story. Add {story}. Not enforced until more than half of the components have one. ${exceptionHint}`,
-    javascriptInTypescriptProject: `{path} is JavaScript in a TypeScript project, so its values are not type-checked. Write it as a .ts or .tsx file: {typescript}. ${exceptionHint}`,
+    componentStoryMissing: `Most components in this project have a story. ${allowed('Add {story} for {name}.')} ${exceptionHint}`,
+    componentStoryMissingUnenforced: `{name} has no story. ${allowed('Add {story}.')} Not enforced until more than half of the components have one. ${exceptionHint}`,
+    javascriptInTypescriptProject: `{path} is JavaScript in a TypeScript project, so its values are not type-checked. ${allowed('Write it as a .ts or .tsx file: {typescript}.')} ${exceptionHint}`,
   };
 }
 

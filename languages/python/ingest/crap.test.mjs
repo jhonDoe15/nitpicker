@@ -42,6 +42,7 @@ describe('ingestPythonCrap', () => {
       path: 'never.py',
       identity: 'function:B.go',
       message: `${renderMessage(MESSAGES.crapScoreLimit, { name: 'B.go', crap: '6.00', limit: 4 })}${ROUTE}`,
+      allowedForm: 'Test its uncovered branches, or split a branchy part into its own function.',
       classification: 'enforceable',
       symbol: 'B.go',
       location: { line: 2, endLine: 5 },
@@ -54,6 +55,7 @@ describe('ingestPythonCrap', () => {
           limit: 4,
           base: '{base}',
         })}${ROUTE}`,
+        worseAllowedForm: 'Put new code in a new function and cover it with tests.',
         heldMessage: renderMessage(HELD_MESSAGES.crap, {
           name: 'B.go',
           crap: '6.00',
@@ -94,6 +96,8 @@ describe('ingestPythonCrap', () => {
         identity: 'function:f',
         message:
           'f has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If this is intended, add {"rule":"crap-coverage-unknown","paths":["other.py"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.',
         classification: 'enforceable',
         location: { line: 1, endLine: 2 },
       },
@@ -114,6 +118,7 @@ describe('ingestPythonCrap', () => {
         identity: 'function:coro',
         message:
           'coro has CRAP 2.00; score must be below 2. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["never.py"],"function":"coro","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Test its uncovered branches, or split a branchy part into its own function.',
         classification: 'enforceable',
         location: { line: 8, endLine: 9 },
         ratchet: {
@@ -121,6 +126,7 @@ describe('ingestPythonCrap', () => {
           value: 2,
           worseMessage:
             'coro CRAP rose from {base} to 2 (limit 2). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["never.py"],"function":"coro","reason":"..."} to "exceptions" in nitpicker.config.json.',
+          worseAllowedForm: 'Put new code in a new function and cover it with tests.',
           heldMessage:
             'coro: CRAP 2.00 (limit 2), allowed because base was {base}; any increase fails.',
         },
