@@ -322,10 +322,12 @@ nitpicker rules [--preset <name>] [--tool <name>]
   google-java-format or palantir-java-format for Java; ktlint or ktfmt for Kotlin (see the Java,
   Kotlin and Python sections). Only files whose bytes changed are listed under "Fixed files:", and a
   formatter leaves alone a file that already failed its format check on the base (ktlint, whose
-  findings are per line, formats only the code around your change in such a file). The Python, Java
-  and Kotlin fixers keep CRLF line endings, replace a file in one step (a temporary file renamed
-  over it), leave alone a file that changed while they ran, and do not follow symbolic links; each
-  of these is named in a "Fix notes:" line. A fixer that fails is reported as a tool error; the
+  findings are per line, formats only the code around your change in such a file). ESLint,
+  Prettier and the Python, Java and Kotlin formatters replace a file in one step (a temporary file
+  renamed over it), leave alone a file that changed while they ran or is not UTF-8, and do not
+  follow symbolic links; each of these is named in a "Fix notes:" line. ESLint and the Python, Java
+  and Kotlin formatters keep CRLF line endings; a file Prettier rewrites gets the line endings of
+  the gate's `prettier.endOfLine` convention, as its format check expects. A fixer that fails is reported as a tool error; the
   other fixers and the comparison still run. Cannot be combined with `--all`.
 - `--base <ref>`: the ref to compare against.
 - `--analyzer <name>`: run only this analyzer (repeatable). Cannot be combined with sharding.

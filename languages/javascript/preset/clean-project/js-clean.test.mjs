@@ -317,6 +317,9 @@ it('fails on purpose', () => {
           [
             'Fixed files:',
             'src/main/changed.js',
+            'Fix notes:',
+            '  eslint --fix rewrote src/main/changed.js',
+            '  prettier rewrote src/main/changed.js',
             'Base: main (argument)',
             '',
             'Quality gate summary',

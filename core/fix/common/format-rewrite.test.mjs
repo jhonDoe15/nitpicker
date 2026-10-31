@@ -199,6 +199,21 @@ describe('rewriteFormatted on lines, line endings and concurrent edits', () => {
       'n\r\n',
     ]);
   });
+  it("keeps the formatter's line endings and checks the base with its own formatter when asked", () => {
+    const repository = topic({ 'old.txt': 'a\r\n' }, { 'old.txt': 'a  \r\n' });
+    const baseCalls = [];
+
+    const outcome = run(repository, ['old.txt'], lineFeedTrimmer, {
+      keepLineEndings: false,
+      formatBase: (sources) => {
+        baseCalls.push([...sources.values()]);
+        return { formatted: new Map(sources), unformattable: [] };
+      },
+    });
+
+    expect(outcome).toEqual(outcomeWith({ rewritten: ['old.txt'] }));
+    expect([read(repository, 'old.txt'), baseCalls]).toEqual(['a\n', [['a\r\n']]]);
+  });
   it('leaves a file alone that changed while the formatter ran', () => {
     const repository = topic({}, { 'busy.txt': 'a  \n', 'calm.txt': 'c  \n' });
     function editingTrimmer(sources) {
