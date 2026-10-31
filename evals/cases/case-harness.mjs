@@ -107,3 +107,11 @@ export function runApplied(
     nitpickerVersion: '0.0.0',
   });
 }
+
+export function missingShortcuts(expected, shortcuts) {
+  const reported = (shortcut) =>
+    shortcuts.some((found) =>
+      Object.entries(shortcut).every(([key, value]) => found[key] === value),
+    );
+  return expected.filter((shortcut) => !reported(shortcut));
+}

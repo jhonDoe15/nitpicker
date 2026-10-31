@@ -61,9 +61,10 @@ describe('preset selection', () => {
   });
 
   it('adds the repository hygiene checks to every preset', () => {
-    for (const preset of ['typescript', 'javascript', 'java', 'kotlin', 'python']) {
-      expect(analyzerNames(presetAnalyzers({ preset })).at(-1)).toBe('repository-hygiene');
-    }
+    const presets = ['typescript', 'javascript', 'java', 'kotlin', 'python'];
+    expect(presets.map((preset) => analyzerNames(presetAnalyzers({ preset })).at(-1))).toEqual(
+      presets.map(() => 'repository-hygiene'),
+    );
   });
 
   it('prefers injected analyzers over any preset', () => {
@@ -98,9 +99,10 @@ describe('head policy preset', () => {
   });
 
   it('leaves the head policy of other presets without a preset key', () => {
-    for (const preset of ['typescript', 'java', undefined]) {
-      expect(resolveHeadPolicy({ preset })).not.toHaveProperty('preset');
-    }
+    const policies = ['typescript', 'java', undefined].map((preset) =>
+      resolveHeadPolicy({ preset }),
+    );
+    expect(policies.map((policy) => 'preset' in policy)).toEqual(policies.map(() => false));
     withHeadPolicyFile(resolveHeadPolicy({}), (policyFile) => {
       const { javascript, entryExtensions } = readLayout({ NITPICKER_POLICY: policyFile });
       expect({ javascript, entryExtensions }).toEqual({
@@ -133,12 +135,10 @@ describe('javascript layout', () => {
   it('reads .ts files as part of the project and leaves .jsx and .tsx files outside it', () => {
     const layout = resolveLayout({}, [], { javascript: true });
     expect(layout.sourceGlobs).toEqual(['src/**/*.{ts,mts,cts,js,mjs,cjs}']);
-    for (const file of ['src/main/a.ts', 'src/main/a.mts', 'src/main/a.cjs', 'src/main/a.js']) {
-      expect(layout.isSourceFile(file), file).toBe(true);
-    }
-    for (const file of ['src/main/a.jsx', 'src/main/a.tsx']) {
-      expect(layout.isSourceFile(file), file).toBe(false);
-    }
+    const read = ['src/main/a.ts', 'src/main/a.mts', 'src/main/a.cjs', 'src/main/a.js'];
+    const left = ['src/main/a.jsx', 'src/main/a.tsx'];
+    expect(read.map((file) => layout.isSourceFile(file))).toEqual(read.map(() => true));
+    expect(left.map((file) => layout.isSourceFile(file))).toEqual(left.map(() => false));
     expect(layout.isRunnableTestFile('test/a.test.jsx')).toBe(false);
     expect(layout.isRunnableTestFile('test/a.test.cts')).toBe(true);
     expect(resolveLayout().isSourceFile('src/main/a.jsx')).toBe(true);
@@ -208,12 +208,12 @@ describe('javascript prettier patterns', () => {
       'prettier-format',
       'typescript-typecheck',
     ]);
-    for (const check of shaped) {
-      expect(
-        check.configurationFiles.includes('languages/javascript/preset/javascript-preset.mjs'),
+    expect(
+      shaped.map((check) => [
         check.name,
-      ).toBe(true);
-    }
+        check.configurationFiles.includes('languages/javascript/preset/javascript-preset.mjs'),
+      ]),
+    ).toEqual(shaped.map((check) => [check.name, true]));
   });
 });
 
