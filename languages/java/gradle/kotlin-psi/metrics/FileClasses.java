@@ -46,6 +46,14 @@ public final class FileClasses {
         + String.join(",", imports) + "]}";
   }
 
+  public static String codeClass(KtFile file) {
+    String facadeName = jvmName(file);
+    if (facadeName == null) {
+      facadeName = facadeOf(file.getName());
+    }
+    return multifile(file) ? facadeName + "__" + facadeOf(file.getName()) : facadeName;
+  }
+
   private static boolean multifile(KtFile file) {
     return file.getAnnotationEntries().stream()
         .anyMatch(
