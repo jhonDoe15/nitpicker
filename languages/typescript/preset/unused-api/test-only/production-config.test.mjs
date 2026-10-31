@@ -48,4 +48,27 @@ describe('the knip config without tests', () => {
       vite: true,
     });
   });
+
+  it('takes the tests out of the per-workspace configs a project brings', () => {
+    const layout = resolveLayoutFor({ layout: { sourceRoots: ['src/main'] } });
+    const config = layoutKnipProductionConfig(
+      {
+        entry: ['src/main/main.ts'],
+        project: ['src/main/**'],
+        workspaces: {
+          'packages/lib': { entry: ['src/index.ts', 'vitest.config.ts'], vitest: true },
+          'packages/app': { entry: 'src/app.ts', project: 'src/**' },
+        },
+      },
+      layout,
+    );
+
+    expect(config.workspaces).toEqual({
+      'packages/lib': { entry: ['src/index.ts'] },
+      'packages/app': {
+        entry: ['src/app.ts'],
+        project: ['src/**', ...config.project.slice(1)],
+      },
+    });
+  });
 });

@@ -11,6 +11,7 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { runCli } from '../../../../../core/cli.mjs';
+import { withoutHelpUris } from '../../../../../core/diff/reporting/test-support/report-reading.mjs';
 import { fileURLToPath } from 'node:url';
 
 const LOCAL_COMMAND_TIMEOUT_MS = 30_000;
@@ -97,7 +98,7 @@ export function gate(root, branch, { extra = [], environment = {}, base = 'main'
     if (!file.startsWith(reports + path.sep)) {
       throw new Error(`${name} is outside the reports directory`);
     }
-    return JSON.parse(readFileSync(file, 'utf8'));
+    return withoutHelpUris(JSON.parse(readFileSync(file, 'utf8')));
   }
   return { exitCode, json, text: output.text, reports };
 }

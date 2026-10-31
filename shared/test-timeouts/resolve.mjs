@@ -6,6 +6,7 @@ import {
   validateStringArray,
 } from '../config.mjs';
 import { globMatcher } from '../paths/glob.mjs';
+import { didYouMean } from '../messages/closest-match.mjs';
 
 export const TEST_TIMEOUT_CEILING_MS = 10_000;
 export const TEST_TIMEOUT_LANGUAGES = ['typescript', 'javascript', 'java', 'kotlin', 'python'];
@@ -23,7 +24,7 @@ function objectWithKeys(value, label, allowed) {
   }
   for (const key of Object.keys(value)) {
     if (!allowed.includes(key)) {
-      throw configError(`unknown key "${key}" in "${label}"`);
+      throw configError(`unknown key "${key}" in "${label}"${didYouMean(key, allowed)}`);
     }
   }
 }
