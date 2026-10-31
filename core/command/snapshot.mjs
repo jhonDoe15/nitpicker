@@ -47,7 +47,10 @@ export function runSnapshotCli({
       runTasks,
     }),
   );
-  report.text = writeSnapshotReports(outputRoot, report, { projectPath: relativeProjectPath });
+  report.text = writeSnapshotReports(outputRoot, report, {
+    projectPath: relativeProjectPath,
+    repositoryRoot,
+  });
   stdout.write(report.text);
   stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
   writeGithubOutput({
