@@ -171,4 +171,15 @@ describe('python config validation', () => {
       validate({ preset: 'python', python: settings });
     }).toThrow(message);
   });
+
+  it('accepts any ruff code once the project ruff config is opted in, since it adds rules', () => {
+    const python = { exceptions: [{ rule: 'D100', paths: ['a'], reason: 'r' }] };
+
+    expect(() => {
+      validate({ preset: 'python', python, tools: { ruff: { precedence: ['project'] } } });
+    }).not.toThrow();
+    expect(() => {
+      validate({ preset: 'python', python, tools: { ruff: { precedence: ['nitpicker'] } } });
+    }).toThrow('names no rule nitpicker reports: "D100"');
+  });
 });
