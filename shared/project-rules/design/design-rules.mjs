@@ -24,6 +24,7 @@ export const DESIGN_RULE_LANGUAGES = {
   java: false,
   python: false,
   kotlin: false,
+  go: false,
 };
 
 export const DESIGN_RULE_SETTINGS = { [DESIGN_RULE_IDS.protocolContract]: ['protocols'] };

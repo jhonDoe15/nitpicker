@@ -25,7 +25,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
      Gradle error) and rerun. Exit 2 is never a pass. If it says another run is in progress, wait
      for that run; never kill it.
-4. Never suppress: no `@Suppress` of a detekt or ktlint rule, config `exclude`/`disable`/`exceptions`, legacy
+4. Never suppress: no `@Suppress` of a detekt or ktlint rule, coverage or mutation markers
+   (`@Generated`, `@ExcludeFromJacocoGeneratedReport`, `@DoNotMutate`), config `exclude`/`disable`/`exceptions`, legacy
    entries, or weakened tests. In Java files the Java rules apply: `@SuppressFBWarnings` and
    `@SuppressWarnings("PMD")` are findings, and a project's own PMD or Checkstyle config is used
    only when `nitpicker.config.json` opts in under `tools`. If a finding seems wrong, stop and ask.
@@ -35,6 +36,8 @@ it with `npx skills add jhonDoe15/nitpicker --skill nitpicker-java`.
 Before you change code other modules use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md).
 
+To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/main/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
+
 ## Write it this way
 
 - Scope functions: `let` for null (`value?.let { ... }`) and `apply` to configure an object you just
@@ -43,6 +46,9 @@ Before you change code other modules use, or fix a bug, read
   `checkNotNull(value) { "why" }` when null is a bug; `x?.let { ... }`, not `if (x == null) null else ...`.
 - Coroutines: no `GlobalScope`, no `runBlocking` (a call, however it is imported). Make the caller `suspend`
   (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`; a test uses `runTest`.
+- Fan-out: bound concurrent remote or message calls. One `Semaphore(8)` with `withPermit { ... }` around each call,
+  `chunked(n)`, or `flatMapMerge(concurrency = n)`; never `items.map { async { client.get(it) } }.awaitAll()` over a
+  runtime collection. `limitedParallelism(n)` caps threads, not suspending calls in flight.
 - Records: a class that only holds data is a `data class` with `val`s; change a copy with `copy(...)`.
   A class with `var`s is not flagged, nor a JPA or Spring Data entity; the project adds other
   annotations to `UseDataClass`'s `excludeAnnotatedClasses` in its `detekt.yml`.
@@ -63,6 +69,9 @@ Before you change code other modules use, or fix a bug, read
   duplicated string literals, spread operators and function names in backticks are not findings in a
   test. A test asserts on the specific exception (`assertFailsWith<IllegalStateException> { ... }`)
   instead of catching `Exception`, whatever the variable is called.
+- KDoc is optional. When you write it, say what the name cannot (a unit, a limit, an edge case or
+  why), never only restate the name, and keep the description to 5 lines, tags and code blocks not
+  counted (`doc-comment-content`).
 - detekt's defaults stay on. In main sources: lines of at most 120 characters, named constants
   instead of numbers other than -1, 0, 1 and 2 (`MagicNumber`), at most 2 `return` and 2 `throw`
   per function, conditions of at most 3 `&&`/`||` parts, no wildcard imports unless most of the project's files
@@ -73,6 +82,15 @@ Before you change code other modules use, or fix a bug, read
   members and parameters (an override, a function with a framework annotation and a name starting
   `ignored` or `unused` are skipped). A public function's `Boolean` parameter that picks a behavior
   becomes two functions or an enum (`BooleanFlagParameter`).
+- Signatures: a value with three states is an `enum class`, not a `Boolean?` parameter, return
+  type or property (`kotlin-source/TriStateBoolean`; a property or parameter a framework fills,
+  such as `@Column`, `@JsonProperty`, `@SerialName` or an `@Entity` property, is exempt); a public
+  function returns a new collection instead of changing a `MutableList`, `MutableMap` or array
+  parameter (`items.add`, `table[key] = v`, `counts[0]++`, also through `val alias = items`;
+  `kotlin-source/ParameterMutation`; private and local functions are exempt). When code moves,
+  change every caller and delete the old name: no `@Deprecated` delegate or `typealias Old = New`
+  (`kotlin-source/CompatibilityShim`). Time comes from an injected `Clock`; `Calendar`, `Date` and
+  `SimpleDateFormat` are banned.
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
   declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`
@@ -82,6 +100,9 @@ Before you change code other modules use, or fix a bug, read
   `of` or `from` are fine.
 - A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
+- A validation annotation on a constructor property takes the field target:
+  `data class OrderRequest(@field:NotBlank val item: String)`, not `@NotBlank val item`, which
+  lands on the constructor parameter where `@Valid` never looks (`pmd/ValidationAnnotationTarget`).
 - In main code, nothing with an outside effect runs while a file, `object`, companion object or
   enum class loads (`pmd/ClassLoadEffect`): no connection, request, file access, pool, timer,
   coroutine launch or JVM-wide setting in a top-level property, an `object`'s properties or `init`,
@@ -123,7 +144,10 @@ Before you change code other modules use, or fix a bug, read
 - A file stays within 300 lines (a test file 500). A package folder holds at most 6 files and 6
   test files directly: group the rest into subpackages by what they do. Java sources follow the
   `nitpicker-java` rules.
-- Every branch you add needs a test: changed-branch coverage runs on your change.
+- Every branch you add needs a test: changed-branch coverage runs on your change. A surviving or uncovered
+  mutant (`mutant-survived`, `mutant-nocoverage`) of your code fails as well: pin the boundary or the result
+  with an assertion, or test the function that nothing reaches. The mutants of code the compiler generates
+  (coroutine state machines, data class members, `inline` copies) are left out already.
 - Plan tests to be fast (`slow-test`): a test dispatcher or fake clock instead of
   waits, a test slice instead of a full context.
 - Never wait a fixed time in a test (`pmd/FixedSleepInTest`): no `Thread.sleep`, `TimeUnit.sleep`

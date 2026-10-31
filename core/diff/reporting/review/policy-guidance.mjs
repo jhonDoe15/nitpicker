@@ -84,6 +84,10 @@ export const POLICY_GUIDANCE = {
     'An edited project config now applies to this tool, and nitpicker does not judge whether the edit is stricter.',
     'Restore the file, or have a person review the edit.',
   ].join(' '),
+  'tool-config-opt-in': [
+    'The change opts this tool into a project config, which nitpicker does not judge.',
+    'Remove "project" from the tool\'s precedence, or have a person review the config.',
+  ].join(' '),
   'test-timeout': [
     'Raises or removes a test time limit, or moves tests into a project with its own limits, so slower tests pass.',
     'Restore the base limits and speed up the tests, unless a person confirms.',
@@ -127,6 +131,14 @@ export const POLICY_GUIDANCE = {
   'kotlin-detekt-config': [
     'Points detekt at another config, which may relax its rules; nitpicker does not judge that.',
     'Restore the base path, or have a person review the new config.',
+  ].join(' '),
+  'go-formatters-dropped': [
+    'Drops a Go formatter from the format check, so the files it would change stop failing.',
+    'Restore the base formatters.',
+  ].join(' '),
+  'go-build-tags-dropped': [
+    'Drops a Go build tag, so the files behind it are no longer built, vetted or tested.',
+    'Restore the base build tags.',
   ].join(' '),
   'tool-precedence': [
     "The project's own tool config now outranks nitpicker's, or nitpicker's is dropped,",
