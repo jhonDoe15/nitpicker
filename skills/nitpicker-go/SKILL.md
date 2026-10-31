@@ -8,14 +8,18 @@ description: Use before writing or changing Go code in a project that runs nitpi
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a
 backstop. It fails only on findings your change adds, so leave code the task doesn't need alone.
 
+If your change edits a function, type, file or package that existed before it, read
+[editing-existing-code.md](editing-existing-code.md) before you edit.
+
 ## Finish with the gate
 
 1. Run the project's tests: `go test ./...` (with the build tags the project's
    `nitpicker.config.json` lists under `go.buildTags`, as `-tags=...`). Failing tests are a tool
    error that names them.
-2. Format every file you touched with the formatter printed in the finding (gofmt, gofumpt or
-   goimports: the gate uses the one the project already uses, so never switch it). With no other
-   signal it is `gofmt -w`.
+2. Format every new file, and every file you touched that was formatted before your change
+   (`gofmt -l <file>` on the base lists it if not), with the formatter printed in the finding
+   (gofmt, gofumpt or goimports: the gate uses the one the project already uses, so never switch
+   it). With no other signal it is `gofmt -w`.
 3. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
    pipe: you need its exit code. It runs `go vet`, `go test` and its own checks on the merge base
    and on head with the Go toolchain on the `PATH`. It takes minutes and prints a progress line for
@@ -71,8 +75,6 @@ Before you change code other packages use, or fix a bug, read
   as one). A package folder holds at most 6 files and 6 test files directly (`doc.go` does not
   count): split it into packages by what they do. A package sits at most 4 levels below the module
   root; `internal` does not count as a level.
-- A function or file already over a limit may be edited but must not get worse: put new code in a
-  new function or file and call it.
 - Every package with code has tests; a module where no test runs fails (`no-tests-ran`). Tests are
   table-driven where cases share a shape: `tests := []struct{...}{...}` and `t.Run(tt.name, ...)`.
 - A new or changed unit test runs in under 5 s (`slow-test`); an integration test in under 30 s.

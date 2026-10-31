@@ -724,10 +724,11 @@ identity when the value changes: editing such a line counts as a resolved plus a
   Repeats (anonymous classes) get `#2`, `#3` in report order. The `<init>`, `<clinit>` and `<lambda>`
   names repeat within a class by nature, so a finding on one is numbered only among the entries of
   that name with the same source text that are over the limit: inserting, deleting or reordering other
-  blocks or lambdas never turns a legacy one into a new finding. The path
-  is part of the comparison key, so, as with the hashed identities of slice 1, a renamed file shows
-  its findings as resolved plus new. Changing a method's parameters is a different function, as in
-  the TypeScript check, where an edit that moves a function changes its identity too.
+  blocks or lambdas never turns a legacy one into a new finding. A file
+  renamed or moved to another package keeps its findings: the comparison maps base paths through
+  git's renames. The size and CRAP ratchets are keyed by the method's name, so a method that gains a
+  parameter keeps its legacy values and fails only on growth; renaming the method, or adding an
+  overload of the same name above it, makes them new (#548).
 - **Tests.** `languages/java/ingest/crap.test.mjs` against the committed samples
   `fixtures/structure.json` and `fixtures/jacoco-crap.xml`; `java-reports.test.mjs` covers the glue;
   the gated e2e test has a case adding a ten-branch untested method.

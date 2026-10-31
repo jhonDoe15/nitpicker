@@ -40,6 +40,9 @@ forms below from the start; the gate is a backstop.
 
 With Spring on the classpath, also follow [spring.md](spring.md).
 
+If your change edits a method, class, file or package that existed before it, read
+[editing-existing-code.md](editing-existing-code.md) before you edit.
+
 Before you change code other modules use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md).
 
@@ -188,18 +191,6 @@ To learn why a rule is on and what form it allows before you write or change cod
   class-load rules.
   If a PMD rule or an Error Prone check flags test code that is right, ask a human for a reviewed
   exception for `pmd/<rule>` or `errorprone/<Check>`.
-
-## Editing existing code
-
-- A method already over a size limit may be edited but must not get worse: the gate then prints
-  a note ("allowed because base was 4"). Adding a parameter, statement or nesting level fails
-  (`Legacy.total grew from 4 to 5 parameters`). Put new logic in a new method and call it once.
-- A file, folder or class already over its limit must not grow: put the new code in a new class,
-  and a new file in a new package.
-- A line you touch must have its branches covered, even if it was uncovered before.
-- Existing PMD, SpotBugs, Error Prone and Checkstyle findings stay baselined while their message is
-  unchanged; adding another of the same kind in the file is new. Don't rename or move a file that
-  has findings: Checkstyle and CRAP findings don't follow renames and would count as new.
 
 ## Repository files
 

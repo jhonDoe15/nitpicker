@@ -8,6 +8,12 @@ description: Use before writing or changing Python in a project that runs nitpic
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a
 backstop. It fails only on findings your change adds, so leave code the task doesn't need alone.
 
+If your change edits a function, class, module or package that existed before it, read
+[editing-existing-code.md](editing-existing-code.md) before you edit.
+
+Before you change code other modules use, or fix a bug, read
+[beyond-the-gate.md](beyond-the-gate.md).
+
 ## Finish with the gate
 
 1. Run the project's tests with its own runner (pytest, unittest, `manage.py test` or nose2).
@@ -105,7 +111,7 @@ To learn why a rule is on and what form it allows before you write or change cod
   past 3 parameters, pass a frozen dataclass. A `lambda` is a function of its own with the same
   limits, counted on its own and not toward the function around it. Complex code needs tests: the
   CRAP score of a function must stay below 9.
-- Each `elif` and `except` adds a nesting level: `if`/`elif`/`elif` is already too deep. Return
+- Each `if`, loop, `match` and `except` handler adds a nesting level; an `elif` adds none. Return
   early, look the value up in a dict, or move a branch into a helper.
 - A new clone of at least 5 lines and 50 tokens (`duplicate-clone`) fails: extract a function, also when the copy has other names and literals. A
   package must not depend on a less stable one (`stability-direction`).
@@ -114,5 +120,3 @@ To learn why a rule is on and what form it allows before you write or change cod
   each other in a cycle, and production code imports only from the source roots.
 - A module stays within 300 lines (a test module 500) and a line within 120 characters. A folder
   holds at most 6 modules and 6 test modules directly: group the rest into packages by what they do.
-- A function or file already over a limit may be edited but must not get worse: put new code in a
-  new function or module and call it.
