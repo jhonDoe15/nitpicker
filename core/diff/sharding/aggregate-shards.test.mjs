@@ -6,6 +6,7 @@ import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { readJson } from '../git/test-support/fixture-files.mjs';
 import { useGitFixtures } from '../git/test-support/git-repository.mjs';
 import { exactText } from '../reporting/test-support/output-expectations.mjs';
+import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 import { aggregateShardReports } from './aggregate-shards.mjs';
 import { analyzer, useShardFixtures, writeShard } from './test-support/shard-fixtures.mjs';
 
@@ -148,7 +149,9 @@ small/example src/main/example.ts example finding
     });
 
     expect(report.unchangedFindings).toEqual([held]);
-    expect(readJson(fixture.outputRoot, 'held-findings.json')).toEqual([held]);
+    expect(readJson(fixture.outputRoot, 'held-findings.json')).toEqual([
+      { ...held, helpUri: docsUrl('docs/rules/checks.md', 'structure-function-lines-limit') },
+    ]);
     expect(readFileSync(path.join(fixture.outputRoot, 'report.txt'), 'utf8')).toEqual(
       expect.stringMatching(exactText`Nitpicker quality diff
 Base ref: origin/master

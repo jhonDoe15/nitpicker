@@ -31,7 +31,8 @@ forms below from the start; the gate is a backstop.
      cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
 5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
-   comments, config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. The one
+   comments, coverage or mutation markers (`@Generated`, `@ExcludeFromJacocoGeneratedReport`,
+   `@DoNotMutate`), config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. The one
    exception is `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a repository method with native
    SQL ([spring.md](spring.md)). If a finding seems wrong, stop and ask. Never pass
    `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
@@ -41,6 +42,8 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 
 Before you change code other modules use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md).
+
+To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/main/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
 
 ## Write it this way
 

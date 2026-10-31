@@ -48,6 +48,10 @@
           "description": "The words of the message. A new finding of three or more tokens counts as already present when the base has an unmatched finding with the same tool, rule, path and classification, the same number of tokens and at most one differing token.",
           "type": "array",
           "items": { "$ref": "#/$defs/nonEmptyString" }
+        },
+        "helpUri": {
+          "description": "Link to the page that explains the rule. Nitpicker fills it in new-findings.json from its rule reference (docs/rules); an analyzer may set its own.",
+          "allOf": [{ "$ref": "#/$defs/nonEmptyString" }, { "pattern": "^https?://\\S+$" }]
         }
       },
       "if": { "required": ["metric"] },

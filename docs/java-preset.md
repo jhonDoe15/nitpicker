@@ -11,6 +11,8 @@ findings. The comparison is the language-neutral core (`compareFindings`, rename
 which the conformance suite in [`spec/conformance`](../spec/conformance/README.md) covers. The Java
 side contributes only two things: producing reports, and converting them into findings.
 
+Every rule the preset can report has an entry in the [rule reference](rules/README.md): [PMD](rules/java-pmd.md), [Checkstyle](rules/java-checkstyle.md), [SpotBugs](rules/java-spotbugs.md), [Error Prone](rules/java-errorprone.md) and [nitpicker's own rules](rules/java-nitpicker.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
+
 The JDK, Gradle or Maven a CI job needs, and recipes for GitHub Actions, GitLab CI and Jenkins, are in
 [nitpicker in CI](ci.md#toolchains-by-preset).
 
@@ -601,7 +603,8 @@ default, and their messages name it:
 | `AssignmentInOperand`              | An assignment in a `while` condition (`while ((line = reader.readLine()) != null)`).                                                                                                               |
 | `GuardLogStatement`                | `trace` and `debug` (and JUL `fine` levels) with placeholders whose values are variables, fields, literals or a no-argument call on one (`order.id()`); a guard only when an argument is computed. |
 | `LogStringConcatenation` (new)     | `info`, `warn` and `error` with placeholders, for SLF4J, Log4j 2, commons-logging, JUL and `System.Logger`.                                                                                        |
-| `GeneratedOnHandWrittenCode` (new) | No `@Generated` annotation on a class, method or constructor: JaCoCo and PIT skip what it marks.                                                                                                   |
+| `GeneratedOnHandWrittenCode` (new) | No annotation whose name contains `Generated` on a class, method or constructor (JaCoCo skips them all, PIT skips `@Generated`); put JPA `@GeneratedValue` on the field.                           |
+| `MutationIgnoreMarker` (new)       | No `@DoNotMutate` or `@CoverageIgnore`: PIT does not mutate what they mark.                                                                                                                        |
 | `DontCallThreadRun`                | `super.run()` inside a `Thread` subclass's `run()`; any other `run()` call on a `Thread` is `start()`.                                                                                             |
 | `AvoidFileStream`                  | A stream, reader or writer over a `FileDescriptor` (`new FileInputStream(FileDescriptor.in)`), which `Files` has no form for.                                                                      |
 | `AvoidArrayLoops`                  | A copy loop that subtracts the loop variable in an index (a reversed copy), which `System.arraycopy` cannot do.                                                                                    |
@@ -698,14 +701,18 @@ identity when the value changes: editing such a line counts as a resolved plus a
   fails, as it does for TypeScript; for a fully covered method the message says to split off a
   branchy part. `crap-coverage-unknown` (enforceable) when no JaCoCo method
   matches or the method has neither line nor branch counters; its Java message names the two causes,
-  no test runs it or it is annotated `@Generated`.
+  no test runs it or it carries an annotation whose name contains `Generated`.
 - **JaCoCo filters.** The project's own JaCoCo settings (`jacocoTestReport.classDirectories`
   excludes, `test.jacoco` includes and excludes) are reset, so a class cannot leave the coverage
-  report through `build.gradle`. JaCoCo and PIT still skip code annotated `@Generated`. An
+  report through `build.gradle`. JaCoCo still skips a class or method carrying an annotation whose
+  name contains `Generated` (`@ExcludeFromJacocoGeneratedReport` too), and PIT skips `@Generated`,
+  `@DoNotMutate` and `@CoverageIgnore`. An
   annotation whose value names a known generator (MapStruct, Dagger, AutoValue, Immutables and the
   others the generated-sources check lists) makes the whole file generated, so its findings are
   dropped and no `pmd/GeneratedOnHandWrittenCode` is reported; adding one to a file the base checked
-  is a policy loosening. Any other `@Generated` is the `pmd/GeneratedOnHandWrittenCode` finding.
+  is a policy loosening. Any other such annotation is the `pmd/GeneratedOnHandWrittenCode` finding
+  (also JPA `@GeneratedValue` on a getter: put it on the field), and `@DoNotMutate` or
+  `@CoverageIgnore` is `pmd/MutationIgnoreMarker`.
   Only violations are findings; the
   per-function metric findings of the TypeScript check are not produced.
 - **Identity.** `function:<signature>`, for example `function:Calc.classify(int, int, String)`:
@@ -1776,7 +1783,8 @@ metamodel generator, OpenAPI and Swagger generators, jOOQ, Room, Micronaut), whe
 `generated/`, `generated-sources/` or `gen/` folder and its first five lines say `@generated` or
 `DO NOT EDIT`. Lombok's `delombok` writes no header, so its output counts through the build
 folder. A generic marker in a normally named file, an `@Generated` annotation with another value
-and a header below the code exempt nothing; hand-written code carrying `@Generated` stays the
+and a header below the code exempt nothing; hand-written code carrying `@Generated` (or any
+annotation whose name contains `Generated`) stays the
 `pmd/GeneratedOnHandWrittenCode` finding. The evals harness fails a case whose agent wrote one of
 these markers into a file it wrote by hand.
 
