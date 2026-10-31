@@ -23,6 +23,8 @@ One npm package (`nitpicker`) serves every language; the package root is the rep
 - `languages/python/`: the nitpicker-owned ruff config (`ruff/`), the Python analyzer (`adapters/`),
   the coverage.py report ingester (`ingest/`) and the `ast`-based structure and complexity script
   (`metrics/`); it reuses the generic ingesters in `shared/ingest/`.
+- `languages/go/`: the Go analyzer (`adapters/`) and the `go/ast` metrics program (`inspect/`, a Go
+  module on the standard library only).
 - `spec/`, `docs/`, `evals/` and `scripts/`: the language-neutral contract, documentation,
   agent evaluations and maintenance scripts. Not shipped.
 
@@ -55,9 +57,11 @@ uses 24) and Java 21 for the structure-metrics test. It checks your working tree
 untracked files included, while CI checks the pull request merged into its target branch, so commit
 everything and merge or rebase on the latest `main` before the final run. A change to a language's
 end-to-end behaviour also needs that language's suite (`npm run test:java`, `test:kotlin` or
-`test:python`), which needs the language's toolchain. CI runs all three, in the `java-e2e`,
-`kotlin-e2e` and `python-e2e` workflows, which follow the same triggers as the `typescript` workflow
-below (pushes to `main` that touch the paths they list, a manual run, and the `run-ci` label).
+`test:python` or `test:go`), which needs the language's toolchain. CI runs all four, in the `java-e2e`,
+`kotlin-e2e`, `python-e2e` and `go-e2e` workflows, which follow the same triggers as the `typescript` workflow
+below (pushes to `main` that touch the paths they list, a manual run, and the `run-ci` label). The
+`github-action` workflow, which runs the composite action in `action.yml` on the sample project in
+`.github/sample-project`, follows them too; it is not a required check.
 The TypeScript red-base test (`npm run test:typescript`, which runs real vitest through the CLI) is
 not in CI: run it after changing `core/diff/comparison/base-red/` or a test runner's failure report.
 
@@ -112,7 +116,7 @@ After moving E2E files or changing their package-script filters, verify real Vit
 (every E2E test file is gated by exactly one suite flag, and each script selects exactly the cases
 its flag enables), profile coverage, the workflow wiring and the configured matrix partition
 without starting a JVM build or a Python project (CI runs the same check in the shard-plan job of the
-Java, Kotlin and Python workflows):
+Java, Kotlin, Python and Go workflows):
 
 ```sh
 node scripts/test-shards/verify-e2e-shards.mjs
@@ -132,6 +136,11 @@ Python end-to-end CI uses four isolated shards with two test workers each and re
 `npm run test:python -- --maxWorkers=2 --shard=1/4`. Enabled runs and recordings use
 `scripts/test-shards/python-e2e.json` when `NITPICKER_PYTHON_E2E=1`. Enable only one language's
 end-to-end suite at a time so the sequencer and recorder can choose the correct timing profile.
+
+Go end-to-end CI uses two shards and the final `go-e2e` check. The suite (`npm run test:go`) needs Go
+on the `PATH` (1.26 or newer, or an older one with the default `GOTOOLCHAIN=auto`, which downloads
+1.26 to build the pinned gofumpt and goimports) and network access to the Go module proxy the
+first time it builds them; timings are in `scripts/test-shards/go-e2e.json`.
 
 `npm test` runs `languages/python/metrics/structure_metrics.py` on a real `python3`, so it needs
 `python3` 3.10 or newer on the `PATH` (that test file is skipped, with its reason in the name,

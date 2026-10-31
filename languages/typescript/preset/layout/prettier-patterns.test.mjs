@@ -33,9 +33,8 @@ describe('the Prettier check patterns', () => {
   it('keep checking the previous file types', () => {
     const patterns = prettierPatterns(resolveLayout());
 
-    for (const file of ['src/a.ts', 'src/a.mts', 'src/a.mjs', 'src/a.json', 'src/a.yml']) {
-      expect(isChecked(patterns, file), file).toBe(true);
-    }
+    const files = ['src/a.ts', 'src/a.mts', 'src/a.mjs', 'src/a.json', 'src/a.yml'];
+    expect(files.map((file) => isChecked(patterns, file))).toEqual(files.map(() => true));
     expect(isChecked(patterns, 'src/a.css')).toBe(false);
   });
 });
