@@ -334,6 +334,39 @@ describe('the node:test console capture', () => {
     ]);
   });
 
+  it('records the loading of each file when the runner loads the preload inside its root test', async () => {
+    const environment = { [LINES_VARIABLE]: linesPath };
+    const root = Object.assign(new AsyncResource('Test'), { name: '<root>', entryFile: null });
+    const loadTimeTimer = root.runInAsyncScope(() => {
+      captureNodeTest({
+        environment,
+        testRunner: true,
+        processId: 5,
+        inProcess: true,
+        target,
+        events: new EventEmitter(),
+      });
+      root.entryFile = path.resolve('test/a.test.js');
+      target.warn('while loading a');
+      const timer = new Promise((resolve) => {
+        setTimeout(() => {
+          target.warn('timer from loading a');
+          resolve();
+        }, 5);
+      });
+      root.entryFile = path.resolve('test/b.test.js');
+      target.warn('while loading b');
+      return timer;
+    });
+    await loadTimeTimer;
+
+    expect(placesWritten()).toEqual([
+      ['test/a.test.js', '', 'while loading a'],
+      ['test/b.test.js', '', 'while loading b'],
+      ['test/a.test.js', '', 'timer from loading a'],
+    ]);
+  });
+
   it.each([
     ['--test --experimental-test-isolation=none ', true],
     ['--test --test-isolation none ', true],

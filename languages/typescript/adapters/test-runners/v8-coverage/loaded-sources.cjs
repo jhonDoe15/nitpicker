@@ -218,8 +218,7 @@ function trackedTests(file = '', { after, afterEach, beforeEach } = nodeTestApi(
 function fileOfTest(test = {}) {
   const loc = 'loc' in test && typeof test.loc === 'object' && test.loc !== null ? test.loc : {};
   const files = ['entryFile' in test ? test.entryFile : '', 'file' in loc ? loc.file : ''];
-  const found = files.find((each) => typeof each === 'string' && each !== '');
-  const file = typeof found === 'string' ? found : '';
+  const file = files.filter((each) => typeof each === 'string').find((each) => each !== '') ?? '';
   return file.startsWith('file:') ? fileURLToPath(file) : file;
 }
 
@@ -230,6 +229,9 @@ function fileOf(resource = {}) {
 
 function inProcessTests() {
   const { createHook, executionAsyncResource } = process.getBuiltinModule('node:async_hooks');
+  const loading = executionAsyncResource();
+  const root = 'entryFile' in loading ? loading : '';
+  Reflect.defineProperty(loading, TEST_OF, { value: root, configurable: true });
   createHook({
     init(...values) {
       const [, type, , resource] = values;
@@ -237,9 +239,7 @@ function inProcessTests() {
       Reflect.defineProperty(resource, TEST_OF, { value, configurable: true });
     },
   }).enable();
-  return function place() {
-    return { file: fileOf(executionAsyncResource()), test: '' };
-  };
+  return () => ({ file: fileOf(executionAsyncResource()), test: '' });
 }
 
 function captureNodeTest({
