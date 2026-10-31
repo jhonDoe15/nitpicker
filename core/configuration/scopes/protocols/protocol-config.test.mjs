@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
-import { resolveHeadPolicy } from '../../../shared/head-policy.mjs';
-import { validateConfig } from '../validate.mjs';
-import { looseningKindOfSetting } from '../../policy-changes/loosenings.mjs';
+import { resolveHeadPolicy } from '../../../../shared/head-policy.mjs';
+import { validateConfig } from '../../validate.mjs';
+import { looseningKindOfSetting } from '../../../policy-changes/loosenings.mjs';
 
 const session = { type: 'Session', open: ['begin'], close: ['commit', 'rollback'] };
 
