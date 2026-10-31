@@ -36,28 +36,36 @@ describe('the shared fact rules', () => {
   });
 
   it('is the one source of the checks table columns for a registered rule', () => {
-    for (const [rule, languages] of Object.entries(FACT_RULE_LANGUAGES)) {
-      const columns = Object.fromEntries(
-        Object.entries(languages).map(([language, value]) => [
-          language,
-          value === OWN_TOOL || value,
-        ]),
-      );
-      expect(Object.keys(languages).toSorted(), rule).toEqual(LANGUAGES.toSorted());
-      expect(RULES.find(({ id }) => id === rule).enforcedBy, rule).toEqual(columns);
-    }
+    const registered = Object.entries(FACT_RULE_LANGUAGES);
+    expect(
+      registered.map(([rule, languages]) => [rule, Object.keys(languages).toSorted()]),
+    ).toEqual(registered.map(([rule]) => [rule, LANGUAGES.toSorted()]));
+    expect(
+      registered.map(([rule]) => [rule, RULES.find(({ id }) => id === rule).enforcedBy]),
+    ).toEqual(
+      registered.map(([rule, languages]) => [
+        rule,
+        Object.fromEntries(
+          Object.entries(languages).map(([language, value]) => [
+            language,
+            value === OWN_TOOL || value,
+          ]),
+        ),
+      ]),
+    );
   });
 
   it('shows a rule a language enforces with its own tool as enforced, without running it', () => {
-    for (const rule of FEATURE_RULES) {
-      expect(RULES.find(({ id }) => id === rule).enforcedBy).toEqual({
+    expect(FEATURE_RULES.map((rule) => RULES.find(({ id }) => id === rule).enforcedBy)).toEqual(
+      FEATURE_RULES.map(() => ({
         typescript: true,
         javascript: true,
         java: false,
         python: true,
         kotlin: false,
-      });
-    }
+        go: false,
+      })),
+    );
     expect(registeredFactRules('typescript')).not.toContain(FEATURE_RULES[0]);
   });
 
@@ -166,14 +174,24 @@ describe('the shared fact rules', () => {
   });
 
   it('lets every preset lift a rule once a language besides TypeScript registers it', () => {
-    const lifted = ['shared-used-by-one-feature', ...FEATURE_RULES, 'test-only-export'];
-    expect(sharedFactExceptionRules()).toEqual([...lifted, CONSOLE]);
-    withLanguageRegistered('doc-comment-content', 'python', () => {
-      expect(sharedFactExceptionRules()).toEqual([...lifted, 'doc-comment-content', CONSOLE]);
+    const jvmRules = ['duplicate-definition', 'exported-name-collision', 'sibling-copy-edit'];
+    const lifted = [
+      ...jvmRules,
+      'shared-used-by-one-feature',
+      ...FEATURE_RULES,
+      'test-only-export',
+      'doc-comment-content',
+      CONSOLE,
+    ];
+
+    expect(sharedFactExceptionRules()).toEqual(lifted);
+    expect(registeredFactRules('python')).toEqual(['shared-used-by-one-feature', ...FEATURE_RULES]);
+    withLanguageRegistered('sibling-copy-edit', 'python', () => {
+      expect(sharedFactExceptionRules()).toEqual(lifted);
       expect(registeredFactRules('python')).toEqual([
+        'sibling-copy-edit',
         'shared-used-by-one-feature',
         ...FEATURE_RULES,
-        'doc-comment-content',
       ]);
     });
   });

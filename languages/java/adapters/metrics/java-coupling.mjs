@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { outerClass } from '../../ingest/class-names.mjs';
 import { buildCouplingReport, evaluateCoupling } from '../../../../shared/rules/coupling.mjs';
 import {
   featureRoleContract,
@@ -20,10 +21,6 @@ export function parseJdeps(text) {
     }
   }
   return edges;
-}
-
-export function outerClass(className) {
-  return className.split('$')[0];
 }
 
 function packageOf(className) {

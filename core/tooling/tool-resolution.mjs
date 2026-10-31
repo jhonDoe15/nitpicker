@@ -18,6 +18,18 @@ export function resolveTool(name, { projectRoot, bin, packageRoot = PACKAGE_ROOT
   return { root, version: installed.version, binPath: toolBinary(name, root, bin) };
 }
 
+export function isToolInstalled(name, { projectRoot, packageRoot = PACKAGE_ROOT } = {}) {
+  const { from } = owningTool(name, { projectRoot, packageRoot });
+  try {
+    return findPackageJSON(name, pathToFileURL(path.join(from, 'package.json')).href) !== undefined;
+  } catch (error) {
+    if (error?.code === 'ERR_MODULE_NOT_FOUND') {
+      return false;
+    }
+    throw error;
+  }
+}
+
 function owningTool(name, { projectRoot, packageRoot }) {
   const trustedPackageRoot = realpathSync(packageRoot);
   const owningManifest =
@@ -105,7 +117,7 @@ export function resolveProjectRoot(cwd = process.cwd()) {
   if (projectRoot !== undefined) return projectRoot;
   throw new Error(
     `No package.json or ${CONFIG_FILE_NAME} found between ${current} and repository root ${repositoryRoot}. ` +
-      `For a Java, Kotlin or Python project, create ${CONFIG_FILE_NAME} with its preset, for example {"preset": "java"}.`,
+      `For a Java, Kotlin, Python or Go project, create ${CONFIG_FILE_NAME} with its preset, for example {"preset": "java"}.`,
   );
 }
 
