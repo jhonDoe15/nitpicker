@@ -58,3 +58,36 @@ jobs:
           flags=()
           if [ "$PRERELEASE" = "true" ]; then flags+=(--prerelease); fi
           gh release create "$TAG" release-assets/* --target "$COMMIT" --title "$TAG" --notes-file notes.md "${flags[@]}"
+      # A stable release moves v0.<minor> (before 1.0) or v<major> so workflows can follow a line.
+      - name: Move the floating tag
+        if: ${{ !inputs.prerelease }}
+        env:
+          TAG: ${{ steps.version.outputs.tag }}
+          COMMIT: ${{ inputs.commit }}
+        run: |
+          set -euo pipefail
+          version="${TAG#v}"
+          case "$version" in
+            *-*)
+              echo "::notice::$TAG has a pre-release suffix; no floating tag moves."
+              exit 0
+              ;;
+          esac
+          major="${version%%.*}"
+          rest="${version#*.}"
+          minor="${rest%%.*}"
+          if [ "$major" = 0 ]; then
+            floating="v0.$minor"
+          else
+            floating="v$major"
+          fi
+          remote="$(git ls-remote --tags origin "refs/tags/$floating" | cut -f1)"
+          if [ -n "$remote" ]; then
+            git fetch --no-tags origin "+refs/tags/$floating:refs/tags/$floating"
+            if ! git merge-base --is-ancestor "refs/tags/$floating" "$COMMIT"; then
+              echo "::error::$floating points at a commit that $TAG does not contain; move it by hand if that is intended."
+              exit 1
+            fi
+          fi
+          git tag -f "$floating" "$COMMIT"
+          git push --force origin "refs/tags/$floating"
