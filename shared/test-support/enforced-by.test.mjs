@@ -6,16 +6,7 @@ import { catalogFileOf, isKotlinPath, mentionsRule, ruleEmitters } from './rule-
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 
-const JVM_REUSE_RULES_ONLY = {
-  file: 'languages/java/adapters/reuse/jvm-reuse-facts.mjs',
-  evidence: /rules: REUSE_RULES/u,
-};
-const JVM_FACT_RULES_NOT_RUN = {
-  'shared-used-by-one-feature': JVM_REUSE_RULES_ONLY,
-};
 const NOT_ENFORCED_ALTHOUGH_EMITTED = {
-  java: JVM_FACT_RULES_NOT_RUN,
-  kotlin: JVM_FACT_RULES_NOT_RUN,
   go: {
     'inheritance-depth-limit': {
       file: 'languages/go/adapters/configuration/go-config.mjs',
@@ -106,7 +97,7 @@ describe('the enforcedBy column of every catalogued rule', () => {
       documented.map(({ name }) => [name, true]),
     );
   });
-  it('finds the adapters that emit a rule in the language folders and the shared code they import', () => {
+  it('finds the adapters that emit a rule in the language folders and the shared code they import, and counts only the rules a call of the shared fact evaluator lists', () => {
     const found = (language, ruleId, file) => emitters[language].get(ruleId).includes(file);
 
     expect([
@@ -124,6 +115,19 @@ describe('the enforcedBy column of every catalogued rule', () => {
       found('python', 'committed-env-file', 'shared/hygiene/files/repository-files.mjs'),
     ]).toEqual([true, true, true, true]);
     expect(emitters.java.get('unused-option')).toEqual([]);
+    expect([
+      emitters.java.get('mutable-state-escape'),
+      emitters.java.get('duplicate-definition'),
+      found(
+        'typescript',
+        'duplicate-definition',
+        'languages/typescript/preset/structure/reuse/reuse-findings.mjs',
+      ),
+    ]).toEqual([
+      ['languages/java/adapters/design/design-findings.mjs'],
+      ['languages/java/adapters/reuse/jvm-reuse-facts.mjs'],
+      true,
+    ]);
     expect(emitters.kotlin.get('unused-option')).not.toEqual([]);
   });
   it('does not count a rule named only in a comment', () => {

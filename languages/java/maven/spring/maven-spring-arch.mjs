@@ -1,10 +1,10 @@
 import { spawnSync } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, renameSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
 import { GRADLE_DIRECTORY } from '../../builds/java-build.mjs';
 import { javaCommand, runJava } from '../maven-command.mjs';
-import { cacheDirectory } from '../maven-tools.mjs';
+import { cacheDirectory, publishDirectory } from '../maven-tools.mjs';
 
 const RULES_DIRECTORY = path.join(GRADLE_DIRECTORY, 'archunit');
 const TOOL = 'Spring architecture rules';
@@ -47,17 +47,6 @@ function cacheKey({ sources, versions, spawn }) {
   return digest.digest('hex');
 }
 
-function publish(staging, classes) {
-  try {
-    renameSync(staging, classes);
-  } catch (raced) {
-    rmSync(staging, { recursive: true, force: true });
-    if (!existsSync(classes)) {
-      throw raced;
-    }
-  }
-}
-
 function compileRules({ classes, sources, libraries, cwd, spawn }) {
   if (existsSync(classes)) {
     return;
@@ -79,7 +68,7 @@ function compileRules({ classes, sources, libraries, cwd, spawn }) {
     rmSync(staging, { recursive: true, force: true });
     throw error;
   }
-  publish(staging, classes);
+  publishDirectory(staging, classes);
 }
 
 function existing(entries) {
