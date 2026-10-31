@@ -35,13 +35,12 @@ function withoutOwnFrame(buffer = [{}], before = 0) {
   }
 }
 
-export function withFormattedAssert(consoleClass = Object, patched = new WeakSet()) {
+export function withFormattedAssert(consoleClass = Object) {
   const { prototype } = consoleClass;
   const assert = Reflect.get(prototype, 'assert');
-  if (typeof assert !== 'function' || patched.has(prototype)) {
+  if (typeof assert !== 'function') {
     return;
   }
-  patched.add(prototype);
   Reflect.set(prototype, 'assert', function formattedAssert(...values) {
     const [value, ...message] = values;
     if (value) {
@@ -68,8 +67,9 @@ export function watchJestConsole(loader = process.getBuiltinModule('node:module'
   Reflect.set(loader, '_load', function loadWatched(request = '', ...rest) {
     const loaded = Reflect.apply(load, this, [request, ...rest]);
     const consoleClass = request === JEST_CONSOLE ? loadedConsoleClass(loaded) : undefined;
-    if (consoleClass !== undefined) {
-      withFormattedAssert(consoleClass, patched);
+    if (consoleClass !== undefined && !patched.has(consoleClass)) {
+      patched.add(consoleClass);
+      withFormattedAssert(consoleClass);
     }
     return loaded;
   });
