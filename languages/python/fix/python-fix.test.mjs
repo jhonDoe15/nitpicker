@@ -11,7 +11,16 @@ const { createGitRepository } = useGitFixtures();
 const PYPROJECT = '[project]\nname = "demo"\nversion = "1"\nrequires-python = ">=3.9"\n';
 const BLACK_PYPROJECT = `${PYPROJECT}[tool.black]\nline-length = 88\n`;
 const RUFF_CONFIG = path.resolve(import.meta.dirname, '../ruff/nitpicker-ruff.toml');
-const LINT_OPTIONS = ['check', '--config', RUFF_CONFIG, '--target-version', 'py39', '--no-cache'];
+const LINT_OPTIONS = [
+  'check',
+  '--config',
+  RUFF_CONFIG,
+  '--target-version',
+  'py39',
+  '--line-length',
+  '88',
+  '--no-cache',
+];
 const FORMAT_STYLE = [
   '--config',
   'format.quote-style = "double"',

@@ -1,6 +1,10 @@
 import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { eslintChecks } from '../preset/quality-checks.mjs';
+import {
+  PROJECT_LAYER_VARIABLE,
+  projectLayerValue,
+} from '../adapters/lint-engine/project-layer.mjs';
 import { layoutTransformFor } from '../preset/tool-configs.mjs';
 import { linkPolicyFile } from '../../../core/tooling/policy-links.mjs';
 import { PACKAGE_ROOT, resolveTool } from '../../../core/tooling/tool-resolution.mjs';
@@ -17,7 +21,8 @@ const TOOL = 'eslint --fix';
 
 const REPORT_EXCERPT_LENGTH = 200;
 
-function runEslint({ projectRoot, policyEnvironment, executeFixCommand }, files, linked) {
+function runEslint(settings, files, linked) {
+  const { projectRoot, policyEnvironment, executeFixCommand } = settings;
   return runFixCommand({
     operation: 'eslint-fix',
     command: process.execPath,
@@ -39,6 +44,10 @@ function runEslint({ projectRoot, policyEnvironment, executeFixCommand }, files,
       NITPICKER_DIFF_ESLINT_POLICY_CONFIG: path.join(PACKAGE_ROOT, eslintPolicy.configRelativePath),
       NITPICKER_DIFF_ESLINT_PROJECT_ROOT: projectRoot,
       NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: linked.targetPath,
+      [PROJECT_LAYER_VARIABLE]: projectLayerValue(settings.eslintSettings, {
+        liveProjectRoot: projectRoot,
+        addsRules: true,
+      }),
     },
     input: undefined,
     executeFixCommand,
