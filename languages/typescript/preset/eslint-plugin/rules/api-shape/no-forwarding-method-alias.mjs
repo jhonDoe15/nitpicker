@@ -203,9 +203,7 @@ function isLaterOfMutual(classNode, member, call) {
   );
 }
 
-const writtenNames = new WeakMap();
-
-function namesWrittenOnThis(classNode) {
+function namesWrittenOnThis(writtenNames, classNode) {
   const cached = writtenNames.get(classNode);
   if (cached !== undefined) {
     return cached;
@@ -221,12 +219,12 @@ function namesWrittenOnThis(classNode) {
   return names;
 }
 
-function isReassigned(classNode, names) {
-  const written = namesWrittenOnThis(classNode);
+function isReassigned(writtenNames, classNode, names) {
+  const written = namesWrittenOnThis(writtenNames, classNode);
   return written.has('[]') || names.some((name) => written.has(name));
 }
 
-function aliasVerdict({ services, checker }, { member, classNode, call }) {
+function aliasVerdict({ services, checker, writtenNames }, { member, classNode, call }) {
   const name = keyName(member);
   const tsClass = services.esTreeNodeToTSNodeMap.get(classNode);
   const own = services.esTreeNodeToTSNodeMap.get(member);
@@ -243,7 +241,7 @@ function aliasVerdict({ services, checker }, { member, classNode, call }) {
     hasSameSignature(checker, own, target) &&
     ts.getJSDocDeprecatedTag(own) === undefined &&
     isLaterOfMutual(classNode, member, call) &&
-    !isReassigned(classNode, [name, calleeName(call)]) &&
+    !isReassigned(writtenNames, classNode, [name, calleeName(call)]) &&
     !inheritsMember(checker, tsClass, name);
   return isAlias ? { rename: visibilityOf(own) < visibilityOf(target) } : undefined;
 }
@@ -269,7 +267,11 @@ export const rule = {
     if (services?.program === null || services?.program === undefined) {
       return {};
     }
-    const program = { services, checker: services.program.getTypeChecker() };
+    const program = {
+      services,
+      checker: services.program.getTypeChecker(),
+      writtenNames: new WeakMap(),
+    };
 
     return {
       MethodDefinition(member) {
