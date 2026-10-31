@@ -2,7 +2,8 @@ import ast
 import builtins
 
 from checks.common import dotted_name
-from smells.io_index import CLIENT_FACTORIES, IoScope, chain_names, io_index
+from index.clients import PER_ITEM_CLIENT_FACTORIES
+from smells.io_index import IoScope, chain_names, io_index
 
 NESTED_SCOPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.ClassDef, ast.Lambda)
 BUILTIN_CLASSES = {name for name in dir(builtins) if name[:1].isupper()}
@@ -164,7 +165,7 @@ class Cheapness:
             return False
         imported = self.aliases[0].get(name)
         if imported is not None:
-            return imported not in CLIENT_FACTORIES
+            return imported not in PER_ITEM_CLIENT_FACTORIES
         return name in self.classes or name in BUILTIN_CLASSES
 
     def is_cheap_method(self, call, method):
