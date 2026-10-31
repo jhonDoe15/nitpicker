@@ -3,7 +3,7 @@ import {
   GRADLE_PRESETS,
   PROJECT_TOOL_CONFIGS,
 } from '../../../languages/java/adapters/gradle-presets.mjs';
-import { readInside } from '../../../shared/conventions/read-inside.mjs';
+import { readRealInside } from '../../../shared/conventions/read-inside.mjs';
 import {
   JSCPD_PROJECT_FILE,
   precedenceLayers,
@@ -12,11 +12,24 @@ import { appliedJscpdConfig } from '../../tooling/jscpd/config.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
 import {
+  isProjectConfigTool,
+  manifestSection,
+  packageJsonKey,
+  projectConfigCandidates,
+  projectConfigTools,
+} from '../../../languages/typescript/preset/project-tools/project-config-files.mjs';
+import {
+  appliedProjectConfigs,
+  hasProjectConfigChanges,
+} from '../../../languages/typescript/preset/project-tools/changes/project-config-changes.mjs';
+import {
   eslintConfigFiles,
   readEslintConfigFile,
 } from '../../../languages/typescript/preset/eslint-project/project-config.mjs';
 import { replacedEslintOptions } from '../../../languages/typescript/adapters/lint-engine/replaced-options.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
+import { readImportLinterConfig } from '../../../languages/python/adapters/analysis/import-linter/import-linter-config.mjs';
+import { attempt } from '../../../languages/python/adapters/project-tools/project-tool-layers.mjs';
 import { GOLANGCI_FILES } from '../../../languages/go/adapters/formatting/go-formatters.mjs';
 import { PYTHON_TOOLS, pythonConfigEntries } from './python-tool-configs.mjs';
 
@@ -29,17 +42,9 @@ function usesProjectConfig(config, tool) {
   return (config.tools?.[tool]?.precedence ?? []).includes('project');
 }
 
-function prettierKey(content) {
-  try {
-    return { prettier: JSON.parse(content.toString('utf8')).prettier };
-  } catch {
-    return { malformed: true };
-  }
-}
-
 function fingerprintOf(tool, { projectRoot, file }, gitBlobId) {
   const content =
-    tool === 'eslint' ? readEslintConfigFile(projectRoot, file) : readInside(projectRoot, file);
+    tool === 'eslint' ? readEslintConfigFile(projectRoot, file) : readRealInside(projectRoot, file);
   if (content === undefined) {
     return undefined;
   }
@@ -50,11 +55,12 @@ function fingerprintOf(tool, { projectRoot, file }, gitBlobId) {
   if (file !== PACKAGE_JSON) {
     return gitBlobId(toolConfigText(tool, file, content.toString('utf8')));
   }
-  const key = prettierKey(content);
-  if (key.malformed === true) {
+  const key = tool === 'prettier' ? 'prettier' : packageJsonKey(tool);
+  const section = manifestSection(content.toString('utf8'), key);
+  if (section.kind !== 'json') {
     return gitBlobId(content);
   }
-  return key.prettier === undefined ? undefined : gitBlobId(JSON.stringify(key.prettier));
+  return section.value === undefined ? undefined : gitBlobId(JSON.stringify(section.value));
 }
 
 function fingerprints(tool, { root: projectRoot, files }, gitBlobId) {
@@ -97,6 +103,17 @@ function kotlinFiles(tool, side) {
     .map((file) => path.relative(side.root, file));
 }
 
+function isScriptTool(tool) {
+  return tool === 'prettier' || tool === 'eslint' || isProjectConfigTool(tool);
+}
+
+function scriptCandidates(tool, side) {
+  if (tool === 'prettier') {
+    return PRETTIER_PROJECT_FILES;
+  }
+  return tool === 'eslint' ? eslintConfigFiles(side.root) : projectConfigCandidates(tool);
+}
+
 function candidates(tool, side) {
   const { config, files } = side;
   if (KOTLIN_TOOLS.includes(tool)) {
@@ -105,11 +122,8 @@ function candidates(tool, side) {
   if (GO_TOOLS.includes(tool)) {
     return config.preset === 'go' ? GOLANGCI_FILES : [];
   }
-  if (tool === 'prettier') {
-    return SCRIPT_PRESETS.has(config.preset) ? PRETTIER_PROJECT_FILES : [];
-  }
-  if (tool === 'eslint') {
-    return SCRIPT_PRESETS.has(config.preset) ? eslintConfigFiles(side.root) : [];
+  if (isScriptTool(tool)) {
+    return SCRIPT_PRESETS.has(config.preset) ? scriptCandidates(tool, side) : [];
   }
   if (tool === 'jscpd') {
     return [JSCPD_PROJECT_FILE];
@@ -152,7 +166,7 @@ function appliedSide(side, optedIn) {
   if (!optedIn) {
     return { kind: 'applied', config: {} };
   }
-  const content = readInside(side.root, JSCPD_PROJECT_FILE);
+  const content = readRealInside(side.root, JSCPD_PROJECT_FILE);
   return content === undefined
     ? { kind: 'applied', config: {} }
     : appliedJscpdConfig(content.toString('utf8'));
@@ -163,6 +177,25 @@ function appliedConfigs(base, head) {
   return sides.every(({ kind }) => kind === 'applied')
     ? { applied: { base: sides[0].config, head: sides[1].config } }
     : {};
+}
+
+function importLinterOn(config) {
+  return config.preset === 'python' && config.python?.importLinter !== false;
+}
+
+function importLinterSide({ config, root }) {
+  return importLinterOn(config) ? attempt(() => readImportLinterConfig(root)).value : undefined;
+}
+
+function importLinterEntries(base, head) {
+  return importLinterOn(head.config)
+    ? [
+        {
+          tool: 'import-linter',
+          importLinter: { base: importLinterSide(base), head: importLinterSide(head) },
+        },
+      ]
+    : [];
 }
 
 function sameFingerprints(base, head) {
@@ -180,11 +213,11 @@ function eslintReview(head, prints, replacedOptions) {
   return { replacedOptions: replacedOptions(head.config, head.root) };
 }
 
-export function readToolConfigs(
-  base,
-  head,
-  { gitBlobId, replacedOptions = replacedEslintOptions },
-) {
+export function readToolConfigs(base, head, readers) {
+  return [...toolEntries(base, head, readers), ...importLinterEntries(base, head)];
+}
+
+function toolEntries(base, head, { gitBlobId, replacedOptions = replacedEslintOptions }) {
   return [
     'pmd',
     'checkstyle',
@@ -194,6 +227,7 @@ export function readToolConfigs(
     'jscpd',
     'eslint',
     ...PYTHON_TOOLS,
+    ...projectConfigTools(),
   ]
     .filter((tool) => isOptedIn(tool, head.config))
     .map((tool) => {
@@ -208,6 +242,9 @@ export function readToolConfigs(
         ...(tool === 'jscpd' ? appliedConfigs(base, head) : {}),
         ...(tool === 'eslint' ? eslintReview(head, prints, replacedOptions) : {}),
         ...evidenceOf(tool, head, gitBlobId),
+        ...(hasProjectConfigChanges(tool) && SCRIPT_PRESETS.has(head.config.preset)
+          ? appliedProjectConfigs(tool, { base, head, baseOptedIn: isOptedIn(tool, base.config) })
+          : {}),
       };
     });
 }
