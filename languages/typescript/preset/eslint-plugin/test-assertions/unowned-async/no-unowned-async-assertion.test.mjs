@@ -2,6 +2,7 @@ import { FS, NODE_TEST, VITEST, runCases } from './test-support/rule-cases.mjs';
 
 runCases('no-unowned-async-assertion waits the test can see', {
   valid: [
+    "function register(test) { test('x', () => { setTimeout(() => expect(a).toBe(1)); }); }",
     "it('x', () => { expect(run()).toBe(1); });",
     "it('x', () => { return new Promise((done) => { setTimeout(() => { expect(a).toBe(1); done(); }); }); });",
     "it('x', () => new Promise((done) => setTimeout(() => { expect(a).toBe(1); done(); })));",
@@ -45,6 +46,22 @@ runCases('no-unowned-async-assertion waits the test can see', {
     `${FS}it('x', () => { fs.readFileSync(p); });`,
   ],
   invalid: [
+    [
+      "it('x', withFixture(() => { setTimeout(() => expect(a).toBe(1)); }));",
+      'timer',
+      'setTimeout',
+    ],
+    [
+      "function body() { setTimeout(() => expect(a).toBe(1)); } it('x', body);",
+      'timer',
+      'setTimeout',
+    ],
+    ["specify('x', () => { setTimeout(() => expect(a).toBe(1)); });", 'timer', 'setTimeout'],
+    [
+      "test.each`\n a\n ${1}\n`('x', () => { setTimeout(() => expect(a).toBe(1)); });",
+      'timer',
+      'setTimeout',
+    ],
     ["it('x', () => { setTimeout(() => { expect(a).toBe(1); }, 10); });", 'timer', 'setTimeout'],
     ["it('x', () => setTimeout(() => expect(a).toBe(1)));", 'timer', 'setTimeout'],
     [

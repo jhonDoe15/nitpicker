@@ -66,10 +66,15 @@ const REVIEW_RULES = new Set([
   'StaticForwardingWrapper',
   'ForwardingMethodAlias',
   'SingularAndPluralMember',
+  'TriStateBoolean',
+  'ParameterMutation',
+  'CompatibilityShim',
+  'LegacyCalendarApi',
   'ClassLoadEffect',
   'SpringUnusedContext',
   'TestClassWithoutTestCases',
   'test-only-export',
+  'UnboundedFanOut',
 ]);
 const roots = [];
 const RECEIPT_TEST = `package shop;
