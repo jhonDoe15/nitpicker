@@ -76,22 +76,21 @@ describe('frozen install with the real package managers', () => {
         localPackagePaths: [],
       });
       const libraryFolders = members.length === 0 ? ['node_modules'] : members;
-      for (const folder of libraryFolders) {
-        expect(existsSync(path.join(projectRoot, folder, 'fixture-lib/fixture.json'))).toBe(true);
-      }
+      const hasFile = (folder, name) => existsSync(path.join(projectRoot, folder, name));
+      expect(libraryFolders.map((folder) => hasFile(folder, 'fixture-lib/fixture.json'))).toEqual(
+        libraryFolders.map(() => true),
+      );
       expect(existsSync(path.join(projectRoot, 'ROOT_POSTINSTALL'))).toBe(false);
-      for (const folder of libraryFolders) {
-        expect(existsSync(path.join(projectRoot, folder, 'fixture-lib/LIB_POSTINSTALL'))).toBe(
-          false,
-        );
-      }
+      expect(
+        libraryFolders.map((folder) => hasFile(folder, 'fixture-lib/LIB_POSTINSTALL')),
+      ).toEqual(libraryFolders.map(() => false));
 
       removeSnapshotDependencies(dependencies);
 
       expect(existsSync(path.join(projectRoot, 'node_modules'))).toBe(false);
-      for (const member of members) {
-        expect(existsSync(path.join(projectRoot, member))).toBe(false);
-      }
+      expect(members.map((member) => existsSync(path.join(projectRoot, member)))).toEqual(
+        members.map(() => false),
+      );
     });
   }
 });
