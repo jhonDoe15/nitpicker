@@ -1,4 +1,4 @@
-import { configError, isNonEmptyString, isPlainObject } from '../../../shared/config.mjs';
+import { configError, isNonEmptyString, isPlainObject } from '../../../../shared/config.mjs';
 
 const PROTOCOL_KEYS = ['type', 'open', 'close', 'steps', 'reason'];
 const MEMBER_LISTS = ['open', 'close', 'steps'];
