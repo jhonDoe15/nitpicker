@@ -275,8 +275,8 @@ An import that goes around the public entry point of a package.
 A mutant in code that no test runs.
 
 - **Printed as:** `mutation/mutant-nocoverage`, `pit/mutant-nocoverage` and `mutmut/mutant-nocoverage`
-- **Presets:** TypeScript, JavaScript, Java and Python
-- **Analyzers:** `mutation` (TypeScript, JavaScript and Python); `java` (Java)
+- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
+- **Analyzers:** `mutation` (TypeScript, JavaScript and Python); `java` (Java); `kotlin` (Kotlin)
 - **Why it is on:** Code no test reaches is not protected against change.
 - **Allowed form:** Add a test that runs the code and asserts its result.
 - **Exception:** If this is intended, add `{"rule":"mutant-nocoverage","paths":["<path>"],"function":"<function>","reason":"..."}` to "exceptions" in nitpicker.config.json.
@@ -288,8 +288,8 @@ A mutant in code that no test runs.
 A mutant (a small deliberate change to production code) that every test survived.
 
 - **Printed as:** `mutation/mutant-survived`, `pit/mutant-survived` and `mutmut/mutant-survived`
-- **Presets:** TypeScript, JavaScript, Java and Python
-- **Analyzers:** `mutation` (TypeScript, JavaScript and Python); `java` (Java)
+- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
+- **Analyzers:** `mutation` (TypeScript, JavaScript and Python); `java` (Java); `kotlin` (Kotlin)
 - **Why it is on:** A mutant that survives shows a test that runs the code without checking what it does.
 - **Allowed form:** Strengthen the test so that it fails for the mutant: assert the exact value instead of only running the code. An equivalent mutant is accepted with an exception after review.
 - **Exception:** If this is intended, add `{"rule":"mutant-survived","paths":["<path>"],"function":"<function>","reason":"..."}` to "exceptions" in nitpicker.config.json.
