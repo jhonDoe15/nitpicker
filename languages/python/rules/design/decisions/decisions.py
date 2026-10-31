@@ -1,0 +1,185 @@
+import ast
+
+from design.resolve.evaluate import evaluate
+from design.resolve.lookup import find_member
+from design.resolve.symbols import Klass, LiteralAlias
+from design.support.astutil import body_nodes, chain, chain_text, constant_text
+from design.types.classes import enum_cases
+
+
+def is_none(node):
+    return isinstance(node, ast.Constant) and node.value is None
+
+
+MATCH = getattr(ast, "Match", None)
+VALUE_PATTERN = getattr(ast, "MatchValue", None)
+SINGLETON_PATTERN = getattr(ast, "MatchSingleton", None)
+OR_PATTERN = getattr(ast, "MatchOr", None)
+AS_PATTERN = getattr(ast, "MatchAs", None)
+
+
+def enum_constant(scope, node):
+    base = evaluate(scope, node.value)
+    is_class = base is not None and base[0] == "cls"
+    cases = enum_cases(scope.index, base[1]) if is_class else None
+    return node.attr if node.attr in (cases or []) else None
+
+
+def constant_of(scope, node):
+    text = None if is_none(node) else constant_text(node)
+    if text is None and isinstance(node, ast.Attribute):
+        return enum_constant(scope, node)
+    return text
+
+
+def constants_of(scope, node):
+    if isinstance(node, (ast.Tuple, ast.List, ast.Set)):
+        found = [constant_of(scope, element) for element in node.elts]
+        return found if found and None not in found else None
+    single = constant_of(scope, node)
+    return [single] if single is not None else None
+
+
+def enum_subject(scope, expression):
+    value = evaluate(scope, expression)
+    if value is None or value[0] != "inst":
+        return None
+    typedef = value[1]
+    is_enum = (
+        isinstance(typedef, LiteralAlias)
+        or enum_cases(scope.index, typedef) is not None
+    )
+    return typedef.id if is_enum else None
+
+
+def field_subject(scope, expression):
+    if not isinstance(expression, ast.Attribute):
+        return None
+    base = evaluate(scope, expression.value)
+    if base is None or base[0] != "inst" or not isinstance(base[1], Klass):
+        return None
+    member = find_member(scope.index, base[1], expression.attr)
+    if member is None or member[0] is not None:
+        return None
+    return f"{member[1].id}.{expression.attr}"
+
+
+def subject_id(scope, expression):
+    if chain(expression) is None:
+        return None
+    return enum_subject(scope, expression) or field_subject(scope, expression)
+
+
+def equality_arm(scope, left, right):
+    for subject, other in ((left, right), (right, left)):
+        constants = constants_of(scope, other)
+        single = constants is not None and len(constants) == 1
+        if single and chain(subject) is not None:
+            return subject, constants
+    return None
+
+
+def comparison_arm(scope, test):
+    if not isinstance(test, ast.Compare) or len(test.ops) != 1:
+        return None
+    operator, left, right = test.ops[0], test.left, test.comparators[0]
+    if isinstance(operator, (ast.Eq, ast.Is)):
+        return equality_arm(scope, left, right)
+    if isinstance(operator, ast.In) and chain(left) is not None:
+        constants = constants_of(scope, right)
+        return (left, constants) if constants is not None else None
+    return None
+
+
+def arm_of(scope, test):
+    if isinstance(test, ast.BoolOp) and isinstance(test.op, ast.Or):
+        parts = [comparison_arm(scope, value) for value in test.values]
+        if None in parts or len({chain_text(p[0]) for p in parts}) != 1:
+            return None
+        return parts[0][0], [c for _, constants in parts for c in constants]
+    return comparison_arm(scope, test)
+
+
+def next_arm(scope, node, subject):
+    follower = node.orelse[0] if len(node.orelse) == 1 else None
+    arm = arm_of(scope, follower.test) if isinstance(follower, ast.If) else None
+    same = arm is not None and chain_text(arm[0]) == chain_text(subject)
+    return (follower, arm[1]) if same else None
+
+
+def chain_groups(scope, node, absorbed):
+    first = arm_of(scope, node.test)
+    if first is None:
+        return None
+    subject, groups = first[0], [first[1]]
+    while True:
+        absorbed.add(id(node))
+        if not node.orelse:
+            return subject, groups, False
+        found = next_arm(scope, node, subject)
+        if found is None:
+            return subject, groups, True
+        node, group = found
+        groups.append(group)
+
+
+def if_decisions(scope, nodes):
+    absorbed, found = set(), []
+    for node in sorted(nodes, key=lambda n: (n.lineno, n.col_offset)):
+        if id(node) in absorbed:
+            continue
+        chain_result = chain_groups(scope, node, absorbed)
+        if chain_result is None:
+            continue
+        identifier = subject_id(scope, chain_result[0])
+        if identifier is not None:
+            found.append(decision(identifier, chain_result[1:], node.lineno))
+    return found
+
+
+def decision(identifier, arms, line):
+    groups, otherwise = arms
+    fact = {"subject": identifier, "groups": groups, "line": line}
+    if otherwise:
+        fact["otherwise"] = True
+    return fact
+
+
+def pattern_constants(scope, pattern):
+    if VALUE_PATTERN is not None and isinstance(pattern, VALUE_PATTERN):
+        value = constant_of(scope, pattern.value)
+        return [value] if value is not None else None
+    if isinstance(pattern, SINGLETON_PATTERN):
+        return None if pattern.value is None else [str(pattern.value)]
+    if isinstance(pattern, OR_PATTERN):
+        parts = [pattern_constants(scope, p) for p in pattern.patterns]
+        return None if None in parts else [c for part in parts for c in part]
+    return None
+
+
+def case_groups(scope, cases):
+    groups, otherwise = [], False
+    for case in cases:
+        pattern = case.pattern
+        wildcard = isinstance(pattern, AS_PATTERN) and pattern.pattern is None
+        constants = None if wildcard else pattern_constants(scope, pattern)
+        if case.guard is not None or (constants is None and not wildcard):
+            return None
+        otherwise = otherwise or wildcard
+        groups.extend([] if wildcard else [constants])
+    return groups, otherwise
+
+
+def match_decision(scope, node):
+    identifier = subject_id(scope, node.subject)
+    arms = case_groups(scope, node.cases) if identifier is not None else None
+    return decision(identifier, arms, node.lineno) if arms is not None else None
+
+
+def decisions(scope):
+    nodes = list(body_nodes(scope.function.node))
+    found = if_decisions(scope, [n for n in nodes if isinstance(n, ast.If)])
+    if MATCH is not None:
+        matches = [match_decision(scope, n) for n in nodes if isinstance(n, MATCH)]
+        found.extend(m for m in matches if m is not None)
+    return sorted(found, key=lambda fact: fact["line"])

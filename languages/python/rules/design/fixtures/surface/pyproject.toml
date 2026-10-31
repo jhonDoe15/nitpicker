@@ -1,0 +1,6 @@
+[project]
+name = "six"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"

@@ -1,0 +1,32 @@
+import { sharedFactFindings } from '../../../../shared/rules/facts/evaluate.mjs';
+import { DESIGN_RULES } from '../../../../shared/project-rules/design/design-rules.mjs';
+import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { createContext } from '../unused-api/context.mjs';
+import { createProjectProgram } from '../unused-api/program.mjs';
+import { loadPackages } from '../unused-api/workspace/packages.mjs';
+import { designFacts } from './facts.mjs';
+
+export function projectDesignFacts({ projectRoot, configPath, environment }) {
+  const layout = readLayout(environment);
+  const packagesInfo = loadPackages(projectRoot, layout);
+  const program = createProjectProgram({
+    projectRoot,
+    configPath,
+    packagesInfo,
+    layout,
+    withoutTests: true,
+  });
+  const context = createContext({ program, projectRoot, layout, packagesInfo });
+  const frameworks = readHeadPolicy(environment).frameworks;
+  return designFacts({ context, layout, packagesInfo, frameworks, projectRoot });
+}
+
+export function analyzeDesignSignals({ projectRoot, configPath, analyzerName, environment }) {
+  const layout = readLayout(environment);
+  return sharedFactFindings(projectDesignFacts({ projectRoot, configPath, environment }), {
+    language: layout.javascript ? 'javascript' : 'typescript',
+    analyzerName,
+    policy: readHeadPolicy(environment),
+    rules: DESIGN_RULES,
+  });
+}

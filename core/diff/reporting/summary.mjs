@@ -5,6 +5,7 @@ import { foldMutants } from './format/mutants.mjs';
 import { noteSummaryLines } from './format/notes.mjs';
 import { singleLine } from './format/text.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
+import { designNoteLines, designNotesHeading, newDesignNotes } from './review/design-notes.mjs';
 import {
   TESTS_FAILED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
@@ -40,10 +41,21 @@ export function renderConsoleSummary(
     style(text, [ANSI.bold, ANSI.yellow], color),
   );
   appendHeldSummary(lines, report.unchangedFindings, color);
+  appendDesignNotes(lines, report.newFindings, color);
   appendNoteSummary(lines, report.notes, color);
   appendToolErrorSummary(lines, report.toolErrors, color);
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
   return `${lines.join('\n')}\n`;
+}
+
+function appendDesignNotes(lines, newFindings, color) {
+  const notes = newDesignNotes(newFindings);
+  if (notes.length > 0) {
+    lines.push(
+      style(designNotesHeading(notes.length), [ANSI.dim], color),
+      ...designNoteLines(notes),
+    );
+  }
 }
 
 function appendHeldSummary(lines, unchangedFindings, color) {

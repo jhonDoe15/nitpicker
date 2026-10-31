@@ -215,6 +215,7 @@ function usedFactSettings(config) {
   const layout = isPlainObject(config.layout) ? config.layout : {};
   return [
     ...(config.testConsole === undefined ? [] : ['testConsole']),
+    ...(config.protocols === undefined ? [] : ['protocols']),
     ...FEATURE_LAYOUT_KEYS.filter((key) => layout[key] !== undefined).map((key) => `layout.${key}`),
   ];
 }

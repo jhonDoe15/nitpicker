@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { LANGUAGES, RULES } from '../../policy.mjs';
 import { exceptionHint } from '../exceptions.mjs';
+import { DESIGN_RULES } from '../../project-rules/design/design-rules.mjs';
 import { sharedFactFindings } from './evaluate.mjs';
 import {
   FACT_RULE_LANGUAGES,
@@ -58,7 +59,7 @@ describe('the shared fact rules', () => {
     ).toThrow(/test-console-output is not registered for cobol/u);
   });
 
-  it.each([['python'], ['typscript']])(
+  it.each([['cobol'], ['typscript']])(
     'fails for %s, which registers no rule yet, instead of finding nothing',
     (language) => {
       expect(() => sharedFactFindings({}, { language, analyzerName: 'facts' })).toThrow(
@@ -91,6 +92,18 @@ describe('the shared fact rules', () => {
     [
       { layout: { featureRoots: [1] } },
       'policy.layout.featureRoots must be an array of folder globs',
+    ],
+    [
+      { protocols: [{ type: 'S', open: [], close: ['c'] }] },
+      'policy.protocols must be an array of { type, open, close, steps?, reason? } entries',
+    ],
+    [
+      { protocols: [{ type: 'S', open: ['o'], close: ['c'], steps: 'x' }] },
+      'policy.protocols must be an array of { type, open, close, steps?, reason? } entries',
+    ],
+    [
+      { protocols: [{ type: 'S', open: ['o'], close: ['c'], reason: '' }] },
+      'policy.protocols must be an array of { type, open, close, steps?, reason? } entries',
     ],
     [{ testConsole: 'x' }, 'policy.testConsole must be an object'],
     [{ layout: 'x' }, 'policy.layout must be an object'],
@@ -148,16 +161,18 @@ describe('the shared fact rules', () => {
       'test-only-export',
       'doc-comment-content',
       CONSOLE,
+      ...DESIGN_RULES,
     ]);
-    expect(registeredFactRules('python')).toEqual([]);
-    withLanguageRegistered('sibling-copy-edit', 'python', () => {
+    expect(registeredFactRules('cobol')).toEqual([]);
+    withLanguageRegistered('sibling-copy-edit', 'cobol', () => {
       expect(sharedFactExceptionRules()).toEqual([
         ...jvmRules,
         'test-only-export',
         'doc-comment-content',
         CONSOLE,
+        ...DESIGN_RULES,
       ]);
-      expect(registeredFactRules('python')).toEqual(['sibling-copy-edit']);
+      expect(registeredFactRules('cobol')).toEqual(['sibling-copy-edit']);
     });
   });
 });

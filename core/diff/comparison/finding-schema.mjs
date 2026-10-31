@@ -1,4 +1,5 @@
 import { normalizeGitPath } from '../git/normalize.mjs';
+import { isRecord } from '../../../shared/rules/facts/checks.mjs';
 
 const CLASSIFICATIONS = new Set(['enforceable', 'descriptive', 'tool-error']);
 const HTTP_URL = /^https?:\/\/\S+$/u;
@@ -173,8 +174,4 @@ function normalizeFindingPath(value, context) {
     throw new TypeError(`${context} must stay within the analyzed project`);
   }
   return normalizedPath;
-}
-
-function isRecord(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
