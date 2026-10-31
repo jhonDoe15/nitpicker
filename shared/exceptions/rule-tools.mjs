@@ -105,4 +105,5 @@ export const PRESET_TOOLS = {
   java: JVM_ANALYZER_TOOLS,
   kotlin: JVM_ANALYZER_TOOLS,
   python: [...SHARED_TOOLS, 'crap', 'coverage-py', 'mutmut', 'duplicates', 'coupling'],
+  go: SHARED_TOOLS,
 };
