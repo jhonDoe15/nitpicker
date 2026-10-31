@@ -45,12 +45,12 @@ export function run(
 ) {
   const result = execute(context, command, { timeout: timeoutMs, ...options });
   if (result.error !== undefined || !accepts(accepted, result.status)) {
-    throw failure({ context, command, result, rule, timeoutMs });
+    throw failure({ command, result, rule, timeoutMs });
   }
   return result;
 }
 
-export function failure({ context, command, result, rule, timeoutMs = toolTimeoutMs(context) }) {
+export function failure({ command, result, rule, timeoutMs = TOOL_TIMEOUT_MS }) {
   return Object.assign(new Error(describeFailure({ command, result, timeoutMs })), { rule });
 }
 

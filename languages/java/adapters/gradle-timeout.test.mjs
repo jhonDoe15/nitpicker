@@ -122,9 +122,10 @@ describe('the Maven execution budget', () => {
     vi.stubEnv(BUDGET_VARIABLE, '10');
 
     expect(runMavenBuild()).toBe(45 * MINUTE_MS);
-    for (const kotlin of [false, true]) {
-      expect(createJavaAnalyzer({ kotlin }).timeoutMs).toBe(91 * MINUTE_MS);
-    }
+    expect([
+      createJavaAnalyzer().timeoutMs,
+      createJavaAnalyzer({ kotlin: true }).timeoutMs,
+    ]).toEqual([91 * MINUTE_MS, 91 * MINUTE_MS]);
   });
 
   it.each(['0', '', '1.5', '45m', '17896'])('rejects invalid minutes %j', (value) => {
