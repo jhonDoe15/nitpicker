@@ -9,6 +9,14 @@ export function joinRepositoryPath(directory, name) {
   return directory === '' ? name : `${directory}/${name}`;
 }
 
+export function repositoryFindingPath(projectPath, findingPath) {
+  const directory = repositoryPath(projectPath);
+  if (findingPath === '') {
+    return directory === '' ? '.' : directory;
+  }
+  return joinRepositoryPath(directory, findingPath);
+}
+
 export function relativeToProject(filePath, projectRelativePath) {
   const normalizedPath = normalizeGitPath(filePath);
   if (projectRelativePath === '.' || projectRelativePath.length === 0) {

@@ -125,7 +125,7 @@ const BANNED = {
     '28 PLE1205',
     '31 PLE1520',
   ],
-  'tests/test_pitfalls.py': ['5 DTZ001', '6 PLW0133'],
+  'tests/test_pitfalls.py': ['6 PLW0133'],
   'trio_calls.py': ['5 ASYNC105', '6 ASYNC115', '7 ASYNC116'],
 };
 const OVERLAP = {
@@ -135,7 +135,7 @@ const OVERLAP = {
   'logs.py': ['3 LOG015'],
   'service.py': ['7 process-env-access', '8 process-env-access', '9 process-env-access'],
   'tests/test_asserts.py': ['2 tautological-assert'],
-  'tests/test_faked.py': ['10 DTZ005', '17 ASYNC110'],
+  'tests/test_faked.py': ['17 ASYNC110'],
   'tests/test_waits.py': [
     '7 sleep-in-test',
     '9 sleep-in-test',
@@ -150,8 +150,8 @@ const EXCEPTED = {
   'logs.py': ['3 G010'],
   'service.py': ['7 PLW1507', '8 PLW1508', '9 PLE1507'],
   'tests/test_asserts.py': ['2 PLW0129'],
-  'tests/test_faked.py': ['10 DTZ005', '17 ASYNC110'],
-  'tests/test_waits.py': ['8 ASYNC110', '10 DTZ011', '11 DTZ003'],
+  'tests/test_faked.py': ['17 ASYNC110'],
+  'tests/test_waits.py': ['8 ASYNC110'],
 };
 
 function pythonFiles(folder) {
@@ -248,14 +248,11 @@ describe.skipIf(!enabled)('the shipped Ruff pitfall selection', () => {
     expect(findings.filter(inside('allowed'))).toEqual([]);
   });
 
-  it('applies the families to test files too', () => {
+  it('applies the families to test files too, except DTZ', () => {
     expect(testFiles.filter((file) => file.startsWith('banned/'))).toEqual([
       'banned/tests/test_pitfalls.py',
     ]);
-    expect(sitesBy(findings, 'banned')['tests/test_pitfalls.py']).toEqual([
-      '5 DTZ001',
-      '6 PLW0133',
-    ]);
+    expect(sitesBy(findings, 'banned')['tests/test_pitfalls.py']).toEqual(['6 PLW0133']);
   });
 
   it('keeps finding identities stable across line movement and names the exception route', () => {
