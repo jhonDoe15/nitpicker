@@ -77,12 +77,16 @@ describe('quality diff temporary worktrees and reports', () => {
       {
         tool: 'fake-quality-analyzer',
         snapshot: 'base',
-        message: 'fake-quality-analyzer timed out after 100 ms',
+        message:
+          'fake-quality-analyzer timed out after 100 ms. To give it more time, set ' +
+          '"analyzerTimeoutMinutes": { "fake-quality-analyzer": <minutes> } in nitpicker.config.json',
       },
       {
         tool: 'fake-quality-analyzer',
         snapshot: 'head',
-        message: 'fake-quality-analyzer timed out after 100 ms',
+        message:
+          'fake-quality-analyzer timed out after 100 ms. To give it more time, set ' +
+          '"analyzerTimeoutMinutes": { "fake-quality-analyzer": <minutes> } in nitpicker.config.json',
       },
     ]);
     expect(worktreePaths(repository.root)).toEqual([repository.root]);

@@ -5,7 +5,6 @@ import path from 'node:path';
 import { wrapperTarget } from '../adapters/gradle-wrapper/gradle-command.mjs';
 
 const MAVEN_TIMEOUT_MS = 15 * 60 * 1000;
-const TOOL_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const MAX_ERROR_LINES = 40;
 const MILLISECONDS_PER_MINUTE = 60_000;
@@ -68,7 +67,8 @@ function spawnFailure(error, { command, projectRoot, timeoutMs }) {
   return new Error(
     `Maven did not finish in ${projectRoot} within ${duration(timeoutMs)} and was stopped. ` +
       'Its post-integration-test steps may not have run, so containers or servers the build ' +
-      'started may still be running',
+      'started may still be running. Set NITPICKER_MAVEN_TIMEOUT_MINUTES to give each Maven ' +
+      'command more time',
   );
 }
 
@@ -120,6 +120,7 @@ export function runJava({
   cwd,
   accept = () => true,
   spawn = spawnSync,
+  timeoutMs = MAVEN_TIMEOUT_MS,
 }) {
   const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-'));
   try {
@@ -135,7 +136,7 @@ export function runJava({
       cwd,
       encoding: 'utf8',
       maxBuffer: MAX_OUTPUT_BYTES,
-      timeout: TOOL_TIMEOUT_MS,
+      timeout: timeoutMs,
     });
     if (result.error?.code === 'ENOENT') {
       throw new Error(
