@@ -1,9 +1,11 @@
 import { hasAwaitility } from '../../../messages/wait-advice.mjs';
 import { enumPredicateFindings } from './main/enum-predicates.mjs';
+import { fanOutFindings } from './main/fan-out/fan-out.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
 import { loadEffectFindings } from './main/load-effects.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
 import { unusedOptionFindings } from './main/unused-options/unused-options.mjs';
+import { validationTargetFindings } from './validation/validation-targets.mjs';
 import { buildViews, javaMentions } from './build-view.mjs';
 import { productionTypeResolver } from './production-types.mjs';
 import { findingFactory } from './review-finding.mjs';
@@ -13,7 +15,7 @@ import { testHonestyFindings } from './tests/test-honesty.mjs';
 import { testWaitFindings } from './tests/test-waits.mjs';
 
 function projectView(context) {
-  const { reportRoot, manifest, modules = [] } = context;
+  const { reportRoot, projectRoot, manifest, modules = [] } = context;
   const build = (context.buildViews ?? buildViews())(context);
   const own = build.facts.get(reportRoot).files;
   const siblings = modules.filter((module) => module.reportRoot !== reportRoot);
@@ -28,7 +30,7 @@ function projectView(context) {
       ),
     ),
   ];
-  return { own, projectFiles, javaRoots, build };
+  return { own, projectFiles, javaRoots, projectRoot, build };
 }
 
 function contextRoots(manifest, modules) {
@@ -36,6 +38,11 @@ function contextRoots(manifest, modules) {
     ...(entry?.kotlinSourceRoots ?? []),
     ...(entry?.kotlinTestSourceRoots ?? []),
   ]);
+}
+
+export function readKotlinFanOutFindings(context) {
+  const { own, projectFiles, javaRoots, projectRoot } = projectView(context);
+  return fanOutFindings({ own, projectFiles, projectRoot, javaRoots });
 }
 
 export function readKotlinReviewFindings(context) {
@@ -63,6 +70,7 @@ export function readKotlinReviewFindings(context) {
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
     ...singularPluralFindings(own, { finding }),
+    ...validationTargetFindings(own, { finding }),
     ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...unusedOptionFindings(own, {
       finding,
