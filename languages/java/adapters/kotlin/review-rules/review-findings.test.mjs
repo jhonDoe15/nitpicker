@@ -190,6 +190,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/ExhaustiveEnumPredicate',
       'pmd/StaticForwardingWrapper',
       'pmd/SingularAndPluralMember',
+      'pmd/ValidationAnnotationTarget',
       'pmd/ClassLoadEffect',
       ...SPRING_RULES.map((rule) => `pmd/${rule}`),
       'pmd/SpringQueryConcatenation',
@@ -197,17 +198,21 @@ describe('Kotlin exception rules for the review rules', () => {
       'kotlin-source/BlockingCallInCoroutine',
       'kotlin-source/TimeoutWithoutSuspension',
     ]);
-    for (const rule of KOTLIN_REVIEW_EXCEPTION_RULES) {
-      expect(KOTLIN_EXCEPTION_RULES).toContain(rule);
+  });
+
+  it.each(KOTLIN_REVIEW_EXCEPTION_RULES)(
+    'accepts an exception for %s and lists it among the Kotlin exception rules',
+    (rule) => {
       const config = {
         preset: 'kotlin',
         exceptions: [{ rule, paths: ['src/**'], reason: 'intended' }],
       };
+      expect(KOTLIN_EXCEPTION_RULES).toContain(rule);
       expect(() => {
         validateKotlinOptions(config);
       }).not.toThrow();
-    }
-  });
+    },
+  );
 
   const onKotlinSource = (rule) => ({
     preset: 'kotlin',

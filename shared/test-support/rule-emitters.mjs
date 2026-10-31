@@ -53,6 +53,7 @@ const LANGUAGE_SOURCES = {
   python: ['languages/python'],
   java: ['languages/java'],
   kotlin: ['languages/java'],
+  go: ['languages/go'],
 };
 const EVERY_LANGUAGE_SOURCES = ['shared/hygiene', 'shared/history'];
 
