@@ -30,6 +30,8 @@ import {
 } from '../../../languages/typescript/preset/eslint-project/project-config.mjs';
 import { replacedEslintOptions } from '../../../languages/typescript/adapters/lint-engine/replaced-options.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
+import { readImportLinterConfig } from '../../../languages/python/adapters/analysis/import-linter/import-linter-config.mjs';
+import { attempt } from '../../../languages/python/adapters/project-tools/project-tool-layers.mjs';
 import { GOLANGCI_FILES } from '../../../languages/go/adapters/formatting/go-formatters.mjs';
 import { PYTHON_TOOLS, pythonConfigEntries } from './python-tool-configs.mjs';
 
@@ -192,6 +194,25 @@ function appliedConfigs(base, head) {
     : {};
 }
 
+function importLinterOn(config) {
+  return config.preset === 'python' && config.python?.importLinter !== false;
+}
+
+function importLinterSide({ config, root }) {
+  return importLinterOn(config) ? attempt(() => readImportLinterConfig(root)).value : undefined;
+}
+
+function importLinterEntries(base, head) {
+  return importLinterOn(head.config)
+    ? [
+        {
+          tool: 'import-linter',
+          importLinter: { base: importLinterSide(base), head: importLinterSide(head) },
+        },
+      ]
+    : [];
+}
+
 function sameFingerprints(base, head) {
   return (
     base.size === head.size &&
@@ -207,11 +228,11 @@ function eslintReview(head, prints, replacedOptions) {
   return { replacedOptions: replacedOptions(head.config, head.root) };
 }
 
-export function readToolConfigs(
-  base,
-  head,
-  { gitBlobId, replacedOptions = replacedEslintOptions },
-) {
+export function readToolConfigs(base, head, readers) {
+  return [...toolEntries(base, head, readers), ...importLinterEntries(base, head)];
+}
+
+function toolEntries(base, head, { gitBlobId, replacedOptions = replacedEslintOptions }) {
   return [
     'pmd',
     'checkstyle',
