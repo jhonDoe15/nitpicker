@@ -17,6 +17,7 @@ import {
   PYTHON_TOP_LEVEL_EXCEPTION_RULES,
   validatePythonConfig,
 } from '../../languages/python/adapters/configuration/python-config.mjs';
+import { validateGoConfig } from '../../languages/go/adapters/configuration/go-config.mjs';
 import { canonicalRule } from '../../shared/exceptions/rule-names.mjs';
 import { liftsOnlyRules, validateExceptions } from '../../shared/exceptions/validation.mjs';
 import { RULES } from '../../shared/policy.mjs';
@@ -30,6 +31,7 @@ import { i18nRuleIds } from '../../languages/typescript/preset/eslint-config/i18
 import { validateScope, validateTestConsole } from './scopes/scope-settings.mjs';
 import { validateHistory } from './scopes/history-settings.mjs';
 import { TYPESCRIPT_PRESETS, validateLayout } from './scopes/layout-settings.mjs';
+import { didYouMean, suggestionOrAllowed } from '../../shared/messages/closest-match.mjs';
 
 const OPTIONAL_VALIDATORS = [
   [
@@ -45,7 +47,7 @@ const OPTIONAL_VALIDATORS = [
   ['analyzers', validateCustomAnalyzers],
   ['analyzerTimeoutMinutes', validateAnalyzerTimeouts],
 ];
-export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python'];
+export const SUPPORTED_PRESETS = ['typescript', 'javascript', ...GRADLE_PRESETS, 'python', 'go'];
 
 export const KEYS = [
   'base',
@@ -67,6 +69,7 @@ export const KEYS = [
   'kotlin',
   'spring',
   'conventions',
+  'go',
   'history',
 ];
 
@@ -100,7 +103,7 @@ export function validateConfig(config) {
 function validateKeys(config) {
   for (const key of Object.keys(config)) {
     if (!KEYS.includes(key)) {
-      throw configError(`unknown key "${key}". Allowed keys: ${KEYS.join(', ')}`);
+      throw configError(`unknown key "${key}"${suggestionOrAllowed(key, KEYS)}`);
     }
   }
 }
@@ -118,6 +121,7 @@ function validateScalars(config) {
   }
   validateJavascriptConfig(config);
   validateKotlinOptions(config);
+  validateGoConfig(config);
   validateSpringOptions(config);
   validatePythonConfig(
     config,
@@ -243,7 +247,9 @@ function validateCustomAnalyzerEntry(entry, label) {
   }
   for (const key of Object.keys(entry)) {
     if (!CUSTOM_ANALYZER_KEYS.includes(key)) {
-      throw configError(`unknown key "${key}" in "${label}"`);
+      throw configError(
+        `unknown key "${key}" in "${label}"${didYouMean(key, CUSTOM_ANALYZER_KEYS)}`,
+      );
     }
   }
   if (!isNonEmptyString(entry.name) || !isNonEmptyString(entry.command)) {

@@ -11,6 +11,11 @@ findings. The comparison is the language-neutral core (`compareFindings`, rename
 which the conformance suite in [`spec/conformance`](../spec/conformance/README.md) covers. The Java
 side contributes only two things: producing reports, and converting them into findings.
 
+Every rule the preset can report has an entry in the [rule reference](rules/README.md): [PMD](rules/java-pmd.md), [Checkstyle](rules/java-checkstyle.md), [SpotBugs](rules/java-spotbugs.md), [Error Prone](rules/java-errorprone.md) and [nitpicker's own rules](rules/java-nitpicker.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
+
+The JDK, Gradle or Maven a CI job needs, and recipes for GitHub Actions, GitLab CI and Jenkins, are in
+[nitpicker in CI](ci.md#toolchains-by-preset).
+
 ## How it works
 
 ```
@@ -38,7 +43,9 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   included when it applies it; paths in findings are relative to the directory Gradle runs in, so a
   subproject's findings carry its folder (`lib/src/main/java/...`). A build where no project applies
   the plugin, or a project whose reports are missing, is a tool error, never a pass. Projects of
-  an `includeBuild` composite build and `buildSrc` are separate builds and are not analyzed. Each project
+  an `includeBuild` composite build (in `settings.gradle` or in `pluginManagement`, such as a
+  `build-logic` convention-plugin build) and `buildSrc` are separate builds: they are neither
+  analyzed nor configured, so Gradle builds their plugins as it would without nitpicker. Each project
   runs every tool (tests, JaCoCo, PIT included) in the one Gradle invocation, so a build of several
   projects costs about the sum of single-project runs; Gradle's own `--parallel` setting applies.
   File limits and coupling (with the stability direction) are evaluated once over all projects, as
@@ -462,7 +469,8 @@ classpath and its `test` task, and adds no test library to the project.
     `folder-depth-limit`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`, the structure rules (`function-lines-limit`,
     `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`),
     `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
-    `mutant-nocoverage` and `stability-direction`, and the
+    `mutant-nocoverage` and `stability-direction`, the reuse rules `duplicate-definition`,
+    `sibling-copy-edit` and `exported-name-collision` (see "Reuse rules"), and the
     [dependency and repository checks](usage.md#dependency-and-repository-checks). `function` names one method
     (`Big.run`, parameter lists ignored; matched exactly, so `run` alone does not accept
     `Big.run`) for the structure, CRAP, coverage and mutation rules, and is required for
@@ -602,7 +610,8 @@ default, and their messages name it:
 | `AssignmentInOperand`              | An assignment in a `while` condition (`while ((line = reader.readLine()) != null)`).                                                                                                               |
 | `GuardLogStatement`                | `trace` and `debug` (and JUL `fine` levels) with placeholders whose values are variables, fields, literals or a no-argument call on one (`order.id()`); a guard only when an argument is computed. |
 | `LogStringConcatenation` (new)     | `info`, `warn` and `error` with placeholders, for SLF4J, Log4j 2, commons-logging, JUL and `System.Logger`.                                                                                        |
-| `GeneratedOnHandWrittenCode` (new) | No `@Generated` annotation on a class, method or constructor: JaCoCo and PIT skip what it marks.                                                                                                   |
+| `GeneratedOnHandWrittenCode` (new) | No annotation whose name contains `Generated` on a class, method or constructor (JaCoCo skips them all, PIT skips `@Generated`); put JPA `@GeneratedValue` on the field.                           |
+| `MutationIgnoreMarker` (new)       | No `@DoNotMutate` or `@CoverageIgnore`: PIT does not mutate what they mark.                                                                                                                        |
 | `DontCallThreadRun`                | `super.run()` inside a `Thread` subclass's `run()`; any other `run()` call on a `Thread` is `start()`.                                                                                             |
 | `AvoidFileStream`                  | A stream, reader or writer over a `FileDescriptor` (`new FileInputStream(FileDescriptor.in)`), which `Files` has no form for.                                                                      |
 | `AvoidArrayLoops`                  | A copy loop that subtracts the loop variable in an index (a reversed copy), which `System.arraycopy` cannot do.                                                                                    |
@@ -699,14 +708,18 @@ identity when the value changes: editing such a line counts as a resolved plus a
   fails, as it does for TypeScript; for a fully covered method the message says to split off a
   branchy part. `crap-coverage-unknown` (enforceable) when no JaCoCo method
   matches or the method has neither line nor branch counters; its Java message names the two causes,
-  no test runs it or it is annotated `@Generated`.
+  no test runs it or it carries an annotation whose name contains `Generated`.
 - **JaCoCo filters.** The project's own JaCoCo settings (`jacocoTestReport.classDirectories`
   excludes, `test.jacoco` includes and excludes) are reset, so a class cannot leave the coverage
-  report through `build.gradle`. JaCoCo and PIT still skip code annotated `@Generated`. An
+  report through `build.gradle`. JaCoCo still skips a class or method carrying an annotation whose
+  name contains `Generated` (`@ExcludeFromJacocoGeneratedReport` too), and PIT skips `@Generated`,
+  `@DoNotMutate` and `@CoverageIgnore`. An
   annotation whose value names a known generator (MapStruct, Dagger, AutoValue, Immutables and the
   others the generated-sources check lists) makes the whole file generated, so its findings are
   dropped and no `pmd/GeneratedOnHandWrittenCode` is reported; adding one to a file the base checked
-  is a policy loosening. Any other `@Generated` is the `pmd/GeneratedOnHandWrittenCode` finding.
+  is a policy loosening. Any other such annotation is the `pmd/GeneratedOnHandWrittenCode` finding
+  (also JPA `@GeneratedValue` on a getter: put it on the field), and `@DoNotMutate` or
+  `@CoverageIgnore` is `pmd/MutationIgnoreMarker`.
   Only violations are findings; the
   per-function metric findings of the TypeScript check are not produced.
 - **Identity.** `function:<signature>`, for example `function:Calc.classify(int, int, String)`:
@@ -1338,12 +1351,46 @@ always stay.
 on the probe project those are, among others, `LooseCoupling` and `JdkObsolete` on a `Vector`
 field, `HidingField` and `URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD`, `RandomModInteger` and
 `DMI_RANDOM_USED_ONLY_ONCE`, `ClassNewInstance` and `REFLC_REFLECTION_MAY_INCREASE_ACCESSIBILITY_OF_CLASS`,
-`SelfAssignment` and `AvoidReassigningParameters`, and Checkstyle's `MemberName` with
-`FieldCanBeStatic`. `adapters/overlaps/resolved-overlaps.test.mjs` pins every cross-tool line left
+`SelfAssignment` and `AvoidReassigningParameters`. `adapters/overlaps/resolved-overlaps.test.mjs` pins every cross-tool line left
 on the probe's findings (`fixtures/probe-findings.json`, every enabled check with nothing turned off
-for overlap), the partial-coverage cases kept, and the policy order;
-`static-overlaps.test.mjs` checks each pair in its scope; a unit test checks that this list is the
-table:
+for overlap), the pairs that drop a secondary on those findings (every pair of the table must have probe
+evidence, so a new pair comes with a probe source that makes both rules report the same site),
+the partial-coverage cases kept,
+and the policy order; `static-overlaps.test.mjs` checks each pair in its scope; a unit test checks
+that this list is the table.
+
+`fixtures/probe-findings.json` holds the probe sources (`sources`) and the findings of a full Java
+preset run over them with overlap resolution off (`findings`: tool, rule, path, line, and the symbol
+of a SpotBugs finding), sorted so a run is reproducible. Do not edit the findings by hand after a
+tool upgrade or a new pair: `npm run gen:overlap-probe` copies the sources into a throwaway Gradle
+project (`adapters/fixtures/gradle-project` with JUnit 4 and JSpecify added), runs the Java preset
+with the pinned tools on it (`collectJavaFindings` with `resolveOverlaps` set to the identity;
+this needs a JDK 21 and Gradle, and takes several minutes) and rewrites the file. `-- --build=maven`
+runs the same sources as a Maven project (`maven/fixtures/single/pom.xml` with the same two
+dependencies) instead, and `--gradle=<command>` or `--maven=<command>` names another Gradle or Maven.
+The overlap table serves both builds, so both must report the same findings. To probe a new case,
+add the source file to `sources` first and run the command. `node scripts/gen-overlap-probe.mjs
+--check` writes nothing and exits 1 with the added and removed findings when the committed file
+differs from a fresh run; `adapters/java-e2e/overlap-probe.e2e.test.mjs` runs the same check for
+Gradle and for Maven in the Java end-to-end suite (`npm run test:java`), so the Java CI job fails on
+drift and on a finding one build reports and the other does not. After a regeneration, review the
+diff: a disappearing finding is a rule turned off or changed in the preset, and every pair must
+still match (the pair test above).
+
+Two pairs were dropped and one changed because the two rules could never report one site with the
+preset's configuration, found by probing each pair. `errorprone/AnnotationPosition` over
+Checkstyle's `AnnotationLocation` is gone: both suppression files turn `AnnotationLocation` off,
+so Checkstyle never reports it. `errorprone/HardCodedSdCardPath` over PMD `DoNotHardCodeSDCard`
+is gone: the Error Prone check reports only under the javac option `-XDandroidCompatible=true`,
+which the runner does not set, so only PMD reports a hard-coded `/sdcard` path.
+`errorprone/ClassName` over `checkstyle/OuterTypeFilename` has the `file` scope: Error Prone names
+the first line of the file and Checkstyle the class line. SpotBugs reports `MS_MUTABLE_ARRAY` and
+`MS_PKGPROTECT` for a public static final array only when something reads the field (outside its
+package for the first, inside it for the second), so the probe has a class that reads them.
+`pmd/ClassLoadEffect` over `spotbugs/SC_START_IN_CTOR` is matched by a constructor that starts a
+thread and runs for a static field: both name the `start()` line.
+
+The pairs:
 
 - line: `errorprone/ArrayHashCode` over `spotbugs/DMI_INVOKING_HASHCODE_ON_ARRAY`
 - line: `errorprone/ArrayEquals` over `spotbugs/EC_BAD_ARRAY_COMPARE`
@@ -1422,10 +1469,8 @@ table:
 - line: `errorprone/NotJavadoc` over `checkstyle/InvalidJavadocPosition`
 - line: `errorprone/EmptyBlockTag` over `checkstyle/NonEmptyAtclauseDescription`
 - javadoc: `errorprone/MissingSummary` over `checkstyle/SummaryJavadoc`
-- line: `errorprone/AnnotationPosition` over `checkstyle/AnnotationLocationMostCases`, `checkstyle/AnnotationLocationVariables`
-- line: `errorprone/ClassName` over `checkstyle/OuterTypeFilename`
+- file: `errorprone/ClassName` over `checkstyle/OuterTypeFilename`
 - line: `errorprone/AssignmentExpression` over `pmd/AssignmentInOperand`
-- line: `errorprone/HardCodedSdCardPath` over `pmd/DoNotHardCodeSDCard`
 - line: `errorprone/ForEachIterable` over `pmd/ForLoopCanBeForeach`
 - line: `errorprone/Finally` over `pmd/DoNotThrowExceptionInFinally`, `pmd/ReturnFromFinallyBlock`
 - member: `errorprone/DoubleBraceInitialization` over `pmd/DoubleBraceInitialization`
@@ -1433,6 +1478,7 @@ table:
 - line: `errorprone/JdkObsolete` over `errorprone/StringCharset`
 - line: `errorprone/NonOverridingEquals` over `pmd/SuspiciousEqualsMethodName`
 - line: `errorprone/DefaultLocale` over `pmd/SimpleDateFormatNeedsLocale`
+- line: `pmd/LegacyCalendarApi` over `pmd/AvoidCalendarDateCreation`, `pmd/SimpleDateFormatNeedsLocale`, `errorprone/DefaultLocale`, `errorprone/DateFormatConstant`
 - line: `pmd/UseLocaleWithCaseConversions` over `errorprone/StringCaseLocaleUsage`
 - line: `spotbugs/ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD` over `errorprone/StaticAssignmentInConstructor`, `pmd/AssignmentToNonFinalStatic`
 - line: `errorprone/StaticAssignmentInConstructor` over `pmd/AssignmentToNonFinalStatic`
@@ -1740,7 +1786,8 @@ metamodel generator, OpenAPI and Swagger generators, jOOQ, Room, Micronaut), whe
 `generated/`, `generated-sources/` or `gen/` folder and its first five lines say `@generated` or
 `DO NOT EDIT`. Lombok's `delombok` writes no header, so its output counts through the build
 folder. A generic marker in a normally named file, an `@Generated` annotation with another value
-and a header below the code exempt nothing; hand-written code carrying `@Generated` stays the
+and a header below the code exempt nothing; hand-written code carrying `@Generated` (or any
+annotation whose name contains `Generated`) stays the
 `pmd/GeneratedOnHandWrittenCode` finding. The evals harness fails a case whose agent wrote one of
 these markers into a file it wrote by hand.
 
@@ -2372,9 +2419,13 @@ excludes the main source directories. `pmd-main-ruleset.xml` (and `spring-rulese
 run on main sources only, through the generated `pmd-main.xml` that excludes the test directories.
 The init script and `maven/maven-lint.mjs` generate both, so the scopes are the same on both
 builds. The main-only set holds PMD's `security` category, since tests encrypt with fixed keys, and the API
-design rules (`ExhaustiveEnumPredicate`, `StaticForwardingWrapper`, `SingularAndPluralMember`): like the TypeScript preset's
-`exhaustive-union-predicate`, `no-forwarding-wrapper` and `no-singular-and-plural-prop`, which run
+design rules (`ExhaustiveEnumPredicate`, `StaticForwardingWrapper`, `SingularAndPluralMember`, `TriStateBoolean`,
+`ParameterMutation`, `CompatibilityShim`, `LegacyCalendarApi`): like the TypeScript preset's
+`exhaustive-union-predicate`, `no-forwarding-wrapper`, `no-singular-and-plural-prop`,
+`no-tri-state-boolean`, `no-parameter-mutation` and `no-compatibility-shim`, which run
 on production files only, they leave test helpers alone, since tests are not an API anyone calls.
+`UnboundedFanOut` is main-only too, like `unbounded-fan-out` in the other presets: a test that starts
+many calls at once talks to fakes.
 It also holds `ClassLoadEffect`, the counterpart of the TypeScript preset's
 `nitpicker/report-module-load-effects`: a test class may open a file or start a server in a static
 setup, production code may not.
@@ -2391,6 +2442,11 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
 | `pmd/StaticForwardingWrapper`   | In main sources: a static method with parameters whose body only passes them, in order, to another static or same-class method (`return Prices.sum(a, b);`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Call the target directly. Factories named `of` or `from` and copies (`List.copyOf`, `Collections.unmodifiableList`) are allowed.                                                                                                                                                                                                                                               |
 | `pmd/SingularAndPluralMember`   | In main sources: a record, or a `@ConfigurationProperties` class or a class nested in one, with both `tag` and `tags` (`-s`, `-es`, `y`/`ies`) where the plural is a `List`, `Set`, `Collection`, `Iterable` or array of the singular's type.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Keep the plural; pass one item as a one-element list.                                                                                                                                                                                                                                                                                                                          |
 | `pmd/ClassLoadEffect`           | In main sources: a call with an external effect that runs while the class loads: in a `static` block or `static` field initializer (interface constants too), an enum constant's arguments or body fields, an anonymous class created in one of those (double-brace initialization), the field, instance initializer or constructor of an instance the class creates in its own `static` code (`static final Db INSTANCE = new Db()`, `new Box<>()`, a `static` factory such as `INSTANCE = create()`, a constructor that `this(...)` reaches from the one created), or a method of the same class that one of those calls without a receiver, on `this` or through the class name. Effects, by resolved type: JDBC (`DriverManager.getConnection`, `DataSource.getConnection`, `Persistence.createEntityManagerFactory`), pools and clients that connect when built (`new HikariDataSource(config)`, `MongoClients.create`, Lettuce `RedisClient.connect`, `new KafkaProducer`), network calls (`HttpClient.send`, `URL.openConnection`/`openStream`, `new Socket(host, port)`, `new ServerSocket(port)`, `DatagramSocket`, `InetAddress.getByName`/`getLocalHost`, OkHttp and Retrofit `Call.execute`, Apache `HttpClient.execute`, `RestTemplate` requests, `RestClient` `retrieve()`, a `WebClient` result that is `block()`ed or subscribed), file I/O (every `Files` method, statically imported ones too, `FileInputStream`, `FileOutputStream`, `FileReader`, `FileWriter`, `RandomAccessFile`, `ZipFile`, a `PrintWriter`, `PrintStream` or `Formatter` on a file name, a `Scanner` on a `File` or `Path`, `File` methods that touch the disk), processes, threads and waits (`ProcessBuilder.start`/`startPipeline`, `Runtime.exec`, `Thread.start`, `Thread.Builder.start`, `Thread.sleep`, `Executors.new*`, `new ThreadPoolExecutor`, `new ForkJoinPool`, `new Timer`, executor, pool and timer `submit`/`execute`/`invoke*`/`schedule*` (`ForkJoinPool.commonPool().submit(...)` too), `CompletableFuture.runAsync`/`supplyAsync`) and JVM-wide settings (`System.setProperty`, `setOut`, `setErr`, `Runtime.addShutdownHook`, `Locale.setDefault`, `TimeZone.setDefault`, `Thread.setDefaultUncaughtExceptionHandler`). The message names the call, the class that loads and the member that runs it. | Do the work in a method that `main` or the framework calls after startup (a `@Bean` method, an `ApplicationRunner`) and pass the result in, or hold it in a lazy holder class (`private static final class Holder { static final Db INSTANCE = new Db(); }`). Constants, loggers, `Pattern.compile`, collections, `Clock` and `System.getProperty`/`getenv` reads stay static. |
+| `pmd/TriStateBoolean`           | In main sources: a boxed `Boolean` (not `Boolean` inside `Optional<...>`, `List<...>` or another type argument) as a method or constructor parameter, a method return type, a field or a record component. Methods with `@Override` are skipped, and so is data mapped from outside: a parameter, field or record component annotated `@RequestParam`, `@RequestBody`, `@RequestHeader`, `@PathVariable`, `@JsonProperty`, `@Column` or `@Field`, and a field of a class annotated `@Entity`, `@Embeddable`, `@MappedSuperclass` or `@Document`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | An `enum` that names each state (`Mode.ON`, `Mode.OFF`, `Mode.AUTO`), or a primitive `boolean` when absence means nothing.                                                                                                                                                                                                                                                     |
+| `pmd/ParameterMutation`         | In public methods and constructors: a change to a parameter in place: a mutating call on a `Collection` or `Map` parameter (`add`, `addAll`, `remove`, `removeIf`, `clear`, `put`, `putAll`, `merge`, `compute*`, `replaceAll`, `sort`, `set`, `push`, `pop`, `poll`, `offer` and the other mutators), `Arrays.sort`, `fill`, `setAll` or `Collections.sort`, `shuffle`, `reverse`, `swap`, `rotate`, `addAll` on a parameter, or a write to an element of an array parameter, also a multi-dimensional one (`counts[0] = 0`, `counts[1]++`, `grid[0][1] = 3`). A parameter stored in a field or a local variable and changed there (`this.items = items; this.items.add(x)`, `var alias = items; alias.add(x)`) counts. Reading an element (`v = values[0]`, `t += values[1]`) does not. Not flagged: private methods and constructors, methods of private, local or anonymous classes, concurrent types used to share work (`BlockingQueue`, `ConcurrentMap`, `CopyOnWrite*`), `@Override` methods, and a change made after the parameter was rebound to a copy of itself.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Build and return a new collection, or copy first: `new ArrayList<>(items)`, `List.copyOf(items)`, `Arrays.copyOf(counts, counts.length)`, and change the copy.                                                                                                                                                                                                                 |
+| `pmd/CompatibilityShim`         | In main sources: a `@Deprecated` annotation on a class, method, field or constructor. Methods with `@Override` are skipped, since overriding a deprecated method needs the annotation.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Delete the old declaration and change its callers in the same change.                                                                                                                                                                                                                                                                                                          |
+| `pmd/LegacyCalendarApi`         | In main sources: the overloads that read the default time zone: `Calendar.getInstance()` and `Calendar.getInstance(Locale)`, `new GregorianCalendar()` with no arguments, a `Locale` or date fields, and `new SimpleDateFormat(...)` unless the variable it is assigned to gets `setTimeZone(...)` in the same method or class. Passing a `TimeZone` is not flagged.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | `java.time` with an explicit zone: `Instant`, `ZonedDateTime.now(clock)`, a `DateTimeFormatter` with `withZone(zone)`. If the legacy class stays, pass a `TimeZone`.                                                                                                                                                                                                           |
+| `pmd/UnboundedFanOut`           | In main sources: a stream `map`/`forEach`/`flatMap` lambda (also a `this::helper` reference), an enhanced `for`, or an indexed `for` up to `size()`/`length` over a collection, whose element work starts a task that makes a remote or message call: `CompletableFuture.supplyAsync`/`runAsync` on the default pool or a cached, per-task or virtual-thread executor, `submit`/`execute`/`invokeAll`/`invokeAny` on such an executor, `Thread.startVirtualThread`, `Thread.ofVirtual().start`, `new Thread(...).start()`, or `HttpClient.sendAsync`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Run the tasks on a fixed pool, take a `Semaphore` permit around each call, or work through fixed-size batches (`Lists.partition(items, 20)`); or send one batch request.                                                                                                                                                                                                       |
 | `coupling/test-only-export`     | A main class that only test classes use.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Move it to the test sources, or use it from production code.                                                                                                                                                                                                                                                                                                                   |
 
 **Precision notes.**
@@ -2467,6 +2523,67 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   reported on the plural member. Method parameters and varargs record components
   (`record Keys(String key, String... keys)`) are not checked, as the Python preset leaves required
   parameters alone.
+- `UnboundedFanOut` is the rule the TypeScript and Python presets call `unbounded-fan-out`. A call
+  counts as remote or message by the resolved type of its receiver: `java.net.http.HttpClient`,
+  Spring's `RestOperations`, `RestClient` and `WebClient`, OkHttp, the Apache HTTP clients, gRPC
+  stubs, AWS SDK v2 clients, JAX-RS invocations, Retrofit calls, Kafka producers and
+  `KafkaOperations`, `AmqpTemplate`, `JmsOperations`, JMS producers, `MessageSendingOperations`,
+  `StreamBridge` and RabbitMQ channels. Database calls are left to the per-item I/O rules. The task
+  may reach the call through same-class helpers, up to three calls deep. An executor counts as
+  unbounded only when the field or local it is read from is always created by
+  `Executors.newCachedThreadPool`, `newVirtualThreadPerTaskExecutor`, `newThreadPerTaskExecutor`
+  or `ForkJoinPool.commonPool`; a parameter, an injected executor or a fixed pool is never
+  reported. These pass: a `Semaphore` acquired in the loop body, the task or a helper; a source
+  that is fixed (`List.of`, `Arrays.asList`, `Stream.of`, an array initializer, enum `values()`, a
+  `final` field holding one of those) or cut to size (`limit` or `subList` whose size does not
+  read the collection's own size, so `Math.min(20, items.size())` passes and `items.size()` does
+  not; a chunk variable over `partition`, `chunked` or `batches`; a local holding a cut list); a
+  worker pool sized by a count (`IntStream.range(0, workers)`, `for (int i = 0; i < workers; i++)`)
+  while a count read from a collection's size stays a fan-out over that collection; a body that
+  waits for the task (`join`, `get`, `Thread.join`) before the next element; and a stream whose
+  next lazy stage joins the futures (`.map(CompletableFuture::join)` before any
+  `collect`/`toList`). A task started per batch of `Lists.partition(items, 20)` is reported, since
+  the number of batches grows with the collection. The message names the iterated collection and
+  the call that starts the tasks (`messages/fan-out/fan-out-details.mjs`), read from the source at the
+  reported line. Limits: a `while (it.hasNext())` loop, a list of callables filled in a loop and
+  then passed to `invokeAll`, a `ThreadPoolExecutor` constructed with an unbounded maximum and
+  helpers of other classes are not followed; PMD resolves types from the compile classpath, so a
+  client type the build does not resolve is not recognized.
+- `TriStateBoolean` matches the simple name `Boolean` as the whole type, so `Optional<Boolean>`,
+  `List<Boolean>` and a primitive `boolean` pass. Data mapped from outside is exempt in every
+  preset: a Java parameter, field or record component carrying `@RequestParam`, `@RequestBody`,
+  `@RequestHeader`, `@PathVariable`, `@JsonProperty`, `@Column` or `@Field`, and the fields of a class
+  annotated `@Entity`, `@Embeddable`, `@MappedSuperclass` or `@Document` (the Kotlin counterpart
+  skips the same annotations, the Python one pydantic and ORM model fields, the TypeScript one
+  properties). The Kotlin counterpart is `Boolean?` and the TypeScript one is
+  `boolean | undefined`.
+- `ParameterMutation` reports the parameter use. It needs the resolved type to be a `java.util.Collection`
+  or `Map` for method calls, so a `StringBuilder` or a stream sink is not a changed argument. A
+  parameter stored in a field (`this.items = items`) or a local variable (`var alias = items`) and
+  changed through that name is the same list and is reported. Only a rebind to a copy of the
+  parameter that comes before the change makes it a change to the copy
+  (`items = new ArrayList<>(items); items.add(x)`); `if (items == null) items = new ArrayList<>();`
+  followed by `items.add(x)` still changes the caller's list in the other branch. A private
+  method or constructor, a method of a private, local or anonymous class, and every `@Override`
+  method (whose signature the interface fixes) are helpers, not API. A concurrent type that exists to
+  share work (`BlockingQueue`, `BlockingDeque`, `TransferQueue`, `ConcurrentMap`,
+  `ConcurrentLinkedQueue`, `ConcurrentLinkedDeque`, `CopyOnWriteArrayList`, `CopyOnWriteArraySet`,
+  `ConcurrentSkipListSet`) is not reported. The array form matches the assigned side only
+  (`values[0] = 1`, `grid[0][1] = 3`, `counts[0]++`), not `v = values[0]` or `t += values[1]`. A copy
+  is the allowed form: `new ArrayList<>(items)`, `List.copyOf(items)`,
+  `Arrays.copyOf(counts, counts.length)`.
+- `CompatibilityShim` reports the annotation, so the deprecated declaration is deleted together with
+  its callers. The javadoc `@deprecated` tag without the annotation is `DepAnn` of Error Prone,
+  which asks for the annotation; once added, `CompatibilityShim` reports it, so the two together
+  forbid both forms. A call of a deprecated API is reported by the compiler's deprecation lint. Java
+  has no alias declaration, so the TypeScript `export const Old = New` form has no counterpart.
+- `LegacyCalendarApi` is the part of the naive-datetime check that Error Prone does not cover:
+  `JavaTimeDefaultTimeZone` (`now()` without a clock or zone) and `JavaUtilDate`
+  (`java.util.Date`) are on by default. It reports only the overloads without a zone;
+  `Calendar.getInstance(zone)` and `new GregorianCalendar(zone)` are allowed, and so is a
+  `SimpleDateFormat` whose variable gets `setTimeZone(...)`. It takes over the lines that
+  `AvoidCalendarDateCreation`, `SimpleDateFormatNeedsLocale` and Error Prone's `DefaultLocale`
+  also report (see the overlap list above).
 - `test-only-export` (`adapters/review-rules/test-only-classes.mjs`, run project-wide) reads
   `jdeps.txt`, `jdeps-classes.txt` and `jdeps-test.txt` of every module and resolves a class to its
   own module first. A main class is reported when test classes use it and no other main class
@@ -2515,6 +2632,90 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
 sets) are not checked: builders are filled by reflection (Jackson's `@Jacksonized`, MapStruct,
 Spring binding) as often as by calls, and a text match on `.name(` collides with every method of
 that name, so the rule would need compiler symbol facts to stay precise.
+
+## Doc comments
+
+Javadoc is allowed on any declaration and required on none (see [Slice 3: Checkstyle](#slice-3-checkstyle)),
+but what it says is checked by the shared `doc-comment-content` rule, the same one the TypeScript
+preset runs as `nitpicker/no-comments` and the Python preset runs on docstrings. A doc comment is
+reported when its description only restates the declaration's name (`/** Gets the order total. */`
+on `getOrderTotal`), unless a tag says more (`@return cents, rounded down`; a tag with only a name or
+a type, such as `@param id` or `@throws IOException`, does not, and neither do `@author`, `@since`,
+`@version`, `@see` and the `@serial` tags), or when its description is longer
+than 5 lines, tags, blank lines and code examples not counted. The word split, the filler words and
+the stems are those of the TypeScript rule.
+
+- **Where.** `adapters/doc-comments/` reads the `.java` files of the main source roots in Node, on
+  Gradle and Maven alike; test sources are left alone, as in the other presets. Comments and string
+  literals (text blocks too) are masked first, so a `/**` inside a string is not a doc comment.
+- **What counts.** A `/** ... */` comment (not `/**/`), or a run of `///` Markdown doc comment lines
+  (Java 23; a `////` banner is not one), right before a type (`class`, `interface`, `enum`,
+  `record`, `@interface`), a method, a constructor (also a compact record constructor), a field or
+  an enum constant, after any annotations and modifiers, at the top level or in a type body. A
+  comment before a `package` line, a statement, a local declaration or a member of an anonymous
+  class is not read.
+- **Javadoc markup.** A `<pre>` block counts as a code example, like a Markdown fence, so an
+  `@Override` line inside it does not end the description, while prose on the same line before
+  `<pre>` or after `</pre>` still counts; other HTML tags (`<p>`, `<b>`,
+  `<code>` ...) and entities (`&amp;`) are dropped, and inline tags (`{@code x}`, `{@link Order}`)
+  read as their text.
+- **Findings.** Tool `facts`, rule `doc-comment-content`, on the comment's first line. The
+  identity is `doc-comment:<qualified name>:restating` or `:long`, where the qualified name holds
+  the enclosing types and, for a method or constructor, the parameter types with type-use
+  annotations dropped
+  (`Orders.total(Map<String,Integer>,int...)`), so overloads stay apart and a growing comment keeps
+  its identity. A comment that is right as written gets a top-level `exceptions` entry for
+  `doc-comment-content`.
+
+## Reuse rules
+
+`duplicate-definition`, `sibling-copy-edit` and `exported-name-collision` are the shared rules of
+the TypeScript preset (see `typescript-strict-preset.md`), written once over neutral facts
+(`shared/rules/facts/`). The Java and Kotlin presets produce those facts from source, on Gradle and
+Maven alike, in the project-wide step (`builds/project-wide.mjs`), so they need no build output.
+The findings have tool `structure` and are lifted with the top-level `exceptions`.
+
+- **Producer.** `adapters/reuse/jvm-reuse-facts.mjs` reads every `.java` file (and `.kt` file with
+  `preset: "kotlin"`) under the main source roots the build reports for each module, leaving out
+  roots under `build/` and files matched by `exclude`. One tokenizer
+  (`adapters/reuse/source/jvm-tokens.mjs`) serves both languages: each string, text block, raw string
+  or character literal is one token, comments are dropped, Kotlin block comments nest and Kotlin
+  string templates are read for the names they use. A source file is a module and a Gradle or Maven
+  module is a package, so copies are compared within one build module.
+- **Definitions.** Top-level types (Java `class` and `record` as `class`, `interface`, `enum`,
+  `@interface` as `type`; Kotlin classes and `object`s as `class`, `interface`, `enum class`,
+  `annotation class` and `typealias` as `type`), and the members that need no instance: Java
+  `static` methods and `static final` fields (every interface field), Kotlin top-level `fun`, `val`
+  and `const val`, and the functions and `val`s of a top-level `object` or of a class's `companion
+object`. Instance methods are left to the duplicates check, as class methods are in the
+  TypeScript preset. A member is named `Owner.name` (`Money.of`), with its parameter types when it
+  is overloaded (`Money.of(long)`), so two classes' copies of a helper stay apart in findings;
+  copies are grouped by the plain name. Everything but `private` counts as exported, since
+  package-private Java code is usable from the package. A `main` function, and a type that holds
+  one, is an entry, which `sibling-copy-edit` skips.
+- **Uses.** A name in a file resolves the way javac and kotlinc resolve it: an explicit import
+  first, then a type (or Kotlin top-level declaration) of the same package, then a star import; a
+  fully qualified name (`shop.billing.Money`) resolves directly. `Type.member` and `Type::member`
+  uses a static member, a Kotlin extension call (`order.toDto()`) uses the imported or same-package
+  function, and a static or `object` import (`import static shop.util.Strings.trim;`) uses that
+  member. These uses decide whether a definition is used (an unused one is the dead-code checks'
+  business), and the free names of each definition, resolved this way, are part of its identity,
+  so two copies that use different library types (`java.util.Date` and `java.sql.Date`) are not
+  duplicates. A name of the copy's own file other than a literal constant (a helper, a mutable
+  field, a nested type) is its own, so two `capped()` copies that call their class's `limit()`
+  are not duplicates either; the helper is reported, if it is a copy. A static member that reads an
+  upper-case name the file does not declare (an inherited constant) also takes its class's
+  supertypes into its identity. Kotlin `expect` and `actual` declarations and `override` members
+  are left out.
+- **`exported-name-collision`.** In Java a file cannot import two classes of one simple name, so the
+  collision is a class imported (or of the same package) while another class of that name is
+  written fully qualified; in Kotlin it is that too, or an `import ... as` alias, as in TypeScript. The Java
+  message tells to rename one or to use both by their fully qualified names. Functions are left out
+  in both languages: two same-named functions imported into one file are overloads, and extension
+  functions of one name on different receivers are idiomatic Kotlin.
+- **`sibling-copy-edit`.** On the head run of a change the runner reads each changed file of the
+  base checkout (`--baseline-root`) again, following renames from `--baseline-moves-file`, and
+  compares the edited definition with its base copy and its same-named siblings in the module.
 
 ## Rule messages
 

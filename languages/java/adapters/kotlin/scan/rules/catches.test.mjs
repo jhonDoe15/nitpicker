@@ -140,6 +140,10 @@ describe('booleanFlags', () => {
       'fun render(@RequestParam bold: Boolean): String {\n    if (bold) return "b"\n    return ""\n}\n',
     ],
     [
+      'a nullable flag, left to TriStateBoolean',
+      'fun render(text: String, bold: Boolean?): String = when (bold) {\n    true -> "<b>$text</b>"\n    else -> text\n}\n',
+    ],
+    [
       'a flag passed on, not branched on',
       'fun render(text: String, bold: Boolean): Span = Span(text, bold)\n',
     ],

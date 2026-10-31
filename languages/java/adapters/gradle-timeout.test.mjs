@@ -60,18 +60,16 @@ describe('the Gradle execution budget', () => {
       vi.stubEnv(BUDGET_VARIABLE, String(minutes));
 
       expect(runGradle()).toBe(minutes * MINUTE_MS);
-      for (const kotlin of [false, true]) {
-        const analyzer = createJavaAnalyzer({ kotlin });
-        expect(analyzer.timeoutMs).toBe((2 * minutes + 1) * MINUTE_MS);
-        for (const snapshot of ['base', 'head']) {
-          const invocation = analyzer.createInvocation({
-            projectRoot: '/project',
-            toolRoot: '/tools',
-            snapshot,
-          });
-          expect(invocation.env).toBeUndefined();
-        }
-      }
+      const analyzers = [false, true].map((kotlin) => createJavaAnalyzer({ kotlin }));
+      const invocations = analyzers.flatMap((analyzer) =>
+        ['base', 'head'].map((snapshot) =>
+          analyzer.createInvocation({ projectRoot: '/project', toolRoot: '/tools', snapshot }),
+        ),
+      );
+      expect(analyzers.map(({ timeoutMs }) => timeoutMs)).toEqual(
+        analyzers.map(() => (2 * minutes + 1) * MINUTE_MS),
+      );
+      expect(invocations.map(({ env }) => env)).toEqual(invocations.map(() => undefined));
     },
   );
 
