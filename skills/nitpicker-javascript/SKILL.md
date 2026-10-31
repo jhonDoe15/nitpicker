@@ -49,6 +49,8 @@ Before you change code other modules use or fix a bug, read
    `reason`, to get past the gate: stop and ask a human, and quote the finding with its entry. A
    TypeScript compiler error has no entry; fix the type.
 
+To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/main/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
+
 ## Layout
 
 - A feature is `src/main/features/<name>/` with an `index.js` (`index.mjs` or `index.cjs` also
@@ -121,7 +123,7 @@ line) is a finding.
   checks the types already rule out. Indexing (`list[0]`, `record[key]`) may be `undefined`: check
   the value you got.
 - `===` only. Early returns, no `else` after `return`, no nested ternaries, exhaustive `switch`
-  over unions.
+  over unions, with no `default`.
 - `const` or `let`, never `var`. Rest parameters (`...args`) instead of `arguments[i]`, and spread
   instead of `.apply`.
 - Template literals take strings only: `${String(count)}`.
@@ -136,9 +138,19 @@ line) is a finding.
   extract a function, also when the copy has other names and literals.
 - Up to 3 parameters stay positional. Past 3, group related values into one object. A factory's
   inner functions count toward its 50 lines: put helpers at module level and pass `deps` in.
+- Remove a parameter the body does not read. One that a callback or override signature requires
+  starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
+- Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. Never `Promise.all(items.map(send))` over a runtime collection.
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
+- Signatures: a value with three states is a union of string literals, not `{boolean|undefined}`,
+  `{boolean=}` or a `@param {boolean} [force]` with no default (the type-aware rules read your
+  JSDoc types, so write them); default only `undefined` with `??`, never `||` on an optional parameter that can be `0`, `''` or
+  `false`; return a
+  new array, `Set`, `Map` or object instead of changing a parameter (`[...items, item]`,
+  `items.toSorted()`). When code moves, change every caller and delete the old name: no
+  `@deprecated` declaration and no `export const Old = New` alias.
 - CommonJS is allowed: `require()` of a module, and `module.exports = { f }`, `module.exports.f = f`
   or `exports.f = f`. In `domain/`,
   destructure a `require`: `const { basename } = require('node:path');`, not
@@ -216,15 +228,19 @@ line) is a finding.
 - Test data typed from a literal widens (`status: string`): write the array as
   `/** @type {const} */ ([...])`, or annotate the `const` with the typedef.
 - Assert whole outputs with `toEqual`/`toBe`, not `toContain`, `toMatchObject` or `expect.any`.
-  Write `expect` in the test body; asserting helpers don't count. Repeated cases are `it.each`,
-  not loops. The rules above (`for...of` only, no `.then()`, no casts) apply to tests too.
+  Write `expect` in the test body; asserting helpers don't count. Do not assert inside a loop,
+  `forEach` or `map` callback: an empty collection passes without asserting, so assert the whole
+  collection (`expect(orders).toEqual([...])`) and put cases in `it.each`
+  (`nitpicker/no-assertion-in-loop`). The rules above (`for...of` only, no `.then()`, no casts) apply
+  to tests too.
 - Tests assert exact values and are deterministic and fast; each finding names the allowed form.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/lines.js`, or in a `test-support/` folder beside the code when the tests sit next to it.
   When an existing test defines the same helper, make it import the shared one.
 - A surviving mutant no input can kill means the code is redundant: delete or restructure it.
   Don't pin call order or messages just to kill it. If an input can kill it, add that test (a
   padded value for a `.trim()`, two bad fields for a `join`); never delete a schema rule to silence it.
-- No per-test git repos, child processes, servers, fixed sleeps, or raised timeouts.
+- No per-test git repos, child processes, servers, fixed sleeps, raised timeouts, or test retries
+  (`retry`/`retries` options, `jest.retryTimes`, `this.retries(n)`); fix the flaky cause.
 - Wait for every callback that asserts: `await once(emitter, 'ready')`, await a promise the
   callback resolves, or advance fake timers in the test. An assertion in a timer, listener or
   error-first callback the test does not wait for runs after it ends and its failure is lost.

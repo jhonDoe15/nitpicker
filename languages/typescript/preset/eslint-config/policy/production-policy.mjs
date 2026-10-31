@@ -14,6 +14,8 @@ const productionRestrictedProperties = [
   { object: 'Math', property: 'random', message: RANDOM_MESSAGE },
 ];
 
+const UNUSED_PARAMETERS = { args: 'all', argsIgnorePattern: '^_', ignoreRestSiblings: true };
+
 const DESTRUCTURED_FORMATS = ['camelCase', 'PascalCase', 'UPPER_CASE', 'snake_case'];
 
 function withReactFormat(formats, react) {
@@ -63,6 +65,7 @@ function productionRules({ react, routeHandlers }) {
     curly: ['error', 'all'],
     'no-eval': 'error',
     'no-param-reassign': ['error', { props: false }],
+    '@typescript-eslint/no-unused-vars': ['error', UNUSED_PARAMETERS],
     'no-duplicate-imports': ['error', { allowSeparateTypeImports: true }],
     'no-restricted-properties': ['error', ...productionRestrictedProperties],
     'nitpicker/naming-convention': namingConvention({ react, routeHandlers }),
@@ -91,6 +94,7 @@ function productionGuardRules({ react, security }) {
     ],
     'nitpicker/no-shell-string-command': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
+    'nitpicker/unbounded-fan-out': 'error',
     ...securityRules({ react, security }),
   };
 }
