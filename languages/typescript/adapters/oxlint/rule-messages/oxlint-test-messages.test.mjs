@@ -143,13 +143,13 @@ describe('test rule messages under the oxlint engine', () => {
           'nitpicker/fake-timers-require-restore',
           'This stubbed global stays stubbed for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllGlobals(); });`, or stub it once in a setup file.',
         ],
-        ['test/a.test.ts', 12, 'nitpicker/no-assertion-in-loop', ALLOWED_LOOP_MESSAGE],
         [
           'test/a.test.ts',
           12,
           'nitpicker/no-float-equality-in-tests',
           'A float literal compared for exact equality fails on rounding error. Use `toBeCloseTo(0.1)`, `expect.closeTo(0.1)` inside the expected value, chai `closeTo`, or `assert.ok(Math.abs(actual - 0.1) < tolerance)`. An exception fits only when the value is exact by construction.',
         ],
+        ['test/a.test.ts', 13, 'nitpicker/no-assertion-in-loop', ALLOWED_LOOP_MESSAGE],
         [
           'test/clock.test.ts',
           1,
