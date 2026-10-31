@@ -9,7 +9,7 @@ import {
   findPackageJsonByWalking,
   selectFindPackageJson,
 } from './package-json.mjs';
-import { PACKAGE_ROOT } from './tool-resolution.mjs';
+import { PACKAGE_ROOT } from '../tool-resolution.mjs';
 
 const nativeFindPackageJson = nodeModule.findPackageJSON;
 
