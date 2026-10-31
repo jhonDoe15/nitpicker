@@ -1,5 +1,5 @@
 import { changedByDiff } from './base-red/unknown-base.mjs';
-import { comparisonKey } from './fingerprint.mjs';
+import { baseMoves, comparisonKey } from './fingerprint.mjs';
 import { matchSimilarFindings } from './similar/match.mjs';
 import { normalizeGitPath } from '../git/normalize.mjs';
 import { folderMoves, mainDestination } from '../git/patches/renames.mjs';
@@ -15,11 +15,11 @@ export function compareFindings({
   touchedCode,
   unknownOnBase,
 }) {
+  const moves = baseMoves(baseToHeadRenames, baseToHeadDirectories);
   const { baseByKey, headByKey } = indexSnapshots({
     baseFindings,
     headFindings,
-    renames: baseToHeadRenames,
-    directories: baseToHeadDirectories,
+    moves,
     touchedCode,
   });
   const present = classifyHeadFindings({ headByKey, baseByKey, touchedCode, unknownOnBase });
@@ -29,7 +29,7 @@ export function compareFindings({
   const similar = matchSimilarFindings({
     headFindings: present.newFindings,
     baseFindings: withoutExactMatch,
-    renames: baseToHeadRenames,
+    renames: moves.files,
   });
   present.newFindings = similar.unmatched;
   present.unchangedFindings.push(...similar.matched);
@@ -37,16 +37,10 @@ export function compareFindings({
   const ratcheted = holdRatchetedFindings({
     newFindings: present.newFindings,
     unmatchedBase,
-    renames: baseToHeadRenames,
-    directories: baseToHeadDirectories,
+    moves,
     touchedCode,
   });
-  present.newFindings = withGrowthAdvice({
-    findings: ratcheted.newFindings,
-    baseFindings,
-    renames: baseToHeadRenames,
-    directories: baseToHeadDirectories,
-  });
+  present.newFindings = withGrowthAdvice({ findings: ratcheted.newFindings, baseFindings, moves });
   present.unchangedFindings.push(...ratcheted.heldFindings);
   const resolvedFindings = unmatchedBase.filter((finding) => !ratcheted.matchedBase.has(finding));
 
@@ -58,10 +52,10 @@ export function compareFindings({
   };
 }
 
-function indexSnapshots({ baseFindings, headFindings, renames, directories, touchedCode }) {
-  const keys = pairedKeys({ baseFindings, headFindings, renames, directories, touchedCode });
+function indexSnapshots({ baseFindings, headFindings, moves, touchedCode }) {
+  const keys = pairedKeys({ baseFindings, headFindings, moves, touchedCode });
   return {
-    baseByKey: indexFindings({ findings: baseFindings, renames, directories, snapshot: 'base' }),
+    baseByKey: indexFindings({ findings: baseFindings, moves, snapshot: 'base' }),
     headByKey: indexFindings({ findings: headFindings, snapshot: 'head', keys }),
   };
 }
@@ -94,19 +88,19 @@ function classify(headFinding, baseFinding, { touchedCode, isUnknown }) {
     : { bucket: 'unchangedFindings', entry: headFinding };
 }
 
-function holdRatchetedFindings({ newFindings, unmatchedBase, renames, directories, touchedCode }) {
+function holdRatchetedFindings({ newFindings, unmatchedBase, moves, touchedCode }) {
   const atSamePath = holdAgainst(
     newFindings,
-    groupBaseByRatchetKey(unmatchedBase, (finding) => ratchetKey(finding, renames, directories)),
+    groupBaseByRatchetKey(unmatchedBase, (finding) => ratchetKey(finding, moves)),
     { touchedCode, matchedBase: new Set() },
   );
-  const moves = folderMoves(renames);
+  const folders = folderMoves(moves.files);
   const movedFolders = groupBaseByRatchetKey(
     unmatchedBase.filter(
       (baseFinding) =>
         baseFinding.ratchet?.pathIsFolder === true && !atSamePath.matchedBase.has(baseFinding),
     ),
-    (finding) => movedFolderKey(finding, moves),
+    (finding) => movedFolderKey(finding, folders),
   );
   const atMovedPath = holdAgainst(atSamePath.unmatched, movedFolders, {
     touchedCode,
@@ -142,12 +136,12 @@ function holdAgainst(headFindings, baseByRatchet, { touchedCode, matchedBase }) 
   return result;
 }
 
-function movedFolderKey(finding, moves) {
-  const destinations = moves.get(normalizeGitPath(finding.path));
+function movedFolderKey(finding, folders) {
+  const destinations = folders.get(normalizeGitPath(finding.path));
   const destination = mainDestination(destinations);
   const movedFiles = destination === undefined ? 0 : destinations.get(destination);
   return movedFiles * 2 > (finding.ratchet.folderFiles ?? finding.ratchet.value)
-    ? ratchetKey({ ...finding, path: destination }, new Map(), new Map())
+    ? ratchetKey({ ...finding, path: destination })
     : undefined;
 }
 
@@ -159,19 +153,15 @@ function closestCandidate(candidates, value) {
   return pool.find((candidate) => candidate.ratchet.value === target);
 }
 
-function withGrowthAdvice({ findings, baseFindings, renames, directories }) {
+function withGrowthAdvice({ findings, baseFindings, moves }) {
   const baseValues = new Map(
     baseFindings
       .filter((baseFinding) => baseFinding.ratchet !== undefined)
-      .map((baseFinding) => [
-        ratchetKey(baseFinding, renames, directories),
-        baseFinding.ratchet.value,
-      ]),
+      .map((baseFinding) => [ratchetKey(baseFinding, moves), baseFinding.ratchet.value]),
   );
   return findings.map((finding) => {
     const advice = finding.ratchet?.growthAdvice;
-    const baseValue =
-      advice === undefined ? undefined : baseValues.get(ratchetKey(finding, new Map(), new Map()));
+    const baseValue = advice === undefined ? undefined : baseValues.get(ratchetKey(finding));
     return baseValue === undefined
       ? finding
       : {
@@ -199,7 +189,7 @@ function groupBaseByRatchetKey(unmatchedBase, keyOf) {
 function holdCandidatesFor(headFinding, baseByRatchet, touchedCode) {
   const isNeverHeld =
     headFinding.ratchet === undefined || isHeldOnTouchedLine(headFinding, touchedCode);
-  return isNeverHeld ? undefined : baseByRatchet.get(ratchetKey(headFinding, new Map(), new Map()));
+  return isNeverHeld ? undefined : baseByRatchet.get(ratchetKey(headFinding));
 }
 
 function grewFinding(headFinding, baseValue) {
@@ -209,8 +199,8 @@ function grewFinding(headFinding, baseValue) {
     : { ...headFinding, message: worseMessage.replaceAll('{base}', String(baseValue)) };
 }
 
-function ratchetKey(finding, renames, directories) {
-  return comparisonKey({ ...finding, identity: finding.ratchet.key }, renames, directories);
+function ratchetKey(finding, moves) {
+  return comparisonKey({ ...finding, identity: finding.ratchet.key }, moves);
 }
 
 function changedMetricOf(baseFinding, headFinding) {
@@ -228,16 +218,10 @@ function changedMetricOf(baseFinding, headFinding) {
   };
 }
 
-function indexFindings({
-  findings,
-  renames = new Map(),
-  directories = new Map(),
-  snapshot,
-  keys = new Map(),
-}) {
+function indexFindings({ findings, moves, snapshot, keys = new Map() }) {
   const indexed = new Map();
   for (const finding of findings) {
-    const key = keys.get(finding) ?? comparisonKey(finding, renames, directories);
+    const key = keys.get(finding) ?? comparisonKey(finding, moves);
     if (indexed.has(key)) {
       throw new Error(
         `${snapshot} analyzer output contains duplicate stable identity for ${finding.tool}/${finding.rule} at ${finding.path}`,

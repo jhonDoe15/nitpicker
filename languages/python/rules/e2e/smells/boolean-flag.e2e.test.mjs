@@ -28,7 +28,7 @@ describe.skipIf(!enabled)('boolean-flag-parameter', () => {
       [
         'a nullable boolean, which is a tri-state rather than a flag',
         'def f(a, flag: bool | None = None):\n    if not flag:\n        return a\n    return 1\n',
-        [],
+        ['tri-state-boolean:1 f(flag)'],
       ],
       [
         'a flag combined with another condition',
@@ -83,7 +83,7 @@ describe.skipIf(!enabled)('boolean-flag-parameter', () => {
       [
         'an Annotated boolean, while an Optional one is a tri-state',
         'from typing import Annotated, Optional\n\n\ndef f(a, x: Optional[bool], y: Annotated[bool, "doc"]):\n    if x:\n        return a\n    return 1 if y else 2\n',
-        ['boolean-flag-parameter:4 f(y)'],
+        ['boolean-flag-parameter:4 f(y)', 'tri-state-boolean:4 f(x)'],
       ],
       [
         'a module function named like a setter, a builder or a factory',
