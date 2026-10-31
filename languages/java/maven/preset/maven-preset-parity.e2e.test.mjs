@@ -1,8 +1,12 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../../adapters/java-diff.mjs';
 import { analyzeJavaSnapshot } from '../../adapters/java-runner.mjs';
+import {
+  LIBRARY_CALLS,
+  LIBRARY_CALLS_TEST,
+} from '../../adapters/kotlin-e2e/test-support/kotlin-branch-coverage-data.mjs';
 import {
   useMavenPresetProject,
   enabled,
@@ -11,6 +15,8 @@ import {
   fixtures,
   DATED,
   FAILING_TEST,
+  SHAPES,
+  SHAPES_TEST,
   copyOf,
   twinProjects,
   comparable,
@@ -106,6 +112,40 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
 
     expect([errors(fromGradle), errors(fromMaven)]).toEqual([[], []]);
     expect(comparable(fromMaven)).toEqual(comparable(fromGradle));
+  }, 180_000);
+  it('reports no untaken branch in sealed and enum switches or interfaces, on Gradle and Maven', () => {
+    const [gradleProject, mavenProject] = twinProjects();
+    const coverage = (findings) =>
+      findings.filter(
+        ({ tool, path: file }) => tool === 'jacoco' && file.endsWith('demo/Shapes.java'),
+      );
+    for (const root of [gradleProject, mavenProject]) {
+      writeFileSync(path.join(root, 'src/main/java/demo/Shapes.java'), SHAPES);
+      writeFileSync(path.join(root, 'src/test/java/demo/ShapesTest.java'), SHAPES_TEST);
+    }
+    const fromGradle = coverage(collectJavaFindings(gradleProject, { gradle, policy: {} }));
+    const fromMaven = coverage(collectJavaFindings(mavenProject, { maven, policy: {} }));
+
+    expect(fromMaven.map(({ rule }) => rule)).toEqual(['line-coverage']);
+    expect(comparable(fromMaven)).toEqual(comparable(fromGradle));
+  }, 180_000);
+  it('filters the inlined library branches of Kotlin sources as the Kotlin preset does', () => {
+    const project = copyOf(path.join(fixtures, 'kotlin'));
+    for (const [file, text] of [
+      ['src/main/kotlin/demo/Library.kt', LIBRARY_CALLS],
+      ['src/test/kotlin/demo/LibraryTest.kt', LIBRARY_CALLS_TEST],
+    ]) {
+      mkdirSync(path.dirname(path.join(project, file)), { recursive: true });
+      writeFileSync(path.join(project, file), text);
+    }
+    const findings = collectJavaFindings(project, { maven, policy: {} });
+
+    expect(
+      findings
+        .filter(({ rule }) => rule === 'changed-branch-coverage')
+        .map(({ path: file, location }) => `${path.basename(file)}:${String(location.line)}`)
+        .sort(),
+    ).toEqual(['Library.kt:12', 'Library.kt:14', 'Library.kt:18']);
   }, 180_000);
   it('reports a failing test as a maven-failure tool error that names the test', () => {
     const project = copyOf(path.join(fixtures, 'multi-module'));
