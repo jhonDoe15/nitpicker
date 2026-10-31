@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { outerClass, parseJdeps } from '../metrics/java-coupling.mjs';
+import { outerClass } from '../../ingest/class-names.mjs';
+import { parseJdeps } from '../metrics/java-coupling.mjs';
 import { pathInside } from '../review-rules/java-sources.mjs';
 import { ownersOf, resolver } from '../review-rules/test-only-classes.mjs';
 import { EDGE_KINDS } from '../../../../shared/rules/test-runtime/classify.mjs';
