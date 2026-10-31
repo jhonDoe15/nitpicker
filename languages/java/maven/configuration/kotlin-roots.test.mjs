@@ -31,12 +31,16 @@ const kotlinPlugin = (configuration = '') =>
   '<plugins><plugin><groupId>org.jetbrains.kotlin</groupId>' +
   `<artifactId>kotlin-maven-plugin</artifactId>${configuration}</plugin></plugins>`;
 
-function relativeKotlinRoots(module) {
+function manifestOf(module) {
   return moduleManifest({
     module,
     classpaths: { mainCompile: [], testCompile: [] },
     pinned: {},
-  }).kotlinSourceRoots;
+  });
+}
+
+function relativeKotlinRoots(module) {
+  return manifestOf(module).kotlinSourceRoots;
 }
 
 describe('Kotlin source roots of a Maven module', () => {
@@ -61,5 +65,32 @@ describe('Kotlin source roots of a Maven module', () => {
     const empty = moduleWith(kotlinPlugin(), ['src/main/java']);
 
     expect([relativeKotlinRoots(plain), relativeKotlinRoots(empty)]).toEqual([[], []]);
+  });
+});
+
+describe('Kotlin test source roots of a Maven module', () => {
+  it('adds src/test/kotlin when kotlin-maven-plugin builds the module', () => {
+    const module = moduleWith(kotlinPlugin(), ['src/test/java', 'src/test/kotlin']);
+
+    expect(manifestOf(module).kotlinTestSourceRoots).toEqual(['src/test/kotlin']);
+  });
+
+  it('reads the sourceDirs of the test-compile execution, without the Java roots', () => {
+    const sourceDirs =
+      '<executions><execution><goals><goal>test-compile</goal></goals><configuration><sourceDirs>' +
+      '<sourceDir>src/test/kt</sourceDir><sourceDir>src/test/java</sourceDir>' +
+      '</sourceDirs></configuration></execution></executions>';
+    const module = moduleWith(kotlinPlugin(sourceDirs), ['src/test/java', 'src/test/kt']);
+
+    expect(manifestOf(module).kotlinTestSourceRoots).toEqual(['src/test/kt']);
+  });
+
+  it('adds none without the Kotlin plugin, or for a directory that does not exist', () => {
+    const plain = moduleWith('', ['src/test/kotlin']);
+    const empty = moduleWith(kotlinPlugin(), ['src/test/java']);
+
+    expect(
+      [manifestOf(plain), manifestOf(empty)].map((manifest) => manifest.kotlinTestSourceRoots),
+    ).toEqual([[], []]);
   });
 });

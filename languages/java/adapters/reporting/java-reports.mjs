@@ -77,6 +77,8 @@ export function readJavaFindings(projectRoot, options = {}) {
                 qualifier: module.key === ROOT_MODULE ? '' : module.dir,
                 sourceRoots: module.manifest.sourceRoots ?? [],
                 kotlinSourceRoots: module.manifest.kotlinSourceRoots ?? [],
+                testSourceRoots: module.manifest.testSourceRoots ?? [],
+                kotlinTestSourceRoots: module.manifest.kotlinTestSourceRoots ?? [],
                 resourceRoots: module.manifest.resourceRoots ?? [],
               })),
               mergedRoot: path.join(reportBase, 'project'),

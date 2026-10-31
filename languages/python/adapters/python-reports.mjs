@@ -27,6 +27,7 @@ import { COVERAGE_REPORT } from './test-runs/test-step.mjs';
 import { testFailureFindings } from './test-runs/test-failures.mjs';
 import { readSlowTestFindings } from './test-runs/slow-tests.mjs';
 import { readCouplingFindings, readImportsReport } from './analysis/python-coupling.mjs';
+import { readTestRuntimeFindings } from './analysis/test-runtime/python-test-runtime.mjs';
 import { cycleFindings, outsideRootsFindings } from './imports/python-import-rules.mjs';
 import {
   pythonClassLimitFindings,
@@ -90,6 +91,7 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
       ...readDuplicateFindings(reportRoot, projectRoot),
       ...readCouplingFindings(reportRoot),
       ...readImportLinterFindings(reportRoot),
+      ...readTestRuntimeFindings({ reportRoot, projectRoot, runner: manifest.testRunner }),
       ...testFailureFindings(manifest, policy.snapshot),
       ...projectShapeFindings({ projectRoot, reportRoot, policy, imports, manifest }),
     ],
