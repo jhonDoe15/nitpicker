@@ -14,3 +14,11 @@ export function parseJsonc(text) {
   const content = text.startsWith(BOM) ? text.slice(1) : text;
   return JSON.parse(withoutTrailingCommas(withoutComments(content)));
 }
+
+export function parsedJsonc(text) {
+  try {
+    return { kind: 'json', value: parseJsonc(text) };
+  } catch (error) {
+    return { kind: 'malformed', reason: error instanceof Error ? error.message : String(error) };
+  }
+}
