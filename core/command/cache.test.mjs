@@ -1,3 +1,4 @@
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mjs';
 import { startTestHttpServer } from '../diff/cache/test-support/test-http-server.mjs';
@@ -8,6 +9,7 @@ import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs
 import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
+import { fixtureGit } from '../diff/git/test-support/git-repository.mjs';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
@@ -23,7 +25,13 @@ describe('findings cache', () => {
     });
     const cacheDirectory = makeTemporaryRoot('nitpicker-cli-cache-');
     const snapshots = [];
-    const run = ({ extraArguments = [], configurationHash = 'fixture-policy' } = {}) => {
+    const run = ({
+      extraArguments = [],
+      configurationHash = 'fixture-policy',
+      environment = { NITPICKER_CACHE_DIR: cacheDirectory },
+      progress,
+      projectRoot = repository.root,
+    } = {}) => {
       const analyzer = fakeAnalyzer();
       analyzer.configurationHash = configurationHash;
       const createInvocation = analyzer.createInvocation.bind(analyzer);
@@ -34,15 +42,16 @@ describe('findings cache', () => {
       const output = captureOutput();
       const exitCode = runCli({
         arguments_: ['--base', repository.baseRef, '--output', makeOutputRoot(), ...extraArguments],
-        environment: { NITPICKER_CACHE_DIR: cacheDirectory },
-        currentProjectRoot: repository.root,
+        environment,
+        currentProjectRoot: projectRoot,
         analyzers: [analyzer],
         stdout: output.stdout,
         stderr: output.stderr,
+        ...(progress === undefined ? {} : { progress }),
       });
       return { exitCode, output };
     };
-    return { run, snapshots };
+    return { run, snapshots, repository };
   }
   it('skips base analysis on a second run against the same base', () => {
     const { run, snapshots } = setup();
@@ -63,6 +72,22 @@ describe('findings cache', () => {
 `),
     );
     expect(snapshots).toEqual(['base', 'head', 'head']);
+  });
+  it('shares a cache in the Git directory between worktrees when there is no node_modules', () => {
+    const { run, snapshots, repository } = setup();
+    const worktree = path.join(makeTemporaryRoot('nitpicker-cli-worktree-'), 'worktree');
+    fixtureGit(repository.root, ['worktree', 'add', '--quiet', '--detach', worktree]);
+    const lines = [];
+    const progress = { write: (text) => lines.push(text) };
+
+    run({ environment: {} });
+    run({ environment: {}, progress, projectRoot: worktree });
+
+    expect(snapshots).toEqual(['base', 'head', 'head']);
+    expect(lines).toEqual([
+      `nitpicker: base 1 analyzer cached (${repository.root}/.git/nitpicker/cache; use --no-cache to rerun)\n`,
+      'nitpicker: head: running 1 analyzer\n',
+    ]);
   });
   it('analyzes the base again with --no-cache', () => {
     const { run, snapshots } = setup();
