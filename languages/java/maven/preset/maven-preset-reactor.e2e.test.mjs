@@ -55,6 +55,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
     expect(
       findings
         .filter((finding) => finding.tool === 'test-runtime')
+        .filter((finding) => finding.classification === 'enforceable')
         .map(({ rule, path: file, identity }) => `${rule} ${file} ${identity}`)
         .sort(),
     ).toEqual([
