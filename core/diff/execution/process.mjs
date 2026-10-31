@@ -1,4 +1,5 @@
 import { spawn } from 'node:child_process';
+import { openOutputFile } from '../../tooling/output-file.mjs';
 import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
 import { withoutHostCiOutputs } from '../../tooling/host-environment.mjs';
 
@@ -6,11 +7,18 @@ const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 
 const FORCE_KILL_DELAY_MS = 1_000;
 
+const OUTPUT_POLL_INTERVAL_MS = 100;
+
 const activeChildren = new Set();
 
-function settleClose(task, { failure, status, signal, stdout, stderr }, { resolve, reject }) {
-  if (failure !== undefined) {
-    reject(failure);
+function outputLimitError(task) {
+  return new Error(`${task.name} exceeded the analyzer output limit`);
+}
+
+function settleClose(task, { failure, status, signal, stdoutFile, output }, { resolve, reject }) {
+  const error = failure ?? (output.exceeded() ? outputLimitError(task) : undefined);
+  if (error !== undefined) {
+    reject(error);
     return;
   }
   try {
@@ -18,8 +26,8 @@ function settleClose(task, { failure, status, signal, stdout, stderr }, { resolv
       reportFromAnalyzerOutput(task, {
         status,
         signal,
-        stdoutText: Buffer.concat(stdout).toString('utf8'),
-        stderrText: Buffer.concat(stderr).toString('utf8'),
+        stdoutText: stdoutFile.read('utf8'),
+        stderrText: Buffer.concat(output.stderr).toString('utf8'),
       }),
     );
   } catch (error) {
@@ -27,32 +35,46 @@ function settleClose(task, { failure, status, signal, stdout, stderr }, { resolv
   }
 }
 
-function spawnAnalyzer(task) {
+function spawnAnalyzer(task, stdoutDescriptor) {
   const child = spawn(task.invocation.command, task.invocation.args, {
     cwd: task.invocation.cwd,
     env: withoutHostCiOutputs(task.invocation.env ?? process.env),
     detached: process.platform !== 'win32',
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: ['ignore', stdoutDescriptor, 'pipe'],
   });
   activeChildren.add(child);
   return child;
 }
 
-function createOutputCollector(onOverflow) {
-  const stdout = [];
+function createOutputCollector(stdoutFile, onOverflow) {
   const stderr = [];
-  let outputBytes = 0;
-  function collect(chunks) {
-    return (chunk) => {
-      outputBytes += chunk.length;
-      if (outputBytes > MAX_ANALYZER_OUTPUT_BYTES) {
-        onOverflow();
-        return;
-      }
-      chunks.push(chunk);
-    };
+  const state = { stderrBytes: 0 };
+  function exceeded() {
+    return stdoutFile.size() + state.stderrBytes > MAX_ANALYZER_OUTPUT_BYTES;
   }
-  return { stdout, stderr, collectStdout: collect(stdout), collectStderr: collect(stderr) };
+  function check() {
+    if (exceeded()) {
+      onOverflow();
+    }
+  }
+  function collectStderr(chunk) {
+    state.stderrBytes += chunk.length;
+    if (exceeded()) {
+      onOverflow();
+      return;
+    }
+    stderr.push(chunk);
+  }
+  const poll = setInterval(check, OUTPUT_POLL_INTERVAL_MS);
+  poll.unref();
+  return {
+    stderr,
+    collectStderr,
+    exceeded,
+    stop() {
+      clearInterval(poll);
+    },
+  };
 }
 
 function scheduleForceKill(child) {
@@ -98,28 +120,32 @@ function createTaskController(child, task) {
   };
 }
 
-export function executeAnalyzerTask(task) {
+export async function executeAnalyzerTask(task) {
+  const stdoutFile = openOutputFile();
+  try {
+    return await runAnalyzerChild(task, stdoutFile);
+  } finally {
+    stdoutFile.remove();
+  }
+}
+
+function runAnalyzerChild(task, stdoutFile) {
   return new Promise((resolve, reject) => {
-    const child = spawnAnalyzer(task);
+    const child = spawnAnalyzer(task, stdoutFile.descriptor);
     const controller = createTaskController(child, task);
-    const output = createOutputCollector(() => {
-      controller.terminate(new Error(`${task.name} exceeded the analyzer output limit`));
+    const output = createOutputCollector(stdoutFile, () => {
+      controller.terminate(outputLimitError(task));
     });
-    child.stdout.on('data', output.collectStdout);
     child.stderr.on('data', output.collectStderr);
     child.on('error', (error) => {
       controller.recordError(error);
     });
     child.on('close', (status, signal) => {
       controller.finish(() => {
+        output.stop();
         settleClose(
           task,
-          {
-            failure: controller.error(),
-            status,
-            signal,
-            ...output,
-          },
+          { failure: controller.error(), status, signal, stdoutFile, output },
           { resolve, reject },
         );
       });

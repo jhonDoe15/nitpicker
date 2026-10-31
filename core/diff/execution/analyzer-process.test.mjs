@@ -62,6 +62,18 @@ describe('analyzer process execution', () => {
       ],
     });
   });
+  it('stops an analyzer that keeps writing to stdout past the output limit', async () => {
+    const runaway = task('runaway');
+    runaway.timeoutMs = 60_000;
+    runaway.invocation.args = [
+      '-e',
+      "const chunk = Buffer.alloc(1024 * 1024, 120); for (;;) require('node:fs').writeSync(1, chunk);",
+    ];
+
+    await expect(executeAnalyzerTask(runaway)).rejects.toThrow(
+      'runaway exceeded the analyzer output limit',
+    );
+  });
   it('force-kills an analyzer that ignores timeout termination', async () => {
     const fixtureRoot = mkdtempSync(path.join(tmpdir(), 'analyzer-scheduler-force-kill-'));
     const readyMarker = path.join(fixtureRoot, 'ready');

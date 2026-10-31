@@ -57,6 +57,16 @@ below (pushes to `main` that touch the paths they list, a manual run, and the `r
 The TypeScript red-base test (`npm run test:typescript`, which runs real vitest through the CLI) is
 not in CI: run it after changing `core/diff/comparison/base-red/` or a test runner's failure report.
 
+The `platforms` workflow, which has the same triggers and is not a required check, runs the CLI on
+the sample projects in `scripts/platforms/samples.mjs` on Linux, macOS and Windows, and the
+TypeScript sample under Deno. It fails when a run's findings differ from the Linux run under Node,
+except for the differences listed in `scripts/platforms/compare-runs.mjs`. Reproduce one sample
+with `node scripts/platforms/smoke.mjs typescript --output reports/platforms/local` (add
+`--runtime deno` for Deno), then compare two such directories with
+`node scripts/platforms/compare-runs.mjs <reference> <other>`. After changing a workflow's
+versions or the expected differences, run `npm run gen:checks` so that
+[docs/compatibility.md](docs/compatibility.md) matches; a test fails until it does.
+
 CI (the `typescript` workflow) runs:
 
 - on every push to `main` that touches a path in the workflow's `paths` list;

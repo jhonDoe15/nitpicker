@@ -1,0 +1,165 @@
+name: platforms
+
+# The CLI as a user runs it, on small sample projects (scripts/platforms/samples.mjs): the TypeScript strict-clean
+# fixture, a Gradle and a Maven Java project and a Python project, each with `--all` and then with a change that adds
+# one violation. The samples run on Linux, macOS and Windows, and the TypeScript sample also under Deno; every
+# run must give the same findings as the Linux run under Node, except the differences listed in
+# scripts/platforms/compare-runs.mjs, which docs/compatibility.md shows. Not a required check. It runs on a push to
+# main that touches the paths below, by hand from the Actions tab, and on a pull request only when the `run-ci`
+# label is added, like the typescript workflow.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'core/**'
+      - 'shared/**'
+      - 'languages/**'
+      - 'scripts/platforms/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/python-e2e-constraints.txt'
+      - '.github/workflows/platforms.yml'
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+
+# A newer request cancels the older run on the same pull request, other labels do not; runs on main
+# always finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Plain logs, and no Deno update check on every CLI start.
+env:
+  NO_COLOR: '1'
+  DENO_NO_UPDATE_CHECK: '1'
+
+jobs:
+  samples:
+    name: samples ${{ matrix.os }}
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ${{ matrix.os }}
+    # Each Java sample builds twice with every Java tool; the job takes about five minutes.
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+    defaults:
+      run:
+        shell: bash
+    env:
+      UV_CONSTRAINT: ${{ github.workspace }}/.github/python-e2e-constraints.txt
+    steps:
+      # Windows runners turn LF into CRLF on checkout by default, which Prettier and the source hashes in finding
+      # identities would report; the samples are compared with the Linux run byte for byte.
+      - run: git config --global core.autocrlf false
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      # Maven comes with the runner image on all three systems.
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: maven
+          cache-dependency-path: languages/java/maven/fixtures/**/pom.xml
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: 8.14.3
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: .github/python-e2e-constraints.txt
+      # The Python sample builds its own environment with uv from its development dependencies.
+      - run: pip install -c .github/python-e2e-constraints.txt uv
+      - run: npm ci
+      # Each sample's reports folder (report.txt, findings.json, tool-errors.json) goes into the artifact too.
+      - name: Sample projects
+        run: >-
+          node scripts/platforms/smoke.mjs typescript gradle maven python
+          --output "reports/platforms/${{ runner.os }}"
+      # One artifact per system, replaced when a failed job is re-run, so the platforms job of a re-run
+      # compares the newest run of every system.
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: platforms-${{ runner.os }}
+          path: reports/platforms/
+          overwrite: true
+          if-no-files-found: warn
+
+  runtimes:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: 2.9.6
+      - run: npm ci
+      - run: node scripts/platforms/smoke.mjs typescript --output reports/runtimes/node
+      - run: node scripts/platforms/smoke.mjs typescript --runtime deno --output reports/runtimes/deno
+      # Stryker's first test run sometimes fails under Deno (about one run in four locally, never under
+      # Node, cause not known yet; see docs/compatibility.md), so a differing Deno run gets one more try.
+      - name: Deno gives the findings of Node
+        run: |
+          compare() {
+            node scripts/platforms/compare-runs.mjs --report reports/runtimes/comparison.txt \
+              reports/runtimes/node reports/runtimes/deno
+          }
+          if ! compare; then
+            echo "::warning::The Deno run differed from Node; running the Deno sample once more."
+            cat reports/runtimes/comparison.txt
+            node scripts/platforms/smoke.mjs typescript --runtime deno --output reports/runtimes/deno
+            compare
+          fi
+      # The expected differences and the tool error messages of each run.
+      - name: Comparison
+        if: ${{ !cancelled() }}
+        run: cat reports/runtimes/comparison.txt || true
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: runtimes
+          path: reports/runtimes/
+          overwrite: true
+          if-no-files-found: warn
+
+  platforms:
+    if: ${{ !cancelled() && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') }}
+    needs: [samples, runtimes]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: platforms-*
+          path: reports/platforms
+          merge-multiple: true
+      - name: macOS and Windows give the findings of Linux
+        run: >-
+          node scripts/platforms/compare-runs.mjs --report reports/comparison.txt
+          reports/platforms/Linux reports/platforms/macOS reports/platforms/Windows
+      - name: Comparison
+        if: ${{ !cancelled() }}
+        run: cat reports/comparison.txt || true
+      - name: Every sample and runtime job passed
+        env:
+          SAMPLES: ${{ needs.samples.result }}
+          RUNTIMES: ${{ needs.runtimes.result }}
+        run: test "$SAMPLES" = success && test "$RUNTIMES" = success
