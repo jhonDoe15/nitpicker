@@ -6,6 +6,7 @@ import {
   enabled,
   BASELINED_FINDINGS,
 } from '../../__tests__/java-preset-project.mjs';
+import { helpUriProblems } from '../../../../../../shared/reference/test-support/help-uris.mjs';
 
 describe.skipIf(!enabled)('Java preset end to end', () => {
   const fixture = useJavaPresetProject();
@@ -19,6 +20,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       'google-java-format format Bad.java',
       'pit mutant-nocoverage Bad.java', // Bad.decode has no test
     ]);
+    expect(helpUriProblems(result.newFindings)).toEqual([]);
     expect([...new Set(summarize(result.unchangedFindings))].sort()).toEqual(BASELINED_FINDINGS);
   }, 180_000);
   it('fails a new ArchUnit violation, once per rule and offending class', () => {
@@ -30,6 +32,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
       ...repeated(4, 'errorprone JavaUtilDate Stamp.java'),
       ...repeated(3, 'pit mutant-nocoverage Stamp.java'),
     ]);
+    expect(helpUriProblems(result.newFindings)).toEqual([]);
     expect(
       result.newEnforceable
         .filter((finding) => finding.tool === 'archunit')

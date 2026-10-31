@@ -17,6 +17,10 @@ import { JAVA_TOOLS } from '../../../languages/java/adapters/gradle-presets.mjs'
 import { JAVA_EXCEPTION_RULES } from '../../../languages/java/adapters/java-policy.mjs';
 import { KOTLIN_EXCEPTION_RULES } from '../../../languages/java/adapters/kotlin/kotlin-options.mjs';
 import { DETEKT_RULE } from '../../../languages/java/adapters/kotlin/rules/kotlin-messages.mjs';
+import {
+  GO_EXCEPTION_RULES,
+  GO_LINT_TOOLS,
+} from '../../../languages/go/adapters/configuration/go-config.mjs';
 import { i18nRuleIds } from '../../../languages/typescript/preset/eslint-config/i18n/i18n-rules.mjs';
 import { NITPICKER_RULES, RENAMED_TYPESCRIPT_RULES } from '../validate.mjs';
 import { ABSOLUTE_PATH, ref, nonEmptyString, never, ruleSpellings } from './schema-parts.mjs';
@@ -147,6 +151,13 @@ export const kotlinRestriction = ruleIs({
     { enum: ruleSpellings(KOTLIN_EXCEPTION_RULES) },
     { pattern: DETEKT_RULE.source },
     javaFinding,
+  ],
+});
+
+export const goRestriction = ruleIs({
+  anyOf: [
+    { enum: ruleSpellings(GO_EXCEPTION_RULES) },
+    { pattern: `^(?:${GO_LINT_TOOLS.join('|')})/[\\s\\S]` },
   ],
 });
 

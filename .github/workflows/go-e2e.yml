@@ -1,0 +1,82 @@
+name: go-e2e
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'core/**'
+      - 'shared/**'
+      - 'languages/go/**'
+      - 'languages/java/adapters/**'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'vitest.config.mts'
+      - 'scripts/test-shards/**'
+      - '.github/workflows/go-e2e.yml'
+  pull_request:
+    types: [labeled]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  go-shard:
+    name: go shard ${{ matrix.shard }}/${{ strategy.job-total }}
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      # The suite runs the toolchain on the PATH; nitpicker builds gofumpt, goimports and its own
+      # metrics program into ~/.cache/nitpicker on first use.
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.26'
+          cache: false
+      - run: npm ci
+      - run: npm run test:go -- --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=default --reporter=json --outputFile=reports/go-e2e/shard-${{ matrix.shard }}.json
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: go-e2e-${{ matrix.shard }}-${{ github.run_attempt }}
+          path: reports/go-e2e/
+          if-no-files-found: warn
+
+  # Lists the suite without running Go: test:go must select every case its E2E flag enables, and the
+  # timing profile and the matrix above must split those files with none missing or repeated.
+  go-shard-plan:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - run: npm ci
+      - run: node scripts/test-shards/verify-e2e-shards.mjs go
+
+  go-e2e:
+    if: ${{ always() && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') }}
+    needs: [go-shard-plan, go-shard]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Every Go end-to-end shard passed and the shard plan holds
+        env:
+          PLAN: ${{ needs.go-shard-plan.result }}
+          RESULT: ${{ needs.go-shard.result }}
+        run: test "$PLAN" = success && test "$RESULT" = success

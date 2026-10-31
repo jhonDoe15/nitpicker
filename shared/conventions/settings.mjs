@@ -1,4 +1,5 @@
 import { configError, isPlainObject } from '../config.mjs';
+import { didYouMean } from '../messages/closest-match.mjs';
 
 export const FUNCTION_NAME = /^[A-Za-z_]\w*$/;
 
@@ -50,7 +51,7 @@ export function validateConventions(value, definitions) {
     const definition = known.get(id);
     if (definition === undefined) {
       throw configError(
-        `unknown convention "${id}". Allowed conventions: ${[...known.keys()].join(', ') || '(none for this preset)'}`,
+        `unknown convention "${id}"${didYouMean(id, [...known.keys()]) || `. Allowed conventions: ${[...known.keys()].join(', ') || '(none for this preset)'}`}`,
       );
     }
     validateChoice(definition, choice);

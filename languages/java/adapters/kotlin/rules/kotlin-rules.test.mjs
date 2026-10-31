@@ -59,9 +59,10 @@ describe('one-way rule messages', () => {
     expect([...new Set(kotlinRuleCases.map(({ rule }) => rule))].toSorted()).toEqual(
       [...ONE_WAY_RULE_IDS, SUPPRESSION_RULE].toSorted(),
     );
-    for (const testCase of kotlinRuleCases) {
-      expect(testCase.banned).not.toBe(testCase.allowed);
-    }
+    expect(kotlinRuleCases).not.toHaveLength(0);
+    expect(kotlinRuleCases.map((testCase) => testCase.banned === testCase.allowed)).toEqual(
+      kotlinRuleCases.map(() => false),
+    );
     expect(new Set(kotlinRuleCases.map(({ id }) => id)).size).toBe(kotlinRuleCases.length);
   });
 
@@ -118,12 +119,14 @@ describe('one-way rule messages', () => {
   });
 
   it('lists each rule once under the id detekt reports', () => {
+    expect(ONE_WAY_RULE_IDS).not.toHaveLength(0);
     expect(new Set(ONE_WAY_RULE_IDS).size).toBe(ONE_WAY_RULE_IDS.length);
-    for (const id of ONE_WAY_RULE_IDS) {
-      expect(id).toMatch(
-        /^detekt\.(?:potential-bugs|exceptions|coroutines|style|complexity)\.[A-Z]\w+$/,
-      );
-    }
+    expect(
+      ONE_WAY_RULE_IDS.filter(
+        (id) =>
+          !/^detekt\.(?:potential-bugs|exceptions|coroutines|style|complexity)\.[A-Z]\w+$/.test(id),
+      ),
+    ).toEqual([]);
   });
 });
 
@@ -202,16 +205,23 @@ describe('nitpicker-detekt.yml', () => {
 
   it('pins every ruleset and rule against a project config that switches it off or narrows it', () => {
     const pinned = { active: 'true', excludes: '[]', ignoreAnnotated: '[]', includes: '[]' };
-    for (const { settings, rules } of Object.values(rulesets)) {
-      expect(settings).toEqual(pinned);
-      for (const rule of Object.values(rules).filter(({ active }) => active !== 'false')) {
-        const { active, excludes, ignoreAnnotated, includes, severity } = rule;
-        expect({ active, excludes, ignoreAnnotated, includes, severity }).toEqual({
-          ...pinned,
-          severity: 'warning',
-        });
-      }
-    }
+    const pinnedSettings = Object.values(rulesets).map(({ settings }) => settings);
+    const ruleSettings = Object.values(rulesets).flatMap(({ rules }) =>
+      Object.values(rules)
+        .filter(({ active }) => active !== 'false')
+        .map(({ active, excludes, ignoreAnnotated, includes, severity }) => ({
+          active,
+          excludes,
+          ignoreAnnotated,
+          includes,
+          severity,
+        })),
+    );
+
+    expect(pinnedSettings).not.toHaveLength(0);
+    expect(ruleSettings).not.toHaveLength(0);
+    expect(pinnedSettings).toEqual(pinnedSettings.map(() => pinned));
+    expect(ruleSettings).toEqual(ruleSettings.map(() => ({ ...pinned, severity: 'warning' })));
   });
 });
 

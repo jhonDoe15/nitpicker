@@ -7,7 +7,7 @@ import { validateConfig } from '../../validate.mjs';
 
 const SCHEMA_PATH = path.join(PACKAGE_ROOT, 'spec', 'config.schema.json');
 
-export const PRESETS = [undefined, 'typescript', 'javascript', 'java', 'kotlin', 'python'];
+export const PRESETS = [undefined, 'typescript', 'javascript', 'java', 'kotlin', 'python', 'go'];
 
 export function committedSchema() {
   return JSON.parse(readFileSync(SCHEMA_PATH, 'utf8'));

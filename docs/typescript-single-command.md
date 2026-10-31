@@ -215,9 +215,13 @@ edit; the base is a committed tree and cannot change under its key.
   findings JSON, parsed with the finding schema on read. A corrupt or unreadable entry is a miss, and a cache that cannot be written never
   fails the run.
 - Location: `NITPICKER_CACHE_DIR` when set (relative to the project root), else
-  `node_modules/.cache/nitpicker` in the project. With neither, caching is off. A project-local
-  directory avoids sharing entries between checkouts with different dependencies and needs no OS
-  cache-directory lookup.
+  `node_modules/.cache/nitpicker` in the project, else `nitpicker/cache` in the repository's Git
+  common directory (`resolveCacheDirectory` in `core/diff/cache/cache-stores.mjs`). The
+  `node_modules` folder keeps entries apart between checkouts with different installed
+  dependencies. Projects without one (Gradle, Maven, Python, Go) declare their dependencies in
+  committed build files, which the merge-base SHA in the key already covers, so all worktrees of a
+  repository share one folder; the project path in the key keeps projects apart. With no writable
+  location and no remote cache, caching is off and the run says so on stderr.
 - Only clean reports are stored: nothing is cached for an analyzer with a tool error or a
   `tool-error` finding. An analyzer that depends on an uncached one is rerun together with it.
 - Opt out with `--no-cache`.

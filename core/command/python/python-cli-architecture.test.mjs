@@ -174,4 +174,54 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
       },
     ]);
   });
+  it('fails on a new import of a module that does not exist', () => {
+    const scan = (imports) => `${JSON.stringify(imports)}\n`;
+    const root = pythonRepository({
+      'src/billing/__init__.py': '',
+      'src/billing/invoice.py': '',
+      'pyproject.toml': '[project]\nname = "demo"\nversion = "0.1.0"\ndependencies = []\n',
+      'distributions.json': JSON.stringify({
+        python: [3, 12],
+        stdlib: ['os'],
+        modules: {},
+        entryPoints: [],
+        optional: {},
+        references: [],
+        importable: [],
+      }),
+      'import-scan.json': scan({ 'src/billing/invoice.py': [] }),
+    });
+    expect(run(root).exitCode).toBe(0);
+    writeFiles(root, {
+      'import-scan.json': scan({
+        'src/billing/invoice.py': [
+          { level: 0, module: null, names: ['os'], line: 1 },
+          { level: 0, module: 'billing.taxes', names: ['rate'], line: 2 },
+        ],
+      }),
+    });
+    commit(root, 'import a module that was never written');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.text).toBe(1);
+    expect(newFindings(result, 'unresolved-import')).toEqual([
+      {
+        tool: 'dependencies',
+        rule: 'unresolved-import',
+        path: 'src/billing/invoice.py',
+        identity: 'unresolved:billing.taxes',
+        location: { line: 2 },
+        message:
+          'Import billing.taxes resolves to no module or package. Fix the module name, or install the package and list it in pyproject.toml. If this is intended, add {"rule":"unresolved-import","paths":["src/billing/invoice.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+        exception: {
+          rule: 'unresolved-import',
+          paths: ['src/billing/invoice.py'],
+          reason: '...',
+        },
+        exceptionList: 'python.exceptions',
+        classification: 'enforceable',
+      },
+    ]);
+  });
 });

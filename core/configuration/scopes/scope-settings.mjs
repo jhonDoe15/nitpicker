@@ -6,6 +6,7 @@ import {
   validateStringArray,
 } from '../../../shared/config.mjs';
 import { hasSpecificText } from '../../../shared/rules/console/console-messages.mjs';
+import { suggestionOrAllowed } from '../../../shared/messages/closest-match.mjs';
 
 export const TEST_CONSOLE_KEYS = ['allow'];
 
@@ -20,7 +21,9 @@ export function validateScope(name, scope, keys) {
   }
   for (const key of Object.keys(scope)) {
     if (!keys.includes(key)) {
-      throw configError(`unknown ${name} key "${key}". Allowed ${name} keys: ${keys.join(', ')}`);
+      throw configError(
+        `unknown ${name} key "${key}"${suggestionOrAllowed(key, keys, `Allowed ${name} keys`)}`,
+      );
     }
   }
   if (scope.enabled !== undefined && typeof scope.enabled !== 'boolean') {
@@ -50,10 +53,11 @@ function validateAllowEntry(entry, label) {
   }
   for (const key of Object.keys(entry)) {
     if (!ALLOW_KEYS.includes(key)) {
-      const hint = key === 'pattern' ? ': use "contains"' : '';
-      throw configError(
-        `unknown key "${key}" in "${label}"${hint}. Allowed keys: ${ALLOW_KEYS.join(', ')}`,
-      );
+      const hint =
+        key === 'pattern'
+          ? `: use "contains". Allowed keys: ${ALLOW_KEYS.join(', ')}`
+          : suggestionOrAllowed(key, ALLOW_KEYS);
+      throw configError(`unknown key "${key}" in "${label}"${hint}`);
     }
   }
   if (typeof entry.contains !== 'string' || !hasSpecificText(entry.contains)) {

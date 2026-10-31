@@ -16,6 +16,7 @@ import { conventionProperties, history, spring } from './setting-schemas.mjs';
 import {
   exceptionDefinitions,
   exceptionList,
+  goRestriction,
   javaRestriction,
   kotlinRestriction,
   pathProblemRestriction,
@@ -51,7 +52,7 @@ const TOP_LEVEL = {
     not: { enum: HEAD_NAMES },
   },
   preset: enumeration(
-    'The preset; typescript when absent. Java, Kotlin and Python are never detected.',
+    'The preset; typescript when absent. Java, Kotlin, Python and Go are never detected.',
     SUPPORTED_PRESETS,
   ),
   disable: stringArray(
@@ -79,6 +80,7 @@ const TOP_LEVEL = {
   tools,
   testConsole: areas.testConsole,
   kotlin: areas.kotlin,
+  go: areas.go,
   spring,
   history,
   conventions: {
@@ -92,6 +94,7 @@ function unavailableKeys(preset) {
     ...(preset === 'typescript' ? [] : SCOPE_KEYS),
     ...(preset === 'python' ? [] : ['python']),
     ...(preset === 'kotlin' ? [] : ['kotlin']),
+    ...(preset === 'go' ? ['layout', 'duplicates'] : ['go']),
     ...(GRADLE_PRESETS.includes(preset) ? [] : ['spring']),
     ...(factRuleSettings(preset).includes('testConsole') ? [] : ['testConsole']),
   ];
@@ -106,7 +109,7 @@ function unavailableThresholds(preset) {
   ];
 }
 
-const RULE_RESTRICTIONS = { java: javaRestriction, kotlin: kotlinRestriction };
+const RULE_RESTRICTIONS = { java: javaRestriction, kotlin: kotlinRestriction, go: goRestriction };
 
 function exceptionsFor(preset) {
   if (preset === 'python') {
@@ -128,12 +131,12 @@ function forbidding(key, forbidden) {
 
 function presetProperties(preset) {
   return {
-    ...forbid(unavailableKeys(preset)),
     ...forbidding('thresholds', unavailableThresholds(preset)),
     ...forbidding('layout', without(layoutKeysFor(preset, CO_CHANGE_ON), LAYOUT_KEYS)),
     ...forbidding('tools', without(toolsByPreset[preset], Object.keys(tools.properties))),
     conventions: conventionProperties(conventionDefinitions(preset)),
     exceptions: exceptionsFor(preset),
+    ...forbid(unavailableKeys(preset)),
   };
 }
 

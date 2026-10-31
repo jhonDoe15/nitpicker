@@ -24,13 +24,19 @@ export const CLASS_LIMIT_DEFAULTS = {
   inheritanceDepth: 3,
 };
 
-export const FOLDER_DEPTH_DEFAULTS = { typescript: 1, java: 4, python: 4 };
+export const FOLDER_DEPTH_DEFAULTS = { typescript: 1, java: 4, python: 4, go: 4 };
 
 export const JAVA_SIZE_RULES = Object.values(SIZE_RULE_IDS);
 
 export const TYPESCRIPT_SIZE_RULES = [SIZE_RULE_IDS.folderDepth];
 
 export const PYTHON_SIZE_RULES = Object.values(SIZE_RULE_IDS);
+
+export const GO_SIZE_RULES = [
+  SIZE_RULE_IDS.folderDepth,
+  SIZE_RULE_IDS.classMethods,
+  SIZE_RULE_IDS.classFields,
+];
 
 export const JAVA_LINE_LENGTH = 100;
 
@@ -43,6 +49,8 @@ export function sizeMessages(hint, allowed) {
     classMethods: `{name} has {value} methods (limit {limit}). ${allowed('Split it into classes by responsibility.')} ${hint}`,
     classFields: `{name} has {value} fields (limit {limit}). ${allowed('Group related fields into a record or a class of their own.')} ${hint}`,
     recordComponents: `{name} has {value} components (limit {limit}). ${allowed('Group related components into nested records or data classes, or split it by responsibility.')} ${hint}`,
+    typeMethods: `{name} has {value} methods (limit {limit}). ${allowed('Split it into types by responsibility.')} ${hint}`,
+    structFields: `{name} has {value} fields (limit {limit}). ${allowed('Group related fields into a struct of their own and hold it as one field.')} ${hint}`,
     inheritanceDepth: `{name} extends {value} classes deep (limit {limit}). ${allowed('Hold the shared part as a field and delegate to it instead of extending.')} ${hint}`,
   };
 }
@@ -56,6 +64,8 @@ export function sizeGrewMessages(hint, allowed) {
     classMethods: `{name} grew from {base} to {value} methods (limit {limit}). ${allowed('Put the new method in a new class.')} ${hint}`,
     classFields: `{name} grew from {base} to {value} fields (limit {limit}). ${allowed('Put the new field in a new class, or group it with related fields in a record.')} ${hint}`,
     recordComponents: `{name} grew from {base} to {value} components (limit {limit}). ${allowed('Put the new component in a nested record or data class, or split it by responsibility.')} ${hint}`,
+    typeMethods: `{name} grew from {base} to {value} methods (limit {limit}). ${allowed('Put the new method on a new type.')} ${hint}`,
+    structFields: `{name} grew from {base} to {value} fields (limit {limit}). ${allowed('Put the new field in a struct of its own, or group it with related fields there.')} ${hint}`,
     inheritanceDepth: `{name} now extends {value} classes deep, up from {base} (limit {limit}). ${allowed('Hold the shared part as a field and delegate to it instead of extending.')} ${hint}`,
   };
 }
@@ -75,6 +85,10 @@ export const SIZE_HELD_MESSAGES = {
     '{name}: {value} fields (limit {limit}), allowed because base was {base}; any increase fails.',
   recordComponents:
     '{name}: {value} components (limit {limit}), allowed because base was {base}; any increase fails.',
+  typeMethods:
+    '{name}: {value} methods (limit {limit}), allowed because base was {base}; any increase fails.',
+  structFields:
+    '{name}: {value} fields (limit {limit}), allowed because base was {base}; any increase fails.',
   inheritanceDepth:
     '{name}: extends {value} classes deep (limit {limit}), allowed because base was {base}; any increase fails.',
 };
@@ -105,36 +119,38 @@ function fileRules(enforcedBy) {
 const TYPESCRIPT_DEPTH = `code more than ${String(FOLDER_DEPTH_DEFAULTS.typescript)} folder below \`features/<feature>/<layer>/\` (TypeScript)`;
 const JAVA_DEPTH = `more than ${String(FOLDER_DEPTH_DEFAULTS.java)} packages below the root package (Java, Kotlin)`;
 const PYTHON_DEPTH = `more than ${String(FOLDER_DEPTH_DEFAULTS.python)} packages below the root package (Python)`;
+const GO_DEPTH = `more than ${String(FOLDER_DEPTH_DEFAULTS.go)} packages below the module root, \`internal\` not counted (Go)`;
 
 const JAVA_AND_PYTHON = { typescript: false, java: true, python: true };
 
-function classRule(id, limit, withKotlin) {
-  return { id, check: 'structure', limit, enforcedBy: withKotlin(JAVA_AND_PYTHON, true) };
+function classRule(id, limit, enforcedBy) {
+  return { id, check: 'structure', limit, enforcedBy };
 }
 
-export function sizeRules({ all, withKotlin }) {
+export function sizeRules({ all, withKotlin, withGo }) {
+  const classes = withKotlin(JAVA_AND_PYTHON, true);
   return [
-    ...fileRules(withKotlin(all, true)),
+    ...fileRules(withGo(withKotlin(all, true))),
     {
       id: SIZE_RULE_IDS.folderDepth,
       check: 'structure',
-      limit: `${TYPESCRIPT_DEPTH}, ${JAVA_DEPTH} or ${PYTHON_DEPTH}; override with \`thresholds.folderDepth\``,
-      enforcedBy: withKotlin(all, true),
+      limit: `${TYPESCRIPT_DEPTH}, ${JAVA_DEPTH}, ${PYTHON_DEPTH} or ${GO_DEPTH}; override with \`thresholds.folderDepth\``,
+      enforcedBy: withGo(withKotlin(all, true)),
     },
     classRule(
       SIZE_RULE_IDS.classMethods,
-      `more than ${String(CLASS_LIMIT_DEFAULTS.classMethods)} methods in a class of the main Java sources or the Python source roots; override with \`thresholds.classMethods\``,
-      withKotlin,
+      `more than ${String(CLASS_LIMIT_DEFAULTS.classMethods)} methods in a class of the main Java sources or the Python source roots, or on a Go type outside test files; override with \`thresholds.classMethods\``,
+      withGo(classes),
     ),
     classRule(
       SIZE_RULE_IDS.classFields,
-      `more than ${String(CLASS_LIMIT_DEFAULTS.classFields)} instance fields in a class of the main Java sources or the Python source roots; override with \`thresholds.classFields\``,
-      withKotlin,
+      `more than ${String(CLASS_LIMIT_DEFAULTS.classFields)} instance fields in a class of the main Java sources or the Python source roots, or in a Go struct outside test files; override with \`thresholds.classFields\``,
+      withGo(classes),
     ),
     classRule(
       SIZE_RULE_IDS.inheritanceDepth,
-      `a class more than ${String(CLASS_LIMIT_DEFAULTS.inheritanceDepth)} superclasses deep in the main Java sources or the Python source roots; override with \`thresholds.inheritanceDepth\``,
-      withKotlin,
+      `a class more than ${String(CLASS_LIMIT_DEFAULTS.inheritanceDepth)} superclasses deep in the main Java sources or the Python source roots (Go has no inheritance); override with \`thresholds.inheritanceDepth\``,
+      classes,
     ),
   ];
 }

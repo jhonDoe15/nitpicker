@@ -18,6 +18,27 @@ const CODE_FENCE = /^(?:```|~~~)/u;
 const EXAMPLE_TAG = /^@example(?![\w-])/u;
 const BLOCK_TAG = /^@[A-Za-z][\w-]*(?=[\s{]|$)/u;
 const INLINE_TAG = /\{@\w+(?!\w)\s*((?:[^\s}][^}]*)?)\}/gu;
+const NAMED_TAGS = new Set([
+  'param',
+  'arg',
+  'argument',
+  'prop',
+  'property',
+  'template',
+  'typeparam',
+]);
+const THROWS_TAGS = new Set(['throws', 'exception']);
+const METADATA_TAGS = new Set([
+  'author',
+  'since',
+  'version',
+  'see',
+  'serial',
+  'serialfield',
+  'serialdata',
+]);
+const NAME_WORD = /^(?:\[[^\]]*\]|\S+)/u;
+const HAS_WORD = /\w/u;
 
 const MAX_DESCRIPTION_LINES = 5;
 
@@ -68,6 +89,52 @@ export function descriptionLines(text, { blockTag, marker = /^/u }) {
   return description;
 }
 
+function afterType(text) {
+  if (!text.startsWith('{')) {
+    return undefined;
+  }
+  let depth = 0;
+  for (const [index, character] of [...text].entries()) {
+    depth += Number(character === '{') - Number(character === '}');
+    if (depth === 0) {
+      return text.slice(index + 1).trim();
+    }
+  }
+  return '';
+}
+
+function tagContent(line, blockTag) {
+  const [tag] = blockTag.exec(line);
+  const name = tag.slice(1).toLowerCase();
+  const rest = line.slice(tag.length).trim();
+  const typed = afterType(rest);
+  const named = NAMED_TAGS.has(name) || (THROWS_TAGS.has(name) && typed === undefined);
+  const content = typed ?? rest;
+  return named ? content.replace(NAME_WORD, '') : content;
+}
+
+function isMetadataTag(line, blockTag) {
+  return METADATA_TAGS.has(blockTag.exec(line)[0].slice(1).toLowerCase());
+}
+
+export function tagsHaveContent(text, { blockTag, marker = /^/u }) {
+  const lines = text.split('\n').map((raw) => raw.replace(marker, '').trim());
+  const fences = pairedFences(lines);
+  let insideFence = false;
+  let counted = false;
+  for (const [index, line] of lines.entries()) {
+    if (fences.has(index)) {
+      insideFence = !insideFence;
+    }
+    const startsTag = !insideFence && blockTag.test(line);
+    counted = startsTag ? !isMetadataTag(line, blockTag) : counted;
+    if (counted && HAS_WORD.test(startsTag ? tagContent(line, blockTag) : line)) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function withoutInlineTags(text) {
   const end = text.lastIndexOf('}') + 1;
   return text.slice(0, end).replace(INLINE_TAG, ' $1 ') + text.slice(end);
@@ -106,8 +173,8 @@ function restatesName(lines, name) {
   );
 }
 
-export function docCommentProblem({ name, lines }) {
-  if (name !== undefined && restatesName(lines, name)) {
+export function docCommentProblem({ name, lines, detailed = false }) {
+  if (name !== undefined && !detailed && restatesName(lines, name)) {
     return { kind: 'restating', name };
   }
   const counted = proseLines(lines).length;

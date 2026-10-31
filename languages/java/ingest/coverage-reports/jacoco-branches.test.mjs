@@ -123,9 +123,9 @@ describe('ingestJacocoBranches', () => {
       before.map((finding) => finding.identity),
     );
     expect(moved[0].location.line).toBe(before[0].location.line + 2);
-    for (const finding of before) {
-      expect(finding.identity).toMatch(/^branch-source:[0-9a-f]{16}(#\d+)?$/);
-    }
+    expect(
+      before.filter((finding) => !/^branch-source:[0-9a-f]{16}(#\d+)?$/.test(finding.identity)),
+    ).toEqual([]);
     expect(before[1].identity).not.toBe(before[2].identity);
   });
 });
