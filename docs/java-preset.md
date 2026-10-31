@@ -377,7 +377,7 @@ classpath and its `test` task, and adds no test library to the project.
   feature with a `where:` block counts as a template, like a `@ParameterizedTest`. A test that
   names no method (a Kotest test, a custom unroll name) in a file without templates is counted when
   its file changed. `*IntegrationSpec` and `*ISpec` classes get the integration budget.
-- **Tests.** `adapters/java-e2e/test-frameworks.e2e.test.mjs` runs a JUnit 4 project with
+- **Tests.** `adapters/java-e2e/test-frameworks/*.e2e.test.mjs` run a JUnit 4 project with
   `archunit-junit4` rules, a TestNG project and a Spock project, both with `archunit-junit5` rules,
   on Gradle and on Maven (fixtures in `adapters/fixtures/test-frameworks/`), JUnit 4 tests with
   `archunit-junit5` rules and an ArchUnit class no runner picks up on Gradle;
@@ -932,7 +932,7 @@ class in a module without Failsafe).
   whatever runs then. A line printed only in some runs (a timing-dependent warning) shows up as new
   in the run that has it; allow it in `testConsole.allow` with the reason.
 - **Tests.** `adapters/test-times/console-output.test.mjs`, `console-findings.test.mjs`,
-  `maven/results/maven-test-results.test.mjs`, and `spring/java-spring.e2e.test.mjs`, which
+  `maven/results/maven-test-results.test.mjs`, and `spring/e2e/java-spring-console.e2e.test.mjs`, which
   commits a test that prints a new line on top of the Spring fixture and asserts, on Gradle and on
   Maven, that it is the only console finding: Spring's startup output, the WARN line a service logs
   in an unchanged `@SpringBootTest`, and a renumbered line in an edited test all stay baselined.
@@ -1169,7 +1169,7 @@ class in a module without Failsafe).
   parent under `spring-boot-starter-parent`, MapStruct's processor configured in the parent's
   `pluginManagement` with a property version, Lombok's appended in the child with no version, and a
   class compiled into `target/classes` before the regular compile), and
-  `maven/maven-preset.e2e.test.mjs` (the same findings, Error Prone's included, from a Maven and a
+  `maven/preset/maven-preset-parity.e2e.test.mjs` (the same findings, Error Prone's included, from a Maven and a
   Gradle build of the same sources). The JDK choice on Gradle was checked by hand: Gradle on JDK 17
   runs Error Prone on a JDK 21 launcher, and a project with a JDK 25 toolchain on a JDK 21 Gradle
   runs it on JDK 25.
@@ -2060,7 +2060,7 @@ pattern held in a variable (`var all = "/**"`) or an `access(...)` that allows e
 variable within one method. Layering, entities in controller signatures and test placement need a
 cross-class view, which PMD does not have; they are nitpicker's own ArchUnit rules, described next.
 
-**Tests.** `spring/java-spring.e2e.test.mjs` (gated like the other Java e2e tests and part of
+**Tests.** `spring/e2e/java-spring-rules.e2e.test.mjs` (gated like the other Java e2e tests and part of
 `npm run test:java`) runs PMD through the init script on `adapters/fixtures/spring-project`, whose
 sources mark every expected violation with a `// violation: <rule>` comment, and asserts the
 reported set equals the marked set. The fixture also holds the legitimate forms each rule must
@@ -2402,7 +2402,7 @@ decides what counts as a literal secret, and `java-spring.mjs` applies the rules
 ## Review rules
 
 Rules that carry review findings over from the TypeScript preset. Each works the same on Gradle
-and Maven: the PMD rules are in the shared rule set files, and `spring/java-spring.e2e.test.mjs`
+and Maven: the PMD rules are in the shared rule set files, and `spring/e2e/java-spring-review.e2e.test.mjs`
 builds one Spring project (`java-e2e/fixtures/review-rules`, every expected violation marked with
 `// violation: <rule>`) with both and asserts the same findings, and exactly the marked ones.
 Every message names the allowed form and the exception that keeps code that is right.
@@ -2775,8 +2775,13 @@ in it against the catalogs and Error Prone's check list.
   text, the exception route, and the shape of every catalog entry.
 - `languages/java/messages/rule-catalog.e2e.test.mjs`: gated like the other e2e tests. The catalogs
   name exactly the rules of the pinned tool versions.
-- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `spring/e2e/spring-arch.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs`, `languages/java/maven/preset/red-base/maven-red-base.e2e.test.mjs`, `languages/java/adapters/errorprone/error-prone.e2e.test.mjs`, the other Error Prone e2e tests `rule-catalog.e2e.test.mjs` and `languages/java/adapters/java-e2e/red-base/java-red-base.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle, Maven and network access to Maven Central; about 85 seconds
-  warm. `.github/workflows/java-e2e.yml` runs it (Temurin 21, Gradle 8.14.3, Maven 3.9.11) on a push to `main` that changes `languages/java/**`, `core/**`, `shared/**`, `package.json`, `package-lock.json`, `vitest.config.mts` or the workflow, by hand (`workflow_dispatch`), and on a pull request when the `run-ci` label is added. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
+- `languages/java/adapters/java-e2e/preset/**/*.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1`
+  (`npm run test:java`, which also runs the other `java-e2e/` files, `spring/e2e/*.e2e.test.mjs`,
+  `suppressions/escape-hatches*.e2e.test.mjs`, `languages/java/maven/preset/**/*.e2e.test.mjs`, the
+  Error Prone e2e tests and `rule-catalog.e2e.test.mjs`, one file at a time because each stops the
+  Gradle daemons when it ends). Needs Java 21, Gradle, Maven and network access to Maven Central;
+  CI splits the files over the shards described in `scripts/test-shards/README.md`.
+  `.github/workflows/java-e2e.yml` runs them (Temurin 21, Gradle 8.14.3, Maven 3.9.11) on a push to `main` that changes `languages/java/**`, `core/**`, `shared/**`, `package.json`, `package-lock.json`, `vitest.config.mts` or the workflow, by hand (`workflow_dispatch`), and on a pull request when the `run-ci` label is added. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset
   `String` (SpotBugs) and misformatted code fails with exactly those three findings as new.

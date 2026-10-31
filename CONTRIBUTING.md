@@ -31,6 +31,14 @@ One npm package (`nitpicker`) serves every language; the package root is the rep
 Source files carry no comments; formats and protocols that names cannot express are in
 [docs/internals.md](docs/internals.md).
 
+Test helpers go in one of two folders next to the tests that use them. `__tests__/` holds helpers
+that register Vitest hooks, such as `useJavaPresetProject()`, which builds a fixture project in
+`beforeAll` and removes it in `afterAll`. The lint rules treat the folder as test code, and the named timeout
+projects in `nitpicker.config.json` include the Java and Kotlin ones, so their hooks get the same
+limits as the tests. `test-support/` holds what the tests import without hooks: expected findings,
+fixture file contents, and helpers that run a build or summarize a report. Neither folder ships in
+the npm package.
+
 ## Running the checks
 
 Pull requests do not run CI on every push. Check your change locally before you push it and again
@@ -90,11 +98,13 @@ arguments pass through) and rewrites the times of the files it ran.
 node scripts/test-shards/record-durations.mjs --maxWorkers=100%
 ```
 
-Java end-to-end CI uses 16 isolated runner shards and Kotlin uses 10, with files run serially in
-each shard. Independent behavior groups have separate fixture trees; the full 102 Java and 98
-Kotlin cases remain selected. The final `java` or `kotlin` check passes only when all its shards
-pass. Reproduce a shard with `npm run test:java -- --shard=1/16` or
-`npm run test:kotlin -- --no-file-parallelism --shard=1/10`.
+Java end-to-end CI uses 19 isolated runner shards and Kotlin uses 15, with files run serially in
+each shard. Independent behavior groups have separate fixture trees; every Java and Kotlin case
+stays selected. The final `java` or `kotlin` check passes only when all its shards pass.
+Reproduce a shard with `npm run test:java -- --shard=1/19` or
+`npm run test:kotlin -- --no-file-parallelism --shard=1/15`. A file that runs longer than about
+two minutes belongs in several files with their own fixtures, so the shards stay balanced;
+`scripts/test-shards/README.md` has the timings.
 
 Named `tools.tests.timeouts.projects` select the Java/Kotlin subject even though the harness is
 JavaScript. They inherit language declaration ceilings and repository execution defaults. JVM
