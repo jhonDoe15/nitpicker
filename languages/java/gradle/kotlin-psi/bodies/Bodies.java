@@ -60,6 +60,18 @@ public final class Bodies {
     }
   }
 
+  public void iterable(Frame inner, PsiElement element) {
+    if (!active) {
+      return;
+    }
+    KtExpression source = Iterables.sourceOf(element);
+    Map<String, Object> detail = m("line", lineOf(element));
+    if (source != null) {
+      detail.put("collection", Iterables.describe(source));
+    }
+    scopes.describe(inner, detail);
+  }
+
   public void observe(PsiElement element, Frame frame) {
     if (!active) {
       return;

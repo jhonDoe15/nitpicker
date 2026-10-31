@@ -195,6 +195,12 @@ final class Declarations {
   void declareProperty(KtProperty property, Frame frame) {
     Frame owner = frame == null ? null : frame.nearest("class");
     boolean member = owner != null && frame == owner;
+    if (property.isTopLevel() && property.getName() != null) {
+      state.globals.add(
+          m(
+              "name", property.getName(), "line", state.lineOf(property.getTextOffset()),
+              "type", clip(property.getTypeReference()), "initializer", Initializers.callee(property)));
+    }
     if (!member || property.getName() == null) {
       return;
     }

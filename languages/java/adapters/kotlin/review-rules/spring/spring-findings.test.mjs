@@ -267,11 +267,17 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
   });
 
   it('ends each message with the exception route of its own rule', () => {
-    for (const finding of findingsWith({ spring: true, kotlinAllOpen: BUILD_PLUGIN })) {
-      expect(finding.tool).toBe('pmd');
-      expect(finding.classification).toBe('enforceable');
-      expect(finding.message).toBe(routed(springMessage(finding.rule), finding.rule, finding.path));
-    }
+    const findings = findingsWith({ spring: true, kotlinAllOpen: BUILD_PLUGIN });
+
+    expect(
+      findings.map(({ tool, classification, message }) => ({ tool, classification, message })),
+    ).toEqual(
+      findings.map(({ rule, path }) => ({
+        tool: 'pmd',
+        classification: 'enforceable',
+        message: routed(springMessage(rule), rule, path),
+      })),
+    );
   });
 
   it('leads every message with the allowed form, never with a prohibition or the problem', () => {
