@@ -85,7 +85,7 @@
     "Parse untrusted input once at the boundary with pydantic (`Model.model_validate(data)`) in an `adapters/` package, not with `isinstance` checks or a `TypeGuard`.",
     "hardcoded-secret",
     { "key": "python.exceptions", "rule": "hardcoded-secret" },
-    "`<name>` holds a hardcoded secret",
+    "The value of `<name>` is a hardcoded secret",
     "Read the secret from the environment in the composition root (`os.environ[\"API_TOKEN\"]`) and pass it in; keep placeholders such as `\"changeme\"` out of production code.",
     "http-without-timeout",
     { "key": "python.exceptions", "rule": "http-without-timeout" },
