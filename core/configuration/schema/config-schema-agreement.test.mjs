@@ -60,6 +60,7 @@ describe('config schema and validator agree', () => {
         tools: { prettier: { precedence: ['project'] } },
         testConsole: { allow: [{ contains: 'deprecated api', reason: 'Printed by a library' }] },
         kotlin: { formatter: 'ktlint' },
+        go: { buildTags: ['integration'] },
         spring: { roles: { service: ['com.example.UseCase'] } },
         history: { coChange: true, commits: 500 },
         conventions: { 'prettier.quotes': 'single' },
@@ -263,7 +264,7 @@ describe('config schema and validator agree', () => {
     expect(presetDisagreements(configs)).toEqual([]);
   });
 
-  it('on python and kotlin settings', () => {
+  it('on python, kotlin and go settings', () => {
     const configs = [
       { python: { environment: 'uv' } },
       { python: { environment: 'venv-dir' } },
@@ -293,6 +294,16 @@ describe('config schema and validator agree', () => {
       { kotlin: { detektConfig: '/etc/detekt.yml' } },
       { kotlin: { detektConfig: '' } },
       { kotlin: { other: 1 } },
+      { go: { formatters: ['gofumpt', 'goimports'] } },
+      { go: { formatters: [] } },
+      { go: { formatters: ['gofmt', 'gofmt'] } },
+      { go: { formatters: ['golines'] } },
+      { go: { buildTags: ['integration', '!race', 'go1.22'] } },
+      { go: { buildTags: [] } },
+      { go: { buildTags: ['two words'] } },
+      { go: { buildTags: [''] } },
+      { go: { other: 1 } },
+      { go: [] },
     ];
     expect(presetDisagreements(configs)).toEqual([]);
   });
@@ -335,7 +346,14 @@ describe('config schema and validator agree', () => {
 describe('config schema and validator on exceptions', () => {
   const entry = { paths: ['src/legacy/**'], reason: 'Legacy module until the migration' };
   const rules = [
-    ...new Set([...RULES.map(({ id }) => id), 'exports', 'types', 'pmd/UnusedPrivateField']),
+    ...new Set([
+      ...RULES.map(({ id }) => id),
+      'exports',
+      'types',
+      'pmd/UnusedPrivateField',
+      'vet/printf',
+      'vet',
+    ]),
   ];
 
   it('never rejects an exception that the validator accepts', () => {

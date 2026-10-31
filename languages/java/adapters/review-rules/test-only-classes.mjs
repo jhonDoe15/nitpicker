@@ -1,5 +1,6 @@
 import { existsSync, readFileSync } from 'node:fs';
-import { outerClass, parseJdeps } from '../metrics/java-coupling.mjs';
+import { outerClass } from '../../ingest/class-names.mjs';
+import { parseJdeps } from '../metrics/java-coupling.mjs';
 import { exceptionText } from '../../../../shared/rules/exceptions.mjs';
 import { EXCEPTION_HINT, allowedForm, messageFields } from '../../../../shared/policy.mjs';
 import { pathInside } from './java-sources.mjs';

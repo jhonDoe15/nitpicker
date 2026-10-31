@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { runCli } from '../../../core/cli.mjs';
+import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 import { withDefaultAnalyzerParallelism } from '../../../core/diff/execution/test-support/analyzer-parallelism.mjs';
 import { runAnalyzers } from '../../../core/diff/execution/run-analyzers.mjs';
 import { applyLayout, configuredAnalyzers } from '../preset/diff/configured-analyzers.mjs';
@@ -109,14 +110,13 @@ describe('custom layout and exclude across runners and tools', () => {
       packageAnalyzers,
     );
     expect(defaultRun.toolErrors).toEqual([]);
-    for (const name of [
+    const names = [
       'dependency-architecture',
       'typescript-typecheck',
       'entry-points',
       'test-runtime',
-    ]) {
-      expect(findingPaths(defaultRun, name)).toEqual([]);
-    }
+    ];
+    expect(names.map((name) => findingPaths(defaultRun, name))).toEqual(names.map(() => []));
   });
 });
 
@@ -226,7 +226,7 @@ describe('custom layout through the command line', () => {
     const output = chunks.join('');
     expect(exitCode).toBe(1);
     expect(output).toEqual(
-      'nitpicker: head: running 1 analyzer\nNitpicker quality snapshot\nStatus: violations\nEnforceable findings: 1\nDescriptive findings: 0\nTool errors: 0\n\nPer-tool counts:\ndependency-architecture: total=1 enforceable=1 descriptive=0\n\nEnforceable findings:\ndependency-architecture/no-production-to-test lib/live/uses-spec.ts lib/live/uses-spec.ts must not depend on spec/helper.ts. If this is intended, add {"rule":"no-production-to-test","paths":["lib/live/uses-spec.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.\n',
+      `nitpicker: head: running 1 analyzer\nNitpicker quality snapshot\nStatus: violations\nEnforceable findings: 1\nDescriptive findings: 0\nTool errors: 0\n\nPer-tool counts:\ndependency-architecture: total=1 enforceable=1 descriptive=0\n\nEnforceable findings:\ndependency-architecture/no-production-to-test lib/live/uses-spec.ts lib/live/uses-spec.ts must not depend on spec/helper.ts. If this is intended, add {"rule":"no-production-to-test","paths":["lib/live/uses-spec.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.\n\nRule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)\n`,
     );
     expect(output).not.toContain('lib/legacy');
   });

@@ -16,6 +16,7 @@ import {
 } from '../policy.mjs';
 import { PACKAGE_EXCEPTION_RULES } from '../project-rules/hygiene-rules.mjs';
 import { canonicalRule, toolPrefixError } from './rule-names.mjs';
+import { suggestionOrAllowed } from '../messages/closest-match.mjs';
 
 export const EXCEPTION_KEYS = ['rule', 'paths', 'packages', 'function', 'name', 'reason'];
 
@@ -76,7 +77,7 @@ function validateExceptionShape(entry, label) {
   for (const key of Object.keys(entry)) {
     if (!EXCEPTION_KEYS.includes(key)) {
       throw configError(
-        `unknown key "${key}" in "${label}". Allowed keys: ${EXCEPTION_KEYS.join(', ')}`,
+        `unknown key "${key}" in "${label}"${suggestionOrAllowed(key, EXCEPTION_KEYS)}`,
       );
     }
   }

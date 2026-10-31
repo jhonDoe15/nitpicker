@@ -27,6 +27,11 @@ import {
   TYPE_CHECKERS,
   WINDOWS_ABSOLUTE,
 } from '../../../languages/python/adapters/configuration/python-config.mjs';
+import {
+  BUILD_TAG,
+  GO_SETTING_KEYS,
+} from '../../../languages/go/adapters/configuration/go-config.mjs';
+import { FORMATTERS as GO_FORMATTERS } from '../../../languages/go/adapters/formatting/go-formatters.mjs';
 import { ALLOW_KEYS, TEST_CONSOLE_KEYS } from '../scopes/scope-settings.mjs';
 import { LAYOUT_KEYS } from '../scopes/layout-settings.mjs';
 import { CUSTOM_ANALYZER_KEYS, I18N_KEYS, REACT_KEYS } from '../validate.mjs';
@@ -255,4 +260,21 @@ export const kotlin = scope('Kotlin preset settings.', KOTLIN_KEYS, {
     description: 'Path of the detekt config inside the project; detected when absent.',
     ...projectPath,
   },
+});
+
+export const go = scope('Go preset settings.', GO_SETTING_KEYS, {
+  formatters: {
+    description:
+      'The format checks to run; detected from go.mod and the golangci-lint config when absent.',
+    type: 'array',
+    minItems: 1,
+    uniqueItems: true,
+    items: { enum: GO_FORMATTERS },
+  },
+  buildTags: stringArray(
+    'Build tags passed as -tags to go vet and go test, such as "integration".',
+    {
+      items: { type: 'string', pattern: BUILD_TAG.source },
+    },
+  ),
 });

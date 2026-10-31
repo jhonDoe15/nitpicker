@@ -17,6 +17,7 @@ import { TEST_ONLY_EXCEPTION_RULE } from '../review-rules/test-only-classes.mjs'
 import { CONSOLE_EXCEPTION_RULE } from '../test-times/console-findings.mjs';
 import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules/review-rules.mjs';
 import { UNRUN_TEST_EXCEPTION_RULE } from '../test-runs/unrun-tests.mjs';
+import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
 
 export const KOTLIN_FORMATTERS = ['ktlint', 'ktfmt', 'none'];
 export const KOTLIN_KEYS = ['formatter', 'detektConfig'];
@@ -70,7 +71,7 @@ export function validateKotlinOptions(config) {
   }
   for (const key of Object.keys(config.kotlin)) {
     if (!KOTLIN_KEYS.includes(key)) {
-      throw configError(`unknown key "kotlin.${key}". Allowed keys: ${KOTLIN_KEYS.join(', ')}`);
+      throw configError(`unknown key "kotlin.${key}"${suggestionOrAllowed(key, KOTLIN_KEYS)}`);
     }
   }
   const { formatter, detektConfig } = config.kotlin;

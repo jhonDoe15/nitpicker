@@ -38,8 +38,9 @@ export function exceptionSentence(entryText, key = 'exceptions') {
   return `If this is intended, add ${entryText} to "${key}" in nitpicker.config.json.`;
 }
 
-const ROUTE_SENTENCE =
-  /If this is intended, add (\{.*\}) to "((?:python\.)?exceptions)" in nitpicker\.config\.json\.$/su;
+/** The exception sentence at the end of a message; group `entry` is the entry it names, `list` its config list. */
+export const ROUTE_SENTENCE =
+  /If this is intended, add (?<entry>\{.*\}) to "(?<list>(?:python\.)?exceptions)" in nitpicker\.config\.json\.$/su;
 
 /** Whether `message` already ends with a sentence that names its exception entry. */
 export function hasExceptionRoute(message) {
@@ -82,8 +83,8 @@ function parsedJson(text) {
  */
 export function routeFields(message) {
   const route = ROUTE_SENTENCE.exec(message);
-  const exception = route === null ? undefined : parsedEntry(route[1]);
-  return exception === undefined ? {} : { exception, exceptionList: route[2] };
+  const exception = route === null ? undefined : parsedEntry(route.groups.entry);
+  return exception === undefined ? {} : { exception, exceptionList: route.groups.list };
 }
 
 /** `message` with `text` added so that the exception sentence, if it has one, stays last. */
