@@ -218,7 +218,6 @@ suite('packed nitpicker in a separate consumer', () => {
         expectedEslintVersion(`js-api-${jsApi}`),
       );
     });
-
     it('reports the same findings when it type checks with the project compiler', () => {
       expect(runs.project.status, runs.project.output).toBe(1);
       expect(report('project').overallStatus).toBe('completed');

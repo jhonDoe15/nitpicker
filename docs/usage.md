@@ -277,11 +277,11 @@ next comparison upload would close the alerts it opened.
 
 ## Exit codes
 
-| Code | Meaning                                                                                                          |
-| ---- | ---------------------------------------------------------------------------------------------------------------- |
-| 0    | Completed with no new enforceable findings.                                                                      |
-| 1    | At least one new enforceable finding (`--all`: any violation), even if a tool also errored.                      |
-| 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide. |
+| Code | Meaning                                                                                                           |
+| ---- | ----------------------------------------------------------------------------------------------------------------- |
+| 0    | Completed with no new enforceable findings. A run narrowed with `--analyzer` checked only the analyzers it names. |
+| 1    | At least one new enforceable finding (`--all`: any violation), even if a tool also errored.                       |
+| 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide.  |
 
 A tool error never counts as a pass. When a run has both findings and tool errors it exits 1, and the
 tool errors are still listed in the console and reports and recorded in `summary.json`
@@ -320,7 +320,12 @@ nitpicker rules [--preset <name>] [--tool <name>]
   own configs, then run the comparison. A fixer that fails is reported as a tool error; the other
   fixer and the comparison still run. Cannot be combined with `--all`.
 - `--base <ref>`: the ref to compare against.
-- `--analyzer <name>`: run only this analyzer (repeatable). Cannot be combined with sharding.
+- `--analyzer <name>`: run only this analyzer and the analyzers it depends on (repeatable). Cannot
+  be combined with sharding. A narrowed run says so: the console, `report.txt` and the GitHub step
+  summary print `Ran only: <names>. Run nitpicker without --analyzer before you finish.`, and
+  `summary.json` records `partialRun: { ran, skipped, message }` (`skipped` lists the analyzers
+  left out). Its exit 0 is not a pass. An unknown name exits 2 and leaves the previous reports in
+  place.
 - `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable).
 - `--output <dir>`: where reports go.
 

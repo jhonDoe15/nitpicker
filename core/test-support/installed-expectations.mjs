@@ -74,6 +74,7 @@ export function expectedSnapshotOutput(links) {
     'Enforceable findings: 2',
     'Descriptive findings: 0',
     'Tool errors: 0',
+    'Ran only: prettier-format. Run nitpicker without --analyzer before you finish.',
     '',
     'Per-tool counts:',
     'prettier-format: total=2 enforceable=2 descriptive=0',
@@ -98,6 +99,7 @@ Quality gate summary
     ${DEBUGGER_MESSAGE}
   prettier-format/prettier/prettier src/main/example.ts (2 times, lines 1, 3)
     Format these lines with Prettier
+Ran only: eslint-lint, prettier-format. Run nitpicker without --analyzer before you finish.
 Full diagnostics: ${root}/reports/dirty/report.txt
 nitpicker: base 2 analyzers cached (${root}/node_modules/.cache/nitpicker; use --no-cache to rerun)
 nitpicker: head: running 2 analyzers

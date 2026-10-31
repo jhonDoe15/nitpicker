@@ -17,7 +17,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
    pipe: you need its exit code. It has no `--fix` for Python; format with the "Format with ..." command
    printed at the start of the run (the gate does not read the project's formatter config). It takes minutes and prints a progress line for each slow analyzer.
 3. Act on the exit code:
-   - 0: done.
+   - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
+     and you run the gate again without it before you finish.
    - 1: fix every new finding and any tool error listed below them, then rerun.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
      tool missing from the environment) and rerun. Exit 2 is never a pass. If it says another run
