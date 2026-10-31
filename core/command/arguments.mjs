@@ -3,6 +3,7 @@ import {
   parseDrillDownOptions,
   unknownArgumentError,
 } from '../diff/comparison/cli.mjs';
+import { didYouMean } from '../../shared/messages/closest-match.mjs';
 
 const FLAGS = new Map([
   ['--all', { property: 'all', value: true }],
@@ -59,9 +60,17 @@ function readFlag(options, argument) {
   return flag !== undefined;
 }
 
+export function missingPathHint(argument) {
+  const suggestion = didYouMean(argument, [...SUBCOMMANDS, ...COMPARISON_OPTIONS], '');
+  return suggestion === '' ? '' : `${suggestion} ${HELP_POINTER}`;
+}
+
 function readPath(options, argument) {
   if (argument.startsWith('-')) {
     return false;
+  }
+  if (SUBCOMMANDS.includes(argument)) {
+    throw unknownArgument(argument);
   }
   if (argument.trim() === '') {
     throw new Error('A path argument is empty; give a file or folder');
