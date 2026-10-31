@@ -113,15 +113,23 @@ describe('options', () => {
     const { uploader, calls, pauses, clock } = setup();
     const controller = new AbortController();
     controller.abort();
-    for (const [list, signal] of [
-      [items(4), undefined],
-      [[], undefined],
-      [items(4), controller.signal],
-    ] as const) {
-      const attempt = uploader.uploadAll(list, opts(batchSize, concurrency, signal));
-      await expect(attempt).rejects.toBeInstanceOf(RangeError);
-      await expect(attempt).rejects.toThrow(`${field} must be a positive integer`);
-    }
+    const attempts = (
+      [
+        [items(4), undefined],
+        [[], undefined],
+        [items(4), controller.signal],
+      ] as const
+    ).map(([list, signal]) => uploader.uploadAll(list, opts(batchSize, concurrency, signal)));
+    const settled = await Promise.allSettled(attempts);
+    const reasons = settled.map((outcome) =>
+      outcome.status === 'rejected' ? (outcome.reason as unknown) : undefined,
+    );
+    expect(reasons.map((reason) => reason instanceof RangeError)).toEqual([true, true, true]);
+    expect(
+      reasons.filter(
+        (reason) => !String((reason as RangeError).message).includes(`${field} must be a positive integer`),
+      ),
+    ).toEqual([]);
     expect(calls).toHaveLength(0);
     expect(pauses).toHaveLength(0);
     expect(clock.reads).toBe(0);
@@ -164,20 +172,20 @@ describe('batching and summaries of a clean run', () => {
     const controller = new AbortController();
     const all = items(8);
     const done = uploader.uploadAll(all, opts(3, 1, controller.signal));
-    for (const round of [1, 2, 3]) {
-      await untilCalls(calls, round);
-      nth(calls, round - 1).resolve();
-    }
+    await untilCalls(calls, 1);
+    nth(calls, 0).resolve();
+    await untilCalls(calls, 2);
+    nth(calls, 1).resolve();
+    await untilCalls(calls, 3);
+    nth(calls, 2).resolve();
     expect(await done).toEqual({ kind: 'done', uploaded: 8, failedBatches: [] });
     expect(calls.map((call) => call.ids)).toEqual([
       ['item-0', 'item-1', 'item-2'],
       ['item-3', 'item-4', 'item-5'],
       ['item-6', 'item-7'],
     ]);
-    for (const call of calls) {
-      expect(call.args).toHaveLength(2);
-      expect(call.signal).toBe(controller.signal);
-    }
+    expect(calls.map((call) => call.args.length)).toEqual([2, 2, 2]);
+    expect(calls.map((call) => call.signal === controller.signal)).toEqual([true, true, true]);
   });
 
   it('does not add a trailing empty batch when the size divides the count', async () => {
@@ -248,7 +256,9 @@ describe('concurrency limit', () => {
     const settled = new Set<number>();
     for (let guard = 0; guard < 500 && settled.size < 20; guard += 1) {
       await vi.waitFor(() => {
-        expect(calls.length).toBeGreaterThan(0);
+        if (calls.length === 0) {
+          throw new Error('no upload has started yet');
+        }
       });
       const target = calls.findLast((_, index) => !settled.has(index));
       if (target === undefined) {
@@ -306,14 +316,16 @@ describe('concurrency limit', () => {
 
   it('can run the same uploader again after a finished run', async () => {
     const { uploader, calls } = setup();
-    for (const round of [1, 2]) {
+    const runRound = async (round: number) => {
       const done = uploader.uploadAll(items(2), opts(1, 1));
       await untilCalls(calls, round * 2 - 1);
       nth(calls, round * 2 - 2).resolve();
       await untilCalls(calls, round * 2);
       nth(calls, round * 2 - 1).resolve();
       expect(await done).toEqual({ kind: 'done', uploaded: 2, failedBatches: [] });
-    }
+    };
+    await runRound(1);
+    await runRound(2);
   });
 });
 
