@@ -15,15 +15,12 @@ function pairs(found) {
 }
 
 describe('stability direction over TypeScript features, with the default source root', () => {
-  it('passes the library before and after a new feature that reuses three others through index.ts', () => {
-    for (const options of [
-      {},
-      { withFines: true },
-      { withFines: true, adaptersImplementFace: true },
-    ]) {
+  it.each([{}, { withFines: true }, { withFines: true, adaptersImplementFace: true }])(
+    'passes the library with %j, a new feature reusing three others through index.ts',
+    (options) => {
       expect(directions(libraryProject(options).uses)).toEqual([]);
-    }
-  });
+    },
+  );
 
   it('does not report the composition root, which wires every feature', () => {
     const { uses } = libraryProject({ withFines: true });
