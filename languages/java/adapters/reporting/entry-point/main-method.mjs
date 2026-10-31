@@ -1,4 +1,4 @@
-import { mainMethodLines } from '../review-rules/source-declarations.mjs';
+import { mainMethodLines } from '../../review-rules/source-declarations.mjs';
 
 const ENTRY_POINT_RULES = new Set([
   'errorprone/SystemOut',
