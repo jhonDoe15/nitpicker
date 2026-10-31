@@ -52,7 +52,7 @@ public final class Locking {
     if (host != null && ownCall(call) && (synchronizedFunction(call) || insideLock(frame))) {
       lockedCalls.add(m("name", host, "scopes", frame == null ? List.of() : frame.chain()));
     }
-    host = hosts.get(host);
+    host = host == null ? null : hosts.get(host);
     if (host == null || call.getLambdaArguments().isEmpty()) {
       return;
     }
@@ -103,7 +103,8 @@ public final class Locking {
 
   private boolean insideLock(Frame frame) {
     for (Frame scope = frame; scope != null; scope = scope.parent) {
-      if ("lambda".equals(scope.kind()) && hosts.containsKey(scope.data.get("host"))) {
+      Object host = scope.data.get("host");
+      if ("lambda".equals(scope.kind()) && host != null && hosts.containsKey(host)) {
         return true;
       }
     }
