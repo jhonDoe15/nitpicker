@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { between, changesOf } from './test-support/policy-fixtures.mjs';
+import { between, changesOf } from '../test-support/policy-fixtures.mjs';
 
 const PROJECT = { precedence: ['project', 'nitpicker'] };
 
@@ -202,6 +202,26 @@ describe('python tool configs the project opted into', () => {
     ]);
   });
 
+  it('reads the coverage sections of the file coverage reads', () => {
+    const cfg = (flake8, excluded) => ({
+      'setup.cfg': `[flake8]\nmax-line-length = ${flake8}\n\n[coverage:report]\nexclude_also =\n    ${excluded}\n`,
+      'pyproject.toml': '[tool.coverage.report]\nexclude_also = ["unused"]\n',
+    });
+    const config = python('coverage');
+
+    expect(loosenings(cfg(80, 'def __repr__'), cfg(120, 'def __repr__'), config)).toEqual([]);
+    expect(loosenings(cfg(80, 'def __repr__'), cfg(80, 'pragma: no cover'), config)).toEqual([
+      'coverage project config changed: setup.cfg',
+    ]);
+    expect(
+      loosenings(
+        { '.coveragerc': '[report]\nexclude_also = x\n' },
+        { '.coveragerc': '# kept\n[report]\nexclude_also =   x\n' },
+        config,
+      ),
+    ).toEqual([]);
+  });
+
   it('counts any edit of a config that no longer parses', () => {
     expect(
       loosenings(
@@ -210,5 +230,125 @@ describe('python tool configs the project opted into', () => {
         python('ruff'),
       ),
     ).toEqual(['ruff project config changed: ruff.toml']);
+  });
+});
+
+describe('import-linter contracts the gate runs', () => {
+  const PYTHON = { preset: 'python' };
+  const SOURCE = { 'src/shop/__init__.py': '' };
+  const contracts = ({ layers = 'shop.api\n    shop.domain', extra = '', session = '' } = {}) => ({
+    ...SOURCE,
+    '.importlinter': `[importlinter]\nroot_package = shop\n${session}\n[importlinter:contract:layers]\nname = Layers\ntype = layers\nlayers =\n    ${layers}\n${extra}`,
+  });
+  const changes = (base, head, { config = PYTHON, baseConfig = config } = {}) =>
+    changesOf(between({ base, head, config, baseConfig }));
+  const FORBIDDEN =
+    '\n[importlinter:contract:pure]\nname = Pure\ntype = forbidden\nsource_modules = shop.domain\nforbidden_modules =\n    shop.web\n    shop.db\n';
+
+  it('fails a dropped layer or contract and lists an added one', () => {
+    const base = contracts({ extra: FORBIDDEN });
+
+    expect(changes(base, contracts({ layers: 'shop.api', extra: FORBIDDEN }))).toEqual({
+      policyLoosenings: [
+        'import-linter contract layers layers: ["shop.api","shop.domain"] -> ["shop.api"]',
+      ],
+      policyChanges: [
+        'import-linter contract layers layers: ["shop.api","shop.domain"] -> ["shop.api"]',
+      ],
+    });
+    expect(changes(base, contracts())).toEqual({
+      policyLoosenings: ['import-linter contract pure removed'],
+      policyChanges: ['import-linter contract pure removed'],
+    });
+    expect(changes(contracts(), base)).toEqual({
+      policyLoosenings: [],
+      policyChanges: ['import-linter contract pure added'],
+    });
+    expect(
+      changes(
+        base,
+        contracts({ layers: 'shop.cli\n    shop.api\n    shop.domain', extra: FORBIDDEN }),
+      ).policyLoosenings,
+    ).toEqual([]);
+  });
+
+  it('fails an added ignored import, a narrowed module list and a relaxed alert', () => {
+    const tweak = (from, to) => contracts({ extra: FORBIDDEN.replace(from, to) });
+    const base = contracts({ extra: FORBIDDEN });
+
+    expect(
+      changes(
+        base,
+        tweak(
+          'type = forbidden\n',
+          'type = forbidden\nignore_imports = shop.domain.a -> shop.db\n',
+        ),
+      ).policyLoosenings,
+    ).toEqual([
+      'import-linter contract pure ignore_imports: not set -> "shop.domain.a -> shop.db"',
+    ]);
+    expect(changes(base, tweak('    shop.db\n', '')).policyLoosenings).toEqual([
+      'import-linter contract pure forbidden_modules: ["shop.web","shop.db"] -> ["shop.web"]',
+    ]);
+    expect(
+      changes(base, tweak('    shop.db\n', '    shop.db\n    shop.cache\n')).policyLoosenings,
+    ).toEqual([]);
+    expect(
+      changes(
+        base,
+        tweak('type = forbidden\n', 'type = forbidden\nunmatched_ignore_imports_alerting = none\n'),
+      ).policyLoosenings,
+    ).toEqual(['import-linter contract pure unmatched_ignore_imports_alerting: not set -> "none"']);
+    expect(
+      changes(
+        base,
+        contracts({ session: 'exclude_type_checking_imports = True\n', extra: FORBIDDEN }),
+      ).policyLoosenings,
+    ).toEqual(['import-linter exclude_type_checking_imports: not set -> "True"']);
+  });
+
+  it('fails a deleted file, a dropped table and a renamed section', () => {
+    const pyproject = (table) => ({
+      ...SOURCE,
+      'pyproject.toml': `[tool.poetry]\nname = "shop"\n\n[${table}]\nroot_package = "shop"\n`,
+    });
+    const setupCfg = (section) => ({
+      ...SOURCE,
+      'setup.cfg': `[metadata]\nname = shop\n\n[${section}]\nroot_package = shop\n`,
+    });
+
+    expect(changes(contracts(), SOURCE).policyLoosenings).toEqual([
+      'import-linter contracts removed: .importlinter',
+    ]);
+    expect(
+      changes(pyproject('tool.importlinter'), pyproject('tool.other')).policyLoosenings,
+    ).toEqual(['import-linter contracts removed: pyproject.toml']);
+    expect(changes(setupCfg('importlinter'), setupCfg('import-linter')).policyLoosenings).toEqual([
+      'import-linter contracts removed: setup.cfg',
+    ]);
+    expect(changes(setupCfg('importlinter'), setupCfg('importlinter')).policyChanges).toEqual([]);
+  });
+
+  it('lists the contracts a change turns on, and stays quiet when they are off or not python', () => {
+    const off = { preset: 'python', python: { importLinter: false } };
+
+    expect(changes(contracts(), contracts(), { baseConfig: off, config: PYTHON })).toEqual({
+      policyLoosenings: [],
+      policyChanges: [
+        'import-linter contracts added: .importlinter',
+        'python.importLinter: false -> not set',
+      ],
+    });
+    expect(
+      changes(contracts(), contracts({ layers: 'shop.api' }), { config: off }).policyChanges,
+    ).toEqual([]);
+    expect(changes(contracts(), SOURCE, { baseConfig: PYTHON, config: off })).toEqual({
+      policyLoosenings: ['python.importLinter: not set -> false'],
+      policyChanges: ['python.importLinter: not set -> false'],
+    });
+    expect(
+      changes(contracts(), contracts({ layers: 'shop.api' }), { config: { preset: 'java' } })
+        .policyChanges,
+    ).toEqual([]);
   });
 });
