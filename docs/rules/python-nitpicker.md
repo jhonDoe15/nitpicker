@@ -161,7 +161,7 @@ Dataclass \<name> is not frozen.
 
 ### `python-rules/hardcoded-secret`
 
-`<name>` holds a hardcoded secret.
+The value of `<name>` is a hardcoded secret.
 
 - **Allowed form:** Read the secret from the environment in the composition root (`os.environ["API_TOKEN"]`) and pass it in; keep placeholders such as `"changeme"` out of production code.
 - **Exception:** If this is intended, add `{"rule":"hardcoded-secret","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
