@@ -219,11 +219,14 @@ describe('unknown codes', () => {
   });
 
   it('does not treat object property names as known codes', () => {
-    for (const code of ['constructor', '__proto__', 'toString']) {
+    const isUnknown = (code: string) => {
       const invoice = computeInvoice({ items: [widget], discountCodes: [code] });
       expect(invoice.lines).toContain(`Unknown discount code: ${code}`);
       expect(invoice.discountCents).toBe(0);
-    }
+    };
+    isUnknown('constructor');
+    isUnknown('__proto__');
+    isUnknown('toString');
   });
 
   it('does not treat a near miss as a known code', () => {
@@ -255,11 +258,13 @@ describe('at most one code', () => {
   it('counts a repeated code and an unknown one as more than one', () => {
     const repeated = computeInvoice({ items: [widget], discountCodes: ['SAVE10', 'save10'] });
     const mixed = computeInvoice({ items: [widget], discountCodes: ['bogus', 'SAVE10'] });
-    for (const invoice of [repeated, mixed]) {
+    const countsAsMany = (invoice: typeof repeated) => {
       expect(invoice.lines).toContain('Only one discount code per invoice');
       expect(invoice.lines.filter((line) => line.includes('iscount'))).toHaveLength(1);
       expect(invoice.discountCents).toBe(0);
-    }
+    };
+    countsAsMany(repeated);
+    countsAsMany(mixed);
   });
 });
 

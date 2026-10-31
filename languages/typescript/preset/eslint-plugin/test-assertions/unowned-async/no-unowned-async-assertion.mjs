@@ -1,40 +1,15 @@
 import { ancestorsOf } from '../../rules/analysis/ancestry.mjs';
 import { isFunctionNode } from '../../rules/analysis/constant-resolution.mjs';
-import { callbackOf, chainHasProperty, isCaseCall } from '../../test-quality/test-calls.mjs';
+import { isNestedTest, testCallback } from '../../test-quality/test-calls.mjs';
 import { isInsideCompletedPromise, isInsideScheduler } from './completion.mjs';
 import { fileBindings, hostOf } from './hosts.mjs';
 import { isOwnedByLaterStep, ownerRoots, stepFacts } from './later-steps.mjs';
 import { countsAsAssertion, isAssertion, nodesIn } from './nodes.mjs';
 import { isOwnedByPlan, takesDone } from './plans.mjs';
 
-const NOT_TESTS = [
-  'step',
-  'describe',
-  'beforeEach',
-  'afterEach',
-  'beforeAll',
-  'afterAll',
-  'use',
-  'extend',
-];
 const EXCEPTION_HINT =
   'An exception fits only when the test waits for the callback in a way nitpicker cannot see.';
 const LOST = 'a failure is lost or blamed on another test';
-
-function testCallback(call) {
-  if (!isCaseCall(call) || NOT_TESTS.some((name) => chainHasProperty(call.callee, name))) {
-    return undefined;
-  }
-  return callbackOf(call);
-}
-
-function isNestedTest(node) {
-  return (
-    isFunctionNode(node) &&
-    node.parent.type === 'CallExpression' &&
-    testCallback(node.parent) === node
-  );
-}
 
 function insideOtherHost(host, hosts) {
   const ancestors = new Set(ancestorsOf(host.node));
@@ -49,7 +24,7 @@ function assertsIn(env, callback) {
 
 function testHosts(env, test) {
   const { context, bindings } = env;
-  const nodes = nodesIn(context, test.body, (child) => !isNestedTest(child));
+  const nodes = nodesIn(context, test.body, (child) => !isNestedTest(context, child));
   const hosts = nodes
     .map((node) =>
       hostOf(context, node, { bindings, asserts: (callback) => assertsIn(env, callback) }),
@@ -74,7 +49,7 @@ function isOwned(env, host, test) {
 }
 
 function unownedHosts(env, call) {
-  const test = testCallback(call);
+  const test = testCallback(env.context, call);
   if (test === undefined || takesDone(env, test, call)) {
     return [];
   }

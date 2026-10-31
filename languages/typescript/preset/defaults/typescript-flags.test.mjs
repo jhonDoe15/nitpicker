@@ -52,11 +52,15 @@ describe('TypeScript-only compiler flags of the type check', () => {
   });
 
   it('are off for a JavaScript project, with or without its own tsconfig', () => {
-    for (const withProjectConfig of [true, false]) {
+    const flagValues = [true, false].map((withProjectConfig) => {
       const options = typeCheckConfig(javascriptLayout, { withProjectConfig });
+      return FLAGS.map((flag) => options[flag] ?? false);
+    });
 
-      expect(FLAGS.map((flag) => options[flag] ?? false)).toEqual([false, false, false]);
-    }
+    expect(flagValues).toEqual([
+      [false, false, false],
+      [false, false, false],
+    ]);
   });
 
   it('are not part of the mutation tsconfig', () => {

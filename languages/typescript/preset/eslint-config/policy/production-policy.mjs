@@ -99,6 +99,7 @@ function productionGuardRules({ react, security }) {
     'nitpicker/no-shell-string-command': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
     'nitpicker/timeout-abandons-operation': ['error', httpClientOptions({ react, security })],
+    'nitpicker/unbounded-fan-out': 'error',
     ...securityRules({ react, security }),
   };
 }
