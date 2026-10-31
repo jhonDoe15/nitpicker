@@ -35,7 +35,11 @@ const PMD_WARNING_NAMES = new Set(['all', 'unused', 'serial', 'fallthrough']);
 const MESSAGE =
   'Do not silence PMD inline: fix the finding. PMD also honors "all", "unused", "serial" and "fallthrough". The one accepted marker is @SuppressWarnings("PMD.SpringDataNativeQuery") on a repository method that needs native SQL.';
 const SPOTBUGS_MESSAGE = 'Do not silence SpotBugs inline: fix the bug.';
-const MESSAGES = { pmd: MESSAGE, spotbugs: SPOTBUGS_MESSAGE, errorprone: ERROR_PRONE_MESSAGE };
+export const INLINE_SUPPRESSION_MESSAGES = {
+  pmd: MESSAGE,
+  spotbugs: SPOTBUGS_MESSAGE,
+  errorprone: ERROR_PRONE_MESSAGE,
+};
 
 export function readInlineSuppressionFindings(projectRoot, sourceRoots) {
   return sourceRoots.flatMap((sourceRoot) =>
@@ -85,7 +89,7 @@ export function fileFindings(source, filePath) {
       rule: INLINE_SUPPRESSION_RULE,
       path: filePath,
       identity: `${INLINE_SUPPRESSION_RULE}:${hash(key)}${occurrence === 1 ? '' : `#${String(occurrence)}`}`,
-      message: appendSentence(`${MESSAGES[tool]} Found: ${found}.`, route),
+      message: appendSentence(`${INLINE_SUPPRESSION_MESSAGES[tool]} Found: ${found}.`, route),
       classification: 'enforceable',
       location: { line: lineOf(views.code, offset) },
     };
