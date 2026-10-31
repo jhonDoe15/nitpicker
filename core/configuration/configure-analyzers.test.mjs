@@ -56,8 +56,9 @@ describe('configureAnalyzers', () => {
     );
 
     expect(configured.map(({ name }) => name)).toEqual(['python', 'mutation']);
-    for (const [index, part] of ['python', 'mutation'].entries()) {
-      expect(configured[index].createInvocation(context).args).toEqual([
+    const parts = ['python', 'mutation'];
+    expect(configured.map((analyzer) => analyzer.createInvocation(context).args)).toEqual(
+      parts.map((part) => [
         expect.stringMatching(/python-runner\.mjs$/),
         '--part',
         part,
@@ -71,8 +72,8 @@ describe('configureAnalyzers', () => {
         'base',
         '--legacy-inventory',
         'nitpicker.legacy.json',
-      ]);
-    }
+      ]),
+    );
   });
 
   it('leaves the mutation analyzer of another preset alone', () => {
@@ -125,15 +126,20 @@ describe('the baseline moves file', () => {
   });
 
   it.each([
-    ['python', () => createPythonAnalyzers(), 'python'],
     ['java', () => [createJavaAnalyzer()], 'java'],
     ['kotlin', () => [createJavaAnalyzer({ kotlin: true })], 'kotlin'],
-  ])(
-    'is not passed to the %s runner, which runs no rule that reads it yet',
-    (preset, analyzers, name) => {
-      expect(configuredArguments(preset, analyzers(), name)).not.toContain('--baseline-moves-file');
-    },
-  );
+  ])('reaches the %s runner, whose sibling-copy-edit reads the base', (preset, analyzers, name) => {
+    const args = configuredArguments(preset, analyzers(), name);
+    const at = args.indexOf('--baseline-moves-file');
+
+    expect(args.slice(at, at + 2)).toEqual(['--baseline-moves-file', '/tmp/moves.json']);
+  });
+
+  it('is not passed to the python runner, which runs no rule that reads it yet', () => {
+    expect(configuredArguments('python', createPythonAnalyzers(), 'python')).not.toContain(
+      '--baseline-moves-file',
+    );
+  });
 });
 
 describe('analyzer timeouts', () => {

@@ -5,6 +5,7 @@ import {
   ANALYZER_TIMEOUT_VARIABLE,
 } from '../../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
 import { CONFIG_FILE_NAME } from '../../../shared/config.mjs';
+import { withoutHostCiOutputs } from '../../tooling/host-environment.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -12,15 +13,13 @@ const FORCE_KILL_DELAY_MS = 1_000;
 
 const activeChildren = new Set();
 
-const HOST_CI_OUTPUT_VARIABLES = ['GITHUB_STEP_SUMMARY'];
-
 function analyzerEnvironment(environment, task) {
-  return Object.fromEntries([
-    ...Object.entries(environment).filter(([name]) => !HOST_CI_OUTPUT_VARIABLES.includes(name)),
+  return {
+    ...withoutHostCiOutputs(environment),
     ...(task.configuredTimeout === true
-      ? [[ANALYZER_TIMEOUT_VARIABLE, String(task.timeoutMs)]]
-      : []),
-  ]);
+      ? { [ANALYZER_TIMEOUT_VARIABLE]: String(task.timeoutMs) }
+      : {}),
+  };
 }
 
 function settleClose(task, { failure, status, signal, stdout, stderr }, { resolve, reject }) {

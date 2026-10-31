@@ -377,20 +377,47 @@ describe('describePolicyChanges', () => {
   });
 
   it('counts precedence by what the tool runs', () => {
-    const precedence = (tool, before, after) =>
+    const precedence = (tool, before, after, preset = 'java') =>
       loosened(
-        { preset: 'java', tools: { [tool]: { precedence: before } } },
-        { preset: 'java', tools: { [tool]: { precedence: after } } },
+        { preset, tools: { [tool]: { precedence: before } } },
+        { preset, tools: { [tool]: { precedence: after } } },
       );
 
     expect(precedence('pmd', ['nitpicker'], ['project', 'nitpicker'])).toEqual([]);
     expect(precedence('pmd', ['nitpicker', 'project'], ['project'])).toEqual([
       'tools.pmd.precedence: ["nitpicker","project"] -> ["project"]',
     ]);
+    const script = (before, after) => precedence('knip', before, after, 'typescript');
+    expect(script(['nitpicker'], ['nitpicker', 'project'])).toEqual([
+      'tools.knip.precedence: ["nitpicker"] -> ["nitpicker","project"]',
+    ]);
+    expect(script(['nitpicker', 'project'], ['project'])).toHaveLength(1);
+    expect(script(['project'], ['project', 'nitpicker'])).toEqual([]);
+    expect(script(['project', 'nitpicker'], ['nitpicker', 'project'])).toEqual([]);
+    expect(
+      precedence('dependency-cruiser', ['nitpicker'], ['nitpicker', 'project'], 'typescript'),
+    ).toHaveLength(1);
     expect(precedence('checkstyle', ['project'], ['nitpicker'])).toEqual([]);
     expect(precedence('checkstyle', ['nitpicker'], ['project'])).toEqual([
       'tools.checkstyle.precedence: ["nitpicker"] -> ["project"]',
     ]);
+  });
+
+  it('counts any ESLint opt-in that lists the project, since its ignores apply with nitpicker first too', () => {
+    const eslint = (before, after) =>
+      loosened(
+        { tools: { eslint: { precedence: before } } },
+        { tools: { eslint: { precedence: after } } },
+      );
+
+    expect(eslint(['nitpicker'], ['nitpicker', 'project'])).toEqual([
+      'tools.eslint.precedence: ["nitpicker"] -> ["nitpicker","project"]',
+    ]);
+    expect(eslint(['nitpicker', 'project'], ['project'])).toEqual([
+      'tools.eslint.precedence: ["nitpicker","project"] -> ["project"]',
+    ]);
+    expect(eslint(['project'], ['project', 'nitpicker'])).toEqual([]);
+    expect(eslint(['project', 'nitpicker'], ['nitpicker', 'project'])).toEqual([]);
   });
 
   it('counts python and kotlin switches that turn a check off, not a swapped tool', () => {

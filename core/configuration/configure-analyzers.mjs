@@ -19,6 +19,8 @@ import {
 } from '../../languages/typescript/preset/diff/configured-analyzers.mjs';
 import { applyDisable } from './config.mjs';
 import { applyAnalyzerTimeouts } from '../../shared/analyzer-timeouts/analyzer-timeouts.mjs';
+import { GO_ANALYZER_NAME } from '../../languages/go/adapters/go-analyzer.mjs';
+import { formatterChoiceFiles } from '../../languages/go/adapters/formatting/go-formatters.mjs';
 
 export function configureAnalyzers(analyzers, config, headPolicy) {
   return applyAnalyzerTimeouts(
@@ -52,6 +54,9 @@ function styleFilesOf(config, analyzerName) {
   if (config.preset === 'kotlin') {
     return (policyRoot) => kotlinStyleFiles(config, policyRoot);
   }
+  if (config.preset === 'go') {
+    return formatterChoiceFiles;
+  }
   if (config.preset !== 'python') {
     return undefined;
   }
@@ -62,6 +67,7 @@ function applyJavaConfig(analyzers, config) {
   const names = [
     ...GRADLE_PRESETS,
     PYTHON_ANALYZER_NAME,
+    GO_ANALYZER_NAME,
     ...(config.preset === 'python' ? [MUTATION_ANALYZER_NAME] : []),
   ];
   return analyzers.map((analyzer) =>

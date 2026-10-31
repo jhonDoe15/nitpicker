@@ -39,11 +39,13 @@ class FullTest {
         assertEquals(1, named.nickLength())
         assertEquals(0, anonymous.nickLength())
         assertEquals(1, named.forced())
-        assertFailsWith<NullPointerException> { anonymous.forced() }
+        assertFailsWith<IllegalStateException> { anonymous.forced() }
         assertEquals("x", named.castOrNull("x"))
         assertNull(named.castOrNull(1))
         assertEquals("x", named.cast("x"))
         assertFailsWith<ClassCastException> { named.cast(1) }
+        assertEquals("x", named.castNullable("x"))
+        assertFailsWith<NullPointerException> { named.castNullable(null) }
         named.tag = "t"
         assertEquals("t", named.tagged())
         assertFailsWith<UninitializedPropertyAccessException> { anonymous.tagged() }
