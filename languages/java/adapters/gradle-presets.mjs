@@ -1,13 +1,16 @@
 export const GRADLE_PRESETS = ['java', 'kotlin'];
 
+export const MAVEN_PRESETS = ['java'];
+
 export const PROJECT_TOOL_CONFIGS = new Map([
   ['pmd', 'config/pmd/ruleset.xml'],
   ['checkstyle', 'config/checkstyle/checkstyle.xml'],
 ]);
 
 const STYLE_TOOLS = new Map([
-  ['python', ['ruff', 'black', 'pyright', 'mypy', 'mutmut']],
+  ['python', ['ruff', 'black', 'pyright', 'mypy', 'mutmut', 'coverage']],
   ['kotlin', ['ktlint', 'ktfmt', 'detekt']],
+  ['go', ['gofumpt', 'goimports']],
 ]);
 
 export function styleToolsOf(preset) {

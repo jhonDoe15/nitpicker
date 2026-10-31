@@ -101,11 +101,12 @@ export function total(lines: readonly Line[]) {
     expect(banned.map(([, code]) => messagesFor(domainFile, code))).toEqual(
       banned.map(([source]) => [messageFor(source)]),
     );
-    for (const allowed of ['reactive-x', 'nextra-utils', '@acme/reactor', 'zod', 'motion-utils']) {
-      expect(
-        messagesFor(domainFile, `import { x } from '${allowed}'; export const y = x;`),
-      ).toEqual([]);
-    }
+    const allowed = ['reactive-x', 'nextra-utils', '@acme/reactor', 'zod', 'motion-utils'];
+    expect(
+      allowed.map((source) =>
+        messagesFor(domainFile, `import { x } from '${source}'; export const y = x;`),
+      ),
+    ).toEqual(allowed.map(() => []));
     expect(messagesFor('src/main/features/billing/adapters/view.ts', "import 'react';")).toEqual(
       [],
     );
@@ -179,9 +180,7 @@ export function total(lines: readonly Line[]) {
       "import d from 'dayjs'; export const today = () => d();",
       "import * as m from 'moment'; export const today = () => m();",
     ];
-    for (const code of cases) {
-      expect(messagesFor(domainFile, code), code).not.toEqual([]);
-    }
+    expect(cases.filter((code) => messagesFor(domainFile, code).length === 0)).toEqual([]);
     expect(
       messagesFor(
         domainFile,
