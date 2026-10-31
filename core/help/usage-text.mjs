@@ -7,6 +7,8 @@ export const COMMANDS = [
   ['nitpicker aggregate', 'Combine the reports of sharded runs into one result.'],
   ['nitpicker cache publish', 'Upload the findings of HEAD to the remote cache.'],
   ['nitpicker base', 'Print the base ref a run would compare with.'],
+  ['nitpicker explain', 'Print what the rule reference says about the rules named.'],
+  ['nitpicker rules', 'List the rules the preset of the project reports.'],
 ];
 
 export const FLAGS = [
@@ -62,6 +64,8 @@ const USAGE_LINES = [
   AGGREGATE_USAGE,
   CACHE_PUBLISH_USAGE,
   'nitpicker base [--base <ref>]',
+  'nitpicker explain <tool/rule>...',
+  'nitpicker rules [--preset <name>] [--tool <name>]',
 ];
 
 function table(rows) {

@@ -29,6 +29,8 @@ const EXPECTED_USAGE = [
   '       nitpicker aggregate --input-root <dir> --shard-count <n> [--output <dir>] [--policy-root <dir>]',
   '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]',
   '       nitpicker base [--base <ref>]',
+  '       nitpicker explain <tool/rule>...',
+  '       nitpicker rules [--preset <name>] [--tool <name>]',
   '',
   'Commands:',
   '  nitpicker                Compare your changes with the merge base and fail on the problems they add.',
@@ -36,6 +38,8 @@ const EXPECTED_USAGE = [
   '  nitpicker aggregate      Combine the reports of sharded runs into one result.',
   '  nitpicker cache publish  Upload the findings of HEAD to the remote cache.',
   '  nitpicker base           Print the base ref a run would compare with.',
+  '  nitpicker explain        Print what the rule reference says about the rules named.',
+  '  nitpicker rules          List the rules the preset of the project reports.',
   '',
   'Options:',
   '  --all                            Report every finding in the checkout, with no baseline.',
@@ -132,7 +136,7 @@ function flagNames(rows) {
   return rows.map(([flag]) => flag.split(/[ =]/u)[0]).toSorted();
 }
 
-function sampleArguments([flag]) {
+function sampleArguments(flag) {
   const [name, placeholder] = flag.split(/[ =]/u);
   if (placeholder === undefined) {
     return [name];
@@ -154,6 +158,8 @@ describe('nitpicker --help', () => {
       'nitpicker aggregate',
       'nitpicker cache publish',
       'nitpicker base',
+      'nitpicker explain',
+      'nitpicker rules',
     ]);
   });
 
@@ -164,17 +170,15 @@ describe('nitpicker --help', () => {
     expect(flagNames(CACHE_PUBLISH_FLAGS)).toEqual(CACHE_PUBLISH_OPTIONS.toSorted());
   });
 
-  it('parses every comparison flag in the form the help shows', () => {
-    for (const row of FLAGS) {
-      expect(() => parseArguments(sampleArguments(row)), row[0]).not.toThrow();
-    }
+  it.each(FLAGS)('parses %s in the form the help shows', (flag) => {
+    expect(() => parseArguments(sampleArguments(flag))).not.toThrow();
   });
 
   it('describes every flag in one sentence', () => {
     const rows = [...FLAGS, ...INIT_FLAGS, ...AGGREGATE_FLAGS, ...CACHE_PUBLISH_FLAGS];
-    for (const [, description] of rows) {
-      expect(description).toMatch(/^[A-Z][^\n]*\.$/u);
-    }
+    const notOneSentence = rows.filter(([, description]) => !/^[A-Z][^\n]*\.$/u.test(description));
+
+    expect(notOneSentence).toEqual([]);
   });
 });
 
@@ -208,7 +212,8 @@ describe('the help of each command', () => {
       exitCode: 2,
       stdoutText: '',
       stderrText:
-        'nitpicker failed: Unknown argument for cache publish: --rule. See nitpicker cache publish --help.\n',
+        'nitpicker failed: Unknown argument: --rule. Usage: nitpicker cache publish' +
+        ' [--analyzer <name>]... [--shard-count <n> --shard-index <i>]\n',
     });
   });
 });
