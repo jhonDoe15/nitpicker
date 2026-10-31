@@ -126,7 +126,11 @@ Both sides of a comparison run the same list, so mutants of unchanged code match
 only those in changed code are new. On a single-module Maven project of 3,400 lines and 432 tests,
 the list gave 830 mutants against 399 with the implicit set, 52 survivors against 15 (all 37 new
 ones were real test gaps: unreached error branches, untested whitespace, untaken switch cases), and
-PIT took 75 s against 42 s. The Python preset's mutmut has a fixed operator set.
+PIT took 75 s against 42 s. On Kotlin the list also mutates what the compiler writes for coroutines (the state machine's
+conditionals, `switch` and fields) and the check of the last branch of an exhaustive `when`; the
+Kotlin filter leaves those out (see [Mutation](kotlin-preset.md#mutation) in the Kotlin preset), and on its
+measurement fixture the list adds 5 killable mutants to the 14 the implicit set left. The Python
+preset's mutmut has a fixed operator set.
 
 ## Question
 
