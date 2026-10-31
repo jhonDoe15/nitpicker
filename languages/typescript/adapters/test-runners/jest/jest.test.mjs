@@ -82,6 +82,52 @@ describe('coverage on a Jest project', () => {
     expect(uncoveredBranch(findings)).toMatch(UNCOVERED_ELSE);
   });
 
+  it.each([
+    [
+      'the config',
+      { preset: 'ts-jest', coveragePathIgnorePatterns: ['/node_modules/', '/src/main/'] },
+      'jest',
+    ],
+    [
+      'a project',
+      {
+        projects: [
+          {
+            displayName: 'unit',
+            preset: 'ts-jest',
+            testEnvironment: 'node',
+            coveragePathIgnorePatterns: ['/src/main/'],
+          },
+        ],
+      },
+      'jest',
+    ],
+    ['the test script', undefined, 'jest --coveragePathIgnorePatterns /node_modules/ /src/main/'],
+  ])(
+    'measures the sources that coveragePathIgnorePatterns in %s leaves out',
+    async (_, jest, test) => {
+      const root = jestProject(SAYS_YES, jest, test);
+      writeFileSync(path.join(root, 'src/other.ts'), 'export const other = 1;\n');
+
+      const findings = await runArea('coverage', root);
+
+      expect(uncoveredBranch(findings)).toMatch(UNCOVERED_ELSE);
+    },
+  );
+
+  it('fails instead of passing when a setup file in the sources keeps Jest from measuring it', async () => {
+    const root = jestProject(SAYS_YES, {
+      preset: 'ts-jest',
+      testEnvironment: 'node',
+      setupFilesAfterEnv: ['<rootDir>/src/main/setup.ts'],
+    });
+    writeFileSync(path.join(root, 'src/main/setup.ts'), 'export const ready = true;\n');
+
+    await expect(runArea('coverage', root)).rejects.toThrow(
+      /^Jest left source files out of coverage, such as src\/main\/setup\.ts\. /u,
+    );
+  });
+
   it('fails instead of passing when Jest instruments none of the source files', async () => {
     const root = jestProject(SAYS_YES, { projects: ['<rootDir>/test'] });
     writeFileSync(
