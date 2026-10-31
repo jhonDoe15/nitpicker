@@ -16,9 +16,10 @@ If your change edits a function, type, file or package that existed before it, r
 1. Run the project's tests: `go test ./...` (with the build tags the project's
    `nitpicker.config.json` lists under `go.buildTags`, as `-tags=...`). Failing tests are a tool
    error that names them.
-2. Format every new file, and every file you touched that was formatted before your change, with
-   the formatter printed in the finding (gofmt, gofumpt or goimports: the gate uses the one the project already
-   uses, so never switch it). With no other signal it is `gofmt -w`.
+2. Format every new file, and every file you touched that was formatted before your change
+   (`gofmt -l <file>` on the base lists it if not), with the formatter printed in the finding
+   (gofmt, gofumpt or goimports: the gate uses the one the project already uses, so never switch
+   it). With no other signal it is `gofmt -w`.
 3. When the change is complete, run `npx nitpicker` as a background command you wait on, without a
    pipe: you need its exit code. It runs `go vet`, `go test` and its own checks on the merge base
    and on head with the Go toolchain on the `PATH`. It takes minutes and prints a progress line for
