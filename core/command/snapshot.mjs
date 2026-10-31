@@ -66,10 +66,14 @@ export function runSnapshotCli({
     stdout,
     stderr,
   });
-  if (report.summary.enforceableFindings > 0) {
+  return snapshotExitCode(report.summary);
+}
+
+function snapshotExitCode(summary) {
+  if (summary.enforceableFindings > 0) {
     return 1;
   }
-  return report.summary.overallStatus === 'tool-error' ? 2 : 0;
+  return summary.overallStatus === 'tool-error' ? 2 : 0;
 }
 
 function runInSnapshotWorktree({
