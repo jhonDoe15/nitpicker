@@ -3,6 +3,7 @@ import { testRunnerConfigChanges } from '../../../languages/typescript/preset/pr
 import { typescriptConfigChanges } from '../../../languages/typescript/preset/project-configs/typescript/typescript-config-changes.mjs';
 import { jscpdConfigChanges } from '../../tooling/jscpd/config-changes.mjs';
 import { projectConfigChanges } from '../../../languages/typescript/preset/project-tools/changes/project-config-changes.mjs';
+import { importLinterChanges } from './import-linter-changes.mjs';
 
 const OWN_APPLIED_CHANGES = new Map([
   ['jscpd', jscpdConfigChanges],
@@ -50,6 +51,9 @@ function replacedOptionChanges({ replacedOptions, head }) {
 }
 
 function fileChanges(entry) {
+  if (entry.importLinter !== undefined) {
+    return importLinterChanges(entry.importLinter);
+  }
   if (entry.applied !== undefined) {
     return appliedChanges(entry);
   }
