@@ -2,7 +2,7 @@ import { exceptionMatcher } from '../../../../../../shared/rules/exceptions.mjs'
 import { inModule } from '../../../../builds/module-path.mjs';
 import { COLUMN_RULES } from './data/columns.mjs';
 import { ENTITY_RULES } from './data/entities.mjs';
-import { LOOP_RULES } from './data/loops.mjs';
+import { LOOP_RULES } from './data/loops/loops.mjs';
 import { QUERY_RULES } from './data/queries.mjs';
 import { BEAN_RULES } from './rules/beans.mjs';
 import { CLIENT_RULES } from './rules/clients.mjs';
