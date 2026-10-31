@@ -535,6 +535,17 @@
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/no-server-or-worker-per-test" },
+    "nitpicker/no-service-locator",
+    "Disallow service lookups in a DI container (inversify, tsyringe, typedi, awilix, NestJS ModuleRef and application context), direct or through project helpers, outside the composition root",
+    [
+      {
+        "message": "Take the dependency as a constructor parameter typed with the narrow interface the code needs, or build it in a factory provider (`useFactory`, `toDynamicValue`), and look it up only where the app is composed (the composition root: main, server, or a file listed in \"layout.entryPoints\"). `{{ api }}` is a service lookup. A lookup hides what this code needs from its signature and fails only when it runs, if the registration is missing."
+      },
+      {
+        "message": "`{{ name }}()` looks up the token it is given in a container (it calls `{{ api }}` in {{ file }}), so this call is a service lookup. Take the dependency as a constructor parameter typed with the narrow interface the code needs, or build it in a factory provider (`useFactory`, `toDynamicValue`), instead of asking a helper for it. A lookup hides what this code needs from its signature and fails only when it runs, if the registration is missing."
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/no-service-locator" },
     "nitpicker/no-shared-test-state",
     "Ban initialised let state shared by the tests of a file",
     [
@@ -1032,9 +1043,9 @@
     [0, 200, 2, 3, 201, 5, 202, 7, 203, -1, -1],
     [0, 204, 2, 3, 205, 5, 206, 7, 207, -1, -1],
     [0, 208, 2, 3, 209, 5, 210, 7, 211, -1, -1],
-    [0, 212, 213, 214, 215, 5, 216, 7, 217, -1, -1],
-    [0, 218, 2, 34, 219, 5, 220, 37, 221, 39, -1],
-    [0, 222, 2, 3, 223, 5, 224, 7, 225, -1, -1],
+    [0, 212, 2, 3, 213, 5, 214, 7, 215, -1, -1],
+    [0, 216, 217, 218, 219, 5, 220, 7, 221, -1, -1],
+    [0, 222, 2, 34, 223, 5, 224, 37, 225, 39, -1],
     [0, 226, 2, 3, 227, 5, 228, 7, 229, -1, -1],
     [0, 230, 2, 3, 231, 5, 232, 7, 233, -1, -1],
     [0, 234, 2, 3, 235, 5, 236, 7, 237, -1, -1],

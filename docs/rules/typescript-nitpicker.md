@@ -590,6 +590,18 @@ Do not start a server or worker thread in each test or beforeEach. Start it once
 - **Allowed forms by message:**
   - Do not start a server or worker thread in each test or beforeEach. Start it once in beforeAll and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh server.
 
+<a id="eslint-nitpicker-no-service-locator"></a>
+
+### `eslint/nitpicker/no-service-locator`
+
+Disallow service lookups in a DI container (inversify, tsyringe, typedi, awilix, NestJS ModuleRef and application context), direct or through project helpers, outside the composition root.
+
+- **Printed as:** `eslint-lint/nitpicker/no-service-locator`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-service-locator","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - Take the dependency as a constructor parameter typed with the narrow interface the code needs, or build it in a factory provider (`useFactory`, `toDynamicValue`), and look it up only where the app is composed (the composition root: main, server, or a file listed in "layout.entryPoints"). `{{ api }}` is a service lookup. A lookup hides what this code needs from its signature and fails only when it runs, if the registration is missing.
+  - `{{ name }}()` looks up the token it is given in a container (it calls `{{ api }}` in {{ file }}), so this call is a service lookup. Take the dependency as a constructor parameter typed with the narrow interface the code needs, or build it in a factory provider (`useFactory`, `toDynamicValue`), instead of asking a helper for it. A lookup hides what this code needs from its signature and fails only when it runs, if the registration is missing.
+
 <a id="eslint-nitpicker-no-shared-test-state"></a>
 
 ### `eslint/nitpicker/no-shared-test-state`

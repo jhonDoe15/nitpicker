@@ -1,8 +1,9 @@
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
 import { FUNCTION_EXCEPTION_RULES } from '../../../shared/policy.mjs';
-import { ASYNC_HINTS } from './hints/ast-async.mjs';
-import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
-import { SMELL_HINTS } from './hints/ast-smells.mjs';
+import { LOCATOR_HINTS } from './hints/ast/locators.mjs';
+import { ASYNC_HINTS } from './hints/ast/ast-async.mjs';
+import { STRUCTURE_HINTS } from './hints/ast/ast-structure.mjs';
+import { SMELL_HINTS } from './hints/ast/ast-smells.mjs';
 import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
 import { SIGNATURE_HINTS } from './hints/signatures/ast-signatures.mjs';
 import { SECURITY_HINTS } from './hints/security/ruff-security.mjs';
@@ -39,6 +40,7 @@ export const RULE_HINTS = [
   ...SECURITY_HINTS,
   ...RULES_SECURITY_HINTS,
   ...STRUCTURE_HINTS,
+  ...LOCATOR_HINTS,
   ...ASYNC_HINTS,
   ...SMELL_HINTS,
   ...SIGNATURE_HINTS,

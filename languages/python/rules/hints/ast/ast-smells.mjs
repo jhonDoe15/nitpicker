@@ -1,4 +1,4 @@
-import { RULES_TOOL } from './tool.mjs';
+import { RULES_TOOL } from '../tool.mjs';
 
 const EXPECTED_FAILURES = /xfail|expectedFailure/u;
 

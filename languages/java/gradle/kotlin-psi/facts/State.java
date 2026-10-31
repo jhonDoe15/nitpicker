@@ -10,15 +10,22 @@ import org.jetbrains.kotlin.psi.KtImportDirective;
 
 final class State {
   final boolean test;
+  final boolean locators;
   final List<Object> classes = new ArrayList<>();
   final List<Object> functions = new ArrayList<>();
   final List<Object> properties = new ArrayList<>();
   final List<Object> globals = new ArrayList<>();
   final List<Object> waits = new ArrayList<>();
   final List<Object> predicates = new ArrayList<>();
+  final List<Object> lookups = new ArrayList<>();
+  final List<Object> typed = new ArrayList<>();
   final Set<String> calls = new LinkedHashSet<>();
   final Set<String> references = new LinkedHashSet<>();
   final List<Object> typeAliases = new ArrayList<>();
+  private static final List<String> LOCATOR_PACKAGES =
+      List.of(
+          "org.koin.", "com.google.inject.", "jakarta.enterprise.", "javax.enterprise.", "javax.naming.",
+          "org.springframework.jndi.");
   private final KtFile file;
   private final String relative;
   private final Lines lines;
@@ -29,6 +36,7 @@ final class State {
     this.relative = relative;
     this.test = test;
     this.lines = new Lines(text);
+    this.locators = !test && LOCATOR_PACKAGES.stream().anyMatch(text::contains);
     for (KtImportDirective directive : file.getImportDirectives()) {
       var path = directive.getImportPath();
       if (path != null && !path.isAllUnder()) {
@@ -65,6 +73,7 @@ final class State {
         "file", relative, "test", test, "package", file.getPackageFqName().asString(),
         "imports", imports(), "classes", classes, "functions", functions, "properties", properties,
         "globals", globals, "waits", waits, "predicates", predicates, "typeAliases", typeAliases,
+        "lookups", lookups, "typed", lookups.isEmpty() ? List.of() : typed,
         "calls", new ArrayList<Object>(calls.stream().map(Json.Raw::new).toList()),
         "references", new ArrayList<Object>(references));
   }

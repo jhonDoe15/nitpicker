@@ -20,7 +20,7 @@ import {
   gradleClasspath,
   pinnedKotlinCompiler,
   writeSources,
-} from './test-support/kotlin-psi/kotlin-psi-program.mjs';
+} from './test-support/kotlin/kotlin-psi-program.mjs';
 import {
   BOM,
   BROKEN,
@@ -34,13 +34,13 @@ import {
   PREDICATE_SYMBOLS,
   ROOT_PACKAGE,
   UNITS,
-} from './test-support/kotlin-metrics-sources.mjs';
+} from './test-support/kotlin/kotlin-metrics-sources.mjs';
 import {
   LOAD_EFFECTS,
   LOAD_FINDINGS,
   LOAD_HELPERS,
   LOAD_SINGLETONS,
-} from './test-support/kotlin-load-sources.mjs';
+} from './test-support/kotlin/kotlin-load-sources.mjs';
 
 // Compiles and runs kotlin-psi, the PSI program behind Kotlin structure, CRAP, coupling and the
 // review rules, on source files. It needs Java 21, Gradle and network access to Maven Central (for

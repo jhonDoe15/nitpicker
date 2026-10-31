@@ -43,6 +43,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-raised-test-timeout',
   'nitpicker/no-self-recursion',
   'nitpicker/no-server-or-worker-per-test',
+  'nitpicker/no-service-locator',
   'nitpicker/no-shell-string-command',
   'nitpicker/no-silent-catch',
   'nitpicker/no-sql-string-building',
