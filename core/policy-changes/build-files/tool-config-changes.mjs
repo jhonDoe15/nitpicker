@@ -1,10 +1,17 @@
 import { strykerConfigChanges } from '../../../languages/typescript/preset/project-configs/stryker-config-changes.mjs';
 import { jscpdConfigChanges } from '../../tooling/jscpd/config-changes.mjs';
+import { projectConfigChanges } from '../../../languages/typescript/preset/project-tools/changes/project-config-changes.mjs';
 
-const APPLIED_CHANGES = new Map([
+const OWN_APPLIED_CHANGES = new Map([
   ['jscpd', jscpdConfigChanges],
   ['stryker', strykerConfigChanges],
 ]);
+
+function appliedChanges({ tool, applied }) {
+  return OWN_APPLIED_CHANGES.has(tool)
+    ? OWN_APPLIED_CHANGES.get(tool)(applied)
+    : projectConfigChanges(tool, applied);
+}
 
 function fileChange(tool, file, { base, head, evidence, optsIn }) {
   if (base.get(file) === head.get(file)) {
@@ -40,7 +47,7 @@ function replacedOptionChanges({ replacedOptions, head }) {
 
 function fileChanges(entry) {
   if (entry.applied !== undefined) {
-    return APPLIED_CHANGES.get(entry.tool)(entry.applied);
+    return appliedChanges(entry);
   }
   const files = [...new Set([...entry.base.keys(), ...entry.head.keys()])].toSorted();
   return [
