@@ -111,6 +111,46 @@ describe('commentedOutCode', () => {
     ]);
   });
 
+  it.each([
+    ['an assignment of an if expression', '// val label = if (paid) "paid" else "open"'],
+    ['an assignment with a string', '// val message = "total is high for this order"'],
+    ['a plain assignment', '// total = items.sum()'],
+    ['an infix to', '// val pair = key to value'],
+    ['an infix until', '// val range = start until end'],
+    ['an infix downTo', '// val countdown = first downTo last'],
+    ['an in check', '// val known = name in names'],
+    ['an or expression', '// val either = left or right'],
+    ['an and expression', '// val go = enabled and ready'],
+    ['an if expression with plain names', '// val pick = if (ok) first else second'],
+    ['an assignment of an or expression', '// flag = left or right'],
+    ['words inside call arguments', '// val total = compute(first second)'],
+    ['an assignment named language', '// language = Language.KOTLIN'],
+    ['a sample call named like a heading', '// sample.run(input)'],
+    ['a usage call named like a heading', '// usage.record(event)'],
+    ['an example assignment', '// example = Example()'],
+  ])('still flags %s', (_name, comment) => {
+    expect(found(commentedOutCode, `fun f() {\n    ${comment}\n}\n`)).toEqual([
+      ['CommentedOutCode', 2],
+    ]);
+  });
+
+  it.each([
+    [
+      'a heading that is not an example heading',
+      'Usage of the old path:\n// val old = 1',
+      'val old = 1',
+    ],
+    [
+      'the blank line that ends the example',
+      'Example:\n// val shown = 1\n//\n// val client = Client()',
+      'val client = Client()',
+    ],
+  ])('reports the code after %s', (_name, comment, subject) => {
+    const scanned = scanKotlinSource(`fun f() {\n    // ${comment}\n}\n`);
+
+    expect(commentedOutCode(scanned).map((reported) => reported.subject)).toEqual([subject]);
+  });
+
   it('reports a run of commented lines once', () => {
     const source = 'fun f() {\n    // val a = 1\n    // val b = 2\n\n    // val c = 3\n}\n';
 
@@ -128,6 +168,24 @@ describe('commentedOutCode', () => {
     ['a link', '// https://example.com/docs(1)'],
     ['a TODO', '// TODO(#12): call(x)'],
     ['a list item', '// - total(items)'],
+    ['a setting with its unit', '// timeout = 30 seconds in production'],
+    ['a default described in words', '// retries = 3 by default, see the runbook'],
+    ['a key described in words', '// key = value pairs are sorted'],
+    [
+      'a sample after an Example heading',
+      '// Example:\n// val client = Client()\n// client.connect()',
+    ],
+    ['a sample after a Usage heading', '// Usage: client.connect(host, port)\n// val c = Client()'],
+    ['a language injection', '// language=JSON'],
+    ['a language injection without a space', '//language=kotlin'],
+    ['a language injection with a prefix', '// language=SQL prefix=select '],
+    ['an inspection switch', '// noinspection unused'],
+    ['an inspection switch without a rule', '// noinspection'],
+    ['a sample after a bare Example heading', '// Example\n// val client = Client()'],
+    ['a sample after an Example usage heading', '// Example usage:\n// val c = Client()'],
+    ['a sample after a heading and a blank line', '// Example:\n//\n// val client = Client()'],
+    ['a sample in a block comment', '/*\n * Example:\n * val a = 1\n * a.run()\n */'],
+    ['a sample after e.g.', '// e.g.\n// val client = Client()'],
   ])('passes %s', (_name, comment) => {
     expect(found(commentedOutCode, `${comment}\nfun f() = 1\n`)).toEqual([]);
   });

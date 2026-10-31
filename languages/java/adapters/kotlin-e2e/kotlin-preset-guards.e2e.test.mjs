@@ -46,6 +46,7 @@ const BANNED_GUARDS = {
   'Secrets.kt': `${PACKAGE}val password = "hunter22x"\n`,
   'OrderHelper.kt': `${PACKAGE}class OrderHelper {\n    fun total(): Int = 1\n}\n`,
   'Commented.kt': `${PACKAGE}fun subtotal(): Int {\n    // val discount = compute(1)\n    return 1\n}\n`,
+  'StringUtils.kt': `${PACKAGE}fun trimmed(text: String): String = text.trim()\n`,
   'Marked.kt': `${PACKAGE}annotation class Generated\n\n@Generated\nfun keep(): Int = 1\n`,
   'Casts.kt': `${PACKAGE}@Deprecated("Use next")\nfun old(): Int = 1\n\nfun next(): Int = old()\n\n@Suppress("unused")\nfun names(value: Any): List<String> = value as List<String>\n\nfun same(value: String): String = value as String\n`,
   'Wide.kt': `${PACKAGE}class Wide {\n${methods.join('\n')}\n}\n`,
@@ -57,6 +58,7 @@ const BANNED_GUARDS = {
 
 const BANNED_TESTS = {
   'EmptyTest.kt': `${PACKAGE}class EmptyTest {\n    fun setUp() = Unit\n}\n`,
+  'StaleTest.kt': `${PACKAGE}import kotlin.test.Test\nimport kotlin.test.assertEquals\n\nclass StaleTest {\n    @Test\n    fun totals() {\n        // val before = subtotal()\n        assertEquals(1, subtotal())\n    }\n}\n`,
 };
 
 const ALLOWED_GUARDS = {
@@ -72,6 +74,7 @@ const ALLOWED_GUARDS = {
   'Secrets.kt': `${PACKAGE}data class Credentials(val password: String)\n`,
   'PriceRounder.kt': `${PACKAGE}class PriceRounder {\n    fun round(cents: Int): Int = cents\n}\n`,
   'Commented.kt': `${PACKAGE}// Totals are in cents, so rounding stays exact.\nfun subtotal(): Int = 1\n`,
+  'StringTrimming.kt': `${PACKAGE}fun trimmed(text: String): String = text.trim()\n`,
   'Marked.kt': `${PACKAGE}fun keep(): Int = 1\n`,
   'Casts.kt': `${PACKAGE}fun next(): Int = 1\n\nfun names(value: Any): List<String> = (value as? List<*>).orEmpty().filterIsInstance<String>()\n\nfun same(value: String): String = value\n`,
   'Literals.kt': `${PACKAGE}private const val SHIPPING = "shipping"\n\nfun labels(): List<String> = listOf(SHIPPING, SHIPPING, SHIPPING)\n\nfun kind(text: String): Int = when (text) {\n    "shipping-pending" -> 1\n    "shipping-sent", "shipping-pending" -> 2\n    else -> 3\n}\n\nfun more(): Map<String, Int> = mapOf("shipping-pending" to 1)\n`,
@@ -108,6 +111,8 @@ const EXPECTED_BANNED = [
   'kotlin-source/HardcodedSecret Secrets.kt',
   'kotlin-source/GenericTypeName OrderHelper.kt',
   'kotlin-source/CommentedOutCode Commented.kt',
+  'kotlin-source/GenericFileName StringUtils.kt',
+  'kotlin-source/CommentedOutCode StaleTest.kt',
   'kotlin-source/RepeatedStringLiteral Literals.kt',
   'kotlin-source/GeneratedOnHandWrittenCode Marked.kt',
   'kotlin-source/TestClassWithoutTestCases EmptyTest.kt',
