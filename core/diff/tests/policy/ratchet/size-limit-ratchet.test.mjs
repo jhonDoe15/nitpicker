@@ -185,6 +185,8 @@ describe('the message of a function that got worse', () => {
       'parameters',
       'recordComponents',
       'statements',
+      'structFields',
+      'typeMethods',
     ]);
   });
   it('keeps the plain message for a function the change pushes over the limit', () => {

@@ -19,6 +19,8 @@ of doing each thing. That "one way" lives in the code and architecture rules (sl
 which tools a project uses, so the preset detects the tools a project already has (uv, poetry,
 pipenv, hatch, conda or a plain virtualenv; ruff or black; pytest, unittest, Django's `manage.py test` or nose2) and never makes adoption depend on switching.
 
+Every rule the preset can report has an entry in the [rule reference](rules/README.md): [ruff](rules/python-ruff.md), [nitpicker's own rules](rules/python-nitpicker.md) and [the type checkers and import contracts](rules/python-types.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
+
 ## How it works
 
 ```
@@ -277,7 +279,9 @@ The formatter is `black` when `pyproject.toml`, `setup.cfg`, `tox.ini`, `Pipfile
 `[tool.black]` table, `black` as a dependency (a requirements line, a poetry key or an entry of any
 TOML dependency array), a `tox` command, or the `psf/black` or `black-pre-commit-mirror` repository
 or the `black` hook id, and none of them configures ruff's formatter (`[tool.ruff.format]`, a
-`[format]` table in `ruff.toml`, the `ruff-format` hook).
+`[format]` table in `ruff.toml`, the `ruff-format` hook). The choice is read from the head checkout
+for both snapshots, so a change that switches formatter is checked against a merge base formatted
+the same way, and only the files it touches can fail.
 
 **The format check follows the project's code, not its formatter config.** A project whose
 `[tool.ruff]`, `ruff.toml` or `[tool.black]` set the line length, quote style or indentation is
@@ -624,7 +628,8 @@ are listed at the end.
 | Defaulting parameters    | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                      | `falsy-default` (script)                                                                                                                             |
 | Changing an argument     | build and return a new value, or copy the argument first                                                                                                                             | `parameter-mutation` (script)                                                                                                                        |
 | Compatibility shims      | change every caller in the same change and delete the old name                                                                                                                       | `compatibility-shim` (script)                                                                                                                        |
-| Input or output per item | one batch call, or `asyncio.gather`                                                                                                                                                  | `io-in-loop` (script)                                                                                                                                |
+| Input or output per item | one batch call, or `asyncio.gather` bounded by a shared `asyncio.Semaphore`                                                                                                          | `io-in-loop` (script)                                                                                                                                |
+| Concurrent remote calls  | `asyncio.Semaphore` acquired in the task, or chunks of fixed size, or one batch call                                                                                                 | `unbounded-fan-out` (script)                                                                                                                         |
 | Task lifetimes           | open the resource around the whole task group, or inside the child; await the task first                                                                                             | `task-outlives-resource` (script)                                                                                                                    |
 | Trio/AnyIO cleanup       | `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()`                                                                                      | `unshielded-cleanup-await` (script)                                                                                                                  |
 | Task markers             | `# TODO(#123): ...` with an issue                                                                                                                                                    | `todo-without-issue` (script)                                                                                                                        |
@@ -933,8 +938,40 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   `secret-in-log` reports such a name passed to a logger call. Placeholders, environment variable
   names, header names and URLs are not secrets.
 - `io-in-loop` reports an HTTP, database or repository call once per item of a `for`, `while` or
-  comprehension; `asyncio.gather` over a comprehension, a paging loop (the condition reads a
-  variable the body assigns) and a retry (a `try` in the loop that returns on success) are not.
+  comprehension; `asyncio.gather` over a comprehension, a call that `unbounded-fan-out` reports
+  at the same site (so one remote call has one owner), a worker task started once per slot of a
+  count (`for _ in range(workers)`), a paging loop (the condition reads a variable the body
+  assigns) and a retry (a `try` in the loop that returns on success) are not. A remote call in a
+  task that is bounded or awaited one at a time keeps this finding, with the batching remedy.
+- `unbounded-fan-out` reports `asyncio.gather`, `asyncio.wait` and `asyncio.as_completed` over a
+  generator, a list comprehension, `map(f, xs)`, a name bound to one, or a list filled by
+  `append` in a `for` loop, and `asyncio.create_task`, `ensure_future`, `tg.create_task` and
+  `nursery.start_soon` inside a loop or comprehension, when the coroutine makes a remote call
+  (`requests`, `httpx`, `aiohttp`, `urllib3`, `urllib.request.urlopen`, `boto3` clients, OpenAI and
+  Anthropic clients) or publishes to a broker (`aiokafka`, `kafka`, `confluent_kafka`, `pika`,
+  `aio_pika`, `redis` `publish`, `nats`, Pub/Sub, `paho.mqtt`, SQS, SNS, EventBridge and Kinesis
+  through `boto3`) and runs over a collection that is not fixed. The client factories are the ones
+  `io-in-loop` uses, from one table. The coroutine is resolved when it is a client call, a nested
+  or module-level `async def` of the project, a method of the same class or an imported project
+  function, up to three calls deep. A client is recognized from its factory (`httpx.AsyncClient()`
+  in an assignment or `async with`, also `self.x`), or from a parameter, `self` attribute or
+  variable annotated with the library type. Database calls are the business of `io-in-loop`.
+  Allowed: an `asyncio.Semaphore`, `BoundedSemaphore`, `Lock`, anyio or trio `CapacityLimiter` or
+  `Semaphore`, `aiolimiter.AsyncLimiter` created outside the task and entered in the task body
+  (`async with limit:`); a parameter annotated with one of those types, or one the caller passes a
+  limiter it created; a parameter or imported name whose name ends in `sem`, `semaphore`, `limit`,
+  `limiter`, `throttle`, `throttler`, `capacity` or `gate`; an `await gate.acquire()` on such a
+  limiter or a `gather` that drains a window inside the loop; a literal or constant collection,
+  the members of an `Enum` class of the project, a slice or `islice` with an explicit size, and
+  chunks from `batched`, `chunked`, `chunks` or `partition_all` with a size. A worker pool is
+  bounded by its count: `range(workers)` and `range(3)` pass, while `range(len(xs))` stays a
+  fan-out over `xs`. A semaphore created inside the task, or a limit constant that nothing
+  acquires, bounds nothing. `asyncio.to_thread` and `loop.run_in_executor(None, ...)` run on the
+  default thread pool, which has a fixed size, so they are not reported. Test files are exempt.
+  Limits: an unannotated `client` parameter, a callable wrapped in `functools.partial` and a
+  library outside the list are not recognized, a limiter is recognized from an unannotated
+  parameter or import by its name only, and a collection that is small in practice but not by
+  construction is reported; lift such a path with a `python.exceptions` entry.
 - `task-outlives-resource` reports a resource that a `with` or `async with` opened inside a task
   group closes while a child task can still use it. Task groups are `trio.open_nursery()`,
   `anyio.create_task_group()` and `asyncio.TaskGroup()` (also through import aliases and a group
@@ -1238,14 +1275,24 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   (the first of `.coveragerc`, `setup.cfg` `[coverage:run]`, `tox.ini` `[coverage:run]` and
   `[tool.coverage.run]` that has coverage settings, the order coverage.py reads them in) the run
   settings that decide what code gets measured at all are kept: `concurrency` (multiprocessing,
-  gevent, eventlet, ...), `patch` (subprocesses), `plugins`, and the `omit` of the run and of the
-  report section (where projects often list `migrations/*`), added to the test files. Lists may run
-  over several lines with comments and blank lines in between, as coverage.py reads them; relative
-  `omit` patterns and the `source` paths are made absolute, so they match whatever directory the
-  tests run from.
+  gevent, eventlet, ...), `patch` (subprocesses) and `plugins`. Lists may run over several lines with
+  comments and blank lines in between, as coverage.py reads them; the `source` paths and, with the
+  opt-in, relative `omit` patterns are made absolute, so they match whatever directory the tests run
+  from.
   When they make coverage.py write one data file per process, the files are combined before the
   report. Its `exclude_lines`, `exclude_also`, `partial_branches`, `branch` and `source` are
-  dropped, so the gate judges every project's code the same way. Test files are not scored for
+  dropped, so the gate judges every project's code the same way, until
+  `"tools": { "coverage": { "precedence": ["project", "nitpicker"] } }` opts the config in: then its
+  `exclude_lines`, `exclude_also`, `partial_branches` and `partial_also` are added to nitpicker's
+  (a project that lists `pragma: no cover` gets its pragma back), the `omit` of its run and report
+  sections (where projects often list `migrations/*`) is added to the test files, and its `timid`,
+  `cover_pylib`, `dynamic_context`, `sigterm`, `disable_warnings` and `core` apply, each checked to
+  be a value coverage.py takes; `branch`, `parallel`,
+  `source`, `include`, `data_file`, `[paths]` and the report settings stay nitpicker's.
+  `["nitpicker", "project"]` takes only those run options and keeps nitpicker's exclusions and
+  omits. The
+  opted-in config is read from the head checkout for both sides, and an edit of its coverage
+  settings is a policy change a person reviews. Test files are not scored for
   CRAP either, and a source file the project omits has unknown coverage
   (`crap-coverage-unknown`). Exit status 5 (no tests collected) is accepted; any other
   non-zero status is a tool error. A snapshot where no test ran has an enforceable
@@ -1459,7 +1506,8 @@ or remove it if it can't happen. If this is intended, add
   test changes which branches are covered on head.
 - **Exceptions.** `# pragma: no cover` and `# pragma: no branch` are not honored (the generated
   `exclude_lines` does not list them and `partial_branches` is empty), and the project's own
-  report settings are ignored, so the one measurement is the same everywhere. Only idioms that are
+  report settings are ignored, so the one measurement is the same everywhere (unless
+  `tools.coverage` opts the project's exclusions in, see the test step). Only idioms that are
   never testable are excluded, with the same list on every coverage.py version: `if TYPE_CHECKING:`
   (also `typing.TYPE_CHECKING`), `if __name__ == "__main__":`, `@overload` (also `typing.overload`),
   `raise NotImplementedError`, a function whose body is `...` right after the colon of its
@@ -1566,9 +1614,10 @@ the source root detection already does.
   Rust dependency only to produce what a few dozen lines of `ast` already give: module-to-module import
   edges. What grimp adds (external packages, import chains, squashed packages) is import-linter's
   job, and import-linter, which brings grimp, runs when the project uses it.
-- **import-linter.** When the snapshot has an import-linter config (`.importlinter`, or a
-  `[importlinter]` section in `setup.cfg` or `tox.ini`, or `[tool.importlinter]` in
-  `pyproject.toml`), `lint-imports --no-cache` runs in the project's environment, with the
+- **import-linter.** When the snapshot has an import-linter config, found the way import-linter
+  finds it (the first of `setup.cfg` and `.importlinter` with an `[importlinter]` section, then
+  `[tool.importlinter]` in `pyproject.toml`; import-linter never reads `tox.ini`),
+  `lint-imports --no-cache` runs in the project's environment, with the
   snapshot's sources on `PYTHONPATH` as for the other tools. The project's `import-linter` version
   (read from the installed package metadata, since `--version` only exists from 2.11) is part of
   the analyzer version. `python.importLinter` overrides the detection (`false` never runs it,
@@ -1587,7 +1636,22 @@ the source root detection already does.
   on a file end with the `python.exceptions` sentence for `contract-broken`. A run that checked no
   contract (missing config file, `lint-imports` not installed in the environment, which the
   message answers with `"python": { "importLinter": false }`) is an `import-linter-failed` tool
-  error, as `duplicates-failed` and `coupling-failed` are for the other two steps.
+  error, as `duplicates-failed` and `coupling-failed` are for the other two steps. There is no
+  `tools.import-linter`: the contracts are the project's own and nitpicker has none to layer them
+  on, so they run as written. Each snapshot runs its own contracts (the base cannot run contracts
+  for modules only the head has), so the policy review compares the contracts of the two sides,
+  contract by contract (by the `importlinter:<kind>:<id>` section name, or the `id` or `name` of a
+  `pyproject.toml` contract), with or without any opt-in. What weakens the check fails until a
+  person accepts it: the config removed (the file deleted, the section renamed or the table
+  dropped), a contract removed, a layer dropped or the layers reordered, an entry dropped from
+  `source_modules`, `forbidden_modules`, `modules`, `containers`, `protected_modules` or
+  `root_packages`, an entry added to `ignore_imports`, `allowed_importers` or `exhaustive_ignores`,
+  `allow_indirect_imports` or `exclude_type_checking_imports` turned on, `exhaustive` or
+  `as_packages` turned off, `unmatched_ignore_imports_alerting` relaxed (`error`, then `warn`, then
+  `none`), and any other changed key except `name`. What only adds checking is listed and does not
+  fail: the config or a contract added, a layer or module added, an ignored import removed.
+  Comments, layout and the other sections do not count. With `"python": { "importLinter": false }`
+  the contracts neither run nor count, and a change that turns them back on lists them as added.
 - **Policy.** `duplicate-clone` and `stability-direction` are enforced for Python in
   `shared/policy.mjs` (`spec/checks.md`). `contract-broken` is a Python-only tool rule and has no
   shared policy entry.
