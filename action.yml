@@ -1,0 +1,403 @@
+name: nitpicker
+description: Run the nitpicker quality gate on a pull request, with annotations, a job summary, a findings cache and optional code scanning upload.
+branding:
+  icon: check-circle
+  color: gray-dark
+
+inputs:
+  working-directory:
+    description: >-
+      The project folder, relative to the repository root, for a project in a subfolder.
+      Annotations, links and report paths carry the folder, so they land on the right files.
+    default: '.'
+  base-ref:
+    description: >-
+      The ref to compare against, passed as `--base`: a branch (`origin/release`), a tag or a
+      commit SHA. Empty takes the base the way nitpicker picks it (the pull request or merge queue
+      target branch, then `base` in `nitpicker.config.json`, then the repository default branch).
+      The action fetches the base, also into a shallow checkout, and keys the cache on its merge
+      base with `HEAD`.
+    default: ''
+  arguments:
+    description: >-
+      Extra nitpicker arguments, one per line or separated by spaces (no quoting), for example
+      `--analyzer eslint-lint`. `--output` and `--base` are refused (use `report-directory` and
+      `base-ref`), and so is `--all`, since the action always runs a comparison; run `npx
+      nitpicker --all` in a step of its own for a full run.
+    default: ''
+  package:
+    description: >-
+      A package to run with `npx` instead of the project's own nitpicker, for example
+      `nitpicker@<version>`, the URL of a release tarball or the path of one. A project without a
+      `package.json` (Java, Kotlin or Python) needs it. Empty runs the project's devDependency, so
+      the version is the one in its lockfile.
+    default: ''
+  node-version:
+    description: >-
+      The Node.js version to set up (22.14 or newer). Empty keeps the Node.js of the runner.
+    default: '24'
+  install-command:
+    description: >-
+      How to install the project's dependencies. Empty finds the nearest lockfile up to the
+      repository root and runs `npm ci`, `pnpm install --frozen-lockfile`, `yarn install
+      --immutable` (`--frozen-lockfile` for Yarn 1) or `bun install --frozen-lockfile` in its
+      folder; set up Bun before the action for a Bun project. `none` skips the install, and
+      anything else runs as a shell command in the working directory.
+    default: ''
+  cache:
+    description: >-
+      Restore and save the findings cache with `actions/cache`, keyed by the runner, the project
+      folder, the merge base and `nitpicker.config.json`, also when the gate fails. GitHub scopes
+      caches by branch: a pull request reads its own caches and those of its base branch, never
+      another pull request's, so use `cache-url` to share the base across pull requests. The cache
+      lives in `node_modules/.cache/nitpicker`, or in the `.git` folder for a project without
+      `node_modules`.
+    default: 'true'
+  cache-url:
+    description: >-
+      A remote cache prefix (`NITPICKER_CACHE_URL`). Runs read it, and `cache-publish` writes to
+      it.
+    default: ''
+  cache-auth-header:
+    description: >-
+      The `Authorization` header value for the remote cache (`NITPICKER_CACHE_AUTH_HEADER`). Pass
+      a secret, and give write access only to the default branch.
+    default: ''
+  cache-publish:
+    description: >-
+      On a push to the default branch, run `nitpicker cache publish` so later branches reuse its
+      findings as their base. Needs `cache-url`. The comparison is skipped there, since the head
+      is the base.
+    default: 'true'
+  accept-policy-change:
+    description: >-
+      The `NITPICKER_ACCEPT_POLICY_CHANGE` digest that accepts a loosening of
+      `nitpicker.config.json`. Map the repository variable `vars.NITPICKER_ACCEPT_POLICY_CHANGE`,
+      which only an admin can set; never write a digest into a workflow.
+    default: ''
+  report-directory:
+    description: >-
+      Where the reports are written, relative to `working-directory`.
+    default: 'reports/quality/diff'
+  upload-sarif:
+    description: >-
+      Upload `report.sarif` to code scanning. The job needs the `security-events: write`
+      permission; a failed upload only warns.
+    default: 'false'
+  sarif-category:
+    description: >-
+      The code scanning category of the upload. Use one per project when several projects upload.
+    default: 'nitpicker'
+  upload-report:
+    description: >-
+      Upload the report directory as an artifact when the gate fails.
+    default: 'true'
+  artifact-name:
+    description: >-
+      The artifact name of the report. Artifact names are unique in a workflow run, so give each
+      use its own name: a job that runs the action more than once, and each job of a matrix or a
+      sharded run (for example `nitpicker-report-<shard>`).
+    default: 'nitpicker-report'
+
+outputs:
+  exit-code:
+    description: >-
+      The exit code of the gate: 0 passed, 1 new enforceable findings, 2 a tool error or a failure
+      to decide. Empty when the gate did not run.
+    value: ${{ steps.gate.outputs.exit-code }}
+  report-directory:
+    description: >-
+      The absolute path of the report directory.
+    value: ${{ steps.gate.outputs.report-directory }}
+  skipped:
+    description: >-
+      `true` on a push to the default branch, where the head is the base and there is nothing to
+      compare.
+    value: ${{ steps.prepare.outputs.skip-gate }}
+
+runs:
+  using: composite
+  steps:
+    - uses: actions/setup-node@v7.1.0
+      if: ${{ inputs.node-version != '' }}
+      with:
+        node-version: ${{ inputs.node-version }}
+
+    - name: Install the project's dependencies
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        INSTALL_COMMAND: ${{ inputs.install-command }}
+      run: |
+        set -euo pipefail
+        if [ "$INSTALL_COMMAND" = none ]; then
+          exit 0
+        fi
+        if [ -n "$INSTALL_COMMAND" ]; then
+          bash -eo pipefail -c "$INSTALL_COMMAND"
+          exit 0
+        fi
+        workspace="$GITHUB_WORKSPACE"
+        if command -v cygpath > /dev/null; then
+          workspace="$(cygpath -u "$workspace")"
+        fi
+        dir="$PWD"
+        lockfile=''
+        while :; do
+          for candidate in package-lock.json npm-shrinkwrap.json pnpm-lock.yaml yarn.lock bun.lock bun.lockb; do
+            if [ -f "$dir/$candidate" ]; then
+              lockfile="$candidate"
+              break 2
+            fi
+          done
+          parent="$(dirname "$dir")"
+          if [ "$dir" = "$workspace" ] || [ "$parent" = "$dir" ]; then
+            break
+          fi
+          dir="$parent"
+        done
+        case "$lockfile" in
+          package-lock.json | npm-shrinkwrap.json)
+            (cd "$dir" && npm ci)
+            ;;
+          pnpm-lock.yaml)
+            command -v pnpm > /dev/null || corepack enable pnpm
+            (cd "$dir" && pnpm install --frozen-lockfile)
+            ;;
+          yarn.lock)
+            command -v yarn > /dev/null || corepack enable yarn
+            if [ "$(cd "$dir" && yarn --version | cut -d. -f1)" = 1 ]; then
+              (cd "$dir" && yarn install --frozen-lockfile)
+            else
+              (cd "$dir" && yarn install --immutable)
+            fi
+            ;;
+          bun.lock | bun.lockb)
+            if ! command -v bun > /dev/null; then
+              echo "::error title=nitpicker::The project uses Bun but bun is not installed. Add oven-sh/setup-bun before this step, or set install-command."
+              exit 1
+            fi
+            (cd "$dir" && bun install --frozen-lockfile)
+            ;;
+          *)
+            if [ -f package.json ]; then
+              echo "::warning title=nitpicker::No lockfile found for this project; installing without one. Commit a lockfile so the base and the head use the same versions."
+              npm install
+            fi
+            ;;
+        esac
+
+    - name: Prepare the comparison
+      id: prepare
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        BASE_REF: ${{ inputs.base-ref }}
+        PACKAGE: ${{ inputs.package }}
+        WORKING_DIRECTORY: ${{ inputs.working-directory }}
+        DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        MERGE_GROUP_BASE_REF: ${{ github.event.merge_group.base_ref }}
+      run: |
+        set -euo pipefail
+        native_path() {
+          if command -v cygpath > /dev/null; then
+            cygpath -m "$1"
+          else
+            printf '%s\n' "$1"
+          fi
+        }
+        skip=false
+        if [ -z "$BASE_REF" ] && [ "$GITHUB_EVENT_NAME" = push ] && [ "$GITHUB_REF" = "refs/heads/$DEFAULT_BRANCH" ]; then
+          skip=true
+        fi
+        echo "skip-gate=$skip" >> "$GITHUB_OUTPUT"
+        scope="$(printf '%s' "$WORKING_DIRECTORY" | sed -e 's/%/%25/g' -e 's|/|%2F|g' -e 's/,/%2C/g')"
+        echo "cache-scope=$scope" >> "$GITHUB_OUTPUT"
+        if [ -d node_modules ]; then
+          echo "cache-dir=$(native_path "$PWD/node_modules/.cache/nitpicker")" >> "$GITHUB_OUTPUT"
+        else
+          echo "cache-dir=$(native_path "$(git rev-parse --absolute-git-dir)/nitpicker/cache")" >> "$GITHUB_OUTPUT"
+        fi
+        if [ "$skip" = true ]; then
+          echo "base-sha=none" >> "$GITHUB_OUTPUT"
+          exit 0
+        fi
+
+        nitpicker() {
+          if [ -n "$PACKAGE" ]; then
+            npx --yes --package "$PACKAGE" nitpicker "$@"
+          else
+            npx --no-install nitpicker "$@"
+          fi
+        }
+        if [ -z "$PACKAGE" ] && ! nitpicker --help > /dev/null 2>&1; then
+          echo "::error title=nitpicker is not installed::nitpicker was not found in '${PWD}'. Add it as a devDependency (npm install --save-dev nitpicker) so the version matches your lockfile, or set the 'package' input (for example nitpicker@<version>) for a project without a package.json."
+          exit 1
+        fi
+
+        fetch_branch() {
+          refspec="+refs/heads/$1:refs/remotes/origin/$1"
+          if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+            git fetch --no-tags --unshallow origin "$refspec" || git fetch --no-tags --unshallow origin || true
+          elif ! git rev-parse --verify --quiet "refs/remotes/origin/$1^{commit}" > /dev/null; then
+            git fetch --no-tags origin "$refspec" || true
+          fi
+        }
+        if [ -z "$BASE_REF" ] && [ -n "$MERGE_GROUP_BASE_REF" ]; then
+          BASE_REF="origin/${MERGE_GROUP_BASE_REF#refs/heads/}"
+        fi
+        if [ -n "$DEFAULT_BRANCH" ] && ! git symbolic-ref --quiet refs/remotes/origin/HEAD > /dev/null; then
+          fetch_branch "$DEFAULT_BRANCH"
+          if git rev-parse --verify --quiet "refs/remotes/origin/$DEFAULT_BRANCH^{commit}" > /dev/null; then
+            git symbolic-ref refs/remotes/origin/HEAD "refs/remotes/origin/$DEFAULT_BRANCH"
+          fi
+        fi
+        base_arguments=()
+        if [ -n "$BASE_REF" ]; then
+          base_arguments=(--base "$BASE_REF")
+        fi
+        base_error="$(mktemp)"
+        if base="$(nitpicker base ${base_arguments[@]+"${base_arguments[@]}"} 2> "$base_error")"; then
+          :
+        elif grep -qx 'nitpicker failed: Unknown argument: base' "$base_error"; then
+          if [ -n "$BASE_REF" ]; then
+            base="$BASE_REF"
+          elif [ -n "${GITHUB_BASE_REF:-}" ]; then
+            base="origin/$GITHUB_BASE_REF"
+          else
+            base="$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD || echo origin/main)"
+          fi
+          echo "::error title=nitpicker is too old for this action::The nitpicker of this project has no 'base' command, so the action cannot read base from nitpicker.config.json. Upgrade to nitpicker 0.1.0 or newer. This run compares with ${base}."
+        else
+          cat "$base_error" >&2
+          exit 1
+        fi
+        case "$base" in
+          origin/*) fetch_branch "${base#origin/}" ;;
+          *)
+            if [ "$(git rev-parse --is-shallow-repository)" = true ]; then
+              git fetch --no-tags --unshallow origin || true
+            fi
+            if ! git rev-parse --verify --quiet "$base^{commit}" > /dev/null; then
+              git fetch --no-tags origin "+refs/tags/$base:refs/tags/$base" || git fetch --no-tags origin "$base" || true
+            fi
+            ;;
+        esac
+        if ! git rev-parse --verify --quiet "$base^{commit}" > /dev/null; then
+          echo "::error title=nitpicker cannot find the base::${base} is not in the checkout and could not be fetched from origin. Set base-ref to a branch (origin/<branch>), a tag or a commit SHA that origin has."
+          exit 1
+        fi
+        if ! base_sha="$(git merge-base HEAD "$base" 2> /dev/null)"; then
+          echo "::error title=nitpicker needs the merge base::There is no merge base between HEAD and ${base}. Check out the full history with 'fetch-depth: 0' in actions/checkout (a shallow checkout cannot find where the branch started), and make sure ${base} exists."
+          exit 1
+        fi
+        echo "base=$base" >> "$GITHUB_OUTPUT"
+        echo "base-sha=$base_sha" >> "$GITHUB_OUTPUT"
+
+    - uses: actions/cache/restore@v6.1.0
+      id: cache
+      if: ${{ inputs.cache == 'true' && steps.prepare.outputs.skip-gate != 'true' }}
+      with:
+        path: ${{ steps.prepare.outputs.cache-dir }}
+        key: nitpicker-${{ runner.os }}-${{ runner.arch }}-${{ steps.prepare.outputs.cache-scope }}-${{ steps.prepare.outputs.base-sha }}-${{ hashFiles(format('{0}/nitpicker.config.json', inputs.working-directory)) }}
+        restore-keys: |
+          nitpicker-${{ runner.os }}-${{ runner.arch }}-${{ steps.prepare.outputs.cache-scope }}-${{ steps.prepare.outputs.base-sha }}-
+
+    - name: Run the gate
+      id: gate
+      if: ${{ steps.prepare.outputs.skip-gate != 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        BASE: ${{ steps.prepare.outputs.base }}
+        EXTRA_ARGUMENTS: ${{ inputs.arguments }}
+        PACKAGE: ${{ inputs.package }}
+        REPORT_DIRECTORY: ${{ inputs.report-directory }}
+        CACHE_ENABLED: ${{ inputs.cache }}
+        NITPICKER_CACHE_DIR: ${{ steps.prepare.outputs.cache-dir }}
+        NITPICKER_CACHE_URL: ${{ inputs.cache-url }}
+        NITPICKER_CACHE_AUTH_HEADER: ${{ inputs.cache-auth-header }}
+        NITPICKER_ACCEPT_POLICY_CHANGE: ${{ inputs.accept-policy-change }}
+      run: |
+        set -eo pipefail
+        args=(--base "$BASE" --output "$REPORT_DIRECTORY")
+        set -f
+        extra=($EXTRA_ARGUMENTS)
+        set +f
+        for argument in ${extra[@]+"${extra[@]}"}; do
+          case "$argument" in
+            --output | --output=* | --base | --base=*)
+              echo "::error title=nitpicker arguments::Pass ${argument%%=*} through the report-directory or base-ref input, not through arguments."
+              exit 1
+              ;;
+            --all)
+              echo "::error title=nitpicker arguments::The action runs a comparison with a base, which --all cannot be combined with. Run npx nitpicker --all in a step of its own for a full run."
+              exit 1
+              ;;
+          esac
+          args+=("$argument")
+        done
+        if [ "$CACHE_ENABLED" != true ]; then
+          args+=(--no-cache)
+        fi
+        if [ -n "$PACKAGE" ]; then
+          runner=(npx --yes --package "$PACKAGE" nitpicker)
+        else
+          runner=(npx --no-install nitpicker)
+        fi
+        "${runner[@]}" "${args[@]}" && code=0 || code=$?
+        echo "exit-code=$code" >> "$GITHUB_OUTPUT"
+        report_directory="$(cd "$REPORT_DIRECTORY" 2> /dev/null && pwd || echo "$PWD/$REPORT_DIRECTORY")"
+        if command -v cygpath > /dev/null; then
+          report_directory="$(cygpath -m "$report_directory")"
+        fi
+        echo "report-directory=$report_directory" >> "$GITHUB_OUTPUT"
+
+    - uses: actions/cache/save@v6.1.0
+      if: ${{ !cancelled() && inputs.cache == 'true' && steps.gate.outputs.exit-code != '' && steps.cache.outputs.cache-hit != 'true' }}
+      with:
+        path: ${{ steps.prepare.outputs.cache-dir }}
+        key: nitpicker-${{ runner.os }}-${{ runner.arch }}-${{ steps.prepare.outputs.cache-scope }}-${{ steps.prepare.outputs.base-sha }}-${{ hashFiles(format('{0}/nitpicker.config.json', inputs.working-directory)) }}
+
+    - name: Publish the findings of the default branch
+      if: ${{ steps.prepare.outputs.skip-gate == 'true' && inputs.cache-publish == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        PACKAGE: ${{ inputs.package }}
+        NITPICKER_CACHE_URL: ${{ inputs.cache-url }}
+        NITPICKER_CACHE_AUTH_HEADER: ${{ inputs.cache-auth-header }}
+      run: |
+        set -euo pipefail
+        if [ -z "$NITPICKER_CACHE_URL" ]; then
+          echo "::notice title=nitpicker::Nothing published: set the cache-url input to publish the findings of the default branch."
+          exit 0
+        fi
+        if [ -n "$PACKAGE" ]; then
+          npx --yes --package "$PACKAGE" nitpicker cache publish
+        else
+          npx --no-install nitpicker cache publish
+        fi
+
+    - uses: github/codeql-action/upload-sarif@v4.39.1
+      if: ${{ !cancelled() && inputs.upload-sarif == 'true' && steps.gate.outputs.exit-code != '' }}
+      continue-on-error: true
+      with:
+        sarif_file: ${{ steps.gate.outputs.report-directory }}/report.sarif
+        category: ${{ inputs.sarif-category }}
+
+    - uses: actions/upload-artifact@v7.0.2
+      if: ${{ !cancelled() && inputs.upload-report == 'true' && steps.gate.outputs.exit-code != '' && steps.gate.outputs.exit-code != '0' }}
+      with:
+        name: ${{ inputs.artifact-name }}
+        path: ${{ steps.gate.outputs.report-directory }}
+        if-no-files-found: ignore
+
+    - name: Fail when the gate failed
+      if: ${{ steps.gate.outputs.exit-code != '' && steps.gate.outputs.exit-code != '0' }}
+      shell: bash
+      env:
+        EXIT_CODE: ${{ steps.gate.outputs.exit-code }}
+      run: |
+        echo "nitpicker exited with code ${EXIT_CODE} (1: new enforceable findings, 2: a tool error or a failure to decide)."
+        exit "$EXIT_CODE"

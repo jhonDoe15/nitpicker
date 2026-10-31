@@ -2,6 +2,7 @@ import { normalizeGitPath } from '../git/normalize.mjs';
 import { isRecord } from '../../../shared/rules/facts/checks.mjs';
 
 const CLASSIFICATIONS = new Set(['enforceable', 'descriptive', 'tool-error']);
+const HTTP_URL = /^https?:\/\/\S+$/u;
 
 export function parseAnalyzerReport(value, analyzerName) {
   if (!isRecord(value) || !Array.isArray(value.findings)) {
@@ -59,14 +60,21 @@ function parseOptionalFields(value, classification, context) {
     }
     fields.metric = parseMetric(value.metric, `${context}.metric`);
   }
-  if (value.ratchet !== undefined) {
-    fields.ratchet = parseRatchet(value.ratchet, `${context}.ratchet`);
-  }
-  if (value.tokens !== undefined) {
-    fields.tokens = parseTokens(value.tokens, `${context}.tokens`);
-  }
+  return { ...fields, ...parseLaterFields(value, context) };
+}
 
-  return fields;
+function parseLaterFields(value, context) {
+  return {
+    ...(value.ratchet === undefined
+      ? {}
+      : { ratchet: parseRatchet(value.ratchet, `${context}.ratchet`) }),
+    ...(value.tokens === undefined
+      ? {}
+      : { tokens: parseTokens(value.tokens, `${context}.tokens`) }),
+    ...(value.helpUri === undefined
+      ? {}
+      : { helpUri: parseHelpUri(value.helpUri, `${context}.helpUri`) }),
+  };
 }
 
 function parseLocation(value, context) {
@@ -124,6 +132,14 @@ function parseRatchet(value, context) {
     ratchet[name] = value[name];
   }
   return ratchet;
+}
+
+function parseHelpUri(value, context) {
+  const uri = requiredString(value, context);
+  if (!HTTP_URL.test(uri)) {
+    throw new TypeError(`${context} must be an http or https URL`);
+  }
+  return uri;
 }
 
 function parseTokens(value, context) {
