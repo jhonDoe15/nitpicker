@@ -71,7 +71,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
         tool: 'jacoco',
         rule: 'uncovered-method',
         path: 'src/main/java/demo/Greeter.java',
-        identity: 'cov:a14fde8c431ba476',
+        identity: 'cov:demo.Greeter#farewell(Ljava/lang/String;)Ljava/lang/String;',
         symbol: 'demo.Greeter#farewell(Ljava/lang/String;)Ljava/lang/String;',
         message:
           'Method demo.Greeter#farewell(Ljava/lang/String;)Ljava/lang/String; is not covered',

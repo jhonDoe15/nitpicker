@@ -13,8 +13,11 @@ export function resolveComparison(repositoryRoot, requestedBaseRef) {
       `${requestedBaseRef}^{commit}`,
     ]).trim();
   } catch (error) {
+    const isShallow =
+      runGit(repositoryRoot, ['rev-parse', '--is-shallow-repository']).trim() === 'true';
+    const fetchCommand = fetchSuggestion(repositoryRoot, requestedBaseRef, isShallow);
     throw new Error(
-      `Cannot resolve base ref "${requestedBaseRef}". Fetch it before running the comparison.`,
+      `Cannot resolve base ref "${requestedBaseRef}". Run \`${fetchCommand}\` and retry.`,
       { cause: error },
     );
   }

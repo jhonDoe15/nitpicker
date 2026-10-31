@@ -9,7 +9,7 @@ import {
 import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
 import { packageHasJavaScriptApi } from '../../typescript-api/api-redirect.mjs';
 import { ts as selectedTypeScript } from '../../typescript-api/typescript-api.mjs';
-import { nativeDiagnostics } from './native-diagnostics.mjs';
+import { configFailure, isNonFatalConfigCode, nativeDiagnostics } from './native-diagnostics.mjs';
 
 const NO_INPUTS_CODE = 18003;
 
@@ -27,7 +27,21 @@ export function loadTypeScript(projectRoot = PACKAGE_ROOT) {
   return projectTypeScript(projectRoot).ts;
 }
 
-export async function preEmitDiagnostics({ ts, engine, configPath, projectRoot, projectNative }) {
+export async function preEmitDiagnostics(options) {
+  try {
+    return await engineDiagnostics(options);
+  } catch (error) {
+    if (options.configName === undefined || error.configError !== true) {
+      throw error;
+    }
+    const detail = withoutProjectRoot(error.message, options.projectRoot);
+    throw new Error(`TypeScript config ${options.configName} is invalid: ${detail}`, {
+      cause: error,
+    });
+  }
+}
+
+async function engineDiagnostics({ ts, engine, configPath, projectRoot, projectNative }) {
   if (engine === 'native') {
     const native = await nativeDiagnostics({
       ts,
@@ -35,7 +49,9 @@ export async function preEmitDiagnostics({ ts, engine, configPath, projectRoot, 
       projectRoot,
       engineHint: projectNative === undefined,
     });
-    if (native.unsupported !== true) return native.diagnostics;
+    if (native.unsupported !== true) {
+      return native.diagnostics;
+    }
   }
   if (projectNative !== undefined) {
     const own = await nativeDiagnostics({ ts, configPath, projectRoot, apiRoot: projectNative });
@@ -47,7 +63,7 @@ export async function preEmitDiagnostics({ ts, engine, configPath, projectRoot, 
 function projectDiagnostics(ts, configPath, projectRoot) {
   const configFile = ts.readConfigFile(configPath, ts.sys.readFile);
   if (configFile.error !== undefined) {
-    throw new Error(formatDiagnostic(ts, configFile.error));
+    throw configFailure(formatDiagnostic(ts, configFile.error));
   }
   const parsedConfig = ts.parseJsonConfigFileContent(
     configFile.config,
@@ -56,18 +72,22 @@ function projectDiagnostics(ts, configPath, projectRoot) {
     undefined,
     configPath,
   );
-  if (
-    parsedConfig.fileNames.length === 0 &&
-    parsedConfig.errors.every((error) => error.code === NO_INPUTS_CODE)
-  )
-    return [];
-  if (parsedConfig.errors.length > 0) {
-    throw new Error(parsedConfig.errors.map((error) => formatDiagnostic(ts, error)).join('\n'));
+  const fatalErrors = parsedConfig.errors.filter(
+    (error) => !isNonFatalConfigCode(error.code) && error.code !== NO_INPUTS_CODE,
+  );
+  if (fatalErrors.length > 0) {
+    throw configFailure(fatalErrors.map((error) => formatDiagnostic(ts, error)).join('\n'));
+  }
+  if (parsedConfig.fileNames.length === 0) {
+    return ts.sortAndDeduplicateDiagnostics(
+      parsedConfig.errors.filter((error) => error.code !== NO_INPUTS_CODE),
+    );
   }
   const program = ts.createProgram({
     rootNames: parsedConfig.fileNames,
     options: parsedConfig.options,
     projectReferences: parsedConfig.projectReferences,
+    configFileParsingDiagnostics: parsedConfig.errors,
   });
   return ts.getPreEmitDiagnostics(program);
 }
