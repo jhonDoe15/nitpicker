@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
+import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { baseMoves, comparisonKey } from '../../../core/diff/comparison/fingerprint.mjs';
 import { ingestArchunit } from './archunit.mjs';
 import { ingestCheckstyle } from './formatting/checkstyle.mjs';
@@ -282,6 +283,34 @@ describe('pit', () => {
     expect(
       keys('service', new Map([['src/main/java/shop/service/AuditService.java', moved]])),
     ).toEqual(keys('audit'));
+  });
+
+  it('keeps a mutant whose method was renamed or given a parameter, on an unchanged line', () => {
+    const report = (className, method, descriptor) =>
+      `<mutations><mutation detected='false' status='SURVIVED'><sourceFile>${className}.java</sourceFile><mutatedClass>shop.${className}</mutatedClass><mutatedMethod>${method}</mutatedMethod><methodDescription>${descriptor}</methodDescription><lineNumber>9</lineNumber><mutator>org.pitest.mutationtest.engine.gregor.mutators.EmptyObjectReturnValsMutator</mutator><description>replaced return value with &quot;&quot; for shop/${className}::${method}</description></mutation></mutations>`;
+    const findings = (className, method, descriptor, line = 'return name;') =>
+      ingestPit(report(className, method, descriptor), {
+        resolvePath: resolveJavaPath,
+        sourceText: () => `${'\n'.repeat(8)}    ${line}\n`,
+      }).findings.filter((finding) => finding.rule === 'mutant-survived');
+    const compare = (head, changedLine) =>
+      compareFindings({
+        baseFindings: findings('Audit', 'agent', '()Ljava/lang/String;'),
+        headFindings: head,
+        baseToHeadRenames: new Map([
+          ['src/main/java/shop/Audit.java', 'src/main/java/shop/Log.java'],
+        ]),
+        touchedCode: {
+          changedLines: new Map([
+            ['src/main/java/shop/Log.java', { added: false, ranges: [[changedLine, changedLine]] }],
+          ]),
+          isStrictRule: () => false,
+        },
+      }).newFindings.length;
+
+    expect(compare(findings('Log', 'user', '(I)Ljava/lang/String;'), 8)).toBe(0);
+    expect(compare(findings('Log', 'user', '(I)Ljava/lang/String;'), 9)).toBe(1);
+    expect(compare(findings('Log', 'user', '(I)Ljava/lang/String;', 'return label;'), 8)).toBe(1);
   });
 
   it('numbers the mutants of same-named classes in different packages independently', () => {
