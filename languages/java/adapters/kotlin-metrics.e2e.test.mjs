@@ -2,7 +2,6 @@ import { spawnSync } from 'node:child_process';
 import {
   cpSync,
   existsSync,
-  mkdirSync,
   mkdtempSync,
   readdirSync,
   readFileSync,
@@ -17,6 +16,12 @@ import { INIT_SCRIPT } from '../builds/java-build.mjs';
 import { loadEffectFindings } from './kotlin/review-rules/main/load-effects.mjs';
 import { findingFactory } from './kotlin/review-rules/review-finding.mjs';
 import {
+  compilePsiProgram,
+  gradleClasspath,
+  pinnedKotlinCompiler,
+  writeSources,
+} from './test-support/kotlin/kotlin-psi-program.mjs';
+import {
   BOM,
   BROKEN,
   CRLF,
@@ -30,11 +35,6 @@ import {
   ROOT_PACKAGE,
   UNITS,
 } from './test-support/kotlin/kotlin-metrics-sources.mjs';
-import {
-  pinnedKotlinCompiler,
-  prepareKotlinPsi,
-  runKotlinPsi,
-} from './test-support/kotlin/kotlin-psi-runner.mjs';
 import {
   LOAD_EFFECTS,
   LOAD_FINDINGS,
@@ -74,19 +74,12 @@ const MODULE_BUILD = [
 const PSI_CLASS = 'nitpicker/kotlinpsi/KotlinPsi.class';
 
 let workspace;
-let psi;
-
-function writeSources(name, files) {
-  const dir = path.join(workspace, name);
-  for (const [relative, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(dir, relative)), { recursive: true });
-    writeFileSync(path.join(dir, relative), content);
-  }
-  return dir;
-}
+let java;
+let classpath;
+let classes;
 
 function twoModuleProject() {
-  return writeSources('modules', {
+  return writeSources(workspace, 'modules', {
     'settings.gradle.kts': 'rootProject.name = "modules"\ninclude("one", "two")\n',
     'build.gradle.kts': `plugins {\n    kotlin("jvm") version "${kotlinPlugin}" apply false\n}\n`,
     'one/build.gradle.kts': MODULE_BUILD,
@@ -121,7 +114,28 @@ function functionsOf(project, module) {
 }
 
 function measure(project, roots = ['src']) {
-  return runKotlinPsi(psi, project, roots);
+  const metricsOutput = path.join(project, 'metrics.json');
+  const factsOutput = path.join(project, 'facts.json');
+  const result = spawnSync(
+    path.join(java, 'bin/java'),
+    [
+      `-Dnitpicker.kotlinCompiler=${pinned}`,
+      '-cp',
+      `${classpath}${path.delimiter}${classes}`,
+      'nitpicker.kotlinpsi.KotlinPsi',
+      metricsOutput,
+      factsOutput,
+      project,
+      ...roots,
+    ],
+    { cwd: project, encoding: 'utf8', timeout: 180_000 },
+  );
+  return {
+    status: result.status,
+    log: result.stdout + result.stderr,
+    metrics: result.status === 0 ? JSON.parse(readFileSync(metricsOutput, 'utf8')) : undefined,
+    facts: result.status === 0 ? JSON.parse(readFileSync(factsOutput, 'utf8')) : undefined,
+  };
 }
 
 describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
@@ -135,7 +149,8 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       path.join(project, 'build.gradle.kts'),
       `${readFileSync(path.join(project, 'build.gradle.kts'), 'utf8')}${FORCE_OTHER_KOTLIN}`,
     );
-    psi = prepareKotlinPsi(workspace, project, gradle);
+    ({ javaHome: java, classpath } = gradleClasspath({ gradle, project, workspace }));
+    classes = compilePsiProgram({ java, classpath, workspace });
   });
 
   afterAll(() => {
@@ -143,7 +158,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   });
 
   it('resolves the pinned compiler although the project forces another Kotlin version', () => {
-    const jars = psi.classpath.split(path.delimiter).map((jar) => path.basename(jar));
+    const jars = classpath.split(path.delimiter).map((jar) => path.basename(jar));
 
     expect(jars.filter((jar) => jar.startsWith('kotlin-compiler-embeddable'))).toEqual([
       `kotlin-compiler-embeddable-${pinned}.jar`,
@@ -152,7 +167,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   });
 
   it('measures the units of a file and leaves out what is not a unit', () => {
-    const { metrics } = measure(writeSources('units', { 'src/Units.kt': UNITS }));
+    const { metrics } = measure(writeSources(workspace, 'units', { 'src/Units.kt': UNITS }));
 
     expect(
       metrics.functions.map(
@@ -185,7 +200,9 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   });
 
   it('measures init blocks and property initializers that branch, every lambda as a unit of its own, and leaves out the straight-line initializers', () => {
-    const { metrics } = measure(writeSources('initializers', { 'src/Init.kt': INITIALIZERS }));
+    const { metrics } = measure(
+      writeSources(workspace, 'initializers', { 'src/Init.kt': INITIALIZERS }),
+    );
 
     expect(
       metrics.functions.map(
@@ -208,7 +225,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   });
 
   it('counts a flat if / else if / else chain as one level and an if inside an else block or a branch as one deeper', () => {
-    const { metrics } = measure(writeSources('nesting', { 'src/Nesting.kt': NESTING }));
+    const { metrics } = measure(writeSources(workspace, 'nesting', { 'src/Nesting.kt': NESTING }));
 
     expect(
       metrics.functions.map(
@@ -225,7 +242,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
 
   it('lists the package and classes of each file, including a file outside its package directory', () => {
     const { metrics } = measure(
-      writeSources('files', {
+      writeSources(workspace, 'files', {
         'src/Flat.kt': FLAT,
         'src/Root.kt': ROOT_PACKAGE,
         'src/Units.kt': UNITS,
@@ -246,7 +263,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
 
   it('reads a file with a byte order mark and one with Windows line endings', () => {
     const { metrics } = measure(
-      writeSources('encoding', { 'src/Bom.kt': BOM, 'src/Crlf.kt': CRLF }),
+      writeSources(workspace, 'encoding', { 'src/Bom.kt': BOM, 'src/Crlf.kt': CRLF }),
     );
 
     expect(metrics.files.map(({ package: name, classes }) => [name, classes])).toEqual([
@@ -261,7 +278,10 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
 
   it('gives each part of a multifile class its own class and the first file the facade', () => {
     const { metrics } = measure(
-      writeSources('multifile', { 'src/MfA.kt': MULTIFILE_A, 'src/MfB.kt': MULTIFILE_B }),
+      writeSources(workspace, 'multifile', {
+        'src/MfA.kt': MULTIFILE_A,
+        'src/MfB.kt': MULTIFILE_B,
+      }),
     );
 
     expect(metrics.files.map(({ file, classes }) => [file, classes])).toEqual([
@@ -271,7 +291,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   });
 
   it('fails on a syntax error, naming the file, the line and the pinned compiler', () => {
-    const { status, log } = measure(writeSources('broken', { 'src/Broken.kt': BROKEN }));
+    const { status, log } = measure(writeSources(workspace, 'broken', { 'src/Broken.kt': BROKEN }));
 
     const [, line, version] = new RegExp(
       [
@@ -285,7 +305,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
 
   it('reads a source file nested far deeper than the default stack allows', () => {
     const { status, log, metrics, facts } = measure(
-      writeSources('deep', { 'src/Deep.kt': DEEP_CHAIN }),
+      writeSources(workspace, 'deep', { 'src/Deep.kt': DEEP_CHAIN }),
     );
 
     expect([status, log.includes('StackOverflow')]).toEqual([0, false]);
@@ -294,7 +314,9 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   });
 
   it('names a predicate in a property initializer after the property and keeps backticked constants', () => {
-    const { facts } = measure(writeSources('symbols', { 'src/Symbols.kt': PREDICATE_SYMBOLS }));
+    const { facts } = measure(
+      writeSources(workspace, 'symbols', { 'src/Symbols.kt': PREDICATE_SYMBOLS }),
+    );
     const [symbols] = facts.files;
 
     expect(symbols.classes.find(({ name }) => name === 'Phase').entries).toEqual([
@@ -318,7 +340,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
 
   it('collects the calls that run while a file or object loads, and the rule reports their effects', () => {
     const { facts } = measure(
-      writeSources('load', {
+      writeSources(workspace, 'load', {
         'src/Load.kt': LOAD_EFFECTS,
         'src/Singletons.kt': LOAD_SINGLETONS,
         'src/Helpers.kt': LOAD_HELPERS,
@@ -335,14 +357,15 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   });
 
   it('collects facts of test roots without measuring them, and words a test syntax error for tests', () => {
-    const project = writeSources('roots', {
+    const project = writeSources(workspace, 'roots', {
       'src/main/Main.kt': FLAT,
       'src/test/Check.kt': 'package demo.check\n\nclass Check { fun go() { Thread.sleep(5) } }\n',
     });
     const { metrics, facts } = measure(project, ['src/main', 'test:src/test']);
-    const broken = measure(writeSources('broken-test', { 'src/test/Broken.kt': BROKEN }), [
-      'test:src/test',
-    ]);
+    const broken = measure(
+      writeSources(workspace, 'broken-test', { 'src/test/Broken.kt': BROKEN }),
+      ['test:src/test'],
+    );
 
     expect(metrics.files.map(({ file }) => file)).toEqual(['src/main/Main.kt']);
     expect(facts.files.map(({ file, test, waits }) => [file, test, waits.length])).toEqual([
