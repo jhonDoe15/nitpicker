@@ -1,5 +1,6 @@
 import { configError, isPlainObject } from '../../../shared/config.mjs';
 import { CO_CHANGE_LIMITS } from '../../../shared/project-rules/hygiene-rules.mjs';
+import { suggestionOrAllowed } from '../../../shared/messages/closest-match.mjs';
 
 const THRESHOLD_KEYS = ['commits', 'minSupport', 'minConfidence', 'maxCommitFiles'];
 const HISTORY_KEYS = ['coChange', ...THRESHOLD_KEYS];
@@ -35,7 +36,7 @@ function validateShape(history) {
   const unknown = Object.keys(history).find((key) => !HISTORY_KEYS.includes(key));
   if (unknown !== undefined) {
     throw configError(
-      `unknown history key "${unknown}". Allowed history keys: ${HISTORY_KEYS.join(', ')}`,
+      `unknown history key "${unknown}"${suggestionOrAllowed(unknown, HISTORY_KEYS, 'Allowed history keys')}`,
     );
   }
   if (history.coChange !== undefined && typeof history.coChange !== 'boolean') {
