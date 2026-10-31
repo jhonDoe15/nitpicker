@@ -59,6 +59,7 @@ const SHAPES = {
     key: optional(isString),
     text: optional(isString),
     entry: optional(isBoolean),
+    overloads: optional(isBoolean),
     package: OPTIONAL_PATH,
   },
   imports: {
@@ -73,6 +74,7 @@ const SHAPES = {
     name: isNonEmpty,
     qualifier: optional(isNonEmpty),
     lines: isStrings,
+    detailed: optional(isBoolean),
   },
   console: { file: isRootOrPath, test: isString, messages: isStrings },
 };

@@ -1,6 +1,6 @@
 import { readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
-import { importClosure } from '../import-closure.mjs';
+import { importClosure, importedFiles } from '../import-closure.mjs';
 import {
   ENFORCED_MUTATION_STATUSES,
   FUNCTION_STRUCTURE_LIMITS,
@@ -8,6 +8,7 @@ import {
   RULE_IDS,
   mutantRuleId,
 } from '../policy.mjs';
+import { DESIGN_RULES } from '../project-rules/design/design-rules.mjs';
 import { HYGIENE_RULE_IDS, PACKAGE_RULE_IDS } from '../project-rules/hygiene-rules.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
@@ -53,8 +54,15 @@ const LANGUAGE_SOURCES = {
   python: ['languages/python'],
   java: ['languages/java'],
   kotlin: ['languages/java'],
+  go: ['languages/go'],
 };
 const EVERY_LANGUAGE_SOURCES = ['shared/hygiene', 'shared/history'];
+const FACT_EVALUATOR = 'shared/rules/facts/evaluate.mjs';
+const SHARED_RULE_LISTS = { DESIGN_RULES };
+const RULES_ARGUMENT = /\brules:\s*(?:([A-Z][A-Z_]*)\b|\[([^\]]*)\])/gu;
+const RULE_ID_REFERENCE = /\bRULE_IDS\.([A-Za-z]+)\b/gu;
+const LANGUAGE_ARGUMENT = /\blanguage:\s*'([a-z]+)'/gu;
+const QUOTED_RULE = /'([a-z][a-z-]*)'/gu;
 
 function repositoryFile(relative) {
   const absolute = path.resolve(repositoryRoot, relative);
@@ -97,9 +105,48 @@ function needlesOf(ruleId) {
 
 const NEEDLES = new Map(RULES.map(({ id }) => [id, needlesOf(id)]));
 
+function rulesInList(list) {
+  return [
+    ...[...list.matchAll(QUOTED_RULE)].map((match) => match[1]),
+    ...[...list.matchAll(RULE_ID_REFERENCE)].map((match) => RULE_IDS[match[1]]),
+  ];
+}
+
+function listedRules(text, name, inline) {
+  if (inline !== undefined) {
+    return rulesInList(inline);
+  }
+  const local = new RegExp(`\\bconst ${name} = \\[([^\\]]*)\\]`, 'u').exec(text);
+  return local === null ? SHARED_RULE_LISTS[name] : rulesInList(local[1]);
+}
+
+function callSiteRules(text, language) {
+  const languages = [...text.matchAll(LANGUAGE_ARGUMENT)].map((match) => match[1]);
+  if (languages.length > 0 && !languages.includes(language)) {
+    return [];
+  }
+  const lists = [...text.matchAll(RULES_ARGUMENT)].map((match) =>
+    listedRules(text, match[1], match[2]),
+  );
+  return lists.length === 0 || lists.includes(undefined) ? undefined : lists.flat();
+}
+
+function evaluatorCallSites(direct, language) {
+  return [...direct]
+    .filter(([file, text]) => importedFiles(file, text, repositoryRoot).includes(FACT_EVALUATOR))
+    .map(([file, text]) => ({ file, rules: callSiteRules(withoutComments(file, text), language) }));
+}
+
 function emittingFiles(language) {
   const entries = sourceFiles([...LANGUAGE_SOURCES[language], ...EVERY_LANGUAGE_SOURCES]);
-  return importClosure(entries, repositoryRoot);
+  const stopAt = new Set([FACT_EVALUATOR]);
+  const direct = importClosure(entries, repositoryRoot, { stopAt });
+  const callSites = evaluatorCallSites(direct, language);
+  if (callSites.some(({ rules }) => rules === undefined)) {
+    return { files: importClosure(entries, repositoryRoot), callSites: [] };
+  }
+  direct.delete(FACT_EVALUATOR);
+  return { files: direct, callSites };
 }
 
 function withoutComments(file, text) {
@@ -125,19 +172,17 @@ export function catalogFileOf(ruleId) {
 }
 
 function scanLanguage(language) {
-  const files = [...emittingFiles(language)]
+  const { files: closure, callSites } = emittingFiles(language);
+  const files = [...closure]
     .filter(([file]) => !NON_EMITTING_FILES.some((pattern) => pattern.test(file)))
     .filter(([file]) => language !== 'java' || !KOTLIN_FILE.test(file))
     .map(([file, text]) => [file, withoutComments(file, text)]);
-  return new Map(
-    RULES.map(({ id }) => [
-      id,
-      files
-        .filter(([, text]) => NEEDLES.get(id).test(text))
-        .map(([file]) => file)
-        .sort(),
-    ]),
-  );
+  function emitters(id) {
+    const mentioning = files.filter(([, text]) => NEEDLES.get(id).test(text)).map(([file]) => file);
+    const calling = callSites.filter(({ rules }) => rules.includes(id)).map(({ file }) => file);
+    return [...new Set([...mentioning, ...calling])].sort();
+  }
+  return new Map(RULES.map(({ id }) => [id, emitters(id)]));
 }
 
 export function ruleEmitters(language) {

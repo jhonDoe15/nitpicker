@@ -11,15 +11,18 @@ const TYPESCRIPT_AND_JAVASCRIPT = {
   java: false,
   python: false,
   kotlin: false,
+  go: false,
 };
 
+const JVM = { java: true, kotlin: true };
+
 export const FACT_RULE_LANGUAGES = {
-  'duplicate-definition': { ...TYPESCRIPT_AND_JAVASCRIPT, javascript: 'partial' },
-  'exported-name-collision': { ...TYPESCRIPT_AND_JAVASCRIPT, javascript: 'partial' },
-  'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT },
+  'duplicate-definition': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, javascript: 'partial' },
+  'exported-name-collision': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, javascript: 'partial' },
+  'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM },
   'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT },
   'test-only-export': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
-  'doc-comment-content': { ...TYPESCRIPT_AND_JAVASCRIPT },
+  'doc-comment-content': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
   'test-console-output': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
   ...Object.fromEntries(DESIGN_RULES.map((rule) => [rule, { ...DESIGN_RULE_LANGUAGES }])),
 };
@@ -57,13 +60,19 @@ export function factRuleSettings(language) {
   return registeredFactRules(language).flatMap((rule) => FACT_RULE_SETTINGS[rule] ?? []);
 }
 
+const OWN_COLUMN_LANGUAGES = new Set(['go']);
+
+function defaultEnforcement(enforcedBy, language) {
+  return OWN_COLUMN_LANGUAGES.has(language) ? false : enforcedBy.typescript;
+}
+
 export function withLanguageColumns(rule, languages) {
   const registered = FACT_RULE_LANGUAGES[rule.id];
   const enforcedBy = Object.fromEntries(
     languages.map((language) => [
       language,
       registered === undefined
-        ? (rule.enforcedBy[language] ?? rule.enforcedBy.typescript)
+        ? (rule.enforcedBy[language] ?? defaultEnforcement(rule.enforcedBy, language))
         : registered[language],
     ]),
   );
