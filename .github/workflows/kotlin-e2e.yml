@@ -74,10 +74,15 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
+      # Caches ~/.m2 like the java-e2e workflow, for the Maven builds and the tool jars Maven resolves.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
+          cache: maven
+          cache-dependency-path: |
+            languages/java/maven/fixtures/**/pom.xml
+            languages/java/gradle/nitpicker.init.gradle
       # Caches ~/.gradle: the Kotlin compiler, detekt, ktlint, ktfmt, PMD, SpotBugs and PIT jars the init script
       # resolves, and the Kotlin Gradle plugin.
       - uses: gradle/actions/setup-gradle@v4

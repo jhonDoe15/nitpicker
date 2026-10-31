@@ -62,6 +62,9 @@ runs them all.
 The `typescript` workflow (the required `test` and `self-gate` checks) always runs in full, because
 its tests read the whole repository, documentation included. Keep a workflow's `paths` complete:
 on pull requests they now decide what runs, not only which pushes to `main` start a run.
+The Java and Kotlin suites add Maven resolver retry options to `MAVEN_OPTS`, so a Maven Central
+HTTP 429 (rate limit) is retried up to six times, ten seconds apart, instead of failing the build
+under test. CI keeps `~/.m2` and `~/.gradle` between runs; locally they are your own caches.
 The TypeScript red-base test (`npm run test:typescript`, which runs real vitest through the CLI) is
 not in CI: run it after changing `core/diff/comparison/base-red/` or a test runner's failure report.
 

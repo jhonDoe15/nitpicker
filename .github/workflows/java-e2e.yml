@@ -75,13 +75,17 @@ jobs:
           node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
-      # Maven comes with the runner image; the cache keeps ~/.m2 between runs, keyed on the fixture poms.
+      # Maven comes with the runner image; the cache keeps ~/.m2 between runs, keyed on the fixture poms and on the
+      # init script that pins the tool versions, so a tool upgrade saves a new cache instead of downloading the new
+      # jars from Maven Central on every run.
       - uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: 21
           cache: maven
-          cache-dependency-path: languages/java/maven/fixtures/**/pom.xml
+          cache-dependency-path: |
+            languages/java/maven/fixtures/**/pom.xml
+            languages/java/gradle/nitpicker.init.gradle
       # Caches ~/.gradle: the Checkstyle, PMD, SpotBugs, Error Prone, palantir-java-format and PIT jars the init
       # script resolves, and the plugins the fixture projects use.
       - uses: gradle/actions/setup-gradle@v4
