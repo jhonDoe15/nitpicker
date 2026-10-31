@@ -363,7 +363,7 @@ Fix notes:
           return undefined;
         }
         layers.push(JSON.parse(environment[PROJECT_LAYER_VARIABLE]));
-        return { status: 0, stdout: '', stderr: '' };
+        return { status: 0, stdout: '[]', stderr: '' };
       },
       stdout: output.stdout,
       stderr: output.stderr,
