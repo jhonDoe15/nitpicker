@@ -14,6 +14,7 @@ import {
   strykerIgnoredNotices,
   typescriptIgnoredNotices,
 } from '../../languages/typescript/preset/project-configs/ignored-notices.mjs';
+import { scriptProjectToolNotices } from '../../languages/typescript/preset/project-tools/ignored-notices.mjs';
 
 const BY_PRESET = new Map([
   ['typescript', TYPESCRIPT_CONVENTIONS],
@@ -43,10 +44,11 @@ const scriptStyle = noticeStyle((context) => [
   ...typescriptIgnoredNotices(context),
   ...strykerIgnoredNotices(context),
 ]);
+const scriptProjectToolStyle = noticeStyle(scriptProjectToolNotices);
 
 const STYLES_BY_PRESET = new Map([
-  ['typescript', [scriptStyle, eslintConfigStyle, jscpdStyle]],
-  ['javascript', [scriptStyle, eslintConfigStyle, jscpdStyle]],
+  ['typescript', [scriptStyle, eslintConfigStyle, jscpdStyle, scriptProjectToolStyle]],
+  ['javascript', [scriptStyle, eslintConfigStyle, jscpdStyle, scriptProjectToolStyle]],
   ['java', [javaProjectStyle, jscpdStyle]],
   ['kotlin', [javaProjectStyle, kotlinStyle, jscpdStyle]],
   ['python', [pythonStyle, jscpdStyle]],
