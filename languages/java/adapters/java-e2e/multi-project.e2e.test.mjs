@@ -15,7 +15,8 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { DESIGN_RULES } from '../../../../shared/project-rules/design/design-rules.mjs';
 import { POOL_PROTOCOL, writeEscape, writePool } from '../design/test-support/escape-sources.mjs';
 import { collectJavaFindings } from '../java-diff.mjs';
-import { GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
+import { analyzeWithIncludedBuild, GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
+import { pathsOutsideProject } from './test-support/project-paths.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -70,6 +71,10 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
     expect(facts.modules.filter(({ file }) => !file.includes('/src/main/java/'))).toEqual([]);
   });
 
+  it('names every finding by a file or folder relative to the build root', () => {
+    expect(pathsOutsideProject(root, findings)).toEqual([]);
+  });
+
   it('reads each project with its folder in the path, including one without tests', () => {
     expect(located(findings, 'pmd', 'UnusedPrivateField')).toEqual([
       'lib/src/main/java/demo/lib/Counter.java',
@@ -80,8 +85,16 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
     ]);
   });
 
-  it('reports @Generated on hand-written code, but not an annotation that only starts with it', () => {
+  it('reports an annotation whose name contains Generated on hand-written code', () => {
     expect(located(findings, 'pmd', 'GeneratedOnHandWrittenCode')).toEqual([
+      'app/src/main/java/demo/app/Stamped.java',
+      'app/src/main/java/demo/app/Stamped.java',
+      'lib/src/main/java/demo/lib/Counter.java',
+    ]);
+  });
+
+  it('reports @DoNotMutate, which PIT skips', () => {
+    expect(located(findings, 'pmd', 'MutationIgnoreMarker')).toEqual([
       'app/src/main/java/demo/app/Stamped.java',
     ]);
   });
@@ -163,6 +176,24 @@ describe.skipIf(!enabled)('the design rules on a Gradle build of two projects', 
     }
   }, 180_000);
 });
+
+describe.skipIf(!enabled)(
+  'a Gradle build whose plugins come from an included build-logic build and buildSrc',
+  () => {
+    it('leaves both plugin builds unconfigured and analyzes the root build', () => {
+      const result = analyzeWithIncludedBuild(
+        path.join(import.meta.dirname, '..', 'fixtures', 'build-logic-java'),
+        { gradle, policy: { preset: 'java' } },
+      );
+
+      expect([result.status, result.mutations], result.output).toEqual([0, []]);
+      expect(located(result.findings, 'pmd', 'UnusedPrivateField')).toEqual([
+        'src/main/java/demo/Counter.java',
+      ]);
+      expect(result.nested).toEqual([]);
+    }, 180_000);
+  },
+);
 
 describe.skipIf(!enabled)('Java coverage with architecture tests', () => {
   it('keeps merged execution data valid and counts only application tests toward coverage', () => {

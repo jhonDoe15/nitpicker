@@ -128,12 +128,15 @@ def testRulesOnTestSources = { File testRules, File rulesetDir, boolean spring, 
 }
 
 allprojects {
+    if (gradle.parent != null) {
+        return
+    }
     plugins.withId('java') {
         pluginManager.apply('jacoco')
         pluginManager.apply('checkstyle')
 
         def moduleKey = project == rootProject ? 'root' : 'module-' + project.path.substring(1).replace('_', '_u').replace(':', '_c')
-        def reportDir = reportBase && gradle.parent == null
+        def reportDir = reportBase
             ? objects.directoryProperty().fileValue(new File(reportBase.toString(), moduleKey))
             : layout.buildDirectory.dir('nitpicker')
         if (project.projectDir.toPath().startsWith(analysisRoot.toPath())) {
@@ -317,7 +320,6 @@ allprojects {
             kotlinPreset ? [tasks.named('compileJava').get().destinationDirectory.get().asFile]
                 : sourceSets.main.output.classesDirs.files
         }
-        // PIT mutates the Java and the Kotlin classes alike; the Kotlin findings are report-only (see the Nitpicker side).
         def mutatedClassDirs = { sourceSets.main.output.classesDirs.files }
 
         def springDeclared = nitpickerArgument('nitpicker.spring') == 'true'
@@ -562,7 +564,7 @@ allprojects {
                 pitStatusOrder.contains(node.@status) ? pitStatusOrder.indexOf(node.@status) : pitStatusOrder.size()
             }
             parts.each { part ->
-                new XmlParser().parse(part).mutation.each { mutation ->
+                new groovy.xml.XmlParser().parse(part).mutation.each { mutation ->
                     def key = pitKey.collect { mutation."${it}".text() }.join('|')
                     if (!best.containsKey(key) || rank(mutation) < rank(best[key])) {
                         best[key] = mutation
@@ -1186,6 +1188,7 @@ allprojects {
                         if (kotlinLintedFiles().isEmpty()) {
                             metrics.text = '{"functions":[],"files":[]}'
                             facts.text = '{"files":[]}'
+                            reportDir.get().file('kotlin-mutation-facts.json').asFile.text = '{"files":[]}'
                             return
                         }
                         def home = new File(System.getProperty('java.home'), 'bin')

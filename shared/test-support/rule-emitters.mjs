@@ -54,11 +54,13 @@ const LANGUAGE_SOURCES = {
   python: ['languages/python'],
   java: ['languages/java'],
   kotlin: ['languages/java'],
+  go: ['languages/go'],
 };
 const EVERY_LANGUAGE_SOURCES = ['shared/hygiene', 'shared/history'];
 const FACT_EVALUATOR = 'shared/rules/facts/evaluate.mjs';
 const SHARED_RULE_LISTS = { DESIGN_RULES };
-const RULES_ARGUMENT = /\brules:\s*([A-Z][A-Z_]*)\b/gu;
+const RULES_ARGUMENT = /\brules:\s*(?:([A-Z][A-Z_]*)\b|\[([^\]]*)\])/gu;
+const RULE_ID_REFERENCE = /\bRULE_IDS\.([A-Za-z]+)\b/gu;
 const LANGUAGE_ARGUMENT = /\blanguage:\s*'([a-z]+)'/gu;
 const QUOTED_RULE = /'([a-z][a-z-]*)'/gu;
 
@@ -103,11 +105,19 @@ function needlesOf(ruleId) {
 
 const NEEDLES = new Map(RULES.map(({ id }) => [id, needlesOf(id)]));
 
-function listedRules(text, name) {
+function rulesInList(list) {
+  return [
+    ...[...list.matchAll(QUOTED_RULE)].map((match) => match[1]),
+    ...[...list.matchAll(RULE_ID_REFERENCE)].map((match) => RULE_IDS[match[1]]),
+  ];
+}
+
+function listedRules(text, name, inline) {
+  if (inline !== undefined) {
+    return rulesInList(inline);
+  }
   const local = new RegExp(`\\bconst ${name} = \\[([^\\]]*)\\]`, 'u').exec(text);
-  return local === null
-    ? SHARED_RULE_LISTS[name]
-    : [...local[1].matchAll(QUOTED_RULE)].map((match) => match[1]);
+  return local === null ? SHARED_RULE_LISTS[name] : rulesInList(local[1]);
 }
 
 function callSiteRules(text, language) {
@@ -115,7 +125,9 @@ function callSiteRules(text, language) {
   if (languages.length > 0 && !languages.includes(language)) {
     return [];
   }
-  const lists = [...text.matchAll(RULES_ARGUMENT)].map((match) => listedRules(text, match[1]));
+  const lists = [...text.matchAll(RULES_ARGUMENT)].map((match) =>
+    listedRules(text, match[1], match[2]),
+  );
   return lists.length === 0 || lists.includes(undefined) ? undefined : lists.flat();
 }
 

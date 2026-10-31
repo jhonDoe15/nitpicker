@@ -1,5 +1,6 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { finding, findingLine, policy } from '../../diff/execution/test-support/analyzer-findings.mjs';
@@ -30,6 +31,15 @@ function locations(log) {
   ]);
 }
 
+function sourceRootOf(repository) {
+  return {
+    '%SRCROOT%': {
+      uri: `${pathToFileURL(repository.root).href}/`,
+      description: { text: 'The root of the git repository the findings are in.' },
+    },
+  };
+}
+
 function runInProject(repository, arguments_) {
   const outputRoot = makeOutputRoot();
   const output = captureOutput();
@@ -47,7 +57,7 @@ function runInProject(repository, arguments_) {
 }
 
 describe('SARIF reports of a project in a repository subfolder', () => {
-  it('writes repository-relative paths and only the new finding of a comparison', () => {
+  it('writes repository-relative paths, the repository root and only the new finding of a comparison', () => {
     const repository = subfolderRepository();
     writeFiles(path.join(repository.root, 'packages/my app'), {
       'src/new.ts': findingLine(finding({ identity: 'new-finding' })),
@@ -57,14 +67,17 @@ describe('SARIF reports of a project in a repository subfolder', () => {
 
     expect(exitCode).toBe(1);
     expect(readdirSync(outputRoot).toSorted()).toEqual(REPORT_FILE_NAMES.toSorted());
-    for (const name of ['report.sarif', 'report-baseline.sarif']) {
-      const log = readSarif(outputRoot, name);
-      expectValidSarif(log);
-      expect(log.runs[0].originalUriBaseIds).toBeUndefined();
-      expect(locations(log)).toEqual([
-        ['new', { uri: 'packages/my%20app/src/new.ts', uriBaseId: '%SRCROOT%' }],
-      ]);
-    }
+    const current = readSarif(outputRoot, 'report.sarif');
+    const baseline = readSarif(outputRoot, 'report-baseline.sarif');
+    const logs = [current, baseline];
+    expectValidSarif(current);
+    expectValidSarif(baseline);
+    expect(logs.map((log) => log.runs[0].originalUriBaseIds)).toEqual(
+      logs.map(() => sourceRootOf(repository)),
+    );
+    expect(logs.map(locations)).toEqual(
+      logs.map(() => [['new', { uri: 'packages/my%20app/src/new.ts', uriBaseId: '%SRCROOT%' }]]),
+    );
   });
   it('writes every finding of the full run without a baseline state', () => {
     const repository = subfolderRepository();
@@ -75,6 +88,7 @@ describe('SARIF reports of a project in a repository subfolder', () => {
     expect(readdirSync(outputRoot).toSorted()).toEqual(SNAPSHOT_REPORT_FILE_NAMES.toSorted());
     const log = readSarif(outputRoot, 'report.sarif');
     expectValidSarif(log);
+    expect(log.runs[0].originalUriBaseIds).toEqual(sourceRootOf(repository));
     expect(locations(log)).toEqual([
       [undefined, { uri: 'packages/my%20app/src/old.ts', uriBaseId: '%SRCROOT%' }],
     ]);
