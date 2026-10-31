@@ -1,6 +1,8 @@
 import { jscpdConfigChanges } from '../../tooling/jscpd/config-changes.mjs';
+import { projectConfigChanges } from '../../../languages/typescript/preset/project-tools/changes/project-config-changes.mjs';
+import { importLinterChanges } from './import-linter-changes.mjs';
 
-function fileChange(tool, file, { base, head }) {
+function fileChange(tool, file, { base, head, evidence, optsIn }) {
   if (base.get(file) === head.get(file)) {
     return undefined;
   }
@@ -8,8 +10,9 @@ function fileChange(tool, file, { base, head }) {
     ? {
         loosened: {
           text: `${tool} project config changed: ${file}`,
-          kind: 'tool-config',
+          kind: optsIn === true ? 'tool-config-opt-in' : 'tool-config',
           files: [file],
+          ...(evidence?.has(file) ? { blobs: { [file]: evidence.get(file) } } : {}),
         },
       }
     : { changed: `${tool} project config removed: ${file}` };
@@ -32,8 +35,13 @@ function replacedOptionChanges({ replacedOptions, head }) {
 }
 
 function fileChanges(entry) {
+  if (entry.importLinter !== undefined) {
+    return importLinterChanges(entry.importLinter);
+  }
   if (entry.applied !== undefined) {
-    return jscpdConfigChanges(entry.applied);
+    return entry.tool === 'jscpd'
+      ? jscpdConfigChanges(entry.applied)
+      : projectConfigChanges(entry.tool, entry.applied);
   }
   const files = [...new Set([...entry.base.keys(), ...entry.head.keys()])].toSorted();
   return [

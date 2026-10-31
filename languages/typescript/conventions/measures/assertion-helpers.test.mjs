@@ -145,20 +145,21 @@ describe('assertion helper detection', () => {
   });
 
   it('validates a pinned list of identifier names', () => {
-    const validate = (value) => {
-      validateConventions({ 'typescript.assertionHelpers': value }, [definition]);
-    };
-    const message = '"conventions.typescript.assertionHelpers" must be a list of function names';
-
     expect(() => {
-      validate(['assertOk', 'verify_called2']);
+      validateConventions({ 'typescript.assertionHelpers': ['assertOk', 'verify_called2'] }, [
+        definition,
+      ]);
     }).not.toThrow();
-    for (const invalid of ['assertOk', ['a b'], ['a$b'], ['a.b'], ['1a'], [1]]) {
-      expect(() => {
-        validate(invalid);
-      }, JSON.stringify(invalid)).toThrow(message);
-    }
   });
+
+  it.each(['assertOk', ['a b'], ['a$b'], ['a.b'], ['1a'], [1]])(
+    'rejects the pinned list %j of assertion helpers',
+    (invalid) => {
+      expect(() => {
+        validateConventions({ 'typescript.assertionHelpers': invalid }, [definition]);
+      }).toThrow('"conventions.typescript.assertionHelpers" must be a list of function names');
+    },
+  );
 
   it('uses a pinned list without measuring', () => {
     expect(detect({}, { 'typescript.assertionHelpers': ['assertOk'] })).toEqual({
