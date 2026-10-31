@@ -8,13 +8,9 @@ function occurrenceStem(identity) {
   return identity.replace(NUMBERED, '').replace(COUNTED, '$1');
 }
 
-function groupFindings(groups, findings, { side, renames, directories }) {
+function groupFindings(groups, findings, { side, moves }) {
   for (const finding of findings) {
-    const key = comparisonKey(
-      { ...finding, identity: occurrenceStem(finding.identity) },
-      renames,
-      directories,
-    );
+    const key = comparisonKey({ ...finding, identity: occurrenceStem(finding.identity) }, moves);
     const group = groups.get(key) ?? { base: [], head: [] };
     group[side].push(finding);
     groups.set(key, group);
@@ -62,7 +58,7 @@ function nearestCandidates(heads, free, lines) {
     .toSorted((left, right) => left.distance - right.distance);
 }
 
-function pairByPosition(group, { lines, renames, directories }) {
+function pairByPosition(group, { lines, moves }) {
   const { pairs, free } = anchoredPairs(group, lines);
   const heads = group.head.filter((head) => !pairs.has(head));
   for (const { head, base } of nearestCandidates(heads, free, lines)) {
@@ -74,7 +70,7 @@ function pairByPosition(group, { lines, renames, directories }) {
   return group.head.map((head) => [
     head,
     pairs.has(head)
-      ? comparisonKey(pairs.get(head), renames, directories)
+      ? comparisonKey(pairs.get(head), moves)
       : comparisonKey({ ...head, identity: `${head.identity}\0unpaired` }),
   ]);
 }
@@ -83,10 +79,10 @@ function isPositioned(group) {
   return [...group.base, ...group.head].every((finding) => lineOf(finding) !== undefined);
 }
 
-export function pairedKeys({ baseFindings, headFindings, renames, directories, touchedCode }) {
+export function pairedKeys({ baseFindings, headFindings, moves, touchedCode }) {
   const groups = new Map();
-  groupFindings(groups, baseFindings, { side: 'base', renames, directories });
-  groupFindings(groups, headFindings, { side: 'head', renames: new Map(), directories: new Map() });
+  groupFindings(groups, baseFindings, { side: 'base', moves });
+  groupFindings(groups, headFindings, { side: 'head' });
   const paired = [...groups.values()].filter(
     (group) => group.head.length > 0 && group.base.length > 0 && isPositioned(group),
   );
@@ -98,7 +94,7 @@ export function pairedKeys({ baseFindings, headFindings, renames, directories, t
   );
   return new Map(
     paired.flatMap((group) =>
-      pairByPosition(group, { lines: lineMaps.get(group.head[0].path), renames, directories }),
+      pairByPosition(group, { lines: lineMaps.get(group.head[0].path), moves }),
     ),
   );
 }
