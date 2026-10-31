@@ -1,6 +1,5 @@
 import { precedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
 import { resolveLayoutFor } from '../layout.mjs';
-import { pickedKeys } from './config-module.mjs';
 import { mutationDisabled, readStrykerProjectConfig } from './stryker-project-config.mjs';
 import {
   TYPESCRIPT_TOOL,
@@ -24,7 +23,6 @@ const PROJECT_CONFIG_READERS = new Map([
     },
   ],
 ]);
-const HEAD_KEYS = ['projectConfig', 'projectConfigError'];
 
 function captured(reader, projectRoot, context) {
   try {
@@ -40,10 +38,12 @@ function readerFor(tool, settings, context) {
   return layers.usesProject && reader?.applies({ ...context, layers }) ? reader : undefined;
 }
 
-export function withHeadToolConfigs(policy, config, projectRoot) {
-  const context = { policy, config };
+export function withHeadToolConfigs(tools, context, projectRoot) {
+  if (tools === undefined) {
+    return undefined;
+  }
   return Object.fromEntries(
-    Object.entries(policy.tools ?? {}).map(([tool, settings]) => {
+    Object.entries(tools).map(([tool, settings]) => {
       const reader = readerFor(tool, settings, context);
       return [
         tool,
@@ -53,11 +53,4 @@ export function withHeadToolConfigs(policy, config, projectRoot) {
       ];
     }),
   );
-}
-
-export function headProjectConfigFacts(settings, headSettings = {}) {
-  if (HEAD_KEYS.every((key) => headSettings[key] === undefined)) {
-    return { ...headSettings, precedence: headSettings.precedence ?? ['nitpicker'] };
-  }
-  return { ...settings, ...pickedKeys(headSettings, HEAD_KEYS) };
 }

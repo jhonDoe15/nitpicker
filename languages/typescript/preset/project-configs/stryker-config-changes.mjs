@@ -1,4 +1,5 @@
-import { addedEntries, shownValue } from '../../../../core/tooling/config-value-changes.mjs';
+import { addsEntries } from '../project-tools/changes/applied-values.mjs';
+import { shownValue } from '../project-tools/config-values.mjs';
 
 const GROWING_LISTS = new Set([
   'mutator.excludedMutations',
@@ -9,7 +10,7 @@ const GROWING_LISTS = new Set([
 
 function loosens(key, base, head) {
   if (GROWING_LISTS.has(key)) {
-    return addedEntries(base, head);
+    return addsEntries(base, head);
   }
   return key === 'ignoreStatic' ? head === true && base !== true : key.startsWith('mutator.');
 }

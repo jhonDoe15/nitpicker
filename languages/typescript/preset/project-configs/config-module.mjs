@@ -2,8 +2,9 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { isPlainObject } from '../../../../shared/config.mjs';
-import { resolveInside, staysInside } from '../../../../shared/conventions/read-inside.mjs';
-import { HOST_CI_OUTPUT_VARIABLES, markedPayload } from '../../../../core/tooling/child-output.mjs';
+import { isRealPathInside, resolveInside } from '../../../../shared/conventions/read-inside.mjs';
+import { HOST_CI_OUTPUT_VARIABLES } from '../../../../core/tooling/host-environment.mjs';
+import { markedPayload } from '../../../../core/tooling/child-output.mjs';
 
 const RESULT_MARKER = 'NITPICKER_PROJECT_CONFIG_RESULT ';
 const LOAD_TIMEOUT_MS = 30_000;
@@ -28,7 +29,7 @@ const DEFAULT_EXPORT_SCRIPT = [
 
 function insideProject(projectRoot, name) {
   const file = resolveInside(projectRoot, name);
-  if (file === undefined || !staysInside(projectRoot, file)) {
+  if (file === undefined || !isRealPathInside(projectRoot, file)) {
     throw new Error(`${name} must stay inside the project`);
   }
   return file;
@@ -89,10 +90,4 @@ export function readConfigObject(projectRoot, name, timeoutMs = LOAD_TIMEOUT_MS)
     );
   }
   return value;
-}
-
-export function pickedKeys(source, keys) {
-  return Object.fromEntries(
-    keys.filter((key) => source[key] !== undefined).map((key) => [key, source[key]]),
-  );
 }

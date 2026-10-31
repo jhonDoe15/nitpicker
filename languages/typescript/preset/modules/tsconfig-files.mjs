@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
-import { isRegularFile, staysInside } from '../../../../shared/conventions/read-inside.mjs';
+import { isRealPathInside, isRegularFile } from '../../../../shared/conventions/read-inside.mjs';
 import { TYPESCRIPT_API } from '../../typescript-api/api-selection.mjs';
 
 export const PROJECT_TSCONFIG = 'tsconfig.json';
@@ -109,7 +109,9 @@ function extendedFiles(configFile) {
 }
 
 function isTrackedInside(root, file) {
-  return file.startsWith(`${root}${path.sep}`) && isRegularFile(file) && staysInside(root, file);
+  return (
+    file.startsWith(`${root}${path.sep}`) && isRegularFile(file) && isRealPathInside(root, file)
+  );
 }
 
 export function tsconfigChain(projectRoot, relativeConfig) {

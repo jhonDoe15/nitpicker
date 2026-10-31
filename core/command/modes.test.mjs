@@ -8,6 +8,7 @@ import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs
 import { commit, fixtureGit } from '../diff/git/test-support/git-repository.mjs';
 import { crashingAnalyzer, fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+import { docsUrl } from '../../shared/messages/docs-url.mjs';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
   useCliFixtures(nitpickerCli);
@@ -370,6 +371,8 @@ describe('nitpicker CLI', () => {
         'prettier-format/prettier/prettier package-lock.json:1 Format these lines with Prettier',
         'prettier-format/prettier/prettier package.json:1 Format these lines with Prettier',
         'prettier-format/prettier/prettier src/main/example.ts:1 Format these lines with Prettier',
+        '',
+        `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
         '',
       ].join('\n'),
     );
