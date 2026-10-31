@@ -1,5 +1,6 @@
 import { JSCPD_PROJECT_FILE } from '../../../shared/conventions/tool-precedence.mjs';
-import { addedEntries, shownValue } from '../config-value-changes.mjs';
+import { addsEntries } from '../../../languages/typescript/preset/project-tools/changes/applied-values.mjs';
+import { shownValue } from '../../../languages/typescript/preset/project-tools/config-values.mjs';
 import { JSCPD_MODES, JSCPD_SIZE } from './config.mjs';
 
 const UNITS = { b: 1, k: 1024, m: 1024 ** 2, g: 1024 ** 3 };
@@ -26,8 +27,8 @@ const LOOSENS = {
   maxSize: lowerLimit(bytes),
   mode: (base = 'mild', head = 'mild') => JSCPD_MODES.indexOf(head) < JSCPD_MODES.indexOf(base),
   ignoreCase: (base, head) => base === true && head !== true,
-  ignore: addedEntries,
-  ignorePattern: addedEntries,
+  ignore: addsEntries,
+  ignorePattern: addsEntries,
 };
 
 export function jscpdConfigChanges({ base, head }) {

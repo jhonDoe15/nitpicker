@@ -18,12 +18,30 @@ export function firstProjectFile(root, names) {
   });
 }
 
-export function staysInside(root, file) {
-  const relative = path.relative(realpathSync(root), realpathSync(file));
-  return !(relative.startsWith(`..${path.sep}`) || relative === '..' || path.isAbsolute(relative));
-}
-
 export function readInside(root, relative, encoding) {
   const full = resolveInside(root, relative);
   return full !== undefined && isRegularFile(full) ? readFileSync(full, encoding) : undefined;
+}
+
+export function isRealPathInside(root, full) {
+  const relative = path.relative(realpathSync.native(root), realpathSync.native(full));
+  return (
+    relative !== '' &&
+    !relative.startsWith(`..${path.sep}`) &&
+    relative !== '..' &&
+    !path.isAbsolute(relative)
+  );
+}
+
+export function realFileInside(root, relative) {
+  const full = resolveInside(root, relative);
+  if (full === undefined || !isRegularFile(full)) {
+    return undefined;
+  }
+  return isRealPathInside(root, full) ? full : undefined;
+}
+
+export function readRealInside(root, relative, encoding) {
+  const full = realFileInside(root, relative);
+  return full === undefined ? undefined : readFileSync(full, encoding);
 }

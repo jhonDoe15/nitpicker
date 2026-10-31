@@ -3,7 +3,7 @@ import {
   GRADLE_PRESETS,
   PROJECT_TOOL_CONFIGS,
 } from '../../../languages/java/adapters/gradle-presets.mjs';
-import { readInside } from '../../../shared/conventions/read-inside.mjs';
+import { readRealInside } from '../../../shared/conventions/read-inside.mjs';
 import {
   JSCPD_PROJECT_FILE,
   precedenceLayers,
@@ -25,6 +25,17 @@ import {
   testRunnerProjectFiles,
 } from '../../../languages/typescript/preset/project-configs/test-runner/test-runner-config.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
+import {
+  isProjectConfigTool,
+  manifestSection,
+  packageJsonKey,
+  projectConfigCandidates,
+  projectConfigTools,
+} from '../../../languages/typescript/preset/project-tools/project-config-files.mjs';
+import {
+  appliedProjectConfigs,
+  hasProjectConfigChanges,
+} from '../../../languages/typescript/preset/project-tools/changes/project-config-changes.mjs';
 import {
   eslintConfigFiles,
   readEslintConfigFile,
@@ -56,17 +67,9 @@ function usesProjectConfig(config, tool) {
   );
 }
 
-function manifestKey(tool, content) {
-  try {
-    return { value: JSON.parse(content.toString('utf8'))[MANIFEST_KEYS.get(tool)] };
-  } catch {
-    return { malformed: true };
-  }
-}
-
 function fingerprintOf(tool, { projectRoot, file }, gitBlobId) {
   const content =
-    tool === 'eslint' ? readEslintConfigFile(projectRoot, file) : readInside(projectRoot, file);
+    tool === 'eslint' ? readEslintConfigFile(projectRoot, file) : readRealInside(projectRoot, file);
   if (content === undefined) {
     return undefined;
   }
@@ -77,11 +80,12 @@ function fingerprintOf(tool, { projectRoot, file }, gitBlobId) {
   if (file !== PACKAGE_JSON) {
     return gitBlobId(toolConfigText(tool, file, content.toString('utf8')));
   }
-  const key = manifestKey(tool, content);
-  if (key.malformed === true) {
+  const key = MANIFEST_KEYS.get(tool) ?? packageJsonKey(tool);
+  const section = manifestSection(content.toString('utf8'), key);
+  if (section.kind !== 'json') {
     return gitBlobId(content);
   }
-  return key.value === undefined ? undefined : gitBlobId(JSON.stringify(key.value));
+  return section.value === undefined ? undefined : gitBlobId(JSON.stringify(section.value));
 }
 
 function fingerprints(tool, { root: projectRoot, files }, gitBlobId) {
@@ -124,6 +128,14 @@ function kotlinFiles(tool, side) {
     .map((file) => path.relative(side.root, file));
 }
 
+function scriptCandidates(tool, side) {
+  const own = SCRIPT_TOOL_FILES.get(tool);
+  if (own !== undefined) {
+    return own(side);
+  }
+  return tool === 'eslint' ? eslintConfigFiles(side.root) : projectConfigCandidates(tool);
+}
+
 function candidates(tool, side) {
   const { config, files } = side;
   if (KOTLIN_TOOLS.includes(tool)) {
@@ -132,11 +144,8 @@ function candidates(tool, side) {
   if (GO_TOOLS.includes(tool)) {
     return config.preset === 'go' ? GOLANGCI_FILES : [];
   }
-  if (SCRIPT_TOOL_FILES.has(tool)) {
-    return SCRIPT_PRESETS.has(config.preset) ? SCRIPT_TOOL_FILES.get(tool)(side) : [];
-  }
-  if (tool === 'eslint') {
-    return SCRIPT_PRESETS.has(config.preset) ? eslintConfigFiles(side.root) : [];
+  if (SCRIPT_TOOL_FILES.has(tool) || tool === 'eslint' || isProjectConfigTool(tool)) {
+    return SCRIPT_PRESETS.has(config.preset) ? scriptCandidates(tool, side) : [];
   }
   if (tool === 'jscpd') {
     return [JSCPD_PROJECT_FILE];
@@ -176,7 +185,7 @@ function evidenceOf(tool, head, gitBlobId) {
 }
 
 function jscpdSide(side, optedIn) {
-  const content = optedIn ? readInside(side.root, JSCPD_PROJECT_FILE) : undefined;
+  const content = optedIn ? readRealInside(side.root, JSCPD_PROJECT_FILE) : undefined;
   return content === undefined
     ? { kind: 'applied', config: {} }
     : appliedJscpdConfig(content.toString('utf8'));
@@ -268,6 +277,7 @@ export function readToolConfigs(
     'jscpd',
     'eslint',
     ...PYTHON_TOOLS,
+    ...projectConfigTools(),
   ]
     .filter((tool) => isOptedIn(tool, head.config))
     .map((tool) => {
@@ -282,6 +292,9 @@ export function readToolConfigs(
         ...appliedConfigs(tool, base, head),
         ...(tool === 'eslint' ? eslintReview(head, prints, replacedOptions) : {}),
         ...evidenceOf(tool, head, gitBlobId),
+        ...(hasProjectConfigChanges(tool) && SCRIPT_PRESETS.has(head.config.preset)
+          ? appliedProjectConfigs(tool, { base, head, baseOptedIn: isOptedIn(tool, base.config) })
+          : {}),
       };
     });
 }

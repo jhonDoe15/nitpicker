@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { isPlainObject } from '../../../../../shared/config.mjs';
-import { staysInside } from '../../../../../shared/conventions/read-inside.mjs';
+import { isPlainObject, picked } from '../../../../../shared/config.mjs';
+import { isRealPathInside } from '../../../../../shared/conventions/read-inside.mjs';
 import {
   missingProjectConfig,
   precedenceLayers,
@@ -16,7 +16,6 @@ import {
   tsconfigChain,
   typescriptVersion,
 } from '../../modules/tsconfig-files.mjs';
-import { pickedKeys } from '../config-module.mjs';
 
 export const TYPESCRIPT_TOOL = 'typescript';
 
@@ -101,7 +100,7 @@ export function projectStrictValues(options, javascript) {
     ...(typeof options.strict === 'boolean'
       ? Object.fromEntries(family.map((key) => [key, options.strict]))
       : {}),
-    ...pickedKeys(options, Object.keys(strict)),
+    ...picked(options, Object.keys(strict)),
   };
   const dependents = NEEDS_STRICT_NULL_CHECKS.filter(
     (key) => key in strict && options[key] === undefined,
@@ -122,7 +121,7 @@ function readProjectTsconfig(projectRoot, layout) {
   }
   const name = extended.slice(2);
   const file = path.join(projectRoot, extended);
-  if (!staysInside(projectRoot, file)) {
+  if (!isRealPathInside(projectRoot, file)) {
     throw new Error(`${name} must stay inside the project`);
   }
   const problems = tsconfigProblems(file);
@@ -188,5 +187,5 @@ export function projectStrictOverrides(settings, keys) {
   if (!isPlainObject(options)) {
     throw new Error('The head policy is missing the project tsconfig compiler options');
   }
-  return pickedKeys(options, keys);
+  return picked(options, keys);
 }

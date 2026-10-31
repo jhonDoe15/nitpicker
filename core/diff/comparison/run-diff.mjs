@@ -37,6 +37,7 @@ export function runQualityDiff(options) {
   report.summary.elapsedMs = Date.now() - startedAt;
   report.text = writeDiffReports(settings.outputRoot, report, {
     projectPath: settings.projectRelativePath,
+    repositoryRoot: settings.repositoryRoot,
   });
   return report;
 }

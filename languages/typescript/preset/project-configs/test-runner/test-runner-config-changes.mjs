@@ -1,4 +1,4 @@
-import { shownValue } from '../../../../../core/tooling/config-value-changes.mjs';
+import { shownValue } from '../../project-tools/config-values.mjs';
 
 const KEYS = ['retry', 'retry.delay', 'retry.condition'];
 const DEFAULTS = { retry: 0, 'retry.delay': 0 };
