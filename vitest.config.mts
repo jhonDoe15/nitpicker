@@ -7,10 +7,13 @@ export default defineConfig({
     sequence: { sequencer: createDurationSequencer },
     // Tests start their own vitest runs (eval acceptance tests, Stryker mutants). Clearing the step
     // summary path keeps those nested runs, some of which fail on purpose, out of the CI job's
-    // "Vitest Test Report"; the suite's own report is written by this process, which keeps it.
+    // "Vitest Test Report"; the suite's own report is written by this process, which keeps it. The
+    // same goes for nitpicker's own job summary and annotations, which tests would otherwise write
+    // into the CI job and into the output they compare.
     env: {
       NITPICKER_MAX_PARALLEL: '1',
       GITHUB_STEP_SUMMARY: '',
+      NITPICKER_GITHUB_OUTPUT: 'off',
       NITPICKER_SHARED_BUILD_DIRECTORY: '',
     },
     include: ['{core,shared,languages,scripts}/**/*.test.mjs', 'evals/**/*.test.mjs'],

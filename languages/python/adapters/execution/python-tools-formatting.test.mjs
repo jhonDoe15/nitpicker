@@ -78,6 +78,8 @@ describe('lint and format arguments', () => {
       path.resolve(fileURLToPath(new URL('../', import.meta.url)), '../ruff/nitpicker-ruff.toml'),
       '--target-version',
       'py310',
+      '--line-length',
+      '88',
       '--ignore-noqa',
       '--no-cache',
       '--extend-exclude',
