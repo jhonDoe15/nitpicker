@@ -10,7 +10,7 @@ export const PROJECT_TOOL_CONFIGS = new Map([
 export const BUILD_DECLARED_TOOLS = ['spotbugs'];
 
 const STYLE_TOOLS = new Map([
-  ['python', ['ruff', 'black', 'pyright', 'mypy', 'mutmut']],
+  ['python', ['ruff', 'black', 'pyright', 'mypy', 'mutmut', 'coverage']],
   ['kotlin', ['ktlint', 'ktfmt', 'detekt']],
   ['go', ['gofumpt', 'goimports']],
 ]);
