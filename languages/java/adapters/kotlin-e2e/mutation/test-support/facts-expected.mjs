@@ -41,7 +41,7 @@ function lambda(fields) {
 export const FACTS_EXPECTED = {
   file: 'src/demo/Facts.kt',
   package: 'demo',
-  lines: 125,
+  lines: 144,
   classes: [
     declared({
       name: 'demo.Point',
@@ -126,6 +126,9 @@ export const FACTS_EXPECTED = {
         'viaTry',
         'viaIf',
         'discarded',
+        'word',
+        'mixed',
+        'statement',
       ],
       properties: [property({ name: 'names', start: 45, end: 45 })],
     }),
@@ -184,6 +187,15 @@ export const FACTS_EXPECTED = {
       suspend: true,
       returnsUnit: true,
     }),
+    written({ name: 'word', class: 'demo.FactsKt', start: 127, end: 131 }),
+    written({ name: 'mixed', class: 'demo.FactsKt', start: 133, end: 137 }),
+    written({
+      name: 'statement',
+      class: 'demo.FactsKt',
+      start: 139,
+      end: 144,
+      returnsUnit: true,
+    }),
   ],
   lambdas: [
     lambda({ start: 14, end: 14, valueLines: [14, 14], callee: 'lazy' }),
@@ -226,6 +238,10 @@ export const FACTS_EXPECTED = {
       discarded: true,
     }),
   ],
-  branching: [17, 20, 43, 45, 51, 52, 59, 60, 61, 62, 67, 71, 82, 100],
+  branching: [
+    17, 20, 43, 45, 51, 52, 59, 60, 61, 62, 67, 71, 82, 100, 128, 129, 130, 134, 135, 136, 140, 141,
+    142,
+  ],
   casts: [43, 66, 67],
+  exhaustiveLastEntries: [130],
 };
