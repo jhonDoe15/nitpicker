@@ -22,6 +22,11 @@ const PROJECT_MARKERS = [
     label: 'Python',
     files: ['pyproject.toml', 'setup.py', 'setup.cfg', 'Pipfile', 'requirements.txt'],
   },
+  {
+    preset: 'go',
+    label: 'Go',
+    files: ['go.mod'],
+  },
 ];
 const SCRIPT_FILE = /\.(?:ts|tsx|mts|cts|js|jsx|mjs|cjs)$/u;
 const KOTLIN_FILE = /\.kts?$/u;

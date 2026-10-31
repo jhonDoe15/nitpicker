@@ -43,9 +43,10 @@ export function pathInside(base, relative) {
 }
 
 export function sourceFilesUnder(root, extensions, options = {}) {
+  const { skipped = SKIPPED_DIRECTORIES, ...listing } = options;
   return projectFilesUnder(root, {
-    ...options,
-    skipDirectory: (_, entry) => SKIPPED_DIRECTORIES.has(entry.name),
+    ...listing,
+    skipDirectory: (_, entry) => skipped.has(entry.name),
   })
     .filter((file) => extensions.some((extension) => file.endsWith(extension)))
     .sort();
