@@ -107,6 +107,7 @@ function lintAttempt({
   const naming = {
     ruleNames: translation.ruleNames,
     messageIdOf: messageIdResolver(plan.ruleMessages),
+    ruleMessages: plan.ruleMessages,
     neutralized,
   };
   try {

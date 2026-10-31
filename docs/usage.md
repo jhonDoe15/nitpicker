@@ -1262,7 +1262,11 @@ new and touched code must comply.
   `as const`), `any`, non-null `!`, `<Type>value`, or `null` (except strict comparison and the
   `JSON.stringify` replacer); no comments except doc comments on exported API, no inline lint disables, no `@ts-ignore`,
   `@ts-expect-error` or `@ts-nocheck`; `for...of` is the only loop (no `for(;;)`, `for...in`,
-  `while`, `do...while` or `forEach`), `async`/`await` with no `.then()/.catch()/.finally()` chains
+  `while`, `do...while` or `forEach`), no growing accumulator spread into its own next value
+  (`xs.reduce((acc, x) => ({ ...acc, [x.id]: x }), {})` or `out = [...out, x]` in a loop: build the
+  result in one pass with `Object.fromEntries`, `new Map`, `flatMap` or `map`, or `Object.groupBy`
+  with `lib` `ES2024`; a fixed-key object or a literal `.slice` bound is not reported),
+  `async`/`await` with no `.then()/.catch()/.finally()` chains
   and no floating promises, and `===`/`!==` only. Config files are exempt from the loop and chain
   bans.
 - **Tests** follow the same construct bans: `for...of` is the only loop (use `it.each` for one test
@@ -1909,6 +1913,16 @@ and plugins oxlint lacks) runs inside oxlint through the original ESLint plugin.
 plugin rules oxlint cannot run still run on ESLint, for those rules only. A project config opted in
 with `tools.eslint.precedence` is layered the same way on both engines; see
 [ESLint configs](#eslint-configs-typescript-and-javascript-presets).
+
+oxlint also has rules of its own that no ESLint plugin provides. nitpicker runs one only when it
+owns an ESLint rule that reports the same code: oxlint then runs its native rule, ESLint runs
+nitpicker's, and both report under the nitpicker rule id with the same message, location and
+finding identity, so an `exceptions` entry or a switch of engine changes nothing. With the pinned
+oxlint 1.87.0 that is `nitpicker/no-accumulating-spread` (oxlint's `oxc/no-accumulating-spread`);
+nitpicker checks each native report against the rule's own scope, so the accumulators it leaves
+out (fixed keys, a literal `.slice` bound) stay out on both engines. When the native rule is not
+available, oxlint runs nitpicker's rule through the bridge and reports the same findings.
+oxlint's other native rules, including whole categories such as `perf` or `pedantic`, stay off.
 
 Findings match ESLint's with these known differences:
 
