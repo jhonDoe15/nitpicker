@@ -63,7 +63,11 @@ describe.skipIf(process.env.NITPICKER_PYTHON_E2E !== '1')('Python type launderin
         'from typing import Any\nvalue: list["Any"] | None\n',
         ['explicit-any:2 value'],
       ],
-      ['alias declaration', 'from typing import Any\nDynamic = Any\n', ['explicit-any:2 Dynamic']],
+      [
+        'alias declaration',
+        'from typing import Any\nDynamic = Any\n',
+        ['compatibility-shim:2 Dynamic = Any', 'explicit-any:2 Dynamic'],
+      ],
       [
         'local import',
         'def name(value):\n    from typing import cast\n    return cast(str, value)\n',
