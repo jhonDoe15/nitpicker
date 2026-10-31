@@ -47,6 +47,7 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
     expect(run(root).exitCode).toBe(0);
     writeFiles(root, {
       'import-scan.json': scan({ ...feature, 'src/base/core.py': [from('other', 'o')] }),
+      'src/base/core.py': 'from other import o\n',
     });
     commit(root, 'depend on the volatile package');
 

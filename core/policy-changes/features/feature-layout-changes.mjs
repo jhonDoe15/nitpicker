@@ -1,6 +1,10 @@
 import { typescriptFeatureLayout } from '../../../languages/typescript/preset/coupling/feature-layout.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
-import { CONFIG_FILE_NAME, FEATURE_LAYOUT_KEYS } from '../../../shared/config.mjs';
+import {
+  acceptedFactSettings,
+  CONFIG_FILE_NAME,
+  FEATURE_LAYOUT_KEYS,
+} from '../../../shared/config.mjs';
 import { factRuleSettings } from '../../../shared/project-rules/fact-rules.mjs';
 import { featureLayout, featureRoles } from '../../../shared/rules/features/feature-roles.mjs';
 import { listed } from '../paths/hidden-code.mjs';
@@ -34,13 +38,31 @@ function losesRole(before, after) {
   );
 }
 
+function joinsLargerFeature(before, after) {
+  return (
+    after.kind === 'feature' &&
+    (before.kind !== 'feature' || after.directory.length < before.directory.length)
+  );
+}
+
+function loosenings(headConfig) {
+  const boundaries = factRuleSettings(headConfig.preset ?? DEFAULT_PRESET).includes(
+    'layout.featureRoots',
+  );
+  const stability = acceptedFactSettings(headConfig).includes('layout.featureRoots');
+  return [...(boundaries ? [losesRole] : []), ...(stability ? [joinsLargerFeature] : [])];
+}
+
 function filesLosingRoles(baseConfig, headConfig, scope) {
-  if (!factRuleSettings(headConfig.preset ?? DEFAULT_PRESET).includes('layout.featureRoots')) {
+  const checks = loosenings(headConfig);
+  if (checks.length === 0) {
     return [];
   }
   const baseRole = featureRoles(effectiveLayout(baseConfig));
   const headRole = featureRoles(effectiveLayout(headConfig));
-  return scope.code.filter((file) => losesRole(baseRole(file), headRole(file))).toSorted();
+  return scope.code
+    .filter((file) => checks.some((loosens) => loosens(baseRole(file), headRole(file))))
+    .toSorted();
 }
 
 export function featureLayoutChanges(baseConfig, headConfig, scope) {
@@ -56,7 +78,7 @@ export function featureLayoutChanges(baseConfig, headConfig, scope) {
     return { loosened: [], changed: [setting] };
   }
   function describe(limit) {
-    return `${setting} takes files out of the feature or shared folder they were in: ${listed(files, limit)}`;
+    return `${setting} moves files out of the feature or shared folder they were in, or into a feature folder or a larger one: ${listed(files, limit)}`;
   }
   return {
     loosened: [

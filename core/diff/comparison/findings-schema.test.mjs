@@ -403,6 +403,35 @@ describe('spec/findings.schema.json', () => {
     expect(validate({ findings: [empty] })).not.toEqual([]);
   });
 
+  it('accepts the units around a finding, also outside the project, and rejects a unit without a count', () => {
+    const finding = {
+      tool: 'coupling',
+      rule: 'stability-direction',
+      path: 'src/features/loans',
+      identity: 'package-edge:src/features/loans->src/features/fines',
+      message: 'message',
+      classification: 'enforceable',
+      cause: {
+        folders: ['src/features/loans'],
+        units: [
+          {
+            unit: 'feature src/features/fines',
+            folders: ['src/features/fines', '../generated/fines'],
+            files: ['src/features/fines/index.ts'],
+            count: 4,
+          },
+        ],
+      },
+    };
+    const [unit] = finding.cause.units;
+    const countless = { ...finding, cause: { ...finding.cause, units: [{ ...unit, count: 0 }] } };
+
+    expect(parseFinding(finding)).toEqual(finding);
+    expect(validate({ findings: [finding] })).toEqual([]);
+    expect(() => parseFinding(countless)).toThrow(TypeError);
+    expect(validate({ findings: [countless] })).not.toEqual([]);
+  });
+
   const linkedFinding = {
     tool: 'tool',
     rule: 'rule',

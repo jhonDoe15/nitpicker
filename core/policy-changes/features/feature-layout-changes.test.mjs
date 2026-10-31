@@ -17,13 +17,32 @@ describe('featureLayoutChanges', () => {
     const roots = ['src/app/features', 'src/app/features/billing/plugins'];
 
     expect(layoutChanges(python({}), python({ featureRoots: [] }), files).loosened).toEqual([
-      'layout.featureRoots: not set -> [] takes files out of the feature or shared folder they were in: src/app/features/billing/api.py, src/app/features/billing/plugins/pdf/render.py',
+      'layout.featureRoots: not set -> [] moves files out of the feature or shared folder they were in, or into a feature folder or a larger one: src/app/features/billing/api.py, src/app/features/billing/plugins/pdf/render.py',
     ]);
     expect(layoutChanges(python({}), python({ sharedRoots: ['**'] }), files).loosened).toEqual([
-      'layout.sharedRoots: not set -> ["**"] takes files out of the feature or shared folder they were in: src/app/features/billing/api.py, src/app/features/billing/plugins/pdf/render.py',
+      'layout.sharedRoots: not set -> ["**"] moves files out of the feature or shared folder they were in, or into a feature folder or a larger one: src/app/features/billing/api.py, src/app/features/billing/plugins/pdf/render.py',
     ]);
     expect(layoutChanges(python({ featureRoots: roots }), python({}), files).loosened).toEqual([
-      'layout.featureRoots: ["src/app/features","src/app/features/billing/plugins"] -> not set takes files out of the feature or shared folder they were in: src/app/features/billing/plugins/pdf/render.py',
+      'layout.featureRoots: ["src/app/features","src/app/features/billing/plugins"] -> not set moves files out of the feature or shared folder they were in, or into a feature folder or a larger one: src/app/features/billing/plugins/pdf/render.py',
+    ]);
+  });
+
+  it('counts files that join a feature or a larger one, which stability direction exempts', () => {
+    const python = (layout) => ({ preset: 'python', layout });
+    const java = (layout) => ({ preset: 'java', layout, history: { coChange: true } });
+    const files = ['src/app/billing/api.py', 'src/app/billing/store/db.py', 'src/app/ids.py'];
+    const javaFiles = ['src/main/java/shop/modules/billing/Api.java'];
+
+    expect(layoutChanges(python({ featureRoots: [] }), python({}), files).loosened).toEqual([]);
+    expect(
+      layoutChanges(python({}), python({ featureRoots: ['src/app'] }), files).loosened,
+    ).toEqual([
+      'layout.featureRoots: not set -> ["src/app"] moves files out of the feature or shared folder they were in, or into a feature folder or a larger one: src/app/billing/api.py, src/app/billing/store/db.py',
+    ]);
+    expect(
+      layoutChanges(java({}), java({ featureRoots: ['**/modules'] }), javaFiles).loosened,
+    ).toEqual([
+      'layout.featureRoots: not set -> ["**/modules"] moves files out of the feature or shared folder they were in, or into a feature folder or a larger one: src/main/java/shop/modules/billing/Api.java',
     ]);
   });
 

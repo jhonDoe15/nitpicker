@@ -456,8 +456,30 @@ describe('coupling metrics on a neutral dependency graph', () => {
       ],
       packageOf,
     });
+    const unit = (name, files) => ({
+      unit: `package ${name}`,
+      folders: [name],
+      files,
+      count: files.length,
+    });
     expect(result.stabilityDirection).toEqual([
-      { source: 's', target: 'v', sourceInstability: 0.4, targetInstability: 0.5, delta: 0.1 },
+      {
+        source: 's',
+        target: 'v',
+        sourceInstability: 0.4,
+        targetInstability: 0.5,
+        delta: 0.1,
+        cause: {
+          folders: ['s'],
+          units: [
+            unit('v', ['v/b', 'v/d']),
+            unit('w', ['w/c']),
+            unit('x', ['x/p']),
+            unit('y', ['y/q']),
+            unit('z', ['z/r']),
+          ],
+        },
+      },
     ]);
   });
 

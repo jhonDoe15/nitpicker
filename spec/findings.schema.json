@@ -52,11 +52,35 @@
         "helpUri": {
           "description": "Link to the page that explains the rule. Nitpicker fills it in new-findings.json from its rule reference (docs/rules); an analyzer may set its own.",
           "allOf": [{ "$ref": "#/$defs/nonEmptyString" }, { "pattern": "^https?://\\S+$" }]
-        }
+        },
+        "cause": { "$ref": "#/$defs/cause" }
       },
       "if": { "required": ["metric"] },
       "then": {
         "properties": { "classification": { "const": "descriptive" } }
+      }
+    },
+    "cause": {
+      "description": "The units around a finding that measures more than one file. `folders` are the folders of the files the finding is about; `units` are the neighbouring features or packages whose dependencies move its numbers, each with its folders, at most three of its files and its file count. A new finding none of whose folders hold a changed file names the changed files of these units in its message.",
+      "type": "object",
+      "required": ["folders", "units"],
+      "additionalProperties": false,
+      "properties": {
+        "folders": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+        "units": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["unit", "folders", "files", "count"],
+            "additionalProperties": false,
+            "properties": {
+              "unit": { "$ref": "#/$defs/nonEmptyString" },
+              "folders": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+              "files": { "type": "array", "items": { "$ref": "#/$defs/nonEmptyString" } },
+              "count": { "type": "integer", "minimum": 1 }
+            }
+          }
+        }
       }
     },
     "location": {

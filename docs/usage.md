@@ -495,7 +495,9 @@ compared with the defaults. These changes are loosening:
 - a `layout.featureRoots` or `layout.sharedRoots` change, with a preset that runs the feature folder
   rules, that takes a code file out of the feature or shared folder it was in under the base
   config: the file ends up in no feature or shared folder, moves between a feature and a shared
-  folder, or joins a larger feature (a nested feature root removed). Each code file of the head
+  folder, or joins a larger feature (a nested feature root removed). With a preset that reads
+  `featureRoots` for `stability-direction` (every preset; Java and Kotlin with `history.coChange`
+  on), a file that moves into a feature folder from outside the features counts too. Each code file of the head
   is placed by both configs. A root that only adds folders, or splits a feature with a nested
   root, is listed but does not fail;
 - a newly disabled analyzer, a threshold above the base's (a removed threshold counts at its
@@ -691,8 +693,12 @@ an exception.
   the gate shows one of them. Each message names the entry for its own tool; once that entry lifts
   it, the other tool's finding for the line shows up with its own entry.
 - `duplicate-clone` and `stability-direction` take no `function` or `name`. Their `paths` are the
-  file of the finding in TypeScript, JavaScript and Python, and the package name in Java and
-  Kotlin (`"paths": ["stable"]`, not `src/main/java/stable`).
+  path of the finding: the file of a `duplicate-clone` finding in TypeScript, JavaScript and
+  Python, the package name in Java and Kotlin (`"paths": ["stable"]`, not
+  `src/main/java/stable`), and for `stability-direction` the folder in TypeScript and JavaScript
+  and the package's `__init__.py` in Python. A `stability-direction` finding on a feature names
+  the feature folder (the feature package in Java and Kotlin) instead (see
+  [Stability direction](#stability-direction)).
 - `function` or `name` on any other rule is a config error, and so is a blank one. Entries are
   listed in the report's config overrides and change the policy hash, so every accepted finding
   shows up in review. Removing or narrowing an exception in a change never turns the findings it
@@ -880,6 +886,60 @@ module is a folder, so two folders of one component show up as a pair and a flat
 modules. The analysis sees only the history it is given, so a squash-merge workflow yields few, large
 commits. The head side reads the merge base at the project's head path, so a project whose folder
 moved in the change has no head evidence until the move is merged.
+
+### Stability direction
+
+`stability-direction` (the `coupling` check, every preset) fails a new dependency of a package on a
+less stable one. Instability is `fanOut / (fanIn + fanOut)`, counting the distinct files on the
+other side of the package boundary. In TypeScript and JavaScript the unit outside the features is a
+folder, not every directory: a shared root (`<sourceRoot>/main/shared`, or each `layout.sharedRoots`
+folder) is one unit, and so is each folder directly under `<sourceRoot>/main` (or under the source
+root when there is no `main`), with every folder below it. The composition root
+(`composition-root.ts` or a `composition-root/` folder) and the entry files directly in `main` or in
+the source root (`main.ts`, `server.ts`) are wiring: their edges count toward the other side's
+fan-in but are never reported.
+
+With feature folders (`layout.featureRoots`: `**/features` by default, `<sourceRoot>/main/features`
+in the TypeScript and JavaScript presets), a feature is one unit:
+
+- An edge between a feature's public face and its own internals does not count, in either
+  direction: a face that builds or re-exports its `adapters` and `domain`, and adapters that
+  implement interfaces the face declares. The face is `index.ts` in TypeScript and JavaScript, the
+  `__init__.py` and the public modules directly in the folder in Python, and the classes directly in
+  the feature package in Java and Kotlin. Its internal layering stays covered by the domain and
+  adapter rules.
+- An edge between two internal parts of one feature (`domain` to `adapters`) is checked between
+  those parts: packages in Java, Kotlin and Python, and the folders directly under the feature
+  folder in TypeScript and JavaScript.
+- An edge between two features, or between a feature and code outside the features, is measured
+  between whole units: a feature's fan-in and fan-out count its files' dependencies across the
+  feature boundary, without the ones inside it. New dependents of one feature move only that
+  feature's numbers, and a new feature that reuses others through their face is the least stable
+  unit. The message names both units and their instabilities:
+  `Keep feature dependencies pointing at more stable units: feature src/app/features/loans (instability 0.5) depends on feature src/app/features/fines (instability 0.6667). Depend on the other side's public face, or move the code that joins them into the composition root.`
+  Its identity is `package-edge:<source>-><target>`, with the feature folder for a feature (the
+  package name in Java and Kotlin) and the package or folder for the other end.
+
+A finding sits on a path of the depending side: the feature folder for a feature, the package's
+`__init__.py` in Python, the folder relative to the project in TypeScript and JavaScript, and the
+package name in Java and Kotlin. That path is what its `exceptions` entry names. An existing
+per-file or per-package `stability-direction` exception for code inside a feature folder stops
+matching once the rule measures the feature as one unit: rename it to the feature folder (or the
+feature package in Java and Kotlin), or drop it if the feature no longer inverts.
+
+Without feature folders the rule is per package. Instability moves when other code changes, so a
+new finding can sit on files the change did not edit. Its message then names the changed files
+around it, with their feature or package (at most three of each):
+`The change edited none of its files: it moved the numbers through feature src/app/features/fines (src/app/features/fines/adapters/store.py).`
+When no changed file is next to it any more (the change removed dependents, or added files that
+reach it only through others), the message says the numbers moved through dependencies the change
+removed or files it added elsewhere. Neither form adds a second fix. The units around a finding are
+kept while the comparison runs (at most ten, the heaviest first, three sample files of each) and are
+not written to the report or the cache.
+
+Widening `layout.featureRoots` loosens this rule as well: a file that joins a feature folder, or a
+larger feature, is measured as part of a bigger unit, so the change is a policy loosening with every
+preset that runs `stability-direction` with features (see the loosening list above).
 
 ### Console output from tests
 
