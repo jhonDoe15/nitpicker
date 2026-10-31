@@ -1,6 +1,7 @@
 import { isPolicyFinding } from './review/policy-findings.mjs';
 import { consolePolicySummary } from './review/policy-changes.mjs';
 import { heldFindings, heldLine } from './format/held-findings.mjs';
+import { foldMutants } from './format/mutants.mjs';
 import { noteSummaryLines } from './format/notes.mjs';
 import { singleLine } from './format/text.mjs';
 import { designNoteLines } from './format/design-notes.mjs';
@@ -106,7 +107,7 @@ function failing(text, color) {
 function appendViolationSummary(lines, summary, color) {
   const { violations } = summary;
   lines.push(violationHeadline(summary, color));
-  for (const group of groupRepeatedFindings(violations)) {
+  for (const group of groupRepeatedFindings(foldMutants(violations))) {
     const [finding] = group;
     lines.push(
       `  ${style(`${finding.tool}/${finding.rule}`, [ANSI.yellow], color)} ${finding.path}${describeLocations(group)}`,
@@ -163,7 +164,7 @@ function appendToolErrorSummary(lines, toolErrors, color) {
   }
 }
 
-function withoutSkipNotices(toolErrors) {
+export function withoutSkipNotices(toolErrors) {
   const listedSnapshots = new Set(
     toolErrors.filter(({ rule }) => rule === TESTS_FAILED_RULE).map(({ snapshot }) => snapshot),
   );
@@ -185,7 +186,7 @@ function errorHeadline(message) {
     : headline;
 }
 
-function pluralize(noun, count) {
+export function pluralize(noun, count) {
   return count === 1 ? noun : `${noun}s`;
 }
 

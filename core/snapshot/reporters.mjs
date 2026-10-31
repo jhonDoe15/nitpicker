@@ -1,14 +1,27 @@
 import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mjs';
 import { clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
 import { designNoteLines } from '../diff/reporting/format/design-notes.mjs';
+import { ruleReferenceLines } from '../diff/reporting/text.mjs';
+import { referenceLinks, withHelpUris } from '../../shared/reference/store.mjs';
+import {
+  CODE_QUALITY_REPORT_FILE_NAME,
+  renderCodeQualityReport,
+} from '../diff/reporting/format/codequality.mjs';
 
 const SNAPSHOT_REPORTS = [
   { name: 'summary.json', render: (report) => json(report.summary) },
-  { name: 'findings.json', render: (report) => json(report.findings) },
+  {
+    name: 'findings.json',
+    render: (report, { reference }) => json(withHelpUris(report.findings, reference)),
+  },
   { name: 'tool-errors.json', render: (report) => json(report.toolErrors) },
-  { name: 'report.txt', render: (report) => renderTextReport(report) },
+  { name: 'report.txt', render: (report, { reference }) => renderTextReport(report, reference) },
   { name: 'report.junit.xml', render: (report) => renderJunitReport(report) },
   { name: 'report.sarif', render: renderSnapshotSarifReport },
+  {
+    name: CODE_QUALITY_REPORT_FILE_NAME,
+    render: (report, options) => renderCodeQualityReport(report.findings, options),
+  },
 ];
 
 export const SNAPSHOT_REPORT_FILE_NAMES = SNAPSHOT_REPORTS.map(({ name }) => name);
@@ -17,20 +30,22 @@ export function clearSnapshotReports(outputRoot) {
   clearReports(outputRoot, SNAPSHOT_REPORT_FILE_NAMES);
 }
 
-export function writeSnapshotReports(outputRoot, report, { projectPath } = {}) {
-  return writeReports(outputRoot, SNAPSHOT_REPORTS, { report, options: { projectPath } }).get(
-    'report.txt',
-  );
+export function writeSnapshotReports(outputRoot, report, { projectPath, repositoryRoot } = {}) {
+  return writeReports(outputRoot, SNAPSHOT_REPORTS, {
+    report,
+    options: { projectPath, repositoryRoot },
+  }).get('report.txt');
 }
 
 export function renderSnapshotConsoleSummary(report, diagnosticsPath) {
   return renderTextReport(
     report,
+    referenceLinks(),
     designNoteLines(report.findings, diagnosticsPath, { snapshot: true }),
   );
 }
 
-function renderTextReport(report, descriptiveLines) {
+function renderTextReport(report, reference, descriptiveLines) {
   const enforceable = report.findings.filter((finding) => finding.classification === 'enforceable');
   const descriptive = report.findings.filter((finding) => finding.classification === 'descriptive');
   const lines = [
@@ -58,6 +73,7 @@ function renderTextReport(report, descriptiveLines) {
   } else if (descriptiveLines.length > 0) {
     lines.push('', ...descriptiveLines);
   }
+  lines.push(...ruleReferenceLines(report.findings, reference));
   appendToolErrorSection(lines, report.toolErrors);
   return `${lines.join('\n')}\n`;
 }

@@ -2,6 +2,11 @@ import {
   ignoredConfigNotice,
   precedenceLayers,
 } from '../../../../shared/conventions/tool-precedence.mjs';
+import {
+  COVERAGE_TOOL,
+  optInKeys,
+  readCoverageSettings,
+} from '../configuration/coverage-config/python-coverage-config.mjs';
 import { readMypyConfig } from '../configuration/mypy/mypy-config.mjs';
 import { detectTypeCheckers } from '../execution/python-project.mjs';
 import { ignoredMutmutKeys, MUTMUT_TOOL, readMutmutConfig } from './mutmut/mutmut-config.mjs';
@@ -71,11 +76,21 @@ function mutmutNotices(projectRoot, config) {
     : [ignoredConfigNotice(`${MUTMUT_LABELS[found.file]}${MUTMUT_NOTE}`, MUTMUT_TOOL)];
 }
 
+const COVERAGE_NOTE = ' except concurrency, patch and plugins, which the run needs';
+
+function coverageNotices(projectRoot, config) {
+  const found = notOptedIn(config, COVERAGE_TOOL) ? readCoverageSettings(projectRoot) : undefined;
+  return found === undefined || optInKeys(found).length === 0
+    ? []
+    : [ignoredConfigNotice(`${found.label}${COVERAGE_NOTE}`, COVERAGE_TOOL)];
+}
+
 export function ignoredProjectToolNotices({ config, projectRoot }) {
   const { value = [] } = attempt(() => [
     ...pyrightNotices(projectRoot, config),
     ...mypyNotices(projectRoot, config),
     ...mutmutNotices(projectRoot, config),
+    ...coverageNotices(projectRoot, config),
   ]);
   return value;
 }

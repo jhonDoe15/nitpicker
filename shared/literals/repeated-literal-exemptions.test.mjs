@@ -21,8 +21,7 @@ describe('isIdiomaticText', () => {
 
 describe('exemption lists', () => {
   it('hold each entry once', () => {
-    for (const list of [IDIOMATIC_TEXTS, TRANSLATION_CALLS, DISCRIMINANT_KEYS]) {
-      expect(new Set(list).size).toBe(list.length);
-    }
+    const lists = [IDIOMATIC_TEXTS, TRANSLATION_CALLS, DISCRIMINANT_KEYS];
+    expect(lists.map((list) => new Set(list).size)).toEqual(lists.map((list) => list.length));
   });
 });
