@@ -61,8 +61,12 @@ The messages name zod, the default validation library; in a project that depends
 
 ## Getting started
 
-nitpicker needs Node.js 22.14 or newer (22.19 or newer on TypeScript 7) and a Git repository. For a
-TypeScript project:
+nitpicker needs Node.js 22.14 or newer (22.19 or newer on TypeScript 7) and a Git repository. In
+your project's folder, run `npx nitpicker init`. It detects the language, build tool, test runner
+and package manager, writes `nitpicker.config.json`, and prints the install command for the peers
+you are missing and the skill to add. `--agents-md` also appends the
+[agent snippet](docs/agents-snippet.md) to `AGENTS.md`, and `--ci github` writes a GitHub Actions
+workflow. Setting a TypeScript project up by hand:
 
 ```sh
 npm install --save-dev nitpicker typescript @types/node
@@ -73,8 +77,8 @@ Tests run with the runner your project already uses: Vitest, Jest, `node:test` o
 project also needs `@vitest/coverage-v8` at its Vitest version.
 
 The TypeScript preset assumes a feature-folder [layout](docs/typescript-strict-preset.md#layout-and-boundaries).
-For another language, put the preset in `nitpicker.config.json`, for example
-`{ "preset": "python" }`, and run `npx nitpicker`. Each guide lists what your project provides.
+For another language, `init` puts the preset in `nitpicker.config.json`, for example
+`{ "preset": "python" }`; then run `npx nitpicker`. Each guide lists what your project provides.
 
 | Language                                                              | Preset                 | Agent skill            |
 | --------------------------------------------------------------------- | ---------------------- | ---------------------- |
@@ -102,7 +106,8 @@ sources adds `nitpicker-java` too. For an agent without skills, add the
 In CI, run `npx nitpicker` as a step and fetch enough history to contain the merge base (for
 example `fetch-depth: 0`). It exits non-zero when a change adds a problem. On GitHub Actions the
 `jhonDoe15/nitpicker` action does the setup, the cache, the job summary and the annotations;
-[nitpicker in CI](docs/ci.md) has that and the GitLab CI and Jenkins recipes.
+[nitpicker in CI](docs/ci.md) has that and the GitLab CI and Jenkins recipes. `npx nitpicker init --ci
+github` writes a workflow that uses that action.
 
 > nitpicker is pre-1.0. Rules and messages can change between versions, so pin the version you
 > use.

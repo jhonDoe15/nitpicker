@@ -5,7 +5,7 @@ import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mj
 import { runCacheCommand } from './command/cache.mjs';
 import { runExplainCommand, runRulesCommand } from './command/reference/reference.mjs';
 import { runBaseCommand } from './command/base.mjs';
-import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
+import { parseArguments } from './command/arguments.mjs';
 import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
 import { realpathSync } from 'node:fs';
 import {
@@ -37,6 +37,9 @@ import { writeGithubOutput } from './diff/reporting/github/emit.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
+import { printedInformation } from './help/printed-information.mjs';
+import { runInitCommand } from './init/run-init.mjs';
+import { javascriptPresetHint } from './configuration/project-checks/preset-detection.mjs';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 
@@ -45,7 +48,13 @@ const CHECK_COMMANDS = {
   history: runHistoryCli,
   [GO_ANALYZER_COMMAND]: runGoCli,
 };
-const REFERENCE_COMMANDS = { explain: runExplainCommand, rules: runRulesCommand };
+const SUBCOMMANDS = {
+  cache: (cli, rest) => runCacheCommand({ ...cli, arguments_: rest }),
+  init: (cli, rest) => runInitCommand({ ...cli, arguments_: rest }),
+  base: (cli, rest) => runBaseCommand({ ...cli, arguments_: rest }),
+  explain: (cli, rest) => runExplainCommand({ ...cli, commandArguments: rest }),
+  rules: (cli, rest) => runRulesCommand({ ...cli, commandArguments: rest }),
+};
 
 export function runCli(options = {}) {
   detachLocalGitVariables(process.env);
@@ -102,30 +111,19 @@ function withCliDefaults(options) {
 }
 
 function runCommand(cli) {
-  if (cli.arguments_[0] === 'cache') {
-    return runCacheCommand({
-      arguments_: cli.arguments_.slice(1),
-      environment: cli.environment,
-      currentProjectRoot: cli.currentProjectRoot,
-      analyzers: cli.analyzers,
-      stdout: cli.stdout,
-      stderr: cli.stderr,
-      runTasks: cli.runTasks,
-    });
-  }
-  const referenceCommand = REFERENCE_COMMANDS[cli.arguments_[0]];
-  if (referenceCommand !== undefined) {
-    return referenceCommand({ ...cli, commandArguments: cli.arguments_.slice(1) });
-  }
-  if (cli.arguments_[0] === 'base') {
-    return runBaseCommand({ ...cli, arguments_: cli.arguments_.slice(1) });
+  const [name, ...rest] = cli.arguments_;
+  if (Object.hasOwn(SUBCOMMANDS, name)) {
+    return SUBCOMMANDS[name](cli, rest);
   }
   const options = parseArguments(cli.arguments_);
-  if (options.help) {
-    cli.stdout.write(USAGE_TEXT);
-    return 0;
+  return printedInformation(options, cli.stdout) ? 0 : runConfigured({ ...cli, options });
+}
+
+function writePresetHint(stderr, config, projectRoot) {
+  const hint = javascriptPresetHint(config, projectRoot);
+  if (hint !== undefined) {
+    stderr.write(`nitpicker: ${hint}\n`);
   }
-  return runConfigured({ ...cli, options });
 }
 
 function runConfigured(cli) {
@@ -135,6 +133,7 @@ function runConfigured(cli) {
       ? resolveProjectRoot()
       : realpathSync(cli.currentProjectRoot);
   const config = loadConfig(currentProjectRoot);
+  writePresetHint(cli.stderr, config, currentProjectRoot);
   const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
   const analyzers = configureAnalyzers(presetSet, config, headPolicy);
