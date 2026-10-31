@@ -4,8 +4,8 @@ import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { foldMutants } from './format/mutants.mjs';
 import { noteSummaryLines } from './format/notes.mjs';
 import { singleLine } from './format/text.mjs';
-import { areaCountLine } from './format/finding-areas.mjs';
-import { byFixOrder, ruleGroupLines, withoutRoute } from './format/rule-groups.mjs';
+import { areaCountLine } from './format/rule-groups/finding-areas.mjs';
+import { byFixOrder, ruleGroupLines, withoutRoute } from './format/rule-groups/rule-groups.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
 import {
   TESTS_FAILED_RULE,

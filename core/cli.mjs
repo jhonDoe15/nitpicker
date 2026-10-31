@@ -267,13 +267,9 @@ function selectComparisonAnalyzers({ options, analyzers }) {
 function writeComparisonOutcome({ cli, report, base, outputRoot }) {
   const { options, environment, stdout } = cli;
   stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
-  stdout.write(
-    renderConsoleSummary(report, {
-      color: environment.NO_COLOR === undefined,
-      details: options.details,
-      diagnosticsPath: absoluteTextReportPath(outputRoot),
-    }),
-  );
+  const color = environment.NO_COLOR === undefined;
+  const diagnosticsPath = absoluteTextReportPath(outputRoot);
+  stdout.write(renderConsoleSummary(report, { color, details: options.details, diagnosticsPath }));
   stdout.write(renderClosingSections(cli, report));
   if (options.shardCount === undefined) {
     writeGithubOutput({

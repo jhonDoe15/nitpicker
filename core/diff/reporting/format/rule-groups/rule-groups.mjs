@@ -2,9 +2,9 @@ import {
   ROUTE_SENTENCE,
   escapeGlob,
   exceptionSentence,
-} from '../../../../shared/messages/exception-sentence.mjs';
+} from '../../../../../shared/messages/exception-sentence.mjs';
 import { areaRank } from './finding-areas.mjs';
-import { singleLine } from './text.mjs';
+import { singleLine } from '../text.mjs';
 
 const SENTENCE_END = /[.!?](?=\s|$)/gu;
 const ABBREVIATION = /\b(?:e\.g|i\.e)\.$/iu;

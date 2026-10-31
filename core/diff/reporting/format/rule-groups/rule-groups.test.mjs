@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { renderConsoleSummary } from '../summary.mjs';
+import { renderConsoleSummary } from '../../summary.mjs';
 import { areaOf } from './finding-areas.mjs';
 
 const SAMPLE = JSON.parse(
