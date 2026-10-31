@@ -16,6 +16,7 @@ import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
+import { outputRootFor } from '../diff/reporting/reporters.mjs';
 
 export function runSnapshotCli({
   options,
@@ -28,10 +29,7 @@ export function runSnapshotCli({
   runTasks,
   scope,
 }) {
-  const outputRoot =
-    options.outputRoot === undefined
-      ? path.join(currentProjectRoot, 'reports/quality/snapshot')
-      : path.resolve(currentProjectRoot, options.outputRoot);
+  const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'snapshot');
   clearSnapshotReports(outputRoot);
   const selectedAnalyzers = selectAnalyzers(analyzers, options.analyzerNames);
   if (selectedAnalyzers.length === 0) {
@@ -49,7 +47,10 @@ export function runSnapshotCli({
       scope,
     }),
   );
-  report.text = writeSnapshotReports(outputRoot, report, { projectPath: relativeProjectPath });
+  report.text = writeSnapshotReports(outputRoot, report, {
+    projectPath: relativeProjectPath,
+    repositoryRoot,
+  });
   stdout.write(report.text);
   stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
   writeGithubOutput({
