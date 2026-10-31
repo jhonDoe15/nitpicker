@@ -91,6 +91,31 @@ const HONESTY_ROWS = [
     'Await a promise the callback resolves',
   ],
   [
+    'an assertion in a loop names asserting the whole collection',
+    "it('x', () => { for (const order of orders) { expect(order.paid).toBe(true); } });",
+    'Assert the whole collection at once (`expect(orders).toEqual([...])`',
+  ],
+  [
+    'an assertion in a loop names the parameterized test',
+    "it('x', () => { orders.forEach((order) => { expect(order.paid).toBe(true); }); });",
+    'parameterized test (`it.each`/`test.each`',
+  ],
+  [
+    'an assertion in a loop names building data first',
+    "it('x', () => { for (const order of orders) { expect(order.paid).toBe(true); } });",
+    'use the loop only to build data before an unconditional assertion',
+  ],
+  [
+    'an assertion in a loop over a literal table names it.each',
+    "it('x', () => { for (const row of [[1, 2], [3, 4]]) { expect(add(row[0], row[0])).toBe(row[1]); } });",
+    "`it.each([...])('name', (row) => { ... })`",
+  ],
+  [
+    'subtests registered over a collection name the literal table',
+    "import test from 'node:test';\ntest('x', async (t) => { for (const c of cases) { await t.test(c.name, () => { run(c); }); } });",
+    'Register them from a literal, non-empty table',
+  ],
+  [
     'skipIf(true) names the platform condition',
     "it.skipIf(true)('x', () => {});",
     'process.platform',

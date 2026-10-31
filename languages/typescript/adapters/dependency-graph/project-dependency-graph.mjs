@@ -9,10 +9,16 @@ import { trackTemporaryPath } from '../../../../core/tooling/temporary-files.mjs
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import { ARCHITECTURE_CONFIG } from '../../preset/dependency-graph/cruise.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
+import { revivedExpression } from '../../preset/project-tools/config-values.mjs';
 import { layoutTransformFor } from '../../preset/tool-configs.mjs';
+import { projectExcludePaths } from './project-config/dependency-cruiser-layers.mjs';
+import { projectGraphLayer } from './project-config/graph-layer.mjs';
 
 const MAX_OUTPUT_BYTES = 100 * 1024 * 1024;
 const TSCONFIG_NAME = 'tsconfig.quality.json';
+const LAYERS_MODULE = pathToFileURL(
+  path.join(import.meta.dirname, 'project-config', 'dependency-cruiser-layers.mjs'),
+).href;
 
 export function loadDependencyGraph(request) {
   const cruise = cruiseSpecification(request);
@@ -28,9 +34,15 @@ function cruiseSpecification({
   exclude,
   includeOnly,
   configRelativePath = ARCHITECTURE_CONFIG,
+  reportsConfigErrors,
 }) {
+  const projectLayer = projectGraphLayer({ reportsConfigErrors });
+  const requested = [exclude, ...projectExcludePaths(projectLayer)].filter(
+    (pattern) => pattern !== undefined && pattern.length > 0,
+  );
   return {
     projectRoot,
+    projectLayer,
     patterns,
     includeOnly,
     policyConfig: policyPath(policyRoot, configRelativePath),
@@ -38,7 +50,10 @@ function cruiseSpecification({
       policyRoot,
       path.posix.join(path.posix.dirname(configRelativePath), TSCONFIG_NAME),
     ),
-    exclusion: graphExclusion(exclude, readLayout().excludePattern),
+    exclusion: graphExclusion(
+      requested.length === 0 ? undefined : requested.join('|'),
+      readLayout().excludePattern,
+    ),
     tool: resolveTool('dependency-cruiser', {
       projectRoot: liveProjectRoot,
       bin: 'bin/dependency-cruise.mjs',
@@ -75,6 +90,7 @@ function graphKey(cruise) {
     policyTypeScriptConfig,
     cruise.exclusion,
     cruise.tool,
+    cruise.projectLayer,
   ];
   return createHash('sha256').update(JSON.stringify(identity)).digest('hex').slice(0, 32);
 }
@@ -143,7 +159,7 @@ function installWrapperConfig(cruise) {
   );
   trackTemporaryPath(wrapperPath);
   try {
-    writeFileSync(wrapperPath, wrapperSource(cruise.policyConfig, typeScriptConfig.targetPath), {
+    writeFileSync(wrapperPath, wrapperSource(cruise, typeScriptConfig.targetPath), {
       flag: 'wx',
     });
   } catch (error) {
@@ -159,14 +175,26 @@ function installWrapperConfig(cruise) {
   };
 }
 
-function wrapperSource(policyConfig, typeScriptConfig) {
+function layeredImports({ policyConfig, projectLayer }) {
+  const policy = `import policy from ${JSON.stringify(pathToFileURL(policyConfig).href)};`;
+  if (projectLayer === undefined) {
+    return [policy, 'const config = policy;'];
+  }
   return [
-    `import policy from ${JSON.stringify(pathToFileURL(policyConfig).href)};`,
+    policy,
+    `import { layeredDependencyCruiserConfig } from ${JSON.stringify(LAYERS_MODULE)};`,
+    `const config = layeredDependencyCruiserConfig(policy, ${revivedExpression(projectLayer)});`,
+  ];
+}
+
+function wrapperSource(cruise, typeScriptConfig) {
+  return [
+    ...layeredImports(cruise),
     'export default {',
-    '  ...policy,',
+    '  ...config,',
     '  options: {',
-    '    ...policy.options,',
-    `    tsConfig: { ...policy.options?.tsConfig, fileName: ${JSON.stringify(typeScriptConfig)} },`,
+    '    ...config.options,',
+    `    tsConfig: { ...config.options?.tsConfig, fileName: ${JSON.stringify(typeScriptConfig)} },`,
     '  },',
     '};',
     '',
