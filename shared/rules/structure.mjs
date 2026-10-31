@@ -28,11 +28,10 @@ import {
   GREW_MESSAGES,
   HELD_MESSAGES,
   MESSAGES,
-  allowedFormField,
-  definedField,
   messageFields,
   renderMessage,
 } from '../policy.mjs';
+import { allowedFormField, definedField } from '../messages/messages.mjs';
 import {
   addMetric,
   hash,

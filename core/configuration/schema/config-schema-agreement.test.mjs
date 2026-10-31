@@ -66,19 +66,20 @@ describe('config schema and validator agree', () => {
         conventions: { 'prettier.quotes': 'single' },
         $schema: './node_modules/nitpicker/spec/config.schema.json',
       };
-      for (const [key, value] of Object.entries(samples)) {
-        expect(disagreement(withPreset({ [key]: value }, preset))).toEqual([]);
-      }
+      expect(
+        Object.entries(samples).flatMap(([key, value]) =>
+          disagreement(withPreset({ [key]: value }, preset)),
+        ),
+      ).toEqual([]);
     },
   );
 
   it('on every threshold, valid and invalid, with every preset', () => {
     const values = [5, 12, 1.5, 0, -3, '5', null, true];
-    for (const key of THRESHOLD_KEYS) {
-      for (const value of values) {
-        expect(presetDisagreements([{ thresholds: { [key]: value } }])).toEqual([]);
-      }
-    }
+    const configs = THRESHOLD_KEYS.flatMap((key) =>
+      values.map((value) => ({ thresholds: { [key]: value } })),
+    );
+    expect(presetDisagreements(configs)).toEqual([]);
     expect(presetDisagreements([{ thresholds: { unknown: 1 } }])).toEqual([]);
     expect(
       THRESHOLD_KEYS.filter((key) => WHOLE_NUMBER_THRESHOLD_KEYS.includes(key)).length,
@@ -102,11 +103,10 @@ describe('config schema and validator agree', () => {
       ],
       featureRoots: [['src/main/features'], [], ['src/app/[locale]/features'], ['C:/x']],
     };
-    for (const key of LAYOUT_KEYS) {
-      for (const value of values[key]) {
-        expect(presetDisagreements([{ layout: { [key]: value } }])).toEqual([]);
-      }
-    }
+    const configs = LAYOUT_KEYS.flatMap((key) =>
+      values[key].map((value) => ({ layout: { [key]: value } })),
+    );
+    expect(presetDisagreements(configs)).toEqual([]);
     expect(presetDisagreements([{ layout: { roots: ['lib'] } }])).toEqual([]);
     expect(presetDisagreements([{ layout: [] }])).toEqual([]);
   });
@@ -144,28 +144,25 @@ describe('config schema and validator agree', () => {
     const tools = new Set(
       PRESETS.flatMap((preset) => [...toolSettingKeysOf(preset ?? 'typescript').keys()]),
     );
-    for (const tool of [...tools, 'unknown-tool']) {
-      for (const [key, values] of Object.entries(settings)) {
-        for (const value of values) {
-          expect(presetDisagreements([{ tools: { [tool]: { [key]: value } } }])).toEqual([]);
-        }
-      }
-      expect(presetDisagreements([{ tools: { [tool]: {} } }])).toEqual([]);
-      expect(presetDisagreements([{ tools: { [tool]: [] } }])).toEqual([]);
-    }
+    const configs = [...tools, 'unknown-tool'].flatMap((tool) => [
+      ...Object.entries(settings).flatMap(([key, values]) =>
+        values.map((value) => ({ tools: { [tool]: { [key]: value } } })),
+      ),
+      { tools: { [tool]: {} } },
+      { tools: { [tool]: [] } },
+    ]);
+    expect(presetDisagreements(configs)).toEqual([]);
   });
 
   it('on every convention definition with every preset', () => {
     const definitions = PRESETS.flatMap((preset) => conventionDefinitions(preset));
-    for (const definition of definitions) {
-      const choices =
-        definition.kind === 'names'
-          ? [['assertThat'], [], ['not a name'], 'assertThat']
-          : [...definition.options, '7', '250', '1000', 'unknown', 2];
-      for (const choice of choices) {
-        expect(presetDisagreements([{ conventions: { [definition.id]: choice } }])).toEqual([]);
-      }
-    }
+    const configs = definitions.flatMap((definition) =>
+      (definition.kind === 'names'
+        ? [['assertThat'], [], ['not a name'], 'assertThat']
+        : [...definition.options, '7', '250', '1000', 'unknown', 2]
+      ).map((choice) => ({ conventions: { [definition.id]: choice } })),
+    );
+    expect(presetDisagreements(configs)).toEqual([]);
     expect(presetDisagreements([{ conventions: { 'no.such.convention': 'x' } }])).toEqual([]);
   });
 
@@ -337,9 +334,9 @@ describe('config schema and validator agree', () => {
       { projects: { e2e: { language: 'java', include: ['a', 'a'] } } },
       { projects: { ' ': { language: 'java', include: ['a'] } } },
     ];
-    for (const value of timeouts) {
-      expect(presetDisagreements([{ tools: { tests: { timeouts: value } } }])).toEqual([]);
-    }
+    expect(
+      presetDisagreements(timeouts.map((value) => ({ tools: { tests: { timeouts: value } } }))),
+    ).toEqual([]);
   });
 });
 

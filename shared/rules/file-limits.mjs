@@ -22,11 +22,10 @@ import {
   HELD_MESSAGES,
   MESSAGES,
   RULE_IDS,
-  allowedFormField,
-  definedField,
   messageFields,
   renderMessage,
 } from '../policy.mjs';
+import { allowedFormField, definedField } from '../messages/messages.mjs';
 import { exceptionMatcher } from './exceptions.mjs';
 import { hash, nextOccurrence } from './finding-helpers.mjs';
 

@@ -82,9 +82,7 @@ describe('one-way rule messages', () => {
     );
 
     expect(told.length).toBeGreaterThan(5);
-    for (const finding of told) {
-      expect(finding.message.endsWith(finding.allowedForm)).toBe(true);
-    }
+    expect(told.filter((finding) => !finding.message.endsWith(finding.allowedForm))).toEqual([]);
   });
 
   it('gives a rule whose detekt message names the allowed form no second one', () => {

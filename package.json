@@ -37,7 +37,7 @@
     "test": "vitest run --config vitest.config.mts",
     "check": "node scripts/check.mjs",
     "gen:checks": "node scripts/gen-checks.mjs",
-    "gen:schema": "node scripts/gen-config-schema.mjs",
+    "gen:schema": "node scripts/schema/gen-config-schema.mjs",
     "gen:rules": "node scripts/reference/gen-rules.mjs",
     "gen:overlap-probe": "node scripts/gen-overlap-probe.mjs",
     "test:installed": "NITPICKER_INSTALLED_TEST=1 vitest run --config vitest.config.mts core/installed.test.mjs",

@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { isStale } from '../../../scripts/gen-config-schema.mjs';
+import { isStale } from '../../../scripts/schema/gen-config-schema.mjs';
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { KEYS } from '../validate.mjs';
 import { SCHEMA_URL } from './config-schema.mjs';
@@ -143,9 +143,11 @@ describe('the configurations in the documentation', () => {
 
   it('are found in the usage guide and in every preset guide', () => {
     const files = new Set(examples.map(({ file }) => file));
-    for (const guide of ['usage', 'java-preset', 'kotlin-preset', 'python-preset']) {
-      expect(files.has(`docs/${guide}.md`), guide).toBe(true);
-    }
+    expect(
+      ['usage', 'java-preset', 'kotlin-preset', 'python-preset'].filter(
+        (guide) => !files.has(`docs/${guide}.md`),
+      ),
+    ).toEqual([]);
   });
 
   it.each([
@@ -163,11 +165,13 @@ describe('the configurations in the documentation', () => {
     (_name, { config }) => {
       const valid = PRESETS.filter((preset) => validatorAccepts(withPreset(config, preset)));
       expect(valid.length).toBeGreaterThan(0);
-      for (const preset of PRESETS) {
-        expect(schemaAccepts(withPreset(config, preset))).toBe(
-          validatorAccepts(withPreset(config, preset)),
-        );
-      }
+      expect(
+        PRESETS.filter(
+          (preset) =>
+            schemaAccepts(withPreset(config, preset)) !==
+            validatorAccepts(withPreset(config, preset)),
+        ),
+      ).toEqual([]);
     },
   );
 });
