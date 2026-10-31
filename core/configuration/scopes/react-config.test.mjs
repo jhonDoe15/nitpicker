@@ -61,7 +61,7 @@ describe('react keys', () => {
   it.each([
     [[], /"react" must be an object/],
     ['react', /"react" must be an object/],
-    [{ enable: true }, /unknown react key "enable". Allowed react keys: enabled, styling/],
+    [{ enable: true }, /unknown react key "enable". Did you mean "enabled"\?$/],
     [{ enabled: 'yes' }, /"react.enabled" must be true or false/],
     [{ enabled: 1 }, /"react.enabled" must be true or false/],
     [
