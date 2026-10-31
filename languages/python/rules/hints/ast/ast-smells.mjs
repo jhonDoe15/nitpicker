@@ -75,7 +75,7 @@ function uncollectedAllowed(subject = '') {
 export const FAN_OUT_SEPARATOR = '\u001f';
 
 function fanOutParts(subject = '') {
-  const [combinator = '', collection = '', operation = '', via = '', kind = ''] =
+  const [combinator = '', collection = '<collection>', operation = '<call>', via = '', kind = ''] =
     subject.split(FAN_OUT_SEPARATOR);
   return { combinator, collection, operation, via, kind };
 }
