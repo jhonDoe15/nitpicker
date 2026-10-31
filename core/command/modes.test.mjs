@@ -1,4 +1,4 @@
-import { symlinkSync } from 'node:fs';
+import { readFileSync, symlinkSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mjs';
@@ -47,11 +47,12 @@ describe('nitpicker CLI', () => {
     );
     expect(output.stderrText).toBe('');
   });
-  it('exits zero for a clean checkout with no new findings', () => {
+  it('exits zero for a change with no new findings', () => {
     const repository = createRepository({
       'quality-policy.json': policy(),
       'src/main/clean.ts': 'export const clean = true;\n',
     });
+    writeFiles(repository.root, { 'src/main/edited.ts': 'export const edited = true;\n' });
     const output = captureOutput();
 
     const exitCode = runCli({
@@ -74,6 +75,77 @@ describe('nitpicker CLI', () => {
     );
     expect(output.stderrText).toBe('');
   });
+  describe('with no change since the merge base', () => {
+    const runUnchanged = (repository) => {
+      const output = captureOutput();
+      const outputRoot = makeOutputRoot();
+      writeFiles(outputRoot, { 'new-findings.json': '[{"stale":true}]\n' });
+      const exitCode = runCli({
+        arguments_: ['--base', repository.baseRef, '--output', outputRoot],
+        environment: {},
+        currentProjectRoot: repository.root,
+        analyzers: [crashingAnalyzer()],
+        stdout: output.stdout,
+        stderr: output.stderr,
+      });
+      const read = (name) => JSON.parse(readFileSync(path.join(outputRoot, name), 'utf8'));
+      return { exitCode, output, summary: read('summary.json'), read };
+    };
+    it('runs no analyzer, prints one line, exits 0 and writes an empty summary', () => {
+      const repository = createRepository({ 'src/main/clean.ts': 'export const clean = true;\n' });
+
+      const { exitCode, output, summary, read } = runUnchanged(repository);
+
+      expect(exitCode).toBe(0);
+      expect(output.stdoutText).toBe(
+        `No changes since comparison-base (${repository.baseSha.slice(0, 12)}); nothing to check.\n`,
+      );
+      expect(output.stderrText).toBe('');
+      expect(summary).toEqual({
+        requestedBaseRef: 'comparison-base',
+        resolvedBaseSha: repository.baseSha,
+        mergeBaseSha: repository.baseSha,
+        headSha: repository.baseSha,
+        policyHash: expect.any(String),
+        configOverrides: [],
+        policyChanges: [],
+        policyLoosenings: [],
+        policyChangeAccepted: false,
+        notices: [],
+        tools: [],
+        exclusions: [],
+        renamedPaths: 0,
+        elapsedMs: expect.any(Number),
+        overallStatus: 'completed',
+        newEnforceableFindings: 0,
+        noChanges: true,
+      });
+      expect(read('new-findings.json')).toEqual([]);
+      expect(read('tool-errors.json')).toEqual([]);
+    });
+    it('skips the run when the working tree undoes the committed change', () => {
+      const repository = createRepository({ 'src/main/clean.ts': 'export const clean = true;\n' });
+      writeFiles(repository.root, { 'src/main/clean.ts': 'export const clean = false;\n' });
+      commit(repository.root, 'edit');
+      writeFiles(repository.root, { 'src/main/clean.ts': 'export const clean = true;\n' });
+
+      const { exitCode, summary } = runUnchanged(repository);
+
+      expect(exitCode).toBe(0);
+      expect(summary.noChanges).toBe(true);
+      expect(summary.headSha).not.toBe(repository.baseSha);
+    });
+    it('runs the analyzers for a change made only in the working tree', () => {
+      const repository = createRepository({ 'src/main/clean.ts': 'export const clean = true;\n' });
+      writeFiles(repository.root, { 'src/main/untracked.ts': 'export const added = true;\n' });
+
+      const { exitCode, summary } = runUnchanged(repository);
+
+      expect(exitCode).toBe(2);
+      expect(summary.noChanges).toBeUndefined();
+      expect(summary.tools.map(({ name }) => name)).toEqual(['crashing-analyzer']);
+    });
+  });
   it('resolves the base from the remote HEAD when no base is given', () => {
     const repository = createRepository({
       'quality-policy.json': policy(),
@@ -86,6 +158,7 @@ describe('nitpicker CLI', () => {
       'refs/remotes/origin/main',
     ]);
     fixtureGit(repository.root, ['remote', 'add', 'origin', repository.root]);
+    writeFiles(repository.root, { 'src/main/edited.ts': 'export const edited = true;\n' });
     const output = captureOutput();
 
     const exitCode = runCli({
@@ -115,6 +188,7 @@ describe('nitpicker CLI', () => {
     });
     const symlinkRoot = path.join(makeTemporaryRoot('nitpicker-symlink-'), 'project');
     symlinkSync(repository.root, symlinkRoot, 'dir');
+    writeFiles(repository.root, { 'src/main/edited.ts': 'export const edited = true;\n' });
     const output = captureOutput();
 
     const exitCode = runCli({
@@ -217,6 +291,7 @@ describe('nitpicker CLI', () => {
         'quality-policy.json': policy(),
         'src/main/clean.ts': 'export const clean = true;\n',
       });
+      writeFiles(repository.root, { 'src/main/edited.ts': 'export const edited = true;\n' });
       if (withFinding) {
         writeFiles(repository.root, {
           'src/main/new.ts': findingLine(finding({ identity: 'new-finding' })),
