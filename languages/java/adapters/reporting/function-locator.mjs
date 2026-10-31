@@ -40,6 +40,10 @@ export function functionLocator(context) {
   return locatorOver(structureFunctions(context), context.projectRoot);
 }
 
-export function modulesFunctionLocator(projectRoot, modules) {
-  return locatorOver(modules.flatMap(structureFunctions), projectRoot);
+export function modulesFunctionLocator(projectRoot, modules, kotlinPreset) {
+  const contexts = modules.map((module) => ({
+    reportRoot: module.reportRoot,
+    kotlin: kotlinPreset && module.manifest.kotlin === true,
+  }));
+  return locatorOver(contexts.flatMap(structureFunctions), projectRoot);
 }

@@ -41,7 +41,7 @@ import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import {
   jacocoSourceRoots,
   readKotlinFindings,
-  reportOnlyKotlinMutants,
+  kotlinGeneratedFilter,
   requireKotlinManifest,
   sourceFileOf,
   sourceLocator,
@@ -91,13 +91,7 @@ export function readJavaFindings(projectRoot, options = {}) {
     ],
     { preset, javaStyle: options.javaStyle },
   );
-  const locate = modulesFunctionLocator(
-    projectRoot,
-    modules.map((module) => ({
-      reportRoot: module.reportRoot,
-      kotlin: kotlinPreset && module.manifest.kotlin === true,
-    })),
-  );
+  const locate = modulesFunctionLocator(projectRoot, modules, kotlinPreset);
   return { findings: withJavaCountRatchets(findings, locate) };
 }
 
@@ -277,11 +271,11 @@ function pitFindings(context) {
     return [];
   }
   const locate = sourceLocator(projectRoot, jacocoSourceRoots(context));
-  const { findings } = ingestPit(readFileSync(pitReport, 'utf8'), {
+  return ingestPit(readFileSync(pitReport, 'utf8'), {
     resolvePath: (className, sourceFile) => sourceFileOf(locate, className, sourceFile),
     functionAt: functionLocator(context),
-  });
-  return context.kotlin ? reportOnlyKotlinMutants(findings) : findings;
+    ...(context.kotlin ? { generated: kotlinGeneratedFilter(context) } : {}),
+  }).findings;
 }
 
 function branchFindings(context, jacoco) {

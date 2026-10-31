@@ -10,6 +10,8 @@ only in the nitpicker config file, where it changes the policy hash and appears 
 Existing code that violates a rule is baselined by the differential gate. New and touched code must
 comply.
 
+Every rule the preset can report has an entry in the [rule reference](rules/README.md): [nitpicker's ESLint rules](rules/typescript-nitpicker.md), [ESLint core and typescript-eslint](rules/typescript-eslint.md), [the plugin rules](rules/typescript-plugins.md) and [the static checks](rules/typescript-static.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
+
 CI recipes for this preset (Node.js, the project's install, GitHub Actions, GitLab CI, Jenkins) are in
 [nitpicker in CI](ci.md#toolchains-by-preset).
 
@@ -331,6 +333,41 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   do not count. `await Promise.allSettled(...)` with its result dropped hides every rejection, and
   `new Promise((resolve) => resolve(value))` wraps a value that `Promise.resolve(value)` or an
   async function returns directly.
+- Bounded fan-out (`nitpicker/unbounded-fan-out`): `Promise.all`, `allSettled`, `any` and `race`
+  (also through a `const P = Promise` alias) over `xs.map(...)`, `xs.flatMap(...)`,
+  `Array.from(xs, ...)`, `Array.from({ length: xs.length }, ...)`, a `const` holding one of those,
+  a spread of one, or an array filled by `push` inside a `for...of`, `for...in`, `for` or `forEach`
+  over `xs`, where the callback makes a remote call (HTTP or RPC: `fetch`, `ofetch`, `axios`,
+  `got`, `ky`, `superagent`, `needle`, `undici`, `node-fetch`, `cross-fetch`, `http(s).request`,
+  `@nestjs/axios`, `graphql-request`, AWS SDK v3 `client.send`, OpenAI, Anthropic, Stripe, Octokit
+  and Slack clients) or publishes to a broker (`kafkajs`, `amqplib`, `amqp-connection-manager`,
+  `nats`, `@google-cloud/pubsub`, `bullmq`, `bull`, `mqtt`, `ioredis` and `redis` `publish`, Azure
+  Service Bus, SQS, SNS, EventBridge and Kinesis). The HTTP module lists are shared with
+  `require-http-timeout`. It follows aliases, `require`, `await import()`, `axios.create()`-style
+  instances, `this.client` class fields and parameters typed with the library type, and a helper
+  function or method of the same file (up to three calls deep), reporting `load()` with the
+  `fetch()` it reaches. `pMap(xs, fn)` without a numeric `concurrency` runs unlimited too and is
+  reported. `race` and `any` are reported like `all`: they settle on the first result, but every
+  call has started by then. Database calls are not this rule's business: the per-item I/O rule
+  reports them with the batching remedy. Allowed: the call wrapped in a limiter created outside the
+  callback with an explicit bound (`pLimit(8)`, `p-queue` with `concurrency`, Bottleneck with
+  `maxConcurrent`, `p-throttle` with `limit`, `async-sema`, `async-mutex` `Semaphore`, `limiter`),
+  held in a local, a class field (`limit = pLimit(4)`, or `this.limit = pLimit(4)` in the
+  constructor) or received as a parameter or parameter property; a limiter imported from a file of
+  the project whose name ends in `limit`, `limiter`, `queue`, `sema`, `semaphore`, `throttle` or
+  `mutex`; `sema.acquire()` in the callback; a literal or `const` array or object (also
+  `as const`, `satisfies` and `!`), the values of a TypeScript `enum`, `slice` or `splice` with an
+  explicit size (`urls.slice(i, i + SIZE)`), and `for...of` over `chunk(xs, 20)`-style calls
+  (`chunk`, `chunked`, `chunks`, `splitEvery`, `cluster`, `batch`). A worker pool is bounded by
+  its count: `Array.from({ length: workers }, ...)` and `for (let i = 0; i < workers; i++)` pass,
+  while a count taken from a collection (`xs.length`, `xs.size`) stays a fan-out over `xs`. A
+  concurrency constant that no limiter uses, a limiter built inside the callback and
+  `pLimit(Infinity)` bound nothing. The message names the collection, the call and the target, and
+  the limiter, chunked and batch forms. Limits: a helper in another file is not followed, an array
+  built with `reduce` or promises wrapped in `new Promise(...)` are not traced, an imported
+  limiter is recognized by its name only, a client that arrives untyped through a parameter or an
+  unlisted library is not recognized, and a collection that is small in practice but not by
+  construction is reported; lift such a path with an `exceptions` entry for the rule.
 - `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
   statement per module (`no-duplicate-imports`; a separate `import type` is fine).
 - Identifier casing (`nitpicker/naming-convention`, which wraps
@@ -758,6 +795,15 @@ hop, and type-only imports do not count.
   The rule covers the third argument of `it`/`test`, `{ timeout }` options, hook timeouts and
   `vi.setConfig`. A timeout that is not a constant written in the file is also reported. There is
   no e2e exemption; a genuinely long suite needs an exception in the config file.
+- `nitpicker/no-test-retry`: no retry in test code, so a flaky test cannot pass on a later attempt.
+  It reports a `retry`/`retries` option on `it`/`test`/`describe`/`suite` (any argument position,
+  so Vitest, Cypress and Playwright), `vi.setConfig({ retry })`, `jest.retryTimes(n)`, Mocha
+  `this.retries(n)` and Playwright `test.describe.configure({ retries })`. Aliased imports, `const`
+  options, spreads of them and `as`/`satisfies` wrappers are followed; `0`, `false`, `null` and
+  `undefined` are allowed. Options from an import or a call result, `const { retryTimes } = jest`
+  and `test.extend` results are not followed. It checks Cypress and Playwright files under a test
+  root too. Config-level retries (Vitest `test.retry`, Mocha `retries`) are pinned to 0 by
+  nitpicker's runs and are not this rule's job.
 - `nitpicker/require-test-process-timeout`: synchronous `spawnSync`, `execSync` and `execFileSync`
   calls from `node:child_process` or `child_process` in test-area files need a positive subprocess
   timeout, for example `spawnSync(program, args, { timeout: 10_000 })`. A runner's timeout cannot
@@ -1042,7 +1088,11 @@ hop, and type-only imports do not count.
   coverage and mutation) sets `restoreMocks: true`, so a `vi.spyOn` spy is restored after every test
   even when an assertion fails, and cannot leak into the next test. It also overrides a
   `restoreMocks` value in the project's own vitest config for these runs. Jest runs with
-  `--restoreMocks` for the same reason, and `node:test` restores a test's `t.mock` itself. Neither
+  `--restoreMocks` for the same reason, and `node:test` restores a test's `t.mock` itself. Jest's
+  coverage run also gets `--coveragePathIgnorePatterns=/node_modules/` beside nitpicker's own
+  `--collectCoverageFrom` globs, so a `coveragePathIgnorePatterns` in the project's Jest config (or
+  one of its `projects`) cannot leave source files unmeasured; `exclude` in `nitpicker.config.json`
+  is the way to leave a file out. Neither
   Vitest nor Jest restores fake timers automatically: call `vi.useRealTimers()` (or
   `jest.useRealTimers()`) in `afterEach`.
 

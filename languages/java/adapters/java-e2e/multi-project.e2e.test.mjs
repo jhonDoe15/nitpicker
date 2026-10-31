@@ -14,6 +14,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { collectJavaFindings } from '../java-diff.mjs';
 import { analyzeWithIncludedBuild, GRADLE_STEP_TIMEOUT_MS } from '../test-support/gradle-e2e.mjs';
+import { pathsOutsideProject } from './test-support/project-paths.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -45,6 +46,10 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
     }
   });
 
+  it('names every finding by a file or folder relative to the build root', () => {
+    expect(pathsOutsideProject(root, findings)).toEqual([]);
+  });
+
   it('reads each project with its folder in the path, including one without tests', () => {
     expect(located(findings, 'pmd', 'UnusedPrivateField')).toEqual([
       'lib/src/main/java/demo/lib/Counter.java',
@@ -55,8 +60,16 @@ describe.skipIf(!enabled)('a Gradle build of two projects and an extra source se
     ]);
   });
 
-  it('reports @Generated on hand-written code, but not an annotation that only starts with it', () => {
+  it('reports an annotation whose name contains Generated on hand-written code', () => {
     expect(located(findings, 'pmd', 'GeneratedOnHandWrittenCode')).toEqual([
+      'app/src/main/java/demo/app/Stamped.java',
+      'app/src/main/java/demo/app/Stamped.java',
+      'lib/src/main/java/demo/lib/Counter.java',
+    ]);
+  });
+
+  it('reports @DoNotMutate, which PIT skips', () => {
+    expect(located(findings, 'pmd', 'MutationIgnoreMarker')).toEqual([
       'app/src/main/java/demo/app/Stamped.java',
     ]);
   });
