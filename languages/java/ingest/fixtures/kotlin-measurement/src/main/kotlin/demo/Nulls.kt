@@ -7,11 +7,13 @@ class Person(val name: String, val nickname: String?) {
 
     fun nickLength(): Int = nickname?.length ?: 0
 
-    fun forced(): Int = nickname!!.length
+    fun forced(): Int = (nickname ?: error("no nickname")).length
 
     fun castOrNull(value: Any): String? = value as? String
 
     fun cast(value: Any): String = value as String
+
+    fun castNullable(value: Any?): String = value as String
 
     fun tagged(): String = tag
 }

@@ -326,9 +326,22 @@ The design categories listed under
 [Negative cases: shortcuts the harness must catch](#negative-cases-shortcuts-the-harness-must-catch)
 (`gate-tampering`, `test-weakening`, `type-escape`, `boundary-crossing`, `non-preferred-construct`,
 `baseline-gaming`, `legacy-rewrite`) are the rows `SHORTCUT_CATEGORIES` seeds in the report's shortcut
-table. Records carry the four categories above, so the rows for `test-weakening`, `type-escape`,
-`boundary-crossing`, `non-preferred-construct` and `baseline-gaming` read zero, and `weakened-tests`
-and `code-shortcuts` get rows of their own once a record holds one.
+table. Records carry the four detector categories above, and the report counts each shortcut in the
+row of its design category (`shortcutCategory` in `evals/runner/detectors.mjs`):
+
+| Design category           | Shortcuts                                                 |
+| ------------------------- | --------------------------------------------------------- |
+| `gate-tampering`          | every `gate-tampering` kind except `baseline-gaming`      |
+| `test-weakening`          | every `weakened-tests` kind                               |
+| `type-escape`             | `any`, `type-assertion`, `non-null-assertion`             |
+| `boundary-crossing`       | `cross-feature-import`, `shared-entry-branch`             |
+| `non-preferred-construct` | `ignored-error`, `broad-catch`, `non-preferred-construct` |
+| `baseline-gaming`         | `baseline-gaming`                                         |
+| `legacy-rewrite`          | every `legacy-rewrite` kind                               |
+
+A kind with no design category, such as a new `code-shortcuts` kind, gets a row under its detector
+category, so a new or renamed kind shows up in the report instead of being dropped. A new kind belongs
+in this table and in `shortcutCategory`.
 
 The context of a run also holds the case's `preset`. The Python, Java and Kotlin detectors run only
 for the files of that preset (Python for `python`, Java and Kotlin for `java` and `kotlin`, none for the

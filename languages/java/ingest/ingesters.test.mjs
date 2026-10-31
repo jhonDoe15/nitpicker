@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
-import { comparisonKey } from '../../../core/diff/comparison/fingerprint.mjs';
+import { baseMoves, comparisonKey } from '../../../core/diff/comparison/fingerprint.mjs';
 import { ingestArchunit } from './archunit.mjs';
 import { ingestCheckstyle } from './formatting/checkstyle.mjs';
 import { decodeEntities, parseXml } from '../../../shared/ingest/common.mjs';
@@ -276,7 +276,7 @@ describe('pit', () => {
     const keys = (packageName, renames) =>
       ingestPit(report(packageName), { resolvePath: resolveJavaPath })
         .findings.filter((finding) => finding.rule === 'mutant-nocoverage')
-        .map((finding) => comparisonKey(finding, renames));
+        .map((finding) => comparisonKey(finding, renames && baseMoves(renames)));
     const moved = 'src/main/java/shop/audit/AuditService.java';
 
     expect(
@@ -330,7 +330,7 @@ describe('coverage ingesters', () => {
       tool: 'lcov',
       rule: 'uncovered-function',
       path: 'src/util.js',
-      identity: 'cov:be6189c130cf22b5',
+      identity: 'cov:format',
       message: 'Function format is not covered',
       classification: 'descriptive',
       symbol: 'format',
@@ -353,7 +353,7 @@ describe('coverage ingesters', () => {
       tool: 'jacoco',
       rule: 'uncovered-method',
       path: 'src/main/java/com/acme/Foo.java',
-      identity: 'cov:2296ffd6e33a5f79',
+      identity: 'cov:com.acme.Foo#unused(I)I',
       message: 'Method com.acme.Foo#unused(I)I is not covered',
       classification: 'descriptive',
       symbol: 'com.acme.Foo#unused(I)I',
