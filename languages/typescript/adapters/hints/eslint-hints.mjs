@@ -1,6 +1,7 @@
 import { exceptionRoute } from '../../../../shared/exceptions/rule-names.mjs';
 import { appendSentence } from '../../../../shared/messages/exception-sentence.mjs';
 import { readLayout } from '../../preset/head-policy.mjs';
+import { UNUSED_PARAMETER_HINT } from '../../preset/eslint-config/policy/unused-parameters.mjs';
 import { immutableTypesMessage } from './immutable-types-hint.mjs';
 import { restrictedMatchers } from '../../preset/eslint-config/test-honesty/restricted-matchers.mjs';
 
@@ -62,6 +63,9 @@ const DISABLED_TEST_TAIL =
 
 const DISABLED_TEST_HINT =
   '. Make it pass, or delete it together with the code it tests: do not skip it or mark it `todo`.';
+
+const UNUSED_PARAMETER_TAIL =
+  /\s*(?:Allowed unused args must match [^\s]+|Unused parameters should start with a '_')\.$/u;
 
 const BACKTICKED_MATCHER = /`([\w.]+)`/u;
 
@@ -179,6 +183,12 @@ function boundaryTypesMessage({ text }) {
     : `${text.replace(/\.?$/u, '.')}${ARGUMENT_TYPE_HINT}`;
 }
 
+function unusedVariableMessage({ text }) {
+  return UNUSED_PARAMETER_TAIL.test(text)
+    ? `${text.replace(UNUSED_PARAMETER_TAIL, '')}${UNUSED_PARAMETER_HINT}`
+    : text;
+}
+
 function appendHint(hint) {
   return ({ text }) => `${text}${hint}`;
 }
@@ -212,6 +222,7 @@ const MESSAGE_REWRITERS = new Map([
   ['nitpicker/require-atomic-updates', appendHint(ATOMIC_UPDATE_HINT)],
   ['no-eval', () => EVAL_MESSAGE],
   ['no-param-reassign', appendHint(PARAM_REASSIGN_HINT)],
+  ['@typescript-eslint/no-unused-vars', unusedVariableMessage],
   ['curly', appendHint(CURLY_HINT)],
   ['no-duplicate-imports', appendHint(DUPLICATE_IMPORT_HINT)],
   ['regexp/no-super-linear-backtracking', appendHint(REGEXP_HINT)],
