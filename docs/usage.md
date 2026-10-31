@@ -210,6 +210,12 @@ one kind: changed code files that lie outside the roots the preset checks. For T
 `layout.sourceRoots`); for Python, `python.sourceRoots`; for Java and Kotlin, the build's source
 sets (`src/<set>/java` or `src/<set>/kotlin` of a module, or a directory the build file declares).
 To leave files unchecked, list them in `exclude`. Choose another directory with `--output <dir>`.
+
+The console summary shortens mutation findings: the mutants that no test runs print as one entry
+per function (with their count and lines), and a function prints at most three surviving mutants,
+then how many more there are. The headline still counts every mutant, and the reports above list
+each one.
+
 Set `NO_COLOR` to disable colored console output. On GitHub Actions the run also writes a job
 summary and `::error` annotations for the new enforceable findings (see
 [Job summary and annotations](ci.md#job-summary-and-annotations)).
@@ -310,6 +316,8 @@ nitpicker cache publish [--analyzer <name>]...
           [--shard-count <n> --shard-index <i>]
 nitpicker changelog [<version>]
 nitpicker base [--base <ref>]
+nitpicker explain <tool/rule>...
+nitpicker rules [--preset <name>] [--tool <name>]
 ```
 
 - `--all`: report every finding in the current checkout, with no baseline. Exits 1 on any violation.
@@ -339,11 +347,44 @@ nitpicker base [--base <ref>]
   ships in the package, with its heading and date. Without a version it prints the installed one;
   `Unreleased` prints the changes not released yet, and a leading `v` is accepted. Exits 2 when the
   changelog has no entry, or an empty one, for that version.
+- `nitpicker explain <tool/rule>...`: print what the [rule reference](rules/README.md) says about
+  each rule: the presets and analyzers that report it, why it is on, the allowed form where the
+  reference has one, and the `nitpicker.config.json` entry that accepts it. Name a rule as a finding prints it
+  (`eslint-lint/no-undef`, `pmd/UnusedLocalVariable`), by its bare name (`F401`, or `MagicNumber`
+  for detekt's `detekt.style.MagicNumber`), or name a check (`coverage`, `mutation`, `duplicates`)
+  to list its rules. A name the reference does not know is reported with the closest rules and
+  exits 1.
+- `nitpicker rules [--preset <name>] [--tool <name>]`: list the rules, one line each. It lists the
+  preset of the project's `nitpicker.config.json` (`typescript` without a config) and leaves out the
+  rules of analyzers listed in `disable`; `--preset` (or `--preset=<name>`) lists another preset in
+  full, and `--tool` keeps one tool.
+- `nitpicker base [--base <ref>]`: print the base a comparison would use, picked as listed under
+  [What it compares](#what-it-compares), so a CI script can fetch it before the run.
 
 A command line nitpicker does not accept stops the run with exit 2 before anything is analyzed; see
 [invalid arguments](troubleshooting.md#invalid-arguments).
-- `nitpicker base [--base <ref>]`: print the base a comparison would use, picked as listed under
-  [What it compares](#what-it-compares), so a CI script can fetch it before the run.
+
+### Rule reference
+
+[docs/rules](rules/README.md) has one entry for every rule that can fail the gate, for all presets:
+the tool and rule id, the presets that report it, why it is on, the allowed form where it has one,
+and the exact `exceptions` entry that accepts it. Where the reference has no allowed form of its
+own, the entry links to the page the tool keeps for the rule (or to the guide that describes it);
+for nitpicker's own PMD rules that the guides do not describe, the entry quotes the message the
+finding prints, which names the form to use. The summaries,
+reasons and examples of PMD, Error Prone, detekt, ruff and ESLint rules are those tools' own text,
+taken from the versions nitpicker pins; SpotBugs and Checkstyle are under the LGPL, so their entries
+name the rule and its category and link to the tool's description. The pages are generated from the
+rule catalogs with `npm run gen:rules`, and a test fails when they are stale. Report-only
+measurements and tool errors are not rules and have no entry.
+
+Each entry has a stable anchor, and the places that show a finding link to it: the SARIF report
+sets `helpUri` (and a `shortDescription`) on each rule it lists, `new-findings.json`,
+`held-findings.json`, `resolved-findings.json` and, with `--all`, `findings.json` carry an optional
+`helpUri` on each finding whose rule has an entry, and `report.txt` ends its findings with a link to
+the reference when one of them has an entry. In an installed package the links point at the
+release tag of its version (`v<version>`) in the repository named in `package.json`, so they match
+the rules that version reports; in a git checkout of nitpicker they point at `main`.
 
 ### Findings cache
 
