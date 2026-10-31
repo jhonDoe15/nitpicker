@@ -3,6 +3,7 @@ import { runAggregateCli } from './diff/sharding/aggregate-shards.mjs';
 import { reportingProgress } from './diff/execution/progress.mjs';
 import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
+import { runExplainCommand, runRulesCommand } from './command/reference/reference.mjs';
 import { runBaseCommand } from './command/base.mjs';
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
 import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
@@ -37,7 +38,12 @@ import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 
-const CHECK_COMMANDS = { hygiene: runHygieneCli, history: runHistoryCli };
+const CHECK_COMMANDS = {
+  hygiene: runHygieneCli,
+  history: runHistoryCli,
+  [GO_ANALYZER_COMMAND]: runGoCli,
+};
+const REFERENCE_COMMANDS = { explain: runExplainCommand, rules: runRulesCommand };
 
 export function runCli(options = {}) {
   detachLocalGitVariables(process.env);
@@ -45,14 +51,6 @@ export function runCli(options = {}) {
   const checkCommand = CHECK_COMMANDS[cli.arguments_[0]];
   if (checkCommand !== undefined) {
     return checkCommand({
-      commandArguments: cli.arguments_.slice(1),
-      stdout: cli.stdout,
-      stderr: cli.stderr,
-      environment: cli.environment,
-    });
-  }
-  if (cli.arguments_[0] === GO_ANALYZER_COMMAND) {
-    return runGoCli({
       commandArguments: cli.arguments_.slice(1),
       stdout: cli.stdout,
       stderr: cli.stderr,
@@ -112,6 +110,10 @@ function runCommand(cli) {
       stderr: cli.stderr,
       runTasks: cli.runTasks,
     });
+  }
+  const referenceCommand = REFERENCE_COMMANDS[cli.arguments_[0]];
+  if (referenceCommand !== undefined) {
+    return referenceCommand({ ...cli, commandArguments: cli.arguments_.slice(1) });
   }
   if (cli.arguments_[0] === 'base') {
     return runBaseCommand({ ...cli, arguments_: cli.arguments_.slice(1) });
