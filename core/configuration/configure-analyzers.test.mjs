@@ -3,6 +3,7 @@ import { configuredAnalyzers } from '../../languages/typescript/preset/diff/conf
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mjs';
 import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mjs';
+import { createGoAnalyzer } from '../../languages/go/adapters/go-analyzer.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
 import { describeConfigOverrides } from './config.mjs';
 import { validateConfig } from './validate.mjs';
@@ -167,14 +168,16 @@ describe('analyzer timeouts', () => {
         createPythonAnalyzers(),
       ).python,
     ).toBe(90 * MINUTE_MS);
-    for (const kotlin of [false, true]) {
-      const preset = kotlin ? 'kotlin' : 'java';
-      expect(
-        timeoutsOf({ preset, analyzerTimeoutMinutes: { [preset]: 120 } }, [
-          createJavaAnalyzer({ kotlin }),
-        ])[preset],
-      ).toBe(120 * MINUTE_MS);
-    }
+    expect(
+      [
+        ['java', createJavaAnalyzer()],
+        ['kotlin', createJavaAnalyzer({ kotlin: true })],
+        ['go', createGoAnalyzer()],
+      ].map(
+        ([preset, analyzer]) =>
+          timeoutsOf({ preset, analyzerTimeoutMinutes: { [preset]: 120 } }, [analyzer])[preset],
+      ),
+    ).toEqual([120 * MINUTE_MS, 120 * MINUTE_MS, 120 * MINUTE_MS]);
   });
 
   it('accepts a disabled analyzer and rejects an unknown one', () => {
