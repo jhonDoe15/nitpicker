@@ -221,8 +221,8 @@ describe('console summary grouped by rule', () => {
 
     expect(summaryLines([branch(9, 'price'), branch(3, 'price'), unplaced]).slice(3, -2)).toEqual([
       '  coverage/changed-branch-coverage: Branch coverage is 0.00%.',
-      '    src/x.ts (function total)',
       '    src/x.ts:3, 9 (function price)',
+      '    src/x.ts (function total)',
       `    ${route({ rule: 'changed-branch-coverage', paths: ['src/x.ts'], function: '<function>' })}`,
     ]);
   });

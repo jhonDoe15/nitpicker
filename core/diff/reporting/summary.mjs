@@ -1,6 +1,7 @@
 import { isPolicyFinding } from './review/policy-findings.mjs';
 import { consolePolicySummary } from './review/policy-changes.mjs';
 import { heldFindings, heldLine } from './format/held-findings.mjs';
+import { foldMutants } from './format/mutants.mjs';
 import { noteSummaryLines } from './format/notes.mjs';
 import { singleLine } from './format/text.mjs';
 import { areaCountLine } from './format/finding-areas.mjs';
@@ -126,7 +127,9 @@ function appendViolationSummary(lines, summary, { color, details }) {
     lines.push(`  by area: ${counts}`);
   }
   if (!details) {
-    lines.push(...ruleGroupLines(violations, (label) => style(label, [ANSI.yellow], color)));
+    lines.push(
+      ...ruleGroupLines(foldMutants(violations), (label) => style(label, [ANSI.yellow], color)),
+    );
     return;
   }
   for (const group of groupRepeatedFindings(violations.toSorted(byFixOrder))) {
