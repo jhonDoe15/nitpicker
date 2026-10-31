@@ -13,6 +13,7 @@ const DEFAULT_PRESET = 'typescript';
 const STRICTER_PRESET = new Map([['javascript', 'typescript']]);
 const DEFAULT_PRECEDENCE = ['nitpicker'];
 const UNION_PRECEDENCE_TOOLS = new Set(['pmd']);
+const ADDITIVE_PRECEDENCE_TOOLS = new Set(['knip', 'dependency-cruiser']);
 
 function presetLoosened({ before, after, scope }) {
   const from = before ?? DEFAULT_PRESET;
@@ -35,8 +36,18 @@ function projectWeight(precedence, tool) {
   return precedence.includes('nitpicker') ? 1 : 2;
 }
 
+function additiveWeight(precedence) {
+  if (!precedence.includes('project')) {
+    return 0;
+  }
+  return precedence[0] === 'project' ? 2 : 1;
+}
+
 function precedenceLoosened({ before = DEFAULT_PRECEDENCE, after = DEFAULT_PRECEDENCE, setting }) {
   const tool = setting.split('.')[1];
+  if (ADDITIVE_PRECEDENCE_TOOLS.has(tool)) {
+    return additiveWeight(after) > additiveWeight(before);
+  }
   return UNION_PRECEDENCE_TOOLS.has(tool)
     ? before.includes('nitpicker') && !after.includes('nitpicker')
     : projectWeight(after, tool) > projectWeight(before, tool);
@@ -44,6 +55,12 @@ function precedenceLoosened({ before = DEFAULT_PRECEDENCE, after = DEFAULT_PRECE
 
 function listShrank({ before = [], after = [] }) {
   return before.some((entry) => !after.includes(entry));
+}
+
+function formattersDropped({ before = [], after = [] }) {
+  return before.some((formatter) =>
+    formatter === 'gofmt' ? after.length === 0 : !after.includes(formatter),
+  );
 }
 
 function turnedOff(offValue) {
@@ -57,6 +74,8 @@ const LOOSENING_SETTINGS = [
   [/^python\.importLinter$/u, 'import-linter-disabled', turnedOff(false)],
   [/^kotlin\.formatter$/u, 'kotlin-formatter-off', turnedOff('none')],
   [/^kotlin\.detektConfig$/u, 'kotlin-detekt-config', () => true],
+  [/^go\.formatters$/u, 'go-formatters-dropped', formattersDropped],
+  [/^go\.buildTags$/u, 'go-build-tags-dropped', listShrank],
   [/^tools\.[^.]+\.precedence$/u, 'tool-precedence', precedenceLoosened],
   [/^spring\.roles\.[^.]+$/u, 'spring-roles-shrank', listShrank],
 ];

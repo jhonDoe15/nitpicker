@@ -5,6 +5,9 @@ import {
 } from '../../messages/exception-sentence.mjs';
 import { CHANGE_HISTORY_TOOL, HISTORY_RULE_IDS } from '../../project-rules/hygiene-rules.mjs';
 
+export const CO_CHANGE_ADVICE =
+  'This is correlation, not proof of coupling: if they share knowledge (a format, a constant, a schema) give it one owner, and if they only ever change as one unit, merge them.';
+
 const PERCENT = 100;
 const SHORT_SHA_LENGTH = 7;
 
@@ -31,7 +34,7 @@ function coChangeMessage({ pair, used }) {
   return [
     `${pair.first} and ${pair.second} changed together in ${String(pair.support)} of ${String(used)} sampled commits`,
     `(${String(percent)}% of the ${String(commits)} that changed ${module}; for example ${examples}).`,
-    'This is correlation, not proof of coupling: if they share knowledge (a format, a constant, a schema) give it one owner, and if they only ever change as one unit, merge them.',
+    CO_CHANGE_ADVICE,
     route,
   ].join(' ');
 }

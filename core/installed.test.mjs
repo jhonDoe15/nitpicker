@@ -15,52 +15,27 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readSnippet } from './init/files/agents-md.mjs';
-import { debuggerMessage, expectedDirtyFindings } from './test-support/installed-findings.mjs';
 import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
+import {
+  checkoutOutput,
+  expectedDirtyFindings,
+  expectedDirtyOutput,
+  expectedSnapshotOutput,
+  installedHelpUri,
+  installedLinks,
+} from './test-support/installed-expectations.mjs';
 
 const enabled = process.env.NITPICKER_INSTALLED_TEST === '1';
 const packageRoot = PACKAGE_ROOT;
 const manifest = JSON.parse(readFileSync(path.join(packageRoot, 'package.json'), 'utf8'));
+const links = installedLinks(manifest);
 const layouts = [undefined, 'nested', 'linked'];
+const explained = ['pmd/UnusedLocalVariable', 'coverage', 'MagicNumber'];
 // npm 10.9 crashes resolving vitest's optional peers ("reading 'edgesOut'"), so
 // the consumer install is pinned to a newer npm.
 const installer = 'npm@11';
 const cleanSource = 'export function example() {\n  return 1;\n}\n';
 const violation = 'export function example(){\n  debugger;\n  return 1\n}\n';
-
-const expectedSnapshotOutput = [
-  "Following this project's conventions:",
-  '  Trailing commas: none (used by 1 of 1 measured files)',
-  'Nitpicker quality snapshot',
-  'Status: violations',
-  'Enforceable findings: 2',
-  'Descriptive findings: 0',
-  'Tool errors: 0',
-  '',
-  'Per-tool counts:',
-  'prettier-format: total=2 enforceable=2 descriptive=0',
-  '',
-  'Enforceable findings:',
-  'prettier-format/prettier/prettier src/main/example.ts:1 Format these lines with Prettier',
-  'prettier-format/prettier/prettier src/main/example.ts:3 Format these lines with Prettier',
-  'nitpicker: head: running 1 analyzer',
-  '',
-].join('\n');
-
-function expectedDirtyOutput(root) {
-  return `Base: main (argument)
-
-Quality gate summary
-✖ 3 new enforceable violations
-  eslint-lint/no-debugger src/main/example.ts:2
-    ${debuggerMessage}
-  prettier-format/prettier/prettier src/main/example.ts (2 times, lines 1, 3)
-    Format these lines with Prettier
-Full diagnostics: ${root}/reports/dirty/report.txt
-nitpicker: base 2 analyzers cached (${root}/node_modules/.cache/nitpicker; use --no-cache to rerun)
-nitpicker: head: running 2 analyzers
-`;
-}
 
 function expectedEslintVersion(typeScriptVersion) {
   const plugins = [
@@ -267,6 +242,8 @@ suite('packed nitpicker in a separate consumer', () => {
       let snapshot;
       let fixed;
       let initialized;
+      let rules;
+      let explanation;
       let packageLocation;
       const reports = (name) => path.join(root, 'reports', name);
       const invoke = (args, cwd = root) =>
@@ -374,6 +351,8 @@ suite('packed nitpicker in a separate consumer', () => {
           '--output',
           reports('snapshot'),
         ]);
+        rules = invoke(['rules', '--preset', 'java']);
+        explanation = invoke(['explain', ...explained]);
         fixed = invoke([
           '--base',
           'main',
@@ -419,7 +398,7 @@ suite('packed nitpicker in a separate consumer', () => {
         expect(clean.status, clean.output).toBe(0);
         expect(dirty.status, dirty.output).toBe(1);
         expect(summary('dirty').overallStatus).toBe('completed');
-        expect(findings('dirty')).toEqual(expectedDirtyFindings);
+        expect(findings('dirty')).toEqual(expectedDirtyFindings(links));
         expect(withoutSlowAnalyzerLines(dirty.output)).toEqual(expectedDirtyOutput(root));
       });
       it('records pinned owned tool versions and the installed TypeScript peer', () => {
@@ -455,7 +434,21 @@ suite('packed nitpicker in a separate consumer', () => {
       });
       it('supports --all with the packed prettier analyzer', () => {
         expect(snapshot.status, snapshot.output).toBe(1);
-        expect(withoutSlowAnalyzerLines(snapshot.output)).toEqual(expectedSnapshotOutput);
+        expect(withoutSlowAnalyzerLines(snapshot.output)).toEqual(expectedSnapshotOutput(links));
+      });
+      it('lists and explains rules from the reference data the package ships, linking the release tag', () => {
+        expect(rules.status, rules.output).toBe(0);
+        expect(rules.output).toBe(checkoutOutput(links, ['rules', '--preset', 'java']));
+        expect(explanation.status, explanation.output).toBe(0);
+        expect(explanation.output).toBe(checkoutOutput(links, ['explain', ...explained]));
+        expect(
+          JSON.parse(readFileSync(path.join(reports('snapshot'), 'findings.json'))).map(
+            (finding) => finding.helpUri,
+          ),
+        ).toEqual([
+          installedHelpUri(links, 'prettier-format/prettier/prettier'),
+          installedHelpUri(links, 'prettier-format/prettier/prettier'),
+        ]);
       });
       it('sets the consumer up with init from the packed files', () => {
         expect(initialized.status, initialized.output).toBe(0);

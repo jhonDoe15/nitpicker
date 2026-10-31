@@ -28,6 +28,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
    `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
    `nitpicker-config/policy-loosened` finding is for a person to accept.
 
+To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/main/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
+
 ## Write it this way
 
 - Types: annotate every function, method and parameter; strict mypy, pyright or basedpyright (the project's own
@@ -50,6 +52,7 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 - A `try` inside a loop is flagged (PERF203): move it out, or extract the loop body into a function.
 - Flow: no `else` after a `return`, and return an expression directly instead of assigning it to a
   local first. Build a list with a comprehension, not `append` in a loop.
+- Fan-out: bound concurrent remote or message calls. Hold an `asyncio.Semaphore` (or `anyio.CapacityLimiter`) around each call, or `gather` fixed-size chunks. Never `asyncio.gather(*(fetch(u) for u in urls))` over a runtime collection.
 - Imports: name what you use. No `from module import *`.
 - Trio, AnyIO and `asyncio.TaskGroup`: open a resource around the whole task group or inside the
   child task, never in a `with` inside the group that hands it to `start_soon`/`create_task`
