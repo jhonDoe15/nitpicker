@@ -7,6 +7,7 @@ import {
   validateStringArray,
 } from '../../../shared/config.mjs';
 import { factRuleSettings } from '../../../shared/project-rules/fact-rules.mjs';
+import { didYouMean } from '../../../shared/messages/closest-match.mjs';
 
 export const TYPESCRIPT_PRESETS = [undefined, 'typescript', 'javascript'];
 
@@ -47,7 +48,10 @@ function keyList(keys) {
 
 function validateLayoutEntry(key, value, allowed) {
   if (!allowed.includes(key)) {
-    throw configError(`unknown layout key "${key}". Allowed layout keys: ${keyList(allowed)}`);
+    const suggestion = didYouMean(key, allowed);
+    throw configError(
+      `unknown layout key "${key}"${suggestion === '' ? `. Allowed layout keys: ${keyList(allowed)}` : suggestion}`,
+    );
   }
   validateStringArray(value, `layout.${key}`);
   if (FEATURE_LAYOUT_KEYS.includes(key)) {

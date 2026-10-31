@@ -62,19 +62,27 @@ describe('jscpd project config', () => {
   it.each(['typescript', 'javascript', 'java', 'kotlin', 'python'])(
     'accepts all four orderings for %s',
     (preset) => {
-      for (const [precedence] of ORDERINGS) {
-        expect(validateConfig({ preset, tools: { jscpd: { precedence } } })).toEqual({
-          preset,
-          tools: { jscpd: { precedence } },
-        });
-      }
-      for (const precedence of [[], ['project', 'project'], ['unknown'], 'project']) {
-        expect(() => validateConfig({ preset, tools: { jscpd: { precedence } } })).toThrow(
-          'tools.jscpd.precedence',
-        );
-      }
+      const accepted = ORDERINGS.map(([precedence]) =>
+        validateConfig({ preset, tools: { jscpd: { precedence } } }),
+      );
+      expect(accepted).toEqual(
+        ORDERINGS.map(([precedence]) => ({ preset, tools: { jscpd: { precedence } } })),
+      );
     },
   );
+
+  it.each(
+    ['typescript', 'javascript', 'java', 'kotlin', 'python'].flatMap((preset) =>
+      [[], ['project', 'project'], ['unknown'], 'project'].map((precedence) => [
+        preset,
+        precedence,
+      ]),
+    ),
+  )('rejects the malformed ordering for %s: %j', (preset, precedence) => {
+    expect(() => validateConfig({ preset, tools: { jscpd: { precedence } } })).toThrow(
+      'tools.jscpd.precedence',
+    );
+  });
 
   it('does not read a malformed project config without opt-in', () => {
     const root = temporaryRoot();
@@ -85,7 +93,15 @@ describe('jscpd project config', () => {
     });
   });
 
-  it('rejects missing, malformed, non-object and escaping project configs', () => {
+  it.each([[[]], [null], [42]])('rejects the project config %j that is not an object', (value) => {
+    const root = temporaryRoot();
+    projectConfig(root, value);
+    expect(() => resolveJscpdPolicy({ precedence: ['project'] }, root)).toThrow(
+      'must contain a JSON object',
+    );
+  });
+
+  it('rejects missing, malformed and escaping project configs', () => {
     const root = temporaryRoot();
     const settings = { precedence: ['project'] };
     expect(() => resolveJscpdPolicy(settings, root)).toThrow(
@@ -93,10 +109,6 @@ describe('jscpd project config', () => {
     );
     writeFileSync(path.join(root, '.jscpd.json'), '{broken');
     expect(() => resolveJscpdPolicy(settings, root)).toThrow('.jscpd.json is not valid JSON');
-    for (const value of [[], null, 42]) {
-      projectConfig(root, value);
-      expect(() => resolveJscpdPolicy(settings, root)).toThrow('must contain a JSON object');
-    }
     const outside = temporaryRoot();
     projectConfig(outside, {});
     rmSync(path.join(root, '.jscpd.json'));
