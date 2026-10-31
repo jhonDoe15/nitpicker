@@ -45,6 +45,42 @@ export const ONE_WAY_RULES = [
     allowed: 'In a test, use `assertFailsWith`.',
   },
   { name: 'GlobalCoroutineUsage', ruleset: 'coroutines' },
+  {
+    name: 'SuspendFunSwallowedCancellation',
+    ruleset: 'coroutines',
+    allowed:
+      'Make a direct suspend call and catch only the specific exception you expect, so cancellation still reaches the coroutine.',
+  },
+  {
+    name: 'InjectDispatcher',
+    ruleset: 'coroutines',
+    mainOnly: true,
+    allowed:
+      'Inject the dispatcher (`dispatcher: CoroutineDispatcher = Dispatchers.IO` as a parameter default), so a test can pass a test dispatcher.',
+  },
+  {
+    name: 'RedundantSuspendModifier',
+    ruleset: 'coroutines',
+    allowed: 'Remove the `suspend` modifier, or call a suspending function in the body.',
+  },
+  {
+    name: 'SleepInsteadOfDelay',
+    ruleset: 'coroutines',
+    allowed:
+      'Use `delay`, which suspends the coroutine instead of blocking its thread (in a test, `delay` under `runTest` runs in virtual time).',
+  },
+  {
+    name: 'SuspendFunWithFlowReturnType',
+    ruleset: 'coroutines',
+    allowed:
+      'Remove `suspend` and return the Flow from a plain function: a Flow is cold, and collecting it is what suspends.',
+  },
+  {
+    name: 'SuspendFunWithCoroutineScopeReceiver',
+    ruleset: 'coroutines',
+    allowed:
+      'Either keep `suspend` and use `coroutineScope { ... }` inside, or drop `suspend` for an extension that only launches coroutines in the receiver scope.',
+  },
   { name: 'ForbiddenMethodCall', ruleset: 'style' },
   {
     name: 'UnnecessaryLet',

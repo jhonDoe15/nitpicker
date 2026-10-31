@@ -58,11 +58,67 @@ describe('lineLocator', () => {
     const at = lineLocator(SOURCE);
 
     expect([3, 5, 7, 17, 22].map((line) => at(line))).toStrictEqual([
-      { className: undefined, member: undefined, javadoc: 3, field: undefined },
-      { className: 'Outer', member: undefined, javadoc: undefined, field: 'counts' },
-      { className: 'Outer', member: 'Outer#job@6', javadoc: undefined, field: undefined },
-      { className: 'Outer', member: 'Outer#toString@10', javadoc: undefined, field: undefined },
-      { className: 'Outer$Inner', member: undefined, javadoc: undefined, field: 'value' },
+      {
+        className: undefined,
+        member: undefined,
+        javadoc: 3,
+        field: undefined,
+        catchLine: undefined,
+      },
+      {
+        className: 'Outer',
+        member: undefined,
+        javadoc: undefined,
+        field: 'counts',
+        catchLine: undefined,
+      },
+      {
+        className: 'Outer',
+        member: 'Outer#job@6',
+        javadoc: undefined,
+        field: undefined,
+        catchLine: undefined,
+      },
+      {
+        className: 'Outer',
+        member: 'Outer#toString@10',
+        javadoc: undefined,
+        field: undefined,
+        catchLine: undefined,
+      },
+      {
+        className: 'Outer$Inner',
+        member: undefined,
+        javadoc: undefined,
+        field: 'value',
+        catchLine: undefined,
+      },
+    ]);
+  });
+
+  it('names the catch clause a line is in, from its catch keyword, however the clause is laid out', () => {
+    const at = lineLocator(
+      [
+        'class A {',
+        '  void m() {',
+        '    try {',
+        '      run();',
+        '    }',
+        '    catch (IllegalStateException // two lines',
+        '        e) {',
+        '      log();',
+        '    } catch (RuntimeException e) { }',
+        '  }',
+        '}',
+      ].join('\n'),
+    );
+
+    expect([4, 6, 7, 8, 9].map((line) => at(line).catchLine)).toStrictEqual([
+      undefined,
+      6,
+      6,
+      6,
+      9,
     ]);
   });
 });

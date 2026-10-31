@@ -57,7 +57,7 @@
     "Split the function into two functions named for each behavior, or pass an enum or a small data class: this boolean parameter switches the function between two behaviors, which makes the call site unreadable.",
     { "key": "exceptions", "rule": "kotlin-source/BooleanFlagParameter" },
     "CatchOnlyLogsOrReturnsDefault",
-    "A `catch` that neither throws, nor uses the exception, nor answers with an error response; log calls and `printStackTrace` do not count (so it is the one finding for a catch that only logs); an interrupt and a retry loop are skipped.",
+    "A `catch` that neither throws (`throw`, or an unqualified `error`, `TODO` or `fail` call), nor calls `ensureActive()`, nor uses the exception, nor answers with an error response; log calls and `printStackTrace` do not count (so it is the one finding for a catch that only logs); an interrupt and a retry loop are skipped.",
     "Rethrow it with the cause (`throw OrderException(message, e)`), return a failure result that carries the exception (`Result.failure(e)`), or answer with an error response: this catch only logs the failure or returns a default, and carries on.",
     { "key": "exceptions", "rule": "kotlin-source/CatchOnlyLogsOrReturnsDefault" },
     "CommentedOutCode",
@@ -233,6 +233,9 @@
     "A Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`.",
     "Remove the focus from this test: a Kotest name with the \"f:\" prefix and the f-prefixed registrations (ftest, fcontext, fdescribe, fit, fshould, fgiven) make Kotest run only the focused tests of the spec, so the rest of the suite is skipped while the build stays green. Run one test while you work with the IDE or a Gradle `--tests` filter, and commit the test without the focus.",
     { "key": "exceptions", "rule": "pmd/FocusedTest" },
+    "SwallowedCancellation",
+    "A `catch` of `CancellationException` (`kotlin.coroutines.cancellation`, `kotlinx.coroutines` or `java.util.concurrent`, also renamed, qualified or through a `typealias`) in a `suspend` function or coroutine builder lambda whose handler can complete without `throw`, `ensureActive()` or a hand-off of the exception.",
+    { "key": "exceptions", "rule": "pmd/SwallowedCancellation" },
     "ValidationAnnotationTarget",
     "A Bean Validation annotation (`jakarta.validation.constraints`, `javax.validation.constraints`, `org.hibernate.validator.constraints`, or `@Valid`) on a primary-constructor `val` or `var` of a main source without a `field:`, `get:` or `all:` use-site target; Kotlin puts it on the constructor parameter, where Bean Validation does not look. Kotlin-only: a Java record carries the annotation to its field and accessor.",
     { "key": "exceptions", "rule": "pmd/ValidationAnnotationTarget" }
@@ -279,6 +282,7 @@
     [169, 176, 2, 3, 171, 172, 177, 178, 179, -1, -1, -1, -1],
     [169, 180, 2, 3, 171, 172, 181, 182, 183, -1, -1, -1, -1],
     [169, 184, 2, 3, 171, 172, 185, 186, 187, -1, -1, -1, -1],
-    [169, 188, 2, 3, 171, 172, 189, -1, 190, -1, -1, -1, -1]
+    [169, 188, 2, 3, 171, 172, 189, -1, 190, -1, -1, -1, -1],
+    [169, 191, 2, 3, 171, 172, 192, -1, 193, -1, -1, -1, -1]
   ]
 }

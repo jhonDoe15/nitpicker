@@ -1,6 +1,6 @@
 import { closingIndex } from './brackets.mjs';
 
-const LEVELS = [
+export const LOG_LEVELS = [
   'trace',
   'debug',
   'info',
@@ -57,8 +57,12 @@ const DECLARATION = new RegExp(
   String.raw`\b(\w+)\s*(?::[^=\n;]+?)?=\s*(?:[\w.]+\.)?(?:${FACTORY_CALL})\b`,
   'g',
 );
-const LOGGER_NAMES = [/^(?:log|logger)$/i, /[a-z0-9](?:Log|Logger)$/, /_(?:log|logger)$/i];
-const CALL = new RegExp(String.raw`\b(\w+)\s*\??\.\s*(${LEVELS.join('|')})\s*(?=[({])`, 'g');
+export const LOGGER_NAME_PATTERNS = [
+  /^(?:log|logger)$/i,
+  /[a-z0-9](?:Log|Logger)$/,
+  /_(?:log|logger)$/i,
+];
+const CALL = new RegExp(String.raw`\b(\w+)\s*\??\.\s*(${LOG_LEVELS.join('|')})\s*(?=[({])`, 'g');
 const CHAIN = /(?:\s*\??\.\s*\w+\s*\((?:[^()]|\([^()]*\))*\))*/y;
 const OPENERS = { '(': ')', '{': '}', '[': ']' };
 const CLOSERS = new Set(Object.values(OPENERS));
@@ -68,7 +72,7 @@ export function loggerNames(code) {
 }
 
 export function isLoggerName(name, declared = new Set()) {
-  return declared.has(name) || LOGGER_NAMES.some((pattern) => pattern.test(name));
+  return declared.has(name) || LOGGER_NAME_PATTERNS.some((pattern) => pattern.test(name));
 }
 
 export function topLevelArguments(text) {

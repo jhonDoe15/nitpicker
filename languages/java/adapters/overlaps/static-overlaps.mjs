@@ -53,6 +53,7 @@ function scopeKey(scope, finding, locate) {
     class: [located.className],
     member: [located.member],
     javadoc: [located.javadoc],
+    catch: [located.catchLine],
     field: [located.className, located.field],
   }[scope];
   return parts.includes(undefined) ? undefined : JSON.stringify([finding.path, ...parts]);
