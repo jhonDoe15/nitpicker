@@ -19,38 +19,36 @@ describe('size limits in the config', () => {
   });
 
   it.each([
-    ['classMethods', ['typescript', 'javascript']],
-    ['classFields', ['typescript']],
-    ['inheritanceDepth', ['typescript']],
-  ])('rejects thresholds.%s where the preset does not enforce it', (key, presets) => {
-    for (const preset of presets) {
-      expect(() => validateConfig({ preset, thresholds: { [key]: 3 } })).toThrow(
-        `"thresholds.${key}" is only supported with "preset": `,
-      );
-    }
+    ['classMethods', 'typescript'],
+    ['classMethods', 'javascript'],
+    ['classFields', 'typescript'],
+    ['inheritanceDepth', 'typescript'],
+  ])('rejects thresholds.%s with the %s preset, which does not enforce it', (key, preset) => {
+    expect(() => validateConfig({ preset, thresholds: { [key]: 3 } })).toThrow(
+      `"thresholds.${key}" is only supported with "preset": `,
+    );
   });
 
   it('takes folderDepth with the typescript, javascript, kotlin and python presets, and by default', () => {
-    for (const preset of [undefined, 'typescript', 'javascript', 'kotlin', 'python']) {
-      const config = {
-        ...(preset === undefined ? {} : { preset }),
-        thresholds: { folderDepth: 2 },
-      };
-      expect(validateConfig(config)).toEqual(config);
-    }
+    const configs = [undefined, 'typescript', 'javascript', 'kotlin', 'python'].map((preset) => ({
+      ...(preset === undefined ? {} : { preset }),
+      thresholds: { folderDepth: 2 },
+    }));
+    expect(configs.map(validateConfig)).toEqual(configs);
   });
 
   it('lets presets lift the size rules they enforce', () => {
     const lifts = (preset, rule) =>
       validateConfig({ preset, exceptions: [{ rule, ...exception }] });
-    for (const rule of [
+    const javaRules = [
       'folder-depth-limit',
       'class-methods-limit',
       'class-fields-limit',
       'inheritance-depth-limit',
-    ]) {
-      expect(lifts('java', rule).preset).toBe('java');
-    }
+    ];
+    expect(javaRules.map((rule) => lifts('java', rule).preset)).toEqual(
+      javaRules.map(() => 'java'),
+    );
     expect(lifts('kotlin', 'folder-depth-limit').preset).toBe('kotlin');
     expect(lifts('typescript', 'folder-depth-limit').preset).toBe('typescript');
     expect(lifts('kotlin', 'class-methods-limit').preset).toBe('kotlin');
