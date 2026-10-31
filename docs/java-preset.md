@@ -1825,6 +1825,16 @@ get none of these rules. The Spring configuration file checks
 ([below](#spring-configuration-files)) do not depend on the language and apply to Kotlin projects
 too, and `missing-enable` scans the Kotlin sources.
 
+**Type laundering (decision).** The Java counterpart of the TypeScript `as` and `any` bans is the unchecked
+conversion, not the checked cast: a cast to a concrete type is checked at run time and is what Java offers
+after an `instanceof` check, and `Object` as a parameter or field type is the counterpart of `unknown`, so
+neither is a finding (no PMD, Checkstyle or Error Prone rule against them has a general recommendation behind
+it). What launders a type is the compiler's `rawtypes` and `unchecked` lint categories: a raw `List`, an
+unchecked generic cast. Narrow with `instanceof` (a pattern match), give the type its arguments, or parse
+untrusted input once at the boundary. `@SuppressWarnings("unchecked")` and `"rawtypes"` hide those warnings
+from the compiler only; this preset's [inline suppression](#spring-rules) scan covers the PMD, SpotBugs and
+Error Prone names.
+
 **Inline suppressions.** PMD would let a change silence any rule without review. nitpicker runs PMD
 with `--suppress-marker` set to a string no code uses, so `// NOPMD` comments do nothing. PMD still
 honors `@SuppressWarnings` with `"PMD..."`, `"all"`, `"unused"`, `"serial"` or `"fallthrough"`, and
