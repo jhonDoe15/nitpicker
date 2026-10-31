@@ -5,8 +5,8 @@ import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mj
 import { runCacheCommand } from './command/cache.mjs';
 import { runExplainCommand, runRulesCommand } from './command/reference/reference.mjs';
 import { runBaseCommand } from './command/base.mjs';
-import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
-import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
+import { missingPathHint, parseArguments, USAGE_TEXT } from './command/arguments.mjs';
+import { resolveRunTarget } from './scope/run-target.mjs';
 import { realpathSync } from 'node:fs';
 import {
   describeConfigOverrides,
@@ -27,7 +27,7 @@ import { resolveComparison } from './diff/git/repository/git.mjs';
 import { resolveBase } from './diff/git/repository/base-ref.mjs';
 import { detachLocalGitVariables } from './diff/git/environment/local-variables.mjs';
 import path from 'node:path';
-import { clearDiffReports, absoluteTextReportPath } from './diff/reporting/reporters.mjs';
+import { prepareDiffOutputRoot, absoluteTextReportPath } from './diff/reporting/reporters.mjs';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
 import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
@@ -130,10 +130,7 @@ function runCommand(cli) {
 
 function runConfigured(cli) {
   const { options, stdout, runTasks } = cli;
-  const currentProjectRoot =
-    cli.currentProjectRoot === undefined
-      ? resolveProjectRoot()
-      : realpathSync(cli.currentProjectRoot);
+  const { currentProjectRoot, scope } = resolveRunTarget({ ...cli, missingPathHint });
   const config = loadConfig(currentProjectRoot);
   const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
@@ -155,6 +152,7 @@ function runConfigured(cli) {
         stderr: cli.stderr,
         environment: cli.environment,
         runTasks,
+        scope,
       });
     }
     return runComparisonCli({
@@ -164,6 +162,7 @@ function runConfigured(cli) {
       injectedAnalyzers: cli.analyzers,
       config,
       headPolicy,
+      scope,
     });
   });
 }
@@ -179,11 +178,7 @@ function runComparisonCli(cli) {
     configuredBase: config.base,
     environment: cli.environment,
   });
-  const outputRoot =
-    options.outputRoot === undefined
-      ? path.join(currentProjectRoot, 'reports/quality/diff')
-      : path.resolve(currentProjectRoot, options.outputRoot);
-  clearDiffReports(outputRoot);
+  const outputRoot = prepareDiffOutputRoot(currentProjectRoot, options.outputRoot);
   const analyzers = selectComparisonAnalyzers(cli);
   const headPolicy = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
   const fixResult = fixIfRequested({ ...cli, headPolicy }, repositoryRoot, base);
@@ -203,6 +198,7 @@ function runComparisonCli(cli) {
     resolveBaseSetup: baseSetupResolver(cli, config, headPolicy),
     describeNotices: noticeDescriber(config, headPolicy, currentProjectRoot),
     ...acceptanceOf(cli),
+    scope: cli.scope,
     progress: cli.progress,
     runTasks: cli.runTasks,
   });
@@ -231,6 +227,7 @@ function fixIfRequested(cli, repositoryRoot, base) {
     baseRef: base.baseRef,
     executeFixCommand: cli.executeFixCommand,
     headPolicy: cli.headPolicy,
+    scope: cli.scope,
   });
   cli.stdout.write(
     `Fixed files:\n${fixResult.fixedFiles.length === 0 ? '(none)\n' : `${fixResult.fixedFiles.join('\n')}\n`}`,

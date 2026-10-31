@@ -72,6 +72,18 @@ export function clearDiffReports(outputRoot) {
   clearReports(outputRoot, REPORT_FILE_NAMES);
 }
 
+export function outputRootFor(projectRoot, outputOption, kind) {
+  return outputOption === undefined
+    ? path.join(projectRoot, 'reports/quality', kind)
+    : path.resolve(projectRoot, outputOption);
+}
+
+export function prepareDiffOutputRoot(projectRoot, outputOption) {
+  const outputRoot = outputRootFor(projectRoot, outputOption, 'diff');
+  clearDiffReports(outputRoot);
+  return outputRoot;
+}
+
 export function writeDiffReports(outputRoot, report, { projectPath, repositoryRoot } = {}) {
   return writeReports(outputRoot, DIFF_REPORTS, {
     report,

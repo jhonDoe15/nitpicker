@@ -5,6 +5,7 @@ import { noticeSection } from './review/notices.mjs';
 import { policyChangeSection } from './review/policy-changes.mjs';
 import { repositoryUrl } from '../../../shared/reference/facts.mjs';
 import { helpUriFor, referenceLinks } from '../../../shared/reference/store.mjs';
+import { scopeLine } from '../../scope/scope-findings.mjs';
 
 export function renderTextReport(report, { reference = referenceLinks() } = {}) {
   const lines = [
@@ -31,6 +32,7 @@ function summaryLines(report) {
     `Merge base: ${report.summary.mergeBaseSha}`,
     `Head: ${report.summary.headSha}`,
     `Status: ${report.summary.overallStatus}`,
+    ...scopeLine(report.summary),
     `New enforceable findings: ${String(report.summary.newEnforceableFindings)}`,
     `New findings: ${String(report.newFindings.length)}`,
     `Resolved findings: ${String(report.resolvedFindings.length)}`,
