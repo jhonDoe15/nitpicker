@@ -33,6 +33,7 @@ public final class ArchRules {
     if (usesSpring()) {
       Layers.check(main, roles, found);
       Lifetimes.check(main, found);
+      RequestState.check(main, found);
       TestRules.check(unitTests, otherTests, found);
     }
     Aggregates.check(main, found);

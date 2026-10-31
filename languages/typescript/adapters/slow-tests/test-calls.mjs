@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { escapeRegExp } from '../../../../shared/paths/glob.mjs';
 
 const TEST_FUNCTIONS = new Set(['it', 'test', 'specify', 'fit', 'xit', 'ftest', 'xtest']);

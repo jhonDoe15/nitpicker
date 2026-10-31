@@ -17,8 +17,8 @@ export const PACKAGE_EXCEPTION_RULES = Object.values(PACKAGE_RULE_IDS);
 
 export const LARGE_FILE_BYTES = 1024 * 1024;
 
-const EVERY_LANGUAGE = { typescript: true, java: true, python: true, kotlin: true };
-const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false, kotlin: false };
+const EVERY_LANGUAGE = { typescript: true, java: true, python: true, kotlin: true, go: true };
+const TYPESCRIPT_AND_PYTHON = { typescript: true, java: false, python: true, kotlin: false };
 
 export const HYGIENE_RULES = [
   {
@@ -55,20 +55,22 @@ export const HYGIENE_RULES = [
   {
     id: PACKAGE_RULE_IDS.unusedDependency,
     check: 'dead-code',
-    limit: 'a dependency in package.json that nothing imports or runs',
-    enforcedBy: TYPESCRIPT_ONLY,
+    limit:
+      "a dependency in package.json (Python: in the project's dependency files) that nothing imports or runs",
+    enforcedBy: TYPESCRIPT_AND_PYTHON,
   },
   {
     id: PACKAGE_RULE_IDS.unlistedDependency,
     check: 'dead-code',
-    limit: 'an import of a package that package.json does not list',
-    enforcedBy: TYPESCRIPT_ONLY,
+    limit:
+      "an import of a package that package.json (Python: the project's dependency files) does not list",
+    enforcedBy: TYPESCRIPT_AND_PYTHON,
   },
   {
     id: PACKAGE_RULE_IDS.unresolvedImport,
     check: 'dead-code',
     limit: 'an import that resolves to no file and no package',
-    enforcedBy: TYPESCRIPT_ONLY,
+    enforcedBy: TYPESCRIPT_AND_PYTHON,
   },
 ];
 
@@ -99,7 +101,7 @@ export const CO_CHANGE_EXAMPLES = 3;
 
 const PERCENT = 100;
 const REPORTED_EVERYWHERE = Object.fromEntries(
-  ['typescript', 'javascript', 'java', 'python', 'kotlin'].map((language) => [
+  ['typescript', 'javascript', 'java', 'python', 'kotlin', 'go'].map((language) => [
     language,
     'reported',
   ]),

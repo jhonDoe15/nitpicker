@@ -1,3 +1,4 @@
+import { jscpdIgnoredNotices } from '../../shared/conventions/tool-precedence.mjs';
 import { JAVA_CONVENTIONS } from '../../languages/java/conventions/java-conventions.mjs';
 import { KOTLIN_CONVENTIONS } from '../../languages/java/conventions/kotlin-conventions.mjs';
 import { javaProjectStyle } from '../../languages/java/conventions/java-project-style.mjs';
@@ -8,6 +9,8 @@ import {
   JAVASCRIPT_CONVENTIONS,
   TYPESCRIPT_CONVENTIONS,
 } from '../../languages/typescript/conventions/typescript-conventions.mjs';
+import { eslintConfigStyle } from '../../languages/typescript/preset/eslint-project/eslint-style.mjs';
+import { scriptProjectToolStyle } from '../../languages/typescript/preset/project-tools/ignored-notices.mjs';
 
 const BY_PRESET = new Map([
   ['typescript', TYPESCRIPT_CONVENTIONS],
@@ -21,10 +24,21 @@ export function conventionDefinitions(preset = 'typescript') {
   return BY_PRESET.get(preset) ?? [];
 }
 
+function jscpdStyle({ config, projectRoot }) {
+  return {
+    unused: {},
+    project: {},
+    note: () => undefined,
+    summary: () => jscpdIgnoredNotices(config, projectRoot),
+  };
+}
+
 const STYLES_BY_PRESET = new Map([
-  ['java', [javaProjectStyle]],
-  ['kotlin', [javaProjectStyle, kotlinStyle]],
-  ['python', [pythonStyle]],
+  ['typescript', [eslintConfigStyle, jscpdStyle, scriptProjectToolStyle]],
+  ['javascript', [eslintConfigStyle, jscpdStyle, scriptProjectToolStyle]],
+  ['java', [javaProjectStyle, jscpdStyle]],
+  ['kotlin', [javaProjectStyle, kotlinStyle, jscpdStyle]],
+  ['python', [pythonStyle, jscpdStyle]],
 ]);
 const NO_STYLE = { unused: {}, project: {}, note: () => undefined };
 
@@ -40,6 +54,6 @@ function mergedStyle(styles) {
 }
 
 export function conventionStyle(preset, context) {
-  const styles = STYLES_BY_PRESET.get(preset)?.map((style) => style(context));
+  const styles = STYLES_BY_PRESET.get(preset ?? 'typescript')?.map((style) => style(context));
   return styles === undefined ? NO_STYLE : mergedStyle(styles);
 }

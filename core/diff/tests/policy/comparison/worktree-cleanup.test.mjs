@@ -114,9 +114,10 @@ describe('quality diff temporary worktrees and reports', () => {
     });
 
     expect(exitCode).toBe(2);
-    for (const reportFileName of REPORT_FILE_NAMES) {
-      expect(existsSync(path.join(repository.outputRoot, reportFileName))).toBe(false);
-    }
+    expect(REPORT_FILE_NAMES).not.toHaveLength(0);
+    expect(
+      REPORT_FILE_NAMES.map((name) => existsSync(path.join(repository.outputRoot, name))),
+    ).toEqual(REPORT_FILE_NAMES.map(() => false));
   });
   it('reports malformed analyzer configuration without leaking worktrees', () => {
     const repository = createRepository({
@@ -161,17 +162,9 @@ describe('quality diff temporary worktrees and reports', () => {
 
     expect(report.summary.overallStatus).toBe('completed');
     expect(worktreePaths(repository.root)).toEqual([repository.root]);
-    for (const reportName of [
-      'summary.json',
-      'new-findings.json',
-      'resolved-findings.json',
-      'changed-metrics.json',
-      'tool-errors.json',
-      'report.txt',
-      'report.junit.xml',
-      'report.sarif',
-    ]) {
-      expect(existsSync(path.join(repository.outputRoot, reportName))).toBe(true);
-    }
+    expect(REPORT_FILE_NAMES).not.toHaveLength(0);
+    expect(
+      REPORT_FILE_NAMES.map((name) => existsSync(path.join(repository.outputRoot, name))),
+    ).toEqual(REPORT_FILE_NAMES.map(() => true));
   });
 });

@@ -4,9 +4,12 @@ const TYPESCRIPT_AND_JAVASCRIPT = {
   java: false,
   python: false,
   kotlin: false,
+  go: false,
 };
 
 export const OWN_TOOL = 'own-tool';
+
+const JVM = { java: true, kotlin: true };
 
 const FEATURE_BOUNDARY_LANGUAGES = {
   typescript: OWN_TOOL,
@@ -14,20 +17,21 @@ const FEATURE_BOUNDARY_LANGUAGES = {
   java: false,
   python: true,
   kotlin: false,
+  go: false,
 };
 
 const FEATURE_LAYOUT_SETTINGS = ['layout.sharedRoots', 'layout.featureRoots'];
 
 export const FACT_RULE_LANGUAGES = {
-  'duplicate-definition': { ...TYPESCRIPT_AND_JAVASCRIPT, javascript: 'partial' },
-  'exported-name-collision': { ...TYPESCRIPT_AND_JAVASCRIPT, javascript: 'partial' },
-  'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT },
+  'duplicate-definition': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, javascript: 'partial' },
+  'exported-name-collision': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, javascript: 'partial' },
+  'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM },
   'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT, python: true },
   'feature-internal-import': { ...FEATURE_BOUNDARY_LANGUAGES },
   'shared-imports-feature': { ...FEATURE_BOUNDARY_LANGUAGES },
   'feature-cycle': { ...FEATURE_BOUNDARY_LANGUAGES },
   'test-only-export': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
-  'doc-comment-content': { ...TYPESCRIPT_AND_JAVASCRIPT },
+  'doc-comment-content': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
   'test-console-output': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
 };
 
@@ -90,13 +94,19 @@ function column(value) {
   return value === OWN_TOOL ? true : value;
 }
 
+const OWN_COLUMN_LANGUAGES = new Set(['go']);
+
+function defaultEnforcement(enforcedBy, language) {
+  return OWN_COLUMN_LANGUAGES.has(language) ? false : enforcedBy.typescript;
+}
+
 export function withLanguageColumns(rule, languages) {
   const registered = FACT_RULE_LANGUAGES[rule.id];
   const enforcedBy = Object.fromEntries(
     languages.map((language) => [
       language,
       registered === undefined
-        ? (rule.enforcedBy[language] ?? rule.enforcedBy.typescript)
+        ? (rule.enforcedBy[language] ?? defaultEnforcement(rule.enforcedBy, language))
         : column(registered[language]),
     ]),
   );

@@ -41,13 +41,19 @@ function headFactProperties(policy, directory) {
   ];
 }
 
-export function gradleStages(common, { projectRoot, initScript, policy, directory }) {
+export function gradleStages(
+  common,
+  { projectRoot, initScript, policy, directory, testsFailedModules = [] },
+) {
   const checkstyleBase = path.join(directory, CHECKSTYLE_EXPORT);
   const layersCheckstyle = toolConfigChoices(projectRoot, policy).checkstyle.project !== undefined;
   return [
     ...(layersCheckstyle ? [() => exportArguments(common, { initScript, directory, policy })] : []),
     () => [
       ...common,
+      ...(testsFailedModules.length > 0
+        ? [`-Pnitpicker.testsFailed=${testsFailedModules.join(',')}`]
+        : []),
       ...toolConfigProperties(projectRoot, policy, { directory, checkstyleBase }),
       ...headFactProperties(policy, directory),
       '-I',

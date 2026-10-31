@@ -1,17 +1,28 @@
-import { mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  rmSync,
+  symlinkSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { PACKAGE_ROOT } from '../../../../core/tooling/tool-resolution.mjs';
+import { PACKAGE_ROOT, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
+import { ts as selectedTypeScript } from '../../typescript-api/typescript-api.mjs';
 import {
   enclosingSymbol,
   formatDiagnostic,
   loadTypeScript,
   preEmitDiagnostics,
+  projectTypeScript,
   withoutProjectRoot,
 } from './typescript-program.mjs';
 
 const ASSIGN_NUMBER = "Type 'string' is not assignable to type 'number'.";
+const UNKNOWN_OPTION = "Unknown compiler option 'fooBar'.";
 const ASSIGN_STRING = "Type 'number' is not assignable to type 'string'.";
 const SOURCES = {
   'src/assign.ts':
@@ -57,8 +68,14 @@ function writeConfig(name, compilerOptions, include = ['src']) {
   return configPath;
 }
 
-async function described(engine, configPath) {
-  const diagnostics = await preEmitDiagnostics({ ts, engine, configPath, projectRoot: root });
+async function described(engine, configPath, projectNative) {
+  const diagnostics = await preEmitDiagnostics({
+    ts,
+    engine,
+    configPath,
+    projectRoot: root,
+    projectNative,
+  });
   return diagnostics.map((diagnostic) => {
     const located = diagnostic.file !== undefined && diagnostic.start !== undefined;
     return {
@@ -203,24 +220,142 @@ describe('TypeScript 7 type check', () => {
   });
 });
 
-describe('the default quality config', () => {
-  it('type checks JavaScript sources without trying to emit over them', async () => {
-    const project = path.join(root, 'javascript-project');
-    mkdirSync(path.join(project, 'src'), { recursive: true });
-    writeFileSync(path.join(project, 'src/legacy.cjs'), "'use strict';\nmodule.exports = 1;\n");
-    writeFileSync(path.join(project, 'src/plain.js'), 'export const plain = 1;\n');
-    const configPath = path.join(project, 'tsconfig.json');
-    const defaults = path.join(PACKAGE_ROOT, 'languages/typescript/preset/defaults');
+describe('a project whose own typescript is TypeScript 7', () => {
+  const projectNative = resolveTool('typescript-native').root;
+
+  it('type checks with the project compiler and reports what the native engine reports', async () => {
+    const configPath = writeConfig('tsconfig.own.json', { ...STRICT, types: ['missing-types'] });
+
+    expect(await described('project', configPath, projectNative)).toEqual(
+      await described('native', configPath),
+    );
+  });
+
+  it('reports removed options as the project compiler does, instead of falling back', async () => {
+    const configPath = writeConfig('tsconfig.own-legacy.json', {
+      ...STRICT,
+      types: [],
+      baseUrl: '.',
+    });
+
+    expect(await described('native', configPath, projectNative)).toEqual([
+      configNote(
+        5102,
+        "Option 'baseUrl' has been removed. Please remove it from your configuration.\n" +
+          '  Use \'"paths": {"*": ["./*"]}\' instead.',
+      ),
+      ...SOURCE_FINDINGS,
+    ]);
+  });
+
+  it('fails with the project compiler message when the config cannot be read', async () => {
+    const configPath = path.join(root, 'tsconfig.broken.json');
+    writeFileSync(configPath, '{ "compilerOptions": { "strict": "yes" } }');
+
+    await expect(described('project', configPath, projectNative)).rejects.toThrow(
+      /Compiler option 'strict' requires a value of type boolean/u,
+    );
+  });
+
+  it('reports unknown options and still type checks, as tsc does', async () => {
+    const base = writeConfig('tsconfig.own-base.json', { ...STRICT, types: [], fooBar: 1 });
+    const configPath = path.join(root, 'tsconfig.own-unknown.json');
     writeFileSync(
       configPath,
       JSON.stringify({
-        extends: path.join(defaults, 'tsconfig.quality.json'),
-        compilerOptions: { types: [], lib: ['ES2022'] },
-        include: ['src'],
+        extends: './tsconfig.own-base.json',
+        compilerOptions: { types: [], lib: ['ES2022'], fooBaz: 1 },
       }),
     );
+    const located = readFileSync(base, 'utf8').indexOf('"fooBar"');
 
-    for (const engine of ['native', 'project']) {
+    const own = await described('project', configPath, projectNative);
+
+    expect(own).toEqual([
+      configNote(5023, "Unknown compiler option 'fooBaz'."),
+      finding('tsconfig.own-base.json', 5023, undefined, [0, located], UNKNOWN_OPTION),
+      ...SOURCE_FINDINGS,
+    ]);
+    expect(await described('project', configPath)).toEqual(own);
+    expect(await described('native', configPath)).toEqual(own);
+  });
+
+  it('reports an unknown option when the config matches no files', async () => {
+    const configPath = writeConfig('tsconfig.own-none.json', { ...STRICT, types: [], fooBar: 1 }, [
+      'none',
+    ]);
+    const expected = [configNote(5023, UNKNOWN_OPTION)];
+
+    expect(await described('project', configPath, projectNative)).toEqual(expected);
+    expect(await described('project', configPath)).toEqual(expected);
+    expect(await described('native', configPath)).toEqual(expected);
+  });
+
+  it.each([
+    ['TypeScript 7', projectNative],
+    ['TypeScript 6', undefined],
+  ])(
+    "names the project config and keeps the snapshot folder out of config errors on the project's %s",
+    async (_, projectTypeScriptRoot) => {
+      const configPath = path.join(root, 'tsconfig.own-missing.json');
+      writeFileSync(configPath, JSON.stringify({ extends: './missing.json', include: ['src'] }));
+
+      await expect(
+        preEmitDiagnostics({
+          ts,
+          engine: 'project',
+          configPath,
+          configName: 'tsconfig.json',
+          projectRoot: root,
+          projectNative: projectTypeScriptRoot,
+        }),
+      ).rejects.toThrow(
+        /^TypeScript config tsconfig\.json is invalid: Cannot read file 'missing\.json'/u,
+      );
+    },
+  );
+
+  it('reads source files with the API nitpicker selected and type checks with the project one', () => {
+    const consumer = path.join(root, 'ts7-consumer');
+    mkdirSync(path.join(consumer, 'node_modules'), { recursive: true });
+    writeFileSync(path.join(consumer, 'package.json'), '{"name":"ts7-consumer"}');
+    symlinkSync(projectNative, path.join(consumer, 'node_modules/typescript'));
+
+    const selected = projectTypeScript(consumer);
+
+    expect(selected.ts).toBe(selectedTypeScript);
+    expect(selected.native).toBe(realpathSync(projectNative));
+    expect(projectTypeScript(PACKAGE_ROOT).native).toBeUndefined();
+  });
+
+  it('reads and type checks a project without typescript with the API nitpicker selected', () => {
+    const consumer = path.join(root, 'no-typescript-consumer');
+    mkdirSync(consumer);
+    writeFileSync(path.join(consumer, 'package.json'), '{"name":"no-typescript-consumer"}');
+
+    expect(projectTypeScript(consumer)).toStrictEqual({ ts: selectedTypeScript });
+  });
+});
+
+describe('the default quality config', () => {
+  it.each(['native', 'project'])(
+    'type checks JavaScript sources without emitting over them with the %s engine',
+    async (engine) => {
+      const project = path.join(root, 'javascript-project');
+      mkdirSync(path.join(project, 'src'), { recursive: true });
+      writeFileSync(path.join(project, 'src/legacy.cjs'), "'use strict';\nmodule.exports = 1;\n");
+      writeFileSync(path.join(project, 'src/plain.js'), 'export const plain = 1;\n');
+      const configPath = path.join(project, 'tsconfig.json');
+      const defaults = path.join(PACKAGE_ROOT, 'languages/typescript/preset/defaults');
+      writeFileSync(
+        configPath,
+        JSON.stringify({
+          extends: path.join(defaults, 'tsconfig.quality.json'),
+          compilerOptions: { types: [], lib: ['ES2022'] },
+          include: ['src'],
+        }),
+      );
+
       const diagnostics = await preEmitDiagnostics({
         ts,
         engine,
@@ -228,6 +363,6 @@ describe('the default quality config', () => {
         projectRoot: project,
       });
       expect(diagnostics.map(({ code }) => code)).toEqual([]);
-    }
-  });
+    },
+  );
 });
