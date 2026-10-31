@@ -142,4 +142,11 @@ fun statement(flag: Boolean) {
         false -> println("n")
     }
 }
+
+fun either(flag: Boolean?): Int =
+    when (flag) {
+        null -> 0
+        true,
+        false -> 1
+    }
 `;
