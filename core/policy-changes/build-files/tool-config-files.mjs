@@ -8,20 +8,12 @@ import {
   JSCPD_PROJECT_FILE,
   precedenceLayers,
 } from '../../../shared/conventions/tool-precedence.mjs';
-import { appliedJscpdConfig } from '../../tooling/jscpd/config.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
-import {
-  appliedStrykerConfig,
-  STRYKER_PROJECT_FILES,
-} from '../../../languages/typescript/preset/project-configs/stryker-project-config.mjs';
-import {
-  appliedTypescriptOptions,
-  projectTsconfigFiles,
-} from '../../../languages/typescript/preset/project-configs/typescript/typescript-project-options.mjs';
+import { STRYKER_PROJECT_FILES } from '../../../languages/typescript/preset/project-configs/stryker-project-config.mjs';
+import { projectTsconfigFiles } from '../../../languages/typescript/preset/project-configs/typescript/typescript-project-options.mjs';
 import {
   TESTS_TOOL,
-  appliedRunnerRetry,
   testRunnerProjectFiles,
 } from '../../../languages/typescript/preset/project-configs/test-runner/test-runner-config.mjs';
 import { resolveLayoutFor } from '../../../languages/typescript/preset/layout.mjs';
@@ -41,7 +33,9 @@ import {
   readEslintConfigFile,
 } from '../../../languages/typescript/preset/eslint-project/project-config.mjs';
 import { replacedEslintOptions } from '../../../languages/typescript/adapters/lint-engine/replaced-options.mjs';
+import { appliedJscpdConfig } from '../../tooling/jscpd/config.mjs';
 import { toolConfigText } from './tool-config-text.mjs';
+import { appliedConfigs } from './applied-values/applied-sides.mjs';
 import { readImportLinterConfig } from '../../../languages/python/adapters/analysis/import-linter/import-linter-config.mjs';
 import { attempt } from '../../../languages/python/adapters/project-tools/project-tool-layers.mjs';
 import { GOLANGCI_FILES } from '../../../languages/go/adapters/formatting/go-formatters.mjs';
@@ -186,70 +180,6 @@ function evidenceOf(tool, head, gitBlobId) {
     : {};
 }
 
-function jscpdSide(side, optedIn) {
-  const content = optedIn ? readRealInside(side.root, JSCPD_PROJECT_FILE) : undefined;
-  return content === undefined
-    ? { kind: 'applied', config: {} }
-    : appliedJscpdConfig(content.toString('utf8'));
-}
-
-function strykerSide(side, optedIn) {
-  try {
-    const { values, file } = optedIn ? appliedStrykerConfig(side.root) : { values: {} };
-    return { kind: 'applied', config: values, files: file === undefined ? [] : [file] };
-  } catch {
-    return { kind: 'rejected' };
-  }
-}
-
-function typescriptSide(side, optedIn) {
-  try {
-    return optedIn
-      ? { kind: 'applied', ...appliedTypescriptOptions(side.root, resolveLayoutFor(side.config)) }
-      : { kind: 'rejected' };
-  } catch {
-    return { kind: 'rejected' };
-  }
-}
-
-function testsSide(side, optedIn) {
-  if (!optedIn) {
-    return { kind: 'rejected' };
-  }
-  try {
-    const { values, file, files } = appliedRunnerRetry(side);
-    return { kind: 'applied', config: values, file, files };
-  } catch {
-    return { kind: 'rejected' };
-  }
-}
-
-const APPLIED_SIDES = new Map([
-  ['jscpd', jscpdSide],
-  ['stryker', strykerSide],
-  ['typescript', typescriptSide],
-  [TESTS_TOOL, testsSide],
-]);
-
-function appliedConfigs(tool, base, head) {
-  const read = APPLIED_SIDES.get(tool);
-  if (read === undefined) {
-    return {};
-  }
-  const sides = [read(base, isOptedIn(tool, base.config)), read(head, true)];
-  if (!sides.every(({ kind }) => kind === 'applied')) {
-    return {};
-  }
-  return {
-    applied: {
-      base: sides[0].config,
-      head: sides[1].config,
-      file: sides[1].file,
-      files: [...new Set(sides.flatMap(({ files = [] }) => files))],
-    },
-  };
-}
-
 function importLinterOn(config) {
   return config.preset === 'python' && config.python?.importLinter !== false;
 }
@@ -310,7 +240,7 @@ function toolEntries(base, head, { gitBlobId, replacedOptions = replacedEslintOp
         tool,
         optsIn: !isOptedIn(tool, base.config),
         ...prints,
-        ...appliedConfigs(tool, base, head),
+        ...appliedConfigs(tool, { base, head, baseOptedIn: isOptedIn(tool, base.config) }),
         ...(tool === 'eslint' ? eslintReview(head, prints, replacedOptions) : {}),
         ...evidenceOf(tool, head, gitBlobId),
         ...(hasProjectConfigChanges(tool) && SCRIPT_PRESETS.has(head.config.preset)
