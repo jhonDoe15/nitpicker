@@ -4,6 +4,8 @@ import java.util.List;
 import java.util.function.ToLongFunction;
 
 public class Cart implements ToLongFunction<List<Long>> {
+  @interface Audited {}
+
   public long total(List<Long> cents) { // violation: ForwardingMethodAlias
     return sum(cents);
   }
@@ -16,7 +18,7 @@ public class Cart implements ToLongFunction<List<Long>> {
     return count(cents);
   }
 
-  public long annotated(@Deprecated List<Long> cents) {
+  public long annotated(@Audited List<Long> cents) {
     return sum(cents);
   }
 
@@ -32,7 +34,7 @@ public class Cart implements ToLongFunction<List<Long>> {
     return pair(fee, cents);
   }
 
-  @Deprecated
+  @Audited
   public long legacy(List<Long> cents) {
     return sum(cents);
   }

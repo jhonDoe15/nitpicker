@@ -918,7 +918,9 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   does not define, except `object`, `ABC`, `Generic`, enum, `NamedTuple` and `TypedDict` bases and
   builtin exceptions (their own method names, such as `add_note`, are inherited names); an exception
   base from another package, a class with keyword arguments other than `metaclass`, and a name that
-  is defined again under `if`, `try` or `with` in the class body are skipped. Test files are not
+  is defined again under `if`, `try` or `with` in the class body, a name the class assigns as an
+  attribute (`self.total = ...`), and every method of a class with `__getattr__` or
+  `__getattribute__` are skipped. Test files are not
   checked. Findings of this rule in generated files (the generated-file list of the size limits) are
   dropped after the run, so a generated base class still counts for the classes that extend it. The
   finding identity is the class and method name, not the target, so renaming the target keeps it

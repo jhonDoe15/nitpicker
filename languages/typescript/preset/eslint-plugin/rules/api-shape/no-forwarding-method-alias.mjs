@@ -1,3 +1,4 @@
+import { depthFirst, objectChildren } from '../../../../../../shared/traversal.mjs';
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
 
 const PUBLISHED_NAMES = new Set(['of', 'from']);
@@ -182,9 +183,12 @@ function aliasCall(member) {
     : undefined;
 }
 
-function calleeName(call) {
-  const { property } = call.callee;
+function propertyName(property) {
   return property.type === 'PrivateIdentifier' ? `#${property.name}` : property.name;
+}
+
+function calleeName(call) {
+  return propertyName(call.callee.property);
 }
 
 function isLaterOfMutual(classNode, member, call) {
@@ -197,6 +201,29 @@ function isLaterOfMutual(classNode, member, call) {
     calleeName(backCall) !== keyName(member) ||
     back.range[0] < member.range[0]
   );
+}
+
+const writtenNames = new WeakMap();
+
+function namesWrittenOnThis(classNode) {
+  const cached = writtenNames.get(classNode);
+  if (cached !== undefined) {
+    return cached;
+  }
+  const names = new Set();
+  for (const node of depthFirst(classNode.body, objectChildren)) {
+    const left = node.type === 'AssignmentExpression' ? node.left : undefined;
+    if (left?.type === 'MemberExpression' && left.object.type === 'ThisExpression') {
+      names.add(left.computed ? '[]' : propertyName(left.property));
+    }
+  }
+  writtenNames.set(classNode, names);
+  return names;
+}
+
+function isReassigned(classNode, names) {
+  const written = namesWrittenOnThis(classNode);
+  return written.has('[]') || names.some((name) => written.has(name));
 }
 
 function aliasVerdict({ services, checker }, { member, classNode, call }) {
@@ -216,6 +243,7 @@ function aliasVerdict({ services, checker }, { member, classNode, call }) {
     hasSameSignature(checker, own, target) &&
     ts.getJSDocDeprecatedTag(own) === undefined &&
     isLaterOfMutual(classNode, member, call) &&
+    !isReassigned(classNode, [name, calleeName(call)]) &&
     !inheritsMember(checker, tsClass, name);
   return isAlias ? { rename: visibilityOf(own) < visibilityOf(target) } : undefined;
 }

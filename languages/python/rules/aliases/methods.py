@@ -5,6 +5,7 @@ from aliases.bases import FUNCTION_TYPES, class_methods, inherited_names
 RULE = "forwarding-method-alias"
 GUARDED = True
 PUBLISHED_NAMES = {"of", "from_"}
+ATTRIBUTE_HOOKS = {"__getattr__", "__getattribute__"}
 
 
 def body_without_docstring(body):
@@ -162,11 +163,20 @@ def same_signature(wrapper, target):
     )
 
 
+def stored_attributes(node):
+    return {
+        child.attr
+        for child in ast.walk(node)
+        if isinstance(child, ast.Attribute) and isinstance(child.ctx, (ast.Store, ast.Del))
+    }
+
+
 def alias_findings(context, node):
     inherited, complete = inherited_names(context, node)
-    if not complete:
-        return []
     methods = class_methods(node)
+    if not complete or ATTRIBUTE_HOOKS.intersection(methods):
+        return []
+    stored = stored_attributes(node)
     direct = {id(statement) for statement in node.body}
     found = []
     for name, nodes in methods.items():
@@ -176,6 +186,7 @@ def alias_findings(context, node):
             or id(wrapper) not in direct
             or not is_plain_method(wrapper)
             or name in PUBLISHED_NAMES
+            or name in stored
         ):
             continue
         call = forwarded_call(wrapper)
@@ -184,6 +195,7 @@ def alias_findings(context, node):
         if (
             name in inherited
             or target_name in (None, name)
+            or target_name in stored
             or len(targets) != 1
             or id(targets[0]) not in direct
             or not is_plain_method(targets[0])
