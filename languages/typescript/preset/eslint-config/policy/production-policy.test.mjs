@@ -212,11 +212,17 @@ describe('identifier casing', () => {
   it('allows PascalCase functions and variables only in a React project', () => {
     const code = 'export function Button() { return 1; } export const Panel = Button;';
 
-    expect(ruleIds(adapter, code, { react: true })).toEqual([]);
-    expect(ruleIds(adapter, code)).toEqual([
-      'nitpicker/naming-convention',
-      'nitpicker/naming-convention',
-    ]);
+    const casing = (options) =>
+      ruleIds(adapter, code, options).filter((ruleId) => ruleId === 'nitpicker/naming-convention');
+
+    expect(casing({ react: true })).toEqual([]);
+    expect(casing()).toEqual(['nitpicker/naming-convention', 'nitpicker/naming-convention']);
+  });
+
+  it('flags a second name for an exported component as a compatibility shim', () => {
+    const code = 'export function Button() { return 1; } export const Panel = Button;';
+
+    expect(ruleIds(adapter, code, { react: true })).toEqual(['nitpicker/no-compatibility-shim']);
   });
 });
 
