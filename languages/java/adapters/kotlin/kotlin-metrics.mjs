@@ -1,16 +1,16 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { KOTLIN_REPORTS } from './report-names/kotlin-report-names.mjs';
 import { ingestCrapFunctions } from '../../ingest/crap.mjs';
 import { ownRange } from '../../ingest/units/unit-coverage.mjs';
 import { MESSAGES, RULE_IDS } from '../../../../shared/policy.mjs';
 import { repeatsInSource } from '../../../../shared/rules/finding-helpers.mjs';
 import { methodText, structureFindings } from '../../../../shared/ingest/structure-report.mjs';
 
-const METRICS_REPORT = 'kotlin-metrics.json';
 const DEFAULT_ARGUMENTS_SUFFIX = '$default';
 
 export function readKotlinMetrics(reportRoot) {
-  const report = path.join(reportRoot, METRICS_REPORT);
+  const report = path.join(reportRoot, KOTLIN_REPORTS.metrics);
   return existsSync(report)
     ? JSON.parse(readFileSync(report, 'utf8'))
     : { functions: [], files: [] };

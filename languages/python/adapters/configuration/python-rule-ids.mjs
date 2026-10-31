@@ -15,8 +15,8 @@ const REPLACED_RULES = {
 const RULE_LETTERS = /^[A-Z]+/;
 const RUFF_CODE = /"([A-Z]+\d*)"/g;
 const RUFF_CONFIG_TEXT = readFileSync(RUFF_CONFIG, 'utf8');
-const select = codesOf('select');
-const ignore = codesOf('ignore');
+export const RUFF_SELECT = codesOf('select');
+export const RUFF_IGNORE = codesOf('ignore');
 
 function codesOf(key) {
   const list = new RegExp(`^${key}\\s*=\\s*\\[([^\\]]*)\\]`, 'm').exec(RUFF_CONFIG_TEXT);
@@ -50,7 +50,9 @@ function selects(code, rule) {
 
 function isRuffRule(rule) {
   return (
-    RUFF_SELECTOR.test(rule) && !ignore.includes(rule) && select.some((code) => selects(code, rule))
+    RUFF_SELECTOR.test(rule) &&
+    !RUFF_IGNORE.includes(rule) &&
+    RUFF_SELECT.some((code) => selects(code, rule))
   );
 }
 
