@@ -582,6 +582,7 @@ allprojects {
             def mutations = best.values().collect { xml(it) }.join('')
             target.text = "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<mutations>${mutations}</mutations>\n"
         }
+        def jacocoArgumentProvider = 'org.gradle.testing.jacoco.plugins.JacocoPluginExtension$JacocoAgent'
         def registerPit = { String pitName, Test source ->
             tasks.register(pitName, JavaExec) {
                 group = 'nitpicker'
@@ -644,6 +645,22 @@ allprojects {
                           '--threads', '2',
                           '--failWhenNoMutations', 'false',
                           '--verbose', 'false'])
+                    def testJvmArgs = (source.jvmArgs ?: []) +
+                        source.systemProperties.collect { key, value ->
+                            (value == null ? "-D${key}" : "-D${key}=${value}").toString() } +
+                        [source.minHeapSize ? "-Xms${source.minHeapSize}" : null,
+                         source.maxHeapSize ? "-Xmx${source.maxHeapSize}" : null].findAll { it != null }*.toString() +
+                        source.jvmArgumentProviders.findAll { it.getClass().name != jacocoArgumentProvider }
+                            .collectMany { provider -> provider.asArguments().collect { it.toString() } }
+                    if (!testJvmArgs.isEmpty()) {
+                        def argumentFile = new File(pitDir.asFile, 'jvm-arguments')
+                        argumentFile.text = testJvmArgs.collect { argument ->
+                            '"' + argument.replace('\\', '\\\\').replace('"', '\\"')
+                                .replace('\n', '\\n').replace('\r', '\\r') + '"\n'
+                        }.join('')
+                        def quote = argumentFile.absolutePath.contains('"') ? "'" : '"'
+                        args '--argLine', "${quote}@${argumentFile.absolutePath}${quote}".toString()
+                    }
                     if (source.options instanceof org.gradle.api.tasks.testing.junitplatform.JUnitPlatformOptions) {
                         if (!source.options.includeTags.isEmpty()) {
                             args '--includedGroups', source.options.includeTags.toList().sort().join(',')
