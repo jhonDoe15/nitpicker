@@ -56,16 +56,16 @@ describe('the shared fact rules', () => {
   });
 
   it('shows a rule a language enforces with its own tool as enforced, without running it', () => {
-    for (const rule of FEATURE_RULES) {
-      expect(RULES.find(({ id }) => id === rule).enforcedBy).toEqual({
+    expect(FEATURE_RULES.map((rule) => RULES.find(({ id }) => id === rule).enforcedBy)).toEqual(
+      FEATURE_RULES.map(() => ({
         typescript: true,
         javascript: true,
         java: false,
         python: true,
         kotlin: false,
         go: false,
-      });
-    }
+      })),
+    );
     expect(registeredFactRules('typescript')).not.toContain(FEATURE_RULES[0]);
   });
 
