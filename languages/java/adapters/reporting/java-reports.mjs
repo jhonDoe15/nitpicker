@@ -38,7 +38,7 @@ import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import {
   jacocoSourceRoots,
   readKotlinFindings,
-  reportOnlyKotlinMutants,
+  kotlinGeneratedFilter,
   requireKotlinManifest,
   sourceFileOf,
   sourceLocator,
@@ -264,11 +264,11 @@ function pitFindings(context) {
     return [];
   }
   const locate = sourceLocator(projectRoot, jacocoSourceRoots(context));
-  const { findings } = ingestPit(readFileSync(pitReport, 'utf8'), {
+  return ingestPit(readFileSync(pitReport, 'utf8'), {
     resolvePath: (className, sourceFile) => sourceFileOf(locate, className, sourceFile),
     functionAt: functionLocator(context),
-  });
-  return context.kotlin ? reportOnlyKotlinMutants(findings) : findings;
+    ...(context.kotlin ? { generated: kotlinGeneratedFilter(context) } : {}),
+  }).findings;
 }
 
 function branchFindings(context, jacoco) {

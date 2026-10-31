@@ -10,6 +10,7 @@ import { validateExceptions } from '../../../../shared/exceptions/validation.mjs
 import { COMMON_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
 import { PYTHON_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import { ruleIdProblem } from './python-rule-ids.mjs';
+import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
 
 /** The rules the top-level "exceptions" lift; python.exceptions lifts every other rule. */
 export const PYTHON_TOP_LEVEL_EXCEPTION_RULES = [...COMMON_EXCEPTION_RULES, ...PYTHON_SIZE_RULES];
@@ -53,7 +54,7 @@ function validateKnownKeys(settings) {
   for (const key of Object.keys(settings)) {
     if (!SETTING_KEYS.includes(key)) {
       throw configError(
-        `unknown key "${key}" in "python". Allowed keys: ${SETTING_KEYS.join(', ')}`,
+        `unknown key "${key}" in "python"${suggestionOrAllowed(key, SETTING_KEYS)}`,
       );
     }
   }

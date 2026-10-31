@@ -1,6 +1,7 @@
 import { isPolicyFinding } from './review/policy-findings.mjs';
 import { consolePolicySummary } from './review/policy-changes.mjs';
 import { heldFindings, heldLine } from './format/held-findings.mjs';
+import { foldMutants } from './format/mutants.mjs';
 import { noteSummaryLines } from './format/notes.mjs';
 import { singleLine } from './format/text.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
@@ -108,7 +109,7 @@ function failing(text, color) {
 function appendViolationSummary(lines, summary, color) {
   const { violations } = summary;
   lines.push(violationHeadline(summary, color));
-  for (const group of groupRepeatedFindings(violations)) {
+  for (const group of groupRepeatedFindings(foldMutants(violations))) {
     const [finding] = group;
     lines.push(
       `  ${style(`${finding.tool}/${finding.rule}`, [ANSI.yellow], color)} ${finding.path}${describeLocations(group)}`,
