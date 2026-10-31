@@ -47,10 +47,37 @@ describe('resolveBase', () => {
       'origin/merge-target',
     ],
     [{ CHANGE_TARGET: 'origin/release', GITHUB_BASE_REF: 'github-base' }, 'origin/release'],
+    [
+      { GITHUB_BASE_REF: '', CI_MERGE_REQUEST_TARGET_BRANCH_NAME: 'release/1.x' },
+      'origin/release/1.x',
+    ],
+    [{ CHANGE_TARGET: 'release/1.x' }, 'origin/release/1.x'],
+    [{ SYSTEM_PULLREQUEST_TARGETBRANCH: 'refs/heads/main' }, 'origin/main'],
+    [{ SYSTEM_PULLREQUEST_TARGETBRANCH: 'refs/heads/team/main' }, 'origin/team/main'],
+    [{ BITBUCKET_PR_DESTINATION_BRANCH: 'develop' }, 'origin/develop'],
+    [
+      { BUILDKITE_PULL_REQUEST_BASE_BRANCH: 'main', BITBUCKET_PR_DESTINATION_BRANCH: '' },
+      'origin/main',
+    ],
   ])('resolves the first non-empty CI target: %s', (environment, expected) => {
     expect(resolveBase({ repositoryRoot: createRepository(), environment })).toEqual({
       baseRef: expected,
       source: 'ci',
+    });
+  });
+
+  it.each([
+    [{ GITHUB_BASE_REF: '' }],
+    [{ CI_MERGE_REQUEST_TARGET_BRANCH_NAME: '', CHANGE_TARGET: '' }],
+    [{ SYSTEM_PULLREQUEST_TARGETBRANCH: '', BITBUCKET_PR_DESTINATION_BRANCH: '' }],
+  ])('ignores empty CI targets on a branch build: %j', (environment) => {
+    const repositoryRoot = createRepository();
+    addRemote(repositoryRoot, 'origin');
+    setRemoteHead(repositoryRoot, 'origin', 'main');
+
+    expect(resolveBase({ repositoryRoot, environment })).toEqual({
+      baseRef: 'origin/main',
+      source: 'remote-head',
     });
   });
 
@@ -93,16 +120,25 @@ describe('resolveBase', () => {
     ).toThrow(/compared with itself/);
   });
 
-  it('rejects a configured base that follows HEAD, and accepts a remote branch at HEAD', () => {
+  it.each(['HEAD~0', 'HEAD^0', '@{0}', 'main', 'refs/heads/main'])(
+    'rejects the configured base %s that follows HEAD',
+    (configuredBase) => {
+      const repositoryRoot = createRepository();
+      setRemoteBranch(repositoryRoot, 'origin', 'main');
+
+      expect(() => resolveBase({ repositoryRoot, configuredBase, environment: {} })).toThrow(
+        `"base" is ${configuredBase}, the commit you are on`,
+      );
+    },
+  );
+
+  it('accepts a remote branch at HEAD as the configured base', () => {
     const repositoryRoot = createRepository();
     setRemoteBranch(repositoryRoot, 'origin', 'main');
-    const resolve = (configuredBase) => () =>
-      resolveBase({ repositoryRoot, configuredBase, environment: {} });
 
-    for (const configuredBase of ['HEAD~0', 'HEAD^0', '@{0}', 'main', 'refs/heads/main']) {
-      expect(resolve(configuredBase)).toThrow(`"base" is ${configuredBase}, the commit you are on`);
-    }
-    expect(resolve('origin/main')()).toEqual({ baseRef: 'origin/main', source: 'config' });
+    expect(resolveBase({ repositoryRoot, configuredBase: 'origin/main', environment: {} })).toEqual(
+      { baseRef: 'origin/main', source: 'config' },
+    );
   });
 
   it('accepts a remote HEAD at the checked commit and rejects a reflog entry of HEAD', () => {

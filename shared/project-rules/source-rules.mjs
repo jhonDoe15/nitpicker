@@ -35,6 +35,6 @@ export function docCommentRule(ids) {
     id: ids.docCommentContent,
     check: 'coding-standards',
     limit:
-      'a doc comment that only restates its declaration name, or a description longer than 5 lines, code examples not counted (TypeScript and JavaScript report it as `nitpicker/no-comments`)',
+      'a doc comment or docstring that only restates its declaration name (a tag or section with text, such as `@param id the account` or `Args:`, says more), or a description longer than 5 lines, tags, sections and code examples not counted (TypeScript and JavaScript report it as `nitpicker/no-comments`)',
   };
 }

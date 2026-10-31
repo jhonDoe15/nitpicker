@@ -1,4 +1,8 @@
-import { parseDrillDownOptions } from '../diff/comparison/cli.mjs';
+import {
+  DRILL_DOWN_OPTIONS,
+  parseDrillDownOptions,
+  unknownArgumentError,
+} from '../diff/comparison/cli.mjs';
 
 const FLAGS = new Map([
   ['--all', { property: 'all', value: true }],
@@ -11,6 +15,23 @@ const VALUES = new Map([
   ['--base', 'baseRef'],
   ['--output', 'outputRoot'],
 ]);
+const SUBCOMMANDS = ['aggregate', 'base', 'cache'];
+
+const COMPARISON_OPTIONS = [...FLAGS.keys(), ...VALUES.keys(), ACCEPT_FLAG, ...DRILL_DOWN_OPTIONS];
+
+const HELP_POINTER = 'Run nitpicker --help for the options.';
+
+function unknownArgument(argument) {
+  if (SUBCOMMANDS.includes(argument)) {
+    return new Error(
+      `Unknown argument: ${argument}. A subcommand goes first, as in nitpicker ${argument}. ${HELP_POINTER}`,
+    );
+  }
+  const candidates = argument.startsWith('-')
+    ? COMPARISON_OPTIONS
+    : [...SUBCOMMANDS, ...COMPARISON_OPTIONS];
+  return unknownArgumentError(argument, candidates, HELP_POINTER);
+}
 
 function acceptedDigest(argument) {
   const digest = argument.slice(ACCEPT_FLAG.length + 1);
@@ -47,7 +68,7 @@ function remainingOptions(arguments_) {
     }
     const property = VALUES.get(argument);
     if (property === undefined) {
-      throw new Error(`Unknown argument: ${argument}`);
+      throw unknownArgument(argument);
     }
     const value = remaining.next().value;
     if (value === undefined || value.startsWith('--')) {
@@ -87,4 +108,7 @@ export const USAGE_TEXT =
   ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help]\n' +
   '       nitpicker aggregate --input-root <directory> --shard-count <count>' +
   ' [--output <directory>] [--policy-root <directory>]\n' +
-  '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]\n';
+  '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]\n' +
+  '       nitpicker base [--base <ref>]\n' +
+  '       nitpicker explain <tool/rule>...\n' +
+  '       nitpicker rules [--preset <name>] [--tool <name>]\n';
