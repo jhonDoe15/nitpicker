@@ -169,6 +169,31 @@ describe('nitpicker config file', () => {
       : undefined;
     return { exitCode, output, summary, outputRoot };
   }
+  it('names the ESLint config it ignores until the project opts in', () => {
+    const notice =
+      'Ignoring eslint.config.mjs; opt in with "tools": { "eslint": { "precedence": ["project", "nitpicker"] } }';
+    const run = (config) => {
+      const repository = createRepository({
+        'quality-policy.json': policy(),
+        'src/main/clean.ts': 'export const clean = true;\n',
+        'eslint.config.mjs': 'export default [];\n',
+        'nitpicker.config.json': JSON.stringify(config),
+      });
+      const output = captureOutput();
+      runCli({
+        arguments_: ['--output', makeOutputRoot(), '--base', 'HEAD'],
+        environment: {},
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        stdout: output.stdout,
+        stderr: output.stderr,
+      });
+      return output.stdoutText.split('\n').filter((line) => line.startsWith('Ignoring'));
+    };
+
+    expect(run({})).toEqual([notice]);
+    expect(run({ tools: { eslint: { precedence: ['nitpicker', 'project'] } } })).toEqual([]);
+  });
   it('reports a strict exception and changes the policy hash', () => {
     const exception = {
       rule: 'nitpicker/preserve-error-cause',
@@ -335,11 +360,10 @@ fake-quality-analyzer: base=0 head=0 new=0 resolved=0 unchanged=0 changed-metric
     expect(excluded.summary.policyHash).not.toBe(plainHash);
     // Each key alone must change the hash, computed with the same functions the CLI uses.
     const analyzers = [fakeAnalyzer()];
-    for (const [key, value] of [...entries, ['exclude', ['generated/**']]]) {
-      expect(policyHash(analyzers, describeConfigOverrides({ [key]: value }))).not.toBe(
-        policyHash(analyzers),
-      );
-    }
+    const singleKeyHashes = [...entries, ['exclude', ['generated/**']]].map(([key, value]) =>
+      policyHash(analyzers, describeConfigOverrides({ [key]: value })),
+    );
+    expect(singleKeyHashes).not.toContain(policyHash(analyzers));
   });
   describe('custom analyzers', () => {
     it('classifies findings from a valid analyzer like built-in findings', () => {

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { installFakeToolchain } from '../../test-support/fake-toolchain.mjs';
 import { createToolContext } from '../../python-tools.mjs';
+import { UNTESTABLE_LINES } from '../../configuration/coverage-config/python-coverage-config.mjs';
 
 const roots = [];
 
@@ -34,10 +35,7 @@ export function coverageRc(root, sources, { carried = [], django = false } = {})
     ...carried,
     '[report]',
     'exclude_lines =',
-    String.raw`    ^\s*if (typing\.)?TYPE_CHECKING:`,
-    String.raw`    ^\s*if __name__ == .__main__.:`,
-    String.raw`    ^\s*@(typing\.)?overload\b`,
-    String.raw`    ^\s*raise NotImplementedError\b`,
+    ...UNTESTABLE_LINES.map((pattern) => `    ${pattern}`),
     'partial_branches =',
     '',
   ].join('\n');

@@ -162,6 +162,14 @@ describe('python config validation', () => {
       'a rule that every preset reports with a function or a path: lift it in the top-level "exceptions" instead',
     ],
     [
+      { exceptions: [{ rule: 'FBT001', paths: ['a'], reason: 'r' }] },
+      'names no rule nitpicker reports: "FBT001"; ruff FBT001 was replaced by "boolean-flag-parameter": rename the entry to "boolean-flag-parameter"',
+    ],
+    [
+      { exceptions: [{ rule: 'FBT002', paths: ['a'], reason: 'r' }] },
+      'ruff FBT002 was replaced by "boolean-flag-parameter"',
+    ],
+    [
       {
         exceptions: [
           { rule: 'T201', paths: ['a'], reason: 'r' },
@@ -184,5 +192,16 @@ describe('python config validation', () => {
     expect(() => {
       validate({ preset: 'python', python: settings });
     }).toThrow(message);
+  });
+
+  it('accepts any ruff code once the project ruff config is opted in, since it adds rules', () => {
+    const python = { exceptions: [{ rule: 'D100', paths: ['a'], reason: 'r' }] };
+
+    expect(() => {
+      validate({ preset: 'python', python, tools: { ruff: { precedence: ['project'] } } });
+    }).not.toThrow();
+    expect(() => {
+      validate({ preset: 'python', python, tools: { ruff: { precedence: ['nitpicker'] } } });
+    }).toThrow('names no rule nitpicker reports: "D100"');
   });
 });

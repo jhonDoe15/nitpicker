@@ -80,7 +80,7 @@ export const STRUCTURE_HINTS = [
     rules: ['swallowed-exception'],
     describe: (subject) =>
       `\`${subject}\` swallows the error: it only logs it or returns a default, and carries on`,
-    allowed: `Re-raise it with its cause (\`raise DomainError(...) from error\`), return a failure result that carries the error (\`return Rejected(str(error))\`), or collect it for the caller (\`errors.append(error)\`); logging alone is not handling. \`contextlib.suppress(SpecificError)\` ignores one expected error. ${IN_TEST}`,
+    allowed: `Re-raise it with its cause (\`raise DomainError(...) from error\`), return a failure result that carries the error (\`return Rejected(str(error))\`), or return the errors the function builds along with its result (\`return results, errors\`); logging alone is not handling. \`contextlib.suppress(SpecificError)\` ignores one expected error. ${IN_TEST}`,
   },
   {
     tool: RULES_TOOL,
@@ -257,6 +257,7 @@ export const STRUCTURE_HINTS = [
     rules: ['singular-and-plural-field'],
     describe: (subject, _libraries, { singular, plural, kind }) =>
       `Optional ${kind} \`${singular}\` and \`${plural}\` of \`${ownerOf(subject)}\` are two ways to pass the same data`,
+    referenceData: { singular: '<item>', plural: '<items>', kind: 'fields' },
     allowed: 'Keep the plural one and pass a single item as a one-element list.',
   },
   {
@@ -266,6 +267,7 @@ export const STRUCTURE_HINTS = [
       const name = union === 'the Literal' ? union : `\`${union}\``;
       return `These comparisons list only some members of ${name}, so a member added later is silently classified as the default`;
     },
+    referenceData: { union: '<enum>' },
     allowed:
       'Classify every member with a `match` that ends in `case _: assert_never(value)` (or an `if`/`elif` chain that ends in `else: assert_never(value)`), so the type checker fails when a member is added.',
   },
@@ -274,6 +276,7 @@ export const STRUCTURE_HINTS = [
     rules: ['forwarding-wrapper'],
     describe: (subject, _libraries, { target }) =>
       `\`${subject}\` only forwards its parameters to \`${target}\`, with the same parameter and return types`,
+    referenceData: { target: '<target>' },
     allowed:
       'Call the target directly and delete the wrapper; to keep the name, import the target under it (`from module import target as name`) or bind it (`name = target`).',
   },
@@ -282,6 +285,7 @@ export const STRUCTURE_HINTS = [
     rules: ['unused-option'],
     describe: (subject, _libraries, { scope }) =>
       renderMessage(UNUSED_OPTION_TEXT, { name: subject, scope: UNUSED_OPTION_SCOPES[scope] }),
+    referenceData: { scope: 'private' },
     exception: 'top-level',
   },
 ];

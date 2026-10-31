@@ -5,7 +5,9 @@ import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
 import { withKotlinRuleMessage } from './kotlin-messages.mjs';
 import {
   compilerWarningRule,
+  DISABLED_DETEKT_RULES,
   isBannedSuppression,
+  isUnusedCodeSuppression,
   ONE_WAY_RULE_IDS,
   ONE_WAY_RULES,
   SUPPRESSION_RULE,
@@ -13,6 +15,8 @@ import {
 } from './kotlin-rules.mjs';
 import { expectedMessage, kotlinRuleCases } from './test-support/kotlin-rule-cases.mjs';
 import { fileURLToPath } from 'node:url';
+import { repeatedStringLiterals } from '../scan/literals/repeated-strings.mjs';
+import { scanKotlinSource } from '../scan/kotlin-source.mjs';
 
 const detektFinding = (rule, message) => ({
   tool: 'detekt',
@@ -55,9 +59,10 @@ describe('one-way rule messages', () => {
     expect([...new Set(kotlinRuleCases.map(({ rule }) => rule))].toSorted()).toEqual(
       [...ONE_WAY_RULE_IDS, SUPPRESSION_RULE].toSorted(),
     );
-    for (const testCase of kotlinRuleCases) {
-      expect(testCase.banned).not.toBe(testCase.allowed);
-    }
+    expect(kotlinRuleCases).not.toHaveLength(0);
+    expect(kotlinRuleCases.map((testCase) => testCase.banned === testCase.allowed)).toEqual(
+      kotlinRuleCases.map(() => false),
+    );
     expect(new Set(kotlinRuleCases.map(({ id }) => id)).size).toBe(kotlinRuleCases.length);
   });
 
@@ -103,12 +108,37 @@ describe('one-way rule messages', () => {
   });
 
   it('lists each rule once under the id detekt reports', () => {
+    expect(ONE_WAY_RULE_IDS).not.toHaveLength(0);
     expect(new Set(ONE_WAY_RULE_IDS).size).toBe(ONE_WAY_RULE_IDS.length);
-    for (const id of ONE_WAY_RULE_IDS) {
-      expect(id).toMatch(
-        /^detekt\.(?:potential-bugs|exceptions|coroutines|style|complexity)\.[A-Z]\w+$/,
-      );
-    }
+    expect(
+      ONE_WAY_RULE_IDS.filter(
+        (id) =>
+          !/^detekt\.(?:potential-bugs|exceptions|coroutines|style|complexity)\.[A-Z]\w+$/.test(id),
+      ),
+    ).toEqual([]);
+  });
+});
+
+describe('repeated string message', () => {
+  it('names the constant form and ends with the exception sentence of its rule', () => {
+    const scanned = scanKotlinSource('val a = "pending"\nval b = "pending"\nval c = "pending"\n');
+    const [reported] = repeatedStringLiterals(scanned);
+    const path = 'src/main/kotlin/demo/A.kt';
+    const shaped = withKotlinRuleMessage({
+      tool: 'kotlin-source',
+      rule: reported.rule,
+      path,
+      message: reported.message,
+      classification: 'enforceable',
+    });
+
+    expect(shaped.message).toBe(
+      [
+        'The string "pending" is repeated three times or more in the file.',
+        'Name it once as a constant (`private const val NAME = "..."`) and use the constant.',
+        exceptionHint('kotlin-source/RepeatedStringLiteral', path),
+      ].join(' '),
+    );
   });
 });
 
@@ -144,26 +174,43 @@ describe('nitpicker-detekt.yml', () => {
     ),
   );
 
-  it('configures exactly the rules of ONE_WAY_RULES', () => {
-    const ids = Object.entries(rulesets).flatMap(([ruleset, { rules }]) =>
-      Object.keys(rules).map((name) => `detekt.${ruleset}.${name}`),
-    );
+  const configured = Object.entries(rulesets).flatMap(([ruleset, { rules }]) =>
+    Object.entries(rules).map(([name, rule]) => ({ id: `detekt.${ruleset}.${name}`, rule })),
+  );
+  const isDisabled = ({ id }) => DISABLED_DETEKT_RULES.includes(id);
+
+  it('configures exactly the rules of ONE_WAY_RULES, besides the rules it turns off', () => {
+    const ids = configured.filter((entry) => !isDisabled(entry)).map(({ id }) => id);
 
     expect(ids.toSorted()).toEqual(ONE_WAY_RULE_IDS.toSorted());
   });
 
+  it('turns off the rules that nitpicker reports from its own scan, whatever the project sets', () => {
+    expect(configured.filter(isDisabled).map(({ id, rule }) => [id, rule])).toEqual(
+      DISABLED_DETEKT_RULES.map((id) => [id, { active: 'false' }]),
+    );
+    expect(ONE_WAY_RULE_IDS).not.toContain('detekt.complexity.StringLiteralDuplication');
+  });
+
   it('pins every ruleset and rule against a project config that switches it off or narrows it', () => {
     const pinned = { active: 'true', excludes: '[]', ignoreAnnotated: '[]', includes: '[]' };
-    for (const { settings, rules } of Object.values(rulesets)) {
-      expect(settings).toEqual(pinned);
-      for (const rule of Object.values(rules)) {
-        const { active, excludes, ignoreAnnotated, includes, severity } = rule;
-        expect({ active, excludes, ignoreAnnotated, includes, severity }).toEqual({
-          ...pinned,
-          severity: 'warning',
-        });
-      }
-    }
+    const pinnedSettings = Object.values(rulesets).map(({ settings }) => settings);
+    const ruleSettings = Object.values(rulesets).flatMap(({ rules }) =>
+      Object.values(rules)
+        .filter(({ active }) => active !== 'false')
+        .map(({ active, excludes, ignoreAnnotated, includes, severity }) => ({
+          active,
+          excludes,
+          ignoreAnnotated,
+          includes,
+          severity,
+        })),
+    );
+
+    expect(pinnedSettings).not.toHaveLength(0);
+    expect(ruleSettings).not.toHaveLength(0);
+    expect(pinnedSettings).toEqual(pinnedSettings.map(() => pinned));
+    expect(ruleSettings).toEqual(ruleSettings.map(() => ({ ...pinned, severity: 'warning' })));
   });
 });
 
@@ -191,22 +238,30 @@ describe('isBannedSuppression', () => {
     'UNCHECKED_CAST',
     'DEPRECATION',
     'TYPEALIAS_EXPANSION_DEPRECATION',
+    'style:UnusedParameter',
+    'style.UnusedParameter',
+    'potential-bugs:UnsafeCallOnNullableType',
+    'complexity.LongMethod',
+    'empty-blocks.EmptyFunctionBlock',
   ])('bans %s', (token) => {
     expect(isBannedSuppression(token)).toBe(true);
   });
 
-  it.each([
-    'UNUSED_VARIABLE',
-    'unchecked',
-    'unused',
-    'unchecked_cast',
-    'rawtypes',
-    'allowed',
-    'detector',
-    'ktlinter',
-    '',
-  ])('allows the compiler diagnostic or unrelated token %s', (token) => {
-    expect(isBannedSuppression(token)).toBe(false);
+  it.each(['unchecked', 'unchecked_cast', 'rawtypes', 'allowed', 'detector', 'ktlinter', ''])(
+    'allows the compiler diagnostic or unrelated token %s',
+    (token) => {
+      expect(isBannedSuppression(token)).toBe(false);
+    },
+  );
+});
+
+describe('isUnusedCodeSuppression', () => {
+  it.each(['unused', 'UNUSED_PARAMETER', 'UNUSED_VARIABLE'])('names %s', (token) => {
+    expect(isUnusedCodeSuppression(token)).toBe(true);
+  });
+
+  it.each(['unchecked', 'UnusedParameter', 'Unused', ''])('does not name %s', (token) => {
+    expect(isUnusedCodeSuppression(token)).toBe(false);
   });
 });
 

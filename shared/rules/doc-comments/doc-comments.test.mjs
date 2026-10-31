@@ -127,6 +127,8 @@ describe('doc-comment content', () => {
     ['@returns\n  the display name', true],
     ['```\n@param x the kept example\n```', false],
     ['the account id', false],
+    ['@author Ada\n@since 1.2\n@version 3\n@see Order\n  and Cart', false],
+    ['@see Order\n@return the user, never null', true],
   ])('finds tag content in %j: %s', (text, detailed) => {
     const javadoc = { blockTag: /^@[A-Za-z][\w-]*(?=[\s{]|$)/u };
 
