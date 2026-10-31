@@ -20,6 +20,7 @@ import {
   kotlinPolicy,
   removeProject,
 } from '../test-support/kotlin-e2e-project.mjs';
+import { helpUriProblems } from '../../../../../shared/reference/test-support/help-uris.mjs';
 
 const REVIEW_TOOLS = new Set(['pmd']);
 const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';
@@ -54,6 +55,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     expect(reviewFindings(result.newEnforceable)).toEqual(
       [...EXPECTED_REVIEW_FINDINGS, ...EXPECTED_LOOKUP_FINDINGS].sort(),
     );
+    expect(helpUriProblems(result.newFindings)).toEqual([]);
   });
 
   it('lifts a rule for some paths with the exception its message names', () => {

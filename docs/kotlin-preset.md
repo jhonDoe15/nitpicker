@@ -10,6 +10,8 @@ Gradle init script, the runner, the ingesters, the failure policy and the cache 
 preset, and adds Kotlin tools next to the Java ones. The JDK and Gradle a CI job needs, and recipes for
 GitHub Actions, GitLab CI and Jenkins, are in [nitpicker in CI](ci.md#toolchains-by-preset).
 
+Every rule the preset can report has an entry in the [rule reference](rules/README.md): [detekt](rules/kotlin-detekt.md), [the Kotlin source checks, compiler warnings and format checks](rules/kotlin-nitpicker.md), and the [Java rules](rules/java-pmd.md) that run on Java sources. `nitpicker explain <tool/rule>` prints an entry.
+
 ## Selection
 
 `"preset": "kotlin"` in `nitpicker.config.json`. Like `java`, it is explicit and never
