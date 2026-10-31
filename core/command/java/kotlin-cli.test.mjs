@@ -143,23 +143,29 @@ describe('nitpicker with "preset": "kotlin"', () => {
 
     expect(result.exitCode, result.text).toBe(0);
   });
-  it('reports a surviving Kotlin mutant without failing', () => {
+  it('fails a surviving mutant in a Kotlin class like one in a Java class', () => {
     const root = kotlinRepository({ 'src/main/kotlin/demo/K.kt': feeSource });
     writeFiles(root, { 'mutations.xml': pitReport('demo.KKt', 'K.kt') });
     commit(root, 'a mutant survives');
 
     const result = run(root);
 
-    expect(result.exitCode, result.text).toBe(0);
+    expect(result.exitCode, result.text).toBe(1);
     expect(mutantsOf(result)).toEqual([
       {
         tool: 'pit',
         rule: 'mutant-survived',
         path: 'src/main/kotlin/demo/K.kt',
         identity: 'KKt|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
-        message:
-          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears.',
-        classification: 'descriptive',
+        message: [
+          'Survived MathMutator: Replaced integer multiplication with division:',
+          'no test fails when this code changes. Add an assertion that would.',
+          'If no input can tell the two apart (a compareTo boundary, a discarded lambda return),',
+          'simplify the code so this mutant disappears.',
+          'If this is intended, add {"rule":"mutant-survived","paths":["src/main/kotlin/demo/K.kt"],' +
+            '"function":"KKt.fee","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        ].join(' '),
+        classification: 'enforceable',
         symbol: 'KKt#fee(I)I',
         anchor: {
           key: expect.stringMatching(/^mutant:MathMutator\|/u),
@@ -169,6 +175,23 @@ describe('nitpicker with "preset": "kotlin"', () => {
       },
     ]);
   });
+  it('leaves out the mutants of code the Kotlin compiler generated', () => {
+    const root = kotlinRepository({ 'src/main/kotlin/demo/K.kt': feeSource });
+    const generated = pitReport('demo.KKt', 'K.kt')
+      .replace(
+        'Replaced integer multiplication with division',
+        'removed call to kotlin/ResultKt::throwOnFailure',
+      )
+      .replace('<mutatedMethod>fee<', '<mutatedMethod>invokeSuspend<');
+    writeFiles(root, { 'mutations.xml': generated });
+    commit(root, 'a generated mutant survives');
+
+    const result = run(root);
+
+    expect(result.exitCode, result.output.out + result.output.err).toBe(0);
+    expect(mutantsOf(result)).toEqual([]);
+  });
+
   it('still fails a surviving mutant in a Java class of a Kotlin project', () => {
     const root = kotlinRepository();
     writeFiles(root, { 'mutations.xml': pitReport('demo.A', 'A.java') });

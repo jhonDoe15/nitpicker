@@ -132,6 +132,14 @@ export const POLICY_GUIDANCE = {
     'Points detekt at another config, which may relax its rules; nitpicker does not judge that.',
     'Restore the base path, or have a person review the new config.',
   ].join(' '),
+  'go-formatters-dropped': [
+    'Drops a Go formatter from the format check, so the files it would change stop failing.',
+    'Restore the base formatters.',
+  ].join(' '),
+  'go-build-tags-dropped': [
+    'Drops a Go build tag, so the files behind it are no longer built, vetted or tested.',
+    'Restore the base build tags.',
+  ].join(' '),
   'tool-precedence': [
     "The project's own tool config now outranks nitpicker's, or nitpicker's is dropped,",
     'so the project can relax the checks.',

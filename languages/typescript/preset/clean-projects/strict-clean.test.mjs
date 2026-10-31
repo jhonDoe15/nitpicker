@@ -2,6 +2,7 @@ import { readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 import { createGitTemplate } from '../../../../core/diff/git/test-support/git-repository.mjs';
+import { docsUrl } from '../../../../shared/messages/docs-url.mjs';
 import {
   createCleanProject,
   git,
@@ -22,6 +23,8 @@ const BANNED_FORM_OUTPUT = [
   '',
   'Enforceable findings:',
   'eslint-lint/no-restricted-syntax src/main/features/greeting/domain/greet.ts:21 Do not assert with `as`. Narrow the value (a discriminated union check or a zod parse) or give it the correct type at its source. `as const` is allowed. If this is intended, add {"rule":"no-restricted-syntax","paths":["src/main/features/greeting/domain/greet.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+  '',
+  `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
   '',
 ].join('\n');
 const FIXTURE_TIMEOUT_MS = 300_000;
