@@ -18,7 +18,13 @@ describe('coupling report on a neutral module graph', () => {
 
     expect(report.summary).toEqual({ modules: 3, dependencies: 2, packages: 2 });
     expect(report.modules).toEqual([
-      { file: 'core/a.py', fanIn: 1, fanOut: 1, totalCoupling: 2, instability: 0.5 },
+      {
+        file: 'core/a.py',
+        fanIn: 1,
+        fanOut: 1,
+        totalCoupling: 2,
+        instability: expect.closeTo(0.5, 10),
+      },
       { file: 'core/b.py', fanIn: 1, fanOut: 0, totalCoupling: 1, instability: 0 },
       { file: 'ui/x.py', fanIn: 0, fanOut: 1, totalCoupling: 1, instability: 1 },
     ]);
@@ -57,7 +63,7 @@ describe('coupling report on a neutral module graph', () => {
     });
 
     expect(report.stabilityDirection).toEqual([
-      { source: 'stable', target: 'volatile', delta: 0.1667 },
+      { source: 'stable', target: 'volatile', delta: expect.closeTo(0.1667, 10) },
     ]);
   });
 
@@ -81,7 +87,7 @@ describe('coupling report on a neutral module graph', () => {
         fanIn: 2,
         fanOut: 1,
         totalCoupling: 3,
-        instability: 0.3333,
+        instability: expect.closeTo(0.3333, 10),
       });
       expect(report.stabilityDirection).toEqual([]);
     });

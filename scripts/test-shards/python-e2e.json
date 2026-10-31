@@ -39,6 +39,7 @@
   "languages/python/rules/e2e/errors/cancellation.e2e.test.mjs": 5,
   "languages/python/rules/e2e/errors/catch-logging.e2e.test.mjs": 9,
   "languages/python/rules/e2e/honesty/collection.e2e.test.mjs": 3,
+  "languages/python/rules/e2e/honesty/floats.e2e.test.mjs": 2,
   "languages/python/rules/e2e/honesty/honesty.e2e.test.mjs": 2,
   "languages/python/rules/e2e/honesty/isolation.e2e.test.mjs": 4,
   "languages/python/rules/e2e/honesty/test-assertions.e2e.test.mjs": 12,

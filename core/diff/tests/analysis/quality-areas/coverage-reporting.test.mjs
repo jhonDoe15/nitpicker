@@ -232,7 +232,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
         identity: 'covered-branches-per-test',
         message: 'Covered branch outcomes per test',
         classification: 'descriptive',
-        metric: { name: 'coveredBranchesPerTest', value: 0.5 },
+        metric: { name: 'coveredBranchesPerTest', value: expect.closeTo(0.5, 10) },
       },
       {
         tool: 'coverage',
@@ -246,7 +246,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
     ]);
     expect(findings.map(({ metric }) => metric).filter(Boolean)).toEqual([
       { name: 'branches', value: 50 },
-      { name: 'coveredBranchesPerTest', value: 0.5 },
+      { name: 'coveredBranchesPerTest', value: expect.closeTo(0.5, 10) },
       { name: 'testCount', value: 2 },
     ]);
   });

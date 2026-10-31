@@ -171,6 +171,13 @@ To learn why a rule is on and what form it allows before you write or change cod
   answer, a thread body or a test fake that implements or extends a main class is fine. To
   show something does not happen, give the code a `Clock` or scheduler the test moves forward, not
   `after(ms).never()` or `during(...)` (`NegativeWaitInTest`).
+- Compare floating-point numbers with a tolerance (`FloatEqualityInTest`): no `assertEquals`,
+  `assertNotEquals`, AssertJ `isEqualTo` or Hamcrest `is(...)`/`equalTo(...)` against a fractional
+  literal such as `0.1`. Use `assertEquals(expected, actual, 1e-9)`,
+  `assertThat(actual).isCloseTo(expected, within(1e-9))` or `closeTo(expected, 1e-9)`; the same goes
+  for `assertTrue(x == 0.1)` and `assertThat(x == 0.1).isTrue()`, which need
+  `Math.abs(x - 0.1) < 1e-9` or `isCloseTo`. An AssertJ `using...Comparator(...)` is fine. An
+  integral literal such as `1.0` is exact and fine.
 - Tests print nothing new (`test-runtime/test-console-output`): no `System.out`/`System.err`, and
   no new `WARN` or `ERROR` log line from the code under test. Fix the cause the line names.
 - In main code, nothing with an outside effect runs while a class loads (`ClassLoadEffect`): no

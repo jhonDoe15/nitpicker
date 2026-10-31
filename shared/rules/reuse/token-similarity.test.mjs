@@ -13,8 +13,8 @@ describe('tokenSimilarity', () => {
   it('is twice the tokens in common over the tokens of both when that reaches the minimum', () => {
     const left = tokens(10);
 
-    expect(similarity(left, left.with(4, 'x'), 0.8)).toBe(0.9);
-    expect(similarity(left, left.with(4, 'x').with(5, 'y'), 0.8)).toBe(0.8);
+    expect(similarity(left, left.with(4, 'x'), 0.8)).toBeCloseTo(0.9, 10);
+    expect(similarity(left, left.with(4, 'x').with(5, 'y'), 0.8)).toBeCloseTo(0.8, 10);
     expect(similarity(left, left.with(4, 'x').with(5, 'y').with(6, 'z'), 0.8)).toBe(0);
   });
 
@@ -77,7 +77,7 @@ describe('tokenSimilarity work limits', () => {
   it('always compares a tiny pair, even with no budget left', () => {
     const { left, right } = spreadEdits(40, 20);
 
-    expect(tokenSimilarity(createSimilarityCache(0), { left, right }, 0.8)).toBe(0.95);
+    expect(tokenSimilarity(createSimilarityCache(0), { left, right }, 0.8)).toBeCloseTo(0.95, 10);
   });
 
   it('charges every pair to the run budget, so many mid-sized copies stay bounded', () => {
@@ -98,7 +98,7 @@ describe('tokenSimilarity work limits', () => {
   it('skips a large pair once the run has spent its budget', () => {
     const { left, right } = spreadEdits(3000, 20);
 
-    expect(tokenSimilarity(createSimilarityCache(), { left, right }, 0.8)).toBe(0.95);
+    expect(tokenSimilarity(createSimilarityCache(), { left, right }, 0.8)).toBeCloseTo(0.95, 10);
     expect(tokenSimilarity(createSimilarityCache(0), { left, right }, 0.8)).toBe(0);
   });
 
@@ -107,7 +107,7 @@ describe('tokenSimilarity work limits', () => {
     const first = spreadEdits(3000, 10);
     const second = spreadEdits(3000, 11);
 
-    expect(tokenSimilarity(cache, first, 0.8)).toBe(0.9);
+    expect(tokenSimilarity(cache, first, 0.8)).toBeCloseTo(0.9, 10);
     expect(tokenSimilarity(cache, second, 0.8)).toBe(0);
   });
 

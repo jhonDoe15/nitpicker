@@ -82,6 +82,7 @@ describe('testHonestyFindings', () => {
       'FocusedTest',
       'AssertionInControlFlow',
       'CoroutineEscapesTest',
+      'FloatEqualityInTest',
     ]);
   });
 

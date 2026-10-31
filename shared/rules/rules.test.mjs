@@ -162,7 +162,7 @@ describe('coupling rule on neutral module and package metrics', () => {
     ]);
     expect(byRule(findings, 'stability-direction-metric')[0].metric).toEqual({
       name: 'instabilityDelta',
-      value: 0.4,
+      value: expect.closeTo(0.4, 10),
     });
   });
 
@@ -418,7 +418,7 @@ describe('coupling metrics on a neutral dependency graph', () => {
       fanIn: 1,
       fanOut: 2,
       totalCoupling: 3,
-      instability: 0.6667,
+      instability: expect.closeTo(0.6667, 10),
     });
     expect(result.packages.map((entry) => entry.name)).toEqual(['core', 'ui', 'util']);
     expect(result.packages[0]).toMatchObject({
