@@ -12,6 +12,8 @@ on:
       - 'package-lock.json'
       - 'vitest.config.mts'
       - 'scripts/test-shards/**'
+      - 'evals/**/*.test.mjs'
+      - 'scripts/ci/**'
       - '.github/workflows/go-e2e.yml'
   pull_request:
     types: [labeled]
@@ -22,9 +24,34 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # On a pull request, the jobs below run only when the pull request changes a file in this
+  # workflow's push paths, or when the changed files cannot be listed. Other runs check everything.
+  changes:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.select.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/workflows
+            scripts/ci
+      - id: select
+        uses: actions/github-script@v8.0.0
+        with:
+          script: |
+            const { selectWorkflowJobs } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/ci/affected-jobs.mjs`);
+            await selectWorkflowJobs({ github, context, core, workflow: '.github/workflows/go-e2e.yml' });
+
   go-shard:
     name: go shard ${{ matrix.shard }}/${{ strategy.job-total }}
-    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     strategy:
@@ -56,7 +83,8 @@ jobs:
   # Lists the suite without running Go: test:go must select every case its E2E flag enables, and the
   # timing profile and the matrix above must split those files with none missing or repeated.
   go-shard-plan:
-    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -71,12 +99,17 @@ jobs:
 
   go-e2e:
     if: ${{ always() && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') }}
-    needs: [go-shard-plan, go-shard]
+    needs: [changes, go-shard-plan, go-shard]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Every Go end-to-end shard passed and the shard plan holds
+      - name: Every Go end-to-end shard and the shard plan passed, or the selection skipped them
         env:
+          CHANGES: ${{ needs.changes.result }}
+          RUN: ${{ needs.changes.outputs.run }}
           PLAN: ${{ needs.go-shard-plan.result }}
           RESULT: ${{ needs.go-shard.result }}
-        run: test "$PLAN" = success && test "$RESULT" = success
+        run: |
+          test "$CHANGES" = success
+          if [ "$RUN" = false ]; then exit 0; fi
+          test "$PLAN" = success && test "$RESULT" = success
