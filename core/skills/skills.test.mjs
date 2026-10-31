@@ -12,6 +12,7 @@ const skillNames = readdirSync(skillsRoot, { withFileTypes: true })
   .filter((name) => existsSync(path.join(skillsRoot, name, 'SKILL.md')));
 const PRESET_MENTIONS_ALLOWED = { java: ['kotlin'] };
 const SHARED_PAGES = ['SKILL.md', 'beyond-the-gate.md', 'editing-existing-code.md'];
+const OPTIONAL_PAGES = ['SOURCES.md'];
 const FRAMEWORK_PAGES = {
   'spring.md': {
     skills: ['nitpicker-java', 'nitpicker-kotlin'],
@@ -93,9 +94,9 @@ describe('agent skills', () => {
   });
 
   it.each(skillNames)(
-    '%s ships no page beyond the shared and registered framework pages',
+    '%s ships no page beyond the shared, optional and registered framework pages',
     (name) => {
-      const allowed = [...SHARED_PAGES, ...frameworkPagesOf(name)];
+      const allowed = [...SHARED_PAGES, ...OPTIONAL_PAGES, ...frameworkPagesOf(name)];
       expect(skillFiles(name).filter((file) => !allowed.includes(file))).toEqual([]);
     },
   );
