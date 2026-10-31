@@ -89,4 +89,6 @@ export const USAGE_TEXT =
   ' [--output <directory>] [--policy-root <directory>]\n' +
   '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]\n' +
   '       nitpicker changelog [<version>]\n' +
-  '       nitpicker base [--base <ref>]\n';
+  '       nitpicker base [--base <ref>]\n' +
+  '       nitpicker explain <tool/rule>...\n' +
+  '       nitpicker rules [--preset <name>] [--tool <name>]\n';

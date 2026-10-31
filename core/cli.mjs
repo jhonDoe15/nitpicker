@@ -4,6 +4,7 @@ import { reportingProgress } from './diff/execution/progress.mjs';
 import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
 import { runChangelogCommand } from './command/changelog/changelog.mjs';
+import { runExplainCommand, runRulesCommand } from './command/reference/reference.mjs';
 import { runBaseCommand } from './command/base.mjs';
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
 import { resolveProjectRoot } from './tooling/tool-resolution.mjs';
@@ -45,6 +46,7 @@ const CHECK_COMMANDS = {
   history: runHistoryCli,
   [GO_ANALYZER_COMMAND]: runGoCli,
 };
+const REFERENCE_COMMANDS = { explain: runExplainCommand, rules: runRulesCommand };
 
 export function runCli(options = {}) {
   detachLocalGitVariables(process.env);
@@ -107,15 +109,11 @@ function runCommand(cli) {
   }
   redirectToBundledTypeScriptApi(cli.environment);
   if (cli.arguments_[0] === 'cache') {
-    return runCacheCommand({
-      arguments_: cli.arguments_.slice(1),
-      environment: cli.environment,
-      currentProjectRoot: cli.currentProjectRoot,
-      analyzers: cli.analyzers,
-      stdout: cli.stdout,
-      stderr: cli.stderr,
-      runTasks: cli.runTasks,
-    });
+    return runCacheCommand({ ...cli, arguments_: cli.arguments_.slice(1) });
+  }
+  const referenceCommand = REFERENCE_COMMANDS[cli.arguments_[0]];
+  if (referenceCommand !== undefined) {
+    return referenceCommand({ ...cli, commandArguments: cli.arguments_.slice(1) });
   }
   if (cli.arguments_[0] === 'base') {
     return runBaseCommand({ ...cli, arguments_: cli.arguments_.slice(1) });
