@@ -162,6 +162,11 @@ To learn why a rule is on and what form it allows before you write or change cod
   cannot be told apart takes an exception for `pit/mutant-survived`.
 - Plan tests to be fast (`slow-test`): a fake clock instead of `Thread.sleep`, a test
   slice instead of `@SpringBootTest`.
+- In a Reactor chain (`reactor-core` on the classpath), no blocking call (`Files.*`, JDBC, `Future.get()`,
+  `Thread.sleep`, `block()`) inside `map`, `flatMap`, `doOnNext` and the other operators: wrap it as
+  `Mono.fromCallable(() -> blocking()).subscribeOn(Schedulers.boundedElastic())` or put
+  `publishOn(Schedulers.boundedElastic())` before the operator (a `publishOn` after it does not move it); a method returning a `Mono` or `Flux` never calls `block()`
+  (`ReactorBlockingInOperator`, `ReactorBlockInReactiveMethod`).
 - Never wait a fixed time (`FixedSleepInTest`): wait on the condition with Awaitility when the
   tests use it (`await().atMost(Duration.ofSeconds(5)).until(...)`), otherwise in a loop against a
   deadline; `verify(mock, timeout(1000))` for a mock, not `after(1000)`. `parkNanos` and

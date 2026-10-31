@@ -430,18 +430,19 @@ through the real tools.
   form) and `RUF100` (every `noqa` is already a finding). `S110` and `S112` are not selected:
   `swallowed-exception` reports what they did, and more, once and under one id. The shared
   one-way rules add the groups `G` (logging calls), `N` (PEP 8 naming), `ERA` (commented-out
-  code), `ARG` (unused arguments), `DTZ` (datetimes without a zone), `PT` (pytest style), `S` (security) and `TRY` (exceptions), and
-  the single rules `PLR2004`, `PLW0602` and `PLW0603`; the last section of this
-  slice lists each one with its allowed form and the rules of those groups that are left off.
-  The groups `RUF`, `G`, `N`, `DTZ`, `PT`, `S` and `TRY` are selected by listing their stable codes, not
-  by prefix, so a later ruff cannot add a rule (or a preview rule) to the gate. `ruffConfigFor`
+  code), `ARG` (unused arguments), `DTZ` (datetimes without a zone), `PT` (pytest style), `S` (security)
+  and `TRY` (exceptions), the pitfall groups `ASYNC`, `LOG`, `PLE`, `PLW` and `T10`, and the single rules
+  `PLR2004`, `PLW0602` and `PLW0603`; the last section of this slice lists each one with its allowed form
+  and the rules of those groups that are left off. The groups `RUF`, `G`, `N`, `DTZ`, `PT`, `S`, `TRY`,
+  `ASYNC`, `LOG`, `PLE`, `PLW` and `T10` are selected by listing their stable codes, not by prefix, so a
+  later ruff cannot add a rule (or a preview rule) to the gate. `ruffConfigFor`
   (`adapters/configuration/python-ruff-config.mjs`) writes the toml into the report directory
   without the codes that the installed ruff does not know or lists as preview or removed
   (`ruff rule --all --output-format json`), which lets ruff 0.9 up to 0.16 run the same selection;
   a prefix such as `E4` or `T20` stays when a known rule starts with it. Test files are the ones
   pytest collects (the `python_files` patterns, `testpaths`, `conftest.py`, any `tests` or `test`
   folder, `test_*.py`, `*_test.py`, and the Django names in a Django project, see
-  [runner parity](#runner-parity)): ruff's `ARG`, `DTZ`, `PLR2004` and `S` findings in them are
+  [runner parity](#runner-parity)): ruff's `ARG`, `DTZ`, `PLR2004`, `S` and `ASYNC251` findings in them are
   dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`). The `DTZ` codes are not in the touched-code list of `touched-rules.mjs`, like `ARG`: a datetime site that is added on an edited line is new only when its identity differs from the base's, so the base's findings of the same code in that file stay baselined. `datetime.strptime(...).date()` and `.time()` are allowed (`DTZ007`), since a calendar value has no zone. Security findings (ruff `S` and the
   `sql-string-formatting`, `tls-verification-off`, `weak-hmac`, `http-without-timeout` and
   `unsafe-deserialization` rules) are also dropped in test support that pytest does not collect, as in the
@@ -1028,6 +1029,42 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   its inner task must stay referenced; neither is modeled. Ruff 0.16.8 (the version pinned in
   `.github/python-e2e-constraints.txt`) and 0.16.9 have no ASYNC102, and no flake8-async code is
   used. The identity is the checkpoint, the block and the enclosing function.
+- `timeout-scope-path-without-checkpoint` reports a timeout or cancel scope in production code
+  whose body suspends on some paths but also has a path that runs real work without reaching a
+  checkpoint, so the deadline cannot interrupt that path (the semantics of flake8-async
+  ASYNC912/ASYNC913, which Ruff does not implement). The scopes are `trio.move_on_after`,
+  `move_on_at`, `fail_after`, `fail_at`, `trio.CancelScope`, `anyio.move_on_after`,
+  `anyio.fail_after`, `anyio.CancelScope`, `asyncio.timeout` and `asyncio.timeout_at` (import
+  renames and module aliases included; `with` and `async with`), and `asyncio.wait_for` of a call
+  to a coroutine defined once, undecorated, at module level of the same file (the coroutine body is
+  the scope). A `CancelScope(shield=True)` without a `deadline` is not a timeout and is skipped.
+  A checkpoint is an `await` that can suspend, `async for`, `async with` (and async comprehensions);
+  a `yield` is not one (as in flake8-async, the consumer of an async generator decides when it
+  resumes, so the scope's deadline cannot interrupt the code before the `yield`);
+  the path analysis follows `if`, `match`, `for`, `while`, `try`/`except`/`else`/`finally`,
+  `return`, `break` and `continue`, and `raise` ends a path. An `await` of a coroutine defined in
+  the same module whose body never suspends is not a checkpoint. A path is reported only when it
+  runs a call that is not on a short list of cheap ones: builtins such as `len` and `sorted`, a
+  constructor of a class the module defines or imports (`Response(cache[key])`, `Decimal(1)`, not
+  a client such as `requests.Session()`), a method of a string literal (`", ".join(parts)`), and
+  container and bookkeeping methods (`append`, `pop`, `get(key)`, `join(parts)`, logger methods,
+  `start_soon`, `create_task`). A method is cheap only on a receiver that is not an imported module
+  (`os.remove`, `requests.get`, `logging.info`), not a client the module creates or imports
+  (`session = requests.Session()`), and not an I/O owner the `io-in-loop` rule recognizes
+  (`self.repo.find`, `db.query`); `get()` without a key or with a `True` block flag (a blocking
+  queue) and `join()` without an argument or with a timeout (a thread) count as work, and so does
+  `result()` (a future). A branch that only logs or returns a cached or built value is allowed. The allowed forms are to await the slow work
+  (`await asyncio.to_thread(work)`, `await trio.to_thread.run_sync(work)`,
+  `await anyio.to_thread.run_sync(work)`), an explicit checkpoint before it
+  (`await asyncio.sleep(0)`, `await trio.lowlevel.checkpoint()`), or moving the path out of the
+  scope. Overlap with Ruff: a `with` scope that contains no checkpoint at all is Ruff's `ASYNC100`
+  and is never reported here (the rule requires at least one checkpoint in the scope), so the
+  two never report the same scope. `asyncio.wait_for` is not a `with` scope and `ASYNC100` does
+  not look at it, so `wait_for` of a coroutine whose body never suspends is reported here. Test files are not checked. The identity is the scope and the
+  first offending call. Limits: only calls resolved by name are judged, a callee imported from
+  another module is assumed to be a real call but not to suspend, a loop is unrolled four rounds,
+  and a scope held in a variable (`scope = trio.move_on_after(5)`, then `with scope:`) is not
+  followed.
 - `todo-without-issue` reports `TODO`, `FIXME`, `XXX` and `HACK` as a whole word at the start of a
   comment or followed by `:` or `(`, not directly followed by `#123`, `PROJ-123` or a link. `TD` and
   `FIX` from ruff are not used, because they ask for an author and a date, which the TypeScript and
@@ -1107,6 +1144,60 @@ __getattr__` that warns or maps removed names to new ones (a PEP 562 lazy import
 - Other rules of the selected groups that are left off: `TRY003` (long messages in `raise`),
   `TRY300` and `TRY301` (`else` after `try`, `raise` inside `try`), and, for `PT`, `PT009` and `PT027` (`unittest` assertions, which `unittest`
   projects use by design). `PT011` and `PT030` ask for a `match` or a more specific class.
+- The pitfall groups `ASYNC`, `DTZ`, `LOG`, `PLE`, `PLW` and `T10` list every stable code of
+  ruff 0.16.8 (the version CI pins) except these, each with its reason at the end of
+  `nitpicker-ruff.toml`: `PLW1641` (equality without a hash: a mutable class may be unhashable on
+  purpose), `PLE0116` (`continue` in `finally`, which ruff reports only below Python 3.8, and the
+  lint always passes `--target-version py38` or later), and the codes another selected rule
+  already reports at the same site: `PLE1132` (`PIE804`), `PLE1300` and `PLE1307` (`UP031`,
+  `UP032` and `F509`), `PLE1310` (`B005`) and `PLW0711` (`B030`). Every selected pitfall code has
+  its own allowed form (`rules/hints/pitfalls/`). All of them apply to test files too, except
+  `DTZ`, whose findings are dropped there like `ARG`.
+- `ASYNC`: inside `async def`, sleep with `await asyncio.sleep(...)`; call HTTP through an async
+  client (`httpx.AsyncClient`) and processes through `asyncio.create_subprocess_exec`; read files
+  and check paths with `anyio.Path` or `await asyncio.to_thread(...)`, and read `input` with
+  `await asyncio.to_thread(input, prompt)`. A timeout scope holds an `await` (`ASYNC100`). An
+  `async def` takes no `timeout` parameter (`ASYNC109`, from Python 3.11 for asyncio): the caller
+  bounds it with `async with asyncio.timeout(...)`, the one way that composes through every call
+  below it; a method that overrides a base signature takes `@typing.override`, and a wrapper of
+  `asyncio.timeout` names its parameter otherwise (`delay`). Wait on an `asyncio.Event` instead of
+  a sleep loop (`ASYNC110`). For trio and anyio: await `trio.sleep`, `trio.lowlevel.checkpoint()`
+  for a bare yield and `trio.sleep_forever()` for an indefinite wait. These are local checks:
+  `ASYNC100` does not follow a checkpoint through helpers.
+- `DTZ`: pass the zone everywhere a datetime is made: `datetime(2026, 1, 1, tzinfo=timezone.utc)`,
+  `datetime.now(tz=timezone.utc)` (for `now()`, `today()` and `utcnow()`),
+  `datetime.fromtimestamp(value, tz=timezone.utc)` (for `utcfromtimestamp` too) and
+  `datetime.max.replace(tzinfo=timezone.utc)` (`datetime.min` likewise). Parsing (`DTZ007`) uses
+  `%z`, attaches the known zone with `.replace(tzinfo=...)`, or reads a date-only or time-only
+  string with `date.fromisoformat` or `time.fromisoformat`. A date comes from
+  `datetime.now(tz=zone).date()` (`DTZ011`) or `datetime.fromtimestamp(value, tz=zone).date()`
+  (`DTZ012`) with the zone the date is meant in, since `date.today()` is the server's local date.
+  A naive civil time that is meant takes a path exception. Domain code reads no clock at all
+  (`clock-now`), so the `datetime.now(...)` forms belong in adapters and the composition root.
+- One finding per site. Where a nitpicker rule already reports the same problem, the ruff finding
+  is dropped: `DTZ002`, `DTZ003`, `DTZ005` and `DTZ011` on a `clock-now` (domain code) or
+  `real-clock-in-test` line, so the one finding left names one fix (inject the clock, or freeze
+  it); `ASYNC110` on the `while` loop around a `sleep-in-test` call; `PLE1507`, `PLW1507` and
+  `PLW1508` on a `process-env-access` line (read the environment in the composition root, where
+  these report with their own forms); and `PLW0129` on a `tautological-assert` line. Among ruff's
+  own rules, `LOG015` owns the `G010` of `logging.warn`, `ASYNC230` and `ASYNC240` own the `PTH`
+  finding of the same call, and `PLE0115` owns the `PLW0602`/`PLW0603` of its `global`.
+  `ASYNC251` is not reported in test files, where `sleep-in-test` owns sleeping. The rules script
+  lists its sites (`rules-allowances.json`) and `rules/filters/ruff-allowed-forms.mjs` drops
+  them, but only while the owning finding survives `python.exceptions`: an exception for
+  `clock-now` on a path brings `DTZ005` back there.
+- `LOG`: create loggers with `logging.getLogger(__name__)` (not `logging.Logger(...)`, `__file__`
+  or `__cached__`) and log through them, not the root logger (`LOG015`). `logger.exception(...)`
+  and `exc_info` belong inside an `except` handler, without `exc_info=False` (use
+  `logger.error(...)` then); use `logging.WARNING`, not `logging.WARN`.
+- `PLE` and `PLW` check invalid operations and suspicious code: special-method signatures and
+  return types, `__all__` of strings, `global` and `nonlocal` declarations (remove them and pass
+  the value in), logging argument counts, `os.getenv` types, a loop variable overwritten in its
+  body (bind a new name), an exception built and not raised, a lock made inside `with`, nested
+  `max`/`min` and `subprocess.run` without `check` (`check=True`, or `check=False` with the
+  return code handled). `PLW0108` asks to pass the function itself (`key=str`); a lambda that must
+  look a name up at call time takes an exception. `T100` rejects committed debugger imports and
+  breakpoints.
 - The advice follows the project when two forms are valid. Pytest style: the parentheses of
   `@pytest.fixture` (`PT001`) and marks (`PT023`) and the shape of `parametrize` (`PT006`,
   `PT007`) are read from the project's `[tool.ruff.lint.flake8-pytest-style]` table (`pyproject.toml`,

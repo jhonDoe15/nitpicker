@@ -63,6 +63,7 @@ import { rule as reactTestNoImplementationDetails } from './rules/react-tests/re
 import { rule as unboundedFanOut } from './rules/concurrency/unbounded-fan-out.mjs';
 import { rule as noModuleLevelMutableState } from './rules/guards/no-module-level-mutable-state.mjs';
 import { rule as noProcessAccessOutsideCompositionRoot } from './rules/guards/no-process-access-outside-composition-root.mjs';
+import { rule as noSyncNodeApiInAsync } from './rules/async/no-sync-node-api-in-async.mjs';
 import { rule as noShellStringCommand } from './rules/guards/no-shell-string-command.mjs';
 import { rule as noDisabledTlsVerification } from './rules/security/tls/no-disabled-tls-verification.mjs';
 import { rule as noSqlStringBuilding } from './rules/security/sql/no-sql-string-building.mjs';
@@ -105,6 +106,7 @@ export const nitpickerRules = {
     'no-module-level-mutable-state': noModuleLevelMutableState,
     'no-process-access-outside-composition-root': noProcessAccessOutsideCompositionRoot,
     'no-shell-string-command': noShellStringCommand,
+    'no-sync-node-api-in-async': noSyncNodeApiInAsync,
     'no-disabled-tls-verification': noDisabledTlsVerification,
     'no-sql-string-building': noSqlStringBuilding,
     'no-unsafe-deserialization': noUnsafeDeserialization,

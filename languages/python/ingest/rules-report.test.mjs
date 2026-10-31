@@ -165,6 +165,11 @@ describe('rules script report', () => {
       'await stream.aclose() in finally',
       '`await stream.aclose() in finally` can be cancelled before the cleanup finishes, so the resource may stay open',
     ],
+    [
+      'timeout-scope-path-without-checkpoint',
+      'trio.fail_after: render()',
+      '`trio.fail_after` has a path that runs `render()` without reaching a checkpoint (an `await` that suspends, `async with` or `async for`), so its timeout or cancellation cannot interrupt that path',
+    ],
     ['todo-without-issue', 'TODO: later', 'The task marker `TODO: later` has no issue'],
     [
       'skipped-test-without-reason',

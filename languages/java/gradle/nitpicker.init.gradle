@@ -115,8 +115,9 @@ def rulesetExcluding = { String name, String description, List<String> rules, Co
         + excludes + rules + ['</ruleset>', '']).join('\n')
 }
 
-def mainRulesOnMainSources = { File mainRules, File rulesetDir, boolean spring, Collection<File> testDirectories ->
-    def rules = [mainRules] + (spring ? [new File(rulesetDir, 'spring-ruleset.xml')] : [])
+def mainRulesOnMainSources = { File mainRules, File rulesetDir, boolean spring, boolean reactor, Collection<File> testDirectories ->
+    def rules = [mainRules] + (spring ? [new File(rulesetDir, 'spring-ruleset.xml')] : []) +
+        (reactor ? [new File(rulesetDir, 'reactor-ruleset.xml')] : [])
     rulesetExcluding('nitpicker-main', "Nitpicker's main-only rules on main sources only.",
         rules.collect { "  <rule ref=\"${escapeXml(it.absolutePath)}\"/>".toString() }, testDirectories)
 }
@@ -326,6 +327,7 @@ allprojects {
         def usesSpring = {
             springDeclared || sourceSets.main.compileClasspath.files.any { it.name ==~ /spring-(context|boot)-.*\.jar/ }
         }
+        def usesReactor = { sourceSets.main.compileClasspath.files.any { it.name ==~ /reactor-core-.*\.jar/ } }
         def usesJmolecules = {
             sourceSets.main.compileClasspath.files.any { it.name ==~ /jmolecules-ddd-.*\.jar/ }
         }
@@ -359,7 +361,7 @@ allprojects {
                     .findAll { it.exists() }.unique().collect { it.absolutePath }.join('\n')
                 def mainRuleset = reportDir.get().file('pmd-main.xml').asFile
                 mainRuleset.text = mainRulesOnMainSources(
-                    mainRules, initScriptDir, usesSpring(), testSourceDirectories())
+                    mainRules, initScriptDir, usesSpring(), usesReactor(), testSourceDirectories())
                 def testRuleset = reportDir.get().file('pmd-tests.xml').asFile
                 testRuleset.text = testRulesOnTestSources(testRules, initScriptDir, usesSpring(), mainSources.files)
                 def nitpickerExtras = [testRuleset, mainRuleset]

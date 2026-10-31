@@ -195,6 +195,8 @@ describe('Kotlin exception rules for the review rules', () => {
       ...SPRING_RULES.map((rule) => `pmd/${rule}`),
       'pmd/SpringQueryConcatenation',
       'unused-option',
+      'kotlin-source/BlockingCallInCoroutine',
+      'kotlin-source/TimeoutWithoutSuspension',
     ]);
   });
 

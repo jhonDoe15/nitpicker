@@ -25,6 +25,7 @@ const RESOURCE_FILES = [
   'languages/java/gradle/pmd-ruleset.xml',
   'languages/java/gradle/pmd-main-ruleset.xml',
   'languages/java/gradle/spring-ruleset.xml',
+  'languages/java/gradle/reactor-ruleset.xml',
   'languages/java/gradle/pmd-test-ruleset.xml',
   'languages/java/gradle/spring-test-ruleset.xml',
   'languages/java/gradle/StructureMetrics.java',

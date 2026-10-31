@@ -1243,6 +1243,14 @@
         "A literal condition switches the test off for good. Delete the test or make it run; a real platform condition such as `process.platform === \"win32\"` is allowed."
       ]
     },
+    "nitpicker/no-sync-node-api-in-async": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow synchronous Node APIs inside async functions and request handlers",
+      "messages": [
+        "`{{api}}` blocks the event loop inside {{context}}, so every other request and task waits until it returns. Use {{alternative}}."
+      ]
+    },
     "nitpicker/no-test-helpers-in-source": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -4012,6 +4020,14 @@
       "messages": [
         "Do not leave a `todo` test: write the test, or delete the stub.",
         "A literal condition switches the test off for good. Delete the test or make it run; a real platform condition such as `process.platform === \"win32\"` is allowed."
+      ]
+    },
+    "nitpicker/no-sync-node-api-in-async": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow synchronous Node APIs inside async functions and request handlers",
+      "messages": [
+        "`{{api}}` blocks the event loop inside {{context}}, so every other request and task waits until it returns. Use {{alternative}}."
       ]
     },
     "nitpicker/no-test-helpers-in-source": {
@@ -7057,6 +7073,14 @@
       "messages": [
         "Do not leave a `todo` test: write the test, or delete the stub.",
         "A literal condition switches the test off for good. Delete the test or make it run; a real platform condition such as `process.platform === \"win32\"` is allowed."
+      ]
+    },
+    "nitpicker/no-sync-node-api-in-async": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow synchronous Node APIs inside async functions and request handlers",
+      "messages": [
+        "`{{api}}` blocks the event loop inside {{context}}, so every other request and task waits until it returns. Use {{alternative}}."
       ]
     },
     "nitpicker/no-test-helpers-in-source": {

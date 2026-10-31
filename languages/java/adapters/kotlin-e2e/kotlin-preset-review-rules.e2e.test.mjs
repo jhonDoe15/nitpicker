@@ -1,7 +1,9 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import { BLOCKING_RULES } from '../kotlin/review-rules/blocking/blocking-findings.mjs';
 import {
+  ARCHIVE_FILE,
   EXPECTED_REVIEW_FINDINGS,
   REVIEW_RULE_FILES,
   runtimeSerializationFiles,
@@ -22,7 +24,12 @@ const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';
 
 function reviewFindings(findings) {
   return findings
-    .filter(({ tool, rule }) => REVIEW_TOOLS.has(tool) || rule === 'unused-option')
+    .filter(
+      ({ tool, rule }) =>
+        REVIEW_TOOLS.has(tool) ||
+        rule === 'unused-option' ||
+        (tool === 'kotlin-source' && BLOCKING_RULES.includes(rule)),
+    )
     .map(({ rule, symbol }) => `${rule} ${symbol}`)
     .sort();
 }
@@ -38,11 +45,19 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     removeProject(project);
   });
 
-  it('fails the sleeps, enum predicates, wrapper, plural member, unused option and unused context, and spares the allowed forms', () => {
+  it('fails the sleeps, enum predicates, wrapper, plural member, unused option, unused context, blocking coroutine calls and timeout blocks, and spares the allowed forms', () => {
     const result = diffOf(project, 'review-rules');
 
     expect(result.failed).toBe(true);
     expect(reviewFindings(result.newEnforceable)).toEqual(EXPECTED_REVIEW_FINDINGS);
+    expect(
+      result.newEnforceable
+        .filter(
+          ({ tool, rule, path: file }) =>
+            tool === 'detekt' && file === ARCHIVE_FILE && rule.endsWith('InjectDispatcher'),
+        )
+        .map(({ rule }) => rule),
+    ).toEqual([]);
     expect(helpUriProblems(result.newFindings)).toEqual([]);
   });
 
@@ -53,6 +68,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
         exceptions: [
           { rule: 'pmd/FixedSleepInTest', glob: ORDERS_TESTS },
           { rule: 'pmd/SpringUnusedContext', glob: ORDERS_TESTS },
+          { rule: 'kotlin-source/BlockingCallInCoroutine', glob: ARCHIVE_FILE },
           { rule: 'unused-option', glob: 'src/main/kotlin/demo/orders/*' },
           { rule: 'pmd/ClassLoadEffect', glob: 'src/main/kotlin/demo/orders/Inventory.kt' },
         ],
@@ -67,6 +83,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
       'SingularAndPluralMember Query.tags',
       'StaticForwardingWrapper absOf',
       'StaticForwardingWrapper total',
+      'TimeoutWithoutSuspension Archive.timesOutBlockingWork.withTimeout',
     ]);
   });
 

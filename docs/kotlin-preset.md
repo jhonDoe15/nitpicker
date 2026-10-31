@@ -56,26 +56,27 @@ against a stand-in Kotlin plugin).
 
 ## What runs on what
 
-| Tool                                                           | Java sources | Kotlin sources | Notes                                                                                                                      |
-| -------------------------------------------------------------- | ------------ | -------------- | -------------------------------------------------------------------------------------------------------------------------- |
-| detekt                                                         |              | yes            | New. SARIF through the SARIF ingester; tool `detekt`.                                                                      |
-| ktlint or ktfmt                                                |              | yes            | New, when the project uses one. ktlint: one finding per violation, with its rule; ktfmt: one `format` finding per file.    |
-| JaCoCo                                                         | yes          | yes            | `line-coverage` and `uncovered-method` (descriptive) and the `changed-branch-coverage` gate for both languages.            |
-| PMD, Checkstyle, google-java-format, Error Prone with NullAway | yes          | no             | Java-only tools, with the Java preset's suppression and `tools` rules. A Kotlin-only module skips them.                    |
-| Review rules (`pmd/...` ids and `unused-option`)               | yes (PMD)    | yes            | On Kotlin the same rule ids come from the PSI facts, not from PMD. See [Review rules](#review-rules).                      |
-| SpotBugs                                                       | yes          | no             | Runs on the classes compiled from Java only; Kotlin classes are on its auxiliary classpath. See below.                     |
-| Java structure metrics (CRAP of Java)                          | yes          | no             | `StructureMetrics.java`, Java sources only. Kotlin CRAP uses its own complexity, see [CRAP](#crap).                        |
-| PIT                                                            | yes          | yes            | Mutants of Kotlin classes are gated like Java ones, after a filter for compiler-generated code; see [Mutation](#mutation). |
-| Structure limits, CRAP, jscpd duplicates                       | yes          | yes            | Kotlin through the `kotlin-psi` program and jscpd's `kotlin` format. See below.                                            |
-| jdeps (stability direction)                                    | yes          | yes            | Reads the Java and the Kotlin classes of the module together, one module per source file. See [Coupling](#coupling).       |
-| Kotlin source checks                                           |              | yes            | A source scan on the Node side; tool `kotlin-source`. See [Source checks](#source-checks).                                 |
-| kotlinc lint                                                   |              | yes            | The pinned Kotlin compiler on the main sources; tool `kotlinc`. See [Compiler warnings](#compiler-warnings).               |
-| Class limits                                                   |              | yes            | Methods, fields and inheritance depth from the `kotlin-psi` program. See [Class limits](#class-limits).                    |
+| Tool                                                           | Java sources | Kotlin sources | Notes                                                                                                                                                            |
+| -------------------------------------------------------------- | ------------ | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| detekt                                                         |              | yes            | New. SARIF through the SARIF ingester; tool `detekt`.                                                                                                            |
+| ktlint or ktfmt                                                |              | yes            | New, when the project uses one. ktlint: one finding per violation, with its rule; ktfmt: one `format` finding per file.                                          |
+| JaCoCo                                                         | yes          | yes            | `line-coverage` and `uncovered-method` (descriptive) and the `changed-branch-coverage` gate for both languages.                                                  |
+| PMD, Checkstyle, google-java-format, Error Prone with NullAway | yes          | no             | Java-only tools, with the Java preset's suppression and `tools` rules. A Kotlin-only module skips them.                                                          |
+| Review rules (`pmd/...` ids and `unused-option`)               | yes (PMD)    | yes            | On Kotlin the same rule ids come from the PSI facts, not from PMD. The coroutine and fan-out rules print `kotlin-source/...`. See [Review rules](#review-rules). |
+| SpotBugs                                                       | yes          | no             | Runs on the classes compiled from Java only; Kotlin classes are on its auxiliary classpath. See below.                                                           |
+| Java structure metrics (CRAP of Java)                          | yes          | no             | `StructureMetrics.java`, Java sources only. Kotlin CRAP uses its own complexity, see [CRAP](#crap).                                                              |
+| PIT                                                            | yes          | yes            | Mutants of Kotlin classes are gated like Java ones, after a filter for compiler-generated code; see [Mutation](#mutation).                                       |
+| Structure limits, CRAP, jscpd duplicates                       | yes          | yes            | Kotlin through the `kotlin-psi` program and jscpd's `kotlin` format. See below.                                                                                  |
+| jdeps (stability direction)                                    | yes          | yes            | Reads the Java and the Kotlin classes of the module together, one module per source file. See [Coupling](#coupling).                                             |
+| Kotlin source checks                                           |              | yes            | A source scan on the Node side; tool `kotlin-source`. See [Source checks](#source-checks).                                                                       |
+| kotlinc lint                                                   |              | yes            | The pinned Kotlin compiler on the main sources; tool `kotlinc`. See [Compiler warnings](#compiler-warnings).                                                     |
+| Class limits                                                   |              | yes            | Methods, fields and inheritance depth from the `kotlin-psi` program. See [Class limits](#class-limits).                                                          |
 
 **PMD and SpotBugs on Kotlin (decision).** PMD has no Kotlin analysis, so it keeps running on the Java files of a
 mixed module only; the review rules that PMD runs on Java (`pmd/FixedSleepInTest` and the others) are
 evaluated for Kotlin by the facts step (see [Review rules](#review-rules)), and their findings carry the same
-`pmd` tool and rule ids. SpotBugs analyzes bytecode, and on
+`pmd` tool and rule ids (the two Kotlin-only coroutine rules print `kotlin-source/BlockingCallInCoroutine` and
+`kotlin-source/TimeoutWithoutSuspension`). SpotBugs analyzes bytecode, and on
 Kotlin-generated bytecode it reports on compiler output the author cannot fix in source (null-check
 intrinsics, synthetic accessors, lambdas, `when` tables). It is therefore restricted to the classes
 Gradle compiled from Java sources (`compileJava`'s output); detekt is the Kotlin source-level
@@ -249,7 +250,8 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
 `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/AssertionInControlFlow`,
 `pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
-`pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ValidationAnnotationTarget`, `pmd/ClassLoadEffect`, `unused-option`), a class limit, a file
+`pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ValidationAnnotationTarget`, `pmd/ClassLoadEffect`, `unused-option`,
+`kotlin-source/BlockingCallInCoroutine`, `kotlin-source/TimeoutWithoutSuspension`), a class limit, a file
 limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
 `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
 `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown` or `changed-branch-coverage`
@@ -456,9 +458,11 @@ key.
 
 Checks that detekt has no rule for, and in a Spring project the Java preset's Spring rules
 ([Spring rules](#spring-rules)), run on a syntax tree of the Kotlin sources; the
-[test honesty](#test-honesty) rules run on the Kotlin test sources read as masked text. They use the rule
-ids and the exception route of the Java preset's PMD rules, so a finding reads the same in both
-languages and one `exceptions` entry style covers either.
+[test honesty](#test-honesty) rules run on the Kotlin test sources read as masked text. All but two use the
+rule ids and the exception route of the Java preset's PMD rules (`pmd/<RuleId>`), so a finding reads the same in
+both languages and one `exceptions` entry style covers either. The two coroutine rules,
+`kotlin-source/BlockingCallInCoroutine` and `kotlin-source/TimeoutWithoutSuspension`, have no Java counterpart
+and print Kotlin-only ids with their own route.
 
 How it works: task `nitpickerKotlinPsi` compiles the sources of `languages/java/gradle/kotlin-psi/` with the `javac`
 of the JVM that runs Gradle, once per build into the root project's `build/tmp/nitpickerKotlinPsi`, and runs them
@@ -473,21 +477,23 @@ declarations, across all modules of the build; a call that cannot be tied to one
 an unclear case is not flagged. A file nested deeper than even the large stack of that program allows is
 skipped with a note on stderr.
 
-| Rule id                                  | Where                                            | Flags                                                                                                                                                                                                                                                                                                                                                                                                                            |
-| ---------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`              | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during`                                                                                                                                                                                                                                                           |
-| `DisabledTest`                           | `review-rules/tests/honesty/`                    | a skipped test: `@Disabled`, `@Ignore`, `@Ignored` (also aliased or carried by an annotation), Kotest `xtest`, `xcontext`, `xdescribe`, `xit`, `xshould`, `xgiven`, a `!` name prefix, a `.config(...)` that never runs, a constant false condition or assumption                                                                                                                                                                |
-| `FocusedTest`                            | `review-rules/tests/honesty/`                    | a Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`                                                                                                                                                                                                                                                                                              |
-| `AssertionInControlFlow`                 | `review-rules/tests/honesty/`                    | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                                                                                                                                                                                            |
-| `CoroutineEscapesTest`                   | `review-rules/tests/coroutines/`                 | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                                                                                                                                                                                          |
-| `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs`      | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                                                                                                                                                                                  |
-| `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`             | a member and its plural form (`tag` and `tags`) in one class                                                                                                                                                                                                                                                                                                                                                                     |
-| `ValidationAnnotationTarget`             | `review-rules/validation/validation-targets.mjs` | a Bean Validation annotation (`jakarta.validation.constraints`, `javax.validation.constraints`, `org.hibernate.validator.constraints`, or `@Valid`) on a primary-constructor `val` or `var` of a main source without a `field:`, `get:` or `all:` use-site target; Kotlin puts it on the constructor parameter, where Bean Validation does not look. Kotlin-only: a Java record carries the annotation to its field and accessor |
-| `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`          | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                                                                                                                                                                                                     |
-| `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`          | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                                                                                                                                                                                             |
-| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`           | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                                                                                                                                                                                                                                                         |
-| `ClassLoadEffect`                        | `review-rules/main/load-effects.mjs`             | a call with an external effect (database, network, files, processes, threads and pools, JVM-wide settings) that runs while a file, `object`, companion object or enum class loads                                                                                                                                                                                                                                                |
-| `UnboundedFanOut` (tool `kotlin-source`) | `review-rules/main/fan-out/`                     | a task started for every element of a collection (`async`, `launch`, `supplyAsync`, `thread`) whose work makes a remote or message call; see the limits below                                                                                                                                                                                                                                                                    |
+| Rule id                                           | Where                                            | Flags                                                                                                                                                                                                                                                                                                                                                                                                                            |
+| ------------------------------------------------- | ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `FixedSleepInTest`, `NegativeWaitInTest`          | `review-rules/tests/test-waits.mjs`              | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during`                                                                                                                                                                                                                                                           |
+| `DisabledTest`                                    | `review-rules/tests/honesty/`                    | a skipped test: `@Disabled`, `@Ignore`, `@Ignored` (also aliased or carried by an annotation), Kotest `xtest`, `xcontext`, `xdescribe`, `xit`, `xshould`, `xgiven`, a `!` name prefix, a `.config(...)` that never runs, a constant false condition or assumption                                                                                                                                                                |
+| `FocusedTest`                                     | `review-rules/tests/honesty/`                    | a Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`                                                                                                                                                                                                                                                                                              |
+| `AssertionInControlFlow`                          | `review-rules/tests/honesty/`                    | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                                                                                                                                                                                            |
+| `CoroutineEscapesTest`                            | `review-rules/tests/coroutines/`                 | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                                                                                                                                                                                          |
+| `BlockingCallInCoroutine` (tool `kotlin-source`)  | `review-rules/blocking/`                         | a blocking call in coroutine code that nothing offloads: `Files.*`, file, JDBC, `Future.get()`, `latch.await()`, `queue.take()`, `Mono.block()`                                                                                                                                                                                                                                                                                  |
+| `TimeoutWithoutSuspension` (tool `kotlin-source`) | `review-rules/blocking/`                         | a `withTimeout` block with no suspension point, which can never time out                                                                                                                                                                                                                                                                                                                                                         |
+| `StaticForwardingWrapper`                         | `review-rules/main/forwarding-wrappers.mjs`      | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                                                                                                                                                                                  |
+| `SingularAndPluralMember`                         | `review-rules/main/member-names.mjs`             | a member and its plural form (`tag` and `tags`) in one class                                                                                                                                                                                                                                                                                                                                                                     |
+| `ValidationAnnotationTarget`                      | `review-rules/validation/validation-targets.mjs` | a Bean Validation annotation (`jakarta.validation.constraints`, `javax.validation.constraints`, `org.hibernate.validator.constraints`, or `@Valid`) on a primary-constructor `val` or `var` of a main source without a `field:`, `get:` or `all:` use-site target; Kotlin puts it on the constructor parameter, where Bean Validation does not look. Kotlin-only: a Java record carries the annotation to its field and accessor |
+| `SpringUnusedContext`                             | `review-rules/tests/spring-context.mjs`          | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                                                                                                                                                                                                     |
+| `ExhaustiveEnumPredicate`                         | `review-rules/main/enum-predicates.mjs`          | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                                                                                                                                                                                             |
+| `unused-option` (tool `structure`)                | `review-rules/main/unused-options.mjs`           | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                                                                                                                                                                                                                                                         |
+| `ClassLoadEffect`                                 | `review-rules/main/load-effects.mjs`             | a call with an external effect (database, network, files, processes, threads and pools, JVM-wide settings) that runs while a file, `object`, companion object or enum class loads                                                                                                                                                                                                                                                |
+| `UnboundedFanOut` (tool `kotlin-source`)          | `review-rules/main/fan-out/`                     | a task started for every element of a collection (`async`, `launch`, `supplyAsync`, `thread`) whose work makes a remote or message call; see the limits below                                                                                                                                                                                                                                                                    |
 
 Limits, all chosen to flag less rather than guess:
 
@@ -523,6 +529,66 @@ Limits, all chosen to flag less rather than guess:
 - Singular and plural: both members must have the same element type (the plural a list, set,
   collection or array of it). Only the primary-constructor properties of a `data class` and the
   properties of a `@ConfigurationProperties` class are inspected.
+- Blocking calls in coroutines (`BlockingCallInCoroutine`): the facts step records the calls that run in
+  coroutine code: the body of a `suspend` function, the lambdas of `launch`, `async`, `produce`, `actor`,
+  `coroutineScope`, `supervisorScope`, `withTimeout` and `withContext` inside it (also a `launch` without a
+  receiver inside such code), and the body of a `flow { }`, `channelFlow { }` or `callbackFlow { }` builder
+  imported from `kotlinx.coroutines.flow` (it runs on the collector's dispatcher). It looks through `let`,
+  `run`, `apply`, `also`, `with`, `use`, `forEach` and `repeat`, and through the inline collection operators
+  (`map`, `filter`, `onEach`, `flatMap`, `associateBy`, `sumOf`, `first`, ...) when their receiver is known to be
+  a collection: a parameter, property or local declared as `List`, `Set`, `Map`, `Sequence`, `Array`, ..., a
+  `listOf(...)`-style factory, a range, or a chain of such operators on one (a `Flow` has operators of the same
+  names whose lambdas run elsewhere, so an unknown receiver is not looked through). The lambda parameter of
+  such an operator (`it`, or a single untyped name) gets the element type of a receiver declared as
+  `List<File>`. A call is not recorded when the dispatcher of a `withContext(...)`, `launch(...)` or `flowOn(...)`
+  (the nearest `flowOn` after the builder) moves it off the caller's thread: an injected dispatcher (a
+  parameter or property of type `CoroutineDispatcher`, or any context value whose type is not known),
+  `Dispatchers.IO` or an executor dispatcher. `Dispatchers.Default`, `Main` and `Unconfined` do not move
+  blocking work off a shared thread, and a context that holds no dispatcher (`NonCancellable`,
+  `CoroutineName(...)`, `Job()`, `SupervisorJob()`, `EmptyCoroutineContext`, a value declared as `Job`, or a `+`
+  of those) keeps the caller's dispatcher; in a `+` the rightmost dispatcher decides. `runInterruptible`
+  counts as offloaded. A `launch` or `async` on an explicit receiver (`scope.launch { ... }`) in a plain
+  function is not coroutine code, because the scope's dispatcher is unknown. The call is matched by
+  evidence: an import-resolved static owner (`Files.readString`, `DriverManager.getConnection`,
+  `InetAddress.getByName`), a receiver whose declared type (parameter, property or local with a type, or a
+  short chain such as `file.toPath()`) is in the table of blocking types (`File`, `Path` with `kotlin.io.path`,
+  `URL`, file streams and readers, JDBC connection, statement and result set, `Future`, `CountDownLatch`,
+  `BlockingQueue`, `Semaphore`, `Lock`, `Process`, `Thread.join`, `HttpClient.send`, `HttpURLConnection`,
+  `Socket`, OkHttp `Call`, the request methods of `RestClient`, and any call on `JdbcTemplate`, `JdbcClient`,
+  `RestTemplate`, `RestOperations` or `EntityManager`), the names `executeQuery`, `executeUpdate` and `block`
+  in a file that imports `java.sql`, `javax.sql`, JPA, Spring JDBC or Reactor, `readLine`/`readln` with no
+  argument when the project declares no function of that name, and a call on an interface of the project
+  that extends a blocking Spring Data repository (`Repository`, `CrudRepository`, `JpaRepository`,
+  `MongoRepository`, `QueryByExampleExecutor`, ..., not the reactive, coroutine or R2DBC ones) and declares no
+  `suspend` function or function returning `Flow`, `Mono`, `Flux` or `Deferred` of that name. Type names
+  resolve as Kotlin does (explicit import, then a class of the file's package or a star-imported package the
+  project declares, then the default imports), so a project class named `Process` or `Thread` is not
+  `java.lang.Process`. The table, the Spring groups (`spring-types.mjs`) and the name resolver
+  (`spring-names.mjs`) are shared with the Spring rules, and the table is the one the Java preset's Reactor
+  rule uses (a test keeps the two in step; Kotlin adds the stdlib extension functions such as `readText`).
+  The message names the basis. `Thread.sleep` and `TimeUnit.sleep` are not in the table: detekt reports them
+  (`SleepInsteadOfDelay` is on in the default config the preset builds upon, and `ForbiddenMethodCall` bans
+  both in main sources), so nothing is reported twice. The allowed form is
+  `withContext(ioDispatcher) { ... }` (or `runInterruptible(ioDispatcher) { ... }` for an interruptible wait)
+  with the `CoroutineDispatcher` injected through the constructor, not `Dispatchers.IO` written at the call
+  site, which detekt's `InjectDispatcher` reports. A suspending client (`Mono.awaitSingle()` from
+  `kotlinx-coroutines-reactor` instead of `block()`, a coroutine repository) is the other way out. The finding
+  is identified by the class, the function and the call (`Archive.load.Files.readString`). Test sources are
+  not checked. Kotlin projects on Maven are not supported by the Kotlin preset (a tool error says so), so
+  this rule runs on Gradle builds; a Java module of the same build gets the Reactor rules of the
+  [Java preset](java-preset.md).
+- Timeout blocks (`TimeoutWithoutSuspension`): `withTimeout(OrNull)`, also through an import alias, in a
+  file that imports `kotlinx.coroutines`. The block is reported only when every call in it is known not to
+  suspend (a blocking call of the table above, a function the project declares only without `suspend`, a
+  constructor of the project, or a short list of standard functions such as `println`, `listOf`, `let`,
+  `map`, `use`) and at least one is blocking or a project function; any other call (`delay`, `await`,
+  `withContext`, `runInterruptible`, `launch`, `ensureActive`, `yield`, a library call) may suspend or
+  check for cancellation, so the block is left alone. A reference to `isActive` or `coroutineContext` and a
+  `for` over something that is not a range also end the check. The blocking calls inside a reported timeout
+  block are reported once, as the timeout. The allowed forms are `withContext(ioDispatcher) { ... }` or
+  `runInterruptible(ioDispatcher) { ... }` inside the block, with an injected dispatcher, or `ensureActive()`
+  in the loop that does the work. Calls are matched by name across the project, so an overloaded `suspend`
+  and non-suspend function of one name is treated as possibly suspending.
 - Spring context: any injected or mock bean, `MockMvc`, `WebTestClient`, `TestRestTemplate`,
   `CapturedOutput`, `ApplicationEvents`, `ApplicationContext` or a `webEnvironment` with a random or defined
   port counts as use.
@@ -723,7 +789,8 @@ test instead of disabling it", "Assert unconditionally"), and an `exceptions` en
 in both presets.
 
 Every message names the allowed form and ends with the exception route. For the pmd-id rules it is
-`exceptions` with `pmd/<RuleId>` and a path glob; for `unused-option` it is
+`exceptions` with `pmd/<RuleId>` and a path glob; for the two coroutine rules it is `exceptions` with
+`kotlin-source/BlockingCallInCoroutine` or `kotlin-source/TimeoutWithoutSuspension`; for `unused-option` it is
 `exceptions` with `unused-option`, as in the TypeScript preset. Identities follow the symbol, not the
 line, so a moved block is not a new finding.
 
@@ -1386,8 +1453,8 @@ See "A base whose tests fail" in `usage.md`.
 `kotlin.detektConfig` are new and valid only with this preset. `exceptions` lifts any detekt rule,
 the [one-way rules](#one-way-rules), the [source checks](#source-checks), the
 [source scans](#source-scans) (`catch-log-without-exception` and `test-without-assertion`), the
-[compiler warnings](#compiler-warnings), the six `pmd/` ids and `unused-option` of the
-[review rules](#review-rules), the [class limits](#class-limits), the file limits
+[compiler warnings](#compiler-warnings), the `pmd/` ids, `unused-option` and the two `kotlin-source/` coroutine
+rules of the [review rules](#review-rules), the [class limits](#class-limits), the file limits
 `file-lines-limit` and `folder-files-limit`, `slow-test` (or `test-runtime/slow-test`),
 `test-runtime/test-not-run` (a test source set no test task runs, see
 [java-preset.md](java-preset.md#tests-that-never-run)), the

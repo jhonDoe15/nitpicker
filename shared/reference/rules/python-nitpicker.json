@@ -162,7 +162,7 @@
     "real-clock-in-test",
     { "key": "python.exceptions", "rule": "real-clock-in-test" },
     "`<name>()` reads the real clock in a test",
-    "Freeze or inject the time: pass a fixed `datetime` in, use `freezegun` or `time_machine`, or patch the clock with `monkeypatch`.",
+    "Freeze or inject the time: pass a fixed aware `datetime` in (`datetime(2026, 1, 1, tzinfo=timezone.utc)`), use `freezegun` or `time_machine`, or patch the clock with `monkeypatch`.",
     "repeated-string-literal",
     { "key": "python.exceptions", "rule": "repeated-string-literal" },
     "The string \"<name>\" is repeated three times or more",
@@ -211,6 +211,10 @@
     { "key": "python.exceptions", "rule": "test-without-assertion" },
     "Test `<name>` has no assertion",
     "Assert the outcome: `assert result == expected`, `with pytest.raises(SomeError):`, or call one of the assertion helpers the project tests use.",
+    "timeout-scope-path-without-checkpoint",
+    { "key": "python.exceptions", "rule": "timeout-scope-path-without-checkpoint" },
+    "`<name>` has a path that runs `` without reaching a checkpoint (an `await` that suspends, `async with` or `async for`), so its timeout or cancellation cannot interrupt that path",
+    "Reach a checkpoint on every path through the scope: await the slow work (`await asyncio.to_thread(work)`, `await trio.to_thread.run_sync(work)`, `await anyio.to_thread.run_sync(work)`), or add an explicit checkpoint before it (`await asyncio.sleep(0)`, `await trio.lowlevel.checkpoint()`, `await anyio.lowlevel.checkpoint()`), or move the checkpoint-free path out of the scope. A scope with no checkpoint at all is reported by Ruff ASYNC100.",
     "tls-verification-off",
     { "key": "python.exceptions", "rule": "tls-verification-off" },
     "`<name>` turns off TLS certificate verification, or lets the environment turn it off",
@@ -319,7 +323,8 @@
     [18, 224, 2, 3, 225, 226, 22, 227, -1],
     [18, 228, 2, 3, 229, 230, 22, 231, -1],
     [18, 232, 2, 3, 233, 234, 22, 235, -1],
-    [236, 237, 2, 3, 238, 239, 240, 241, -1],
-    [242, 243, 2, 3, 244, 245, 246, 247, 248]
+    [18, 236, 2, 3, 237, 238, 22, 239, -1],
+    [240, 241, 2, 3, 242, 243, 244, 245, -1],
+    [246, 247, 2, 3, 248, 249, 250, 251, 252]
   ]
 }

@@ -4,6 +4,7 @@ import { springFacts } from '../spring/arch-rules-gate.mjs';
 
 const GUAVA_JAR = /^guava-\d.*\.jar$/u;
 const AWAITILITY_JAR = /^awaitility-\d.*\.jar$/u;
+const REACTOR_JAR = /^reactor-core-.*\.jar$/u;
 
 export function relativeTo(basedir, file) {
   return path.relative(basedir, file).replaceAll('\\', '/');
@@ -15,6 +16,10 @@ function relativeRoots(module, roots) {
 
 function hasJar(classpath, jar) {
   return classpath.some((entry) => jar.test(path.basename(entry)));
+}
+
+export function usesReactor(classpaths) {
+  return hasJar(classpaths.mainCompile, REACTOR_JAR);
 }
 
 export function moduleManifest({ module, classpaths, pinned }) {

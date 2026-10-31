@@ -92,6 +92,7 @@ function productionGuardRules({ react, security }) {
       { allowImportMetaEnv: react, allowBundlerEnv: react },
     ],
     'nitpicker/no-shell-string-command': 'error',
+    'nitpicker/no-sync-node-api-in-async': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
     'nitpicker/unbounded-fan-out': 'error',
     ...securityRules({ react, security }),
@@ -161,6 +162,10 @@ export function productionPolicyConfigFor(layout, options = {}) {
     {
       files: [...(layout.entryPoints ?? []), ...configFileGlobsFor(layout)],
       rules: { 'nitpicker/no-process-access-outside-composition-root': 'off' },
+    },
+    {
+      files: configFileGlobsFor(layout),
+      rules: { 'nitpicker/no-sync-node-api-in-async': 'off' },
     },
   ];
 }

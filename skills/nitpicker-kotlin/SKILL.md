@@ -98,6 +98,14 @@ To learn why a rule is on and what form it allows before you write or change cod
 - No top-level or `object` function that only passes its parameters, in order, to another function
   with the same parameters (`pmd/StaticForwardingWrapper`); call that function. Factories named
   `of` or `from` are fine.
+- Blocking calls (`Files.readString`, `File.readText`, JDBC, `Future.get()`, `latch.await()`,
+  `queue.take()`, `Mono.block()`) in a `suspend` function, coroutine builder or `flow { }` go through
+  `withContext(ioDispatcher) { ... }` (or `flowOn(ioDispatcher)`), or `runInterruptible(ioDispatcher) { ... }`
+  for an interruptible one, with the `CoroutineDispatcher` injected through the constructor, never
+  `Dispatchers.IO` at the call site (detekt `InjectDispatcher`); `withContext(NonCancellable)` does not
+  move the call (`kotlin-source/BlockingCallInCoroutine`). A `withTimeout` block needs a suspension point:
+  `withTimeout(1.seconds) { blocking() }` never times out, so offload the blocking call inside it
+  (`kotlin-source/TimeoutWithoutSuspension`).
 - A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
 - A validation annotation on a constructor property takes the field target:

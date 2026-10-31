@@ -26,7 +26,12 @@ import {
   resolveTools,
 } from './maven-tools.mjs';
 import { ownSourceRoots } from '../adapters/red-base/tests-failed.mjs';
-import { moduleManifest, relativeTo, writeManifest } from './manifest/maven-manifest.mjs';
+import {
+  moduleManifest,
+  relativeTo,
+  usesReactor,
+  writeManifest,
+} from './manifest/maven-manifest.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
 import { buildRunsArchRules, withDeclaredSpring } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
@@ -142,8 +147,8 @@ function readTestRuns(context) {
 
 function analyzeSources(options) {
   const { module, reportDir, classpaths, tools, pinned, configs, style, spring } = options;
-  const { springArch, springRoles, spawn } = options;
-  runPmd({ module, reportDir, tools, classpaths, configs, spring, spawn });
+  const { springArch, springRoles, reactor, spawn } = options;
+  runPmd({ module, reportDir, tools, classpaths, configs, spring, reactor, spawn });
   runSpotbugs({ module, reportDir, tools, spawn });
   runErrorProne({ module, reportDir, tools, classpaths, spawn });
   runFormat({ module, reportDir, tools, javaStyle: style.javaStyle, spawn });
@@ -184,7 +189,8 @@ function analyzeModule(options) {
     isArchunit,
     testRuntime: classpaths.testRuntime,
   });
-  analyzeSources({ ...options, reportDir, spring, springArch });
+  const reactor = usesReactor(classpaths);
+  analyzeSources({ ...options, reportDir, spring, springArch, reactor });
   if (failure === undefined) {
     runCoverageTools({ ...options, reportDir, testsRan, isArchunit });
   }

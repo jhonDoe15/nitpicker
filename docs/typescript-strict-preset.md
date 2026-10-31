@@ -424,6 +424,44 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   separator (`base + path.sep`, `` `${base}/` ``, `'/srv/'`): `full.startsWith(base)` also
   accepts `/srv-other`. A parameter as the first segment is the base and is fine
   (`path.join(dir, 'package.json')`).
+- Blocking calls in async code (`nitpicker/no-sync-node-api-in-async`, production code): a
+  synchronous Node call inside an `async` function or a request handler blocks the event loop, so
+  every other request waits. The calls are every `*Sync` function of `fs`, `fs-extra` and
+  `graceful-fs` (also `realpathSync.native` and `fs["readFileSync"]`), `execSync`, `execFileSync`
+  and `spawnSync` of `child_process`, `pbkdf2Sync`, `scryptSync`, `hkdfSync`, `generateKeySync`,
+  `generateKeyPairSync`, `generatePrimeSync` and `checkPrimeSync` of `crypto`, every `*Sync`
+  function of `zlib`, and `execaSync`/`execaCommandSync` of `execa`, found through the imports
+  (named, default, namespace, renamed, `require` and destructured `require`, and
+  `const { x } = fs`). A parameter or local that shadows the imported name is not the import. The
+  module lists are shared with `nitpicker/report-module-load-effects`, which reports the same
+  `*Sync` calls at import time. A request handler is a function passed to a route method (`get`,
+  `post`, `put`, `patch`, `delete`, `all`, `use`, `route`, ...) of an app or router created from
+  Express, Fastify, Koa, Hono, hapi, restify, connect, polka, h3 or itty-router (`const app =
+express()`, `express.Router()`, `new Router()`, also through a chain such as
+  `router.route("/").get(...)`, or a parameter typed with the framework's type, such as
+  `app: Express`), inline or declared in the file, or a method decorated with a NestJS `@Get`,
+  `@Post`, `@Put`, `@Patch`, `@Delete`, `@All`, `@Head` or `@Options`. A route method on any other
+  receiver (a `Map`, an untyped parameter) is not a handler. Synchronous array callbacks (`map`,
+  `forEach`, `filter`, ...) are looked through; any other nested function (a stored callback, an
+  event listener, a returned closure) is not inspected. Not reported: module top level, an `async`
+  function invoked in place at module top level (`(async () => { ... })()`), a file that has a
+  shebang, a worker script (a file that reads `parentPort` or `workerData` from
+  `node:worker_threads`), the worker branch of an `isMainThread` test
+  (`if (!isMainThread) { ... }`, or the `else` of `if (isMainThread)`), config files, and an
+  `async` function that is declared in the file, never exported and only ever called from startup
+  code (a CLI `main`). Entry points are checked like any other file, because their request handlers
+  run per request; their startup code is already left alone by the rules above. The message names
+  the allowed form of the call: `await readFile()` from `node:fs/promises` (the call without
+  `Sync`), `access` or `stat` for `existsSync`, a `FileHandle` from `open()` for the descriptor
+  calls (`closeSync`, `readSync`, `fstatSync`, ...), `for await` over `glob()` for `globSync`,
+  `pathExists` and the other promise functions of `fs-extra`, `promisify(execFile)` for the
+  `child_process` calls, `promisify(...)` of the async `crypto` and `zlib` function, and `execa()`.
+  A bounded read that must finish before the function can continue goes in a reviewed
+  `exceptions` entry. Unlike Python, where Ruff's `ASYNC` family covers `time.sleep`, `open` and
+  `requests`, nothing else in the TypeScript preset reports these calls, so no finding is shared.
+  Limits: an untyped `app` parameter (`module.exports = (app) => { app.get(...) }`) is not
+  recognized as a framework app, and a file that reads `parentPort` or `workerData` is skipped as a
+  whole.
 - Security sinks: SQL built from strings, weak hashes, disabled TLS checks, HTTP calls without a
   timeout and unsafe deserialization. All five apply to production code, not to test support files (`test-support/`, `mocks/`, `__mocks__/`,
   `__fixtures__/`, `fixtures/`, `stories/`, `.storybook/`, `*.stories.*`, `setupTests.*`); each message
