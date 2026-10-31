@@ -32,6 +32,38 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  container-smoke:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t nitpicker-smoke .
+      - name: Gate the strict-clean project with mutation testing enabled
+        run: |
+          docker run --rm -i --entrypoint sh \
+            -v "$PWD/languages/typescript/preset/fixtures/strict-clean:/fixture:ro" \
+            nitpicker-smoke -eu <<'SMOKE'
+          cp -R /fixture/. /work/
+          printf 'node_modules/\nreports/\n' > .gitignore
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const fixture = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const tools = JSON.parse(fs.readFileSync('/opt/nitpicker/package.json', 'utf8')).devDependencies;
+          for (const name of ['typescript', '@types/node', '@vitest/coverage-v8']) {
+            fixture.devDependencies[name] = tools[name];
+          }
+          fs.writeFileSync('package.json', `${JSON.stringify(fixture, null, 2)}\n`);
+          NODE
+          npm install --legacy-peer-deps --no-audit --no-fund
+          git init -q
+          git config user.name container-smoke
+          git config user.email container-smoke@example.invalid
+          git add .gitignore package.json package-lock.json src test
+          git commit -qm fixture
+          nitpicker --all
+          SMOKE
+
   # The suite runs in parallel jobs, each on its own shard of the test files (Vitest --shard), so the
   # slowest shard sets the time instead of the whole suite. The required `test` check is the job
   # below that passes only when every shard passed. scripts/test-shards/sequencer.mjs balances them.
