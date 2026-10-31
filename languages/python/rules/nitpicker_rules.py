@@ -29,7 +29,8 @@ def load_checks():
     from security.tls import check as tls
     from signatures import defaults, mutation, shims, tri_state
     from silent_tests import unasserted
-    from smells import literals, loops, names, secret_logs, secrets
+    from credentials import hardcoded, logs
+    from smells import literals, loops, names
     from tasks import cleanup, lifetimes
 
     return [
@@ -54,8 +55,8 @@ def load_checks():
         paths,
         literals,
         names,
-        secrets,
-        secret_logs,
+        hardcoded,
+        logs,
         loops,
         fan_out,
         skipped,
