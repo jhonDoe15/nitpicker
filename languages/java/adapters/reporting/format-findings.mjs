@@ -9,11 +9,16 @@ export function formatFindings({ reportRoot, roots, javaStyle }) {
   const formatLines = readFileSync(path.join(reportRoot, 'format.txt'), 'utf8')
     .split(/\r?\n/)
     .map((line) => projectRelative(line.trim(), roots) ?? line);
-  const { tool, label, command } = JAVA_FORMATTER_TOOLS[javaStyle] ?? JAVA_FORMATTER_TOOLS.google;
+  const { tool } = JAVA_FORMATTER_TOOLS[javaStyle] ?? JAVA_FORMATTER_TOOLS.google;
   return ingestFormatCheck(formatLines.join('\n'), {
     tool,
-    message: `File is not formatted with ${label}. Format it with ${command}. ${NOT_YOUR_JAVA_FORMATTER}`,
+    message: javaFormatMessage(javaStyle),
   }).findings;
+}
+
+export function javaFormatMessage(javaStyle) {
+  const { label, command } = JAVA_FORMATTER_TOOLS[javaStyle] ?? JAVA_FORMATTER_TOOLS.google;
+  return `File is not formatted with ${label}. Format it with ${command}. ${NOT_YOUR_JAVA_FORMATTER}`;
 }
 
 const CHECKSTYLE_SOURCE_SET_REPORT = /^checkstyle-.+\.xml$/u;
