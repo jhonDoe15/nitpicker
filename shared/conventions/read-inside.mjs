@@ -11,6 +11,13 @@ export function isRegularFile(file) {
   return statSync(file, { throwIfNoEntry: false })?.isFile() === true;
 }
 
+export function firstProjectFile(root, names) {
+  return names.find((name) => {
+    const file = resolveInside(root, name);
+    return file !== undefined && isRegularFile(file);
+  });
+}
+
 export function readInside(root, relative, encoding) {
   const full = resolveInside(root, relative);
   return full !== undefined && isRegularFile(full) ? readFileSync(full, encoding) : undefined;

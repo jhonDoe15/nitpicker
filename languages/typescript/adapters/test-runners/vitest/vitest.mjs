@@ -6,6 +6,8 @@ import { runNodeTool } from '../../quality-areas/runners/tooling.mjs';
 import { readRun, removeTemporary, temporaryProjectPath, testTimeouts } from '../test-run.mjs';
 import { RUNNER_NAMES } from '../../../preset/test-runner/runners.mjs';
 import { consoleProducerPath, startTestConsole } from '../test-console-run.mjs';
+import { projectTestRetry } from '../../../preset/project-configs/test-runner/test-runner-config.mjs';
+import { vitestRetryArguments } from '../../../preset/project-configs/test-runner/test-retry.mjs';
 
 const TIMEOUT_SETUP_VARIABLE = 'NITPICKER_TEST_TIMEOUT_SETUP';
 const TIMEOUT_LIMITS_VARIABLE = 'NITPICKER_TEST_TIMEOUT_LIMITS';
@@ -32,6 +34,7 @@ export function runVitest(options) {
           ? ['--coverage']
           : ['--maxWorkers=1', '--testNamePattern', options.rerun.namePattern]),
         ...(configured ? [] : ['--testTimeout', String(testTimeouts().testTimeoutMs)]),
+        ...vitestRetryArguments(projectTestRetry('vitest')),
         '--reporter',
         'json',
         '--outputFile',

@@ -1,5 +1,6 @@
 import { precedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
 import { resolveLayoutFor } from '../layout.mjs';
+import { TESTS_TOOL, readTestRunnerProjectConfig } from './test-runner/test-runner-config.mjs';
 import { mutationDisabled, readStrykerProjectConfig } from './stryker-project-config.mjs';
 import {
   TYPESCRIPT_TOOL,
@@ -19,6 +20,13 @@ const PROJECT_CONFIG_READERS = new Map([
     {
       read: (projectRoot, { policy }) =>
         readTypescriptProjectConfig(projectRoot, resolveLayoutFor(policy)),
+      applies: ({ layers }) => !layers.nitpickerFirst,
+    },
+  ],
+  [
+    TESTS_TOOL,
+    {
+      read: (projectRoot, { policy }) => readTestRunnerProjectConfig(projectRoot, policy),
       applies: ({ layers }) => !layers.nitpickerFirst,
     },
   ],

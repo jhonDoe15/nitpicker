@@ -186,7 +186,7 @@ function headToolFacts(policy, headPolicy) {
       };
     }
   }
-  for (const tool of ['jscpd', 'stryker', 'typescript', ...projectConfigTools()]) {
+  for (const tool of ['jscpd', 'stryker', 'typescript', 'tests', ...projectConfigTools()]) {
     if (usesProjectConfig(tools[tool]?.precedence ?? [])) {
       tools[tool] = headCapturedFacts(tools[tool], headPolicy.tools?.[tool]);
     }

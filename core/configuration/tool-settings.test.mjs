@@ -47,12 +47,6 @@ describe('tool precedence', () => {
     );
   });
 
-  it('rejects a precedence for tests', () => {
-    expect(() => validateConfig({ tools: { tests: { precedence: ['project'] } } })).toThrow(
-      '"tools.tests" has unknown key "precedence"',
-    );
-  });
-
   it.each([
     ['eslint', 'biome', ['oxlint', 'eslint']],
     ['eslint', '', ['oxlint', 'eslint']],

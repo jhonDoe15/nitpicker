@@ -1,5 +1,5 @@
-import { existsSync } from 'node:fs';
 import path from 'node:path';
+import { firstProjectFile } from '../../../../shared/conventions/read-inside.mjs';
 
 const EXTENSIONS = ['ts', 'mts', 'cts', 'js', 'mjs', 'cjs'];
 
@@ -8,8 +8,6 @@ export const PROJECT_CONFIG_NAMES = ['vitest', 'vite'].flatMap((name) =>
 );
 
 export function projectConfigFile(projectRoot) {
-  const name = PROJECT_CONFIG_NAMES.find((candidate) =>
-    existsSync(path.join(projectRoot, candidate)),
-  );
+  const name = firstProjectFile(projectRoot, PROJECT_CONFIG_NAMES);
   return name === undefined ? undefined : path.join(projectRoot, name);
 }

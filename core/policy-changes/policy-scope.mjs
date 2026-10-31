@@ -248,6 +248,7 @@ export function readPolicyScope({
   headConfig,
   baseProjectRoot,
   headProjectRoot,
+  liveProjectRoot = headProjectRoot,
   moves,
   replacedOptions,
 }) {
@@ -274,8 +275,8 @@ export function readPolicyScope({
       : undefined,
     buildSources: { base: buildSourcesOf(headConfig, base), head: headSources },
     toolConfigs: readToolConfigs(
-      { config: baseConfig, root: baseProjectRoot, files: baseFiles },
-      { config: headConfig, root: headProjectRoot, files },
+      { config: baseConfig, root: baseProjectRoot, files: baseFiles, liveRoot: liveProjectRoot },
+      { config: headConfig, root: headProjectRoot, files, liveRoot: liveProjectRoot },
       { gitBlobId, replacedOptions },
     ),
     reach: () => productionReachOf({ headProjectRoot, headConfig, files, headRoots, headSources }),

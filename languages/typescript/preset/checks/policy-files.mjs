@@ -159,6 +159,23 @@ export const DEPENDENCY_GRAPH_FILES = [
   ...PROJECT_TOOL_FILES,
 ];
 
+export const TEST_RUNNER_CONFIGURATION_FILES = [
+  'core/tooling/child-output.mjs',
+  'shared/conventions/read-inside.mjs',
+  'shared/conventions/tool-precedence.mjs',
+  'languages/typescript/preset/project-configs/config-module.mjs',
+  'languages/typescript/preset/project-configs/test-runner/mocha-config.mjs',
+  'languages/typescript/preset/project-configs/test-runner/test-retry.mjs',
+  'languages/typescript/preset/project-configs/test-runner/test-runner-config.mjs',
+  'languages/typescript/preset/test-environment/config-files.mjs',
+  'languages/typescript/preset/test-environment/read-environment.mjs',
+  'languages/typescript/preset/test-runner/detect-runner.mjs',
+  'languages/typescript/preset/test-runner/mocha-config-files.mjs',
+  'languages/typescript/preset/test-runner/mocha-options.mjs',
+  'languages/typescript/preset/test-runner/runners.mjs',
+  'languages/typescript/preset/test-runner/script-command.mjs',
+];
+
 export const CRAP_CONFIGURATION_FILES = [
   ...CRAP_CHECK_FILES,
   'languages/typescript/preset/layout.mjs',
