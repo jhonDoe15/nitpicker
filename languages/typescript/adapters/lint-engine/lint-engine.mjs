@@ -2,8 +2,12 @@ import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file.mj
 import path from 'node:path';
 import { resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
 import { readHeadPolicy } from '../../preset/head-policy.mjs';
-import { TEST_ENVIRONMENTS_VARIABLE } from '../../preset/test-environment/resolve-environment.mjs';
+import {
+  LINT_CONFIG,
+  TEST_ENVIRONMENTS_VARIABLE,
+} from '../../preset/test-environment/resolve-environment.mjs';
 import { lintWithOxlint } from '../oxlint/oxlint-runner.mjs';
+import { PROJECT_LAYER_VARIABLE, projectLayerValue } from './project-layer.mjs';
 
 const MAX_ESLINT_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -41,6 +45,10 @@ function eslintInvocation({ options, projectConfigPath, policyConfigPath, testEn
       NITPICKER_DIFF_ESLINT_POLICY_CONFIG: policyConfigPath,
       NITPICKER_DIFF_ESLINT_PROJECT_ROOT: options.projectRoot,
       NITPICKER_DIFF_ESLINT_PROJECT_CONFIG: projectConfigPath ?? '',
+      [PROJECT_LAYER_VARIABLE]: projectLayerValue(readHeadPolicy().tools.eslint, {
+        liveProjectRoot: options.liveProjectRoot,
+        addsRules: options.configRelativePath === LINT_CONFIG,
+      }),
       [TEST_ENVIRONMENTS_VARIABLE]: JSON.stringify({
         environment: testEnvironments?.environment,
         scopes: testEnvironments?.scopes ?? [],

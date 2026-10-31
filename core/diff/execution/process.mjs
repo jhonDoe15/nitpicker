@@ -1,6 +1,7 @@
 import { spawn } from 'node:child_process';
 import { openOutputFile } from '../../tooling/output-file.mjs';
 import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
+import { withoutHostCiOutputs } from '../../tooling/host-environment.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -9,14 +10,6 @@ const FORCE_KILL_DELAY_MS = 1_000;
 const OUTPUT_POLL_INTERVAL_MS = 100;
 
 const activeChildren = new Set();
-
-const HOST_CI_OUTPUT_VARIABLES = ['GITHUB_STEP_SUMMARY'];
-
-function analyzerEnvironment(environment) {
-  return Object.fromEntries(
-    Object.entries(environment).filter(([name]) => !HOST_CI_OUTPUT_VARIABLES.includes(name)),
-  );
-}
 
 function outputLimitError(task) {
   return new Error(`${task.name} exceeded the analyzer output limit`);
@@ -45,7 +38,7 @@ function settleClose(task, { failure, status, signal, stdoutFile, output }, { re
 function spawnAnalyzer(task, stdoutDescriptor) {
   const child = spawn(task.invocation.command, task.invocation.args, {
     cwd: task.invocation.cwd,
-    env: analyzerEnvironment(task.invocation.env ?? process.env),
+    env: withoutHostCiOutputs(task.invocation.env ?? process.env),
     detached: process.platform !== 'win32',
     stdio: ['ignore', stdoutDescriptor, 'pipe'],
   });
