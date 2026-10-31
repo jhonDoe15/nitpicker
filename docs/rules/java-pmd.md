@@ -920,7 +920,7 @@ Having a lot of control variables in a 'for' loop makes it harder to see what ra
 
 ### `pmd/GeneratedOnHandWrittenCode`
 
-JaCoCo and PIT skip code annotated @Generated, so this is not measured. Remove the annotation from hand-written code.
+Remove the annotation from hand-written code: JaCoCo skips code carrying an annotation whose name contains Generated, and PIT skips @Generated, so this is not measured. Put the JPA @GeneratedValue on the field.
 
 - **Scope:** Main and test sources.
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
@@ -1364,6 +1364,16 @@ Normally only one logger is used in each class.
 - **Allowed form:** Keep one private static final logger per class and use it everywhere in that class.
 - **Exception:** If this is intended, add `{"rule":"pmd/MoreThanOneLogger","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#morethanonelogger)
+
+<a id="pmd-mutationignoremarker"></a>
+
+### `pmd/MutationIgnoreMarker`
+
+Remove the annotation and kill the mutants with a test: PIT does not mutate code annotated @DoNotMutate or @CoverageIgnore.
+
+- **Scope:** Main and test sources.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Exception:** If this is intended, add `{"rule":"pmd/MutationIgnoreMarker","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-negativewaitintest"></a>
 
