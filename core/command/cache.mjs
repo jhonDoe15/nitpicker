@@ -5,7 +5,8 @@ import { publishHeadPolicy } from '../conventions/resolve.mjs';
 import { configureAnalyzers } from '../configuration/configure-analyzers.mjs';
 import { presetAnalyzers } from '../configuration/preset-analyzers.mjs';
 import { describeConfigOverrides, loadConfig } from '../configuration/config.mjs';
-import { parseDrillDownOptions } from '../diff/comparison/cli.mjs';
+import { parseDrillDownOptions, unknownArgumentError } from '../diff/comparison/cli.mjs';
+import { didYouMean } from '../../shared/messages/closest-match.mjs';
 import { createLayeredStore, resolveCacheStore } from '../diff/cache/cache-stores.mjs';
 import { publishBaseSnapshot } from '../diff/cache/publish-cache.mjs';
 import { runGit } from '../diff/git/repository/command.mjs';
@@ -30,13 +31,24 @@ function writableStore(projectRoot, cli) {
   return createLayeredStore({ remote, writeRemote: true });
 }
 
+const CACHE_OPTIONS = ['--analyzer', '--shard-count', '--shard-index'];
+const CACHE_USAGE =
+  'Usage: nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]';
+
 function validateCommand(arguments_) {
-  if (arguments_.length === 1 && arguments_[0] === 'publish') return;
-  throw new Error(
-    arguments_.length === 0 || arguments_[0] === 'publish'
-      ? 'Usage: nitpicker cache publish'
-      : `Unknown cache command: ${arguments_.join(' ')}`,
-  );
+  const [command, extra] = arguments_;
+  if (command === undefined) {
+    throw new Error(CACHE_USAGE);
+  }
+  if (command !== 'publish') {
+    const suggestion = didYouMean(command, ['publish'], '');
+    throw new Error(
+      `Unknown cache command: ${arguments_.join(' ')}${suggestion === '' ? '.' : suggestion} ${CACHE_USAGE}`,
+    );
+  }
+  if (extra !== undefined) {
+    throw unknownArgumentError(extra, CACHE_OPTIONS, CACHE_USAGE);
+  }
 }
 
 function writeOutcome({ stdout, result, selected }) {
