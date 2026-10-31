@@ -56,17 +56,7 @@ function renderTextReport(report, reference, descriptiveLines) {
     `Tool errors: ${String(report.toolErrors.length)}`,
   ];
 
-  if (report.summary.tools.length === 0) {
-    lines.push('Analyzers: none configured');
-  } else {
-    lines.push('', 'Per-tool counts:');
-    for (const tool of report.summary.tools) {
-      lines.push(
-        `${tool.name}: total=${String(tool.total)} enforceable=${String(tool.enforceable)} descriptive=${String(tool.descriptive)}`,
-      );
-    }
-  }
-
+  appendToolCountSection(lines, report.summary.tools);
   appendFindingSection(lines, 'Enforceable findings', enforceable);
   if (descriptiveLines === undefined) {
     appendFindingSection(lines, 'Descriptive findings', descriptive);
@@ -116,6 +106,19 @@ function renderJunitReport(report) {
     '</testsuite>',
     '',
   ].join('\n');
+}
+
+function appendToolCountSection(lines, tools) {
+  if (tools.length === 0) {
+    lines.push('Analyzers: none configured');
+    return;
+  }
+  lines.push('', 'Per-tool counts:');
+  for (const tool of tools) {
+    lines.push(
+      `${tool.name}: total=${String(tool.total)} enforceable=${String(tool.enforceable)} descriptive=${String(tool.descriptive)}`,
+    );
+  }
 }
 
 function appendFindingSection(lines, heading, findings) {
