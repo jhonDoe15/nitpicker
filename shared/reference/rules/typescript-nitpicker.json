@@ -769,6 +769,26 @@
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/no-wait-for-with-fake-timers" },
+    "nitpicker/no-weak-assertion",
+    "Require tests to pin the value, its contents or length, and the call arguments instead of a weak check",
+    [
+      {
+        "message": "`{{found}}` passes for any value but {{absent}}, the same weak check as `not.toBeNull`. Assert the value itself with `toBe` or `toEqual`, such as `expect(user).toEqual({ id: 1 })`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "message": "`{{found}}` passes for any value but {{absent}}. Assert the value itself, such as `assert.deepStrictEqual(user, { id: 1 })` or `assert.strictEqual(user.id, 1)`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "message": "`{{found}}` passes for any non-empty value. Assert the contents or the exact length, such as `expect(rows).toEqual([...])` or `expect(rows).toHaveLength(3)`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "message": "`{{found}}` passes for any non-empty value. Assert the contents or the exact length, such as `assert.deepStrictEqual(rows, [...])` or `assert.strictEqual(rows.length, 3)`. An exception fits only when the value cannot be pinned."
+      },
+      {
+        "message": "`{{found}}` passes for a call with any arguments. Pass the values the call should receive, such as `expect(spy).toHaveBeenCalledWith(orderId)`; keep `expect.any(Type)` for an argument that varies and pin the others. An exception fits only when the value cannot be pinned."
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/no-weak-assertion" },
     "nitpicker/no-weak-hash",
     "Disallow MD5 and SHA-1 hashing",
     [
@@ -1052,8 +1072,8 @@
     [0, 282, 2, 3, 283, 5, 284, 7, 285, -1, -1],
     [0, 286, 82, 113, 287, 5, 288, 7, 289, -1, -1],
     [0, 290, 2, 3, 291, 5, 292, 7, 293, -1, -1],
-    [0, 294, 82, 113, 295, 5, 296, 7, 297, -1, -1],
-    [0, 298, 2, 34, 299, 5, 300, 37, 301, 39, -1],
+    [0, 294, 2, 3, 295, 5, 296, 7, 297, -1, -1],
+    [0, 298, 82, 113, 299, 5, 300, 7, 301, -1, -1],
     [0, 302, 2, 34, 303, 5, 304, 37, 305, 39, -1],
     [0, 306, 2, 34, 307, 5, 308, 37, 309, 39, -1],
     [0, 310, 2, 34, 311, 5, 312, 37, 313, 39, -1],
@@ -1063,12 +1083,13 @@
     [0, 326, 2, 34, 327, 5, 328, 37, 329, 39, -1],
     [0, 330, 2, 34, 331, 5, 332, 37, 333, 39, -1],
     [0, 334, 2, 34, 335, 5, 336, 37, 337, 39, -1],
-    [0, 338, 339, 340, 341, 5, 342, 7, 343, -1, -1],
-    [0, 344, 2, 3, 345, 5, 346, 7, 347, -1, -1],
+    [0, 338, 2, 34, 339, 5, 340, 37, 341, 39, -1],
+    [0, 342, 343, 344, 345, 5, 346, 7, 347, -1, -1],
     [0, 348, 2, 3, 349, 5, 350, 7, 351, -1, -1],
-    [0, 352, 353, 354, 355, 5, 356, 7, 357, -1, -1],
-    [0, 358, 2, 3, 359, 5, 360, 7, 361, -1, -1],
+    [0, 352, 2, 3, 353, 5, 354, 7, 355, -1, -1],
+    [0, 356, 357, 358, 359, 5, 360, 7, 361, -1, -1],
     [0, 362, 2, 3, 363, 5, 364, 7, 365, -1, -1],
-    [0, 366, 2, 3, 367, 5, 368, 7, 369, -1, -1]
+    [0, 366, 2, 3, 367, 5, 368, 7, 369, -1, -1],
+    [0, 370, 2, 3, 371, 5, 372, 7, 373, -1, -1]
   ]
 }
