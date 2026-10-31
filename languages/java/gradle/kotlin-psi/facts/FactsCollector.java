@@ -80,10 +80,14 @@ public final class FactsCollector {
       return new Frame(frame, m("k", "init"));
     }
     if (element instanceof KtLambdaExpression) {
-      return new Frame(frame, Scopes.lambdaData((KtLambdaExpression) element, state));
+      Frame inner = new Frame(frame, Scopes.lambdaData((KtLambdaExpression) element, state));
+      bodies.iterable(inner, element);
+      return inner;
     }
     if (element instanceof KtLoopExpression) {
-      return new Frame(frame, Scopes.loopData((KtLoopExpression) element, state));
+      Frame inner = new Frame(frame, Scopes.loopData((KtLoopExpression) element, state));
+      bodies.iterable(inner, element);
+      return inner;
     }
     observe(element, frame);
     return frame;

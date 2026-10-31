@@ -12,9 +12,8 @@ import {
 describe('presetOf', () => {
   it('defaults to typescript and accepts every preset', () => {
     expect(presetOf({ id: 'a' })).toBe('typescript');
-    for (const preset of ['typescript', 'javascript', 'python', 'java', 'kotlin']) {
-      expect(presetOf({ id: 'a', preset })).toBe(preset);
-    }
+    const presets = ['typescript', 'javascript', 'python', 'java', 'kotlin'];
+    expect(presets.map((preset) => presetOf({ id: 'a', preset }))).toEqual(presets);
   });
 
   it('rejects an unknown preset and names the case', () => {

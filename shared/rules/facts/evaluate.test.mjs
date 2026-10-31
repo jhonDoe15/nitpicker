@@ -29,10 +29,13 @@ describe('the shared fact rules', () => {
   });
 
   it('is the one source of the checks table columns for a registered rule', () => {
-    for (const [rule, languages] of Object.entries(FACT_RULE_LANGUAGES)) {
-      expect(Object.keys(languages).toSorted(), rule).toEqual(LANGUAGES.toSorted());
-      expect(RULES.find(({ id }) => id === rule).enforcedBy, rule).toEqual(languages);
-    }
+    const registered = Object.entries(FACT_RULE_LANGUAGES);
+    expect(
+      registered.map(([rule, languages]) => [rule, Object.keys(languages).toSorted()]),
+    ).toEqual(registered.map(([rule]) => [rule, LANGUAGES.toSorted()]));
+    expect(
+      registered.map(([rule]) => [rule, RULES.find(({ id }) => id === rule).enforcedBy]),
+    ).toEqual(registered.map(([rule, languages]) => [rule, languages]));
   });
 
   it('runs every rule registered for a language', () => {
@@ -151,16 +154,25 @@ describe('the shared fact rules', () => {
   });
 
   it('lets every preset lift a rule once a language besides TypeScript registers it', () => {
-    expect(sharedFactExceptionRules()).toEqual(['test-only-export', CONSOLE, ...DESIGN_RULES]);
+    const jvmRules = ['duplicate-definition', 'exported-name-collision', 'sibling-copy-edit'];
+
+    expect(sharedFactExceptionRules()).toEqual([
+      ...jvmRules,
+      'test-only-export',
+      'doc-comment-content',
+      CONSOLE,
+      ...DESIGN_RULES,
+    ]);
     expect(registeredFactRules('python')).toEqual([]);
-    withLanguageRegistered('doc-comment-content', 'python', () => {
+    withLanguageRegistered('sibling-copy-edit', 'python', () => {
       expect(sharedFactExceptionRules()).toEqual([
+        ...jvmRules,
         'test-only-export',
         'doc-comment-content',
         CONSOLE,
         ...DESIGN_RULES,
       ]);
-      expect(registeredFactRules('python')).toEqual(['doc-comment-content']);
+      expect(registeredFactRules('python')).toEqual(['sibling-copy-edit']);
     });
   });
 });
