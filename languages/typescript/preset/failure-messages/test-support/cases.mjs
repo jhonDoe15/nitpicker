@@ -10,6 +10,7 @@ import { productionPolicyConfig } from '../../eslint-config/policies/base.mjs';
 import { i18nFailureMessageCases } from '../../eslint-config/i18n/test-support/i18n-cases.mjs';
 import { reactFailureMessageCases } from './react-cases.mjs';
 import { testFailureMessageCases } from './test-cases.mjs';
+import { signatureFailureMessageCases } from './signatures/signature-cases.mjs';
 
 const strictCompositionRootConfig = productionPolicyConfig({
   'nitpicker/no-branch-in-composition-root': 'error',
@@ -177,6 +178,10 @@ export const failureMessageCases = [
       'export function fetchOne(id: string): string { return id; }\nexport function readOne(id: string): string { return fetchOne(id); }',
     allowed,
   })),
+  ...signatureFailureMessageCases({
+    typedConfig: typedStrictConfig,
+    typedFile: path.resolve('src/fixture.ts'),
+  }),
   ...domainFailureMessageCases,
   {
     name: 'domain recursion names flatMap',

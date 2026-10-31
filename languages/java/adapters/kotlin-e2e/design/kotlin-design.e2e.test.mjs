@@ -1,11 +1,15 @@
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { validateFacts } from '../../../../../shared/rules/facts/schema.mjs';
 import { kotlinDesignBundle } from '../../kotlin/review-rules/design/kotlin-design.mjs';
 import { DEEP_CHAIN } from '../../test-support/kotlin-metrics-sources.mjs';
-import { prepareCompiler, runPsiProgram } from '../../test-support/kotlin/kotlin-psi-program.mjs';
+import {
+  prepareCompiler,
+  runPsiProgram,
+  writeSources,
+} from '../../test-support/kotlin-psi/kotlin-psi-program.mjs';
 
 const enabled = process.env.NITPICKER_KOTLIN_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -15,15 +19,6 @@ const PUBLISHED_FIXTURE = path.join(FIXTURES, 'kotlin-design-published');
 
 let workspace;
 let compiler;
-
-function projectWith(name, files) {
-  const dir = path.join(workspace, name);
-  for (const [relative, content] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(dir, relative)), { recursive: true });
-    writeFileSync(path.join(dir, relative), content);
-  }
-  return dir;
-}
 
 describe.skipIf(!enabled)('Kotlin design facts from the PSI program', () => {
   beforeAll(() => {
@@ -85,7 +80,7 @@ describe.skipIf(!enabled)('Kotlin design facts from the PSI program', () => {
   });
 
   it('leaves published out for a published module that is an application', () => {
-    const project = projectWith('published-application', {
+    const project = writeSources(workspace, 'published-application', {
       'src/Main.kt': 'package demo\n\nclass Tool { fun go() = 1 }\n\nfun main() { Tool().go() }\n',
     });
 
@@ -98,7 +93,7 @@ describe.skipIf(!enabled)('Kotlin design facts from the PSI program', () => {
   });
 
   it('skips a callable that is too deeply nested to read and keeps the others', () => {
-    const project = projectWith('stack-skip', {
+    const project = writeSources(workspace, 'stack-skip', {
       'src/Deep.kt': DEEP_CHAIN,
       'src/Small.kt': 'package demo\n\nfun small() = 1\n',
     });
@@ -118,7 +113,7 @@ describe.skipIf(!enabled)('Kotlin design facts from the PSI program', () => {
   });
 
   it('writes the error and still writes the other reports when the design pass fails', () => {
-    const project = projectWith('design-failure', {
+    const project = writeSources(workspace, 'design-failure', {
       'src/Main.kt': 'package demo\n\nfun small() = 1\n',
     });
 
@@ -140,7 +135,7 @@ describe.skipIf(!enabled)('Kotlin design facts from the PSI program', () => {
   });
 
   it('writes empty design facts when the project has only test sources', () => {
-    const project = projectWith('only-tests', {
+    const project = writeSources(workspace, 'only-tests', {
       'src/test/Check.kt': 'package demo\n\nclass Check { fun go() = 1 }\n',
     });
 
@@ -150,7 +145,7 @@ describe.skipIf(!enabled)('Kotlin design facts from the PSI program', () => {
   });
 
   it('keeps test sources out of the design facts', () => {
-    const project = projectWith('with-tests', {
+    const project = writeSources(workspace, 'with-tests', {
       'src/main/Main.kt': 'package demo\n\nclass Main { fun go() = 1 }\n',
       'src/test/Check.kt': 'package demo\n\nclass Check { fun go() = 1 }\n',
     });

@@ -2,11 +2,13 @@ import { readFileSync } from 'node:fs';
 import { hasAwaitility } from '../../../messages/wait-advice.mjs';
 import { pathInside, sourceFilesUnder } from '../../review-rules/java-sources.mjs';
 import { enumPredicateFindings } from './main/enum-predicates.mjs';
+import { fanOutFindings } from './main/fan-out/fan-out.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
 import { loadEffectFindings } from './main/load-effects.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
 import { unusedOptionFindings } from './main/unused-options.mjs';
 import { kotlinDesignFindings } from './design/kotlin-design.mjs';
+import { validationTargetFindings } from './validation/validation-targets.mjs';
 import { readKotlinFacts } from './kotlin-facts.mjs';
 import { productionTypeResolver } from './production-types.mjs';
 import { findingFactory } from './review-finding.mjs';
@@ -57,6 +59,11 @@ function contextRoots(manifest, modules) {
   ]);
 }
 
+export function readKotlinFanOutFindings(context) {
+  const { own, projectFiles, javaRoots, projectRoot } = projectView(context);
+  return fanOutFindings({ own, projectFiles, projectRoot, javaRoots });
+}
+
 export function readKotlinReviewFindings(context) {
   const { manifest, projectRoot, reportRoot, modules = [] } = context;
   const { own, projectFiles, javaRoots } = projectView(context);
@@ -82,6 +89,7 @@ export function readKotlinReviewFindings(context) {
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
     ...singularPluralFindings(own, { finding }),
+    ...validationTargetFindings(own, { finding }),
     ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...kotlinDesignFindings(reportRoot, { environment: context.environment }),
     ...unusedOptionFindings(own, {
