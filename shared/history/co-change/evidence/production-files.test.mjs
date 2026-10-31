@@ -33,6 +33,7 @@ describe('moduleResolver', () => {
     ['src/main/java/com/acme/test/Probe.java', 'src/main/java/com/acme/test'],
     ['app/src/main/kotlin/com/acme/pay/Pay.kt', 'app/src/main/kotlin/com/acme/pay'],
     ['src/features/billing/model/invoice.ts', 'src/features/billing'],
+    ['internal/orders/service.go', 'internal/orders'],
   ])('puts production file %s in %s', (file, module) => {
     expect(moduleOf(file)).toBe(module);
   });
@@ -54,6 +55,8 @@ describe('moduleResolver', () => {
     'src/__tests__/page.ts',
     'fixtures/orders/sample.ts',
     'testing/helpers.py',
+    'internal/orders/service_test.go',
+    'internal/orders/testdata/sample.go',
   ])('treats %s as a test', (file) => {
     expect(moduleOf(file)).toBeUndefined();
   });
@@ -73,6 +76,8 @@ describe('moduleResolver', () => {
     'src/types/api.d.mts',
     'src/types/api.d.cts',
     'src/proto/orders_pb2.py',
+    'internal/proto/orders.pb.go',
+    'vendor/github.com/acme/lib/lib.go',
     'src/api/client.ts',
     'docs/guide.md',
     'main.ts',
