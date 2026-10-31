@@ -143,12 +143,13 @@ export function excludePattern(exclude) {
   return `^(?:${patterns.join('|')})$`;
 }
 
+const LINE_BREAK = /\r\n?|\n/gu;
 function iniText(sections) {
   return sections
     .map(
       ([name, options]) =>
         `[${name}]\n${Object.entries(options)
-          .map(([key, value]) => `${key} = ${String(value).replaceAll('\n', '\n    ')}\n`)
+          .map(([key, value]) => `${key} = ${String(value).replaceAll(LINE_BREAK, '\n    ')}\n`)
           .join('')}`,
     )
     .join('\n');
