@@ -1201,6 +1201,15 @@
         "Do not start a server or worker thread in each test or beforeEach. Start it once in beforeAll and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh server."
       ]
     },
+    "nitpicker/no-service-locator": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow service lookups in a DI container (inversify, tsyringe, typedi, awilix, NestJS ModuleRef and application context), direct or through project helpers, outside the composition root",
+      "messages": [
+        "Take the dependency as a constructor parameter typed with the narrow interface the code needs, or build it in a factory provider (`useFactory`, `toDynamicValue`), and look it up only where the app is composed (the composition root: main, server, or a file listed in \"layout.entryPoints\"). `{{ api }}` is a service lookup. A lookup hides what this code needs from its signature and fails only when it runs, if the registration is missing.",
+        "`{{ name }}()` looks up the token it is given in a container (it calls `{{ api }}` in {{ file }}), so this call is a service lookup. Take the dependency as a constructor parameter typed with the narrow interface the code needs, or build it in a factory provider (`useFactory`, `toDynamicValue`), instead of asking a helper for it. A lookup hides what this code needs from its signature and fails only when it runs, if the registration is missing."
+      ]
+    },
     "nitpicker/no-shared-test-state": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -3955,6 +3964,15 @@
       "forms": [],
       "messages": [
         "Do not start a server or worker thread in each test or beforeEach. Start it once in beforeAll and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh server."
+      ]
+    },
+    "nitpicker/no-service-locator": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow service lookups in a DI container (inversify, tsyringe, typedi, awilix, NestJS ModuleRef and application context), direct or through project helpers, outside the composition root",
+      "messages": [
+        "Take the dependency as a constructor parameter typed with the narrow interface the code needs, or build it in a factory provider (`useFactory`, `toDynamicValue`), and look it up only where the app is composed (the composition root: main, server, or a file listed in \"layout.entryPoints\"). `{{ api }}` is a service lookup. A lookup hides what this code needs from its signature and fails only when it runs, if the registration is missing.",
+        "`{{ name }}()` looks up the token it is given in a container (it calls `{{ api }}` in {{ file }}), so this call is a service lookup. Take the dependency as a constructor parameter typed with the narrow interface the code needs, or build it in a factory provider (`useFactory`, `toDynamicValue`), instead of asking a helper for it. A lookup hides what this code needs from its signature and fails only when it runs, if the registration is missing."
       ]
     },
     "nitpicker/no-shared-test-state": {
@@ -7001,6 +7019,15 @@
       "forms": [],
       "messages": [
         "Do not start a server or worker thread in each test or beforeEach. Start it once in beforeAll and reset its state between tests, or test the logic against an in-memory implementation and keep the real transport for transport tests. An exception fits only when each test needs a fresh server."
+      ]
+    },
+    "nitpicker/no-service-locator": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow service lookups in a DI container (inversify, tsyringe, typedi, awilix, NestJS ModuleRef and application context), direct or through project helpers, outside the composition root",
+      "messages": [
+        "Take the dependency as a constructor parameter typed with the narrow interface the code needs, or build it in a factory provider (`useFactory`, `toDynamicValue`), and look it up only where the app is composed (the composition root: main, server, or a file listed in \"layout.entryPoints\"). `{{ api }}` is a service lookup. A lookup hides what this code needs from its signature and fails only when it runs, if the registration is missing.",
+        "`{{ name }}()` looks up the token it is given in a container (it calls `{{ api }}` in {{ file }}), so this call is a service lookup. Take the dependency as a constructor parameter typed with the narrow interface the code needs, or build it in a factory provider (`useFactory`, `toDynamicValue`), instead of asking a helper for it. A lookup hides what this code needs from its signature and fails only when it runs, if the registration is missing."
       ]
     },
     "nitpicker/no-shared-test-state": {

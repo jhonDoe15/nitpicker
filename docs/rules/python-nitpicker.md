@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 59 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 60 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -354,6 +354,15 @@ The string "\<name>" is repeated three times or more.
 
 - **Allowed form:** Log that it is set (`logger.info("token set: %s", token is not None)`) or a masked tail, never the value.
 - **Exception:** If this is intended, add `{"rule":"secret-in-log","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-service-locator-lookup"></a>
+
+### `python-rules/service-locator-lookup`
+
+`<name>` looks a service up in a dependency-injection container, which hides what this code needs and fails only when it runs, if the registration is missing.
+
+- **Allowed form:** Take the dependency as an argument typed with the narrow protocol the code needs, and resolve it once in the composition root (`main.py`, a `composition_root/` package, a `create_app` factory, or a file listed in "layout.entryPoints"). `@inject` with `Provide[...]` is the allowed wiring, and a lookup in an `injector.Module` or `Provider` or inside a registration factory (`di[Mailer] = lambda di: Mailer(di[Config])`, `container.register(Mailer, factory=make_mailer)`) is composition code.
+- **Exception:** If this is intended, add `{"rule":"service-locator-lookup","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-shell-command"></a>
 

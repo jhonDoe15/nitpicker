@@ -171,6 +171,10 @@
     { "key": "python.exceptions", "rule": "secret-in-log" },
     "`<name>` is a secret and is passed to a log call",
     "Log that it is set (`logger.info(\"token set: %s\", token is not None)`) or a masked tail, never the value.",
+    "service-locator-lookup",
+    { "key": "python.exceptions", "rule": "service-locator-lookup" },
+    "`<name>` looks a service up in a dependency-injection container, which hides what this code needs and fails only when it runs, if the registration is missing",
+    "Take the dependency as an argument typed with the narrow protocol the code needs, and resolve it once in the composition root (`main.py`, a `composition_root/` package, a `create_app` factory, or a file listed in \"layout.entryPoints\"). `@inject` with `Provide[...]` is the allowed wiring, and a lookup in an `injector.Module` or `Provider` or inside a registration factory (`di[Mailer] = lambda di: Mailer(di[Config])`, `container.register(Mailer, factory=make_mailer)`) is composition code.",
     "shell-command",
     { "key": "python.exceptions", "rule": "shell-command" },
     "`<name>` runs a command through a shell",
@@ -319,7 +323,8 @@
     [18, 224, 2, 3, 225, 226, 22, 227, -1],
     [18, 228, 2, 3, 229, 230, 22, 231, -1],
     [18, 232, 2, 3, 233, 234, 22, 235, -1],
-    [236, 237, 2, 3, 238, 239, 240, 241, -1],
-    [242, 243, 2, 3, 244, 245, 246, 247, 248]
+    [18, 236, 2, 3, 237, 238, 22, 239, -1],
+    [240, 241, 2, 3, 242, 243, 244, 245, -1],
+    [246, 247, 2, 3, 248, 249, 250, 251, 252]
   ]
 }
