@@ -41,7 +41,7 @@ end-to-end step times gives what they took together. The method:
   them after that run.
 - A file new since that run gets what its shard has left after the others, and at least 10
   seconds: the Java overlap probe (28), tool text and Error Prone report (10 each), and the Kotlin
-  fan-out (28), multi-project (85) and mutation facts (25) files. The Kotlin library-branches and
+  fan-out (28), multi-project (35) and mutation facts (25) files. The Kotlin library-branches and
   ports file holds the two coverage cases `main` added to the branches file; its 95 seconds are
   what that shard grew by.
 - Python shards run two files at a time, so their step times do not separate files. Python keeps
@@ -68,9 +68,9 @@ are also weighed against queue time.
   findings of two builds and has a shard of its own (#478). 20 or 21 shards would shorten the
   longest regular shard by about 9 seconds, and 21 shards and the plan job exceed the 20 concurrent
   jobs. 19 shards and the plan job fit.
-- Kotlin has 15 shards: 129-163 seconds of tests, plus about 215 for the Kotlin red-base file
-  alone. 14 shards would raise the longest regular shard to 172 seconds, and 16 would shorten it
-  by 12 seconds for another 60-90 seconds of runner time.
+- Kotlin has 15 shards: 127-160 seconds of tests, plus about 215 for the Kotlin red-base file
+  alone. 14 shards would raise the longest regular shard to 168 seconds, and 16 would shorten it
+  by 11 seconds for another 60-90 seconds of runner time.
 - Python has 4 shards of about 300 weighted seconds each, about 150 seconds of test step with two
   workers, so about 3.5-4 minutes of job time.
 
