@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 87 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 88 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -661,6 +661,20 @@ Ban test forms that switch a test off.
 - **Allowed forms by message:**
   - Do not leave a `todo` test: write the test, or delete the stub.
   - A literal condition switches the test off for good. Delete the test or make it run; a real platform condition such as `process.platform === "win32"` is allowed.
+
+<a id="eslint-nitpicker-no-task-outliving-resource"></a>
+
+### `eslint/nitpicker/no-task-outliving-resource`
+
+Disallow starting a task that uses a resource without waiting for it before the block that disposes the resource ends.
+
+- **Printed as:** `eslint-lint/nitpicker/no-task-outliving-resource`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-task-outliving-resource","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - This task is detached with void, but the {{owner}} disposes {{name}} when the block ends, so the task can run on a closed resource. await the task before the block ends (await Promise.all([...]) for several), or open and close the resource inside the task. An exception fits only when the task owns the resource or the resource lives as long as the process.
+  - This timer or microtask runs after the block ends, but the {{owner}} has disposed {{name}} by then. Resolve a promise from the callback and await it inside the block, or open and close the resource inside the callback. An exception fits only when the task owns the resource or the resource lives as long as the process.
+  - This promise is never awaited, but the {{owner}} disposes {{name}} when the block ends, so the task can run on a closed resource. await the task before the block ends (await Promise.all([...]) for several), or open and close the resource inside the task. An exception fits only when the task owns the resource or the resource lives as long as the process.
+  - This returns the promise without awaiting it, so the {{owner}} disposes {{name}} before the task finishes. Write return await ..., or await the task before the block ends (await Promise.all([...]) for several), or open and close the resource inside the task. An exception fits only when the task owns the resource or the resource lives as long as the process.
 
 <a id="eslint-nitpicker-no-test-helpers-in-source"></a>
 

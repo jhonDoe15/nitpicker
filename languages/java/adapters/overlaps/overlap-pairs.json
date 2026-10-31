@@ -680,5 +680,10 @@
       "spotbugs/SING_SINGLETON_GETTER_NOT_SYNCHRONIZED"
     ],
     "scope": "line"
+  },
+  {
+    "primary": ["kotlin-source/ChildCoroutineOutlivesResource"],
+    "secondary": ["pmd/CoroutineEscapesTest"],
+    "scope": "line"
   }
 ]

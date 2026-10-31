@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { CATALOG_TOOLS, readCatalog } from '../../messages/rule-messages.mjs';
+import { KOTLIN_REVIEW_EXCEPTION_RULES } from '../kotlin/review-rules/review-rules.mjs';
 import { OVERLAP_PAIRS, matchesRule, withoutOverlaps } from './static-overlaps.mjs';
 
 const CHECKS = path.resolve(import.meta.dirname, '../../gradle/errorprone/checks.json');
@@ -15,13 +16,14 @@ const nitpickerRules = NITPICKER_RULESETS.flatMap((file) =>
 );
 const KNOWN_RULES = [
   'errorprone/NullAway',
+  ...KOTLIN_REVIEW_EXCEPTION_RULES,
   ...nitpickerRules,
   ...JSON.parse(readFileSync(CHECKS, 'utf8')).suppressible.map((check) => `errorprone/${check}`),
   ...CATALOG_TOOLS.flatMap((tool) =>
     Object.keys(readCatalog(tool)).map((rule) => `${tool}/${rule}`),
   ),
 ];
-const TOOLS = /^(?:pmd|spotbugs|errorprone|checkstyle)\/[A-Za-z0-9_*]+$/u;
+const TOOLS = /^(?:pmd|spotbugs|errorprone|checkstyle|kotlin-source)\/[A-Za-z0-9_*]+$/u;
 const SOURCE = [
   'package demo;',
   'public class A {',
@@ -75,7 +77,7 @@ const cases = OVERLAP_PAIRS.flatMap(({ primary, secondary, scope }) =>
 );
 
 describe('overlap pairs', () => {
-  it('name printed rules of the four tools, in known scopes, with no rule depending on itself', () => {
+  it('name printed rules of the tools, in known scopes, with no rule depending on itself', () => {
     const rules = OVERLAP_PAIRS.flatMap(({ primary, secondary }) => [...primary, ...secondary]);
     const coveredBy = (rule) =>
       OVERLAP_PAIRS.filter(({ secondary }) => matchesRule(secondary, rule)).flatMap(

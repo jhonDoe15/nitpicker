@@ -106,6 +106,9 @@ To learn why a rule is on and what form it allows before you write or change cod
   another aggregate only by its identifier or an `Association<T, ID>`, an entity sits in one
   aggregate, and a value object holds identifiers, not entities (`archunit/ddd-...`).
 - Resources: try-with-resources for anything `Closeable`. No `finally` that returns or throws.
+  Wait for a task that uses a resource inside its try block, after starting it and not under an `if` or loop
+  (`get()`/`join()`, `awaitTermination`, `take()`, a latch `await()`, or declare the executor as a later
+  resource); `pmd/TaskOutlivesTryResource` reports a task that can outlive the close.
 - Utility classes: a `final` class of static methods with a `private` empty constructor.
 - Dependencies between packages follow the project's ArchUnit rules (classes named `*ArchTest` or
   `*ArchitectureTest`); read them before importing across packages. A package must not depend on a
