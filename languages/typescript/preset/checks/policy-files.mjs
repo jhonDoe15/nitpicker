@@ -1,4 +1,5 @@
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from '../dependency-graph/cruise.mjs';
+import { PROJECT_TOOL_FILES } from '../project-tools/project-config-files.mjs';
 import { CRAP_CHECK_FILES } from '../crap/check-files.mjs';
 
 export const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
@@ -154,6 +155,9 @@ export const DEPENDENCY_GRAPH_FILES = [
   ARCHITECTURE_CONFIG,
   'languages/typescript/preset/dependency-graph/cruise.mjs',
   POLICY_TYPESCRIPT_CONFIG,
+  'languages/typescript/adapters/dependency-graph/project-config/dependency-cruiser-layers.mjs',
+  'languages/typescript/adapters/dependency-graph/project-dependency-graph.mjs',
+  ...PROJECT_TOOL_FILES,
 ];
 
 export const CRAP_CONFIGURATION_FILES = [
