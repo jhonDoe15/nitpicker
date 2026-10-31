@@ -14,8 +14,9 @@ const methods = Array.from(
 
 const HTTP = `${PACKAGE}import java.net.URI\nimport java.net.http.HttpClient\nimport java.net.http.HttpRequest\nimport java.net.http.HttpResponse\nimport java.time.Duration\nimport java.util.concurrent.CompletableFuture\n`;
 const BODY = `    private fun body(url: String): String {\n        val request = HttpRequest.newBuilder(URI.create(url)).timeout(Duration.ofSeconds(5)).build()\n        return client.send(request, HttpResponse.BodyHandlers.ofString()).body()\n    }\n`;
-const prefetch = (task, extra = '') =>
-  `${HTTP}${extra === '' ? '' : 'import java.util.concurrent.Semaphore\n'}\nclass Prefetch(private val client: HttpClient) {\n${extra === '' ? '' : '    private val permits = Semaphore(8)\n\n'}    fun pages(urls: List<String>): List<CompletableFuture<String>> =\n        urls.map { url -> CompletableFuture.supplyAsync { ${task}(url) } }\n\n${extra}${BODY}}\n`;
+function prefetch(task, extra = '') {
+  return `${HTTP}${extra === '' ? '' : 'import java.util.concurrent.Semaphore\n'}\nclass Prefetch(private val client: HttpClient) {\n${extra === '' ? '' : '    private val permits = Semaphore(8)\n\n'}    fun pages(urls: List<String>): List<CompletableFuture<String>> =\n        urls.map { url -> CompletableFuture.supplyAsync { ${task}(url) } }\n\n${extra}${BODY}}\n`;
+}
 const LIMITED = `    private fun limited(url: String): String {\n        permits.acquire()\n        try {\n            return body(url)\n        } finally {\n            permits.release()\n        }\n    }\n\n`;
 
 export const GUARD_ROOT = 'src/main/kotlin/demo/guards';
