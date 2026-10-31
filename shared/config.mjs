@@ -51,6 +51,10 @@ export function isCount(value) {
   return Number.isInteger(value) && value >= 0;
 }
 
+export function isStringList(value) {
+  return Array.isArray(value) && value.every((entry) => typeof entry === 'string');
+}
+
 export function isPlainObject(value) {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
