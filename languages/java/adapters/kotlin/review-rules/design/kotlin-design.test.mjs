@@ -281,15 +281,16 @@ describe('kotlinDesignFindings', () => {
 });
 
 describe('Kotlin exceptions for the design rules', () => {
-  it('accepts an exception for each design rule', () => {
-    for (const rule of DESIGN_RULES) {
-      expect(KOTLIN_EXCEPTION_RULES).toContain(rule);
-      expect(() => {
-        validateKotlinOptions({
-          preset: 'kotlin',
-          exceptions: [{ rule, paths: ['src/**'], reason: 'intended' }],
-        });
-      }).not.toThrow();
-    }
+  it('lists every design rule as an exception rule', () => {
+    expect(DESIGN_RULES.filter((rule) => !KOTLIN_EXCEPTION_RULES.includes(rule))).toEqual([]);
+  });
+
+  it.each(DESIGN_RULES)('accepts an exception for %s', (rule) => {
+    expect(() => {
+      validateKotlinOptions({
+        preset: 'kotlin',
+        exceptions: [{ rule, paths: ['src/**'], reason: 'intended' }],
+      });
+    }).not.toThrow();
   });
 });
