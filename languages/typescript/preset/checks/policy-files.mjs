@@ -1,4 +1,5 @@
 import { ARCHITECTURE_CONFIG, POLICY_TYPESCRIPT_CONFIG } from '../dependency-graph/cruise.mjs';
+import { PROJECT_TOOL_FILES } from '../project-tools/project-config-files.mjs';
 import { CRAP_CHECK_FILES } from '../crap/check-files.mjs';
 
 export const JAVASCRIPT_PRESET_FILE = 'languages/javascript/preset/javascript-preset.mjs';
@@ -67,6 +68,11 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/analysis/static-shapes.mjs',
   'languages/typescript/preset/eslint-plugin/rules/api-shape/exhaustive-union-predicate.mjs',
   'languages/typescript/preset/eslint-plugin/rules/api-shape/no-forwarding-wrapper.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/analysis/mutation/mutating-methods.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/signatures/no-compatibility-shim.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/signatures/no-falsy-default.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/signatures/no-parameter-mutation.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/signatures/no-tri-state-boolean.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-props/react-components.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-props/no-runtime-exclusive-props-check.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-props/no-singular-and-plural-prop.mjs',
@@ -105,6 +111,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/testing/processes/no-node-process-per-test.mjs',
   'languages/typescript/preset/eslint-plugin/rules/testing/processes/no-server-or-worker-per-test.mjs',
   'languages/typescript/preset/eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs',
+  'languages/typescript/preset/eslint-plugin/test-assertions/no-test-retry.mjs',
   'languages/typescript/preset/eslint-plugin/rules/testing/lifecycle/no-first-test-charged-setup.mjs',
   'languages/typescript/preset/eslint-plugin/rules/testing/lifecycle/no-uninjectable-delay.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/no-process-globals-outside-main-guard.mjs',
@@ -114,9 +121,17 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/guards/no-shell-string-command.mjs',
   'languages/typescript/preset/eslint-plugin/rules/guards/no-unknown-main-folder.mjs',
   'languages/typescript/preset/eslint-plugin/rules/guards/no-unsafe-path-join.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/concurrency/bounds.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/concurrency/client-modules.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/concurrency/collections/fixed-collections.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/concurrency/fan-out-io.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/concurrency/io-origin.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/concurrency/sites.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/concurrency/unbounded-fan-out.mjs',
   'languages/typescript/preset/eslint-plugin/rules/security/http/http-clients.mjs',
   'languages/typescript/preset/eslint-plugin/rules/security/http/http-config.mjs',
   'languages/typescript/preset/eslint-plugin/rules/security/http/http-defaults.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/security/http/http-modules.mjs',
   'languages/typescript/preset/eslint-plugin/rules/security/imported-names.mjs',
   'languages/typescript/preset/eslint-plugin/rules/security/member-values.mjs',
   'languages/typescript/preset/eslint-plugin/rules/security/security-values.mjs',
@@ -144,6 +159,9 @@ export const DEPENDENCY_GRAPH_FILES = [
   ARCHITECTURE_CONFIG,
   'languages/typescript/preset/dependency-graph/cruise.mjs',
   POLICY_TYPESCRIPT_CONFIG,
+  'languages/typescript/adapters/dependency-graph/project-config/dependency-cruiser-layers.mjs',
+  'languages/typescript/adapters/dependency-graph/project-dependency-graph.mjs',
+  ...PROJECT_TOOL_FILES,
 ];
 
 export const CRAP_CONFIGURATION_FILES = [
