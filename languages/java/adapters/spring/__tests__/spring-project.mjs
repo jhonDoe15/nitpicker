@@ -76,6 +76,23 @@ const REVIEW_RULES = new Set([
   'UnboundedFanOut',
 ]);
 const roots = [];
+const RECEIPT_TEST_FILE = 'src/test/java/shop/ReceiptTest.java';
+const RECEIPT_CONSOLE_FINDING = {
+  tool: 'test-runtime',
+  rule: 'test-console-output',
+  path: '.',
+  identity: 'console:a5705cd8f80bae4111f91e91',
+  message: [
+    'Tests print new console output: "receipt total drifted by <n> cents"',
+    `(${RECEIPT_TEST_FILE}, test "printsTheDrift").`,
+    'Fix the cause (for example a warning the code under test now logs, or a mock or thread that outlives the test),',
+    'or allow a third-party message in "testConsole.allow" of nitpicker.config.json. If this is intended, add',
+    `{"rule":"test-runtime/test-console-output","paths":["${RECEIPT_TEST_FILE}"],"reason":"..."}`,
+    'to "exceptions" in nitpicker.config.json.',
+  ].join(' '),
+  classification: 'enforceable',
+  tokens: ['receipt', 'total', 'drifted', 'by', '<n>', 'cents'],
+};
 const RECEIPT_TEST = `package shop;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -149,7 +166,7 @@ function consoleChange(build, ...left) {
   runGitIn(repository, 'commit', '-q', '-m', 'base');
   const filterTest = path.join(repository, 'src/test/java/shop/FilterTest.java');
   commitBranch(repository, 'receipt', {
-    'src/test/java/shop/ReceiptTest.java': RECEIPT_TEST,
+    [RECEIPT_TEST_FILE]: RECEIPT_TEST,
     'src/test/java/shop/FilterTest.java': readFileSync(filterTest, 'utf8').replace('42', '43'),
   });
   const result = runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', ...build });
@@ -171,4 +188,5 @@ export {
   comparable,
   stableConsoleEmitters,
   consoleChange,
+  RECEIPT_CONSOLE_FINDING,
 };
