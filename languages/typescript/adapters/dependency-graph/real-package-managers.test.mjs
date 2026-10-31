@@ -159,9 +159,7 @@ function baseWorktreeInstall(liveRoot, check) {
     } finally {
       removeSnapshotDependencies(dependencies);
     }
-    for (const copied of dependencies.localPackagePaths) {
-      expect(existsSync(copied)).toBe(false);
-    }
+    expect(dependencies.localPackagePaths.filter((copied) => existsSync(copied))).toEqual([]);
     return dependencies;
   });
 }
@@ -175,11 +173,9 @@ describe('local packages the base checkout does not hold', () => {
 
       const dependencies = baseWorktreeInstall(projectRoot, (worktreeRoot) => {
         const folders = testCase.members.length === 0 ? ['node_modules'] : testCase.members;
-        for (const folder of folders) {
-          expect(existsSync(path.join(worktreeRoot, folder, 'fixture-lib/fixture.json'))).toBe(
-            true,
-          );
-        }
+        const installed = (folder) =>
+          existsSync(path.join(worktreeRoot, folder, 'fixture-lib/fixture.json'));
+        expect(folders.filter((folder) => !installed(folder))).toEqual([]);
       });
 
       expect(dependencies.localPackagePaths.map((copied) => path.basename(copied))).toEqual([
