@@ -1,7 +1,7 @@
 import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { TROUBLESHOOTING_FILE, troubleshootingUrl } from './troubleshooting.mjs';
+import { TROUBLESHOOTING_FILE, troubleshootingUrl } from '../troubleshooting.mjs';
 import {
   anchorsLinkedFrom,
   files,
@@ -9,7 +9,7 @@ import {
   read,
   root,
   sectionOf,
-} from './test-support/troubleshooting-page.mjs';
+} from '../test-support/troubleshooting-page.mjs';
 
 const EVERY_PRESET = [
   'exit-code-2-and-tool-errors',

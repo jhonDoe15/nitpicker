@@ -1,12 +1,12 @@
 import ts from 'typescript';
 import { describe, expect, it } from 'vitest';
-import { TROUBLESHOOTING_FILE } from './troubleshooting.mjs';
+import { TROUBLESHOOTING_FILE } from '../troubleshooting.mjs';
 import {
   pageEntries,
   productionSources,
   read,
   stringConstants,
-} from './test-support/troubleshooting-page.mjs';
+} from '../test-support/troubleshooting-page.mjs';
 
 const MINIMUM_QUOTE = 12;
 const MINIMUM_LITERAL = 10;
