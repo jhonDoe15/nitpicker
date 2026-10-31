@@ -206,6 +206,12 @@ one kind: changed code files that lie outside the roots the preset checks. For T
 `layout.sourceRoots`); for Python, `python.sourceRoots`; for Java and Kotlin, the build's source
 sets (`src/<set>/java` or `src/<set>/kotlin` of a module, or a directory the build file declares).
 To leave files unchecked, list them in `exclude`. Choose another directory with `--output <dir>`.
+
+The console summary shortens mutation findings: the mutants that no test runs print as one entry
+per function (with their count and lines), and a function prints at most three surviving mutants,
+then how many more there are. The headline still counts every mutant, and the reports above list
+each one.
+
 Set `NO_COLOR` to disable colored console output. On GitHub Actions the run also writes a job
 summary and `::error` annotations for the new enforceable findings (see
 [Job summary and annotations](ci.md#job-summary-and-annotations)).
@@ -218,7 +224,10 @@ The SARIF files have one run with one result per finding. `ruleId` is `<tool>/<r
 consumer matches a finding across runs when its line moves. A tool error makes the run's invocation
 unsuccessful and adds a notification; a note (such as a red base) adds a `note`-level notification
 without changing the outcome. Columns are counted in UTF-16 code units
-(`columnKind: "utf16CodeUnits"`).
+(`columnKind: "utf16CodeUnits"`), a tab counting as one: nitpicker converts the columns of ruff
+(code points), Error Prone (tabs expanded to every eighth column) and Checkstyle (tabs expanded to its
+`tabWidth`, 8 unless the project Checkstyle config the run uses sets it). mypy versions count
+columns differently, so a mypy finding on a line with non-ASCII text has a line and no column.
 
 | File                    | Run        | Results                                      | `baselineState`    |
 | ----------------------- | ---------- | -------------------------------------------- | ------------------ |
@@ -235,10 +244,19 @@ both snapshots and are not held are in no report file.
 A `uri` is relative to the root of the git repository: the folder of the project inside the
 repository, then the finding's path, percent-encoded, with `uriBaseId: "%SRCROOT%"` naming the
 repository root. A project in `packages/app` reports `packages/app/src/a.ts`, which is how code
-scanning matches a result to a file. The files hold no absolute path, so `originalUriBaseIds` is not
-written. When nitpicker cannot find the repository root (the `aggregate` command outside a git
-checkout), paths stay relative to the project and have no `uriBaseId`. A finding about the whole
-project (no file) points at the project folder, or `.` for a project at the repository root.
+scanning matches a result to a file. `originalUriBaseIds` gives `%SRCROOT%` the repository root as a
+`file://` URI, so other SARIF viewers can open the files; it is the absolute path of the checkout on
+the machine that ran nitpicker, so a SARIF file shared outside it shows where that checkout was.
+When nitpicker cannot find the repository root (the `aggregate` command outside a git checkout),
+paths stay relative to the project, with no `uriBaseId` and no `originalUriBaseIds`. A finding about
+the whole project (no file) points at the project folder, or `.` for a project at the repository
+root.
+
+GitHub code scanning rejects an upload whose run has more than 25,000 results or whose file is over
+10 MB gzipped. A SARIF file that would pass either limit lists only as many findings as fit, new
+findings first (so on a large legacy project `report-baseline.sarif` is the file that gets cut),
+and ends its notifications with a `warning` that gives the count and the JSON file that has every
+finding.
 
 Upload the comparison file in pull requests with `github/codeql-action/upload-sarif`:
 
@@ -292,6 +310,8 @@ nitpicker aggregate --input-root <dir> --shard-count <n>
 nitpicker cache publish [--analyzer <name>]...
           [--shard-count <n> --shard-index <i>]
 nitpicker base [--base <ref>]
+nitpicker explain <tool/rule>...
+nitpicker rules [--preset <name>] [--tool <name>]
 ```
 
 - `--all`: report every finding in the current checkout, with no baseline. Exits 1 on any violation.
@@ -317,8 +337,42 @@ nitpicker base [--base <ref>]
 - `nitpicker cache publish`: analyze the committed `HEAD` tree and upload its findings to the remote
   cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits 0 when
   everything was uploaded and 2 otherwise.
+- `nitpicker explain <tool/rule>...`: print what the [rule reference](rules/README.md) says about
+  each rule: the presets and analyzers that report it, why it is on, the allowed form where the
+  reference has one, and the `nitpicker.config.json` entry that accepts it. Name a rule as a finding prints it
+  (`eslint-lint/no-undef`, `pmd/UnusedLocalVariable`), by its bare name (`F401`, or `MagicNumber`
+  for detekt's `detekt.style.MagicNumber`), or name a check (`coverage`, `mutation`, `duplicates`)
+  to list its rules. A name the reference does not know is reported with the closest rules and
+  exits 1.
+- `nitpicker rules [--preset <name>] [--tool <name>]`: list the rules, one line each. It lists the
+  preset of the project's `nitpicker.config.json` (`typescript` without a config) and leaves out the
+  rules of analyzers listed in `disable`; `--preset` (or `--preset=<name>`) lists another preset in
+  full, and `--tool` keeps one tool.
+
 - `nitpicker base [--base <ref>]`: print the base a comparison would use, picked as listed under
   [What it compares](#what-it-compares), so a CI script can fetch it before the run.
+
+### Rule reference
+
+[docs/rules](rules/README.md) has one entry for every rule that can fail the gate, for all presets:
+the tool and rule id, the presets that report it, why it is on, the allowed form where it has one,
+and the exact `exceptions` entry that accepts it. Where the reference has no allowed form of its
+own, the entry links to the page the tool keeps for the rule (or to the guide that describes it);
+for nitpicker's own PMD rules that the guides do not describe, the entry quotes the message the
+finding prints, which names the form to use. The summaries,
+reasons and examples of PMD, Error Prone, detekt, ruff and ESLint rules are those tools' own text,
+taken from the versions nitpicker pins; SpotBugs and Checkstyle are under the LGPL, so their entries
+name the rule and its category and link to the tool's description. The pages are generated from the
+rule catalogs with `npm run gen:rules`, and a test fails when they are stale. Report-only
+measurements and tool errors are not rules and have no entry.
+
+Each entry has a stable anchor, and the places that show a finding link to it: the SARIF report
+sets `helpUri` (and a `shortDescription`) on each rule it lists, `new-findings.json`,
+`held-findings.json`, `resolved-findings.json` and, with `--all`, `findings.json` carry an optional
+`helpUri` on each finding whose rule has an entry, and `report.txt` ends its findings with a link to
+the reference when one of them has an entry. In an installed package the links point at the
+release tag of its version (`v<version>`) in the repository named in `package.json`, so they match
+the rules that version reports; in a git checkout of nitpicker they point at `main`.
 
 ### Findings cache
 
