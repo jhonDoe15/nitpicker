@@ -134,6 +134,7 @@ describe('readKotlinSourceFindings', () => {
         'BooleanFlagParameter',
         'CatchOnlyLogsOrReturnsDefault',
         'CommentedOutCode',
+        'CompatibilityShim',
         'CredentialLiteral',
         'DetachedTestCase',
         'GeneratedOnHandWrittenCode',
@@ -142,15 +143,20 @@ describe('readKotlinSourceFindings', () => {
         'HardcodedSecret',
         'HttpWithoutTimeout',
         'IoCallInLoop',
+        'JvmSyntheticOnHandWrittenCode',
         'LogStringConcatenation',
         'MutableModuleState',
         'MutationIgnoreMarker',
+        'ParameterMutation',
+        'RepeatedStringLiteral',
         'SecretInLog',
         'ShellCommand',
         'SqlStringBuilding',
         'TestClassWithoutTestCases',
         'TestHelperInSource',
         'TlsVerificationOff',
+        'TriStateBoolean',
+        'UnboundedFanOut',
         'UnsafeDeserialization',
         'WeakHash',
       ].map((rule) => `kotlin-source/${rule}`),
@@ -254,28 +260,6 @@ describe('withFrameworkAllowances', () => {
     });
 
     expect(kept).toEqual(findings.slice(3));
-  });
-
-  it('keeps literal duplication to main sources by the test roots, not by a path glob', () => {
-    const duplicated = (file) => ({
-      tool: 'detekt',
-      rule: 'detekt.complexity.StringLiteralDuplication',
-      path: file,
-      message: 'String "orders" appears 3 times in the file.',
-      location: { line: 1 },
-    });
-    const findings = [
-      duplicated('src/test/kotlin/demo/ShopTest.kt'),
-      duplicated('src/main/kotlin/demo/test/Fixtures.kt'),
-      duplicated('src/main/kotlin/demo/Shop.kt'),
-    ];
-
-    const kept = withFrameworkAllowances(findings, {
-      projectRoot: root(),
-      testRoots: ['src/test/kotlin'],
-    });
-
-    expect(kept).toEqual(findings.slice(1));
   });
 });
 

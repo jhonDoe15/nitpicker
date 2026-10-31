@@ -6,11 +6,17 @@ export const RUFF_SELECTOR = /^[A-Z]+\d*$/;
 const PYRIGHT_RULE = /^report[A-Z]\w*$/;
 const MYPY_CODE = /^[a-z][a-z0-9]*(?:-[a-z0-9]+)*$/;
 const NEAR_MISS_DISTANCE = 2;
-const REPLACED_RULES = { S110: 'swallowed-exception', S112: 'swallowed-exception' };
+const REPLACED_RULES = {
+  S110: 'swallowed-exception',
+  S112: 'swallowed-exception',
+  FBT001: 'boolean-flag-parameter',
+  FBT002: 'boolean-flag-parameter',
+};
+const RULE_LETTERS = /^[A-Z]+/;
 const RUFF_CODE = /"([A-Z]+\d*)"/g;
 const RUFF_CONFIG_TEXT = readFileSync(RUFF_CONFIG, 'utf8');
-const select = codesOf('select');
-const ignore = codesOf('ignore');
+export const RUFF_SELECT = codesOf('select');
+export const RUFF_IGNORE = codesOf('ignore');
 
 function codesOf(key) {
   const list = new RegExp(`^${key}\\s*=\\s*\\[([^\\]]*)\\]`, 'm').exec(RUFF_CONFIG_TEXT);
@@ -35,16 +41,24 @@ function distance(left, right) {
   return previous[right.length];
 }
 
-function isRuffRule(rule) {
+function selects(code, rule) {
   return (
-    RUFF_SELECTOR.test(rule) &&
-    !ignore.includes(rule) &&
-    select.some((code) => code.startsWith(rule) || rule.startsWith(code))
+    code.startsWith(rule) ||
+    (rule.startsWith(code) && RULE_LETTERS.exec(code)[0] === RULE_LETTERS.exec(rule)[0])
   );
 }
 
-export function ruleIdProblem(rule) {
-  if (PYTHON_RULES_IDS.includes(rule) || PYRIGHT_RULE.test(rule) || isRuffRule(rule)) {
+function isRuffRule(rule) {
+  return (
+    RUFF_SELECTOR.test(rule) &&
+    !RUFF_IGNORE.includes(rule) &&
+    RUFF_SELECT.some((code) => selects(code, rule))
+  );
+}
+
+export function ruleIdProblem(rule, { projectRuff = false } = {}) {
+  const ruffRule = projectRuff ? RUFF_SELECTOR.test(rule) : isRuffRule(rule);
+  if (PYTHON_RULES_IDS.includes(rule) || PYRIGHT_RULE.test(rule) || ruffRule) {
     return undefined;
   }
   if (Object.hasOwn(REPLACED_RULES, rule)) {

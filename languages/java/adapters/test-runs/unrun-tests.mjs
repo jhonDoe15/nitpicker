@@ -7,6 +7,13 @@ import { projectFilesUnder } from '../../../../shared/project-files/project-file
 const TOOL = 'test-runtime';
 const UNRUN_TEST_RULE = 'test-not-run';
 export const UNRUN_TEST_EXCEPTION_RULE = `${TOOL}/${UNRUN_TEST_RULE}`;
+
+export const UNRUN_TEST_ADVICE = {
+  maven: ({ test }) =>
+    `Bind the integration-test and verify goals of maven-failsafe-plugin in this module so ${test} runs: Surefire skips classes named IT*, *IT and *ITCase, and Failsafe does not run here, so its tests never run.`,
+  gradle: ({ sourceSet, test }) =>
+    `Register a Test task for the ${sourceSet} source set (testClassesDirs = sourceSets.${sourceSet}.output.classesDirs, classpath = sourceSets.${sourceSet}.runtimeClasspath) so ${test} runs: no test task runs that source set, so its tests never run.`,
+};
 const TEST_RESULTS = 'test-results';
 const SOURCE_FILE = /\.(?:java|kt|groovy)$/u;
 const FAILSAFE_NAME = /^IT|IT$|ITCase$/u;
@@ -96,21 +103,13 @@ function mavenFindings(context) {
   const ran = ranClasses(reportRoot);
   return testClasses(context, mavenTestRoots(manifest))
     .filter(({ simple, className }) => FAILSAFE_NAME.test(simple) && !ran.has(className))
-    .map((test) =>
-      finding(
-        test,
-        `Bind the integration-test and verify goals of maven-failsafe-plugin in this module so ${test.simple} runs: Surefire skips classes named IT*, *IT and *ITCase, and Failsafe does not run here, so its tests never run.`,
-      ),
-    );
+    .map((test) => finding(test, UNRUN_TEST_ADVICE.maven({ test: test.simple })));
 }
 
 function gradleFindings(context) {
   return (context.manifest.unrunTestSourceSets ?? []).flatMap(({ name, roots }) =>
     testClasses(context, roots).map((test) =>
-      finding(
-        test,
-        `Register a Test task for the ${name} source set (testClassesDirs = sourceSets.${name}.output.classesDirs, classpath = sourceSets.${name}.runtimeClasspath) so ${test.simple} runs: no test task runs that source set, so its tests never run.`,
-      ),
+      finding(test, UNRUN_TEST_ADVICE.gradle({ sourceSet: name, test: test.simple })),
     ),
   );
 }

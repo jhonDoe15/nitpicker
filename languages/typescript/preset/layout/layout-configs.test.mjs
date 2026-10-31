@@ -152,24 +152,30 @@ describe('layout-aware tool configurations', () => {
       'tsconfig.quality.json': layoutTsconfig,
       'tsconfig.stryker.json': layoutStrykerTsconfig,
     };
-    for (const [name, rewrite] of Object.entries(rewrites)) {
+    const pairs = Object.entries(rewrites).map(([name, rewrite]) => {
       const base = readDefault(name);
-      const rewritten = rewrite(base, defaultLayout);
-      expect(sorted(rewritten.include)).toEqual(sorted(base.include));
-      expect(rewritten.exclude).toEqual(base.exclude);
-    }
+      return { base, rewritten: rewrite(base, defaultLayout) };
+    });
+    expect(pairs.map(({ rewritten }) => sorted(rewritten.include))).toEqual(
+      pairs.map(({ base }) => sorted(base.include)),
+    );
+    expect(pairs.map(({ rewritten }) => rewritten.exclude)).toEqual(
+      pairs.map(({ base }) => base.exclude),
+    );
     const knip = readDefault('knip.json');
     const rewrittenKnip = layoutKnipConfig(knip, defaultLayout);
-    for (const key of ['entry', 'project', 'ignore']) {
-      expect(sorted(rewrittenKnip[key])).toEqual(sorted(knip[key]));
-    }
+    const keys = ['entry', 'project', 'ignore'];
+    expect(keys.map((key) => sorted(rewrittenKnip[key]))).toEqual(
+      keys.map((key) => sorted(knip[key])),
+    );
     const jscpd = readDefault('jscpd.json');
     expect(layoutJscpdConfig(jscpd, defaultLayout)).toEqual(jscpd);
   });
   it('link the shipped files unchanged for the default layout', () => {
-    for (const name of ['knip.json', 'jscpd.json']) {
-      expect(layoutTransformFor(name, defaultLayout)).toBeUndefined();
-    }
+    const names = ['knip.json', 'jscpd.json'];
+    expect(names.map((name) => layoutTransformFor(name, defaultLayout))).toEqual(
+      names.map(() => undefined),
+    );
     expect(layoutTransformFor('knip.json', customLayout)).toBeTypeOf('function');
     expect(layoutTransformFor('vitest.quality.config.ts', customLayout)).toBeUndefined();
   });
