@@ -5,8 +5,8 @@ import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mj
 import { runCacheCommand } from './command/cache.mjs';
 import { runExplainCommand, runRulesCommand } from './command/reference/reference.mjs';
 import { runBaseCommand } from './command/base.mjs';
-import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
-import { resolveRunTarget } from './scope/target/run-target.mjs';
+import { missingPathHint, parseArguments, USAGE_TEXT } from './command/arguments.mjs';
+import { resolveRunTarget } from './scope/run-target.mjs';
 import { realpathSync } from 'node:fs';
 import {
   describeConfigOverrides,
@@ -130,7 +130,7 @@ function runCommand(cli) {
 
 function runConfigured(cli) {
   const { options, stdout, runTasks } = cli;
-  const { currentProjectRoot, scope } = resolveRunTarget(cli);
+  const { currentProjectRoot, scope } = resolveRunTarget({ ...cli, missingPathHint });
   const config = loadConfig(currentProjectRoot);
   const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
