@@ -105,6 +105,8 @@ export const USAGE_TEXT =
   ' [--output <directory>] [--policy-root <directory>]\n' +
   '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]\n' +
   '       nitpicker base [--base <ref>]\n' +
+  '       nitpicker explain <tool/rule>...\n' +
+  '       nitpicker rules [--preset <name>] [--tool <name>]\n' +
   '\n' +
   'Paths (files or folders, relative to the current folder) limit the findings that are shown\n' +
   'and gate the run; the analysis still covers the whole project. Examples:\n' +
