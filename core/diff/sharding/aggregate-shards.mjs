@@ -19,6 +19,7 @@ import { configureAnalyzers } from '../../configuration/configure-analyzers.mjs'
 import { presetAnalyzers } from '../../configuration/preset-analyzers.mjs';
 import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-policy.mjs';
 import { renderConsoleSummary } from '../reporting/summary.mjs';
+import { writeGithubOutput } from '../reporting/github/emit.mjs';
 
 function resolvePolicyRoot({ policyRoot, optionsPolicyRoot, currentProjectRoot }) {
   if (policyRoot !== undefined) {
@@ -68,21 +69,24 @@ export function aggregateShardReports({
     toolErrors: sortByToolAndPath(toolErrors),
     notes: sortByToolAndPath(notes),
   };
-  report.text = writeDiffReports(outputRoot, report, {
-    projectPath: projectPathOf(liveProjectRoot),
-  });
+  report.text = writeDiffReports(outputRoot, report, repositoryLocationOf(liveProjectRoot));
   return report;
 }
 
-function projectPathOf(liveProjectRoot) {
+function repositoryLocationOf(liveProjectRoot) {
   if (liveProjectRoot === undefined) {
-    return undefined;
+    return {};
   }
   try {
-    return runGit(liveProjectRoot, ['rev-parse', '--show-prefix']).trim();
+    const [repositoryRoot, projectPath] = runGit(liveProjectRoot, [
+      'rev-parse',
+      '--show-toplevel',
+      '--show-prefix',
+    ]).split('\n');
+    return { projectPath, repositoryRoot };
   } catch (error) {
     if (error instanceof GitCommandError) {
-      return undefined;
+      return {};
     }
     throw error;
   }
@@ -137,7 +141,7 @@ export function runAggregateCli({
       analyzers,
       policyRoot,
     });
-    return reportExitCode(report, { stdout, environment, outputRoot });
+    return reportExitCode(report, { stdout, stderr, environment, outputRoot, currentProjectRoot });
   } catch (error) {
     if (outputRoot !== undefined) {
       clearDiffReports(outputRoot);
@@ -215,13 +219,21 @@ function configuredReport(options, { currentProjectRoot, outputRoot, analyzers, 
   });
 }
 
-function reportExitCode(report, { stdout, environment, outputRoot }) {
+function reportExitCode(report, { stdout, stderr, environment, outputRoot, currentProjectRoot }) {
   stdout.write(
     renderConsoleSummary(report, {
       color: environment.NO_COLOR === undefined,
       diagnosticsPath: absoluteTextReportPath(outputRoot),
     }),
   );
+  writeGithubOutput({
+    kind: 'diff',
+    report,
+    projectRoot: currentProjectRoot,
+    environment,
+    stdout,
+    stderr,
+  });
   if (report.summary.newEnforceableFindings > 0) {
     return 1;
   }

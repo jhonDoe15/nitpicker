@@ -90,9 +90,13 @@ function measuredOptions(texts) {
   return Object.fromEntries(Object.entries(candidates).filter(([, value]) => value !== undefined));
 }
 
-export function pytestStyle(projectRoot, files = pythonFilesOf(projectRoot)) {
+export function pytestStyle(
+  projectRoot,
+  files = pythonFilesOf(projectRoot),
+  configRoot = projectRoot,
+) {
   const texts = files.map((file) => textOf(projectRoot, file));
-  return { ...measuredOptions(texts), ...explicitOptions(projectRoot) };
+  return { ...measuredOptions(texts), ...explicitOptions(configRoot) };
 }
 
 function tomlValue(value) {

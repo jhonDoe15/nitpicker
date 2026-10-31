@@ -185,13 +185,12 @@ describe('generated knip.json', () => {
   it('adds the JavaScript entry files and config files', () => {
     const config = layoutKnipConfig(base, javascriptLayout);
     expect(config.entry.slice(0, base.entry.length)).toEqual(base.entry);
-    for (const entry of [
+    const added = [
       'src/main.{js,mjs,cjs}',
       'vitest.config.{js,mjs,cjs}',
       'tests/fixtures/*harness*.{js,mjs,cjs}',
-    ]) {
-      expect(config.entry.includes(entry), entry).toBe(true);
-    }
+    ];
+    expect(added.filter((entry) => !config.entry.includes(entry))).toEqual([]);
     expect(config.project).toEqual([...base.project, '*.config.{js,mjs,cjs}']);
   });
 

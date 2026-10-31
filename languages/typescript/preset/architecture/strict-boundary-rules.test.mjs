@@ -72,9 +72,7 @@ describe('strict boundary rules', () => {
     const domainRules = strictBoundaryRules.filter(({ name }) => name.startsWith('domain-'));
 
     expect(domainRules.length).toBeGreaterThan(5);
-    for (const rule of domainRules) {
-      expect(rule.comment, rule.name).toContain(exceptionRoute);
-    }
+    expect(domainRules.filter(({ comment }) => !comment.includes(exceptionRoute))).toEqual([]);
   });
 
   it('lifts a rule for the importing files an exception names', () => {

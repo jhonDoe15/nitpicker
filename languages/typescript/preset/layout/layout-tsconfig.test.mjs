@@ -177,14 +177,15 @@ describe('layout-aware tsconfig', () => {
   it('ship the mutation tsconfig with the same indexing and return checks as the type check', () => {
     const quality = readDefault('tsconfig.quality.json').compilerOptions;
     const stryker = readDefault('tsconfig.stryker.json').compilerOptions;
-    for (const option of [
+    const options = [
       'strict',
       'noImplicitReturns',
       'noFallthroughCasesInSwitch',
       'noUncheckedIndexedAccess',
-    ]) {
-      expect(stryker[option]).toBe(quality[option]);
-    }
+    ];
+    expect(options.map((option) => stryker[option])).toEqual(
+      options.map((option) => quality[option]),
+    );
   });
   it('drop only the extra strictness from the shipped mutation tsconfig when relaxed', () => {
     const projectRoot = temporaryProject({});

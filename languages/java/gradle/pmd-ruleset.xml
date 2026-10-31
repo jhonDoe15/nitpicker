@@ -99,13 +99,24 @@
     </properties>
   </rule>
   <rule name="GeneratedOnHandWrittenCode" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
-        message="JaCoCo and PIT skip code annotated @Generated, so this is not measured. Remove the annotation from hand-written code.">
+        message="Remove the annotation from hand-written code: JaCoCo skips code carrying an annotation whose name contains Generated, and PIT skips @Generated, so this is not measured. Put the JPA @GeneratedValue on the field.">
     <priority>2</priority>
     <properties>
       <property name="xpath">
         <value><![CDATA[
 //(ClassDeclaration | RecordDeclaration | EnumDeclaration | MethodDeclaration | ConstructorDeclaration | CompactConstructorDeclaration)
-  /ModifierList/Annotation[@SimpleName = 'Generated']
+  /ModifierList/Annotation[contains(@SimpleName, 'Generated')]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="MutationIgnoreMarker" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Remove the annotation and kill the mutants with a test: PIT does not mutate code annotated @DoNotMutate or @CoverageIgnore.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//Annotation[@SimpleName = ('DoNotMutate', 'CoverageIgnore')]
 ]]></value>
       </property>
     </properties>

@@ -1,4 +1,4 @@
-import { outerClass } from '../metrics/java-coupling.mjs';
+import { outerClass } from '../../ingest/class-names.mjs';
 
 const ANNOTATION_TYPE = 'java.lang.annotation.Annotation';
 const APPLICATION = 'org.springframework.boot.autoconfigure.SpringBootApplication';

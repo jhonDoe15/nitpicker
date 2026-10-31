@@ -268,7 +268,7 @@ describe('project root resolution', () => {
     expect(() => resolveProjectRoot(emptyRoot)).toThrow(
       new Error(
         `No package.json or nitpicker.config.json found between ${emptyRoot} and repository root ${emptyRoot}. ` +
-          'For a Java, Kotlin or Python project, create nitpicker.config.json with its preset, for example {"preset": "java"}.',
+          'For a Java, Kotlin, Python or Go project, create nitpicker.config.json with its preset, for example {"preset": "java"}.',
       ),
     );
   });

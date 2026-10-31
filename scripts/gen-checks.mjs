@@ -5,6 +5,7 @@ import { readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { applyGeneratedBlock, applyJscpdMode } from '../shared/checks-catalog.mjs';
+import { applyActionReference } from './action-inputs.mjs';
 
 const repositoryRoot = path.resolve(import.meta.dirname, '..');
 export const GENERATED_FILES = [
@@ -13,6 +14,7 @@ export const GENERATED_FILES = [
     file: path.join(repositoryRoot, 'languages/typescript/preset/defaults/jscpd.json'),
     generate: applyJscpdMode,
   },
+  { file: path.join(repositoryRoot, 'docs/ci.md'), generate: applyActionReference },
 ];
 
 export function staleFiles() {

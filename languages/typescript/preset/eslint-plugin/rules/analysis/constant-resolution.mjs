@@ -1,4 +1,11 @@
-import { scopeChain } from './ancestry.mjs';
+import { chainOf, scopeChain } from './ancestry.mjs';
+
+const TYPE_WRAPPERS = new Set([
+  'TSAsExpression',
+  'TSSatisfiesExpression',
+  'TSNonNullExpression',
+  'TSTypeAssertion',
+]);
 
 const MAX_RESOLVE_DEPTH = 8;
 
@@ -37,11 +44,19 @@ function constantInitializer(context, node, depth) {
     : undefined;
 }
 
+function unwrapTypes(node) {
+  return chainOf(node, (link) => (TYPE_WRAPPERS.has(link.type) ? link.expression : undefined)).at(
+    -1,
+  );
+}
+
 export function resolveConstant(context, node, depth = 0) {
-  const chain = [node];
+  const chain = node ? [unwrapTypes(node)] : [node];
   for (const current of chain) {
     const next = constantInitializer(context, current, depth + chain.length - 1);
-    if (next) chain.push(next);
+    if (next) {
+      chain.push(unwrapTypes(next));
+    }
   }
   return chain.at(-1);
 }

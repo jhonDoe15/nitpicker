@@ -24,10 +24,12 @@ import { readToolConfigs } from './build-files/tool-config-files.mjs';
 import { isGeneratedJvm } from '../../languages/java/adapters/generated/generated-sources.mjs';
 import { isGeneratedPython } from '../../languages/python/libraries/generated-files.mjs';
 import { isMarkedGenerated } from '../../languages/typescript/preset/layout/generated-files.mjs';
+import { isGeneratedGo } from '../../languages/go/adapters/structure/go-generated.mjs';
 
 const GRADLE_EXTENSIONS = ['java', 'kt', 'kts'];
 const PRESET_EXTENSIONS = new Map([
   ['python', ['py']],
+  ['go', ['go']],
   ['java', GRADLE_EXTENSIONS],
   ['kotlin', GRADLE_EXTENSIONS],
 ]);
@@ -218,6 +220,9 @@ function generatedTestOf(preset) {
   if (preset === 'python') {
     return isGeneratedPython;
   }
+  if (preset === 'go') {
+    return isGeneratedGo;
+  }
   return GRADLE_PRESETS.includes(preset) ? isGeneratedJvm : isMarkedGenerated;
 }
 
@@ -244,6 +249,7 @@ export function readPolicyScope({
   baseProjectRoot,
   headProjectRoot,
   moves,
+  replacedOptions,
 }) {
   const files = listedFiles(headProjectRoot);
   const baseFiles = listedFiles(baseProjectRoot);
@@ -270,7 +276,7 @@ export function readPolicyScope({
     toolConfigs: readToolConfigs(
       { config: baseConfig, root: baseProjectRoot, files: baseFiles },
       { config: headConfig, root: headProjectRoot, files },
-      gitBlobId,
+      { gitBlobId, replacedOptions },
     ),
     reach: () => productionReachOf({ headProjectRoot, headConfig, files, headRoots, headSources }),
     blobOf: blobReader(headProjectRoot),

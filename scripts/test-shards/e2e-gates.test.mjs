@@ -55,6 +55,7 @@ describe('the E2E gates', () => {
     { file: 'ungated.e2e.test.mjs', flags: [] },
     { file: 'typo.e2e.test.mjs', flags: ['NITPICKER_KOTLN_E2E'] },
     { file: 'foreign.e2e.test.mjs', flags: ['NITPICKER_PYTHON_E2E'] },
+    { file: 'go.e2e.test.mjs', flags: ['NITPICKER_GO_E2E'] },
   ];
   const ungated = cases('ungated.e2e.test.mjs', 'runs everywhere');
   const listings = {
@@ -73,6 +74,7 @@ describe('the E2E gates', () => {
         ...cases('both.e2e.test.mjs', 'd'),
       ],
       python: [...ungated, ...cases('python.e2e.test.mjs', 'g')],
+      go: [...ungated, ...cases('go.e2e.test.mjs', 'h')],
     },
   };
 
@@ -96,6 +98,7 @@ describe('the E2E gates', () => {
       ],
       kotlin: ['kotlin.e2e.test.mjs > f'],
       python: ['python.e2e.test.mjs > g'],
+      go: ['go.e2e.test.mjs > h'],
     });
   });
 });

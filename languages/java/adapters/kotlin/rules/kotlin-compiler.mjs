@@ -10,7 +10,7 @@ const REPORT = 'kotlinc.json';
 const LINT_NOT_RUN = 'lint-not-run';
 const WARNING = /^(.+\.kt):(\d+):\d+: warning: \[([A-Z_]+)\] (.+)$/;
 const ERROR = /^(?:.+\.kt:\d+:\d+: )?error: (.+)$/;
-const ADVICE = {
+export const KOTLINC_ADVICE = {
   unchecked:
     'Use a typed API, a checked conversion (`as? List<*>` and a check of each element) or a reified generic function instead of the unchecked cast.',
   deprecation:
@@ -35,7 +35,7 @@ export function parseCompilerWarnings(text) {
   });
 }
 
-function lintNotRun(output) {
+export function lintNotRun(output) {
   const firstError = output
     .split(/\r?\n/)
     .map((line) => ERROR.exec(line)?.[0])
@@ -60,7 +60,7 @@ function warningFinding({ file, line, rule, text }, next) {
     rule,
     path: file,
     identity: next(`${rule}:${hash(subject)}`),
-    message: `${ADVICE[rule]} The compiler warns: ${text.replace(/\.$/, '')}.`,
+    message: `${KOTLINC_ADVICE[rule]} The compiler warns: ${text.replace(/\.$/, '')}.`,
     classification: 'enforceable',
     location: { line },
   };
