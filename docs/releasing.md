@@ -35,6 +35,12 @@ Work from a clean checkout of `main` with full history.
      The first publish creates the package, so it needs no prior rights.
    - `LICENSE` is at the repository root, which is also the package root, so npm packs it as is.
      The installed-package test asserts the packed copy matches the root file.
+   - [CHANGELOG.md](../CHANGELOG.md) lists every user-facing change since the last tag under
+     `Unreleased`, grouped as Added, Changed (a stricter rule that can fail code that passed
+     before goes here), Fixed and Upgrade notes. Check it against the merged pull requests:
+     `git log <last-tag>..origin/main --merges --oneline` after
+     `git fetch --depth=2000 origin main --tags`. Write for people who use nitpicker: leave out CI,
+     test and refactoring changes, and name no internal modules.
    - The README's claims match the release, and the "Container image" section of
      [usage.md](usage.md) still says no image is published (update it once one is pushed).
    - The npm page renders the README and resolves its relative links against the GitHub
@@ -45,7 +51,11 @@ Work from a clean checkout of `main` with full history.
      written.
 2. **Bump the version.** At the repository root:
    `npm version <new-version> --no-git-tag-version`. This updates `package.json` and
-   `package-lock.json`. Commit it (`Release v<new-version>`) through a normal PR to `main`.
+   `package-lock.json`. In `CHANGELOG.md`, move the `Unreleased` entries under a new
+   `## [<new-version>] - <YYYY-MM-DD>` heading, leave an empty `Unreleased` section above it, and
+   update the link definitions at the bottom (`[Unreleased]` compares the new tag with `HEAD`, and the
+   new version links to its release). Commit it (`Release v<new-version>`) through a normal PR to
+   `main`. A test fails when `package.json` has a version that `CHANGELOG.md` has no entry for.
 3. **Test.**
    ```sh
    npm ci
@@ -56,7 +66,7 @@ Work from a clean checkout of `main` with full history.
    linked consumers and one on TypeScript 7, so it is the real check of the package contents. CI
    runs it too, in the `installed` job of the `typescript` workflow.
 4. **Dry run.** `npm pack --dry-run` from the repository root. Confirm `LICENSE`, `README.md`,
-   `package.json`, `core/`, `shared/` and `languages/` are listed, and no tests, fixtures,
+   `CHANGELOG.md`, `package.json`, `core/`, `shared/` and `languages/` are listed, and no tests, fixtures,
    `node_modules` or reports are. Then `npm publish --dry-run`.
 5. **Tag** the merged release commit and push the tag, and for a stable release move its floating
    tag (`v0.<minor>` before 1.0, `v<major>` from 1.0) to the same commit:
@@ -75,15 +85,22 @@ Work from a clean checkout of `main` with full history.
    so no `--access` flag is needed.
 7. **Verify.** In an empty directory: `npm view nitpicker version`, then
    `npm install --save-dev nitpicker typescript @types/node && npx nitpicker --help`.
-8. **GitHub release.** From the tagged commit, create a release from the tag with generated notes,
-   edited as needed, and attach the packed tarball so the version can be installed without npm (see
-   [Install from a GitHub release](usage.md#from-a-github-release)):
+8. **GitHub release.** From the tagged commit, create a release from the tag and attach the packed
+   tarball so the version can be installed without npm (see
+   [Install from a GitHub release](usage.md#from-a-github-release)). The notes are the version's
+   `.github/release-notes/v<new-version>.md`, followed by its `CHANGELOG.md` entry with the heading and
+   date, as the workflow below builds them:
 
    ```sh
+   node core/cli.mjs changelog v<new-version> > changelog-entry.md
    rm -rf release-assets && mkdir release-assets && npm pack --pack-destination release-assets
    (cd release-assets && shasum -a 256 nitpicker-*.tgz > SHA256SUMS)
-   gh release create v<new-version> release-assets/* --verify-tag --generate-notes
+   { cat .github/release-notes/v<new-version>.md; printf '\n'; cat changelog-entry.md; } > notes.md
+   gh release create v<new-version> release-assets/nitpicker-*.tgz release-assets/SHA256SUMS \
+     --verify-tag --notes-file notes.md
    ```
+
+   The first command exits 2 when the entry is missing or empty.
 
    Add `--prerelease` for a pre-release. A release can also go out on GitHub alone, before or
    without step 6: steps 1 to 5 still apply, and the tarball is the same file npm would publish.
@@ -96,9 +113,11 @@ Work from a clean checkout of `main` with full history.
    the version has a suffix (the step runs after the release is created, so when it fails, for
    example because the tag would move backwards or a tag ruleset of the repository blocks the
    forced push, the release stays published and the floating tag is moved by hand as in step 5),
-   and takes its notes from
-   `.github/release-notes/v<version>.md`, which must be on `main` first. Write the notes without
-   personal names: generated notes credit PR authors.
+   and takes its notes from `.github/release-notes/v<version>.md` on `main`, or from the released
+   commit when `main` does not have it. It checks the `CHANGELOG.md` entry in a step of its own
+   before packing, stops with an error annotation when the entry is missing or empty, and appends
+   the entry to the notes. `nitpicker changelog` loads no installed package, so the workflow needs
+   no `npm ci`. Write the notes without personal names: generated notes credit PR authors.
 
 ## Container image
 

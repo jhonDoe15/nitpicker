@@ -16,6 +16,7 @@ import { normalizeStructure } from './quality-areas/reporting/repository.mjs';
 import { normalizeCrap } from './quality-areas/reporting/tests.mjs';
 import { parseArguments } from './quality-areas/arguments.mjs';
 import { runQualityArea } from './quality-areas-runner.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../../../shared/messages/troubleshooting.mjs';
 
 const temporaryRoots = [];
 
@@ -75,7 +76,7 @@ describe('crap runner without a coverage report', () => {
         rule: 'tests-failed-skipped',
         path: '.',
         identity: 'tests-failed-skipped',
-        message: 'CRAP did not run: there is no coverage report, because the project tests fail.',
+        message: `CRAP did not run: there is no coverage report, because the project tests fail.`,
         classification: 'tool-error',
       },
     ]);
@@ -331,6 +332,7 @@ describe('mutation testing that cannot start', () => {
       rule: 'typecheck-failed-skipped',
       message:
         'mutation skipped: the base commit does not type-check, so its mutants cannot be compared. Fix the base first; a missing @types/node is the usual cause.',
+      anchor: TROUBLESHOOTING_ANCHORS.baseDoesNotTypeCheck,
     });
   });
 
@@ -342,6 +344,7 @@ describe('mutation testing that cannot start', () => {
       rule: 'tests-failed-skipped',
       message:
         'mutation skipped: the base commit fails its own tests, so its mutants are unknown there.',
+      anchor: TROUBLESHOOTING_ANCHORS.baseTestsFail,
     });
   });
 

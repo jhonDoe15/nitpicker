@@ -99,7 +99,8 @@ export function acquireRunLock(lockPath, { pid = process.pid, isAlive = isProces
 }
 
 export function describeRunInProgress(holder) {
-  return `nitpicker: another run is in progress in this project (pid ${String(holder)}); wait for it to finish.\n`;
+  const message = `another run is in progress in this project (pid ${String(holder)}); wait for it to finish.`;
+  return `nitpicker: ${message}\n`;
 }
 
 export function withRunLock(

@@ -1,6 +1,10 @@
 import { existsSync, statSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const RC_FILES = [
   '.mocharc.cjs',
@@ -140,7 +144,10 @@ function nodeFlagArguments(mocha, loaded) {
 export function mochaMutationOptions({ projectRoot, tokens, testFiles }) {
   const mocha = projectMocha(projectRoot);
   if (mocha === undefined) {
-    throw new Error(`Mocha is not installed in ${projectRoot}, so its tests cannot be mutated.`);
+    throw troubleshootingError(
+      `Mocha is not installed in ${projectRoot}, so its tests cannot be mutated.`,
+      TROUBLESHOOTING_ANCHORS.testRunnerNotInstalled,
+    );
   }
   const loaded = mochaModule(mocha, 'options').loadOptions([
     ...sourceArguments(projectRoot, tokens),

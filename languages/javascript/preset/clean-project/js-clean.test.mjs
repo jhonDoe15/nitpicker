@@ -9,6 +9,10 @@ import {
   readReport,
   runNitpicker,
 } from '../../../typescript/preset/clean-projects/test-support/clean-project.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingUrl,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const fixtureRoot = path.join(import.meta.dirname, '../fixtures/js-clean');
 const FIXTURE_TIMEOUT_MS = 300_000;
@@ -94,6 +98,7 @@ const FAILING_COVERAGE_OUTPUT = [
   'Tool errors:',
   'coverage (head): 1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
   "  test/failing.test.js > fails on purpose: AssertionError: expected 'greeted' to be 'empty-name' // Object.is equality",
+  `Help with tool errors: ${troubleshootingUrl(TROUBLESHOOTING_ANCHORS.exitCode2)}`,
   '',
 ].join('\n');
 

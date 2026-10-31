@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+if [ -z "${BASE_SHA:-}" ] || [ -z "${HEAD_SHA:-}" ]; then
+  cat >&2 <<'USAGE'
+Usage: BASE_SHA=<commit> HEAD_SHA=<commit> [PR_TITLE=<title>] [PR_BODY=<body>] [DENYLIST=<regex>] \
+  bash scripts/check-public-text.sh
+
+Checks the commit messages in BASE_SHA..HEAD_SHA, and the PR title and body when given, for private
+workspace links, ids and paths. To check a local branch before pushing:
+  BASE_SHA=$(git merge-base origin/main HEAD) HEAD_SHA=HEAD bash scripts/check-public-text.sh
+USAGE
+  exit 2
+fi
+
 workspace_pattern='claude\.ai/(code/session_|artifact/)|^Claude-Session:|/mnt/project-files|\b(cmsg|chan|cse)_[A-Za-z0-9]{8,}'
 attribution_pattern='^<!-- claude-projects-attribution[^>]*-->$|^_Requested by \*\*[^*]+\*\* · \[project thread\]\(https://claude\.ai/code/project/[^)]+\)_$'
 

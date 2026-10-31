@@ -1,6 +1,7 @@
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { childrenNamed, parseXml } from '../../../shared/ingest/common.mjs';
+import { explainedError } from '../../../shared/messages/troubleshooting.mjs';
 
 const MAX_LISTED_FAILURES = 10;
 const ROOT_MODULE = '.';
@@ -53,7 +54,7 @@ export function moduleName(directory) {
 }
 
 export function failingTestsError(where, failures) {
-  const error = new Error(
+  const error = explainedError(
     [
       `Tests fail in ${where}; nitpicker needs a passing test suite for coverage and mutation testing:`,
       ...listedFailures(failures),

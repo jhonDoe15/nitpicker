@@ -1,10 +1,12 @@
 import { existsSync, readFileSync, realpathSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
-import { ts } from '../../typescript-api/typescript-api.mjs';
+import { selectTypeScriptApi } from '../../typescript-api/api-selection.mjs';
 import { depthFirst } from '../../../../shared/traversal.mjs';
 import { reachableModules } from './module-resolution.mjs';
 import { readJsonc } from './tsconfig-files.mjs';
 
+const requireModule = createRequire(import.meta.url);
 const PACKAGE_JSON = /(?:^|\/)package\.json$/u;
 const DEPENDENCY_FOLDER = /(?:^|\/)node_modules\//u;
 const ENTRY_FIELDS = ['main', 'bin', 'exports'];
@@ -12,7 +14,7 @@ const UNLIMITED = { maxDepth: Number.POSITIVE_INFINITY, maxFiles: Number.POSITIV
 
 function specifiersOf(file) {
   return existsSync(file)
-    ? ts
+    ? requireModule(selectTypeScriptApi().file)
         .preProcessFile(readFileSync(file, 'utf8'), true, true)
         .importedFiles.map(({ fileName }) => fileName)
     : [];

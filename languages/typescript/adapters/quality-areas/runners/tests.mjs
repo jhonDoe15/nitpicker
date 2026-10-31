@@ -16,6 +16,7 @@ import {
   TESTS_NOT_RUN_RULE,
 } from '../../../../../shared/rules/finding-helpers.mjs';
 import { normalizeCrap } from '../reporting/tests.mjs';
+import { testsFailAnchor } from '../../../../../shared/messages/troubleshooting.mjs';
 import { withFunctionSourceHashes } from '../reporting/source-hashes.mjs';
 
 export function runPolicyTests(options) {
@@ -72,6 +73,7 @@ export function runCrap(options) {
       toolErrorFinding(options, {
         rule: TESTS_FAILED_SKIPPED_RULE,
         message: 'CRAP did not run: there is no coverage report, because the project tests fail.',
+        anchor: testsFailAnchor(options.snapshot),
       }),
     ];
   }

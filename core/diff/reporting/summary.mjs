@@ -4,6 +4,10 @@ import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { foldMutants } from './format/mutants.mjs';
 import { noteSummaryLines } from './format/notes.mjs';
 import { singleLine } from './format/text.mjs';
+import {
+  toolErrorHelpLine,
+  troubleshootingLinkOf,
+} from '../../../shared/messages/troubleshooting.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
 import {
   TESTS_FAILED_RULE,
@@ -160,6 +164,10 @@ function appendToolErrorSummary(lines, toolErrors, color) {
       ...rest.map((line) => `  ${line}`),
     );
   }
+  const help = toolErrorHelpLine(shown.map(({ message }) => message));
+  if (help !== undefined) {
+    lines.push(style(help, [ANSI.dim], color));
+  }
 }
 
 export function withoutSkipNotices(toolErrors) {
@@ -176,12 +184,15 @@ const ERROR_HEADLINE_LIMIT = 300;
 const ERROR_LINE_PATTERN = /error TS\d+|Error:|ERR_|Cannot find|not found|ENOENT/u;
 
 function errorHeadline(message) {
-  const text = singleLine(message);
+  const link = troubleshootingLinkOf(String(message));
+  const text = singleLine(String(message).replace(link ?? '', ''));
   const start = Math.max(text.search(ERROR_LINE_PATTERN), 0);
-  const headline = text.slice(start, start + ERROR_HEADLINE_LIMIT);
-  return headline.length < text.length - start
-    ? `${headline}… (full text in the diagnostics file)`
-    : headline;
+  const headline = text.slice(start, start + ERROR_HEADLINE_LIMIT).trimEnd();
+  const shown =
+    headline.length < text.length - start
+      ? `${headline}… (full text in the diagnostics file)`
+      : headline;
+  return link === undefined ? shown : `${shown} ${link}`;
 }
 
 export function pluralize(noun, count) {

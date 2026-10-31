@@ -13,6 +13,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { RUFF_FORMAT_ADVICE } from './test-support/ruff-format-advice.mjs';
 import { installFakeToolchain } from './test-support/fake-toolchain.mjs';
 import { analyzePythonSnapshot, parsePythonArguments } from './python-runner.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const roots = [];
 let savedTemporaryDirectory;
@@ -242,8 +243,7 @@ describe('analyzing a Python snapshot', () => {
         rule: 'mutation-failed',
         path: '.',
         identity: 'mutation-failed',
-        message:
-          'mutmut was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.',
+        message: `mutmut was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json. ${linkSentence('mutmutFails')}`,
         classification: 'tool-error',
       },
     ]);
@@ -274,8 +274,7 @@ describe('analyzing a Python snapshot', () => {
         rule: 'mutation-failed',
         path: '.',
         identity: 'mutation-failed',
-        message:
-          'mutmut wrote 1 results whose names are not in the form nitpicker reads (for example k): this mutmut version is not supported (nitpicker reads the run data of mutmut 3.x)',
+        message: `mutmut wrote 1 results whose names are not in the form nitpicker reads (for example k): this mutmut version is not supported (nitpicker reads the run data of mutmut 3.x). ${linkSentence('mutmutFails')}`,
         classification: 'tool-error',
       },
     ]);
@@ -335,7 +334,7 @@ describe('analyzing a Python snapshot', () => {
         rule: 'ruff-failed',
         path: '.',
         identity: 'ruff-failed',
-        message: 'ruff check exited 2 in the virtualenv environment:\nruff crashed',
+        message: `ruff check exited 2 in the virtualenv environment:\nruff crashed\n${linkSentence('pythonToolFails')}`,
         classification: 'tool-error',
       },
       {
@@ -343,7 +342,7 @@ describe('analyzing a Python snapshot', () => {
         rule: 'format-failed',
         path: '.',
         identity: 'format-failed',
-        message: 'ruff format exited 2 in the virtualenv environment:\nruff crashed',
+        message: `ruff format exited 2 in the virtualenv environment:\nruff crashed\n${linkSentence('pythonToolFails')}`,
         classification: 'tool-error',
       },
       {
@@ -359,7 +358,7 @@ describe('analyzing a Python snapshot', () => {
         rule: 'rules-failed',
         path: '.',
         identity: 'rules-failed',
-        message: 'ruff check exited 2 in the virtualenv environment:\nruff crashed',
+        message: `ruff check exited 2 in the virtualenv environment:\nruff crashed\n${linkSentence('pythonToolFails')}`,
         classification: 'tool-error',
       },
     ]);
@@ -376,7 +375,7 @@ describe('analyzing a Python snapshot', () => {
         rule: 'environment-failed',
         path: '.',
         identity: 'environment-failed',
-        message: `No Python environment at ${path.join(root, 'nowhere')} (${path.join(root, 'nowhere/bin')} does not exist): create it, or set "python.environment"`,
+        message: `No Python environment at ${path.join(root, 'nowhere')} (${path.join(root, 'nowhere/bin')} does not exist): create it, or set "python.environment". ${linkSentence('pythonEnvironment')}`,
         classification: 'tool-error',
       },
     ]);

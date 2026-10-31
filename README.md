@@ -124,6 +124,9 @@ with a link to the tool's own page for the rule where the reference has no allow
 - [nitpicker in CI](docs/ci.md): GitHub Actions (the action and plain steps), GitLab CI, Jenkins,
   the toolchain each preset needs.
 - [Checks](spec/checks.md): every check and rule, and what fails.
+- [Troubleshooting](docs/troubleshooting.md): the cause and fix for a run that exits 2, a tool that
+  cannot start, a base that cannot be analyzed, and the other failures that are not findings.
+- [Changelog](CHANGELOG.md): what changed in each release, and what to do when upgrading.
 - [Rule reference](docs/rules/README.md): one entry for every rule any preset can report, with the
   allowed form (or the tool's own page for the rule) and the exception to add.
   `nitpicker explain <tool/rule>` prints one in the terminal.

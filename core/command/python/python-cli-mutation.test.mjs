@@ -3,6 +3,7 @@ import { runCli as nitpickerCli } from '../../cli.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { LEGACY_VIOLATION, usePythonFixtures } from './test-support/python-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const { callsLog, pythonRepository, run } = usePythonFixtures(nitpickerCli);
 
@@ -141,8 +142,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
       snapshot,
       rule: 'mutation-failed',
       path: '.',
-      message:
-        'mutmut was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json.',
+      message: `mutmut was not found in the virtualenv environment: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it. To run without mutation testing, add "mutation" to "disable" in nitpicker.config.json. ${linkSentence('mutmutFails')}`,
     });
     expect(result.json('tool-errors.json')).toEqual([missing('base'), missing('head')]);
   });
@@ -190,7 +190,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
         snapshot: 'head',
         rule: 'mutation-failed',
         path: '.',
-        message: 'mutmut run exited 2 in the virtualenv environment:\nFailed to run clean test',
+        message: `mutmut run exited 2 in the virtualenv environment:\nFailed to run clean test\n${linkSentence('mutmutFails')}`,
       },
     ]);
   });

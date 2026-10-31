@@ -2,6 +2,12 @@ import { spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, readFileSync } from 'node:fs';
 import { containedPath } from './contained-path.mjs';
 import { installInvocation, isBerry } from './commands.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  explainedError,
+  troubleshootingError,
+  withTroubleshooting,
+} from '../../../../../shared/messages/troubleshooting.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const INSTALL_TIMEOUT_MINUTES = 4;
@@ -17,8 +23,9 @@ const SPAWN_FAILURES = {
 
 function assertSupportedPlatform(platform) {
   if (platform === 'win32') {
-    throw new Error(
+    throw troubleshootingError(
       `${FAILURE_PREFIX}: installing the base dependencies is not supported on native Windows (Node refuses to start the package managers' .cmd shims without a shell). Run nitpicker in WSL.`,
+      TROUBLESHOOTING_ANCHORS.windowsAndWsl,
     );
   }
 }
@@ -30,8 +37,9 @@ function assertNoRepositoryPlugins(packageManager) {
     existsSync(rcFile) &&
     PLUGINS_KEY.test(readFileSync(rcFile, 'utf8'))
   ) {
-    throw new Error(
+    throw troubleshootingError(
       `${FAILURE_PREFIX}: the base's .yarnrc.yml lists Yarn plugins, which are JavaScript files that Yarn runs during an install, and nitpicker does not run repository code there. Remove the plugins from the base, or make its package.json and lockfile equal to the head's so that no install is needed.`,
+      TROUBLESHOOTING_ANCHORS.unsupportedYarn,
     );
   }
 }
@@ -62,20 +70,27 @@ export function installDependencies(packageManager, platform = process.platform)
     timeout: INSTALL_TIMEOUT_MINUTES * MINUTE_MS,
   });
   if (result.status === COMMAND_NOT_FOUND_STATUS) {
-    throw new Error(
+    throw explainedError(
       `${FAILURE_PREFIX}: this project uses ${packageManager.name}, which is not installed. ${installHint}`,
     );
   }
   return { ok: result.error === undefined && result.status === 0, detail: failureDetail(result) };
 }
 
-export function failureMessage(packageManager, detail) {
-  return `${FAILURE_PREFIX} with ${packageManager.name}: ${detail}`;
+export function failureMessage(
+  packageManager,
+  detail,
+  anchor = TROUBLESHOOTING_ANCHORS.baseInstallFails,
+) {
+  return withTroubleshooting(`${FAILURE_PREFIX} with ${packageManager.name}: ${detail}`, anchor);
 }
 
 export function missingDependenciesMessage(packageManager, dependencyPath) {
   if (isBerry(packageManager)) {
-    return `Dependencies are not installed: ${dependencyPath} is missing. Yarn Plug'n'Play is not supported: set \`nodeLinker: node-modules\` in .yarnrc.yml and run \`yarn install\` in ${packageManager.root}.`;
+    return withTroubleshooting(
+      `Dependencies are not installed: ${dependencyPath} is missing. Yarn Plug'n'Play is not supported: set \`nodeLinker: node-modules\` in .yarnrc.yml and run \`yarn install\` in ${packageManager.root}.`,
+      TROUBLESHOOTING_ANCHORS.unsupportedYarn,
+    );
   }
   return `Dependencies are not installed: ${dependencyPath} is missing. Run \`${packageManager.name} install\` in ${packageManager.root} first.`;
 }
@@ -89,6 +104,7 @@ export function ensureDependencyFolder(packageManager, dependencyPath) {
       failureMessage(
         packageManager,
         "the install created no node_modules folder (Yarn Plug'n'Play is not supported: set `nodeLinker: node-modules`)",
+        TROUBLESHOOTING_ANCHORS.unsupportedYarn,
       ),
     );
   }

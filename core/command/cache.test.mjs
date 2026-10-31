@@ -8,6 +8,7 @@ import { finding, findingLine, policy } from '../diff/execution/test-support/ana
 import { captureOutput } from '../diff/reporting/test-support/output-capture.mjs';
 import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
 import { fixtureGit } from '../diff/git/test-support/git-repository.mjs';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
@@ -206,6 +207,7 @@ describe('remote findings cache', () => {
       expect(result.output.stdoutText).toEqual(
         expect.stringMatching(exactText`Published 0 of 1 base snapshots for ${/[a-f0-9]{40}/}
 Not published: fake-quality-analyzer (upload failed)
+${linkSentence('cachePublishFails')}
 `),
       );
     } finally {

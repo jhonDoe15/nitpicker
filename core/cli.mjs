@@ -3,6 +3,7 @@ import { runAggregateCli } from './diff/sharding/aggregate-shards.mjs';
 import { reportingProgress } from './diff/execution/progress.mjs';
 import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
+import { runChangelogCommand } from './command/changelog/changelog.mjs';
 import { runExplainCommand, runRulesCommand } from './command/reference/reference.mjs';
 import { runBaseCommand } from './command/base.mjs';
 import { parseArguments, USAGE_TEXT } from './command/arguments.mjs';
@@ -70,14 +71,15 @@ export function runCli(options = {}) {
     });
   }
   try {
-    redirectToBundledTypeScriptApi(cli.environment);
     return runCommand(cli);
   } catch (error) {
-    cli.stderr.write(
-      `nitpicker failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    cli.stderr.write(`nitpicker failed: ${errorText(error)}\n`);
     return 2;
   }
+}
+
+function errorText(error) {
+  return error instanceof Error ? error.message : String(error);
 }
 
 function isTerminal(stream) {
@@ -102,16 +104,12 @@ function withCliDefaults(options) {
 }
 
 function runCommand(cli) {
+  if (cli.arguments_[0] === 'changelog') {
+    return runChangelogCommand({ ...cli, arguments_: cli.arguments_.slice(1) });
+  }
+  redirectToBundledTypeScriptApi(cli.environment);
   if (cli.arguments_[0] === 'cache') {
-    return runCacheCommand({
-      arguments_: cli.arguments_.slice(1),
-      environment: cli.environment,
-      currentProjectRoot: cli.currentProjectRoot,
-      analyzers: cli.analyzers,
-      stdout: cli.stdout,
-      stderr: cli.stderr,
-      runTasks: cli.runTasks,
-    });
+    return runCacheCommand({ ...cli, arguments_: cli.arguments_.slice(1) });
   }
   const referenceCommand = REFERENCE_COMMANDS[cli.arguments_[0]];
   if (referenceCommand !== undefined) {

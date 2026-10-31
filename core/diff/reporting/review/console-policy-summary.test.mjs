@@ -4,6 +4,7 @@ import { renderTextReport } from '../text.mjs';
 import { finding, report } from '../test-support/report-builders.mjs';
 import { policyFindings } from './policy-findings.mjs';
 import { POLICY_GUIDANCE } from './policy-guidance.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const DIGEST = 'd1e2f3a4b5c6';
 const HEADING = 'Policy changed in this change (nitpicker.config.json, head against base):';
@@ -18,7 +19,8 @@ const TIGHTENED = 'threshold crapLimit lowered from 9 to 8';
 const ACCEPT =
   '  Only a person may accept exactly these changes, after reviewing them: ' +
   `--accept-policy-change=${DIGEST} at an interactive terminal, ` +
-  `or NITPICKER_ACCEPT_POLICY_CHANGE=${DIGEST} in CI.`;
+  `or NITPICKER_ACCEPT_POLICY_CHANGE=${DIGEST} in CI. ${linkSentence('policyLoosened')}`;
+const HELP = `Help with tool errors: ${linkSentence('exitCode2').slice('See '.length)}`;
 const DIAGNOSTICS = 'Full diagnostics: reports/quality/diff/combined/report.txt';
 const CODE_DEFECT = ['  eslint/no-console src/a.js:12', '    Unexpected console statement'];
 const ACCEPT_ROUTE = [
@@ -158,6 +160,7 @@ describe('console policy review', () => {
       ACCEPT,
       '✖ 1 tool error',
       '  coverage (head): Error: unavailable',
+      HELP,
       DIAGNOSTICS,
       '',
     ]);
@@ -180,6 +183,7 @@ describe('console policy review', () => {
       ACCEPT,
       '✖ 1 tool error',
       '  coverage: Error: unavailable',
+      HELP,
       DIAGNOSTICS,
       '',
     ]);
