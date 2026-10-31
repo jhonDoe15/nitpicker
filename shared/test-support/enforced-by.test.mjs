@@ -6,9 +6,12 @@ import { catalogFileOf, isKotlinPath, mentionsRule, ruleEmitters } from './rule-
 
 const repositoryRoot = path.resolve(import.meta.dirname, '../..');
 
-const REPORT_ONLY_KOTLIN_MUTANTS = {
-  file: 'languages/java/adapters/reporting/kotlin-reports.mjs',
-  evidence: /reportOnlyKotlinMutants/u,
+const JVM_REUSE_RULES_ONLY = {
+  file: 'languages/java/adapters/reuse/jvm-reuse-facts.mjs',
+  evidence: /rules: REUSE_RULES/u,
+};
+const JVM_FACT_RULES_NOT_RUN = {
+  'shared-used-by-one-feature': JVM_REUSE_RULES_ONLY,
 };
 const NOT_ENFORCED_ALTHOUGH_EMITTED = {
   python: {
@@ -17,9 +20,13 @@ const NOT_ENFORCED_ALTHOUGH_EMITTED = {
       evidence: /registeredFactRules\('python'\)/u,
     },
   },
-  kotlin: {
-    'mutant-survived': REPORT_ONLY_KOTLIN_MUTANTS,
-    'mutant-nocoverage': REPORT_ONLY_KOTLIN_MUTANTS,
+  java: JVM_FACT_RULES_NOT_RUN,
+  kotlin: JVM_FACT_RULES_NOT_RUN,
+  go: {
+    'inheritance-depth-limit': {
+      file: 'languages/go/adapters/configuration/go-config.mjs',
+      evidence: /Go has no inheritance/u,
+    },
   },
   javascript: {
     'unused-prop': {
@@ -87,14 +94,23 @@ describe('the enforcedBy column of every catalogued rule', () => {
     expect(unused).toEqual([]);
   });
   it('keeps every documented exception tied to code that still holds it', () => {
-    for (const [language, rules] of Object.entries(NOT_ENFORCED_ALTHOUGH_EMITTED)) {
-      for (const [ruleId, { file, evidence }] of Object.entries(rules)) {
-        const rule = RULES.find(({ id }) => id === ruleId);
-        expect(rule.enforcedBy[language], `${language} ${ruleId}`).toBe(false);
-        expect(emitters[language].get(ruleId), `${language} ${ruleId}`).not.toEqual([]);
-        expect(readFileSync(path.join(repositoryRoot, file), 'utf8'), file).toMatch(evidence);
-      }
-    }
+    const documented = Object.entries(NOT_ENFORCED_ALTHOUGH_EMITTED).flatMap(([language, rules]) =>
+      Object.entries(rules).map(([ruleId, { file, evidence }]) => ({
+        name: `${language} ${ruleId}`,
+        enforced: RULES.find(({ id }) => id === ruleId).enforcedBy[language],
+        emitted: emitters[language].get(ruleId).length > 0,
+        evidenceHeld: evidence.test(readFileSync(path.join(repositoryRoot, file), 'utf8')),
+      })),
+    );
+    expect(documented.map(({ name, enforced }) => [name, enforced])).toEqual(
+      documented.map(({ name }) => [name, false]),
+    );
+    expect(documented.map(({ name, emitted }) => [name, emitted])).toEqual(
+      documented.map(({ name }) => [name, true]),
+    );
+    expect(documented.map(({ name, evidenceHeld }) => [name, evidenceHeld])).toEqual(
+      documented.map(({ name }) => [name, true]),
+    );
   });
   it('finds the adapters that emit a rule in the language folders and the shared code they import', () => {
     const found = (language, ruleId, file) => emitters[language].get(ruleId).includes(file);

@@ -36,6 +36,7 @@ import {
 import { readDependencyFindings } from './dependencies/dependency-findings.mjs';
 import { withoutFrameworkForms } from './dependencies/python-frameworks.mjs';
 import { readStructureFunctions } from '../../../shared/ingest/structure-report.mjs';
+import { withUtf16Columns } from '../../../shared/ingest/columns/utf16-columns.mjs';
 import { TYPES_REPORT } from './python-types.mjs';
 import { listProductionModules } from './analysis/python-sources.mjs';
 import { isGeneratedPython } from '../libraries/generated-files.mjs';
@@ -44,6 +45,7 @@ import { readFactFindings } from './facts/python-facts.mjs';
 
 const FORMATTER_TOOLS = { ruff: 'ruff-format', black: 'black' };
 const NO_TESTS_RULE = 'no-tests-ran';
+const COLUMN_UNITS = { ruff: 'code-points', mypy: 'ascii-only' };
 
 function readReport(reportRoot, name) {
   return readFileSync(path.join(reportRoot, name), 'utf8');
@@ -97,7 +99,11 @@ export function readPythonFindings({ projectRoot, reportRoot, crapLimit, policy 
     ],
     libraries,
   );
-  return { findings: withoutFrameworkForms(found, projectRoot, imports) };
+  const findings = withUtf16Columns(withoutFrameworkForms(found, projectRoot, imports), {
+    units: COLUMN_UNITS,
+    readSource: (file) => readSource(projectRoot, file),
+  });
+  return { findings };
 }
 
 function sizedModules(projectRoot, modules) {

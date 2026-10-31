@@ -15,6 +15,7 @@ function mergedDefinitions(definitions) {
     byName.set(localKey(definition), {
       key: known === undefined ? definition.key : `${known.key}+${definition.key}`,
       exported: (known?.exported ?? false) || definition.exported,
+      overloads: (known?.overloads ?? true) && definition.overloads === true,
       line: known?.line ?? definition.line,
     });
   }
@@ -83,10 +84,16 @@ function importedOrigins(path, { index, importsByFile }) {
   );
 }
 
+function isOverload(index, origin) {
+  return index.get(origin.path).definitions.get(origin.name).overloads;
+}
+
 function collisionsIn(path, context) {
   const found = importedOrigins(path, context).filter(
     ({ origin }) =>
-      origin !== undefined && !context.isExcepted(RULE_IDS.exportedNameCollision, origin.path),
+      origin !== undefined &&
+      !isOverload(context.index, origin) &&
+      !context.isExcepted(RULE_IDS.exportedNameCollision, origin.path),
   );
   const byName = new Map();
   for (const { name, origin, keepsName } of found) {
@@ -165,7 +172,12 @@ export function exportedNameCollisionFindings(modules, imports, context) {
       identity: `collision:${name}`,
       symbol: name,
       line: index.get(origin.path).definitions.get(origin.name).line,
-      values: { name, others: listPaths(others), importer, fix: COLLISION_FIX },
+      values: {
+        name,
+        others: listPaths(others),
+        importer,
+        fix: context.fixFor?.(importer) ?? COLLISION_FIX,
+      },
     }),
   );
 }

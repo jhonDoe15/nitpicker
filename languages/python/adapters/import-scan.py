@@ -1,6 +1,7 @@
 import ast
 import json
 import os
+import re
 import sys
 import tokenize
 
@@ -13,7 +14,13 @@ from python_facts import decoded, facts_of
 
 TYPE_CHECKING = "TYPE_CHECKING"
 TYPING_MODULES = {"typing", "typing_extensions"}
-IMPORT_ERRORS = {"ImportError", "ModuleNotFoundError"}
+IMPORT_ERRORS = {"ImportError", "ModuleNotFoundError", "Exception", "BaseException"}
+ENVIRONMENT_MODULES = {"sys", "platform"}
+ENVIRONMENT_NAMES = {"version_info", "find_spec", "platform", "environ", "getenv"}
+FLAG = re.compile(r"^_*[A-Z][A-Z0-9_]*$")
+IMPORTS = (ast.Import, ast.ImportFrom)
+TRY_NODES = (ast.Try, getattr(ast, "TryStar", ast.Try))
+FUNCTIONS = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
 
 
 def is_false_assignment(node):
@@ -62,16 +69,45 @@ def branches(node, type_only, flags):
     return None
 
 
-def statement_of(node, type_only, conditional):
+def statement_of(node, state, conditional):
+    type_only, guarded, local = state
+    level, module = (0, None) if isinstance(node, ast.Import) else (node.level, node.module)
     return {
-        "level": getattr(node, "level", 0),
-        "module": getattr(node, "module", None),
+        "level": level,
+        "module": module,
         "names": [a.name for a in node.names],
         "typeOnly": type_only,
-        "conditional": conditional,
+        "guarded": guarded,
+        "local": local,
         "line": node.lineno,
+        "conditional": conditional,
         "aliases": [{"name": a.name, "alias": a.asname} for a in node.names],
     }
+
+
+def names_in(node):
+    return {
+        part.id if isinstance(part, ast.Name) else part.attr
+        for part in ast.walk(node)
+        if isinstance(part, (ast.Name, ast.Attribute))
+    }
+
+
+def catches_import_error(handler):
+    return handler.type is None or bool(names_in(handler.type) & IMPORT_ERRORS)
+
+
+def guards_imports(node):
+    return isinstance(node, TRY_NODES) and any(map(catches_import_error, node.handlers))
+
+
+def suppresses_import_error(node):
+    return any(
+        isinstance(item.context_expr, ast.Call)
+        and "suppress" in names_in(item.context_expr.func)
+        and any(names_in(argument) & IMPORT_ERRORS for argument in item.context_expr.args)
+        for item in node.items
+    )
 
 
 def import_nodes(statements):
@@ -79,7 +115,7 @@ def import_nodes(statements):
         node
         for statement in statements
         for node in ast.walk(statement)
-        if isinstance(node, (ast.Import, ast.ImportFrom))
+        if isinstance(node, IMPORTS)
     ]
 
 
@@ -87,11 +123,6 @@ def bound_names(node):
     if isinstance(node, ast.Import):
         return {alias.asname or alias.name.split(".")[0] for alias in node.names}
     return {alias.asname or alias.name for alias in node.names}
-
-
-def catches_import_error(handler):
-    caught = handler.type.elts if isinstance(handler.type, ast.Tuple) else [handler.type]
-    return any(getattr(name, "id", None) in IMPORT_ERRORS for name in caught)
 
 
 def fallback_imports(node):
@@ -122,27 +153,93 @@ def gated_imports(node):
 def alternative_imports(tree):
     found = set()
     for node in ast.walk(tree):
-        if isinstance(node, (ast.Try, getattr(ast, "TryStar", ast.Try))):
+        if isinstance(node, TRY_NODES):
             found.update(map(id, fallback_imports(node)))
         elif isinstance(node, ast.If):
             found.update(map(id, gated_imports(node)))
     return found
 
 
+def stored_names(target):
+    return {part.id for part in ast.walk(target) if isinstance(part, ast.Name)}
+
+
+def assigned(node):
+    if isinstance(node, IMPORTS):
+        return {(a.asname or a.name).split(".")[0] for a in node.names}
+    if isinstance(node, ast.Assign):
+        return set().union(*map(stored_names, node.targets))
+    if isinstance(node, ast.AnnAssign):
+        return stored_names(node.target)
+    return set()
+
+
+def is_marker(node):
+    if isinstance(node, IMPORTS):
+        return True
+    value = getattr(node, "value", None)
+    return isinstance(node, (ast.Assign, ast.AnnAssign)) and isinstance(value, ast.Constant)
+
+
+def import_flags(tree):
+    flags = set()
+    for node in filter(guards_imports, ast.walk(tree)):
+        for part in node.body + node.orelse:
+            for inner in filter(is_marker, ast.walk(part)):
+                flags |= assigned(inner)
+    for node in ast.walk(tree):
+        if isinstance(node, (ast.Assign, ast.AnnAssign)) and node.value is not None:
+            if tests_environment(node.value, set(), flag_names=False):
+                flags |= assigned(node)
+    return flags
+
+
+def tests_environment(test, flags, flag_names=True):
+    for part in ast.walk(test):
+        if isinstance(part, ast.Attribute) and isinstance(part.value, ast.Name):
+            if part.value.id in ENVIRONMENT_MODULES or (part.value.id, part.attr) == ("os", "name"):
+                return True
+        found = names_in(part) if isinstance(part, (ast.Name, ast.Attribute)) else set()
+        if found & (ENVIRONMENT_NAMES | flags):
+            return True
+        if flag_names and any(FLAG.match(name) for name in found):
+            return True
+    return False
+
+
+def child_states(node, state, flags):
+    type_only, guarded, local = state
+    local = local or isinstance(node, FUNCTIONS)
+    if isinstance(node, TRY_NODES):
+        guarding = node.orelse + (node.body + node.handlers if guards_imports(node) else [])
+        guarding = set(map(id, guarding))
+        return [
+            (child, (type_only, guarded or id(child) in guarding, local))
+            for child in ast.iter_child_nodes(node)
+        ]
+    guards = (
+        isinstance(node, (ast.With, ast.AsyncWith)) and suppresses_import_error(node)
+    ) or (isinstance(node, ast.If) and tests_environment(node.test, flags))
+    return [(child, (type_only, guarded or guards, local)) for child in ast.iter_child_nodes(node)]
+
+
 def collect(root, flags):
     alternatives = alternative_imports(root)
     found = []
-    stack = [(root, False)]
+    environment = import_flags(root)
+    stack = [(root, (False, False, False))]
     while stack:
-        node, type_only = stack.pop()
-        if isinstance(node, (ast.Import, ast.ImportFrom)):
-            found.append(statement_of(node, type_only, id(node) in alternatives))
+        node, state = stack.pop()
+        if isinstance(node, IMPORTS):
+            found.append(statement_of(node, state, id(node) in alternatives))
             continue
-        split = branches(node, type_only, flags) if isinstance(node, ast.If) else None
+        split = branches(node, state[0], flags) if isinstance(node, ast.If) else None
         if split is None:
-            pending = [(child, type_only) for child in ast.iter_child_nodes(node)]
+            pending = child_states(node, state, environment)
         else:
-            pending = [(child, flag) for statements, flag in split for child in statements]
+            pending = [
+                (child, (flag, *state[1:])) for statements, flag in split for child in statements
+            ]
         stack.extend(reversed(pending))
     return found
 
