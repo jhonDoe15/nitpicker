@@ -18,7 +18,7 @@ export function byFixOrder(left, right) {
 function byPosition(left, right) {
   return (
     Number(left.path > right.path) - Number(left.path < right.path) ||
-    (left.location?.line ?? 0) - (right.location?.line ?? 0) ||
+    (left.location?.line ?? Infinity) - (right.location?.line ?? Infinity) ||
     (left.location?.column ?? 0) - (right.location?.column ?? 0)
   );
 }
@@ -41,7 +41,9 @@ function groupByRule(findings) {
 function groupLines(label, members) {
   const parts = members.map((finding) => splitRoute(singleLine(finding.message)));
   const split = parts.map(({ body }) => sentences(body));
-  const shared = split[0].filter((sentence) => split.every((list) => list.includes(sentence)));
+  const unfolded = split.filter((_, index) => members[index].folded !== true);
+  const base = unfolded.length > 1 || unfolded.length === split.length ? unfolded : split;
+  const shared = base[0].filter((sentence) => base.every((list) => list.includes(sentence)));
   const sharedSet = new Set(shared);
   const details = split.map((list) => list.filter((sentence) => !sharedSet.has(sentence)));
   const advice = shared.join(' ');
