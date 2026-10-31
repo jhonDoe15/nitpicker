@@ -290,6 +290,7 @@
       "typescript": ["mutation"],
       "javascript": ["mutation"],
       "java": ["java"],
+      "kotlin": ["kotlin"],
       "python": ["mutation"]
     },
     "A mutant in code that no test runs.",
