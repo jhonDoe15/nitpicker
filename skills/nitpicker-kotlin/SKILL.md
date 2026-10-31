@@ -100,6 +100,15 @@ To learn why a rule is on and what form it allows before you write or change cod
   `of` or `from` are fine.
 - A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
+- Take a dependency as a constructor parameter; never look it up where it is used with Koin
+  `get()`/`inject()`, a Guice `Injector`, `CDI.current()` or JNDI (`pmd/ServiceLocatorLookup`). With
+  Koin, pass it as a constructor parameter in the module definition (`single { Orders(get()) }`), and
+  take a `Lazy<T>` or a function type for a deferred lookup. Compose and Android: a
+  `koinViewModel()` or `koinInject()` default parameter value and Android components (Activity,
+  Fragment, Service, BroadcastReceiver, ContentProvider, Application) are fine. Only `main`, Koin
+  definitions and functions taking a Koin `Scope`, a Guice `Module`'s `configure`,
+  `@Provides`/`@Produces` functions and `@Bean` functions of a `@Configuration` class look
+  dependencies up.
 - A validation annotation on a constructor property takes the field target:
   `data class OrderRequest(@field:NotBlank val item: String)`, not `@NotBlank val item`, which
   lands on the constructor parameter where `@Valid` never looks (`pmd/ValidationAnnotationTarget`).

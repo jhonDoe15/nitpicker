@@ -8,7 +8,7 @@ import {
   gradleClasspath,
   pinnedKotlinCompiler,
   writeSources,
-} from '../../test-support/kotlin-psi/kotlin-psi-program.mjs';
+} from '../../test-support/kotlin/kotlin-psi-program.mjs';
 import { FACTS_EXPECTED } from './test-support/facts-expected.mjs';
 import { FACTS_SOURCE } from './test-support/facts-sources.mjs';
 

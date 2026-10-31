@@ -3,6 +3,8 @@ package nitpicker.kotlinpsi.facts;
 import static nitpicker.kotlinpsi.common.Psi.*;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import nitpicker.kotlinpsi.bodies.Initializers;
 import nitpicker.kotlinpsi.common.Frame;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
@@ -11,6 +13,7 @@ import org.jetbrains.kotlin.lexer.KtTokens;
 import org.jetbrains.kotlin.psi.*;
 
 final class Declarations {
+  private static final Pattern CALL_ROOT = Pattern.compile("^\\s*([\\w.]+)\\s*\\(");
   private final State state;
 
   Declarations(State state) {
@@ -88,7 +91,8 @@ final class Declarations {
             "constructorAnnotations", primary == null ? null : annotationEntries(primary),
             "genericSupers", genericSupers(klass)));
     return new Frame(frame, m("k", "class", "name", simple, "qualified", qualified,
-        "supers", supertypes(klass), "visibility", own));
+        "supers", supertypes(klass), "visibility", own, "object", klass instanceof KtObjectDeclaration,
+        "annotations", annotationNames(klass)));
   }
 
   private static List<Object> genericSupers(KtClassOrObject klass) {
@@ -160,7 +164,17 @@ final class Declarations {
             "expressionBody", body != null && !(body instanceof KtBlockExpression) ? Boolean.TRUE : null,
             "returns", body instanceof KtNameReferenceExpression ? nameOf(body) : null,
             "forward", forward(function)));
-    return new Frame(frame, m("k", "fun", "name", function.getName()));
+    return new Frame(frame, m("k", "fun", "name", function.getName(), "topLevel", owner == null && !local,
+        "annotations", annotationNames(function), "receiver", clip(function.getReceiverTypeReference()),
+        "parameters", parameterTypes(function)));
+  }
+
+  private static List<Object> parameterTypes(KtNamedFunction function) {
+    List<Object> types = new ArrayList<>();
+    for (KtParameter parameter : function.getValueParameters()) {
+      types.add(m("type", clip(parameter.getTypeReference()), "vararg", parameter.isVarArg()));
+    }
+    return types;
   }
 
   Frame declareConstructor(KtSecondaryConstructor constructor, Frame frame) {
@@ -217,6 +231,23 @@ final class Declarations {
       }
     }
     return Boolean.TRUE;
+  }
+
+  void typed(String name, KtTypeReference type, KtExpression initializer, Frame frame) {
+    if (!state.locators || name == null) {
+      return;
+    }
+    String text = type != null ? withoutTypeArguments(type.getText()).replace("?", "").trim() : null;
+    if (text == null && initializer != null) {
+      Matcher matcher = CALL_ROOT.matcher(initializer.getText());
+      text = matcher.find() ? matcher.group(1) : null;
+    }
+    if (text != null) {
+      boolean member = frame != null && ("class".equals(frame.kind()) || "object".equals(frame.kind()));
+      state.typed.add(
+          m("name", name, "type", clip(text, 120), "scope", frame == null ? null : frame.data.get("frameId"),
+              "member", member));
+    }
   }
 
   void declareTypeAlias(KtTypeAlias alias) {

@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 248 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 249 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -1616,6 +1616,17 @@ Avoid returning from a finally block, this can discard exceptions.
 - **Allowed form:** Move the return out of finally, and return from the try or after the whole statement, so exceptions are not lost.
 - **Exception:** If this is intended, add `{"rule":"pmd/ReturnFromFinallyBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#returnfromfinallyblock)
+
+<a id="pmd-servicelocatorlookup"></a>
+
+### `pmd/ServiceLocatorLookup`
+
+In main sources: a dependency looked up from a container where it is used, as a call or a method reference (`injector::getInstance`): Guice `Injector.getInstance`, `getProvider`, `getBinding` and `getExistingBinding`; CDI `CDI.current()` and `select` on a `CDI`, `BeanManager.getReference`, `getInjectableReference` and `createInstance`; JNDI `Context.lookup` and `lookupLink` (`InitialContext` included) and Spring's `JndiTemplate.lookup` and `JndiLocatorDelegate.lookup`.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** Take the dependency as a constructor parameter (a Provider or Instance parameter when it is optional or created per use) instead of looking it up from a Guice Injector, CDI, a BeanManager or a JNDI context where it is used: the lookup hides what the class needs. The main method, the configure method of a Guice Module, @Provides and @Produces methods, @Bean methods of a @Configuration class and CDI extensions may look dependencies up.
+- **Exception:** If this is intended, add `{"rule":"pmd/ServiceLocatorLookup","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-simpledateformatneedslocale"></a>
 
