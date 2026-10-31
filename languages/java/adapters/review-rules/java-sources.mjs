@@ -41,11 +41,11 @@ export function pathInside(base, relative) {
   return full;
 }
 
-function childrenOf(directory, extensions) {
+function childrenOf(directory, { extensions, skipped }) {
   const entries = readdirSync(directory, { withFileTypes: true });
   return {
     directories: entries
-      .filter((entry) => entry.isDirectory() && !SKIPPED_DIRECTORIES.has(entry.name))
+      .filter((entry) => entry.isDirectory() && !skipped.has(entry.name))
       .map((entry) => path.join(directory, entry.name)),
     files: entries
       .filter(
@@ -55,14 +55,14 @@ function childrenOf(directory, extensions) {
   };
 }
 
-export function sourceFilesUnder(root, extensions) {
+export function sourceFilesUnder(root, extensions, skipped = SKIPPED_DIRECTORIES) {
   if (!existsSync(root)) {
     return [];
   }
   const files = [];
   const pending = [root];
   for (const directory of pending) {
-    const children = childrenOf(directory, extensions);
+    const children = childrenOf(directory, { extensions, skipped });
     pending.push(...children.directories);
     files.push(...children.files);
   }
