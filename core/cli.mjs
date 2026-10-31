@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 import { runAggregateCli } from './diff/sharding/aggregate-shards.mjs';
 import { reportingProgress } from './diff/execution/progress.mjs';
-import { runScheduler, selectAnalyzers } from './diff/execution/run-analyzers.mjs';
+import { runScheduler } from './diff/execution/run-analyzers.mjs';
 import { runCacheCommand } from './command/cache.mjs';
 import { runExplainCommand, runRulesCommand } from './command/reference/reference.mjs';
 import { runBaseCommand } from './command/base.mjs';
@@ -28,11 +28,10 @@ import { resolveBase } from './diff/git/repository/base-ref.mjs';
 import { detachLocalGitVariables } from './diff/git/environment/local-variables.mjs';
 import path from 'node:path';
 import { clearDiffReports, absoluteTextReportPath } from './diff/reporting/reporters.mjs';
-import { partialRunOf } from './diff/reporting/partial-run/partial-run.mjs';
+import { selectComparisonAnalyzers } from './command/comparison-analyzers.mjs';
 import { runQualityDiff } from './diff/comparison/run-diff.mjs';
 import { fixWorkingTree } from './fix/run-fix.mjs';
 import { resolveCacheStore } from './diff/cache/cache-stores.mjs';
-import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { writeGithubOutput } from './diff/reporting/github/emit.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
@@ -184,7 +183,7 @@ function runComparisonCli(cli) {
     options.outputRoot === undefined
       ? path.join(currentProjectRoot, 'reports/quality/diff')
       : path.resolve(currentProjectRoot, options.outputRoot);
-  const analyzers = selectComparisonAnalyzers(cli);
+  const { analyzers, partialRun } = selectComparisonAnalyzers(cli);
   clearDiffReports(outputRoot);
   const headPolicy = comparisonPolicy({ ...cli, repositoryRoot, base }, resolveComparison);
   const fixResult = fixIfRequested({ ...cli, headPolicy }, repositoryRoot, base);
@@ -196,7 +195,7 @@ function runComparisonCli(cli) {
     requestedBaseRef: base.baseRef,
     outputRoot,
     analyzers,
-    partialRun: partialRunOf(options.analyzerNames, cli.analyzers, analyzers),
+    partialRun,
     cacheStore,
     includeWorkingTree: true,
     additionalToolErrors: fixResult.toolErrors,
@@ -251,19 +250,6 @@ function resolveRunCacheStore(cli) {
     }
   }
   return cli.options.cache ? store : undefined;
-}
-
-function selectComparisonAnalyzers({ options, analyzers }) {
-  const selectedAnalyzers =
-    options.shardCount === undefined
-      ? selectAnalyzers(analyzers, options.analyzerNames)
-      : selectAnalyzerShard(analyzers, options.shardCount, options.shardIndex);
-  if (selectedAnalyzers.length === 0) {
-    throw new Error(
-      'No quality analyzers are configured. The comparison framework is ready, but real analyzer adapters are a later phase.',
-    );
-  }
-  return selectedAnalyzers;
 }
 
 function writeComparisonOutcome({ cli, report, base, outputRoot }) {
