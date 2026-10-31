@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { FACT_RULE_SETTINGS, factRuleSettings } from './project-rules/fact-rules.mjs';
+import { suggestionOrAllowed } from './messages/closest-match.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
 
@@ -84,7 +85,7 @@ export function validateThresholds(thresholds, preset = 'typescript') {
   for (const [key, value] of Object.entries(thresholds)) {
     if (!THRESHOLD_KEYS.includes(key)) {
       throw configError(
-        `unknown threshold "${key}". Allowed thresholds: ${THRESHOLD_KEYS.join(', ')}`,
+        `unknown threshold "${key}"${suggestionOrAllowed(key, THRESHOLD_KEYS, 'Allowed thresholds')}`,
       );
     }
     if (THRESHOLD_PRESETS[key] !== undefined && !THRESHOLD_PRESETS[key].includes(preset)) {
@@ -110,7 +111,7 @@ export function validateDuplicates(duplicates) {
   for (const key of Object.keys(duplicates)) {
     if (!DUPLICATES_KEYS.includes(key)) {
       throw configError(
-        `unknown duplicates key "${key}". Allowed duplicates keys: ${DUPLICATES_KEYS.join(', ')}`,
+        `unknown duplicates key "${key}"${suggestionOrAllowed(key, DUPLICATES_KEYS, 'Allowed duplicates keys')}`,
       );
     }
   }
