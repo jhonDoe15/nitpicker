@@ -3,6 +3,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { runMaven } from './maven-command.mjs';
+import { withoutTestTools } from './quick/maven-quick.mjs';
 
 export const MAVEN_PLUGINS = {
   dependency: 'org.apache.maven.plugins:maven-dependency-plugin:3.8.1',
@@ -148,8 +149,17 @@ export function cacheDirectory(name) {
   return path.join(root, name);
 }
 
-export function resolveTools({ projectRoot, maven, pinned, launcherVersions, extraTools, spawn }) {
-  const tools = toolDependencies(pinned, launcherVersions, extraTools);
+export function resolveTools({
+  projectRoot,
+  maven,
+  pinned,
+  launcherVersions,
+  extraTools,
+  spawn,
+  quick = false,
+}) {
+  const all = toolDependencies(pinned, launcherVersions, extraTools);
+  const tools = quick ? withoutTestTools(all) : all;
   const key = createHash('sha256').update(JSON.stringify(tools)).digest('hex').slice(0, 16);
   const directory = cacheDirectory(`maven-tools-${key}`);
   const cached = readClasspaths(directory, Object.keys(tools));

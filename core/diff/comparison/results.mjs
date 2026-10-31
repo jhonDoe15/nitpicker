@@ -5,6 +5,7 @@ import {
   policyFindings,
 } from '../reporting/review/policy-findings.mjs';
 import { compareAnalyzers } from './base-red/compare-analyzers.mjs';
+import { runProfileSummary } from '../../quick/summary.mjs';
 
 export function combineAnalyzerReports(context) {
   const { baseRun, headRun, additionalToolErrors } = context;
@@ -58,6 +59,7 @@ function buildReport(context) {
         ? {}
         : { policyAcceptanceSource: context.policyAcceptanceSource }),
       notices,
+      ...runProfileSummary(context),
       tools: outcomes.map(({ tool }) => tool),
       exclusions: declaredExclusions(analyzers),
       renamedPaths: context.baseToHeadRenames.size,

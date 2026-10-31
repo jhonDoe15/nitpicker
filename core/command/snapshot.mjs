@@ -16,11 +16,14 @@ import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
+import { runProfileSummary } from '../quick/summary.mjs';
 
 export function runSnapshotCli({
   options,
   currentProjectRoot,
   analyzers,
+  quick,
+  captureHead = captureWorkingTree,
   headPolicy,
   stdout,
   stderr,
@@ -37,7 +40,10 @@ export function runSnapshotCli({
     throw new Error('No quality analyzers are configured.');
   }
 
-  const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(currentProjectRoot);
+  const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(
+    currentProjectRoot,
+    captureHead,
+  );
   const report = withTemporaryWorktree(repositoryRoot, capturedSha, (worktreeRoot) =>
     runInSnapshotWorktree({
       snapshotRoot: path.join(worktreeRoot, relativeProjectPath),
@@ -47,6 +53,7 @@ export function runSnapshotCli({
       runTasks,
     }),
   );
+  Object.assign(report.summary, runProfileSummary({ quick, staged: options.staged }));
   report.text = writeSnapshotReports(outputRoot, report, {
     projectPath: relativeProjectPath,
     repositoryRoot,
@@ -61,10 +68,14 @@ export function runSnapshotCli({
     stdout,
     stderr,
   });
-  if (report.summary.enforceableFindings > 0) {
+  return snapshotExitCode(report.summary);
+}
+
+function snapshotExitCode(summary) {
+  if (summary.enforceableFindings > 0) {
     return 1;
   }
-  return report.summary.overallStatus === 'tool-error' ? 2 : 0;
+  return summary.overallStatus === 'tool-error' ? 2 : 0;
 }
 
 function runInSnapshotWorktree({
@@ -97,12 +108,12 @@ function runInSnapshotWorktree({
   }
 }
 
-function captureSnapshot(currentProjectRoot) {
+function captureSnapshot(currentProjectRoot, capture) {
   const repositoryRoot = realpathSync(
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
   const relativeProjectPath = path.relative(repositoryRoot, currentProjectRoot) || '.';
   const headSha = runGit(repositoryRoot, ['rev-parse', 'HEAD^{commit}']).trim();
-  const capturedSha = captureWorkingTree(repositoryRoot, headSha);
+  const capturedSha = capture(repositoryRoot, headSha);
   return { repositoryRoot, relativeProjectPath, capturedSha };
 }

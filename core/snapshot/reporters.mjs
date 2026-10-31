@@ -1,5 +1,7 @@
 import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mjs';
 import { clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
+import { quickLines, stagedLines } from '../quick/summary.mjs';
+import { junitRunProfile } from '../quick/report-formats.mjs';
 import { ruleReferenceLines } from '../diff/reporting/text.mjs';
 import { withHelpUris } from '../../shared/reference/store.mjs';
 import {
@@ -41,10 +43,12 @@ function renderTextReport(report, reference) {
   const descriptive = report.findings.filter((finding) => finding.classification === 'descriptive');
   const lines = [
     'Nitpicker quality snapshot',
+    ...stagedLines(report.summary),
     `Status: ${report.summary.overallStatus}`,
     `Enforceable findings: ${String(enforceable.length)}`,
     `Descriptive findings: ${String(descriptive.length)}`,
     `Tool errors: ${String(report.toolErrors.length)}`,
+    ...quickLines(report.summary),
   ];
 
   if (report.summary.tools.length === 0) {
@@ -90,6 +94,8 @@ function renderJunitReport(report) {
       `  <testcase classname="quality.snapshot" name="${escapeXml(`${error.tool}:${error.snapshot}`)}" time="0"><failure message="${escapeXml(error.message)}">${escapeXml(error.message)}</failure></testcase>`,
     );
   }
+  const profile = junitRunProfile(report.summary, 'quality.snapshot', escapeXml);
+  testCases.push(...profile.skippedCases);
   if (testCases.length === 0) {
     testCases.push(
       '  <testcase classname="quality.snapshot" name="framework" time="0"></testcase>',
@@ -98,7 +104,8 @@ function renderJunitReport(report) {
   const tests = testCases.length;
   return [
     '<?xml version="1.0" encoding="UTF-8"?>',
-    `<testsuite name="quality.snapshot" tests="${String(tests)}" failures="${String(failures)}" errors="0" time="${(report.summary.elapsedMs / 1000).toFixed(3)}">`,
+    `<testsuite name="quality.snapshot" tests="${String(tests)}" failures="${String(failures)}" errors="0"${profile.skippedAttribute} time="${(report.summary.elapsedMs / 1000).toFixed(3)}">`,
+    ...profile.propertyLines,
     ...testCases,
     '</testsuite>',
     '',

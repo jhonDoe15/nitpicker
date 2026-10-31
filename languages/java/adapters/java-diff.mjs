@@ -63,6 +63,7 @@ function runJavaPreset(
       '--no-configuration-cache',
       ...(policy.snapshot === 'base' ? ['--continue'] : []),
       `-Pnitpicker.reportDir=${reportBase}`,
+      ...(policy.quick ? ['-Pnitpicker.quick=true', '--build-cache'] : []),
       ...kotlinArguments,
     ];
     const stages = gradleStages(common, {
@@ -87,6 +88,7 @@ function withoutReportBase(error, reportBase) {
 function readOptions(policy = {}) {
   return {
     crapLimit: policy.crapLimit,
+    quick: policy.quick,
     preset: policy.preset ?? 'java',
     conventions: policy.conventions,
     fileLimits: policy.fileLimits,

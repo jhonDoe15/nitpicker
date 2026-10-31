@@ -8,6 +8,7 @@
   "languages/python/adapters/e2e/python-preset-layering.e2e.test.mjs": 48,
   "languages/python/adapters/e2e/python-preset-mutation.e2e.test.mjs": 134,
   "languages/python/adapters/e2e/python-preset-project-setups.e2e.test.mjs": 180,
+  "languages/python/adapters/e2e/quick/python-preset-quick.e2e.test.mjs": 30,
   "languages/python/adapters/e2e/red-base/python-preset-red-base.e2e.test.mjs": 90,
   "languages/python/adapters/e2e/test-runners/django-runner.e2e.test.mjs": 69,
   "languages/python/adapters/e2e/test-runners/python-preset-slow-tests.e2e.test.mjs": 66,

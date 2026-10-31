@@ -3,6 +3,7 @@ import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { noteSectionLines } from './format/notes.mjs';
 import { noticeSection } from './review/notices.mjs';
 import { policyChangeSection } from './review/policy-changes.mjs';
+import { quickLines, stagedLines } from '../../quick/summary.mjs';
 import { repositoryUrl } from '../../../shared/reference/facts.mjs';
 import { helpUriFor, referenceLinks } from '../../../shared/reference/store.mjs';
 
@@ -30,6 +31,7 @@ function summaryLines(report) {
     `Base ref: ${report.summary.requestedBaseRef}`,
     `Merge base: ${report.summary.mergeBaseSha}`,
     `Head: ${report.summary.headSha}`,
+    ...stagedLines(report.summary),
     `Status: ${report.summary.overallStatus}`,
     `New enforceable findings: ${String(report.summary.newEnforceableFindings)}`,
     `New findings: ${String(report.newFindings.length)}`,
@@ -37,6 +39,7 @@ function summaryLines(report) {
     `Unchanged findings: ${String(sumToolCount(report.summary.tools, 'unchanged'))}`,
     `Changed metrics: ${String(report.changedMetrics.length)}`,
     `Tool errors: ${String(report.toolErrors.length)}`,
+    ...quickLines(report.summary),
   ];
 }
 

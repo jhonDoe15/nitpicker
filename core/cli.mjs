@@ -35,6 +35,9 @@ import { selectAnalyzerShard } from './diff/sharding/sharding.mjs';
 import { renderConsoleSummary } from './diff/reporting/summary.mjs';
 import { writeGithubOutput } from './diff/reporting/github/emit.mjs';
 import { renderClosingSections } from './exceptions/stale-exceptions.mjs';
+import { applyRunProfile } from './quick/profile.mjs';
+import { stagedHeader } from './quick/summary.mjs';
+import { stagedCapture, withIndexFile } from './staged/capture-index.mjs';
 import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
@@ -48,8 +51,8 @@ const CHECK_COMMANDS = {
 const REFERENCE_COMMANDS = { explain: runExplainCommand, rules: runRulesCommand };
 
 export function runCli(options = {}) {
-  detachLocalGitVariables(process.env);
-  const cli = withCliDefaults(options);
+  const detached = detachLocalGitVariables(process.env);
+  const cli = withIndexFile(withCliDefaults(options), detached);
   const checkCommand = CHECK_COMMANDS[cli.arguments_[0]];
   if (checkCommand !== undefined) {
     return checkCommand({
@@ -137,7 +140,10 @@ function runConfigured(cli) {
   const config = loadConfig(currentProjectRoot);
   const headPolicy = resolveProjectHeadPolicy(config, currentProjectRoot);
   const presetSet = presetAnalyzers(config, options.all ? cli.snapshotAnalyzers : cli.analyzers);
-  const analyzers = configureAnalyzers(presetSet, config, headPolicy);
+  const setup = {
+    ...applyRunProfile(configureAnalyzers(presetSet, config, headPolicy), options),
+    captureHead: stagedCapture(cli, currentProjectRoot),
+  };
   for (const note of describeDisableCascade(presetSet, config)) {
     cli.stderr.write(`nitpicker: ${note}\n`);
   }
@@ -149,7 +155,7 @@ function runConfigured(cli) {
       return runSnapshotCli({
         options,
         currentProjectRoot,
-        analyzers,
+        ...setup,
         headPolicy: snapshotPolicy({ config, currentProjectRoot, headPolicy, stdout }),
         stdout,
         stderr: cli.stderr,
@@ -160,7 +166,7 @@ function runConfigured(cli) {
     return runComparisonCli({
       ...cli,
       currentProjectRoot,
-      analyzers,
+      ...setup,
       injectedAnalyzers: cli.analyzers,
       config,
       headPolicy,
@@ -178,6 +184,7 @@ function runComparisonCli(cli) {
     explicitBase: options.baseRef,
     configuredBase: config.base,
     environment: cli.environment,
+    staged: options.staged,
   });
   const outputRoot =
     options.outputRoot === undefined
@@ -197,6 +204,9 @@ function runComparisonCli(cli) {
     analyzers,
     cacheStore,
     includeWorkingTree: true,
+    captureHead: cli.captureHead,
+    quick: cli.quick,
+    staged: options.staged,
     additionalToolErrors: fixResult.toolErrors,
     configOverrides: describeConfigOverrides(config),
     headPolicy,
@@ -266,7 +276,7 @@ function selectComparisonAnalyzers({ options, analyzers }) {
 
 function writeComparisonOutcome({ cli, report, base, outputRoot }) {
   const { options, environment, stdout } = cli;
-  stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
+  stdout.write(`Base: ${base.baseRef} (${base.source})\n${stagedHeader(report.summary)}`);
   stdout.write(
     renderConsoleSummary(report, {
       color: environment.NO_COLOR === undefined,

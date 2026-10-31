@@ -10,6 +10,10 @@ backstop. It fails only on findings your change adds, so leave code the task doe
 
 ## Finish with the gate
 
+While you iterate, run `npx nitpicker --quick`: it skips the tests and the checks built on them;
+read the printed skipped list for what it left out. A quick run is never a pass; finish with the
+full run below.
+
 1. Run the project's tests with its own runner (pytest, unittest, `manage.py test` or nose2).
    Failing tests are a tool error that names them; coverage and CRAP then come only from the tests
    that pass, and mutation testing leaves the failing modules out.

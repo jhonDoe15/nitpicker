@@ -1,43 +1,33 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { javaCommand, runJava, runMaven } from './maven-command.mjs';
+import { runMaven } from './maven-command.mjs';
 import { runCheckstyle, runFormat, runPmd, runSpotbugs } from './maven-lint.mjs';
-import {
-  lifecycleArgs,
-  moduleClasspaths,
-  parseDependencyList,
-  readReactor,
-} from './maven-project.mjs';
-import {
-  archunitMatcher,
-  collectTestResults,
-  missingLauncherVersions,
-  runJacocoReport,
-  runPit,
-} from './maven-tests.mjs';
+import { moduleClasspaths, parseDependencyList, readReactor } from './maven-project.mjs';
+import { archunitMatcher, missingLauncherVersions } from './maven-tests.mjs';
 import { checkstyleIndentation } from '../adapters/style/java-style.mjs';
-import { copyTestResults, requireTestngRun } from './results/maven-test-results.mjs';
-import {
-  archunitTool,
-  formatTool,
-  jacocoPlugin,
-  MAVEN_PLUGINS,
-  resolveTools,
-} from './maven-tools.mjs';
+import { archunitTool, formatTool, MAVEN_PLUGINS, resolveTools } from './maven-tools.mjs';
 import { ownSourceRoots } from '../adapters/red-base/tests-failed.mjs';
-import { moduleManifest, relativeTo, writeManifest } from './manifest/maven-manifest.mjs';
+import { moduleManifest, writeManifest } from './manifest/maven-manifest.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
 import { buildRunsArchRules, withDeclaredSpring } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
-import { GRADLE_DIRECTORY, readPinnedTools } from '../builds/java-build.mjs';
-import { writeJdepsReports } from '../builds/jdeps-reports.mjs';
-import { moduleName } from '../builds/test-failures.mjs';
+import { readPinnedTools } from '../builds/java-build.mjs';
+import { runToolsConcurrently } from './parallel/concurrent-tools.mjs';
+import { runJdeps, runStructure } from './parallel/module-metrics.mjs';
+import {
+  buildGoals,
+  jacocoExecFiles,
+  readTestRuns,
+  runCoverageTools,
+} from './quick/maven-test-phase.mjs';
 
 export const MAVEN_REPORT_DIRECTORY = 'target/nitpicker';
-const OWN_JACOCO_EXEC = 'nitpicker-jacoco.exec';
+const LINT_URL = new URL('maven-lint.mjs', import.meta.url).href;
+const ERRORPRONE_URL = new URL('errorprone/maven-errorprone.mjs', import.meta.url).href;
+const METRICS_URL = new URL('parallel/module-metrics.mjs', import.meta.url).href;
 const PROJECT_CHECKS_OFF = [
   '-Dcheckstyle.skip=true',
   '-Dpmd.skip=true',
@@ -62,16 +52,14 @@ function dependencyFile(work, module) {
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
 }
 
-function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn }) {
+function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn, quick }) {
   runMaven({
     projectRoot,
     maven,
     spawn,
     args: [
       '--quiet',
-      `${jacocoPlugin(pinned)}:prepare-agent`,
-      `-Djacoco.destFile=\${project.build.directory}/${OWN_JACOCO_EXEC}`,
-      ...lifecycleArgs(modules),
+      ...buildGoals({ quick, pinned, modules }),
       `${MAVEN_PLUGINS.dependency}:list`,
       `-DoutputFile=${path.join(work, 'dependencies', '${project.groupId}', '${project.artifactId}.txt')}`,
       '-DoutputAbsoluteArtifactFilename=true',
@@ -84,36 +72,6 @@ function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn }) {
   });
 }
 
-function runStructure(module, reportDir, spawn) {
-  const roots = module.sourceRoots
-    .filter((root) => existsSync(root))
-    .map((root) => relativeTo(module.basedir, root));
-  runJava({
-    tool: 'StructureMetrics',
-    args: [
-      path.join(GRADLE_DIRECTORY, 'StructureMetrics.java'),
-      path.join(reportDir, 'structure.json'),
-      path.join(reportDir, 'classes.json'),
-      module.basedir,
-      ...roots,
-    ],
-    cwd: module.basedir,
-    accept: (result) => result.status === 0,
-    spawn,
-  });
-}
-
-function runJdeps(module, reportDir, spawn) {
-  writeJdepsReports({
-    command: javaCommand('jdeps'),
-    cwd: module.basedir,
-    mainDirectory: module.outputDirectory,
-    testDirectory: module.testOutputDirectory,
-    reportDir,
-    spawn,
-  });
-}
-
 function readClasspaths(work, module) {
   return moduleClasspaths(
     module,
@@ -121,35 +79,19 @@ function readClasspaths(work, module) {
   );
 }
 
-function moduleNameOf(module, projectRoot) {
-  return moduleName(path.relative(projectRoot, module.basedir).replaceAll('\\', '/'));
-}
-
-function readTestRuns(context) {
-  const { module, reportDir, since, isArchunit, testRuntime, tolerateFailures } = context;
-  const results = collectTestResults({
-    module,
-    reportDir,
-    since,
-    isArchunit,
-    tolerateFailures,
-    moduleName: moduleNameOf(module, context.projectRoot),
-  });
-  requireTestngRun({ module, since, isArchunit, testRuntime });
-  copyTestResults({ module, reportDir, since, isArchunit });
-  return results;
-}
-
 function analyzeSources(options) {
   const { module, reportDir, classpaths, tools, pinned, configs, style, spring } = options;
   const { springArch, springRoles, spawn } = options;
-  runPmd({ module, reportDir, tools, classpaths, configs, spring, spawn });
-  runSpotbugs({ module, reportDir, tools, spawn });
-  runErrorProne({ module, reportDir, tools, classpaths, spawn });
-  runFormat({ module, reportDir, tools, javaStyle: style.javaStyle, spawn });
-  runCheckstyle({ module, reportDir, tools, configs, pinned, style, spawn });
-  runStructure(module, reportDir, spawn);
-  runJdeps(module, reportDir, spawn);
+  const tasks = [
+    [runPmd, LINT_URL, { module, reportDir, tools, classpaths, configs, spring }],
+    [runSpotbugs, LINT_URL, { module, reportDir, tools }],
+    [runErrorProne, ERRORPRONE_URL, { module, reportDir, tools, classpaths }],
+    [runFormat, LINT_URL, { module, reportDir, tools, javaStyle: style.javaStyle }],
+    [runCheckstyle, LINT_URL, { module, reportDir, tools, configs, pinned, style }],
+    [runStructure, METRICS_URL, { module, reportDir }],
+    [runJdeps, METRICS_URL, { module, reportDir }],
+  ].map(([run, url, toolOptions]) => ({ run, url, name: run.name, options: toolOptions }));
+  runToolsConcurrently(tasks, { spawn, concurrent: options.quick === true });
   runSpringArch({
     module,
     reportDir,
@@ -160,13 +102,6 @@ function analyzeSources(options) {
     springRoles,
     spawn,
   });
-}
-
-function runCoverageTools(options) {
-  const { module, reportDir, tools, classpaths, since, testsRan, isArchunit, spawn } = options;
-  const execFiles = jacocoExecFiles(module);
-  runJacocoReport({ module, reportDir, tools, execFiles, since, testsRan, spawn });
-  runPit({ module, reportDir, tools, classpaths, isArchunit, spawn });
 }
 
 function analyzeModule(options) {
@@ -196,10 +131,6 @@ function analyzeModules({ analyzed, ...shared }) {
   return analyzed
     .map(({ module, classpaths }) => analyzeModule({ ...shared, module, classpaths }))
     .filter((failure) => failure !== undefined);
-}
-
-function jacocoExecFiles(module) {
-  return [path.join(module.buildDirectory, OWN_JACOCO_EXEC), ...module.jacocoDestFiles];
 }
 
 function staleOutputs(module) {
@@ -237,7 +168,21 @@ function extraTools({ modules, analyzed, policy, pinned }) {
   ];
 }
 
+function resolveRunTools({ projectRoot, maven, spawn, pinned, modules, analyzed, policy }) {
+  const quick = policy.quick === true;
+  return resolveTools({
+    projectRoot,
+    maven,
+    spawn,
+    pinned,
+    launcherVersions: quick ? [] : missingLauncherVersions(analyzed),
+    extraTools: extraTools({ modules, analyzed, policy, pinned }),
+    quick,
+  });
+}
+
 export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn }) {
+  const quick = policy.quick === true;
   if (policy.preset !== undefined && !MAVEN_PRESETS.includes(policy.preset)) {
     throw new Error(
       `The ${policy.preset} preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources`,
@@ -248,19 +193,12 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
   try {
     const modules = readModules({ projectRoot, maven, work, spawn });
     const since = Date.now() - 2000;
-    buildAndTest({ projectRoot, maven, work, pinned, modules, spawn });
+    buildAndTest({ projectRoot, maven, work, pinned, modules, spawn, quick });
     const analyzed = modules.map((module) => ({
       module,
       classpaths: readClasspaths(work, module),
     }));
-    const tools = resolveTools({
-      projectRoot,
-      maven,
-      spawn,
-      pinned,
-      launcherVersions: missingLauncherVersions(analyzed),
-      extraTools: extraTools({ modules, analyzed, policy, pinned }),
-    });
+    const tools = resolveRunTools({ projectRoot, maven, spawn, pinned, modules, analyzed, policy });
     const style = {
       javaStyle: policy.javaStyle,
       indentation: checkstyleIndentation(policy.conventions),
@@ -275,6 +213,7 @@ export function runMavenPreset(projectRoot, { maven, policy = {}, configs, spawn
         since,
         spawn,
         style,
+        quick,
         tolerateFailures: policy.snapshot === 'base',
         projectRoot,
         spring: policy.spring,

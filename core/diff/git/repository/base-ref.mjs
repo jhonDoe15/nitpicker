@@ -15,7 +15,13 @@ const BRANCH_REF_PREFIX = 'refs/heads/';
 
 const HEAD_SYNTAX = /^(?:HEAD|@)(?:$|[~^@{])|@\{/u;
 
-export function resolveBase({ repositoryRoot, explicitBase, configuredBase, environment = {} }) {
+export function resolveBase({
+  repositoryRoot,
+  explicitBase,
+  configuredBase,
+  environment = {},
+  staged = false,
+}) {
   if (isNonEmpty(explicitBase)) {
     return { baseRef: explicitBase, source: 'argument' };
   }
@@ -35,7 +41,22 @@ export function resolveBase({ repositoryRoot, explicitBase, configuredBase, envi
     return { baseRef: notCheckedOutCommit(repositoryRoot, configuredBase), source: 'config' };
   }
 
-  return remoteBase(repositoryRoot);
+  return remoteBase(repositoryRoot) ?? localBase(repositoryRoot, staged);
+}
+
+function localBase(repositoryRoot, staged) {
+  if (commitOf(repositoryRoot, 'HEAD') === undefined) {
+    throw new Error(
+      [
+        'No base could be determined: the repository has no commit yet.',
+        ' Make the first commit without the hook (git commit --no-verify), or pass --base <ref>.',
+      ].join(''),
+    );
+  }
+  if (staged) {
+    return { baseRef: 'HEAD', source: 'staged, no remote base' };
+  }
+  throw new Error('No base could be determined. Use --base <ref>.');
 }
 
 function remoteBase(repositoryRoot) {
@@ -61,11 +82,7 @@ function remoteBase(repositoryRoot) {
         `refs/remotes/${ref}^{commit}`,
       ]) !== undefined,
   );
-  if (fallback !== undefined) {
-    return { baseRef: fallback, source: 'fallback' };
-  }
-
-  throw new Error('No base could be determined. Use --base <ref>.');
+  return fallback === undefined ? undefined : { baseRef: fallback, source: 'fallback' };
 }
 
 function followsHead(repositoryRoot, configuredBase) {

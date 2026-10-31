@@ -275,6 +275,22 @@ give each kind of run its own category: a `--all` upload on the default branch
 (`reports/quality/snapshot/report.sarif`) goes in another category, such as `nitpicker-all`, or the
 next comparison upload would close the alerts it opened.
 
+`summary.json` always has a `mode` field: `"full"` or `"quick"`. A `--quick` run also adds a `quick`
+object to `summary.json`, a `Quick run: ...` line to the console summary and the same line to
+`report.txt`. `quick.skipped` lists what the run left out (analyzer names for TypeScript and
+JavaScript, the `mutation` analyzer and tool names for Python, tool names for Java and Kotlin): only
+checks that this configuration turns on and, with `--analyzer`, that the selected analyzers would
+run, and an empty list when there is nothing to skip. `quick.message` is the line itself, for example
+`Quick run: skipped coverage, test-console, crap, mutation. Run nitpicker without --quick before you finish.`
+`report.junit.xml` carries a `quick` property and one `<skipped>` test case per skipped check, and
+`report.sarif` carries the line as a warning in `toolExecutionNotifications` and
+`"quick": true` with the skipped list in `invocations[0].properties`, so a CI view that reads only
+those files still tells a quick run from a full one. A `--staged` run adds `"staged": true` to
+`summary.json` (and a `staged` property to the JUnit and SARIF reports) and prints
+`Staged run: the head is the index. ...` under the base line of the console and the head line of
+`report.txt`. `overallStatus` and the exit code are decided as for a full run, over the checks that
+did run.
+
 ## Exit codes
 
 | Code | Meaning                                                                                                          |
@@ -303,6 +319,7 @@ automatically.
 ```text
 nitpicker [--base <ref>] [--output <dir>] [--all | --fix]
           [--analyzer <name>]... [--rule <substring>]...
+          [--quick] [--staged]
           [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]
           [--accept-policy-change=<digest>] [--help]
 nitpicker aggregate --input-root <dir> --shard-count <n>
@@ -321,6 +338,41 @@ nitpicker rules [--preset <name>] [--tool <name>]
   fixer and the comparison still run. Cannot be combined with `--all`.
 - `--base <ref>`: the ref to compare against.
 - `--analyzer <name>`: run only this analyzer (repeatable). Cannot be combined with sharding.
+- `--quick`: run only the fast checks, for a commit hook or an agent's edit loop. It keeps format,
+  lint, typecheck, structure, architecture and review rules, and skips the tests and everything built
+  on them. For TypeScript and JavaScript the skipped analyzers are `coverage`, `crap`, `mutation` and
+  `test-console` (`test-runtime` stays: it is a static dependency check of the tests); for Python
+  they are the `tests`, `coverage`, `crap` and `test-runtime` tools and the `mutation` analyzer; for
+  Java and Kotlin the `tests`, `jacoco`, `crap`, `pit` and `test-runtime` tools. The ArchUnit rules
+  still run: Gradle compiles the tests and runs only the `nitpickerArchunit` task, and Maven runs
+  `test` with `-Dtest` limited to the ArchUnit classes, so no other test runs. Read the printed list
+  rather than assuming it: it names only the checks this configuration turns on. The format check and
+  the untyped ESLint rule sets (`prettier-format`, `eslint-errors`, `eslint-logging`,
+  `eslint-module-effects`) look only at the changed files on both sides, since their findings depend
+  on one file alone; the typed rules (`eslint-lint`), the type check, the dependency, coupling,
+  dead-code, duplicates, structure and coding-standards checks still read the whole project. Gradle
+  runs with `--build-cache` in a quick run, so tasks whose inputs did not change (an unchanged module,
+  the base after the head, a repeated run) are restored from the Gradle build cache (the local one
+  in the Gradle user home, and a remote one only as the build's own `settings.gradle` configures it);
+  Maven runs PMD, SpotBugs, Error Prone, the format check and Checkstyle of a module side by side.
+  The console summary, `report.txt`, `summary.json`, `report.junit.xml` and `report.sarif` name what
+  was skipped, and exit codes keep their meaning, but a quick run is never a pass: run `nitpicker`
+  without `--quick` before you finish. `--quick` works with `--base`, `--all`, `--analyzer` (a name
+  that quick mode skips is refused) and `--fix`: the fixers run in full on the changed files, then the
+  quick comparison runs. Cannot be combined with sharding.
+- `--staged`: judge the git index (what the next commit would contain) instead of the working tree.
+  Unstaged edits and untracked files are ignored, and the base is still the merge base with the base
+  ref. Inside a hook it honours the `GIT_INDEX_FILE` that Git sets. It works with every preset and
+  with `--all` (the whole index) and `--quick`. Cannot be combined with `--fix`: fixes land in the
+  working tree, so run `nitpicker --fix`, stage the result, then run `nitpicker --staged`.
+  `nitpicker.config.json`, the tools' own config files and the installed dependencies are still read
+  from the working tree; when one of those config files differs from the index (or is untracked),
+  stderr says which, so you can stage it or run without `--staged`. With no base ref to find (no
+  `--base`, CI variable, configured `base`, remote HEAD, `origin/main` or `origin/master`), a staged
+  run compares the index with `HEAD`, which is what the commit adds; in a repository with no commit
+  yet it stops and asks you to make the first commit without the hook (`git commit --no-verify`) or
+  to pass `--base`. nitpicker never passes a `GIT_INDEX_FILE` it inherits to its own git commands, so
+  a hook that runs it, with or without `--staged`, leaves the commit's index as it was.
 - `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable).
 - `--output <dir>`: where reports go.
 
@@ -385,6 +437,17 @@ the key, so changing rules without a version bump also invalidates old findings.
 reports are stored. When the base is reused, the progress line names the local cache directory
 (or the remote cache when there is no local directory); use `--no-cache` to rerun the analysis.
 
+A quick run uses the same cache. The Python, Java and Kotlin analyzers and the custom analyzers
+produce different output in quick mode, so their quick entries are keyed apart from full ones: a
+quick run never reads a full entry and a full run never reads a quick one. The file-local analyzers
+that a quick run limits to the changed files are keyed by that list of files as well. The other
+TypeScript and JavaScript analyzers produce the same findings as in a full run, so they share the
+full run's entries; both the base and the head of a quick comparison run the same quick set. A quick
+run also caches its head side, keyed by the git tree of the captured head (the working tree, or the
+index with `--staged`) on top of the merge base, the configuration hash and the head policy: running
+`nitpicker --quick` again on unchanged files reuses every analyzer, and an edit runs the head again.
+A full run always runs its head.
+
 - `NITPICKER_CACHE_DIR`: local cache directory (relative to the project root). Default:
   `node_modules/.cache/nitpicker` when the project has `node_modules`, else `nitpicker/cache` in the
   repository's Git directory (`git rev-parse --git-common-dir`, Git 2.31 or newer), which every worktree shares and
@@ -399,6 +462,109 @@ reports are stored. When the base is reused, the progress line names the local c
   read the remote; give write credentials only to the job that runs `cache publish` on `main`.
 
 See [typescript-single-command.md](typescript-single-command.md) for the full model.
+
+## Commit hooks
+
+`nitpicker --quick --staged` checks what the commit would contain, skips the tests, and finishes in a
+fraction of a full run, so it fits a pre-commit hook. A hook blocks the commit when the exit code is
+not 0 (new enforceable findings, or a tool error). It does not replace the full gate: run `nitpicker`
+before you push, in CI, or from a pre-push hook. Install nitpicker and the project's dependencies
+first (`npm install --save-dev nitpicker`); the hook reads the dependencies, `nitpicker.config.json`
+and the tools' configs from the working tree. A clone's remote HEAD is the base; set `base` in
+`nitpicker.config.json` or add `--base <ref>` to the hook command to pick another, and the base ref
+has to exist locally (fetch it). Without any remote base, a staged run compares with `HEAD`. Make
+the very first commit of a new repository with `git commit --no-verify`.
+
+nitpicker finds the project from the directory it starts in. Git runs hooks at the repository root,
+so for a project in a subfolder (a monorepo package) the hook has to change into it first; the
+recipes below show both forms.
+
+The base side of a comparison is cached per merge base, so the first quick run after a fetch, merge
+or checkout pays for the base. To pay it before you commit, warm the cache from the hooks that move
+the merge base. Git ignores the exit code of these hooks, so they never block a merge or checkout:
+
+```sh
+# .husky/post-merge and .husky/post-checkout (or the lefthook/pre-commit equivalents)
+npx nitpicker --quick > /dev/null 2>&1 || true
+```
+
+The warm-up runs in the foreground, so `git pull` or `git checkout` returns once it is done. Only
+one nitpicker runs in a project at a time: when you send the warm-up to the background instead, a
+commit made while it runs is refused with `another run is in progress` (exit 2), and you commit again
+after it finishes.
+
+### husky
+
+```sh
+npm install --save-dev husky
+npx husky init
+```
+
+`husky init` adds a `prepare` script and a sample `.husky/pre-commit`. Replace its content with:
+
+```sh
+npx nitpicker --quick --staged
+```
+
+For a project in a subfolder:
+
+```sh
+cd packages/app && npx nitpicker --quick --staged
+```
+
+### lefthook
+
+```sh
+npm install --save-dev lefthook
+```
+
+```yaml
+# lefthook.yml
+pre-commit:
+  commands:
+    nitpicker:
+      run: npx nitpicker --quick --staged
+```
+
+For a project in a subfolder, add `root: packages/app/` under `nitpicker:` (lefthook then runs the
+command in that folder). Run `npx lefthook install` once to write the Git hook.
+
+### pre-commit
+
+The repository ships a `.pre-commit-hooks.yaml` with two hooks: `nitpicker` (`nitpicker --quick
+--staged`, at the `pre-commit` stage) and `nitpicker-full` (`nitpicker`, at the `pre-push` stage).
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: https://github.com/jhonDoe15/nitpicker
+    rev: v0.1.0 # a release tag of nitpicker
+    hooks:
+      - id: nitpicker
+      - id: nitpicker-full
+```
+
+Run `pre-commit install` and, for the full gate, `pre-commit install --hook-type pre-push`. The hooks
+use `language: node`, so pre-commit installs nitpicker into its own environment; the project still
+needs its own `node_modules`. pre-commit stashes unstaged changes before it runs a hook, which
+matches what `--staged` judges anyway. Extra flags such as `--base origin/develop` go under `args:`.
+
+The shipped hooks run at the repository root. For a project in a subfolder, use a local hook that
+changes into it and runs the project's own nitpicker:
+
+```yaml
+# .pre-commit-config.yaml
+repos:
+  - repo: local
+    hooks:
+      - id: nitpicker
+        name: nitpicker (quick, staged changes)
+        entry: sh -c 'cd packages/app && npx nitpicker --quick --staged'
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
+```
 
 ## Configuration
 
@@ -1008,7 +1174,9 @@ and `NITPICKER_SNAPSHOT`. It prints `{"findings": [...]}` on stdout and exits 0.
 the built-in finding schema and carries `tool` equal to the entry's `name`. Findings are
 fingerprinted and classified exactly like built-in ones. A non-zero exit, invalid JSON or a schema
 violation is a tool error. A name must not clash with a built-in analyzer. The command and its
-arguments are part of the policy hash.
+arguments are part of the policy hash. A custom analyzer always runs under `--quick` too, with
+`NITPICKER_QUICK=1` in its environment (unset in a full run), so a slow check can do less in a quick
+run; its quick results are cached apart from its full ones.
 
 ## Java preset
 

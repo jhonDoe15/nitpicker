@@ -21,6 +21,7 @@ import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { combineAnalyzerReports } from './results.mjs';
 import { runBaseWithCache, createFindingsCache } from '../cache/findings-cache.mjs';
 import { cachedLine } from '../execution/progress.mjs';
+import { quickScoped, runQuickHead } from './quick/head-run.mjs';
 import {
   prepareSnapshotDependencies,
   removeSnapshotDependencies,
@@ -49,6 +50,7 @@ function withDefaults(options) {
   return {
     headProjectRoot: path.join(options.repositoryRoot, options.projectRelativePath),
     includeWorkingTree: false,
+    captureHead: captureWorkingTree,
     additionalToolErrors: [],
     configOverrides: [],
     headPolicy: {},
@@ -56,10 +58,10 @@ function withDefaults(options) {
   };
 }
 
-function resolveSnapshots({ repositoryRoot, requestedBaseRef, includeWorkingTree }) {
+function resolveSnapshots({ repositoryRoot, requestedBaseRef, includeWorkingTree, captureHead }) {
   const committed = resolveComparison(repositoryRoot, requestedBaseRef);
   return includeWorkingTree
-    ? { ...committed, headSha: captureWorkingTree(repositoryRoot, committed.headSha) }
+    ? { ...committed, headSha: captureHead(repositoryRoot, committed.headSha) }
     : committed;
 }
 
@@ -168,21 +170,12 @@ function withBasePolicyFile({ basePolicy, headPolicy, headPolicyFile }, operatio
 }
 
 function runAndCombine(context) {
-  const { settings, comparison, layout, roots, startedAt, headPolicyFile } = context;
+  const { settings, comparison, layout, startedAt } = context;
   const baseRun = runBaseSide(context);
   const headRun = withMovesFile(layout.moves.files, (baselineMovesFile) =>
-    runAnalyzers({
-      analyzers: settings.analyzers,
-      projectRoot: roots.headSnapshotRoot,
-      policyRoot: roots.headSnapshotRoot,
-      toolRoot: PACKAGE_ROOT,
-      liveProjectRoot: settings.headProjectRoot,
-      headPolicyFile,
-      snapshot: 'head',
-      baselineRoot: roots.baseProjectRoot,
-      baselineMovesFile,
-      runTasks: settings.runTasks,
-    }),
+    runQuickHead(context, (headAnalyzers) =>
+      runHeadAnalyzers(context, { headAnalyzers, baselineMovesFile }),
+    ),
   );
   return combineAnalyzerReports({
     analyzers: settings.analyzers,
@@ -202,11 +195,29 @@ function runAndCombine(context) {
     acceptPolicyChange: settings.acceptPolicyChange,
     policyAcceptanceSource: settings.policyAcceptanceSource,
     reportsPolicy: settings.reportsPolicy !== false,
+    quick: settings.quick,
+    staged: settings.staged,
     notices:
       settings.describeNotices?.([...layout.touchedCode.changedLines.keys()], {
         mergeBaseSha: comparison.mergeBaseSha,
         touchedPaths: [...layout.touchedPaths],
       }) ?? [],
+  });
+}
+
+function runHeadAnalyzers(context, { headAnalyzers, baselineMovesFile }) {
+  const { settings, roots, headPolicyFile } = context;
+  return runAnalyzers({
+    analyzers: headAnalyzers,
+    projectRoot: roots.headSnapshotRoot,
+    policyRoot: roots.headSnapshotRoot,
+    toolRoot: PACKAGE_ROOT,
+    liveProjectRoot: settings.headProjectRoot,
+    headPolicyFile,
+    snapshot: 'head',
+    baselineRoot: roots.baseProjectRoot,
+    baselineMovesFile,
+    runTasks: settings.runTasks,
   });
 }
 
@@ -227,7 +238,7 @@ function runBaseAnalyzers(context, baseAnalyzers) {
 function runBaseSide(context) {
   const { settings, comparison, layout, roots, baseSetup } = context;
   if (settings.cacheStore === undefined) {
-    return runBaseAnalyzers(context, baseSetup.analyzers);
+    return runBaseAnalyzers(context, quickScoped(settings, layout, baseSetup.analyzers));
   }
   return runBaseWithCache({
     cache: createFindingsCache({
@@ -237,7 +248,7 @@ function runBaseSide(context) {
       configOverrides: baseSetup.configOverrides,
       headPolicy: baseSetup.headPolicy,
     }),
-    analyzers: baseSetup.analyzers,
+    analyzers: quickScoped(settings, layout, baseSetup.analyzers),
     run: (baseAnalyzers) => runBaseAnalyzers(context, baseAnalyzers),
     onCached: (count) =>
       settings.progress?.write(
