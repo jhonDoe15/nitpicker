@@ -1,0 +1,48 @@
+import { closingIndex } from '../kotlin-source.mjs';
+import { hasModifier } from './declarations.mjs';
+
+const DECLARATION_WINDOW = 400;
+const DEPRECATED = /(?<![\w.])@(?:kotlin\.)?Deprecated\b/g;
+const DECLARATION_KEYWORD = /\b(?:fun|val|var|class|interface|object|typealias|constructor)\b/;
+const ALIAS = /(?<![\w.])typealias\s+([A-Z]\w*)\s*=\s*([A-Z]\w*)\s*$/gm;
+const TYPE_DECLARATION = /(?<![\w.])(?:class|interface|object|typealias)\s+(\w+)/g;
+
+export const COMPATIBILITY_SHIM_MESSAGES = {
+  CompatibilityShim:
+    'Delete the deprecated declaration and change its callers to the replacement in the same change: `@Deprecated` and a second name for one type (`typealias Old = New`) keep two APIs alive.',
+};
+
+function annotatedDeclaration(code, match) {
+  let end = match.index + match[0].length;
+  if (/^\s*\(/.test(code.slice(end))) {
+    end = closingIndex(code, end + code.slice(end).indexOf('(')) + 1;
+  }
+  const rest = code.slice(end, end + DECLARATION_WINDOW);
+  const keyword = DECLARATION_KEYWORD.exec(rest) ?? undefined;
+  return keyword === undefined ? rest : rest.slice(0, keyword.index);
+}
+
+function deprecations(code) {
+  return [...code.matchAll(DEPRECATED)]
+    .filter(
+      (match) =>
+        !hasModifier(code, match.index, 'override') &&
+        !/\boverride\b/.test(annotatedDeclaration(code, match)),
+    )
+    .map((match) => ({ rule: 'CompatibilityShim', offset: match.index, subject: '@Deprecated' }));
+}
+
+function aliases(code) {
+  const declared = new Set([...code.matchAll(TYPE_DECLARATION)].map((match) => match[1]));
+  return [...code.matchAll(ALIAS)]
+    .filter(([, alias, target]) => alias !== target && declared.has(target))
+    .map((match) => ({
+      rule: 'CompatibilityShim',
+      offset: match.index,
+      subject: `typealias ${match[1]}`,
+    }));
+}
+
+export function compatibilityShims(scanned) {
+  return [...deprecations(scanned.code), ...aliases(scanned.code)];
+}

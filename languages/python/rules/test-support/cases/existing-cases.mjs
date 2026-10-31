@@ -70,11 +70,11 @@ export const EXISTING_CASES = [
     mention: 'contextlib.suppress',
   },
   {
-    name: 'except returning an empty list names collecting the error',
+    name: 'except returning an empty list names returning the collected errors',
     fixture: 'swallowing-container',
     tool: 'python-rules',
     rule: 'swallowed-exception',
-    mention: 'collect it for the caller',
+    mention: 'return the errors the function builds',
   },
   {
     name: 'except assigning a constant names a result that carries the error',
