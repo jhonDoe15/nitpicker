@@ -29,6 +29,7 @@ import { securityFactsFor } from '../eslint-config/policy/security-facts.mjs';
 import { i18nRuleIds } from '../eslint-config/i18n/i18n-rules.mjs';
 import { i18nScopeConfigFor, isI18nProject } from '../eslint-config/i18n/i18n-scope.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';
+import { precedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
 import { existingRoots } from '../layout.mjs';
 import { fileNameRuleOptions } from '../../conventions/file-name-casing.mjs';
 import { assertionFunctionNames } from '../../conventions/measures/assertion-helpers.mjs';
@@ -181,6 +182,7 @@ const presetConfig = defineConfig(
     rules: { 'nitpicker/no-external-executables-in-unit-tests': 'error' },
   },
   ...testHonestyConfigFor(layout, {
+    assertionFunctionNames: assertionFunctionNames(policy.conventions),
     setupFiles: setupFilesIn(analyzedProjectRoot()),
     stubRestores: stubRestoresIn(analyzedProjectRoot()),
     testRootsOnDisk: existingRoots(analyzedProjectRoot(), layout.testRoots),
@@ -199,4 +201,5 @@ const applicableExceptions = policy.exceptions.filter(
 export default applyRuleExceptions(
   applyJavascriptDialect([...presetConfig, ...scriptRuleEntries(selectedFiles)], policy),
   applicableExceptions,
+  { projectRules: precedenceLayers(policy.tools.eslint?.precedence).usesProject },
 );

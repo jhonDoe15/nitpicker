@@ -85,9 +85,20 @@ final class Declarations {
             "constructorVisibility", primary == null ? "public" : visibility(primary),
             "annotations", annotationTexts(klass), "supers", supertypes(klass), "superCall", superCall,
             "primaryParameters", constructor, "entries", entries, "superClass", superClass(klass),
-            "constructorAnnotations", primary == null ? null : annotationEntries(primary)));
+            "constructorAnnotations", primary == null ? null : annotationEntries(primary),
+            "genericSupers", genericSupers(klass)));
     return new Frame(frame, m("k", "class", "name", simple, "qualified", qualified,
         "supers", supertypes(klass), "visibility", own));
+  }
+
+  private static List<Object> genericSupers(KtClassOrObject klass) {
+    List<Object> texts = new ArrayList<>();
+    for (KtSuperTypeListEntry entry : klass.getSuperTypeListEntries()) {
+      if (entry.getTypeReference() != null && entry.getTypeReference().getText().contains("<")) {
+        texts.add(entry.getTypeReference().getText());
+      }
+    }
+    return texts.isEmpty() ? null : texts;
   }
 
   private static String superClass(KtClassOrObject klass) {
@@ -172,6 +183,12 @@ final class Declarations {
   void declareProperty(KtProperty property, Frame frame) {
     Frame owner = frame == null ? null : frame.nearest("class");
     boolean member = owner != null && frame == owner;
+    if (property.isTopLevel() && property.getName() != null) {
+      state.globals.add(
+          m(
+              "name", property.getName(), "line", state.lineOf(property.getTextOffset()),
+              "type", clip(property.getTypeReference()), "initializer", Initializers.callee(property)));
+    }
     if (!member || property.getName() == null) {
       return;
     }

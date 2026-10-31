@@ -1,7 +1,7 @@
 import { RULES_TOOL } from '../tool.mjs';
 
 function contractParts(subject) {
-  const [member, kind, type] = subject.split('|');
+  const [member, kind = 'persistence', type = '<type>'] = subject.split('|');
   return { member, kind, type };
 }
 
@@ -13,7 +13,7 @@ function describeContract(subject) {
 }
 
 function handlerParts(subject) {
-  const [handler, site, entity, orm] = subject.split('|');
+  const [handler, site = 'return type', entity = '<Entity>', orm = 'ORM'] = subject.split('|');
   return { handler, site, entity, orm };
 }
 

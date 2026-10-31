@@ -31,6 +31,7 @@ import { checkstyleFindings, formatFindings } from './format-findings.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
 import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
 import { readUnrunTestFindings } from '../test-runs/unrun-tests.mjs';
+import { readDocCommentFindings } from '../doc-comments/doc-comment-findings.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
@@ -40,7 +41,7 @@ import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import {
   jacocoSourceRoots,
   readKotlinFindings,
-  reportOnlyKotlinMutants,
+  kotlinGeneratedFilter,
   requireKotlinManifest,
   sourceFileOf,
   sourceLocator,
@@ -111,7 +112,7 @@ function moduleContextFindings(projectRoot, module, { manifest, modules, options
       conventions: options.conventions,
       javaStyle: options.javaStyle,
       classLimits: { thresholds, exceptions, modulePath },
-      jacoco: readModuleJacoco(module, preset),
+      jacoco: module.manifest.testsFailed === true ? undefined : readModuleJacoco(module, preset),
       mainCheckstyle: readMainCheckstyle(projectRoot, module, preset),
       testTimes: {
         limits: options.testSeconds,
@@ -130,6 +131,10 @@ function moduleContextFindings(projectRoot, module, { manifest, modules, options
   );
 }
 
+function ifTested(jacoco, build) {
+  return jacoco === undefined ? [] : build(jacoco);
+}
+
 function testRootsOf(manifest) {
   return [...(manifest.testSourceRoots ?? []), ...(manifest.kotlinTestSourceRoots ?? [])];
 }
@@ -142,14 +147,15 @@ function readModuleFindings(context, crapLimit) {
     ...readErrorProneFindings(context),
     ...formatFindings(context),
     ...checkstyleFindings(context),
-    ...jacocoFindings(context, jacoco),
+    ...ifTested(jacoco, (report) => jacocoFindings(context, report)),
     ...archunitFindings(context),
     ...springArchFindings(context),
-    ...crapFindings(context, jacoco, crapLimit),
+    ...ifTested(jacoco, (report) => crapFindings(context, report, crapLimit)),
     ...pitFindings(context),
     ...readJavaStructureFindings(reportRoot, projectRoot),
+    ...readDocCommentFindings({ projectRoot, manifest: context.manifest, kotlin }),
     ...readClassLimitFindings(reportRoot, context.classLimits),
-    ...branchFindings(context, jacoco),
+    ...ifTested(jacoco, (report) => branchFindings(context, report)),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
     ...readSlowTestFindings({ reportRoot, projectRoot, testRoots, ...context.testTimes }),
     ...readTestConsoleFindings({ reportRoot, projectRoot, testRoots }, context.testConsole),
@@ -267,11 +273,11 @@ function pitFindings(context) {
     return [];
   }
   const locate = sourceLocator(projectRoot, jacocoSourceRoots(context));
-  const { findings } = ingestPit(readFileSync(pitReport, 'utf8'), {
+  return ingestPit(readFileSync(pitReport, 'utf8'), {
     resolvePath: (className, sourceFile) => sourceFileOf(locate, className, sourceFile),
     functionAt: functionLocator(context),
-  });
-  return context.kotlin ? reportOnlyKotlinMutants(findings) : findings;
+    ...(context.kotlin ? { generated: kotlinGeneratedFilter(context) } : {}),
+  }).findings;
 }
 
 function branchFindings(context, jacoco) {

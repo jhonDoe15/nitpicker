@@ -5,6 +5,7 @@ import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
 import { CONTRACT_HINTS } from './hints/contracts/ast-contracts.mjs';
 import { SMELL_HINTS } from './hints/ast-smells.mjs';
 import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
+import { SIGNATURE_HINTS } from './hints/signatures/ast-signatures.mjs';
 import { SECURITY_HINTS } from './hints/security/ruff-security.mjs';
 import { RULES_SECURITY_HINTS } from './hints/security/rules-security.mjs';
 import { STYLE_HINTS } from './hints/ruff-style.mjs';
@@ -42,6 +43,7 @@ export const RULE_HINTS = [
   ...CONTRACT_HINTS,
   ...ASYNC_HINTS,
   ...SMELL_HINTS,
+  ...SIGNATURE_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...['pyright', 'basedpyright'].map((tool) => ({
     tool,
@@ -83,8 +85,10 @@ export function describeRuleFinding(rule, subject, libraries = DEFAULT_LIBRARIES
   );
 }
 
-function allowedText(hint, subject, libraries) {
-  return typeof hint.allowed === 'function' ? hint.allowed(subject, libraries) : hint.allowed;
+function allowedText(hint, finding, libraries) {
+  return typeof hint.allowed === 'function'
+    ? hint.allowed(finding.subject, libraries, finding.path)
+    : hint.allowed;
 }
 
 export const PYTHON_RULES_IDS = RULE_HINTS.filter(({ tool }) => tool === RULES_TOOL).flatMap(
@@ -111,7 +115,7 @@ export function withHint(finding, libraries = DEFAULT_LIBRARIES) {
   const routed = hint?.exception === false || RULES_ROUTED_BY_A_SETTING.has(rest.rule);
   const sentences = [
     `${rest.message.replace(/\.$/, '')}.`,
-    ...(hint === undefined ? [] : [allowedText(hint, subject, libraries)]),
+    ...(hint === undefined ? [] : [allowedText(hint, { subject, path: rest.path }, libraries)]),
     ...(routed
       ? []
       : [exceptionRoute({ rule: rest.rule, path: rest.path, key: PYTHON_EXCEPTIONS_KEY })]),

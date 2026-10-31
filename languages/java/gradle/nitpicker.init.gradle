@@ -10,6 +10,7 @@ def pinned = [
     pitestJunit5    : '1.2.1',
     pitestTestng    : '1.0.0',
     archunit        : '1.5.1',
+    asm             : '9.9',
     detekt          : '1.23.8',
     detektKotlin    : '2.0.21',
     ktlint          : '1.8.0',
@@ -90,10 +91,13 @@ gradle.projectsEvaluated {
         def modules = new File(reportBase.toString(), 'modules.json')
         modules.parentFile.mkdirs()
         modules.text = groovy.json.JsonOutput.toJson(javaModules)
-        def testResults = gradle.rootProject.allprojects.collectMany { project ->
-            project.tasks.withType(Test).findAll { !it.name.startsWith('nitpickerArchunit') }.collect {
+        def testResults = gradle.rootProject.allprojects.findAll {
+            it.projectDir.toPath().startsWith(analysisRoot.toPath())
+        }.collect { project ->
+            def tests = project.tasks.withType(Test).findAll { !it.name.startsWith('nitpickerArchunit') }
+            [dir: relativeToRoot(project.projectDir), results: tests.collect {
                 it.reports.junitXml.outputLocation.get().asFile.absolutePath
-            }
+            }]
         }
         new File(reportBase.toString(), 'test-results.json').text = groovy.json.JsonOutput.toJson(testResults)
     }
@@ -111,11 +115,10 @@ def rulesetExcluding = { String name, String description, List<String> rules, Co
         + excludes + rules + ['</ruleset>', '']).join('\n')
 }
 
-def mainRulesOnMainSources = { File rulesetDir, boolean spring, Collection<File> testDirectories ->
-    def rulesets = ['pmd-main-ruleset.xml'] + (spring ? ['spring-ruleset.xml'] : [])
+def mainRulesOnMainSources = { File mainRules, File rulesetDir, boolean spring, Collection<File> testDirectories ->
+    def rules = [mainRules] + (spring ? [new File(rulesetDir, 'spring-ruleset.xml')] : [])
     rulesetExcluding('nitpicker-main', "Nitpicker's main-only rules on main sources only.",
-        rulesets.collect { "  <rule ref=\"${escapeXml(new File(rulesetDir, it).absolutePath)}\"/>".toString() },
-        testDirectories)
+        rules.collect { "  <rule ref=\"${escapeXml(it.absolutePath)}\"/>".toString() }, testDirectories)
 }
 
 def testRulesOnTestSources = { File testRules, File rulesetDir, boolean spring, Collection<File> mainDirectories ->
@@ -125,18 +128,23 @@ def testRulesOnTestSources = { File testRules, File rulesetDir, boolean spring, 
 }
 
 allprojects {
+    if (gradle.parent != null) {
+        return
+    }
     plugins.withId('java') {
         pluginManager.apply('jacoco')
         pluginManager.apply('checkstyle')
 
         def moduleKey = project == rootProject ? 'root' : 'module-' + project.path.substring(1).replace('_', '_u').replace(':', '_c')
-        def reportDir = reportBase && gradle.parent == null
+        def reportDir = reportBase
             ? objects.directoryProperty().fileValue(new File(reportBase.toString(), moduleKey))
             : layout.buildDirectory.dir('nitpicker')
         if (project.projectDir.toPath().startsWith(analysisRoot.toPath())) {
             javaModules << [key: moduleKey, path: project.path, dir: relativeToRoot(project.projectDir)]
         }
         def kotlinPreset = nitpickerArgument('nitpicker.kotlin') == 'true'
+        def testsFailedModules = (nitpickerArgument('nitpicker.testsFailed') ?: '').toString().split(',').findAll { it }
+        def testsFailed = testsFailedModules.contains(relativeToRoot(project.projectDir) ?: '.')
         def javaStyle = nitpickerArgument('nitpicker.java.style') ?: 'google'
         def javaIndentation = nitpickerArgument('nitpicker.java.indentation') ?: '2'
 
@@ -162,6 +170,7 @@ allprojects {
             }
             nitpickerCheckstyle "com.puppycrawl.tools:checkstyle:${pinned.checkstyle}"
             nitpickerSpringArch "com.tngtech.archunit:archunit:${pinned.archunit}"
+            nitpickerSpringArch "org.ow2.asm:asm-analysis:${pinned.asm}"
         }
         dependencies {
             nitpickerPit "org.pitest:pitest-command-line:${pinned.pitest}"
@@ -311,7 +320,6 @@ allprojects {
             kotlinPreset ? [tasks.named('compileJava').get().destinationDirectory.get().asFile]
                 : sourceSets.main.output.classesDirs.files
         }
-        // PIT mutates the Java and the Kotlin classes alike; the Kotlin findings are report-only (see the Nitpicker side).
         def mutatedClassDirs = { sourceSets.main.output.classesDirs.files }
 
         def springDeclared = nitpickerArgument('nitpicker.spring') == 'true'
@@ -338,6 +346,8 @@ allprojects {
             def nitpickerRuleset = nitpickerArgument('nitpicker.pmd.nitpickerRuleset') ?: new File(initScriptDir, 'pmd-ruleset.xml').absolutePath
             def projectRuleset = nitpickerArgument('nitpicker.pmd.projectConfig')
             def testRules = new File(nitpickerArgument('nitpicker.pmd.testRules') ?: new File(initScriptDir, 'pmd-test-ruleset.xml').absolutePath)
+            def mainRules = new File(nitpickerArgument('nitpicker.pmd.mainRules')
+                ?: new File(initScriptDir, 'pmd-main-ruleset.xml').absolutePath)
             def ruleset = ([nitpickerRuleset] + (projectRuleset ? [projectRuleset] : [])).join(',')
             doFirst {
                 reportDir.get().asFile.mkdirs()
@@ -349,7 +359,8 @@ allprojects {
                     .collectMany { it.compileClasspath.files + it.output.classesDirs.files })
                     .findAll { it.exists() }.unique().collect { it.absolutePath }.join('\n')
                 def mainRuleset = reportDir.get().file('pmd-main.xml').asFile
-                mainRuleset.text = mainRulesOnMainSources(initScriptDir, usesSpring(), testSourceDirectories())
+                mainRuleset.text = mainRulesOnMainSources(
+                    mainRules, initScriptDir, usesSpring(), testSourceDirectories())
                 def testRuleset = reportDir.get().file('pmd-tests.xml').asFile
                 testRuleset.text = testRulesOnTestSources(testRules, initScriptDir, usesSpring(), mainSources.files)
                 def nitpickerExtras = [testRuleset, mainRuleset]
@@ -495,7 +506,7 @@ allprojects {
                 def digest = java.security.MessageDigest.getInstance('SHA-256')
                 ruleSources.each { digest.update(it.bytes) }
                 def jdk = "${System.getProperty('java.vendor')}|${System.getProperty('java.version')}"
-                digest.update("${pinned.archunit}|${jdk}".getBytes('UTF-8'))
+                digest.update("${pinned.archunit}|${pinned.asm}|${jdk}".getBytes('UTF-8'))
                 def cacheRoot = new File(gradle.gradleUserHomeDir, 'caches/nitpicker/spring-arch')
                 def classes = new File(cacheRoot, digest.digest().encodeHex().toString())
                 if (!classes.isDirectory()) {
@@ -554,7 +565,7 @@ allprojects {
                 pitStatusOrder.contains(node.@status) ? pitStatusOrder.indexOf(node.@status) : pitStatusOrder.size()
             }
             parts.each { part ->
-                new XmlParser().parse(part).mutation.each { mutation ->
+                new groovy.xml.XmlParser().parse(part).mutation.each { mutation ->
                     def key = pitKey.collect { mutation."${it}".text() }.join('|')
                     if (!best.containsKey(key) || rank(mutation) < rank(best[key])) {
                         best[key] = mutation
@@ -644,7 +655,7 @@ allprojects {
                     }
                 }
                 onlyIf {
-                    mutatedClassDirs().any { it.exists() && it.list()?.length } && !skippedByBuild(source) &&
+                    !testsFailed && mutatedClassDirs().any { it.exists() && it.list()?.length } && !skippedByBuild(source) &&
                         (source.name == 'test' || !pitTestClasses(source).isEmpty())
                 }
             }
@@ -652,7 +663,7 @@ allprojects {
         tasks.register('nitpickerPit') {
             group = 'nitpicker'
             dependsOn { checkedTestTasks().collect { tasks.named("nitpickerPit${capitalized(it.name)}") } }
-            onlyIf { mutatedClassDirs().any { it.exists() && it.list()?.length } }
+            onlyIf { !testsFailed && mutatedClassDirs().any { it.exists() && it.list()?.length } }
             doLast {
                 def report = reportDir.get().file('pit/mutations.xml').asFile
                 def parts = checkedTestTasks().collect { new File(pitReportDirectory(it).asFile, 'mutations.xml') }
@@ -669,8 +680,11 @@ allprojects {
 
         tasks.register('nitpickerJacoco') {
             group = 'nitpicker'
-            dependsOn tasks.named('jacocoTestReport')
-            dependsOn { checkedTestTasks() }
+            if (!testsFailed) {
+                dependsOn tasks.named('jacocoTestReport')
+                dependsOn { checkedTestTasks() }
+            }
+            onlyIf { !testsFailed }
             doLast {
                 copy {
                     from tasks.named('jacocoTestReport').get().reports.xml.outputLocation
@@ -696,6 +710,9 @@ allprojects {
         }
         afterEvaluate {
             checkedTestTasks().each { it.exclude archunitIncludes }
+            if (testsFailed) {
+                checkedTestTasks().each { it.enabled = false }
+            }
             checkedTestTasks().findAll { it.name != 'test' }.each { source ->
                 def archunitName = "nitpickerArchunit${capitalized(source.name)}".toString()
                 def sourceSet = sourceSets.find { set ->
@@ -840,6 +857,7 @@ allprojects {
                     testSourceRoots: testRoots,
                     resourceRoots  : resourceRoots,
                     spring         : usesSpring(),
+                    testsFailed    : testsFailed,
                     springArch     : runsArchRules(),
                     guava          : hasGuava(sourceSets.main),
                     testGuava      : hasGuava(sourceSets.test),
@@ -1171,6 +1189,7 @@ allprojects {
                         if (kotlinLintedFiles().isEmpty()) {
                             metrics.text = '{"functions":[],"files":[]}'
                             facts.text = '{"files":[]}'
+                            reportDir.get().file('kotlin-mutation-facts.json').asFile.text = '{"files":[]}'
                             return
                         }
                         def home = new File(System.getProperty('java.home'), 'bin')

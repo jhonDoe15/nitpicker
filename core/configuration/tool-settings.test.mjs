@@ -3,48 +3,74 @@ import { describeConfigOverrides } from './config.mjs';
 import { validateConfig } from './validate.mjs';
 
 describe('tool precedence', () => {
-  it('accepts every ordering of the project and nitpicker configs', () => {
-    for (const precedence of [
-      ['nitpicker'],
-      ['project'],
-      ['project', 'nitpicker'],
-      ['nitpicker', 'project'],
-    ]) {
-      expect(validateConfig({ tools: { prettier: { precedence } } })).toBeDefined();
-    }
+  it.each([[['nitpicker']], [['project']], [['project', 'nitpicker']], [['nitpicker', 'project']]])(
+    'accepts the ordering %j of the project and nitpicker configs',
+    (precedence) => {
+      const configs = [{}, { preset: 'javascript' }].flatMap((preset) =>
+        ['prettier', 'knip', 'dependency-cruiser'].map((tool) => ({
+          ...preset,
+          tools: { [tool]: { precedence } },
+        })),
+      );
+      expect(configs.map((config) => validateConfig(config))).toEqual(configs);
+      expect(validateConfig({ preset: 'javascript', tools: { eslint: { precedence } } })).toEqual({
+        preset: 'javascript',
+        tools: { eslint: { precedence } },
+      });
+    },
+  );
+
+  it('takes the ESLint precedence next to its engine and checks both', () => {
+    const tools = { eslint: { engine: 'eslint', precedence: ['nitpicker', 'project'] } };
+    expect(validateConfig({ tools })).toEqual({ tools });
+    expect(() =>
+      validateConfig({ tools: { eslint: { engine: 'oxlint', precedence: ['eslint'] } } }),
+    ).toThrow(
+      new Error(
+        'nitpicker.config.json: "tools.eslint.precedence" must list "project", "nitpicker" or both, each once, highest first',
+      ),
+    );
+    expect(() =>
+      validateConfig({ tools: { eslint: { engine: 'biome', precedence: ['project'] } } }),
+    ).toThrow('"tools.eslint.engine" must be "oxlint" or "eslint"');
   });
 
   it.each([
-    ['eslint', ['oxlint', 'eslint'], 'biome'],
-    ['typescript', ['native', 'project'], 'tsgo'],
-  ])('accepts only the known %s engines', (tool, engines, unknown) => {
-    for (const engine of [...engines, undefined]) {
-      expect(validateConfig({ tools: { [tool]: { engine } } })).toBeDefined();
-    }
-    for (const engine of [unknown, '']) {
-      expect(() => validateConfig({ tools: { [tool]: { engine } } })).toThrow(
-        `"tools.${tool}.engine" must be "${engines[0]}" or "${engines[1]}"`,
-      );
-    }
-    expect(() => validateConfig({ tools: { [tool]: { precedence: ['project'] } } })).toThrow(
-      `"tools.${tool}" has unknown key "precedence"`,
+    ['eslint', ['oxlint', 'eslint']],
+    ['typescript', ['native', 'project']],
+  ])('accepts the known %s engines', (tool, engines) => {
+    const accepted = [...engines, undefined].map((engine) =>
+      validateConfig({ tools: { [tool]: { engine } } }),
+    );
+    expect(accepted).toEqual(
+      [...engines, undefined].map((engine) => ({ tools: { [tool]: { engine } } })),
+    );
+  });
+
+  it('has no precedence for the TypeScript compiler', () => {
+    expect(() => validateConfig({ tools: { typescript: { precedence: ['project'] } } })).toThrow(
+      '"tools.typescript" has unknown key "precedence"',
+    );
+  });
+
+  it.each([
+    ['eslint', 'biome', ['oxlint', 'eslint']],
+    ['eslint', '', ['oxlint', 'eslint']],
+    ['typescript', 'tsgo', ['native', 'project']],
+    ['typescript', '', ['native', 'project']],
+  ])('rejects the %s engine %j', (tool, unknown, engines) => {
+    expect(() => validateConfig({ tools: { [tool]: { engine: unknown } } })).toThrow(
+      `"tools.${tool}.engine" must be "${engines[0]}" or "${engines[1]}"`,
     );
   });
 
   it('rejects unknown tools, unknown keys and malformed precedence lists', () => {
     expect(() => validateConfig({ tools: { stylelint: { precedence: ['project'] } } })).toThrow(
-      '"tools" names unknown tool "stylelint". Supported tools with this preset: prettier, eslint, typescript, tests',
+      '"tools" names unknown tool "stylelint". Supported tools with this preset: prettier, jscpd, knip, dependency-cruiser, eslint, typescript, tests',
     );
     expect(() => validateConfig({ tools: { prettier: { config: 'project' } } })).toThrow(
       '"tools.prettier" has unknown key "config"',
     );
-    for (const precedence of [[], ['project', 'project'], ['workspace'], 'project', undefined]) {
-      expect(() => validateConfig({ tools: { prettier: { precedence } } })).toThrow(
-        new Error(
-          'nitpicker.config.json: "tools.prettier.precedence" must list "project", "nitpicker" or both, each once, highest first',
-        ),
-      );
-    }
     expect(() => validateConfig({ preset: 'java', tools: { pmd: { precedence: [] } } })).toThrow(
       new Error(
         'nitpicker.config.json: "tools.pmd.precedence" must list "project", "nitpicker" or both, each once',
@@ -52,6 +78,17 @@ describe('tool precedence', () => {
     );
     expect(() => validateConfig({ tools: [] })).toThrow('"tools" must be an object');
   });
+
+  it.each([[[]], [['project', 'project']], [['workspace']], ['project'], [undefined]])(
+    'rejects the malformed precedence %j',
+    (precedence) => {
+      expect(() => validateConfig({ tools: { prettier: { precedence } } })).toThrow(
+        new Error(
+          'nitpicker.config.json: "tools.prettier.precedence" must list "project", "nitpicker" or both, each once, highest first',
+        ),
+      );
+    },
+  );
 
   it('lists the tools setting among the config overrides', () => {
     const tools = { prettier: { precedence: ['project', 'nitpicker'] } };
@@ -69,7 +106,7 @@ describe('tool precedence', () => {
       expect(() =>
         validateConfig({ preset, tools: { prettier: { precedence: ['project'] } } }),
       ).toThrow(
-        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}`,
+        `"tools" names unknown tool "prettier". Supported tools with this preset: pmd, checkstyle${preset === 'kotlin' ? ', ktlint, ktfmt, detekt' : ''}, jscpd`,
       );
       const layered = { preset, tools: { checkstyle: { precedence: ['nitpicker', 'project'] } } };
       expect(validateConfig(layered)).toEqual(layered);
@@ -80,24 +117,29 @@ describe('tool precedence', () => {
     const tools = { pmd: { precedence: ['project'] } };
     expect(() => validateConfig({ tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, eslint, typescript, tests',
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: prettier, jscpd, knip, dependency-cruiser, eslint, typescript, tests',
       ),
     );
     expect(() => validateConfig({ preset: 'python', tools })).toThrow(
       new Error(
-        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut',
+        'nitpicker.config.json: "tools" names unknown tool "pmd". Supported tools with this preset: ruff, black, pyright, mypy, mutmut, coverage, jscpd',
       ),
     );
   });
-  it('accepts only the known test runners', () => {
-    for (const runner of ['vitest', 'jest', 'node', 'mocha', undefined]) {
-      expect(validateConfig({ tools: { tests: { runner } } })).toBeDefined();
-    }
-    for (const runner of ['ava', '']) {
-      expect(() => validateConfig({ tools: { tests: { runner } } })).toThrow(
-        '"tools.tests.runner" must be "vitest", "jest", "node" or "mocha"',
-      );
-    }
+  it('accepts the known test runners', () => {
+    const accepted = ['vitest', 'jest', 'node', 'mocha', undefined].map((runner) =>
+      validateConfig({ tools: { tests: { runner } } }),
+    );
+    expect(accepted).not.toContain(undefined);
+  });
+
+  it.each(['ava', ''])('rejects the test runner %j', (runner) => {
+    expect(() => validateConfig({ tools: { tests: { runner } } })).toThrow(
+      '"tools.tests.runner" must be "vitest", "jest", "node" or "mocha"',
+    );
+  });
+
+  it('rejects unknown keys of the tests tool', () => {
     expect(() => validateConfig({ tools: { tests: { engine: 'jest' } } })).toThrow(
       '"tools.tests" has unknown key "engine"',
     );

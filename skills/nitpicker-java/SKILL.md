@@ -31,7 +31,8 @@ forms below from the start; the gate is a backstop.
      cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
 5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
-   comments, config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. The one
+   comments, coverage or mutation markers (`@Generated`, `@ExcludeFromJacocoGeneratedReport`,
+   `@DoNotMutate`), config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. The one
    exception is `@SuppressWarnings("PMD.SpringDataNativeQuery")` on a repository method with native
    SQL ([spring.md](spring.md)). If a finding seems wrong, stop and ask. Never pass
    `--accept-policy-change` or set `NITPICKER_ACCEPT_POLICY_CHANGE`: a
@@ -41,6 +42,8 @@ With Spring on the classpath, also follow [spring.md](spring.md).
 
 Before you change code other modules use, or fix a bug, read
 [beyond-the-gate.md](beyond-the-gate.md).
+
+To learn why a rule is on and what form it allows before you write or change code, run `npx nitpicker explain <tool/rule>` with the name a finding prints, or read the [rule reference](https://github.com/jhonDoe15/nitpicker/blob/main/docs/rules/README.md). `npx nitpicker rules` lists the rules of this project's preset.
 
 ## Write it this way
 
@@ -52,6 +55,15 @@ Before you change code other modules use, or fix a bug, read
   indentation.
 - Text: `"a".equals(x)` or `a.equals(b)`, never `==` on strings or other objects. Pass a charset and
   a locale: `s.getBytes(StandardCharsets.UTF_8)`, `s.toUpperCase(Locale.ROOT)`.
+- Strings, arrays and files: no field initializer that repeats the default (`= 0`, `= null`,
+  `= false`). Append one character as a char (`append('x')`) and chain appends
+  (`sb.append(a).append(b)`). Write `i + "x"`, not `"" + i + "x"`; `String.valueOf(i)` only when
+  nothing else is concatenated. Build loop output in a local `StringBuilder`. Copy arrays with
+  `System.arraycopy`, and an array into a collection with `Collections.addAll(target, array)`. Open
+  files with `Files.newInputStream` or `Files.newBufferedReader`, not `FileInputStream`.
+- Threads: no `synchronized`, `wait` or `notify`. Lock with a private final `ReentrantLock`
+  (`lock()` right before `try`, `unlock()` in `finally`) and wait on a `Condition` from it
+  (`await()` in a loop, `signalAll()`).
 - Output: no `System.out`/`System.err` and no `printStackTrace()`. Log with
   `System.getLogger(Foo.class.getName())`, or the project's logger.
 - Null: a method returning a collection returns an empty one (`List.of()`), never `null`. Any
@@ -62,9 +74,24 @@ Before you change code other modules use, or fix a bug, read
   `if`; `-1`, `0`, `1` and `2` are fine.
 - Parameters and loops: never reassign a parameter or a catch variable; copy to a local. Use
   for-each where the index is unused. Remove unused fields, locals, private methods, assignments.
+- Fan-out: bound concurrent remote or message calls. Run the tasks on a fixed pool
+  (`Executors.newFixedThreadPool(8)`), take a `Semaphore` permit around each call, or work through
+  fixed-size batches; never `supplyAsync` per element on the default pool or a cached or
+  virtual-thread executor.
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.
+- Signatures: a value with three states is an `enum`, not a boxed `Boolean` parameter, field,
+  return type or record component (`pmd/TriStateBoolean`; a field or parameter that a framework
+  fills, such as `@RequestParam`, `@JsonProperty` or an `@Entity` field, is exempt); a public
+  method returns a new collection or array instead of changing a parameter (`items.add`,
+  `Arrays.sort(names)`, `counts[0] = 0`, also through `this.items = items`;
+  `pmd/ParameterMutation`; private helpers and queues shared between threads are exempt). When code
+  moves, change every caller and delete the old name: no `@Deprecated` delegate
+  (`pmd/CompatibilityShim`; a Javadoc `@deprecated` without the annotation is no way around it).
+  Time comes from `java.time` with a `Clock` or a zone; `Calendar.getInstance()`,
+  `new GregorianCalendar()` and `new SimpleDateFormat(...)` without a time zone are flagged
+  (`pmd/LegacyCalendarApi`).
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
 - Enums: to sort the constants of one of your enums into two groups, classify every constant: a
@@ -89,9 +116,13 @@ Before you change code other modules use, or fix a bug, read
   never call `System.exit`. A trailing array parameter is varargs (`String... names`).
 - Javadoc is optional; when you write it, the first sentence is a real summary (not `@return`),
   every `@param`/`@return` has a description, in that order, and paragraphs start with `<p>`.
-- nitpicker runs its own PMD rules (errorprone, bestpractices and a broad-catch rule) and Google
-  checks. A project's `config/pmd/ruleset.xml` or `config/checkstyle/checkstyle.xml` counts only
-  when `nitpicker.config.json` opts in under `tools`; then read it too.
+  It says what the name cannot (a unit, a limit, an edge case or why), never only restates the
+  name, and keeps the description to 5 lines, tags and `<pre>` blocks not counted
+  (`doc-comment-content`).
+- nitpicker runs its own PMD rules (errorprone, bestpractices, performance, multithreading,
+  security and a broad-catch rule) and Google checks. A project's `config/pmd/ruleset.xml` or
+  `config/checkstyle/checkstyle.xml` counts only when `nitpicker.config.json` opts in under
+  `tools`; then read it too.
 
 ## Errors
 
@@ -115,6 +146,10 @@ Before you change code other modules use, or fix a bug, read
   coverage lowers the ceiling (`ccn^2 * (1 - coverage)^3 + ccn < 9`). Split branchy methods.
 - A new clone of at least 5 lines and 50 tokens in main sources (`duplicate-clone`) fails, also
   when the copy has other names and literals: extract a method.
+- Smaller copies fail too: a static helper or a constant with the same code in two classes of one
+  module (`duplicate-definition`), and editing one of two near-identical copies while leaving the
+  other (`sibling-copy-edit`). Keep one and call it. Don't give two classes one name and use both in
+  one file, one fully qualified (`exported-name-collision`): rename one.
 
 ## Tests
 
@@ -138,10 +173,19 @@ Before you change code other modules use, or fix a bug, read
   `after(ms).never()` or `during(...)` (`NegativeWaitInTest`).
 - Tests print nothing new (`test-runtime/test-console-output`): no `System.out`/`System.err`, and
   no new `WARN` or `ERROR` log line from the code under test. Fix the cause the line names.
+- In main code, nothing with an outside effect runs while a class loads (`ClassLoadEffect`): no
+  connection, request, file access, thread, pool, sleep or JVM-wide setting in a `static` field or
+  block, an enum constant, or the constructor or initializer of a `static final INSTANCE = new X()`
+  singleton, nor in a method of the class they call. Do the work in a method `main` or the
+  framework calls after startup (a `@Bean` method, an `ApplicationRunner`) and pass the result in,
+  or create it on first use in a lazy holder
+  (`private static final class Holder { static final Db INSTANCE = new Db(); }`). Constants,
+  loggers, `Pattern.compile` and collections stay static.
 - Tests get the same PMD, Checkstyle, Error Prone and formatter checks as main code, plus the file
   (500 lines) and folder (6 files) limits. SpotBugs, the method limits, CRAP and duplicate detection
   read main sources only. In a test, use `assertThrows` instead of a try/catch. Spring rules apply
-  to main sources only, as do the enum predicate, forwarding wrapper and singular-and-plural rules.
+  to main sources only, as do the enum predicate, forwarding wrapper, singular-and-plural and
+  class-load rules.
   If a PMD rule or an Error Prone check flags test code that is right, ask a human for a reviewed
   exception for `pmd/<rule>` or `errorprone/<Check>`.
 

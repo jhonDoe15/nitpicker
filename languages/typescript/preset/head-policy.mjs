@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { resolveJscpdPolicy } from '../../../core/tooling/jscpd/config.mjs';
 import {
   readHeadPolicyFile,
   resolveHeadPolicy as resolveSharedHeadPolicy,
@@ -25,6 +26,10 @@ import { detectLibraries } from './libraries/project-libraries.mjs';
 import { stylingApproachFor } from './eslint-config/react/react-styling.mjs';
 import { hasPrettierConventions } from '../conventions/prettier-conventions.mjs';
 import { markedGeneratedFiles } from './layout/generated-files.mjs';
+import { picked } from '../../../shared/config.mjs';
+import { projectConfigTools } from './project-tools/project-config-files.mjs';
+import { headCapturedFacts, withProjectToolConfigs } from './project-tools/project-tool-policy.mjs';
+import { eslintProjectFacts } from './eslint-project/project-config.mjs';
 
 export { headPolicyEnvironment, withHeadPolicyFile } from '../../../shared/head-policy.mjs';
 
@@ -72,7 +77,12 @@ export function resolveHeadPolicy(config = {}, projectRoot) {
 }
 
 function withProjectFacts(policy, config, projectRoot) {
-  const prettier = policy.tools?.prettier;
+  const jscpd = resolveJscpdPolicy(policy.tools?.jscpd, projectRoot);
+  const tools = withProjectToolConfigs(
+    jscpd === undefined ? policy.tools : { ...policy.tools, jscpd },
+    projectRoot,
+    { disabled: config.disable },
+  );
   return {
     ...policy,
     ...(SCOPED_PRESETS.includes(config.preset)
@@ -81,13 +91,19 @@ function withProjectFacts(policy, config, projectRoot) {
           libraries: detectLibraries(projectRoot, excludedPathMatcher(policy)),
         }
       : {}),
+    ...(tools === undefined ? {} : { tools: withToolFacts(tools, projectRoot) }),
+  };
+}
+
+function withToolFacts(tools, projectRoot) {
+  const { prettier, eslint } = tools;
+  return {
+    ...tools,
     ...(usesProjectConfig(prettier?.precedence ?? [])
-      ? {
-          tools: {
-            ...policy.tools,
-            prettier: { ...prettier, projectConfigDigest: projectFilesDigest(projectRoot) },
-          },
-        }
+      ? { prettier: { ...prettier, projectConfigDigest: projectFilesDigest(projectRoot) } }
+      : {}),
+    ...(usesProjectConfig(eslint?.precedence ?? [])
+      ? { eslint: { ...eslint, ...eslintProjectFacts(projectRoot) } }
       : {}),
   };
 }
@@ -144,18 +160,34 @@ const SCOPE_FACTS = [
   ['i18n', ['enabled']],
 ];
 
-function picked(source, keys) {
-  return Object.fromEntries(
-    keys.filter((key) => source[key] !== undefined).map((key) => [key, source[key]]),
-  );
+function withoutKeys(source, keys) {
+  return Object.fromEntries(Object.entries(source).filter(([key]) => !keys.includes(key)));
 }
 
-function headPrettierDigest(policy, headPolicy) {
-  const digest = headPolicy.tools?.prettier?.projectConfigDigest;
-  const prettier = policy.tools?.prettier;
-  return digest === undefined || !usesProjectConfig(prettier?.precedence ?? [])
-    ? {}
-    : { tools: { ...policy.tools, prettier: { ...prettier, projectConfigDigest: digest } } };
+const HEAD_TOOL_FACTS = [
+  ['prettier', ['projectConfigDigest']],
+  ['eslint', ['projectConfigFile', 'projectConfigDigest', 'projectConfigMissing']],
+];
+
+function headToolFacts(policy, headPolicy) {
+  if (policy.tools === undefined) {
+    return {};
+  }
+  const tools = { ...policy.tools };
+  for (const [tool, keys] of HEAD_TOOL_FACTS) {
+    if (usesProjectConfig(tools[tool]?.precedence ?? [])) {
+      tools[tool] = {
+        ...withoutKeys(tools[tool], keys),
+        ...picked(headPolicy.tools?.[tool] ?? {}, keys),
+      };
+    }
+  }
+  for (const tool of ['jscpd', ...projectConfigTools()]) {
+    if (usesProjectConfig(tools[tool]?.precedence ?? [])) {
+      tools[tool] = headCapturedFacts(tools[tool], headPolicy.tools?.[tool]);
+    }
+  }
+  return { tools };
 }
 
 function headTestPlacement(policy, headPolicy) {
@@ -175,7 +207,7 @@ export function withHeadCheckoutFacts(policy, headPolicy = {}) {
         { ...policy[scope], ...picked(headPolicy[scope], keys) },
       ]),
     ),
-    ...headPrettierDigest(policy, headPolicy),
+    ...headToolFacts(policy, headPolicy),
   };
 }
 

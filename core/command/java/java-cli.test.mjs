@@ -1,6 +1,7 @@
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../../cli.mjs';
 import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
@@ -12,6 +13,7 @@ import {
 } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
 import { acceptedDigest } from '../test-support/accepted-digest.mjs';
+import { docsUrl } from '../../../shared/messages/docs-url.mjs';
 
 const EMPTY_JDEPS = { 'jdeps/jdeps.txt': '', 'jdeps/jdeps-classes.txt': '' };
 const EXCEPTION_ENTRY = /\{"rule":"[^"]+","paths":\[[^\]]+\],"reason":"\.\.\."\}/u;
@@ -41,6 +43,8 @@ const CLONE_MESSAGE = [
   'If the repetition is intended, add src/main/java/demo/First.java or',
   'src/main/java/demo/Second.java to "exclude" in nitpicker.config.json.',
 ].join(' ');
+
+const UNUSED_FIELD_HELP_URI = docsUrl('docs/rules/java-pmd.md', 'pmd-unusedprivatefield');
 
 const addedFieldOutput = expect.stringMatching(exactText`Base: comparison-base (argument)
 
@@ -86,6 +90,11 @@ describe.each([
       output: addedFieldOutput,
     });
     expect(result.output.out).toEqual(addedFieldOutput);
+    expect(
+      JSON.parse(readFileSync(path.join(result.reports, 'new-findings.json'), 'utf8')).map(
+        ({ helpUri }) => helpUri,
+      ),
+    ).toEqual([UNUSED_FIELD_HELP_URI]);
     expect(result.json('new-findings.json')).toEqual([
       {
         tool: 'pmd',
@@ -110,11 +119,24 @@ describe.each([
           "rules": [
             {
               "id": "pmd/UnusedPrivateField",
-              "name": "UnusedPrivateField"
+              "name": "UnusedPrivateField",
+              "shortDescription": {
+                "text": "Detects when a private field is declared and/or assigned a value, but not used."
+              },
+              "helpUri": ${JSON.stringify(UNUSED_FIELD_HELP_URI)}
             }
           ]
         }
       },
+      "originalUriBaseIds": {
+        "%SRCROOT%": {
+          "uri": ${JSON.stringify(`${pathToFileURL(realpathSync(root)).href}/`)},
+          "description": {
+            "text": "The root of the git repository the findings are in."
+          }
+        }
+      },
+      "columnKind": "utf16CodeUnits",
       "invocations": [
         {
           "executionSuccessful": true,
@@ -125,6 +147,7 @@ describe.each([
         {
           "ruleId": "pmd/UnusedPrivateField",
           "level": "error",
+          "baselineState": "new",
           "message": {
             "text": ${JSON.stringify(addedField)}
           },
@@ -132,7 +155,8 @@ describe.each([
             {
               "physicalLocation": {
                 "artifactLocation": {
-                  "uri": "src/main/java/demo/A.java"
+                  "uri": "src/main/java/demo/A.java",
+                  "uriBaseId": "%SRCROOT%"
                 },
                 "region": {
                   "startLine": 4
@@ -258,6 +282,75 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
       },
     ]);
   });
+  describe('on a base whose tests fail', () => {
+    const failing = (name) =>
+      `<testsuite name="demo.ATest"><testcase classname="demo.ATest" name="${name}">` +
+      '<failure message="expected: 1"/></testcase></testsuite>';
+    const repaired = (root, { write = {}, remove = [] }) => {
+      if (remove.length > 0) {
+        fixtureGit(root, ['rm', '-q', ...remove]);
+      }
+      writeFiles(root, write);
+      commit(root, 'repair the tests');
+    };
+
+    it('records the failing base as a note and passes a change that repairs it', () => {
+      const root = repository(build.redBase.files(failing('works')));
+      repaired(root, build.redBase.repair);
+
+      const result = run(root);
+
+      expect(result.exitCode, result.text).toBe(0);
+      expect(result.json('tool-errors.json')).toEqual([]);
+      expect(result.json('notes.json')).toEqual([
+        {
+          tool: 'java',
+          snapshot: 'base',
+          rule: 'tests-failed',
+          path: '.',
+          message: 'Tests fail on the base:\n  demo.ATest.works: expected: 1',
+        },
+      ]);
+      expect(result.output.out.split('\n').filter((line) => line.startsWith('Note:'))).toEqual([
+        "Note: the project's tests fail on the base (java).",
+      ]);
+    });
+
+    it.runIf(build.redBase.modules !== undefined)(
+      'names the failing module of a multi-module build',
+      () => {
+        const root = repository(build.redBase.modules.files(failing('works')));
+        repaired(root, build.redBase.modules.repair);
+
+        const result = run(root);
+
+        expect(result.exitCode, result.text).toBe(0);
+        expect(result.json('notes.json').map(({ message }) => message)).toEqual([
+          'Tests fail on the base in core:\n  demo.ATest.works: expected: 1',
+        ]);
+      },
+    );
+
+    it('stays a tool error on both snapshots when the head tests fail too', () => {
+      const root = repository(build.redBase.files(failing('works')));
+      writeFiles(root, {
+        'src/main/java/demo/B.java': 'package demo;\n\npublic final class B {}\n',
+      });
+      commit(root, 'change something else');
+
+      const result = run(root);
+
+      expect({
+        exitCode: result.exitCode,
+        errors: result.json('tool-errors.json').map(({ snapshot, rule }) => `${snapshot} ${rule}`),
+        notes: result.json('notes.json'),
+      }).toEqual({
+        exitCode: 2,
+        errors: [`head ${build.redBase.headRule}`, 'base tests-failed'],
+        notes: [],
+      });
+    });
+  });
   it('lets an exception entry for the rule and path allow a new finding', () => {
     const root = repository();
     const config = `${JSON.stringify({
@@ -337,6 +430,8 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         'coupling/coupling . dependencies summary',
         'coupling/coupling . modules summary',
         'coupling/coupling . packages summary',
+        '',
+        `Rule reference: ${docsUrl('docs/rules/README.md')} (nitpicker explain <tool/rule> prints one rule)`,
         '',
       ].join('\n'),
     );

@@ -1,0 +1,325 @@
+{
+  "fields": [
+    "tool",
+    "rule",
+    "analyzers",
+    "builds",
+    "pattern",
+    "samples",
+    "summary",
+    "why",
+    "allowed",
+    "exception",
+    "docs",
+    "scope",
+    "forms"
+  ],
+  "values": [
+    "archunit",
+    "<rule>",
+    { "java": ["java"], "kotlin": ["kotlin"] },
+    { "java": ["gradle", "maven"], "kotlin": ["gradle"] },
+    "^(?!(?:spring-layout|spring-feature-boundary|spring-shared-pure|spring-controller-repository|spring-controller-entity|spring-service-web|spring-controller-controller|spring-repository-service|spring-scope-capture|ddd-aggregate-reference|ddd-foreign-entity|ddd-value-object-reference|spring-request-state|spring-test-placement|spring-no-dirties-context|contract-infrastructure-type)$)",
+    ["archunit/noCyclesBetweenFeatures"],
+    "A rule of the project's own ArchUnit tests.",
+    "The project writes ArchUnit rules as tests named `*ArchTest` or `*ArchitectureTest`; nitpicker runs them and reports each violated rule by the name of its test field or method.",
+    "Fix the code the rule's message names.",
+    { "key": "exceptions", "rule": "archunit/<rule>" },
+    [{ "label": "Java preset guide", "path": "docs/java-preset.md", "anchor": "slice-4-archunit" }],
+    "contract-infrastructure-type",
+    "A public method of a `@Service`, a controller, or a public class directly in a feature package takes or returns a persistence handle (JPA `EntityManager`, `EntityManagerFactory`, `EntityTransaction`, `Query`; Hibernate `Session`, `StatelessSession`, `SessionFactory`; JDBC `Connection`, `Statement`, `ResultSet`, `DataSource`; `JdbcTemplate` and the other Spring JDBC, R2DBC and Mongo operations; R2DBC and MongoDB driver types; jOOQ `DSLContext`) or a web request or response object (servlet request, response, session and `Part`; `ServerWebExchange`; `ServerHttpRequest`/`ServerHttpResponse`; `WebRequest`; `MultipartFile`; WebFlux `ServerRequest`/`ServerResponse`; `HttpEntity` and `ResponseEntity`; JAX-RS `Response` and `ContainerRequestContext`; Micronaut `HttpRequest`/`HttpResponse`; Vert.x `RoutingContext`).",
+    "One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes: it keeps the package-by-feature layout, the layering and the aggregate boundaries that the TypeScript preset keeps with its import rules.",
+    "Take a repository or a port interface and return a record (DTO) or a domain type from <Class>.<method>: <PersistenceHandle> is a persistence handle, so every caller of this service depends on the database session. Keep <PersistenceHandle> inside the repository or adapter that owns the transaction.",
+    { "key": "exceptions", "rule": "archunit/contract-infrastructure-type" },
+    [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-architecture-rules"
+      }
+    ],
+    "A project with Spring, or with feature folders, in its main sources.",
+    "ddd-aggregate-reference",
+    "A root or entity of one aggregate holds the root of another (`Customer customer` in `Order`); hold its identifier (`CustomerId`) or an `Association<Customer, CustomerId>`.",
+    "Refer to <OtherRoot> by its identifier or an Association<<OtherRoot>, ID> in <Class>: <OtherRoot> is the root of another aggregate, and holding it lets one aggregate change another outside its consistency boundary.",
+    { "key": "exceptions", "rule": "archunit/ddd-aggregate-reference" },
+    "A module with jMolecules (`org.jmolecules:jmolecules-ddd`) on its main compile classpath, with or without Spring.",
+    "ddd-foreign-entity",
+    "A root or entity holds an entity that belongs to another aggregate (`List<CartLine>` in `Order` when `CartLine implements Entity<Cart, ...>`), or an `@Entity` that two roots reach (each root is reported, naming the other).",
+    "Refer to <Aggregate> by its identifier in <Class> instead of holding <Entity>: <Entity> belongs to the aggregate <Aggregate>, and an entity belongs to exactly one aggregate.",
+    { "key": "exceptions", "rule": "archunit/ddd-foreign-entity" },
+    "ddd-value-object-reference",
+    "A value object holds an aggregate root or an entity; hold its identifier.",
+    "Hold the identifier of <Entity> in <Class>, not the object: a value object is compared by its values, and <Entity> is an entity with an identity and lifecycle of its own.",
+    { "key": "exceptions", "rule": "archunit/ddd-value-object-reference" },
+    "spring-controller-controller",
+    "A controller holds or creates another controller: a field, constructor or method parameter of that type, also inside a generic, or `new OtherController()`. Naming another controller's class in a link (`methodOn(OrderController.class)`, a `Class<OrderController>`) is fine.",
+    "Move what <Class> needs from <OtherController> into a service both controllers call: a controller handles its own requests and does not hold another controller.",
+    { "key": "exceptions", "rule": "archunit/spring-controller-controller" },
+    "A project with Spring on the compile classpath.",
+    "spring-controller-entity",
+    "A request-mapping or `@ModelAttribute` method of a controller takes or returns an `@Entity` type, also inside a generic such as `List<Customer>`; methods declared on implemented interfaces (the OpenAPI-generator layout) and inherited from base controllers count.",
+    "Take and return a record (DTO) in <Class>.<method> and map it in the service: the entity <Entity> stays out of controller signatures.",
+    { "key": "exceptions", "rule": "archunit/spring-controller-entity" },
+    "spring-controller-repository",
+    "A `@Controller` or `@RestController` depends on a repository (`@Repository`, or a type extending Spring Data's `Repository`) or on data access directly (`JdbcTemplate`, `NamedParameterJdbcTemplate`, `JdbcClient`, `SimpleJdbcInsert`, R2DBC `DatabaseClient`, `JdbcAggregateTemplate`, `R2dbcEntityTemplate`, `MongoTemplate`, `EntityManager`, `EntityManagerFactory`, Hibernate `Session`, `DataSource`, or their interfaces), in a field, parameter, return type or call.",
+    "Have <Class> call a service that uses <Repository>: controllers call services only, not repositories or data access.",
+    { "key": "exceptions", "rule": "archunit/spring-controller-repository" },
+    "spring-feature-boundary",
+    "A class uses a class from a sub-package of another root package (`orders.internal.X` from `billing`); the classes directly in the other package are fine.",
+    "Have <Class> use only the classes directly in <root>.<feature>, or move what both need to <root>.shared: <OtherClass> is internal to that feature (<root>.<feature>.<package>).",
+    { "key": "exceptions", "rule": "archunit/spring-feature-boundary" },
+    "spring-layout",
+    "A class sits directly in the root package (only `@SpringBootApplication`, `@Configuration` and `@ConfigurationProperties` classes and a `SpringBootServletInitializer` subclass may), or in a root sub-package named by layer: `controller(s)`, `service(s)`, `repository`/`repositories`, `entity`/`entities`, `model(s)`, `dto(s)`, `dao(s)`, `util(s)`, `common`, `web`, `api`, `rest`, `resource(s)`, `persistence`, `domain`, `mapper(s)`, `exception(s)`, `adapter(s)`, `application`, `infrastructure`, `infra`, `port(s)`, `usecase(s)`, `helper(s)`.",
+    "Put <Class> in the feature package it belongs to, <root>.<feature>, which holds that feature's controller, service and repository together (pure utilities go to <root>.shared); \"<layer>\" is a layer package.",
+    { "key": "exceptions", "rule": "archunit/spring-layout" },
+    "spring-no-dirties-context",
+    "A test class or method has `@DirtiesContext`, anywhere.",
+    "Reset state in <Name>Test itself, or test the class without a Spring context: @DirtiesContext rebuilds the context and slows the suite.",
+    { "key": "exceptions", "rule": "archunit/spring-no-dirties-context" },
+    "spring-repository-service",
+    "A repository depends on a `@Service`: a field, parameter, return type or call. A repository depending on a controller or the web layer is `spring-service-web`.",
+    "Have the service call <Class> and pass it what it needs from <Service>: a repository only reads and writes data and depends on no service.",
+    { "key": "exceptions", "rule": "archunit/spring-repository-service" },
+    "spring-request-state",
+    "Request data reaches a field of a singleton bean or a static field outside set-up: assigned, written into an array element, or passed to a collection, map, `Map.Entry` or `AtomicReference` mutator (`add`, `put`, `computeIfAbsent`, `set`, ...).",
+    "Pass the request data from <request source> on through parameters and return values instead of passing it to <Class>.<field> with <mutator>(): <Class> is a singleton that every request shares, so request data kept there leaks between users and races between threads. Per-request data belongs in a @RequestScope bean, and a cache needs a size and an expiry (Spring Cache, Caffeine).",
+    { "key": "exceptions", "rule": "archunit/spring-request-state" },
+    "spring-scope-capture",
+    "A singleton bean (a `@Component` class or a `@Bean` method without `@Scope`, or with `singleton` or `application` scope) takes a request-, session-, `websocket`-, Spring Batch `step`- or `job`-scoped bean without a scoped proxy: in a constructor or `@Bean` method parameter, an `@Autowired`, `@Inject` or `@Resource` field or method, also as `Optional<T>`, an array or a collection or map of them.",
+    "Inject ObjectProvider<<ScopedBean>> into <Class> and call getObject() per use, or give <ScopedBean> a scoped proxy (proxyMode = ScopedProxyMode.TARGET_CLASS): a singleton gets one <ScopedBean> when it is created, which fails outside a <scope> and otherwise keeps the first <scope>'s bean.",
+    { "key": "exceptions", "rule": "archunit/spring-scope-capture" },
+    "spring-service-web",
+    "A `@Service` or repository depends on the web layer: a controller or `@ControllerAdvice`, `ResponseEntity` in its own field, method or constructor signatures (not a `RestTemplate` or `RestClient` result it unwraps), or the `jakarta.servlet`, `javax.servlet`, `org.springframework.web.bind`, `org.springframework.web.servlet`, `org.springframework.web.multipart`, `org.springframework.web.context.request` (`RequestContextHolder`, `WebRequest`), `org.springframework.web.server` (`ServerWebExchange`, `ResponseStatusException`), `org.springframework.web.reactive` or `org.springframework.http.server` packages, so servlet and WebFlux apps are held to the same rule.",
+    "Keep <Class> free of web types: take and return plain values, throw a domain exception for errors, and map them to and from <WebType> in the controller or a @ControllerAdvice.",
+    { "key": "exceptions", "rule": "archunit/spring-service-web" },
+    "spring-shared-pure",
+    "A `shared` class is a Spring bean (`@Component` and its stereotypes, `@Configuration`) or an `@Entity`, or depends on a class in any other root package.",
+    "Move <Class> into the package that uses it, or drop its use of <OtherClass>: <root>.shared holds pure utilities and depends on no feature package such as <root>.<feature>.",
+    { "key": "exceptions", "rule": "archunit/spring-shared-pure" },
+    "spring-test-placement",
+    "Such a test is in the unit test source set (`test` on Gradle, the one test source directory on Maven) and is not an integration test by the shared rule of the [slow-test check](docs/java-preset.md#slow-tests): a class named `*IT`, `*ITCase`, `*IntegrationTest(s)`, `*IntegrationSpec` or `*ISpec`, or a package with an `integration`, `it` or `e2e` segment. The message offers the forms that keep the package (an `*IT` name, an integration test source set), so a slice test of a package-private controller still compiles; plain unit tests live anywhere.",
+    "Test <Name>Test with new and mocks, or run it as an integration test: name it <Name>IT (Failsafe runs *IT on Maven) or put it in an integration test source set. Both keep its package, so package-private classes stay visible; a package named integration or it also counts.",
+    { "key": "exceptions", "rule": "archunit/spring-test-placement" },
+    "errorprone",
+    "InlineSuppression",
+    "An inline suppression of errorprone in a Java source.",
+    "A suppression annotation hides a finding from the report, so a source scan reports every one.",
+    "Do not silence Error Prone or NullAway inline: fix the finding (for NullAway, annotate what may be null with @Nullable).",
+    { "key": "exceptions", "rule": "errorprone/InlineSuppression" },
+    "google-java-format",
+    "format",
+    "A Java file is not formatted with google-java-format.",
+    "The Java presets keep one layout, the formatter's. google-java-format runs in check mode and reports every file it would change.",
+    "File is not formatted with google-java-format. Format it with google-java-format --replace <Java files>. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    { "key": "exceptions", "rule": "google-java-format/format" },
+    [{ "label": "Java preset guide", "path": "docs/java-preset.md", "anchor": "style" }],
+    "palantir-java-format",
+    "A Java file is not formatted with palantir-java-format.",
+    "The Java presets keep one layout, the formatter's. palantir-java-format runs in check mode and reports every file it would change.",
+    "File is not formatted with palantir-java-format. Format it with palantir-java-format --palantir --replace <Java files>. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
+    { "key": "exceptions", "rule": "palantir-java-format/format" },
+    "pmd",
+    "An inline suppression of pmd in a Java source.",
+    "Do not silence PMD inline: fix the finding. PMD also honors \"all\", \"unused\", \"serial\" and \"fallthrough\". The one accepted marker is @SuppressWarnings(\"PMD.SpringDataNativeQuery\") on a repository method that needs native SQL.",
+    { "key": "exceptions", "rule": "pmd/InlineSuppression" },
+    "spotbugs",
+    "An inline suppression of spotbugs in a Java source.",
+    "Do not silence SpotBugs inline: fix the bug.",
+    { "key": "exceptions", "rule": "spotbugs/InlineSuppression" },
+    "spring",
+    "active-profile",
+    "`spring.profiles.active` or `spring.profiles.include` with a literal value in the main (profile-less) document, one finding per line.",
+    "Nitpicker reads the Spring configuration files of a Spring project (`application.properties`, `application.yml` and their profile variants) for settings that are unsafe outside a test or local profile.",
+    { "key": "exceptions", "rule": "spring/active-profile" },
+    [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "spring-configuration-files"
+      }
+    ],
+    [
+      {
+        "label": "spring.profiles.active",
+        "message": "Set SPRING_PROFILES_ACTIVE in each deployment instead, or spring.profiles.default for a fallback that a deployment can override. spring.profiles.active in the packaged main file turns those profiles on in every environment."
+      },
+      {
+        "label": "spring.profiles.include",
+        "message": "Name them in a spring.profiles.group entry instead, and activate that group with SPRING_PROFILES_ACTIVE in each deployment. spring.profiles.include in the packaged main file turns those profiles on in every environment."
+      }
+    ],
+    "actuator-exposure",
+    "`management.endpoints.web.exposure.include` containing `*` or a sensitive endpoint (below); `management.endpoints.access.default=unrestricted`; `management.endpoint.shutdown.access=unrestricted`; `management.endpoint.heapdump.access` `read-only` or `unrestricted`; `management.endpoint.shutdown.enabled` or `management.endpoints.enabled-by-default` true.",
+    { "key": "exceptions", "rule": "spring/actuator-exposure" },
+    [
+      {
+        "label": "management.endpoints.web.exposure.include",
+        "message": "List only the actuator endpoints you need in management.endpoints.web.exposure.include, for example health,info; * exposes every endpoint."
+      },
+      {
+        "label": "management.endpoints.access.default",
+        "message": "Leave management.endpoints.access.default unset, or set it to read-only, and open single endpoints with management.endpoint.<id>.access; unrestricted also opens the shutdown and heapdump endpoints."
+      },
+      {
+        "label": "management.endpoint.heapdump.access",
+        "message": "Set management.endpoint.heapdump.access to none, or remove it; unrestricted lets callers stop the application or download its memory."
+      },
+      {
+        "label": "management.endpoint.shutdown.enabled",
+        "message": "Remove management.endpoint.shutdown.enabled=true; it turns the shutdown endpoint on."
+      }
+    ],
+    "ddl-auto",
+    "`spring.jpa.hibernate.ddl-auto` or `spring.jpa.properties.hibernate.hbm2ddl.auto` other than `none`/`validate`, or `spring.jpa.generate-ddl` true.",
+    { "key": "exceptions", "rule": "spring/ddl-auto" },
+    [
+      {
+        "label": "spring.jpa.hibernate.ddl-auto",
+        "message": "Manage the schema with Flyway or Liquibase and set spring.jpa.hibernate.ddl-auto to none or validate; other modes let Hibernate change the schema."
+      },
+      {
+        "label": "spring.jpa.generate-ddl",
+        "message": "Manage the schema with Flyway or Liquibase and keep spring.jpa.generate-ddl false; true lets Hibernate change the schema."
+      }
+    ],
+    "error-details",
+    "`server.error.include-stacktrace`, `include-message` or `include-binding-errors` set to `always` or `on-param`; `include-exception` true; also as a placeholder default (`${X:always}`).",
+    { "key": "exceptions", "rule": "spring/error-details" },
+    [
+      {
+        "label": "server.error.include-stacktrace",
+        "message": "Set server.error.include-stacktrace=never; other values send stack traces to clients."
+      },
+      {
+        "label": "server.error.include-message",
+        "message": "Set server.error.include-message=never and return a fixed ProblemDetail from a @RestControllerAdvice; other values send exception messages to clients."
+      },
+      {
+        "label": "server.error.include-binding-errors",
+        "message": "Set server.error.include-binding-errors=never and report field errors from a @RestControllerAdvice; other values send rejected values to clients."
+      },
+      {
+        "label": "server.error.include-exception",
+        "message": "Set server.error.include-exception=false; true sends exception class names to clients."
+      }
+    ],
+    "literal-secret",
+    "A literal value under a key whose last segment is, or ends in a separate word that is, a secret word (below).",
+    { "key": "exceptions", "rule": "spring/literal-secret" },
+    [
+      {
+        "label": "spring.datasource.password",
+        "message": "Set SPRING_DATASOURCE_PASSWORD in the environment, or read it from a secret store, and remove the literal secret from spring.datasource.password."
+      },
+      {
+        "label": "spring.datasource.url",
+        "message": "Supply the credential in spring.datasource.url from the environment, for example through a placeholder without a default, and take it out of the URL."
+      }
+    ],
+    "missing-enable",
+    "`@Scheduled`, `@Async`, the cache annotations, `@PreAuthorize` and friends, or `@Retryable` used in Java or Kotlin while no main class has the matching `@Enable...` and no XML `annotation-driven` element enables it.",
+    { "key": "exceptions", "rule": "spring/missing-enable" },
+    [
+      {
+        "label": "enable-scheduling",
+        "message": "Add @EnableScheduling to one @Configuration class; without it @Scheduled does nothing."
+      }
+    ],
+    "open-in-view",
+    "JPA in the main sources (`jakarta.persistence` or `javax.persistence` import) and `spring.jpa.open-in-view` unset, or true.",
+    { "key": "exceptions", "rule": "spring/open-in-view" },
+    [
+      {
+        "label": "spring.jpa.open-in-view",
+        "message": "Set spring.jpa.open-in-view=false. Spring Boot enables open-in-view by default, which holds a database connection through view rendering and hides N+1 queries."
+      }
+    ],
+    "risky-startup-flags",
+    "`spring.main.allow-circular-references`, `allow-bean-definition-overriding` or `lazy-initialization` true.",
+    { "key": "exceptions", "rule": "spring/risky-startup-flags" },
+    [
+      {
+        "label": "spring.main.allow-circular-references",
+        "message": "Remove spring.main.allow-circular-references=true and restructure the beans; the flag hides wiring problems instead of fixing them."
+      }
+    ],
+    "unsafe-diagnostics",
+    "`spring.jpa.show-sql` or `spring.jpa.properties.hibernate.show_sql` true; Hibernate bind logging (`org.hibernate.orm.jdbc.bind`, `orm.jdbc.extract`, `type.descriptor.sql`, any parent such as `org.hibernate.type`, and `root`) at TRACE or ALL; `management.endpoint.env.show-values`, `configprops.show-values`, `health.show-details` or `health.show-components` `always`; `spring.h2.console.enabled` or `settings.web-allow-others` true; also as a placeholder default (`${SHOW_SQL:true}`).",
+    { "key": "exceptions", "rule": "spring/unsafe-diagnostics" },
+    [
+      {
+        "label": "spring.jpa.show-sql",
+        "message": "Log SQL with the logging.level.org.hibernate.SQL logger in a local profile and remove spring.jpa.show-sql=true, which prints SQL to standard output, outside logging."
+      },
+      {
+        "label": "logging.level.org.hibernate.orm.jdbc.bind",
+        "message": "Leave logging.level.org.hibernate.orm.jdbc.bind at its default level; trace logs bound SQL values, including passwords and personal data."
+      },
+      {
+        "label": "spring.h2.console.enabled",
+        "message": "Enable spring.h2.console.enabled only in a local profile; it opens the H2 web console."
+      },
+      {
+        "label": "management.endpoint.env.show-values",
+        "message": "Set management.endpoint.env.show-values to when-authorized or never; always serves internals to every caller."
+      }
+    ],
+    "test-runtime",
+    "test-not-run",
+    "A test class that no Test task or Failsafe execution runs.",
+    "A test that never runs cannot fail, so it proves nothing.",
+    { "key": "exceptions", "rule": "test-runtime/test-not-run" },
+    [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "tests-that-never-run"
+      }
+    ],
+    [
+      {
+        "label": "Gradle",
+        "message": "Register a Test task for the <sourceSet> source set (testClassesDirs = sourceSets.<sourceSet>.output.classesDirs, classpath = sourceSets.<sourceSet>.runtimeClasspath) so <Test> runs: no test task runs that source set, so its tests never run."
+      },
+      {
+        "label": "Maven",
+        "message": "Bind the integration-test and verify goals of maven-failsafe-plugin in this module so <Test>IT runs: Surefire skips classes named IT*, *IT and *ITCase, and Failsafe does not run here, so its tests never run."
+      }
+    ]
+  ],
+  "entries": [
+    [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, -1, -1],
+    [0, 11, 2, 3, -1, -1, 12, 13, 14, 15, 16, 17, -1],
+    [0, 18, 2, 3, -1, -1, 19, 13, 20, 21, 16, 22, -1],
+    [0, 23, 2, 3, -1, -1, 24, 13, 25, 26, 16, 22, -1],
+    [0, 27, 2, 3, -1, -1, 28, 13, 29, 30, 16, 22, -1],
+    [0, 31, 2, 3, -1, -1, 32, 13, 33, 34, 16, 35, -1],
+    [0, 36, 2, 3, -1, -1, 37, 13, 38, 39, 16, 35, -1],
+    [0, 40, 2, 3, -1, -1, 41, 13, 42, 43, 16, 35, -1],
+    [0, 44, 2, 3, -1, -1, 45, 13, 46, 47, 16, 35, -1],
+    [0, 48, 2, 3, -1, -1, 49, 13, 50, 51, 16, 35, -1],
+    [0, 52, 2, 3, -1, -1, 53, 13, 54, 55, 16, 35, -1],
+    [0, 56, 2, 3, -1, -1, 57, 13, 58, 59, 16, 35, -1],
+    [0, 60, 2, 3, -1, -1, 61, 13, 62, 63, 16, 35, -1],
+    [0, 64, 2, 3, -1, -1, 65, 13, 66, 67, 16, 35, -1],
+    [0, 68, 2, 3, -1, -1, 69, 13, 70, 71, 16, 35, -1],
+    [0, 72, 2, 3, -1, -1, 73, 13, 74, 75, 16, 35, -1],
+    [0, 76, 2, 3, -1, -1, 77, 13, 78, 79, 16, 35, -1],
+    [80, 81, 2, 3, -1, -1, 82, 83, 84, 85, -1, -1, -1],
+    [86, 87, 2, 3, -1, -1, 88, 89, 90, 91, 92, -1, -1],
+    [93, 87, 2, 3, -1, -1, 94, 95, 96, 97, 92, -1, -1],
+    [98, 81, 2, 3, -1, -1, 99, 83, 100, 101, -1, -1, -1],
+    [102, 81, 2, 3, -1, -1, 103, 83, 104, 105, -1, -1, -1],
+    [106, 107, 2, 3, -1, -1, 108, 109, -1, 110, 111, 35, 112],
+    [106, 113, 2, 3, -1, -1, 114, 109, -1, 115, 111, 35, 116],
+    [106, 117, 2, 3, -1, -1, 118, 109, -1, 119, 111, 35, 120],
+    [106, 121, 2, 3, -1, -1, 122, 109, -1, 123, 111, 35, 124],
+    [106, 125, 2, 3, -1, -1, 126, 109, -1, 127, 111, 35, 128],
+    [106, 129, 2, 3, -1, -1, 130, 109, -1, 131, 111, 35, 132],
+    [106, 133, 2, 3, -1, -1, 134, 109, -1, 135, 111, 35, 136],
+    [106, 137, 2, 3, -1, -1, 138, 109, -1, 139, 111, 35, 140],
+    [106, 141, 2, 3, -1, -1, 142, 109, -1, 143, 111, 35, 144],
+    [145, 146, 2, 3, -1, -1, 147, 148, -1, 149, 150, -1, 151]
+  ]
+}

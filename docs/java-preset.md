@@ -11,6 +11,11 @@ findings. The comparison is the language-neutral core (`compareFindings`, rename
 which the conformance suite in [`spec/conformance`](../spec/conformance/README.md) covers. The Java
 side contributes only two things: producing reports, and converting them into findings.
 
+Every rule the preset can report has an entry in the [rule reference](rules/README.md): [PMD](rules/java-pmd.md), [Checkstyle](rules/java-checkstyle.md), [SpotBugs](rules/java-spotbugs.md), [Error Prone](rules/java-errorprone.md) and [nitpicker's own rules](rules/java-nitpicker.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
+
+The JDK, Gradle or Maven a CI job needs, and recipes for GitHub Actions, GitLab CI and Jenkins, are in
+[nitpicker in CI](ci.md#toolchains-by-preset).
+
 ## How it works
 
 ```
@@ -38,7 +43,9 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   included when it applies it; paths in findings are relative to the directory Gradle runs in, so a
   subproject's findings carry its folder (`lib/src/main/java/...`). A build where no project applies
   the plugin, or a project whose reports are missing, is a tool error, never a pass. Projects of
-  an `includeBuild` composite build and `buildSrc` are separate builds and are not analyzed. Each project
+  an `includeBuild` composite build (in `settings.gradle` or in `pluginManagement`, such as a
+  `build-logic` convention-plugin build) and `buildSrc` are separate builds: they are neither
+  analyzed nor configured, so Gradle builds their plugins as it would without nitpicker. Each project
   runs every tool (tests, JaCoCo, PIT included) in the one Gradle invocation, so a build of several
   projects costs about the sum of single-project runs; Gradle's own `--parallel` setting applies.
   File limits and coupling (with the stability direction) are evaluated once over all projects, as
@@ -74,6 +81,10 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
 - **Failure policy.** If Gradle fails on either snapshot (does not compile, tests fail, tool
   crashes, no `gradle` on the PATH, unreadable reports), nothing is silently skipped. `runJavaDiff`
   (the library entry) throws; the CLI path maps the failure to a `tool-error` finding, see slice 2.
+  The one exception is a base snapshot whose test reports name failing tests while the head passes:
+  that is a note and the run goes on (see [A base whose tests fail](usage.md#a-base-whose-tests-fail)).
+  A base that fails for another reason, or whose tests fail without a named failing test, still
+  fails.
 
 ## Maven builds
 
@@ -147,7 +158,12 @@ by field. Per snapshot:
 - **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
   `nitpicker.archunit.includes` property in the POM) become findings; any other failing test, from
   Surefire's or Failsafe's reports, is a `java/maven-failure` tool error that names up to ten
-  failing tests. Reports older than the build are ignored. Gradle runs the ArchUnit classes in their
+  failing tests. On the base snapshot the failing tests are listed instead of thrown: that module
+  skips JaCoCo and PIT, and the failure becomes a `tests-failed` tool error for that module that the
+  core reads as a red base, the same as a Gradle base whose tests fail. The other modules keep their
+  coverage, CRAP and mutation comparison with the base; a failing root module is unknown only for its
+  own source and test directories. Reports older than the build are ignored.
+  Gradle runs the ArchUnit classes in their
   own task, but Maven only has the Surefire and Failsafe results: when a module has ArchUnit classes
   and neither plugin ran any of them (Surefire's `<includes>` miss them, as they would `*Rules`, or
   the module skips tests), that is a tool error rather than a silent pass. ArchUnit reads bytecode
@@ -394,8 +410,9 @@ classpath and its `test` task, and adds no test library to the project.
   init script and the Java adapter files, so a tool bump invalidates the base cache.
 - **Everything else is shared.** `nitpicker`, `--all`, `--base`, `--output`, `--defer-exit`,
   `cache publish` and `nitpicker aggregate` take the same path as for TypeScript, so the exit codes
-  (0 pass, 1 new enforceable findings, 2 tool error), the console summary, `new-findings.json`,
-  `summary.json`, `report.sarif` and `report.junit.xml` are the ones described in the CLI README.
+  (0 pass, 1 new enforceable findings, 2 tool error), the console summary and the report files
+  (`new-findings.json`, `summary.json`, `report.sarif`, `report.junit.xml` and the rest; `--all`
+  writes `findings.json`) are the ones described under [Reports](usage.md#reports).
 - **Gradle failure.** `languages/java/adapters/java-runner.mjs` catches any failure of the preset on a
   snapshot and returns one finding, `java/gradle-failure` (`java/maven-failure` on a Maven build) with
   classification `tool-error`, whose message is the build's diagnostic output. The comparison turns it into a tool error for that
@@ -446,7 +463,8 @@ classpath and its `test` task, and adds no test library to the project.
     `folder-depth-limit`, `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`, the structure rules (`function-lines-limit`,
     `function-statements-limit`, `function-control-nesting-limit`, `function-parameters-limit`),
     `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`,
-    `mutant-nocoverage` and `stability-direction`, and the
+    `mutant-nocoverage` and `stability-direction`, the reuse rules `duplicate-definition`,
+    `sibling-copy-edit` and `exported-name-collision` (see "Reuse rules"), and the
     [dependency and repository checks](usage.md#dependency-and-repository-checks). `function` names one method
     (`Big.run`, parameter lists ignored; matched exactly, so `run` alone does not accept
     `Big.run`) for the structure, CRAP, coverage and mutation rules, and is required for
@@ -537,8 +555,44 @@ whole-category reference enables the rules nitpicker leaves out of that category
 entries, minus the project's `<exclude>`s) and nothing nitpicker already runs, and an `<exclude>` in the
 project's file cannot turn a nitpicker rule off. With `["nitpicker", "project"]` nitpicker's values win
 where both set one. A rule nitpicker runs through its test-only ruleset (`TestClassWithoutTestCases`, from
-`pmd-test-only.xml`) is never added to the project's file, so a project category reference does not run
+`pmd-test-ruleset.xml`) is never added to the project's file, so a project category reference does not run
 it a second time; a project rule that names it is overlaid on that ruleset (`pmd-test-rules.xml`) instead.
+The main-only ruleset (`pmd-main-ruleset.xml`, which holds the `security` category) works the same way: a
+project reference to `category/java/security.xml` adds nothing, and a project rule that names one of its
+rules is overlaid on it (`pmd-main-rules.xml`) and still runs on main sources only.
+
+**Additional PMD categories (7.7.0).** The shared ruleset also runs the `performance` and
+`multithreading` categories on main and test Java sources, and `pmd-main-ruleset.xml` runs the
+`security` category on main sources only, since a test encrypts with a fixed key and IV to check known
+output. Both hold with Gradle and Maven and for the Java sources of the Kotlin preset. Performance
+rules cover redundant string allocation and conversion, builder appends, array copies, collection
+conversion and `Files` streams instead of `FileInputStream`/`FileOutputStream`. Multithreading rules
+cover `synchronized`, thread groups, calling `Thread.run()` directly, unsafe singleton publication,
+shared formatters and `wait`/`notify`. `synchronized` is not allowed because the preset has one
+locking style, a private final `ReentrantLock` taken right before `try` and released in `finally`
+(with a `Condition` in place of `wait`/`notify`), not for performance: since JDK 24 a virtual thread
+no longer pins its carrier inside `synchronized` (JEP 491). Security rules find hardcoded
+cryptographic keys and IVs in main code; a constant IV that decrypts an existing format takes a path
+exception. Each rule's message names the one allowed form and ends with the exception route.
+
+Four rules of these categories are narrowed where their default flags code that has no other form
+(see "PMD rules tuned by nitpicker" below).
+
+Six rules of these categories are left out, each with its reason next to it in `pmd-ruleset.xml`:
+
+| Category       | Excluded rule                         | Reason                                                                           |
+| -------------- | ------------------------------------- | -------------------------------------------------------------------------------- |
+| performance    | `AvoidInstantiatingObjectsInLoops`    | A loop that needs a distinct object per item is correct; hoisting changes it.    |
+| performance    | `TooFewBranchesForSwitch`             | A small exhaustive switch is valid.                                              |
+| performance    | `InsufficientStringBufferDeclaration` | A capacity hint is a micro-optimization; asking for one only adds magic numbers. |
+| multithreading | `AvoidUsingVolatile`                  | `volatile` is a valid visibility primitive.                                      |
+| multithreading | `DoNotUseThreads`                     | The J2EE container restriction does not apply to most applications.              |
+| multithreading | `UseConcurrentHashMap`                | A `Map` declaration does not show concurrent access.                             |
+
+A project that wants one of them back names it in its own ruleset (`tools.pmd.precedence`, above).
+The reverse does not work: an `<exclude>` in the project's ruleset cannot turn off a rule nitpicker
+runs; keep code a rule flags with a path exception or an entry under `exceptions` in
+`nitpicker.config.json`.
 
 **PMD rules tuned by nitpicker.** These rules of the rule set allow a narrower form than PMD's
 default, and their messages name it:
@@ -550,7 +604,12 @@ default, and their messages name it:
 | `AssignmentInOperand`              | An assignment in a `while` condition (`while ((line = reader.readLine()) != null)`).                                                                                                               |
 | `GuardLogStatement`                | `trace` and `debug` (and JUL `fine` levels) with placeholders whose values are variables, fields, literals or a no-argument call on one (`order.id()`); a guard only when an argument is computed. |
 | `LogStringConcatenation` (new)     | `info`, `warn` and `error` with placeholders, for SLF4J, Log4j 2, commons-logging, JUL and `System.Logger`.                                                                                        |
-| `GeneratedOnHandWrittenCode` (new) | No `@Generated` annotation on a class, method or constructor: JaCoCo and PIT skip what it marks.                                                                                                   |
+| `GeneratedOnHandWrittenCode` (new) | No annotation whose name contains `Generated` on a class, method or constructor (JaCoCo skips them all, PIT skips `@Generated`); put JPA `@GeneratedValue` on the field.                           |
+| `MutationIgnoreMarker` (new)       | No `@DoNotMutate` or `@CoverageIgnore`: PIT does not mutate what they mark.                                                                                                                        |
+| `DontCallThreadRun`                | `super.run()` inside a `Thread` subclass's `run()`; any other `run()` call on a `Thread` is `start()`.                                                                                             |
+| `AvoidFileStream`                  | A stream, reader or writer over a `FileDescriptor` (`new FileInputStream(FileDescriptor.in)`), which `Files` has no form for.                                                                      |
+| `AvoidArrayLoops`                  | A copy loop that subtracts the loop variable in an index (a reversed copy), which `System.arraycopy` cannot do.                                                                                    |
+| `UseArraysAsList`                  | A loop that filters, steps by more than one or does more than add each element; the loop that only adds is `Collections.addAll(target, array)`.                                                    |
 
 ## Slice 3: Checkstyle
 
@@ -643,14 +702,18 @@ identity when the value changes: editing such a line counts as a resolved plus a
   fails, as it does for TypeScript; for a fully covered method the message says to split off a
   branchy part. `crap-coverage-unknown` (enforceable) when no JaCoCo method
   matches or the method has neither line nor branch counters; its Java message names the two causes,
-  no test runs it or it is annotated `@Generated`.
+  no test runs it or it carries an annotation whose name contains `Generated`.
 - **JaCoCo filters.** The project's own JaCoCo settings (`jacocoTestReport.classDirectories`
   excludes, `test.jacoco` includes and excludes) are reset, so a class cannot leave the coverage
-  report through `build.gradle`. JaCoCo and PIT still skip code annotated `@Generated`. An
+  report through `build.gradle`. JaCoCo still skips a class or method carrying an annotation whose
+  name contains `Generated` (`@ExcludeFromJacocoGeneratedReport` too), and PIT skips `@Generated`,
+  `@DoNotMutate` and `@CoverageIgnore`. An
   annotation whose value names a known generator (MapStruct, Dagger, AutoValue, Immutables and the
   others the generated-sources check lists) makes the whole file generated, so its findings are
   dropped and no `pmd/GeneratedOnHandWrittenCode` is reported; adding one to a file the base checked
-  is a policy loosening. Any other `@Generated` is the `pmd/GeneratedOnHandWrittenCode` finding.
+  is a policy loosening. Any other such annotation is the `pmd/GeneratedOnHandWrittenCode` finding
+  (also JPA `@GeneratedValue` on a getter: put it on the field), and `@DoNotMutate` or
+  `@CoverageIgnore` is `pmd/MutationIgnoreMarker`.
   Only violations are findings; the
   per-function metric findings of the TypeScript check are not produced.
 - **Identity.** `function:<signature>`, for example `function:Calc.classify(int, int, String)`:
@@ -1282,12 +1345,46 @@ always stay.
 on the probe project those are, among others, `LooseCoupling` and `JdkObsolete` on a `Vector`
 field, `HidingField` and `URF_UNREAD_PUBLIC_OR_PROTECTED_FIELD`, `RandomModInteger` and
 `DMI_RANDOM_USED_ONLY_ONCE`, `ClassNewInstance` and `REFLC_REFLECTION_MAY_INCREASE_ACCESSIBILITY_OF_CLASS`,
-`SelfAssignment` and `AvoidReassigningParameters`, and Checkstyle's `MemberName` with
-`FieldCanBeStatic`. `adapters/overlaps/resolved-overlaps.test.mjs` pins every cross-tool line left
+`SelfAssignment` and `AvoidReassigningParameters`. `adapters/overlaps/resolved-overlaps.test.mjs` pins every cross-tool line left
 on the probe's findings (`fixtures/probe-findings.json`, every enabled check with nothing turned off
-for overlap), the partial-coverage cases kept, and the policy order;
-`static-overlaps.test.mjs` checks each pair in its scope; a unit test checks that this list is the
-table:
+for overlap), the pairs that drop a secondary on those findings (every pair of the table must have probe
+evidence, so a new pair comes with a probe source that makes both rules report the same site),
+the partial-coverage cases kept,
+and the policy order; `static-overlaps.test.mjs` checks each pair in its scope; a unit test checks
+that this list is the table.
+
+`fixtures/probe-findings.json` holds the probe sources (`sources`) and the findings of a full Java
+preset run over them with overlap resolution off (`findings`: tool, rule, path, line, and the symbol
+of a SpotBugs finding), sorted so a run is reproducible. Do not edit the findings by hand after a
+tool upgrade or a new pair: `npm run gen:overlap-probe` copies the sources into a throwaway Gradle
+project (`adapters/fixtures/gradle-project` with JUnit 4 and JSpecify added), runs the Java preset
+with the pinned tools on it (`collectJavaFindings` with `resolveOverlaps` set to the identity;
+this needs a JDK 21 and Gradle, and takes several minutes) and rewrites the file. `-- --build=maven`
+runs the same sources as a Maven project (`maven/fixtures/single/pom.xml` with the same two
+dependencies) instead, and `--gradle=<command>` or `--maven=<command>` names another Gradle or Maven.
+The overlap table serves both builds, so both must report the same findings. To probe a new case,
+add the source file to `sources` first and run the command. `node scripts/gen-overlap-probe.mjs
+--check` writes nothing and exits 1 with the added and removed findings when the committed file
+differs from a fresh run; `adapters/java-e2e/overlap-probe.e2e.test.mjs` runs the same check for
+Gradle and for Maven in the Java end-to-end suite (`npm run test:java`), so the Java CI job fails on
+drift and on a finding one build reports and the other does not. After a regeneration, review the
+diff: a disappearing finding is a rule turned off or changed in the preset, and every pair must
+still match (the pair test above).
+
+Two pairs were dropped and one changed because the two rules could never report one site with the
+preset's configuration, found by probing each pair. `errorprone/AnnotationPosition` over
+Checkstyle's `AnnotationLocation` is gone: both suppression files turn `AnnotationLocation` off,
+so Checkstyle never reports it. `errorprone/HardCodedSdCardPath` over PMD `DoNotHardCodeSDCard`
+is gone: the Error Prone check reports only under the javac option `-XDandroidCompatible=true`,
+which the runner does not set, so only PMD reports a hard-coded `/sdcard` path.
+`errorprone/ClassName` over `checkstyle/OuterTypeFilename` has the `file` scope: Error Prone names
+the first line of the file and Checkstyle the class line. SpotBugs reports `MS_MUTABLE_ARRAY` and
+`MS_PKGPROTECT` for a public static final array only when something reads the field (outside its
+package for the first, inside it for the second), so the probe has a class that reads them.
+`pmd/ClassLoadEffect` over `spotbugs/SC_START_IN_CTOR` is matched by a constructor that starts a
+thread and runs for a static field: both name the `start()` line.
+
+The pairs:
 
 - line: `errorprone/ArrayHashCode` over `spotbugs/DMI_INVOKING_HASHCODE_ON_ARRAY`
 - line: `errorprone/ArrayEquals` over `spotbugs/EC_BAD_ARRAY_COMPARE`
@@ -1324,7 +1421,7 @@ table:
 - line: `errorprone/IdentityBinaryExpression`, `errorprone/SelfComparison`, `errorprone/SelfEquals` over `spotbugs/SA_FIELD_SELF_COMPARISON`, `spotbugs/SA_LOCAL_SELF_COMPARISON`
 - line: `errorprone/LockOnBoxedPrimitive` over `spotbugs/DL_SYNCHRONIZATION_ON_*`
 - line: `errorprone/BoxedPrimitiveConstructor` over `spotbugs/DM_FP_NUMBER_CTOR`, `spotbugs/DM_NUMBER_CTOR`, `pmd/PrimitiveWrapperInstantiation`
-- line: `errorprone/DoNotCall` over `spotbugs/RU_INVOKE_RUN`
+- line: `errorprone/DoNotCall` over `spotbugs/RU_INVOKE_RUN`, `pmd/DontCallThreadRun`
 - line: `errorprone/EqualsNaN` over `spotbugs/FE_TEST_IF_EQUAL_TO_NOT_A_NUMBER`, `pmd/ComparisonWithNaN`
 - line: `errorprone/BoxedPrimitiveEquality`, `errorprone/MemorySegmentReferenceEquality`, `errorprone/OptionalEquality`, `errorprone/ProtoStringFieldReferenceEquality` over `errorprone/ReferenceEquality`
 - line: `errorprone/BoxedPrimitiveEquality`, `errorprone/MemorySegmentReferenceEquality`, `errorprone/OptionalEquality`, `errorprone/ProtoStringFieldReferenceEquality`, `errorprone/ReferenceEquality` over `spotbugs/ES_COMPARING_*`, `spotbugs/RC_REF_COMPARISON*`, `pmd/CompareObjectsWithEquals`, `pmd/UseEqualsToCompareStrings`
@@ -1356,6 +1453,7 @@ table:
 - line: `errorprone/ExplicitArrayForVarargs` over `pmd/UnnecessaryVarargsArrayCreation`
 - line: `errorprone/SystemExitOutsideMain` over `pmd/DoNotTerminateVM`, `spotbugs/DM_EXIT`
 - line: `pmd/DoNotTerminateVM` over `spotbugs/DM_EXIT`
+- line: `pmd/ClassLoadEffect` over `spotbugs/SC_START_IN_CTOR`
 - line: `errorprone/CatchAndPrintStackTrace` over `pmd/AvoidPrintStackTrace`, `errorprone/SystemOut`
 - line: `errorprone/SystemOut` over `pmd/SystemPrintln`
 - line: `errorprone/MissingOverride` over `pmd/MissingOverride`
@@ -1365,17 +1463,16 @@ table:
 - line: `errorprone/NotJavadoc` over `checkstyle/InvalidJavadocPosition`
 - line: `errorprone/EmptyBlockTag` over `checkstyle/NonEmptyAtclauseDescription`
 - javadoc: `errorprone/MissingSummary` over `checkstyle/SummaryJavadoc`
-- line: `errorprone/AnnotationPosition` over `checkstyle/AnnotationLocationMostCases`, `checkstyle/AnnotationLocationVariables`
-- line: `errorprone/ClassName` over `checkstyle/OuterTypeFilename`
+- file: `errorprone/ClassName` over `checkstyle/OuterTypeFilename`
 - line: `errorprone/AssignmentExpression` over `pmd/AssignmentInOperand`
-- line: `errorprone/HardCodedSdCardPath` over `pmd/DoNotHardCodeSDCard`
 - line: `errorprone/ForEachIterable` over `pmd/ForLoopCanBeForeach`
 - line: `errorprone/Finally` over `pmd/DoNotThrowExceptionInFinally`, `pmd/ReturnFromFinallyBlock`
 - member: `errorprone/DoubleBraceInitialization` over `pmd/DoubleBraceInitialization`
-- line: `errorprone/JdkObsolete` over `pmd/ReplaceEnumerationWithIterator`, `pmd/ReplaceHashtableWithMap`, `pmd/ReplaceVectorWithList`
+- line: `errorprone/JdkObsolete` over `pmd/ReplaceEnumerationWithIterator`, `pmd/ReplaceHashtableWithMap`, `pmd/ReplaceVectorWithList`, `pmd/UseArrayListInsteadOfVector`
 - line: `errorprone/JdkObsolete` over `errorprone/StringCharset`
 - line: `errorprone/NonOverridingEquals` over `pmd/SuspiciousEqualsMethodName`
 - line: `errorprone/DefaultLocale` over `pmd/SimpleDateFormatNeedsLocale`
+- line: `pmd/LegacyCalendarApi` over `pmd/AvoidCalendarDateCreation`, `pmd/SimpleDateFormatNeedsLocale`, `errorprone/DefaultLocale`, `errorprone/DateFormatConstant`
 - line: `pmd/UseLocaleWithCaseConversions` over `errorprone/StringCaseLocaleUsage`
 - line: `spotbugs/ST_WRITE_TO_STATIC_FROM_INSTANCE_METHOD` over `errorprone/StaticAssignmentInConstructor`, `pmd/AssignmentToNonFinalStatic`
 - line: `errorprone/StaticAssignmentInConstructor` over `pmd/AssignmentToNonFinalStatic`
@@ -1399,6 +1496,13 @@ table:
 - field: `errorprone/URLEqualsHashCode` over `spotbugs/DMI_COLLECTION_OF_URLS`
 - field: `pmd/UnusedPrivateField` over `spotbugs/URF_UNREAD_FIELD`, `spotbugs/UUF_UNUSED_FIELD`
 - field: `errorprone/NullAway` over `spotbugs/NP_UNWRITTEN_FIELD`, `spotbugs/UWF_UNWRITTEN_FIELD`
+- member: `errorprone/DoubleCheckedLocking` over `pmd/DoubleCheckedLocking`
+- line: `pmd/StringInstantiation` over `spotbugs/DM_STRING_CTOR`, `spotbugs/DM_STRING_VOID_CTOR`
+- line: `pmd/UseStringBufferForStringAppends` over `spotbugs/SBSC_USE_STRINGBUFFER_CONCATENATION`
+- line: `pmd/UnsynchronizedStaticFormatter` over `spotbugs/STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE`
+- class: `errorprone/DateFormatConstant` over `pmd/UnsynchronizedStaticFormatter`, `spotbugs/STCAL_INVOKE_ON_STATIC_DATE_FORMAT_INSTANCE`
+- field: `errorprone/DateFormatConstant` over `spotbugs/STCAL_STATIC_SIMPLE_DATE_FORMAT_INSTANCE`
+- line: `pmd/NonThreadSafeSingleton` over `spotbugs/LI_LAZY_INIT_STATIC`, `spotbugs/SING_SINGLETON_GETTER_NOT_SYNCHRONIZED`
 
 ### Checks spared in annotated classes
 
@@ -1676,7 +1780,8 @@ metamodel generator, OpenAPI and Swagger generators, jOOQ, Room, Micronaut), whe
 `generated/`, `generated-sources/` or `gen/` folder and its first five lines say `@generated` or
 `DO NOT EDIT`. Lombok's `delombok` writes no header, so its output counts through the build
 folder. A generic marker in a normally named file, an `@Generated` annotation with another value
-and a header below the code exempt nothing; hand-written code carrying `@Generated` stays the
+and a header below the code exempt nothing; hand-written code carrying `@Generated` (or any
+annotation whose name contains `Generated`) stays the
 `pmd/GeneratedOnHandWrittenCode` finding. The evals harness fails a case whose agent wrote one of
 these markers into a file it wrote by hand.
 
@@ -1712,10 +1817,10 @@ the `rule` of a config exception.
 | Tests         | `SpringUnusedContext` (test sources only, from `spring-test-ruleset.xml`; see [Review rules](#review-rules))                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 
 **Kotlin.** PMD reads Java sources only, so every rule in this table checks the Java files of a
-project, on Gradle and Maven alike. In a kotlin-preset project the Beans, Configuration, Proxies and
-Web rules also run on the main Kotlin sources, under the same ids and exception route, from the
-Kotlin syntax facts (see [Kotlin preset: Spring rules](kotlin-preset.md#spring-rules)); the JPA and
-Spring Data rules do not run on Kotlin yet. Kotlin classes of a Java-preset project (a mixed module)
+project, on Gradle and Maven alike. In a kotlin-preset project every rule of the table except
+`SpringQueryConcatenation` (covered there by `kotlin-source/SqlStringBuilding`) also runs on the main
+Kotlin sources, under the same ids and exception route, from the Kotlin syntax facts (see
+[Kotlin preset: Spring rules](kotlin-preset.md#spring-rules)). Kotlin classes of a Java-preset project (a mixed module)
 get none of these rules. The Spring configuration file checks
 ([below](#spring-configuration-files)) do not depend on the language and apply to Kotlin projects
 too, and `missing-enable` scans the Kotlin sources.
@@ -1761,8 +1866,10 @@ sources, with the test rules, the way the TypeScript preset lints its tests; the
 file and folder limits already counted test files. A `jmh` or `benchmark` source set is neither main nor test code: nitpicker
 neither compiles nor lints it on Gradle, as Maven ignores a source folder build-helper does not add. PMD runs nitpicker's own rule set,
 [`languages/java/gradle/pmd-ruleset.xml`](../languages/java/gradle/pmd-ruleset.xml): the
-errorprone and bestpractices categories without `UnitTestAssertionsShouldIncludeMessage` and
-`UnitTestContainsTooManyAsserts`, which set an assertion style the TypeScript preset does not have,
+errorprone, bestpractices, performance and multithreading categories (security runs on main sources
+only; the rules each category leaves out are listed under "Additional PMD categories" in [Slice 2](#slice-2-cli-and-reporter-integration)) without
+`UnitTestAssertionsShouldIncludeMessage` and `UnitTestContainsTooManyAsserts`, which set an
+assertion style the TypeScript preset does not have,
 plus design's `AvoidCatchingGenericException` (no `catch (Exception e)`, `RuntimeException` or
 `NullPointerException`; errorprone already covers `Throwable`), as the TypeScript and Python presets
 forbid broad catches (the message says that a test uses `assertThrows`, as Checkstyle's `EmptyCatchBlock` message does). A test with no assertion still fails (`UnitTestShouldIncludeAssert`, which
@@ -1945,7 +2052,7 @@ calls `EntityManager.clear()`, the JPA batch idiom.
 `Throwable`, `DataAccessException`, `TransactionException` or `PersistenceException`, not narrower
 exceptions such as `NumberFormatException`. `SpringQueryConcatenation` does not follow SQL that
 comes from a helper method, a parameter or a field. `SpringDataSaveInLoopHelper` follows one helper
-level, and `SpringNoPostConstructIo` follows private helpers two levels deep.
+level (matched by name and argument count, varargs-aware), and `SpringNoPostConstructIo` follows private helpers two levels deep.
 `JpaEnumString` sees an `autoApply` converter only in the same file; an enum converted by a
 converter in another file needs an exception. `SpringPermitAllAnyRequest` does not resolve a
 pattern held in a variable (`var all = "/**"`) or an `access(...)` that allows everyone.
@@ -2034,6 +2141,7 @@ boundary finding is still reported.
 | Rule                   | Fails when                                                                                                                                                                                                                                                                                                                                                                                                   |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `spring-scope-capture` | a singleton bean (a `@Component` class or a `@Bean` method without `@Scope`, or with `singleton` or `application` scope) takes a request-, session-, `websocket`-, Spring Batch `step`- or `job`-scoped bean without a scoped proxy: in a constructor or `@Bean` method parameter, an `@Autowired`, `@Inject` or `@Resource` field or method, also as `Optional<T>`, an array or a collection or map of them |
+| `spring-request-state` | request data reaches a field of a singleton bean or a static field outside set-up: assigned, written into an array element, or passed to a collection, map, `Map.Entry` or `AtomicReference` mutator (`add`, `put`, `computeIfAbsent`, `set`, ...)                                                                                                                                                           |
 
 The scope is read from `@Scope` on the class or `@Bean` method, directly or through a composed
 annotation such as `@RequestScope` (whose own `ScopedProxyMode` attribute, `TARGET_CLASS` by
@@ -2049,6 +2157,52 @@ declares; the rule claims only when all of them have such a scope. So a prototyp
 instance per injection point, often meant), a custom scope it cannot model (`@Scope("tenant")`,
 `thread`), a type with no bean in the module (one from a library or registered in code) or a
 `@ComponentScan(scopedProxy = ...)` default it cannot resolve to one mode is never a finding.
+
+`spring-request-state` follows request data through the compiled code (bytecode dataflow with
+[ASM](https://asm.ow2.io), BSD-3-Clause, added to the rule runner only). Request data is every
+parameter of a handler method (`@RequestMapping` and its shortcuts, `@MessageMapping`,
+`@SubscribeMapping`, `@SchemaMapping`, `@BatchMapping`, `@KafkaListener`, `@KafkaHandler`,
+`@RabbitListener`, `@RabbitHandler`, `@JmsListener`, `@ModelAttribute`, `@InitBinder`,
+`@ExceptionHandler`, also when the annotation sits on the interface or superclass method the handler
+overrides, as in a generated `XApi` interface), any parameter annotated `@RequestParam`,
+`@PathVariable`, `@RequestBody`, `@RequestHeader`, `@CookieValue`, `@RequestPart`,
+`@MatrixVariable`, `@RequestAttribute`, `@SessionAttribute`, `@ModelAttribute`, `@Payload`,
+`@Header(s)`, `@DestinationVariable` or `@Argument`, any parameter of a request type
+(`ServletRequest`, `WebRequest`, `ServerHttpRequest`, `ServerWebExchange`, a functional
+`ServerRequest`) and the result of `RequestContextHolder.getRequestAttributes()` /
+`currentRequestAttributes()`, `SecurityContextHolder.getContext()` and
+`ReactiveSecurityContextHolder.getContext()`, also through the project's own helpers that return it.
+It follows the data through local variables, values derived from it, new objects, collections and
+`StringBuilder`s built from it (library calls that fill a local object, `Collections.addAll`,
+`System.arraycopy`, method references such as `list::add`), getters and identity helpers
+(`Objects.requireNonNull`), calls into the project's own methods (across classes, through interfaces
+to every implementation, to the class of an object the method created, and through lambdas and
+method references the code runs or passes on), inner and anonymous classes writing their outer
+class's fields, and helper objects a singleton holds, and reports the field where it ends up, once
+per field, on the class that declares the shared field (a base class of a singleton, another
+singleton reached through its getter), with the first handler parameter or source that reaches it:
+`last:put:VisitController.create(visit)`, identity `VisitController|last`. Stores are writes to a
+field, an array element or a collection, map (also `MultiValueMap`, `HttpHeaders`, `Properties`),
+`Map.Entry`, `ListIterator`, `AtomicReference` or `StringBuilder` mutator.
+
+Constructors, static initializers, `@PostConstruct`, `afterPropertiesSet`, `@Bean` methods and
+injection methods (`@Autowired`, `@Inject`, `@Resource`) are set-up and never report, and neither
+does an injected field (a Kotlin `@Autowired lateinit var` set through its setter). Also fine: a
+local collection, a counter that only counts (`AtomicLong.incrementAndGet()`), a cache call
+(`Cache.put`, `@Cacheable`), a `ThreadLocal`, a field of a primitive, boxed or enum type (a flag or a
+running total), a field whose type only a per-use bean (`@RequestScope`, prototype, also declared
+with `@Bean`) can fill, inherited fields included, a field of a request-scoped bean, a new instance
+of a bean class that a handler builds and uses locally, and an element a predicate (`filter`,
+`anyMatch`, ...) only compared with request data. A Kotlin `suspend` handler's `Continuation`
+parameter is not request data, and locals the coroutine state machine saves keep their own data.
+Shared classes are the classes `spring-scope-capture` treats as singletons, the types a singleton
+`@Bean` method returns and the project classes it constructs (for a project return type also its
+subclasses that are not components themselves), classes named in `@Import`, `@WebFilter`,
+`@WebServlet` and `@WebListener` classes, enums, Kotlin `object`s, and every superclass of these.
+A registry keyed by request data (in-flight keys, per-key locks, pending replies, an unbounded memo
+map) is reported: bound it with a cache that has a size and an expiry, or add an exception that
+names why its entries are removed. The analysis reads one module's classes: a call into another
+module of a multi-module build or into a library is not followed.
 
 **Aggregates (jMolecules).** A project that declares its domain model with
 [jMolecules](https://github.com/xmolecules/jmolecules) (`org.jmolecules:jmolecules-ddd`, Apache-2.0,
@@ -2309,23 +2463,36 @@ classpath has Spring) run on test sources only, through the generated `pmd-tests
 excludes the main source directories. `pmd-main-ruleset.xml` (and `spring-ruleset.xml` with Spring)
 run on main sources only, through the generated `pmd-main.xml` that excludes the test directories.
 The init script and `maven/maven-lint.mjs` generate both, so the scopes are the same on both
-builds. The main-only set holds the API design rules (`ExhaustiveEnumPredicate`,
-`StaticForwardingWrapper`, `SingularAndPluralMember`): like the TypeScript preset's
-`exhaustive-union-predicate`, `no-forwarding-wrapper` and `no-singular-and-plural-prop`, which run
+builds. The main-only set holds PMD's `security` category, since tests encrypt with fixed keys, and the API
+design rules (`ExhaustiveEnumPredicate`, `StaticForwardingWrapper`, `SingularAndPluralMember`, `TriStateBoolean`,
+`ParameterMutation`, `CompatibilityShim`, `LegacyCalendarApi`): like the TypeScript preset's
+`exhaustive-union-predicate`, `no-forwarding-wrapper`, `no-singular-and-plural-prop`,
+`no-tri-state-boolean`, `no-parameter-mutation` and `no-compatibility-shim`, which run
 on production files only, they leave test helpers alone, since tests are not an API anyone calls.
+`UnboundedFanOut` is main-only too, like `unbounded-fan-out` in the other presets: a test that starts
+many calls at once talks to fakes.
+It also holds `ClassLoadEffect`, the counterpart of the TypeScript preset's
+`nitpicker/report-module-load-effects`: a test class may open a file or start a server in a static
+setup, production code may not.
 Two manifest flags feed the messages and checks below: `testAwaitility` (Awaitility on the test
 classpath) and `published` (a library module that is deployed, see `test-only-export`).
 
-| Rule (prints as)                | Flags                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    | Allowed form                                                                                                                                                                                                                                                                         |
-| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `pmd/FixedSleepInTest`          | In tests: `Thread.sleep`, `TimeUnit.X.sleep`, `LockSupport.parkNanos`, `wait(ms)` and `join(ms)` (and an unchecked `join(Duration)`) outside a polling loop; Mockito's `after(ms)` with a check that could pass sooner (`after(ms)`, `.atLeastOnce()`, `.times(n)`); Playwright's `page.waitForTimeout(...)`; Awaitility's `until(() -> true)`. A sleep in a mock answer (`doAnswer`, `thenAnswer`) or in a thread body (`new Thread`, an executor, `CompletableFuture.runAsync`) is not flagged, nor one in a test-source class without test methods that implements or extends a type of the main sources (a fake that simulates latency; `messages/latency-fakes.mjs`). `join(ms)` and `wait(ms)` get a timed-wait message: they return early, so the advice is to assert the result of `join(Duration)` or a latch `await`, not to poll.                                                             | Wait on the condition. When the project's tests use Awaitility, the message names `await().atMost(...).until(...)`; otherwise a loop that checks it against a deadline (a sleep inside it is fine). `verify(mock, timeout(ms))` for a mock, a checked `join(Duration)` for a thread. |
-| `pmd/NegativeWaitInTest`        | In tests: Mockito's `after(ms)` with `never()`, `times(0)`, `atMost(n)` or `atMostOnce()`, and Awaitility's `during(...)`, which prove that nothing happens by waiting out a delay.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | A `Clock` or scheduler the test controls: move it past the delay and assert at once.                                                                                                                                                                                                 |
-| `pmd/SpringUnusedContext`       | A `@SpringBootTest` class (no superclass, no `RANDOM_PORT` or `DEFINED_PORT`, also static-imported, no type-level `@MockBean`, `@MockitoBean`, `@SpyBean` or `@MockitoSpyBean`) with a non-empty test method that injects nothing: no `@Autowired`, `@Inject`, `@Resource`, `@Value`, `@MockBean`/`@MockitoBean`/`@SpyBean`/`@TestBean` or server port field, parameter or setter, no `MockMvc`, `WebTestClient`, `TestRestTemplate`, `ApplicationContext`, `CapturedOutput` or `ApplicationEvents`, no constructor parameters, Lombok's `@AllArgsConstructor` with an instance field or `@RequiredArgsConstructor` with a `final` or `@NonNull` field counted as one (JUnit can only call such a constructor when Spring autowires it, through `@TestConstructor(autowireMode = ALL)`, `spring.test.constructor.autowire.mode=all` or an `@Autowired` constructor, so the class needs no check of how). | A unit test that creates the class with `new`, or a slice (`@WebMvcTest`); `@SpringBootTest` is for integration and component tests. An empty `contextLoads()` test is exempt.                                                                                                       |
-| `pmd/TestClassWithoutTestCases` | A test-named class (`Test*`, `*Test`, `*Tests`, `*TestCase`) without a test method. Classes named `*ArchTest`, `*ArchTests` or `*ArchitectureTest` are left to ArchUnit.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Add the tests, or rename a helper so it does not look like a test class.                                                                                                                                                                                                             |
-| `pmd/ExhaustiveEnumPredicate`   | In main sources: a boolean in a value position (returned, assigned, a lambda body, also inside a larger `&&`/`\|\|` or as a ternary condition there) that compares one subject that reading cannot change (a variable, a `this` field, a no-argument `getX()`/`isX()` call, a record accessor; not `it.next()` or another call) with some constants of one enum, qualified or static-imported (`s == PAID \|\| s == SHIPPED`, `o.status() != A && o.status() != B`, `EnumSet.of(A, B).contains(s)`).                                                                                                                                                                                                                                                                                                                                                                                                     | A `switch` expression without `default`, or a boolean each constant declares (`PAID(true)`).                                                                                                                                                                                         |
-| `pmd/StaticForwardingWrapper`   | In main sources: a static method with parameters whose body only passes them, in order, to another static or same-class method (`return Prices.sum(a, b);`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Call the target directly. Factories named `of` or `from` and copies (`List.copyOf`, `Collections.unmodifiableList`) are allowed.                                                                                                                                                     |
-| `pmd/SingularAndPluralMember`   | In main sources: a record, or a `@ConfigurationProperties` class or a class nested in one, with both `tag` and `tags` (`-s`, `-es`, `y`/`ies`) where the plural is a `List`, `Set`, `Collection`, `Iterable` or array of the singular's type.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            | Keep the plural; pass one item as a one-element list.                                                                                                                                                                                                                                |
-| `coupling/test-only-export`     | A main class that only test classes use.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | Move it to the test sources, or use it from production code.                                                                                                                                                                                                                         |
+| Rule (prints as)                | Flags                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Allowed form                                                                                                                                                                                                                                                                                                                                                                   |
+| ------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `pmd/FixedSleepInTest`          | In tests: `Thread.sleep`, `TimeUnit.X.sleep`, `LockSupport.parkNanos`, `wait(ms)` and `join(ms)` (and an unchecked `join(Duration)`) outside a polling loop; Mockito's `after(ms)` with a check that could pass sooner (`after(ms)`, `.atLeastOnce()`, `.times(n)`); Playwright's `page.waitForTimeout(...)`; Awaitility's `until(() -> true)`. A sleep in a mock answer (`doAnswer`, `thenAnswer`) or in a thread body (`new Thread`, an executor, `CompletableFuture.runAsync`) is not flagged, nor one in a test-source class without test methods that implements or extends a type of the main sources (a fake that simulates latency; `messages/latency-fakes.mjs`). `join(ms)` and `wait(ms)` get a timed-wait message: they return early, so the advice is to assert the result of `join(Duration)` or a latch `await`, not to poll.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Wait on the condition. When the project's tests use Awaitility, the message names `await().atMost(...).until(...)`; otherwise a loop that checks it against a deadline (a sleep inside it is fine). `verify(mock, timeout(ms))` for a mock, a checked `join(Duration)` for a thread.                                                                                           |
+| `pmd/NegativeWaitInTest`        | In tests: Mockito's `after(ms)` with `never()`, `times(0)`, `atMost(n)` or `atMostOnce()`, and Awaitility's `during(...)`, which prove that nothing happens by waiting out a delay.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                  | A `Clock` or scheduler the test controls: move it past the delay and assert at once.                                                                                                                                                                                                                                                                                           |
+| `pmd/SpringUnusedContext`       | A `@SpringBootTest` class (no superclass, no `RANDOM_PORT` or `DEFINED_PORT`, also static-imported, no type-level `@MockBean`, `@MockitoBean`, `@SpyBean` or `@MockitoSpyBean`) with a non-empty test method that injects nothing: no `@Autowired`, `@Inject`, `@Resource`, `@Value`, `@MockBean`/`@MockitoBean`/`@SpyBean`/`@TestBean` or server port field, parameter or setter, no `MockMvc`, `WebTestClient`, `TestRestTemplate`, `ApplicationContext`, `CapturedOutput` or `ApplicationEvents`, no constructor parameters, Lombok's `@AllArgsConstructor` with an instance field or `@RequiredArgsConstructor` with a `final` or `@NonNull` field counted as one (JUnit can only call such a constructor when Spring autowires it, through `@TestConstructor(autowireMode = ALL)`, `spring.test.constructor.autowire.mode=all` or an `@Autowired` constructor, so the class needs no check of how).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | A unit test that creates the class with `new`, or a slice (`@WebMvcTest`); `@SpringBootTest` is for integration and component tests. An empty `contextLoads()` test is exempt.                                                                                                                                                                                                 |
+| `pmd/TestClassWithoutTestCases` | A test-named class (`Test*`, `*Test`, `*Tests`, `*TestCase`) without a test method. Classes named `*ArchTest`, `*ArchTests` or `*ArchitectureTest` are left to ArchUnit.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Add the tests, or rename a helper so it does not look like a test class.                                                                                                                                                                                                                                                                                                       |
+| `pmd/ExhaustiveEnumPredicate`   | In main sources: a boolean in a value position (returned, assigned, a lambda body, also inside a larger `&&`/`\|\|` or as a ternary condition there) that compares one subject that reading cannot change (a variable, a `this` field, a no-argument `getX()`/`isX()` call, a record accessor; not `it.next()` or another call) with some constants of one enum, qualified or static-imported (`s == PAID \|\| s == SHIPPED`, `o.status() != A && o.status() != B`, `EnumSet.of(A, B).contains(s)`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | A `switch` expression without `default`, or a boolean each constant declares (`PAID(true)`).                                                                                                                                                                                                                                                                                   |
+| `pmd/StaticForwardingWrapper`   | In main sources: a static method with parameters whose body only passes them, in order, to another static or same-class method (`return Prices.sum(a, b);`).                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Call the target directly. Factories named `of` or `from` and copies (`List.copyOf`, `Collections.unmodifiableList`) are allowed.                                                                                                                                                                                                                                               |
+| `pmd/SingularAndPluralMember`   | In main sources: a record, or a `@ConfigurationProperties` class or a class nested in one, with both `tag` and `tags` (`-s`, `-es`, `y`/`ies`) where the plural is a `List`, `Set`, `Collection`, `Iterable` or array of the singular's type.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Keep the plural; pass one item as a one-element list.                                                                                                                                                                                                                                                                                                                          |
+| `pmd/ClassLoadEffect`           | In main sources: a call with an external effect that runs while the class loads: in a `static` block or `static` field initializer (interface constants too), an enum constant's arguments or body fields, an anonymous class created in one of those (double-brace initialization), the field, instance initializer or constructor of an instance the class creates in its own `static` code (`static final Db INSTANCE = new Db()`, `new Box<>()`, a `static` factory such as `INSTANCE = create()`, a constructor that `this(...)` reaches from the one created), or a method of the same class that one of those calls without a receiver, on `this` or through the class name. Effects, by resolved type: JDBC (`DriverManager.getConnection`, `DataSource.getConnection`, `Persistence.createEntityManagerFactory`), pools and clients that connect when built (`new HikariDataSource(config)`, `MongoClients.create`, Lettuce `RedisClient.connect`, `new KafkaProducer`), network calls (`HttpClient.send`, `URL.openConnection`/`openStream`, `new Socket(host, port)`, `new ServerSocket(port)`, `DatagramSocket`, `InetAddress.getByName`/`getLocalHost`, OkHttp and Retrofit `Call.execute`, Apache `HttpClient.execute`, `RestTemplate` requests, `RestClient` `retrieve()`, a `WebClient` result that is `block()`ed or subscribed), file I/O (every `Files` method, statically imported ones too, `FileInputStream`, `FileOutputStream`, `FileReader`, `FileWriter`, `RandomAccessFile`, `ZipFile`, a `PrintWriter`, `PrintStream` or `Formatter` on a file name, a `Scanner` on a `File` or `Path`, `File` methods that touch the disk), processes, threads and waits (`ProcessBuilder.start`/`startPipeline`, `Runtime.exec`, `Thread.start`, `Thread.Builder.start`, `Thread.sleep`, `Executors.new*`, `new ThreadPoolExecutor`, `new ForkJoinPool`, `new Timer`, executor, pool and timer `submit`/`execute`/`invoke*`/`schedule*` (`ForkJoinPool.commonPool().submit(...)` too), `CompletableFuture.runAsync`/`supplyAsync`) and JVM-wide settings (`System.setProperty`, `setOut`, `setErr`, `Runtime.addShutdownHook`, `Locale.setDefault`, `TimeZone.setDefault`, `Thread.setDefaultUncaughtExceptionHandler`). The message names the call, the class that loads and the member that runs it. | Do the work in a method that `main` or the framework calls after startup (a `@Bean` method, an `ApplicationRunner`) and pass the result in, or hold it in a lazy holder class (`private static final class Holder { static final Db INSTANCE = new Db(); }`). Constants, loggers, `Pattern.compile`, collections, `Clock` and `System.getProperty`/`getenv` reads stay static. |
+| `pmd/TriStateBoolean`           | In main sources: a boxed `Boolean` (not `Boolean` inside `Optional<...>`, `List<...>` or another type argument) as a method or constructor parameter, a method return type, a field or a record component. Methods with `@Override` are skipped, and so is data mapped from outside: a parameter, field or record component annotated `@RequestParam`, `@RequestBody`, `@RequestHeader`, `@PathVariable`, `@JsonProperty`, `@Column` or `@Field`, and a field of a class annotated `@Entity`, `@Embeddable`, `@MappedSuperclass` or `@Document`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                     | An `enum` that names each state (`Mode.ON`, `Mode.OFF`, `Mode.AUTO`), or a primitive `boolean` when absence means nothing.                                                                                                                                                                                                                                                     |
+| `pmd/ParameterMutation`         | In public methods and constructors: a change to a parameter in place: a mutating call on a `Collection` or `Map` parameter (`add`, `addAll`, `remove`, `removeIf`, `clear`, `put`, `putAll`, `merge`, `compute*`, `replaceAll`, `sort`, `set`, `push`, `pop`, `poll`, `offer` and the other mutators), `Arrays.sort`, `fill`, `setAll` or `Collections.sort`, `shuffle`, `reverse`, `swap`, `rotate`, `addAll` on a parameter, or a write to an element of an array parameter, also a multi-dimensional one (`counts[0] = 0`, `counts[1]++`, `grid[0][1] = 3`). A parameter stored in a field or a local variable and changed there (`this.items = items; this.items.add(x)`, `var alias = items; alias.add(x)`) counts. Reading an element (`v = values[0]`, `t += values[1]`) does not. Not flagged: private methods and constructors, methods of private, local or anonymous classes, concurrent types used to share work (`BlockingQueue`, `ConcurrentMap`, `CopyOnWrite*`), `@Override` methods, and a change made after the parameter was rebound to a copy of itself.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | Build and return a new collection, or copy first: `new ArrayList<>(items)`, `List.copyOf(items)`, `Arrays.copyOf(counts, counts.length)`, and change the copy.                                                                                                                                                                                                                 |
+| `pmd/CompatibilityShim`         | In main sources: a `@Deprecated` annotation on a class, method, field or constructor. Methods with `@Override` are skipped, since overriding a deprecated method needs the annotation.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | Delete the old declaration and change its callers in the same change.                                                                                                                                                                                                                                                                                                          |
+| `pmd/LegacyCalendarApi`         | In main sources: the overloads that read the default time zone: `Calendar.getInstance()` and `Calendar.getInstance(Locale)`, `new GregorianCalendar()` with no arguments, a `Locale` or date fields, and `new SimpleDateFormat(...)` unless the variable it is assigned to gets `setTimeZone(...)` in the same method or class. Passing a `TimeZone` is not flagged.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 | `java.time` with an explicit zone: `Instant`, `ZonedDateTime.now(clock)`, a `DateTimeFormatter` with `withZone(zone)`. If the legacy class stays, pass a `TimeZone`.                                                                                                                                                                                                           |
+| `pmd/UnboundedFanOut`           | In main sources: a stream `map`/`forEach`/`flatMap` lambda (also a `this::helper` reference), an enhanced `for`, or an indexed `for` up to `size()`/`length` over a collection, whose element work starts a task that makes a remote or message call: `CompletableFuture.supplyAsync`/`runAsync` on the default pool or a cached, per-task or virtual-thread executor, `submit`/`execute`/`invokeAll`/`invokeAny` on such an executor, `Thread.startVirtualThread`, `Thread.ofVirtual().start`, `new Thread(...).start()`, or `HttpClient.sendAsync`.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | Run the tasks on a fixed pool, take a `Semaphore` permit around each call, or work through fixed-size batches (`Lists.partition(items, 20)`); or send one batch request.                                                                                                                                                                                                       |
+| `coupling/test-only-export`     | A main class that only test classes use.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             | Move it to the test sources, or use it from production code.                                                                                                                                                                                                                                                                                                                   |
 
 **Precision notes.**
 
@@ -2351,10 +2518,117 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   stereotype and configuration classes, wrappers around `copyOf`, `copyOfRange`, `unmodifiable*`,
   `synchronized*` and `checked*` (they change the type or the guarantees), and wrappers that add
   type arguments, reorder or drop parameters.
+- `ClassLoadEffect` treats lambdas, method references, anonymous class methods and local classes as
+  run later, so a `Supplier` field or a `Runnable` built at load is fine, and a lambda that a
+  static block runs at once (`list.forEach(...)`) is not followed. A helper is followed one level
+  and only within its own class: the call must have no receiver, `this` or the class name, and PMD
+  must resolve it to that method, so `List.of()` or `Objects.toString(x)` in a `static` field does
+  not make a method `of` or `toString` of the class a helper, and of two overloads only the one the
+  arguments select is (`read(1)` runs `read(int)`, not `read(String)`). A constructor counts only
+  when the class's own `static` code creates an instance with arguments that select it, or a
+  `this(...)` call in that constructor reaches it, so a value class with
+  `static final Money ZERO = new Money(0)` keeps a `Money(String file)` constructor that reads a
+  file. A call into another class's helper, or a `static` field of another class that creates this
+  one, is not followed: that is the lazy holder the message suggests
+  (`private static final class Holder { static final Db INSTANCE = new Db(); }`), which runs only
+  when `Holder.INSTANCE` is first read. The class that declares `public static void main(String[])`
+  is not checked: running at load is what an entry point does (a nested class of it is). That
+  includes a `@SpringBootApplication` class with `main`; Spring `@Configuration` classes and a
+  `@SpringBootApplication` class without `main` get no pass: the container creates their beans
+  after the class has loaded, so their `static` blocks still run at load, in every test slice that
+  touches them, while their `@Bean` methods and constructors are not load-time code. Reading a classpath resource (`getResourceAsStream`) is allowed: it is part of
+  the program, not an outside system. `System.getenv` and `System.getProperty` reads are left to
+  `SpringTypedConfiguration` in a Spring project and are allowed elsewhere. `new HikariDataSource()`
+  without a configuration, `new Socket()` and `new ServerSocket()` without arguments connect nothing
+  and pass. `Security.addProvider` and `System.loadLibrary` are allowed: registering a provider and
+  loading a native library are the usual work of a static block. `System.exit`, `Runtime.exit` and
+  `Runtime.halt` are left to `DoNotTerminateVM` (and Error Prone's `SystemExitOutsideMain`), which
+  report them anywhere outside `main`.
+- `ClassLoadEffect` compared with the TypeScript rule: clock reads (`Instant.now()`,
+  `System.currentTimeMillis()`), random values (`new Random()`, `UUID.randomUUID()`) and
+  environment reads stay allowed in a `static` field, since they change nothing outside the class
+  and a `Clock` or `Random` field is how JVM code holds them; TypeScript reports `Date.now()`,
+  `Math.random()` and any `process.*` call. The JVM-wide settings `process.*` stands for there
+  (`System.setProperty`, `setOut`, `setErr`, shutdown hooks) are reported here. `Thread.sleep`,
+  which blocks the loading thread as a module-level `time.sleep` blocks a Python import, is
+  reported; TypeScript has no blocking sleep to report.
+- `ClassLoadEffect` names the call, the class and the member from the source at the finding's
+  location (`messages/load-effects.mjs`), so a finding in a helper reads
+  `` `DriverManager.getConnection(...)` runs while Db loads (in method open, which static field CONNECTION calls) ``.
+  The same pass gives the finding its identity: the class, the member that runs the call and the
+  call text (`Db.open(): DriverManager.getConnection(...)`), with no line number, so a finding keeps
+  its identity when lines above it move, and a changed call is a new finding.
+- `ClassLoadEffect` limits: overloads are told apart by parameter count and by the declared type of
+  each parameter, which PMD resolves through single-type imports, types of the file, star imports,
+  `java.lang` and the package; two same-arity overloads whose reference parameter types both match
+  an argument (a star-imported type that shares a simple name with a class of the package) are both
+  taken as called. A class whose `static` code creates an instance through another class's factory
+  is not followed.
 - `SingularAndPluralMember` compares declared types by simple name, with primitives boxed, and is
   reported on the plural member. Method parameters and varargs record components
   (`record Keys(String key, String... keys)`) are not checked, as the Python preset leaves required
   parameters alone.
+- `UnboundedFanOut` is the rule the TypeScript and Python presets call `unbounded-fan-out`. A call
+  counts as remote or message by the resolved type of its receiver: `java.net.http.HttpClient`,
+  Spring's `RestOperations`, `RestClient` and `WebClient`, OkHttp, the Apache HTTP clients, gRPC
+  stubs, AWS SDK v2 clients, JAX-RS invocations, Retrofit calls, Kafka producers and
+  `KafkaOperations`, `AmqpTemplate`, `JmsOperations`, JMS producers, `MessageSendingOperations`,
+  `StreamBridge` and RabbitMQ channels. Database calls are left to the per-item I/O rules. The task
+  may reach the call through same-class helpers, up to three calls deep. An executor counts as
+  unbounded only when the field or local it is read from is always created by
+  `Executors.newCachedThreadPool`, `newVirtualThreadPerTaskExecutor`, `newThreadPerTaskExecutor`
+  or `ForkJoinPool.commonPool`; a parameter, an injected executor or a fixed pool is never
+  reported. These pass: a `Semaphore` acquired in the loop body, the task or a helper; a source
+  that is fixed (`List.of`, `Arrays.asList`, `Stream.of`, an array initializer, enum `values()`, a
+  `final` field holding one of those) or cut to size (`limit` or `subList` whose size does not
+  read the collection's own size, so `Math.min(20, items.size())` passes and `items.size()` does
+  not; a chunk variable over `partition`, `chunked` or `batches`; a local holding a cut list); a
+  worker pool sized by a count (`IntStream.range(0, workers)`, `for (int i = 0; i < workers; i++)`)
+  while a count read from a collection's size stays a fan-out over that collection; a body that
+  waits for the task (`join`, `get`, `Thread.join`) before the next element; and a stream whose
+  next lazy stage joins the futures (`.map(CompletableFuture::join)` before any
+  `collect`/`toList`). A task started per batch of `Lists.partition(items, 20)` is reported, since
+  the number of batches grows with the collection. The message names the iterated collection and
+  the call that starts the tasks (`messages/fan-out/fan-out-details.mjs`), read from the source at the
+  reported line. Limits: a `while (it.hasNext())` loop, a list of callables filled in a loop and
+  then passed to `invokeAll`, a `ThreadPoolExecutor` constructed with an unbounded maximum and
+  helpers of other classes are not followed; PMD resolves types from the compile classpath, so a
+  client type the build does not resolve is not recognized.
+- `TriStateBoolean` matches the simple name `Boolean` as the whole type, so `Optional<Boolean>`,
+  `List<Boolean>` and a primitive `boolean` pass. Data mapped from outside is exempt in every
+  preset: a Java parameter, field or record component carrying `@RequestParam`, `@RequestBody`,
+  `@RequestHeader`, `@PathVariable`, `@JsonProperty`, `@Column` or `@Field`, and the fields of a class
+  annotated `@Entity`, `@Embeddable`, `@MappedSuperclass` or `@Document` (the Kotlin counterpart
+  skips the same annotations, the Python one pydantic and ORM model fields, the TypeScript one
+  properties). The Kotlin counterpart is `Boolean?` and the TypeScript one is
+  `boolean | undefined`.
+- `ParameterMutation` reports the parameter use. It needs the resolved type to be a `java.util.Collection`
+  or `Map` for method calls, so a `StringBuilder` or a stream sink is not a changed argument. A
+  parameter stored in a field (`this.items = items`) or a local variable (`var alias = items`) and
+  changed through that name is the same list and is reported. Only a rebind to a copy of the
+  parameter that comes before the change makes it a change to the copy
+  (`items = new ArrayList<>(items); items.add(x)`); `if (items == null) items = new ArrayList<>();`
+  followed by `items.add(x)` still changes the caller's list in the other branch. A private
+  method or constructor, a method of a private, local or anonymous class, and every `@Override`
+  method (whose signature the interface fixes) are helpers, not API. A concurrent type that exists to
+  share work (`BlockingQueue`, `BlockingDeque`, `TransferQueue`, `ConcurrentMap`,
+  `ConcurrentLinkedQueue`, `ConcurrentLinkedDeque`, `CopyOnWriteArrayList`, `CopyOnWriteArraySet`,
+  `ConcurrentSkipListSet`) is not reported. The array form matches the assigned side only
+  (`values[0] = 1`, `grid[0][1] = 3`, `counts[0]++`), not `v = values[0]` or `t += values[1]`. A copy
+  is the allowed form: `new ArrayList<>(items)`, `List.copyOf(items)`,
+  `Arrays.copyOf(counts, counts.length)`.
+- `CompatibilityShim` reports the annotation, so the deprecated declaration is deleted together with
+  its callers. The javadoc `@deprecated` tag without the annotation is `DepAnn` of Error Prone,
+  which asks for the annotation; once added, `CompatibilityShim` reports it, so the two together
+  forbid both forms. A call of a deprecated API is reported by the compiler's deprecation lint. Java
+  has no alias declaration, so the TypeScript `export const Old = New` form has no counterpart.
+- `LegacyCalendarApi` is the part of the naive-datetime check that Error Prone does not cover:
+  `JavaTimeDefaultTimeZone` (`now()` without a clock or zone) and `JavaUtilDate`
+  (`java.util.Date`) are on by default. It reports only the overloads without a zone;
+  `Calendar.getInstance(zone)` and `new GregorianCalendar(zone)` are allowed, and so is a
+  `SimpleDateFormat` whose variable gets `setTimeZone(...)`. It takes over the lines that
+  `AvoidCalendarDateCreation`, `SimpleDateFormatNeedsLocale` and Error Prone's `DefaultLocale`
+  also report (see the overlap list above).
 - `test-only-export` (`adapters/review-rules/test-only-classes.mjs`, run project-wide) reads
   `jdeps.txt`, `jdeps-classes.txt` and `jdeps-test.txt` of every module and resolves a class to its
   own module first. A main class is reported when test classes use it and no other main class
@@ -2404,12 +2678,97 @@ sets) are not checked: builders are filled by reflection (Jackson's `@Jacksonize
 Spring binding) as often as by calls, and a text match on `.name(` collides with every method of
 that name, so the rule would need compiler symbol facts to stay precise.
 
+## Doc comments
+
+Javadoc is allowed on any declaration and required on none (see [Slice 3: Checkstyle](#slice-3-checkstyle)),
+but what it says is checked by the shared `doc-comment-content` rule, the same one the TypeScript
+preset runs as `nitpicker/no-comments` and the Python preset runs on docstrings. A doc comment is
+reported when its description only restates the declaration's name (`/** Gets the order total. */`
+on `getOrderTotal`), unless a tag says more (`@return cents, rounded down`; a tag with only a name or
+a type, such as `@param id` or `@throws IOException`, does not, and neither do `@author`, `@since`,
+`@version`, `@see` and the `@serial` tags), or when its description is longer
+than 5 lines, tags, blank lines and code examples not counted. The word split, the filler words and
+the stems are those of the TypeScript rule.
+
+- **Where.** `adapters/doc-comments/` reads the `.java` files of the main source roots in Node, on
+  Gradle and Maven alike; test sources are left alone, as in the other presets. Comments and string
+  literals (text blocks too) are masked first, so a `/**` inside a string is not a doc comment.
+- **What counts.** A `/** ... */` comment (not `/**/`), or a run of `///` Markdown doc comment lines
+  (Java 23; a `////` banner is not one), right before a type (`class`, `interface`, `enum`,
+  `record`, `@interface`), a method, a constructor (also a compact record constructor), a field or
+  an enum constant, after any annotations and modifiers, at the top level or in a type body. A
+  comment before a `package` line, a statement, a local declaration or a member of an anonymous
+  class is not read.
+- **Javadoc markup.** A `<pre>` block counts as a code example, like a Markdown fence, so an
+  `@Override` line inside it does not end the description, while prose on the same line before
+  `<pre>` or after `</pre>` still counts; other HTML tags (`<p>`, `<b>`,
+  `<code>` ...) and entities (`&amp;`) are dropped, and inline tags (`{@code x}`, `{@link Order}`)
+  read as their text.
+- **Findings.** Tool `facts`, rule `doc-comment-content`, on the comment's first line. The
+  identity is `doc-comment:<qualified name>:restating` or `:long`, where the qualified name holds
+  the enclosing types and, for a method or constructor, the parameter types with type-use
+  annotations dropped
+  (`Orders.total(Map<String,Integer>,int...)`), so overloads stay apart and a growing comment keeps
+  its identity. A comment that is right as written gets a top-level `exceptions` entry for
+  `doc-comment-content`.
+
+## Reuse rules
+
+`duplicate-definition`, `sibling-copy-edit` and `exported-name-collision` are the shared rules of
+the TypeScript preset (see `typescript-strict-preset.md`), written once over neutral facts
+(`shared/rules/facts/`). The Java and Kotlin presets produce those facts from source, on Gradle and
+Maven alike, in the project-wide step (`builds/project-wide.mjs`), so they need no build output.
+The findings have tool `structure` and are lifted with the top-level `exceptions`.
+
+- **Producer.** `adapters/reuse/jvm-reuse-facts.mjs` reads every `.java` file (and `.kt` file with
+  `preset: "kotlin"`) under the main source roots the build reports for each module, leaving out
+  roots under `build/` and files matched by `exclude`. One tokenizer
+  (`adapters/reuse/source/jvm-tokens.mjs`) serves both languages: each string, text block, raw string
+  or character literal is one token, comments are dropped, Kotlin block comments nest and Kotlin
+  string templates are read for the names they use. A source file is a module and a Gradle or Maven
+  module is a package, so copies are compared within one build module.
+- **Definitions.** Top-level types (Java `class` and `record` as `class`, `interface`, `enum`,
+  `@interface` as `type`; Kotlin classes and `object`s as `class`, `interface`, `enum class`,
+  `annotation class` and `typealias` as `type`), and the members that need no instance: Java
+  `static` methods and `static final` fields (every interface field), Kotlin top-level `fun`, `val`
+  and `const val`, and the functions and `val`s of a top-level `object` or of a class's `companion
+object`. Instance methods are left to the duplicates check, as class methods are in the
+  TypeScript preset. A member is named `Owner.name` (`Money.of`), with its parameter types when it
+  is overloaded (`Money.of(long)`), so two classes' copies of a helper stay apart in findings;
+  copies are grouped by the plain name. Everything but `private` counts as exported, since
+  package-private Java code is usable from the package. A `main` function, and a type that holds
+  one, is an entry, which `sibling-copy-edit` skips.
+- **Uses.** A name in a file resolves the way javac and kotlinc resolve it: an explicit import
+  first, then a type (or Kotlin top-level declaration) of the same package, then a star import; a
+  fully qualified name (`shop.billing.Money`) resolves directly. `Type.member` and `Type::member`
+  uses a static member, a Kotlin extension call (`order.toDto()`) uses the imported or same-package
+  function, and a static or `object` import (`import static shop.util.Strings.trim;`) uses that
+  member. These uses decide whether a definition is used (an unused one is the dead-code checks'
+  business), and the free names of each definition, resolved this way, are part of its identity,
+  so two copies that use different library types (`java.util.Date` and `java.sql.Date`) are not
+  duplicates. A name of the copy's own file other than a literal constant (a helper, a mutable
+  field, a nested type) is its own, so two `capped()` copies that call their class's `limit()`
+  are not duplicates either; the helper is reported, if it is a copy. A static member that reads an
+  upper-case name the file does not declare (an inherited constant) also takes its class's
+  supertypes into its identity. Kotlin `expect` and `actual` declarations and `override` members
+  are left out.
+- **`exported-name-collision`.** In Java a file cannot import two classes of one simple name, so the
+  collision is a class imported (or of the same package) while another class of that name is
+  written fully qualified; in Kotlin it is that too, or an `import ... as` alias, as in TypeScript. The Java
+  message tells to rename one or to use both by their fully qualified names. Functions are left out
+  in both languages: two same-named functions imported into one file are overloads, and extension
+  functions of one name on different receivers are idiomatic Kotlin.
+- **`sibling-copy-edit`.** On the head run of a change the runner reads each changed file of the
+  base checkout (`--baseline-root`) again, following renames from `--baseline-moves-file`, and
+  compares the edited definition with its base copy and its same-named siblings in the module.
+
 ## Rule messages
 
 PMD, Checkstyle and SpotBugs messages say what is wrong, rarely how to fix it, and never how to keep
 code that is right as it is. `languages/java/messages/` holds one catalog per tool (`pmd.json`,
 `checkstyle.json`, `spotbugs.json`) with an entry for every rule the preset can report: the
-errorprone and bestpractices PMD categories plus `AvoidCatchingGenericException`, every check in
+errorprone, bestpractices, performance, multithreading and security PMD categories (the rules the
+preset leaves out too, for a project that turns one back on) plus `AvoidCatchingGenericException`, every check in
 `google_checks.xml`, and every SpotBugs pattern. Each entry has:
 
 - `fix`: one sentence, in our words, naming the allowed form (`null` when the tool's message already
@@ -2467,7 +2826,7 @@ in it against the catalogs and Error Prone's check list.
   text, the exception route, and the shape of every catalog entry.
 - `languages/java/messages/rule-catalog.e2e.test.mjs`: gated like the other e2e tests. The catalogs
   name exactly the rules of the pinned tool versions.
-- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `spring/e2e/spring-arch.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs`, `languages/java/maven/maven-preset.e2e.test.mjs`, `languages/java/adapters/errorprone/error-prone.e2e.test.mjs`, the other Error Prone e2e tests and `rule-catalog.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle, Maven and network access to Maven Central; about 85 seconds
+- `languages/java/adapters/java-e2e/java-preset.e2e.test.mjs`: gated behind `NITPICKER_JAVA_E2E=1` (`npm run test:java`, which also runs `java-spring.e2e.test.mjs`, `spring/e2e/spring-arch.e2e.test.mjs`, `escape-hatches.e2e.test.mjs`, `languages/java/adapters/java-e2e/pit-targets.e2e.test.mjs`, `languages/java/maven/preset/red-base/maven-red-base.e2e.test.mjs`, `languages/java/adapters/errorprone/error-prone.e2e.test.mjs`, the other Error Prone e2e tests `rule-catalog.e2e.test.mjs` and `languages/java/adapters/java-e2e/red-base/java-red-base.e2e.test.mjs`, one file at a time because each stops the Gradle daemons when it ends). Needs Java 21, Gradle, Maven and network access to Maven Central; about 85 seconds
   warm. `.github/workflows/java-e2e.yml` runs it (Temurin 21, Gradle 8.14.3, Maven 3.9.11) on a push to `main` that changes `languages/java/**`, `core/**`, `shared/**`, `package.json`, `package-lock.json`, `vitest.config.mts` or the workflow, by hand (`workflow_dispatch`), and on a pull request when the `run-ci` label is added. On a tiny Gradle project (`languages/java/adapters/fixtures/gradle-project`, one legacy PMD and
   SpotBugs violation on the base) it checks: a clean change passes; a change that only moves the
   legacy violation stays baselined; a change adding an empty catch block (PMD), a default-charset
