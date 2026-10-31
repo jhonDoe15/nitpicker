@@ -839,6 +839,15 @@ hop, and type-only imports do not count.
   The rule covers the third argument of `it`/`test`, `{ timeout }` options, hook timeouts and
   `vi.setConfig`. A timeout that is not a constant written in the file is also reported. There is
   no e2e exemption; a genuinely long suite needs an exception in the config file.
+- `nitpicker/no-test-retry`: no retry in test code, so a flaky test cannot pass on a later attempt.
+  It reports a `retry`/`retries` option on `it`/`test`/`describe`/`suite` (any argument position,
+  so Vitest, Cypress and Playwright), `vi.setConfig({ retry })`, `jest.retryTimes(n)`, Mocha
+  `this.retries(n)` and Playwright `test.describe.configure({ retries })`. Aliased imports, `const`
+  options, spreads of them and `as`/`satisfies` wrappers are followed; `0`, `false`, `null` and
+  `undefined` are allowed. Options from an import or a call result, `const { retryTimes } = jest`
+  and `test.extend` results are not followed. It checks Cypress and Playwright files under a test
+  root too. Config-level retries (Vitest `test.retry`, Mocha `retries`) are pinned to 0 by
+  nitpicker's runs and are not this rule's job.
 - `nitpicker/require-test-process-timeout`: synchronous `spawnSync`, `execSync` and `execFileSync`
   calls from `node:child_process` or `child_process` in test-area files need a positive subprocess
   timeout, for example `spawnSync(program, args, { timeout: 10_000 })`. A runner's timeout cannot

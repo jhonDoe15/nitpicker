@@ -112,6 +112,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/testing/processes/no-node-process-per-test.mjs',
   'languages/typescript/preset/eslint-plugin/rules/testing/processes/no-server-or-worker-per-test.mjs',
   'languages/typescript/preset/eslint-plugin/rules/testing/assertions/no-raised-test-timeout.mjs',
+  'languages/typescript/preset/eslint-plugin/test-assertions/no-test-retry.mjs',
   'languages/typescript/preset/eslint-plugin/rules/testing/lifecycle/no-first-test-charged-setup.mjs',
   'languages/typescript/preset/eslint-plugin/rules/testing/lifecycle/no-uninjectable-delay.mjs',
   'languages/typescript/preset/eslint-plugin/rules/modules/no-process-globals-outside-main-guard.mjs',
