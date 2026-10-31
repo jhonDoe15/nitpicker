@@ -55,6 +55,15 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   class (its own first). A project's names depend only on its own folder, never on how many projects
   there are: a lone subproject is named with its folder too, and the root project's names and
   identities are as in a one-project build, which reads its own jdeps reports unmerged.
+- **Test retries.** A test that fails once is a failing test, whatever retry the build configures.
+  On Gradle, after the projects are evaluated and again when the task graph is ready, the init
+  script sets `maxRetries` to 0 (and `failOnPassedAfterRetry` to true) on the `retry` extension of
+  every `Test` task (the `org.gradle.test-retry` plugin) and on Develocity's `develocity.testRetry`
+  when it has one; a project without them is untouched. The JUnit XML is also read after a build
+  that succeeded, so a failing test still fails the run when the build ignores test failures
+  (`ignoreFailures = true`) or retries in some other way. A test case that failed an attempt and
+  passed a later one is listed as failing, as `failed, then passed on a rerun` with a hint to fix
+  the flaky test. Maven is below.
 - **Integration tests on Gradle.** As on Maven (Surefire and Failsafe in `verify`), a project's
   integration tests are run and counted, following what the project's own build runs: Nitpicker runs
   `test` and every `Test` task that `check` depends on. A test suite of the `jvm-test-suite` plugin
@@ -111,7 +120,9 @@ by field. Per snapshot:
    build directory inside the module directory. A declared module that matches nothing, a module
    outside the project root, or two modules in one directory is a tool error.
 2. One build: `mvn jacoco:prepare-agent test dependency:list` (JaCoCo at the init script's version,
-   dependency plugin pinned), with `-Dmaven.test.failure.ignore=true` and the project's own
+   dependency plugin pinned), with `-Dmaven.test.failure.ignore=true`,
+   `-Dsurefire.rerunFailingTestsCount=0` and `-Dfailsafe.rerunFailingTestsCount=0` (no reruns), and
+   the project's own
    Checkstyle, PMD, CPD, SpotBugs and Spotless checks skipped. `dependency:list` writes every
    module's resolved classpath (reactor modules as their `target/classes`, or as their packaged jar
    in a `verify` build). Our coverage file (`target/nitpicker-jacoco.exec`) and every project
@@ -157,9 +168,12 @@ by field. Per snapshot:
 - **Tests.** Failures of the ArchUnit rule classes (`*ArchTest`, `*ArchitectureTest`, or the
   `nitpicker.archunit.includes` property in the POM) become findings; any other failing test, from
   Surefire's or Failsafe's reports, is a `java/maven-failure` tool error that names up to ten
-  failing tests. On the base snapshot the failing tests are listed instead of thrown: that module
-  skips JaCoCo and PIT, and the failure becomes a `tests-failed` tool error for that module that the
-  core reads as a red base, the same as a Gradle base whose tests fail. The other modules keep their
+  failing tests. A `<rerunFailingTestsCount>` in a POM's plugin configuration wins over the `-D`
+  properties, so a test case Surefire or Failsafe marked `flakyFailure` or `flakyError` is a failure
+  as well (the Test retries bullet above has the message). On the base snapshot the failing tests
+  are listed instead of thrown: that module skips JaCoCo and PIT, and the failure becomes a
+  `tests-failed` tool error for that module that the core reads as a red base, the same as a Gradle
+  base whose tests fail. The other modules keep their
   coverage, CRAP and mutation comparison with the base; a failing root module is unknown only for its
   own source and test directories. Reports older than the build are ignored.
   Gradle runs the ArchUnit classes in their
