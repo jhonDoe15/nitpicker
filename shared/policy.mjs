@@ -218,13 +218,13 @@ const CATALOG = [
     id: RULE_IDS.mutantSurvived,
     check: 'mutation',
     limit: 'no score gate (`thresholds.break` is `null`); each new surviving mutant fails',
-    enforcedBy: withKotlin(ALL, false),
+    enforcedBy: withKotlin(ALL, true),
   },
   {
     id: RULE_IDS.mutantNoCoverage,
     check: 'mutation',
     limit: 'no score gate (`thresholds.break` is `null`); each new uncovered mutant fails',
-    enforcedBy: withKotlin(ALL, false),
+    enforcedBy: withKotlin(ALL, true),
   },
   {
     id: RULE_IDS.duplicateClone,

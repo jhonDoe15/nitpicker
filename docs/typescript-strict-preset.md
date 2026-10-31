@@ -10,6 +10,8 @@ only in the nitpicker config file, where it changes the policy hash and appears 
 Existing code that violates a rule is baselined by the differential gate. New and touched code must
 comply.
 
+Every rule the preset can report has an entry in the [rule reference](rules/README.md): [nitpicker's ESLint rules](rules/typescript-nitpicker.md), [ESLint core and typescript-eslint](rules/typescript-eslint.md), [the plugin rules](rules/typescript-plugins.md) and [the static checks](rules/typescript-static.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
+
 CI recipes for this preset (Node.js, the project's install, GitHub Actions, GitLab CI, Jenkins) are in
 [nitpicker in CI](ci.md#toolchains-by-preset).
 
@@ -1077,7 +1079,11 @@ hop, and type-only imports do not count.
   coverage and mutation) sets `restoreMocks: true`, so a `vi.spyOn` spy is restored after every test
   even when an assertion fails, and cannot leak into the next test. It also overrides a
   `restoreMocks` value in the project's own vitest config for these runs. Jest runs with
-  `--restoreMocks` for the same reason, and `node:test` restores a test's `t.mock` itself. Neither
+  `--restoreMocks` for the same reason, and `node:test` restores a test's `t.mock` itself. Jest's
+  coverage run also gets `--coveragePathIgnorePatterns=/node_modules/` beside nitpicker's own
+  `--collectCoverageFrom` globs, so a `coveragePathIgnorePatterns` in the project's Jest config (or
+  one of its `projects`) cannot leave source files unmeasured; `exclude` in `nitpicker.config.json`
+  is the way to leave a file out. Neither
   Vitest nor Jest restores fake timers automatically: call `vi.useRealTimers()` (or
   `jest.useRealTimers()`) in `afterEach`.
 

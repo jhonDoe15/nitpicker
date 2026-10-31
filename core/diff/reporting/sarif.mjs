@@ -1,6 +1,8 @@
 import { createHash } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { comparisonKey } from '../comparison/fingerprint.mjs';
+import { plainText } from '../../../shared/reference/facts.mjs';
+import { entryForFinding, referenceLinks, referenceUrl } from '../../../shared/reference/store.mjs';
 import { noteText } from './format/notes.mjs';
 import { heldFindingsOf } from './report-model.mjs';
 import { repositoryFindingPath } from '../git/paths.mjs';
@@ -50,12 +52,25 @@ function toSarifResult({ finding, baselineState }, projectPath) {
   };
 }
 
-function collectSarifRules(findings) {
+function sarifRule(finding, reference) {
+  const entry = entryForFinding(reference.index(), finding);
+  const helpUri = entry === undefined ? undefined : referenceUrl(entry, reference.root());
+  return {
+    id: `${finding.tool}/${finding.rule}`,
+    name: finding.rule,
+    ...(entry === undefined
+      ? {}
+      : { shortDescription: { text: plainText(entry.summary, reference.root()) } }),
+    ...(helpUri === undefined ? {} : { helpUri }),
+  };
+}
+
+function collectSarifRules(findings, reference) {
   const rules = new Map();
   for (const finding of findings) {
     const ruleId = `${finding.tool}/${finding.rule}`;
     if (!rules.has(ruleId)) {
-      rules.set(ruleId, { id: ruleId, name: finding.rule });
+      rules.set(ruleId, sarifRule(finding, reference));
     }
   }
   return [...rules.values()];
@@ -84,7 +99,7 @@ function notifications({ toolErrors, notes, dropped }) {
   ];
 }
 
-function renderSarifRun({ entries, toolErrors, notes, location, dropped }) {
+function renderSarifRun({ entries, toolErrors, notes, location, dropped, reference }) {
   const log = {
     $schema: SARIF_SCHEMA_URL,
     version: '2.1.0',
@@ -94,7 +109,10 @@ function renderSarifRun({ entries, toolErrors, notes, location, dropped }) {
           driver: {
             name: 'nitpicker',
             informationUri: 'https://github.com/jhonDoe15/nitpicker',
-            rules: collectSarifRules(entries.map(({ finding }) => finding)),
+            rules: collectSarifRules(
+              entries.map(({ finding }) => finding),
+              reference,
+            ),
           },
         },
         ...originalUriBaseIds(location),
@@ -121,6 +139,7 @@ function renderSarifLog({
   newFirst = true,
   limits,
 }) {
+  const reference = location.reference ?? referenceLinks();
   return renderWithinUploadLimits(
     entries,
     (kept) =>
@@ -129,6 +148,7 @@ function renderSarifLog({
         toolErrors,
         notes,
         location,
+        reference,
         dropped:
           kept.length === entries.length
             ? undefined
