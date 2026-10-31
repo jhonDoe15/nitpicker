@@ -82,7 +82,7 @@ function withProjectFacts(policy, config, projectRoot) {
   const tools = withProjectToolConfigs(
     withHeadToolConfigs(
       jscpd === undefined ? policy.tools : { ...policy.tools, jscpd },
-      config,
+      { policy, config },
       projectRoot,
     ),
     projectRoot,
@@ -186,7 +186,7 @@ function headToolFacts(policy, headPolicy) {
       };
     }
   }
-  for (const tool of ['jscpd', 'stryker', ...projectConfigTools()]) {
+  for (const tool of ['jscpd', 'stryker', 'typescript', ...projectConfigTools()]) {
     if (usesProjectConfig(tools[tool]?.precedence ?? [])) {
       tools[tool] = headCapturedFacts(tools[tool], headPolicy.tools?.[tool]);
     }

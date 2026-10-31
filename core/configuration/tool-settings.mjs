@@ -16,7 +16,7 @@ const TOOL_SETTING_KEYS = new Map([
   ['knip', ['precedence']],
   ['dependency-cruiser', ['precedence']],
   ['eslint', ['engine', 'precedence']],
-  ['typescript', ['engine', 'project']],
+  ['typescript', ['engine', 'project', 'precedence']],
   ['tests', ['runner', 'timeouts']],
 ]);
 const ENGINES = new Map([
@@ -69,6 +69,7 @@ const ORDERED_PRECEDENCE_TOOLS = [
   'knip',
   'dependency-cruiser',
   'eslint',
+  'typescript',
 ];
 const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 
@@ -127,6 +128,7 @@ function validateEngineSettings(name, settings) {
   }
   if (name === 'typescript') {
     validateTypeScriptProject(settings.project);
+    validateTypeScriptPrecedence(settings);
   }
 }
 
@@ -163,6 +165,18 @@ function validatePrecedence(precedence, name) {
   if (!isValid) {
     throw configError(
       `"tools.${name}.precedence" must list "project", "nitpicker" or both, each once${ORDERED_PRECEDENCE_TOOLS.includes(name) ? ', highest first' : ''}`,
+    );
+  }
+}
+
+function validateTypeScriptPrecedence(settings) {
+  if (settings.precedence === undefined) {
+    return;
+  }
+  validatePrecedence(settings.precedence, 'typescript');
+  if (settings.project !== undefined) {
+    throw configError(
+      '"tools.typescript.precedence" cannot be combined with "tools.typescript.project": the selected config already keeps its own compiler options and nitpicker adds no strict flags to it',
     );
   }
 }
