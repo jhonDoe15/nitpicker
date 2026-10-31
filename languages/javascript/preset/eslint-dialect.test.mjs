@@ -75,18 +75,30 @@ describe('applyJavascriptDialect', () => {
   it('maps the comment, unknown, guard and module-load rules to JSDoc for JavaScript files only', () => {
     const moduleEffects = { rules: { 'nitpicker/report-module-load-effects': 'error' } };
     const mapped = applyJavascriptDialect([...strict, moduleEffects], javascript);
-    for (const [rule, options] of Object.entries(JSDOC_RULE_OPTIONS)) {
-      const forJavascript = ruleSettings(entriesFor(mapped, JAVASCRIPT_FILES), rule);
-      const forTypescript = ruleSettings(entriesFor(mapped, TYPESCRIPT_FILES), rule);
-      expect(forJavascript.length, rule).toBeGreaterThan(0);
-      expect(forJavascript.length, rule).toBe(forTypescript.length);
-      for (const setting of forJavascript) {
-        expect(setting, rule).toEqual(['error', options]);
-      }
-      for (const setting of forTypescript) {
-        expect(setting, rule).toBe('error');
-      }
-    }
+    const settings = Object.entries(JSDOC_RULE_OPTIONS).map(([rule, options]) => ({
+      rule,
+      options,
+      forJavascript: ruleSettings(entriesFor(mapped, JAVASCRIPT_FILES), rule),
+      forTypescript: ruleSettings(entriesFor(mapped, TYPESCRIPT_FILES), rule),
+    }));
+    expect(settings.map(({ rule, forJavascript }) => [rule, forJavascript.length > 0])).toEqual(
+      settings.map(({ rule }) => [rule, true]),
+    );
+    expect(
+      settings.map(({ rule, forJavascript, forTypescript }) => [
+        rule,
+        forJavascript.length === forTypescript.length,
+      ]),
+    ).toEqual(settings.map(({ rule }) => [rule, true]));
+    expect(settings.map(({ rule, forJavascript }) => [rule, forJavascript])).toEqual(
+      settings.map(({ rule, options, forJavascript }) => [
+        rule,
+        forJavascript.map(() => ['error', options]),
+      ]),
+    );
+    expect(settings.map(({ rule, forTypescript }) => [rule, forTypescript])).toEqual(
+      settings.map(({ rule, forTypescript }) => [rule, forTypescript.map(() => 'error')]),
+    );
   });
 
   it('does not turn a disabled mapped rule on', () => {

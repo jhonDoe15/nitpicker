@@ -44,6 +44,32 @@ const NAMING_HINTS = [
   ['N999', 'Name the module in lowercase snake_case, with no dashes or capitals.'],
 ].map(([rules, allowed]) => ({ tool: 'ruff', rules, allowed }));
 
+const ZONE_HINTS = [
+  [
+    ['DTZ001'],
+    'Give the datetime a zone: `datetime(2024, 1, 1, tzinfo=timezone.utc)`. A datetime without one cannot be compared with an aware one.',
+  ],
+  [
+    ['DTZ002', 'DTZ005'],
+    'Read the time in a zone: `datetime.now(tz=timezone.utc)`. In domain code take the clock as a parameter.',
+  ],
+  [
+    ['DTZ011'],
+    'Read the date in a zone: `datetime.now(tz=timezone.utc).date()`, or `datetime.now().astimezone().date()` when the local date is wanted. In domain code take the clock as a parameter.',
+  ],
+  ['DTZ003', 'Call `datetime.now(tz=timezone.utc)`; `utcnow()` returns a datetime without a zone.'],
+  [['DTZ004', 'DTZ006'], 'Pass the zone: `datetime.fromtimestamp(timestamp, tz=timezone.utc)`.'],
+  [['DTZ012'], 'Pass the zone: `datetime.fromtimestamp(timestamp, tz=timezone.utc).date()`.'],
+  [
+    ['DTZ007'],
+    'For a calendar value parse with `date.fromisoformat(text)` or `time.fromisoformat(text)` (or `.date()` / `.time()` of the parsed result); for an instant put `%z` in the format, or call `.replace(tzinfo=timezone.utc)` on the result.',
+  ],
+  [
+    ['DTZ901'],
+    'Give the bound a zone: `datetime.min.replace(tzinfo=timezone.utc)`, `datetime.max.replace(tzinfo=timezone.utc)`.',
+  ],
+].map(([rules, allowed]) => ({ tool: 'ruff', rules: [rules].flat(), allowed }));
+
 export const STYLE_HINTS = [
   {
     tool: 'ruff',
@@ -100,6 +126,7 @@ export const STYLE_HINTS = [
     allowed: 'Drop `exc_info=True`; `logger.exception(...)` already logs the traceback.',
   },
   ...NAMING_HINTS,
+  ...ZONE_HINTS,
   {
     tool: 'ruff',
     rules: ['PLR2004'],

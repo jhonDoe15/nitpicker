@@ -6,6 +6,7 @@ const LANGUAGE_TITLES = {
   java: 'Java',
   python: 'Python',
   kotlin: 'Kotlin',
+  go: 'Go',
 };
 
 const ENFORCEMENT_TEXT = {

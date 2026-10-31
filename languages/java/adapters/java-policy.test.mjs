@@ -170,16 +170,47 @@ describe('the duplicate folder list', () => {
     expect(configureJavaAnalyzer(analyzer, { duplicates: {} })).toBe(analyzer);
   });
 
-  it('is left unset without the option and rejected when it is not a list of names', () => {
+  it('is left unset without the option', () => {
     expect(
       parseJavaRunnerArguments(['--project-root', '/p']).policy.duplicateSkippedFolders,
     ).toBeUndefined();
-    for (const value of ['"build"', '[1]', '{}']) {
-      expect(() =>
-        parseJavaRunnerArguments(['--project-root', '/p', '--duplicate-skipped-folders', value]),
-      ).toThrow('--duplicate-skipped-folders must be a JSON array of folder names');
-    }
   });
+
+  it.each(['"build"', '[1]', '{}'])('rejects %s when it is not a list of names', (value) => {
+    expect(() =>
+      parseJavaRunnerArguments(['--project-root', '/p', '--duplicate-skipped-folders', value]),
+    ).toThrow('--duplicate-skipped-folders must be a JSON array of folder names');
+  });
+});
+
+describe('the baseline moves file', () => {
+  function movesFile() {
+    const root = mkdtempSync(path.join(tmpdir(), 'java-moves-'));
+    roots.push(root);
+    writeFileSync(path.join(root, 'moves.json'), '[]');
+    return path.join(root, 'moves.json');
+  }
+
+  it('hands the renames of a change to the runner when the head run has them', () => {
+    const configured = configureJavaAnalyzer(createJavaAnalyzer(), { exclude: ['a/**'] });
+    const baselineMovesFile = movesFile();
+    const { args } = configured.createInvocation({ ...context(), baselineMovesFile });
+    const { policy } = parseJavaRunnerArguments(args.slice(1));
+
+    expect([policy.exclude, policy.baselineMovesFile]).toEqual([['a/**'], baselineMovesFile]);
+    expect(
+      parseJavaRunnerArguments(configured.createInvocation(context()).args.slice(1)).policy,
+    ).not.toHaveProperty('baselineMovesFile');
+  });
+
+  it.each([[[]], [['/missing/moves.json']], [[tmpdir()]]])(
+    'rejects the option without an existing file (%j)',
+    (rest) => {
+      expect(() =>
+        parseJavaRunnerArguments(['--project-root', '/p', '--baseline-moves-file', ...rest]),
+      ).toThrow('--baseline-moves-file must be a file');
+    },
+  );
 });
 
 describe('project tool configs', () => {
