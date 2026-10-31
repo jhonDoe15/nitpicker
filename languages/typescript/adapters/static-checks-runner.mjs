@@ -65,6 +65,7 @@ function runArchitecture(options) {
     exclude: options.exclude,
     includeOnly: options.includeOnly,
     configRelativePath: options.configRelativePath,
+    reportsConfigErrors: true,
   });
   return applyAreaExceptions(normalizeArchitectureViolations(report, options.analyzerName));
 }
@@ -103,15 +104,19 @@ export function normalizeArchitectureViolations(report, analyzerName) {
       rule,
       path: canonicalPath,
       identity: `${semanticIdentity}|occurrence:${String(occurrence)}`,
-      message: withComment(
-        cycle === undefined
-          ? `${from} must not depend on ${to}${viaText(violation.via)}`
-          : `Dependency cycle: ${cycle.join(' -> ')} -> ${cycle[0]}`,
-        comments.get(rule),
-      ),
+      message: withComment(violationText({ violation, rule, from, to, cycle }), comments.get(rule)),
       classification: severity === 'error' ? 'enforceable' : 'descriptive',
     };
   });
+}
+
+function violationText({ violation, rule, from, to, cycle }) {
+  if (cycle !== undefined) {
+    return `Dependency cycle: ${cycle.join(' -> ')} -> ${cycle[0]}`;
+  }
+  return violation.type === 'module' && from === to
+    ? `${from} breaks the ${rule} rule`
+    : `${from} must not depend on ${to}${viaText(violation.via)}`;
 }
 
 function displayedPath(value) {
@@ -137,7 +142,10 @@ function canonicalCycle(value, context) {
 }
 
 function ruleComments(report) {
-  const rules = report.summary.ruleSetUsed?.forbidden ?? [];
+  const rules = [
+    ...(report.summary.ruleSetUsed?.forbidden ?? []),
+    ...(report.summary.ruleSetUsed?.required ?? []),
+  ];
   return new Map(
     rules
       .filter((rule) => typeof rule?.name === 'string' && typeof rule.comment === 'string')

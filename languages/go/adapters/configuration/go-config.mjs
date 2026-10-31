@@ -8,6 +8,7 @@ import { canonicalRule } from '../../../../shared/exceptions/rule-names.mjs';
 import { COMMON_EXCEPTION_RULES } from '../../../../shared/policy.mjs';
 import { GO_SIZE_RULES } from '../../../../shared/project-rules/size-rules.mjs';
 import { FORMATTERS } from '../formatting/go-formatters.mjs';
+import { suggestionOrAllowed } from '../../../../shared/messages/closest-match.mjs';
 
 export const GO_LINT_TOOLS = ['vet'];
 const GO_EXCEPTION_RULES = [...COMMON_EXCEPTION_RULES, ...GO_SIZE_RULES];
@@ -65,7 +66,9 @@ function validateSettings(settings) {
   }
   const unknown = Object.keys(settings).find((key) => !SETTING_KEYS.includes(key));
   if (unknown !== undefined) {
-    throw configError(`unknown key "${unknown}" in "go". Allowed keys: ${SETTING_KEYS.join(', ')}`);
+    throw configError(
+      `unknown key "${unknown}" in "go"${suggestionOrAllowed(unknown, SETTING_KEYS)}`,
+    );
   }
   if (settings.formatters !== undefined) {
     validateFormatters(settings.formatters);

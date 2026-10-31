@@ -89,6 +89,7 @@ export function coverageArguments(options, rootDir) {
     '--coverageReporters=json',
     `--coverageDirectory=${path.dirname(coverageOutputFile(options))}`,
     '--coverageThreshold={}',
+    '--coveragePathIgnorePatterns=/node_modules/',
     ...globs.map((glob) => `--collectCoverageFrom=${glob}`),
   ];
 }
@@ -98,10 +99,20 @@ export function assertSourcesCovered(options, rootDir) {
   const covered = new Set(
     Object.keys(parseReportJson(readFileSync(coverageOutputFile(options), 'utf8'))),
   );
-  if (sources.length === 0 || sources.some((file) => covered.has(file))) {
+  const missing = sources.filter((file) => !covered.has(file));
+  if (missing.length === 0) {
     return;
   }
-  const example = path.relative(options.projectRoot, sources[0]);
+  const example = path.relative(options.projectRoot, missing[0]);
+  if (missing.length < sources.length) {
+    throw new Error(
+      `Jest left source files out of coverage, such as ${example}. ` +
+        'Jest does not measure a file that testMatch or testRegex matches, a setup file ' +
+        '(setupFiles, setupFilesAfterEnv, globalSetup, globalTeardown), a file in a __mocks__ folder ' +
+        'or a file outside the rootDir of every Jest project. ' +
+        'Move that code out of the source roots, or add the file to exclude in nitpicker.config.json.',
+    );
+  }
   throw troubleshootingError(
     `Jest collected no coverage for the project's source files, such as ${example}. ` +
       'Jest only instruments files inside the rootDir of the config that runs the test ' +

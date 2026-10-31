@@ -2,6 +2,8 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { ingestFormatCheck } from '../../../../shared/ingest/format-check.mjs';
 import { ingestSarif } from '../../../../shared/ingest/sarif.mjs';
+import { createGeneratedFilter } from '../../ingest/kotlin-mutants/generated-filter.mjs';
+import { KOTLIN_REPORTS } from '../kotlin/report-names/kotlin-report-names.mjs';
 import { readKotlinClassLimitFindings } from '../kotlin/kotlin-class-limits.mjs';
 import { readSarifReport } from './sarif/sarif-reports.mjs';
 import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
@@ -93,12 +95,26 @@ function declaredPackage(file) {
   return PACKAGE_DECLARATION.exec(readFileSync(file, 'utf8'))?.[1].replaceAll('`', '') ?? '';
 }
 
-export function reportOnlyKotlinMutants(findings) {
-  return findings.map((finding) =>
-    finding.rule.startsWith('mutant-') && finding.path.endsWith('.kt')
-      ? { ...finding, classification: 'descriptive' }
-      : finding,
-  );
+export function kotlinGeneratedFilter({ reportRoot }) {
+  const name = KOTLIN_REPORTS.mutationFacts;
+  const report = path.join(reportRoot, name);
+  if (!existsSync(report)) {
+    throw new Error(
+      [
+        `The Kotlin mutation filter needs ${name} in ${reportRoot}.`,
+        'The kotlin-psi program writes it beside the facts report;',
+        'a build tool that skips the program (no Kotlin files) must write {"files":[]} there.',
+      ].join(' '),
+    );
+  }
+  try {
+    return createGeneratedFilter(JSON.parse(readFileSync(report, 'utf8')));
+  } catch (error) {
+    throw new Error(
+      `${name} in ${reportRoot} is unusable (${error.message}); run the kotlin-psi program again`,
+      { cause: error },
+    );
+  }
 }
 
 function leftToFanOut(calls) {
