@@ -15,6 +15,8 @@ import java.util.stream.Collectors;
 import java.util.stream.Stream;
 import nitpicker.kotlinpsi.bodies.Throwing;
 import nitpicker.kotlinpsi.common.Json;
+import nitpicker.kotlinpsi.design.DesignFacts;
+import nitpicker.kotlinpsi.design.model.Source;
 import nitpicker.kotlinpsi.facts.FactsCollector;
 import nitpicker.kotlinpsi.metrics.FileClasses;
 import nitpicker.kotlinpsi.metrics.MetricsCollector;
@@ -50,7 +52,7 @@ import org.jetbrains.kotlin.psi.KtFile;
 public final class KotlinPsi {
   private static final String TEST_PREFIX = "test:";
   private static final String MUTATION_REPORT = "kotlin-mutation-facts.json";
-  private static final long STACK_BYTES = 1L << 29;
+  private static final long STACK_BYTES = Long.getLong("nitpicker.stackBytes", 1L << 29);
 
   private KotlinPsi() {}
 
@@ -85,30 +87,34 @@ public final class KotlinPsi {
     List<String> classes = new ArrayList<>();
     List<String> types = new ArrayList<>();
     List<Object> facts = new ArrayList<>();
-    List<Source> mainSources = new ArrayList<>();
+    List<Source> production = new ArrayList<>();
+    List<Parsed> mainSources = new ArrayList<>();
+    Object design;
     Set<String> claimedFacades = new HashSet<>();
     Disposable disposable = Disposer.newDisposable();
     try {
       PsiFileFactory factory = PsiFileFactory.getInstance(environment(disposable).getProject());
-      List<Source> sources = new ArrayList<>();
+      List<Parsed> sources = new ArrayList<>();
       for (Map.Entry<Path, Boolean> source : files.entrySet()) {
         Path file = source.getKey();
         boolean test = source.getValue();
         String relative = projectDir.relativize(file.toAbsolutePath().normalize()).toString().replace('\\', '/');
         String text = normalized(Files.readString(file, StandardCharsets.UTF_8));
-        sources.add(new Source(parse(factory, file, text, relative, test), text, relative, test));
+        sources.add(new Parsed(parse(factory, file, text, relative, test), text, relative, test));
       }
       Set<String> nothing = Throwing.nothingFunctions(
-          sources.stream().filter(source -> !source.test()).map(Source::parsed).toList());
-      for (Source source : sources) {
+          sources.stream().filter(source -> !source.test()).map(Parsed::parsed).toList());
+      for (Parsed source : sources) {
         if (!source.test()) {
           new MetricsCollector(source.parsed(), source.text(), source.relative(), functions).collect();
           classes.add(FileClasses.describe(source.parsed(), source.relative(), claimedFacades));
           Types.collect(source.parsed(), source.text(), source.relative(), types);
+          production.add(new Source(source.parsed(), source.relative(), source.text()));
           mainSources.add(source);
         }
         facts.add(factsOf(source, nothing));
       }
+      design = designOf(production);
       Files.writeString(
           factsOutput.resolveSibling(MUTATION_REPORT),
           Json.of(Map.of("files", mutationFacts(mainSources))) + "\n",
@@ -121,15 +127,18 @@ public final class KotlinPsi {
         "{\"functions\":[" + String.join(",", functions) + "],\"files\":[" + String.join(",", classes)
             + "],\"types\":[" + String.join(",", types) + "]}\n",
         StandardCharsets.UTF_8);
-    Files.writeString(factsOutput, Json.of(Map.of("files", facts)) + "\n", StandardCharsets.UTF_8);
+    Map<String, Object> report = new LinkedHashMap<>();
+    report.put("files", facts);
+    report.put("design", design);
+    Files.writeString(factsOutput, Json.of(report) + "\n", StandardCharsets.UTF_8);
   }
 
-  private record Source(KtFile parsed, String text, String relative, boolean test) {}
+  private record Parsed(KtFile parsed, String text, String relative, boolean test) {}
 
-  private static List<Object> mutationFacts(List<Source> sources) {
-    MutationFacts mutation = new MutationFacts(sources.stream().map(Source::parsed).collect(Collectors.toList()));
+  private static List<Object> mutationFacts(List<Parsed> sources) {
+    MutationFacts mutation = new MutationFacts(sources.stream().map(Parsed::parsed).collect(Collectors.toList()));
     List<Object> entries = new ArrayList<>();
-    for (Source source : sources) {
+    for (Parsed source : sources) {
       try {
         entries.add(mutation.describe(source.parsed(), source.text(), source.relative()));
       } catch (StackOverflowError | RuntimeException failed) {
@@ -140,7 +149,7 @@ public final class KotlinPsi {
     return entries;
   }
 
-  private static Object factsOf(Source source, Set<String> nothing) {
+  private static Object factsOf(Parsed source, Set<String> nothing) {
     try {
       FactsCollector collector =
           new FactsCollector(source.parsed(), source.text(), source.relative(), source.test(), nothing);
@@ -153,6 +162,18 @@ public final class KotlinPsi {
         throw failed;
       }
       return skipped(source.relative(), source.test());
+    }
+  }
+
+  private static Object designOf(List<Source> production) {
+    try {
+      if (Boolean.getBoolean("nitpicker.failDesign")) {
+        throw new IllegalStateException("design facts were asked to fail");
+      }
+      return DesignFacts.build(production, Boolean.getBoolean("nitpicker.published"));
+    } catch (RuntimeException | StackOverflowError failed) {
+      System.err.println("design facts failed: " + failed);
+      return Map.of("error", String.valueOf(failed));
     }
   }
 

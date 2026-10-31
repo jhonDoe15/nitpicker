@@ -173,6 +173,8 @@ const FIXTURES = {
   'go-build-tags-dropped': () =>
     synthetic({ preset: 'go', go: { buildTags: ['integration'] } }, { preset: 'go' }),
   'tool-precedence': () => synthetic({}, { tools: { prettier: PROJECT } }),
+  'protocols-loosened': () =>
+    synthetic({ protocols: [{ type: 'Session', open: ['begin'], close: ['commit'] }] }, {}),
   'spring-roles-shrank': () =>
     synthetic(
       { preset: 'java', spring: { roles: { service: ['com.example.UseCase'] } } },

@@ -16,14 +16,15 @@ import { INIT_SCRIPT } from '../builds/java-build.mjs';
 import { loadEffectFindings } from './kotlin/review-rules/main/load-effects.mjs';
 import { findingFactory } from './kotlin/review-rules/review-finding.mjs';
 import {
-  compilePsiProgram,
-  gradleClasspath,
   pinnedKotlinCompiler,
+  prepareCompiler,
+  runPsiProgram,
   writeSources,
 } from './test-support/kotlin-psi/kotlin-psi-program.mjs';
 import {
   BOM,
   BROKEN,
+  CALLEE_NOT_A_NAME,
   CRLF,
   DEEP_CHAIN,
   FLAT,
@@ -74,9 +75,7 @@ const MODULE_BUILD = [
 const PSI_CLASS = 'nitpicker/kotlinpsi/KotlinPsi.class';
 
 let workspace;
-let java;
-let classpath;
-let classes;
+let compiler;
 
 function twoModuleProject() {
   return writeSources(workspace, 'modules', {
@@ -113,29 +112,8 @@ function functionsOf(project, module) {
   return JSON.parse(readFileSync(report, 'utf8')).functions.map(({ name }) => name);
 }
 
-function measure(project, roots = ['src']) {
-  const metricsOutput = path.join(project, 'metrics.json');
-  const factsOutput = path.join(project, 'facts.json');
-  const result = spawnSync(
-    path.join(java, 'bin/java'),
-    [
-      `-Dnitpicker.kotlinCompiler=${pinned}`,
-      '-cp',
-      `${classpath}${path.delimiter}${classes}`,
-      'nitpicker.kotlinpsi.KotlinPsi',
-      metricsOutput,
-      factsOutput,
-      project,
-      ...roots,
-    ],
-    { cwd: project, encoding: 'utf8', timeout: 180_000 },
-  );
-  return {
-    status: result.status,
-    log: result.stdout + result.stderr,
-    metrics: result.status === 0 ? JSON.parse(readFileSync(metricsOutput, 'utf8')) : undefined,
-    facts: result.status === 0 ? JSON.parse(readFileSync(factsOutput, 'utf8')) : undefined,
-  };
+function measure(project, roots) {
+  return runPsiProgram(compiler, project, roots);
 }
 
 describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
@@ -149,8 +127,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
       path.join(project, 'build.gradle.kts'),
       `${readFileSync(path.join(project, 'build.gradle.kts'), 'utf8')}${FORCE_OTHER_KOTLIN}`,
     );
-    ({ javaHome: java, classpath } = gradleClasspath({ gradle, project, workspace }));
-    classes = compilePsiProgram({ java, classpath, workspace });
+    compiler = prepareCompiler({ workspace, project, gradle, environment: process.env });
   });
 
   afterAll(() => {
@@ -158,7 +135,7 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   });
 
   it('resolves the pinned compiler although the project forces another Kotlin version', () => {
-    const jars = classpath.split(path.delimiter).map((jar) => path.basename(jar));
+    const jars = compiler.classpath.split(path.delimiter).map((jar) => path.basename(jar));
 
     expect(jars.filter((jar) => jar.startsWith('kotlin-compiler-embeddable'))).toEqual([
       `kotlin-compiler-embeddable-${pinned}.jar`,
@@ -311,6 +288,16 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
     expect([status, log.includes('StackOverflow')]).toEqual([0, false]);
     expect(metrics.functions[0].name).toBe('nested');
     expect(facts.files.map(({ file }) => file)).toEqual(['src/Deep.kt']);
+    expect(facts.design.callables.map(({ id }) => id)).toEqual(['src/Deep.kt#nested']);
+  });
+
+  it('reads a call whose callee is not a plain name', () => {
+    const { status, log, facts } = measure(
+      writeSources(workspace, 'callee', { 'src/Callee.kt': CALLEE_NOT_A_NAME }),
+    );
+
+    expect([status, log.includes('NullPointerException')]).toEqual([0, false]);
+    expect(facts.design.callables.map(({ name }) => name)).toEqual(['make', 'twice']);
   });
 
   it('names a predicate in a property initializer after the property and keeps backticked constants', () => {

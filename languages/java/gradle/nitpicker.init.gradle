@@ -330,6 +330,7 @@ allprojects {
             sourceSets.main.compileClasspath.files.any { it.name ==~ /jmolecules-ddd-.*\.jar/ }
         }
         def runsArchRules = { usesSpring() || usesJmolecules() }
+        def publishesLibrary = { project.extensions.findByName('publishing')?.publications?.isEmpty() == false }
         def hasGuava = { sourceSet -> sourceSet.compileClasspath.files.any { it.name ==~ /guava-\d.*\.jar/ } }
         def hasAwaitility = { sourceSets.test.compileClasspath.files.any { it.name ==~ /awaitility-\d.*\.jar/ } }
 
@@ -861,7 +862,7 @@ allprojects {
                     guava          : hasGuava(sourceSets.main),
                     testGuava      : hasGuava(sourceSets.test),
                     testAwaitility : hasAwaitility(),
-                    published      : project.extensions.findByName('publishing')?.publications?.isEmpty() == false,
+                    published      : publishesLibrary(),
                     unrunTestSourceSets: unrunTestSourceSets,
                 ])
             }
@@ -1197,7 +1198,8 @@ allprojects {
                         def roots = kotlinSourceDirs().collect { relative(it) } +
                             kotlinSourceDirsOf('test').collect { 'test:' + relative(it) }
                         runProcess('KotlinPsi', [new File(home, 'java').absolutePath, '-Djava.awt.headless=true',
-                                "-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}".toString(), '-cp',
+                                "-Dnitpicker.kotlinCompiler=${pinned.kotlinCompiler}".toString(),
+                                "-Dnitpicker.published=${publishesLibrary()}".toString(), '-cp',
                                 compiler + File.pathSeparator + classes.absolutePath, 'nitpicker.kotlinpsi.KotlinPsi',
                                 metrics.absolutePath, facts.absolutePath, analysisRoot.absolutePath] + roots,
                             projectDir)
