@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 87 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 88 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -661,6 +661,17 @@ Ban test forms that switch a test off.
 - **Allowed forms by message:**
   - Do not leave a `todo` test: write the test, or delete the stub.
   - A literal condition switches the test off for good. Delete the test or make it run; a real platform condition such as `process.platform === "win32"` is allowed.
+
+<a id="eslint-nitpicker-no-sync-node-api-in-async"></a>
+
+### `eslint/nitpicker/no-sync-node-api-in-async`
+
+Disallow synchronous Node APIs inside async functions and request handlers.
+
+- **Printed as:** `eslint-lint/nitpicker/no-sync-node-api-in-async`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-sync-node-api-in-async","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `{{api}}` blocks the event loop inside {{context}}, so every other request and task waits until it returns. Use {{alternative}}.
 
 <a id="eslint-nitpicker-no-test-helpers-in-source"></a>
 

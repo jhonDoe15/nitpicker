@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 59 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 60 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -444,6 +444,15 @@ Test `<name>` has no assertion.
 
 - **Allowed form:** Assert the outcome: `assert result == expected`, `with pytest.raises(SomeError):`, or call one of the assertion helpers the project tests use.
 - **Exception:** If this is intended, add `{"rule":"test-without-assertion","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-timeout-scope-path-without-checkpoint"></a>
+
+### `python-rules/timeout-scope-path-without-checkpoint`
+
+`<name>` has a path that runs `` without reaching a checkpoint (an `await` that suspends, `async with` or `async for`), so its timeout or cancellation cannot interrupt that path.
+
+- **Allowed form:** Reach a checkpoint on every path through the scope: await the slow work (`await asyncio.to_thread(work)`, `await trio.to_thread.run_sync(work)`, `await anyio.to_thread.run_sync(work)`), or add an explicit checkpoint before it (`await asyncio.sleep(0)`, `await trio.lowlevel.checkpoint()`, `await anyio.lowlevel.checkpoint()`), or move the checkpoint-free path out of the scope. A scope with no checkpoint at all is reported by Ruff ASYNC100.
+- **Exception:** If this is intended, add `{"rule":"timeout-scope-path-without-checkpoint","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-tls-verification-off"></a>
 
