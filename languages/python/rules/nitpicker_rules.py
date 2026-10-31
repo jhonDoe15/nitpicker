@@ -10,12 +10,14 @@ MINIMUM_PYTHON = (3, 10)
 SKIPPED_RULE = "rules-skipped"
 CHECK_FAILED_RULE = "rules-check-failed"
 ALLOWANCES_REPORT = "rules-allowances.json"
+GUARDED_PREFIXES = ("security.", "signatures.", "concurrency.")
 
 
 def load_checks():
     sys.path.insert(0, HERE)
     from boundary import domain_types, guards, paths
     from checks import comments, declarations, parameters, shell, state
+    from concurrency import fan_out
     from discovery import helpers, uncollected
     from effects import import_time, reach
     from environment import domain_imports, environment, purity
@@ -26,6 +28,7 @@ def load_checks():
     from security.sql import check as sql
     from security.timeouts import check as timeouts
     from security.tls import check as tls
+    from signatures import defaults, mutation, shims, tri_state
     from silent_tests import unasserted
     from smells import literals, loops, names, secret_logs, secrets
     from tasks import cleanup, lifetimes
@@ -55,6 +58,7 @@ def load_checks():
         secrets,
         secret_logs,
         loops,
+        fan_out,
         skipped,
         assertions,
         weak,
@@ -64,6 +68,10 @@ def load_checks():
         helpers,
         lifetimes,
         cleanup,
+        tri_state,
+        defaults,
+        mutation,
+        shims,
     ]
 
 
@@ -96,7 +104,7 @@ def parse_file(path):
 
 
 def is_guarded(module):
-    return getattr(module, "GUARDED", False) or module.__name__.startswith("security.")
+    return getattr(module, "GUARDED", False) or module.__name__.startswith(GUARDED_PREFIXES)
 
 
 def check_failure(module, context, error):

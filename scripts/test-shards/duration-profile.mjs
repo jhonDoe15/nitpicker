@@ -1,7 +1,7 @@
 import path from 'node:path';
 
 export function durationFile(environment = process.env) {
-  const enabled = ['java', 'kotlin', 'python'].filter(
+  const enabled = ['java', 'kotlin', 'python', 'go'].filter(
     (language) => environment[`NITPICKER_${language.toUpperCase()}_E2E`] === '1',
   );
   if (enabled.length > 1) {
