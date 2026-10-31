@@ -5,9 +5,11 @@ const MAGIC_VALUE_RULE = 'PLR2004';
 const MAGIC_VALUE = /replacing `([^`]+)` with a constant/;
 const SHELL_RULES = new Set(['S602', 'S604', 'S605']);
 const FIXED_COMMAND = /seems safe, but may be changed in the future/;
-const TEST_FILE_NOISE = /^(?:ARG|PLR2004|S\d|ASYNC251)/u;
+const TEST_FILE_NOISE = /^(?:ARG|DTZ|PLR2004|S\d|ASYNC251)/u;
 const COMMENT_LABEL = /^\s*#+\s*(?:[A-Z][A-Za-z]*(?: [A-Za-z]+){0,2}:\s+\S|e\.g\.|i\.e\.)/u;
 const COMMENTED_CODE_RULE = 'ERA001';
+const CALENDAR_PARSE_RULE = 'DTZ007';
+const CALENDAR_PARSE = /strptime\(.*\)\s*\.(?:date|time)\(\s*\)/u;
 const SAME_LINE_OVERLAPS = {
   LOG015: /^G010$/u,
   ASYNC230: /^PTH/u,
@@ -25,6 +27,13 @@ function isLabelComment({ rule, path, location }, lineOf) {
     return false;
   }
   return COMMENT_LABEL.test(lineOf(path, location.line) ?? '');
+}
+
+function isCalendarParse({ rule, path, location }, lineOf) {
+  if (rule !== CALENDAR_PARSE_RULE || location?.line === undefined) {
+    return false;
+  }
+  return CALENDAR_PARSE.test(lineOf(path, location.line) ?? '');
 }
 
 function siteKey({ rule, path, line }) {
@@ -66,7 +75,7 @@ function isAllowedForm(finding, { testFiles, supportFiles, sites, owners, lineOf
   if (isOwnedOnItsLine(finding, owners)) {
     return true;
   }
-  if (isLabelComment(finding, lineOf)) {
+  if (isLabelComment(finding, lineOf) || isCalendarParse(finding, lineOf)) {
     return true;
   }
   if (rule === MAGIC_VALUE_RULE) {
