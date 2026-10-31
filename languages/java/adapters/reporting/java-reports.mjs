@@ -27,7 +27,7 @@ import {
   structureFunctions,
 } from './function-locator.mjs';
 import { checkstyleFindings, formatFindings } from './format-findings.mjs';
-import { withoutMainMethodFindings } from './main-method.mjs';
+import { withoutMainMethodFindings } from './entry-point/main-method.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
 import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
 import { readUnrunTestFindings } from '../test-runs/unrun-tests.mjs';
