@@ -1,4 +1,8 @@
-import { parseDrillDownOptions } from '../diff/comparison/cli.mjs';
+import {
+  DRILL_DOWN_OPTIONS,
+  parseDrillDownOptions,
+  unknownArgumentError,
+} from '../diff/comparison/cli.mjs';
 
 const FLAGS = new Map([
   ['--all', { property: 'all', value: true }],
@@ -11,6 +15,23 @@ const VALUES = new Map([
   ['--base', 'baseRef'],
   ['--output', 'outputRoot'],
 ]);
+const SUBCOMMANDS = ['aggregate', 'base', 'cache'];
+
+const COMPARISON_OPTIONS = [...FLAGS.keys(), ...VALUES.keys(), ACCEPT_FLAG, ...DRILL_DOWN_OPTIONS];
+
+const HELP_POINTER = 'Run nitpicker --help for the options.';
+
+function unknownArgument(argument) {
+  if (SUBCOMMANDS.includes(argument)) {
+    return new Error(
+      `Unknown argument: ${argument}. A subcommand goes first, as in nitpicker ${argument}. ${HELP_POINTER}`,
+    );
+  }
+  const candidates = argument.startsWith('-')
+    ? COMPARISON_OPTIONS
+    : [...SUBCOMMANDS, ...COMPARISON_OPTIONS];
+  return unknownArgumentError(argument, candidates, HELP_POINTER);
+}
 
 function acceptedDigest(argument) {
   const digest = argument.slice(ACCEPT_FLAG.length + 1);
@@ -58,7 +79,7 @@ function remainingOptions(arguments_) {
     }
     const property = VALUES.get(argument);
     if (property === undefined) {
-      throw new Error(`Unknown argument: ${argument}`);
+      throw unknownArgument(argument);
     }
     const value = remaining.next().value;
     if (value === undefined || value.startsWith('--')) {

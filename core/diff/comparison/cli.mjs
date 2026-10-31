@@ -1,4 +1,16 @@
+import { didYouMean } from '../../../shared/messages/closest-match.mjs';
+
 const VALUE_OPTIONS = new Set(['--analyzer', '--rule', '--shard-count', '--shard-index']);
+const DEFER_EXIT = '--defer-exit';
+
+export const DRILL_DOWN_OPTIONS = [...VALUE_OPTIONS, DEFER_EXIT];
+
+export function unknownArgumentError(argument, candidates, guidance) {
+  const suggestion = didYouMean(argument, candidates, '');
+  return new Error(
+    `Unknown argument: ${argument}${suggestion === '' ? '.' : suggestion} ${guidance}`,
+  );
+}
 
 export function takeOptionValue(remaining, argument) {
   const { value } = remaining.next();
@@ -38,9 +50,9 @@ export function parseDrillDownOptions(arguments_) {
     ruleFilters: valuesOf(entries, '--rule'),
     shardCount,
     shardIndex,
-    deferExit: entries.some(([argument]) => argument === '--defer-exit'),
+    deferExit: entries.some(([argument]) => argument === DEFER_EXIT),
     remainingArguments: entries
       .map(([argument]) => argument)
-      .filter((argument) => !VALUE_OPTIONS.has(argument) && argument !== '--defer-exit'),
+      .filter((argument) => !VALUE_OPTIONS.has(argument) && argument !== DEFER_EXIT),
   };
 }
