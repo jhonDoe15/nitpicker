@@ -25,6 +25,7 @@ import {
 
 const packageRoot = path.resolve(import.meta.dirname, '../../../..');
 const POLICY_PATHS = [
+  'core/tooling/host-environment.mjs',
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',
   'core/tooling/output-file.mjs',
@@ -44,6 +45,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/layout/generated-files.mjs',
   'languages/typescript/preset/layout/path-patterns.mjs',
   'languages/typescript/preset/head-policy.mjs',
+  'languages/typescript/preset/project-tools',
   'languages/typescript/preset/libraries',
   'languages/typescript/preset/tool-configs.mjs',
   'languages/typescript/preset/architecture/outside-roots/outside-roots.mjs',
@@ -54,6 +56,7 @@ const POLICY_PATHS = [
   'languages/typescript/preset/entry-points/analyze.mjs',
   'languages/typescript/preset/test-runtime/analyze.mjs',
   'languages/typescript/preset/eslint-config',
+  'languages/typescript/preset/eslint-project',
   'languages/typescript/preset/eslint-plugin/index.mjs',
   'languages/typescript/preset/eslint-plugin/rules',
   'languages/typescript/preset/eslint-plugin/test-assertions',
@@ -118,7 +121,7 @@ describe('default configs used in place', () => {
       projectRoot,
     );
     expect(run.toolErrors).toEqual([]);
-    for (const name of names) expect(run.reports.get(name)?.findings, name).toEqual([]);
+    expect(names.map((name) => run.reports.get(name)?.findings)).toEqual(names.map(() => []));
   });
 
   // Tests that look at the same project share one run of all their analyzers, side by side, so the
@@ -159,8 +162,9 @@ describe('default configs used in place', () => {
     it('reports no error for every file-driven quality analyzer with no source or tests', () => {
       const run = runEmptyProject();
       const names = fileDrivenChecks.map(({ name }) => name);
+      expect(names).not.toHaveLength(0);
       expect(toolErrorsFor(run, names)).toEqual([]);
-      for (const name of names) expect(run.reports.get(name)?.findings, name).toEqual([]);
+      expect(names.map((name) => run.reports.get(name)?.findings)).toEqual(names.map(() => []));
     });
 
     it('reports no error for entry points and ESLint when both layouts are absent', () => {
@@ -173,7 +177,9 @@ describe('default configs used in place', () => {
     it('reports no error when source and test directories are absent', () => {
       const run = runEmptyProject();
       expect(toolErrorsFor(run, staticNames)).toEqual([]);
-      for (const name of staticNames) expect(run.reports.get(name)?.findings, name).toEqual([]);
+      expect(staticNames.map((name) => run.reports.get(name)?.findings)).toEqual(
+        staticNames.map(() => []),
+      );
     });
   });
 
