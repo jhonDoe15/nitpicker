@@ -132,6 +132,202 @@
       </property>
     </properties>
   </rule>
+  <rule name="UnboundedFanOut" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This loop or stream starts a remote or message call on a new task for every element of a collection at once, so a large collection exhausts the connections or rate limit of the remote service. Run the tasks on a fixed pool (Executors.newFixedThreadPool(8) passed to supplyAsync or used for submit), take a Semaphore permit around each call, or work through fixed-size batches (Lists.partition(items, 20)). An exception fits only when the collection is always small.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $clientTypes := function($r) {
+      $r[not(self::TypeExpression)][
+        pmd-java:typeIs('java.net.http.HttpClient')
+        or pmd-java:typeIs('org.springframework.web.client.RestOperations')
+        or pmd-java:typeIs('org.springframework.web.client.RestClient')
+        or pmd-java:typeIs('org.springframework.web.reactive.function.client.WebClient')
+        or pmd-java:typeIs('okhttp3.Call')
+        or pmd-java:typeIs('okhttp3.OkHttpClient')
+        or pmd-java:typeIs('org.apache.hc.client5.http.classic.HttpClient')
+        or pmd-java:typeIs('org.apache.http.client.HttpClient')
+        or pmd-java:typeIs('io.grpc.stub.AbstractStub')
+        or pmd-java:typeIs('software.amazon.awssdk.core.SdkClient')
+        or pmd-java:typeIs('jakarta.ws.rs.client.Invocation')
+        or pmd-java:typeIs('jakarta.ws.rs.client.Invocation.Builder')
+        or pmd-java:typeIs('javax.ws.rs.client.Invocation')
+        or pmd-java:typeIs('javax.ws.rs.client.Invocation.Builder')
+        or pmd-java:typeIs('retrofit2.Call')
+        or pmd-java:typeIs('org.springframework.kafka.core.KafkaOperations')
+        or pmd-java:typeIs('org.apache.kafka.clients.producer.Producer')
+        or pmd-java:typeIs('org.springframework.amqp.core.AmqpTemplate')
+        or pmd-java:typeIs('org.springframework.jms.core.JmsOperations')
+        or pmd-java:typeIs('jakarta.jms.MessageProducer')
+        or pmd-java:typeIs('javax.jms.MessageProducer')
+        or pmd-java:typeIs('org.springframework.messaging.core.MessageSendingOperations')
+        or pmd-java:typeIs('org.springframework.cloud.stream.function.StreamBridge')
+        or pmd-java:typeIs('com.rabbitmq.client.Channel')]
+    },
+    $remoteCall := function($n) {
+      exists($n/descendant-or-self::MethodCall[@MethodName != ('close', 'toString', 'equals', 'hashCode', 'getClass', 'mutate', 'builder')]
+        [$clientTypes(*[1])])
+    },
+    $viaHelpers := function($n, $pred) {
+      $pred($n) or (some $call in $n/descendant-or-self::MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
+        satisfies (some $m in $call/ancestor::ClassBody[1]/MethodDeclaration[@Name = $call/@MethodName]
+                       [FormalParameters/@Size = $call/ArgumentList/@Size]
+          satisfies $pred($m/Block)))
+    },
+    $remote1 := function($n) { $viaHelpers($n, $remoteCall) },
+    $remote2 := function($n) { $viaHelpers($n, $remote1) },
+    $remote := function($n) { $viaHelpers($n, $remote2) },
+    $permit := function($n) {
+      exists($n/descendant-or-self::MethodCall[@MethodName = ('acquire', 'acquireUninterruptibly', 'tryAcquire')]
+        [*[1][pmd-java:typeIs('java.util.concurrent.Semaphore')]])
+    },
+    $bounded1 := function($n) { $viaHelpers($n, $permit) },
+    $bounded := function($n) { $viaHelpers($n, $bounded1) },
+    $maker := function($e) {
+      exists($e/self::MethodCall[@MethodName = ('newCachedThreadPool', 'newVirtualThreadPerTaskExecutor', 'newThreadPerTaskExecutor', 'commonPool')]
+        [*[1][self::TypeExpression][pmd-java:typeIs('java.util.concurrent.Executors') or pmd-java:typeIs('java.util.concurrent.ForkJoinPool')]])
+    },
+    $unboundedExecutor := function($e) {
+      $maker($e)
+      or (let $name := $e[self::VariableAccess or self::FieldAccess[ThisExpression]]/@Name,
+              $method := $e/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1],
+              $lambdas := $e/ancestor::LambdaExpression/LambdaParameterList/LambdaParameter/VariableId[@Name = $name],
+              $params := $method/FormalParameters/FormalParameter/VariableId[@Name = $name],
+              $locals := $method//VariableDeclarator[VariableId/@Name = $name],
+              $fields := $e/ancestor::ClassBody[1]/FieldDeclaration/VariableDeclarator[VariableId/@Name = $name]
+          return exists($name) and empty($lambdas) and empty($params)
+            and (if (exists($locals)) then (every $d in $locals satisfies $maker($d/*[2]))
+                 else exists($fields) and (every $d in $fields satisfies $maker($d/*[2]))))
+    },
+    $sizes := function($n) {
+      $n/descendant-or-self::*[self::MethodCall[@MethodName = 'size'] or self::FieldAccess[@Name = 'length']]
+    },
+    $mentionsSize := function($n) {
+      exists($sizes($n))
+      or (some $v in $n/descendant-or-self::VariableAccess satisfies
+            exists($sizes($v/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+                      //VariableDeclarator[VariableId/@Name = $v/@Name]/*[2])))
+    },
+    $sizedArgument := function($a) {
+      not($mentionsSize($a))
+      or exists($a/self::MethodCall[@MethodName = 'min'][ArgumentList/*[not($mentionsSize(.))]])
+    },
+    $chain := function($s) {
+      $s/(. | *[1] | *[1]/*[1] | *[1]/*[1]/*[1] | *[1]/*[1]/*[1]/*[1] | *[1]/*[1]/*[1]/*[1]/*[1] | *[1]/*[1]/*[1]/*[1]/*[1]/*[1])
+    },
+    $sized := function($s, $names) {
+      exists($chain($s)/self::MethodCall[@MethodName = $names]
+        [every $a in ArgumentList/*[position() > 1 or not(../../*[1][self::TypeExpression])] satisfies $sizedArgument($a)])
+    },
+    $windowed := function($s) { $sized($s, ('subList', 'limit')) },
+    $partitioned := function($s) { $sized($s, ('partition', 'subList', 'limit', 'chunked', 'batches')) },
+    $fixedChain := function($s) {
+      $windowed($s)
+      or exists($chain($s)/self::MethodCall[@MethodName = ('stream', 'asList', 'of')][*[1][self::TypeExpression]]
+           [ArgumentList/*[1][self::MethodCall[@MethodName = ('values', 'of', 'asList')][*[1][self::TypeExpression]]
+                              or self::ArrayAllocation]])
+      or exists($chain($s)/self::MethodCall[@MethodName = ('of', 'asList', 'copyOf', 'values', 'ofEntries')][*[1][self::TypeExpression]])
+      or exists($chain($s)/self::MethodCall[@MethodName = ('range', 'rangeClosed')][*[1][self::TypeExpression]]
+           [not(ArgumentList/*[$mentionsSize(.)])])
+      or exists($chain($s)/(self::ArrayAllocation[ArrayInitializer] | self::ArrayInitializer))
+    },
+    $chunkVariable := function($s) {
+      let $root := $chain($s)/self::VariableAccess
+      return exists($root) and (
+        (let $declared := $root/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+                            //VariableDeclarator[VariableId/@Name = $root/@Name]
+         return exists($declared) and (every $d in $declared satisfies $windowed($d/*[2])))
+        or (let $fields := $root/ancestor::ClassBody[1]/FieldDeclaration[pmd-java:modifiers() = 'final']
+                             /VariableDeclarator[VariableId/@Name = $root/@Name]
+            return exists($fields) and (every $d in $fields satisfies $fixedChain($d/*[2])))
+        or
+        exists($root/ancestor::ForeachStatement[LocalVariableDeclaration/VariableDeclarator/VariableId/@Name = $root/@Name]
+                 [$partitioned(*[2])])
+        or exists($root/ancestor::LambdaExpression[LambdaParameterList/LambdaParameter/VariableId/@Name = $root/@Name]
+                 [parent::ArgumentList/parent::MethodCall[@MethodName = ('forEach', 'map')]]
+                 [$partitioned(parent::ArgumentList/parent::MethodCall/*[1])]))
+    },
+    $mappers := ('map', 'flatMap', 'forEach', 'forEachOrdered', 'mapToObj', 'mapToInt', 'mapToLong', 'peek'),
+    $isScope := function($n) {
+      exists($n[self::ForeachStatement or self::ForStatement
+        or self::LambdaExpression[parent::ArgumentList/parent::MethodCall[@MethodName = $mappers]]])
+    },
+    $isStarter := function($c) {
+      exists($c[self::MethodCall][
+        (pmd-java:matchesSig('java.util.concurrent.CompletableFuture#supplyAsync(_*)')
+          or pmd-java:matchesSig('java.util.concurrent.CompletableFuture#runAsync(_*)'))
+          and (ArgumentList/@Size = 1 or $unboundedExecutor(ArgumentList/*[2]))
+          and $remote(ArgumentList/*[1])
+        or ((pmd-java:matchesSig('java.util.concurrent.Executor#execute(_*)')
+              or pmd-java:matchesSig('java.util.concurrent.ExecutorService#submit(_*)'))
+          and $unboundedExecutor(*[1])
+          and $remote(ArgumentList/*[1]))
+        or ((pmd-java:matchesSig('java.lang.Thread#startVirtualThread(_*)') or pmd-java:matchesSig('java.lang.Thread.Builder#start(_*)'))
+          and $remote(ArgumentList/*[1]))
+        or (@MethodName = 'start' and *[1][self::ConstructorCall][pmd-java:typeIs('java.lang.Thread')]
+          and $remote(*[1]/ArgumentList/*[1]))
+        or pmd-java:matchesSig('java.net.http.HttpClient#sendAsync(_*)')])
+    },
+    $helperCalls := function($n) {
+      $n/descendant-or-self::MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
+    },
+    $helpers := function($call) {
+      $call/ancestor::ClassBody[1]/MethodDeclaration[@Name = $call/@MethodName]
+        [FormalParameters/@Size = $call/ArgumentList/@Size]
+    },
+    $starts0 := function($b) { exists($b/descendant-or-self::MethodCall[$isStarter(.)]) },
+    $starts1 := function($b) {
+      $starts0($b) or (some $c in $helperCalls($b) satisfies (some $m in $helpers($c) satisfies $starts0($m/Block)))
+    },
+    $starts2 := function($b) {
+      $starts1($b) or (some $c in $helperCalls($b) satisfies (some $m in $helpers($c) satisfies $starts1($m/Block)))
+    },
+    $startsIn := function($scope) {
+      exists($scope/descendant-or-self::MethodCall[$isStarter(.)][ancestor::*[$isScope(.)][1] is $scope])
+      or (some $c in $helperCalls($scope)[ancestor::*[$isScope(.)][1] is $scope]
+          satisfies (some $m in $helpers($c) satisfies $starts2($m/Block)))
+    },
+    $waits := function($n) {
+      exists($n//MethodCall[@MethodName = ('join', 'get', 'getNow', 'resultNow')]
+        [*[1][pmd-java:typeIs('java.util.concurrent.Future') or pmd-java:typeIs('java.util.concurrent.CompletionStage')
+              or pmd-java:typeIs('java.lang.Thread')]])
+      or exists($n//MethodReference[@MethodName = ('join', 'get')])
+    },
+    $drained := function($m) {
+      let $up := $m/ancestor::MethodCall[*[1]/descendant-or-self::* intersect $m],
+          $lazy := $up[not(descendant-or-self::MethodCall[@MethodName = ('collect', 'toList', 'toArray', 'sorted')] intersect $up)]
+      return exists($lazy/ArgumentList[$waits(.)])
+    },
+    $collection := function($r) {
+      $r[pmd-java:typeIs('java.util.Collection') or pmd-java:typeIs('java.util.Map')
+         or pmd-java:typeIs('java.lang.Iterable') or pmd-java:typeIs('java.util.stream.BaseStream')]
+    },
+    $growing := function($loop) {
+      exists($loop/InfixExpression[@Operator = ('<', '<=')][$mentionsSize(*[2])])
+    }
+return (
+  //MethodCall[@MethodName = $mappers][$collection(*[1])]
+    [not($fixedChain(*[1])) and not($chunkVariable(*[1]))]
+    [ArgumentList/*[1][self::LambdaExpression][$startsIn(.)][not($waits(.))]
+     or ArgumentList/*[1][self::MethodReference][*[1][self::ThisExpression or self::TypeExpression]]
+          [let $ref := . return some $m in ancestor::ClassBody[1]/MethodDeclaration[@Name = $ref/@MethodName]
+             satisfies $starts2($m/Block)]]
+    [not($drained(.))]
+  | //ForeachStatement[not($fixedChain(*[2])) and not($chunkVariable(*[2]))][$startsIn(.)][not($waits(.))]
+  | //ForStatement[$growing(.)][$startsIn(.)][not($waits(.))]
+  | //MethodCall[@MethodName = ('invokeAll', 'invokeAny')][$unboundedExecutor(*[1])]
+      [let $tasks := ArgumentList/*[1],
+           $built := ($tasks, $tasks/self::VariableAccess/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration][1]
+                        //VariableDeclarator[VariableId/@Name = $tasks/@Name]/*[2])
+       return some $e in $built satisfies
+         exists($chain($e)/self::MethodCall[@MethodName = $mappers][$collection(*[1])])
+         and $remote($e) and not($fixedChain($e)) and not($chunkVariable($e))]
+)[not($bounded(.))]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="ClassLoadEffect" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="Do this work in a method that main or the framework calls after startup (a @Bean method, an ApplicationRunner) and pass the result in, or create it on first use in a lazy holder class: this call runs while its class loads (in a static field or block, an enum constant, the constructor or initializer of an instance created at load, or a method one of them calls), so it connects, starts threads, sleeps or touches files in whatever order classes load, and in every test that touches the class. Constants, loggers, Pattern.compile and collections can stay static, and the class with main is not checked.">
     <priority>3</priority>

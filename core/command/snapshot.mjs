@@ -52,7 +52,10 @@ export function runSnapshotCli({
     report.summary,
     partialRunField(partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers)),
   );
-  report.text = writeSnapshotReports(outputRoot, report, { projectPath: relativeProjectPath });
+  report.text = writeSnapshotReports(outputRoot, report, {
+    projectPath: relativeProjectPath,
+    repositoryRoot,
+  });
   stdout.write(report.text);
   stdout.write(renderSnapshotRuleFilterSection(report, options.ruleFilters));
   writeGithubOutput({
