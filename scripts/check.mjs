@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
-import { actionPinProblems } from './action-pins.mjs';
+import { actionPinProblems } from './action-pins/action-pins.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
 const pinProblems = actionPinProblems(repositoryRoot);

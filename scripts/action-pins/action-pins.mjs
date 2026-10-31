@@ -3,6 +3,9 @@ import path from 'node:path';
 import { parse } from 'yaml';
 
 const fullVersionTag = /^[\w.-]+\/[\w./-]+@v\d+\.\d+\.\d+$/u;
+const fullCommitSha = /^[\w.-]+\/[\w./-]+@[\da-f]{40}$/u;
+const ownReleaseLine = /^jhonDoe15\/nitpicker@v\d+\.\d+$/u;
+const pinned = [fullVersionTag, fullCommitSha, ownReleaseLine];
 const yamlFence =
   /^ {0,3}(`{3,}|~{3,})(?:yaml|yml)[^\S\r\n]*\r?\n([\s\S]*?)^ {0,3}\1[^\S\r\n]*$/gmu;
 
@@ -27,7 +30,7 @@ function unpinnedActions(text) {
   return references(parse(text)).filter(
     (reference) =>
       typeof reference !== 'string' ||
-      (!reference.startsWith('./') && !fullVersionTag.test(reference)),
+      (!reference.startsWith('./') && !pinned.some((pattern) => pattern.test(reference))),
   );
 }
 

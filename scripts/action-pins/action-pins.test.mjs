@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { parse } from 'yaml';
 import { actionPinProblems } from './action-pins.mjs';
 
-const repositoryRoot = path.join(import.meta.dirname, '..');
+const repositoryRoot = path.join(import.meta.dirname, '../..');
 const roots = [];
 
 afterEach(() => {
@@ -45,6 +45,10 @@ describe('action reference validation', () => {
     'actions/checkout@main',
     'actions/checkout@v7',
     'actions/checkout@v7.0',
+    'actions/checkout@0123456',
+    'jhonDoe15/nitpicker@v0',
+    'jhonDoe15/nitpicker@main',
+    'other/nitpicker@v0.1',
   ])('rejects %s, including quoted values and inline mappings', (reference) => {
     const root = repository({
       '.github/workflows/test.yml': `jobs: { test: { steps: [{ uses: '${reference}' }] } }`,
@@ -55,12 +59,14 @@ describe('action reference validation', () => {
     ]);
   });
 
-  it('accepts full tags, action subpaths and local actions, without treating scripts as actions', () => {
+  it('accepts full tags and SHAs, this action release line, subpaths and local actions, not scripts', () => {
     const root = repository({
       'action.yml': `runs:
   steps:
     - uses: "actions/checkout@v7.0.1" # full tag
     - uses: gradle/actions/setup-gradle@v6.4.0
+    - uses: actions/setup-go@0123456789abcdef0123456789abcdef01234567
+    - uses: jhonDoe15/nitpicker@v0.1
     - uses: ./
     - uses: ./.github/actions/local
     - run: 'echo uses: actions/checkout@main'
