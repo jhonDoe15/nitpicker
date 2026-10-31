@@ -355,6 +355,7 @@ suite('packed nitpicker in a separate consumer', () => {
         checked(root, 'git', ['switch', '-c', 'feature']);
         packageLocation = path.join(root, 'node_modules/nitpicker');
         before = listing(packageLocation);
+        write(root, 'src/main/example.ts', cleanSource.replace('return 1', 'return 2'));
         clean = invoke([
           '--base',
           'main',
