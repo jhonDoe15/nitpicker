@@ -7,6 +7,7 @@ import {
 import { configError, isPlainObject } from '../../shared/config.mjs';
 import { TEST_RUNNERS } from '../../languages/typescript/preset/test-runner/runners.mjs';
 import { validateTestTimeouts } from '../../shared/test-timeouts/resolve.mjs';
+import { suggestionOrAllowed } from '../../shared/messages/closest-match.mjs';
 
 const TOOL_SETTING_KEYS = new Map([
   ['prettier', ['precedence']],
@@ -97,7 +98,7 @@ function validateToolSettings(name, settings, toolSettingKeys) {
   const allowedKeys = toolSettingKeys.get(name);
   if (allowedKeys === undefined) {
     throw configError(
-      `"tools" names unknown tool "${name}". Supported tools with this preset: ${[...toolSettingKeys.keys()].join(', ')}`,
+      `"tools" names unknown tool "${name}"${suggestionOrAllowed(name, [...toolSettingKeys.keys()], 'Supported tools with this preset')}`,
     );
   }
   if (!isPlainObject(settings)) {
@@ -106,7 +107,7 @@ function validateToolSettings(name, settings, toolSettingKeys) {
   const unknown = Object.keys(settings).filter((key) => !allowedKeys.includes(key));
   if (unknown.length > 0) {
     throw configError(
-      `"tools.${name}" has unknown key "${unknown[0]}". Allowed keys: ${allowedKeys.join(', ')}`,
+      `"tools.${name}" has unknown key "${unknown[0]}"${suggestionOrAllowed(unknown[0], allowedKeys)}`,
     );
   }
   if (ENGINES.has(name)) {
