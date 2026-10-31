@@ -1252,6 +1252,13 @@
         "This looks like a test helper ({{name}}), but it sits in production source outside a test-support/ folder. Tests in this project sit next to the code, and test-only modules go in a test-support/ folder beside the code they serve: move it there. An exception fits only when it is real production code."
       ]
     },
+    "nitpicker/no-test-retry": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "messages": [
+        "Remove the retry: a test that passes on a later attempt hides a flaky or racy test. Fix the cause, such as waiting on the condition instead of a delay or isolating shared state."
+      ]
+    },
     "nitpicker/no-throw": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -4014,6 +4021,13 @@
       "messages": [
         "This looks like a test helper ({{name}}), but it sits in production source, so it is mutation-tested and shipped. Tests in this project live under {{testRoot}}/, so move it to a test-support/ folder there ({{testRoot}}/test-support/). An exception fits only when it is real production code.",
         "This looks like a test helper ({{name}}), but it sits in production source outside a test-support/ folder. Tests in this project sit next to the code, and test-only modules go in a test-support/ folder beside the code they serve: move it there. An exception fits only when it is real production code."
+      ]
+    },
+    "nitpicker/no-test-retry": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "messages": [
+        "Remove the retry: a test that passes on a later attempt hides a flaky or racy test. Fix the cause, such as waiting on the condition instead of a delay or isolating shared state."
       ]
     },
     "nitpicker/no-throw": {
@@ -7052,6 +7066,13 @@
       "messages": [
         "This looks like a test helper ({{name}}), but it sits in production source, so it is mutation-tested and shipped. Tests in this project live under {{testRoot}}/, so move it to a test-support/ folder there ({{testRoot}}/test-support/). An exception fits only when it is real production code.",
         "This looks like a test helper ({{name}}), but it sits in production source outside a test-support/ folder. Tests in this project sit next to the code, and test-only modules go in a test-support/ folder beside the code they serve: move it there. An exception fits only when it is real production code."
+      ]
+    },
+    "nitpicker/no-test-retry": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "messages": [
+        "Remove the retry: a test that passes on a later attempt hides a flaky or racy test. Fix the cause, such as waiting on the condition instead of a delay or isolating shared state."
       ]
     },
     "nitpicker/no-throw": {

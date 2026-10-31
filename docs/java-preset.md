@@ -405,8 +405,9 @@ classpath and its `test` task, and adds no test library to the project.
   snapshot), whose findings carry the tool names `pmd`, `spotbugs`, `errorprone` (Error Prone and NullAway, below), `google-java-format`, `jacoco`,
   `checkstyle` (slice 3), `archunit` (slice 4), `crap` (slice 5), `duplicates` (slice 6), `pit` (slice 7) and `spring` (configuration files, below). The analyzer declares them as
   `reportedTools` (a finding for a tool that is neither the analyzer nor a declared one is an error).
-  Its version is the pinned tool versions from the init script, its configuration hash covers the
-  init script and the Java adapter files, so a tool bump invalidates the base cache.
+  Its version is the pinned tool versions from the init script plus the `java -version` output of
+  the JDK on `JAVA_HOME` (else the `PATH`), and its configuration hash covers the init script and
+  the Java adapter files, so a tool bump or a JDK switch invalidates the base cache.
 - **Everything else is shared.** `nitpicker`, `--all`, `--base`, `--output`, `--defer-exit`,
   `cache publish` and `nitpicker aggregate` take the same path as for TypeScript, so the exit codes
   (0 pass, 1 new enforceable findings, 2 tool error), the console summary and the report files

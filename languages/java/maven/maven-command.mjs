@@ -23,7 +23,7 @@ const MAVEN_NOISE = [
   /^\[ERROR\] After correcting the problems/u,
   /^\[ERROR\]\s+mvn <args> -rf/u,
 ];
-const JVM_NOISE =
+export const JVM_NOISE =
   /^(?:Picked up (?:JAVA_TOOL_OPTIONS|_JAVA_OPTIONS|JDK_JAVA_OPTIONS)|NOTE: Picked up)/u;
 
 export function mavenTarget({ projectRoot, configured, args, platform }) {
