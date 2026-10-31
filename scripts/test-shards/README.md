@@ -125,6 +125,10 @@ Four Python files (`ruff/ruff-rules`, `ruff/ruff-groups`, `adapters/formatting/f
 by no script. They are now in `test:python` with a weight of one second each: they only run the
 installed ruff and black, and took under four seconds together locally.
 
+The coverage precedence file (`adapters/configuration/coverage-config/coverage-precedence`, five
+cases) is in `test:python` with a planning weight of 45 seconds: it installs coverage and pytest
+into one uv environment and runs the test step nine times, which took about 30 seconds locally.
+
 The rule reference adds three files with planning weights. `java-e2e/tool-text/tool-text.e2e.test.mjs`
 (120 seconds) resolves the pinned PMD, Error Prone, NullAway and detekt jars and compares their rule
 text with the committed snapshots, and `errorprone/error-prone-report.e2e.test.mjs` (30 seconds)

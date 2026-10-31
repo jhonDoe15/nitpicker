@@ -1,5 +1,6 @@
 import { jscpdConfigChanges } from '../../tooling/jscpd/config-changes.mjs';
 import { projectConfigChanges } from '../../../languages/typescript/preset/project-tools/changes/project-config-changes.mjs';
+import { importLinterChanges } from './import-linter-changes.mjs';
 
 function fileChange(tool, file, { base, head, evidence, optsIn }) {
   if (base.get(file) === head.get(file)) {
@@ -34,6 +35,9 @@ function replacedOptionChanges({ replacedOptions, head }) {
 }
 
 function fileChanges(entry) {
+  if (entry.importLinter !== undefined) {
+    return importLinterChanges(entry.importLinter);
+  }
   if (entry.applied !== undefined) {
     return entry.tool === 'jscpd'
       ? jscpdConfigChanges(entry.applied)

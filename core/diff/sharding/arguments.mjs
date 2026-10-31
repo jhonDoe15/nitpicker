@@ -1,16 +1,23 @@
-import { takeOptionValue } from '../comparison/cli.mjs';
+import { takeOptionValue, unknownArgumentError } from '../comparison/cli.mjs';
 
 const OPTION_NAMES = ['--input-root', '--output', '--shard-count', '--policy-root'];
+const HELP = '--help';
+
+const AGGREGATE_OPTIONS = [...OPTION_NAMES, HELP];
 
 function collectOptionValues(arguments_) {
   const values = {};
   const remaining = arguments_.values();
   for (const argument of remaining) {
-    if (argument === '--help') {
+    if (argument === HELP) {
       return undefined;
     }
     if (!OPTION_NAMES.includes(argument)) {
-      throw new Error(`Unknown argument: ${argument}`);
+      throw unknownArgumentError(
+        argument,
+        AGGREGATE_OPTIONS,
+        'Run nitpicker aggregate --help for the options.',
+      );
     }
     values[argument] = takeOptionValue(remaining, argument);
   }

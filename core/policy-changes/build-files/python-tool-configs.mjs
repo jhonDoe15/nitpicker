@@ -8,11 +8,19 @@ import {
   ruffConfigFiles,
 } from '../../../languages/python/adapters/formatting/project-format-config.mjs';
 import { readProjectPyright } from '../../../languages/python/adapters/project-tools/pyright/pyright-project-config.mjs';
-import { parseToml } from '../../../languages/python/adapters/project-tools/project-tool-layers.mjs';
+import { readCoverageSettings } from '../../../languages/python/adapters/configuration/coverage-config/python-coverage-config.mjs';
+import { readMypyConfig } from '../../../languages/python/adapters/configuration/mypy/mypy-config.mjs';
+import { readMutmutConfig } from '../../../languages/python/adapters/project-tools/mutmut/mutmut-config.mjs';
+import {
+  attempt,
+  parseToml,
+} from '../../../languages/python/adapters/project-tools/project-tool-layers.mjs';
 
-export const PYTHON_TOOLS = ['ruff', 'black', 'pyright', 'mypy', 'mutmut'];
+export const PYTHON_TOOLS = ['ruff', 'black', 'pyright', 'mypy', 'mutmut', 'coverage'];
 const PYPROJECT = 'pyproject.toml';
 const SETUP_CFG = 'setup.cfg';
+const TOX_INI = 'tox.ini';
+const COVERAGERC = '.coveragerc';
 const MYPY_FILES = ['mypy.ini', '.mypy.ini'];
 const PYRIGHT_CHECKERS = ['pyright', 'basedpyright'];
 const MYPY_SECTION = /^mypy(?:-|$)/u;
@@ -22,12 +30,21 @@ const TOML_TABLES = {
   pyright: ['pyright', 'basedpyright'],
   mypy: ['mypy'],
   mutmut: ['mutmut'],
+  coverage: ['coverage'],
 };
-const SETUP_CFG_SECTIONS = {
-  mypy: (name) => MYPY_SECTION.test(name),
-  mutmut: (name) => name === 'mutmut',
+const SHARED_INI_SECTIONS = {
+  mypy: { matches: (name) => MYPY_SECTION.test(name), required: (names) => names.includes('mypy') },
+  mutmut: { matches: (name) => name === 'mutmut', required: (names) => names.includes('mutmut') },
+  coverage: {
+    matches: (name) => name.startsWith('coverage:'),
+    required: (names) => names.length > 0,
+  },
 };
-const SETUP_CFG_REQUIRED = { mypy: 'mypy', mutmut: 'mutmut' };
+const RUNTIME_READERS = {
+  mypy: readMypyConfig,
+  mutmut: readMutmutConfig,
+  coverage: readCoverageSettings,
+};
 
 function sortedKeys(_key, value) {
   return value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -55,10 +72,10 @@ function pyprojectPart(tool, text) {
     : Object.fromEntries(kept.map((name) => [name, tables[name]]));
 }
 
-function setupCfgPart(tool, text) {
-  const matches = SETUP_CFG_SECTIONS[tool];
-  const sections = matches === undefined ? {} : iniSections(text, matches);
-  return sections[SETUP_CFG_REQUIRED[tool]] === undefined ? undefined : sections;
+function sharedIniPart(tool, text) {
+  const shared = SHARED_INI_SECTIONS[tool];
+  const sections = shared === undefined ? {} : iniSections(text, shared.matches);
+  return shared?.required(Object.keys(sections)) === true ? sections : undefined;
 }
 
 function relevantPart(tool, file, text) {
@@ -66,11 +83,14 @@ function relevantPart(tool, file, text) {
   if (name === PYPROJECT) {
     return pyprojectPart(tool, text);
   }
-  if (name === SETUP_CFG) {
-    return setupCfgPart(tool, text);
+  if (name === SETUP_CFG || name === TOX_INI) {
+    return sharedIniPart(tool, text);
   }
   if (MYPY_FILES.includes(name)) {
     return iniSections(text, (section) => MYPY_SECTION.test(section));
+  }
+  if (name === COVERAGERC) {
+    return iniSections(text, () => true);
   }
   return name.endsWith('.json') ? parseJsonc(text) : parseToml(text);
 }
@@ -104,12 +124,10 @@ function labelsOf(checkout, files) {
   return files.map((file) => path.relative(checkout, file).split(path.sep).join('/'));
 }
 
-function firstConfigured(tool, root, names) {
-  const found = names.find((name) => {
-    const text = readInside(root, name, 'utf8');
-    return text !== undefined && pythonConfigText(tool, name, text) !== undefined;
-  });
-  return found === undefined ? [] : [path.join(root, found)];
+function readFile(tool, root) {
+  const { value, error } = attempt(() => RUNTIME_READERS[tool](root));
+  const file = value?.file ?? error?.file;
+  return file === undefined ? [] : [path.join(root, file)];
 }
 
 function candidatesOf(tool, root) {
@@ -125,11 +143,7 @@ function candidatesOf(tool, root) {
     );
     return [...new Set(files)];
   }
-  return firstConfigured(
-    tool,
-    root,
-    tool === 'mypy' ? [...MYPY_FILES, PYPROJECT, SETUP_CFG] : [PYPROJECT, SETUP_CFG],
-  );
+  return readFile(tool, root);
 }
 
 export function pythonConfigEntries(tool, root) {
