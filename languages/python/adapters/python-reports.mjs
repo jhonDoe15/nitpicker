@@ -55,6 +55,16 @@ function readSource(projectRoot, file) {
   return existsSync(absolute) ? readFileSync(absolute, 'utf8') : undefined;
 }
 
+function readRuffFindings({ reportRoot, roots, projectRoot, exceptions }) {
+  return ruffFindings(JSON.parse(readReport(reportRoot, RUFF_REPORT)), {
+    roots,
+    projectRoot,
+    testFiles: readTestFiles(reportRoot),
+    exceptions,
+    ...readAllowances(reportRoot),
+  });
+}
+
 export function readPythonFindings({
   projectRoot,
   reportRoot,
@@ -69,13 +79,7 @@ export function readPythonFindings({
   const libraries = { ...detectLibraries(projectRoot), pytestStyle: pytestStyle(projectRoot) };
   const found = applyRuleHints(
     [
-      ...ruffFindings(JSON.parse(readReport(reportRoot, RUFF_REPORT)), {
-        roots,
-        projectRoot,
-        testFiles: readTestFiles(reportRoot),
-        exceptions,
-        ...readAllowances(reportRoot),
-      }),
+      ...readRuffFindings({ reportRoot, roots, projectRoot, exceptions }),
       ...formatFindings(readReport(reportRoot, FORMAT_REPORT), { roots, manifest }),
       ...typeFindings(JSON.parse(readReport(reportRoot, TYPES_REPORT)), roots),
       ...ingestRulesReport(readReport(reportRoot, RULES_REPORT), libraries),
