@@ -6,6 +6,7 @@ import {
 } from './flow/assertion-flow.mjs';
 import { focusedTests, FOCUSED_MESSAGE, FOCUSED_RULE } from './focused-tests.mjs';
 import { DISABLED_MESSAGE, DISABLED_RULE, skippedTests } from './skipped-tests.mjs';
+import { weakReports } from './weak/weak-reports.mjs';
 
 function flowReports(scanned, suites) {
   return testBodies(scanned, suites).flatMap((test) =>
@@ -34,5 +35,6 @@ export function honestyReports(scanned, suites, project) {
     ...located(skippedTests(scanned, suites, project), DISABLED_RULE, DISABLED_MESSAGE),
     ...located(focusedTests(suites), FOCUSED_RULE, FOCUSED_MESSAGE),
     ...flowReports(scanned, suites),
+    ...weakReports(scanned, suites),
   ];
 }

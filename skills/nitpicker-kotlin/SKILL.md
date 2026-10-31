@@ -176,6 +176,11 @@ To learn why a rule is on and what form it allows before you write or change cod
   tests or a parameterized test (`@ParameterizedTest` with `@MethodSource` or `@CsvSource`, Kotest
   `withData`), assert a whole collection at once, and narrow with `assertNotNull`, `assertIs` or
   `?: fail(...)` instead of an `if`.
+- Assert the value, not that something is there (`pmd/WeakAssertionInTest`): no `assertNotNull(x)`,
+  `x.shouldNotBeNull()` or AssertJ `isNotNull()` as the whole check (a not-null check is fine when the
+  test then uses `x`, since Kotlin smart-casts it), no `isNotEmpty()`, `size > 0` or `shouldNotBeEmpty()`, and
+  no `verify { m.f(any()) }` whose arguments are all `any()`. Assert the exact value, contents or length
+  and the call's arguments; `exactly = 0` and `wasNot Called` are fine.
 - A test owns the coroutines it starts (`pmd/CoroutineEscapesTest`): do not `launch`, `async`, `launchIn`,
   `stateIn` or `shareIn` on `CoroutineScope(...)`, a scope field, a scope a helper returns,
   `viewModelScope`, or a `TestScope` outside `runTest` and leave it running; `with`, `run`, `apply` or

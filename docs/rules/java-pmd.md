@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 248 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 249 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -1635,7 +1635,7 @@ Be sure to specify a Locale when creating SimpleDateFormat instances to ensure t
 Reports test assertions that may be simplified using a more specific assertion method.
 
 - **Why it is on:** This enables better error messages, and makes the assertions more readable.
-- **Allowed form:** Use the assertion the message names, such as assertEquals, assertNull or assertFalse, in place of assertTrue on a comparison or negation.
+- **Allowed form:** Use the named assertion. For assertTrue(x != null) or assertTrue(!c.isEmpty()), assertNotNull or assertFalse(isEmpty()) is weak too: assert the exact value.
 - **Exception:** If this is intended, add `{"rule":"pmd/SimplifiableTestAssertion","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#simplifiabletestassertion)
 
@@ -2726,6 +2726,17 @@ Java 5 introduced the varargs parameter declaration for methods and constructors
 - **Allowed form:** Declare the last parameter as varargs: String... names.
 - **Exception:** If this is intended, add `{"rule":"pmd/UseVarargs","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#usevarargs)
+
+<a id="pmd-weakassertionintest"></a>
+
+### `pmd/WeakAssertionInTest`
+
+In tests: a check that passes for almost any value. Presence: `assertNotNull` (JUnit 4, JUnit 5, TestNG), AssertJ `isNotNull()` as the last call, Hamcrest `notNullValue()`, `not(nullValue())`. Non-empty: `assertTrue(c.size() > 0)` (also `>= 1`, `0 < c.size()`, `length()`, an array `length`), `assertFalse(c.isEmpty())`, `assertNotEquals(0, c.size())`, AssertJ `isNotEmpty()`, `isNotBlank()`, `hasSizeGreaterThan(0)`, `hasSizeGreaterThanOrEqualTo(1)` and `assertThat(c.size()).isPositive()`, `isNotZero()`, `isGreaterThan(0)` as the last call, Hamcrest `not(empty())`, `not(emptyString())`. Called only: Mockito `verify(m).f(...)`, `verify(m, times(n)).f(...)`, `verify(m, atLeastOnce()).f(...)` and `then(m).should().f(...)` whose arguments are all `any()`, `any(Foo.class)`, `anyString()` or another `any*` matcher. Not reported: `never()`, `times(0)`, `atMost`, a call with no arguments or with a real argument, and `isNotNull().isEqualTo(y)`. `assertTrue(x != null)`, `assertTrue(c.size() != 0)` and `assertTrue(!c.isEmpty())` stay with PMD `SimplifiableTestAssertion`, whose hint points to the exact value as well.
+
+- **Scope:** Test sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** This check passes for almost any value: a not-null, non-empty or size-above-0 check, or a verify with only any() arguments. Assert the exact value, contents or length, such as assertEquals(List.of("a", "b"), items), and the call arguments. An exception fits only when the value cannot be pinned.
+- **Exception:** If this is intended, add `{"rule":"pmd/WeakAssertionInTest","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-whileloopwithliteralboolean"></a>
 

@@ -169,6 +169,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   collection (`expect(orders).toEqual([...])`) and put cases in `it.each`
   (`nitpicker/no-assertion-in-loop`). The rules above (`for...of` only, no `.then()`, no `as`) apply
   to tests too.
+- Assert the value, not that something is there (`nitpicker/no-weak-assertion`): no `not.toBe(null)`,
+  `expect(x.length).toBeGreaterThan(0)`, `assert.ok(x.length)` or `toHaveBeenCalledWith(expect.anything())`
+  as the whole check; assert the exact value, contents or length and the call's arguments. `assert(x != null)`
+  is fine when the test then uses `x`.
 - Tests assert exact values and are deterministic and fast; each finding names the allowed form.
 - A shared helper (stdout capture) lives once, in a non-test file such as `test/support/stdout.ts`, or in a `test-support/` folder beside the code when the tests sit next to it.
   When an existing test defines the same helper, make it import the shared one.

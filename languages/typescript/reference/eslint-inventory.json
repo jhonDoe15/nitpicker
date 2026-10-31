@@ -1379,6 +1379,18 @@
         "Use an explicit completion signal or advanceTimersByTimeAsync and a direct assertion; waitFor advances fake time."
       ]
     },
+    "nitpicker/no-weak-assertion": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Require tests to pin the value, its contents or length, and the call arguments instead of a weak check",
+      "messages": [
+        "`{{found}}` passes for any value but {{absent}}, the same weak check as `not.toBeNull`. Assert the value itself with `toBe` or `toEqual`, such as `expect(user).toEqual({ id: 1 })`. An exception fits only when the value cannot be pinned.",
+        "`{{found}}` passes for any value but {{absent}}. Assert the value itself, such as `assert.deepStrictEqual(user, { id: 1 })` or `assert.strictEqual(user.id, 1)`. An exception fits only when the value cannot be pinned.",
+        "`{{found}}` passes for any non-empty value. Assert the contents or the exact length, such as `expect(rows).toEqual([...])` or `expect(rows).toHaveLength(3)`. An exception fits only when the value cannot be pinned.",
+        "`{{found}}` passes for any non-empty value. Assert the contents or the exact length, such as `assert.deepStrictEqual(rows, [...])` or `assert.strictEqual(rows.length, 3)`. An exception fits only when the value cannot be pinned.",
+        "`{{found}}` passes for a call with any arguments. Pass the values the call should receive, such as `expect(spy).toHaveBeenCalledWith(orderId)`; keep `expect.any(Type)` for an argument that varies and pin the others. An exception fits only when the value cannot be pinned."
+      ]
+    },
     "nitpicker/no-weak-hash": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -4148,6 +4160,18 @@
       "forms": [],
       "messages": [
         "Use an explicit completion signal or advanceTimersByTimeAsync and a direct assertion; waitFor advances fake time."
+      ]
+    },
+    "nitpicker/no-weak-assertion": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Require tests to pin the value, its contents or length, and the call arguments instead of a weak check",
+      "messages": [
+        "`{{found}}` passes for any value but {{absent}}, the same weak check as `not.toBeNull`. Assert the value itself with `toBe` or `toEqual`, such as `expect(user).toEqual({ id: 1 })`. An exception fits only when the value cannot be pinned.",
+        "`{{found}}` passes for any value but {{absent}}. Assert the value itself, such as `assert.deepStrictEqual(user, { id: 1 })` or `assert.strictEqual(user.id, 1)`. An exception fits only when the value cannot be pinned.",
+        "`{{found}}` passes for any non-empty value. Assert the contents or the exact length, such as `expect(rows).toEqual([...])` or `expect(rows).toHaveLength(3)`. An exception fits only when the value cannot be pinned.",
+        "`{{found}}` passes for any non-empty value. Assert the contents or the exact length, such as `assert.deepStrictEqual(rows, [...])` or `assert.strictEqual(rows.length, 3)`. An exception fits only when the value cannot be pinned.",
+        "`{{found}}` passes for a call with any arguments. Pass the values the call should receive, such as `expect(spy).toHaveBeenCalledWith(orderId)`; keep `expect.any(Type)` for an argument that varies and pin the others. An exception fits only when the value cannot be pinned."
       ]
     },
     "nitpicker/no-weak-hash": {
@@ -7193,6 +7217,18 @@
       "forms": [],
       "messages": [
         "Use an explicit completion signal or advanceTimersByTimeAsync and a direct assertion; waitFor advances fake time."
+      ]
+    },
+    "nitpicker/no-weak-assertion": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Require tests to pin the value, its contents or length, and the call arguments instead of a weak check",
+      "messages": [
+        "`{{found}}` passes for any value but {{absent}}, the same weak check as `not.toBeNull`. Assert the value itself with `toBe` or `toEqual`, such as `expect(user).toEqual({ id: 1 })`. An exception fits only when the value cannot be pinned.",
+        "`{{found}}` passes for any value but {{absent}}. Assert the value itself, such as `assert.deepStrictEqual(user, { id: 1 })` or `assert.strictEqual(user.id, 1)`. An exception fits only when the value cannot be pinned.",
+        "`{{found}}` passes for any non-empty value. Assert the contents or the exact length, such as `expect(rows).toEqual([...])` or `expect(rows).toHaveLength(3)`. An exception fits only when the value cannot be pinned.",
+        "`{{found}}` passes for any non-empty value. Assert the contents or the exact length, such as `assert.deepStrictEqual(rows, [...])` or `assert.strictEqual(rows.length, 3)`. An exception fits only when the value cannot be pinned.",
+        "`{{found}}` passes for a call with any arguments. Pass the values the call should receive, such as `expect(spy).toHaveBeenCalledWith(orderId)`; keep `expect.any(Type)` for an argument that varies and pin the others. An exception fits only when the value cannot be pinned."
       ]
     },
     "nitpicker/no-weak-hash": {
