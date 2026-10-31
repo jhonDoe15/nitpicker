@@ -1431,6 +1431,12 @@
     },
     {
       "tool": "pmd",
+      "rule": "SwallowedInterrupt",
+      "path": "src/main/java/probe/C4Switches.java",
+      "line": 34
+    },
+    {
+      "tool": "pmd",
       "rule": "OneDeclarationPerLine",
       "path": "src/main/java/probe/C4Switches.java",
       "line": 39
@@ -1932,6 +1938,12 @@
       "rule": "DoNotTerminateVM",
       "path": "src/main/java/probe/V1Style.java",
       "line": 41
+    },
+    {
+      "tool": "pmd",
+      "rule": "SwallowedInterrupt",
+      "path": "src/main/java/probe/V1Style.java",
+      "line": 47
     },
     {
       "tool": "pmd",
