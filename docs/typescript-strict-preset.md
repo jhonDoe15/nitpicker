@@ -10,6 +10,11 @@ only in the nitpicker config file, where it changes the policy hash and appears 
 Existing code that violates a rule is baselined by the differential gate. New and touched code must
 comply.
 
+Every rule the preset can report has an entry in the [rule reference](rules/README.md): [nitpicker's ESLint rules](rules/typescript-nitpicker.md), [ESLint core and typescript-eslint](rules/typescript-eslint.md), [the plugin rules](rules/typescript-plugins.md) and [the static checks](rules/typescript-static.md), with the allowed form and the `exceptions` entry of each. `nitpicker explain <tool/rule>` prints an entry.
+
+CI recipes for this preset (Node.js, the project's install, GitHub Actions, GitLab CI, Jenkins) are in
+[nitpicker in CI](ci.md#toolchains-by-preset).
+
 The rules are modeled on publicly described "one paved road" conventions, such as Lauren Tan's talks
 on her Dune conventions: one allowed form per construct, repeated review feedback turned into lint
 rules, mechanically enforced boundaries, and exceptions handled as reviewed changes. No code is
@@ -137,7 +142,7 @@ config file is an exception like any other.
 - Transforms use `map`, `filter`, `flatMap`, `reduce` with an initial value (`xs.reduce((sum, x) =>
 sum + x, 0)`), `Object.fromEntries`, and `Object.groupBy`. No loops, `forEach`, `reduce` without
   an initial value, or `reduceRight`.
-- No classes and no `this`. No reassigning a parameter (`no-param-reassign`).
+- No classes and no `this`. No reassigning a parameter (`no-param-reassign`) and no changing one in place (`nitpicker/no-parameter-mutation`).
 - No clock, randomness or I/O, however it is written: `Date.now`, `Math.random` and
   `performance.now` are reported as properties, so `const now = Date.now`, `const { random } =
 Math` and `Math['random']()` are caught; `process`, `fetch`, `setTimeout`, `setInterval`,
@@ -292,6 +297,18 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
 
 ## Everywhere
 
+- `@typescript-eslint/no-unused-vars` checks every parameter of production code, not only the ones
+  after the last used one (`args: 'all'`). A parameter finding is held to the edited lines, like a
+  formatting finding: an unused parameter on a line you add or edit is new, also in a function
+  that already had another one, and one on a line you did not touch stays unchanged. Other unused
+  names (variables, imports, caught errors) keep the ratchet: a function must not gain more of
+  them. Remove the parameter and update the callers. A parameter that an override or a callback
+  signature requires starts with `_` (`(_event, context) => context`); that is the one marker,
+  and `nitpicker/naming-convention` already accepts it. A destructured property is dropped from
+  the pattern or renamed (`{ total: _total }`), and a callback whose position matters (an Express
+  error handler takes four parameters) renames the unused one (`_req`). A key destructured only to
+  leave it out of a rest object (`const { a, ...rest } = options`) is not reported. Tests keep
+  ESLint's default (trailing unused parameters). The JavaScript preset uses the same options.
 - `nitpicker/no-self-recursion`: no function that calls itself or refers to itself
   (`xs.flatMap(flatten)` inside `flatten`), and no functions of one file that call each other
   (`evens` and `odds`), in all production code (`domain/`, `adapters/`, the composition root and
@@ -334,6 +351,41 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   do not count. `await Promise.allSettled(...)` with its result dropped hides every rejection, and
   `new Promise((resolve) => resolve(value))` wraps a value that `Promise.resolve(value)` or an
   async function returns directly.
+- Bounded fan-out (`nitpicker/unbounded-fan-out`): `Promise.all`, `allSettled`, `any` and `race`
+  (also through a `const P = Promise` alias) over `xs.map(...)`, `xs.flatMap(...)`,
+  `Array.from(xs, ...)`, `Array.from({ length: xs.length }, ...)`, a `const` holding one of those,
+  a spread of one, or an array filled by `push` inside a `for...of`, `for...in`, `for` or `forEach`
+  over `xs`, where the callback makes a remote call (HTTP or RPC: `fetch`, `ofetch`, `axios`,
+  `got`, `ky`, `superagent`, `needle`, `undici`, `node-fetch`, `cross-fetch`, `http(s).request`,
+  `@nestjs/axios`, `graphql-request`, AWS SDK v3 `client.send`, OpenAI, Anthropic, Stripe, Octokit
+  and Slack clients) or publishes to a broker (`kafkajs`, `amqplib`, `amqp-connection-manager`,
+  `nats`, `@google-cloud/pubsub`, `bullmq`, `bull`, `mqtt`, `ioredis` and `redis` `publish`, Azure
+  Service Bus, SQS, SNS, EventBridge and Kinesis). The HTTP module lists are shared with
+  `require-http-timeout`. It follows aliases, `require`, `await import()`, `axios.create()`-style
+  instances, `this.client` class fields and parameters typed with the library type, and a helper
+  function or method of the same file (up to three calls deep), reporting `load()` with the
+  `fetch()` it reaches. `pMap(xs, fn)` without a numeric `concurrency` runs unlimited too and is
+  reported. `race` and `any` are reported like `all`: they settle on the first result, but every
+  call has started by then. Database calls are not this rule's business: the per-item I/O rule
+  reports them with the batching remedy. Allowed: the call wrapped in a limiter created outside the
+  callback with an explicit bound (`pLimit(8)`, `p-queue` with `concurrency`, Bottleneck with
+  `maxConcurrent`, `p-throttle` with `limit`, `async-sema`, `async-mutex` `Semaphore`, `limiter`),
+  held in a local, a class field (`limit = pLimit(4)`, or `this.limit = pLimit(4)` in the
+  constructor) or received as a parameter or parameter property; a limiter imported from a file of
+  the project whose name ends in `limit`, `limiter`, `queue`, `sema`, `semaphore`, `throttle` or
+  `mutex`; `sema.acquire()` in the callback; a literal or `const` array or object (also
+  `as const`, `satisfies` and `!`), the values of a TypeScript `enum`, `slice` or `splice` with an
+  explicit size (`urls.slice(i, i + SIZE)`), and `for...of` over `chunk(xs, 20)`-style calls
+  (`chunk`, `chunked`, `chunks`, `splitEvery`, `cluster`, `batch`). A worker pool is bounded by
+  its count: `Array.from({ length: workers }, ...)` and `for (let i = 0; i < workers; i++)` pass,
+  while a count taken from a collection (`xs.length`, `xs.size`) stays a fan-out over `xs`. A
+  concurrency constant that no limiter uses, a limiter built inside the callback and
+  `pLimit(Infinity)` bound nothing. The message names the collection, the call and the target, and
+  the limiter, chunked and batch forms. Limits: a helper in another file is not followed, an array
+  built with `reduce` or promises wrapped in `new Promise(...)` are not traced, an imported
+  limiter is recognized by its name only, a client that arrives untyped through a parameter or an
+  unlisted library is not recognized, and a collection that is small in practice but not by
+  construction is reported; lift such a path with an `exceptions` entry for the rule.
 - `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
   statement per module (`no-duplicate-imports`; a separate `import type` is fine).
 - Identifier casing (`nitpicker/naming-convention`, which wraps
@@ -544,6 +596,55 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `export default`, or an export list) the message gives the re-export under the exported name,
   `export { fetchUser as loadUser }` or `export { fetchUser as default }`; for a local one it says to
   call the callee directly and delete the wrapper.
+- `nitpicker/no-tri-state-boolean`: a `boolean` that can also be `undefined` or `null` has three
+  states that the type does not name. Reported as the whole type of a parameter, return type
+  (also inside `Promise<...>`), type member or class field (`force: boolean | undefined`,
+  `true | false | undefined`), for an optional boolean parameter (`force?: boolean`, including in
+  function types and `declare` signatures) and for an optional boolean property
+  (`{ force?: boolean }`). Not reported: an optional property of a type named `*Props` (a React
+  component's props), a union with another type (`boolean | string`), a local variable, and a
+  method with `override`. The message names a required `boolean` or a union of string literals.
+  In the JavaScript preset the rule reads JSDoc types, so the type-aware rules need JSDoc types to
+  see anything: `@param {boolean|undefined}`, `{boolean=}`, `{?boolean}`, a bare
+  `@param {boolean} [force]` with no default, and `Promise<boolean|undefined>` in `@returns`.
+  `[force=false]` (a default given), `@property` tags and dotted option names
+  (`@param {boolean} [options.verbose]`) are not reported.
+- `nitpicker/no-parameter-mutation` (type-aware): a mutating method (`push`, `pop`, `splice`,
+  `sort`, `reverse`, `add`, `set`, `delete`, `clear` and the other array, `Set`, `Map` mutators of
+  `no-mutating-method-in-domain`) called on a parameter, or an assignment, `++` or `delete` on an
+  index or `length` of a parameter whose type has a writable index signature (arrays, typed
+  arrays, records), is flagged, also through `grid[0]!.push` and `counts['a']!++`. Only exported
+  functions and public methods are checked: a function that is not exported, a nested function and
+  a `private` or `#` method are helpers. Not flagged: a rest parameter, a copy
+  (`const copy = [...items]`, or `items = items.slice()` / `[...items]` / `structuredClone(items)`
+  before the call), an accumulator (the first parameter of a `reduce` or `reduceRight` callback,
+  inline or named, and a parameter defaulted to `[]`, `{}`, `new Set()` or `new Map()`), an immer
+  draft (a parameter inside `produce`, `produceWithPatches`, `createSlice`, `createReducer`,
+  `useImmer` or `useImmerReducer`), a `readonly` type (the compiler rejects the write), and plain
+  property assignment (`user.name = name`). `domain/` files keep the stricter
+  `no-mutating-method-in-domain` and do not get this rule. The shared method tables are in
+  `eslint-plugin/rules/analysis/mutation/mutating-methods.mjs`.
+- `nitpicker/no-falsy-default` (type-aware): `limit || DEFAULT_LIMIT` and `limit ? limit : DEFAULT`
+  on a parameter that is optional, defaulted to `undefined` or `null`, or typed
+  `| undefined` / `| null`, when its type also has a falsy value that is not absent (`number`,
+  `string`, `boolean`, `bigint`) turns `0`, `''` and `false` into the default. Write
+  `limit ?? DEFAULT_LIMIT`, or test `limit === undefined`. Not reported: a fallback equal to the
+  falsy value (`name || ''`, `count || 0`, `flag || false`, where `??` gives the same result), a
+  fallback of `undefined` or `null`, a condition (`if (a || b)`), and a value that is not a
+  parameter. In the JavaScript preset the type comes from JSDoc; without JSDoc types the rule sees
+  nothing.
+- `nitpicker/no-compatibility-shim`: a doc comment with a `@deprecated` tag, and an exported
+  `const Old = New`, `type Old = New` or `export { New as Old }` whose target `New` is also
+  exported from the same module (two public names for one thing). Generic aliases, aliases of
+  imports and of non-exported declarations are not reported, so `export { callee as wrapper }` of a
+  function that is not itself exported (the form `no-forwarding-wrapper` recommends) stays
+  allowed. Callers of a deprecated API are reported by `@typescript-eslint/no-deprecated`. In the
+  JavaScript preset the `@deprecated` tag is already rejected as an unsupported JSDoc tag, so only
+  the alias form is added.
+- Naive datetimes have no rule in this preset. A `Date` is a UTC instant: it has no naive form and
+  the standard library has no zone-aware replacement, so a check could only match literals. Reading
+  the clock is already limited by `Date.now()` and `new Date()` in `domain/`, and a clock is passed
+  in as a parameter.
 - No `as`, `any`, or non-null assertions.
 - `undefined` only for absent values. `null` only where a library or JSON requires it.
 - No comments, except doc comments (`/** ... */`) on exported declarations and the members of
@@ -712,6 +813,15 @@ hop, and type-only imports do not count.
   The rule covers the third argument of `it`/`test`, `{ timeout }` options, hook timeouts and
   `vi.setConfig`. A timeout that is not a constant written in the file is also reported. There is
   no e2e exemption; a genuinely long suite needs an exception in the config file.
+- `nitpicker/no-test-retry`: no retry in test code, so a flaky test cannot pass on a later attempt.
+  It reports a `retry`/`retries` option on `it`/`test`/`describe`/`suite` (any argument position,
+  so Vitest, Cypress and Playwright), `vi.setConfig({ retry })`, `jest.retryTimes(n)`, Mocha
+  `this.retries(n)` and Playwright `test.describe.configure({ retries })`. Aliased imports, `const`
+  options, spreads of them and `as`/`satisfies` wrappers are followed; `0`, `false`, `null` and
+  `undefined` are allowed. Options from an import or a call result, `const { retryTimes } = jest`
+  and `test.extend` results are not followed. It checks Cypress and Playwright files under a test
+  root too. Config-level retries (Vitest `test.retry`, Mocha `retries`) are pinned to 0 by
+  nitpicker's runs and are not this rule's job.
 - `nitpicker/require-test-process-timeout`: synchronous `spawnSync`, `execSync` and `execFileSync`
   calls from `node:child_process` or `child_process` in test-area files need a positive subprocess
   timeout, for example `spawnSync(program, args, { timeout: 10_000 })`. A runner's timeout cannot
@@ -883,6 +993,75 @@ hop, and type-only imports do not count.
     `expect.assertions(n)` exempts the test whichever callback the assertions are in, and a
     `hasAssertions` in a global `beforeEach` is not seen. A tagged-template `it.each` table is not
     read as a table, and a computed template member name (``obj[`on${name}`]``) is not matched.
+- `nitpicker/no-assertion-in-loop`: an assertion inside a loop or an iterating callback of a test body
+  runs once per element, so an empty collection (a bug in the code under test) makes the test pass
+  without asserting anything. It is the loop counterpart of `vitest/no-conditional-expect`, and the
+  TypeScript and JavaScript form of Python's `conditional-assertion-in-test` and Kotlin's
+  `AssertionInControlFlow`. It works for Vitest, Jest, `node:test` and Mocha (`it`, `test`,
+  `specify`, `xit`, `fit` and `xtest`, also `test.each` with a tagged template, a named function
+  as the callback, and a callback wrapped in a call such as `it('x', withFixture(async () => ...))`),
+  with `expect` (also `expect.soft`, `expect.poll`, `.resolves`/`.rejects` chains and imported
+  aliases such as `import { expect as ex }`), `node:assert` and `assert/strict` (imported under any
+  name), Chai `assert`/`expect`/`should`, the `t.assert` of `node:test`, a chained `.expect(...)`
+  call (supertest), any imported function whose name starts with `assert` or `expect`, and the
+  project's `assertionFunctionNames` convention. Matcher builders (`expect.not.arrayContaining`,
+  `expect.any`), `chai.use` and `chai.should()` are not assertions. `it` and `test` count as test
+  registrations only when they are unbound globals or come from `vitest`, `jest`, `node:test`,
+  `mocha`, `@jest/globals` or `@playwright/test` (or from a `const test = base.extend(...)` of
+  such an import), so a local `const test = load()` or a helper parameter named `test` hides
+  nothing. The rule is shared by the ESLint and oxlint engines through the plugin. Reported, once
+  per outermost loop of a test, at its first assertion:
+  - the loops `for`, `for...of`, `for await...of`, `for...in` and `while`, and the callbacks of
+    `forEach`, `map`, `flatMap`, `filter`, `some`, `every`, `reduce`, `reduceRight`, `find`,
+    `findIndex`, `findLast`, `findLastIndex` and `Array.from(items, callback)`, also on
+    `Object.entries(...)` and the like and inside
+    `await Promise.all(items.map(async (item) => ...))`; a callback given to `new X(callback)` is
+    read like a call argument;
+  - a call to a helper that asserts (a function of the same file, found through `const check = ...`
+    or `function check`, also when it asserts through another helper), made in a loop or handed to
+    an iterating call (`orders.forEach(check)`), whether the helper sits in the test or at module
+    level;
+  - a loop of assertions inside such a helper that a test calls, reported at the assertion in the
+    helper's loop (once, however many tests call the helper, and also when the helper reaches the
+    loop through other same-file helpers);
+  - a loop over a literal table (`for (const row of [[1, 2], [3, 4]])`), with a message that points
+    at `it.each` (or, in `node:test`, at subtests registered from the table): a table that is not
+    empty today is still a loop that checks nothing when the table is emptied or filtered;
+  - a loop whose assertion does not read the loop variable (`expect(config.mode).toBe('strict')`),
+    since it has the same hole. The rule does not follow data flow, as in the Python and Kotlin
+    rules;
+  - `node:test` subtests registered in a loop (`await t.test(name, () => ...)`, `t.it`) over a
+    collection that is not a literal, non-empty array: an empty collection registers no subtest and
+    the test passes.
+
+  Allowed, and named by the message:
+  - asserting the whole collection (`expect(orders).toEqual([...])`,
+    `assert.deepStrictEqual(orders, [...])`); `expect(orders.every((o) => o.paid)).toBe(true)` is
+    also true for an empty `orders`, so pair it with `expect(orders).not.toHaveLength(0)`;
+  - a parameterized test for a table of cases (`it.each`/`test.each`); in `node:test`, which has no
+    table API, a loop over a literal, non-empty array (written inline, or a same-file `const`
+    initialised with an array literal) that registers one subtest per row with
+    `await t.test(name, () => ...)`; a loop outside any test that registers `it(...)` calls is not
+    in a test body and is not reported either;
+  - a loop whose body always runs at least once and so cannot pass on an empty collection:
+    `for (let i = 0; i < 3; i++)` with a literal start and a literal bound that holds at the start,
+    `Array.from({ length: 3 }, ...)` (and `Array.from({ length: 3 }).forEach(...)`) with a literal
+    positive length, and `do ... while`, whose body runs once before the condition is read;
+  - a loop that only builds data before an unconditional assertion.
+
+  `expect.assertions(n)` and `expect.hasAssertions()` do not exempt a loop. They catch an empty
+  loop only when `n` is exact for today's data and nobody keeps it in step with the table, so the
+  rule reports the loop anyway and the message sends the test to the allowed forms. Limits: only
+  same-file functions are followed, called by name (`check(x)`) or handed to an iterating call;
+  methods (`helpers.check(x)`), object-method helpers and helpers imported from another file are
+  not followed; a helper that no test calls, or that only a hook calls, is not read, and neither is
+  a function defined inside a test that nothing calls. A `test` imported from a local fixture file
+  (`import { test } from './fixtures'`) is not recognised as a test registration. Hooks,
+  `describe` bodies and `test.step` callbacks are not tests (a step in a loop is judged as part of
+  its test). A chained property assertion without a call (`value.should.be.true`) is not an
+  assertion call and is not seen; `value.should.equal(1)` is. A tagged-template `it.each` table is
+  not read as a table, but its test body is read.
+
 - `slow-test` (coverage check, head only): an added or edited test fails above 5 s, or 30 s in an integration/e2e test folder. All supported runners share this policy. Suspected slow tests are rerun without coverage instrumentation, using the existing head policy's thresholds and reviewed exceptions; unchanged test calls do not add findings.
 - `nitpicker/no-real-time-random-or-network`: in tests, no `Date.now()`, `new Date()` without an
   argument or `Math.random()` (fake the clock with `vi.useFakeTimers()` and `vi.setSystemTime`, or
@@ -922,11 +1101,16 @@ hop, and type-only imports do not count.
 - `vitest/no-conditional-expect` (from the vitest recommended set) reports an `expect` inside a `catch` or a branch; the message adds that a test asserts a failure with `expect(() => run()).toThrow(Specific)` or `await expect(promise).rejects.toThrow(Specific)`.
 - `vitest/no-conditional-in-test` is enabled for test files: no `if`, ternary or `&&`/`||` branching
   inside a test body. Give each outcome its own `it.each` table row instead of branching on it.
+  Assertions inside loops are `nitpicker/no-assertion-in-loop`.
 - The vitest config nitpicker runs tests with (`defaults/vitest.quality.config.ts`, used for
   coverage and mutation) sets `restoreMocks: true`, so a `vi.spyOn` spy is restored after every test
   even when an assertion fails, and cannot leak into the next test. It also overrides a
   `restoreMocks` value in the project's own vitest config for these runs. Jest runs with
-  `--restoreMocks` for the same reason, and `node:test` restores a test's `t.mock` itself. Neither
+  `--restoreMocks` for the same reason, and `node:test` restores a test's `t.mock` itself. Jest's
+  coverage run also gets `--coveragePathIgnorePatterns=/node_modules/` beside nitpicker's own
+  `--collectCoverageFrom` globs, so a `coveragePathIgnorePatterns` in the project's Jest config (or
+  one of its `projects`) cannot leave source files unmeasured; `exclude` in `nitpicker.config.json`
+  is the way to leave a file out. Neither
   Vitest nor Jest restores fake timers automatically: call `vi.useRealTimers()` (or
   `jest.useRealTimers()`) in `afterEach`.
 
@@ -1558,6 +1742,15 @@ from a real caller) and the `exceptions` entry that lifts it.
   `no-unsafe-type-assertion` (the `as`, class and member bans cover them), and `no-explicit-any` and
   `no-non-null-assertion` are off in production code because the strict selectors report the same
   sites with a message that names the allowed form.
+- A project that opts in with `tools.eslint.precedence` has its own `eslint.config.*` layered over these
+  configs (`layeredPolicy` in `languages/typescript/adapters/lint-engine/project-layer.mjs`), on both lint
+  engines and for the JavaScript preset too. It can add rules and tune nitpicker's, only on the files
+  nitpicker runs each rule on, and never switch one of them off. Its `no-restricted-syntax`,
+  `no-restricted-globals` and `no-restricted-properties` entries are added to nitpicker's, and a `max-*`
+  or `complexity` limit takes the lower of the two. Any other options replace nitpicker's for the files
+  the entry matches, which can weaken a rule (`allowEmptyCatch: true` for `no-empty`), so the policy
+  review lists each nitpicker rule whose options the project replaces; see
+  [ESLint configs](usage.md#eslint-configs-typescript-and-javascript-presets).
 - `no-restricted-syntax` is one rule with one list per scope. ESLint flat config replaces a rule's
   options when several config objects match the same file, so each scope carries the complete list:
   `restrictedSyntaxByScope` in `eslint-config/strict.mjs` has `source`, `configFile`, `domain` and `adapters`, and
