@@ -70,6 +70,8 @@ const REVIEW_RULES = new Set([
   'CompatibilityShim',
   'LegacyCalendarApi',
   'ClassLoadEffect',
+  'LockOrderInversion',
+  'InconsistentFieldLocking',
   'SpringUnusedContext',
   'TestClassWithoutTestCases',
   'test-only-export',

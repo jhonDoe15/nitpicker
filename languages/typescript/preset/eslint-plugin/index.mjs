@@ -73,6 +73,7 @@ import { rule as noUnknownMainFolder } from './rules/guards/no-unknown-main-fold
 import { rule as noUnsafePathJoin } from './rules/guards/no-unsafe-path-join.mjs';
 import { rule as noMagicNumbers } from './rules/wrapped/no-magic-numbers.mjs';
 import { rule as namingConvention } from './rules/wrapped/naming-convention.mjs';
+import { rule as requireAtomicUpdates } from './rules/wrapped/require-atomic-updates.mjs';
 import { testAssertionRules } from './test-assertions/rules.mjs';
 import { rule as noTestHelpersInSource } from './test-placement/no-test-helpers-in-source.mjs';
 import { testIsolationRules } from './test-isolation/rules.mjs';
@@ -114,6 +115,7 @@ export const nitpickerRules = {
     'unbounded-fan-out': unboundedFanOut,
     'no-magic-numbers': noMagicNumbers,
     'naming-convention': namingConvention,
+    'require-atomic-updates': requireAtomicUpdates,
     'no-unsafe-path-join': noUnsafePathJoin,
     'no-mocking-subject-under-test': noMockingSubjectUnderTest,
     'cognitive-complexity': cognitiveComplexity,
