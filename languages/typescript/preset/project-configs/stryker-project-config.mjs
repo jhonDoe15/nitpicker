@@ -1,11 +1,11 @@
-import { isPlainObject, isStringList } from '../../../../shared/config.mjs';
+import { isPlainObject, isStringList, picked } from '../../../../shared/config.mjs';
 import { isRegularFile, resolveInside } from '../../../../shared/conventions/read-inside.mjs';
 import {
   missingProjectConfig,
   precedenceLayers,
 } from '../../../../shared/conventions/tool-precedence.mjs';
 import { readHeadPolicyFile } from '../../../../shared/head-policy.mjs';
-import { pickedKeys, readConfigObject } from './config-module.mjs';
+import { readConfigObject } from './config-module.mjs';
 
 export const STRYKER_TOOL = 'stryker';
 
@@ -77,7 +77,7 @@ export function readStrykerProjectConfig(projectRoot) {
     );
   }
   return checkedTypes(
-    pickedKeys(readConfigObject(projectRoot, name), [...RANKED_KEYS, ...LIST_KEYS]),
+    picked(readConfigObject(projectRoot, name), [...RANKED_KEYS, ...LIST_KEYS]),
     name,
   );
 }
@@ -126,7 +126,7 @@ export function layeredStrykerConfig(config, settings = readHeadPolicyFile().too
     return config;
   }
   const { nitpickerFirst } = precedenceLayers(settings.precedence);
-  const ranked = pickedKeys(
+  const ranked = picked(
     project,
     RANKED_KEYS.filter((key) => !nitpickerFirst || config[key] === undefined),
   );

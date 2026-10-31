@@ -1,8 +1,8 @@
 import { createHash } from 'node:crypto';
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
-import { isPlainObject, isStringList } from '../../../shared/config.mjs';
-import { staysInside } from '../../../shared/conventions/read-inside.mjs';
+import { isPlainObject, isStringList, listOf } from '../../../shared/config.mjs';
+import { isRealPathInside } from '../../../shared/conventions/read-inside.mjs';
 import {
   JSCPD_PROJECT_FILE,
   missingProjectConfig,
@@ -48,7 +48,7 @@ function projectFile(projectRoot) {
   if (!existsSync(file)) {
     throw new Error(missingProjectConfig('jscpd', JSCPD_PROJECT_FILE));
   }
-  if (!staysInside(projectRoot, file)) {
+  if (!isRealPathInside(projectRoot, file)) {
     throw new Error(`${JSCPD_PROJECT_FILE} must stay inside the project`);
   }
   return file;
@@ -110,13 +110,6 @@ export function resolveJscpdPolicy(settings, projectRoot) {
     projectConfig,
     projectConfigDigest: createHash('sha256').update(JSON.stringify(projectConfig)).digest('hex'),
   };
-}
-
-function listOf(value) {
-  if (value === undefined) {
-    return [];
-  }
-  return Array.isArray(value) ? value : [value];
 }
 
 function detectionKeys(config, keep) {

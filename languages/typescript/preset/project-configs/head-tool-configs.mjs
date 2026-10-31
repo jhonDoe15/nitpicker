@@ -1,9 +1,7 @@
 import { precedenceLayers } from '../../../../shared/conventions/tool-precedence.mjs';
-import { pickedKeys } from './config-module.mjs';
 import { mutationDisabled, readStrykerProjectConfig } from './stryker-project-config.mjs';
 
 const PROJECT_CONFIG_READERS = new Map([['stryker', readStrykerProjectConfig]]);
-const HEAD_KEYS = ['projectConfig', 'projectConfigError'];
 
 function captured(read, projectRoot) {
   try {
@@ -22,6 +20,9 @@ function readsProject(tool, settings, config) {
 }
 
 export function withHeadToolConfigs(tools, config, projectRoot) {
+  if (tools === undefined) {
+    return undefined;
+  }
   return Object.fromEntries(
     Object.entries(tools).map(([tool, settings]) => [
       tool,
@@ -30,11 +31,4 @@ export function withHeadToolConfigs(tools, config, projectRoot) {
         : settings,
     ]),
   );
-}
-
-export function headProjectConfigFacts(settings, headSettings = {}) {
-  if (HEAD_KEYS.every((key) => headSettings[key] === undefined)) {
-    return { ...headSettings, precedence: headSettings.precedence ?? ['nitpicker'] };
-  }
-  return { ...settings, ...pickedKeys(headSettings, HEAD_KEYS) };
 }

@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
-import { withoutHostCiOutput } from '../../tooling/child-output.mjs';
 import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
+import { withoutHostCiOutputs } from '../../tooling/host-environment.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -30,7 +30,7 @@ function settleClose(task, { failure, status, signal, stdout, stderr }, { resolv
 function spawnAnalyzer(task) {
   const child = spawn(task.invocation.command, task.invocation.args, {
     cwd: task.invocation.cwd,
-    env: withoutHostCiOutput(task.invocation.env ?? process.env),
+    env: withoutHostCiOutputs(task.invocation.env ?? process.env),
     detached: process.platform !== 'win32',
     stdio: ['ignore', 'pipe', 'pipe'],
   });
