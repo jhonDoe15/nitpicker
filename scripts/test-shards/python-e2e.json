@@ -15,6 +15,7 @@
   "languages/python/adapters/e2e/type-analysis/basedpyright.e2e.test.mjs": 18,
   "languages/python/adapters/e2e/type-analysis/columns.e2e.test.mjs": 15,
   "languages/python/adapters/e2e/type-analysis/import-scan.e2e.test.mjs": 1,
+  "languages/python/adapters/e2e/type-analysis/string-scan.e2e.test.mjs": 1,
   "languages/python/adapters/e2e/type-analysis/type-checking-imports.e2e.test.mjs": 35,
   "languages/python/adapters/formatting/format-scope.e2e.test.mjs": 1,
   "languages/python/adapters/project-tools/mypy.e2e.test.mjs": 11,
