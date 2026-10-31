@@ -52,31 +52,41 @@ function testPlacementBlock(layout, { testAreaGlobs, testRootsOnDisk }) {
   };
 }
 
+function honestyRulesBlock(layout, { files, assertionFunctionNames }) {
+  return {
+    files,
+    ignores: layout.excludedGlobs,
+    linterOptions: escapeHatchLinterOptions,
+    plugins: { nitpicker: nitpickerRules, vitest },
+    rules: {
+      'nitpicker/no-comments': ['error', { suppressionsOnly: true }],
+      'nitpicker/no-shared-test-state': 'error',
+      'nitpicker/no-copy-pasted-tests': 'error',
+      'nitpicker/fake-timers-require-restore': 'error',
+      'nitpicker/no-real-time-random-or-network': 'error',
+      'nitpicker/no-switched-off-tests': 'error',
+      'nitpicker/no-float-equality-in-tests': 'error',
+      'nitpicker/no-assertion-in-loop': ['error', { assertionFunctionNames }],
+      'nitpicker/no-unowned-async-assertion': 'error',
+      'vitest/no-restricted-matchers': ['error', restrictedMatchers],
+      'vitest/prefer-called-with': 'error',
+      'vitest/require-to-throw-message': 'error',
+    },
+  };
+}
+
 export function testHonestyConfigFor(
   layout,
-  { setupFiles = [], stubRestores = [], testRootsOnDisk = layout.testRoots } = {},
+  {
+    setupFiles = [],
+    stubRestores = [],
+    testRootsOnDisk = layout.testRoots,
+    assertionFunctionNames = [],
+  } = {},
 ) {
   const files = testAreaGlobsFor(layout);
   return [
-    {
-      files,
-      ignores: layout.excludedGlobs,
-      linterOptions: escapeHatchLinterOptions,
-      plugins: { nitpicker: nitpickerRules, vitest },
-      rules: {
-        'nitpicker/no-comments': ['error', { suppressionsOnly: true }],
-        'nitpicker/no-shared-test-state': 'error',
-        'nitpicker/no-copy-pasted-tests': 'error',
-        'nitpicker/fake-timers-require-restore': 'error',
-        'nitpicker/no-real-time-random-or-network': 'error',
-        'nitpicker/no-switched-off-tests': 'error',
-        'nitpicker/no-float-equality-in-tests': 'error',
-        'nitpicker/no-unowned-async-assertion': 'error',
-        'vitest/no-restricted-matchers': ['error', restrictedMatchers],
-        'vitest/prefer-called-with': 'error',
-        'vitest/require-to-throw-message': 'error',
-      },
-    },
+    honestyRulesBlock(layout, { files, assertionFunctionNames }),
     {
       files: unitTestGlobsFor(layout),
       ignores: layout.excludedGlobs,
