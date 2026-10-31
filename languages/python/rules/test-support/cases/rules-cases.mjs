@@ -35,6 +35,7 @@ export const RULES_CASES = [
   ...rulesCases('credential-shape', [['credential-shape', 'environment']]),
   ...rulesCases('secret-in-log', [['secret-in-log', 'masked tail']]),
   ...rulesCases('io-in-loop', [['io-in-loop', 'batch it']]),
+  ...rulesCases('unbounded-fan-out', [['unbounded-fan-out', 'asyncio.semaphore']]),
   ...rulesCases('todo-without-issue', [['todo-without-issue', '# todo(#123)']]),
   ...rulesCases('skipped-test', [['skipped-test-without-reason', 'reason=']]),
   ...rulesCases('sleep-in-test', [['sleep-in-test', 'fake clock']]),
