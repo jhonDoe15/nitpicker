@@ -611,6 +611,14 @@
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/no-test-helpers-in-source" },
+    "nitpicker/no-test-retry",
+    "Remove the retry: a test that passes on a later attempt hides a flaky or racy test. Fix the cause, such as waiting on the condition instead of a delay or isolating shared state.",
+    [
+      {
+        "message": "Remove the retry: a test that passes on a later attempt hides a flaky or racy test. Fix the cause, such as waiting on the condition instead of a delay or isolating shared state."
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/no-test-retry" },
     "nitpicker/no-throw",
     "Disallow throw so expected failures are returned as discriminated unions",
     [
