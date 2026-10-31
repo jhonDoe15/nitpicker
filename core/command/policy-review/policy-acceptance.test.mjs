@@ -48,15 +48,19 @@ describe('policyAcceptance', () => {
     expect(policyAcceptance({ shardIndex: 1 }, {}).reportsPolicy).toBe(false);
   });
 
-  it('reads the digest from the command line and rejects the flag without one', () => {
+  it('reads the digest from the command line', () => {
     expect(
       policyAcceptance(parseArguments([`--accept-policy-change=${DIGEST}`]), {}, true)
         .acceptPolicyChange,
     ).toBe(DIGEST);
-    for (const argument of ['--accept-policy-change', '--accept-policy-change=']) {
+  });
+
+  it.each(['--accept-policy-change', '--accept-policy-change='])(
+    'rejects %s without a digest',
+    (argument) => {
       expect(() => parseArguments([argument])).toThrow(
         'takes the digest that the policy-loosened finding names: --accept-policy-change=<digest>',
       );
-    }
-  });
+    },
+  );
 });
