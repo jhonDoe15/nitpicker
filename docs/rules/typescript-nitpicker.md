@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 87 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 88 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -847,6 +847,21 @@ Use an explicit completion signal or advanceTimersByTimeAsync and a direct asser
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-wait-for-with-fake-timers","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - Use an explicit completion signal or advanceTimersByTimeAsync and a direct assertion; waitFor advances fake time.
+
+<a id="eslint-nitpicker-no-weak-assertion"></a>
+
+### `eslint/nitpicker/no-weak-assertion`
+
+Require tests to pin the value, its contents or length, and the call arguments instead of a weak check.
+
+- **Printed as:** `eslint-lint/nitpicker/no-weak-assertion`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-weak-assertion","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `{{found}}` passes for any value but {{absent}}, the same weak check as `not.toBeNull`. Assert the value itself with `toBe` or `toEqual`, such as `expect(user).toEqual({ id: 1 })`. An exception fits only when the value cannot be pinned.
+  - `{{found}}` passes for any value but {{absent}}. Assert the value itself, such as `assert.deepStrictEqual(user, { id: 1 })` or `assert.strictEqual(user.id, 1)`. An exception fits only when the value cannot be pinned.
+  - `{{found}}` passes for any non-empty value. Assert the contents or the exact length, such as `expect(rows).toEqual([...])` or `expect(rows).toHaveLength(3)`. An exception fits only when the value cannot be pinned.
+  - `{{found}}` passes for any non-empty value. Assert the contents or the exact length, such as `assert.deepStrictEqual(rows, [...])` or `assert.strictEqual(rows.length, 3)`. An exception fits only when the value cannot be pinned.
+  - `{{found}}` passes for a call with any arguments. Pass the values the call should receive, such as `expect(spy).toHaveBeenCalledWith(orderId)`; keep `expect.any(Type)` for an argument that varies and pin the others. An exception fits only when the value cannot be pinned.
 
 <a id="eslint-nitpicker-no-weak-hash"></a>
 

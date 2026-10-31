@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 59 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 60 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -516,6 +516,15 @@ The task marker `<name>` has no issue.
 
 - **Allowed form:** Run the cleanup in a shielded scope with a deadline: `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()` (`anyio.CancelScope(deadline=anyio.current_time() + 5, shield=True)` in AnyIO; `move_on_after(5, shield=True)` needs Trio 0.27 or later). A shield without a deadline can hang shutdown.
 - **Exception:** If this is intended, add `{"rule":"unshielded-cleanup-await","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-weak-assertion"></a>
+
+### `python-rules/weak-assertion`
+
+`<name>` passes for almost any value.
+
+- **Allowed form:** Assert the exact value, contents or length, or the call arguments: `assert rows == expected`, `m.assert_called_once_with(order_id)`.
+- **Exception:** If this is intended, add `{"rule":"weak-assertion","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-weak-hmac"></a>
 
