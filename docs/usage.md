@@ -174,6 +174,16 @@ first there). A lockfile that does not match its `package.json` fails the frozen
 tool error carries the manager's message. Installing the base is not supported on native Windows
 (run nitpicker in WSL).
 
+Local packages (`file:`, `link:` and `portal:` dependencies) resolve against the temporary
+worktree, so a package outside the repository (`file:../shared-lib`, `file:../nitpicker-0.1.0.tgz`)
+or one that is not committed would be missing there. Before the install, nitpicker copies each such
+package from your working tree to the matching place next to the worktree, leaving out its
+`node_modules` and `.git`, and removes the copies afterwards. The copy is the package as it is now,
+not as it was at the base. A package that is not in your working tree either is named in the tool
+error. On Node.js 22, npm 10 can stop with `Cannot read properties of null (reading 'edgesOut')`
+while it resolves the optional peer dependencies of Vitest 4; the tool error then says to update npm
+(`npm install --global npm@11`).
+
 ### Reports
 
 A comparison run writes these files to `reports/quality/diff/`:
