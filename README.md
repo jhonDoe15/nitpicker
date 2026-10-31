@@ -2,7 +2,7 @@
 
 **A quality gate that holds coding agents to one allowed way of writing each thing.**
 
-[Usage](docs/usage.md) · [Mindset](docs/mindset.md) · [Checks](spec/checks.md)
+[Usage](docs/usage.md) · [Mindset](docs/mindset.md) · [Checks](spec/checks.md) · [Rule reference](docs/rules/README.md)
 
 Flexible languages offer many ways to write the same thing, and coding agents use all of them.
 Agents also repeat the same mistakes: swallowed errors, casts instead of checks, tests that cannot
@@ -113,7 +113,8 @@ If a rule flags code that is right, its message ends with the entry to add to
 `exceptions` in `nitpicker.config.json`: the rule, the paths and a reason a reviewer fills in. Review sees it, and every report lists
 it. If a rule flags right code often, [open an issue](https://github.com/jhonDoe15/nitpicker/issues):
 the fix is a narrower rule, not a rule that is off. [Mindset](docs/mindset.md) explains how rules
-are chosen.
+are chosen, and the [rule reference](docs/rules/README.md) lists every rule with its allowed form, or
+with a link to the tool's own page for the rule where the reference has no allowed form of its own.
 
 ## Documentation
 
@@ -123,6 +124,9 @@ are chosen.
 - [nitpicker in CI](docs/ci.md): GitHub Actions (the action and plain steps), GitLab CI, Jenkins,
   the toolchain each preset needs.
 - [Checks](spec/checks.md): every check and rule, and what fails.
+- [Rule reference](docs/rules/README.md): one entry for every rule any preset can report, with the
+  allowed form (or the tool's own page for the rule) and the exception to add.
+  `nitpicker explain <tool/rule>` prints one in the terminal.
 
 ## Contributing
 
