@@ -82,6 +82,12 @@ To learn why a rule is on and what form it allows before you write or change cod
   members and parameters (an override, a function with a framework annotation and a name starting
   `ignored` or `unused` are skipped). A public function's `Boolean` parameter that picks a behavior
   becomes two functions or an enum (`BooleanFlagParameter`).
+- Names and comments (`kotlin-source` rules): name packages, files and types for their job
+  (`PriceRounding.kt`), never `Utils`, `Helpers`, `Managers`, `Common`, `Misc` or `Miscellaneous`,
+  also not before `Mixin`, `Module` or `Base` (`HelperMixin`); a framework role such as
+  `TransactionManager` is fine; pure logic shared between features goes in
+  the shared package under such a name. Delete commented-out code, in tests too (`CommentedOutCode`);
+  a sample under an `Example:` heading is fine.
 - Signatures: a value with three states is an `enum class`, not a `Boolean?` parameter, return
   type or property (`kotlin-source/TriStateBoolean`; a property or parameter a framework fills,
   such as `@Column`, `@JsonProperty`, `@SerialName` or an `@Entity` property, is exempt); a public

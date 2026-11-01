@@ -133,6 +133,7 @@ describe('readKotlinSourceFindings', () => {
         'CredentialLiteral',
         'DetachedTestCase',
         'GeneratedOnHandWrittenCode',
+        'GenericFileName',
         'GenericPackageName',
         'GenericTypeName',
         'HardcodedSecret',
