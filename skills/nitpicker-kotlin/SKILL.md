@@ -46,6 +46,14 @@ To learn why a rule is on and what form it allows before you write or change cod
   `checkNotNull(value) { "why" }` when null is a bug; `x?.let { ... }`, not `if (x == null) null else ...`.
 - Coroutines: no `GlobalScope`, no `runBlocking` (a call, however it is imported). Make the caller `suspend`
   (`suspend fun main()` for an entry point) and use `coroutineScope { launch { ... } }`; a test uses `runTest`.
+- Do not wrap suspending work in `runCatching`: it captures cancellation. Call directly or catch
+  only an expected specific failure. Non-suspending `runCatching` is allowed.
+- In a suspend function or coroutine, a `catch` of `CancellationException` rethrows it (`throw e`) or calls
+  `ensureActive()`; a `catch` of `InterruptedException` rethrows or calls `Thread.currentThread().interrupt()`.
+  Logging or returning a default swallows it (`pmd/SwallowedCancellation`, `pmd/SwallowedInterrupt`).
+- Inject a dispatcher (`dispatcher: CoroutineDispatcher = Dispatchers.IO`) instead of naming `Dispatchers.IO`
+  in main code; no `suspend` on a function that never suspends or returns a `Flow`; no `suspend`
+  `CoroutineScope` extension; `delay`, never `Thread.sleep`, in a `suspend` function.
 - Fan-out: bound concurrent remote or message calls. One `Semaphore(8)` with `withPermit { ... }` around each call,
   `chunked(n)`, or `flatMapMerge(concurrency = n)`; never `items.map { async { client.get(it) } }.awaitAll()` over a
   runtime collection. `limitedParallelism(n)` caps threads, not suspending calls in flight.

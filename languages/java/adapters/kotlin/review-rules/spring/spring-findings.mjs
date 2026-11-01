@@ -1,5 +1,3 @@
-import { exceptionMatcher } from '../../../../../../shared/rules/exceptions.mjs';
-import { inModule } from '../../../../builds/module-path.mjs';
 import { COLUMN_RULES } from './data/columns.mjs';
 import { ENTITY_RULES } from './data/entities.mjs';
 import { LOOP_RULES } from './data/loops.mjs';
@@ -52,35 +50,6 @@ export function springFindings(
       .toSorted((left, right) => left.line - right.line)
       .map(({ rule, line, symbol, key }) =>
         finding({ rule, file: view.file.file, line, symbol, key, message: message(rule) }),
-      ),
-  );
-}
-
-const COVERED_SOURCE_RULES = {
-  HttpWithoutTimeout: new Set(['SpringHttpClientTimeouts', 'SpringHttpClientPerCall']),
-  IoCallInLoop: new Set([
-    'SpringDataNoSaveInLoop',
-    'SpringDataBatchOfOne',
-    'SpringDataRowWriteInLoop',
-    'SpringDataSaveInLoopHelper',
-  ]),
-};
-
-export function withoutCoveredSourceFindings(findings, { exceptions = [], modulePath } = {}) {
-  const lifted = exceptionMatcher(exceptions);
-  const reported = new Set(
-    findings
-      .filter(
-        ({ tool, rule, path }) =>
-          tool === 'pmd' && !lifted(`${tool}/${rule}`, inModule(modulePath, path)),
-      )
-      .map(({ rule, path, location }) => `${rule}\0${path}\0${String(location?.line)}`),
-  );
-  return findings.filter(
-    ({ tool, rule, path, location }) =>
-      tool !== 'kotlin-source' ||
-      ![...(COVERED_SOURCE_RULES[rule] ?? [])].some((covering) =>
-        reported.has(`${covering}\0${path}\0${String(location?.line)}`),
       ),
   );
 }
