@@ -51,13 +51,21 @@ export function parseFinding(value, context = 'finding') {
   };
 }
 
+const OPTIONAL_PARSERS = {
+  symbol: requiredString,
+  location: parseLocation,
+  ratchet: parseRatchet,
+  tokens: parseTokens,
+  anchor: parseAnchor,
+  helpUri: parseHelpUri,
+};
+
 function parseOptionalFields(value, classification, context) {
   const fields = {};
-  if (value.symbol !== undefined) {
-    fields.symbol = requiredString(value.symbol, `${context}.symbol`);
-  }
-  if (value.location !== undefined) {
-    fields.location = parseLocation(value.location, `${context}.location`);
+  for (const [name, parse] of Object.entries(OPTIONAL_PARSERS)) {
+    if (value[name] !== undefined) {
+      fields[name] = parse(value[name], `${context}.${name}`);
+    }
   }
   if (value.metric !== undefined) {
     if (classification !== 'descriptive') {
@@ -65,21 +73,7 @@ function parseOptionalFields(value, classification, context) {
     }
     fields.metric = parseMetric(value.metric, `${context}.metric`);
   }
-  return { ...fields, ...parseLaterFields(value, context) };
-}
-
-function parseLaterFields(value, context) {
-  return {
-    ...(value.ratchet === undefined
-      ? {}
-      : { ratchet: parseRatchet(value.ratchet, `${context}.ratchet`) }),
-    ...(value.tokens === undefined
-      ? {}
-      : { tokens: parseTokens(value.tokens, `${context}.tokens`) }),
-    ...(value.helpUri === undefined
-      ? {}
-      : { helpUri: parseHelpUri(value.helpUri, `${context}.helpUri`) }),
-  };
+  return fields;
 }
 
 function parseAdvice(value, message, context) {
@@ -129,7 +123,22 @@ function parseMetric(value, context) {
   };
 }
 
+function parseAnchor(value, context) {
+  if (!isRecord(value)) {
+    throw new TypeError(`${context} must be an object`);
+  }
+  const anchor = { key: requiredString(value.key, `${context}.key`) };
+  if (value.requireUnchangedLine !== undefined) {
+    if (typeof value.requireUnchangedLine !== 'boolean') {
+      throw new TypeError(`${context}.requireUnchangedLine must be a boolean`);
+    }
+    anchor.requireUnchangedLine = value.requireUnchangedLine;
+  }
+  return anchor;
+}
+
 const RATCHET_TEXT_FIELDS = [
+  'declarationKey',
   'worseMessage',
   'worseAllowedForm',
   'growthAdvice',

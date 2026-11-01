@@ -183,9 +183,11 @@ describe.skipIf(!pythonE2eEnabled)(
             },
             exceptionList: 'exceptions',
             classification: 'enforceable',
+            anchor: { key: expect.stringMatching(/^function:\w+:text:/u) },
             location: { line: 1 },
             ratchet: {
               key: 'function:wide:occurrence:1:parameters',
+              declarationKey: expect.stringMatching(/:declaration:/u),
               value: 5,
               worseMessage:
                 'wide grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.',
@@ -219,9 +221,11 @@ describe.skipIf(!pythonE2eEnabled)(
             },
             exceptionList: 'exceptions',
             classification: 'enforceable',
+            anchor: { key: expect.stringMatching(/^function:\w+:text:/u) },
             location: { line: 2, endLine: 12 },
             ratchet: {
               key: 'function:pipeline.score:crap',
+              declarationKey: expect.stringMatching(/:declaration:/u),
               value: 10,
               worseMessage:
                 'pipeline.score CRAP rose from {base} to 10 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/pipeline.py"],"function":"pipeline.score","reason":"..."} to "exceptions" in nitpicker.config.json.',
@@ -255,9 +259,11 @@ describe.skipIf(!pythonE2eEnabled)(
             },
             exceptionList: 'exceptions',
             classification: 'enforceable',
+            anchor: { key: expect.stringMatching(/^function:\w+:text:/u) },
             location: { line: 1, endLine: 8 },
             ratchet: {
               key: 'function:pick:crap',
+              declarationKey: expect.stringMatching(/:declaration:/u),
               value: 20,
               worseMessage:
                 'pick CRAP rose from {base} to 20 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',

@@ -80,6 +80,15 @@ describe('testCasesOf', () => {
   });
 });
 
+describe('testCasesOf with reruns', () => {
+  it('does not time a case that failed and passed on a rerun', () => {
+    const xml =
+      '<testsuite name="shop.OrderTest"><testcase name="a" classname="shop.OrderTest" time="9"><flakyFailure message="no"/></testcase><testcase name="b" classname="shop.OrderTest" time="1"/></testsuite>';
+
+    expect(testCasesOf(xml, 'test').map(({ name }) => name)).toEqual(['b']);
+  });
+});
+
 describe('readSlowTestFindings', () => {
   it('fails a unit test over 5 s with the budget, the time, the fixes and the exception route', () => {
     const findings = findingsFor({

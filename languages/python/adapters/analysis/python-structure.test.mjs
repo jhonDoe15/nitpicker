@@ -117,6 +117,7 @@ describe('reading the structure report', () => {
     expect(edited.ratchet.key).toBe(before.ratchet.key);
     expect(before.ratchet).toEqual({
       key: 'function:Service.handle:occurrence:1:parameters',
+      declarationKey: 'function:Service.handle:declaration:6761e5af17ceff276b3e432b:parameters',
       value: 4,
       worseMessage:
         'Service.handle grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/service.py"],"function":"Service.handle","reason":"..."} to "exceptions" in nitpicker.config.json.',

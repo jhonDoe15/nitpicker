@@ -117,6 +117,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset mutation gates end to end', ()
       exceptionList: 'exceptions',
       classification: 'enforceable',
       symbol: 'discount',
+      anchor: { key: expect.stringMatching(/^mutant:/u), requireUnchangedLine: true },
       location: { line: 2 },
     });
   });

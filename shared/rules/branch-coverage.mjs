@@ -30,6 +30,7 @@ export function branchCoverageFindings(
       allowedForm: branchAllowedForm(branch),
       classification: 'enforceable',
       ...(isNamed(branch) ? { symbol: branch.symbol } : {}),
+      anchor: { key: `branch:${branch.anchor ?? branch.key}`, requireUnchangedLine: true },
       ...(positiveInteger(branch.line) === undefined ? {} : { location: { line: branch.line } }),
     });
   }

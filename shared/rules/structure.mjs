@@ -45,6 +45,8 @@ const METADATA_FIELDS = new Set([
   'file',
   'name',
   'sourceHash',
+  'anchorHash',
+  'declarationHash',
   'numberedAmongSameSource',
   'start',
   'end',
@@ -140,7 +142,15 @@ function limitFinding({
       worseMessage: withHint(worse.message, route),
       ...definedField('worseAllowedForm', worse.allowedForm),
       heldMessage: renderMessage(HELD_MESSAGES[metricName], values),
+      ...(typeof entry.declarationHash === 'string'
+        ? {
+            declarationKey: `function:${entry.name}:declaration:${entry.declarationHash}:${metricName}`,
+          }
+        : {}),
     },
+    ...(typeof entry.anchorHash === 'string'
+      ? { anchor: { key: `function:${metricName}:text:${entry.anchorHash}` } }
+      : {}),
     ...(positiveInteger(entry.start) === undefined ? {} : { location: { line: entry.start } }),
   };
 }
