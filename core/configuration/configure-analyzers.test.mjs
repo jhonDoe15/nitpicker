@@ -3,7 +3,10 @@ import { configuredAnalyzers } from '../../languages/typescript/preset/diff/conf
 import { resolveHeadPolicy } from '../../languages/typescript/preset/head-policy.mjs';
 import { createPythonAnalyzers } from '../../languages/python/adapters/python-analyzer.mjs';
 import { createJavaAnalyzer } from '../../languages/java/adapters/java-analyzer.mjs';
+import { createGoAnalyzer } from '../../languages/go/adapters/go-analyzer.mjs';
 import { configureAnalyzers } from './configure-analyzers.mjs';
+import { describeConfigOverrides } from './config.mjs';
+import { validateConfig } from './validate.mjs';
 
 const packageAnalyzers = configuredAnalyzers();
 describe('configureAnalyzers', () => {
@@ -137,5 +140,58 @@ describe('the baseline moves file', () => {
     expect(configuredArguments('python', createPythonAnalyzers(), 'python')).not.toContain(
       '--baseline-moves-file',
     );
+  });
+});
+
+describe('analyzer timeouts', () => {
+  const MINUTE_MS = 60_000;
+
+  function timeoutsOf(config, analyzers = packageAnalyzers) {
+    validateConfig(config);
+    const configured = configureAnalyzers(analyzers, config, resolveHeadPolicy(config));
+    return Object.fromEntries(configured.map(({ name, timeoutMs }) => [name, timeoutMs]));
+  }
+
+  it('sets the deadline of a built-in and a custom analyzer, in every preset', () => {
+    const custom = [{ name: 'house-rules', command: './check.sh' }];
+    const timeouts = timeoutsOf({
+      analyzers: custom,
+      analyzerTimeoutMinutes: { 'eslint-lint': 20, 'house-rules': 3 },
+    });
+
+    expect(timeouts['eslint-lint']).toBe(20 * MINUTE_MS);
+    expect(timeouts['house-rules']).toBe(3 * MINUTE_MS);
+    expect(timeouts['prettier-format']).toBe(timeoutsOf({})['prettier-format']);
+    expect(
+      timeoutsOf(
+        { preset: 'python', analyzerTimeoutMinutes: { python: 90 } },
+        createPythonAnalyzers(),
+      ).python,
+    ).toBe(90 * MINUTE_MS);
+    expect(
+      [
+        ['java', createJavaAnalyzer()],
+        ['kotlin', createJavaAnalyzer({ kotlin: true })],
+        ['go', createGoAnalyzer()],
+      ].map(
+        ([preset, analyzer]) =>
+          timeoutsOf({ preset, analyzerTimeoutMinutes: { [preset]: 120 } }, [analyzer])[preset],
+      ),
+    ).toEqual([120 * MINUTE_MS, 120 * MINUTE_MS, 120 * MINUTE_MS]);
+  });
+
+  it('accepts a disabled analyzer and rejects an unknown one', () => {
+    expect(
+      timeoutsOf({ disable: ['mutation'], analyzerTimeoutMinutes: { mutation: 90 } }).mutation,
+    ).toBeUndefined();
+    expect(() => timeoutsOf({ analyzerTimeoutMinutes: { eslnt: 5 } })).toThrow(
+      /"analyzerTimeoutMinutes" names unknown analyzers: eslnt\. Known analyzers: .*eslint-lint/,
+    );
+  });
+
+  it('is left out of the overrides that make up the policy hash', () => {
+    expect(
+      describeConfigOverrides({ analyzerTimeoutMinutes: { java: 60 }, disable: ['crap'] }),
+    ).toEqual(['disable: ["crap"]']);
   });
 });
