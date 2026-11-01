@@ -68,25 +68,27 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6.1.0
         with:
           distribution: temurin
           java-version: 21
       # Caches ~/.gradle: the Kotlin compiler, detekt, ktlint, ktfmt, PMD, SpotBugs and PIT jars the init script
       # resolves, and the Kotlin Gradle plugin.
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6.4.1
         with:
           gradle-version: 8.14.3
+          # Keep caching on the MIT implementation; v6 defaults to a proprietary provider.
+          cache-provider: basic
       - run: npm ci
       - name: Kotlin end-to-end suite
         run: npm run test:kotlin -- --no-file-parallelism --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=default --reporter=json --outputFile=reports/kotlin-e2e/shard-${{ matrix.shard }}.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.2
         if: always()
         with:
           name: kotlin-e2e-${{ matrix.shard }}-${{ github.run_attempt }}
@@ -101,8 +103,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm

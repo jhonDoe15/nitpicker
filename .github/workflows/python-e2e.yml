@@ -69,15 +69,15 @@ jobs:
       # The suite's own `uv pip install` calls resolve to these versions too.
       UV_CONSTRAINT: ${{ github.workspace }}/.github/python-e2e-constraints.txt
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
       # 3.9 and 3.10 sit beside 3.13 (the default, listed last): the rules script runs on the oldest
       # supported Python and reports one skipped error below it.
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7.1.0
         with:
           python-version: |
             3.9
@@ -92,7 +92,7 @@ jobs:
       - run: pipx install poetry==2.4.3
       - run: npm ci
       - run: npm run test:python -- --maxWorkers=2 --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=default --reporter=json --outputFile=reports/python-e2e/shard-${{ matrix.shard }}.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.2
         if: always()
         with:
           name: python-e2e-${{ matrix.shard }}-${{ github.run_attempt }}
@@ -107,8 +107,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm
