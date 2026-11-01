@@ -80,9 +80,32 @@ describe('testHonestyFindings', () => {
     expect(HONESTY_RULES).toEqual([
       'DisabledTest',
       'FocusedTest',
+      'RetryInTest',
       'AssertionInControlFlow',
       'CoroutineEscapesTest',
     ]);
+  });
+
+  it('reports a retry in a config file that holds no test', () => {
+    const root = projectWith({
+      'src/test/kotlin/ProjectConfig.kt': `package demo
+
+import io.kotest.core.config.AbstractProjectConfig
+
+object ProjectConfig : AbstractProjectConfig() {
+    override val retries: Int? = 2
+}
+`,
+    });
+
+    const findings = findingsOf(root);
+
+    expect(findings.map(({ rule, identity, location }) => [rule, identity, location.line])).toEqual(
+      [['RetryInTest', 'RetryInTest:ProjectConfig:retries', 6]],
+    );
+    expect(routeOf(findings[0].message)).toBe(
+      'If this is intended, add {"rule":"pmd/RetryInTest","paths":["src/test/kotlin/ProjectConfig.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    );
   });
 
   it('keeps the identity when code above the finding moves it to another line', () => {
