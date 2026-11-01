@@ -79,11 +79,11 @@
     [
       {
         "label": "restatingDocComment",
-        "message": "Delete it, or say what the name cannot: a unit, a limit, an edge case or why."
+        "message": "This doc comment only restates <name>. ⟦Delete it, or say what the name cannot: a unit, a limit, an edge case or why.⟧"
       },
       {
         "label": "longDocComment",
-        "message": "Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types."
+        "message": "This doc comment's description is <lines> lines (limit <limit>). ⟦Keep the non-obvious point, a unit, a limit or an edge case, and put the rest in names and types.⟧"
       }
     ],
     "public-contract-production-use",
@@ -103,7 +103,7 @@
     { "typescript": ["coupling"], "javascript": ["coupling"] },
     "A module under a shared root that exactly one feature reaches and nothing else uses.",
     "`shared` is for code several features use; code with one user belongs with it.",
-    "Move it into <directory>.",
+    "<path> is used only by feature <feature>. ⟦Move it into <directory>.⟧",
     { "key": "exceptions", "rule": "shared-used-by-one-feature" },
     "stability-direction",
     {
@@ -156,11 +156,11 @@
     [
       {
         "label": "crapCoverageUnknown",
-        "message": "Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that."
+        "message": "<name> has unknown coverage and no CRAP score: no test runs it. ⟦Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that.⟧"
       },
       {
         "label": "crapCoverageUnknownJava",
-        "message": "Add a test that calls it, and remove @Generated from hand-written code."
+        "message": "<name> has unknown coverage and no CRAP score: JaCoCo has no data for it, so no test runs it or it is annotated @Generated. ⟦Add a test that calls it, and remove @Generated from hand-written code.⟧"
       }
     ],
     "crap-score-limit",
@@ -171,11 +171,11 @@
     [
       {
         "label": "crapScoreLimit",
-        "message": "Test its uncovered branches, or split a branchy part into its own function."
+        "message": "<name> has CRAP <crap>; score must be below <limit>. ⟦Test its uncovered branches, or split a branchy part into its own function.⟧"
       },
       {
         "label": "crapScoreLimitCovered",
-        "message": "Reduce its branches: split a branchy part into its own function."
+        "message": "<name> has CRAP <crap> although tests cover it; score must be below <limit>. ⟦Reduce its branches: split a branchy part into its own function.⟧"
       }
     ],
     "dead-code",
@@ -204,23 +204,23 @@
     [
       {
         "label": "testOnlyExport",
-        "message": "Remove `export`, or import it from production code."
+        "message": "Export <name> is only imported by tests. ⟦Remove `export`, or import it from production code.⟧"
       },
       {
         "label": "testOnlyReexport",
-        "message": "Remove the re-export and `export`, or import it from production code. If a host or tool loads <reexporter> instead of importing it, list it in \"layout.entryPoints\"."
+        "message": "If a host or tool loads <reexporter> instead of importing it, list it in \"layout.entryPoints\".⟧"
       },
       {
         "label": "testOnlyModule",
-        "message": "Move it to a test-support/ folder, or import it from production code."
+        "message": "Module <name> is only imported by tests. ⟦Move it to a test-support/ folder, or import it from production code.⟧"
       },
       {
         "label": "testOnlyDeclaration",
-        "message": "Make it private to its module, or use it from production code."
+        "message": "<name> is only used by tests. ⟦Make it private to its module, or use it from production code.⟧"
       },
       {
         "label": "testOnlyFile",
-        "message": "Move it beside the tests as a test helper, or use it from production code."
+        "message": "Module <name> is only used by tests. ⟦Move it beside the tests as a test helper, or use it from production code.⟧"
       }
     ],
     "types",
@@ -352,13 +352,13 @@
     { "java": ["java"], "kotlin": ["kotlin"], "python": ["python"] },
     "A class with more instance fields than the limit.",
     "Many fields mean a class holds state that belongs in separate types.",
-    "Group related fields into a record or a class of their own.",
+    "<name> has <value> fields (limit <limit>). ⟦Group related fields into a record or a class of their own.⟧",
     "more than 10 instance fields in a class of the main Java sources or the Python source roots, or in a Go struct outside test files; override with `thresholds.classFields`",
     { "key": "exceptions", "rule": "class-fields-limit" },
     "class-methods-limit",
     "A class with more methods than the limit.",
     "A class with many methods usually has more than one responsibility.",
-    "Split it into classes by responsibility.",
+    "<name> has <value> methods (limit <limit>). ⟦Split it into classes by responsibility.⟧",
     "more than 20 methods in a class of the main Java sources or the Python source roots, or on a Go type outside test files; override with `thresholds.classMethods`",
     { "key": "exceptions", "rule": "class-methods-limit" },
     "component-story-missing",
@@ -368,10 +368,13 @@
     "The JavaScript preset enforces this check only in part.",
     { "key": "exceptions", "rule": "component-story-missing" },
     [
-      { "label": "componentStoryMissing", "message": "Add <story> for <name>." },
+      {
+        "label": "componentStoryMissing",
+        "message": "Most components in this project have a story. ⟦Add <story> for <name>.⟧"
+      },
       {
         "label": "componentStoryMissingUnenforced",
-        "message": "Add <story>. Not enforced until more than half of the components have one."
+        "message": "<name> has no story. ⟦Add <story>.⟧ Not enforced until more than half of the components have one."
       }
     ],
     "duplicate-definition",
@@ -400,7 +403,7 @@
     },
     "A file longer than the limit (source and test files have separate limits).",
     "Long files collect unrelated responsibilities and are slow to review.",
-    "Split it into files by responsibility.",
+    "File has <value> lines (limit <limit>). ⟦Split it into files by responsibility.⟧",
     "more than 300 lines in a source file or 500 in a test file; override with `thresholds.fileLines` and `thresholds.testFileLines`",
     { "key": "exceptions", "rule": "file-lines-limit" },
     "folder-depth-limit",
@@ -412,13 +415,13 @@
     "folder-files-limit",
     "A folder with more source files, or more test files, directly in it than the limit.",
     "A flat folder of many files has no structure for a reader to follow.",
-    "Group related files into subfolders (packages in Java).",
+    "Folder has <value> <kind> files directly in it (limit <limit>). ⟦Group related files into subfolders (packages in Java).⟧",
     "more than 6 source files, or test files, directly in one folder; override with `thresholds.folderFiles`",
     { "key": "exceptions", "rule": "folder-files-limit" },
     "function-control-nesting-limit",
     "A function that nests control flow deeper than the limit.",
     "Deep nesting makes the paths through a function hard to follow and to test.",
-    "Return early instead of nesting.",
+    "<name> nests control flow <value> deep (limit <limit>). ⟦Return early instead of nesting.⟧",
     "control nesting deeper than 2",
     { "key": "exceptions", "rule": "function-control-nesting-limit", "function": true },
     "function-lines-limit",
@@ -436,53 +439,53 @@
     "function-statements-limit",
     "A function with more statements than the limit.",
     "Many statements usually mean several responsibilities in one function.",
-    "Split by responsibility and name each part for what it checks or does.",
+    "<name> has <value> statements; limit is <limit>. ⟦Split by responsibility and name each part for what it checks or does.⟧",
     "more than 15 statements",
     { "key": "exceptions", "rule": "function-statements-limit", "function": true },
     "inheritance-depth-limit",
     "A class that extends more superclasses than the limit.",
     "Deep inheritance spreads behaviour over many classes and couples them.",
-    "Hold the shared part as a field and delegate to it instead of extending.",
+    "<name> extends <value> classes deep (limit <limit>). ⟦Hold the shared part as a field and delegate to it instead of extending.⟧",
     "a class more than 3 superclasses deep in the main Java sources or the Python source roots (Go has no inheritance); override with `thresholds.inheritanceDepth`",
     { "key": "exceptions", "rule": "inheritance-depth-limit" },
     "javascript-in-typescript-project",
     { "typescript": ["structure"] },
     "A `.js`, `.mjs`, `.cjs` or `.jsx` file in a project that has a `tsconfig.json`.",
     "JavaScript in a TypeScript project has no type checking.",
-    "Write it as a .ts or .tsx file: <typescript>.",
+    "<path> is JavaScript in a TypeScript project, so its values are not type-checked. ⟦Write it as a .ts or .tsx file: <typescript>.⟧",
     { "key": "exceptions", "rule": "javascript-in-typescript-project" },
     "line-length-limit",
     "A line longer than the limit, except imports, URLs and the text of string literals.",
     "Long lines are hard to review in a diff and hide complexity.",
-    "Break it up or extract a named value.",
+    "Line is <value> characters (limit <limit>). ⟦Break it up or extract a named value.⟧",
     "a line longer than 120 characters, except imports, URLs and string literal text; override with `thresholds.lineLength` (Java files: the width of the formatter, 100 for google-java-format and 120 for palantir-java-format, or the `java.lineLength` convention (a Checkstyle `LineLength` max, a pin, or measured when no formatter runs); Kotlin files: detekt's)",
     { "key": "exceptions", "rule": "line-length-limit" },
     "new-icon-asset",
     "A new icon-sized `.svg` file while an icon package is a dependency.",
     "Icons from one package look consistent; one-off files pile up.",
-    "Use an icon from <package> instead of adding <path>.",
+    "⟦Use an icon from <package> instead of adding <path>.⟧",
     { "key": "exceptions", "rule": "new-icon-asset" },
     "redefined-library-component",
     "A component named like one the project already renders from a dependency.",
     "A second copy of a library component diverges from the real one.",
-    "<name> is already rendered from <package> in <count>. Use that one.",
+    "<name> is already rendered from <package> in <count>. ⟦Use that one.⟧",
     { "key": "exceptions", "rule": "redefined-library-component" },
     "sibling-copy-edit",
     "A function or class edited so that it drifts from its same-named copy in another module while that copy is left unedited.",
     "Editing one of two near-identical copies leaves the other with the old bug.",
-    "Edit it there too, or merge the copies.",
+    "<name> is edited here but not in <others>, where it has almost the same code. ⟦Edit it there too, or merge the copies.⟧",
     "a function or class edited so that it drifts from its same-named copy in another module of the package, at least 80% the same tokens before and after, while that copy is left unedited (Java and Kotlin: top-level classes and static, `object` and top-level functions)",
     { "key": "exceptions", "rule": "sibling-copy-edit" },
     "unused-option",
     { "typescript": ["structure"], "kotlin": ["kotlin"] },
     "A property of the options parameter of an exported function that no call sets; in Kotlin, a defaulted parameter of a private or internal function that no call names or fills.",
     "An option nobody sets is dead surface that every reader has to understand.",
-    "Remove it, or set it from a real call (<scope>).",
+    "Option <name> is never set. ⟦Remove it, or set it from a real call (<scope>).⟧",
     { "key": "exceptions", "rule": "unused-option" },
     "unused-prop",
     "A prop the project declares that no caller passes (a spread of a non-literal passes all).",
     "An option or prop nobody sets is dead surface that every reader has to understand.",
-    "Remove it, or pass it from a real caller (<scope>).",
+    "Prop <name> is never passed. ⟦Remove it, or pass it from a real caller (<scope>).⟧",
     { "key": "exceptions", "rule": "unused-prop" },
     "test-console",
     "test-console-output",
@@ -494,7 +497,7 @@
     },
     "A test file that prints console error or warn output the base run did not print.",
     "Console noise hides real warnings and usually points at a leaked timer or an unhandled error.",
-    "Fix the cause (for example a timer that outlives the test), or allow a third-party message in \"testConsole.allow\" of nitpicker.config.json.",
+    "Tests print new console output: <output>. ⟦Fix the cause (for example a timer that outlives the test), or allow a third-party message in \"testConsole.allow\" of nitpicker.config.json.⟧",
     { "key": "exceptions", "rule": "test-console-output" },
     ["test-runtime"],
     "test-runtime",

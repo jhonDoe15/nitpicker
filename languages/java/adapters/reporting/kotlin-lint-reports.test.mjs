@@ -155,6 +155,8 @@ describe('readJavaFindings with the kotlin preset: detekt, ktlint and ktfmt', ()
         identity: 'suppress:unused',
         message:
           'Suppressing "unused" inline would hide an unused parameter. Remove the parameter, or use it; a name starting `ignored` or `unused` marks one a signature requires. When reflection or a framework calls it with that signature, remove the suppression and lift the rule for this path instead. If this is intended, add {"rule":"detekt.style.UnusedParameter","paths":["src/main/kotlin/demo/Bad.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Remove the parameter, or use it; a name starting `ignored` or `unused` marks one a signature requires.',
         classification: 'enforceable',
       },
     ]);

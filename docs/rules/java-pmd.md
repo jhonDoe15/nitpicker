@@ -2185,7 +2185,7 @@ A `@SpringBootTest` class (no superclass, no `RANDOM_PORT` or `DEFINED_PORT`, al
 
 - **Scope:** Test sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Allowed form:** This @SpringBootTest starts the whole application context but uses nothing from it: no injected or mock bean, no MockMvc, WebTestClient, TestRestTemplate, CapturedOutput or ApplicationEvents, and no web server port. Make it a unit test that creates the class with new, or use a slice such as @WebMvcTest for one layer; @SpringBootTest is for integration and component tests.
+- **Allowed form:** Make this @SpringBootTest a unit test that creates the class with new, or use a slice such as @WebMvcTest for one layer; @SpringBootTest is for integration and component tests. This one starts the whole application context but uses nothing from it: no injected or mock bean, no MockMvc, WebTestClient, TestRestTemplate, CapturedOutput or ApplicationEvents, and no web server port.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringUnusedContext","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springvalidrequestbody"></a>
