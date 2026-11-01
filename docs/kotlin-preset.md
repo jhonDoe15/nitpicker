@@ -1040,10 +1040,17 @@ project that meets a kind it does not know takes the exception route and reports
 **What runs.** The Java preset's `nitpickerPit` (PIT 1.17.4 with the test plugins the project's
 framework needs, `pitest-junit5-plugin` 1.2.1 for Kotest and JUnit 5, default mutators, the
 project's own tests) mutates `sourceSets.main.output.classesDirs`, which holds the Kotlin
-classes next to the Java ones; the other class tools keep to `compileJava`'s output. The
-ingester finds a class's source file under both kinds of source root from PIT's `sourceFile`
-(also when the directory does not match the package, as for coverage). PIT's built-in `FKOTLIN`
-filter (on by default) removes only mutants at line 0 of a `.kt` file, which is not enough.
+classes next to the Java ones; the other class tools keep to `compileJava`'s output. PIT's
+minions get the JVM arguments the tests run with, on Gradle and Maven alike: on Gradle the test
+task's `jvmArgs`, `systemProperties`, `minHeapSize`, `maxHeapSize` and `jvmArgumentProviders` (not
+the JaCoCo agent), on Maven maven-surefire-plugin's `argLine` (its configuration, else the
+`argLine` property) followed by its `<systemProperties>` and `<systemPropertyVariables>` as `-D`
+arguments. They reach PIT through a Java argument file, so spaces, quotes and commas survive;
+[Slice 7: mutation with PIT](java-preset.md#slice-7-mutation-with-pit) lists the exact rules and
+what is left out. The ingester finds a class's source file under both kinds of source root from
+PIT's `sourceFile` (also when the directory does not match the package, as for coverage). PIT's
+built-in `FKOTLIN` filter (on by default) removes only mutants at line 0 of a `.kt` file, which is
+not enough.
 
 **The filter.** The `kotlin-psi` program that already writes `kotlin-metrics.json` and
 `kotlin-facts.json` (one parse of the sources, see [Structure limits](#structure-limits)) writes a
@@ -1560,6 +1567,14 @@ fails only when it grows, and a package folder moved to a new path is matched to
 | KT2 | One-way rules and skill (#177)               | This document: done.                                                                                                                                        |
 | KT3 | Structure, CRAP, duplicates, coupling (#178) | Done: structure limits and CRAP from a PSI metrics step (a token-based reader misreads Kotlin), jscpd with the Kotlin format and jdeps over Kotlin classes. |
 | KT4 | Changed coverage and mutation (#179)         | Done: `changed-branch-coverage` on Kotlin with generated-branch filtering; PIT on Kotlin classes, gated after a filter for generated code.                  |
+
+## Tools evaluated and not integrated
+
+- [Infer](infer-evaluation.md): not integrated; the license finding applies to Kotlin too, and its Kotlin
+  support captures `kotlinc` invocations only, not Gradle or Maven Kotlin builds.
+- [BlockHound](blockhound-evaluation.md): not integrated by nitpicker. With the `kotlinx-coroutines-debug`
+  integration on the test classpath it flags a blocking call on `Dispatchers.Default` and accepts it on
+  `Dispatchers.IO`; a project opts in with its own test dependencies and JVM flag.
 
 ## Known limits
 

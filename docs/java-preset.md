@@ -303,8 +303,29 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   classes (its `include` and `exclude` patterns applied), its runtime classpath, so tasks on
   different library versions never share one, and, for a JUnit Platform task, its `includeTags` and
   `excludeTags`, which select the tests PIT runs during the green-suite check and mutation testing,
-  including method-level tags. A task the build skips has no run. With more than one run, each
-  writes `pit/<task>/mutations.xml` and `nitpickerPit` merges them into `pit/mutations.xml`: a mutant
+  including method-level tags. Each run also gets the JVM arguments its test task gives the tests,
+  because PIT's minion JVMs run them: the task's `jvmArgs`, its `systemProperties` (a property set to
+  `null` as `-Dname`, as Gradle passes it), `minHeapSize` and `maxHeapSize` as `-Xms` and `-Xmx`, and
+  the arguments of its `jvmArgumentProviders`, except the JaCoCo plugin's agent: PIT measures coverage
+  itself, and the agent in every minion would write into the test task's JaCoCo data. So a flag the
+  tests need, such as `--add-opens` or BlockHound's `-XX:+AllowRedefinitionToAddDeleteMethods`,
+  reaches them. Debug options, `enableAssertions` (`-ea`) and the encoding and locale properties
+  Gradle sets on every test JVM are not passed, on Maven neither. The arguments are written one per
+  line to a Java argument file, `jvm-arguments` next to the run's `mutations.xml`, and PIT gets
+  `--argLine "@<file>"`, so an argument holding spaces, quotes or commas arrives as the tests got it
+  (PIT's `--jvmArgs` splits on every comma). On Maven the arguments come from maven-surefire-plugin
+  in the module's effective POM, read the way surefire reads them: the `<argLine>` of the
+  `default-test` execution (else of the first execution of the `test` goal) or of the plugin, else
+  the `argLine` property. A `@{name}` reference takes the value of that POM property, the line is
+  split on whitespace with a single- or double-quoted part kept in one argument without its quotes,
+  and an argument that still holds a `@{...}` or `${...}` reference is left out whole: JaCoCo's
+  `@{argLine}` when the POM defines no `argLine` property (JaCoCo sets it to its agent during the
+  build), or a value the effective POM does not resolve, such as `${settings.localRepository}`.
+  Then come `<systemProperties>` and
+  `<systemPropertyVariables>` as `-Dname=value` (an empty value as `-Dname=`), in that order, so
+  they win over an `-D` of the same name in the argLine, as in surefire; an entry whose value holds
+  an unresolved reference is left out too. A task the build skips has no run. With more than one
+  run, each writes `pit/<task>/mutations.xml` and `nitpickerPit` merges them into `pit/mutations.xml`: a mutant
   counts as killed when any run killed it, as when one run holds every test, which is what Maven's
   single PIT run does. The JUnit Platform is not pinned by
   Nitpicker: the plugin's own platform dependencies are excluded and the project's are used, with a
@@ -2779,6 +2800,17 @@ in it against the catalogs and Error Prone's check list.
   branch-coverage gate are described in their own sections.
 - Kotlin sources (see [kotlin-preset.md](kotlin-preset.md)), Groovy sources, Maven (since added, see
   [Maven builds](#maven-builds)).
+
+## Tools evaluated and not integrated
+
+- [Infer](infer-evaluation.md) (RacerD, Starvation, Scope Leakage): not integrated. The Java analyzer of the
+  release includes GPL-3.0-or-later code, it adds only a few annotation-driven checks over the shipped
+  tools, and its finding key collides across packages. The page lists the rule ideas worth owning and the
+  issues that track them.
+- [BlockHound](blockhound-evaluation.md) (runtime blocking-call detection in reactive tests): not
+  integrated by nitpicker, left to the project as its own opt-in, expected to work in Gradle and Maven
+  builds because PIT gets the test JVM's arguments (see [Slice 7](#slice-7-mutation-with-pit)). The page
+  lists the JVM flag it needs, the JaCoCo and PIT behavior, and what a project has to configure.
 
 ## Tests
 
