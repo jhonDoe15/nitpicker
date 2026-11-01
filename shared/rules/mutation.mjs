@@ -28,6 +28,9 @@ export function mutantFindings(mutants, { tool, wayOut = EQUIVALENT_MUTANT_WAY_O
         ? 'enforceable'
         : 'descriptive',
     ...(mutant.symbol === undefined ? {} : { symbol: mutant.symbol }),
+    ...(mutant.anchor === undefined
+      ? {}
+      : { anchor: { key: `mutant:${mutant.anchor}`, requireUnchangedLine: true } }),
     ...mutantLocation(mutant),
   }));
 }
