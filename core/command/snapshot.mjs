@@ -16,6 +16,7 @@ import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
+import { outputRootFor } from '../diff/reporting/reporters.mjs';
 
 function stderrWarning(stderr) {
   return (message) => stderr.write(`nitpicker: ${message}\n`);
@@ -30,11 +31,9 @@ export function runSnapshotCli({
   stderr,
   environment,
   runTasks,
+  scope,
 }) {
-  const outputRoot =
-    options.outputRoot === undefined
-      ? path.join(currentProjectRoot, 'reports/quality/snapshot')
-      : path.resolve(currentProjectRoot, options.outputRoot);
+  const outputRoot = outputRootFor(currentProjectRoot, options.outputRoot, 'snapshot');
   clearSnapshotReports(outputRoot);
   const selectedAnalyzers = selectAnalyzers(analyzers, options.analyzerNames);
   if (selectedAnalyzers.length === 0) {
@@ -50,6 +49,7 @@ export function runSnapshotCli({
       currentProjectRoot,
       headPolicy,
       runTasks,
+      scope,
     }),
   );
   report.text = writeSnapshotReports(outputRoot, report, {
@@ -78,6 +78,7 @@ function runInSnapshotWorktree({
   currentProjectRoot,
   headPolicy,
   runTasks,
+  scope,
 }) {
   const needsDependencies = selectedAnalyzers.some((analyzer) => analyzer.requiresDependencies);
   const dependencies = needsDependencies
@@ -96,6 +97,7 @@ function runInSnapshotWorktree({
       liveProjectRoot: currentProjectRoot,
       headPolicy,
       runTasks,
+      scope,
     });
   } finally {
     removeSnapshotDependencies(dependencies);

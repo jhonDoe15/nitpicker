@@ -7,6 +7,7 @@ import { singleLine } from './format/text.mjs';
 import { areaCountLine } from './format/rule-groups/finding-areas.mjs';
 import { byFixOrder, ruleGroupLines, withoutRoute } from './format/rule-groups/rule-groups.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
+import { scopeLine } from '../../scope/scope-findings.mjs';
 import {
   TESTS_FAILED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
@@ -31,6 +32,7 @@ export function renderConsoleSummary(
       hasFailures ? [ANSI.bold, ANSI.red] : [ANSI.bold, ANSI.green],
       color,
     ),
+    ...scopeLine(report.summary),
   ];
 
   appendViolationSummary(

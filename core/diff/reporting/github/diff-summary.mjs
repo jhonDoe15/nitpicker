@@ -10,6 +10,7 @@ import {
   ruleTable,
   toolErrorList,
 } from './markdown.mjs';
+import { scopeLine } from '../../../scope/scope-findings.mjs';
 
 function headline(report) {
   const enforceable = report.newFindings.filter(
@@ -89,6 +90,7 @@ export function renderDiffSummary(report, context) {
     '',
     `**${headline(report)}**`,
     '',
+    ...scopeLine(report.summary).flatMap((line) => [line, '']),
     ...comparisonLine(report),
     '',
     ...policySection(report.summary),
