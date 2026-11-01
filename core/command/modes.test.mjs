@@ -40,8 +40,8 @@ describe('nitpicker CLI', () => {
 
 \u001b[1m\u001b[31mQuality gate summary\u001b[0m
 \u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m src/main/untracked.ts:1
-    Fixture finding
+  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m: Fixture finding
+    src/main/untracked.ts:1:4
 \u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
 `),
     );
@@ -263,8 +263,8 @@ describe('nitpicker CLI', () => {
 
 \u001b[1m\u001b[31mQuality gate summary\u001b[0m
 \u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m src/main/new.ts:1
-    Fixture finding
+  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m: Fixture finding
+    src/main/new.ts:1:4
 \u001b[1m\u001b[31m✖ 2 tool errors\u001b[0m
   \u001b[33mcrashing-analyzer (base)\u001b[0m: crashing-analyzer crashed with exit 2: no diagnostic output
   \u001b[33mcrashing-analyzer (head)\u001b[0m: crashing-analyzer crashed with exit 2: no diagnostic output
