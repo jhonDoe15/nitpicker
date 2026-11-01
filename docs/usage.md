@@ -489,8 +489,9 @@ compared with the defaults. These changes are loosening:
   path, so updating a glob after a move is not loosening; a glob that covers no new code file is
   listed but does not fail. A `layout.entryPoints` entry makes the dead-code check treat the files
   as used and allows module-load effects and process access in them, and a `python.entryPoints`
-  entry only exempts them from `process-env-access`; other checks still apply. A reviewer confirms
-  that a command or runtime loads each file without an import, and otherwise the entry is removed;
+  entry only exempts them from `process-env-access`, `process-stream-access` and
+  `import-time-effect`; other checks still apply. A reviewer confirms that a command or runtime
+  loads each file without an import, and otherwise the entry is removed;
 - a removed `layout.sourceRoots`, `layout.testRoots` or `python.sourceRoots` entry that still has
   checked files under it (Python's detected default counts when the setting is absent), and an
   added `layout.testRoots` entry that turns production code the base checked into test code;
@@ -1285,15 +1286,15 @@ that is legitimately outside a rule is lifted with `python.exceptions`, the Pyth
   "preset": "python",
   "exceptions": [
     {
-      "rule": "T201",
-      "paths": ["src/cli/**"],
-      "reason": "Command line entry points print their result."
+      "rule": "PERF203",
+      "paths": ["src/importers/**"],
+      "reason": "Each row is validated on its own and a bad row must not stop the rest."
     }
   ]
 }
 ```
 
-`rule` is the id printed in the finding; `exclude` drops every finding under a path instead. The rules most likely to flag code that is right for its place are `T201` (`print` in a command-line tool), `PERF203` (`try` in a loop) and `F401` (an `__init__.py` that re-exports). Inline `# pragma: no cover` and `# pragma: no branch` are not honored either. Changed-branch coverage (`coverage-py`, from the branch data of the same coverage.py
+`rule` is the id printed in the finding; `exclude` drops every finding under a path instead. The rules most likely to flag code that is right for its place are `PERF203` (`try` in a loop) and `F401` (an `__init__.py` that re-exports). A command-line tool writes through a `TextIO` parameter that its entry point fills with `sys.stdout`, so it needs no exception for `print`. Inline `# pragma: no cover` and `# pragma: no branch` are not honored either. Changed-branch coverage (`coverage-py`, from the branch data of the same coverage.py
 run) fails an untested branch on a changed line, as for Java: `if`, `while`, `for` and `match`
 arms are judged, an untested `except` handler is not. Of the project's own coverage configuration
 only `concurrency`, `patch` and `plugins`, which the run needs, are read until `tools.coverage` opts it in (see

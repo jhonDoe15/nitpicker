@@ -183,9 +183,9 @@ config error that names the right list). `python` is an error with any other pre
     "sourceRoots": ["src"],
     "exceptions": [
       {
-        "rule": "T201",
-        "paths": ["src/cli/**"],
-        "reason": "Command line entry points print their result."
+        "rule": "PERF203",
+        "paths": ["src/importers/**"],
+        "reason": "Each row is validated on its own and a bad row must not stop the rest."
       }
     ]
   }
@@ -205,9 +205,9 @@ config error that names the right list). `python` is an error with any other pre
 
 `python.entryPoints` lists the files that start the program, such as a job runner or a worker that
 reads its settings from the environment or connects at import (see the composition roots below).
-Adding a file there loosens `process-env-access` and `import-time-effect`, so the policy-change list
-reports it as a loosening and a removal as a change, like `layout.entryPoints`; the base snapshot is measured with the entry points both
-sides declare.
+Adding a file there loosens `process-env-access`, `process-stream-access` and `import-time-effect`,
+so the policy-change list reports it as a loosening and a removal as a change, like
+`layout.entryPoints`; the base snapshot is measured with the entry points both sides declare.
 
 The policy-change list also reads the project's own pytest and mutmut settings, because they shrink
 what the gate measures: `testpaths` that stop collecting a test file and an added `--ignore` or
@@ -241,14 +241,14 @@ yours to fix (generated code) is dropped with `exclude`.
 There is no inline disable: `# noqa`, `# type: ignore`, `# pyright: ignore` and the other comments
 in the table below are findings themselves. The way out is `python.exceptions` in
 `nitpicker.config.json` (the top-level `exceptions` for the function, file and size rules, below),
-the same shape as in every preset: `rule` (the id printed in the finding, for example `T201`, `PTH118`, `frozen-dataclass`,
+the same shape as in every preset: `rule` (the id printed in the finding, for example `PERF203`, `PTH118`, `frozen-dataclass`,
 `return-value`, `reportReturnType`), `paths` (a non-empty array of globs relative to the project)
 and `reason` (required text). It lifts that rule for those paths, in the base and in the head
 snapshot alike, and every exception is listed in the report's config overrides. The id is checked
 when the config loads: a ruff code (or a prefix such as `PTH`, which covers every `PTH` code), a
 `python-rules` id, a mypy error code or a pyright or basedpyright `report*` rule; a typo such as `T210` is a config
 error, not a silent no-op. Prefer fixing the code; an exception is for code that is
-legitimately outside the rule, such as a command line entry point that prints or a module that
+legitimately outside the rule, such as a loop that must handle each item on its own or a module that
 must keep a mutable dataclass.
 
 **Per-function exceptions.** The function size limits, CRAP and changed-branch coverage take an
@@ -262,11 +262,11 @@ error.
 
 `exclude` is the other way out: it drops every finding under the globs, and the paths are not
 handed to ruff or black either. The rules most likely to flag code that is right for its place are
-`T201` (`print` in a command-line tool or a notebook), `PERF203` (`try` in a loop that must handle
-each item) and `F401` (an `__init__.py` that re-exports): lift them for the path with
-`python.exceptions`, or `exclude` the path, for example
-`"exclude": ["src/demo/cli.py", "**/__init__.py"]`. The project's own ruff configuration
-(`[tool.ruff]`, `ruff.toml`) is not read for linting until `"tools": { "ruff": { "precedence":
+`PERF203` (`try` in a loop that must handle each item) and `F401` (an `__init__.py` that
+re-exports): lift them for the path with `python.exceptions`, or `exclude` the path, for example
+`"exclude": ["src/demo/cli.py", "**/__init__.py"]`. A command-line tool does not need either: it
+writes its result through the `TextIO` form of `process-stream-access` below. The project's own
+ruff configuration (`[tool.ruff]`, `ruff.toml`) is not read for linting until `"tools": { "ruff": { "precedence":
 ["project", "nitpicker"] } }` opts it in; then the rules it selects run next to nitpicker's (never
 instead of them: an `ignore` or `per-file-ignores` entry for a nitpicker rule is dropped, and
 `python.exceptions` lifts those) and its rule options merge with nitpicker's (see
@@ -462,23 +462,24 @@ through the real tools.
   check that fails on a file is reported as a `python-rules/rules-check-failed` tool error naming the check
   and the file; that file has no findings of that check, and every other check and file still runs.
 
-| Allowed form                                   | Banned form                                                                  | Rule                                                       |
-| ---------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- |
-| `pathlib.Path`                                 | `os.path`, `open()`, `os.getcwd()`, ...                                      | ruff `PTH*`                                                |
-| f-strings                                      | `"...".format()`, `"..." % x`, `"".join` of a fixed list                     | ruff `UP031`, `UP032`, `FLY002`                            |
-| `None` default, value built in the function    | a mutable default argument                                                   | ruff `B006`                                                |
-| catch and handle a specific error, or re-raise | bare `except:`, `except Exception:`                                          | ruff `E722`, `BLE001`                                      |
-| re-raise, return a failure value or a default  | `except X:` that only passes, continues, logs, returns or assigns a constant | `swallowed-exception`                                      |
-| `contextlib.suppress(SpecificError)`           | `contextlib.suppress(Exception)`, `BaseException` or no argument             | `blind-suppress`                                           |
-| explicit imports                               | `from module import *`                                                       | ruff `F403`                                                |
-| `logging` (or the project's structlog, loguru) | `print`, `pprint`                                                            | ruff `T201`, `T203`                                        |
-| log the caught exception itself                | logging only `str(error)` or an f-string with it in an `except`              | `catch-log-without-exception`                              |
-| a test that asserts                            | a test function with no assertion                                            | `test-without-assertion`                                   |
-| `@dataclass(frozen=True)`                      | `@dataclass` without `frozen=True`, outside tests                            | `frozen-dataclass`                                         |
-| the validation library in `adapters/` only     | importing pydantic (or the declared library) elsewhere                       | `pydantic-boundary`                                        |
-| an `enum.Enum` / `StrEnum`                     | a plain class of two string constants, or three `X_*`                        | `enum-string-constants`                                    |
-| fixing the code                                | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...                         | `no-inline-suppression`                                    |
-| annotated code the checkers read               | `@no_type_check`, `if not TYPE_CHECKING:`, a stub beside                     | `no-type-check`, `not-type-checking`, `stub-beside-source` |
+| Allowed form                                                     | Banned form                                                                  | Rule                                                       |
+| ---------------------------------------------------------------- | ---------------------------------------------------------------------------- | ---------------------------------------------------------- |
+| `pathlib.Path`                                                   | `os.path`, `open()`, `os.getcwd()`, ...                                      | ruff `PTH*`                                                |
+| f-strings                                                        | `"...".format()`, `"..." % x`, `"".join` of a fixed list                     | ruff `UP031`, `UP032`, `FLY002`                            |
+| `None` default, value built in the function                      | a mutable default argument                                                   | ruff `B006`                                                |
+| catch and handle a specific error, or re-raise                   | bare `except:`, `except Exception:`                                          | ruff `E722`, `BLE001`                                      |
+| re-raise, return a failure value or a default                    | `except X:` that only passes, continues, logs, returns or assigns a constant | `swallowed-exception`                                      |
+| `contextlib.suppress(SpecificError)`                             | `contextlib.suppress(Exception)`, `BaseException` or no argument             | `blind-suppress`                                           |
+| explicit imports                                                 | `from module import *`                                                       | ruff `F403`                                                |
+| `logging` (or the project's structlog, loguru)                   | `print`, `pprint`                                                            | ruff `T201`, `T203`                                        |
+| a `TextIO` parameter, `out.write(...)` or `print(..., file=out)` | `sys.stdout`, `sys.stderr` outside the entry point                           | `process-stream-access`                                    |
+| log the caught exception itself                                  | logging only `str(error)` or an f-string with it in an `except`              | `catch-log-without-exception`                              |
+| a test that asserts                                              | a test function with no assertion                                            | `test-without-assertion`                                   |
+| `@dataclass(frozen=True)`                                        | `@dataclass` without `frozen=True`, outside tests                            | `frozen-dataclass`                                         |
+| the validation library in `adapters/` only                       | importing pydantic (or the declared library) elsewhere                       | `pydantic-boundary`                                        |
+| an `enum.Enum` / `StrEnum`                                       | a plain class of two string constants, or three `X_*`                        | `enum-string-constants`                                    |
+| fixing the code                                                  | `# type: ignore`, `# noqa`, `# pyright: ignore`, ...                         | `no-inline-suppression`                                    |
+| annotated code the checkers read                                 | `@no_type_check`, `if not TYPE_CHECKING:`, a stub beside                     | `no-type-check`, `not-type-checking`, `stub-beside-source` |
 
 Details that are decisions rather than the table:
 
@@ -605,6 +606,7 @@ are listed at the end.
 | ------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Logging                  | `logger.info("Loaded %s", count)`, `logger.warning`, `logger.exception` (structlog, loguru: see below)                                                                               | ruff `G001`-`G004`, `G010`, `G101`, `G201`, `G202`, `TRY400`, `TRY401`                                                                               |
 | Environment              | read once in a composition root, pass values in                                                                                                                                      | `process-env-access` (script)                                                                                                                        |
+| Program output           | a `TextIO` parameter: `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`                                                                                | ruff `T201`, `T203`, `process-stream-access` (script)                                                                                                |
 | Shell                    | a list: `subprocess.run(["git", "status"], check=True)`                                                                                                                              | `shell-command` (script), ruff `S602`, `S604`, `S605`, `S609`                                                                                        |
 | SQL                      | parameters: `cursor.execute("select * from t where id = %s", (id,))`; placeholder lists, fixed lookups, `Literal`/`Enum` names, `sql.Identifier`                                     | `sql-string-formatting` (script), ruff `S610`, `S611`                                                                                                |
 | Path traversal           | `target = (base / name).resolve()`, then `target.is_relative_to(base)`                                                                                                               | `unsafe-path-join` (script)                                                                                                                          |
@@ -662,6 +664,18 @@ Details that are decisions rather than the table:
   module named by a script or plugin entry point of `pyproject.toml` (`[project.scripts]`,
   `[project.entry-points]`, poetry, flit) or `setup.cfg`; or a file matched by `python.entryPoints`.
   Nothing under a `domain` folder is a composition root.
+- `process-stream-access` reports `sys.stdout`, `sys.stderr`, `sys.__stdout__` and `sys.__stderr__`,
+  also through `from sys import stdout`, import aliases, `getattr(sys, "stdout")` and
+  `sys.modules["sys"]`, and `from sys import *` itself, once per site in every non-test file that is not a composition root, as
+  defined for `process-env-access` above. Code under an `if __name__ == "__main__":` guard is exempt
+  too, in any file. Every reference counts, including read-only facts such as
+  `sys.stdout.isatty()` or `sys.stdout.encoding`: take them from the writer the entry point passes in.
+  A name counts only when the file imports it from `sys`, so a parameter or class called `sys`
+  in a file that does not import the module is not reported. `sys.stdin` is not reported. The allowed form is a `TextIO` parameter written with `out.write(...)`
+  or `print(..., file=out)`, which ruff `T201` accepts; the entry point passes `sys.stdout` or
+  `sys.stderr`. A function that only forwards the real stream is covered by a test that passes
+  `io.StringIO()` or pytest's `capsys`; the passing line itself sits in the entry point or the
+  `__main__` guard, which the coverage step leaves out.
 - `shell-command` reports running a command through a shell: `shell=True` or a `shell=` value that
   is not a literal (also from `**{"shell": True}`), a list starting with `sh`, `bash`, `cmd`,
   `powershell` and the other shells followed by `-c`, `/c` or a similar flag, and the `subprocess`,

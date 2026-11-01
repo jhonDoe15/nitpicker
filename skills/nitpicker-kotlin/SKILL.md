@@ -55,6 +55,10 @@ To learn why a rule is on and what form it allows before you write or change cod
 - Design for a fixed clock and a seeded random: take a `java.time.Clock` and a `kotlin.random.Random`
   as constructor parameters, and read environment variables once where `fun main` (or the
   `@SpringBootApplication` class, or the Ktor module) builds the objects, into a config class passed in.
+- Program output: no `print` or `println`, and no `System.out` or `System.err` outside the file with
+  `fun main` (`kotlin-source/StandardStreamOutsideEntryPoint`). Code takes an `Appendable`,
+  `PrintStream` or `Writer` parameter and writes to it; `fun main` passes `System.out` or `System.err`.
+  Logging goes through the logger.
 - With Spring, the architecture rules (`archunit/spring-...`) read the compiled Kotlin classes: package
   by feature; controllers call services, never repositories or another controller; a repository calls
   no service; a request- or session-scoped bean reaches a singleton only as `ObjectProvider<T>` or
