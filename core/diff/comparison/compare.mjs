@@ -3,7 +3,7 @@ import { baseMoves, comparisonKey } from './fingerprint.mjs';
 import { matchSimilarFindings } from './similar/match.mjs';
 import { matchAnchoredFindings } from './anchored/match.mjs';
 import { grewFinding, holdRatchetedFindings, withGrowthAdvice } from './ratchet/ratchet.mjs';
-import { isInTouchedCode, isOnAddedLine } from './ratchet/touched-code.mjs';
+import { isHeldOnTouchedLine } from './ratchet/touched-code.mjs';
 import { pairedKeys } from './positions/occurrences.mjs';
 import { withEditedLineReason } from './positions/touched-lines.mjs';
 
@@ -122,9 +122,7 @@ function classify(headFinding, baseFinding, { touchedCode, isUnknown }) {
   if (hasChangedMetric(baseFinding, headFinding)) {
     return { bucket: 'changedMetrics', entry: changedMetricOf(baseFinding, headFinding) };
   }
-  const isNew =
-    isInTouchedCode(headFinding, touchedCode) || isOnAddedLine(headFinding, touchedCode);
-  return isNew
+  return isHeldOnTouchedLine(headFinding, touchedCode)
     ? { bucket: 'newFindings', entry: withEditedLineReason(headFinding, touchedCode) }
     : { bucket: 'unchangedFindings', entry: headFinding };
 }
