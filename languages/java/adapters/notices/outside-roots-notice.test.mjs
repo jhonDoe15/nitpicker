@@ -22,6 +22,17 @@ describe('jvmOutsideRootsNotices', () => {
     ]);
   });
 
+  it('counts a source package named reports like any other package', () => {
+    const files = ['src/main/kotlin/app/reports/Monthly.kt', 'reports/Monthly.java'];
+
+    expect(jvmOutsideRootsNotices(files, KOTLIN)).toEqual([
+      "1 changed Java or Kotlin file is outside the build's source sets, so the build does not compile " +
+        'or check it: reports/Monthly.java. Move it under src/main or src/test of a module, or declare ' +
+        'its folder as a source directory in the build file; to leave it unchecked, list it in ' +
+        '"exclude" in nitpicker.config.json.',
+    ]);
+  });
+
   it('follows the preset: the java preset counts Java files only', () => {
     expect(jvmOutsideRootsNotices(['tools/D.java', 'tools/E.kt'], { preset: 'java' })).toEqual([
       "1 changed Java file is outside the build's source sets, so the build does not compile or check it: " +

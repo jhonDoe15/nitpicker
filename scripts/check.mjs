@@ -1,7 +1,9 @@
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
+import { actionPinProblems } from './action-pins/action-pins.mjs';
 
 const repositoryRoot = fileURLToPath(new URL('..', import.meta.url));
+const pinProblems = actionPinProblems(repositoryRoot);
 
 const steps = [
   ['self-gate', ['core/cli.mjs']],
@@ -17,13 +19,16 @@ const steps = [
   ],
 ];
 
-const failed = steps
-  .map(([name, args]) => ({
-    name,
-    status: spawnSync(process.execPath, args, { cwd: repositoryRoot, stdio: 'inherit' }).status,
-  }))
-  .filter(({ status }) => status !== 0)
-  .map(({ name }) => name);
+const failed = [
+  ...pinProblems,
+  ...steps
+    .map(([name, args]) => ({
+      name,
+      status: spawnSync(process.execPath, args, { cwd: repositoryRoot, stdio: 'inherit' }).status,
+    }))
+    .filter(({ status }) => status !== 0)
+    .map(({ name }) => name),
+];
 
 if (failed.length > 0) {
   console.error(`check failed: ${failed.join(', ')}`);

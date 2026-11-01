@@ -42,13 +42,12 @@ function fileFindings(data, { path, lines, tool, minimum, options }) {
     if (source === undefined || source === '') {
       continue;
     }
+    const text = formatAgnosticText(lines[line - 1], path);
     branches.push({
       path,
       line,
-      key: hashIdentity('branch-source', [
-        enclosingScope(lines, line - 1),
-        formatAgnosticText(lines[line - 1], path),
-      ]),
+      key: hashIdentity('branch-source', [enclosingScope(lines, line - 1), text]),
+      anchor: hashIdentity('branch-source', [text]),
       percent: (outcomes.taken / (outcomes.taken + outcomes.missed.length)) * 100,
       arms: outcomes.missed.map((destination) => describeArm(lines, line, destination)),
       symbol: enclosingFunctionName(options.functions ?? [], path, line),
