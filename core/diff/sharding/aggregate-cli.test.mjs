@@ -2,6 +2,7 @@ import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
+import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mjs';
 import { runAggregateCli } from './aggregate-shards.mjs';
 import { fileURLToPath } from 'node:url';
 import { captureOutput } from '../reporting/test-support/output-capture.mjs';
@@ -180,8 +181,6 @@ Full diagnostics: ${fixture.outputRoot}/report.txt
     );
 
     expect(result.status, result.stderr).toBe(0);
-    expect(result.stdout).toBe(
-      'Usage: node core/diff/sharding/aggregate-shards.mjs --input-root <directory> --shard-count <count> [--output <directory>] [--policy-root <directory>] [--details]\n',
-    );
+    expect(result.stdout).toBe(AGGREGATE_USAGE_TEXT);
   });
 });

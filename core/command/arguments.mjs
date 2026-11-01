@@ -9,6 +9,7 @@ const FLAGS = new Map([
   ['--details', { property: 'details', value: true }],
   ['--fix', { property: 'fix', value: true }],
   ['--help', { property: 'help', value: true }],
+  ['--version', { property: 'version', value: true }],
   ['--no-cache', { property: 'cache', value: false }],
 ]);
 const ACCEPT_FLAG = '--accept-policy-change';
@@ -16,9 +17,14 @@ const VALUES = new Map([
   ['--base', 'baseRef'],
   ['--output', 'outputRoot'],
 ]);
-const SUBCOMMANDS = ['aggregate', 'base', 'cache'];
+const SUBCOMMANDS = ['aggregate', 'base', 'cache', 'init'];
 
-const COMPARISON_OPTIONS = [...FLAGS.keys(), ...VALUES.keys(), ACCEPT_FLAG, ...DRILL_DOWN_OPTIONS];
+export const COMPARISON_OPTIONS = [
+  ...FLAGS.keys(),
+  ...VALUES.keys(),
+  ACCEPT_FLAG,
+  ...DRILL_DOWN_OPTIONS,
+];
 
 const HELP_POINTER = 'Run nitpicker --help for the options.';
 
@@ -61,7 +67,14 @@ function readFlag(options, argument) {
 }
 
 function remainingOptions(arguments_) {
-  const options = { all: false, details: false, fix: false, help: false, cache: true };
+  const options = {
+    all: false,
+    details: false,
+    fix: false,
+    help: false,
+    version: false,
+    cache: true,
+  };
   const remaining = arguments_.values();
   for (const argument of remaining) {
     if (readFlag(options, argument)) {
@@ -103,13 +116,4 @@ export function parseArguments(arguments_) {
   return options;
 }
 
-export const USAGE_TEXT =
-  'Usage: nitpicker [--base <ref>] [--output <dir>] [--all | --fix]' +
-  ' [--analyzer <name>]... [--rule <substring>]... [--details]' +
-  ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help]\n' +
-  '       nitpicker aggregate --input-root <directory> --shard-count <count>' +
-  ' [--output <directory>] [--policy-root <directory>] [--details]\n' +
-  '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]\n' +
-  '       nitpicker base [--base <ref>]\n' +
-  '       nitpicker explain <tool/rule>...\n' +
-  '       nitpicker rules [--preset <name>] [--tool <name>]\n';
+export { USAGE_TEXT } from '../help/usage-text.mjs';

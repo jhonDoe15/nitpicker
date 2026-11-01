@@ -80,6 +80,26 @@ describe('the strict-clean fixture project', () => {
     FIXTURE_TIMEOUT_MS,
   );
 
+  it(
+    'passes `nitpicker --all` on the project once `nitpicker init` has written its config',
+    () => {
+      const root = createProject();
+
+      const init = runNitpicker(root, ['init']);
+      const { exitCode, stderrText, summary, toolErrors } = runSnapshot(root);
+
+      expect(init.exitCode).toBe(0);
+      expect(readFileSync(path.join(root, 'nitpicker.config.json'), 'utf8')).toBe(
+        '{ "preset": "typescript" }\n',
+      );
+      expect(stderrText).toBe('');
+      expect(toolErrors).toEqual([]);
+      expect(summary.overallStatus).toBe('clean');
+      expect(exitCode).toBe(0);
+    },
+    FIXTURE_TIMEOUT_MS,
+  );
+
   it('fails when a banned form is added, so the run above is a real check', () => {
     const root = createProject();
     const target = path.join(root, 'src/main/features/greeting/domain/greet.ts');

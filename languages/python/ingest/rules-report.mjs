@@ -3,7 +3,7 @@ import { createIdentities } from './identities.mjs';
 
 const CHECK_FAILED_RULE = 'rules-check-failed';
 const SKIPPED_RULE = 'rules-skipped';
-const MINIMUM_PYTHON = '3.10';
+export const MINIMUM_PYTHON = '3.10';
 
 function toolError({ rule, path, subject, error }) {
   const message =

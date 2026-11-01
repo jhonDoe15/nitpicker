@@ -219,6 +219,27 @@ describe('the js-clean fixture project', () => {
     FIXTURE_TIMEOUT_MS,
   );
 
+  it(
+    'passes `nitpicker --all` on the project once `nitpicker init` has written its config',
+    () => {
+      const root = createProject();
+      rmSync(path.join(root, 'nitpicker.config.json'));
+
+      const init = runNitpicker(root, ['init']);
+      const { exitCode, stderrText, summary, toolErrors } = runSnapshot(root);
+
+      expect(init.exitCode).toBe(0);
+      expect(readFileSync(path.join(root, 'nitpicker.config.json'), 'utf8')).toBe(
+        '{ "preset": "javascript" }\n',
+      );
+      expect(stderrText).toBe('');
+      expect(toolErrors).toEqual([]);
+      expect(summary.overallStatus).toBe('clean');
+      expect(exitCode).toBe(0);
+    },
+    FIXTURE_TIMEOUT_MS,
+  );
+
   describe('the analyzers that could not read JavaScript', () => {
     it('each report a problem planted in .js and .cjs files', () => {
       const root = createProject(plantedProblems);
