@@ -121,7 +121,7 @@ describe('duplicate folder scope and movement', () => {
 
 describe.each([
   ['typescript', 'coverage', 'coverage/a.ts'],
-  ['javascript', 'reports', 'reports/a.js'],
+  ['javascript', 'reports/quality', 'reports/quality/a.js'],
   ['typescript', 'node_modules', 'src/node_modules/a.ts'],
   ['typescript', 'legacy', 'src/legacy/a.d.ts'],
   ['typescript', '.stryker-tmp', 'src/.stryker-tmp/a.ts'],
