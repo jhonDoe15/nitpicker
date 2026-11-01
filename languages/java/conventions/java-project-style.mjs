@@ -4,6 +4,7 @@ import { PROJECT_TOOL_CONFIGS } from '../adapters/gradle-presets.mjs';
 import { checkstyleLineLength } from './build-style/checkstyle-width.mjs';
 import { declaredJavaFormatter } from './build-style/java-formatter-detection.mjs';
 import { JAVA_FORMATTER, JAVA_INDENTATION_ID, JAVA_LINE_LENGTH_ID } from './java-conventions.mjs';
+import { declaredToolNotices } from '../adapters/tool-config/declared/declared-choices.mjs';
 
 const FORMATTER_NAMES = {
   google: 'google-java-format',
@@ -111,6 +112,14 @@ export function javaProjectStyle({ config, source }) {
     project: checkstyleChoices(source, config.tools ?? {}, notes),
     note: () => undefined,
     derive: (detected) => derivedChoices(detected, source, notes),
-    summary: () => notes,
+    summary: () => [...notes, ...toolNotices(config, source)],
   };
+}
+
+function toolNotices(config, source) {
+  try {
+    return declaredToolNotices(config, source);
+  } catch (error) {
+    return [`Could not read the tool settings in the build files: ${error.message}`];
+  }
 }

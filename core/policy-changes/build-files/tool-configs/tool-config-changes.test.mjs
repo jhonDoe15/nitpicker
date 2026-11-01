@@ -404,3 +404,55 @@ describe('what counts as an edit of a project tool config', () => {
     ).toEqual(['prettier project config changed: .editorconfig']);
   });
 });
+
+describe('build-declared tool settings the project opted into', () => {
+  const SOURCE = { 'src/main/java/A.java': 'class A {}\n' };
+  const FILTER = '<FindBugsFilter><Match><Bug pattern="EI_EXPOSE_REP"/></Match></FindBugsFilter>';
+  const gradle = (spotbugs, filter = FILTER, extra = '') => ({
+    ...SOURCE,
+    'build.gradle': `plugins { id 'java' }\n${extra}spotbugs {\n${spotbugs}\n}\n`,
+    'config/spotbugs/exclude.xml': filter,
+  });
+  const SETTINGS = "  effort = 'max'\n  excludeFilter = file('config/spotbugs/exclude.xml')";
+  const optedIn = (preset) => ({ preset, tools: { spotbugs: PROJECT } });
+
+  it('counts an edit of the SpotBugs settings or of the filter they name, with Gradle or Maven', () => {
+    const pom = (effort) => ({
+      ...SOURCE,
+      'pom.xml': `<project><build><plugins><plugin><artifactId>spotbugs-maven-plugin</artifactId><configuration><effort>${effort}</effort></configuration></plugin></plugins></build></project>`,
+    });
+
+    expect(
+      between({
+        base: gradle(SETTINGS),
+        head: gradle(SETTINGS.replace('max', 'more')),
+        config: optedIn('java'),
+      }).policyLoosenings,
+    ).toEqual(['spotbugs project config changed: build.gradle']);
+    expect(
+      between({
+        base: gradle(SETTINGS),
+        head: gradle(SETTINGS, FILTER.replace('EI_EXPOSE_REP', 'EI_EXPOSE_REP2')),
+        config: optedIn('kotlin'),
+      }).policyLoosenings,
+    ).toEqual(['spotbugs project config changed: config/spotbugs/exclude.xml']);
+    expect(
+      between({ base: pom('Max'), head: pom('Min'), config: optedIn('java') }).policyLoosenings,
+    ).toEqual(['spotbugs project config changed: pom.xml']);
+  });
+
+  it('stays quiet for other edits of the build file, a reformatted filter, or without the opt-in', () => {
+    const edited = gradle(SETTINGS, `${FILTER}\n<!-- reviewed -->\n`, 'dependencies { }\n');
+
+    expect(
+      between({ base: gradle(SETTINGS), head: edited, config: optedIn('java') }).policyLoosenings,
+    ).toEqual([]);
+    expect(
+      between({
+        base: gradle(SETTINGS),
+        head: gradle(SETTINGS.replace('max', 'min')),
+        config: { preset: 'java' },
+      }).policyLoosenings,
+    ).toEqual([]);
+  });
+});

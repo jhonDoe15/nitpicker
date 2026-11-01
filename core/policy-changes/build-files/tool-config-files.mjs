@@ -1,8 +1,10 @@
 import path from 'node:path';
 import {
+  BUILD_DECLARED_TOOLS,
   GRADLE_PRESETS,
   PROJECT_TOOL_CONFIGS,
 } from '../../../languages/java/adapters/gradle-presets.mjs';
+import { declaredConfigFiles } from '../../../languages/java/adapters/tool-config/declared/declared-choices.mjs';
 import { readRealInside } from '../../../shared/conventions/read-inside.mjs';
 import {
   JSCPD_PROJECT_FILE,
@@ -141,13 +143,26 @@ function isOptedIn(tool, config) {
   );
 }
 
+function declaredFingerprints(tool, side, gitBlobId) {
+  if (!GRADLE_PRESETS.includes(side.config.preset)) {
+    return new Map();
+  }
+  const { declarations, files } = declaredConfigFiles(tool, side);
+  return new Map([
+    ...[...declarations].map(([file, text]) => [file, gitBlobId(text)]),
+    ...fingerprints(tool, { root: side.root, files }, gitBlobId),
+  ]);
+}
+
 function sideFingerprints(tool, side, gitBlobId) {
+  if (BUILD_DECLARED_TOOLS.includes(tool)) {
+    return declaredFingerprints(tool, side, gitBlobId);
+  }
   if (!PYTHON_TOOLS.includes(tool)) {
     return fingerprints(tool, { root: side.root, files: candidates(tool, side) }, gitBlobId);
   }
   return new Map(pythonEntries(tool, side).map(({ file, text }) => [file, gitBlobId(text)]));
 }
-
 function pythonEntries(tool, side) {
   return side.config.preset === 'python' ? pythonConfigEntries(tool, side.root) : [];
 }
@@ -221,6 +236,7 @@ function toolEntries(base, head, { gitBlobId, replacedOptions = replacedEslintOp
   return [
     'pmd',
     'checkstyle',
+    ...BUILD_DECLARED_TOOLS,
     ...KOTLIN_TOOLS,
     ...GO_TOOLS,
     'prettier',

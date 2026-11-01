@@ -26,6 +26,10 @@ def initScriptDir = buildscript.sourceFile.parentFile
 // END SH5 structure metrics
 
 def nitpickerArgument = { String name -> gradle.startParameter.projectProperties[name] }
+def nitpickerSettings = { String tool, List<String> defaults ->
+    def file = nitpickerArgument("nitpicker.${tool}.settings".toString())
+    file == null ? defaults : new groovy.json.JsonSlurper().parse(new File(file.toString()), 'UTF-8')
+}
 def nitpickerStyle = {
     def file = nitpickerArgument('nitpicker.kotlin.styleFile')
     file == null ? [:] : new groovy.json.JsonSlurper().parse(new File(file.toString()), 'UTF-8')
@@ -405,7 +409,7 @@ allprojects {
                 def classDirs = analyzedClassDirs().findAll { it.exists() }
                 def auxiliary = kotlinPreset
                     ? sourceSets.main.runtimeClasspath.files.findAll { it.exists() && !classDirs.contains(it) } : []
-                args(['-effort:default', '-medium', '-sarif',
+                args(nitpickerSettings('spotbugs', ['-effort:default', '-medium']) + ['-sarif',
                       '-output', reportDir.get().file('spotbugs.sarif').asFile.absolutePath,
                       '-sourcepath', sourcePath] +
                     (auxiliary.isEmpty() ? [] : ['-auxclasspath', auxiliary.join(File.pathSeparator)]) +

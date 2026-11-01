@@ -1,5 +1,6 @@
 import path from 'node:path';
 import {
+  BUILD_DECLARED_TOOLS,
   GRADLE_PRESETS,
   PROJECT_TOOL_CONFIGS,
   styleToolsOf,
@@ -67,7 +68,9 @@ const PRECEDENCE_LAYERS = ['project', 'nitpicker'];
 function toolSettingKeysOf(preset) {
   if (GRADLE_PRESETS.includes(preset) || preset === 'python' || preset === 'go') {
     const names = [
-      ...(GRADLE_PRESETS.includes(preset) ? PROJECT_TOOL_CONFIGS.keys() : []),
+      ...(GRADLE_PRESETS.includes(preset)
+        ? [...PROJECT_TOOL_CONFIGS.keys(), ...BUILD_DECLARED_TOOLS]
+        : []),
       ...styleToolsOf(preset),
     ];
     const duplicateScan = preset === 'go' ? [] : ['jscpd'];

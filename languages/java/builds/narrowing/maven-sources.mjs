@@ -13,7 +13,7 @@ const PLUGIN_LISTS = [
   ['build', 'pluginManagement', 'plugins', 'plugin'],
 ];
 
-function textsOf(element, ...names) {
+export function textsOf(element, ...names) {
   return childrenAt(element, ...names)
     .map((child) => child.text?.trim())
     .filter((text) => text !== undefined && text !== '');
@@ -35,7 +35,7 @@ function allPlugins(project) {
   );
 }
 
-function configurations(plugin) {
+export function configurations(plugin) {
   return [
     childAt(plugin, 'configuration'),
     ...childrenAt(plugin, 'executions', 'execution').map((execution) =>
@@ -44,7 +44,7 @@ function configurations(plugin) {
   ].filter((configuration) => configuration !== undefined);
 }
 
-function pluginsNamed(project, names) {
+export function pluginsNamed(project, names) {
   return allPlugins(project).filter((plugin) => names.has(childAt(plugin, 'artifactId')?.text));
 }
 
