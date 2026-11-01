@@ -211,6 +211,10 @@
     { "key": "python.exceptions", "rule": "test-without-assertion" },
     "Test `<name>` has no assertion",
     "Assert the outcome: `assert result == expected`, `with pytest.raises(SomeError):`, or call one of the assertion helpers the project tests use.",
+    "timeout-abandons-operation",
+    { "key": "python.exceptions", "rule": "timeout-abandons-operation" },
+    "`<name>` returns as soon as the first task finishes, but the tasks still pending keep running: nothing cancels, awaits or hands them on",
+    "Cancel what is still pending (`for task in pending: task.cancel()`, then `await asyncio.gather(*pending, return_exceptions=True)`) or hand the set to an owner that does; or bound the work with `asyncio.wait_for(task, timeout)`, `async with asyncio.timeout(seconds):` or a `TaskGroup`, which cancel it.",
     "tls-verification-off",
     { "key": "python.exceptions", "rule": "tls-verification-off" },
     "`<name>` turns off TLS certificate verification, or lets the environment turn it off",
@@ -319,7 +323,8 @@
     [18, 224, 2, 3, 225, 226, 22, 227, -1],
     [18, 228, 2, 3, 229, 230, 22, 231, -1],
     [18, 232, 2, 3, 233, 234, 22, 235, -1],
-    [236, 237, 2, 3, 238, 239, 240, 241, -1],
-    [242, 243, 2, 3, 244, 245, 246, 247, 248]
+    [18, 236, 2, 3, 237, 238, 22, 239, -1],
+    [240, 241, 2, 3, 242, 243, 244, 245, -1],
+    [246, 247, 2, 3, 248, 249, 250, 251, 252]
   ]
 }
