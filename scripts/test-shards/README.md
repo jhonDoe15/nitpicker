@@ -44,6 +44,8 @@ end-to-end step times gives what they took together. The method:
   fan-out (28), multi-project (35) and mutation facts (25) files. The Kotlin library-branches and
   ports file holds the two coverage cases `main` added to the branches file; its 95 seconds are
   what that shard grew by.
+- The Java build retries file came later and has the 80 seconds it took on run
+  [41327285353](https://github.com/jhonDoe15/nitpicker/actions/runs/41327285353).
 - Python shards run two files at a time, so their step times do not separate files. Python keeps
   the per-file times with two workers from run
   [39850506814](https://github.com/jhonDoe15/nitpicker/actions/runs/39850506814), and files added

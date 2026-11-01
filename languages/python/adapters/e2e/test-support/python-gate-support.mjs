@@ -12,13 +12,20 @@ export function withoutMutants(summaries) {
   return summaries.filter((summary) => !summary.startsWith('mutmut '));
 }
 
-export function reportedFindings(text) {
+export function reportedGroups(text) {
   const lines = text.split('\n');
-  return lines.flatMap((line, index) =>
-    line.startsWith('  ') && !line.startsWith('   ') && !line.startsWith('  mutmut/')
-      ? [`${line.trim()}: ${lines[index + 1].trim()}`]
-      : [],
-  );
+  const start = lines.findIndex((line) => line.startsWith('✖ '));
+  const section = lines.slice(start + 1);
+  const end = section.findIndex((line) => !line.startsWith('  '));
+  const groups = [];
+  for (const line of section.slice(0, end).filter((row) => !row.startsWith('  by area: '))) {
+    if (line.startsWith('    ')) {
+      groups.at(-1).push(line.trim());
+    } else {
+      groups.push([line.trim()]);
+    }
+  }
+  return groups.filter(([label]) => !label.startsWith('mutmut/'));
 }
 
 export function pythonExceptionRoute(rule, file) {

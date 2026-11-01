@@ -61,13 +61,23 @@ end-to-end behaviour also needs that language's suite (`npm run test:java`, `tes
 `kotlin-e2e`, `python-e2e` and `go-e2e` workflows, which follow the same triggers as the `typescript` workflow
 below (pushes to `main` that touch the paths they list, a manual run, and the `run-ci` label). The
 `github-action` workflow, which runs the composite action in `action.yml` on the sample project in
-`.github/sample-project`, follows them too; it is not a required check.
+`.github/sample-project`, follows them too; it is not a required check. On a pull request, each of
+these five workflows first runs a small `changes` job (`scripts/ci/affected-jobs.mjs`) that compares the
+pull request's changed files with the workflow's own push `paths`. When none of them matches, the
+workflow's other jobs are skipped and its summary job passes; when the files cannot be listed, all
+jobs run. Changing a shared path such as `core/`, `shared/`, `package.json` or `vitest.config.mts`
+runs them all.
+The `typescript` workflow (the required `test` and `self-gate` checks) always runs in full, because
+its tests read the whole repository, documentation included. Keep a workflow's `paths` complete:
+on pull requests they now decide what runs, not only which pushes to `main` start a run.
 The TypeScript red-base test (`npm run test:typescript`, which runs real vitest through the CLI) is
-not in CI: run it after changing `core/diff/comparison/base-red/` or a test runner's failure report.
+not in CI: run it after changing `core/diff/comparison/base-red/`, a test runner's failure report or how
+the Stryker report is read.
 
 CI (the `typescript` workflow) runs:
 
-- on every push to `main` that touches a path in the workflow's `paths` list;
+- on every push to `main` that touches a path in the workflow's `paths` list (a run that has started
+  finishes; a run still waiting is replaced by the next push's run, which tests everything merged so far);
 - on a pull request when someone adds the `run-ci` label, once per added label (remove and add the
   label again for another run);
 - by hand from the Actions tab (Run workflow) on any branch that already has this workflow.
