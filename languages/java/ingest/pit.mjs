@@ -1,5 +1,6 @@
 import { mutantFindings } from '../../../shared/rules/mutation.mjs';
 import { decodeEntities } from '../../../shared/ingest/common.mjs';
+import { hash } from '../../../shared/rules/finding-helpers.mjs';
 
 const PIT_WAY_OUT =
   'If no input can tell the two apart (a compareTo boundary, a discarded lambda return, a field set to the value it already has, a redundant trim() or sorted()), simplify the code so this mutant disappears.';
@@ -27,7 +28,7 @@ export function ingestPit(xml, options = {}) {
     .filter((mutant) => mutant !== undefined);
 
   const { groups, statusCounts, leftOut } = groupMutants(mutants, { resolvePath, generated });
-  const findings = mutantFindings(neutralMutants(groups, options.functionAt), {
+  const findings = mutantFindings(neutralMutants(groups, options), {
     tool,
     wayOut: PIT_WAY_OUT,
   });
@@ -80,7 +81,25 @@ function mutantSymbol(mutant, filePath, functionAt) {
     : symbol;
 }
 
-function neutralMutants(groups, functionAt) {
+function lineReader(sourceText) {
+  const files = new Map();
+  return (filePath, line) => {
+    if (!files.has(filePath)) {
+      files.set(filePath, sourceText?.(filePath)?.split(/\r?\n/u));
+    }
+    return files.get(filePath)?.[line - 1]?.trim();
+  };
+}
+
+function mutantAnchor(mutant, filePath, lineAt) {
+  const text = lineAt(filePath, mutant.line);
+  return text === undefined || text === ''
+    ? undefined
+    : [mutant.mutatorName, withoutMethod(mutant.description), hash(text)].join('|');
+}
+
+function neutralMutants(groups, { functionAt, sourceText }) {
+  const lineAt = lineReader(sourceText);
   const neutral = [];
   for (const group of groups.values()) {
     group.sort((a, b) => a.mutant.line - b.mutant.line || a.mutant.block - b.mutant.block);
@@ -92,6 +111,7 @@ function neutralMutants(groups, functionAt) {
         label: `${mutant.mutatorName}: ${mutant.description}`,
         symbol: mutantSymbol(mutant, filePath, functionAt),
         line: mutant.line,
+        anchor: mutantAnchor(mutant, filePath, lineAt),
       });
     }
   }
@@ -140,6 +160,10 @@ function withoutPackages(text) {
 
 function withoutSyntheticNumbers(name) {
   return name.replaceAll(/\$\d+(?!\w)/gu, '');
+}
+
+function withoutMethod(description) {
+  return description.replaceAll(/(?:[\w$]+\/)*[\w$]+::[\w$<>]+/gu, '');
 }
 
 function mutator(qualifiedName) {
