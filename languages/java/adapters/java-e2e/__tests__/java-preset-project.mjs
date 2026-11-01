@@ -63,6 +63,8 @@ const BASELINED_FINDINGS = [
   'pit mutation-summary .',
   'pmd UnusedPrivateField Legacy.java',
   'structure function-parameters-limit Wide.java',
+  'test-runtime category-count .',
+  'test-runtime test-runtime .',
 ];
 const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
   'coupling coupling .',
@@ -88,6 +90,8 @@ const BASELINED_FINDINGS_WITHOUT_GREETER_LINE_COVERAGE = [
   'pit mutation-summary .',
   'pmd UnusedPrivateField Legacy.java',
   'structure function-parameters-limit Wide.java',
+  'test-runtime category-count .',
+  'test-runtime test-runtime .',
 ];
 // Each file gets its own fixture tree and retains the original setup and cleanup.
 export function useJavaPresetProject() {

@@ -46,6 +46,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       'pmd',
       'spotbugs',
       'structure',
+      'test-runtime',
     ]);
   }, 180_000);
   it('reports no untaken branch in sealed and enum switches or interfaces, on Gradle and Maven', () => {

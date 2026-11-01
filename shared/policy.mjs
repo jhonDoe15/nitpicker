@@ -109,6 +109,7 @@ const FILE_EXCEPTION_RULES = [
 const PATH_EXCEPTION_RULES = [
   RULE_IDS.duplicateClone,
   RULE_IDS.stabilityDirection,
+  RULE_IDS.noProductionRuntime,
   ...FILE_EXCEPTION_RULES,
 ];
 
@@ -166,6 +167,8 @@ export const HELD_MESSAGES = { ...BASE_HELD_MESSAGES, ...SIZE_HELD_MESSAGES };
 const ALL = { typescript: true, java: true, python: true };
 const TYPESCRIPT_ONLY = { typescript: true, java: false, python: false };
 const withKotlin = (enforcedBy, kotlin) => ({ ...enforcedBy, kotlin });
+const JVM_HAS_NO_TYPE_ONLY_IMPORTS =
+  'the language has no import that exists only for the type checker: a production type that a test names only as an erased generic argument leaves no reference in the bytecode, so the test is reported as `no-production-runtime`';
 
 function withGo(enforcedBy) {
   return { ...enforcedBy, go: true };
@@ -242,14 +245,20 @@ const CATALOG = [
   {
     id: RULE_IDS.noProductionRuntime,
     check: 'test-runtime',
-    limit: 'a test must exercise production runtime code',
-    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
+    limit:
+      'a test file (Java and Kotlin: a test class) that runs no production code: nothing it imports or references, directly or through test helpers, is production code, and it starts no production process or framework context',
+    enforcedBy: withKotlin(ALL, true),
   },
   {
     id: RULE_IDS.typeOnlyProductionDependency,
     check: 'test-runtime',
-    limit: 'a test must exercise production runtime code',
-    enforcedBy: withKotlin(TYPESCRIPT_ONLY, false),
+    limit:
+      'a test file whose only link to production code is imports that exist only for the type checker (`import type`, `if TYPE_CHECKING:`)',
+    enforcedBy: withKotlin({ ...TYPESCRIPT_ONLY, python: true }, false),
+    notApplicable: {
+      java: JVM_HAS_NO_TYPE_ONLY_IMPORTS,
+      kotlin: JVM_HAS_NO_TYPE_ONLY_IMPORTS,
+    },
   },
   {
     id: RULE_IDS.baselineExpansion,

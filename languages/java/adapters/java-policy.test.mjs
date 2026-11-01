@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { readConfigFile } from '../../../core/configuration/config.mjs';
 import { createJavaAnalyzer } from './java-analyzer.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
 import {
@@ -418,5 +419,29 @@ describe('validateJavaConfig', () => {
     }).toThrow(
       `"exceptions[0].rule" names a Checkstyle check by class; findings print the check's name, so write "checkstyle/Indentation"`,
     );
+  });
+});
+
+describe('the no-production-runtime exception in nitpicker.config.json', () => {
+  function configOf(preset, rule) {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-config-'));
+    roots.push(root);
+    const exception = { rule, paths: ['src/test/**'], reason: 'checks the schema only' };
+    writeFileSync(
+      path.join(root, 'nitpicker.config.json'),
+      JSON.stringify({ preset, exceptions: [exception] }),
+    );
+    return readConfigFile(root);
+  }
+
+  it.each([
+    ['java', 'no-production-runtime'],
+    ['java', 'test-runtime/no-production-runtime'],
+    ['kotlin', 'no-production-runtime'],
+    ['kotlin', 'test-runtime/no-production-runtime'],
+  ])('is accepted by config validation for the %s preset as %s', (preset, rule) => {
+    expect(configOf(preset, rule).exceptions).toEqual([
+      { rule: 'no-production-runtime', paths: ['src/test/**'], reason: 'checks the schema only' },
+    ]);
   });
 });

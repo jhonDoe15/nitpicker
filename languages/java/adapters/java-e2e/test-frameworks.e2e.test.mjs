@@ -54,6 +54,9 @@ function withRuleClassOf(root, framework) {
 function summary(findings) {
   return findings
     .filter(({ tool }) => tool !== 'coupling')
+    .filter(
+      ({ tool, classification }) => tool !== 'test-runtime' || classification !== 'descriptive',
+    )
     .map(({ tool, rule, path: file, identity, metric }) =>
       [tool, rule, file, identity, metric?.value].filter((part) => part !== undefined).join(' '),
     )
@@ -174,7 +177,7 @@ describe.skipIf(!enabled)('Java preset on each test framework', () => {
           ? mavenFrameworkFindings(projectOf('spock', build), { maven, policy })
           : findingsOf('spock', build, policy);
       const slow = findings
-        .filter(({ tool }) => tool === 'test-runtime')
+        .filter(({ rule }) => rule === 'slow-test')
         .map(({ path: file, identity, location }) => ({ file, identity, location }));
 
       expect(summary(findings.filter(({ tool }) => tool !== 'test-runtime'))).toEqual(

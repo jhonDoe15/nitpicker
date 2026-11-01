@@ -1311,7 +1311,7 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   findings; on the base alone it is a note, see [A base whose tests fail](usage.md#a-base-whose-tests-fail)),
   `tests-not-run` (a test run that exits 1 without naming a failing test, or whose failures are all
   collection or load errors, or exits with any other status; it stops the analyzer, also on the base), `coverage-failed`, `types-failed` and `rules-failed` (slice 2), `structure-failed`, `environment-failed`,
-  `duplicates-failed`, `coupling-failed`, `import-linter-failed` (slice 5), `mutation-failed` (slice 6)
+  `duplicates-failed`, `coupling-failed`, `test-runtime-failed` (the string and fixture scan of the test files), `import-linter-failed` (slice 5), `mutation-failed` (slice 6)
   and `python-failed` for anything unexpected. An environment that cannot be found at all (no
   `.venv` at the configured directory, no `uv sync`, poetry has none) is caught earlier, while the
   tool versions are read, and is reported as a plain tool error of each analyzer for each snapshot. Every failing step is reported, with the end of the tool output. The CLI
@@ -1876,6 +1876,36 @@ What the Python preset does the way the TypeScript and Java presets do (`parity/
   finding says so and never fails the run; the same finding names a test file whose tests could
   not be read, and the other files are still checked. A failing test run reports `tests-failed`
   and no slow tests.
+- **Tests that run no production code.** `no-production-runtime` (tool `test-runtime`;
+  `test-runtime/no-production-runtime` is accepted in `python.exceptions` as the same rule), as for
+  the other presets: a test file whose imports, and the imports of the helpers and `conftest.py`
+  files it reaches, lead to no production module. `type-only-production-dependency` is the same
+  file when its only link to production is an import under `if TYPE_CHECKING:`. A file is judged
+  when pytest collects it (`python_files`, `*_test.py`, Django's `tests.py`; unittest and Django
+  runners also take `test*.py`), never `conftest.py`, `__init__.py` or a helper, and not under an
+  `e2e`, `end_to_end`, `endtoend`, `contract` or `contracts` folder (or `e2eTest`, `endToEndTest`,
+  `contractTest`, in any case). With the pytest runner a test reaches a `conftest.py` (or a module
+  named in `pytest_plugins`) only through a fixture defined there: a parameter of one of its test
+  functions or methods, `@pytest.mark.usefixtures("...")`, a fixture those request in turn, or an
+  `autouse=True` fixture. What a `conftest.py` imports does not count for tests that use none of
+  its fixtures. A string literal counts as a dynamic import only in a known import context: the
+  first argument of `importlib.import_module`, `__import__`, `importlib.util.find_spec` or
+  `runpy.run_module`, the target of `patch`, `mock.patch`, `mocker.patch` (and their `.dict` and
+  `.multiple`), `monkeypatch.setattr` and `monkeypatch.delattr`, the item after `"-m"` in a list or
+  tuple argument (`["python", "-m", "app.cli"]`), or `pytest_plugins`; it must name a production
+  module, exactly or as a dotted prefix. A bare name from a folder without `__init__.py` resolves
+  to a module beside the test first, then to production. In a Django project a test that imports
+  `django.test` or `rest_framework.test` (itself, through a helper, or through a fixture it uses),
+  requests a pytest-django fixture (`client`, `admin_client`, `async_client`, `rf`, `async_rf`,
+  `db`, `transactional_db`, `django_db_setup`, `live_server`, `admin_user`, `django_user_model`,
+  `django_username_field`, `settings`, `django_assert_num_queries`,
+  `django_assert_max_num_queries`, `mailoutbox`) or carries `@pytest.mark.django_db` reaches
+  production through Django, and is accepted. Fix a finding by testing the production code, or lift it with an entry of `python.exceptions` that the
+  message prints, `{"rule":"no-production-runtime","paths":["tests/test_schema.py"],"reason":"..."}`
+  (`type-only-production-dependency` the same way). The import scan
+  (`analysis/test-runtime/string-scan.py`) writes the strings, fixtures and fixture requests next to
+  `imports.json`; a failure of that scan is `test-runtime-failed`; a test file that does not parse
+  is left out of the count.
 - **Pinned runner options.** Options that let a failing run pass are taken out of the project's
   pytest `addopts` (read from the first of `pytest.toml`, `.pytest.toml`, `pytest.ini`,
   `.pytest.ini`, `pyproject.toml`, `tox.ini`, `setup.cfg`, as pytest does) with `-o addopts=...`,
