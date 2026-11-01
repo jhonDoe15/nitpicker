@@ -23,6 +23,7 @@ export const RULES_CASES = [
   ]),
   ...rulesCases('import-time-effect', [['import-time-effect', 'composition root']]),
   ...rulesCases('mutable-module-state', [['module-level-mutable-state', 'composition root']]),
+  ...rulesCases('atomic-update', [['atomic-update-across-await', 'asyncio.Lock']]),
   ...rulesCases('path-join', [['unsafe-path-join', 'is_relative_to']]),
   ...rulesCases('boundary-guard', [['handwritten-boundary-guard', 'model_validate']]),
   ...rulesCases('domain-any', [['any-in-domain', 'frozen dataclass']]),

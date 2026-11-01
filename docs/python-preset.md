@@ -597,7 +597,8 @@ Details that are decisions rather than the table:
 These rules bring the Python preset to the rules the TypeScript and Java presets enforce. Each
 finding names the allowed form first and ends with the usual exception sentence (`python.exceptions`, or `exceptions` for the shared rules). The
 rules marked "script" are `python-rules` findings of `nitpicker_rules.py` (one module per concern
-under `languages/python/rules/`: `checks`, `boundary`, `smells`, `honesty`); the others are ruff
+under `languages/python/rules/`: `checks`, `boundary`, `smells`, `honesty`, `concurrency`); the
+others are ruff
 rules. Rules that are not enforced because they flag idiomatic code with no clean alternative
 are listed at the end.
 
@@ -614,6 +615,7 @@ are listed at the end.
 | Types in the domain      | real types, `Protocol`, frozen dataclasses                                                                                                                                           | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
 | Pure domain              | clock, ids, random values and results passed in; ports implemented in `adapters/`; no logger or module state                                                                         | `clock-now`, `random-in-domain`, `io-in-domain`, `logger-in-domain`, `module-state-in-domain` (script)                                               |
 | Module state             | state in an object made in the composition root                                                                                                                                      | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
+| Updates across `await`   | `delta = await fetch()`, then `self.total += delta`, or one lock around the whole update                                                                                             | `atomic-update-across-await` (script)                                                                                                                |
 | Import-time effects      | work done in a function the composition root calls, or under `if __name__ == "__main__":`                                                                                            | `import-time-effect` (script)                                                                                                                        |
 | Risky APIs               | JSON instead of pickle or marshal, `copy.deepcopy` to clone, a specific exception class                                                                                              | ruff `S301`, `S302`, `TRY002`, `TRY004`, `TRY201`, `TRY203`                                                                                          |
 | Deserialization          | `yaml.safe_load`, `torch.load(path, weights_only=True)`, `numpy.load` without `allow_pickle`                                                                                         | ruff `S506`, `unsafe-deserialization` (script)                                                                                                       |
@@ -882,6 +884,61 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   container that a function changes (item assignment, `del`, `append`, `update`, ...), once, at its
   definition; a collection that is only read, a local of the same name and a module-level change
   are fine. `PLW0603` covers rebinding with `global`.
+- `atomic-update-across-await` reports a lost update in an `async def`: an assignment or augmented
+  assignment to shared state whose value reads that same state before an `await` in the same
+  statement (`self.total += await fetch()`, `self.total = self.total + await fetch()`,
+  `self.total = await fetch(self.total)`, `cache[key] = cache[key] + await load()`,
+  `self.counts[key] = self.counts.get(key, 0) + await load()`), or that uses a local holding a read
+  of the state made before an `await` (`current = self.total`, `delta = await fetch()`,
+  `self.total = current + delta`). Shared state is an attribute chain or subscript rooted at the
+  method's `self` or `cls` (also from a nested function), at a module-level name (a dict, an
+  object, a class), or a bare name declared `global` or `nonlocal`.
+- A saved read is followed through the locals that carry it: a local computed from it
+  (`next_total = current + 1`), changed in place (`current += 1`, `current += await fetch()`), an
+  annotated local (`current: int = self.total`), an element of a tuple assignment and a walrus
+  (`(current := self.total)`). It is followed into the `except`, `else` and `finally` blocks of a
+  `try` whose body holds the `await`, into both arms of an `if`, and around a loop, so a read saved
+  in one iteration and written in the next is reported. A local reassigned to a value that does not
+  read the state, and the result of an awaited call that was given the state
+  (`replaced = await fetch(self.total)`, then `self.total = replaced`) are not followed.
+- Awaiting into a local first, a local, a parameter object, in-place mutation
+  (`self.items.append(await fetch())`), a read after the `await`
+  (`self.total = await fetch() + self.total`), a check then set
+  (`if key not in self.items: self.items[key] = await fetch()`) and a saved value restored after
+  the location was deliberately set (save `self.state`, set it, `await`, put the saved value back)
+  pass.
+- An update inside `async with` on a lock that admits one task at a time and that every task
+  shares passes. A lock is trusted only when every assignment to it in the file builds one at
+  module level, at class level or in `__init__` (import aliases followed): `asyncio.Lock` or
+  `Condition`, `anyio.Lock` or `Condition`, `trio.Lock`, `StrictFIFOLock` or `Condition`, a
+  semaphore or capacity limiter built with one slot (`asyncio.Semaphore()`, `asyncio.Semaphore(1)`,
+  `BoundedSemaphore(value=1)`, `anyio.Semaphore(1)`, `anyio.CapacityLimiter(1)`, the `trio`
+  equivalents), a dataclass `field(default_factory=asyncio.Lock)`, or, in `__init__`, a local or
+  module name that holds such a lock. `self.gate` and `cls.gate` are looked up in their own class
+  (a class-level lock included) and then in its base classes of the same file, so two classes may
+  use one attribute name for different locks; `self.locks[key]` is trusted when `self.locks` is a
+  `defaultdict` of such locks. Anything else is reported: a lock or semaphore built in the method
+  that takes it (no other call shares it), an attribute assigned again outside `__init__`, a
+  semaphore or limiter with more than one slot or a size that is not the literal `1` (also after
+  `limiter.total_tokens = 5`), a conditional, factory or `or` construction, a lock passed in as a
+  parameter or injected through `__init__`, and an annotated dataclass field without a factory. A
+  name that the file never assigns and that is not a parameter (a lock set up in another module)
+  is trusted when it contains `lock` or `mutex`; that is the only guess. `await cond.wait()` and
+  `await cond.wait_for(...)` on the condition that is held release it, so a read made before the
+  wait is stale after it. A read saved before the lock was taken is still stale.
+- Source and test files are checked. Not covered: a local alias of shared state
+  (`state = self.state`, then an update of `state.total`), `yield`, an `await` hidden in a helper
+  the statement calls, and a lock taken by hand (`await lock.acquire()`); lift a serialized path
+  with a `python.exceptions` entry. On a module dict the line also gets
+  `module-level-mutable-state`, which asks where the state lives; the two findings are different
+  failures and both apply. No ruff rule covers this hazard (checked against ruff 0.16.9). Run over
+  the standard library and installed async packages it reported nothing, which measures false
+  positives only.
+- Parity with the other presets ([the matrix](../spec/checks.md#updates-across-a-suspension)):
+  `self` and `cls` are followed, a saved local is followed, a lock is recognized when proven shared
+  and exclusive, and a semaphore or limiter only when proven to have one slot. The TypeScript rule
+  does not follow `this` and recognizes no lock; the Kotlin rule recognizes `Mutex.withLock` and a
+  one-permit `Semaphore`.
 - `unsafe-path-join` follows the parameters of a function through `/`, `Path(...)`,
   `os.path.join`, `joinpath` and f-strings into file operations (`open`, `read_text`, `unlink`,
   `shutil.*`, `send_file`, ...). It stays quiet when the function checks containment

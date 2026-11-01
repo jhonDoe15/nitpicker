@@ -141,6 +141,10 @@ line) is a finding.
 - Remove a parameter the body does not read. One that a callback or override signature requires
   starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
+- Do not update shared state from a value read before an `await` (`state.total += await load()`):
+  await into a local first (`const delta = await load(); state.total += delta;`), then read and
+  write the shared state with no `await` between them. A lock or queue is not recognized; state
+  that is already serialized takes a reviewed exception (`nitpicker/require-atomic-updates`).
 - Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. Never `Promise.all(items.map(send))` over a runtime collection.
 - Named exports only (`export function`, `export { x } from`); no `export default`. No comments;
   JSDoc type tags are the exception.
