@@ -82,6 +82,7 @@ export function runCacheCommand(cli) {
     configOverrides: describeConfigOverrides(config),
     headPolicy,
     runTasks: cli.runTasks,
+    warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
   return writeOutcome({ stdout: cli.stdout, result, selected });
 }
