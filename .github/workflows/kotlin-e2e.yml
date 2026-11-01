@@ -3,7 +3,7 @@ name: kotlin-e2e
 # The Kotlin end-to-end suite (npm run test:kotlin): real Gradle builds of a small Kotlin and Java project,
 # sharded across isolated runners. It runs on a push to main that touches the Java and Kotlin preset code, the core and
 # shared code it imports, the package and test configuration, or this file; by hand from the Actions tab;
-# and on a pull request only when the `run-ci` label is added, like the typescript workflow.
+# and on a pull request only when the `run-ci` label is added and the pull request changes one of those paths.
 on:
   push:
     branches: [main]
@@ -14,22 +14,51 @@ on:
       - 'package.json'
       - 'package-lock.json'
       - 'vitest.config.mts'
+      - 'nitpicker.config.json'
       - 'scripts/test-shards/**'
+      - 'languages/typescript/adapters/test-runners/vitest/test-timeouts-setup.mjs'
+      - 'evals/**/*.test.mjs'
+      - 'scripts/ci/**'
       - '.github/workflows/kotlin-e2e.yml'
   pull_request:
     types: [labeled]
   workflow_dispatch:
 
-# A newer request cancels the older run on the same pull request, other labels do not; runs on main
-# always finish.
+# A newer request cancels the older run on the same pull request, other labels do not. On main a started
+# run finishes, and a newer push replaces a run that is still waiting.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && 'main' || github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # On a pull request, the jobs below run only when the pull request changes a file in this
+  # workflow's push paths, or when the changed files cannot be listed. Other runs check everything.
+  changes:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.select.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/workflows
+            scripts/ci
+      - id: select
+        uses: actions/github-script@v8.0.0
+        with:
+          script: |
+            const { selectWorkflowJobs } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/ci/affected-jobs.mjs`);
+            await selectWorkflowJobs({ github, context, core, workflow: '.github/workflows/kotlin-e2e.yml' });
+
   kotlin-shard:
     name: kotlin shard ${{ matrix.shard }}/${{ strategy.job-total }}
-    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     # Files run serially inside each isolated shard to avoid competing JVM builds.
     timeout-minutes: 60
@@ -39,25 +68,27 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6.1.0
         with:
           distribution: temurin
           java-version: 21
       # Caches ~/.gradle: the Kotlin compiler, detekt, ktlint, ktfmt, PMD, SpotBugs and PIT jars the init script
       # resolves, and the Kotlin Gradle plugin.
-      - uses: gradle/actions/setup-gradle@v4
+      - uses: gradle/actions/setup-gradle@v6.4.1
         with:
           gradle-version: 8.14.3
+          # Keep caching on the MIT implementation; v6 defaults to a proprietary provider.
+          cache-provider: basic
       - run: npm ci
       - name: Kotlin end-to-end suite
         run: npm run test:kotlin -- --no-file-parallelism --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=default --reporter=json --outputFile=reports/kotlin-e2e/shard-${{ matrix.shard }}.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.2
         if: always()
         with:
           name: kotlin-e2e-${{ matrix.shard }}-${{ github.run_attempt }}
@@ -67,12 +98,13 @@ jobs:
   # Lists the suite without starting a JVM build: test:kotlin must select every case its E2E flag enables,
   # and the timing profile and the matrix above must split those files with none missing or repeated.
   kotlin-shard-plan:
-    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -82,12 +114,17 @@ jobs:
 
   kotlin:
     if: ${{ always() && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') }}
-    needs: [kotlin-shard-plan, kotlin-shard]
+    needs: [changes, kotlin-shard-plan, kotlin-shard]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Every Kotlin end-to-end shard passed and the shard plan holds
+      - name: Every Kotlin end-to-end shard and the shard plan passed, or the selection skipped them
         env:
+          CHANGES: ${{ needs.changes.result }}
+          RUN: ${{ needs.changes.outputs.run }}
           PLAN: ${{ needs.kotlin-shard-plan.result }}
           RESULT: ${{ needs.kotlin-shard.result }}
-        run: test "$PLAN" = success && test "$RESULT" = success
+        run: |
+          test "$CHANGES" = success
+          if [ "$RUN" = false ]; then exit 0; fi
+          test "$PLAN" = success && test "$RESULT" = success
