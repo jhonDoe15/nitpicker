@@ -8,11 +8,16 @@ import { failingTestsError } from '../../builds/test-failures.mjs';
 
 const MAX_FAILURE_LENGTH = 3500;
 
-export function assertGradleSucceeded(result, projectRoot, { reportBase, since }) {
-  if (result.error === undefined && result.status === 0) {
-    return;
-  }
-  const failures = result.error === undefined ? failingTestsOf({ reportBase, since }) : [];
+export function assertGradleSucceeded(
+  result,
+  projectRoot,
+  { reportBase, since, checkTests = true },
+) {
+  const succeeded = result.error === undefined && result.status === 0;
+  const failures =
+    result.error === undefined && (!succeeded || checkTests)
+      ? failingTestsOf({ reportBase, since })
+      : [];
   if (failures.length > 0) {
     throw Object.defineProperty(
       withGradleLog(failingTestsError(projectRoot, failures), result),
@@ -22,6 +27,9 @@ export function assertGradleSucceeded(result, projectRoot, { reportBase, since }
       },
     );
   }
+  if (succeeded) {
+    return;
+  }
   const raw = result.stderr?.trim() ? result.stderr : (result.stdout ?? '');
   const detail = condenseFailure(raw, MAX_FAILURE_LENGTH) || 'no diagnostic output';
   throw withGradleLog(
@@ -30,12 +38,21 @@ export function assertGradleSucceeded(result, projectRoot, { reportBase, since }
   );
 }
 
-export function runGradleStage({ args, projectRoot, gradle, budget, reportBase, since, spawn }) {
+export function runGradleStage({
+  args,
+  projectRoot,
+  gradle,
+  budget,
+  reportBase,
+  since,
+  checkTests,
+  spawn,
+}) {
   const target = gradleTarget({ projectRoot, configured: gradle, args });
   const result = runGradle(
     target.command,
     target.args,
     gradleOptions(target, { projectRoot, budget, spawn }),
   );
-  assertGradleSucceeded(result, projectRoot, { reportBase, since });
+  assertGradleSucceeded(result, projectRoot, { reportBase, since, checkTests });
 }
