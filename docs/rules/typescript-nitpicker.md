@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 87 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 88 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -1097,6 +1097,18 @@ A tsconfig a test writes must set compilerOptions.types and compilerOptions.lib 
 - **Exception:** If this is intended, add `{"rule":"nitpicker/test-tsconfig-pins-lib-and-types","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
   - A tsconfig a test writes must set compilerOptions.types and compilerOptions.lib (or noLib), for example types: [] and lib: ['ES2022'], so tsc does not load every @types package and the full default lib.
+
+<a id="eslint-nitpicker-timeout-abandons-operation"></a>
+
+### `eslint/nitpicker/timeout-abandons-operation`
+
+Require the operation raced against a timeout to receive its cancellation.
+
+- **Printed as:** `eslint-lint/nitpicker/timeout-abandons-operation`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/timeout-abandons-operation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `Promise.race` with {{timeout}} does not stop `{{operation}}`: when the timeout wins, the call keeps running and repeats its side effects if the caller retries. Create an `AbortController`, abort it from the timeout path and pass `{ signal: controller.signal }` to the operation, or pass `AbortSignal.timeout(ms)` straight to an API that accepts `signal` and drop the race. An exception fits only for background work that is meant to finish after the caller gave up.
+  - `Promise.race` with {{timeout}} does not stop `{{operation}}`, and this call leaves out its `{{parameter}}` parameter, so it keeps running after the timeout wins and a retry overlaps it. Create an `AbortController`, abort it from the timeout path and pass `{ signal: controller.signal }` to the operation, or pass `AbortSignal.timeout(ms)` straight to an API that accepts `signal` and drop the race. An exception fits only for background work that is meant to finish after the caller gave up.
 
 <a id="eslint-nitpicker-unbounded-fan-out"></a>
 

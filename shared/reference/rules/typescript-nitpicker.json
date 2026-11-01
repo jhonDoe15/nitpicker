@@ -973,6 +973,17 @@
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/test-tsconfig-pins-lib-and-types" },
+    "nitpicker/timeout-abandons-operation",
+    "Require the operation raced against a timeout to receive its cancellation",
+    [
+      {
+        "message": "`Promise.race` with {{timeout}} does not stop `{{operation}}`: when the timeout wins, the call keeps running and repeats its side effects if the caller retries. Create an `AbortController`, abort it from the timeout path and pass `{ signal: controller.signal }` to the operation, or pass `AbortSignal.timeout(ms)` straight to an API that accepts `signal` and drop the race. An exception fits only for background work that is meant to finish after the caller gave up."
+      },
+      {
+        "message": "`Promise.race` with {{timeout}} does not stop `{{operation}}`, and this call leaves out its `{{parameter}}` parameter, so it keeps running after the timeout wins and a retry overlaps it. Create an `AbortController`, abort it from the timeout path and pass `{ signal: controller.signal }` to the operation, or pass `AbortSignal.timeout(ms)` straight to an API that accepts `signal` and drop the race. An exception fits only for background work that is meant to finish after the caller gave up."
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/timeout-abandons-operation" },
     "nitpicker/unbounded-fan-out",
     "Bound the concurrency of remote calls started per element",
     [
@@ -1069,6 +1080,7 @@
     [0, 352, 353, 354, 355, 5, 356, 7, 357, -1, -1],
     [0, 358, 2, 3, 359, 5, 360, 7, 361, -1, -1],
     [0, 362, 2, 3, 363, 5, 364, 7, 365, -1, -1],
-    [0, 366, 2, 3, 367, 5, 368, 7, 369, -1, -1]
+    [0, 366, 2, 3, 367, 5, 368, 7, 369, -1, -1],
+    [0, 370, 2, 3, 371, 5, 372, 7, 373, -1, -1]
   ]
 }
