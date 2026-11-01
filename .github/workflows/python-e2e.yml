@@ -14,19 +14,48 @@ on:
       - 'vitest.config.mts'
       - 'scripts/test-shards/**'
       - '.github/python-e2e-constraints.txt'
+      - 'evals/**/*.test.mjs'
+      - 'scripts/ci/**'
       - '.github/workflows/python-e2e.yml'
   pull_request:
     types: [labeled]
   workflow_dispatch:
 
+# A newer request cancels the older run on the same pull request, other labels do not. On main a started
+# run finishes, and a newer push replaces a run that is still waiting.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && 'main' || github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  # On a pull request, the jobs below run only when the pull request changes a file in this
+  # workflow's push paths, or when the changed files cannot be listed. Other runs check everything.
+  changes:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+    outputs:
+      run: ${{ steps.select.outputs.run }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: |
+            .github/workflows
+            scripts/ci
+      - id: select
+        uses: actions/github-script@v8.0.0
+        with:
+          script: |
+            const { selectWorkflowJobs } = await import(`${process.env.GITHUB_WORKSPACE}/scripts/ci/affected-jobs.mjs`);
+            await selectWorkflowJobs({ github, context, core, workflow: '.github/workflows/python-e2e.yml' });
+
   python-shard:
     name: python shard ${{ matrix.shard }}/${{ strategy.job-total }}
-    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     # setup-python has no Python 3.9 build for the newer ubuntu-latest image.
     runs-on: ubuntu-24.04
     # Every runner owns its project environments; two files at a time bound provisioning/tool load.
@@ -40,15 +69,15 @@ jobs:
       # The suite's own `uv pip install` calls resolve to these versions too.
       UV_CONSTRAINT: ${{ github.workspace }}/.github/python-e2e-constraints.txt
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm
           cache-dependency-path: package-lock.json
       # 3.9 and 3.10 sit beside 3.13 (the default, listed last): the rules script runs on the oldest
       # supported Python and reports one skipped error below it.
-      - uses: actions/setup-python@v5
+      - uses: actions/setup-python@v7.1.0
         with:
           python-version: |
             3.9
@@ -63,7 +92,7 @@ jobs:
       - run: pipx install poetry==2.4.3
       - run: npm ci
       - run: npm run test:python -- --maxWorkers=2 --shard=${{ matrix.shard }}/${{ strategy.job-total }} --reporter=default --reporter=json --outputFile=reports/python-e2e/shard-${{ matrix.shard }}.json
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.2
         if: always()
         with:
           name: python-e2e-${{ matrix.shard }}-${{ github.run_attempt }}
@@ -73,12 +102,13 @@ jobs:
   # Lists the suite without provisioning a Python project: test:python must select every case its E2E flag enables,
   # and the timing profile and the matrix above must split those files with none missing or repeated.
   python-shard-plan:
-    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    needs: changes
+    if: needs.changes.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -88,12 +118,17 @@ jobs:
 
   python-e2e:
     if: ${{ always() && (github.event_name != 'pull_request' || github.event.label.name == 'run-ci') }}
-    needs: [python-shard-plan, python-shard]
+    needs: [changes, python-shard-plan, python-shard]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - name: Every Python end-to-end shard passed and the shard plan holds
+      - name: Every Python end-to-end shard and the shard plan passed, or the selection skipped them
         env:
+          CHANGES: ${{ needs.changes.result }}
+          RUN: ${{ needs.changes.outputs.run }}
           PLAN: ${{ needs.python-shard-plan.result }}
           RESULT: ${{ needs.python-shard.result }}
-        run: test "$PLAN" = success && test "$RESULT" = success
+        run: |
+          test "$CHANGES" = success
+          if [ "$RUN" = false ]; then exit 0; fi
+          test "$PLAN" = success && test "$RESULT" = success

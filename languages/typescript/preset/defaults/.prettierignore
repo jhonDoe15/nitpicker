@@ -1,5 +1,5 @@
 src/main/dist/
-coverage/
-reports/
-.stryker-tmp/
+/coverage/
+/reports/quality/
+/.stryker-tmp/
 .nitpicker-*
