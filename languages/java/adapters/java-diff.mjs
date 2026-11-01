@@ -73,7 +73,16 @@ function runJavaPreset(
       testsFailedModules,
     });
     for (const stage of stages) {
-      runGradleStage({ args: stage(), projectRoot, gradle, budget, reportBase, since, spawn });
+      runGradleStage({
+        args: stage(),
+        projectRoot,
+        gradle,
+        budget,
+        reportBase,
+        since,
+        checkTests: testsFailedModules.length === 0,
+        spawn,
+      });
     }
   });
 }

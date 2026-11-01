@@ -12,6 +12,12 @@ GitHub Actions, GitLab CI and Jenkins, are in [nitpicker in CI](ci.md#toolchains
 
 Every rule the preset can report has an entry in the [rule reference](rules/README.md): [detekt](rules/kotlin-detekt.md), [the Kotlin source checks, compiler warnings and format checks](rules/kotlin-nitpicker.md), and the [Java rules](rules/java-pmd.md) that run on Java sources. `nitpicker explain <tool/rule>` prints an entry.
 
+## Test retries
+
+The retry rules of the [Java preset](java-preset.md#how-it-works) apply to Kotlin on Gradle: the
+same init script switches off the test-retry and Develocity retries of every `Test` task and reads
+the JUnit XML after a successful build. Maven support is separate.
+
 ## Selection
 
 `"preset": "kotlin"` in `nitpicker.config.json`. Like `java`, it is explicit and never
