@@ -315,7 +315,7 @@ Upload the comparison file in pull requests with `github/codeql-action/upload-sa
 ```yaml
 - run: npx nitpicker
   working-directory: packages/app
-- uses: github/codeql-action/upload-sarif@v3
+- uses: github/codeql-action/upload-sarif@v4.39.1
   if: always()
   with:
     sarif_file: packages/app/reports/quality/diff/report.sarif
@@ -2117,7 +2117,7 @@ jobs:
   nitpicker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - run: npm ci
