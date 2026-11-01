@@ -1,7 +1,7 @@
 import { mkdirSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { readPinnedTools } from '../../builds/java-build.mjs';
-import { runMaven } from '../../maven/maven-command.mjs';
+import { runMaven, TEST_RERUNS_OFF } from '../../maven/maven-command.mjs';
 import { moduleClasspaths, parseDependencyList, readReactor } from '../../maven/maven-project.mjs';
 import { jacocoPlugin, MAVEN_PLUGINS, resolveTools } from '../../maven/maven-tools.mjs';
 import {
@@ -41,6 +41,7 @@ function buildFixture(projectRoot, { maven, reportDir, pinned }) {
       `-Djacoco.destFile=${path.join(reportDir, 'jacoco.exec')}`,
       'test',
       '-Dmaven.test.failure.ignore=true',
+      ...TEST_RERUNS_OFF,
       `${MAVEN_PLUGINS.dependency}:list`,
       `-DoutputFile=${path.join(reportDir, 'dependencies.txt')}`,
       '-DoutputAbsoluteArtifactFilename=true',
