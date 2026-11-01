@@ -44,6 +44,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   (`def send(message, *, urgent=False)`), two functions or an enum.
 - Errors: catch the specific exception and handle it, or re-raise it with its cause:
   `raise ParseError(text) from err`. No bare `except:` or `except Exception:`, and no `raise Exception(...)`.
+- Timeouts: `asyncio.wait(tasks, timeout=...)` (or `return_when=FIRST_COMPLETED`) leaves its
+  pending tasks running. Cancel them (`for task in pending: task.cancel()`) or hand them to an owner;
+  prefer `asyncio.wait_for`, `asyncio.timeout` or a `TaskGroup`, which cancel. A shielded `wait_for` needs the task cancelled or awaited after the
+  timeout (`timeout-abandons-operation`).
 - Cancellation: after cleanup in an explicit asyncio, Trio or AnyIO cancellation handler, use
   a bare `raise` or re-raise the unchanged caught exception. Returning a failure result or raising
   a different error consumes cancellation (`cancellation-not-propagated`). Keep intentional

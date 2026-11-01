@@ -191,6 +191,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/ExhaustiveEnumPredicate',
       'pmd/StaticForwardingWrapper',
       'pmd/SingularAndPluralMember',
+      'pmd/timeout-abandons-operation',
       'pmd/ValidationAnnotationTarget',
       'pmd/ClassLoadEffect',
       ...SPRING_RULES.map((rule) => `pmd/${rule}`),

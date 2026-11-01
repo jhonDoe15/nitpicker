@@ -55,6 +55,7 @@ export const RULES_CASES = [
   ...rulesCases('cleanup-cancellation', [
     ['unshielded-cleanup-await', 'shielded scope with a deadline'],
   ]),
+  ...rulesCases('timeout-abandons-operation', [['timeout-abandons-operation', 'asyncio.timeout']]),
   ...rulesCases('tri-state-boolean', [['tri-state-boolean', 'enum']]),
   ...rulesCases('falsy-default', [['falsy-default', 'is not None']]),
   ...rulesCases('parameter-mutation', [['parameter-mutation', 'new value']]),

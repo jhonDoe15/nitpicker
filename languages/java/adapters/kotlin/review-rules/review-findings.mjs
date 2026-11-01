@@ -6,6 +6,7 @@ import { fanOutFindings } from './main/fan-out/fan-out.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
 import { loadEffectFindings } from './main/load-effects.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
+import { timeoutFindings } from './main/timeouts/timeouts.mjs';
 import { unusedOptionFindings } from './main/unused-options.mjs';
 import { validationTargetFindings } from './validation/validation-targets.mjs';
 import { readKotlinFacts } from './kotlin-facts.mjs';
@@ -88,6 +89,7 @@ export function readKotlinReviewFindings(context) {
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
     ...singularPluralFindings(own, { finding }),
+    ...timeoutFindings(own, { finding }),
     ...validationTargetFindings(own, { finding }),
     ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...unusedOptionFindings(own, {

@@ -1451,6 +1451,15 @@
         "A tsconfig a test writes must set compilerOptions.types and compilerOptions.lib (or noLib), for example types: [] and lib: ['ES2022'], so tsc does not load every @types package and the full default lib."
       ]
     },
+    "nitpicker/timeout-abandons-operation": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Require the operation raced against a timeout to receive its cancellation",
+      "messages": [
+        "`Promise.race` with {{timeout}} does not stop `{{operation}}`: when the timeout wins, the call keeps running and repeats its side effects if the caller retries. Create an `AbortController`, abort it from the timeout path and pass `{ signal: controller.signal }` to the operation, or pass `AbortSignal.timeout(ms)` straight to an API that accepts `signal` and drop the race. An exception fits only for background work that is meant to finish after the caller gave up.",
+        "`Promise.race` with {{timeout}} does not stop `{{operation}}`, and this call leaves out its `{{parameter}}` parameter, so it keeps running after the timeout wins and a retry overlaps it. Create an `AbortController`, abort it from the timeout path and pass `{ signal: controller.signal }` to the operation, or pass `AbortSignal.timeout(ms)` straight to an API that accepts `signal` and drop the race. An exception fits only for background work that is meant to finish after the caller gave up."
+      ]
+    },
     "nitpicker/unbounded-fan-out": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -4309,6 +4318,15 @@
       "forms": [],
       "messages": [
         "A tsconfig a test writes must set compilerOptions.types and compilerOptions.lib (or noLib), for example types: [] and lib: ['ES2022'], so tsc does not load every @types package and the full default lib."
+      ]
+    },
+    "nitpicker/timeout-abandons-operation": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Require the operation raced against a timeout to receive its cancellation",
+      "messages": [
+        "`Promise.race` with {{timeout}} does not stop `{{operation}}`: when the timeout wins, the call keeps running and repeats its side effects if the caller retries. Create an `AbortController`, abort it from the timeout path and pass `{ signal: controller.signal }` to the operation, or pass `AbortSignal.timeout(ms)` straight to an API that accepts `signal` and drop the race. An exception fits only for background work that is meant to finish after the caller gave up.",
+        "`Promise.race` with {{timeout}} does not stop `{{operation}}`, and this call leaves out its `{{parameter}}` parameter, so it keeps running after the timeout wins and a retry overlaps it. Create an `AbortController`, abort it from the timeout path and pass `{ signal: controller.signal }` to the operation, or pass `AbortSignal.timeout(ms)` straight to an API that accepts `signal` and drop the race. An exception fits only for background work that is meant to finish after the caller gave up."
       ]
     },
     "nitpicker/unbounded-fan-out": {
@@ -7265,6 +7283,15 @@
       "forms": [],
       "messages": [
         "A tsconfig a test writes must set compilerOptions.types and compilerOptions.lib (or noLib), for example types: [] and lib: ['ES2022'], so tsc does not load every @types package and the full default lib."
+      ]
+    },
+    "nitpicker/timeout-abandons-operation": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Require the operation raced against a timeout to receive its cancellation",
+      "messages": [
+        "`Promise.race` with {{timeout}} does not stop `{{operation}}`: when the timeout wins, the call keeps running and repeats its side effects if the caller retries. Create an `AbortController`, abort it from the timeout path and pass `{ signal: controller.signal }` to the operation, or pass `AbortSignal.timeout(ms)` straight to an API that accepts `signal` and drop the race. An exception fits only for background work that is meant to finish after the caller gave up.",
+        "`Promise.race` with {{timeout}} does not stop `{{operation}}`, and this call leaves out its `{{parameter}}` parameter, so it keeps running after the timeout wins and a retry overlaps it. Create an `AbortController`, abort it from the timeout path and pass `{ signal: controller.signal }` to the operation, or pass `AbortSignal.timeout(ms)` straight to an API that accepts `signal` and drop the race. An exception fits only for background work that is meant to finish after the caller gave up."
       ]
     },
     "nitpicker/unbounded-fan-out": {
