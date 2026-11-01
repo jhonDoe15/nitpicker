@@ -3,6 +3,7 @@
   "languages/java/adapters/errorprone/error-prone-report.e2e.test.mjs": 30,
   "languages/java/adapters/errorprone/error-prone.e2e.test.mjs": 16,
   "languages/java/adapters/errorprone/lombok.e2e.test.mjs": 69,
+  "languages/java/adapters/java-e2e/build-retries.e2e.test.mjs": 225,
   "languages/java/adapters/java-e2e/declared/spotbugs.e2e.test.mjs": 290,
   "languages/java/adapters/java-e2e/integration-tests.e2e.test.mjs": 290,
   "languages/java/adapters/java-e2e/multi-project.e2e.test.mjs": 70,

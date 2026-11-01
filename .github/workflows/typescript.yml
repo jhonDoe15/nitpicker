@@ -27,11 +27,44 @@ on:
 
 # Pull requests are checked locally with `npm run check` (CONTRIBUTING.md). On a pull request CI runs
 # only when the `run-ci` label is added; a newer request cancels the older run, other labels do not.
+# On main a started run finishes, and a newer push replaces a run that is still waiting.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && 'main' || github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  container-smoke:
+    if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: docker build -t nitpicker-smoke .
+      - name: Gate the strict-clean project with mutation testing enabled
+        run: |
+          docker run --rm -i --entrypoint sh \
+            -v "$PWD/languages/typescript/preset/fixtures/strict-clean:/fixture:ro" \
+            nitpicker-smoke -eu <<'SMOKE'
+          cp -R /fixture/. /work/
+          printf 'node_modules/\nreports/\n' > .gitignore
+          node --input-type=module <<'NODE'
+          import fs from 'node:fs';
+          const fixture = JSON.parse(fs.readFileSync('package.json', 'utf8'));
+          const tools = JSON.parse(fs.readFileSync('/opt/nitpicker/package.json', 'utf8')).devDependencies;
+          for (const name of ['typescript', '@types/node', '@vitest/coverage-v8']) {
+            fixture.devDependencies[name] = tools[name];
+          }
+          fs.writeFileSync('package.json', `${JSON.stringify(fixture, null, 2)}\n`);
+          NODE
+          npm install --legacy-peer-deps --no-audit --no-fund
+          git init -q
+          git config user.name container-smoke
+          git config user.email container-smoke@example.invalid
+          git add .gitignore package.json package-lock.json src test
+          git commit -qm fixture
+          nitpicker --all
+          SMOKE
+
   # The suite runs in parallel jobs, each on its own shard of the test files (Vitest --shard), so the
   # slowest shard sets the time instead of the whole suite. The required `test` check is the job
   # below that passes only when every shard passed. scripts/test-shards/sequencer.mjs balances them.
@@ -46,10 +79,10 @@ jobs:
       matrix:
         shard: [1, 2, 3, 4, 5, 6, 7, 8]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -58,11 +91,11 @@ jobs:
       # The dependency hook tests install fixtures with the real pnpm, Yarn and Bun, whose versions
       # the fixtures pin; in CI a manager that is missing or has another version fails the test.
       - run: corepack enable
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@v2.2.0
         with:
           bun-version: 1.4.2
       # The StructureMetrics unit test runs Java on Java 21 sources, the version the Java preset needs.
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-java@v6.1.0
         with:
           distribution: temurin
           java-version: 21
@@ -90,11 +123,11 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           # The merge base with the target branch must be reachable.
           fetch-depth: 0
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7.1.0
         with:
           node-version: 24
           cache: npm
@@ -108,7 +141,7 @@ jobs:
         run: node core/cli.mjs --output reports/nitpicker
         env:
           NITPICKER_ACCEPT_POLICY_CHANGE: ${{ vars.NITPICKER_ACCEPT_POLICY_CHANGE }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7.0.2
         if: failure()
         with:
           name: nitpicker-report
@@ -117,16 +150,21 @@ jobs:
   # Packs the tarball and installs it into consumer projects (hoisted, nested and linked layouts, and
   # one on TypeScript 7), then runs the gate from node_modules the way a user does. It catches what the
   # in-repository suite cannot: files missing from the package, paths inside node_modules and
-  # git-ignored folders, and the peers a consumer brings. Not a required check.
+  # git-ignored folders, and the peers a consumer brings. Not a required check. Node.js 22.14 is the
+  # oldest supported version; its bundled npm 10 installs the repository from the lockfile.
   installed:
     if: github.event_name != 'pull_request' || github.event.label.name == 'run-ci'
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [24, 22.14.0]
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v7.0.1
+      - uses: actions/setup-node@v7.1.0
         with:
-          node-version: 24
+          node-version: ${{ matrix.node }}
           cache: npm
           cache-dependency-path: package-lock.json
       - run: npm ci
