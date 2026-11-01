@@ -23,10 +23,10 @@ const MANIFEST = new URL('../../package.json', import.meta.url);
 const PAIRED = { '--shard-count': ['--shard-index', '0'], '--shard-index': ['--shard-count', '2'] };
 const EXPECTED_USAGE = [
   'Usage: nitpicker [--base <ref>] [--output <dir>] [--all | --fix] [--analyzer <name>]...',
-  '                 [--rule <substring>]... [--shard-count <n> --shard-index <i>] [--defer-exit]',
-  '                 [--no-cache] [--accept-policy-change=<digest>] [--help] [--version]',
+  '                 [--rule <substring>]... [--details] [--shard-count <n> --shard-index <i>]',
+  '                 [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help] [--version]',
   '       nitpicker init [--agents-md] [--ci github] [--help]',
-  '       nitpicker aggregate --input-root <dir> --shard-count <n> [--output <dir>] [--policy-root <dir>]',
+  '       nitpicker aggregate --input-root <dir> --shard-count <n> [--output <dir>] [--policy-root <dir>] [--details]',
   '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>] [--help]',
   '       nitpicker base [--base <ref>]',
   '       nitpicker explain <tool/rule>...',
@@ -47,6 +47,7 @@ const EXPECTED_USAGE = [
   '  --fix                            Apply ESLint and Prettier fixes to the changed files, then compare.',
   '  --analyzer <name>                Run only this analyzer (repeatable).',
   '  --rule <substring>               List the findings whose rule matches (repeatable).',
+  '  --details                        Print every new and held finding with its full message.',
   '  --output <dir>                   Write the reports to this directory.',
   '  --shard-count <n>                Split the analyzers over n jobs (with --shard-index).',
   '  --shard-index <i>                Run shard i of the split (0 to n-1).',
@@ -66,6 +67,7 @@ const EXPECTED_USAGE = [
   '  --shard-count <n>    The number of shards the run was split into.',
   '  --output <dir>       Write the combined reports here (default reports/quality/diff/combined).',
   '  --policy-root <dir>  Read the analyzer configuration from this folder, not the head commit.',
+  '  --details            Print every new and held finding with its full message.',
   '  --help               Print this help.',
   '',
   'Options of nitpicker cache publish:',
@@ -94,7 +96,7 @@ const EXPECTED_INIT_USAGE = [
   '',
 ].join('\n');
 const EXPECTED_AGGREGATE_USAGE = [
-  'Usage: nitpicker aggregate --input-root <dir> --shard-count <n> [--output <dir>] [--policy-root <dir>]',
+  'Usage: nitpicker aggregate --input-root <dir> --shard-count <n> [--output <dir>] [--policy-root <dir>] [--details]',
   '',
   'Combines the reports of the shard jobs (run with --shard-count, --shard-index and --defer-exit)',
   'into one result, with the exit codes of a normal run.',
@@ -104,6 +106,7 @@ const EXPECTED_AGGREGATE_USAGE = [
   '  --shard-count <n>    The number of shards the run was split into.',
   '  --output <dir>       Write the combined reports here (default reports/quality/diff/combined).',
   '  --policy-root <dir>  Read the analyzer configuration from this folder, not the head commit.',
+  '  --details            Print every new and held finding with its full message.',
   '  --help               Print this help.',
   '',
 ].join('\n');

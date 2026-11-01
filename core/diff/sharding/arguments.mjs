@@ -3,7 +3,7 @@ import { takeOptionValue, unknownArgumentError } from '../comparison/cli.mjs';
 const OPTION_NAMES = ['--input-root', '--output', '--shard-count', '--policy-root'];
 const HELP = '--help';
 
-export const AGGREGATE_OPTIONS = [...OPTION_NAMES, HELP];
+export const AGGREGATE_OPTIONS = [...OPTION_NAMES, '--details', HELP];
 
 function collectOptionValues(arguments_) {
   const values = {};
@@ -11,6 +11,10 @@ function collectOptionValues(arguments_) {
   for (const argument of remaining) {
     if (argument === HELP) {
       return undefined;
+    }
+    if (argument === '--details') {
+      values[argument] = true;
+      continue;
     }
     if (!OPTION_NAMES.includes(argument)) {
       throw unknownArgumentError(
@@ -41,5 +45,6 @@ export function parseArguments(arguments_) {
     outputRoot: values['--output'],
     shardCount: Number(values['--shard-count']),
     policyRoot: values['--policy-root'],
+    details: values['--details'] === true,
   };
 }

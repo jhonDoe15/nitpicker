@@ -21,6 +21,7 @@ import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-pol
 import { renderConsoleSummary } from '../reporting/summary.mjs';
 import { AGGREGATE_USAGE_TEXT } from '../../help/usage-text.mjs';
 import { writeGithubOutput } from '../reporting/github/emit.mjs';
+import { describeError } from '../../../shared/messages/error-chain.mjs';
 
 function resolvePolicyRoot({ policyRoot, optionsPolicyRoot, currentProjectRoot }) {
   if (policyRoot !== undefined) {
@@ -39,6 +40,7 @@ export function aggregateShardReports({
   liveProjectRoot,
   policyRoot,
   configOverrides = [],
+  warn,
 }) {
   const plan = planAnalyzerShards(analyzers, shardCount);
   const analyzerResolutionErrors = resolveMetadata({
@@ -46,6 +48,7 @@ export function aggregateShardReports({
     liveProjectRoot,
     policyRoot,
     inputRoot,
+    warn,
   });
   const shardReports = plan.map((shardAnalyzers, index) =>
     readAndValidateShard(inputRoot, index, shardAnalyzers),
@@ -138,15 +141,21 @@ export function runAggregateCli({
       outputRoot,
       analyzers,
       policyRoot,
+      warn: (message) => stderr.write(`nitpicker: ${message}\n`),
     });
-    return reportExitCode(report, { stdout, stderr, environment, outputRoot, currentProjectRoot });
+    return reportExitCode(report, {
+      stdout,
+      stderr,
+      environment,
+      outputRoot,
+      currentProjectRoot,
+      details: options.details,
+    });
   } catch (error) {
     if (outputRoot !== undefined) {
       clearDiffReports(outputRoot);
     }
-    stderr.write(
-      `Quality shard aggregation failed: ${error instanceof Error ? error.message : String(error)}\n`,
-    );
+    stderr.write(`Quality shard aggregation failed: ${describeError(error)}\n`);
     return 2;
   }
 }
@@ -196,7 +205,10 @@ function aggregateSummary({ shardReports, analyzers, configOverrides, newFinding
   };
 }
 
-function configuredReport(options, { currentProjectRoot, outputRoot, analyzers, policyRoot }) {
+function configuredReport(
+  options,
+  { currentProjectRoot, outputRoot, analyzers, policyRoot, warn },
+) {
   const config = loadConfig(currentProjectRoot);
   return aggregateShardReports({
     inputRoot: path.resolve(currentProjectRoot, options.inputRoot),
@@ -209,6 +221,7 @@ function configuredReport(options, { currentProjectRoot, outputRoot, analyzers, 
     configOverrides: describeConfigOverrides(config),
     shardCount: options.shardCount,
     liveProjectRoot: currentProjectRoot,
+    warn,
     policyRoot: resolvePolicyRoot({
       policyRoot,
       optionsPolicyRoot: options.policyRoot,
@@ -217,10 +230,14 @@ function configuredReport(options, { currentProjectRoot, outputRoot, analyzers, 
   });
 }
 
-function reportExitCode(report, { stdout, stderr, environment, outputRoot, currentProjectRoot }) {
+function reportExitCode(
+  report,
+  { stdout, stderr, environment, outputRoot, currentProjectRoot, details },
+) {
   stdout.write(
     renderConsoleSummary(report, {
       color: environment.NO_COLOR === undefined,
+      details,
       diagnosticsPath: absoluteTextReportPath(outputRoot),
     }),
   );

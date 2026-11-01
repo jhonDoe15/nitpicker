@@ -16,6 +16,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { readSnippet } from './init/files/agents-md.mjs';
 import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
+import { supportsRedirect } from '../languages/typescript/typescript-api/api-redirect.mjs';
 import {
   checkoutOutput,
   expectedDirtyFindings,
@@ -31,7 +32,7 @@ const manifest = JSON.parse(readFileSync(path.join(packageRoot, 'package.json'),
 const links = installedLinks(manifest);
 const layouts = [undefined, 'nested', 'linked'];
 const explained = ['pmd/UnusedLocalVariable', 'coverage', 'MagicNumber'];
-// npm 10.9 crashes resolving vitest's optional peers ("reading 'edgesOut'"), so
+// npm 10 crashes resolving the peers of Vitest 4.1 ("reading 'edgesOut'"), so
 // the consumer install is pinned to a newer npm.
 const installer = 'npm@11';
 const cleanSource = 'export function example() {\n  return 1;\n}\n';
@@ -128,7 +129,7 @@ suite('packed nitpicker in a separate consumer', () => {
     if (packRoot) rmSync(packRoot, { recursive: true, force: true });
   });
 
-  describe('a consumer on TypeScript 7', () => {
+  describe.runIf(supportsRedirect())('a consumer on TypeScript 7', () => {
     const typeScript7 = manifest.dependencies['typescript-native'].replace('npm:typescript@', '');
     const jsApi = manifest.dependencies['typescript-js-api'].replace('npm:typescript@', '');
     const twiceSource = (expression) =>

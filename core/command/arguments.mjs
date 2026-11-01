@@ -6,6 +6,7 @@ import {
 
 const FLAGS = new Map([
   ['--all', { property: 'all', value: true }],
+  ['--details', { property: 'details', value: true }],
   ['--fix', { property: 'fix', value: true }],
   ['--help', { property: 'help', value: true }],
   ['--version', { property: 'version', value: true }],
@@ -66,7 +67,14 @@ function readFlag(options, argument) {
 }
 
 function remainingOptions(arguments_) {
-  const options = { all: false, fix: false, help: false, version: false, cache: true };
+  const options = {
+    all: false,
+    details: false,
+    fix: false,
+    help: false,
+    version: false,
+    cache: true,
+  };
   const remaining = arguments_.values();
   for (const argument of remaining) {
     if (readFlag(options, argument)) {
