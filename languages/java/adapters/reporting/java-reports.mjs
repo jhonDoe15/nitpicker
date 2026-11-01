@@ -289,5 +289,6 @@ function branchFindings(context, jacoco) {
 function projectRoots(projectRoot) {
   const roots = new Set([path.resolve(projectRoot)]);
   roots.add(realpathSync(projectRoot));
+  roots.add(realpathSync.native(projectRoot));
   return [...roots];
 }

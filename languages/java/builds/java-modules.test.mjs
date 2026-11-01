@@ -52,6 +52,7 @@ function writeModule(moduleDir, { className, lines, methods = 0 }) {
     ]),
   );
   write(path.join(reports, 'spotbugs.sarif'), sarif());
+  write(path.join(reports, 'errorprone.json'), '[]');
   write(path.join(reports, 'format.txt'), '');
   write(path.join(reports, 'jacoco.xml'), '<report name="demo"></report>');
   write(path.join(reports, 'checkstyle.xml'), '<checkstyle version="10.21.1"></checkstyle>');

@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawnSyncWithOutputFile } from '../../../core/tooling/output-file.mjs';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -81,7 +81,7 @@ export function runMaven({
   maven,
   args,
   timeoutMs = MAVEN_TIMEOUT_MS,
-  spawn = spawnSync,
+  spawn = spawnSyncWithOutputFile,
 }) {
   const target = mavenTarget({ projectRoot, configured: maven, args: [...MAVEN_FLAGS, ...args] });
   const result = spawn(target.command, target.args, {
@@ -123,7 +123,7 @@ export function runJava({
   args,
   cwd,
   accept = () => true,
-  spawn = spawnSync,
+  spawn = spawnSyncWithOutputFile,
 }) {
   const directory = mkdtempSync(path.join(tmpdir(), 'nitpicker-java-'));
   try {

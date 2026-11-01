@@ -13,11 +13,11 @@ import { prettierExtensions, prettierExclusions, typescriptExtensions } from './
 import { linkPolicyFile } from '../tooling/policy-links.mjs';
 import { PACKAGE_ROOT, resolveTool } from '../tooling/tool-resolution.mjs';
 import { layoutTransformFor } from '../../languages/typescript/preset/tool-configs.mjs';
+import { spawnSyncWithOutputFile } from '../tooling/output-file.mjs';
 import {
   PROJECT_LAYER_VARIABLE,
   projectLayerValue,
 } from '../../languages/typescript/adapters/lint-engine/project-layer.mjs';
-import { spawnSync } from 'node:child_process';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
 
@@ -274,7 +274,7 @@ function run({
   };
   const result =
     executeFixCommand?.(invocation) ??
-    spawnSync(invocation.command, invocation.args, {
+    spawnSyncWithOutputFile(invocation.command, invocation.args, {
       cwd,
       input,
       env: { ...process.env, ...environment },

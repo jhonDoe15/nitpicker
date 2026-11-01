@@ -28,6 +28,7 @@ const POLICY_PATHS = [
   'core/tooling/host-environment.mjs',
   'core/tooling/policy-links.mjs',
   'core/tooling/temporary-files.mjs',
+  'core/tooling/output-file.mjs',
   'core/tooling/jscpd/config.mjs',
   'core/tooling/jscpd/skipped-folders.mjs',
   'languages/typescript/preset/defaults',

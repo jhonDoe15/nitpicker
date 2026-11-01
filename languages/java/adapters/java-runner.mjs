@@ -73,7 +73,7 @@ export function readRunnerPolicy(runnerArguments, environment = process.env) {
 
 export function runJava(runnerArguments, { spawn } = {}) {
   const { projectRoot, policy } = readRunnerPolicy(runnerArguments);
-  return analyzeJavaSnapshot(realpathSync(projectRoot), { policy, spawn });
+  return analyzeJavaSnapshot(realpathSync.native(projectRoot), { policy, spawn });
 }
 
 function main(runnerArguments) {
