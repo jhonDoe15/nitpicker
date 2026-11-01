@@ -1,3 +1,5 @@
+import { LOCKING_FILES, LOCKING_FINDINGS } from './kotlin-locking-data.mjs';
+
 const MAIN = 'src/main/kotlin/demo/orders';
 const TEST = 'src/test/kotlin/demo/orders';
 const SPRING = 'src/test/kotlin/org/springframework';
@@ -133,6 +135,96 @@ class WaitingTest {
 }
 `;
 
+const LEDGER = `package demo.orders
+
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.sync.withPermit
+
+interface Balances {
+    suspend fun fetch(): Int
+}
+
+private val fileGate = Semaphore(1)
+
+class Ledger(private val balances: Balances, private val scope: CoroutineScope) {
+    private val mutex = Mutex()
+    private val single = Semaphore(1)
+    private val pair = Semaphore(2)
+    var total = 0
+
+    suspend fun add() {
+        total += balances.fetch()
+    }
+
+    suspend fun addAfterAwaiting() {
+        val delta = balances.fetch()
+        total += delta
+    }
+
+    suspend fun addFromSaved() {
+        val current = total
+        val delta = balances.fetch()
+        total = current + delta
+    }
+
+    suspend fun addAccumulated() {
+        var current = total
+        current += balances.fetch()
+        total = current
+    }
+
+    suspend fun addSavedBeforeLock() {
+        val current = total
+        mutex.withLock { total = current + 1 }
+    }
+
+    suspend fun addSerialized() {
+        mutex.withLock { total += balances.fetch() }
+    }
+
+    suspend fun addSavedInsideLock() {
+        mutex.withLock {
+            val current = total
+            val delta = balances.fetch()
+            total = current + delta
+        }
+    }
+
+    suspend fun addLaunched() {
+        mutex.withLock { scope.launch { total += balances.fetch() } }
+    }
+
+    suspend fun addUnderLocalMutex() {
+        val local = Mutex()
+        local.withLock { total += balances.fetch() }
+    }
+
+    suspend fun addOneAtATime() {
+        single.withPermit { total += balances.fetch() }
+    }
+
+    suspend fun addThroughFileGate() {
+        fileGate.withPermit { total += balances.fetch() }
+    }
+
+    suspend fun addThroughCompanionGate() {
+        shared.withPermit { total += balances.fetch() }
+    }
+
+    suspend fun addTwoAtATime() {
+        pair.withPermit { total += balances.fetch() }
+    }
+
+    companion object {
+        private val shared = Semaphore(1)
+    }
+}
+`;
+
 const SPRING_BOOT_TEST = `package org.springframework.boot.test.context
 
 annotation class SpringBootTest(val webEnvironment: String = "MOCK")
@@ -176,11 +268,13 @@ export const REVIEW_RULE_FILES = {
   [`${MAIN}/Clock.kt`]: CLOCK,
   [`${MAIN}/Settlement.kt`]: SETTLEMENT,
   [`${MAIN}/Formatting.kt`]: FORMATTING,
+  [`${MAIN}/Ledger.kt`]: LEDGER,
   [`${MAIN}/Inventory.kt`]: INVENTORY,
   [`${TEST}/WaitingTest.kt`]: WAITING_TEST,
   [`${TEST}/ContextTest.kt`]: CONTEXT_TEST,
   [`${SPRING}/boot/test/context/SpringBootTest.kt`]: SPRING_BOOT_TEST,
   [`${SPRING}/beans/factory/annotation/Autowired.kt`]: AUTOWIRED,
+  ...LOCKING_FILES,
 };
 
 export const EXPECTED_REVIEW_FINDINGS = [
@@ -194,6 +288,13 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'FixedSleepInTest WaitingTest.iterates',
   'FixedSleepInTest WaitingTest.sleeps',
   'FixedSleepInTest WaitingTest.sleeps',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in add',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addAccumulated',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addFromSaved',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addLaunched',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addSavedBeforeLock',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addTwoAtATime',
+  'NonAtomicUpdateAcrossSuspension Ledger.total in addUnderLocalMutex',
   'SingularAndPluralMember Query.tags',
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',
@@ -201,7 +302,8 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'unused-option Envelope.retries',
   'unused-option Mailer.retries',
   'unused-option pad.width',
-];
+  ...LOCKING_FINDINGS,
+].sort();
 
 const EMPTY_JAR = Buffer.from([0x50, 0x4b, 0x05, 0x06, ...Array.from({ length: 18 }, () => 0)]);
 

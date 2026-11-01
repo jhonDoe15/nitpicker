@@ -132,6 +132,21 @@ describe('rules script report', () => {
     ],
     ['module-level-mutable-state', 'ITEMS', '`ITEMS` changes a module-level collection'],
     [
+      'atomic-update-across-await',
+      'self.total',
+      '`self.total` is updated from a value read before an `await`: another task can change it while this one is suspended, and the write then overwrites that change',
+    ],
+    [
+      'lock-order-inversion',
+      '`report` takes `self.a` while it holds `self.b`, and `transfer` takes `self.b` while it holds `self.a`',
+      '`report` takes `self.a` while it holds `self.b`, and `transfer` takes `self.b` while it holds `self.a`: two threads or tasks that run both can each hold one lock and wait forever for the other, a deadlock that no test reliably shows',
+    ],
+    [
+      'inconsistent-attribute-locking',
+      '`reset` writes `self.count` without a lock, while `add` writes it holding `self.lock`',
+      '`reset` writes `self.count` without a lock, while `add` writes it holding `self.lock`: a thread or task that writes here races with the locked writer, so an update is lost or another reader sees a stale value',
+    ],
+    [
       'unsafe-path-join',
       'read',
       '`read()` builds a file path from its input without a containment check',

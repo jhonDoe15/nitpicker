@@ -17,12 +17,13 @@ def load_checks():
     sys.path.insert(0, HERE)
     from boundary import domain_types, guards, paths
     from checks import comments, declarations, parameters, shell, state
-    from concurrency import fan_out
+    from concurrency import atomic_updates, fan_out
     from discovery import helpers, uncollected
     from effects import import_time, reach
     from environment import domain_imports, environment, purity
     from errors import errors
     from honesty import assertions, isolation, skipped
+    from locking import field_locking, lock_order
     from security import hashes, loading
     from security.sql import check as sql
     from security.timeouts import check as timeouts
@@ -43,6 +44,9 @@ def load_checks():
         domain_imports,
         import_time,
         state,
+        atomic_updates,
+        lock_order,
+        field_locking,
         shell,
         sql,
         tls,

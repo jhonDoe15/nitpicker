@@ -100,6 +100,12 @@ To learn why a rule is on and what form it allows before you write or change cod
   `of` or `from` are fine.
 - A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
+- Do not update a `var` property of the class or file from a value read before a suspend call of
+  the same function (`total += repository.fetch()`, or `val current = total` before the call and
+  `total = current + delta` after it): call the suspend function into a local first and then
+  update the property, or hold one shared `Mutex` (a property, not a local) around the whole
+  read-modify-write; a `launch` inside the lock does not hold it
+  (`pmd/NonAtomicUpdateAcrossSuspension`).
 - A validation annotation on a constructor property takes the field target:
   `data class OrderRequest(@field:NotBlank val item: String)`, not `@NotBlank val item`, which
   lands on the constructor parameter where `@Valid` never looks (`pmd/ValidationAnnotationTarget`).
