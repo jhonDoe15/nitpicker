@@ -16,7 +16,7 @@ import {
   GATE_PACKAGES,
   enforceable,
   pythonExceptionRoute,
-  reportedFindings,
+  reportedGroups,
   withoutMutants,
 } from '../test-support/python-gate-support.mjs';
 
@@ -65,11 +65,14 @@ describe.skipIf(!pythonE2eEnabled)('Python preset type checker configuration end
 
     expect(result.exitCode, result.text).toBe(1);
     expect(withoutMutants(enforceable(result))).toEqual(['python-rules no-type-check hidden.py']);
-    expect(reportedFindings(result.text)).toEqual([
-      'python-rules/no-type-check src/demo/hidden.py:5: ' +
-        '`hidden` is excluded from type checking by `@no_type_check`. ' +
-        'Remove the decorator and annotate the code so the checker can verify it. ' +
+    expect(reportedGroups(result.text)).toEqual([
+      [
+        'python-rules/no-type-check: ' +
+          '`hidden` is excluded from type checking by `@no_type_check`. ' +
+          'Remove the decorator and annotate the code so the checker can verify it.',
+        'src/demo/hidden.py:5',
         pythonExceptionRoute('no-type-check', 'src/demo/hidden.py'),
+      ],
     ]);
   });
 });
