@@ -70,8 +70,8 @@ function comparisonOutput({ repository, outputRoot }, lines) {
 
 const ORDER_VIOLATION = [
   '✖ 1 new enforceable violation',
-  '  fake-quality-analyzer/fixture-rule src/orders/order.ts:1',
-  '    Fixture finding',
+  '  fake-quality-analyzer/fixture-rule: Fixture finding',
+  '    src/orders/order.ts:1:4',
 ];
 
 describe('nitpicker with paths', () => {
@@ -364,7 +364,8 @@ describe('nitpicker with paths', () => {
 
     expect(exitCode).toBe(2);
     expect(output.stderrText).toBe(
-      `nitpicker failed: ${outside} is not in a Git repository; run nitpicker from inside the repository\n`,
+      `nitpicker failed: ${outside} is not in a Git repository; run nitpicker from inside the repository\n` +
+        '  caused by: Command failed: git rev-parse --show-toplevel\n',
     );
   });
 
