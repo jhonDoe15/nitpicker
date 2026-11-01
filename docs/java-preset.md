@@ -891,7 +891,7 @@ a Kotest spec) and it is not abstract, an interface or an annotation.
   OrderIT runs: ...". The correct forms are a module that binds Failsafe, or test classes Surefire
   runs.
 - **Gradle.** A test task runs every class of its source set whatever its name, so `*IT` in
-  `src/test/java` runs under `test`. The silent skip is a test source set (a source set other than `main` whose name contains `test`, such as `integrationTest`) that no `Test` task takes its
+  `src/test/java` runs under `test`. The silent skip is a test source set (a source set other than `main` whose name, split at capitals, `-` and `_`, has the word `it` or a word starting with `test`, such as `integrationTest` or `testFixtures`, but not `latest`) that no `Test` task takes its
   classes from: the init script lists those source sets with their Java, Kotlin and Groovy source
   directories as `unrunTestSourceSets` in the manifest, and each test class in them is reported:
   "Register a Test task for the integrationTest source set (testClassesDirs = ..., classpath = ...)
@@ -1742,8 +1742,8 @@ palantir-java-format, or neither for `none`).
   splits the edges by the side that declares the source class: `jdeps.txt` in the report directory
   (main classes), `jdeps-classes.txt` (the main classes, one binary name per line) and
   `jdeps-test.txt` (test classes), which only the [test-only class check](#review-rules) reads. A
-  test source set is one a `Test` task runs or one whose name contains `test` (`integrationTest`,
-  `testFixtures`); the task compiles only those, so a `jmh` or `benchmark` source set is neither
+  test source set is one a `Test` task runs or one whose name has the word `it` or a word starting with
+  `test` (`integrationTest`, `testFixtures`, not `latest`); the task compiles only those, so a `jmh` or `benchmark` source set is neither
   compiled for it nor counted as a test. Maven runs the same single jdeps call over
   `target/classes` and `target/test-classes` (`builds/jdeps-reports.mjs`). Neither build holds
   the jdeps output in memory: Gradle splits it line by line as jdeps writes it, Maven writes it to

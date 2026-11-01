@@ -125,12 +125,9 @@ function leftToFanOut(calls) {
 export function readKotlinFindings(context, crapLimit) {
   const { reportRoot, manifest, projectRoot, jacoco, formatAdvice = DEFAULT_ADVICE } = context;
   const metrics = readKotlinMetrics(reportRoot);
-  const fanOut = readKotlinFanOutFindings({
-    reportRoot,
-    projectRoot,
-    manifest,
-    modules: context.modules,
-  });
+  const { modules, kotlinBuild: buildViews } = context;
+  const views = { reportRoot, projectRoot, manifest, modules, buildViews };
+  const fanOut = readKotlinFanOutFindings(views);
   const testRoots = manifest.kotlinTestSourceRoots ?? [];
   const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
   const ruleFindings = applyKotlinRuleMessages([
@@ -156,7 +153,7 @@ export function readKotlinFindings(context, crapLimit) {
       }),
       ...readTestAssertionFindings(projectRoot, testRoots, helpers),
       ...formatterFindings(reportRoot, manifest.kotlinFormatter, formatAdvice),
-      ...readKotlinReviewFindings({ reportRoot, projectRoot, manifest, modules: context.modules }),
+      ...readKotlinReviewFindings(views),
       ...readKotlinStructureFindings(metrics, projectRoot),
       ...readKotlinClassLimitFindings(metrics, context.classLimits),
       ...(jacoco === undefined

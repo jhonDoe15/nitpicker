@@ -48,6 +48,7 @@ def runProcess = { String name, List<String> command, File directory ->
 }
 
 def kotlinPsiKeys = [] as Set
+def kotlinBuildFacts = [:]
 def gradleJavac = {
     def bin = new File(System.getProperty('java.home'), 'bin')
     def javac = ['javac', 'javac.exe'].collect { new File(bin, it) }.find { it.isFile() }
@@ -85,6 +86,162 @@ def kotlinPsiClasses = { project, String compiler ->
     }
     classes
 }
+
+def projectPathOf = { dependency ->
+    dependency.respondsTo('getPath') ? dependency.path : dependency.dependencyProject.path
+}
+
+def TEST_WORDS = ['it']
+def TEST_HARNESS_WORDS = ['jmh', 'benchmark', 'benchmarks', 'gatling']
+def nameWords = { String name ->
+    name.split(/(?<=[a-z0-9])(?=[A-Z])|[^A-Za-z0-9]+/).findAll { it }.collect { it.toLowerCase() }
+}
+def isTestWord = { String word -> word in TEST_WORDS || word.startsWith('test') }
+def isTestName = { String name -> nameWords(name).any(isTestWord) }
+def isTestOnlyName = { String name -> nameWords(name).any { isTestWord(it) || it in TEST_HARNESS_WORDS } }
+
+def projectDependenciesOf = { Collection configurations ->
+    configurations.collectMany { configuration ->
+        configuration.allDependencies.withType(ProjectDependency).collect { projectPathOf(it) }
+    }.toSet()
+}
+
+def productionConfigurations = { Project project ->
+    def named = ['compileClasspath', 'runtimeClasspath'].collect { project.configurations.findByName(it) }
+        .findAll { it != null }
+    named.isEmpty() ? project.configurations.findAll { !isTestOnlyName(it.name) } : named
+}
+
+def closureOver = { Map direct, Collection start, String self ->
+    def seen = [] as Set
+    def pending = new ArrayDeque(start)
+    while (!pending.isEmpty()) {
+        def next = pending.poll()
+        if (next != self && seen.add(next)) {
+            pending.addAll(direct[next] ?: [])
+        }
+    }
+    seen.sort()
+}
+
+def projectDependencyClosure = { Project root ->
+    def direct = root.allprojects.collectEntries { project ->
+        [project.path, projectDependenciesOf(productionConfigurations(project))]
+    }
+    [direct: direct, closure: direct.collectEntries { path, start -> [path, closureOver(direct, start, path)] }]
+}
+
+def sourceSetReach = { Project project, sourceSet, Map direct ->
+    def start = projectDependenciesOf([sourceSet.compileClasspathConfigurationName,
+        sourceSet.runtimeClasspathConfigurationName].collect { project.configurations.findByName(it) }
+        .findAll { it != null })
+    ([project.path] + closureOver(direct, start, project.path)).unique().sort()
+}
+
+def UNREAD_LANGUAGES = ['groovy', 'scala']
+def sourceDirsOfLanguages = { sourceSet, List<String> languages ->
+    def extensions = sourceSet instanceof ExtensionAware
+        ? languages.collect { sourceSet.extensions.findByName(it) }.findAll { it instanceof SourceDirectorySet } : []
+    extensions.collectMany { it.srcDirs }
+}
+
+def callerSources = { Project project, sourceSet ->
+    def dirs = sourceSet.allSource.srcDirs + sourceDirsOfLanguages(sourceSet, ['kotlin'] + UNREAD_LANGUAGES)
+    dirs.findAll { it.exists() }.collectMany {
+        project.fileTree(it) { include '**/*.kt', '**/*.java', '**/*.groovy', '**/*.scala' }.files
+    }
+}
+
+def unreadCallerSources = { Project project, sourceSet ->
+    def dirs = sourceSet.allSource.srcDirs + sourceDirsOfLanguages(sourceSet, UNREAD_LANGUAGES)
+    dirs.findAll { it.exists() }.collectMany {
+        project.fileTree(it) { include '**/*.groovy', '**/*.scala' }.files
+    }
+}
+
+def holdsTests = { Project project, sourceSet ->
+    def suites = project.extensions.findByName('testing')?.suites?.names ?: []
+    def testClassDirs = project.tasks.withType(Test).collectMany { it.testClassesDirs.files }
+    isTestOnlyName(sourceSet.name) || suites.contains(sourceSet.name) ||
+        sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) }
+}
+
+def coordinatePatterns = { String group, String name ->
+    def g = java.util.regex.Pattern.quote(group)
+    def n = java.util.regex.Pattern.quote(name)
+    def quoted = { String value -> /["']${value}["']/ }
+    [/(?<![\w.-])${g}:${n}(?![\w.-])/,
+     /\bgroup\s*[=:]\s*${quoted(g)}\s*,\s*(?:\w+\s*[=:]\s*["'][^"'\n]*["']\s*,\s*)?name\s*[=:]\s*${quoted(n)}/,
+     /\bname\s*[=:]\s*${quoted(n)}\s*,\s*(?:\w+\s*[=:]\s*["'][^"'\n]*["']\s*,\s*)?group\s*[=:]\s*${quoted(g)}/]
+        .collect { java.util.regex.Pattern.compile(it) }
+}
+
+def includedBuildReach = { Project root, build, Map dependencies ->
+    def scripts = root.fileTree(build.projectDir) {
+        include '**/*.gradle', '**/*.gradle.kts', '**/*.versions.toml'
+        exclude '**/build/**', '**/.gradle/**', '**/node_modules/**'
+    }.files.collect { it.getText('UTF-8') }.join('\n')
+    def used = root.allprojects.findAll { project ->
+        project.group.toString() != '' &&
+            coordinatePatterns(project.group.toString(), project.name).any { it.matcher(scripts).find() }
+    }.collect { it.path }
+    (used + used.collectMany { dependencies[it] }).unique().sort()
+}
+
+def ANDROID_OR_MULTIPLATFORM = ['org.jetbrains.kotlin.android', 'org.jetbrains.kotlin.multiplatform', 'com.android.base',
+    'com.android.application', 'com.android.library', 'com.android.dynamic-feature', 'com.android.test',
+    'com.android.kotlin.multiplatform.library']
+def isAndroidOrMultiplatform = { Project project ->
+    ANDROID_OR_MULTIPLATFORM.any { project.plugins.hasPlugin(it) } ||
+        project.plugins.any { it.class.name.startsWith('com.android.build.gradle.') }
+}
+
+def sourceSetGaps = { Project project, Map direct ->
+    project.sourceSets.collectMany { set ->
+        def tests = set.name == 'test' || (set.name != 'main' && holdsTests(project, set))
+        def unread = set.name in ['main', 'test'] ? unreadCallerSources(project, set) : callerSources(project, set)
+        if (unread.isEmpty()) {
+            return []
+        }
+        def label = set.name in ['main', 'test']
+            ? "the Groovy or Scala sources of ${set.name} in ${project.path}"
+            : "the source set ${set.name} of ${project.path}"
+        [[label: label.toString(), tests: tests, owner: project.path, reaches: sourceSetReach(project, set, direct)]]
+    }
+}
+
+def kotlinCallerGaps = { Project root ->
+    synchronized (kotlinBuildFacts) {
+        if (kotlinBuildFacts.isEmpty()) {
+            def projects = projectDependencyClosure(root)
+            def dependencies = projects.closure
+            def gaps = []
+            root.allprojects.each { other ->
+                def reach = dependencies[other.path]
+                if (isAndroidOrMultiplatform(other)) {
+                    gaps << [label: "the Android or Multiplatform project ${other.path}".toString(), reaches: reach]
+                } else if (other.plugins.hasPlugin('java')) {
+                    if (!other.projectDir.toPath().startsWith(analysisRoot.toPath())) {
+                        gaps << [label: "the project ${other.path} outside the analysis root".toString(), reaches: reach]
+                    } else {
+                        gaps.addAll(sourceSetGaps(other, projects.direct))
+                    }
+                }
+            }
+            root.gradle.includedBuilds.each { build ->
+                def reach = includedBuildReach(root, build, dependencies)
+                if (!reach.isEmpty()) {
+                    gaps << [label: "the included build ${build.name}".toString(), reaches: reach]
+                }
+            }
+            kotlinBuildFacts.gaps = gaps.sort { it.label }
+            kotlinBuildFacts.dependencies = dependencies
+        }
+        kotlinBuildFacts
+    }
+}
+
+gradle.rootProject { root -> root.ext.nitpickerKotlinCallerGaps = { kotlinCallerGaps(root) } }
 
 def pinTestRetries = { Task testTask ->
     def develocity = testTask.extensions.findByName('develocity')
@@ -308,7 +465,7 @@ allprojects {
         def testSourceSets = {
             def testClassDirs = tasks.withType(Test).collectMany { it.testClassesDirs.files }
             sourceSets.findAll { sourceSet ->
-                sourceSet.name != 'main' && (sourceSet.name.toLowerCase().contains('test')
+                sourceSet.name != 'main' && (isTestName(sourceSet.name)
                     || sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) })
             }
         }
@@ -1258,6 +1415,9 @@ allprojects {
                         manifest.kotlinSourceRoots = kotlinSourceDirs().collect { relative(it) }
                         manifest.kotlinTestSourceRoots = kotlinSourceDirsOf('test').collect { relative(it) }
                         manifest.kotlinFormatter = kotlinFormatter()
+                        def buildFacts = kotlinCallerGaps(project.rootProject)
+                        manifest.kotlinCallerGaps = buildFacts.gaps
+                        manifest.projectDependencies = buildFacts.dependencies[project.path]
                         def mainClasspath = sourceSets.main.compileClasspath.files +
                             sourceSets.main.runtimeClasspath.files
                         manifest.kotlinSerialization = mainClasspath.any {
