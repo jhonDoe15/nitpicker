@@ -1410,6 +1410,16 @@
         "`{{call}}` runs when the module is imported. Move it into a function and call that from the composition root, passing the result in. An exception fits only when it must run at import."
       ]
     },
+    "nitpicker/require-atomic-updates": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow assignments that can lead to race conditions due to usage of `await` or `yield`",
+      "url": "https://eslint.org/docs/latest/rules/require-atomic-updates",
+      "messages": [
+        "Possible race condition: `{{value}}` might be reassigned based on an outdated value of `{{value}}`.",
+        "Possible race condition: `{{value}}` might be assigned based on an outdated state of `{{object}}`."
+      ]
+    },
     "nitpicker/require-http-timeout": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -4268,6 +4278,16 @@
         "Top-level {{kind}} executes control flow during module loading. Move the work into a function that the app entry calls. The entry (the module script in Vite's index.html, else src/main.tsx) is detected; for another entry file, list it under `layout.entryPoints` in nitpicker.config.json.",
         "Top-level expression executes work during module loading. Move the work into a function that the app entry calls. The entry (the module script in Vite's index.html, else src/main.tsx) is detected; for another entry file, list it under `layout.entryPoints` in nitpicker.config.json.",
         "`{{call}}` runs when the module is imported. Move it into a function and call that from the composition root, passing the result in. An exception fits only when it must run at import."
+      ]
+    },
+    "nitpicker/require-atomic-updates": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow assignments that can lead to race conditions due to usage of `await` or `yield`",
+      "url": "https://eslint.org/docs/latest/rules/require-atomic-updates",
+      "messages": [
+        "Possible race condition: `{{value}}` might be reassigned based on an outdated value of `{{value}}`.",
+        "Possible race condition: `{{value}}` might be assigned based on an outdated state of `{{object}}`."
       ]
     },
     "nitpicker/require-http-timeout": {
@@ -7224,6 +7244,16 @@
         "Top-level {{kind}} executes control flow during module loading. Move the work into a function that the app entry calls. The entry (the module script in Vite's index.html, else src/main.tsx) is detected; for another entry file, list it under `layout.entryPoints` in nitpicker.config.json.",
         "Top-level expression executes work during module loading. Move the work into a function that the app entry calls. The entry (the module script in Vite's index.html, else src/main.tsx) is detected; for another entry file, list it under `layout.entryPoints` in nitpicker.config.json.",
         "`{{call}}` runs when the module is imported. Move it into a function and call that from the composition root, passing the result in. An exception fits only when it must run at import."
+      ]
+    },
+    "nitpicker/require-atomic-updates": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow assignments that can lead to race conditions due to usage of `await` or `yield`",
+      "url": "https://eslint.org/docs/latest/rules/require-atomic-updates",
+      "messages": [
+        "Possible race condition: `{{value}}` might be reassigned based on an outdated value of `{{value}}`.",
+        "Possible race condition: `{{value}}` might be assigned based on an outdated state of `{{object}}`."
       ]
     },
     "nitpicker/require-http-timeout": {

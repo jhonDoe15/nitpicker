@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 59 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 60 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -48,6 +48,15 @@ A package that is in a dependency cycle with other packages.
 
 - **Allowed form:** Use the real type, a `Protocol`, a `TypeVar` or a frozen dataclass; parse untrusted data at the boundary so the domain only sees typed values.
 - **Exception:** If this is intended, add `{"rule":"any-in-domain","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-atomic-update-across-await"></a>
+
+### `python-rules/atomic-update-across-await`
+
+`<name>` is updated from a value read before an `await`: another task can change it while this one is suspended, and the write then overwrites that change.
+
+- **Allowed form:** Await the new value into a local first and read and write the shared state in one step with no `await` between them (`delta = await fetch()` then `self.total += delta`), or serialize the whole update with one lock that every task shares (`self.lock = asyncio.Lock()` in `__init__`, then `async with self.lock:`); a lock or semaphore built in the method, a semaphore of more than one slot and a lock passed in are not proof.
+- **Exception:** If this is intended, add `{"rule":"atomic-update-across-await","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-blind-suppress"></a>
 

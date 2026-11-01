@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 87 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 88 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -1039,6 +1039,20 @@ Report statements that execute observable work while a module is imported.
   - Top-level {{kind}} executes control flow during module loading. Move the work into a function that the app entry calls. The entry (the module script in Vite's index.html, else src/main.tsx) is detected; for another entry file, list it under `layout.entryPoints` in nitpicker.config.json.
   - Top-level expression executes work during module loading. Move the work into a function that the app entry calls. The entry (the module script in Vite's index.html, else src/main.tsx) is detected; for another entry file, list it under `layout.entryPoints` in nitpicker.config.json.
   - `{{call}}` runs when the module is imported. Move it into a function and call that from the composition root, passing the result in. An exception fits only when it must run at import.
+
+<a id="eslint-nitpicker-require-atomic-updates"></a>
+
+### `eslint/nitpicker/require-atomic-updates`
+
+Disallow assignments that can lead to race conditions due to usage of `await` or `yield`.
+
+- **Printed as:** `eslint-lint/nitpicker/require-atomic-updates`
+- **Allowed form:** See the tool's documentation: [Rule documentation](https://eslint.org/docs/latest/rules/require-atomic-updates).
+- **Exception:** If this is intended, add `{"rule":"nitpicker/require-atomic-updates","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - Possible race condition: `{{value}}` might be reassigned based on an outdated value of `{{value}}`.
+  - Possible race condition: `{{value}}` might be assigned based on an outdated state of `{{object}}`.
+- **See also:** [Rule documentation](https://eslint.org/docs/latest/rules/require-atomic-updates)
 
 <a id="eslint-nitpicker-require-http-timeout"></a>
 
