@@ -21,7 +21,8 @@ backstop. It fails only on findings your change adds, so leave code the task doe
    and on head with the Go toolchain on the `PATH`. It takes minutes and prints a progress line for
    each slow analyzer.
 4. Act on the exit code:
-   - 0: done.
+   - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
+     and you run the gate again without it before you finish.
    - 1: fix every new finding and any tool error listed below them, then rerun.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test, a module
      that does not load, or Go missing from the `PATH`) and rerun. Exit 2 is never a pass. If it

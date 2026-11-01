@@ -24,7 +24,8 @@ forms below from the start; the gate is a backstop.
    `./gradlew` or `./mvnw` when there is one, otherwise `gradle` or `mvn` from the PATH
    (`NITPICKER_GRADLE` or `NITPICKER_MAVEN` overrides both).
 4. Act on the exit code:
-   - 0: done.
+   - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
+     and you run the gate again without it before you finish.
    - 1: fix every new finding (printed as `tool/rule path:line`) and any tool error listed below
      them, then rerun.
    - 2: no new findings, but a tool failed (the build, a compile error, a test failure). Fix the

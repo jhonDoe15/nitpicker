@@ -363,6 +363,7 @@ describe('nitpicker CLI', () => {
         'Enforceable findings: 3',
         'Descriptive findings: 0',
         'Tool errors: 0',
+        'Ran only: prettier-format. Run nitpicker without --analyzer before you finish.',
         '',
         'Per-tool counts:',
         'prettier-format: total=3 enforceable=3 descriptive=0',
