@@ -12,6 +12,7 @@ import { precedenceToolNames } from '../../java/adapters/gradle-presets.mjs';
 import { GO_ANALYZER_NAME } from './go-analyzer.mjs';
 import { goRouteRule, readGoFindings } from './go-findings.mjs';
 import { createGoContext, runGoSteps } from './go-steps.mjs';
+import { describeError } from '../../../shared/messages/error-chain.mjs';
 
 export const GO_ANALYZER_COMMAND = 'go-analyzer';
 const GO_OPTIONS = ['--go-settings'];
@@ -111,7 +112,7 @@ export function runGoCli({ commandArguments, stdout, stderr, environment }) {
     stdout.write(`${JSON.stringify(runGo(commandArguments, { environment }))}\n`);
     return 0;
   } catch (error) {
-    stderr.write(`Go analyzer failed: ${error instanceof Error ? error.message : String(error)}\n`);
+    stderr.write(`Go analyzer failed: ${describeError(error)}\n`);
     return 2;
   }
 }
