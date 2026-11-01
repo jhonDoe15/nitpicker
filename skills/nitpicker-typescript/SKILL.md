@@ -100,6 +100,8 @@ To learn why a rule is on and what form it allows before you write or change cod
 - Remove a parameter the body does not read. One that a callback or override signature requires
   starts with `_` (`_event`).
 - `async`/`await`, never `.then()`. No floating promises.
+  Await every task that uses a `using` or `finally`-closed resource before its block ends (no `void` call,
+  timer callback or un-awaited async call on it): `nitpicker/no-task-outliving-resource`.
 - Fan-out: bound concurrent remote or message calls. Run each call through a limiter created outside the loop (`pLimit(8)`, p-queue `concurrency`, Bottleneck `maxConcurrent`) or work through fixed-size chunks. Never `Promise.all(items.map(send))` over a runtime collection.
 - Named exports only. No comments; a `/** ... */` doc comment on an export is the one exception.
 - Signatures: a value with three states is a union of string literals, not `boolean | undefined`

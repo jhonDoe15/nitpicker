@@ -72,6 +72,7 @@ const REVIEW_RULES = new Set([
   'LegacyCalendarApi',
   'ClassLoadEffect',
   'SpringUnusedContext',
+  'TaskOutlivesTryResource',
   'TestClassWithoutTestCases',
   'test-only-export',
   'UnboundedFanOut',

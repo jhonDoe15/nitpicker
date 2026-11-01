@@ -10,12 +10,14 @@ import { KOTLIN_REVIEW_EXCEPTION_RULES } from './review-rules.mjs';
 import { SPRING_RULES } from './spring/spring-messages.mjs';
 import {
   call,
+  cleanupCall,
   file,
   fn,
   klass,
   parameter,
   testFile,
   testMethod,
+  useLaunch,
   wait,
 } from './test-support/facts.mjs';
 
@@ -80,6 +82,28 @@ describe('readKotlinReviewFindings', () => {
       'structure/unused-option',
     ]);
     expect(() => parseAnalyzerReport({ findings }, 'kotlin')).not.toThrow();
+  });
+});
+
+describe('readKotlinReviewFindings for coroutine lifetimes', () => {
+  it('reads the cleanup and use-block facts of a file into kotlin-source findings the schema accepts', () => {
+    const facts = {
+      files: [
+        file({
+          imports: [{ path: 'kotlinx.coroutines', all: true }],
+          cleanupCalls: [cleanupCall('delay')],
+          useLaunches: [useLaunch()],
+        }),
+      ],
+    };
+    const { root, reportRoot } = projectWith(facts);
+
+    const findings = readKotlinReviewFindings({ reportRoot, projectRoot: root, manifest: {} });
+
+    expect(findings.map(({ tool, rule }) => `${tool}/${rule}`).sort()).toEqual([
+      'kotlin-source/ChildCoroutineOutlivesResource',
+      'kotlin-source/SuspendFunInFinallySection',
+    ]);
   });
 });
 
@@ -196,6 +220,8 @@ describe('Kotlin exception rules for the review rules', () => {
       ...SPRING_RULES.map((rule) => `pmd/${rule}`),
       'pmd/SpringQueryConcatenation',
       'unused-option',
+      'kotlin-source/SuspendFunInFinallySection',
+      'kotlin-source/ChildCoroutineOutlivesResource',
     ]);
   });
 

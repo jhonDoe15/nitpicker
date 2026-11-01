@@ -325,6 +325,24 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   (`for (const node of pending) { pending.push(...children) }`); flat data uses `map`, `filter`,
   `flatMap` or `Object.fromEntries`. `domain/` has no loops and no recursion, so a walk over a tree
   of unknown depth moves to `adapters/`, which passes `domain/` the flat result.
+- `nitpicker/no-task-outliving-resource`: a resource must not be disposed while a task that uses it is
+  still running. In the scope of a `using` or `await using` declaration, or of a `try` whose `finally`
+  closes a variable (`close`, `dispose`, `destroy`, `release`, `disconnect` or `end`, optionally awaited),
+  it reports a use of that resource inside a call detached with `void`, inside the callback of
+  `setTimeout`, `setInterval`, `setImmediate`, `queueMicrotask` or `process.nextTick` (unless the callback
+  settles a promise the same function awaits in the block), and inside an async call that is returned
+  without `await` or stored in a variable nothing reads (an async function or arrow of the same file, or
+  an async IIFE). `await` the task before the block ends, `return await` it, or open and close the
+  resource inside the task. It needs no types and reads one function at a time, so these forms are not
+  seen: a promise that only type information shows (`const p = client.fetch(db)` of an imported
+  function); `try { return db.query(); } finally { await db.close(); }`, because without types a
+  synchronous call that returns a value cannot be told from one that returns a promise; a `.then`,
+  `.catch` or `.finally` chain on the task; a resource reached through an alias (`const alias = db`) or
+  a destructured member; a `finally` that closes with `await db?.close()`, with a conditional
+  (`if (db) { await db.close(); }`), through a helper or inside a nested statement, since only a
+  top-level `x.close()` statement of the `finally` names the resource; and a task started in another
+  function that receives the resource. `@typescript-eslint/no-floating-promises` already reports the
+  bare call, and this rule covers what `void` hides from it. Production code only.
 - `for...of` is the only loop, in all production code (not just `adapters/`). No `forEach`,
   `for(;;)`, `for...in`, `while`, or `do...while`. `domain/` is stricter and has no loops at all.
 - `async`/`await` and `Promise.all`. No `.then()`, `.catch()` or `.finally()` chains, and no promise
