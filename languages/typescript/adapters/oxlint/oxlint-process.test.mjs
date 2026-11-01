@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { withCompileCache, withEngineHint } from './oxlint-process.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 describe('the engine hint on an oxlint failure', () => {
   it('suggests the ESLint engine when the failure may be the engine', () => {
     expect(withEngineHint('oxlint crashed')).toBe(
-      'oxlint crashed\nSet "tools": { "eslint": { "engine": "eslint" } } in nitpicker.config.json to lint with ESLint instead.',
+      'oxlint crashed\nSet "tools": { "eslint": { "engine": "eslint" } } in nitpicker.config.json to lint with ESLint instead.\n' +
+        linkSentence('engineUnavailable'),
     );
   });
 

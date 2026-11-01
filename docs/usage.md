@@ -158,8 +158,12 @@ The base ref is the first match of:
    `origin` otherwise)
 5. `origin/main`, then `origin/master`
 
-In CI, fetch enough history to contain the merge base (for example `fetch-depth: 0`). Recipes for
-GitHub Actions (with a composite action), GitLab CI and Jenkins are in [nitpicker in CI](ci.md).
+In CI, fetch enough history to contain the merge base (for example `fetch-depth: 0`); a shallow
+clone fails with [no merge base](troubleshooting.md#no-merge-base). When none of the refs above
+exists, the run stops with [no base could be determined](troubleshooting.md#no-base-could-be-determined),
+and a named ref the clone lacks with [base ref not found](troubleshooting.md#base-ref-not-found).
+Recipes for GitHub Actions (with a composite action), GitLab CI and Jenkins are in
+[nitpicker in CI](ci.md).
 
 **Dependencies of the base.** The base is checked out in a temporary worktree. The package
 manager's folder is the nearest folder from the project up to the repository root that holds a
@@ -335,7 +339,8 @@ next comparison upload would close the alerts it opened.
 | 1    | At least one new enforceable finding (`--all`: any violation), even if a tool also errored.                      |
 | 2    | A tool error and no new enforceable findings, invalid arguments, invalid config, or any other failure to decide. |
 
-A tool error never counts as a pass. When a run has both findings and tool errors it exits 1, and the
+A tool error never counts as a pass. [Troubleshooting](troubleshooting.md) gives the cause and the
+fix of each one; a message whose fix takes more than it says links to its entry. When a run has both findings and tool errors it exits 1, and the
 tool errors are still listed in the console and reports and recorded in `summary.json`
 (`overallStatus` stays `tool-error`). `nitpicker aggregate` applies the same rule. With `--defer-exit`, a comparison always exits 0 once it has
 written its reports; use it only for shard workers that are followed by `nitpicker aggregate`.
@@ -348,7 +353,7 @@ dependency failed); stdout still carries only the final summary. Only one run ca
 at a time. A second `nitpicker` started meanwhile prints `nitpicker: another run is in progress in
 this project (pid 1234); wait for it to finish.` and exits 2. The lock is a pid file in the
 repository's `.git` directory (`nitpicker-run-*.lock`); a lock whose process is gone is taken over
-automatically.
+automatically. See [another run is in progress](troubleshooting.md#another-run-is-in-progress).
 
 ## Command line
 
@@ -361,6 +366,7 @@ nitpicker aggregate --input-root <dir> --shard-count <n>
           [--output <dir>] [--policy-root <dir>] [--details]
 nitpicker cache publish [--analyzer <name>]...
           [--shard-count <n> --shard-index <i>]
+nitpicker changelog [<version>]
 nitpicker base [--base <ref>]
 nitpicker explain <tool/rule>...
 nitpicker rules [--preset <name>] [--tool <name>]
@@ -391,6 +397,10 @@ nitpicker rules [--preset <name>] [--tool <name>]
 - `nitpicker cache publish`: analyze the committed `HEAD` tree and upload its findings to the remote
   cache so later branches reuse them as their base. Requires `NITPICKER_CACHE_URL`; exits 0 when
   everything was uploaded and 2 otherwise.
+- `nitpicker changelog [<version>]`: print what changed in a version, from the `CHANGELOG.md` that
+  ships in the package, with its heading and date. Without a version it prints the installed one;
+  `Unreleased` prints the changes not released yet, and a leading `v` is accepted. Exits 2 when the
+  changelog has no entry, or an empty one, for that version.
 - `nitpicker explain <tool/rule>...`: print what the [rule reference](rules/README.md) says about
   each rule: the presets and analyzers that report it, why it is on, the allowed form where the
   reference has one, and the `nitpicker.config.json` entry that accepts it. Name a rule as a finding prints it
@@ -402,9 +412,11 @@ nitpicker rules [--preset <name>] [--tool <name>]
   preset of the project's `nitpicker.config.json` (`typescript` without a config) and leaves out the
   rules of analyzers listed in `disable`; `--preset` (or `--preset=<name>`) lists another preset in
   full, and `--tool` keeps one tool.
-
 - `nitpicker base [--base <ref>]`: print the base a comparison would use, picked as listed under
   [What it compares](#what-it-compares), so a CI script can fetch it before the run.
+
+A command line nitpicker does not accept stops the run with exit 2 before anything is analyzed; see
+[invalid arguments](troubleshooting.md#invalid-arguments).
 
 ### Rule reference
 
@@ -452,12 +464,14 @@ reports are stored. When the base is reused, the progress line names the local c
   Optional `NITPICKER_CACHE_AUTH_HEADER` and `NITPICKER_CACHE_TIMEOUT_MS`. Comparison runs only
   read the remote; give write credentials only to the job that runs `cache publish` on `main`.
 
-See [typescript-single-command.md](typescript-single-command.md) for the full model.
+See [typescript-single-command.md](typescript-single-command.md) for the full model, and
+[a stale or shared cache](troubleshooting.md#a-stale-or-shared-cache) when a cached result looks wrong.
 
 ## Configuration
 
-Optional. Put `nitpicker.config.json` at the project root. The head is measured with the head's
-config. The base is measured with the base's own `nitpicker.config.json` when it has one that
+Optional. Put `nitpicker.config.json` at the project root. An unknown key or a wrong value stops the
+run with exit 2; see [invalid configuration](troubleshooting.md#invalid-configuration). The head is
+measured with the head's config. The base is measured with the base's own `nitpicker.config.json` when it has one that
 differs, widened to what the head reads and tightened to what the head checks: the head's added
 source and test roots are added; an `exclude`, `layout.excludedGlobs`, `layout.entryPoints`,
 `disable` or `exceptions` entry the head drops is dropped; and each threshold
@@ -475,7 +489,8 @@ its guidance and the acceptance route. The first response is to undo the change 
 until it passes. If the change is intended, a coding agent stops and asks a person reviewing it, who
 accepts it by the digest (`--accept-policy-change=<digest>` or, in CI,
 `NITPICKER_ACCEPT_POLICY_CHANGE=<digest>`; the routes are described under
-[Command line](#command-line)). A local run and CI can print different digests, because CI may
+[Command line](#command-line), and in
+[a policy-loosened finding](troubleshooting.md#a-policy-loosened-finding)). A local run and CI can print different digests, because CI may
 check the pull request merged into its target branch. A project's first `nitpicker.config.json` is
 compared with the defaults. These changes are loosening:
 
@@ -1108,6 +1123,9 @@ error with this preset; `layout` is an error too until the Java preset runs the 
 [Exceptions for rules nitpicker adds](#exceptions-for-rules-nitpicker-adds). Details:
 [java-preset.md](java-preset.md).
 
+Troubleshooting: the failures this preset meets are listed in the
+[Java preset guide](java-preset.md#troubleshooting).
+
 ## Kotlin preset
 
 Set `"preset": "kotlin"` for a Gradle project with Kotlin JVM modules, including modules that mix
@@ -1139,6 +1157,9 @@ file with `exclude`.
 Inline `@Suppress` of any detekt or ktlint rule fails (Kotlin compiler warnings may be suppressed). Where a rule flags legitimate code, add an `exceptions`
 entry with the same shape as TypeScript's, for example
 `{ "rule": "detekt.style.ForbiddenMethodCall", "paths": ["src/main/kotlin/app/Main.kt"], "reason": "The entry point blocks on its coroutine." }`.
+
+Troubleshooting: the failures this preset meets are listed in the
+[Kotlin preset guide](kotlin-preset.md#troubleshooting).
 
 ## Go preset
 
@@ -1217,6 +1238,9 @@ this is kept in `languages/javascript/preset/fixtures/js-clean`, and its tests a
 reports no enforceable findings for it.
 
 CRAP is measured on `.js`, `.mjs`, `.cjs`, `.ts`, `.mts` and `.cts` files, the same way as on TypeScript ones.
+
+Troubleshooting: the failures this preset meets are listed in the
+[TypeScript and JavaScript preset guide](typescript-strict-preset.md#troubleshooting).
 
 ## Python preset
 
@@ -1305,6 +1329,9 @@ stubs) and a `case _:` arm whose only statement is `assert_never(subject)` on th
 `match` over every member of an enum or union ends with that arm: without it, the jump out of the
 `match` when no case matches is an untaken branch. An `assert_never` anywhere else is counted.
 A branch that cannot be tested is accepted for one function with an `exceptions` entry for `changed-branch-coverage` that names the function, which keeps every other finding of the file (see [Exceptions for rules nitpicker adds](#exceptions-for-rules-nitpicker-adds)); `exclude` lifts the whole file. A change that leaves the project with no test at all fails as `python/no-tests-ran`. Details: [python-preset.md](python-preset.md).
+
+Troubleshooting: the failures this preset meets are listed in the
+[Python preset guide](python-preset.md#troubleshooting).
 
 ## The strict preset
 
@@ -1813,7 +1840,8 @@ precedence or have a person review the config, rather than to restore the file. 
 `pyproject.toml` (an edit of `[tool.poetry]` is not one), the whole `ruff.toml` or `.ruff.toml`, and
 the files its `extend` chain names; comments, layout and key order never count. A project
 listed without its file is a tool error for `ruff`, `black`, `ktlint` and `detekt`, and the message
-says to create the file or remove `"project"` from `tools.<tool>.precedence`.
+says to create the file or remove `"project"` from `tools.<tool>.precedence`. A project folder with
+more than 1000 such files stops with [too many style files](troubleshooting.md#too-many-style-files).
 
 Without the opt-in, ruff and black still keep the project's scope: its `exclude`, `extend-exclude`
 and `force-exclude` (paths resolved against the config file) and its `target-version` or
@@ -2063,6 +2091,9 @@ an explicitly selected config. A missing config is an error, without a preset fa
 `project` selects the config independently of `engine`, so both keys can be set together. With
 no `project`, nitpicker keeps its strict preset and automatic root tsconfig/jsconfig layering.
 Other analyzers still enforce nitpicker's rules and source/test layout.
+
+Troubleshooting: the failures this preset meets are listed in the
+[TypeScript and JavaScript preset guide](typescript-strict-preset.md#troubleshooting).
 
 ## Adopting nitpicker on existing code
 

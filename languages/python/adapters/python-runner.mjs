@@ -15,6 +15,17 @@ import { mutationFindings } from './mutation/python-mutation.mjs';
 import { applyRuleHints } from '../rules/rule-hints.mjs';
 import { readPythonFindings } from './python-reports.mjs';
 import { createToolContext, runPythonTools } from './python-tools.mjs';
+import { ENVIRONMENT_FAILED_RULE } from './execution/environments/environment-error.mjs';
+import {
+  TESTS_FAILED_RULE,
+  TESTS_FAILED_SKIPPED_RULE,
+  TESTS_NOT_RUN_RULE,
+} from '../../../shared/rules/finding-helpers.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  testsFailAnchor,
+  withTroubleshooting,
+} from '../../../shared/messages/troubleshooting.mjs';
 
 const UNEXPECTED_FAILURE_RULES = {
   [PYTHON_ANALYZER_NAME]: 'python-failed',
@@ -31,6 +42,31 @@ function toolError({ rule, message }, part = PYTHON_ANALYZER_NAME) {
     message,
     classification: 'tool-error',
   };
+}
+
+const TEST_RULES = new Set([TESTS_FAILED_RULE, TESTS_FAILED_SKIPPED_RULE, TESTS_NOT_RUN_RULE]);
+
+function fixAnchor({ rule }, part, snapshot) {
+  if (TEST_RULES.has(rule)) {
+    return testsFailAnchor(snapshot);
+  }
+  if (rule === ENVIRONMENT_FAILED_RULE) {
+    return TROUBLESHOOTING_ANCHORS.pythonEnvironment;
+  }
+  return part === MUTATION_ANALYZER_NAME
+    ? TROUBLESHOOTING_ANCHORS.mutmutFails
+    : TROUBLESHOOTING_ANCHORS.pythonToolFails;
+}
+
+function withFixLinks(findings, part, snapshot) {
+  return findings.map((finding) =>
+    finding.classification === 'tool-error'
+      ? {
+          ...finding,
+          message: withTroubleshooting(finding.message, fixAnchor(finding, part, snapshot)),
+        }
+      : finding,
+  );
 }
 
 function toolContext({ projectRoot, liveRoot, settings, policy, spawn }, reportRoot) {
@@ -100,24 +136,32 @@ function collectPythonFindings({ projectRoot, liveRoot, settings, policy, spawn 
 }
 
 export function analyzePythonSnapshot({ part = PYTHON_ANALYZER_NAME, ...options }) {
+  const snapshot = options.policy?.snapshot;
   try {
     return {
-      findings:
+      findings: withFixLinks(
         part === MUTATION_ANALYZER_NAME
           ? collectMutationFindings(options)
           : collectPythonFindings(options),
+        part,
+        snapshot,
+      ),
     };
   } catch (error) {
     return {
-      findings: [
-        toolError(
-          {
-            rule: error.rule ?? UNEXPECTED_FAILURE_RULES[part],
-            message: error instanceof Error ? error.message : String(error),
-          },
-          part,
-        ),
-      ],
+      findings: withFixLinks(
+        [
+          toolError(
+            {
+              rule: error.rule ?? UNEXPECTED_FAILURE_RULES[part],
+              message: error instanceof Error ? error.message : String(error),
+            },
+            part,
+          ),
+        ],
+        part,
+        snapshot,
+      ),
     };
   }
 }

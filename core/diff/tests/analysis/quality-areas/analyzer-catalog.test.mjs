@@ -7,6 +7,7 @@ import { DEFAULT_CRAP_SCORE_LIMIT } from '../../../../../shared/policy.mjs';
 import { runAnalyzers, selectAnalyzers } from '../../../execution/run-analyzers.mjs';
 import { planAnalyzerShards } from '../../../sharding/sharding.mjs';
 import { fileURLToPath } from 'node:url';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const packageAnalyzers = configuredAnalyzers();
 const EXPECTED_ANALYZER_NAMES = [
@@ -214,7 +215,7 @@ describe('quality-area analyzer catalog', () => {
       {
         tool: 'coverage',
         snapshot: 'head',
-        message: 'coverage crashed with exit 2: no diagnostic output',
+        message: `coverage crashed with exit 2: no diagnostic output. ${linkSentence('analyzerCrashed')}`,
       },
     ]);
   });

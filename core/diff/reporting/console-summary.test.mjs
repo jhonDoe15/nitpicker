@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { renderConsoleSummary } from './summary.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingUrl,
+} from '../../../shared/messages/troubleshooting.mjs';
+
+const HELP_LINE = `Help with tool errors: ${troubleshootingUrl(TROUBLESHOOTING_ANCHORS.exitCode2)}`;
 
 const CROPPED_TYPE_ERROR = [
   "error TS2688: Cannot find type definition file for 'node'.",
@@ -29,11 +35,39 @@ describe('renderConsoleSummary', () => {
         '✖ 2 tool errors',
         `  mutation (head): ${CROPPED_TYPE_ERROR}`,
         `  mutation (base): ${CROPPED_TYPE_ERROR}`,
+        HELP_LINE,
         'Full diagnostics: reports/quality/diff/combined/report.txt',
         '',
       ].join('\n'),
     );
     expect(summary).not.toContain('✓');
+  });
+  it('adds no help line when every tool error links its fix', () => {
+    const summary = renderConsoleSummary(
+      {
+        newFindings: [],
+        toolErrors: [
+          {
+            tool: 'coverage',
+            snapshot: 'head',
+            message: `coverage timed out. See ${troubleshootingUrl(TROUBLESHOOTING_ANCHORS.analyzerTimeout)}`,
+          },
+        ],
+      },
+      { color: false },
+    );
+
+    expect(summary).toBe(
+      [
+        '',
+        'Quality gate summary',
+        'No new enforceable violations, but the run is incomplete:',
+        '✖ 1 tool error',
+        `  coverage (head): coverage timed out. See ${troubleshootingUrl(TROUBLESHOOTING_ANCHORS.analyzerTimeout)}`,
+        'Full diagnostics: reports/quality/diff/combined/report.txt',
+        '',
+      ].join('\n'),
+    );
   });
   it('keeps the green line when there are no violations and no tool errors', () => {
     const summary = renderConsoleSummary({ newFindings: [], toolErrors: [] }, { color: false });
@@ -71,6 +105,7 @@ describe('renderConsoleSummary', () => {
         '✖ 1 tool error',
         '  coverage (head): 1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
         '    test/a.test.ts > adds: expected 1 to be 2',
+        HELP_LINE,
         'Full diagnostics: reports/quality/diff/combined/report.txt',
         '',
       ].join('\n'),
@@ -100,6 +135,7 @@ describe('renderConsoleSummary', () => {
         'No new enforceable violations, but the run is incomplete:',
         '✖ 1 tool error',
         '  mutation (head): mutation skipped: tests fail (see coverage findings)',
+        HELP_LINE,
         'Full diagnostics: reports/quality/diff/combined/report.txt',
         '',
       ].join('\n'),
@@ -129,6 +165,7 @@ describe('renderConsoleSummary', () => {
         'No new enforceable violations, but the run is incomplete:',
         '✖ 1 tool error',
         '  mutation (head): mutation skipped: the change does not type-check (see typescript-typecheck findings)',
+        HELP_LINE,
         'Full diagnostics: reports/quality/diff/combined/report.txt',
         '',
       ].join('\n'),

@@ -1,4 +1,5 @@
 import { createHash } from 'node:crypto';
+import { configError } from '../../shared/config.mjs';
 import { DEFAULT_LEGACY_INVENTORY } from '../../shared/legacy-inventory.mjs';
 import { GRADLE_PRESETS } from '../../languages/java/adapters/gradle-presets.mjs';
 import {
@@ -113,9 +114,7 @@ function addCustomAnalyzers(analyzers, entries = []) {
   const taken = new Set(analyzers.map(({ name }) => name));
   const custom = entries.map((entry) => {
     if (taken.has(entry.name)) {
-      throw new Error(
-        `nitpicker.config.json: analyzers entry "${entry.name}" clashes with another analyzer name`,
-      );
+      throw configError(`analyzers entry "${entry.name}" clashes with another analyzer name`);
     }
     taken.add(entry.name);
     return createCustomAnalyzer(entry);

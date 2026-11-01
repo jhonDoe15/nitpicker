@@ -26,6 +26,10 @@ import {
   projectEditorconfig,
 } from './style/kotlin-style-files.mjs';
 import { writeDetektLists } from './detekt/detekt-lists.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const DETEKT_CONFIGS = ['config/detekt/detekt', 'config/detekt', 'detekt'].flatMap((base) => [
   `${base}.yml`,
@@ -39,8 +43,9 @@ export function detektConfigOf(projectRoot, configured, snapshot) {
     if (snapshot === 'base') {
       return undefined;
     }
-    throw new Error(
+    throw troubleshootingError(
       `"kotlin.detektConfig" is ${configured}, which does not exist: create it, or change or remove "kotlin.detektConfig"`,
+      TROUBLESHOOTING_ANCHORS.projectToolConfigMissing,
     );
   }
   return configured;

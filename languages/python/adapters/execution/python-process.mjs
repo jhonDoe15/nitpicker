@@ -1,4 +1,8 @@
 import { spawnSync } from 'node:child_process';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  withTroubleshooting,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
 const TOOL_TIMEOUT_MS = 25 * 60 * 1000;
@@ -64,10 +68,16 @@ function describeFailure({ context, command, result, timeoutMs = TOOL_TIMEOUT_MS
   const label = subcommand.startsWith('-') ? tool : `${tool} ${subcommand}`;
   const where = `the ${context.launcher.description} environment`;
   if (result.error?.code === 'ENOENT') {
-    return `${tool} was not found in ${where}: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it${notFoundHint}`;
+    return withTroubleshooting(
+      `${tool} was not found in ${where}: install it there (for example as a dev dependency), or set "python.environment" to the environment that has it${notFoundHint}`,
+      TROUBLESHOOTING_ANCHORS.pythonToolMissing,
+    );
   }
   if (result.error?.code === 'ETIMEDOUT') {
-    return `${label} timed out after ${String(timeoutMs / MILLISECONDS_PER_MINUTE)} minutes in ${where}`;
+    return withTroubleshooting(
+      `${label} timed out after ${String(timeoutMs / MILLISECONDS_PER_MINUTE)} minutes in ${where}`,
+      TROUBLESHOOTING_ANCHORS.analyzerTimeout,
+    );
   }
   if (result.error !== undefined) {
     return `${label} could not run in ${where}: ${result.error.message}`;

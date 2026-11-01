@@ -1,5 +1,10 @@
 import { spawn } from 'node:child_process';
 import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+  withTroubleshooting,
+} from '../../../shared/messages/troubleshooting.mjs';
 import { withoutHostCiOutputs } from '../../tooling/host-environment.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -70,7 +75,12 @@ function createTaskController(child, task) {
     forceKillTimeout: undefined,
   };
   const timeout = setTimeout(() => {
-    terminate(new Error(`${task.name} timed out after ${String(task.timeoutMs)} ms`));
+    terminate(
+      troubleshootingError(
+        `${task.name} timed out after ${String(task.timeoutMs)} ms`,
+        TROUBLESHOOTING_ANCHORS.analyzerTimeout,
+      ),
+    );
   }, task.timeoutMs);
   function terminate(error) {
     if (errors.has('termination')) return;
@@ -103,7 +113,12 @@ export function executeAnalyzerTask(task) {
     const child = spawnAnalyzer(task);
     const controller = createTaskController(child, task);
     const output = createOutputCollector(() => {
-      controller.terminate(new Error(`${task.name} exceeded the analyzer output limit`));
+      controller.terminate(
+        troubleshootingError(
+          `${task.name} exceeded the analyzer output limit`,
+          TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+        ),
+      );
     });
     child.stdout.on('data', output.collectStdout);
     child.stderr.on('data', output.collectStderr);
@@ -131,7 +146,10 @@ export function reportFromAnalyzerOutput(task, { status, signal, stdoutText, std
   if (!task.acceptedExitCodes.includes(status)) {
     const exit = status === null ? `signal ${signal ?? 'unknown'}` : `exit ${String(status)}`;
     const detail = stderrText.trim() || stdoutText.trim() || 'no diagnostic output';
-    throw new Error(`${task.name} crashed with ${exit}: ${detail}`);
+    throw troubleshootingError(
+      `${task.name} crashed with ${exit}: ${detail}`,
+      TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+    );
   }
   return parseReport(stdoutText, task.name, task.reportedTools);
 }
@@ -174,20 +192,36 @@ export function installShutdownHandlers(
   }
 }
 
+function parsedReport(rawReport, analyzerName) {
+  try {
+    return parseAnalyzerReport(rawReport, analyzerName);
+  } catch (error) {
+    if (error instanceof Error) {
+      error.message = withTroubleshooting(error.message, TROUBLESHOOTING_ANCHORS.analyzerCrashed);
+    }
+    throw error;
+  }
+}
+
 function parseReport(stdout, analyzerName, reportedTools = []) {
   let rawReport;
   try {
     rawReport = JSON.parse(stdout);
   } catch (error) {
-    throw new Error(`${analyzerName} did not produce valid JSON`, { cause: error });
+    throw troubleshootingError(
+      `${analyzerName} did not produce valid JSON`,
+      TROUBLESHOOTING_ANCHORS.analyzerCrashed,
+      { cause: error },
+    );
   }
-  const report = parseAnalyzerReport(rawReport, analyzerName);
+  const report = parsedReport(rawReport, analyzerName);
   const mismatchedFinding = report.findings.find(
     (finding) => finding.tool !== analyzerName && !reportedTools.includes(finding.tool),
   );
   if (mismatchedFinding !== undefined) {
-    throw new Error(
+    throw troubleshootingError(
       `${analyzerName} emitted a finding for unexpected tool ${mismatchedFinding.tool}`,
+      TROUBLESHOOTING_ANCHORS.analyzerCrashed,
     );
   }
   return report;

@@ -8,6 +8,7 @@ import { configurationFiles } from '../hygiene/analyzers.mjs';
 import { HEAD_POLICY_ENV } from '../head-policy.mjs';
 import { createHistoryAnalyzers } from './analyzers.mjs';
 import { runHistoryCheck, runHistoryCli } from './runner.mjs';
+import { linkSentence } from '../messages/test-support/link-sentence.mjs';
 
 const temporaryDirectories = [];
 const { historyRepository, temporaryRoot } = useHistoryRepositories();
@@ -77,8 +78,10 @@ describe('the history configuration hash', () => {
       'hygiene/cli.mjs',
       'hygiene/rules.mjs',
       'hygiene/tracked-files.mjs',
+      'messages/docs-url.mjs',
       'messages/error-chain.mjs',
       'messages/exception-sentence.mjs',
+      'messages/troubleshooting.mjs',
       'paths/glob.mjs',
       'project-rules/hygiene-rules.mjs',
       'rules/features/feature-roles.mjs',
@@ -135,9 +138,12 @@ describe('runHistoryCli', () => {
   it.each([
     [
       ['--check', 'nope', '--project-root', '/'],
-      'History check failed: Unknown history check: nope\n',
+      `History check failed: Unknown history check: nope. ${linkSentence('analyzerCrashed')}\n`,
     ],
-    [['--nope', 'x'], 'History check failed: Invalid history argument: --nope\n'],
+    [
+      ['--nope', 'x'],
+      `History check failed: Invalid history argument: --nope. ${linkSentence('analyzerCrashed')}\n`,
+    ],
   ])('exits 2 with the cause for %j', (commandArguments, stderr) => {
     expect(run(commandArguments, {})).toEqual({ status: 2, stdout: '', stderr });
   });

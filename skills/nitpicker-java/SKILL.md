@@ -30,6 +30,7 @@ forms below from the start; the gate is a backstop.
    - 2: no new findings, but a tool failed (the build, a compile error, a test failure). Fix the
      cause it names and rerun. Exit 2 is never a pass. If another run is in progress, wait for
      it; never kill it.
+     When the message links to [troubleshooting](https://github.com/jhonDoe15/nitpicker/blob/main/docs/troubleshooting.md), the fix is there.
 5. Never suppress: no `// NOPMD`, `@SuppressWarnings`, `@SuppressFBWarnings`, `CHECKSTYLE`
    comments, coverage or mutation markers (`@Generated`, `@ExcludeFromJacocoGeneratedReport`,
    `@DoNotMutate`), config `exclude`/`disable`/`exceptions`, legacy entries, or weakened tests. The one

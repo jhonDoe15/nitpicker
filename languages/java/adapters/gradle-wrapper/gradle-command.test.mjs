@@ -5,6 +5,7 @@ import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { gradleTarget } from './gradle-command.mjs';
 import { analyzeJavaSnapshot } from '../java-runner.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const roots = [];
 let previousGradle;
@@ -141,7 +142,7 @@ describe.skipIf(process.platform === 'win32')('analyzeJavaSnapshot', () => {
 
     expect(messageOf(root, { gradle: undefined })).toEqual(
       expect.stringMatching(
-        exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nJava preset failed in ${root}: ran ${root}/gradlew in ${root}`,
+        exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nJava preset failed in ${root}: ran ${root}/gradlew in ${root}\n${linkSentence('gradleFails')}`,
       ),
     );
   });
@@ -151,7 +152,7 @@ describe.skipIf(process.platform === 'win32')('analyzeJavaSnapshot', () => {
 
     expect(messageOf(root, { gradle: undefined })).toEqual(
       expect.stringMatching(
-        exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nJava preset failed in ${root}: ran ${root}/gradlew in ${root}`,
+        exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nJava preset failed in ${root}: ran ${root}/gradlew in ${root}\n${linkSentence('gradleFails')}`,
       ),
     );
   });
@@ -164,7 +165,7 @@ describe.skipIf(process.platform === 'win32')('analyzeJavaSnapshot', () => {
 
     expect(messageOf(root, { gradle: path.join(other, 'other-gradle') })).toEqual(
       expect.stringMatching(
-        exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nJava preset failed in ${root}: configured ${other}/other-gradle in ${root}`,
+        exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${/[A-Za-z0-9]{6}/}/gradle.log\nJava preset failed in ${root}: configured ${other}/other-gradle in ${root}\n${linkSentence('gradleFails')}`,
       ),
     );
   });

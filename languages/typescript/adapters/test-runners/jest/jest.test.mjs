@@ -8,6 +8,7 @@ import {
   runArea,
   createRunnerProjects,
 } from '../test-support/runner-project.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const projects = createRunnerProjects();
 
@@ -139,7 +140,8 @@ describe('coverage on a Jest project', () => {
         "Jest collected no coverage for the project's source files, such as src/main/pick.ts. " +
           'Jest only instruments files inside the rootDir of the config that runs the test ' +
           `(the global rootDir is ${root}). ` +
-          "Make the project's Jest config, or each of its projects, use a rootDir that holds the sources.",
+          "Make the project's Jest config, or each of its projects, use a rootDir that holds the sources. " +
+          linkSentence('jestNoCoverage'),
       ),
     );
   });
@@ -174,7 +176,7 @@ describe('coverage on a Jest project', () => {
         message:
           'Jest ran no tests, but nitpicker sees test files such as test/pick.test.ts. ' +
           'Make the project\'s Jest config find them, or set "tools.tests.runner" in ' +
-          'nitpicker.config.json to the runner they are written for.',
+          `nitpicker.config.json to the runner they are written for.`,
         classification: 'tool-error',
       },
     ]);

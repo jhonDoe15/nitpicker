@@ -6,6 +6,7 @@ import { commitBranch, runGitIn, summarize } from '../../test-support/gradle-e2e
 import { runCli } from '../../../../../core/cli.mjs';
 import { runJavaDiff } from '../../java-diff.mjs';
 import { testsFailOnBase } from '../../../../../shared/rules/finding-helpers.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const fixtures = path.resolve(import.meta.dirname, '../../fixtures');
 
@@ -111,9 +112,9 @@ export function redBaseCases({ setup, gradle, environment, policy, expected }) {
           snapshot: 'base',
           rule: 'tests-failed',
           path: '.',
-          message: testsFailOnBase([
+          message: `${testsFailOnBase([
             'demo.GreeterTest.greetsByName: expected: <Hi, Ada!> but was: <Hello, Ada!>',
-          ]),
+          ])}\n${linkSentence('baseTestsFail')}`,
         },
       ],
     });

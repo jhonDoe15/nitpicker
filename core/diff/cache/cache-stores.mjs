@@ -10,6 +10,10 @@ import {
 } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  withTroubleshooting,
+} from '../../../shared/messages/troubleshooting.mjs';
 import { runGit } from '../git/repository/command.mjs';
 
 const WORKER = fileURLToPath(new URL('./http-cache-worker.mjs', import.meta.url));
@@ -153,14 +157,25 @@ function resolveRemoteStore(environment, warnings) {
   const url = environment.NITPICKER_CACHE_URL;
   if (typeof url !== 'string' || url.length === 0) return undefined;
   if (!/^https?:\/\/[^\s/]/u.test(url)) {
-    warnings.push('NITPICKER_CACHE_URL ignored: it must be an http(s) URL.');
+    warnings.push(
+      withTroubleshooting(
+        'NITPICKER_CACHE_URL ignored: it must be an http(s) URL.',
+        TROUBLESHOOTING_ANCHORS.staleCache,
+      ),
+    );
     return undefined;
   }
   const timeout = Number(environment.NITPICKER_CACHE_TIMEOUT_MS ?? DEFAULT_TIMEOUT_MS);
   const header = environment.NITPICKER_CACHE_AUTH_HEADER;
   const validHeader = typeof header === 'string' && header.includes(':');
-  if (header && !validHeader)
-    warnings.push('NITPICKER_CACHE_AUTH_HEADER ignored: expected "Name: value".');
+  if (header && !validHeader) {
+    warnings.push(
+      withTroubleshooting(
+        'NITPICKER_CACHE_AUTH_HEADER ignored: expected "Name: value".',
+        TROUBLESHOOTING_ANCHORS.staleCache,
+      ),
+    );
+  }
   return createHttpStore({
     baseUrl: url,
     authHeader: validHeader ? header : undefined,

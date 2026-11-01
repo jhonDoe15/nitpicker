@@ -6,6 +6,7 @@ import { runJavaDiff } from '../../../adapters/java-diff.mjs';
 import { commitBranch, runGitIn, summarize } from '../../../adapters/test-support/gradle-e2e.mjs';
 import { gateRedBase } from '../../../adapters/red-base/test-support/red-base-cases.mjs';
 import { testsFailOnBase } from '../../../../../shared/rules/finding-helpers.mjs';
+import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 const maven = process.env.NITPICKER_MAVEN;
 const gradleFixture = path.join(import.meta.dirname, '../../../adapters/fixtures/gradle-project');
@@ -87,9 +88,9 @@ describe.skipIf(process.env.NITPICKER_JAVA_E2E !== '1')(
           {
             tool: 'java',
             rule: 'tests-failed',
-            message: testsFailOnBase([
+            message: `${testsFailOnBase([
               'demo.GreeterTest.greetsByName: expected: <Hi, Ada!> but was: <Hello, Ada!>',
-            ]),
+            ])}\n${linkSentence('baseTestsFail')}`,
           },
         ],
       });
@@ -116,9 +117,9 @@ describe.skipIf(process.env.NITPICKER_JAVA_E2E !== '1')(
             snapshot: 'base',
             rule: 'tests-failed',
             path: '.',
-            message: testsFailOnBase([
+            message: `${testsFailOnBase([
               'demo.GreeterTest.greetsByName: expected: <Hi, Ada!> but was: <Hello, Ada!>',
-            ]),
+            ])}\n${linkSentence('baseTestsFail')}`,
           },
         ],
       });

@@ -18,6 +18,7 @@ import {
   TESTS_FAILED_SKIPPED_RULE,
 } from '../../../../../shared/rules/finding-helpers.mjs';
 import { toolErrorFinding } from '../reporting/test-report.mjs';
+import { TROUBLESHOOTING_ANCHORS } from '../../../../../shared/messages/troubleshooting.mjs';
 import { layoutTransformFor } from '../../../preset/tool-configs.mjs';
 import { trackTemporaryPath } from '../../../../../core/tooling/temporary-files.mjs';
 import { projectTestRunner } from '../../../preset/test-runner/project-runner.mjs';
@@ -166,27 +167,37 @@ export function strykerRunConfig(sourceConfig, { snapshot, targets, ...files }) 
   };
 }
 
-const SKIP_MESSAGES = {
+const SKIPS = {
   head: {
-    typecheck:
-      'mutation skipped: the project does not type-check under the mutation checker configuration (see differential typescript-typecheck findings)',
-    tests: 'mutation skipped: tests fail (see coverage findings)',
+    typecheck: {
+      message:
+        'mutation skipped: the project does not type-check under the mutation checker configuration (see differential typescript-typecheck findings)',
+    },
+    tests: {
+      message: 'mutation skipped: tests fail (see coverage findings)',
+    },
   },
   base: {
-    typecheck:
-      'mutation skipped: the base commit does not type-check, so its mutants cannot be compared. Fix the base first; a missing @types/node is the usual cause.',
-    tests:
-      'mutation skipped: the base commit fails its own tests, so its mutants are unknown there.',
+    typecheck: {
+      message:
+        'mutation skipped: the base commit does not type-check, so its mutants cannot be compared. Fix the base first; a missing @types/node is the usual cause.',
+      anchor: TROUBLESHOOTING_ANCHORS.baseDoesNotTypeCheck,
+    },
+    tests: {
+      message:
+        'mutation skipped: the base commit fails its own tests, so its mutants are unknown there.',
+      anchor: TROUBLESHOOTING_ANCHORS.baseTestsFail,
+    },
   },
 };
 
 export function mutationSkipFor(errorMessage, snapshot = 'head') {
-  const messages = SKIP_MESSAGES[snapshot];
+  const skips = SKIPS[snapshot];
   if (DRY_RUN_TYPECHECK_FAILED_PATTERN.test(errorMessage)) {
-    return { rule: TYPECHECK_FAILED_SKIPPED_RULE, message: messages.typecheck };
+    return { rule: TYPECHECK_FAILED_SKIPPED_RULE, ...skips.typecheck };
   }
   return INITIAL_TEST_RUN_FAILED_PATTERN.test(errorMessage)
-    ? { rule: TESTS_FAILED_SKIPPED_RULE, message: messages.tests }
+    ? { rule: TESTS_FAILED_SKIPPED_RULE, ...skips.tests }
     : undefined;
 }
 

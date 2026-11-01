@@ -1,4 +1,5 @@
 import { readHeadPolicyFile } from '../head-policy.mjs';
+import { TROUBLESHOOTING_ANCHORS, withTroubleshooting } from '../messages/troubleshooting.mjs';
 import { describeError } from '../messages/error-chain.mjs';
 
 const OPTION_NAMES = {
@@ -30,7 +31,9 @@ export function runCheckCli({ commandArguments, stdout, stderr, environment, run
     stdout.write(`${JSON.stringify({ findings })}\n`);
     return 0;
   } catch (error) {
-    stderr.write(`${label} check failed: ${describeError(error)}\n`);
+    stderr.write(
+      `${withTroubleshooting(`${label} check failed: ${describeError(error)}`, TROUBLESHOOTING_ANCHORS.analyzerCrashed)}\n`,
+    );
     return 2;
   }
 }

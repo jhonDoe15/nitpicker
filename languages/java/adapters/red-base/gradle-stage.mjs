@@ -3,6 +3,7 @@ import { gradleOptions } from '../gradle-wrapper/gradle-stages.mjs';
 import { runGradle } from '../gradle-wrapper/gradle-process.mjs';
 import { withGradleLog } from '../gradle-wrapper/diagnostics/failure-log.mjs';
 import { condenseFailure } from '../gradle-wrapper/diagnostics/failure-text.mjs';
+import { gradleSpawnFailure } from '../gradle-wrapper/diagnostics/spawn-failure.mjs';
 import { failingTestsOf } from '../gradle-reports/failing-tests.mjs';
 import { failingTestsError } from '../../builds/test-failures.mjs';
 
@@ -11,7 +12,7 @@ const MAX_FAILURE_LENGTH = 3500;
 export function assertGradleSucceeded(
   result,
   projectRoot,
-  { reportBase, since, checkTests = true },
+  { reportBase, since, checkTests = true, command, budget },
 ) {
   const succeeded = result.error === undefined && result.status === 0;
   const failures =
@@ -33,7 +34,9 @@ export function assertGradleSucceeded(
   const raw = result.stderr?.trim() ? result.stderr : (result.stdout ?? '');
   const detail = condenseFailure(raw, MAX_FAILURE_LENGTH) || 'no diagnostic output';
   throw withGradleLog(
-    result.error ?? new Error(`Java preset failed in ${projectRoot}: ${detail}`),
+    result.error === undefined
+      ? new Error(`Java preset failed in ${projectRoot}: ${detail}`)
+      : gradleSpawnFailure(result.error, { command, budget }),
     result,
   );
 }
@@ -54,5 +57,11 @@ export function runGradleStage({
     target.args,
     gradleOptions(target, { projectRoot, budget, spawn }),
   );
-  assertGradleSucceeded(result, projectRoot, { reportBase, since, checkTests });
+  assertGradleSucceeded(result, projectRoot, {
+    reportBase,
+    since,
+    checkTests,
+    command: target.command,
+    budget,
+  });
 }
