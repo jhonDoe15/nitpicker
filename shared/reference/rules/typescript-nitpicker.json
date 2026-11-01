@@ -169,7 +169,7 @@
         "message": "JSDoc holds types only: remove the description text and put the intent in a descriptive identifier or a named function."
       },
       {
-        "message": "The JSDoc tag @{{tag}} is not allowed: JSDoc holds types only (@param, @returns, @type, @typedef, @template, @import)."
+        "message": "Remove the JSDoc tag @{{tag}}: JSDoc holds types only (@param, @returns, @type, @typedef, @template, @import)."
       },
       { "message": "Write the JSDoc tag as `{{usage}}`." },
       {

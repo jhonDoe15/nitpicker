@@ -117,6 +117,10 @@ To learn why a rule is on and what form it allows before you write or change cod
 - Run programs with `execFile(command, [args])`, never a command string.
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
+- The `$schema` line of `nitpicker.config.json`
+  (`"$schema": "./node_modules/nitpicker/spec/config.schema.json"`)
+  lets the editor flag a misspelled key or a value the run refuses; nitpicker ignores it. Keep it
+  when you edit the file.
 
 ## domain/ is deeply readonly
 

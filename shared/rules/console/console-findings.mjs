@@ -1,5 +1,5 @@
 import { globMatcher } from '../../paths/glob.mjs';
-import { MESSAGES, RULE_IDS, renderMessage } from '../../policy.mjs';
+import { MESSAGES, RULE_IDS, messageFields } from '../../policy.mjs';
 import { exceptionMatcher, exceptionText } from '../exceptions.mjs';
 import { hash } from '../finding-helpers.mjs';
 import { normalizeConsoleMessage } from './console-messages.mjs';
@@ -59,7 +59,7 @@ function findingFor({ file, message, test }, analyzerName) {
     rule: RULE_IDS.testConsoleOutput,
     path: file,
     identity: `console:${hash(message)}`,
-    message: renderMessage(MESSAGES.testConsoleOutput, {
+    ...messageFields(MESSAGES.testConsoleOutput, {
       output: `"${message}"${where}`,
       exception: exceptionText(RULE_IDS.testConsoleOutput, file),
     }),

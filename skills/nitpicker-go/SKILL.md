@@ -88,3 +88,8 @@ Stop and ask. The maintainer adds the entry the finding's message ends with to `
 `{ "rule": "vet/printf", "paths": ["shop/label.go"], "reason": "..." }`, or
 `{ "rule": "function-lines-limit", "paths": [...], "function": "Name", "reason": "..." }` for a
 structure limit. That change is a policy change a person accepts.
+
+The `$schema` line of `nitpicker.config.json`
+(`"$schema": "https://raw.githubusercontent.com/jhonDoe15/nitpicker/main/spec/config.schema.json"`)
+lets the editor flag a misspelled key or a value the run refuses; nitpicker ignores it. Keep it when
+you edit the file.

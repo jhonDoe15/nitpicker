@@ -158,6 +158,14 @@ export function unusedFieldMessage(name, file = 'src/main/java/demo/A.java') {
   return `Avoid unused field: ${name}. ${fix} ${exceptionHint('pmd/UnusedPrivateField', file)}`;
 }
 
+export function unusedFieldFields(file = 'src/main/java/demo/A.java') {
+  return {
+    allowedForm: readCatalog('pmd').UnusedPrivateField.fix,
+    exception: { rule: 'pmd/UnusedPrivateField', paths: [file], reason: '...' },
+    exceptionList: 'exceptions',
+  };
+}
+
 export function unusedFieldConsoleEntry(name, line, file = 'src/main/java/demo/A.java') {
   const { fix } = readCatalog('pmd').UnusedPrivateField;
   return [

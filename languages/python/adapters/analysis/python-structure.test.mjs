@@ -121,6 +121,7 @@ describe('reading the structure report', () => {
       value: 4,
       worseMessage:
         'Service.handle grew from {base} to 4 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/service.py"],"function":"Service.handle","reason":"..."} to "exceptions" in nitpicker.config.json.',
+      worseAllowedForm: 'Group related parameters into one object instead of adding another.',
       heldMessage:
         'Service.handle: 4 parameters (limit 3), allowed because base was {base}; any increase fails.',
     });

@@ -68,6 +68,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
         identity: 'function:value:occurrence:1:source:limit',
         message:
           'value has CRAP 9.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Test its uncovered branches, or split a branchy part into its own function.',
         classification: 'enforceable',
         symbol: 'value',
         location: { line: 1, endLine: 3 },
@@ -76,6 +77,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
           value: 9,
           worseMessage:
             'value CRAP rose from {base} to 9 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
+          worseAllowedForm: 'Put new code in a new function and cover it with tests.',
           heldMessage:
             'value: CRAP 9.00 (limit 9), allowed because base was {base}; any increase fails.',
         },
@@ -144,6 +146,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
         identity: 'function:value:occurrence:1:source:unknown',
         message:
           'value has unknown coverage and no CRAP score: no test runs it. Add a test that calls it. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Add a test that calls it.',
         classification: 'enforceable',
         symbol: 'value',
         location: { line: 1, endLine: 3 },
@@ -168,6 +171,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
         identity: 'function:value:occurrence:1:source:missing',
         message:
           'value has unknown coverage and no CRAP score: no test runs it. Add a test that calls it. If this is intended, add {"rule":"crap-coverage-unknown","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Add a test that calls it.',
         classification: 'enforceable',
         symbol: 'value',
         location: { line: 1, endLine: 3 },
@@ -282,6 +286,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
         identity: 'function:value:occurrence:1:source:changed',
         message:
           'value has CRAP 12.00; score must be below 12. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Test its uncovered branches, or split a branchy part into its own function.',
         classification: 'enforceable',
         symbol: 'value',
         location: { line: 1, endLine: 3 },
@@ -290,6 +295,7 @@ describe('CRAP reporting in the quality-area analyzers', () => {
           value: 12,
           worseMessage:
             'value CRAP rose from {base} to 12 (limit 12). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
+          worseAllowedForm: 'Put new code in a new function and cover it with tests.',
           heldMessage:
             'value: CRAP 12.00 (limit 12), allowed because base was {base}; any increase fails.',
         },
@@ -390,11 +396,20 @@ describe('CRAP reporting in the quality-area analyzers', () => {
         classification: 'enforceable',
         message:
           'value CRAP rose from 9 to 9.5 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm: 'Put new code in a new function and cover it with tests.',
+        exception: {
+          rule: 'crap-score-limit',
+          paths: ['src/main/value.ts'],
+          function: 'value',
+          reason: '...',
+        },
+        exceptionList: 'exceptions',
         ratchet: {
           key: 'function:value:occurrence:1:crap',
           value: 9.5,
           worseMessage:
             'value CRAP rose from {base} to 9.5 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/value.ts"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
+          worseAllowedForm: 'Put new code in a new function and cover it with tests.',
           heldMessage:
             'value: CRAP 9.50 (limit 9), allowed because base was {base}; any increase fails.',
         },

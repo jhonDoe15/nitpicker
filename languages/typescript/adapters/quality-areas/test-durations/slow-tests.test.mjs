@@ -82,6 +82,8 @@ describe('tests over their time budget', () => {
         path: 'test/a.test.ts',
         identity: 'slow-test|test/a.test.ts|waits',
         message: UNIT_MESSAGE,
+        allowedForm:
+          'Replace real waits with fake timers (`vi.useFakeTimers()`) and use smaller fixtures. If it really is an integration test, move it to an `integration/` or `e2e/` folder of a test root.',
         classification: 'enforceable',
         location: { line: 2 },
       },

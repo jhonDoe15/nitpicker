@@ -224,12 +224,18 @@ describe('Kotlin Spring rules on the recorded fixture facts', () => {
     const findings = findingsWith({ spring: true, kotlinAllOpen: BUILD_PLUGIN });
 
     expect(
-      findings.map(({ tool, classification, message }) => ({ tool, classification, message })),
+      findings.map(({ tool, classification, message, allowedForm }) => ({
+        tool,
+        classification,
+        message,
+        allowedForm,
+      })),
     ).toEqual(
       findings.map(({ rule, path }) => ({
         tool: 'pmd',
         classification: 'enforceable',
         message: routed(springMessage(rule), rule, path),
+        allowedForm: springMessage(rule),
       })),
     );
   });

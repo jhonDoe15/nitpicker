@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { readKotlinCrapFindings, readKotlinStructureFindings } from '../kotlin-metrics.mjs';
+import { parseFinding } from '../../../../../core/diff/comparison/finding-schema.mjs';
 
 const temporaryRoots = [];
 
@@ -215,12 +216,21 @@ describe('identity of init blocks', () => {
       entry('Boot.flag', 14, 14, { maxControlNesting: 3 }),
     ];
 
+    const findings = readKotlinStructureFindings({ functions, files: FILES }, root);
+
     expect(
-      readKotlinStructureFindings({ functions, files: FILES }, root).map(({ symbol, message }) => [
+      findings.map(({ symbol, allowedForm, message }) => [
         symbol,
-        message,
+        allowedForm,
+        message.includes(allowedForm),
+        parseFinding(findings.find((finding) => finding.symbol === symbol)).exception.function,
       ]),
     ).toEqual([
+      ['Boot.<init>', 'Move the nested part into its own function.', true, 'Boot.<init>'],
+      ['Boot.table', 'Move the nested part into its own function.', true, 'Boot.table'],
+      ['Boot.flag', 'Return early instead of nesting.', true, 'Boot.flag'],
+    ]);
+    expect(findings.map(({ symbol, message }) => [symbol, message])).toEqual([
       [
         'Boot.<init>',
         'Boot.<init> nests control flow 3 deep (limit 2). Move the nested part into its own function. If this is intended, add {"rule":"function-control-nesting-limit","paths":["src/main/kotlin/demo/Boot.kt"],"function":"Boot.<init>","reason":"..."} to "exceptions" in nitpicker.config.json.',

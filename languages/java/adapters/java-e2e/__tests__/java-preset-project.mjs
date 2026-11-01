@@ -25,6 +25,7 @@ import {
 import { UNITS, UNITS_TEST } from '../test-support/unit-sources.mjs';
 import { WIDE, WIDE_EXTENDED, WIDE_REFORMATTED } from '../test-support/wide-sources.mjs';
 import { runJavaDiff } from '../../java-diff.mjs';
+import { schemaChecked } from '../../../../../core/diff/comparison/test-support/findings-schema-check.mjs';
 import { commitBranch, runGitIn } from '../../test-support/gradle-e2e.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
@@ -144,7 +145,9 @@ export function useJavaPresetProject() {
   });
   const diffOf = (branch, policy) => {
     runGitIn(repository, 'checkout', '-q', branch);
-    return runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', gradle, policy });
+    return schemaChecked(
+      runJavaDiff({ repositoryRoot: repository, requestedBaseRef: 'main', gradle, policy }),
+    );
   };
   const structureOf = (findings) =>
     findings

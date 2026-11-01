@@ -51,6 +51,12 @@ describe('nitpicker with "preset": "kotlin"', () => {
         path: 'src/main/kotlin/demo/K.kt',
         identity: 'fp:nitpicker/subject=Added magic number',
         message: `Added magic number. ${exceptionHint('detekt.style.MagicNumber', 'src/main/kotlin/demo/K.kt')}`,
+        exception: {
+          rule: 'detekt.style.MagicNumber',
+          paths: ['src/main/kotlin/demo/K.kt'],
+          reason: '...',
+        },
+        exceptionList: 'exceptions',
         classification: 'enforceable',
         location: { line: 4 },
       },
@@ -123,7 +129,8 @@ describe('nitpicker with "preset": "kotlin"', () => {
         path: 'src/main/kotlin/demo/K.kt',
         identity: 'branch-source:2523a9a20c75ac9a',
         message:
-          'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
+          'Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. To accept the file, add it to "exclude" in nitpicker.config.json.',
+        allowedForm: 'Add a test for each outcome it misses.',
         classification: 'enforceable',
         anchor: { key: 'branch:branch-source:2523a9a20c75ac9a', requireUnchangedLine: true },
         location: { line: 5 },
@@ -165,6 +172,15 @@ describe('nitpicker with "preset": "kotlin"', () => {
           'If this is intended, add {"rule":"mutant-survived","paths":["src/main/kotlin/demo/K.kt"],' +
             '"function":"KKt.fee","reason":"..."} to "exceptions" in nitpicker.config.json.',
         ].join(' '),
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears.',
+        exception: {
+          rule: 'mutant-survived',
+          paths: ['src/main/kotlin/demo/K.kt'],
+          function: 'KKt.fee',
+          reason: '...',
+        },
+        exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'KKt#fee(I)I',
         anchor: {
@@ -208,6 +224,15 @@ describe('nitpicker with "preset": "kotlin"', () => {
         identity: 'A|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
         message:
           'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/java/demo/A.java"],"function":"A.fee","reason":"..."} to "exceptions" in nitpicker.config.json.',
+        allowedForm:
+          'Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears.',
+        exception: {
+          rule: 'mutant-survived',
+          paths: ['src/main/java/demo/A.java'],
+          function: 'A.fee',
+          reason: '...',
+        },
+        exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'A#fee(I)I',
         anchor: {

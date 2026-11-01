@@ -1,6 +1,6 @@
 const PLACEHOLDER_REASON = '...';
 
-const WORD_CHARACTER = /[\p{L}\p{N}]/u;
+export const WORD_CHARACTER = /[\p{L}\p{N}]/u;
 
 /** Whether `reason` says nothing: blank, or only punctuation such as the `...` a message prints. */
 export function isPlaceholderReason(reason) {
@@ -38,13 +38,53 @@ export function exceptionSentence(entryText, key = 'exceptions') {
   return `If this is intended, add ${entryText} to "${key}" in nitpicker.config.json.`;
 }
 
-/** The exception sentence at the end of a message; group `entry` is the entry it names. */
+/** The exception sentence at the end of a message; group `entry` is the entry it names, `list` its config list. */
 export const ROUTE_SENTENCE =
-  /If this is intended, add (?<entry>\{.*\}) to "(?:python\.)?exceptions" in nitpicker\.config\.json\.$/su;
+  /If this is intended, add (?<entry>\{.*\}) to "(?<list>(?:python\.)?exceptions)" in nitpicker\.config\.json\.$/su;
 
 /** Whether `message` already ends with a sentence that names its exception entry. */
 export function hasExceptionRoute(message) {
   return ROUTE_SENTENCE.test(message);
+}
+
+function isText(value) {
+  return typeof value === 'string' && value !== '' && !value.includes('\0');
+}
+
+/** Whether `value` has the parts every `exceptions` entry names: a rule, some paths and a reason. */
+export function isExceptionEntry(value) {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    isText(value.rule) &&
+    isText(value.reason) &&
+    Array.isArray(value.paths) &&
+    value.paths.length > 0 &&
+    value.paths.every(isText)
+  );
+}
+
+function parsedEntry(text) {
+  const parsed = parsedJson(text);
+  return parsed.kind === 'parsed' && isExceptionEntry(parsed.value) ? parsed.value : undefined;
+}
+
+function parsedJson(text) {
+  try {
+    return { kind: 'parsed', value: JSON.parse(text) };
+  } catch (error) {
+    return { kind: 'malformed-json', error };
+  }
+}
+
+/**
+ * The structured form of the sentence `message` ends with: `exception` is the entry it names and
+ * `exceptionList` the config list that takes it. Empty for a message without the sentence.
+ */
+export function routeFields(message) {
+  const route = ROUTE_SENTENCE.exec(message);
+  const exception = route === null ? undefined : parsedEntry(route.groups.entry);
+  return exception === undefined ? {} : { exception, exceptionList: route.groups.list };
 }
 
 /** `message` with `text` added so that the exception sentence, if it has one, stays last. */
