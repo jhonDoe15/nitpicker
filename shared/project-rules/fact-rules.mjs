@@ -10,33 +10,33 @@ const TYPESCRIPT_AND_JAVASCRIPT = {
 const JVM = { java: true, kotlin: true };
 
 export const FACT_RULE_LANGUAGES = {
-  "duplicate-definition": {
+  'duplicate-definition': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
     ...JVM,
-    javascript: "partial",
+    javascript: 'partial',
     python: true,
   },
-  "exported-name-collision": {
+  'exported-name-collision': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
     ...JVM,
-    javascript: "partial",
+    javascript: 'partial',
     python: true,
   },
-  "sibling-copy-edit": { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true },
-  "shared-used-by-one-feature": { ...TYPESCRIPT_AND_JAVASCRIPT },
-  "test-only-export": {
+  'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true },
+  'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT },
+  'test-only-export': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
     java: true,
     kotlin: true,
     python: true,
   },
-  "doc-comment-content": {
+  'doc-comment-content': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
     java: true,
     kotlin: true,
     python: true,
   },
-  "test-console-output": {
+  'test-console-output': {
     ...TYPESCRIPT_AND_JAVASCRIPT,
     java: true,
     kotlin: true,
@@ -45,24 +45,24 @@ export const FACT_RULE_LANGUAGES = {
 };
 
 export const FACT_RULE_LISTS = {
-  "duplicate-definition": ["modules", "packages", "definitions", "imports"],
-  "exported-name-collision": ["modules", "packages", "definitions", "imports"],
-  "sibling-copy-edit": ["modules", "packages", "definitions"],
-  "shared-used-by-one-feature": ["modules", "imports"],
-  "test-only-export": ["modules", "packages", "definitions", "imports"],
-  "doc-comment-content": ["docComments"],
-  "test-console-output": ["console"],
+  'duplicate-definition': ['modules', 'packages', 'definitions', 'imports'],
+  'exported-name-collision': ['modules', 'packages', 'definitions', 'imports'],
+  'sibling-copy-edit': ['modules', 'packages', 'definitions'],
+  'shared-used-by-one-feature': ['modules', 'imports'],
+  'test-only-export': ['modules', 'packages', 'definitions', 'imports'],
+  'doc-comment-content': ['docComments'],
+  'test-console-output': ['console'],
 };
 
 export const FACT_RULE_SETTINGS = {
-  "shared-used-by-one-feature": ["layout.sharedRoots", "layout.featureRoots"],
-  "test-console-output": ["testConsole"],
+  'shared-used-by-one-feature': ['layout.sharedRoots', 'layout.featureRoots'],
+  'test-console-output': ['testConsole'],
 };
 
-const NATIVE_LANGUAGES = new Set(["typescript", "javascript"]);
+const NATIVE_LANGUAGES = new Set(['typescript', 'javascript']);
 
 function enforces(value) {
-  return value === true || value === "partial";
+  return value === true || value === 'partial';
 }
 
 export function registeredFactRules(language) {
@@ -72,12 +72,10 @@ export function registeredFactRules(language) {
 }
 
 export function factRuleSettings(language) {
-  return registeredFactRules(language).flatMap(
-    (rule) => FACT_RULE_SETTINGS[rule] ?? [],
-  );
+  return registeredFactRules(language).flatMap((rule) => FACT_RULE_SETTINGS[rule] ?? []);
 }
 
-const OWN_COLUMN_LANGUAGES = new Set(["go"]);
+const OWN_COLUMN_LANGUAGES = new Set(['go']);
 
 function defaultEnforcement(enforcedBy, language) {
   return OWN_COLUMN_LANGUAGES.has(language) ? false : enforcedBy.typescript;
@@ -89,8 +87,7 @@ export function withLanguageColumns(rule, languages) {
     languages.map((language) => [
       language,
       registered === undefined
-        ? (rule.enforcedBy[language] ??
-          defaultEnforcement(rule.enforcedBy, language))
+        ? (rule.enforcedBy[language] ?? defaultEnforcement(rule.enforcedBy, language))
         : registered[language],
     ]),
   );
@@ -101,8 +98,7 @@ export function sharedFactExceptionRules() {
   return Object.entries(FACT_RULE_LANGUAGES)
     .filter(([, languages]) =>
       Object.entries(languages).some(
-        ([language, value]) =>
-          !NATIVE_LANGUAGES.has(language) && enforces(value),
+        ([language, value]) => !NATIVE_LANGUAGES.has(language) && enforces(value),
       ),
     )
     .map(([rule]) => rule);
