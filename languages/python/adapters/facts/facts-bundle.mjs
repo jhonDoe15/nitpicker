@@ -62,7 +62,7 @@ function createResolver(modules, files) {
   return { fileOf: (stem) => stemToFile.get(stem), moduleStem, baseStem, filesUnder };
 }
 
-function moduleImports(file, statement, resolver) {
+function moduleImports(statement, resolver) {
   return statement.aliases.flatMap(({ name, alias }) => {
     const parts = name.split('.');
     const loads = parts.slice(0, -1).map((_, index) => ({
@@ -127,7 +127,7 @@ function importFacts(file, context) {
   const statements = context.scanned[file].imports.flatMap((statement) => {
     const entries =
       statement.module === null && statement.level === 0
-        ? moduleImports(file, statement, context.resolver)
+        ? moduleImports(statement, context.resolver)
         : fromImports(file, statement, context);
     return mergedStatements(entries, statement, { file, role });
   });
