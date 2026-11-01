@@ -88,6 +88,24 @@
       </property>
     </properties>
   </rule>
+  <rule name="RetryInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="Remove the retry: a test that passes on a later attempt hides a flaky or racy test. Fix the cause, such as waiting on the condition instead of a fixed delay or isolating shared state.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//Annotation[pmd-java:typeIs('org.junitpioneer.jupiter.RetryingTest')
+             or pmd-java:typeIs('io.github.artsok.RepeatedIfExceptionsTest')]
+| //Annotation[pmd-java:typeIs('org.testng.annotations.Test')]//MemberValuePair[@Name = 'retryAnalyzer']
+| //(ClassDeclaration | EnumDeclaration | RecordDeclaration)/(ExtendsList | ImplementsList)/ClassType
+    [pmd-java:typeIs('org.testng.IRetryAnalyzer')]
+| //ConstructorCall[AnonymousClassDeclaration][pmd-java:typeIs('org.testng.IRetryAnalyzer')]
+| //(LambdaExpression | MethodReference)[pmd-java:typeIs('org.testng.IRetryAnalyzer')]
+| //MethodCall[pmd-java:matchesSig('org.testng.annotations.ITestAnnotation#setRetryAnalyzer(_)')]
+]]></value>
+      </property>
+    </properties>
+  </rule>
   <rule name="WeakAssertionInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
         message="This check passes for almost any value: a not-null, non-empty or size-above-0 check, or a verify with only any() arguments. Assert the exact value, contents or length, such as assertEquals(List.of(&quot;a&quot;, &quot;b&quot;), items), and the call arguments. An exception fits only when the value cannot be pinned.">
     <priority>2</priority>
