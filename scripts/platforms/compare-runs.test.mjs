@@ -44,6 +44,17 @@ function run({
 }
 
 const typecheckCrash = toolErrorKey({ snapshot: 'head', tool: 'typescript-typecheck' });
+const mutationCrash = toolErrorKey({ snapshot: 'head', tool: 'mutation' });
+const PARSER = 'src/demo/parser.py';
+
+function pythonRun(platform, { all = {}, change = {} } = {}) {
+  return run({
+    sample: 'python',
+    platform,
+    all: { exitCode: 1, ...all },
+    change: { findings: [finding('python-rules', 'swallowed-exception', PARSER)], ...change },
+  });
+}
 
 describe('comparing a sample run with the Linux run under Node', () => {
   it('passes a run with the same findings, tool errors and exit codes', () => {
@@ -60,41 +71,44 @@ describe('comparing a sample run with the Linux run under Node', () => {
     ]);
   });
 
-  it('allows the documented Deno type-check failure and its exit code', () => {
-    const deno = run({
-      runtime: 'deno',
-      all: { exitCode: 2, toolErrors: [typecheckCrash] },
-      change: { toolErrors: [typecheckCrash] },
-    });
+  it('expects the same findings and tool errors under Deno as under Node', () => {
+    const deno = run({ runtime: 'deno', change: { toolErrors: [typecheckCrash] } });
 
-    const result = compareRuns(run(), deno);
-
-    expect(result.problems).toEqual([]);
-    expect(result.allowed).toEqual([
-      `typescript on linux with deno: all + ${typecheckCrash}`,
+    expect(compareRuns(run(), run({ runtime: 'deno' }))).toEqual({ problems: [], allowed: [] });
+    expect(compareRuns(run(), deno).problems).toEqual([
       `typescript on linux with deno: change + ${typecheckCrash}`,
     ]);
   });
 
+  it('allows a tool error of the expected analyzer and its exit code', () => {
+    const windows = pythonRun('win32', {
+      all: { exitCode: 2, toolErrors: [mutationCrash] },
+      change: { toolErrors: [mutationCrash] },
+    });
+
+    const result = compareRuns(pythonRun('linux'), windows);
+
+    expect(result.problems).toEqual([]);
+    expect(result.allowed).toEqual([
+      `python on win32 with node: all + ${mutationCrash}`,
+      `python on win32 with node: change + ${mutationCrash}`,
+    ]);
+  });
+
   it('fails when a documented difference no longer occurs, so the docs follow the fix', () => {
-    expect(compareRuns(run(), run({ runtime: 'deno' })).problems).toEqual([
-      'typescript on linux with deno: the expected difference in typescript-typecheck no longer occurs; update EXPECTED_DIFFERENCES and docs/compatibility.md',
+    expect(compareRuns(pythonRun('linux'), pythonRun('win32')).problems).toEqual([
+      'python on win32 with node: the expected difference in mutation no longer occurs; update EXPECTED_DIFFERENCES and docs/compatibility.md',
     ]);
   });
 
   it('allows the findings of the expected analyzer that carry another tool name', () => {
-    const parser = 'src/demo/parser.py';
-    const python = (platform, findings) =>
-      run({
-        sample: 'python',
-        platform,
-        all: { exitCode: 1, findings },
-        change: { findings: [finding('python-rules', 'swallowed-exception', parser)] },
-      });
     const survived = finding('mutmut', 'mutant-survived', 'src/demo/legacy.py');
     const skipped = finding('mutmut', 'mutation-skipped', '.', 'descriptive');
 
-    const result = compareRuns(python('linux', [survived]), python('win32', [skipped]));
+    const result = compareRuns(
+      pythonRun('linux', { all: { findings: [survived] } }),
+      pythonRun('win32', { all: { findings: [skipped] } }),
+    );
 
     expect(result).toEqual({
       problems: [],
@@ -106,15 +120,14 @@ describe('comparing a sample run with the Linux run under Node', () => {
   });
 
   it('checks exit codes in the part that has no expected difference', () => {
-    const deno = run({
-      runtime: 'deno',
-      all: { exitCode: 2, toolErrors: [typecheckCrash] },
+    const windows = pythonRun('win32', {
+      all: { exitCode: 2, toolErrors: [mutationCrash] },
       change: { exitCode: 2 },
     });
 
-    expect(compareRuns(run(), deno).problems).toEqual([
-      'typescript on linux with deno: the change exited 2, not 1',
-      'typescript on linux with deno: change exited 2, the reference 1',
+    expect(compareRuns(pythonRun('linux'), windows).problems).toEqual([
+      'python on win32 with node: the change exited 2, not 1',
+      'python on win32 with node: change exited 2, the reference 1',
     ]);
   });
 
@@ -198,8 +211,7 @@ describe('the compatibility table', () => {
     ]);
     expect(rows.slice(limitsStart)).toEqual([
       ['Where', 'Sample', 'Analyzers', 'Why'],
-      ['Deno', 'typescript', '`typescript-typecheck`', EXPECTED_DIFFERENCES[0].reason],
-      ['Windows', 'python', '`mutation`, `mutmut`', EXPECTED_DIFFERENCES[1].reason],
+      ['Windows', 'python', '`mutation`, `mutmut`', EXPECTED_DIFFERENCES[0].reason],
     ]);
   });
 });

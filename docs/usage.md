@@ -1979,8 +1979,7 @@ findings come from the same compiler. On a branch that upgrades TypeScript, the 
 with the new version too: an option it removed or a check it changed shows up on both sides and is
 not reported as new, even though the base's own compiler never reported it.
 
-The TypeScript 7 engine fails under Deno ([compatibility](compatibility.md#deno)), so a run on
-Deno needs this setting. To always type check with the project's own TypeScript, set the engine:
+To always type check with the project's own TypeScript, set the engine:
 
 ```json
 { "tools": { "typescript": { "engine": "project" } } }

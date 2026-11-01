@@ -30,10 +30,9 @@ date, so it shows what CI runs, not what someone remembered to write down.
 
 The sample runs check these differences from the Linux run under Node.js 24; every other finding must match:
 
-| Where   | Sample     | Analyzers              | Why                                                                                                                             |
-| ------- | ---------- | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
-| Deno    | typescript | `typescript-typecheck` | The TypeScript 7 engine cannot reach `tsgo` through its sync pipe channel (#476); set `tools.typescript.engine` to `"project"`. |
-| Windows | python     | `mutation`, `mutmut`   | mutmut needs `fork`, so Python mutation testing is skipped on native Windows; use WSL.                                          |
+| Where   | Sample | Analyzers            | Why                                                                                    |
+| ------- | ------ | -------------------- | -------------------------------------------------------------------------------------- |
+| Windows | python | `mutation`, `mutmut` | mutmut needs `fork`, so Python mutation testing is skipped on native Windows; use WSL. |
 
 <!-- support-matrix:end -->
 
@@ -75,13 +74,9 @@ deno run -A node_modules/nitpicker/core/cli.mjs
 ```
 
 The `runtimes` job of the `platforms` workflow runs the TypeScript sample under the Deno version in
-the table and compares the findings with Node.js. They match, except that the default TypeScript 7
-type-check engine fails under Deno (`Bad file descriptor`, #476). Set the project's own TypeScript
-as the engine:
-
-```json
-{ "tools": { "typescript": { "engine": "project" } } }
-```
+the table and compares the findings with Node.js, and they match. Under Deno the TypeScript 7
+type-check engine talks to `tsgo` through TypeScript's asynchronous API (#476). If a `tsgo` process
+dies in the middle of a check, that API does not notice and the type check waits until its timeout.
 
 Stryker's first test run sometimes fails under Deno (in about one local run in four, never under
 Node.js), and mutation testing is then skipped with a `tests-failed-skipped` tool error. The cause
@@ -96,12 +91,12 @@ for a new release on every analyzer process it starts.
 
 Bun is not supported, and the maintainers decided against a Bun mode. nitpicker reads every child
 report from a file (#475) and finds packages without `node:module`'s `findPackageJSON`, so it starts
-under Bun, and the oxlint rule listing arrives whole. Bun 1.4.2 still fails in three places:
+under Bun, and the oxlint rule listing arrives whole. The TypeScript 7 type check works, through the
+same asynchronous API as under Deno (#476). Bun 1.4.2 still fails in two places:
 
 - `node:module` has no `stripTypeScriptTypes`, so every analyzer that loads the coverage reader
   fails to start (coding-standards, coupling, coverage, dead-code, duplicates, mutation, structure
   and test-runtime).
-- The TypeScript 7 type check hangs until its timeout (#476). The `project` engine works.
 - Stryker cannot start its worker server, so TypeScript mutation testing needs Node.js. Bun's own
   coverage has no branch data, which the coverage and CRAP checks need.
 
