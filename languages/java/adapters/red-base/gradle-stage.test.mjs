@@ -31,9 +31,9 @@ describe('assertGradleSucceeded', () => {
     return root;
   }
 
-  function thrownBy(result, reportBase) {
+  function thrownBy(result, reportBase, extra = {}) {
     try {
-      assertGradleSucceeded(result, '/p', { reportBase, since: 0 });
+      assertGradleSucceeded(result, '/p', { reportBase, since: 0, ...extra });
     } catch (error) {
       return error;
     }
@@ -55,6 +55,24 @@ describe('assertGradleSucceeded', () => {
       'Tests fail in /p; nitpicker needs a passing test suite for coverage and mutation testing:',
       '  shop.CartTest.adds: no',
     ]);
+  });
+
+  describe('on a build that succeeded', () => {
+    const succeeded = { status: 0, stdout: '', stderr: '' };
+    const FAILING_SUITE =
+      '<testsuite name="shop.CartTest"><testcase classname="shop.CartTest" name="adds"><failure message="no"/></testcase><testcase classname="shop.CartTest" name="adds"/></testsuite>';
+
+    it('still names a failing test its reports hold, as with ignoreFailures or a retry', () => {
+      const error = thrownBy(succeeded, reportsWith(FAILING_SUITE));
+
+      expect(error.failures).toEqual([{ module: 'core', tests: ['shop.CartTest.adds: no'] }]);
+    });
+
+    it('leaves the reports of an earlier run alone when it was told the tests are known to fail', () => {
+      expect(
+        thrownBy(succeeded, reportsWith(FAILING_SUITE), { checkTests: false }),
+      ).toBeUndefined();
+    });
   });
 
   it('is an ordinary build failure when a test task failed without naming a failing test', () => {

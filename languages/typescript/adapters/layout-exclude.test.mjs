@@ -269,7 +269,7 @@ describe('applyLayout', () => {
       'dist/**',
       'generated/**',
       'lib/legacy/**',
-      'reports/**',
+      'reports/quality/**',
       'spec/legacy/**',
       'target/**',
     ]);
