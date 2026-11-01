@@ -64,14 +64,26 @@ function installedTool(name, { owningManifest, owningPeers, from }) {
   return { root, installed };
 }
 
-function missingToolError(name, from, peerRange) {
+const VITEST_PACKAGES = new Set(['vitest', '@vitest/coverage-v8']);
+const NPM_10_HINT =
+  'If npm 10 failed to install it with "reading \'edgesOut\'", install with npm 11 ' +
+  '(`npx npm@11 install`) or use Vitest 5';
+
+export function missingToolMessage(name, from) {
   const message = `Required tool ${name} is not installed from ${from}`;
-  return peerRange === undefined
-    ? new Error(message)
-    : troubleshootingError(
-        `${message}. Install ${name} ${peerRange} as a dev dependency of the project.`,
-        TROUBLESHOOTING_ANCHORS.missingPeer,
-      );
+  return VITEST_PACKAGES.has(name) ? `${message}. ${NPM_10_HINT}` : message;
+}
+
+function missingToolError(name, from, peerRange) {
+  if (peerRange === undefined) {
+    return new Error(missingToolMessage(name, from));
+  }
+  const message = `Required tool ${name} is not installed from ${from}`;
+  const hint = VITEST_PACKAGES.has(name) ? ` ${NPM_10_HINT}.` : '';
+  return troubleshootingError(
+    `${message}. Install ${name} ${peerRange} as a dev dependency of the project.${hint}`,
+    TROUBLESHOOTING_ANCHORS.missingPeer,
+  );
 }
 
 function toolBinary(name, root, bin) {

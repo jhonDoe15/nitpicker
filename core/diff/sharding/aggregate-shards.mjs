@@ -24,6 +24,7 @@ import {
   withTroubleshooting,
 } from '../../../shared/messages/troubleshooting.mjs';
 import { writeGithubOutput } from '../reporting/github/emit.mjs';
+import { describeError } from '../../../shared/messages/error-chain.mjs';
 
 function resolvePolicyRoot({ policyRoot, optionsPolicyRoot, currentProjectRoot }) {
   if (policyRoot !== undefined) {
@@ -42,6 +43,7 @@ export function aggregateShardReports({
   liveProjectRoot,
   policyRoot,
   configOverrides = [],
+  warn,
 }) {
   const plan = planAnalyzerShards(analyzers, shardCount);
   const analyzerResolutionErrors = resolveMetadata({
@@ -49,6 +51,7 @@ export function aggregateShardReports({
     liveProjectRoot,
     policyRoot,
     inputRoot,
+    warn,
   });
   const shardReports = plan.map((shardAnalyzers, index) =>
     readAndValidateShard(inputRoot, index, shardAnalyzers),
@@ -128,7 +131,7 @@ export function runAggregateCli({
     if (options.kind === 'help') {
       stdout.write(
         'Usage: node core/diff/sharding/aggregate-shards.mjs --input-root <directory>' +
-          ' --shard-count <count> [--output <directory>] [--policy-root <directory>]\n',
+          ' --shard-count <count> [--output <directory>] [--policy-root <directory>] [--details]\n',
       );
       return 0;
     }
@@ -144,8 +147,16 @@ export function runAggregateCli({
       outputRoot,
       analyzers,
       policyRoot,
+      warn: (message) => stderr.write(`nitpicker: ${message}\n`),
     });
-    return reportExitCode(report, { stdout, stderr, environment, outputRoot, currentProjectRoot });
+    return reportExitCode(report, {
+      stdout,
+      stderr,
+      environment,
+      outputRoot,
+      currentProjectRoot,
+      details: options.details,
+    });
   } catch (error) {
     if (outputRoot !== undefined) {
       clearDiffReports(outputRoot);
@@ -156,8 +167,7 @@ export function runAggregateCli({
 }
 
 function aggregationFailure(error) {
-  const message = error instanceof Error ? error.message : String(error);
-  return withTroubleshooting(message, TROUBLESHOOTING_ANCHORS.shardAggregationFails);
+  return withTroubleshooting(describeError(error), TROUBLESHOOTING_ANCHORS.shardAggregationFails);
 }
 
 function analyzerExclusions(analyzers) {
@@ -205,7 +215,10 @@ function aggregateSummary({ shardReports, analyzers, configOverrides, newFinding
   };
 }
 
-function configuredReport(options, { currentProjectRoot, outputRoot, analyzers, policyRoot }) {
+function configuredReport(
+  options,
+  { currentProjectRoot, outputRoot, analyzers, policyRoot, warn },
+) {
   const config = loadConfig(currentProjectRoot);
   return aggregateShardReports({
     inputRoot: path.resolve(currentProjectRoot, options.inputRoot),
@@ -218,6 +231,7 @@ function configuredReport(options, { currentProjectRoot, outputRoot, analyzers, 
     configOverrides: describeConfigOverrides(config),
     shardCount: options.shardCount,
     liveProjectRoot: currentProjectRoot,
+    warn,
     policyRoot: resolvePolicyRoot({
       policyRoot,
       optionsPolicyRoot: options.policyRoot,
@@ -226,10 +240,14 @@ function configuredReport(options, { currentProjectRoot, outputRoot, analyzers, 
   });
 }
 
-function reportExitCode(report, { stdout, stderr, environment, outputRoot, currentProjectRoot }) {
+function reportExitCode(
+  report,
+  { stdout, stderr, environment, outputRoot, currentProjectRoot, details },
+) {
   stdout.write(
     renderConsoleSummary(report, {
       color: environment.NO_COLOR === undefined,
+      details,
       diagnosticsPath: absoluteTextReportPath(outputRoot),
     }),
   );

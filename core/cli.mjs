@@ -40,6 +40,7 @@ import { runHistoryCli } from '../shared/history/runner.mjs';
 import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
+import { describeError } from '../shared/messages/error-chain.mjs';
 
 const CHECK_COMMANDS = {
   hygiene: runHygieneCli,
@@ -73,13 +74,9 @@ export function runCli(options = {}) {
   try {
     return runCommand(cli);
   } catch (error) {
-    cli.stderr.write(`nitpicker failed: ${errorText(error)}\n`);
+    cli.stderr.write(`nitpicker failed: ${describeError(error)}\n`);
     return 2;
   }
-}
-
-function errorText(error) {
-  return error instanceof Error ? error.message : String(error);
 }
 
 function isTerminal(stream) {
@@ -203,6 +200,7 @@ function runComparisonCli(cli) {
     ...acceptanceOf(cli),
     progress: cli.progress,
     runTasks: cli.runTasks,
+    warn: (message) => cli.stderr.write(`nitpicker: ${message}\n`),
   });
   return writeComparisonOutcome({ cli, report, base, outputRoot });
 }
@@ -265,12 +263,9 @@ function selectComparisonAnalyzers({ options, analyzers }) {
 function writeComparisonOutcome({ cli, report, base, outputRoot }) {
   const { options, environment, stdout } = cli;
   stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
-  stdout.write(
-    renderConsoleSummary(report, {
-      color: environment.NO_COLOR === undefined,
-      diagnosticsPath: absoluteTextReportPath(outputRoot),
-    }),
-  );
+  const color = environment.NO_COLOR === undefined;
+  const diagnosticsPath = absoluteTextReportPath(outputRoot);
+  stdout.write(renderConsoleSummary(report, { color, details: options.details, diagnosticsPath }));
   stdout.write(renderClosingSections(cli, report));
   if (options.shardCount === undefined) {
     writeGithubOutput({

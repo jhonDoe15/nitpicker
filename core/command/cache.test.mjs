@@ -66,8 +66,8 @@ describe('findings cache', () => {
 
 \u001b[1m\u001b[31mQuality gate summary\u001b[0m
 \u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m src/main/new.ts:1
-    Fixture finding
+  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m: Fixture finding
+    src/main/new.ts:1:4
 \u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
 `),
     );
@@ -165,8 +165,8 @@ describe('remote findings cache', () => {
 
 \u001b[1m\u001b[31mQuality gate summary\u001b[0m
 \u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m src/main/new.ts:1
-    Fixture finding
+  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m: Fixture finding
+    src/main/new.ts:1:4
 \u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
 `),
       );
@@ -187,8 +187,8 @@ describe('remote findings cache', () => {
 
 \u001b[1m\u001b[31mQuality gate summary\u001b[0m
 \u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m src/main/new.ts:1
-    Fixture finding
+  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m: Fixture finding
+    src/main/new.ts:1:4
 \u001b[2mFull diagnostics: /tmp/nitpicker-cli-output-${/[A-Za-z0-9]{6}/}/reports/report.txt\u001b[0m
 `),
       );

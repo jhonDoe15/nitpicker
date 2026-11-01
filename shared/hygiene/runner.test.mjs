@@ -168,6 +168,7 @@ describe('the hygiene configuration hash', () => {
       'hygiene/runner.mjs',
       'hygiene/tracked-files.mjs',
       'messages/docs-url.mjs',
+      'messages/error-chain.mjs',
       'messages/exception-sentence.mjs',
       'messages/troubleshooting.mjs',
       'paths/glob.mjs',

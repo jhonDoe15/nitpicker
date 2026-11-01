@@ -22,7 +22,7 @@ const ACCEPT =
   `or NITPICKER_ACCEPT_POLICY_CHANGE=${DIGEST} in CI. ${linkSentence('policyLoosened')}`;
 const HELP = `Help with tool errors: ${linkSentence('exitCode2').slice('See '.length)}`;
 const DIAGNOSTICS = 'Full diagnostics: reports/quality/diff/combined/report.txt';
-const CODE_DEFECT = ['  eslint/no-console src/a.js:12', '    Unexpected console statement'];
+const CODE_DEFECT = ['  eslint/no-console: Unexpected console statement', '    src/a.js:12:3'];
 const ACCEPT_ROUTE = [
   'If the policy change is intended, stop and ask a person reviewing this change:',
   'only they accept exactly these loosenings,',

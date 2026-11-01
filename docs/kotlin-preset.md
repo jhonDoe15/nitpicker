@@ -12,6 +12,12 @@ GitHub Actions, GitLab CI and Jenkins, are in [nitpicker in CI](ci.md#toolchains
 
 Every rule the preset can report has an entry in the [rule reference](rules/README.md): [detekt](rules/kotlin-detekt.md), [the Kotlin source checks, compiler warnings and format checks](rules/kotlin-nitpicker.md), and the [Java rules](rules/java-pmd.md) that run on Java sources. `nitpicker explain <tool/rule>` prints an entry.
 
+## Test retries
+
+The retry rules of the [Java preset](java-preset.md#how-it-works) apply to Kotlin on Gradle: the
+same init script switches off the test-retry and Develocity retries of every `Test` task and reads
+the JUnit XML after a successful build. Maven support is separate.
+
 ## Selection
 
 `"preset": "kotlin"` in `nitpicker.config.json`. Like `java`, it is explicit and never
@@ -247,7 +253,7 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `rule` is the rule as the finding prints it: any `detekt.<ruleset>.<Rule>`, a
 `kotlin-source/<Rule>` of the [source checks](#source-checks), `kotlinc/deprecation`,
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
-`pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/AssertionInControlFlow`,
+`pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/RetryInTest`, `pmd/AssertionInControlFlow`,
 `pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
 `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ValidationAnnotationTarget`, `pmd/ClassLoadEffect`, `unused-option`), a class limit, a file
 limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
@@ -478,6 +484,7 @@ skipped with a note on stderr.
 | `FixedSleepInTest`, `NegativeWaitInTest` | `review-rules/tests/test-waits.mjs`              | a fixed wait in a test: `Thread.sleep`, `TimeUnit.X.sleep`, `parkNanos`, `delay` in `runBlocking`, timed `join` or `wait`, `after(ms)`, kotest `continually`, `during`                                                                                                                                                                                                                                                           |
 | `DisabledTest`                           | `review-rules/tests/honesty/`                    | a skipped test: `@Disabled`, `@Ignore`, `@Ignored` (also aliased or carried by an annotation), Kotest `xtest`, `xcontext`, `xdescribe`, `xit`, `xshould`, `xgiven`, a `!` name prefix, a `.config(...)` that never runs, a constant false condition or assumption                                                                                                                                                                |
 | `FocusedTest`                            | `review-rules/tests/honesty/`                    | a Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`                                                                                                                                                                                                                                                                                              |
+| `RetryInTest`                            | `review-rules/tests/honesty/retries/`            | a retry set in test code: `@RetryingTest`, `@RepeatedIfExceptionsTest`, TestNG `retryAnalyzer`, `IRetryAnalyzer`, `RetryAnalyzerCount`, `setRetryAnalyzer`, Kotest `retries`                                                                                                                                                                                                                                                     |
 | `AssertionInControlFlow`                 | `review-rules/tests/honesty/`                    | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                                                                                                                                                                                            |
 | `CoroutineEscapesTest`                   | `review-rules/tests/coroutines/`                 | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                                                                                                                                                                                          |
 | `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs`      | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                                                                                                                                                                                  |
@@ -666,6 +673,23 @@ guessed at.
   assumption on a real condition depend on the environment and are not reported. Allowed: run the test,
   delete it, or limit it to the environment it needs.
 - `FocusedTest`: Kotest only (JUnit has no focus). Reported at the outermost focused registration.
+- `RetryInTest`: a retry set in test code, so a flaky test cannot pass on a later attempt. JVM forms, in
+  any test source: JUnit Pioneer `@RetryingTest` and rerunner-jupiter `@RepeatedIfExceptionsTest` (also
+  through an import alias or in an `@[...]` group; any retry annotation is reported, `@RetryingTest(1)`
+  included, and so is a meta-annotation declared with one, at its declaration), TestNG
+  `@Test(retryAnalyzer = ...)`, a class or object that implements `IRetryAnalyzer` or extends
+  `RetryAnalyzerCount`, and a `setRetryAnalyzer(...)` call (an `IAnnotationTransformer` doing it for every
+  test), but not a function declared with that name. Kotest forms: `retries` in `.config(...)` on a test or
+  a container, `retries = n` (or `this.retries = n`) as a statement of a spec body or `init` block (not an
+  argument of another call, not a property of another object), `override val retries` in a class that
+  extends `AbstractProjectConfig` or `AbstractPackageConfig`, also over several lines, with `get()` or
+  `by lazy`, and through a base class of the same file, and `retries` in `TestConfig(...)` or
+  `DefaultTestConfig(...)` when the name comes from `io.kotest` (an import, an alias, a star import or the
+  fully qualified name). Not reported: a literal `0` or `null`, a constant of the same file that is `0` or
+  `null`, `retryDelay` alone, and `@RepeatedTest`, which is not a retry because every repetition must pass.
+  A base config class in another file and a constant from another file are not followed. The Java preset
+  has the same rule id for the JVM forms. Fix the cause instead, for example wait on the condition instead
+  of a fixed delay or isolate shared state; use `exceptions` only for a test that must retry on purpose.
 - `AssertionInControlFlow`: an assertion inside a construct that can skip it, in a JUnit test or a Kotest
   test body: an `if` or `else`, a `when`, any loop (`for`, `while`, `do`, `repeat`, `forEach`,
   `forEachIndexed`, `onEach` and the other iteration calls), a safe call (`?.let`, `?.also`, `?.run`,

@@ -29,6 +29,8 @@ function missingVitest(root) {
   return (
     `Required tool vitest is not installed from ${root}. ` +
     `Install vitest ${peerDependencies.vitest} as a dev dependency of the project. ` +
+    `If npm 10 failed to install it with "reading 'edgesOut'", install with npm 11 ` +
+    '(`npx npm@11 install`) or use Vitest 5. ' +
     linkSentence('missingPeer')
   );
 }
