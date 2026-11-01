@@ -195,7 +195,7 @@
     "When the project formats with ktfmt, the format check reports every file it would change.",
     [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md" }],
     "A Kotlin file is not formatted with ktfmt.",
-    "File is not formatted with ktfmt. Format it with the \"Format with ktfmt\" command printed at the start of the run. Not your formatter: set kotlin.formatter.",
+    "File is not formatted with ktfmt. Run nitpicker --fix, or format it with the \"Format with ktfmt\" command printed at the start of the run. Not your formatter: set kotlin.formatter.",
     {
       "note": "No exception applies: format the file, or choose another formatter with `kotlin.formatter`."
     },
@@ -204,7 +204,7 @@
     "When the project formats with ktlint, the format check reports each rule of the ktlint standard ruleset that a file breaks.",
     "A rule of the ktlint standard ruleset that a Kotlin file breaks.",
     {
-      "note": "No exception applies. Lift this rule with ktlint_standard_<rule> = disabled in .editorconfig, which nitpicker reads only when ktlint lists \"project\" (see the start of the run). Not your formatter: set kotlin.formatter."
+      "note": "No exception applies. Run nitpicker --fix to apply the fixes ktlint has, or lift this rule with ktlint_standard_<rule> = disabled in .editorconfig, which nitpicker reads only when ktlint lists \"project\" (see the start of the run). Not your formatter: set kotlin.formatter."
     },
     "^ktlint\\.",
     ["ktlint/ktlint.standard:no-wildcard-imports"],

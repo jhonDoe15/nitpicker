@@ -211,7 +211,7 @@ An inline suppression of errorprone in a Java source.
 A Java file is not formatted with google-java-format.
 
 - **Why it is on:** The Java presets keep one layout, the formatter's. google-java-format runs in check mode and reports every file it would change.
-- **Allowed form:** File is not formatted with google-java-format. Format it with google-java-format --replace \<Java files>. Not your formatter: pin "conventions.java.formatter" to "google", "palantir" or "none" in nitpicker.config.json.
+- **Allowed form:** File is not formatted with google-java-format. Run nitpicker --fix, or format it with google-java-format --replace \<Java files>. Not your formatter: pin "conventions.java.formatter" to "google", "palantir" or "none" in nitpicker.config.json.
 - **Exception:** If this is intended, add `{"rule":"google-java-format/format","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Java preset guide](../java-preset.md#style)
 
@@ -222,7 +222,7 @@ A Java file is not formatted with google-java-format.
 A Java file is not formatted with palantir-java-format.
 
 - **Why it is on:** The Java presets keep one layout, the formatter's. palantir-java-format runs in check mode and reports every file it would change.
-- **Allowed form:** File is not formatted with palantir-java-format. Format it with palantir-java-format --palantir --replace \<Java files>. Not your formatter: pin "conventions.java.formatter" to "google", "palantir" or "none" in nitpicker.config.json.
+- **Allowed form:** File is not formatted with palantir-java-format. Run nitpicker --fix, or format it with palantir-java-format --palantir --replace \<Java files>. Not your formatter: pin "conventions.java.formatter" to "google", "palantir" or "none" in nitpicker.config.json.
 - **Exception:** If this is intended, add `{"rule":"palantir-java-format/format","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Java preset guide](../java-preset.md#style)
 
