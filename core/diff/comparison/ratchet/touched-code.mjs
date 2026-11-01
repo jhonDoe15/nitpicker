@@ -1,4 +1,4 @@
-export function isInTouchedCode(finding, touchedCode) {
+function isInTouchedCode(finding, touchedCode) {
   if (touchedCode === undefined || finding.classification !== 'enforceable') {
     return false;
   }
@@ -25,7 +25,7 @@ export function isInTouchedCode(finding, touchedCode) {
   );
 }
 
-export function isOnAddedLine(finding, touchedCode) {
+function isOnAddedLine(finding, touchedCode) {
   const line = finding.location?.line;
   const inserted = touchedCode?.changedLines.get(finding.path)?.inserted;
   return (
@@ -33,6 +33,10 @@ export function isOnAddedLine(finding, touchedCode) {
     line !== undefined &&
     (inserted ?? []).some(([start, end]) => start <= line && line <= end)
   );
+}
+
+export function isHeldOnTouchedLine(finding, touchedCode) {
+  return isInTouchedCode(finding, touchedCode) || isOnAddedLine(finding, touchedCode);
 }
 
 export function isOnInsertedLine(finding, touchedCode) {
