@@ -95,10 +95,10 @@ export function expectedDirtyOutput(root) {
 
 Quality gate summary
 ✖ 3 new enforceable violations
-  eslint-lint/no-debugger src/main/example.ts:2
-    ${DEBUGGER_MESSAGE}
-  prettier-format/prettier/prettier src/main/example.ts (2 times, lines 1, 3)
-    Format these lines with Prettier
+  by area: format 2 · lint 1
+  prettier-format/prettier/prettier: Format these lines with Prettier
+    src/main/example.ts:1, 3
+  eslint-lint/no-debugger: ${DEBUGGER_MESSAGE.replace(' If', '\n    src/main/example.ts:2:3\n    If')}
 Ran only: eslint-lint, prettier-format. Run nitpicker without --analyzer before you finish.
 Full diagnostics: ${root}/reports/dirty/report.txt
 nitpicker: base 2 analyzers cached (${root}/node_modules/.cache/nitpicker; use --no-cache to rerun)
