@@ -118,9 +118,10 @@ describe('the sample workflow', () => {
       workflow.on.workflow_dispatch,
       workflow.permissions,
     ]).toEqual([['main'], ['labeled'], null, { contents: 'read' }]);
-    expect(job.if).toBe(
+    expect(workflow.jobs.changes.if).toBe(
       "github.event_name != 'pull_request' || github.event.label.name == 'run-ci'",
     );
+    expect([job.needs, job.if]).toEqual(['changes', "needs.changes.outputs.run == 'true'"]);
     expect([job['timeout-minutes'], job.strategy.matrix.os, job.defaults.run.shell]).toEqual([
       30,
       ['ubuntu-latest', 'windows-latest'],
