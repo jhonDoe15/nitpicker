@@ -13,13 +13,6 @@ import { inside, SAMPLES } from './samples.mjs';
 
 export const EXPECTED_DIFFERENCES = [
   {
-    runtime: 'deno',
-    sample: 'typescript',
-    analyzer: 'typescript-typecheck',
-    reason:
-      'The TypeScript 7 engine cannot reach `tsgo` through its sync pipe channel (#476); set `tools.typescript.engine` to `"project"`.',
-  },
-  {
     platform: 'win32',
     sample: 'python',
     analyzer: 'mutation',
