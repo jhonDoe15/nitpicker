@@ -1,8 +1,9 @@
-import { readdirSync, readFileSync } from 'node:fs';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { readSpringDocuments, valueOr } from './spring-config-files.mjs';
 import { relaxKey } from './spring-config-parser.mjs';
 import { hasLocalWord, hasTestWord, isProductionLike } from './profile-words.mjs';
+import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
 
 const DEFAULT_TEST_SOURCE_ROOTS = ['src/test/java', 'src/test/kotlin'];
 const DEFAULT_TEST_RESOURCE_ROOTS = ['src/test/resources'];
@@ -43,11 +44,7 @@ export function withProfileKinds(documents, detected) {
 }
 
 function listFiles(directory) {
-  return valueOr([], () =>
-    readdirSync(directory, { recursive: true })
-      .map(String)
-      .filter((file) => TEST_SOURCE_FILE.test(file)),
-  );
+  return projectFilePaths(directory).filter((file) => TEST_SOURCE_FILE.test(file));
 }
 
 function readText(file) {

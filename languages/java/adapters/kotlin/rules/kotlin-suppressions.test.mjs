@@ -1,11 +1,16 @@
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../../core/diff/git/test-support/git-checkout.mjs';
 import { afterEach, describe, expect, it } from 'vitest';
 import { exceptionHint } from '../../../../../shared/rules/exceptions.mjs';
-import { readSuppressionFindings, suppressionTokens } from './kotlin-suppressions.mjs';
+import { kotlinFiles, readSuppressionFindings, suppressionTokens } from './kotlin-suppressions.mjs';
 
 const roots = [];
+const { gitCheckout } = useGitCheckouts();
 
 afterEach(() => {
   for (const root of roots.splice(0)) {
@@ -283,5 +288,21 @@ describe('readSuppressionFindings', () => {
         }),
       ).toEqual(['suppress:style:UnusedParameter', 'suppress:style.UnusedParameter']);
     });
+  });
+});
+
+describe('kotlinFiles in a Git checkout', () => {
+  it('lists the files of the checkout, not ignored folders or nested checkouts', () => {
+    const root = gitCheckout(
+      {
+        'src/main/kotlin/A.kt': '',
+        'src/main/kotlin/gen/G.kt': '',
+        ...nestedCheckout('src/main/kotlin/agent', { 'X.kt': '' }),
+      },
+      ['src/main/kotlin/gen/'],
+    );
+
+    expect(kotlinFiles(root, 'src/main/kotlin')).toEqual(['src/main/kotlin/A.kt']);
+    expect(kotlinFiles(root, 'src/main/missing')).toEqual([]);
   });
 });

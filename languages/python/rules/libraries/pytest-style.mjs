@@ -1,5 +1,4 @@
-import { readdirSync } from 'node:fs';
-import path from 'node:path';
+import { projectFilePaths } from '../../../../shared/project-files/project-files.mjs';
 import {
   isTable,
   readProjectFile,
@@ -48,30 +47,15 @@ function skipsFolder(name) {
   return name.startsWith('.') || SKIPPED_FOLDERS.has(name) || name.endsWith('.egg-info');
 }
 
-function subfolders(entries, folder) {
-  return entries
-    .filter((entry) => entry.isDirectory() && !skipsFolder(entry.name))
-    .map((entry) => path.posix.join(folder, entry.name));
-}
-
-function pythonEntries(entries, folder) {
-  return entries
-    .filter((entry) => entry.isFile() && entry.name.endsWith('.py'))
-    .map((entry) => path.posix.join(folder, entry.name));
+function depthOf(file) {
+  return file.split('/').length;
 }
 
 function pythonFilesOf(projectRoot) {
-  const folders = [''];
-  const found = [];
-  for (const folder of folders) {
-    const entries = readdirSync(path.join(projectRoot, folder), { withFileTypes: true });
-    folders.push(...subfolders(entries, folder));
-    found.push(...pythonEntries(entries, folder));
-    if (found.length >= MAX_FILES) {
-      break;
-    }
-  }
-  return found.slice(0, MAX_FILES);
+  return projectFilePaths(projectRoot, { skipDirectory: (_, entry) => skipsFolder(entry.name) })
+    .filter((file) => file.endsWith('.py'))
+    .toSorted((left, right) => depthOf(left) - depthOf(right))
+    .slice(0, MAX_FILES);
 }
 
 function textOf(projectRoot, file) {

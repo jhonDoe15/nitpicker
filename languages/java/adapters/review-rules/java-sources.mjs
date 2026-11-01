@@ -1,5 +1,6 @@
-import { existsSync, readdirSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
+import { projectFilesUnder } from '../../../../shared/project-files/project-files.mjs';
 
 const SKIPPED_DIRECTORIES = new Set(['.git', '.gradle', 'build', 'node_modules', 'out', 'target']);
 const LITERALS = new RegExp(
@@ -41,36 +42,18 @@ export function pathInside(base, relative) {
   return full;
 }
 
-function childrenOf(directory, { extensions, skipped }) {
-  const entries = readdirSync(directory, { withFileTypes: true });
-  return {
-    directories: entries
-      .filter((entry) => entry.isDirectory() && !skipped.has(entry.name))
-      .map((entry) => path.join(directory, entry.name)),
-    files: entries
-      .filter(
-        (entry) => entry.isFile() && extensions.some((extension) => entry.name.endsWith(extension)),
-      )
-      .map((entry) => path.join(directory, entry.name)),
-  };
-}
-
-export function sourceFilesUnder(root, extensions, skipped = SKIPPED_DIRECTORIES) {
-  if (!existsSync(root)) {
-    return [];
-  }
-  const files = [];
-  const pending = [root];
-  for (const directory of pending) {
-    const children = childrenOf(directory, { extensions, skipped });
-    pending.push(...children.directories);
-    files.push(...children.files);
-  }
-  return files.sort();
+export function sourceFilesUnder(root, extensions, options = {}) {
+  const { skipped = SKIPPED_DIRECTORIES, ...listing } = options;
+  return projectFilesUnder(root, {
+    ...listing,
+    skipDirectory: (_, entry) => skipped.has(entry.name),
+  })
+    .filter((file) => extensions.some((extension) => file.endsWith(extension)))
+    .sort();
 }
 
 export function javaFilesUnder(root) {
-  return sourceFilesUnder(root, ['.java']);
+  return sourceFilesUnder(root, ['.java'], { includeIgnored: true });
 }
 
 export function readJavaSource(file) {

@@ -2,16 +2,23 @@ import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSy
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import {
+  nestedCheckout,
+  useGitCheckouts,
+} from '../../../../core/diff/git/test-support/git-checkout.mjs';
 import { createScratch } from '../test-support/scratch.mjs';
 import {
   existingSourceRoots,
   functionText,
+  listOtherModules,
   listProductionModules,
   NON_PRODUCTION_GLOBS,
   nonProductionGlobs,
   pythonSourceFiles,
   writeSourceListing,
 } from './python-sources.mjs';
+
+const { gitCheckout } = useGitCheckouts();
 
 const scratch = createScratch();
 
@@ -350,5 +357,39 @@ describe('functionText', () => {
     const deep = '        def f():\n\n            return 1';
 
     expect(textOf(deep, { start: 1, end: 3 })).toBe(textOf(shallow, { start: 1, end: 3 }));
+  });
+});
+
+describe('listing the Python files of a Git checkout', () => {
+  const files = Object.fromEntries(
+    [
+      'src/app/__init__.py',
+      'src/app/core.py',
+      'scratch/__init__.py',
+      'scratch/draft.py',
+      'tools/build.py',
+      'agent/src/app/core.py',
+    ].map((file) => [file, '']),
+  );
+  const checkout = () =>
+    gitCheckout({ ...files, ...nestedCheckout('agent', { 'src/app/other.py': '' }) }, ['scratch/']);
+
+  it('leaves out ignored folders and nested checkouts in every listing', () => {
+    const root = checkout();
+    const production = listProductionModules(root, ['src']);
+
+    expect(pythonSourceFiles(root, ['.'])).toEqual([
+      'src/app/__init__.py',
+      'src/app/core.py',
+      'tools/build.py',
+    ]);
+    expect(listProductionModules(root, ['.']).map(({ file }) => file)).toEqual([
+      'src/app/__init__.py',
+      'src/app/core.py',
+      'tools/build.py',
+    ]);
+    expect(listOtherModules(root, ['src'], production).map(({ file }) => file)).toEqual([
+      'tools/build.py',
+    ]);
   });
 });
