@@ -7,6 +7,8 @@ import { firstErrorLine } from '../../../../shared/messages/error-chain.mjs';
 const REMOVAL_RETRIES = 10;
 const REMOVAL_RETRY_DELAY_MS = 100;
 
+export const TEMPORARY_WORKTREE_PREFIX = 'nitpicker-diff-';
+
 function attempt(operation) {
   try {
     return { ok: true, value: operation() };
@@ -64,7 +66,7 @@ export function withNamedTemporaryWorktree(
   { commitSha, directoryName, warn },
   operation,
 ) {
-  const temporaryRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-diff-'));
+  const temporaryRoot = mkdtempSync(path.join(tmpdir(), TEMPORARY_WORKTREE_PREFIX));
   const worktreeRoot = path.join(temporaryRoot, directoryName);
   const added = attempt(() =>
     runGit(repositoryRoot, ['worktree', 'add', '--detach', worktreeRoot, commitSha]),
