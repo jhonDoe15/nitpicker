@@ -234,6 +234,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/NegativeWaitInTest',
       'pmd/DisabledTest',
       'pmd/FocusedTest',
+      'pmd/RetryInTest',
       'pmd/AssertionInControlFlow',
       'pmd/CoroutineEscapesTest',
       'pmd/SpringUnusedContext',

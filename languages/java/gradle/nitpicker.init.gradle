@@ -243,6 +243,26 @@ def kotlinCallerGaps = { Project root ->
 
 gradle.rootProject { root -> root.ext.nitpickerKotlinCallerGaps = { kotlinCallerGaps(root) } }
 
+def pinTestRetries = { Task testTask ->
+    def develocity = testTask.extensions.findByName('develocity')
+    def retryExtensions = [testTask.extensions.findByName('retry'),
+                           develocity != null && develocity.hasProperty('testRetry') ? develocity.testRetry : null]
+    retryExtensions.findAll { it != null && it.hasProperty('maxRetries') }.each { retry ->
+        retry.maxRetries = 0
+        if (retry.hasProperty('failOnPassedAfterRetry')) {
+            retry.failOnPassedAfterRetry = true
+        }
+    }
+}
+
+gradle.projectsEvaluated {
+    if (gradle.parent == null) {
+        gradle.taskGraph.whenReady { graph ->
+            graph.allTasks.findAll { it instanceof Test }.each(pinTestRetries)
+        }
+    }
+}
+
 gradle.projectsEvaluated {
     if (reportBase && gradle.parent == null) {
         def modules = new File(reportBase.toString(), 'modules.json')
@@ -906,6 +926,7 @@ allprojects {
                     coverage.excludes = []
                     coverage.excludeClassLoaders = []
                 }
+                pinTestRetries(testTask)
             }
             // The rules run on the framework their ArchUnit library needs: archunit-junit4 on JUnit 4,
             // archunit-junit5 on the JUnit Platform. With both or neither declared, they follow the task they check.
