@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest';
 import { compareFindings } from '../../../core/diff/comparison/compare.mjs';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { calculateCrap, parseLizardCsv } from '../../../shared/ingest/lizard-crap.mjs';
+import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { ingestCrap } from './crap.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
@@ -206,8 +207,8 @@ describe('ingestCrap', () => {
 
   describe('an edited method over the limit', () => {
     const scoreFinding = (findings) => findings.find((f) => f.rule === 'crap-score-limit');
-    const withHash = (sourceHash, entries = structure()) =>
-      ingest(entries, undefined, { sourceHash: () => sourceHash });
+    const withHash = (sourceText, entries = structure()) =>
+      ingest(entries, undefined, { sourceText: () => sourceText });
     const edit = (headEntries) =>
       compareFindings({
         baseFindings: withHash('before'),
@@ -217,9 +218,12 @@ describe('ingestCrap', () => {
     it('keys the score finding by the method source and ratchets on the method alone', () => {
       const finding = scoreFinding(withHash('abc'));
 
-      expect(finding.identity).toBe('function:Calc.classify(int, int, String):source:abc');
+      expect(finding.identity).toBe(
+        `function:Calc.classify(int, int, String):source:${hash('abc')}`,
+      );
       expect(finding.ratchet).toEqual({
         key: 'function:Calc.classify(int, int, String):crap',
+        declarationKey: `function:Calc.classify(int, int, String):declaration:${hash('Calc.classify(int, int, String)')}:crap`,
         value: expect.any(Number),
         worseMessage:
           'Calc.classify CRAP rose from {base} to 71.39 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/main/java/demo/Calc.java"],"function":"Calc.classify","reason":"..."} to "exceptions" in nitpicker.config.json.',
@@ -349,13 +353,13 @@ describe('ingestCrap', () => {
       });
       const findings = ingest(entries, xml, {
         limit: 4,
-        sourceHash: ({ start }) => String(start % 20),
+        sourceText: ({ start }) => String(start % 20),
       });
 
       expect(findings.map(({ symbol, identity }) => `${symbol} ${identity}`)).toEqual([
-        'Box.<init> function:Box.<init>:source:10',
-        'Box.<init> function:Box.<init>:source:0',
-        'Box.run.<lambda> function:Box.run.<lambda>:source:0',
+        `Box.<init> function:Box.<init>:source:${hash('10')}`,
+        `Box.<init> function:Box.<init>:source:${hash('0')}`,
+        `Box.run.<lambda> function:Box.run.<lambda>:source:${hash('0')}`,
       ]);
     });
   });
