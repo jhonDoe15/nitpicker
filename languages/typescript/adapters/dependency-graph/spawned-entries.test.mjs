@@ -35,18 +35,15 @@ describe('spawnedEntryFiles', () => {
     expect(spawnedEntryFiles(root)).toEqual(['src/sub/other.mjs', 'src/worker.mjs']);
   });
 
-  it('skips build output at the project root only', () => {
+  it('skips build output and nitpicker reports at the project root only', () => {
     const project = path.join(root, 'output');
-    mkdirSync(path.join(project, 'dist'), { recursive: true });
-    mkdirSync(path.join(project, 'src/reports'), { recursive: true });
-    writeFileSync(path.join(project, 'dist/worker.mjs'), '');
-    writeFileSync(path.join(project, 'src/reports/worker.mjs'), '');
-    writeFileSync(path.join(project, 'dist/main.mjs'), "new URL('./worker.mjs', import.meta.url)");
-    writeFileSync(
-      path.join(project, 'src/reports/main.mjs'),
-      "new URL('./worker.mjs', import.meta.url)",
-    );
-    expect(spawnedEntryFiles(project)).toEqual(['src/reports/worker.mjs']);
+    const spawning = "new URL('./worker.mjs', import.meta.url)";
+    for (const folder of ['dist', 'reports/quality', 'src/reports', 'reports']) {
+      mkdirSync(path.join(project, folder), { recursive: true });
+      writeFileSync(path.join(project, folder, 'worker.mjs'), '');
+      writeFileSync(path.join(project, folder, 'main.mjs'), spawning);
+    }
+    expect(spawnedEntryFiles(project)).toEqual(['reports/worker.mjs', 'src/reports/worker.mjs']);
   });
 
   it('reads ignored generated folders of a Git checkout, but not nested checkouts or installed packages', () => {
