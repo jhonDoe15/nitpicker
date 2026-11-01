@@ -233,6 +233,9 @@
     "A Kotest focus that runs only part of the suite: the `f:` name prefix, `ftest`, `fcontext`, `fdescribe`, `fit`, `fshould`, `fgiven`.",
     "Remove the focus from this test: a Kotest name with the \"f:\" prefix and the f-prefixed registrations (ftest, fcontext, fdescribe, fit, fshould, fgiven) make Kotest run only the focused tests of the spec, so the rest of the suite is skipped while the build stays green. Run one test while you work with the IDE or a Gradle `--tests` filter, and commit the test without the focus.",
     { "key": "exceptions", "rule": "pmd/FocusedTest" },
+    "NonAtomicUpdateAcrossSuspension",
+    "A `var` property updated from a value read before a suspend call (`total += balances.fetch()`), so a concurrent coroutine's update is overwritten.",
+    { "key": "exceptions", "rule": "pmd/NonAtomicUpdateAcrossSuspension" },
     "ValidationAnnotationTarget",
     "A Bean Validation annotation (`jakarta.validation.constraints`, `javax.validation.constraints`, `org.hibernate.validator.constraints`, or `@Valid`) on a primary-constructor `val` or `var` of a main source without a `field:`, `get:` or `all:` use-site target; Kotlin puts it on the constructor parameter, where Bean Validation does not look. Kotlin-only: a Java record carries the annotation to its field and accessor.",
     { "key": "exceptions", "rule": "pmd/ValidationAnnotationTarget" }
@@ -279,6 +282,7 @@
     [169, 176, 2, 3, 171, 172, 177, 178, 179, -1, -1, -1, -1],
     [169, 180, 2, 3, 171, 172, 181, 182, 183, -1, -1, -1, -1],
     [169, 184, 2, 3, 171, 172, 185, 186, 187, -1, -1, -1, -1],
-    [169, 188, 2, 3, 171, 172, 189, -1, 190, -1, -1, -1, -1]
+    [169, 188, 2, 3, 171, 172, 189, -1, 190, -1, -1, -1, -1],
+    [169, 191, 2, 3, 171, 172, 192, -1, 193, -1, -1, -1, -1]
   ]
 }
