@@ -15,6 +15,8 @@ import {
   fixtures,
   DATED,
   FAILING_TEST,
+  GUARD,
+  GUARD_TEST,
   SHAPES,
   SHAPES_TEST,
   copyOf,
@@ -63,6 +65,26 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
 
     expect(fromMaven.map(({ rule }) => rule)).toEqual(['line-coverage']);
     expect(comparable(fromMaven)).toEqual(comparable(fromGradle));
+  }, 180_000);
+  it('runs the same PIT mutators on Gradle and Maven, beyond PIT defaults', () => {
+    const [gradleProject, mavenProject] = twinProjects();
+    const survivors = (findings) =>
+      findings
+        .filter(({ rule, path: file }) => rule === 'mutant-survived' && file.endsWith('Guard.java'))
+        .map(({ identity }) => identity)
+        .sort();
+    for (const root of [gradleProject, mavenProject]) {
+      writeFileSync(path.join(root, 'src/main/java/demo/Guard.java'), GUARD);
+      writeFileSync(path.join(root, 'src/test/java/demo/GuardTest.java'), GUARD_TEST);
+    }
+    const fromGradle = survivors(collectJavaFindings(gradleProject, { gradle, policy: {} }));
+    const fromMaven = survivors(collectJavaFindings(mavenProject, { maven, policy: {} }));
+
+    expect(fromMaven).toEqual([
+      'Guard|label(LString;)LString;|NakedReceiverMutator|replaced call to String::trim with receiver#1',
+      'Guard|share(II)I|RemoveConditionalMutator_EQUAL_ELSE|removed conditional - replaced equality check with false#1',
+    ]);
+    expect(fromGradle).toEqual(fromMaven);
   }, 180_000);
   it('filters the inlined library branches of Kotlin sources as the Kotlin preset does', () => {
     const project = copyOf(path.join(fixtures, 'kotlin'));

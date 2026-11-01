@@ -160,7 +160,8 @@ describe('nitpicker with "preset": "kotlin"', () => {
         message: [
           'Survived MathMutator: Replaced integer multiplication with division:',
           'no test fails when this code changes. Add an assertion that would.',
-          'If no input can tell the two apart (a compareTo boundary, a discarded lambda return),',
+          'If no input can tell the two apart (a compareTo boundary, a discarded lambda return,',
+          'a field set to the value it already has, a redundant trim() or sorted()),',
           'simplify the code so this mutant disappears.',
           'If this is intended, add {"rule":"mutant-survived","paths":["src/main/kotlin/demo/K.kt"],' +
             '"function":"KKt.fee","reason":"..."} to "exceptions" in nitpicker.config.json.',
@@ -207,7 +208,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         path: 'src/main/java/demo/A.java',
         identity: 'A|fee(I)I|MathMutator|Replaced integer multiplication with division#1',
         message:
-          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/java/demo/A.java"],"function":"A.fee","reason":"..."} to "exceptions" in nitpicker.config.json.',
+          'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return, a field set to the value it already has, a redundant trim() or sorted()), simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/java/demo/A.java"],"function":"A.fee","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'A#fee(I)I',
         anchor: {
