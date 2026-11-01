@@ -7,6 +7,7 @@ import { didYouMean } from '../../shared/messages/closest-match.mjs';
 
 const FLAGS = new Map([
   ['--all', { property: 'all', value: true }],
+  ['--details', { property: 'details', value: true }],
   ['--fix', { property: 'fix', value: true }],
   ['--help', { property: 'help', value: true }],
   ['--no-cache', { property: 'cache', value: false }],
@@ -80,7 +81,7 @@ function readPath(options, argument) {
 }
 
 function remainingOptions(arguments_) {
-  const options = { all: false, fix: false, help: false, cache: true, paths: [] };
+  const options = { all: false, details: false, fix: false, help: false, cache: true, paths: [] };
   const remaining = arguments_.values();
   for (const argument of remaining) {
     if (readFlag(options, argument) || readPath(options, argument)) {
@@ -129,10 +130,10 @@ export function parseArguments(arguments_) {
 
 export const USAGE_TEXT =
   'Usage: nitpicker [<path>...] [--base <ref>] [--output <dir>] [--all | --fix]' +
-  ' [--analyzer <name>]... [--rule <substring>]...' +
+  ' [--analyzer <name>]... [--rule <substring>]... [--details]' +
   ' [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache] [--accept-policy-change=<digest>] [--help]\n' +
   '       nitpicker aggregate --input-root <directory> --shard-count <count>' +
-  ' [--output <directory>] [--policy-root <directory>]\n' +
+  ' [--output <directory>] [--policy-root <directory>] [--details]\n' +
   '       nitpicker cache publish [--analyzer <name>]... [--shard-count <n> --shard-index <i>]\n' +
   '       nitpicker base [--base <ref>]\n' +
   '       nitpicker explain <tool/rule>...\n' +
