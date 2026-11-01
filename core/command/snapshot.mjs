@@ -18,6 +18,16 @@ import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
 import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
 
+function stderrWarning(stderr) {
+  return (message) => stderr.write(`nitpicker: ${message}\n`);
+}
+
+function snapshotOutputRoot(options, currentProjectRoot) {
+  return options.outputRoot === undefined
+    ? path.join(currentProjectRoot, 'reports/quality/snapshot')
+    : path.resolve(currentProjectRoot, options.outputRoot);
+}
+
 export function runSnapshotCli({
   options,
   currentProjectRoot,
@@ -28,10 +38,7 @@ export function runSnapshotCli({
   environment,
   runTasks,
 }) {
-  const outputRoot =
-    options.outputRoot === undefined
-      ? path.join(currentProjectRoot, 'reports/quality/snapshot')
-      : path.resolve(currentProjectRoot, options.outputRoot);
+  const outputRoot = snapshotOutputRoot(options, currentProjectRoot);
   const selectedAnalyzers = selectAnalyzers(analyzers, options.analyzerNames);
   if (selectedAnalyzers.length === 0) {
     throw new Error('No quality analyzers are configured.');
@@ -39,7 +46,8 @@ export function runSnapshotCli({
   clearSnapshotReports(outputRoot);
 
   const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(currentProjectRoot);
-  const report = withTemporaryWorktree(repositoryRoot, capturedSha, (worktreeRoot) =>
+  const snapshot = { commitSha: capturedSha, warn: stderrWarning(stderr) };
+  const report = withTemporaryWorktree(repositoryRoot, snapshot, (worktreeRoot) =>
     runInSnapshotWorktree({
       snapshotRoot: path.join(worktreeRoot, relativeProjectPath),
       selectedAnalyzers,
