@@ -274,6 +274,20 @@ describe('pythonSourceFiles for a flat project', () => {
     expect(pythonSourceFiles(root, ['.'])).toEqual(['app.py', 'util/helpers.py']);
   });
 
+  it('keeps a package named reports, where nitpicker writes its own output', () => {
+    const root = scratch.write(scratch.directory(), {
+      'app.py': '',
+      'reports/monthly.py': '',
+      'app_pkg/reports/__init__.py': '',
+    });
+
+    expect(pythonSourceFiles(root, ['.'])).toEqual([
+      'app.py',
+      'app_pkg/reports/__init__.py',
+      'reports/monthly.py',
+    ]);
+  });
+
   it('keeps the files of a root that is itself named like a test directory', () => {
     const root = scratch.write(scratch.directory(), {
       'tests/test_app.py': '',

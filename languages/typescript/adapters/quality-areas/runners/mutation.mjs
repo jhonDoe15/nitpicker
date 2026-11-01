@@ -10,7 +10,7 @@ import {
 } from './tooling.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { normalizeMutation } from '../reporting/tests.mjs';
+import { normalizeMutation, withUnreachedMutantsUncovered } from '../reporting/tests.mjs';
 import { withMutationSourceHashes } from '../reporting/source-hashes.mjs';
 import { rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import {
@@ -82,7 +82,10 @@ async function mutationReport(options, targets) {
     }
     return {
       report: withMutationSourceHashes(
-        withoutProjectIgnoredMutants(readMutationReport(options.projectRoot), written.config),
+        withoutProjectIgnoredMutants(
+          readMutationReport(options.projectRoot, written.config.coverageAnalysis),
+          written.config,
+        ),
         options.projectRoot,
       ),
     };
@@ -214,8 +217,11 @@ function runStrykerOrExplainSkip(options, configPath, command) {
   }
 }
 
-function readMutationReport(projectRoot) {
-  return JSON.parse(readFileSync(path.join(projectRoot, MUTATION_REPORT_PATH), 'utf8'));
+function readMutationReport(projectRoot, coverageAnalysis) {
+  return withUnreachedMutantsUncovered(
+    JSON.parse(readFileSync(path.join(projectRoot, MUTATION_REPORT_PATH), 'utf8')),
+    coverageAnalysis,
+  );
 }
 
 export function rebaseMutationConfig(sourceConfig, { tsconfigFile, vitestConfigFile }) {
