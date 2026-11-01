@@ -1820,7 +1820,7 @@
         "url": "https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#simplifiabletestassertion"
       }
     ],
-    "Use the assertion the message names, such as assertEquals, assertNull or assertFalse, in place of assertTrue on a comparison or negation.",
+    "Use the named assertion. For assertTrue(x != null) or assertTrue(!c.isEmpty()), assertNotNull or assertFalse(isEmpty()) is weak too: assert the exact value.",
     {
       "key": "exceptions",
       "rule": "pmd/SimplifiableTestAssertion",
@@ -2695,6 +2695,10 @@
     ],
     "Declare the last parameter as varargs: String... names.",
     { "key": "exceptions", "rule": "pmd/UseVarargs" },
+    "WeakAssertionInTest",
+    "In tests: a check that passes for almost any value. Presence: `assertNotNull` (JUnit 4, JUnit 5, TestNG), AssertJ `isNotNull()` as the last call, Hamcrest `notNullValue()`, `not(nullValue())`. Non-empty: `assertTrue(c.size() > 0)` (also `>= 1`, `0 < c.size()`, `length()`, an array `length`), `assertFalse(c.isEmpty())`, `assertNotEquals(0, c.size())`, AssertJ `isNotEmpty()`, `isNotBlank()`, `hasSizeGreaterThan(0)`, `hasSizeGreaterThanOrEqualTo(1)` and `assertThat(c.size()).isPositive()`, `isNotZero()`, `isGreaterThan(0)` as the last call, Hamcrest `not(empty())`, `not(emptyString())`. Called only: Mockito `verify(m).f(...)`, `verify(m, times(n)).f(...)`, `verify(m, atLeastOnce()).f(...)` and `then(m).should().f(...)` whose arguments are all `any()`, `any(Foo.class)`, `anyString()` or another `any*` matcher. Not reported: `never()`, `times(0)`, `atMost`, a call with no arguments or with a real argument, and `isNotNull().isEqualTo(y)`. `assertTrue(x != null)`, `assertTrue(c.size() != 0)` and `assertTrue(!c.isEmpty())` stay with PMD `SimplifiableTestAssertion`, whose hint points to the exact value as well.",
+    "This check passes for almost any value: a not-null, non-empty or size-above-0 check, or a verify with only any() arguments. Assert the exact value, contents or length, such as assertEquals(List.of(\"a\", \"b\"), items), and the call arguments. An exception fits only when the value cannot be pinned.",
+    { "key": "exceptions", "rule": "pmd/WeakAssertionInTest" },
     "WhileLoopWithLiteralBoolean",
     "`do {} while (true);` requires reading the end of the statement before it is apparent that it loops forever, whereas `while (true) {}` is easier to understand.",
     "`do {} while (false);` is redundant, and if an inner variable scope is required, a block `{}` is sufficient. `while (false) {}` will never execute the block and can be removed in its entirety.",
@@ -2960,6 +2964,7 @@
     [0, 1265, 2, 3, 1266, 29, 1267, 1268, 1269, -1, -1],
     [0, 1270, 2, 3, 1271, 1272, 1273, 1274, 1275, -1, -1],
     [0, 1276, 2, 3, 1277, 1278, 1279, 1280, 1281, -1, -1],
-    [0, 1282, 2, 3, 1283, 1284, 1285, 1286, 1287, -1, -1]
+    [0, 1282, 2, 3, 1283, 261, -1, 1284, 1285, 454, -1],
+    [0, 1286, 2, 3, 1287, 1288, 1289, 1290, 1291, -1, -1]
   ]
 }

@@ -171,6 +171,11 @@ To learn why a rule is on and what form it allows before you write or change cod
   answer, a thread body or a test fake that implements or extends a main class is fine. To
   show something does not happen, give the code a `Clock` or scheduler the test moves forward, not
   `after(ms).never()` or `during(...)` (`NegativeWaitInTest`).
+- Assert the value, not that something is there (`WeakAssertionInTest`): no `assertNotNull(x)`, AssertJ
+  `isNotNull()` or Hamcrest `notNullValue()` as the whole check, no `isNotEmpty()`, `assertFalse(c.isEmpty())`
+  or `assertTrue(c.size() > 0)`, and no `verify(m).f(any())` whose arguments are all `any()`. Assert the
+  exact value, contents or length and the call's arguments; `verify(m, never())` is fine. The same goes for
+  `assertTrue(x != null)` (`SimplifiableTestAssertion`): assert the exact value.
 - No retries in test code (`RetryInTest`): no `@RetryingTest`, `@RepeatedIfExceptionsTest`, TestNG
   `retryAnalyzer`, `IRetryAnalyzer` or `RetryAnalyzerCount`, nor `setRetryAnalyzer(...)`. A test that
   passes on a later attempt hides a flaky or racy test: wait on the condition instead of a fixed

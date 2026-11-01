@@ -1337,7 +1337,9 @@ new and touched code must comply.
   `toEqual`/`toStrictEqual`, and `toMatch` with a string or an unanchored pattern: assert the whole
   value. Assertions must pin the value: `toBeDefined`, `toBeTruthy`, `toBeFalsy`, `not.toBeNull`,
   `not.toBeUndefined`, a bare `toHaveBeenCalled()`, `toThrow()` without a message and `expect(true)`
-  are rejected. Tests do not use inline lint disables, `@ts-*` or coverage and mutation ignore
+  are rejected, and so are their spellings `nitpicker/no-weak-assertion` finds: `not.toBe(null)`, a
+  length checked only to be above 0, and `toHaveBeenCalledWith` given only `expect.anything()` or
+  `expect.any(Type)`. Tests do not use inline lint disables, `@ts-*` or coverage and mutation ignore
   comments; keep no mutable `let` shared between tests; write `it.each` instead of three copies of a
   test; restore fake timers in `afterEach`; leave out `it.todo`, `fails`, `skipIf(true)`, the real
   clock and `Math.random`, and the network in unit tests. A file that defines tests but is not named

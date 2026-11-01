@@ -243,6 +243,10 @@
     { "key": "python.exceptions", "rule": "unshielded-cleanup-await" },
     "`<name>` can be cancelled before the cleanup finishes, so the resource may stay open",
     "Run the cleanup in a shielded scope with a deadline: `with trio.CancelScope(deadline=trio.current_time() + 5, shield=True): await resource.aclose()` (`anyio.CancelScope(deadline=anyio.current_time() + 5, shield=True)` in AnyIO; `move_on_after(5, shield=True)` needs Trio 0.27 or later). A shield without a deadline can hang shutdown.",
+    "weak-assertion",
+    { "key": "python.exceptions", "rule": "weak-assertion" },
+    "`<name>` passes for almost any value",
+    "Assert the exact value, contents or length, or the call arguments: `assert rows == expected`, `m.assert_called_once_with(order_id)`.",
     "weak-hmac",
     { "key": "python.exceptions", "rule": "weak-hmac" },
     "`<name>` signs with HMAC-MD5, which is no longer approved for message authentication",
@@ -319,7 +323,8 @@
     [18, 224, 2, 3, 225, 226, 22, 227, -1],
     [18, 228, 2, 3, 229, 230, 22, 231, -1],
     [18, 232, 2, 3, 233, 234, 22, 235, -1],
-    [236, 237, 2, 3, 238, 239, 240, 241, -1],
-    [242, 243, 2, 3, 244, 245, 246, 247, 248]
+    [18, 236, 2, 3, 237, 238, 22, 239, -1],
+    [240, 241, 2, 3, 242, 243, 244, 245, -1],
+    [246, 247, 2, 3, 248, 249, 250, 251, 252]
   ]
 }
