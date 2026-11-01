@@ -10,6 +10,7 @@ import {
   TROUBLESHOOTING_ANCHORS,
   troubleshootingError,
 } from '../../../shared/messages/troubleshooting.mjs';
+import { describeError } from '../../../shared/messages/error-chain.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -126,7 +127,7 @@ function scheduleTasks(tasks, { runTasks, headPolicyFile, snapshot }) {
     outcome.toolErrors.push({
       tool: 'analyzer-scheduler',
       snapshot,
-      message: error instanceof Error ? error.message : String(error),
+      message: describeError(error),
     });
   }
   return outcome;
@@ -187,7 +188,7 @@ function prepareTasks(analyzers, context) {
       toolErrors.push({
         tool: name,
         snapshot: context.snapshot,
-        message: error instanceof Error ? error.message : String(error),
+        message: describeError(error),
       });
     }
   }

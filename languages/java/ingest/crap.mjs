@@ -52,6 +52,7 @@ function structureFunctions(entries) {
         file: entry.file,
         name: entry.name.split('.').at(-1),
         longName: entry.signature,
+        signature: entry.signature,
         parameterTypes: entry.parameterTypes,
         start: entry.start,
         end: entry.end,

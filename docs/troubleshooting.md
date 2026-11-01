@@ -483,7 +483,7 @@ files fall in, and no separate `hookTimeoutMs` (or the same value), or run the t
 ### A peer tool is missing
 
 **Symptom.** `Required tool vitest is not installed from <dir>. Install vitest ^4.1.11 || ^5.0.0 as a
-dev dependency of the project.`; the same for `jest`, `mocha`, `@vitest/coverage-v8`, `@types/node` or
+dev dependency of the project.` (for Vitest followed by a hint about npm 10); the same for `jest`, `mocha`, `@vitest/coverage-v8`, `@types/node` or
 `typescript` (`Install typescript >=5.7 as a dev dependency`); `vite is not installed at or above <dir>` or
 `vite could not be resolved from the project`; or `Cannot find package 'vitest' imported from <file>`
 (Node's `ERR_MODULE_NOT_FOUND`) when `node_modules` exists but does not have the package.
@@ -496,7 +496,9 @@ with the project's own compiler.
 
 **Fix.** Install what the message names as a dev dependency of the project, in the version range it
 shows: `npm install --save-dev vitest @vitest/coverage-v8 typescript @types/node` is the usual set (add
-`jest` or `mocha` if that is your runner). See [Install](usage.md#install).
+`jest` or `mocha` if that is your runner). See [Install](usage.md#install). If npm 10 stopped with
+`Cannot read properties of null (reading 'edgesOut')` while installing Vitest 4.1, see
+[npm 10 and Vitest 4.1](usage.md#npm-10-and-vitest-41).
 
 ### Dependencies are not installed
 
