@@ -1,7 +1,7 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, renameSync } from 'node:fs';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { withTemporaryWorktree } from '../../../../core/diff/git/repository/worktree.mjs';
 import {
   commit,
@@ -152,7 +152,7 @@ describe('repository code that a frozen install must not run', () => {
 });
 
 function baseWorktreeInstall(liveRoot, check) {
-  return withTemporaryWorktree(liveRoot, 'HEAD', (worktreeRoot) => {
+  return withTemporaryWorktree(liveRoot, { commitSha: 'HEAD', warn: vi.fn() }, (worktreeRoot) => {
     const dependencies = resolveDependencyHook().install(worktreeRoot, liveRoot);
     try {
       check(worktreeRoot, dependencies);
