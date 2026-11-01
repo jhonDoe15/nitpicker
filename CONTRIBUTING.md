@@ -63,7 +63,8 @@ The `typescript` workflow (the required `test` and `self-gate` checks) always ru
 its tests read the whole repository, documentation included. Keep a workflow's `paths` complete:
 on pull requests they now decide what runs, not only which pushes to `main` start a run.
 The TypeScript red-base test (`npm run test:typescript`, which runs real vitest through the CLI) is
-not in CI: run it after changing `core/diff/comparison/base-red/` or a test runner's failure report.
+not in CI: run it after changing `core/diff/comparison/base-red/`, a test runner's failure report or how
+the Stryker report is read.
 
 CI (the `typescript` workflow) runs:
 
