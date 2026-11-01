@@ -175,9 +175,11 @@ describe.skipIf(!pythonE2eEnabled)(
             message:
               'wide grew from 4 to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.',
             classification: 'enforceable',
+            anchor: { key: expect.stringMatching(/^function:\w+:text:/u) },
             location: { line: 1 },
             ratchet: {
               key: 'function:wide:occurrence:1:parameters',
+              declarationKey: expect.stringMatching(/:declaration:/u),
               value: 5,
               worseMessage:
                 'wide grew from {base} to 5 parameters (limit 3). Group related parameters into one object instead of adding another. If this is intended, add {"rule":"function-parameters-limit","paths":["src/demo/wide.py"],"function":"wide","reason":"..."} to "exceptions" in nitpicker.config.json.',
@@ -201,9 +203,11 @@ describe.skipIf(!pythonE2eEnabled)(
             message:
               'pipeline.score has CRAP 10.00 although tests cover it; score must be below 9. Reduce its branches: split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/pipeline.py"],"function":"pipeline.score","reason":"..."} to "exceptions" in nitpicker.config.json.',
             classification: 'enforceable',
+            anchor: { key: expect.stringMatching(/^function:\w+:text:/u) },
             location: { line: 2, endLine: 12 },
             ratchet: {
               key: 'function:pipeline.score:crap',
+              declarationKey: expect.stringMatching(/:declaration:/u),
               value: 10,
               worseMessage:
                 'pipeline.score CRAP rose from {base} to 10 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/pipeline.py"],"function":"pipeline.score","reason":"..."} to "exceptions" in nitpicker.config.json.',
@@ -227,9 +231,11 @@ describe.skipIf(!pythonE2eEnabled)(
             message:
               'pick has CRAP 20.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',
             classification: 'enforceable',
+            anchor: { key: expect.stringMatching(/^function:\w+:text:/u) },
             location: { line: 1, endLine: 8 },
             ratchet: {
               key: 'function:pick:crap',
+              declarationKey: expect.stringMatching(/:declaration:/u),
               value: 20,
               worseMessage:
                 'pick CRAP rose from {base} to 20 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/demo/branchy.py"],"function":"pick","reason":"..."} to "exceptions" in nitpicker.config.json.',

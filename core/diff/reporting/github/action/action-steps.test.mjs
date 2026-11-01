@@ -196,7 +196,7 @@ describe('the prepare step', () => {
       {
         'skip-gate': 'false',
         'cache-scope': 'apps%2Fweb%2Cv2',
-        'cache-dir': `${checkout}/.git/nitpicker-cache`,
+        'cache-dir': `${checkout}/.git/nitpicker/cache`,
         base: 'origin/main',
         'base-sha': forkPoint,
       },
@@ -338,7 +338,7 @@ describe('the prepare step with a base that is not a branch, or an older nitpick
       PATH: `${tools}:${process.env.PATH}`,
     });
 
-    expect(outputs['cache-dir']).toBe(`C:${checkout}/.git/nitpicker-cache`);
+    expect(outputs['cache-dir']).toBe(`C:${checkout}/.git/nitpicker/cache`);
   });
 });
 
