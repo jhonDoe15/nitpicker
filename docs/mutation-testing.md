@@ -21,7 +21,10 @@ way to lift the finding. A project that opts into its own Stryker config with
 removes those mutants from the findings (a mutant a `Stryker disable` comment hides stays a finding); an
 edit of that config is a policy change too (see
 [Mutation testing config](usage.md#mutation-testing-config-typescript-and-javascript-presets)).
-`nitpicker --all` mutates that whole area.
+`nitpicker --all` mutates that whole area. When no test loads any mutated file, Stryker collects no
+coverage and runs every test against each mutant; a report with no coverage data and no killed or
+timed-out mutant is therefore read as `NoCoverage`, so unreached code gets the same finding in a
+comparison as in a full run.
 
 ## Scope in a comparison
 

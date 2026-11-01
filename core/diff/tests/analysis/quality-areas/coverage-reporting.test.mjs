@@ -221,6 +221,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
         rule: 'changed-branch-coverage',
         path: 'src/main/value.ts',
         identity: 'branch-source:branch-source:occurrence:1',
+        anchor: { key: 'branch:branch-source', requireUnchangedLine: true },
         message:
           'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
@@ -278,6 +279,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
         rule: 'changed-branch-coverage',
         path: 'src/main/value.ts',
         identity: 'branch-source:branch-source:occurrence:1',
+        anchor: { key: 'branch:branch-source', requireUnchangedLine: true },
         message:
           'Branch coverage is 50.00%; minimum is 95%. Not taken: the false arm of the ?: at 3:29. Test it, or remove it if it can\'t happen. To accept the file, add it to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
@@ -404,6 +406,7 @@ describe('coverage reporting in the quality-area analyzers', () => {
         rule: 'changed-branch-coverage',
         path: 'src/main/value.ts',
         identity: 'branch-source:changed-branch-after:occurrence:1',
+        anchor: { key: 'branch:changed-branch-after', requireUnchangedLine: true },
         message:
           'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',

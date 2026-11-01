@@ -36,5 +36,11 @@
     "jsdom",
     "happy-dom"
   ],
-  "ignore": ["src/**/*.d.ts", "coverage/**", "reports/**", ".stryker-tmp/**", ".nitpicker-*"]
+  "ignore": [
+    "src/**/*.d.ts",
+    "coverage/**",
+    "reports/quality/**",
+    ".stryker-tmp/**",
+    ".nitpicker-*"
+  ]
 }
