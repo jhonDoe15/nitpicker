@@ -1,7 +1,8 @@
 import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mjs';
 import { clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
+import { designNoteLines } from '../diff/reporting/format/design-notes.mjs';
 import { ruleReferenceLines } from '../diff/reporting/text.mjs';
-import { withHelpUris } from '../../shared/reference/store.mjs';
+import { referenceLinks, withHelpUris } from '../../shared/reference/store.mjs';
 import {
   CODE_QUALITY_REPORT_FILE_NAME,
   renderCodeQualityReport,
@@ -36,7 +37,15 @@ export function writeSnapshotReports(outputRoot, report, { projectPath, reposito
   }).get('report.txt');
 }
 
-function renderTextReport(report, reference) {
+export function renderSnapshotConsoleSummary(report, diagnosticsPath) {
+  return renderTextReport(
+    report,
+    referenceLinks(),
+    designNoteLines(report.findings, diagnosticsPath, { snapshot: true }),
+  );
+}
+
+function renderTextReport(report, reference, descriptiveLines) {
   const enforceable = report.findings.filter((finding) => finding.classification === 'enforceable');
   const descriptive = report.findings.filter((finding) => finding.classification === 'descriptive');
   const lines = [
@@ -47,19 +56,13 @@ function renderTextReport(report, reference) {
     `Tool errors: ${String(report.toolErrors.length)}`,
   ];
 
-  if (report.summary.tools.length === 0) {
-    lines.push('Analyzers: none configured');
-  } else {
-    lines.push('', 'Per-tool counts:');
-    for (const tool of report.summary.tools) {
-      lines.push(
-        `${tool.name}: total=${String(tool.total)} enforceable=${String(tool.enforceable)} descriptive=${String(tool.descriptive)}`,
-      );
-    }
-  }
-
+  appendToolCountSection(lines, report.summary.tools);
   appendFindingSection(lines, 'Enforceable findings', enforceable);
-  appendFindingSection(lines, 'Descriptive findings', descriptive);
+  if (descriptiveLines === undefined) {
+    appendFindingSection(lines, 'Descriptive findings', descriptive);
+  } else if (descriptiveLines.length > 0) {
+    lines.push('', ...descriptiveLines);
+  }
   lines.push(...ruleReferenceLines(report.findings, reference));
   appendToolErrorSection(lines, report.toolErrors);
   return `${lines.join('\n')}\n`;
@@ -103,6 +106,19 @@ function renderJunitReport(report) {
     '</testsuite>',
     '',
   ].join('\n');
+}
+
+function appendToolCountSection(lines, tools) {
+  if (tools.length === 0) {
+    lines.push('Analyzers: none configured');
+    return;
+  }
+  lines.push('', 'Per-tool counts:');
+  for (const tool of tools) {
+    lines.push(
+      `${tool.name}: total=${String(tool.total)} enforceable=${String(tool.enforceable)} descriptive=${String(tool.descriptive)}`,
+    );
+  }
 }
 
 function appendFindingSection(lines, heading, findings) {

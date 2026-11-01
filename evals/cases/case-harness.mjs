@@ -32,12 +32,13 @@ export const analyzerArgumentsWithout = (skipped = [], only = undefined, preset 
         .flatMap((name) => ['--analyzer', name]);
 export const CASE_TIMEOUT_MS = 600_000;
 
-const gateCommand = (withoutAnalyzers, onlyAnalyzers, preset) => [
+const gateCommand = (withoutAnalyzers, onlyAnalyzers, preset, rule) => [
   'node',
   path.join(packageRoot, 'core', 'cli.mjs'),
   '--base',
   'main',
   ...analyzerArgumentsWithout(withoutAnalyzers, onlyAnalyzers, preset),
+  ...(rule === undefined ? [] : ['--rule', rule]),
 ];
 
 /**
@@ -47,13 +48,13 @@ const gateCommand = (withoutAnalyzers, onlyAnalyzers, preset) => [
  * through `disable` would make an explicit `--analyzer` for it an error, whereas a full-gate run
  * (no `--analyzer` flags) simply skips it.
  */
-export function runReference(caseId, { overlay, withoutAnalyzers } = {}) {
+export function runReference(caseId, { overlay, withoutAnalyzers, rule } = {}) {
   const caseDefinition = loadCase(path.join(casesDirectory, caseId));
   return runCase({
     caseDefinition,
     agentCommand: ['node', referenceAgent, ...(overlay ? ['--overlay', overlay] : [])],
     prepareWorkdir: linkedWorkdir(),
-    gateCommand: gateCommand(withoutAnalyzers, undefined, caseDefinition.preset),
+    gateCommand: gateCommand(withoutAnalyzers, undefined, caseDefinition.preset, rule),
     tier: 'reference',
     model: overlay ? `cheat-${overlay}` : 'reference-solution',
     nitpickerVersion: '0.0.0',
@@ -91,7 +92,7 @@ export function referenceTrees(caseId, { overlay } = {}) {
  */
 export function runApplied(
   caseId,
-  { overlay, withoutAnalyzers, analyzers, casesRoot = casesDirectory } = {},
+  { overlay, withoutAnalyzers, analyzers, rule, casesRoot = casesDirectory } = {},
 ) {
   const caseDefinition = loadCase(path.join(casesRoot, caseId));
   const copies = overlayDirectories(caseDefinition, overlay)
@@ -101,7 +102,7 @@ export function runApplied(
     caseDefinition,
     agentCommand: `cat > /dev/null && ${copies}`,
     prepareWorkdir: linkedWorkdir(),
-    gateCommand: gateCommand(withoutAnalyzers, analyzers, caseDefinition.preset),
+    gateCommand: gateCommand(withoutAnalyzers, analyzers, caseDefinition.preset, rule),
     tier: 'reference',
     model: overlay ? `cheat-${overlay}` : 'reference-solution',
     nitpickerVersion: '0.0.0',
