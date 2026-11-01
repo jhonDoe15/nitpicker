@@ -51,6 +51,7 @@ export function crapFindings(
       } ${route}`,
       classification: 'enforceable',
       symbol: fn.name,
+      ...anchorOf(fn),
       ...locationOf(fn),
     };
     findings.push(
@@ -60,6 +61,10 @@ export function crapFindings(
     );
   }
   return findings;
+}
+
+function anchorOf({ anchor }) {
+  return anchor === undefined ? {} : { anchor: { key: anchor } };
 }
 
 function locationOf({ line, endLine }) {
@@ -78,6 +83,7 @@ function withRatchet({ finding, fn, limit, route, shown }) {
     ...finding,
     ratchet: {
       key: fn.ratchetKey,
+      ...(fn.declarationKey === undefined ? {} : { declarationKey: fn.declarationKey }),
       value: crap,
       worseMessage: `${renderMessage(GREW_MESSAGES.crap, {
         name: shown,
