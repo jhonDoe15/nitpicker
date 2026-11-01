@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { moduleManifest } from './manifest/maven-manifest.mjs';
+import { buildAndTest } from './maven-build.mjs';
 import { readReactor } from './maven-project.mjs';
 
 const roots = [];
@@ -86,5 +87,42 @@ describe('moduleManifest', () => {
     const manifest = moduleManifest({ module: singleModule(), classpaths, pinned: {} });
 
     expect([manifest.spring, manifest.springArch]).toEqual([false, true]);
+  });
+});
+
+describe('buildAndTest', () => {
+  function mavenArguments(module) {
+    const calls = [];
+    buildAndTest({
+      projectRoot: '/repo',
+      maven: 'mvn',
+      work: '/work',
+      pinned: { jacoco: '0.8.12' },
+      modules: [module],
+      spawn: (command, args) => {
+        calls.push(args);
+        return { status: 0, stdout: '', stderr: '' };
+      },
+    });
+    return calls[0];
+  }
+
+  it.each([
+    ['Surefire', false, 'test'],
+    ['Failsafe', true, 'verify'],
+  ])('keeps failing tests and turns reruns off for %s', (_name, runsFailsafe, phase) => {
+    const args = mavenArguments({ ...singleModule(), runsFailsafe });
+
+    expect([
+      args.includes(phase),
+      args.filter((arg) => /^-D(?:maven\.test\.failure|\w+\.rerun)/u.test(arg)),
+    ]).toEqual([
+      true,
+      [
+        '-Dmaven.test.failure.ignore=true',
+        '-Dsurefire.rerunFailingTestsCount=0',
+        '-Dfailsafe.rerunFailingTestsCount=0',
+      ],
+    ]);
   });
 });
