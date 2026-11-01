@@ -1,7 +1,12 @@
 import { normalizeGitPath } from '../normalize.mjs';
 import { joinRepositoryPath, repositoryPath, relativeToProject } from '../paths.mjs';
+import { readBlobTexts } from '../repository/blobs.mjs';
 import { runGit } from '../repository/command.mjs';
 import { RENAME_LIMIT_SETTING, RENAME_DETECTION } from './changes.mjs';
+import { sourceLanguage } from '../../../../shared/source-text/format-tokens.mjs';
+import { alignHunks } from '../unchanged-lines.mjs';
+
+export const DIFF_ALGORITHM = '--diff-algorithm=patience';
 
 export function readChangedLines({
   repositoryRoot,
@@ -19,6 +24,7 @@ export function readChangedLines({
     RENAME_LIMIT_SETTING,
     'diff',
     '--unified=0',
+    DIFF_ALGORITHM,
     RENAME_DETECTION,
     '--no-color',
     '--no-ext-diff',
@@ -26,7 +32,9 @@ export function readChangedLines({
     '--',
     ...new Set([projectRelativePath, baseProjectRelativePath]),
   ]);
-  const changed = parseChangedLines(onlyFilesInside(output, headProject), headProject);
+  const changed = parseChangedLines(onlyFilesInside(output, headProject), headProject, (files) =>
+    committedSources(repositoryRoot, { mergeBaseSha, headSha, files }),
+  );
   for (const [basePath, headPath] of inferredMoves) {
     const movedChanges = readMovedFileChanges({
       repositoryRoot,
@@ -47,12 +55,34 @@ function readMovedFileChanges({ repositoryRoot, baseSide, headSide }) {
     'core.quotePath=false',
     'diff',
     '--unified=0',
+    DIFF_ALGORITHM,
     '--no-color',
     '--no-ext-diff',
     baseSide,
     headSide,
   ]);
-  return parseChangedLines(output, '.');
+  return parseChangedLines(output, '.', (files) => {
+    const texts = readBlobTexts(repositoryRoot, [baseSide, headSide]);
+    const sources = { base: texts.get(baseSide), head: texts.get(headSide) };
+    return new Map(files.map(({ filePath }) => [filePath, sources]));
+  });
+}
+
+function committedSources(repositoryRoot, { mergeBaseSha, headSha, files }) {
+  const specs = files.map(({ basePath, filePath }) => ({
+    base: `${mergeBaseSha}:${basePath}`,
+    head: `${headSha}:${filePath}`,
+  }));
+  const texts = readBlobTexts(
+    repositoryRoot,
+    specs.flatMap(({ base, head }) => [base, head]),
+  );
+  return new Map(
+    files.map(({ filePath }, index) => [
+      filePath,
+      { base: texts.get(specs[index].base), head: texts.get(specs[index].head) },
+    ]),
+  );
 }
 
 function onlyFilesInside(diffText, projectRelativePath) {
@@ -71,77 +101,102 @@ function sectionIsInside(section, projectRelativePath) {
   return filePath === undefined || normalizeGitPath(filePath).startsWith(`${projectRelativePath}/`);
 }
 
-const HUNK_HEADER = /^@@ -\d+(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
+const HUNK_HEADER = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 
-export function parseChangedLines(diffText, projectRelativePath = '.') {
-  const changed = new Map();
-  for (const section of diffText.split(/^(?=diff --git )/m)) {
-    const file = parseFileSection(section, projectRelativePath);
-    if (file !== undefined) {
-      changed.set(file.path, file);
-    }
-  }
-  return changed;
+export function parseChangedLines(diffText, projectRelativePath = '.', readSources) {
+  const sections = diffText
+    .split(/^(?=diff --git )/m)
+    .map(parseFileSection)
+    .filter((section) => section !== undefined);
+  const sources = readSources?.(sections.filter(isAlignable)) ?? new Map();
+  return new Map(
+    sections.map((section) => {
+      const file = fileChanges(section, sources.get(section.filePath), projectRelativePath);
+      return [file.path, file];
+    }),
+  );
 }
 
-function parseFileSection(section, projectRelativePath) {
-  const [header = '', ...hunks] = section.split(/^(?=@@ )/m);
+function isAlignable({ added, basePath, filePath, hunks }) {
+  return (
+    !added && basePath !== undefined && hunks.length > 0 && sourceLanguage(filePath) !== undefined
+  );
+}
+
+function parseFileSection(section) {
+  const [header = '', ...hunkTexts] = section.split(/^(?=@@ )/m);
   const target = /^\+\+\+ (.+)$/m.exec(header);
   const filePath = target === null ? undefined : diffTargetPath(target[1]);
   if (filePath === undefined) {
     return undefined;
   }
-  const file = {
-    path: relativeToProject(filePath, projectRelativePath),
+  const source = /^--- (.+)$/m.exec(header);
+  return {
+    filePath,
+    basePath: source === null ? undefined : diffTargetPath(source[1]),
     added: /^new file mode/m.test(header),
-    ranges: [],
-    inserted: [],
-    deletions: [],
+    hunks: hunkTexts.map(readHunk).filter((hunk) => hunk !== undefined),
   };
-  const read = hunks.map((hunk) => recordHunk(file, hunk));
-  const added = read.flatMap((hunk) => hunk.added);
-  const unpaired = unpairedOffsets(
-    read.flatMap((hunk) => hunk.removed),
-    added.map(({ text }) => text),
-  );
-  const insertedLines = [
-    ...read.flatMap((hunk) => hunk.inserted),
-    ...unpaired.map((index) => added[index].line),
-  ].toSorted((left, right) => left - right);
-  file.inserted.push(...offsetRanges(0, insertedLines));
-  return file;
 }
 
-const NO_LINES = { removed: [], added: [], inserted: [] };
+function fileChanges({ filePath, added, hunks }, sources, projectRelativePath) {
+  const aligned = alignHunks(hunks, filePath, sources);
+  const headLines = hunks.flatMap(({ head }) =>
+    Array.from({ length: head.count }, (_, offset) => head.start + offset),
+  );
+  return {
+    path: relativeToProject(filePath, projectRelativePath),
+    added,
+    ranges: offsetRanges(0, onlyChanged(headLines, aligned)),
+    inserted: offsetRanges(0, onlyChanged(insertedLines(hunks), aligned)),
+    deletions: hunks.filter(({ head }) => head.count === 0).map(({ head }) => head.start),
+    hunks: hunks.map(({ base, head }) => [base.start, base.count, head.start, head.count]),
+    carried: aligned?.carried ?? [],
+  };
+}
 
-function recordHunk(file, hunkText) {
+function onlyChanged(lines, aligned) {
+  return aligned === undefined ? lines : lines.filter((line) => aligned.changed.has(line));
+}
+
+function insertedLines(hunks) {
+  const complete = hunks.filter((hunk) => hunk.complete);
+  const added = complete.flatMap(({ head }) =>
+    head.lines.map((text, offset) => ({ line: head.start + offset, text })),
+  );
+  const unpaired = unpairedOffsets(
+    complete.flatMap(({ base }) => base.lines),
+    added.map(({ text }) => text),
+  );
+  return [
+    ...hunks
+      .filter((hunk) => !hunk.complete)
+      .flatMap(({ base, head }) =>
+        beyondReplacedOffsets(base.count, head.count).map((offset) => head.start + offset),
+      ),
+    ...unpaired.map((index) => added[index].line),
+  ].toSorted((left, right) => left - right);
+}
+
+function readHunk(hunkText) {
   const [headerLine = '', ...body] = hunkText.split('\n');
   const hunk = HUNK_HEADER.exec(headerLine);
   if (hunk === null) {
-    return NO_LINES;
-  }
-  const removedCount = hunk[1] === undefined ? 1 : Number(hunk[1]);
-  const start = Number(hunk[2]);
-  const count = hunk[3] === undefined ? 1 : Number(hunk[3]);
-  if (count > 0) {
-    file.ranges.push([start, start + count - 1]);
-  } else {
-    file.deletions.push(start);
+    return undefined;
   }
   const removed = body.filter((line) => line.startsWith('-')).map((line) => line.slice(1));
   const added = body.filter((line) => line.startsWith('+')).map((line) => line.slice(1));
-  if (added.length === count && removed.length === removedCount) {
-    return {
-      removed,
-      added: added.map((text, offset) => ({ line: start + offset, text })),
-      inserted: [],
-    };
-  }
+  const base = { start: Number(hunk[1]), count: countOf(hunk[2]), lines: removed };
+  const head = { start: Number(hunk[3]), count: countOf(hunk[4]), lines: added };
   return {
-    removed: [],
-    added: [],
-    inserted: beyondReplacedOffsets(removedCount, count).map((offset) => start + offset),
+    base,
+    head,
+    complete: added.length === head.count && removed.length === base.count,
   };
+}
+
+function countOf(group) {
+  return group === undefined ? 1 : Number(group);
 }
 
 function beyondReplacedOffsets(removedCount, count) {
@@ -221,5 +276,5 @@ function diffTargetPath(target) {
   if (unquoted === '/dev/null') {
     return undefined;
   }
-  return unquoted.replace(/^b\//, '');
+  return unquoted.replace(/^[ab]\//, '');
 }

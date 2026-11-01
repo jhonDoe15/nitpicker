@@ -138,3 +138,11 @@ only asks the installed ruff for its rule list.
 The ruff lint precedence file (`adapters/project-tools/ruff/ruff-lint`, ten cases) is in
 `test:python` with a planning weight of 15 seconds: it runs only the installed ruff on small
 projects, and took about six seconds locally.
+
+The touched-lines files run one gate over a legacy project after a helper extraction, a formatter
+run, an added repeat and an edited line: `java-preset-touched-lines` (Gradle) and
+`maven-preset-touched-lines` (Maven) share their scenario, and the Kotlin and Python files mirror
+it; the Python one runs the real `ruff format` over a file with 400 legacy findings. With them the
+suites list 124 Java, 110 Kotlin and 952 Python cases. Their weights (65, 78, 66 and 18 seconds)
+were recorded locally with `record-durations.mjs` on warm Gradle, Maven and uv caches, one file at
+a time; CI measurements should replace them.

@@ -1912,8 +1912,10 @@ implemented there: `readChangedLines` in `core/diff/git/repository/git.mjs`, app
   Findings with no `location` (file- or graph-level findings) are promoted only when the file is
   newly added, not merely edited, to avoid blocking on whole-file metrics.
 - A pure rename or move without content changes has no hunks, so rename-stable fingerprints still
-  baseline it. A reformat that touches every line promotes everything in the file; that is
-  acceptable, since reformatting is a touch, and it matches how the line-based tools below behave.
+  baseline it. A line whose only change is formatting (a Prettier run: whitespace, line breaks,
+  quotes, semicolons, trailing commas, arrow parentheses), or that git shows as deleted and
+  re-added because code went in above it, is not a changed line (see "Changed lines" in
+  `docs/internals.md`), so running the formatter over a legacy file does not promote its findings.
 - Scope is rule-level, not tool-wide: only rules marked `strict` in the preset promote, so
   descriptive metrics (CRAP, duplication) keep their delta logic.
 

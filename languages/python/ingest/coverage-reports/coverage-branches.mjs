@@ -2,6 +2,7 @@ import { MINIMUM_BRANCH_COVERAGE } from '../../../../shared/policy.mjs';
 import { branchCoverageFindings } from '../../../../shared/rules/branch-coverage.mjs';
 import { enclosingFunctionName } from '../../../../shared/rules/finding-helpers.mjs';
 import { hashIdentity, normalizeReportPath } from '../../../../shared/ingest/common.mjs';
+import { formatAgnosticText } from '../../../../shared/source-text/format-tokens.mjs';
 
 const SCOPE_START = /^(?:async\s+def|def|class)\s+(\w+)/;
 const CASE_START = /^case\b/;
@@ -41,11 +42,12 @@ function fileFindings(data, { path, lines, tool, minimum, options }) {
     if (source === undefined || source === '') {
       continue;
     }
+    const text = formatAgnosticText(lines[line - 1], path);
     branches.push({
       path,
       line,
-      key: hashIdentity('branch-source', [enclosingScope(lines, line - 1), source]),
-      anchor: hashIdentity('branch-source', [source]),
+      key: hashIdentity('branch-source', [enclosingScope(lines, line - 1), text]),
+      anchor: hashIdentity('branch-source', [text]),
       percent: (outcomes.taken / (outcomes.taken + outcomes.missed.length)) * 100,
       arms: outcomes.missed.map((destination) => describeArm(lines, line, destination)),
       symbol: enclosingFunctionName(options.functions ?? [], path, line),

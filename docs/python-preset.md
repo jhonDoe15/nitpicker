@@ -1156,7 +1156,9 @@ __getattr__` that warns or maps removed names to new ones (a PEP 562 lazy import
   `S602`, `S604`, `S605`, `T201`, `T203`) are strict: a finding on a line the change adds or edits
   is new even when the base had a finding of the same rule in that file, so code that is touched
   is held to the rule while untouched legacy stays baselined. The repeats of one subject in a file
-  are numbered `#2`, `#3`, so a new site never hides behind an old one.
+  are numbered `#2`, `#3`, and base and head repeats are paired by line, so a new site never hides
+  behind an old one and the new one is the one on the added line. A line ruff format or black only
+  reformatted is not an edited line.
 - Deprecation: mypy runs with `--enable-error-code deprecated` when it is version 1.14 or later (the
   code does not exist before), and the generated pyright config sets `reportDeprecated` to
   `error`, so using an API marked `@deprecated` is a finding in each checker.
@@ -1481,13 +1483,15 @@ directory>` or `test-runs/unittest_timings.py <report> discover` (unittest's own
   `coverage-py` for this rule, so an uncovered branch whose head line lies in a changed range, or in
   an added file, is new even if the base had it. An uncovered branch on an unchanged line stays
   baselined and does not fail.
-- **Identity.** `branch-source:<16 hex>`, a hash of the line's source text (trimmed, whitespace
-  collapsed), with `#2`, `#3` for identical lines in one enclosing scope, in order. The scope is the
-  chain of `def` / `class` names found from the line's indentation (`Class.method`, empty at module
-  level), so a new identical line in another function does not renumber a legacy gap. No line
-  number, so inserting code above keeps the finding baselined and a renamed file follows the rename
-  map. Moving a gap into another function, or renaming its function, makes a new identity, which
-  matters only when the branch line itself is also changed.
+- **Identity.** `branch-source:<16 hex>`, a hash of the line's source text without formatting
+  (tokens: spacing, quote style and a trailing comma in a call, list, set or dict do not count,
+  while the text inside a string and the comma of a one-element tuple do), with `#2`, `#3` for
+  identical lines in one enclosing scope, in order. The scope is the chain of `def` / `class`
+  names found from the line's indentation (`Class.method`, empty at module level), so a new
+  identical line in another function does not renumber a legacy gap. No line number, so inserting
+  code above keeps the finding baselined and a renamed file follows the rename map. Moving a gap
+  into another function, or renaming its function, makes a new identity, which matters only when
+  the branch line itself is also changed.
   Editing the line changes both the identity and the changed range, so it is new.
 - **Message.** `Branch coverage is 50.00%; minimum is 95%. Not taken: the branch to line 7. Test it,
 or remove it if it can't happen. If this is intended, add
@@ -1501,7 +1505,9 @@ or remove it if it can't happen. If this is intended, add
   `match` cases) is judged on all of them together. coverage.py does not track conditional
   expressions or `and`/`or` operands, nor the arms of `try`/`except`/`else`/`finally`, only jumps
   between lines, so those are not reported: an untested `except` handler is not gated by this rule.
-  Reformatting a line counts as changing it. A file without readable source text is skipped.
+  A line ruff format or black only reformatted is not a changed line and keeps its identity,
+  including a one-line `if x: print(x)` that the formatter splits in two (the identity is the
+  header up to the `:`). A file without readable source text is skipped.
   Coverage comes from the tests of the snapshot being analyzed, so adding or removing a
   test changes which branches are covered on head.
 - **Exceptions.** `# pragma: no cover` and `# pragma: no branch` are not honored (the generated

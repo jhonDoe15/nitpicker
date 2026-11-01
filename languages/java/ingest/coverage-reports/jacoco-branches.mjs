@@ -7,6 +7,7 @@ import {
   normalizeReportPath,
   parseXml,
 } from '../../../../shared/ingest/common.mjs';
+import { formatAgnosticText } from '../../../../shared/source-text/format-tokens.mjs';
 import {
   isCompilerGeneratedBranchLine,
   libraryBranchCount,
@@ -109,7 +110,7 @@ function lineBranch(line, { path: filePath, lines: sourceLines }) {
   const arm = kotlin ? generatedArm(source) : undefined;
   return {
     path: filePath,
-    key: hashIdentity('branch-source', [source]),
+    key: hashIdentity('branch-source', [formatAgnosticText(sourceLines[lineNumber - 1], filePath)]),
     percent: (covered / total) * 100,
     line: lineNumber,
     ...(arm === undefined ? {} : { arms: [arm] }),
