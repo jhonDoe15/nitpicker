@@ -70,6 +70,8 @@ const SHAPES = {
     file: isProjectPath,
     role: oneOf(ROLES),
     entry: optional(isBoolean),
+    generated: optional(isBoolean),
+    initializer: optional(isBoolean),
   },
   packages: { root: isRootOrPath, published: isBoolean },
   definitions: {
@@ -96,6 +98,7 @@ const SHAPES = {
     to: isProjectPath,
     names: isNames,
     reexport: optional(isBoolean),
+    typeOnly: optional(isBoolean),
   },
   docComments: {
     file: isProjectPath,

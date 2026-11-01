@@ -155,11 +155,12 @@ Config keys with this preset: `base`, `disable` (the analyzer names are `python`
 `lineLength` and `folderFiles`, the size limits `folderDepth`, `classMethods`, `classFields` and
 `inheritanceDepth`, and the test time limits `unitTestSeconds` and `integrationTestSeconds`), `exclude` (findings under the globs are dropped) and
 `legacyInventory` (same format and `baseline-expansion` rule as for Java), `history` (the opt-in
-[change history](usage.md#change-history) check), and the `python` object below. `layout` takes
-only `featureRoots`, and only once `history.coChange` is on (it names the feature folders
-`co-change` reads); its other keys and `testConsole` stay a config error with this preset until it
-runs the rules that read them (`shared-used-by-one-feature`, `test-console-output`). The
-top-level `exceptions` is accepted only for the rules shared with the other languages: the file and size limits
+[change history](usage.md#change-history) check), and the `python` object below.
+`layout.featureRoots` and `layout.sharedRoots` place the [feature folders](#feature-folders), and
+`featureRoots` also names the feature folders `co-change` reads (the other `layout` keys describe
+TypeScript sources and are an error); `testConsole` stays a config error with this preset until it
+runs `test-console-output`. The
+top-level `exceptions` is accepted only for the rules shared with the other languages: the [feature folder rules](#feature-folders), the file and size limits
 (`file-lines-limit`, `line-length-limit`, `folder-files-limit`, `slow-test`, `folder-depth-limit`,
 `class-methods-limit`, `class-fields-limit`, `inheritance-depth-limit`), the function rules
 (`function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
@@ -368,7 +369,7 @@ pytest section (`[pytest]`, `[tool:pytest]`, `[tool.pytest.ini_options]`) names 
 
 The purpose of this slice is the "one way" for each construct. Every finding message names the
 allowed form, and, because any rule can flag legitimate code, ends with how to add the exception.
-Every enforceable finding of ruff, the type checkers, the rules, coverage, duplicates, coupling, import-linter, the dependency checks, the test times and mutmut ends with the one exception sentence (`If this is intended, add {"rule":"<rule>","paths":["<path>"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.`), except mypy `unused-ignore` (delete the comment), `no-import-outside-roots` (whose way out is `python.sourceRoots`), findings on `.`, the shared file and size limits and the function rules (the function limits, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`), whose message names the top-level `exceptions` entry, with `function` for the function rules, instead. The allowed forms live in `languages/python/rules/hints/` and the route in one place, `exceptionSentence` in `languages/python/rules/rule-hints.mjs`, which assembles them and applies them to both analyzers' findings with `applyRuleHints`; `languages/python/rules/exception-sentences.test.mjs` fails on any other Python file that writes a route of its own, and a test checks that each rule's message
+Every enforceable finding of ruff, the type checkers, the rules, coverage, duplicates, coupling, import-linter, the dependency checks, the test times and mutmut ends with the one exception sentence (`If this is intended, add {"rule":"<rule>","paths":["<path>"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.`), except mypy `unused-ignore` (delete the comment), `no-import-outside-roots` (whose way out is `python.sourceRoots`), findings on `.`, the shared file and size limits, `slow-test`, the [feature folder rules](#feature-folders) and the function rules (the function limits, `crap-score-limit`, `crap-coverage-unknown`, `changed-branch-coverage`, `mutant-survived`, `mutant-nocoverage`), whose message names the top-level `exceptions` entry, with `function` for the function rules, instead. The allowed forms live in `languages/python/rules/hints/` and the route in one place, `exceptionSentence` in `languages/python/rules/rule-hints.mjs`, which assembles them and applies them to both analyzers' findings with `applyRuleHints`; `languages/python/rules/exception-sentences.test.mjs` fails on any other Python file that writes a route of its own, and a test checks that each rule's message
 names its allowed form, and an opt-in test runs a banned and an allowed fixture of every rule
 through the real tools.
 
@@ -1922,7 +1923,9 @@ EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` fold
   production modules keep their checks.
 - **Import structure.** From the import scan (`imports/python-import-rules.mjs`):
   `coupling/package-cycle` with Java's message, on each package of a cycle (a package `__init__`
-  importing its own submodules is a re-export, not a dependency); `coupling/no-production-cycles`
+  importing its own submodules is a re-export, not a dependency, and a cycle whose packages all
+  belong to the features of a reported [`feature-cycle`](#feature-folders), and that no import
+  outside that feature cycle closes, is left out); `coupling/no-production-cycles`
   for module cycles inside one package; `coupling/no-import-outside-roots` when production code
   imports a project module outside `python.sourceRoots` (scripts, a top-level `tests/` package).
   Type-only imports do not count.
@@ -1984,9 +1987,101 @@ EDIT.`); and a file under a `generated/`, `_generated/` or `__generated__/` fold
   environment and use `from x import *`; `manage.py`, `wsgi.py` and `asgi.py` may read the
   environment and have no test. FastAPI routers (modules that import `fastapi`) and the modules
   they import directly may use pydantic. Flask needs no allowance yet.
-- **Feature folders.** Not applied to Python: the TypeScript feature layout lives under
-  `<root>/main/`, and Python has no such convention, so the rule would flag ordinary Django apps and
-  FastAPI packages.
+
+## Feature folders
+
+A project that groups its code by feature keeps each feature behind a small public face, keeps
+shared code independent of features, and keeps the features' dependencies one-way. Four rules,
+written once for every language over the import facts (`shared/rules/features/`) and run by the
+`python` analyzer as tool `coupling`, check that:
+
+| Rule                         | Fails                                                                                                         |
+| ---------------------------- | ------------------------------------------------------------------------------------------------------------- |
+| `feature-internal-import`    | production code outside a feature imports a module behind its public face                                     |
+| `shared-imports-feature`     | a production module under a shared root imports any module of a feature                                       |
+| `feature-cycle`              | a runtime import between two features that closes a cycle of features                                         |
+| `shared-used-by-one-feature` | a module under a shared root that only one feature reaches (and nothing else uses): move it into that feature |
+
+**Which folders.** `layout.featureRoots` and `layout.sharedRoots` in `nitpicker.config.json` are
+folder globs from the project root (`["src/app/features"]`); they default to `**/features` and
+`**/shared`, and `"featureRoots": []` turns the rules off. Each folder directly under a feature
+root is one feature, named after the folder, so a package added there is a feature at once: nothing
+needs mapping and nothing escapes unmapped. A module directly in a feature root (`features/util.py`)
+belongs to no feature. When feature roots nest (`["src/app/features", "src/app/features/billing/plugins"]`),
+a file belongs to the innermost one: `billing/plugins/pdf/` is a feature of its own, and the rest
+of `billing/` another. A shared folder that is itself the folder under a feature root
+(`features/shared/`) is shared; with the default `**/shared`, one inside a feature
+(`features/billing/shared/`) is part of that feature, while a folder a `sharedRoots` glob you
+configure matches stays shared wherever it is. A project without a feature folder gets no finding
+from these rules, and a configured `featureRoots` or `sharedRoots` glob that matches no folder is
+named in a notice on each run. Packages live where `python.sourceRoots` says; the globs only decide
+the roles of the files found there. A feature cannot be named `tests` or `test` (its files are
+tests) or `migrations` (skipped like every migrations folder); `build` and `dist` are skipped only
+at the project root and next to a `pyproject.toml` or another build manifest, so
+`features/build/` is a feature.
+
+**The public face** of a feature is its `__init__.py` and the modules directly in the feature
+folder whose names do not start with `_`. Its sub-packages and its `_private.py` modules are
+internal: the feature itself may import them, other code may not. A name the feature's
+`__init__.py` imports from an internal module is public, so `from app.features.billing import rate`
+passes while `from app.features.billing import _rates` and
+`import app.features.billing.internal.tax as tax` fail. A sub-package the `__init__.py` imports
+whole (`from . import models`) or lists in `__all__` is public too, so
+`from app.features.billing import models` passes; its own modules stay internal.
+
+```python
+# src/app/features/billing/__init__.py: the public face
+from ._rates import rate
+from .invoice import Invoice
+
+# src/app/features/orders/cart.py
+from app.features.billing import Invoice, rate   # allowed: the public face
+from app.features.billing import invoice         # allowed: a public module
+from app.features.billing import _rates          # feature-internal-import
+from app.features.billing.internal import tax    # feature-internal-import
+```
+
+- **Who is checked.** Production modules only: tests (and every module the test layout names, such
+  as `conftest.py`, and a behave or pytest-bdd tree: a folder holding `.feature` files with a
+  `steps/` or `step_defs/` folder or an `environment.py` next to them) may import any internal
+  module. Generated modules still resolve imports, but no finding is about one: an import from or
+  of a generated module is left out, and neither a generated module nor a package `__init__.py` is
+  reported by `shared-used-by-one-feature`. A composition root such as `main.py` or a Django `settings.py` is outside every
+  feature, so it imports features through their public face too.
+- **Resolution.** The import scan of slice 5: absolute and relative imports (`from ..billing import
+rate`), `import a.b as c`, and `from a import b`, which is an import of the submodule `a.b` when
+  that module exists and of a name in `a` otherwise. Dynamic imports (`importlib.import_module`)
+  and string references are not seen. The parent packages an import runs are not edges, so
+  `import app.features.billing.internal.tax` is one finding, on `internal/tax.py`.
+- **Type-only imports.** An import under `if TYPE_CHECKING:` still couples the importer to the
+  feature's internals, so `feature-internal-import` and `shared-imports-feature` count it, as
+  dependency-cruiser does for `import type`. It does not run, so `feature-cycle` leaves it out:
+  importing a type back from the other feature for an annotation is not a cycle.
+- **Cycles.** The features are the nodes and the runtime imports between files of two different
+  features are the edges. A feature reached only through a shared module would need
+  `shared-imports-feature` to fail first, and a loop through other modules (a composition root, an
+  `app/core.py`) is a module cycle, which `package-cycle` reports. Each importing file is one
+  finding per feature it imports inside a cycle; the message names the cycle's features (the first
+  five) and the ways out: move what both need to a shared root, or invert the dependency behind an
+  interface. A `package-cycle` whose packages all belong to the features of a reported feature cycle,
+  and that no other import closes, is not reported a second time; a package cycle through a package
+  outside the features, or one whose feature cycle an exception lifts, is still reported.
+- **Identities.** No line numbers: `feature-internal:<imported file>`, `<feature folder>|shared-imports-feature`
+  and `<imported feature folder>|feature-cycle`, with the importing file as the path. Moving a file
+  inside a feature, renaming a module, or moving a feature folder keeps a finding that existed
+  before; a new import of another internal module, a new shared-to-feature dependency and a new
+  edge into a cycle are new.
+- **Exceptions.** The top-level `exceptions`, with the importing file as the path:
+  `{ "rule": "feature-internal-import", "paths": ["src/app/main.py"], "reason": "..." }`. The
+  message of each finding ends with that entry. `python.exceptions` does not take these rules.
+- **import-linter.** Both apply. These rules always run and need no import-linter config; a
+  project's import-linter contracts run as before (slice 5) and report `contract-broken` on top. A
+  contract does not replace or narrow the owned rules, and the owned rules do not replace a
+  contract: a stricter `layers` or `independence` contract over the same packages adds its own
+  findings, and lifting one of them takes the exception of its own list.
+- **TypeScript and JavaScript** enforce the same policy with dependency-cruiser
+  (`feature-internals-only-through-index`, `features-do-not-import-other-feature-internals`,
+  `shared-does-not-import-features`, `no-production-cycles`); Java and Kotlin do not yet.
 
 ## Slices
 
