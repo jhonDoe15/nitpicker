@@ -1954,21 +1954,37 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   also covers `forEachRemaining(repository::save)` and a `Consumer` variable holding
   `repository::save` that a loop calls or a `forEach` receives. `SpringDataBatchOfOne` fires on
   `saveAll`/`deleteAll`/`deleteAllById` called in a loop with a one-element `List.of`, `Set.of`,
-  `Collections.singletonList` or `singleton`, inline or through a variable declared in the loop.
+  `Collections.singletonList` or `singleton`, inline or through a variable declared in the loop, also
+  through `stream()`, `filter`, `map`, `toList()`, `collect(...)` and the like or a cast
+  (`List.of(o).stream().filter(...).toList()`), or a fresh `new ArrayList<>()` (any empty `Collection`
+  constructor) given exactly one `add` of a single element in the loop body and no other change;
+  `List.of(array)` with one `Object[]` argument holds the array's elements and is not reported,
+  inline or in a variable.
   `SpringDataRowWriteInLoop` fires, in a loop, on any other repository call whose result is
-  discarded (a `@Modifying` update, a `deleteBy...`), on a call whose name starts with a write verb
+  discarded (a `@Modifying` update, a `deleteBy...`; also the body of an `ifPresent`,
+  `ifPresentOrElse` or `executeWithoutResult` lambda, while the value of a `map` lambda is kept), on a call whose name starts with a write verb
   (`update`, `delete`, `remove`, `mark`, `set`, `rename`, `insert`, `upsert`, `increment`,
   `decrement`, `reset`, `clear`, `purge`, `archive`, `touch`) even when its result is used
-  (`count += repository.markSold(id)`), on `Query.executeUpdate()` and on
-  `forEach(repository::method)`. It never fires on read names (`find`, `get`, `read`, `count`,
+  (`count += repository.markSold(id)`), on `Query.executeUpdate()` (not when the query binds an
+  `Iterable` with `setParameter` to the name of an `in :ids` or `= any(:ids)` clause and binds no loop
+  variable besides, which updates a chunk at once; the query may be held in a local and bound in
+  separate statements, its text may be a constant, and a one-element `List.of(id)` is not a chunk) and on
+  `forEach(repository::method)`. A method reference is reported even over chunks
+  (`chunks.forEach(repository::retireAll)`): PMD does not see the referenced method's parameters, so
+  write that loop as a lambda (`chunks.forEach(chunk -> repository.retireAll(chunk))`). It never fires on read names (`find`, `get`, `read`, `count`,
   `exists`, `query`, `stream`, `search`, `load`, `fetch`, `list`, `is`, `has`) or on a call that
-  receives a collection (a chunk of ids is already set-based); the `saveAll`/`deleteAll` family
+  receives a collection as its first argument, or one and no loop variable (a chunk of ids is already
+  set-based; `retain(id, kept)` still writes one row per `id`); the `saveAll`/`deleteAll` family
   and `flush` are left to the other rules. `SpringDataSaveInLoopHelper` follows one level: a loop
   (or a `forEach`, `map` or `peek` callback on a stream, `Iterable`, `Iterator` or `Map`) that calls
   `store(x)` or `this::store` of the same class, where `store` saves or deletes through a
-  repository or `EntityManager`. A per-row `try`/`catch` around the call still counts: per-row
+  repository or `EntityManager`; a call that passes an `Iterable` to an overload whose parameter is
+  one too is a batch and is skipped, while a parameter typed `Object`, `Serializable` or a type
+  parameter takes the element and the list alike and is followed. A per-row `try`/`catch` around the call still counts: per-row
   error handling is done with `saveAll` per batch and error handling per batch, or an exception
-  for the import. All of them skip a loop that also calls `EntityManager.clear()`.
+  for the import. All of them skip a loop, or a `forEach` lambda, that also calls
+  `EntityManager.clear()`. Whether `clear()` runs every so many items or on every item is not
+  checked.
 - `SpringDataFilterInQuery` fires on `repository.findAll()` without arguments followed by
   `.stream().filter/count/anyMatch/...`, `.size()` or `.isEmpty()`.
 - `SpringTransactionalCheckedRollback` reports the `throws` clause of a `@Transactional` method
@@ -2015,7 +2031,8 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   the value type of a map need `@Enumerated(EnumType.STRING)`, an enum map key
   `@MapKeyEnumerated(EnumType.STRING)`. It skips static and transient fields, `@Transient`, `@Convert` and Hibernate type
   annotations, entities that put `@Id` on a getter, and enums that an `@Converter(autoApply =
-true)` class in the same file converts. `JpaIdentityHashCode` reports the first read of a
+true)` class in the same file converts, directly or through a generic base class
+(`extends NameConverter<Shade>`). `JpaIdentityHashCode` reports the first read of a
   `@GeneratedValue` field (or its `getX()` getter) inside `hashCode`. Without a hand-written
   `hashCode`, Lombok counts too: `@Data` or `@Value` without `@EqualsAndHashCode`, and
   `@EqualsAndHashCode` over all fields (no arguments, or only `callSuper`), with `of` naming the
@@ -2060,15 +2077,20 @@ arguments or more), and skips a call from one `@Transactional`
 method to another with a plain `@Transactional` (same transaction) and matches a `this::name` reference by name. `SpringDataNoSaveInLoop` covers
 `for`, `while` and `do` loops and `forEach`, `map` and `peek` callbacks on a stream, an `Iterable`
 or a `Map`, lambdas and method references (`forEach(repository::save)`) alike; `Optional.map` and
-`ifPresent` run at most once and are not loops. It and `SpringDataNoFlush` skip a loop that also
-calls `EntityManager.clear()`, the JPA batch idiom.
+`ifPresent` run at most once and are not loops. It and `SpringDataNoFlush` skip a loop or an
+iterating lambda that also calls `EntityManager.clear()`, the JPA batch idiom; for
+`SpringDataNoFlush` that is the nearest loop or `forEach`, `map`, `peek` or `flatMap` lambda on a
+stream, `Iterable`, `Map` or `Iterator` around the `flush()` (an `Optional.map` lambda is not a loop).
 `SpringNoSwallowedTransactionException` reports catching `Exception`, `RuntimeException`,
 `Throwable`, `DataAccessException`, `TransactionException` or `PersistenceException`, not narrower
 exceptions such as `NumberFormatException`. `SpringQueryConcatenation` does not follow SQL that
 comes from a helper method, a parameter or a field. `SpringDataSaveInLoopHelper` follows one helper
 level (matched by name and argument count, varargs-aware), and `SpringNoPostConstructIo` follows private helpers two levels deep.
 `JpaEnumString` sees an `autoApply` converter only in the same file; an enum converted by a
-converter in another file needs an exception. `SpringPermitAllAnyRequest` does not resolve a
+converter in another file needs an exception. A converter that extends a base class of the same file
+converts the type argument the base passes on to `AttributeConverter` (`LabelConverter<K, E>` with
+`AttributeConverter<E, String>` converts the second argument; a non-generic base converts its own
+argument); a base in another file exempts every type argument of the subclass. `SpringPermitAllAnyRequest` does not resolve a
 pattern held in a variable (`var all = "/**"`) or an `access(...)` that allows everyone.
 `SpringCsrfDisabled` and `SpringPermitAllAnyRequest` match a chain by the name of its starting
 variable within one method. Layering, entities in controller signatures and test placement need a
