@@ -1,7 +1,7 @@
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, existsSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
-import { javaCommand, runJava, runMaven } from './maven-command.mjs';
+import { javaCommand, runJava, runMaven, TEST_RERUNS_OFF } from './maven-command.mjs';
 import { runCheckstyle, runFormat, runPmd, runSpotbugs } from './maven-lint.mjs';
 import {
   lifecycleArgs,
@@ -63,7 +63,7 @@ function dependencyFile(work, module) {
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
 }
 
-function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn, timeoutMs }) {
+export function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn, timeoutMs }) {
   runMaven({
     projectRoot,
     maven,
@@ -81,6 +81,7 @@ function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn, timeou
       '-Dmaven.test.failure.ignore=true',
       '-DskipTests=false',
       '-Dmaven.test.skip=false',
+      ...TEST_RERUNS_OFF,
       ...PROJECT_CHECKS_OFF,
     ],
   });

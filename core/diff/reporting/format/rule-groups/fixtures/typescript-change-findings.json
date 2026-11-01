@@ -1,0 +1,705 @@
+[
+  {
+    "tool": "coverage",
+    "rule": "changed-branch-coverage",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Branch coverage is 0.00%; minimum is 95%. Not taken: the true arm of the if at 15:3; the false arm of the if (or its else) at 15:3. Test it, or remove it if it can't happen. If this is intended, add {\"rule\":\"changed-branch-coverage\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 15
+    }
+  },
+  {
+    "tool": "coverage",
+    "rule": "changed-branch-coverage",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Branch coverage is 0.00%; minimum is 95%. Not taken: the true arm of the if at 5:7; the false arm of the if (or its else) at 7:14. Test it, or remove it if it can't happen. If this is intended, add {\"rule\":\"changed-branch-coverage\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 5
+    }
+  },
+  {
+    "tool": "coverage",
+    "rule": "changed-branch-coverage",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Branch coverage is 0.00%; minimum is 95%. Not taken: the true arm of the if at 4:5; the false arm of the if (or its else) at 10:12. Test it, or remove it if it can't happen. If this is intended, add {\"rule\":\"changed-branch-coverage\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 4
+    }
+  },
+  {
+    "tool": "crap",
+    "rule": "crap-score-limit",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "price has CRAP 30.00; score must be below 9. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {\"rule\":\"crap-score-limit\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 1,
+      "endLine": 19
+    }
+  },
+  {
+    "tool": "dead-code",
+    "rule": "files",
+    "path": "src/main/features/pricing/domain/helpers.ts",
+    "message": "Unused file: src/main/features/pricing/domain/helpers.ts. Nothing imports it: delete it, or import it where it is needed. If this is intended, add {\"rule\":\"files\",\"paths\":[\"src/main/features/pricing/domain/helpers.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable"
+  },
+  {
+    "tool": "dead-code",
+    "rule": "files",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Unused file: src/main/features/pricing/domain/pricing.ts. Nothing imports it: delete it, or import it where it is needed. If this is intended, add {\"rule\":\"files\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable"
+  },
+  {
+    "tool": "eslint-errors",
+    "rule": "nitpicker/no-silent-catch",
+    "path": "src/main/features/pricing/domain/helpers.ts",
+    "message": "This catch discards the failure. Return a failure result (`return { kind: 'malformed-json' }`), or rethrow an Error subclass with `{ cause: error }`. An exception fits only when dropping it is intended. If this is intended, add {\"rule\":\"nitpicker/no-silent-catch\",\"paths\":[\"src/main/features/pricing/domain/helpers.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 4,
+      "column": 5
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "@typescript-eslint/no-unused-vars",
+    "path": "src/main/features/pricing/domain/helpers.ts",
+    "message": "Catch parameter 'e' is caught but never used. If this is intended, add {\"rule\":\"@typescript-eslint/no-unused-vars\",\"paths\":[\"src/main/features/pricing/domain/helpers.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 4,
+      "column": 12
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "nitpicker/no-null",
+    "path": "src/main/features/pricing/domain/helpers.ts",
+    "message": "Use `undefined` for an absent value, and an optional field or parameter (`value?: T`) where it may be missing. `null` is only for strict comparison with a library value and the `JSON.stringify` replacer argument. An exception fits only when a framework or library requires it. If this is intended, add {\"rule\":\"nitpicker/no-null\",\"paths\":[\"src/main/features/pricing/domain/helpers.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 5,
+      "column": 12
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "no-restricted-syntax",
+    "path": "src/main/features/pricing/domain/helpers.ts",
+    "message": "Use `unknown` and parse it into a specific type at the boundary with zod, or write the specific type. If this is intended, add {\"rule\":\"no-restricted-syntax\",\"paths\":[\"src/main/features/pricing/domain/helpers.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 1,
+      "column": 38
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "@typescript-eslint/explicit-module-boundary-types",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Write the return type of an exported function: `export function total(rows: readonly Row[]): number`, `export async function load(): Promise<Report>`; a React component returns `ReactElement`. If this is intended, add {\"rule\":\"@typescript-eslint/explicit-module-boundary-types\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 1,
+      "column": 17
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Unsafe member access .qty on an `any` value. If the value is a legacy `any`, domain/ cannot take `unknown`: have adapters/ parse it into a typed object and pass that in, or type the legacy parameter; fix any TypeScript error on the line first. If this is intended, add {\"rule\":\"@typescript-eslint/no-unsafe-member-access\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 4,
+      "column": 14
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Unsafe member access .qty on an `any` value. If the value is a legacy `any`, domain/ cannot take `unknown`: have adapters/ parse it into a typed object and pass that in, or type the legacy parameter; fix any TypeScript error on the line first. If this is intended, add {\"rule\":\"@typescript-eslint/no-unsafe-member-access\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 6,
+      "column": 23
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Unsafe member access .qty on an `any` value. If the value is a legacy `any`, domain/ cannot take `unknown`: have adapters/ parse it into a typed object and pass that in, or type the legacy parameter; fix any TypeScript error on the line first. If this is intended, add {\"rule\":\"@typescript-eslint/no-unsafe-member-access\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 8,
+      "column": 23
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Unsafe member access .qty on an `any` value. If the value is a legacy `any`, domain/ cannot take `unknown`: have adapters/ parse it into a typed object and pass that in, or type the legacy parameter; fix any TypeScript error on the line first. If this is intended, add {\"rule\":\"@typescript-eslint/no-unsafe-member-access\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 11,
+      "column": 21
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Unsafe member access .price on an `any` value. If the value is a legacy `any`, domain/ cannot take `unknown`: have adapters/ parse it into a typed object and pass that in, or type the legacy parameter; fix any TypeScript error on the line first. If this is intended, add {\"rule\":\"@typescript-eslint/no-unsafe-member-access\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 5,
+      "column": 16
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Unsafe member access .price on an `any` value. If the value is a legacy `any`, domain/ cannot take `unknown`: have adapters/ parse it into a typed object and pass that in, or type the legacy parameter; fix any TypeScript error on the line first. If this is intended, add {\"rule\":\"@typescript-eslint/no-unsafe-member-access\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 6,
+      "column": 34
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Unsafe member access .price on an `any` value. If the value is a legacy `any`, domain/ cannot take `unknown`: have adapters/ parse it into a typed object and pass that in, or type the legacy parameter; fix any TypeScript error on the line first. If this is intended, add {\"rule\":\"@typescript-eslint/no-unsafe-member-access\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 8,
+      "column": 34
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "@typescript-eslint/no-unsafe-member-access",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Unsafe member access .price on an `any` value. If the value is a legacy `any`, domain/ cannot take `unknown`: have adapters/ parse it into a typed object and pass that in, or type the legacy parameter; fix any TypeScript error on the line first. If this is intended, add {\"rule\":\"@typescript-eslint/no-unsafe-member-access\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 11,
+      "column": 32
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "@typescript-eslint/no-unused-vars",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Function 'unusedHelper' is declared but never used. If this is intended, add {\"rule\":\"@typescript-eslint/no-unused-vars\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 21,
+      "column": 10
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "functional/no-let",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Unexpected let, use const instead. If this is intended, add {\"rule\":\"functional/no-let\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 2,
+      "column": 3
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "functional/prefer-immutable-types",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Parameter `items` is mutable (array); domain/ values must be deeply readonly. Type it `readonly T[]`. If this is intended, add {\"rule\":\"functional/prefer-immutable-types\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 1,
+      "column": 23
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "nitpicker/no-magic-numbers",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "No magic number: 4. Name it with a module-level constant: `const SECONDS_PER_DAY = 24 * 60 * 60;` (-1, 0, 1, 2, 10, 100 and 1000, an HTTP status code such as `res.status(404)` and the digits of `toFixed(2)` are allowed). An exception fits only when the number is clear where it is. If this is intended, add {\"rule\":\"nitpicker/no-magic-numbers\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 5,
+      "column": 24
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "nitpicker/no-magic-numbers",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "No magic number: 7. Name it with a module-level constant: `const SECONDS_PER_DAY = 24 * 60 * 60;` (-1, 0, 1, 2, 10, 100 and 1000, an HTTP status code such as `res.status(404)` and the digits of `toFixed(2)` are allowed). An exception fits only when the number is clear where it is. If this is intended, add {\"rule\":\"nitpicker/no-magic-numbers\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 22,
+      "column": 18
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "nitpicker/no-magic-numbers",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "No magic number: 0.9. Name it with a module-level constant: `const SECONDS_PER_DAY = 24 * 60 * 60;` (-1, 0, 1, 2, 10, 100 and 1000, an HTTP status code such as `res.status(404)` and the digits of `toFixed(2)` are allowed). An exception fits only when the number is clear where it is. If this is intended, add {\"rule\":\"nitpicker/no-magic-numbers\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 6,
+      "column": 42
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "nitpicker/no-magic-numbers",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "No magic number: 3. Name it with a module-level constant: `const SECONDS_PER_DAY = 24 * 60 * 60;` (-1, 0, 1, 2, 10, 100 and 1000, an HTTP status code such as `res.status(404)` and the digits of `toFixed(2)` are allowed). An exception fits only when the number is clear where it is. If this is intended, add {\"rule\":\"nitpicker/no-magic-numbers\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 4,
+      "column": 20
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "no-restricted-syntax",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "domain/ types are readonly: write readonly T[] (or a readonly tuple) instead of a mutable array type. If this is intended, add {\"rule\":\"no-restricted-syntax\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 1,
+      "column": 30
+    }
+  },
+  {
+    "tool": "eslint-lint",
+    "rule": "no-restricted-syntax",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "domain/ code has no loops: transform with map, filter, flatMap, reduce with an initial value, Object.fromEntries or Object.groupBy. If this is intended, add {\"rule\":\"no-restricted-syntax\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 3,
+      "column": 3
+    }
+  },
+  {
+    "tool": "eslint-logging",
+    "rule": "nitpicker/no-production-console",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Use the application logger instead of console.log(). An exception fits only when this module prints the program output. If this is intended, add {\"rule\":\"nitpicker/no-production-console\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 14,
+      "column": 3
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/helpers.ts",
+    "message": "Survived BlockStatement at column 7: replacing `{ return JSON.parse(text); }` with `{}` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/helpers.ts\"],\"function\":\"parse\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 2,
+      "column": 7
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/helpers.ts",
+    "message": "Survived BlockStatement at column 42: replacing `{ try { return JSON.parse(text); } catch (e) { return null; } }` with `{}` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/helpers.ts\"],\"function\":\"parse\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 1,
+      "column": 42
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/helpers.ts",
+    "message": "Survived BlockStatement at column 15: replacing `{ return null; }` with `{}` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/helpers.ts\"],\"function\":\"parse\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 4,
+      "column": 15
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived ArithmeticOperator at column 10: replacing `total - discount` with `total + discount` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 18,
+      "column": 10
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived ArithmeticOperator at column 12: replacing `total - discount * 2` with `total + discount * 2` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 16,
+      "column": 12
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived ArithmeticOperator at column 10: replacing `value * 7` with `value / 7` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"unusedHelper\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 22,
+      "column": 10
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived ArithmeticOperator at column 18: replacing `item.qty * item.price * 0.9` with `item.qty * item.price / 0.9` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 6,
+      "column": 18
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived ArithmeticOperator at column 20: replacing `discount * 2` with `discount / 2` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 16,
+      "column": 20
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived ArithmeticOperator at column 18: replacing `item.qty * item.price` with `item.qty / item.price` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 8,
+      "column": 18
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived ArithmeticOperator at column 18: replacing `item.qty * item.price` with `item.qty / item.price` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 6,
+      "column": 18
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived ArithmeticOperator at column 16: replacing `item.qty * item.price` with `item.qty / item.price` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 11,
+      "column": 16
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived AssignmentOperator at column 9: replacing `total += item.qty * item.price * 0.9` with `total -= item.qty * item.price * 0.9` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 6,
+      "column": 9
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived AssignmentOperator at column 9: replacing `total += item.qty * item.price` with `total -= item.qty * item.price` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 8,
+      "column": 9
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived AssignmentOperator at column 7: replacing `total += item.qty * item.price` with `total -= item.qty * item.price` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 11,
+      "column": 7
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived BlockStatement at column 55: replacing `{ let total = 0; for (const item of items) { if (item.qty > 3) { if (item.price …` with `{}` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 1,
+      "column": 55
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived BlockStatement at column 38: replacing `{ return value * 7; }` with `{}` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"unusedHelper\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 21,
+      "column": 38
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived BlockStatement at column 23: replacing `{ if (item.price > 4) { total += item.qty * item.price * 0.9; } else { total += …` with `{}` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 4,
+      "column": 23
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived BlockStatement at column 22: replacing `{ return total - discount * 2; }` with `{}` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 15,
+      "column": 22
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived BlockStatement at column 27: replacing `{ total += item.qty * item.price * 0.9; }` with `{}` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 5,
+      "column": 27
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived BlockStatement at column 12: replacing `{ total += item.qty * item.price; }` with `{}` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 10,
+      "column": 12
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived BlockStatement at column 14: replacing `{ total += item.qty * item.price; }` with `{}` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 7,
+      "column": 14
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived BlockStatement at column 29: replacing `{ if (item.qty > 3) { if (item.price > 4) { total += item.qty * item.price * 0.9…` with `{}` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 3,
+      "column": 29
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived CallExpression at column 3: replacing `console.log(total);` with `;` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 14,
+      "column": 3
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived ConditionalExpression at column 9: replacing `item.qty > 3` with `true` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 4,
+      "column": 9
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived ConditionalExpression at column 11: replacing `item.price > 4` with `true` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 5,
+      "column": 11
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived ConditionalExpression at column 7: replacing `discount > 10` with `true` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 15,
+      "column": 7
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived ConditionalExpression at column 9: replacing `item.qty > 3` with `false` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 4,
+      "column": 9
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived ConditionalExpression at column 11: replacing `item.price > 4` with `false` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 5,
+      "column": 11
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived ConditionalExpression at column 7: replacing `discount > 10` with `false` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 15,
+      "column": 7
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived EqualityOperator at column 9: replacing `item.qty > 3` with `item.qty <= 3` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 4,
+      "column": 9
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived EqualityOperator at column 7: replacing `discount > 10` with `discount >= 10` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 15,
+      "column": 7
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived EqualityOperator at column 7: replacing `discount > 10` with `discount <= 10` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 15,
+      "column": 7
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived EqualityOperator at column 11: replacing `item.price > 4` with `item.price >= 4` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 5,
+      "column": 11
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived EqualityOperator at column 9: replacing `item.qty > 3` with `item.qty >= 3` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 4,
+      "column": 9
+    }
+  },
+  {
+    "tool": "mutation",
+    "rule": "mutant-survived",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "Survived EqualityOperator at column 11: replacing `item.price > 4` with `item.price <= 4` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {\"rule\":\"mutant-survived\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 5,
+      "column": 11
+    }
+  },
+  {
+    "tool": "structure",
+    "rule": "function-control-nesting-limit",
+    "path": "src/main/features/pricing/domain/pricing.ts",
+    "message": "price nests control flow 3 deep (limit 2). Return early instead of nesting. If this is intended, add {\"rule\":\"function-control-nesting-limit\",\"paths\":[\"src/main/features/pricing/domain/pricing.ts\"],\"function\":\"price\",\"reason\":\"...\"} to \"exceptions\" in nitpicker.config.json.",
+    "classification": "enforceable",
+    "location": {
+      "line": 1
+    }
+  }
+]
