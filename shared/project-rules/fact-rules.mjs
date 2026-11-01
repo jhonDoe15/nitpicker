@@ -10,13 +10,38 @@ const TYPESCRIPT_AND_JAVASCRIPT = {
 const JVM = { java: true, kotlin: true };
 
 export const FACT_RULE_LANGUAGES = {
-  'duplicate-definition': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, javascript: 'partial' },
-  'exported-name-collision': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, javascript: 'partial' },
-  'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM },
+  'duplicate-definition': {
+    ...TYPESCRIPT_AND_JAVASCRIPT,
+    ...JVM,
+    javascript: 'partial',
+    python: true,
+  },
+  'exported-name-collision': {
+    ...TYPESCRIPT_AND_JAVASCRIPT,
+    ...JVM,
+    javascript: 'partial',
+    python: true,
+  },
+  'sibling-copy-edit': { ...TYPESCRIPT_AND_JAVASCRIPT, ...JVM, python: true },
   'shared-used-by-one-feature': { ...TYPESCRIPT_AND_JAVASCRIPT },
-  'test-only-export': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
-  'doc-comment-content': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
-  'test-console-output': { ...TYPESCRIPT_AND_JAVASCRIPT, java: true, kotlin: true },
+  'test-only-export': {
+    ...TYPESCRIPT_AND_JAVASCRIPT,
+    java: true,
+    kotlin: true,
+    python: true,
+  },
+  'doc-comment-content': {
+    ...TYPESCRIPT_AND_JAVASCRIPT,
+    java: true,
+    kotlin: true,
+    python: true,
+  },
+  'test-console-output': {
+    ...TYPESCRIPT_AND_JAVASCRIPT,
+    java: true,
+    kotlin: true,
+    python: true,
+  },
 };
 
 export const FACT_RULE_LISTS = {

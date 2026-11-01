@@ -22,7 +22,6 @@ const HINTED_TOOLS = [
   'coupling',
   'import-linter',
   'dependencies',
-  'test-runtime',
   'mutmut',
 ];
 
@@ -76,10 +75,15 @@ export function hintFor(finding) {
 
 const PYTHON_EXCEPTIONS_KEY = 'python.exceptions';
 
-export function describeRuleFinding(rule, subject, libraries = DEFAULT_LIBRARIES) {
+export function describeRuleFinding(
+  rule,
+  subject,
+  { libraries = DEFAULT_LIBRARIES, data = {} } = {},
+) {
   return RULE_HINTS.find((hint) => hint.tool === RULES_TOOL && hint.rules.includes(rule)).describe(
     subject,
     libraries,
+    data,
   );
 }
 
@@ -111,12 +115,17 @@ export function withHint(finding, libraries = DEFAULT_LIBRARIES) {
     return rest;
   }
   const routed = hint?.exception === false || RULES_ROUTED_BY_A_SETTING.has(rest.rule);
+  const lifted = exceptionRoute({
+    rule: rest.rule,
+    path: rest.path,
+    key: hint?.exception === 'top-level' ? 'exceptions' : PYTHON_EXCEPTIONS_KEY,
+  });
   const sentences = [
     `${rest.message.replace(/\.$/, '')}.`,
-    ...(hint === undefined ? [] : [allowedText(hint, { subject, path: rest.path }, libraries)]),
-    ...(routed
+    ...(hint?.allowed === undefined
       ? []
-      : [exceptionRoute({ rule: rest.rule, path: rest.path, key: PYTHON_EXCEPTIONS_KEY })]),
+      : [allowedText(hint, { subject, path: rest.path }, libraries)]),
+    ...(routed ? [] : [lifted]),
   ];
   return { ...rest, message: sentences.join(' ') };
 }

@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it } from 'vitest';
-import { TEST_DIRECTORIES, testFileGlobs } from '../adapters/execution/python-test-files.mjs';
+import { TEST_DIRECTORIES } from '../adapters/execution/python-project.mjs';
+import { testFileGlobs } from '../adapters/execution/python-test-files.mjs';
 import { createScripts } from './test-support/python-script-helpers.mjs';
 
 const enabled = process.env.NITPICKER_PYTHON_E2E === '1';
