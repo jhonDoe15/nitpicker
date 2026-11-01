@@ -132,6 +132,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
           'Branch coverage is 50.00%; minimum is 95%. Add a test for each outcome it misses. To accept the file, add it to "exclude" in nitpicker.config.json.',
         allowedForm: 'Add a test for each outcome it misses.',
         classification: 'enforceable',
+        anchor: { key: 'branch:branch-source:2523a9a20c75ac9a', requireUnchangedLine: true },
         location: { line: 5 },
       },
     ]);
@@ -182,6 +183,10 @@ describe('nitpicker with "preset": "kotlin"', () => {
         exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'KKt#fee(I)I',
+        anchor: {
+          key: expect.stringMatching(/^mutant:MathMutator\|/u),
+          requireUnchangedLine: true,
+        },
         location: { line: 3 },
       },
     ]);
@@ -230,6 +235,10 @@ describe('nitpicker with "preset": "kotlin"', () => {
         exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'A#fee(I)I',
+        anchor: {
+          key: expect.stringMatching(/^mutant:MathMutator\|/u),
+          requireUnchangedLine: true,
+        },
         location: { line: 3 },
       },
     ]);

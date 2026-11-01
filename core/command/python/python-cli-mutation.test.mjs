@@ -48,6 +48,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
         exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'value',
+        anchor: { key: expect.stringMatching(/^mutant:/u), requireUnchangedLine: true },
         location: { line: 5 },
       },
     ]);
@@ -78,6 +79,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
         exceptionList: 'exceptions',
         classification: 'enforceable',
         symbol: 'value',
+        anchor: { key: expect.stringMatching(/^mutant:/u), requireUnchangedLine: true },
         location: { line: 5 },
       },
     ]);
@@ -109,6 +111,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
         message: 'Timeout number',
         classification: 'descriptive',
         symbol: 'value',
+        anchor: { key: expect.stringMatching(/^mutant:/u), requireUnchangedLine: true },
         location: { line: 5 },
       },
     ]);

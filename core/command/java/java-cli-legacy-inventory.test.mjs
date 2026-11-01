@@ -3,6 +3,7 @@ import { runCli as nitpickerCli } from '../../cli.mjs';
 import { exactText } from '../../diff/reporting/test-support/output-expectations.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import {
+  unusedFieldConsoleEntry,
   unusedFieldFields,
   unusedFieldMessage,
   useGradleFixtures,
@@ -47,8 +48,7 @@ describe.each([
 
 Quality gate summary
 ✖ 1 new enforceable violation
-  pmd/UnusedPrivateField src/main/java/demo/A.java:5
-    ${unusedFieldMessage('other')}
+${unusedFieldConsoleEntry('other', 5)}
 Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     });
@@ -78,8 +78,8 @@ Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 
 Quality gate summary
 ✖ 1 new enforceable violation
-  java/baseline-expansion src/main/java/demo/A.java
-    Legacy allowance increased from 1 to 2 for UnusedPrivateField
+  java/baseline-expansion: Legacy allowance increased from 1 to 2 for UnusedPrivateField
+    src/main/java/demo/A.java
 Full diagnostics: /tmp/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/report.txt
 `),
     });

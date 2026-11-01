@@ -166,6 +166,15 @@ export function unusedFieldFields(file = 'src/main/java/demo/A.java') {
   };
 }
 
+export function unusedFieldConsoleEntry(name, line, file = 'src/main/java/demo/A.java') {
+  const { fix } = readCatalog('pmd').UnusedPrivateField;
+  return [
+    `  pmd/UnusedPrivateField: Avoid unused field: ${name}. ${fix}`,
+    `    ${file}:${String(line)}`,
+    `    ${exceptionHint('pmd/UnusedPrivateField', file)}`,
+  ].join('\n');
+}
+
 export function gradleFailureMessage(detail) {
   const suffix = /[A-Za-z0-9]{6}/;
   return expect.stringMatching(exactText`Full Gradle log: ${tmpdir()}/nitpicker-gradle-failure-${suffix}/gradle.log
