@@ -88,7 +88,7 @@ A `@Deprecated` annotation (not on an `override` member, also with `override` on
 
 ### `kotlin-source/CredentialLiteral`
 
-An AWS key, a GitHub or Slack token, a `sk_live_`/`sk-proj-` key, a private key header, a password in a URL or a `Bearer`/`Basic` value.
+An AWS key, a GitHub or Slack token, a `sk_live_`/`sk-proj-` key, a private key header, a `django-insecure-` key, a password in a URL or a `password=` parameter, or a `Bearer`/`Basic`/`Token` value.
 
 - **Allowed form:** Read it from the environment or a secrets manager: this string looks like a credential (access key, token, private key, or a password in a URL).
 - **Exception:** If this is intended, add `{"rule":"kotlin-source/CredentialLiteral","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
@@ -133,9 +133,9 @@ A class, interface or object named `*Util(s)`, `*Utility`, `*Utilities`, `*Helpe
 
 ### `kotlin-source/HardcodedSecret`
 
-A secret-looking literal assigned to a name like `*password`, `*secret`, `*token`, `*apiKey`, also as a named argument, a `"key" to "value"` pair or a `"key", "value"` argument pair.
+A secret literal assigned to a name ending in `password`, `passwd`, `pwd`, `passphrase`, `secret`, `token`, `credentials`, `apiKey`, `privateKey`, `accessKey`, `secretKey`, `authKey`, `signingKey`, `encryptionKey`, `hmacKey` or `jwtKey` (a trailing `Value`, `Raw`, `Str`, `String`, `Text` or `Plain` is ignored; tokenizer marker tokens such as `eosToken` and `padToken` are not secrets). The value rules are shared with the other presets (`shared/naming/secret-words.mjs`): six characters or more with letters and digits, or three character classes; for a `password`, `passwd` or `passphrase` name also eight characters or more with a lowercase letter followed by an uppercase one (`CorrectHorseBatteryStaple`, not a single word such as `Elephantine` or an all-lowercase `hunterhunter`). Not secrets: placeholders (`changeme`, `<...>`, `${...}`, `$NAME`, `{{...}}`, `{name}`, `%s`, `%(name)s`, `:name`, `****1234`), environment variable names, header names such as `X-CSRF-TOKEN`, lowercase paths and message keys (`prod/db-creds-v2`, `errors.token.expired_v2`, `/etc/app/creds.json`), regular expressions (`^...$`), URLs, a value equal to the name and an identifier that contains a secret word (`extra_token_1`); a credential-shaped value is left to `CredentialLiteral`. Where: a property, `const val`, constructor default, named argument, `config.password = ...`, `settings["db.password"] = ...`, `by lazy { "..." }`, `fun token() = "..."`, a `get() = "..."` getter or a body that starts with `return "..."`, a `"key" to "value"` pair, a `"key", "value"` pair in `put`, `putIfAbsent`, `putString`, `putExtra`, `setProperty`, `addProperty`, `of`, `entry`, `Pair`, `set`, `getOrDefault` or `getProperty`, `getOrElse("key") { "..." }` and `getOrPut`, and a `"\${db.password:...}"` placeholder default outside files that import Spring (there `SpringValueSecretDefault` reports it). The literal that opens the value counts whatever follows (`.trimIndent()`, `.toCharArray()`, `as String`, `+ suffix`), except in a comparison, `.equals(...)`, `.toRegex()`, `.format(...)` and the like; so does a concatenation of literals and a fallback: `?: "..."`, either branch of an `if` or a `when` (braced too), `getOrDefault(k, "...")`, `System.getProperty(k, "...")`, `requireNonNullElse`, `orElse("...")`, `orElseGet { }`, `getOrElse(k) { }`, `getOrPut(k) { }`, `run { }`, `valueOf("...")`, `copyValueOf("...")` and `String("...")`. Main sources only.
 
-- **Allowed form:** Read it from the environment or a secrets manager and inject it: this variable holds a hardcoded secret.
+- **Allowed form:** Read it from the environment or a secrets manager and inject it: this value is a hardcoded secret.
 - **Exception:** If this is intended, add `{"rule":"kotlin-source/HardcodedSecret","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="kotlin-source-httpwithouttimeout"></a>
@@ -214,7 +214,7 @@ A string of 5 or more characters (with a letter or digit, no `$` template) used 
 
 ### `kotlin-source/SecretInLog`
 
-A secret-named value passed to a log call (any level, Android `Log.d` too) or `print`, directly, in a `+`, in a template or in a lambda message (`logger.info { "token $token" }`).
+A secret-named value passed to a log call (any level, Android `Log.d`, Timber), `print`/`println`, `System.out`/`System.err` `print`/`println`/`printf`/`format`, SLF4J fluent `addKeyValue`/`addArgument`, `MDC.put` or an exception message (`throw X("...")`, `error("...")`): a variable, a member (`session.token`, not a member of a `tokenizer`), a getter (`getToken()`), directly, in a `+`, in a template (`$token`, `${config.apiKey}`, `${token ?: "none"}`), in `String.format`/`.format(...)`, in a lambda message (`logger.info { "token $token" }`), a read by key (`System.getenv("API_TOKEN")`, `getProperty(k)`, `map["k"]`) or as the key of a `"password" to pw` / `kv("password", pw)` pair; `token != null`, `token.length`, `hasToken`, a pair whose value is a status (`session.hasToken`) and constant names (other than a key that is read) are fine. Main sources only.
 
 - **Allowed form:** Log that the secret is set, or a masked tail, instead of the secret itself.
 - **Exception:** If this is intended, add `{"rule":"kotlin-source/SecretInLog","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.

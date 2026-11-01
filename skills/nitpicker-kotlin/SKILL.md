@@ -82,6 +82,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   members and parameters (an override, a function with a framework annotation and a name starting
   `ignored` or `unused` are skipped). A public function's `Boolean` parameter that picks a behavior
   becomes two functions or an enum (`BooleanFlagParameter`).
+- Secrets (nitpicker's own `kotlin-source` checks, not detekt): never put a secret literal in a
+  `password`, `token`, `apiKey` or `secret` name, map entry or fallback (`?: "..."`, `getOrDefault`);
+  read it from the environment or a secrets manager. Never pass a secret to a log call, `println`,
+  `System.out`/`System.err` or an exception message: log that it is set, or a masked tail.
 - Signatures: a value with three states is an `enum class`, not a `Boolean?` parameter, return
   type or property (`kotlin-source/TriStateBoolean`; a property or parameter a framework fills,
   such as `@Column`, `@JsonProperty`, `@SerialName` or an `@Entity` property, is exempt); a public
