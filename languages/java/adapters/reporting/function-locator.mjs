@@ -27,12 +27,23 @@ export function sourceTextReader(projectRoot) {
   };
 }
 
-export function functionLocator(context) {
-  const functions = structureFunctions(context);
-  const sourceText = sourceTextReader(context.projectRoot);
+function locatorOver(functions, projectRoot) {
+  const sourceText = sourceTextReader(projectRoot);
   return (file, line) => {
     const text = sourceText(file);
     const units = text === undefined ? [] : declarationUnits(file, text);
     return enclosingFunctionName([...functions, ...units], file, line);
   };
+}
+
+export function functionLocator(context) {
+  return locatorOver(structureFunctions(context), context.projectRoot);
+}
+
+export function modulesFunctionLocator(projectRoot, modules, kotlinPreset) {
+  const contexts = modules.map((module) => ({
+    reportRoot: module.reportRoot,
+    kotlin: kotlinPreset && module.manifest.kotlin === true,
+  }));
+  return locatorOver(contexts.flatMap(structureFunctions), projectRoot);
 }

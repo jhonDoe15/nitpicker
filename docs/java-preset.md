@@ -660,7 +660,16 @@ default, and their messages name it:
 | Checkstyle (`checkstyle`) | Checkstyle XML | `ingestCheckstyle` | enforceable (`error`, `warning`); descriptive (`info`) | Hash of check class (rule), path and message text; repeats of the same message in a file get `#2`, `#3` in order. No line number; the path is part of the hash, so a renamed file shows its findings as resolved plus new. |
 
 Messages that embed a measured value (for example "found 120" in a line-length violation) change
-identity when the value changes: editing such a line counts as a resolved plus a new finding.
+identity when the value changes: editing such a line counts as a resolved plus a new finding. A
+count rule is the exception: it carries a ratchet keyed by the message without its count, so a
+legacy finding whose count fell or stayed is held and one whose count grew fails with
+`Lines grew from 160 to 161. Put the new code in a new function.` before the tool's message. Of the
+shipped rules that covers Checkstyle `VariableDeclarationUsageDistance` and PMD
+`AvoidDuplicateLiterals`; it also covers the Checkstyle size, metrics and depth checks
+(`MethodLength`, `ParameterNumber`, `ExecutableStatementCount`, `CyclomaticComplexity`,
+`NPathComplexity`, `JavaNCSS`, `NestedIfDepth` and the rest), `ReturnCount`, `ThrowsCount` and
+`MultipleStringLiterals`, and PMD `CognitiveComplexity`, `CyclomaticComplexity`, `NPathComplexity`,
+`NcssCount` and `CouplingBetweenObjects`, when the project's own config adds them.
 
 - **Wildcard imports follow the project.** Wildcard and explicit imports are both valid, so
   the `java.wildcardImports` convention (`explicit` or `wildcard`, default `explicit`) marks a file
