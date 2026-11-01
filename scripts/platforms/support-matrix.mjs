@@ -168,11 +168,15 @@ function where({ runtime, platform }) {
   return [PLATFORM_NAMES[platform], RUNTIME_NAMES[runtime]].filter(Boolean).join(', ');
 }
 
+function analyzerCell({ analyzer, findingTools = [] }) {
+  return [analyzer, ...findingTools].map((tool) => `\`${tool}\``).join(', ');
+}
+
 export function renderSupportMatrix(sources = readSources()) {
   const limits = EXPECTED_DIFFERENCES.map((expected) => [
     where(expected),
     expected.sample,
-    [expected.analyzer, ...(expected.findingTools ?? [])].map((tool) => `\`${tool}\``).join(', '),
+    analyzerCell(expected),
     expected.reason,
   ]);
   return [
