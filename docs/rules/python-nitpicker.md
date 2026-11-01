@@ -334,7 +334,7 @@ The pydantic model `<name>` accepts unknown fields.
 
 `<name>()` reads the real clock in a test.
 
-- **Allowed form:** Freeze or inject the time: pass a fixed `datetime` in, use `freezegun` or `time_machine`, or patch the clock with `monkeypatch`.
+- **Allowed form:** Freeze or inject the time: pass a fixed aware `datetime` in (`datetime(2026, 1, 1, tzinfo=timezone.utc)`), use `freezegun` or `time_machine`, or patch the clock with `monkeypatch`.
 - **Exception:** If this is intended, add `{"rule":"real-clock-in-test","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-repeated-string-literal"></a>
