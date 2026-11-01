@@ -23,7 +23,27 @@ itself is tested end to end with npm projects. nitpicker brings its own pinned E
 Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
 choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typescript` come from
 your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
-tool error.
+tool error. On Node.js 22 with its bundled npm 10, see [npm 10 and Vitest 4.1](#npm-10-and-vitest-41).
+
+### npm 10 and Vitest 4.1
+
+Node.js 22 ships with npm 10, and npm 10 cannot resolve the peers of Vitest 4.1 (every 4.1.x
+release, with or without `@vitest/coverage-v8`) when there is no lockfile to start from:
+
+```text
+npm error Cannot read properties of null (reading 'edgesOut')
+```
+
+Nothing is installed, so a later `npx nitpicker` fails with "Required tool vitest is not installed",
+followed by this hint. Any one of these avoids it:
+
+- Install with npm 11: `npx npm@11 install --save-dev nitpicker vitest @vitest/coverage-v8`, or
+  `npm install -g npm@11` once. The lockfile it writes then installs with npm 10 too, so `npm ci` in
+  CI on Node.js 22 works.
+- Use Vitest 5 (`vitest@5 @vitest/coverage-v8@5`), which npm 10 installs.
+- Add `--legacy-peer-deps` to the npm 10 install.
+
+Vitest 4.0 does not hit it, but nitpicker needs 4.1.11 or newer.
 
 ### From a GitHub release
 
@@ -174,6 +194,38 @@ first there). A lockfile that does not match its `package.json` fails the frozen
 tool error carries the manager's message. Installing the base is not supported on native Windows
 (run nitpicker in WSL).
 
+### Console summary
+
+A comparison run prints a short summary. New violations are grouped by rule, in the order to fix
+them: format, type check, lint, structure, then tests, coverage, CRAP and mutation. Each rule prints
+its advice once, then one line per place (`path:line:col` and only the part of the message that
+differs between findings), then once the `exceptions` entry that accepts it, with `<path>` (or
+`<function>`) where the findings of the rule differ; a line then names its own function, for example
+`(function price)`. A count per area follows the headline:
+
+```text
+Quality gate summary
+✖ 5 new enforceable violations
+  by area: lint 4 · coverage 1
+  eslint-lint/nitpicker/no-magic-numbers: Name it with a module-level constant.
+    src/main/pricing.ts:4:20 No magic number: 3.
+    src/main/pricing.ts:5:24 No magic number: 4.
+    If this is intended, add {"rule":"nitpicker/no-magic-numbers","paths":["src/main/pricing.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
+  eslint-lint/@typescript-eslint/no-unsafe-member-access: Have adapters/ parse it into a typed object.
+    src/main/pricing.ts:4:14, 6:23 Unsafe member access .qty on an `any` value.
+    If this is intended, add {"rule":"@typescript-eslint/no-unsafe-member-access","paths":["src/main/pricing.ts"],"reason":"..."} to "exceptions" in nitpicker.config.json.
+  coverage/changed-branch-coverage: Branch coverage is 0.00%; minimum is 95%. Test it, or remove it if it can't happen.
+    src/main/pricing.ts:4 Not taken: the true arm of the if at 4:5.
+    If this is intended, add {"rule":"changed-branch-coverage","paths":["src/main/pricing.ts"],"function":"price","reason":"..."} to "exceptions" in nitpicker.config.json.
+Full diagnostics: reports/quality/diff/report.txt
+```
+
+Findings that are allowed because the base already had them ("still over a limit", "existing lint
+findings in edited code") are listed after the violations, at most 10 of each, without their
+exception entries. `--details` prints every finding with its full message instead, the layout
+`report.txt`, the JSON reports and SARIF always keep. `--all` prints `report.txt` itself, so
+`--details` changes nothing there.
+
 ### Reports
 
 A comparison run writes these files to `reports/quality/diff/`:
@@ -263,7 +315,7 @@ Upload the comparison file in pull requests with `github/codeql-action/upload-sa
 ```yaml
 - run: npx nitpicker
   working-directory: packages/app
-- uses: github/codeql-action/upload-sarif@v3
+- uses: github/codeql-action/upload-sarif@v4.39.1
   if: always()
   with:
     sarif_file: packages/app/reports/quality/diff/report.sarif
@@ -302,11 +354,11 @@ automatically.
 
 ```text
 nitpicker [--base <ref>] [--output <dir>] [--all | --fix]
-          [--analyzer <name>]... [--rule <substring>]...
+          [--analyzer <name>]... [--rule <substring>]... [--details]
           [--shard-count <n> --shard-index <i>] [--defer-exit] [--no-cache]
           [--accept-policy-change=<digest>] [--help]
 nitpicker aggregate --input-root <dir> --shard-count <n>
-          [--output <dir>] [--policy-root <dir>]
+          [--output <dir>] [--policy-root <dir>] [--details]
 nitpicker cache publish [--analyzer <name>]...
           [--shard-count <n> --shard-index <i>]
 nitpicker base [--base <ref>]
@@ -322,6 +374,8 @@ nitpicker rules [--preset <name>] [--tool <name>]
 - `--base <ref>`: the ref to compare against.
 - `--analyzer <name>`: run only this analyzer (repeatable). Cannot be combined with sharding.
 - `--rule <substring>`: list the findings whose rule matches, after the summary (repeatable).
+- `--details`: print every new finding with its full message, and every held finding, in the
+  console summary (see [Console summary](#console-summary)).
 - `--output <dir>`: where reports go.
 
 - `--no-cache`: do not read or write the findings cache for this run (local and remote).
@@ -386,7 +440,14 @@ reports are stored. When the base is reused, the progress line names the local c
 (or the remote cache when there is no local directory); use `--no-cache` to rerun the analysis.
 
 - `NITPICKER_CACHE_DIR`: local cache directory (relative to the project root). Default:
-  `node_modules/.cache/nitpicker`.
+  `node_modules/.cache/nitpicker` when the project has `node_modules`, else `nitpicker/cache` in the
+  repository's Git directory (`git rev-parse --git-common-dir`, Git 2.31 or newer), which every worktree shares and
+  Git never lists as untracked. That default covers Java, Kotlin, Python and Go projects. When no
+  writable folder is found, the run prints one line saying the base side runs every time.
+  The Java and Kotlin analyzer version includes the output of `java -version` (from `JAVA_HOME`,
+  else the `PATH`), as Python and Go include their interpreter and toolchain versions, so switching
+  JDKs is a miss. A Gradle or Maven version that is not pinned in the repository (no wrapper) is not
+  in the key; use `--no-cache` after changing it.
 - `NITPICKER_CACHE_URL`: remote cache prefix; an entry is `GET`/`PUT` at `<url>/<key>.json`.
   Optional `NITPICKER_CACHE_AUTH_HEADER` and `NITPICKER_CACHE_TIMEOUT_MS`. Comparison runs only
   read the remote; give write credentials only to the job that runs `cache publish` on `main`.
@@ -916,9 +977,13 @@ For Jest the run uses Jest's `default` reporter and nitpicker's console reporter
 `silent` and `verbose` off, because Jest buffers console calls only then; a `silent` project then
 shows its console output in the run's log. Jest keeps only the first argument of a failed
 `console.assert` (`console.assert(false, 'bad %s', 'input')` gives `Assertion failed: bad %s`). With
-`node:test`, tests of one file that run concurrently can swap the test name, and
-`--experimental-test-isolation=none` (every file in the runner's own process) is not read at all,
-because the file of a call is not known there: the check passes with no findings. Mocha runs every
+`node:test`, tests of one file that run concurrently can swap the test name. With
+`--experimental-test-isolation=none` (every file in the runner's own process) a call belongs to the
+file whose test or top-level code started the work (a hook's call to the file that declares the hook),
+read from the async resource node:test runs each of them in, and names no test, as with Jest. Work a
+file started keeps that file, also when it prints while a later file runs or after the file's tests,
+as long as the runner process lives; Vitest without isolation gives such a timer to the file running
+when it fires, and Mocha does not see it. Mocha runs every
 spec file in one process (one per worker with `--parallel`); a root hook from a `--require` file
 belongs to no test file and is not seen, but what the work it started prints while a test runs (a
 server it started handling the test's request) belongs to that test, as with Vitest. Work another spec
@@ -928,9 +993,11 @@ It does not see:
 
 - `console.log`, `console.info` and `console.debug`, which go to standard output;
 - `process.stderr.write`, `process.emitWarning`, and the output of child processes and worker threads
-  a test starts;
+  a test starts, on every runner (a `worker_threads` Worker prints through its own console, whose
+  output the parent receives as a stream);
 - output printed after a test file has finished (after its last `after`/`afterAll` hook), such as a
-  dangling timer that fires later, or with Mocha a timer that fires while another file's tests run;
+  dangling timer that fires later, or with Mocha a timer that fires while another file's tests run
+  (`node:test` with isolation off is the exception above);
   with Jest such a call prints "Cannot log after tests are done", which fails a run in band only when
   it would fail without nitpicker too, and only when Jest's report shows no other failure (a failed
   test or suite, or an obsolete or unwritten snapshot);
@@ -2048,8 +2115,9 @@ of these is visible in the report. Remove them as the codebase improves.
 ## Container image
 
 The repository's `Dockerfile` builds an image that runs the gate in any CI without installing Node
-on the host. It is Node 22 (slim) with Git, nitpicker installed from source as `nitpicker` (the
-entrypoint), and `/work` as the working directory. Build it from the repository root; no image is
+on the host. It is Node 22 (slim) with Git, `ps` (procps, which mutation testing uses to manage child
+processes), nitpicker installed from source as `nitpicker` (the entrypoint), and `/work` as the
+working directory. Build it from the repository root; no image is
 published yet.
 
 ```sh
@@ -2075,7 +2143,7 @@ jobs:
   nitpicker:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7.0.1
         with:
           fetch-depth: 0
       - run: npm ci
@@ -2111,5 +2179,7 @@ npx nitpicker aggregate --input-root shards --shard-count 3
   missing or inconsistent shard is a tool error (exit 2). It reads the same
   `nitpicker.config.json`, writes to `reports/quality/diff/combined` unless `--output` is given,
   and takes the policy from the head commit recorded in the shards (or from `--policy-root`).
+  Analyzer versions include the runtime for Java and Kotlin (the JDK), Python and Go, so run the
+  aggregate job with the same toolchain as the shards.
 - Set `NITPICKER_MAX_PARALLEL` to a positive integer to cap how many analyzers run at once within
   one job.

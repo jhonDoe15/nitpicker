@@ -6,6 +6,7 @@ import { validateAnalyzer, validateInvocation } from './validation/analyzers.mjs
 import { PACKAGE_ROOT } from '../../tooling/tool-resolution.mjs';
 import { namedReports, namedToolErrors } from '../snapshot-root/snapshot-root.mjs';
 import { fileURLToPath } from 'node:url';
+import { describeError } from '../../../shared/messages/error-chain.mjs';
 
 const MAX_ANALYZER_OUTPUT_BYTES = 50 * 1024 * 1024;
 
@@ -122,7 +123,7 @@ function scheduleTasks(tasks, { runTasks, headPolicyFile, snapshot }) {
     outcome.toolErrors.push({
       tool: 'analyzer-scheduler',
       snapshot,
-      message: error instanceof Error ? error.message : String(error),
+      message: describeError(error),
     });
   }
   return outcome;
@@ -178,7 +179,7 @@ function prepareTasks(analyzers, context) {
       toolErrors.push({
         tool: name,
         snapshot: context.snapshot,
-        message: error instanceof Error ? error.message : String(error),
+        message: describeError(error),
       });
     }
   }
