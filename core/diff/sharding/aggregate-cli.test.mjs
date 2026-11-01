@@ -42,8 +42,8 @@ describe('quality shard aggregation command', () => {
     expect(output.stdoutText).toEqual(`
 \u001b[1m\u001b[31mQuality gate summary\u001b[0m
 \u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33monly/example\u001b[0m src/main/example.ts
-    example finding
+  \u001b[33monly/example\u001b[0m: example finding
+    src/main/example.ts
 \u001b[2mFull diagnostics: ${fixture.outputRoot}/report.txt\u001b[0m
 `);
     expect(output.stdoutText).not.toContain('Per-tool counts:');
