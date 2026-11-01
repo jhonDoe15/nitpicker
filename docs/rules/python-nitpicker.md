@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 59 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 62 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -48,6 +48,15 @@ A package that is in a dependency cycle with other packages.
 
 - **Allowed form:** Use the real type, a `Protocol`, a `TypeVar` or a frozen dataclass; parse untrusted data at the boundary so the domain only sees typed values.
 - **Exception:** If this is intended, add `{"rule":"any-in-domain","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-atomic-update-across-await"></a>
+
+### `python-rules/atomic-update-across-await`
+
+`<name>` is updated from a value read before an `await`: another task can change it while this one is suspended, and the write then overwrites that change.
+
+- **Allowed form:** Await the new value into a local first and read and write the shared state in one step with no `await` between them (`delta = await fetch()` then `self.total += delta`), or serialize the whole update with one lock that every task shares (`self.lock = asyncio.Lock()` in `__init__`, then `async with self.lock:`); a lock or semaphore built in the method, a semaphore of more than one slot and a lock passed in are not proof.
+- **Exception:** If this is intended, add `{"rule":"atomic-update-across-await","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-blind-suppress"></a>
 
@@ -184,6 +193,15 @@ Dataclass \<name> is not frozen.
 - **Allowed form:** Move the call into a function and call that from the composition root (`main.py`, a `create_app` factory) or under `if __name__ == "__main__":`, passing the result in.
 - **Exception:** If this is intended, add `{"rule":"import-time-effect","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
+<a id="python-rules-inconsistent-attribute-locking"></a>
+
+### `python-rules/inconsistent-attribute-locking`
+
+\<name>: a thread or task that writes here races with the locked writer, so an update is lost or another reader sees a stale value.
+
+- **Allowed form:** Hold the same lock for every write of the attribute (`with self.lock:` or `async with self.lock:`), or keep the state where only the lock holder changes it (a method that takes the lock and returns the new value). `__init__`, `__new__`, `__post_init__`, a write in a nested function or lambda, a method the class calls while it holds a lock, a decorated method and a method that calls `acquire()` are not reported.
+- **Exception:** If this is intended, add `{"rule":"inconsistent-attribute-locking","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
 <a id="python-rules-io-in-domain"></a>
 
 ### `python-rules/io-in-domain`
@@ -201,6 +219,15 @@ Dataclass \<name> is not frozen.
 
 - **Allowed form:** Batch it: fetch or write all items in one call, or run the calls together with a bounded `asyncio.gather` (a shared `asyncio.Semaphore` acquired in the task) or a `ThreadPoolExecutor.map` when there is no batch API.
 - **Exception:** If this is intended, add `{"rule":"io-in-loop","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-lock-order-inversion"></a>
+
+### `python-rules/lock-order-inversion`
+
+\<name>: two threads or tasks that run both can each hold one lock and wait forever for the other, a deadlock that no test reliably shows.
+
+- **Allowed form:** Take nested locks in one order everywhere in the class (if any path takes `self.a` and then `self.b`, no path takes `self.b` and then `self.a`), or guard the state with one lock. Only locks held in attributes of the class or the module (`self.lock`, `Registry.LOCK`) are compared, when they are built there from `threading.Lock`, `threading.RLock`, `threading.Condition`, a one-slot `threading.Semaphore` or an `asyncio`, AnyIO or Trio lock, or are named like a lock where the build is out of sight; a lock passed in, held in a local or taken in a called method is not followed.
+- **Exception:** If this is intended, add `{"rule":"lock-order-inversion","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-logger-in-domain"></a>
 

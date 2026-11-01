@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 249 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 251 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -970,6 +970,17 @@ Switch statements without break or return statements for each case option may in
 - **Exception:** If this is intended, add `{"rule":"pmd/ImplicitSwitchFallThrough","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#implicitswitchfallthrough)
 
+<a id="pmd-inconsistentfieldlocking"></a>
+
+### `pmd/InconsistentFieldLocking`
+
+A field written while a lock is held in one place and with no lock in another; see [Lock discipline](../../spec/checks.md#lock-discipline).
+
+- **Scope:** Main and test sources.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** This write of a field holds no lock, while another write of the same field in the class holds one: a thread that writes here races with the locked writer, so an update is lost or another thread sees a stale value. Hold the lock the locked write holds for every write of the field (synchronized on the same monitor, or lock() and unlock() of the same Lock), or make the field an atomic or concurrent type (AtomicLong, LongAdder, ConcurrentHashMap). Constructors, initializers, a single write of a volatile field, a write in a lambda and a method the class calls while it holds a lock are not reported.
+- **Exception:** If this is intended, add `{"rule":"pmd/InconsistentFieldLocking","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
 <a id="pmd-inefficientemptystringcheck"></a>
 
 ### `pmd/InefficientEmptyStringCheck`
@@ -1266,6 +1277,17 @@ Position literals first in all String comparisons, if the second argument is nul
 - **Allowed form:** Put the literal first: "yes".equals(value), so a null value cannot throw.
 - **Exception:** If this is intended, add `{"rule":"pmd/LiteralsFirstInComparisons","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#literalsfirstincomparisons)
+
+<a id="pmd-lockorderinversion"></a>
+
+### `pmd/LockOrderInversion`
+
+Two locks of one class taken in opposite orders (`synchronized`, `lock()` up to `unlock()`), so two threads can each hold one and wait for the other; see [Lock discipline](../../spec/checks.md#lock-discipline).
+
+- **Scope:** Main and test sources.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** This nesting takes two locks of the class in the opposite order to another nesting of the class: two threads that run both can each hold one lock and wait forever for the other, a deadlock that no test reliably shows. Take nested locks in one order everywhere in the class (if any path takes a and then b, no path takes b and then a), or guard the state with one lock. Only locks held in fields of the class, this, Type.class and Type.FIELD are compared; a lock passed in, held in a local or taken in a called method is not followed.
+- **Exception:** If this is intended, add `{"rule":"pmd/LockOrderInversion","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-logstringconcatenation"></a>
 
