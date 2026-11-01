@@ -4,6 +4,8 @@ import { heldFindings, heldLine } from './format/held-findings.mjs';
 import { foldMutants } from './format/mutants.mjs';
 import { noteSummaryLines } from './format/notes.mjs';
 import { singleLine } from './format/text.mjs';
+import { areaCountLine } from './format/rule-groups/finding-areas.mjs';
+import { byFixOrder, ruleGroupLines, withoutRoute } from './format/rule-groups/rule-groups.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
 import {
   TESTS_FAILED_RULE,
@@ -23,7 +25,11 @@ export function renderConsoleSummary(report, options = {}) {
 
 function renderGateSummary(
   report,
-  { color = true, diagnosticsPath = 'reports/quality/diff/combined/report.txt' } = {},
+  {
+    color = true,
+    details = false,
+    diagnosticsPath = 'reports/quality/diff/combined/report.txt',
+  } = {},
 ) {
   const violations = report.newFindings.filter(
     ({ classification }) => classification === 'enforceable',
@@ -45,19 +51,21 @@ function renderGateSummary(
       incomplete: report.toolErrors.length > 0,
       policyCount: violations.filter(isPolicyFinding).length,
     },
-    color,
+    { color, details },
   );
   appendReviewSummary(lines, consolePolicySummary(report), (text) =>
     style(text, [ANSI.bold, ANSI.yellow], color),
   );
-  appendHeldSummary(lines, report.unchangedFindings, color);
+  appendHeldSummary(lines, report.unchangedFindings, { color, details, diagnosticsPath });
   appendNoteSummary(lines, report.notes, color);
   appendToolErrorSummary(lines, report.toolErrors, color);
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
   return `${lines.join('\n')}\n`;
 }
 
-function appendHeldSummary(lines, unchangedFindings, color) {
+const MAX_HELD_LINES = 10;
+
+function appendHeldSummary(lines, unchangedFindings, { color, details, diagnosticsPath }) {
   const { metrics, lint } = heldFindings(unchangedFindings);
   if (metrics.length > 0) {
     lines.push(
@@ -66,7 +74,7 @@ function appendHeldSummary(lines, unchangedFindings, color) {
         [ANSI.dim],
         color,
       ),
-      ...metrics.map((finding) => `  ${heldLine(finding)}`),
+      ...heldList(metrics, { details, diagnosticsPath }),
     );
   }
   if (lint.length > 0) {
@@ -76,9 +84,18 @@ function appendHeldSummary(lines, unchangedFindings, color) {
         [ANSI.dim],
         color,
       ),
-      ...lint.map((finding) => `  ${heldLine(finding)}`),
+      ...heldList(lint, { details, diagnosticsPath }),
     );
   }
+}
+
+function heldList(findings, { details, diagnosticsPath }) {
+  const shown = details ? findings : findings.slice(0, MAX_HELD_LINES);
+  const rest = findings.length - shown.length;
+  return [
+    ...shown.map((finding) => `  ${heldLine(details ? finding : withoutRoute(finding))}`),
+    ...(rest === 0 ? [] : [`  … ${String(rest)} more; see ${diagnosticsPath}`]),
+  ];
 }
 
 function appendNoteSummary(lines, notes, color) {
@@ -113,10 +130,20 @@ function failing(text, color) {
   return style(text, [ANSI.bold, ANSI.red], color);
 }
 
-function appendViolationSummary(lines, summary, color) {
+function appendViolationSummary(lines, summary, { color, details }) {
   const { violations } = summary;
   lines.push(violationHeadline(summary, color));
-  for (const group of groupRepeatedFindings(foldMutants(violations))) {
+  const counts = areaCountLine(violations);
+  if (counts !== undefined) {
+    lines.push(`  by area: ${counts}`);
+  }
+  if (!details) {
+    lines.push(
+      ...ruleGroupLines(foldMutants(violations), (label) => style(label, [ANSI.yellow], color)),
+    );
+    return;
+  }
+  for (const group of groupRepeatedFindings(violations.toSorted(byFixOrder))) {
     const [finding] = group;
     lines.push(
       `  ${style(`${finding.tool}/${finding.rule}`, [ANSI.yellow], color)} ${finding.path}${describeLocations(group)}`,
@@ -131,9 +158,7 @@ function groupRepeatedFindings(findings) {
     const key = [finding.tool, finding.rule, finding.path, finding.message].join('\0');
     groups.set(key, [...(groups.get(key) ?? []), finding]);
   }
-  return [...groups.values()].map((group) =>
-    group.toSorted((left, right) => (left.location?.line ?? 0) - (right.location?.line ?? 0)),
-  );
+  return [...groups.values()];
 }
 
 function describeLocations(group) {

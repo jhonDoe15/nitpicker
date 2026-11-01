@@ -3,18 +3,19 @@ import { renderConsoleSummary } from '../diff/reporting/summary.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { renderClosingSections } from '../exceptions/stale-exceptions.mjs';
 
+function consoleSummary({ cli, report, outputRoot }) {
+  const color = cli.environment.NO_COLOR === undefined;
+  const diagnosticsPath = absoluteTextReportPath(outputRoot);
+  return renderConsoleSummary(report, { color, details: cli.options.details, diagnosticsPath });
+}
+
 export function writeComparisonOutcome({ cli, report, base, outputRoot }) {
   const { options, environment, stdout } = cli;
   const unchanged = report.summary.noChanges === true;
   if (!unchanged) {
     stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
   }
-  stdout.write(
-    renderConsoleSummary(report, {
-      color: environment.NO_COLOR === undefined,
-      diagnosticsPath: absoluteTextReportPath(outputRoot),
-    }),
-  );
+  stdout.write(consoleSummary({ cli, report, outputRoot }));
   if (!unchanged) {
     stdout.write(renderClosingSections(cli, report));
   }
