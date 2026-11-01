@@ -172,6 +172,12 @@ To learn why a rule is on and what form it allows before you write or change cod
   config that never runs, no constant false `@EnabledIf` and no `assumeTrue(false)`; no `f:` name prefix,
   `ftest`, `fcontext`, `fit`. Fix the test or delete it; limit it to an environment with `@EnabledOnOs` or
   an assumption on a real condition when it cannot run elsewhere.
+- No retries in test code (`pmd/RetryInTest`): no `@RetryingTest`, `@RepeatedIfExceptionsTest`, TestNG
+  `retryAnalyzer`, `IRetryAnalyzer`, `RetryAnalyzerCount` or `setRetryAnalyzer(...)`, and no Kotest
+  `retries` (`.config(retries = n)`, `retries = n` in a spec, `override val retries` in a project or
+  package config, `TestConfig(retries = n)`). A test that passes on a later attempt hides a flaky or
+  racy test: wait on the condition instead of a fixed delay, isolate shared state. `retries = 0` and
+  `@RepeatedTest` are fine.
 - Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion that can be skipped, inside an `if`,
   a `when`, any loop (also over results), a safe call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that
   swallows the failure, a `runCatching`, or after an early `return`. An `if`/`else` or `when` whose every

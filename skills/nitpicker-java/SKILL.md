@@ -170,6 +170,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   answer, a thread body or a test fake that implements or extends a main class is fine. To
   show something does not happen, give the code a `Clock` or scheduler the test moves forward, not
   `after(ms).never()` or `during(...)` (`NegativeWaitInTest`).
+- No retries in test code (`RetryInTest`): no `@RetryingTest`, `@RepeatedIfExceptionsTest`, TestNG
+  `retryAnalyzer`, `IRetryAnalyzer` or `RetryAnalyzerCount`, nor `setRetryAnalyzer(...)`. A test that
+  passes on a later attempt hides a flaky or racy test: wait on the condition instead of a fixed
+  delay, isolate shared state. `@RepeatedTest` is fine, since every repetition must pass.
 - Tests print nothing new (`test-runtime/test-console-output`): no `System.out`/`System.err`, and
   no new `WARN` or `ERROR` log line from the code under test. Fix the cause the line names.
 - In main code, nothing with an outside effect runs while a class loads (`ClassLoadEffect`): no
@@ -198,7 +202,7 @@ To learn why a rule is on and what form it allows before you write or change cod
 - A line you touch must have its branches covered, even if it was uncovered before.
 - Existing PMD, SpotBugs, Error Prone and Checkstyle findings stay baselined while their message is
   unchanged; adding another of the same kind in the file is new. Don't rename or move a file that
-  has findings: Checkstyle and CRAP findings don't follow renames and would count as new.
+  has Checkstyle findings: they don't follow renames and would count as new.
 
 ## Repository files
 
