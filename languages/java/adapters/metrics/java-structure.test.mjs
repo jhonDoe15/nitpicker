@@ -102,12 +102,14 @@ describe('Java structure findings', () => {
       symbol: 'Big.big',
       ratchet: {
         key: 'function:Big.big:occurrence:1:lines',
+        declarationKey: 'function:Big.big:declaration:c9e872d07a659316b3922eaa:lines',
         value: 51,
         worseMessage:
           'Big.big grew from {base} to 51 lines (limit 50). Put new code in a new function. If this is intended, add {"rule":"function-lines-limit","paths":["src/main/java/demo/Big.java"],"function":"Big.big","reason":"..."} to "exceptions" in nitpicker.config.json.',
         heldMessage:
           'Big.big: 51 lines (limit 50), allowed because base was {base}; any increase fails.',
       },
+      anchor: { key: 'function:lines:text:d748da76f8f51980958aab0b' },
       location: { line: 2 },
     });
   });
