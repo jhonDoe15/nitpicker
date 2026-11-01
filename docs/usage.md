@@ -2090,8 +2090,9 @@ of these is visible in the report. Remove them as the codebase improves.
 ## Container image
 
 The repository's `Dockerfile` builds an image that runs the gate in any CI without installing Node
-on the host. It is Node 22 (slim) with Git, nitpicker installed from source as `nitpicker` (the
-entrypoint), and `/work` as the working directory. Build it from the repository root; no image is
+on the host. It is Node 22 (slim) with Git, `ps` (procps, which mutation testing uses to manage child
+processes), nitpicker installed from source as `nitpicker` (the entrypoint), and `/work` as the
+working directory. Build it from the repository root; no image is
 published yet.
 
 ```sh
