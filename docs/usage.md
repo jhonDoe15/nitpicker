@@ -954,9 +954,13 @@ For Jest the run uses Jest's `default` reporter and nitpicker's console reporter
 `silent` and `verbose` off, because Jest buffers console calls only then; a `silent` project then
 shows its console output in the run's log. Jest keeps only the first argument of a failed
 `console.assert` (`console.assert(false, 'bad %s', 'input')` gives `Assertion failed: bad %s`). With
-`node:test`, tests of one file that run concurrently can swap the test name, and
-`--experimental-test-isolation=none` (every file in the runner's own process) is not read at all,
-because the file of a call is not known there: the check passes with no findings. Mocha runs every
+`node:test`, tests of one file that run concurrently can swap the test name. With
+`--experimental-test-isolation=none` (every file in the runner's own process) a call belongs to the
+file whose test or top-level code started the work (a hook's call to the file that declares the hook),
+read from the async resource node:test runs each of them in, and names no test, as with Jest. Work a
+file started keeps that file, also when it prints while a later file runs or after the file's tests,
+as long as the runner process lives; Vitest without isolation gives such a timer to the file running
+when it fires, and Mocha does not see it. Mocha runs every
 spec file in one process (one per worker with `--parallel`); a root hook from a `--require` file
 belongs to no test file and is not seen, but what the work it started prints while a test runs (a
 server it started handling the test's request) belongs to that test, as with Vitest. Work another spec
@@ -966,9 +970,11 @@ It does not see:
 
 - `console.log`, `console.info` and `console.debug`, which go to standard output;
 - `process.stderr.write`, `process.emitWarning`, and the output of child processes and worker threads
-  a test starts;
+  a test starts, on every runner (a `worker_threads` Worker prints through its own console, whose
+  output the parent receives as a stream);
 - output printed after a test file has finished (after its last `after`/`afterAll` hook), such as a
-  dangling timer that fires later, or with Mocha a timer that fires while another file's tests run;
+  dangling timer that fires later, or with Mocha a timer that fires while another file's tests run
+  (`node:test` with isolation off is the exception above);
   with Jest such a call prints "Cannot log after tests are done", which fails a run in band only when
   it would fail without nitpicker too, and only when Jest's report shows no other failure (a failed
   test or suite, or an obsolete or unwritten snapshot);
