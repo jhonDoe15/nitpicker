@@ -20,7 +20,6 @@ import {
 } from '../../../execution/test-support/analyzer-findings.mjs';
 import { readJson, writeFiles } from '../../../git/test-support/fixture-files.mjs';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
-import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 
 vi.mock('node:fs', async (importOriginal) => {
   const actual = await importOriginal();
