@@ -23,7 +23,27 @@ itself is tested end to end with npm projects. nitpicker brings its own pinned E
 Stryker and CRAP tooling and loads them from its own package, so neither side of the comparison can
 choose them. `vitest` and `@vitest/coverage-v8` (4.1.11 or newer, or 5) and `typescript` come from
 your project; if one is missing or incompatible, the tool that needs it fails and the report shows a
-tool error.
+tool error. On Node.js 22 with its bundled npm 10, see [npm 10 and Vitest 4.1](#npm-10-and-vitest-41).
+
+### npm 10 and Vitest 4.1
+
+Node.js 22 ships with npm 10, and npm 10 cannot resolve the peers of Vitest 4.1 (every 4.1.x
+release, with or without `@vitest/coverage-v8`) when there is no lockfile to start from:
+
+```text
+npm error Cannot read properties of null (reading 'edgesOut')
+```
+
+Nothing is installed, so a later `npx nitpicker` fails with "Required tool vitest is not installed",
+followed by this hint. Any one of these avoids it:
+
+- Install with npm 11: `npx npm@11 install --save-dev nitpicker vitest @vitest/coverage-v8`, or
+  `npm install -g npm@11` once. The lockfile it writes then installs with npm 10 too, so `npm ci` in
+  CI on Node.js 22 works.
+- Use Vitest 5 (`vitest@5 @vitest/coverage-v8@5`), which npm 10 installs.
+- Add `--legacy-peer-deps` to the npm 10 install.
+
+Vitest 4.0 does not hit it, but nitpicker needs 4.1.11 or newer.
 
 ### From a GitHub release
 
