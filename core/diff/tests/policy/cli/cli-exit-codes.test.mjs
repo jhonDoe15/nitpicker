@@ -91,8 +91,8 @@ fake-quality-analyzer: base=1 head=1 new=0 resolved=0 unchanged=1 changed-metric
 
 \u001b[1m\u001b[31mQuality gate summary\u001b[0m
 \u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m src/main/new.ts:1
-    Fixture finding
+  \u001b[33mfake-quality-analyzer/fixture-rule\u001b[0m: Fixture finding
+    src/main/new.ts:1:4
 \u001b[2mFull diagnostics: ${repository.outputRoot}/report.txt\u001b[0m
 `);
     expect(output.stdoutText).not.toContain('Per-tool counts:');
@@ -281,8 +281,8 @@ Design note for review (not failing): 1 new
 
 \u001b[1m\u001b[31mQuality gate summary\u001b[0m
 \u001b[1m\u001b[31m✖ 1 new enforceable violation\u001b[0m
-  \u001b[33mfake-quality-analyzer/match-me\u001b[0m src/main/new.ts:1
-    Fixture finding
+  \u001b[33mfake-quality-analyzer/match-me\u001b[0m: Fixture finding
+    src/main/new.ts:1:4
 \u001b[2mFull diagnostics: ${repository.outputRoot}/report.txt\u001b[0m
 
 Findings matching --rule match-me:
