@@ -67,7 +67,8 @@ not in CI: run it after changing `core/diff/comparison/base-red/` or a test runn
 
 CI (the `typescript` workflow) runs:
 
-- on every push to `main` that touches a path in the workflow's `paths` list;
+- on every push to `main` that touches a path in the workflow's `paths` list (a run that has started
+  finishes; a run still waiting is replaced by the next push's run, which tests everything merged so far);
 - on a pull request when someone adds the `run-ci` label, once per added label (remove and add the
   label again for another run);
 - by hand from the Actions tab (Run workflow) on any branch that already has this workflow.
