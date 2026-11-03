@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync, utimesSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { failedCases, failingTestsError, freshReports } from './test-failures.mjs';
+import { failedCases, failingTestsError, freshReports, moduleName } from './test-failures.mjs';
 
 const roots = [];
 
@@ -25,6 +25,19 @@ const SUITE = `<testsuite name="shop.CartTest">
 </testsuite>`;
 
 describe('failedCases', () => {
+  it('drops the parameter list and the exception class from a JUnit 5 case', () => {
+    const root = directory();
+    const file = path.join(root, 'TEST-demo.GreeterTest.xml');
+    writeFileSync(
+      file,
+      `<testsuite name="demo.GreeterTest"><testcase classname="demo.GreeterTest" name="greetsByName()"><failure message="org.opentest4j.AssertionFailedError: expected: &lt;Hi&gt; but was: &lt;Hello&gt;"/></testcase></testsuite>`,
+    );
+
+    expect(failedCases(file)).toEqual([
+      'demo.GreeterTest.greetsByName: expected: <Hi> but was: <Hello>',
+    ]);
+  });
+
   it('names each failing or erroring test with the first line of its message', () => {
     const root = directory();
     writeFileSync(path.join(root, 'TEST-shop.CartTest.xml'), SUITE);
@@ -33,6 +46,57 @@ describe('failedCases', () => {
       'shop.CartTest.adds: expected: 4',
       'shop.CartTest.empties: java.lang.IllegalStateException',
     ]);
+  });
+});
+
+describe('failedCases with reruns', () => {
+  function failuresOf(body) {
+    const root = directory();
+    const file = path.join(root, 'TEST-shop.CartTest.xml');
+    writeFileSync(file, `<testsuite name="shop.CartTest">${body}</testsuite>`);
+    return failedCases(file);
+  }
+
+  it.each([
+    [
+      'a Surefire rerun',
+      `<testcase classname="shop.CartTest" name="adds()">
+        <flakyFailure message="java.lang.AssertionError: expected: 4&#10;but was: 3"
+          type="java.lang.AssertionError"><stackTrace/></flakyFailure>
+        <system-out/>
+      </testcase>`,
+      'shop.CartTest.adds: failed, then passed on a rerun (fix the flaky test; nitpicker counts a rerun as a failure): expected: 4',
+    ],
+    [
+      'a flaky error',
+      `<testcase classname="shop.CartTest" name="empties">
+        <flakyError type="java.lang.IllegalStateException"><stackTrace/></flakyError>
+      </testcase>`,
+      'shop.CartTest.empties: failed, then passed on a rerun (fix the flaky test; nitpicker counts a rerun as a failure): java.lang.IllegalStateException',
+    ],
+  ])('counts a test that failed and passed only on %s as failed', (_name, body, expected) => {
+    expect(failuresOf(body)).toEqual([expected]);
+  });
+
+  it('lists a test whose every rerun failed once, as a plain failure', () => {
+    expect(
+      failuresOf(`<testcase classname="shop.CartTest" name="adds">
+        <failure message="expected: 4"/>
+        <rerunFailure message="expected: 4"/>
+        <rerunFailure message="expected: 4"/>
+      </testcase>`),
+    ).toEqual(['shop.CartTest.adds: expected: 4']);
+  });
+
+  it('lists both attempts of a test written by the Gradle retry plugin as one failure', () => {
+    expect(
+      failuresOf(`<testcase classname="shop.CartTest" name="adds()"><failure message="expected: 4"/></testcase>
+      <testcase classname="shop.CartTest" name="adds()"/>`),
+    ).toEqual(['shop.CartTest.adds: expected: 4']);
+  });
+
+  it('passes a clean test', () => {
+    expect(failuresOf('<testcase classname="shop.CartTest" name="adds"/>')).toEqual([]);
   });
 });
 
@@ -52,12 +116,35 @@ describe('freshReports', () => {
 
 describe('failingTestsError', () => {
   it('lists at most ten failing tests and counts the rest', () => {
-    const failures = Array.from({ length: 12 }, (_, index) => `shop.T.t${String(index)}: no`);
+    const tests = Array.from({ length: 12 }, (_, index) => `shop.T.t${String(index)}: no`);
 
-    expect(failingTestsError('/repo', failures).message.split('\n')).toEqual([
+    expect(failingTestsError('/repo', [{ module: '.', tests }]).message.split('\n')).toEqual([
       'Tests fail in /repo; nitpicker needs a passing test suite for coverage and mutation testing:',
-      ...failures.slice(0, 10).map((failure) => `  ${failure}`),
+      ...tests.slice(0, 10).map((test) => `  ${test}`),
       '  and 2 more',
     ]);
+  });
+
+  it('lists the tests of every module', () => {
+    const error = failingTestsError('/repo', [
+      { module: '.', tests: ['shop.T.a: no'] },
+      { module: 'core', tests: ['shop.U.b: no'] },
+    ]);
+
+    expect(error.message.split('\n').slice(1)).toEqual(['  shop.T.a: no', '  shop.U.b: no']);
+  });
+
+  it('keeps the failures on the error without changing how it compares', () => {
+    const failures = [{ module: 'core', tests: ['shop.T.t: no'] }];
+    const error = failingTestsError('/repo', failures);
+
+    expect(error.failures).toBe(failures);
+    expect(Object.keys(error)).toEqual([]);
+  });
+});
+
+describe('moduleName', () => {
+  it('is the dot for the root project and the directory for a module', () => {
+    expect([moduleName(''), moduleName('core')]).toEqual(['.', 'core']);
   });
 });

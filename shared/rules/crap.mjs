@@ -51,7 +51,8 @@ export function crapFindings(
       } ${route}`,
       classification: 'enforceable',
       symbol: fn.name,
-      ...(positiveInteger(fn.line) === undefined ? {} : { location: { line: fn.line } }),
+      ...anchorOf(fn),
+      ...locationOf(fn),
     };
     findings.push(
       unknown || fn.ratchetKey === undefined
@@ -62,6 +63,19 @@ export function crapFindings(
   return findings;
 }
 
+function anchorOf({ anchor }) {
+  return anchor === undefined ? {} : { anchor: { key: anchor } };
+}
+
+function locationOf({ line, endLine }) {
+  if (positiveInteger(line) === undefined) {
+    return {};
+  }
+  return {
+    location: { line, ...(positiveInteger(endLine) === undefined ? {} : { endLine }) },
+  };
+}
+
 // The score is rounded to what the message shows, so noise below that never counts as a rise.
 function withRatchet({ finding, fn, limit, route, shown }) {
   const crap = Number(fn.crap.toFixed(2));
@@ -69,6 +83,7 @@ function withRatchet({ finding, fn, limit, route, shown }) {
     ...finding,
     ratchet: {
       key: fn.ratchetKey,
+      ...(fn.declarationKey === undefined ? {} : { declarationKey: fn.declarationKey }),
       value: crap,
       worseMessage: `${renderMessage(GREW_MESSAGES.crap, {
         name: shown,

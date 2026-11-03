@@ -12,6 +12,7 @@ import {
   readTouchedPaths,
 } from '../git/patches/project-moves.mjs';
 import { readChangedLines } from '../git/patches/changed-lines.mjs';
+import { readRemovesTests } from '../git/patches/test-removal.mjs';
 import { withTemporaryWorktree, withNamedTemporaryWorktree } from '../git/repository/worktree.mjs';
 import { withHeadPolicyFile } from '../../../languages/typescript/preset/head-policy.mjs';
 import { runAnalyzers } from '../execution/run-analyzers.mjs';
@@ -36,6 +37,7 @@ export function runQualityDiff(options) {
   report.summary.elapsedMs = Date.now() - startedAt;
   report.text = writeDiffReports(settings.outputRoot, report, {
     projectPath: settings.projectRelativePath,
+    repositoryRoot: settings.repositoryRoot,
   });
   return report;
 }
@@ -92,16 +94,28 @@ function readSnapshotLayout({ repositoryRoot, projectRelativePath }, comparison)
     baseProjectRelativePath,
     moves,
     touchedPaths,
-    touchedCode: { changedLines, isStrictRule, mustMeetOnEditedLines },
+    touchedCode: {
+      changedLines,
+      isStrictRule,
+      mustMeetOnEditedLines,
+      testsRemoved: readRemovesTests({
+        repositoryRoot,
+        mergeBaseSha,
+        headSha,
+        projectRelativePath,
+        baseProjectRelativePath,
+      }),
+    },
   };
 }
 
 function withSnapshotRoots({ settings, comparison, layout }, operation) {
-  const { repositoryRoot, projectRelativePath } = settings;
-  return withTemporaryWorktree(repositoryRoot, comparison.mergeBaseSha, (baseWorktreeRoot) =>
+  const { repositoryRoot, projectRelativePath, warn } = settings;
+  const base = { commitSha: comparison.mergeBaseSha, warn };
+  return withTemporaryWorktree(repositoryRoot, base, (baseWorktreeRoot) =>
     withNamedTemporaryWorktree(
       repositoryRoot,
-      { commitSha: comparison.headSha, directoryName: 'head' },
+      { commitSha: comparison.headSha, directoryName: 'head', warn },
       (headWorktreeRoot) =>
         operation({
           baseProjectRoot: path.join(baseWorktreeRoot, layout.baseProjectRelativePath),
@@ -226,7 +240,10 @@ function runBaseSide(context) {
     }),
     analyzers: baseSetup.analyzers,
     run: (baseAnalyzers) => runBaseAnalyzers(context, baseAnalyzers),
-    onCached: (count) => settings.progress?.write(cachedLine({ label: 'base', count })),
+    onCached: (count) =>
+      settings.progress?.write(
+        cachedLine({ label: 'base', count, directory: settings.cacheStore.directory }),
+      ),
     resolveContext: {
       liveProjectRoot: settings.headProjectRoot,
       policyRoot: roots.headSnapshotRoot,

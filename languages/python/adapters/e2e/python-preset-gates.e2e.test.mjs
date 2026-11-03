@@ -21,6 +21,7 @@ import {
   removeRepositories,
   summarize,
 } from './test-support/python-e2e-support.mjs';
+import { helpUriProblems } from '../../../../shared/reference/test-support/help-uris.mjs';
 
 const enforceable = (result) =>
   summarize(
@@ -125,6 +126,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
       'ruff F401 bad.py',
       'ruff-format format bad.py',
     ]);
+    expect(helpUriProblems(result.json('new-findings.json'))).toEqual([]);
     const sarif = JSON.parse(readFileSync(path.join(result.reports, 'report.sarif'), 'utf8'));
     expect(sarif.runs[0].results.map(({ ruleId }) => ruleId)).toEqual([
       'coupling/module-coupling',
@@ -138,7 +140,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
       'ruff-format/format',
     ]);
     expect(readFileSync(path.join(result.reports, 'report.junit.xml'), 'utf8')).toMatch(/F401/);
-    expect(result.text).toMatch(/ruff\/F401 src\/demo\/bad\.py:1\n/);
+    expect(result.text).toMatch(/ruff\/F401: [^\n]*\n {4}src\/demo\/bad\.py:1:8\n/);
   });
   it('fails a new type error found by mypy, strict by default, and keeps the legacy ones baselined', () => {
     const result = gate(project, 'type-error');

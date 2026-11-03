@@ -3,6 +3,7 @@ import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { parseAnalyzerReport } from '../../../core/diff/comparison/finding-schema.mjs';
 import { GREW_MESSAGES, HELD_MESSAGES, MESSAGES, renderMessage } from '../../../shared/policy.mjs';
+import { hash } from '../../../shared/rules/finding-helpers.mjs';
 import { ingestPythonCrap } from './crap.mjs';
 
 const fixture = (name) => readFileSync(path.resolve(import.meta.dirname, 'fixtures', name), 'utf8');
@@ -44,7 +45,7 @@ describe('ingestPythonCrap', () => {
       message: `${renderMessage(MESSAGES.crapScoreLimit, { name: 'B.go', crap: '6.00', limit: 4 })}${ROUTE}`,
       classification: 'enforceable',
       symbol: 'B.go',
-      location: { line: 2 },
+      location: { line: 2, endLine: 5 },
       ratchet: {
         key: 'function:B.go:crap',
         value: 6,
@@ -95,7 +96,7 @@ describe('ingestPythonCrap', () => {
         message:
           'f has unknown coverage and no CRAP score: no test runs it. Add a test that calls it; for inline composition-root wiring, move it to a named function in adapters/ and test that. If this is intended, add {"rule":"crap-coverage-unknown","paths":["other.py"],"function":"f","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
-        location: { line: 1 },
+        location: { line: 1, endLine: 2 },
       },
     ]);
   });
@@ -115,7 +116,7 @@ describe('ingestPythonCrap', () => {
         message:
           'coro has CRAP 2.00; score must be below 2. Test its uncovered branches, or split a branchy part into its own function. If this is intended, add {"rule":"crap-score-limit","paths":["never.py"],"function":"coro","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
-        location: { line: 8 },
+        location: { line: 8, endLine: 9 },
         ratchet: {
           key: 'function:coro:crap',
           value: 2,
@@ -129,9 +130,8 @@ describe('ingestPythonCrap', () => {
   });
 
   it('puts no line number in the identity', () => {
-    for (const finding of ingest({ limit: 4 })) {
-      expect(finding.identity).not.toMatch(/\d{2,}/);
-    }
+    expect(ingest({ limit: 4 })).not.toHaveLength(0);
+    expect(ingest({ limit: 4 }).filter((finding) => /\d{2,}/.test(finding.identity))).toEqual([]);
   });
 
   it('does not take the coverage of a same-named entry whose lines lie outside the range of the function', () => {
@@ -148,16 +148,16 @@ describe('ingestPythonCrap', () => {
 
   it('includes the source hash in the identity of a function with known coverage only', () => {
     const functions = [...functionEntries(), entry('other.py', 'f', [1, 2])];
-    const [known, unknown] = ingest({ limit: 4, sourceHash: () => 'abc' }, functions).filter(
+    const [known, unknown] = ingest({ limit: 4, sourceText: () => 'abc' }, functions).filter(
       (finding) => finding.symbol !== 'top',
     );
 
-    expect(known.identity).toBe('function:B.go:source:abc');
+    expect(known.identity).toBe(`function:B.go:source:${hash('abc')}`);
     expect(unknown.identity).toBe('function:f');
   });
 
   it('numbers same-named definitions among those of the same text, so adding one above does not rename another', () => {
-    const sourceHash = ({ start }) => (start === 30 ? 'setter' : 'getter');
+    const sourceText = ({ start }) => (start === 30 ? 'setter' : 'getter');
     const coverage = JSON.stringify({
       files: { 'm.py': { executed_lines: [], missing_lines: [6, 11, 31], functions: {} } },
     });
@@ -165,17 +165,19 @@ describe('ingestPythonCrap', () => {
       ingestPythonCrap(
         starts.map((start) => entry('m.py', 'A.value', [start, start + 1])),
         coverage,
-        { limit: 1.5, sourceHash },
+        { limit: 1.5, sourceText },
       ).findings.map((finding) => finding.identity);
 
+    const [getter, setter] = [hash('getter'), hash('setter')];
+
     expect(identities([10, 30])).toEqual([
-      'function:A.value:source:getter',
-      'function:A.value:source:setter',
+      `function:A.value:source:${getter}`,
+      `function:A.value:source:${setter}`,
     ]);
     expect(identities([5, 10, 30])).toEqual([
-      'function:A.value:source:getter',
-      'function:A.value#2:source:getter',
-      'function:A.value:source:setter',
+      `function:A.value:source:${getter}`,
+      `function:A.value#2:source:${getter}`,
+      `function:A.value:source:${setter}`,
     ]);
   });
 
