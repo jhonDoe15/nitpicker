@@ -14,7 +14,7 @@
     "checkstyle",
     "AbbreviationAsWordInName",
     { "java": ["java"], "kotlin": ["kotlin"] },
-    { "java": ["gradle", "maven"], "kotlin": ["gradle"] },
+    { "java": ["gradle", "maven"], "kotlin": ["gradle", "maven"] },
     "Abbreviation as word in name",
     "Google style fixes one naming form for each kind of name, so a name reads the same everywhere; the formatter does not rename.",
     [

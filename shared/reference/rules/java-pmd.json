@@ -16,7 +16,7 @@
     "pmd",
     "AbstractClassWithoutAbstractMethod",
     { "java": ["java"], "kotlin": ["kotlin"] },
-    { "java": ["gradle", "maven"], "kotlin": ["gradle"] },
+    { "java": ["gradle", "maven"], "kotlin": ["gradle", "maven"] },
     "The abstract class does not contain any abstract methods.",
     "An abstract class suggests an incomplete implementation, which is to be completed by subclasses implementing the abstract methods. If the class is intended to be used as a base class only (not to be instantiated directly) a protected constructor can be provided to prevent direct instantiation.",
     [
@@ -2068,7 +2068,7 @@
     "Make this proxied method public, non-final and non-static, in a non-final class. Spring never proxies final or static methods, and nitpicker keeps proxied methods public.",
     { "key": "exceptions", "rule": "pmd/SpringProxyMethodVisibility" },
     {
-      "kotlin": "Make this proxied function public, and let Spring subclass it: apply the kotlin(\"plugin.spring\") compiler plugin (or write open class and open fun), and keep it out of objects and companion objects. Spring never proxies private, final or static functions, and nitpicker keeps proxied functions public."
+      "kotlin": "Make this proxied function public, and let Spring subclass it: apply the Kotlin spring compiler plugin (kotlin(\"plugin.spring\") on Gradle, <compilerPlugins><plugin>spring</plugin> with the kotlin-maven-allopen dependency on Maven) or write open class and open fun, and keep it out of objects and companion objects. Spring never proxies private, final or static functions, and nitpicker keeps proxied functions public."
     },
     "SpringProxySelfCall",
     "Move the annotated method to another bean and call it there. This call stays inside the class, so it skips the proxy and the called method's annotation does nothing.",

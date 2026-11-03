@@ -14,7 +14,7 @@
     "spotbugs",
     "AA_ASSERTION_OF_ARGUMENTS",
     { "java": ["java"], "kotlin": ["kotlin"] },
-    { "java": ["gradle", "maven"], "kotlin": ["gradle"] },
+    { "java": ["gradle", "maven"], "kotlin": ["gradle", "maven"] },
     "A SpotBugs bad practice pattern, `AA_ASSERTION_OF_ARGUMENTS`.",
     "SpotBugs reports code that breaks a recommended Java practice, in the compiled classes of the main sources at medium confidence and above; every pattern it reports fails the gate when the change adds it.",
     [
