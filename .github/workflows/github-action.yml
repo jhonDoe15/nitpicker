@@ -21,8 +21,9 @@ on:
 
 # Pull requests are checked locally with `npm run check` (CONTRIBUTING.md). On a pull request CI runs
 # only when the `run-ci` label is added; a newer request cancels the older run, other labels do not.
+# On main a started run finishes, and a newer push replaces a run that is still waiting.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
+  group: ${{ github.workflow }}-${{ github.event_name == 'push' && 'main' || github.event.label.name == 'run-ci' && github.event.pull_request.number || github.run_id }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 permissions:
