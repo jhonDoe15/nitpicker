@@ -372,8 +372,8 @@ A committed file larger than the limit (lockfiles are exempt).
 
 The same 3 or more steps on one value of a project class, repeated by 3 or more callables in 2 or more modules.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `structure`
+- **Presets:** TypeScript, JavaScript and Java
+- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java)
 - **Scope:** The JavaScript preset enforces this check only in part.
 - **Why it is on:** A sequence every caller has to repeat is knowledge the class should own; each copy can get the order or the cleanup wrong.
 - **Allowed form:** Give the class one operation that runs the steps, and call that.
@@ -427,8 +427,8 @@ A component file without a story, in a package that has Storybook.
 
 A parameter of a project type with 5 or more fields passed whole through 2 or more callables, one in another module, that together read at most a third of its fields.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `structure`
+- **Presets:** TypeScript, JavaScript and Java
+- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java)
 - **Scope:** The JavaScript preset enforces this check only in part.
 - **Why it is on:** Passing a whole context for a few of its fields makes every caller build all of it and hides what the code really needs.
 - **Allowed form:** Pass the values that are read, or a small type with just them.
@@ -441,8 +441,8 @@ A parameter of a project type with 5 or more fields passed whole through 2 or mo
 
 The same 3 or more typed parameters (names and types) in 3 or more exported functions of 2 or more modules.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `structure`
+- **Presets:** TypeScript, JavaScript and Java
+- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java)
 - **Scope:** The JavaScript preset enforces this check only in part.
 - **Why it is on:** Values that always travel together are a concept with no type, so their rules are checked in many places or nowhere.
 - **Allowed form:** Give them one value type that owns their rules, and pass that instead.
@@ -455,8 +455,8 @@ The same 3 or more typed parameters (names and types) in 3 or more exported func
 
 The exported members of one module or class, used from other modules, that split into 2 or more groups no caller module uses together and that share no field or helper.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `structure`
+- **Presets:** TypeScript, JavaScript and Java
+- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java)
 - **Scope:** The JavaScript preset enforces this check only in part.
 - **Why it is on:** A module that serves unrelated groups of callers is several modules in one, so a change for one group touches the others.
 - **Allowed form:** Split the module along the groups.
@@ -534,8 +534,8 @@ A folder with more source files, or more test files, directly in it than the lim
 
 Two or more functions outside a class with behaviour that branch on the same 2 or more of its fields.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `structure`
+- **Presets:** TypeScript, JavaScript and Java
+- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java)
 - **Scope:** The JavaScript preset enforces this check only in part.
 - **Why it is on:** Decisions over the state of a class made outside it spread its rules across the code base.
 - **Allowed form:** Give the class a method that answers the question, and call that.
@@ -548,8 +548,8 @@ Two or more functions outside a class with behaviour that branch on the same 2 o
 
 Two or more forwarding hops in a row, each into another module, that pass the same parameters in order and return the result unchanged, with the same parameter and return types.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `structure`
+- **Presets:** TypeScript, JavaScript and Java
+- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java)
 - **Scope:** The JavaScript preset enforces this check only in part.
 - **Why it is on:** Layers that only forward add indirection without hiding anything, so every reader has to follow them to find the code that works.
 - **Allowed form:** Call the last function directly, or give the middle layers work of their own.
@@ -652,8 +652,8 @@ A line longer than the limit, except imports, URLs and the text of string litera
 
 A caller in another module that changes (push, add, put, an element assignment) a private mutable field of a class through the value an exported member of that class returned.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `structure`
+- **Presets:** TypeScript, JavaScript and Java
+- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java)
 - **Scope:** The JavaScript preset enforces this check only in part.
 - **Why it is on:** An owner that hands out its own mutable state no longer controls it, so its rules can be broken from anywhere.
 - **Allowed form:** Return a copy or a read-only view, or add an operation to the owner that makes the change.
@@ -677,8 +677,8 @@ A new icon-sized `.svg` file while an icon package is a dependency.
 
 A call that breaks a lifecycle the project lists in `protocols`: an `open` member without a `close` member on every exit, or a listed step before `open`.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `structure`
+- **Presets:** TypeScript, JavaScript and Java
+- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java)
 - **Scope:** The JavaScript preset enforces this check only in part.
 - **Why it is on:** A resource used out of order or left open leaks or fails at run time.
 - **Allowed form:** Call the steps in the listed order and close on every exit, for example in a `finally` block.
@@ -703,8 +703,8 @@ A component named like one the project already renders from a dependency.
 
 Two decisions in different modules over the same enum or field that group its constants the same way, with an arm covering 2 or more constants.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `structure`
+- **Presets:** TypeScript, JavaScript and Java
+- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java)
 - **Scope:** The JavaScript preset enforces this check only in part.
 - **Why it is on:** A grouping repeated in several places is a rule of its own; a new constant has to be added to every copy.
 - **Allowed form:** Give the type one function that answers the question, and call it from each place.
