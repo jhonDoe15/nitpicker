@@ -317,7 +317,9 @@ describe.skipIf(!enabled)('KotlinMetrics on source files', () => {
   });
 
   it('collects the calls of finally and CancellationException handlers outside NonCancellable, and the launches of use blocks', () => {
-    const { facts } = measure(writeSources('lifetimes', { 'src/Lifetimes.kt': LIFETIMES }));
+    const { facts } = measure(
+      writeSources(workspace, 'lifetimes', { 'src/Lifetimes.kt': LIFETIMES }),
+    );
 
     expect(lifetimeFacts(facts.files[0])).toEqual(LIFETIME_FACTS);
   });
