@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 249 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 251 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -915,6 +915,27 @@ Having a lot of control variables in a 'for' loop makes it harder to see what ra
 - **Allowed form:** Keep one variable in the for header; declare the others before the loop or use a while loop.
 - **Exception:** If this is intended, add `{"rule":"pmd/ForLoopVariableCount","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#forloopvariablecount)
+
+<a id="pmd-forwardingmethodalias"></a>
+
+### `pmd/ForwardingMethodAlias`
+
+In main sources: an instance method of a class, enum or record whose body only passes its parameters, in order (or through `this`), to another method of the same class with the same parameter types, return type and `throws` (`return sum(items);`).
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** This method only passes its parameters, in order, to another method of the same class. Call that method directly and delete the alias. Overrides, annotated methods (a deprecated alias) and factories named of or from are allowed.
+- **Exception:** If this is intended, add `{"rule":"pmd/ForwardingMethodAlias","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="pmd-forwardingmethodaliasrename"></a>
+
+### `pmd/ForwardingMethodAliasRename`
+
+This method only passes its parameters, in order, to a less visible method of the same class. Rename that method to this method's name and delete the alias. Overrides, annotated methods (a deprecated alias) and factories named of or from are allowed.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Exception:** If this is intended, add `{"rule":"pmd/ForwardingMethodAliasRename","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-generatedonhandwrittencode"></a>
 
