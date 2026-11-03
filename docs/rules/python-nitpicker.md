@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 59 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 61 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -120,6 +120,15 @@ A string has the shape of a credential.
 
 - **Allowed form:** Declare an enum: `class Status(enum.StrEnum): ACTIVE = "active"` on Python 3.11+, otherwise `class Status(str, enum.Enum)`.
 - **Exception:** If this is intended, add `{"rule":"enum-string-constants","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-explicit-any"></a>
+
+### `python-rules/explicit-any`
+
+`<name>` is typed with an explicit `Any`.
+
+- **Allowed form:** Write the concrete type, a `Protocol`, a `TypeVar`, a `ParamSpec` or `object` (`dict[str, object]`, `Callable[..., object]`).
+- **Exception:** If this is intended, add `{"rule":"explicit-any","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-falsy-default"></a>
 
@@ -471,6 +480,15 @@ The task marker `<name>` has no issue.
 
 - **Allowed form:** Name the three states with an enum (`class Consent(Enum)` with `GRANTED`, `DENIED` and `UNKNOWN`), or take a keyword-only `bool` with a default (`*, urgent: bool = False`) when `None` only means false. A method that overrides a base class takes `@typing.override` and keeps the base signature.
 - **Exception:** If this is intended, add `{"rule":"tri-state-boolean","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-type-cast"></a>
+
+### `python-rules/type-cast`
+
+`<name>` asserts a type without checking the value.
+
+- **Allowed form:** Narrow the value with `isinstance` or `match`, or give it the correct type at its source.
+- **Exception:** If this is intended, add `{"rule":"type-cast","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-unbounded-fan-out"></a>
 
