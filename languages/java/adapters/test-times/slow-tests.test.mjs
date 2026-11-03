@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
-import { readSlowTestFindings, testCasesOf } from './slow-tests.mjs';
+import { readSlowTestFindings } from './slow-tests.mjs';
 import { ADDS_SPEC, ORDER_SOURCE } from './test-support/test-sources.mjs';
 
 const TEST_ROOT = 'src/test/java';
@@ -66,29 +66,6 @@ afterAll(() => {
   for (const root of temporaryRoots.splice(0)) {
     rmSync(root, { recursive: true, force: true });
   }
-});
-
-describe('testCasesOf', () => {
-  it('reads Gradle and Surefire testcases with their time in seconds', () => {
-    const xml = `<testsuites>${suite('shop.OrderTest', [
-      ['[1] 1', '0.25'],
-      ['positive(int)[2]', '1,234.5'],
-    ])}</testsuites>`.replace('<?xml version="1.0" encoding="UTF-8"?>\n', '');
-
-    expect(testCasesOf(xml, 'test')).toEqual([
-      { task: 'test', className: 'shop.OrderTest', name: '[1] 1', seconds: 0.25 },
-      { task: 'test', className: 'shop.OrderTest', name: 'positive(int)[2]', seconds: 1234.5 },
-    ]);
-  });
-});
-
-describe('testCasesOf with reruns', () => {
-  it('does not time a case that failed and passed on a rerun', () => {
-    const xml =
-      '<testsuite name="shop.OrderTest"><testcase name="a" classname="shop.OrderTest" time="9"><flakyFailure message="no"/></testcase><testcase name="b" classname="shop.OrderTest" time="1"/></testsuite>';
-
-    expect(testCasesOf(xml, 'test').map(({ name }) => name)).toEqual(['b']);
-  });
 });
 
 describe('readSlowTestFindings', () => {

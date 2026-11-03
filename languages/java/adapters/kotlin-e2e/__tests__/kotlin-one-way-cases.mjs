@@ -60,7 +60,10 @@ export function defineBannedCases(fixture, runWithPolicy) {
         const [finding] = detektFindingsOf(result.newEnforceable, testCase).filter(
           ({ rule }) => rule === testCase.rule,
         );
-        return { actual: finding.message, recorded: recordedFinding(testCase, finding.path).message };
+        return {
+          actual: finding.message,
+          recorded: recordedFinding(testCase, finding.path).message,
+        };
       });
 
     expect(compared.map(({ actual }) => actual)).toEqual(compared.map(({ recorded }) => recorded));

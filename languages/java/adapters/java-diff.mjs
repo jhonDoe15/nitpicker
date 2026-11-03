@@ -162,14 +162,13 @@ function mavenFindings(projectRoot, options) {
     configs: toolConfigChoices(projectRoot, options.policy),
     environment: options.environment,
   });
-  const preset = options.policy?.preset ?? 'java';
   const duplicates = {
     reportRoot: path.join(projectRoot, MAVEN_REPORT_DIRECTORY),
     manifest: mergedRoots(projectRoot, moduleDirs, MAVEN_REPORT_DIRECTORY),
     skippedFolders: options.policy?.duplicateSkippedFolders,
   };
   runJavaDuplicates(projectRoot, duplicates);
-  if (preset === 'kotlin') {
+  if (options.policy?.preset === 'kotlin') {
     runKotlinDuplicates(projectRoot, duplicates);
   }
   return {
