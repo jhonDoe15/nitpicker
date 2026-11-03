@@ -49,6 +49,57 @@ describe('failedCases', () => {
   });
 });
 
+describe('failedCases with reruns', () => {
+  function failuresOf(body) {
+    const root = directory();
+    const file = path.join(root, 'TEST-shop.CartTest.xml');
+    writeFileSync(file, `<testsuite name="shop.CartTest">${body}</testsuite>`);
+    return failedCases(file);
+  }
+
+  it.each([
+    [
+      'a Surefire rerun',
+      `<testcase classname="shop.CartTest" name="adds()">
+        <flakyFailure message="java.lang.AssertionError: expected: 4&#10;but was: 3"
+          type="java.lang.AssertionError"><stackTrace/></flakyFailure>
+        <system-out/>
+      </testcase>`,
+      'shop.CartTest.adds: failed, then passed on a rerun (fix the flaky test; nitpicker counts a rerun as a failure): expected: 4',
+    ],
+    [
+      'a flaky error',
+      `<testcase classname="shop.CartTest" name="empties">
+        <flakyError type="java.lang.IllegalStateException"><stackTrace/></flakyError>
+      </testcase>`,
+      'shop.CartTest.empties: failed, then passed on a rerun (fix the flaky test; nitpicker counts a rerun as a failure): java.lang.IllegalStateException',
+    ],
+  ])('counts a test that failed and passed only on %s as failed', (_name, body, expected) => {
+    expect(failuresOf(body)).toEqual([expected]);
+  });
+
+  it('lists a test whose every rerun failed once, as a plain failure', () => {
+    expect(
+      failuresOf(`<testcase classname="shop.CartTest" name="adds">
+        <failure message="expected: 4"/>
+        <rerunFailure message="expected: 4"/>
+        <rerunFailure message="expected: 4"/>
+      </testcase>`),
+    ).toEqual(['shop.CartTest.adds: expected: 4']);
+  });
+
+  it('lists both attempts of a test written by the Gradle retry plugin as one failure', () => {
+    expect(
+      failuresOf(`<testcase classname="shop.CartTest" name="adds()"><failure message="expected: 4"/></testcase>
+      <testcase classname="shop.CartTest" name="adds()"/>`),
+    ).toEqual(['shop.CartTest.adds: expected: 4']);
+  });
+
+  it('passes a clean test', () => {
+    expect(failuresOf('<testcase classname="shop.CartTest" name="adds"/>')).toEqual([]);
+  });
+});
+
 describe('freshReports', () => {
   it('lists only the JUnit reports written since the run started', () => {
     const root = directory();
