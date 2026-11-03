@@ -35,7 +35,9 @@ To learn why a rule is on and what form it allows before you write or change cod
 - Types: annotate every function, method and parameter; strict mypy, pyright or basedpyright (the project's own
   choice) checks the source roots. Fix the type. `# type: ignore`, `# noqa` and `# pyright: ignore`
   are findings themselves, so never write them, nor `# fmt: off`, `@no_type_check`, `if not TYPE_CHECKING:`
-  around code, or a `.pyi` beside its `.py`.
+  around code, or a `.pyi` beside its `.py`. No `typing.cast` or explicit `Any`, in tests
+  too: write the concrete type, `ParamSpec` for wrappers or `object`, narrow with `isinstance`, and
+  parse untrusted input once in an adapter.
 - Paths: `pathlib.Path` with `/`, `.read_text()`, `.exists()`. No `os.path`, no `open(path)`.
 - Strings: f-strings only. No `.format()` and no `%`.
 - Defaults: `None`, then build the value inside the function. No mutable default arguments.

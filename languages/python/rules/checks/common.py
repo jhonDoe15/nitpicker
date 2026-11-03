@@ -35,7 +35,8 @@ def shown(value, length=SHOWN_LENGTH):
 
 
 def finding(path, rule, subject, node):
-    return {"rule": rule, "path": path, "subject": subject, "line": node.lineno}
+    end = getattr(node, "end_lineno", None) or node.lineno
+    return {"rule": rule, "path": path, "subject": subject, "line": node.lineno, "end": end}
 
 
 def directories(path):
