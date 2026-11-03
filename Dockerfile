@@ -3,9 +3,9 @@
 # Run against a checkout:          docker run --rm -v "$PWD":/work nitpicker
 FROM node:22.14.0-slim
 
-# The gate diffs against the merge base, so git is required.
+# Git reads the merge base; mutation testing uses ps from procps to manage child processes.
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends git ca-certificates \
+    && apt-get install -y --no-install-recommends git ca-certificates procps \
     && rm -rf /var/lib/apt/lists/*
 
 # The base dependency install runs the package manager the project uses: Corepack serves pnpm and
