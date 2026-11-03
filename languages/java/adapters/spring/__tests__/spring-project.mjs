@@ -136,8 +136,13 @@ function stableConsoleEmitters(findings) {
     if (file === undefined) {
       return finding;
     }
+    const exception = finding.exception && {
+      ...finding.exception,
+      paths: finding.exception.paths.map((entry) => (entry === file ? '<emitting source>' : entry)),
+    };
     return {
       ...finding,
+      ...(exception && { exception }),
       message: finding.message
         .replaceAll(file, '<emitting source>')
         .replace(/, test "[^"]*"/u, ', test "<emitting test>"'),
