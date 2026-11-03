@@ -139,6 +139,10 @@
     { "key": "python.exceptions", "rule": "process-env-access" },
     "`<name>` reads the process environment outside the composition root",
     "Read the environment once in the composition root (`main.py`, `settings.py`, a `composition_root/` package) and pass the values in as arguments or a frozen settings dataclass.",
+    "process-stream-access",
+    { "key": "python.exceptions", "rule": "process-stream-access" },
+    "`<name>` reaches a standard stream outside the composition root",
+    "Take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point (`main.py`, `cli.py`, a `[project.scripts]` target or the `if __name__ == \"__main__\":` block) passes `sys.stdout` or `sys.stderr`. For an entry point the gate does not recognize, list its file in `python.entryPoints`.",
     "pydantic-any-field",
     { "key": "python.exceptions", "rule": "pydantic-any-field" },
     "The pydantic field `<name>` is typed `Any`",
@@ -319,7 +323,8 @@
     [18, 224, 2, 3, 225, 226, 22, 227, -1],
     [18, 228, 2, 3, 229, 230, 22, 231, -1],
     [18, 232, 2, 3, 233, 234, 22, 235, -1],
-    [236, 237, 2, 3, 238, 239, 240, 241, -1],
-    [242, 243, 2, 3, 244, 245, 246, 247, 248]
+    [18, 236, 2, 3, 237, 238, 22, 239, -1],
+    [240, 241, 2, 3, 242, 243, 244, 245, -1],
+    [246, 247, 2, 3, 248, 249, 250, 251, 252]
   ]
 }

@@ -2255,7 +2255,7 @@
         "url": "https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#systemprintln"
       }
     ],
-    "Write through a logger, or take a PrintStream as a parameter so callers choose the stream.",
+    "Use a logger, or write to a PrintStream, Writer or Appendable parameter; only static void main passes System.out. An exception fits only without a main method.",
     { "key": "exceptions", "rule": "pmd/SystemPrintln" },
     "TestClassWithoutTestCases",
     "Test classes typically end with the suffix \"Test\", \"Tests\" or \"TestCase\".",
