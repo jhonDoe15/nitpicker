@@ -12,7 +12,7 @@ Unless an entry says otherwise:
 
 - **Presets:** Java and Kotlin
 - **Analyzers:** `java` (Java); `kotlin` (Kotlin)
-- **Builds:** Gradle and Maven (Java); Gradle (Kotlin)
+- **Builds:** Gradle and Maven
 
 <a id="errorprone-addressselection"></a>
 

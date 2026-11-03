@@ -18,7 +18,7 @@
     "detekt",
     "catch-log-without-exception",
     { "kotlin": ["kotlin"] },
-    { "java": ["gradle", "maven"], "kotlin": ["gradle"] },
+    { "java": ["gradle", "maven"], "kotlin": ["gradle", "maven"] },
     "A scan of the Kotlin sources on the Node side reports it under the tool detekt.",
     [{ "label": "Kotlin preset guide", "path": "docs/kotlin-preset.md", "anchor": "source-scans" }],
     "A `catch` block that logs a failure without passing the caught exception to the logger.",

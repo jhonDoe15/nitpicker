@@ -16,7 +16,7 @@
     "errorprone",
     "AddressSelection",
     { "java": ["java"], "kotlin": ["kotlin"] },
-    { "java": ["gradle", "maven"], "kotlin": ["gradle"] },
+    { "java": ["gradle", "maven"], "kotlin": ["gradle", "maven"] },
     "Prefer InetAddress.getAllByName to APIs that convert a hostname to a single IP address",
     "Error Prone rates this check a warning: the code it flags is likely a mistake or has a clearer form. The preset compiles the main and test sources a second time with Error Prone and reports it.",
     [
