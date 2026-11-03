@@ -125,6 +125,7 @@ describe('nitpicker with "preset": "kotlin"', () => {
         message:
           'Branch coverage is 50.00%; minimum is 95%. To accept the file, add it to "exclude" in nitpicker.config.json.',
         classification: 'enforceable',
+        anchor: { key: 'branch:branch-source:2523a9a20c75ac9a', requireUnchangedLine: true },
         location: { line: 5 },
       },
     ]);
@@ -166,6 +167,10 @@ describe('nitpicker with "preset": "kotlin"', () => {
         ].join(' '),
         classification: 'enforceable',
         symbol: 'KKt#fee(I)I',
+        anchor: {
+          key: expect.stringMatching(/^mutant:MathMutator\|/u),
+          requireUnchangedLine: true,
+        },
         location: { line: 3 },
       },
     ]);
@@ -205,6 +210,10 @@ describe('nitpicker with "preset": "kotlin"', () => {
           'Survived MathMutator: Replaced integer multiplication with division: no test fails when this code changes. Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/main/java/demo/A.java"],"function":"A.fee","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'A#fee(I)I',
+        anchor: {
+          key: expect.stringMatching(/^mutant:MathMutator\|/u),
+          requireUnchangedLine: true,
+        },
         location: { line: 3 },
       },
     ]);

@@ -12,6 +12,10 @@ const MILLISECONDS_PER_MINUTE = 60_000;
 const MINIMUM_MAVEN = '3.6.3';
 const OLD_MAVEN = /Unrecognized option: --no-transfer-progress|requires Maven version/u;
 const MAVEN_FLAGS = ['--batch-mode', '--no-transfer-progress', '-Dstyle.color=never'];
+export const TEST_RERUNS_OFF = [
+  '-Dsurefire.rerunFailingTestsCount=0',
+  '-Dfailsafe.rerunFailingTestsCount=0',
+];
 const MAVEN_NOISE = [
   /^\[ERROR\]\s*$/u,
   /^\[ERROR\] -> \[Help \d+\]/u,
