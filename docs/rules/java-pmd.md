@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 249 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 250 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -893,6 +893,17 @@ In tests: `Thread.sleep`, `TimeUnit.X.sleep`, `LockSupport.parkNanos`, `wait(ms)
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
 - **Allowed form:** A fixed wait makes the test slow and flaky: a sleep or parkNanos outside a polling loop, after(ms) with a check that could pass sooner, or pollDelay(...).until(() -> true). Wait on the condition: a loop that checks it against a deadline (a sleep inside that loop is allowed), or verify(mock, timeout(1000)) for a mock. A timed wait, wait(ms) or join(ms), returns early but lets the test go on unchecked when the time runs out: assert the result of join(Duration) or of a latch await. A sleep in a mock answer, a thread body or a test fake that implements or extends a main class is allowed.
 - **Exception:** If this is intended, add `{"rule":"pmd/FixedSleepInTest","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="pmd-floatequalityintest"></a>
+
+### `pmd/FloatEqualityInTest`
+
+In tests: JUnit 5 (`Assertions`), JUnit 4 (`Assert`) and TestNG (`Assert`) `assertEquals` and `assertNotEquals` without a delta (also the message and `Supplier` overloads and the boxed `Object` ones), AssertJ `isEqualTo` and `isNotEqualTo` on a double or float assertion, and Hamcrest `is(...)` and `equalTo(...)` inside `assertThat`, when an argument is a fractional `double` or `float` literal (`0.1`, `-2.5`, `1e-3`, `0.5f`, `.5`), also negated; and `assertTrue` / `assertFalse` (JUnit 5, JUnit 4, TestNG) or AssertJ `assertThat(...).isTrue()` / `isFalse()` whose condition has a `==` or `!=` with such a literal, or `Double.compare(x, 0.1) == 0`. The delta overload, `isCloseTo(0.1, within(1e-9))`, Hamcrest `closeTo`, integral literals (`1.0`, `2e3`) ordering comparisons and `Math.abs(x - 0.1) < 1e-9` are not flagged.
+
+- **Scope:** Test sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** Do not assert exact equality with a fractional floating-point literal: a computed 0.1 + 0.2 differs from 0.3 in the last bits, so the test fails on rounding noise or passes by luck. Give the comparison a tolerance: assertEquals(expected, actual, delta) in JUnit and TestNG, assertThat(actual).isCloseTo(expected, within(1e-9)) in AssertJ, or assertThat(actual, closeTo(expected, 1e-9)) in Hamcrest. The same goes for assertTrue(x == 0.1), assertThat(x == 0.1).isTrue() and Double.compare(x, 0.1) == 0. An integral literal such as 1.0 is exact and allowed.
+- **Exception:** If this is intended, add `{"rule":"pmd/FloatEqualityInTest","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-forloopcanbeforeach"></a>
 

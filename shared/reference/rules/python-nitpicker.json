@@ -71,6 +71,10 @@
     { "key": "python.exceptions", "rule": "falsy-default" },
     "`<name>` replaces a falsy argument with a default, so `0`, `\"\"`, `[]` and `False` count as not given",
     "Test for `None` only: `limit if limit is not None else DEFAULT_LIMIT`, or `if limit is None: limit = DEFAULT_LIMIT`.",
+    "float-equality-in-test",
+    { "key": "python.exceptions", "rule": "float-equality-in-test" },
+    "`<name>` is compared exactly in a test, so rounding makes it fail",
+    "Compare with a tolerance: `assert total == pytest.approx(0.3)` (it also takes lists and dicts), `math.isclose(total, 0.3)`, or `self.assertAlmostEqual(total, 0.3)`.",
     "frozen-dataclass",
     { "key": "python.exceptions", "rule": "frozen-dataclass" },
     "Dataclass <name> is not frozen",
@@ -319,7 +323,8 @@
     [18, 224, 2, 3, 225, 226, 22, 227, -1],
     [18, 228, 2, 3, 229, 230, 22, 231, -1],
     [18, 232, 2, 3, 233, 234, 22, 235, -1],
-    [236, 237, 2, 3, 238, 239, 240, 241, -1],
-    [242, 243, 2, 3, 244, 245, 246, 247, 248]
+    [18, 236, 2, 3, 237, 238, 22, 239, -1],
+    [240, 241, 2, 3, 242, 243, 244, 245, -1],
+    [246, 247, 2, 3, 248, 249, 250, 251, 252]
   ]
 }

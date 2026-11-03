@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 87 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 88 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -288,6 +288,17 @@ Fixed sleeps are non-deterministic; wait on a condition with vi.waitFor or expec
   - Do not assert absence by letting a wait time out: `.rejects` passes only after the full timeout, so the test is slow and depends on the delay. Advance fake timers past the delay (`vi.advanceTimersByTime`) and assert absence at once, such as `expect(screen.queryByRole('tooltip')).toBeNull()`. An exception fits only when a real wait is unavoidable.
   - `waitForTimeout` sleeps on wall-clock time. Wait on a condition instead, such as `await expect(locator).toBeVisible()`. An exception fits only when a real wait is unavoidable.
   - `cy.wait(<number>)` sleeps on wall-clock time. Wait on a request alias (`cy.wait('@request')`) or retry an assertion (`cy.get(selector).should('be.visible')`). An exception fits only when a real wait is unavoidable.
+
+<a id="eslint-nitpicker-no-float-equality-in-tests"></a>
+
+### `eslint/nitpicker/no-float-equality-in-tests`
+
+Ban exact equality assertions against a non-integral float literal.
+
+- **Printed as:** `eslint-lint/nitpicker/no-float-equality-in-tests`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-float-equality-in-tests","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - A float literal compared for exact equality fails on rounding error. Use `toBeCloseTo(0.1)`, `expect.closeTo(0.1)` inside the expected value, chai `closeTo`, or `assert.ok(Math.abs(actual - 0.1) < tolerance)`. An exception fits only when the value is exact by construction.
 
 <a id="eslint-nitpicker-no-forwarding-wrapper"></a>
 
