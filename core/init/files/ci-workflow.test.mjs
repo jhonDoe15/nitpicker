@@ -1,6 +1,7 @@
 import { symlinkSync } from 'node:fs';
 import { parse } from 'yaml';
 import { describe, expect, it } from 'vitest';
+import { unpinnedActions } from '../../../scripts/action-pins/action-pins.mjs';
 import { describePackageManager } from '../detection/package-manager.mjs';
 import { readText, useProjects } from '../test-support/projects.mjs';
 import { unifiedDiff } from './line-diff.mjs';
@@ -67,8 +68,8 @@ describe('workflow for Node projects', () => {
     expect(workflow.permissions).toEqual({ contents: 'read' });
     expect(workflow.jobs.nitpicker['runs-on']).toBe('ubuntu-latest');
     expect(workflow.jobs.nitpicker.steps.slice(0, 2)).toEqual([
-      { uses: 'actions/checkout@v4', with: { 'fetch-depth': 0 } },
-      { uses: 'actions/setup-node@v4', with: { 'node-version': 24 } },
+      { uses: 'actions/checkout@v7.0.1', with: { 'fetch-depth': 0 } },
+      { uses: 'actions/setup-node@v7.1.0', with: { 'node-version': 24 } },
     ]);
   });
 
@@ -76,7 +77,11 @@ describe('workflow for Node projects', () => {
     ['npm', { 'package-lock.json': '{}' }, ['npm ci', ACTION]],
     ['npm', {}, ['npm install', ACTION]],
     ['Yarn 1', { 'yarn.lock': '' }, ['yarn install --frozen-lockfile', ACTION]],
-    ['Bun', { 'bun.lock': '' }, ['oven-sh/setup-bun@v2', 'bun install --frozen-lockfile', ACTION]],
+    [
+      'Bun',
+      { 'bun.lock': '' },
+      ['oven-sh/setup-bun@v2.2.0', 'bun install --frozen-lockfile', ACTION],
+    ],
   ])(
     'installs frozen from the lockfile of %s, and plainly without one',
     (_name, lockfile, expected) => {
@@ -117,7 +122,7 @@ describe('workflow for Node projects', () => {
 
     expect(parse(renderWorkflow(root, nodeContext(root))).jobs.nitpicker.steps.slice(2)).toEqual([
       { run: 'corepack enable' },
-      { uses: 'pnpm/action-setup@v4' },
+      { uses: 'pnpm/action-setup@v4.4.0' },
       { run: 'pnpm install --frozen-lockfile' },
       gateStep({}),
     ]);
@@ -130,7 +135,7 @@ describe('workflow for Node projects', () => {
     const steps = parse(renderWorkflow(web, nodeContext(web, root))).jobs.nitpicker.steps;
 
     expect(steps[3]).toEqual({
-      uses: 'pnpm/action-setup@v4',
+      uses: 'pnpm/action-setup@v4.4.0',
       with: { package_json_file: 'apps/web/package.json' },
     });
   });
@@ -144,7 +149,7 @@ describe('workflow for Node projects', () => {
     const root = project({ 'package.json': '{}', 'pnpm-lock.yaml': lockfile });
 
     expect(parse(renderWorkflow(root, nodeContext(root))).jobs.nitpicker.steps[2]).toEqual({
-      uses: 'pnpm/action-setup@v4',
+      uses: 'pnpm/action-setup@v4.4.0',
       with: { version: major },
     });
   });
@@ -156,7 +161,7 @@ describe('workflow for Node projects', () => {
 
 describe('workflow for Python projects', () => {
   const pythonSetup = {
-    uses: 'actions/setup-python@v5',
+    uses: 'actions/setup-python@v7.1.0',
     with: { 'python-version': '3.13' },
   };
 
@@ -174,7 +179,7 @@ describe('workflow for Python projects', () => {
   });
 
   it.each([
-    ['uv', ['astral-sh/setup-uv@v5', 'uv sync'], 'uv pip install'],
+    ['uv', ['astral-sh/setup-uv@v7.6.0', 'uv sync'], 'uv pip install'],
     ['poetry', ['pipx install poetry', 'poetry install'], 'poetry run python -m pip install'],
     ['pipenv', ['pipx install pipenv', 'pipenv install --dev'], 'pipenv run python -m pip install'],
     ['pdm', ['pipx install pdm', 'pdm install'], 'pdm run python -m pip install'],
@@ -183,7 +188,7 @@ describe('workflow for Python projects', () => {
     'syncs a %s project with its own tool, then installs every peer into it',
     (tool, sync, install) => {
       expect(pythonSteps({ 'pyproject.toml': '' }, tool)).toEqual([
-        'actions/setup-python@v5',
+        'actions/setup-python@v7.1.0',
         ...sync,
         `${install} ${PYTHON_PEERS}`,
       ]);
@@ -223,7 +228,7 @@ describe('workflow for Python projects', () => {
 
     expect(parse(renderWorkflow(root, pythonContext(root, 'pip'))).jobs.nitpicker.steps[2]).toEqual(
       {
-        uses: 'actions/setup-python@v5',
+        uses: 'actions/setup-python@v7.1.0',
         with: settings,
       },
     );
@@ -258,7 +263,7 @@ describe('workflow for Python projects', () => {
     expect(job.defaults).toEqual({ run: { 'working-directory': 'api', shell: 'bash -el {0}' } });
     expect(job.steps.slice(2)).toEqual([
       {
-        uses: 'conda-incubator/setup-miniconda@v3',
+        uses: 'conda-incubator/setup-miniconda@v3.3.0',
         with: {
           'environment-file': 'api/environment.yml',
           'activate-environment': 'shop-api',
@@ -304,9 +309,27 @@ describe('workflow for Java and Kotlin projects', () => {
     };
 
     expect(parse(renderWorkflow(root, context)).jobs.nitpicker.steps.slice(2)).toEqual([
-      { uses: 'actions/setup-java@v4', with: { distribution: 'temurin', 'java-version': 21 } },
+      { uses: 'actions/setup-java@v6.1.0', with: { distribution: 'temurin', 'java-version': 21 } },
       gateStep(PINNED),
     ]);
+  });
+});
+
+describe('workflow action pins', () => {
+  it('pins every action a generated workflow uses to a full version tag', () => {
+    const pnpm = project({ 'package.json': '{}', 'pnpm-lock.yaml': '' });
+    const bun = project({ 'package.json': '{}', 'bun.lock': '' });
+    const python = project({ 'environment.yml': 'name: shop\n', 'pyproject.toml': '' });
+    const jvm = { project: { family: 'jvm' }, peers: NO_PEERS, version: VERSION };
+    const workflows = [
+      renderWorkflow(pnpm, nodeContext(pnpm)),
+      renderWorkflow(bun, nodeContext(bun)),
+      renderWorkflow(python, pythonContext(python, 'uv')),
+      renderWorkflow(python, pythonContext(python, 'conda')),
+      renderWorkflow(python, { ...jvm, repository: python }),
+    ];
+
+    expect(workflows.flatMap(unpinnedActions)).toEqual([]);
   });
 });
 
