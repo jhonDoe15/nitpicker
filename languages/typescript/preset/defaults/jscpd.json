@@ -12,7 +12,7 @@
     "build/**",
     "generated/**",
     "coverage/**",
-    "reports/**",
+    "reports/quality/**",
     "target/**",
     "**/node_modules/**",
     "**/*.d.ts",
