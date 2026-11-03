@@ -118,8 +118,7 @@ describe('the E2E workflows', () => {
 
   it('report an aggregate that does not need the plan, and a shard run without --shard', () => {
     const parsed = workflow('python');
-    const aggregate = Object.keys(parsed.jobs).find((name) => !name.startsWith('python-shard'));
-    parsed.jobs[aggregate].needs = ['python-shard'];
+    parsed.jobs['python-e2e'].needs = ['changes', 'python-shard'];
     for (const step of parsed.jobs['python-shard'].steps) {
       step.run = step.run?.replace(/ --shard=\S+/u, '');
     }
@@ -127,6 +126,15 @@ describe('the E2E workflows', () => {
     expect(workflowProblems(parsed, 'python')).toEqual([
       'python-shard must run test:python with --shard=${{ matrix.shard }}/${{ strategy.job-total }}',
       'one aggregate job must always run, need python-shard-plan and python-shard and check both results',
+    ]);
+  });
+
+  it('report an aggregate that ignores the changed-file selection', () => {
+    const parsed = workflow('go');
+    parsed.jobs['go-e2e'].needs = ['go-shard-plan', 'go-shard'];
+
+    expect(workflowProblems(parsed, 'go')).toEqual([
+      'the aggregate job must also need changes and check its result',
     ]);
   });
 });
