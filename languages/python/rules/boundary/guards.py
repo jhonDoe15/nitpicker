@@ -34,7 +34,7 @@ def annotation_is_opaque(annotation):
         if isinstance(node, ast.Constant) and isinstance(node.value, str):
             try:
                 parsed = ast.parse(node.value, mode="eval").body
-            except SyntaxError:
+            except (SyntaxError, ValueError):
                 continue
             if annotation_is_opaque(parsed):
                 return True

@@ -1,6 +1,4 @@
 import { renderMessage, UNUSED_OPTION_TEXT } from '../../../../shared/messages/messages.mjs';
-import { validatorNamed } from '../libraries/library-tables.mjs';
-import { validatorsOf } from '../libraries/project-libraries.mjs';
 import { RULES_TOOL } from './tool.mjs';
 
 const HELPER_CHAIN = ' -> ';
@@ -40,20 +38,6 @@ const DOMAIN_CAUGHT_LOG_ADVICE =
 
 function isDomainPath(path = '') {
   return path.split('/').slice(0, -1).includes('domain');
-}
-
-function validatorForm(name) {
-  return `${name} (\`${validatorNamed(name).call}\`)`;
-}
-
-function boundaryAdvice(libraries) {
-  const [validator] = validatorsOf(libraries);
-  return `Parse untrusted input once at the boundary with ${validatorForm(validator)} in an \`adapters/\` package, not with \`isinstance\` checks or a \`TypeGuard\`.`;
-}
-
-function importBoundaryAdvice(libraries) {
-  const validators = validatorsOf(libraries);
-  return `Use ${validators.join(' or ')} only in an \`adapters/\` package to parse untrusted input (\`${validatorNamed(validators[0]).call}\`), and pass frozen dataclasses on from there.`;
 }
 
 function ownerOf(subject) {
@@ -106,35 +90,10 @@ export const STRUCTURE_HINTS = [
   },
   {
     tool: RULES_TOOL,
-    rules: ['pydantic-boundary'],
-    describe: (subject) => `${subject} is imported outside an adapters/ package`,
-    allowed: (_subject, libraries) => importBoundaryAdvice(libraries),
-  },
-  {
-    tool: RULES_TOOL,
     rules: ['enum-string-constants'],
     describe: (subject) => `${subject} are string constants that belong in one enum`,
     allowed:
       'Declare an enum: `class Status(enum.StrEnum): ACTIVE = "active"` on Python 3.11+, otherwise `class Status(str, enum.Enum)`.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['no-type-check'],
-    describe: (subject) => `\`${subject}\` is excluded from type checking by \`@no_type_check\``,
-    allowed: 'Remove the decorator and annotate the code so the checker can verify it.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['not-type-checking'],
-    describe: (subject) => `\`${subject}\` hides code from the type checkers`,
-    allowed:
-      'Put the code in the normal flow; `if TYPE_CHECKING:` is only for imports that annotations need.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['stub-beside-source'],
-    describe: (subject) => `\`${subject}\` sits beside its source and replaces it for the checkers`,
-    allowed: 'Delete the `.pyi` file and annotate the `.py` file itself.',
   },
   {
     tool: RULES_TOOL,
@@ -224,33 +183,6 @@ export const STRUCTURE_HINTS = [
       `\`${subject}()\` builds a file path from its input without a containment check`,
     allowed:
       'Resolve the path and check it stays inside the base before using it: `target = (base / name).resolve()`, then `if not target.is_relative_to(base.resolve()): raise ValueError(...)`.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['handwritten-boundary-guard'],
-    describe: (subject) => `\`${subject}\` checks untrusted data by hand`,
-    allowed: (_subject, libraries) => boundaryAdvice(libraries),
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['any-in-domain'],
-    describe: (subject) => `\`${subject}\` uses \`Any\` in domain code`,
-    allowed:
-      'Use the real type, a `Protocol`, a `TypeVar` or a frozen dataclass; parse untrusted data at the boundary so the domain only sees typed values.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['pydantic-any-field'],
-    describe: (subject) => `The pydantic field \`${subject}\` is typed \`Any\``,
-    allowed:
-      'Give the field its real type (`str`, `int`, a nested model, `Literal[...]`) or constrain it with `Field(min_length=1)` so the model validates it.',
-  },
-  {
-    tool: RULES_TOOL,
-    rules: ['pydantic-extra-allow'],
-    describe: (subject) => `The pydantic model \`${subject}\` accepts unknown fields`,
-    allowed:
-      'Set `model_config = ConfigDict(extra="forbid")` (or leave the default `ignore`) and declare every field the model needs.',
   },
   {
     tool: RULES_TOOL,
