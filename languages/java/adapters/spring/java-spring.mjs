@@ -51,9 +51,13 @@ const ENTRY_RULES = [
   },
 ];
 
-export const SPRING_CONFIG_RULE_IDS = ['open-in-view', ...ENTRY_RULES.map(({ rule }) => rule)].map(
-  (rule) => `${SPRING_TOOL}/${rule}`,
-);
+export const SPRING_CONFIG_RULES = [
+  'open-in-view',
+  'missing-enable',
+  ...ENTRY_RULES.map(({ rule }) => rule),
+];
+
+export const SPRING_CONFIG_RULE_IDS = SPRING_CONFIG_RULES.map((rule) => `${SPRING_TOOL}/${rule}`);
 
 function secretProblem(entry) {
   return entry.value.trim().startsWith('${')

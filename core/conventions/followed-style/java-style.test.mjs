@@ -330,24 +330,26 @@ describe('the Checkstyle LineLength', () => {
 
 describe('where the formatter is declared', () => {
   it('reads module build files, buildSrc and build-logic convention plugins', () => {
-    for (const file of [
+    const files = [
       'services/api/build.gradle.kts',
       'buildSrc/src/main/kotlin/java.gradle.kts',
       'build-logic/convention/src/main/groovy/format.gradle',
       'services/api/pom.xml',
-    ]) {
+    ];
+    const conventionsOf = (file) => {
       const text = file.endsWith('pom.xml')
         ? '<project><plugin><artifactId>spotless-maven-plugin</artifactId><configuration><java><palantirJavaFormat/></java></configuration></plugin></project>'
         : SPOTLESS_PALANTIR;
+      return follow({ preset: 'java' }, { [file]: text, ...javaFiles(GOOGLE_CODE) }).conventions;
+    };
 
-      expect(
-        follow({ preset: 'java' }, { [file]: text, ...javaFiles(GOOGLE_CODE) }).conventions,
-      ).toEqual({
+    expect(files.map(conventionsOf)).toEqual(
+      files.map(() => ({
         'java.formatter': 'palantir',
         'java.indentation': '4',
         'java.lineLength': '120',
-      });
-    }
+      })),
+    );
   });
 
   it('reads Spotless aosp as google-java-format with four spaces', () => {

@@ -67,7 +67,17 @@ export function isExpectCall(node) {
 }
 
 const PER_TEST_TESTS = new Set(['it', 'test']);
-const REGISTRATION_FACTORIES = new Set(['each', 'for', 'extend', 'runIf', 'skipIf', 'todo']);
+const TEST_FUNCTIONS = new Set(['it', 'test', 'describe', 'suite']);
+const TEST_FACTORY_MEMBERS = new Set(['each', 'for', 'runIf', 'skipIf', 'extend']);
+const REGISTRATION_FACTORIES = new Set([...TEST_FACTORY_MEMBERS, 'todo']);
+
+export function isTestFunctionName(name) {
+  return TEST_FUNCTIONS.has(name);
+}
+
+export function isTestFactoryMember(name) {
+  return TEST_FACTORY_MEMBERS.has(name);
+}
 
 function parameterNames(fn) {
   return fn.params.flatMap((parameter) => {
@@ -137,7 +147,7 @@ export function describeWrapperCall(context, call, bindings) {
   return found[0];
 }
 
-function registrationRoot(callee) {
+export function registrationRoot(callee) {
   const root = chainOf(callee, (link) => {
     if (link.type === 'MemberExpression') return link.object;
     return link.type === 'CallExpression' ? link.callee : undefined;
