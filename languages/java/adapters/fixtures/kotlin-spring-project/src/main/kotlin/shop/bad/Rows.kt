@@ -17,7 +17,7 @@ import org.springframework.transaction.support.TransactionTemplate
 
 enum class Hue { RED, BLUE }
 
-enum class Size { SMALL, LARGE }
+enum class Bulk { SMALL, LARGE }
 
 abstract class PairConverter<K, E : Enum<E>> : AttributeConverter<E, String> {
     override fun convertToDatabaseColumn(attribute: E?): String? = attribute?.name
@@ -26,14 +26,14 @@ abstract class PairConverter<K, E : Enum<E>> : AttributeConverter<E, String> {
 }
 
 @Converter(autoApply = true)
-class SizeConverter : PairConverter<Hue, Size>()
+class BulkConverter : PairConverter<Hue, Bulk>()
 
 @Entity
 class Carton(
     @Id @GeneratedValue(strategy = GenerationType.SEQUENCE) var id: Long? = null,
     @Version var version: Long = 0,
     var hue: Hue = Hue.RED,
-    var size: Size = Size.SMALL,
+    var size: Bulk = Bulk.SMALL,
 )
 
 interface CartonRepository : JpaRepository<Carton, Long> {
