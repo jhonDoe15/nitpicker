@@ -8,7 +8,13 @@ const base = JSON.parse(
   readFileSync(path.join(import.meta.dirname, '../defaults/jscpd.json'), 'utf8'),
 );
 
-const kept = ['coverage/**', 'reports/**', '**/node_modules/**', '**/*.d.ts', '**/.stryker-tmp/**'];
+const kept = [
+  'coverage/**',
+  'reports/quality/**',
+  '**/node_modules/**',
+  '**/*.d.ts',
+  '**/.stryker-tmp/**',
+];
 
 describe('skipped folders of the duplicate scan', () => {
   it('are exactly the project-root built-in folders of the default config', () => {
