@@ -67,6 +67,10 @@
     { "key": "python.exceptions", "rule": "enum-string-constants" },
     "<name> are string constants that belong in one enum",
     "Declare an enum: `class Status(enum.StrEnum): ACTIVE = \"active\"` on Python 3.11+, otherwise `class Status(str, enum.Enum)`.",
+    "explicit-any",
+    { "key": "python.exceptions", "rule": "explicit-any" },
+    "`<name>` is typed with an explicit `Any`",
+    "Write the concrete type, a `Protocol`, a `TypeVar`, a `ParamSpec` or `object` (`dict[str, object]`, `Callable[..., object]`).",
     "falsy-default",
     { "key": "python.exceptions", "rule": "falsy-default" },
     "`<name>` replaces a falsy argument with a default, so `0`, `\"\"`, `[]` and `False` count as not given",
@@ -223,6 +227,10 @@
     { "key": "python.exceptions", "rule": "tri-state-boolean" },
     "`<name>` is a boolean that can also be `None`, a third state",
     "Name the three states with an enum (`class Consent(Enum)` with `GRANTED`, `DENIED` and `UNKNOWN`), or take a keyword-only `bool` with a default (`*, urgent: bool = False`) when `None` only means false. A method that overrides a base class takes `@typing.override` and keeps the base signature.",
+    "type-cast",
+    { "key": "python.exceptions", "rule": "type-cast" },
+    "`<name>` asserts a type without checking the value",
+    "Narrow the value with `isinstance` or `match`, or give it the correct type at its source.",
     "unbounded-fan-out",
     { "key": "python.exceptions", "rule": "unbounded-fan-out" },
     "`<name>` starts `<call>` for every element of `<collection>` at once",
@@ -324,7 +332,9 @@
     [18, 228, 2, 3, 229, 230, 22, 231, -1],
     [18, 232, 2, 3, 233, 234, 22, 235, -1],
     [18, 236, 2, 3, 237, 238, 22, 239, -1],
-    [240, 241, 2, 3, 242, 243, 244, 245, -1],
-    [246, 247, 2, 3, 248, 249, 250, 251, 252]
+    [18, 240, 2, 3, 241, 242, 22, 243, -1],
+    [18, 244, 2, 3, 245, 246, 22, 247, -1],
+    [248, 249, 2, 3, 250, 251, 252, 253, -1],
+    [254, 255, 2, 3, 256, 257, 258, 259, 260]
   ]
 }
