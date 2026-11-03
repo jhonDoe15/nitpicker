@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 59 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 61 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -102,6 +102,15 @@ A package that is in a dependency cycle with other packages.
 
 - **Allowed form:** When code moves or is renamed, change every caller in the same change and delete the old name: keep no alias, forwarding function, module `__getattr__`, `@deprecated` marker or deprecation warning. A published library keeps the deprecation of its public names, and that path takes an exception.
 - **Exception:** If this is intended, add `{"rule":"compatibility-shim","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-conditional-assertion-in-test"></a>
+
+### `python-rules/conditional-assertion-in-test`
+
+Test `<name>` asserts inside an `if` branch or conditional expression.
+
+- **Allowed form:** Give each outcome its own test with `@pytest.mark.parametrize` and assert unconditionally; a loop may build the data, then one `assert` checks it.
+- **Exception:** If this is intended, add `{"rule":"conditional-assertion-in-test","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-credential-shape"></a>
 
@@ -370,7 +379,7 @@ The string "\<name>" is repeated three times or more.
 
 `<name>` skips a test without a reason.
 
-- **Allowed form:** Give the reason: `@pytest.mark.skip(reason="needs the staging database")`, `pytest.skip("...")`; or fix or delete the test.
+- **Allowed form:** Skip on a real condition and give the reason: `@pytest.mark.skipif(sys.platform == "win32", reason="posix only")`, `pytest.importorskip("numpy")` or `if not has_gpu(): pytest.skip("needs a GPU")`; or fix or delete the test.
 - **Exception:** If this is intended, add `{"rule":"skipped-test-without-reason","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-sleep-in-test"></a>
@@ -408,6 +417,15 @@ The string "\<name>" is repeated three times or more.
 
 - **Allowed form:** Re-raise it with its cause (`raise DomainError(...) from error`), return a failure result that carries the error (`return Rejected(str(error))`), or return the errors the function builds along with its result (`return results, errors`); logging alone is not handling. `contextlib.suppress(SpecificError)` ignores one expected error. In a test, use `pytest.raises(SpecificError)` (`self.assertRaises` in unittest).
 - **Exception:** If this is intended, add `{"rule":"swallowed-exception","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-switched-off-test"></a>
+
+### `python-rules/switched-off-test`
+
+`<name>` switches a test off for good.
+
+- **Allowed form:** Delete the test or make it run. A skip on a real condition is allowed: `@pytest.mark.skipif(sys.platform == "win32", reason="posix only")`, `pytest.importorskip("numpy")` or `@unittest.skipUnless(HAS_DATABASE, "needs the database")`.
+- **Exception:** If this is intended, add `{"rule":"switched-off-test","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-task-outlives-resource"></a>
 

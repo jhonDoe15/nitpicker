@@ -59,6 +59,10 @@
     { "key": "python.exceptions", "rule": "compatibility-shim" },
     "`<name>` keeps an old name working",
     "When code moves or is renamed, change every caller in the same change and delete the old name: keep no alias, forwarding function, module `__getattr__`, `@deprecated` marker or deprecation warning. A published library keeps the deprecation of its public names, and that path takes an exception.",
+    "conditional-assertion-in-test",
+    { "key": "python.exceptions", "rule": "conditional-assertion-in-test" },
+    "Test `<name>` asserts inside an `if` branch or conditional expression",
+    "Give each outcome its own test with `@pytest.mark.parametrize` and assert unconditionally; a loop may build the data, then one `assert` checks it.",
     "credential-shape",
     { "key": "python.exceptions", "rule": "credential-shape" },
     "A string has the shape of a credential",
@@ -178,7 +182,7 @@
     "skipped-test-without-reason",
     { "key": "python.exceptions", "rule": "skipped-test-without-reason" },
     "`<name>` skips a test without a reason",
-    "Give the reason: `@pytest.mark.skip(reason=\"needs the staging database\")`, `pytest.skip(\"...\")`; or fix or delete the test.",
+    "Skip on a real condition and give the reason: `@pytest.mark.skipif(sys.platform == \"win32\", reason=\"posix only\")`, `pytest.importorskip(\"numpy\")` or `if not has_gpu(): pytest.skip(\"needs a GPU\")`; or fix or delete the test.",
     "sleep-in-test",
     { "key": "python.exceptions", "rule": "sleep-in-test" },
     "`<name>` waits for real time in a test",
@@ -195,6 +199,10 @@
     { "key": "python.exceptions", "rule": "swallowed-exception" },
     "`<name>` swallows the error: it only logs it or returns a default, and carries on",
     "Re-raise it with its cause (`raise DomainError(...) from error`), return a failure result that carries the error (`return Rejected(str(error))`), or return the errors the function builds along with its result (`return results, errors`); logging alone is not handling. `contextlib.suppress(SpecificError)` ignores one expected error. In a test, use `pytest.raises(SpecificError)` (`self.assertRaises` in unittest).",
+    "switched-off-test",
+    { "key": "python.exceptions", "rule": "switched-off-test" },
+    "`<name>` switches a test off for good",
+    "Delete the test or make it run. A skip on a real condition is allowed: `@pytest.mark.skipif(sys.platform == \"win32\", reason=\"posix only\")`, `pytest.importorskip(\"numpy\")` or `@unittest.skipUnless(HAS_DATABASE, \"needs the database\")`.",
     "task-outlives-resource",
     { "key": "python.exceptions", "rule": "task-outlives-resource" },
     "`<name>`: the resource closes when its `with` block ends, while the child task can still use it",
@@ -319,7 +327,9 @@
     [18, 224, 2, 3, 225, 226, 22, 227, -1],
     [18, 228, 2, 3, 229, 230, 22, 231, -1],
     [18, 232, 2, 3, 233, 234, 22, 235, -1],
-    [236, 237, 2, 3, 238, 239, 240, 241, -1],
-    [242, 243, 2, 3, 244, 245, 246, 247, 248]
+    [18, 236, 2, 3, 237, 238, 22, 239, -1],
+    [18, 240, 2, 3, 241, 242, 22, 243, -1],
+    [244, 245, 2, 3, 246, 247, 248, 249, -1],
+    [250, 251, 2, 3, 252, 253, 254, 255, 256]
   ]
 }
