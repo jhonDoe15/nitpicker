@@ -49,7 +49,7 @@ function recordAnalyzerResolutionError({ analyzer, index, error, errors }) {
   }
 }
 
-function withHeadProjectRoot(liveProjectRoot, headSha, operation) {
+function withHeadProjectRoot({ liveProjectRoot, headSha, warn }, operation) {
   if (typeof headSha !== 'string' || headSha.length === 0) {
     throw new Error('Shard 0 has no headSha for policy resolution');
   }
@@ -63,7 +63,7 @@ function withHeadProjectRoot(liveProjectRoot, headSha, operation) {
   ) {
     throw new Error('Live project root is outside its Git repository');
   }
-  return withTemporaryWorktree(repositoryRoot, headSha, (headWorktreeRoot) =>
+  return withTemporaryWorktree(repositoryRoot, { commitSha: headSha, warn }, (headWorktreeRoot) =>
     operation(path.join(headWorktreeRoot, projectRelativePath)),
   );
 }
@@ -76,7 +76,7 @@ function recordConfigurationErrors(analyzers, error, errors) {
     recordAnalyzerResolutionError({ analyzer, index, error, errors });
 }
 
-export function resolveMetadata({ analyzers, liveProjectRoot, policyRoot, inputRoot }) {
+export function resolveMetadata({ analyzers, liveProjectRoot, policyRoot, inputRoot, warn }) {
   const errors = [];
   resolveAnalyzerVersions(analyzers, liveProjectRoot, errors);
   if (policyRoot !== undefined) {
@@ -90,7 +90,7 @@ export function resolveMetadata({ analyzers, liveProjectRoot, policyRoot, inputR
     return errors;
   try {
     const headSha = readJson(path.join(inputRoot, '0'), 'summary.json', 0).headSha;
-    withHeadProjectRoot(liveProjectRoot, headSha, (headProjectRoot) => {
+    withHeadProjectRoot({ liveProjectRoot, headSha, warn }, (headProjectRoot) => {
       resolveAnalyzerConfigurationHashes(analyzers, headProjectRoot, errors);
     });
   } catch (error) {
