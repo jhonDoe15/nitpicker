@@ -224,19 +224,29 @@ describe('de-duplication', () => {
 
 describe('expected failures', () => {
   it('reports malformed JSON without throwing', async () => {
-    for (const text of ['', '[{"name":', 'not json', "[{'name':'A'}]", '[1,]']) {
+    const reportsMalformed = async (text: string) => {
       const { result, output } = await run(text, 'bad.json');
       expect(result).toEqual({ kind: 'malformed-json' });
       expect(output).toBe('Malformed JSON in bad.json\n');
-    }
+    };
+    await reportsMalformed('');
+    await reportsMalformed('[{"name":');
+    await reportsMalformed('not json');
+    await reportsMalformed("[{'name':'A'}]");
+    await reportsMalformed('[1,]');
   });
 
   it('reports valid JSON that is not an array', async () => {
-    for (const text of ['{"name":"Ada","email":"a@b.co"}', 'null', '"text"', '42', 'true']) {
+    const reportsNotArray = async (text: string) => {
       const { result, output } = await run(text, 'obj.json');
       expect(result).toEqual({ kind: 'not-an-array' });
       expect(output).toBe('Expected a JSON array in obj.json\n');
-    }
+    };
+    await reportsNotArray('{"name":"Ada","email":"a@b.co"}');
+    await reportsNotArray('null');
+    await reportsNotArray('"text"');
+    await reportsNotArray('42');
+    await reportsNotArray('true');
   });
 
   it('reports a failed read using the error message', async () => {

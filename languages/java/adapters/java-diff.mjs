@@ -21,6 +21,7 @@ import { withoutGeneratedSources } from './generated/generated-sources.mjs';
 import { withoutOverlaps } from './overlaps/static-overlaps.mjs';
 import { toolConfigChoices } from './tool-config/tool-config-choices.mjs';
 import { readJavaFindings } from './reporting/java-reports.mjs';
+import { withJavaColumns } from './reporting/columns/java-columns.mjs';
 import { readReportModules } from './gradle-reports/report-modules.mjs';
 import { runMavenPreset } from '../maven/maven-build.mjs';
 import { MAVEN_REPORT_DIRECTORY } from '../maven/module/maven-module.mjs';
@@ -73,7 +74,16 @@ function runJavaPreset(
       testsFailedModules,
     });
     for (const stage of stages) {
-      runGradleStage({ args: stage(), projectRoot, gradle, budget, reportBase, since, spawn });
+      runGradleStage({
+        args: stage(),
+        projectRoot,
+        gradle,
+        budget,
+        reportBase,
+        since,
+        checkTests: testsFailedModules.length === 0,
+        spawn,
+      });
     }
   });
 }
@@ -96,6 +106,7 @@ function readOptions(policy = {}) {
     testConsoleAllow: policy.testConsoleAllow,
     javaStyle: policy.javaStyle,
     baselineRoot: policy.baselineRoot,
+    baselineMovesFile: policy.baselineMovesFile,
     baseline: { snapshot: policy.snapshot, baselineRoot: policy.baselineRoot },
   };
 }
@@ -181,17 +192,20 @@ export function collectJavaFindings(root, options = {}) {
   function readSource(file) {
     return sourceText(projectRoot, file);
   }
+  const parsed = parseAnalyzerReport(
+    {
+      findings: withJavaColumns(findings, { projectRoot, policy: options.policy, readSource }),
+    },
+    preset,
+  ).findings;
   const policed = applyFindingPolicy(
     withoutFollowedImports(
-      withProjectEnumPredicates(
-        withoutGeneratedSources(parseAnalyzerReport({ findings }, preset).findings, projectRoot),
-        projectRoot,
-      ),
+      withProjectEnumPredicates(withoutGeneratedSources(parsed, projectRoot), projectRoot),
       options.policy?.conventions,
       readSource,
     ),
     { ...options.policy, inventoryTool: preset, routeRule: javaRouteRule },
-    (reported) => withoutOverlaps(reported, { readSource }),
+    options.resolveOverlaps ?? ((reported) => withoutOverlaps(reported, { readSource })),
   );
   return withTestsFailures(policed, preset, testsFailures);
 }
@@ -207,8 +221,10 @@ function collectBothSnapshots({
   comparison,
   options,
   policy,
+  warn,
 }) {
-  return withTemporaryWorktree(repositoryRoot, comparison.headSha, (headWorktree) => {
+  const head = { commitSha: comparison.headSha, warn };
+  return withTemporaryWorktree(repositoryRoot, head, (headWorktree) => {
     const policyRoot = path.join(headWorktree, projectRelativePath);
     function collectIn(worktreeRoot, snapshot) {
       return collectJavaFindings(path.join(worktreeRoot, projectRelativePath), {
@@ -219,7 +235,7 @@ function collectBothSnapshots({
     const headFindings = collectIn(headWorktree, 'head');
     const collectedBase = withTemporaryWorktree(
       repositoryRoot,
-      comparison.mergeBaseSha,
+      { commitSha: comparison.mergeBaseSha, warn },
       (baseWorktree) => collectIn(baseWorktree, 'base'),
     );
     const notes = testFailuresOf({ findings: collectedBase });
@@ -229,6 +245,13 @@ function collectBothSnapshots({
       headFindings,
     };
   });
+}
+
+function withEnforceable(outcome) {
+  const newEnforceable = outcome.newFindings.filter(
+    (finding) => finding.classification === 'enforceable',
+  );
+  return { ...outcome, newEnforceable, failed: newEnforceable.length > 0 };
 }
 
 export function runJavaDiff({
@@ -253,12 +276,14 @@ export function runJavaDiff({
     projectRelativePath,
   };
   const baseToHeadRenames = readRenameMap(range);
+  const warnings = [];
   const { notes, baseFindings, headFindings } = collectBothSnapshots({
     repositoryRoot,
     projectRelativePath,
     comparison,
     options: { gradle, maven, spawn, initScript },
     policy,
+    warn: (message) => warnings.push(message),
   });
   const touchedCode = {
     changedLines: readChangedLines(range),
@@ -272,8 +297,5 @@ export function runJavaDiff({
     touchedCode,
     unknownOnBase: unknownOnBaseFor(notes, touchedCode),
   });
-  const newEnforceable = result.newFindings.filter(
-    (finding) => finding.classification === 'enforceable',
-  );
-  return { comparison, ...result, notes, newEnforceable, failed: newEnforceable.length > 0 };
+  return withEnforceable({ comparison, ...result, notes, warnings });
 }

@@ -3,6 +3,10 @@ import path from 'node:path';
 import { findingFactory } from '../../kotlin/review-rules/review-finding.mjs';
 import { springFindings } from '../../kotlin/review-rules/spring/spring-findings.mjs';
 import { SPRING_RULES } from '../../kotlin/review-rules/spring/spring-messages.mjs';
+import {
+  VALIDATION_TARGET_RULE,
+  validationTargetFindings,
+} from '../../kotlin/review-rules/validation/validation-targets.mjs';
 import { git, writeAll } from '../test-support/kotlin-e2e-project.mjs';
 
 const FIXTURES = path.resolve(import.meta.dirname, '../../fixtures');
@@ -11,7 +15,7 @@ const SOURCE_BASE_FILES = new Set([
   'src/main/kotlin/shop/ShopApplication.kt',
   'src/main/java/shop/LegacyRepository.java',
 ]);
-const SPRING = new Set(SPRING_RULES);
+const SPRING = new Set([...SPRING_RULES, VALIDATION_TARGET_RULE]);
 const BUILD_PLUGIN = {
   annotations: ['Entity', 'MappedSuperclass', 'Embeddable'].map(
     (name) => `jakarta.persistence.${name}`,
@@ -65,13 +69,17 @@ export function recordedFindings() {
   const { files } = JSON.parse(
     readFileSync(path.join(FIXTURES, 'kotlin-spring-facts.json'), 'utf8'),
   );
-  return springFindings(files, {
-    finding: findingFactory(),
-    manifest: { spring: true, kotlinAllOpen: BUILD_PLUGIN },
-    projectFiles: files,
-    projectRoot: FIXTURE,
-    javaRoots: ['src/main/java'],
-  });
+  const finding = findingFactory();
+  return [
+    ...springFindings(files, {
+      finding,
+      manifest: { spring: true, kotlinAllOpen: BUILD_PLUGIN },
+      projectFiles: files,
+      projectRoot: FIXTURE,
+      javaRoots: ['src/main/java'],
+    }),
+    ...validationTargetFindings(files, { finding }),
+  ];
 }
 
 export function springLines(findings) {

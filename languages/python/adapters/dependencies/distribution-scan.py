@@ -45,6 +45,20 @@ def optional_requirements(distributions):
     return optional
 
 
+def importable(tops):
+    import importlib.util
+
+    found = []
+    for top in tops:
+        try:
+            if importlib.util.find_spec(top) is None:
+                continue
+        except Exception:
+            pass
+        found.append(top)
+    return sorted(found)
+
+
 def scan(request):
     version = list(sys.version_info[:2])
     if tuple(version) < MINIMUM:
@@ -62,6 +76,7 @@ def scan(request):
         "modules": metadata.packages_distributions(),
         "entryPoints": with_entry_points,
         "references": references(request["root"], request["files"]),
+        "importable": importable(request.get("tops", [])),
     }
 
 

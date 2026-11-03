@@ -28,9 +28,9 @@ So a rule's default is decided by what it prevents, not by how often other teams
 3. **Flags legitimate code often?** Make the rule narrower and more precise, so it still blocks the
    bad shape (for example: a repository call inside a loop, not every call inside a loop).
 4. **Off, or report-only, only when the noise is structural**: the tool cannot know the answer
-   and no exception could make the finding right, such as Kotlin mutants (compiler-generated
-   code) or generated code. An equivalent mutant of Java, Python or TypeScript code is not that
-   case: a `mutant-survived` exception with the function accepts it, after review.
+   and no exception could make the finding right, such as generated code. An equivalent mutant
+   of Java, Kotlin, Python or TypeScript code is not that case: a `mutant-survived` exception with
+   the function accepts it, after review.
    Write the reason down where the rule is configured.
 
 When in doubt, keep the rule on and make the exception easy to find.

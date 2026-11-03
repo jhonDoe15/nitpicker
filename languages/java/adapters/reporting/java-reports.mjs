@@ -19,7 +19,6 @@ import { inModule } from '../../builds/module-path.mjs';
 import { readJavaStructureFindings } from '../metrics/java-structure.mjs';
 import { methodText } from '../../../../shared/ingest/structure-report.mjs';
 import { readClassLimitFindings } from '../size/class-limits.mjs';
-import { hash } from '../../../../shared/rules/finding-helpers.mjs';
 import {
   declarationUnits,
   functionLocator,
@@ -30,6 +29,7 @@ import { checkstyleFindings, formatFindings } from './format-findings.mjs';
 import { readSlowTestFindings } from '../test-times/slow-tests.mjs';
 import { readTestConsoleFindings } from '../test-times/console-findings.mjs';
 import { readUnrunTestFindings } from '../test-runs/unrun-tests.mjs';
+import { readDocCommentFindings } from '../doc-comments/doc-comment-findings.mjs';
 import { ingestJacoco } from '../../ingest/coverage-reports/jacoco.mjs';
 import { ingestPit } from '../../ingest/pit.mjs';
 import { ingestJacocoBranches } from '../../ingest/coverage-reports/jacoco-branches.mjs';
@@ -39,7 +39,7 @@ import { applyRuleMessages } from '../../messages/rule-messages.mjs';
 import {
   jacocoSourceRoots,
   readKotlinFindings,
-  reportOnlyKotlinMutants,
+  kotlinGeneratedFilter,
   requireKotlinManifest,
   sourceFileOf,
   sourceLocator,
@@ -156,6 +156,7 @@ function readModuleFindings(context, crapLimit) {
     ...ifTested(jacoco, (report) => crapFindings(context, report, crapLimit)),
     ...pitFindings(context),
     ...readJavaStructureFindings(reportRoot, projectRoot),
+    ...readDocCommentFindings({ projectRoot, manifest: context.manifest, kotlin }),
     ...readClassLimitFindings(reportRoot, context.classLimits),
     ...ifTested(jacoco, (report) => branchFindings(context, report)),
     ...(kotlin ? readKotlinFindings(context, crapLimit) : []),
@@ -259,9 +260,9 @@ function crapFindings({ reportRoot, sourceRoots, projectRoot }, jacoco, crapLimi
   return ingestCrap(structure, jacoco, {
     sourceRoots,
     limit: crapLimit,
-    sourceHash: (entry) =>
+    sourceText: (entry) =>
       existsSync(path.join(projectRoot, entry.file))
-        ? hash(methodText(sources, projectRoot, entry))
+        ? methodText(sources, projectRoot, entry)
         : undefined,
   }).findings;
 }
@@ -273,11 +274,12 @@ function pitFindings(context) {
     return [];
   }
   const locate = sourceLocator(projectRoot, jacocoSourceRoots(context));
-  const { findings } = ingestPit(readFileSync(pitReport, 'utf8'), {
+  return ingestPit(readFileSync(pitReport, 'utf8'), {
     resolvePath: (className, sourceFile) => sourceFileOf(locate, className, sourceFile),
     functionAt: functionLocator(context),
-  });
-  return context.kotlin ? reportOnlyKotlinMutants(findings) : findings;
+    sourceText: sourceTextReader(projectRoot),
+    ...(context.kotlin ? { generated: kotlinGeneratedFilter(context) } : {}),
+  }).findings;
 }
 
 function branchFindings(context, jacoco) {

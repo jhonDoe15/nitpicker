@@ -36,7 +36,6 @@ describe('detecting an import-linter configuration', () => {
   it.each([
     ['.importlinter', '[importlinter]\nroot_package = app\n'],
     ['setup.cfg', '[metadata]\nname = app\n\n[importlinter]\nroot_package = app\n'],
-    ['tox.ini', '[importlinter]\nroot_package = app\n'],
     ['pyproject.toml', '[project]\nname = "app"\n\n[tool.importlinter]\nroot_package = "app"\n'],
   ])('finds it in %s', (file, contents) => {
     expect(hasImportLinterConfig(project({ [file]: contents }))).toBe(true);
@@ -47,7 +46,7 @@ describe('detecting an import-linter configuration', () => {
     ['a setup.cfg without the section', { 'setup.cfg': '[metadata]\nname = app\n' }],
     ['a pyproject.toml of another tool', { 'pyproject.toml': '[tool.ruff]\nline-length = 99\n' }],
     ['a .importlinter without the section', { '.importlinter': '[other]\n' }],
-    ['a tox.ini naming it only in a comment', { 'tox.ini': '# [importlinter]\n[tox]\n' }],
+    ['a tox.ini, which import-linter never reads', { 'tox.ini': '[importlinter]\n[tox]\n' }],
   ])('does not find it with %s', (_, files) => {
     expect(hasImportLinterConfig(project(files))).toBe(false);
   });

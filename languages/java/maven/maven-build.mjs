@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { readEffectivePom } from './configuration/effective-pom.mjs';
-import { runMaven } from './maven-command.mjs';
+import { runMaven, TEST_RERUNS_OFF } from './maven-command.mjs';
 import {
   lifecycleArgs,
   moduleClasspaths,
@@ -20,6 +20,7 @@ import {
 } from './maven-tools.mjs';
 import { buildRunsArchRules } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
+import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
 import { processorTool } from './errorprone/maven-errorprone.mjs';
 import { readPinnedTools } from '../builds/java-build.mjs';
 import { kotlinSetup } from './kotlin/kotlin-setup.mjs';
@@ -45,7 +46,7 @@ function dependencyFile(work, module) {
   return path.join(work, 'dependencies', groupId, `${artifactId}.txt`);
 }
 
-function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn }) {
+export function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn }) {
   runMaven({
     projectRoot,
     maven,
@@ -62,6 +63,7 @@ function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn }) {
       '-Dmaven.test.failure.ignore=true',
       '-DskipTests=false',
       '-Dmaven.test.skip=false',
+      ...TEST_RERUNS_OFF,
       ...PROJECT_CHECKS_OFF,
     ],
   });
@@ -137,6 +139,11 @@ export function runMavenPreset(
   projectRoot,
   { maven, policy = {}, configs, environment = {}, spawn },
 ) {
+  if (policy.preset !== undefined && !MAVEN_PRESETS.includes(policy.preset)) {
+    throw new Error(
+      `The ${policy.preset} preset needs a Gradle build, and this project builds with Maven. Use the java preset for its Java sources`,
+    );
+  }
   const pinned = readPinnedTools();
   const work = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-'));
   const run = { projectRoot, maven, spawn, pinned };

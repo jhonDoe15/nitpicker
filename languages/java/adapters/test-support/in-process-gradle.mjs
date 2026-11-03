@@ -3,6 +3,8 @@ import path from 'node:path';
 import { SUPERVISOR } from '../gradle-wrapper/gradle-process.mjs';
 import { runFakeGradle } from './fake-gradle/run-fake-gradle.mjs';
 
+export { EMPTY_MUTATION_FACTS } from './fake-gradle/kotlin-empty-reports.mjs';
+
 export const fakeGradle = path.resolve(import.meta.dirname, '../fixtures/fake-gradle.mjs');
 
 function answerOf(invocation) {

@@ -47,6 +47,7 @@ describe('running mutmut', () => {
           'Survived number: replacing `1` with `2` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.',
         classification: 'enforceable',
         symbol: 'value',
+        anchor: { key: 'mutant:1→2|486d9affb60dbb0063b03d8e', requireUnchangedLine: true },
         location: { line: 2 },
       },
     ]);

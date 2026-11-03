@@ -54,13 +54,16 @@ export function defineBannedCases(fixture, runWithPolicy) {
   it('reports the detekt message each case records and the hint that the gate adds', () => {
     const result = fixture.bannedResult;
 
-    for (const testCase of kotlinRuleCases.filter(({ rule }) => rule !== SUPPRESSION_RULE)) {
-      const [finding] = detektFindingsOf(result.newEnforceable, testCase).filter(
-        ({ rule }) => rule === testCase.rule,
-      );
+    const compared = kotlinRuleCases
+      .filter(({ rule }) => rule !== SUPPRESSION_RULE)
+      .map((testCase) => {
+        const [finding] = detektFindingsOf(result.newEnforceable, testCase).filter(
+          ({ rule }) => rule === testCase.rule,
+        );
+        return { actual: finding.message, recorded: recordedFinding(testCase, finding.path).message };
+      });
 
-      expect(finding.message).toBe(recordedFinding(testCase, finding.path).message);
-    }
+    expect(compared.map(({ actual }) => actual)).toEqual(compared.map(({ recorded }) => recorded));
   });
   it('does not report the suppressed finding twice: the suppression is the finding', () => {
     const result = fixture.bannedResult;

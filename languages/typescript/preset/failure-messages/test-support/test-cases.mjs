@@ -60,6 +60,11 @@ export const testFailureMessageCases = [
     allowed: 'number between 1 and 10000 ms written in this file',
   }),
   testCase({
+    name: 'test retry names fixing the flaky cause',
+    banned: "it('x', { retry: 2 }, () => {});",
+    allowed: 'Fix the cause, such as waiting on the condition instead of a delay',
+  }),
+  testCase({
     name: 'first-test-charged setup names beforeAll and the exception path',
     banned:
       "let built;\nasync function build() { built ??= await compile(); return built; }\nit('x', async () => { await build(); });",

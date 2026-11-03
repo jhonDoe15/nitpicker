@@ -156,9 +156,10 @@ describe('no people', () => {
   });
 
   it('checks the total before looking at the people', () => {
-    for (const total of [-1, 10.5, '100', Number.NaN]) {
-      expect(() => splitBill(total, [])).toThrow('Total must be a whole number of cents');
-    }
+    expect(() => splitBill(-1, [])).toThrow('Total must be a whole number of cents');
+    expect(() => splitBill(10.5, [])).toThrow('Total must be a whole number of cents');
+    expect(() => splitBill('100', [])).toThrow('Total must be a whole number of cents');
+    expect(() => splitBill(Number.NaN, [])).toThrow('Total must be a whole number of cents');
     expect(() => splitBill(100000001, [])).toThrow('Total is too large');
   });
 

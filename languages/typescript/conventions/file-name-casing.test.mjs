@@ -127,9 +127,9 @@ describe('file name casing compliance', () => {
     'app/+layout.ts',
     'app/$id.ts',
   ])('%s complies with every casing', (file) => {
-    for (const casing of options) {
-      expect(fileNameComplies(file, casing), casing).toBe(true);
-    }
+    expect(options.map((casing) => fileNameComplies(file, casing))).toEqual(
+      options.map(() => true),
+    );
   });
 
   it.each([
@@ -181,9 +181,10 @@ describe('hook files', () => {
     ['src/useAuth.ts', undefined],
   ])('%s gives no vote and passes with %j', (file, text) => {
     expect(measure(file, text)).toBeUndefined();
-    for (const casing of ['kebab-case', 'camelCase', 'snake_case']) {
-      expect(fileNameComplies(file, casing, text), casing).toBe(true);
-    }
+    const casings = ['kebab-case', 'camelCase', 'snake_case'];
+    expect(casings.map((casing) => fileNameComplies(file, casing, text))).toEqual(
+      casings.map(() => true),
+    );
   });
 
   it.each([
