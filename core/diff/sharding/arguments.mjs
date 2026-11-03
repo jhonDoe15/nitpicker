@@ -12,6 +12,10 @@ function collectOptionValues(arguments_) {
     if (argument === HELP) {
       return undefined;
     }
+    if (argument === '--details') {
+      values[argument] = true;
+      continue;
+    }
     if (!OPTION_NAMES.includes(argument)) {
       throw unknownArgumentError(
         argument,
@@ -41,5 +45,6 @@ export function parseArguments(arguments_) {
     outputRoot: values['--output'],
     shardCount: Number(values['--shard-count']),
     policyRoot: values['--policy-root'],
+    details: values['--details'] === true,
   };
 }

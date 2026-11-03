@@ -23,7 +23,7 @@ describe('package-owned child configs', () => {
       'dist/**',
       'generated/**',
       'lib/legacy/**',
-      'reports/**',
+      'reports/quality/**',
       'target/**',
     ]);
     const files = config.flatMap((entry) => entry.files ?? []).flat();
@@ -78,7 +78,7 @@ describe('package-owned child configs', () => {
       'dist/**',
       'generated/**',
       'lib/legacy/**',
-      'reports/**',
+      'reports/quality/**',
       'target/**',
     ]);
     expect([...new Set(config.flatMap((entry) => entry.files ?? []).flat())].sort()).toEqual([
@@ -101,7 +101,7 @@ describe('package-owned child configs', () => {
       'lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'lib/**/__tests__/**',
       'lib/legacy/**',
-      'reports/**',
+      'reports/quality/**',
       'spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'target/**',
     ]);
@@ -162,7 +162,7 @@ describe('package-owned child configs', () => {
       'generated/**',
       'lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'lib/legacy/**',
-      'reports/**',
+      'reports/quality/**',
       'spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       'target/**',
     ]);
@@ -179,7 +179,7 @@ describe('package-owned child configs', () => {
       '!lib/**/*.{test,spec}.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       '!lib/**/__tests__/**',
       '!lib/legacy/**',
-      '!reports/**',
+      '!reports/quality/**',
       '!spec/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
       '!target/**',
       'lib/**/*.{ts,tsx,mts,cts,js,jsx,mjs,cjs}',
@@ -188,7 +188,7 @@ describe('package-owned child configs', () => {
     expect(config.ignorePatterns).toEqual([
       'lib/dist',
       'spec/integration',
-      'reports',
+      '/reports/quality',
       '.nitpicker-*',
       '!.nitpicker-diff-stryker.*',
       '!.nitpicker-diff-tsconfig.stryker.json',
