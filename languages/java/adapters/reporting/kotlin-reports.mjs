@@ -24,6 +24,7 @@ import {
 } from '../kotlin/rules/kotlin-source-rules.mjs';
 import { readSuppressionFindings } from '../kotlin/rules/kotlin-suppressions.mjs';
 import { withFrameworkAllowances } from '../kotlin/scan/framework-allowances.mjs';
+import { withoutCoveredCasts } from '../kotlin/scan/casts/cast-precedence.mjs';
 import { readKotlinSourceFindings } from '../kotlin/scan/kotlin-scan.mjs';
 import {
   readKotlinFanOutFindings,
@@ -136,16 +137,18 @@ export function readKotlinFindings(context, crapLimit) {
   const testRoots = manifest.kotlinTestSourceRoots ?? [];
   const helpers = context.conventions?.['kotlin.assertionHelpers'] ?? [];
   const ruleFindings = withDetektCountRatchets(
-    applyKotlinRuleMessages([
-      ...withFrameworkAllowances(detektFindings(reportRoot, formatAdvice), {
-        projectRoot,
-        spring: manifest.spring === true,
-        testRoots,
-      }),
-      ...readKotlinSourceFindings(projectRoot, manifest).filter(leftToFanOut(fanOut.calls)),
-      ...fanOut.findings,
-      ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? []),
-    ]),
+    applyKotlinRuleMessages(
+      withoutCoveredCasts([
+        ...withFrameworkAllowances(detektFindings(reportRoot, formatAdvice), {
+          projectRoot,
+          spring: manifest.spring === true,
+          testRoots,
+        }),
+        ...readKotlinSourceFindings(projectRoot, manifest).filter(leftToFanOut(fanOut.calls)),
+        ...fanOut.findings,
+        ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? [], testRoots),
+      ]),
+    ),
     metrics.detektCounts,
     functionLocator({ ...context, kotlin: true }),
   );
