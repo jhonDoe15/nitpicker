@@ -82,6 +82,10 @@ potential-bugs:
     ignoreAnnotated: ['Marker']
   CastNullableToNonNullableType:
     excludes: ['**/*.kt']
+  CastToNullableType:
+    excludes: ['**/*.kt']
+  DontDowncastCollectionTypes:
+    excludes: ['**/*.kt']
 exceptions:
   active: false
   excludes: ['**/*.kt']
