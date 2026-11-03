@@ -70,14 +70,15 @@ function runGate({ project, branch, options }) {
   git(project.root, 'checkout', '-q', branch);
   const outputRoot = path.join(
     project.output,
-    `${branch}-${base}-${String(analyzers.length)}-${String(extraArguments.length)}`,
+    `${branch}-${base ?? 'all'}-${String(analyzers.length)}-${String(extraArguments.length)}`,
   );
   const analyzerArguments = analyzers.flatMap((name) => ['--analyzer', name]);
   const result = spawnSync(
     'node',
     [
       path.join(project.packageRoot, 'core/cli.mjs'),
-      ...['--base', base, ...analyzerArguments, ...extraArguments, '--output', outputRoot],
+      ...(base === undefined ? [] : ['--base', base]),
+      ...[...analyzerArguments, ...extraArguments, '--output', outputRoot],
     ],
     { cwd: project.root, encoding: 'utf8', timeout: GATE_TIMEOUT_MS },
   );
