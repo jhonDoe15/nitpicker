@@ -46,6 +46,7 @@ function foldUnreached(mutants) {
     {
       ...entryOf(first),
       ...(first.location === undefined ? {} : { location: { line: first.location.line } }),
+      folded: true,
       message: `${functionLabel(first.symbol)}: ${String(mutants.length)} mutants${lineSpan(mutants)} that no test runs. Add a test that reaches this code.`,
     },
   ];
@@ -63,6 +64,8 @@ function capSurvivors(mutants) {
     ...mutants.slice(0, SURVIVOR_LIMIT),
     {
       ...entryOf(mutants[0]),
+      ...(line === undefined ? {} : { location: { line } }),
+      folded: true,
       message: `and ${String(hidden.length)} more surviving ${noun} in ${functionLabel(mutants[0].symbol)}${from} (listed in the diagnostics file)`,
     },
   ];
