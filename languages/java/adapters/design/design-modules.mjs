@@ -1,7 +1,9 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { moduleProject } from '../../builds/java-modules.mjs';
+import { MAVEN_REPORT_DIRECTORY } from '../../maven/maven-build.mjs';
 import { resolveInside } from '../../../../shared/conventions/read-inside.mjs';
+import { DESIGN_FACTS_FILE, designFindings } from './design-findings.mjs';
 
 function hasManifest(moduleDir, reportDirectory) {
   const manifest = resolveInside(moduleDir, `${reportDirectory}/manifest.json`);
@@ -28,5 +30,25 @@ export function mavenDesignModules(projectRoot, moduleDirs, reportDirectory) {
       sourceRoots: project.sourceRoots,
       published: project.published,
     };
+  });
+}
+
+export function gradleDesignFindings({ projectRoot, report, options, reportBase }) {
+  return designFindings({
+    projectRoot,
+    listModules: () => gradleDesignModules(report),
+    policy: options.policy,
+    analyzerName: options.policy?.preset ?? 'java',
+    output: path.join(reportBase, DESIGN_FACTS_FILE),
+  });
+}
+
+export function mavenDesignFindings(projectRoot, moduleDirs, policy) {
+  return designFindings({
+    projectRoot,
+    listModules: () => mavenDesignModules(projectRoot, moduleDirs, MAVEN_REPORT_DIRECTORY),
+    policy,
+    analyzerName: policy?.preset ?? 'java',
+    output: path.join(projectRoot, MAVEN_REPORT_DIRECTORY, DESIGN_FACTS_FILE),
   });
 }

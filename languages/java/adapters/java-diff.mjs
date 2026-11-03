@@ -37,8 +37,7 @@ import { isJavaTouchedRule } from './touched-rules.mjs';
 import { withProjectEnumPredicates } from './review-rules/enum-predicates.mjs';
 import { gradleBudget } from './gradle-wrapper/gradle-budget.mjs';
 import { gradleStages } from './gradle-wrapper/gradle-stages.mjs';
-import { DESIGN_FACTS_FILE, designFindings } from './design/design-findings.mjs';
-import { gradleDesignModules, mavenDesignModules } from './design/design-modules.mjs';
+import { gradleDesignFindings, mavenDesignFindings } from './design/design-modules.mjs';
 
 const CLOCK_SLACK_MS = 2000;
 
@@ -130,22 +129,14 @@ function gradleFindings(projectRoot, options, reportBase) {
   if (preset === 'kotlin') {
     runKotlinDuplicates(projectRoot, duplicates);
   }
+  const { findings } = readJavaFindings(projectRoot, {
+    ...readOptions(options.policy),
+    formatAdvice: kotlinRun?.advice,
+    reportBase,
+    report,
+  });
   return {
-    findings: [
-      ...readJavaFindings(projectRoot, {
-        ...readOptions(options.policy),
-        formatAdvice: kotlinRun?.advice,
-        reportBase,
-        report,
-      }).findings,
-      ...designFindings({
-        projectRoot,
-        listModules: () => gradleDesignModules(report),
-        policy: options.policy,
-        analyzerName: preset,
-        output: path.join(reportBase, DESIGN_FACTS_FILE),
-      }),
-    ],
+    findings: [...findings, ...gradleDesignFindings({ projectRoot, report, options, reportBase })],
     testsFailures: withRootSourceRoots(testsFailures, report.modules),
   };
 }
@@ -179,20 +170,12 @@ function mavenFindings(projectRoot, options) {
       skippedFolders: options.policy?.duplicateSkippedFolders,
     });
   }
+  const findings = readModuleFindings(projectRoot, moduleDirs, {
+    ...readOptions(options.policy),
+    reportDirectory: MAVEN_REPORT_DIRECTORY,
+  });
   return {
-    findings: [
-      ...readModuleFindings(projectRoot, moduleDirs, {
-        ...readOptions(options.policy),
-        reportDirectory: MAVEN_REPORT_DIRECTORY,
-      }),
-      ...designFindings({
-        projectRoot,
-        listModules: () => mavenDesignModules(projectRoot, moduleDirs, MAVEN_REPORT_DIRECTORY),
-        policy: options.policy,
-        analyzerName: options.policy?.preset ?? 'java',
-        output: path.join(projectRoot, MAVEN_REPORT_DIRECTORY, DESIGN_FACTS_FILE),
-      }),
-    ],
+    findings: [...findings, ...mavenDesignFindings(projectRoot, moduleDirs, options.policy)],
     testsFailures,
   };
 }
