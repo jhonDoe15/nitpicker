@@ -41,6 +41,8 @@ export function expectedDirtyFindings(links) {
         value: 1,
         existingCodeOnly: true,
       },
+      exception: { rule: 'no-debugger', paths: ['src/main/example.ts'], reason: '...' },
+      exceptionList: 'exceptions',
     },
     {
       tool: 'prettier-format',
