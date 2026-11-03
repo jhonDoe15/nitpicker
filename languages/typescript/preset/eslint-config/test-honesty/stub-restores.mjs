@@ -1,6 +1,6 @@
 import { globSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
-import ts from 'typescript';
+import { ts } from '../../../typescript-api/typescript-api.mjs';
 import { firstFileIn } from '../../../../../shared/filesystem.mjs';
 import { propertyName } from '../../syntax/property-names.mjs';
 import { VITEST_CONFIG_NAMES } from './setup-files.mjs';

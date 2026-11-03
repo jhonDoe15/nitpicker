@@ -1,8 +1,12 @@
-import { rmSync } from 'node:fs';
+import { readFileSync, rmSync } from 'node:fs';
+import path from 'node:path';
 
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 
 import { collectJavaFindings } from '../../java-diff.mjs';
+import { FAN_OUT_LEAD, FAN_OUT_RULE } from '../../../messages/fan-out/fan-out-details.mjs';
+import { exceptionRoute } from '../../../../../shared/exceptions/rule-names.mjs';
+import { appendSentence } from '../../../../../shared/messages/exception-sentence.mjs';
 import {
   enabled,
   gradle,
@@ -15,6 +19,42 @@ import {
   comparable,
   stableConsoleEmitters,
 } from '../__tests__/spring-project.mjs';
+
+const PREFETCH = 'src/main/java/shop/Prefetch.java';
+const RULESET = path.resolve(import.meta.dirname, '../../../gradle/pmd-main-ruleset.xml');
+const FAN_OUT_LEADS = [
+  ['urls', 'CompletableFuture.supplyAsync'],
+  ['urls', 'ExecutorService.submit'],
+  ['urls', 'HttpClient.sendAsync'],
+  ['urls', 'ExecutorService.submit'],
+  ['urls', 'Executor.execute'],
+  ['urls', 'Thread.startVirtualThread'],
+  ['urls', 'CompletableFuture.supplyAsync'],
+  ['urls'],
+  ['urls'],
+  ['urls', 'Thread.start'],
+  ['urls', 'Thread.Builder.start'],
+  ['tasks', 'ExecutorService.invokeAll'],
+  ['urls.subList(0,urls.size())', 'CompletableFuture.supplyAsync'],
+  ['urls', 'CompletableFuture.supplyAsync'],
+  ['IntStream.range(0,count)', 'CompletableFuture.supplyAsync'],
+  ['getUrls()', 'CompletableFuture.supplyAsync'],
+  ['urls', 'CompletableFuture.supplyAsync'],
+  ['getUrls()', 'CompletableFuture.supplyAsync'],
+];
+
+function fanOutRest() {
+  const ruleset = readFileSync(RULESET, 'utf8');
+  const rule = ruleset.slice(ruleset.indexOf(`<rule name="${FAN_OUT_RULE}"`));
+  const message = /message="([^"]*)"/u.exec(rule)[1].slice(FAN_OUT_LEAD.length);
+  return appendSentence(message, exceptionRoute({ rule: `pmd/${FAN_OUT_RULE}`, path: PREFETCH }));
+}
+
+function fanOutLead([collection, starter]) {
+  const work =
+    starter === undefined ? 'a task that makes a remote or message call' : `\`${starter}\``;
+  return `\`${collection}\` starts ${work} for every element at once`;
+}
 
 describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring project', () => {
   const runs = {};
@@ -54,6 +94,57 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
       'src/test/java/shop/WaitingTest.java:87',
     ]);
     expect(timed[0].message).toMatch(/until\(\(\) -> !thread\.isAlive\(\)\)/u);
+  });
+
+  it('names the collection and the task start of an unbounded fan-out', () => {
+    const fanOut = runs.gradle.filter(({ rule }) => rule === 'UnboundedFanOut');
+
+    expect(fanOut.map(({ message }) => message)).toEqual(
+      FAN_OUT_LEADS.map((lead) => `${fanOutLead(lead)}${fanOutRest()}`),
+    );
+  });
+
+  it('names the call, the class that loads it and the member that runs it in a class-load effect', () => {
+    const effects = runs.maven.filter(({ rule }) => rule === 'ClassLoadEffect');
+    const warehouseEffects = effects.filter(({ path: file }) =>
+      /\/Warehouse\w*\.java$/u.test(file),
+    );
+
+    expect(
+      warehouseEffects.map(({ message, identity }) => [
+        /^.*?: `[^`]+` runs while (\w+ loads \([^)]*\))/u.exec(message)?.[1],
+        identity,
+      ]),
+    ).toEqual([
+      [
+        'Warehouse loads (in static field WORKERS)',
+        'fp:nitpicker/subject=Warehouse.WORKERS: Executors.newFixedThreadPool(...)',
+      ],
+      [
+        'Warehouse loads (in a static block)',
+        'fp:nitpicker/subject=Warehouse.static {}: Files.exists(...)',
+      ],
+      [
+        'Warehouse loads (in method connect, which static field STOCK calls)',
+        'fp:nitpicker/subject=Warehouse.connect(): DriverManager.getConnection(...)',
+      ],
+      [
+        'Ledger loads (in constructor Ledger of an instance created at load)',
+        'fp:nitpicker/subject=Ledger.Ledger(): DriverManager.getConnection(...)',
+      ],
+      [
+        'WarehouseConfig loads (in a static block)',
+        'fp:nitpicker/subject=WarehouseConfig.static {}: Files.exists(...)',
+      ],
+    ]);
+    const warehouse = effects.find(({ path: file }) => file.endsWith('Warehouse.java'))?.message;
+
+    expect(warehouse?.slice(warehouse.indexOf('If this is intended'))).toBe(
+      [
+        'If this is intended, add {"rule":"pmd/ClassLoadEffect","paths":["src/main/java/shop/Warehouse.java"],',
+        '"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      ].join(''),
+    );
   });
 
   it('reports the main classes only tests use and spares the Spring service', () => {

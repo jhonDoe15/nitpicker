@@ -10,7 +10,7 @@ import {
 } from './tooling.mjs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { normalizeMutation } from '../reporting/tests.mjs';
+import { normalizeMutation, withUnreachedMutantsUncovered } from '../reporting/tests.mjs';
 import { withMutationSourceHashes } from '../reporting/source-hashes.mjs';
 import { rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
 import {
@@ -78,7 +78,7 @@ async function mutationReport(options, targets) {
     }
     return {
       report: withMutationSourceHashes(
-        readMutationReport(options.projectRoot),
+        readMutationReport(options.projectRoot, sourceConfig.coverageAnalysis),
         options.projectRoot,
       ),
     };
@@ -176,7 +176,7 @@ const SKIP_MESSAGES = {
     typecheck:
       'mutation skipped: the base commit does not type-check, so its mutants cannot be compared. Fix the base first; a missing @types/node is the usual cause.',
     tests:
-      'mutation skipped: the base commit fails its own tests, so its mutants cannot be compared. Fix the base first.',
+      'mutation skipped: the base commit fails its own tests, so its mutants are unknown there.',
   },
 };
 
@@ -210,8 +210,11 @@ function runStrykerOrExplainSkip(options, configPath, command) {
   }
 }
 
-function readMutationReport(projectRoot) {
-  return JSON.parse(readFileSync(path.join(projectRoot, MUTATION_REPORT_PATH), 'utf8'));
+function readMutationReport(projectRoot, coverageAnalysis) {
+  return withUnreachedMutantsUncovered(
+    JSON.parse(readFileSync(path.join(projectRoot, MUTATION_REPORT_PATH), 'utf8')),
+    coverageAnalysis,
+  );
 }
 
 export function rebaseMutationConfig(sourceConfig, { tsconfigFile, vitestConfigFile }) {

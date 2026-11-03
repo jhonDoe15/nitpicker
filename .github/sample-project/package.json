@@ -1,0 +1,10 @@
+{
+  "name": "nitpicker-sample-project",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@vitest/coverage-v8": "4.1.11",
+    "typescript": "6.0.3",
+    "vitest": "4.1.11"
+  }
+}

@@ -314,19 +314,25 @@ describe('open-ended values', () => {
     ...COLUMNS,
   };
 
-  it('accepts a pin of any number of columns and refuses anything else', () => {
+  it('accepts a pin of any number of columns', () => {
     const validate = (pin) => () => {
       validateConventions({ 'demo.width': pin }, [width]);
     };
 
     expect(validate('110')).not.toThrow();
     expect(validate('100')).not.toThrow();
-    for (const pin of ['0', '1', '1000', '-5', '12.5', 'wide', 110, undefined]) {
-      expect(validate(pin)).toThrow(
+  });
+
+  it.each(['0', '1', '1000', '-5', '12.5', 'wide', 110, undefined])(
+    'rejects the width pin %j',
+    (pin) => {
+      expect(() => {
+        validateConventions({ 'demo.width': pin }, [width]);
+      }).toThrow(
         '"conventions.demo.width" must be one of: "100", "120", or another number of columns',
       );
-    }
-  });
+    },
+  );
 
   it('carries a value read from an opted-in config even when it equals the fallback', () => {
     const found = {

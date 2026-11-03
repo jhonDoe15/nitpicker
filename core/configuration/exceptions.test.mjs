@@ -13,14 +13,16 @@ describe('hygiene exceptions', () => {
     'large-file',
     'committed-build-output',
   ])('accepts an exception for %s in every preset', (rule) => {
-    for (const preset of ['typescript', 'javascript', 'java', 'kotlin', 'python']) {
-      const config = { preset, exceptions: [exception(rule)] };
-      expect(validateConfig(config)).toEqual(config);
-    }
+    const configs = ['typescript', 'javascript', 'java', 'kotlin', 'python'].map((preset) => ({
+      preset,
+      exceptions: [exception(rule)],
+    }));
+    expect(configs.map(validateConfig)).toEqual(configs);
   });
 
-  it('keeps the package rules to the TypeScript and JavaScript presets', () => {
-    for (const rule of ['unused-dependency', 'unlisted-dependency', 'unresolved-import']) {
+  it.each(['unused-dependency', 'unlisted-dependency', 'unresolved-import'])(
+    'keeps the package rule %s to the TypeScript and JavaScript presets',
+    (rule) => {
       const config = { preset: 'typescript', exceptions: [exception(rule)] };
       expect(validateConfig(config)).toEqual(config);
       expect(() => validateConfig({ preset: 'python', exceptions: [exception(rule)] })).toThrow(
@@ -29,8 +31,8 @@ describe('hygiene exceptions', () => {
       expect(() => validateConfig({ preset: 'java', exceptions: [exception(rule)] })).toThrow(
         /"exceptions\[0\]\.rule" must name a finding as it is printed/u,
       );
-    }
-  });
+    },
+  );
 });
 
 describe('package exceptions', () => {

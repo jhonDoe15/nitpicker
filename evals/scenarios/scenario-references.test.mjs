@@ -16,9 +16,15 @@ describe.runIf(enabled)('scenario reference solutions', () => {
             outcome: record.outcome,
             acceptance: record.acceptance.passed,
             shortcuts: record.shortcuts,
+            detectorErrors: record.detectorErrors,
           },
           record.gate.final.output,
-        ).toEqual({ outcome: 'passed', acceptance: true, shortcuts: [] });
+        ).toEqual({
+          outcome: 'passed',
+          acceptance: true,
+          shortcuts: [],
+          detectorErrors: [],
+        });
       },
       CASE_TIMEOUT_MS,
     );

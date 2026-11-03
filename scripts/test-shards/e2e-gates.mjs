@@ -1,7 +1,7 @@
 import { existsSync, globSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
-export const SUITES = ['java', 'kotlin', 'python'];
+export const SUITES = ['java', 'kotlin', 'python', 'go'];
 const E2E_NAME = '.e2e.test.';
 const TEST_FILES = ['{core,shared,languages,scripts}/**/*.test.mjs', 'evals/**/*.test.mjs'];
 const FLAG_READ = /process\.env(?:\.|\[\s*['"])(NITPICKER_\w+?_E2E)\b/gu;
@@ -97,7 +97,9 @@ function checksBoth(job, jobs) {
 export function workflowProblems(workflow, language) {
   const shard = `${language}-shard`;
   const plan = `${language}-shard-plan`;
-  const others = Object.keys(workflow.jobs).filter((name) => ![shard, plan].includes(name));
+  const others = Object.keys(workflow.jobs).filter(
+    (name) => ![shard, plan, 'changes'].includes(name),
+  );
   const aggregate = others.length === 1 ? workflow.jobs[others[0]] : undefined;
   return [
     ...(runsAll(workflow.jobs[shard], [`npm run test:${language} -- `, SHARD_OPTION])
@@ -109,5 +111,8 @@ export function workflowProblems(workflow, language) {
     ...(checksBoth(aggregate, [plan, shard])
       ? []
       : [`one aggregate job must always run, need ${plan} and ${shard} and check both results`]),
+    ...(workflow.jobs.changes === undefined || checksBoth(aggregate, ['changes'])
+      ? []
+      : ['the aggregate job must also need changes and check its result']),
   ];
 }

@@ -43,6 +43,10 @@ import { rule as testTsconfigPinsLibAndTypes } from './rules/testing/types/test-
 import { rule as exhaustiveUnionPredicate } from './rules/api-shape/exhaustive-union-predicate.mjs';
 import { rule as hoverTestNeedsKeyboard } from './rules/react-tests/hover-test-needs-keyboard.mjs';
 import { rule as noForwardingWrapper } from './rules/api-shape/no-forwarding-wrapper.mjs';
+import { rule as noCompatibilityShim } from './rules/signatures/no-compatibility-shim.mjs';
+import { rule as noFalsyDefault } from './rules/signatures/no-falsy-default.mjs';
+import { rule as noParameterMutation } from './rules/signatures/no-parameter-mutation.mjs';
+import { rule as noTriStateBoolean } from './rules/signatures/no-tri-state-boolean.mjs';
 import { rule as noRuntimeExclusivePropsCheck } from './rules/react-props/no-runtime-exclusive-props-check.mjs';
 import { rule as noSingularAndPluralProp } from './rules/react-props/no-singular-and-plural-prop.mjs';
 import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mjs';
@@ -56,6 +60,7 @@ import { rule as reactNoEffectEventHandling } from './rules/react/render/react-n
 import { rule as reactNoRandomKey } from './rules/react/render/react-no-random-key.mjs';
 import { rule as reactTestNoImplementationDetails } from './rules/react-tests/react-test-no-implementation-details.mjs';
 
+import { rule as unboundedFanOut } from './rules/concurrency/unbounded-fan-out.mjs';
 import { rule as noModuleLevelMutableState } from './rules/guards/no-module-level-mutable-state.mjs';
 import { rule as noProcessAccessOutsideCompositionRoot } from './rules/guards/no-process-access-outside-composition-root.mjs';
 import { rule as noShellStringCommand } from './rules/guards/no-shell-string-command.mjs';
@@ -106,6 +111,7 @@ export const nitpickerRules = {
     'no-weak-hash': noWeakHash,
     'require-http-timeout': requireHttpTimeout,
     'no-unknown-main-folder': noUnknownMainFolder,
+    'unbounded-fan-out': unboundedFanOut,
     'no-magic-numbers': noMagicNumbers,
     'naming-convention': namingConvention,
     'no-unsafe-path-join': noUnsafePathJoin,
@@ -139,6 +145,10 @@ export const nitpickerRules = {
     'exhaustive-union-predicate': exhaustiveUnionPredicate,
     'hover-test-needs-keyboard': hoverTestNeedsKeyboard,
     'no-forwarding-wrapper': noForwardingWrapper,
+    'no-compatibility-shim': noCompatibilityShim,
+    'no-falsy-default': noFalsyDefault,
+    'no-parameter-mutation': noParameterMutation,
+    'no-tri-state-boolean': noTriStateBoolean,
     'no-runtime-exclusive-props-check': noRuntimeExclusivePropsCheck,
     'no-singular-and-plural-prop': noSingularAndPluralProp,
     'react-no-effect-data-fetching': reactNoEffectDataFetching,

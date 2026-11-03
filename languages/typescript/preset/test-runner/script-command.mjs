@@ -48,12 +48,24 @@ function droppedIndexes(token, index, valued) {
   return token.includes('=') ? [index] : [index, index + 1];
 }
 
-export function withoutOptions(tokens, { flags = [], valued = [] }) {
+function variadicIndexes(tokens, variadic) {
+  const names = new Set(variadic.map(optionName));
+  let dropping = false;
+  return tokens.flatMap((token, index) => {
+    if (token.startsWith('-')) {
+      dropping = names.has(optionName(token));
+    }
+    return dropping ? [index] : [];
+  });
+}
+
+export function withoutOptions(tokens, { flags = [], valued = [], variadic = [] }) {
   const valuedNames = new Set(valued.map(optionName));
   const flagNames = new Set(flags.map(optionName));
-  const dropped = new Set(
-    tokens.flatMap((token, index) => droppedIndexes(token, index, valuedNames)),
-  );
+  const dropped = new Set([
+    ...tokens.flatMap((token, index) => droppedIndexes(token, index, valuedNames)),
+    ...variadicIndexes(tokens, variadic),
+  ]);
   return tokens.filter(
     (token, index) =>
       !dropped.has(index) && !(token.startsWith('-') && flagNames.has(optionName(token))),

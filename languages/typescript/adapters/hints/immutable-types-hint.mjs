@@ -1,5 +1,5 @@
 import { ERROR_CLASS_HINT, KINDS } from '../immutable-types/kinds.mjs';
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { mutablePart, kindOfType } from '../immutable-types/types.mjs';
 import { typeParameterFinding, untypedFinding } from '../immutable-types/untyped.mjs';
 

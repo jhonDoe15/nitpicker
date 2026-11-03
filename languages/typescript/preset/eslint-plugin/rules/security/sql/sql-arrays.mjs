@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../../../../typescript-api/typescript-api.mjs';
 import { depthFirst } from '../../../../../../../shared/traversal.mjs';
 import { findVariable, isFunctionNode } from '../../analysis/constant-resolution.mjs';
 import { memberName, resolvedValue, typeServices, unwrapped } from '../security-values.mjs';

@@ -3,7 +3,7 @@ import {
   unknownMemberTags,
   withJsdoc,
 } from '../../../../../javascript/preset/documentation/jsdoc.mjs';
-import ts from 'typescript';
+import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { ancestorsOf, variableNamed } from '../analysis/ancestry.mjs';
 import { readHeadPolicy } from '../../../head-policy.mjs';
 import { librariesForFile } from '../../../libraries/file-libraries.mjs';

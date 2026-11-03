@@ -90,9 +90,8 @@ describe('Checkstyle layout checks', () => {
   });
 
   it('keeps the checks that are not layout', () => {
-    for (const kept of ['NeedBraces', 'AvoidStarImport', 'EmptyCatchBlock']) {
-      expect(suppressed).not.toContain(kept);
-    }
+    const kept = ['NeedBraces', 'AvoidStarImport', 'EmptyCatchBlock'];
+    expect(kept.filter((check) => suppressed.includes(check))).toEqual([]);
   });
 });
 

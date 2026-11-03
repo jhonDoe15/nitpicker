@@ -114,6 +114,15 @@ export function readRuffConfig(start) {
   return file === undefined ? undefined : ruffConfigOf(file);
 }
 
+export function readRuffLayers(start) {
+  const config = readRuffConfig(start);
+  if (config === undefined) {
+    return undefined;
+  }
+  const layers = config.files.map((file) => ({ file, table: ruffTable(file) }));
+  return { ...config, layers: layers.filter(({ table }) => table !== undefined) };
+}
+
 const BLACK_QUOTES = { true: 'preserve', false: 'normalize' };
 
 function blackKey(table, name) {
@@ -171,11 +180,14 @@ function filesOf(read, start, names) {
   }
 }
 
+export function ruffConfigFiles(start) {
+  return filesOf(readRuffConfig, start, RUFF_FILES);
+}
+
+export function blackConfigFiles(start) {
+  return filesOf(readBlackConfig, start, [PYPROJECT]);
+}
+
 export function projectFormatConfigFiles(start) {
-  return [
-    ...new Set([
-      ...filesOf(readRuffConfig, start, RUFF_FILES),
-      ...filesOf(readBlackConfig, start, [PYPROJECT]),
-    ]),
-  ];
+  return [...new Set([...ruffConfigFiles(start), ...blackConfigFiles(start)])];
 }

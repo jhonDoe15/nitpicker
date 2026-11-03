@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 
 export function propertyName(node) {
   return ts.isPropertyAssignment(node) &&

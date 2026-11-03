@@ -28,7 +28,7 @@ const MOVE_ADVICE = {
 };
 const MAVEN_TASKS = new Set(['surefire', 'failsafe']);
 
-const NOT_TIMED_OUTCOMES = ['failure', 'error', 'skipped'];
+const NOT_TIMED_OUTCOMES = ['failure', 'error', 'flakyFailure', 'flakyError', 'skipped'];
 
 export function testCasesOf(xml, task) {
   const root = parseXml(xml);

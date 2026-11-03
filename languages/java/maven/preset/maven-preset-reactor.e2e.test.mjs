@@ -11,6 +11,7 @@ import {
   EMPTY_CATCH,
   copyOf,
 } from '../__tests__/maven-preset-project.mjs';
+import { pathsOutsideProject } from '../../adapters/java-e2e/test-support/project-paths.mjs';
 
 describe.skipIf(!enabled)('Java preset on Maven builds', () => {
   useMavenPresetProject();
@@ -20,6 +21,7 @@ describe.skipIf(!enabled)('Java preset on Maven builds', () => {
       maven,
       policy: { testSeconds: { unitTestSeconds: -1 } },
     });
+    expect(pathsOutsideProject(project, findings)).toEqual([]);
     const metrics = (file) =>
       findings
         .filter((finding) => finding.path === file && finding.metric !== undefined)

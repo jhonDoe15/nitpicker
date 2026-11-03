@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import path from 'node:path';
 import { enclosingSymbol } from '../typecheck/typescript-program.mjs';
 

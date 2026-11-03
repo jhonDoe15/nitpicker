@@ -1,7 +1,7 @@
 import { hasGeneratorHeader } from '../../../../../../shared/conventions/generator-marker.mjs';
 import { closingIndex } from '../kotlin-source.mjs';
 
-const ANNOTATION = /@([A-Za-z_]\w*:)?(?:[A-Za-z_]\w*\.)*([A-Za-z_]\w*)/g;
+const ANNOTATION = /(?<![\w`])@([A-Za-z_]\w*:)?(?:[A-Za-z_]\w*\.)*([A-Za-z_]\w*)/g;
 const METHOD_TARGETS = new Set(['get:', 'set:']);
 const DECLARATION_MODIFIERS = [
   'public',
@@ -30,13 +30,14 @@ const DECLARATION_MODIFIERS = [
 ];
 const LEADING_MODIFIER = new RegExp(String.raw`^(?:${DECLARATION_MODIFIERS.join('|')})\s+`);
 const LEADING_ANNOTATION = /^@(?:[A-Za-z_]\w*:)?[\w.]+/;
-const DECLARATION_KEYWORD = /^(?:class|interface|object|fun|constructor)\b/;
+const DECLARATION_KEYWORD = /^(?:(?:class|interface|object|fun|constructor)\b|(?:get|set)\s*\()/;
 const MUTATION_MARKERS = new Set(['DoNotMutate', 'CoverageIgnore']);
 const GENERATED_HEADER = /@generated\b|\bgenerated\b[\s\S]*\bdo not (?:edit|modify)\b/i;
 
 export const MARKER_MESSAGES = {
-  GeneratedOnHandWrittenCode:
-    'Remove the annotation from hand-written code: JaCoCo and PIT skip a class, function or constructor annotated @Generated, so this is not measured.',
+  GeneratedOnHandWrittenCode: `Remove the annotation from hand-written code: JaCoCo skips code carrying an annotation whose name contains Generated, and PIT skips @Generated, so this is not measured. Put the JPA @GeneratedValue on the field.`,
+  JvmSyntheticOnHandWrittenCode:
+    'Remove @JvmSynthetic: JaCoCo skips synthetic functions, so this is not measured. An exception fits only a library function that must stay hidden from Java callers.',
   MutationIgnoreMarker:
     'Remove the annotation and kill the mutants with a test: PIT does not mutate code annotated @DoNotMutate or @CoverageIgnore.',
   CommentedOutCode: 'Delete the commented-out code; version control keeps it.',
@@ -96,22 +97,31 @@ function annotatesDeclaration(code, start) {
   return DECLARATION_KEYWORD.test(steps.at(-1).rest);
 }
 
-function isGeneratedMarker(code, match) {
-  const [text, target, name] = match;
-  if (name !== 'Generated' || target === 'file:') {
-    return false;
+function hidesFromCoverage(name) {
+  if (name === 'JvmSynthetic') {
+    return 'JvmSyntheticOnHandWrittenCode';
   }
-  return (
+  return name.includes('Generated') ? 'GeneratedOnHandWrittenCode' : undefined;
+}
+
+function coverageMarker(code, match) {
+  const [text, target, name] = match;
+  const rule = hidesFromCoverage(name);
+  if (rule === undefined || target === 'file:') {
+    return undefined;
+  }
+  const marks =
     METHOD_TARGETS.has(target) ||
-    annotatesDeclaration(code, skipArguments(code, match.index + text.length))
-  );
+    annotatesDeclaration(code, skipArguments(code, match.index + text.length));
+  return marks ? rule : undefined;
 }
 
 export function annotationMarkers(scanned) {
   return [...scanned.code.matchAll(ANNOTATION)].flatMap((match) => {
     const { index, 2: name } = match;
-    if (isGeneratedMarker(scanned.code, match)) {
-      return [{ rule: 'GeneratedOnHandWrittenCode', offset: index, subject: name }];
+    const rule = coverageMarker(scanned.code, match);
+    if (rule !== undefined) {
+      return [{ rule, offset: index, subject: name }];
     }
     return MUTATION_MARKERS.has(name)
       ? [{ rule: 'MutationIgnoreMarker', offset: index, subject: name }]

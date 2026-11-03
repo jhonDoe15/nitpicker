@@ -71,6 +71,14 @@ function moduleFile(module, name) {
   return file;
 }
 
+function moduleName(module) {
+  return module.dir === '' ? '.' : module.dir;
+}
+
+function testsFailedIn(module) {
+  return module.run.testsFailed.includes(moduleName(module));
+}
+
 function inside(module, file) {
   return module.dir === '' ? file : `${module.dir}/${file}`;
 }
@@ -92,6 +100,12 @@ function writeKotlinReports(module) {
   );
   if (metrics !== undefined) {
     writeFileSync(moduleFile(module, 'kotlin-metrics.json'), bytes(run, metrics));
+  }
+  const facts = [inside(module, 'kotlin-mutation-facts.json'), 'kotlin-mutation-facts.json'].find(
+    (file) => exists(run, file),
+  );
+  if (facts !== undefined) {
+    writeFileSync(moduleFile(module, 'kotlin-mutation-facts.json'), bytes(run, facts));
   }
 }
 
@@ -135,7 +149,7 @@ function copyJdeps(module) {
 
 function writeExtras(module) {
   const { run } = module;
-  if (!lines(run, 'NO_JACOCO_IN').includes(module.dir === '' ? '.' : module.dir)) {
+  if (!lines(run, 'NO_JACOCO_IN').includes(moduleName(module)) && !testsFailedIn(module)) {
     writeFileSync(
       moduleFile(module, 'jacoco.xml'),
       exists(run, 'jacoco.xml') ? bytes(run, 'jacoco.xml') : '<report name="demo"></report>',
@@ -160,6 +174,7 @@ function manifestOf(module) {
   return {
     versions: {},
     sourceRoots: [inside(module, 'src/main/java')],
+    testsFailed: testsFailedIn(module),
     ...(run.kotlin && {
       kotlin: true,
       kotlinSourceRoots: [inside(module, 'src/main/kotlin')],
@@ -209,12 +224,28 @@ function modulesOf(run) {
   return [{ key: 'root', path: ':', dir: '' }, ...more];
 }
 
+function failTests(run, stdout) {
+  if (!exists(run, 'TESTS_FAIL') || run.testsFailed.length > 0) {
+    return undefined;
+  }
+  const failing = Object.entries(JSON.parse(readFileSync(at(run, 'TESTS_FAIL'), 'utf8')));
+  const listed = failing.map(([dir, suite]) => {
+    const results = at(run, `build/test-results/${dir || 'root'}`);
+    mkdirSync(results, { recursive: true });
+    writeFileSync(path.join(results, 'TEST-demo.ATest.xml'), suite);
+    return { dir, results: [results] };
+  });
+  put(run, `${run.reportBase}/test-results.json`, JSON.stringify(listed));
+  return { status: 1, stdout, stderr: 'FAILURE: Build failed with an exception.\n' };
+}
+
 export function runFakeGradle({ args, cwd }) {
   const run = {
     cwd,
     reportBase: argumentValue(args, '-Pnitpicker.reportDir'),
     kotlin: args.includes('-Pnitpicker.kotlin=true'),
     formatter: argumentValue(args, '-Pnitpicker.kotlin.formatter'),
+    testsFailed: (argumentValue(args, '-Pnitpicker.testsFailed') ?? '').split(',').filter(Boolean),
   };
   const stdout = exists(run, 'GRADLE_STDOUT') ? readFileSync(at(run, 'GRADLE_STDOUT'), 'utf8') : '';
   if (exists(run, 'GRADLE_FAIL')) {
@@ -223,6 +254,10 @@ export function runFakeGradle({ args, cwd }) {
   const modules = modulesOf(run);
   mkdirSync(at(run, run.reportBase), { recursive: true });
   mkdirSync(at(run, 'build'), { recursive: true });
+  const failed = failTests(run, stdout);
+  if (failed !== undefined) {
+    return failed;
+  }
   put(run, 'build/gradle-args.json', JSON.stringify(args));
   appendFileSync(at(run, 'build/gradle-calls.jsonl'), `${JSON.stringify(args)}\n`);
   writeProperties(run, args);

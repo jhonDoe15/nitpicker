@@ -173,7 +173,7 @@ describe.skipIf(!enabled)('integration tests on Gradle and Maven', () => {
   it('fail the build naming the failing cases of a checked integration task', () => {
     expect(runs.failure).toEqual(
       'Tests fail in <project>; nitpicker needs a passing test suite for coverage and mutation testing:\n' +
-        '  demo.GreeterIT.saysGoodbye(): org.opentest4j.AssertionFailedError: expected: <Nope> but was: <Goodbye, Ada>',
+        '  demo.GreeterIT.saysGoodbye: expected: <Nope> but was: <Goodbye, Ada>',
     );
   });
 });

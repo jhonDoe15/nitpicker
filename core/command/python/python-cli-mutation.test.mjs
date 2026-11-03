@@ -39,6 +39,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
           'Survived number: replacing `1` with `3` fails no test. Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears. If this is intended, add {"rule":"mutant-survived","paths":["src/demo/a.py"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'value',
+        anchor: { key: expect.stringMatching(/^mutant:/u), requireUnchangedLine: true },
         location: { line: 5 },
       },
     ]);
@@ -61,6 +62,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
           'NoCoverage number: no test runs this code. Add a test that reaches it. If this is intended, add {"rule":"mutant-nocoverage","paths":["src/demo/a.py"],"function":"value","reason":"..."} to "exceptions" in nitpicker.config.json.',
         classification: 'enforceable',
         symbol: 'value',
+        anchor: { key: expect.stringMatching(/^mutant:/u), requireUnchangedLine: true },
         location: { line: 5 },
       },
     ]);
@@ -92,6 +94,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
         message: 'Timeout number',
         classification: 'descriptive',
         symbol: 'value',
+        anchor: { key: expect.stringMatching(/^mutant:/u), requireUnchangedLine: true },
         location: { line: 5 },
       },
     ]);
@@ -164,7 +167,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
     ]);
     expect(calls().filter(({ tool }) => tool === 'mutmut')).toEqual([]);
   });
-  it('does not run mutmut when the tests fail, and the tests-failed error is the only one', () => {
+  it('does not run mutmut when the tests fail, and the tests-not-run error is the only one', () => {
     const calls = callsLog();
     const root = pythonRepository();
     writeFiles(root, { 'test-exit.txt': '1\n' });
@@ -173,7 +176,7 @@ describe('nitpicker with "preset": "python" and mutation testing', () => {
     const result = run(root);
 
     expect(result.exitCode).toBe(2);
-    expect(result.json('tool-errors.json').map(({ rule }) => rule)).toEqual(['tests-failed']);
+    expect(result.json('tool-errors.json').map(({ rule }) => rule)).toEqual(['tests-not-run']);
     expect(calls().filter(({ tool }) => tool === 'mutmut')).toHaveLength(1);
   });
   it('reports a failing mutmut run as a tool error on head', () => {

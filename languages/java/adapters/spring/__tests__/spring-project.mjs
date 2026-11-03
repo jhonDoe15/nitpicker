@@ -62,12 +62,19 @@ const REVIEW_MARKER = /\/\/ violation: (\w+)/u;
 const REVIEW_RULES = new Set([
   'FixedSleepInTest',
   'NegativeWaitInTest',
+  'RetryInTest',
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
   'SingularAndPluralMember',
+  'TriStateBoolean',
+  'ParameterMutation',
+  'CompatibilityShim',
+  'LegacyCalendarApi',
+  'ClassLoadEffect',
   'SpringUnusedContext',
   'TestClassWithoutTestCases',
   'test-only-export',
+  'UnboundedFanOut',
 ]);
 const roots = [];
 const RECEIPT_TEST = `package shop;

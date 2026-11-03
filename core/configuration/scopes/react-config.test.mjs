@@ -44,7 +44,7 @@ describe('the react key', () => {
 
 describe('react keys', () => {
   it('accepts enabled and every styling approach', () => {
-    for (const react of [
+    const reactKeys = [
       {},
       { enabled: true },
       { enabled: false },
@@ -52,15 +52,16 @@ describe('react keys', () => {
       { styling: 'css-in-js' },
       { styling: 'inline-style' },
       { enabled: true, styling: 'css-in-js' },
-    ]) {
-      expect(validateConfig({ react })).toEqual({ react });
-    }
+    ];
+    expect(reactKeys.map((react) => validateConfig({ react }))).toEqual(
+      reactKeys.map((react) => ({ react })),
+    );
   });
 
   it.each([
     [[], /"react" must be an object/],
     ['react', /"react" must be an object/],
-    [{ enable: true }, /unknown react key "enable". Allowed react keys: enabled, styling/],
+    [{ enable: true }, /unknown react key "enable". Did you mean "enabled"\?$/],
     [{ enabled: 'yes' }, /"react.enabled" must be true or false/],
     [{ enabled: 1 }, /"react.enabled" must be true or false/],
     [

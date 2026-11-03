@@ -1,4 +1,4 @@
-import ts from 'typescript';
+import { ts } from '../../typescript-api/typescript-api.mjs';
 import { compile, readCompilerConfigs } from './compiler.mjs';
 import { addedDiagnostics, diagnosticCounts } from './diagnostics.mjs';
 

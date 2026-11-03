@@ -9,12 +9,12 @@ The gate can't check these; reviewers keep catching them.
 - Fix a bug where it happens. When one caller of a shared method misbehaves, change that caller,
   not the contract the other callers rely on. If the contract must change, run and extend the
   tests of its existing callers.
-- When you move code, switch every caller in the same change; keep no `@Deprecated` delegate or
-  other compatibility path.
+- When you move code, switch every caller in the same change and delete the old name; keep no
+  compatibility path. The gate rejects a `@Deprecated` declaration, not an overload that keeps the
+  old signature alive.
 - An overload or wrapper that forwards a value must not turn `null`, an empty `Optional` or
   `false` into a default; test both.
-- A state with more than two values is an `enum` or a `sealed interface`, not a nullable
-  `Boolean` or a pair of flags.
+- A state with more than two values is an `enum` or a `sealed interface`, not a pair of flags.
 - Generated code (annotation processors, OpenAPI or protobuf output): change the generator, the
   spec or the template, then regenerate. Never edit the output.
 - Feature flags: one flag per feature, read in one place. When a flag retires, delete the flag,
