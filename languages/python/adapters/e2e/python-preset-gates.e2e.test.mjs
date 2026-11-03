@@ -140,7 +140,7 @@ describe.skipIf(!pythonE2eEnabled)('Python preset lint, type and rule gates end 
       'ruff-format/format',
     ]);
     expect(readFileSync(path.join(result.reports, 'report.junit.xml'), 'utf8')).toMatch(/F401/);
-    expect(result.text).toMatch(/ruff\/F401 src\/demo\/bad\.py:1\n/);
+    expect(result.text).toMatch(/ruff\/F401: [^\n]*\n {4}src\/demo\/bad\.py:1:8\n/);
   });
   it('fails a new type error found by mypy, strict by default, and keeps the legacy ones baselined', () => {
     const result = gate(project, 'type-error');
