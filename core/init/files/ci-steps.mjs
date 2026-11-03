@@ -83,10 +83,13 @@ function lockedPnpmMajor(manager) {
 function pnpmSetup(manager, repository) {
   const declaration = manager.declaration;
   if (!String(declaration?.field).startsWith('pnpm@')) {
-    return step('pnpm/action-setup@v4', { version: lockedPnpmMajor(manager) });
+    return step('pnpm/action-setup@v4.4.0', { version: lockedPnpmMajor(manager) });
   }
   const file = repositoryPath(repository, insideProject(declaration.directory, 'package.json'));
-  return step('pnpm/action-setup@v4', file === 'package.json' ? {} : { package_json_file: file });
+  return step(
+    'pnpm/action-setup@v4.4.0',
+    file === 'package.json' ? {} : { package_json_file: file },
+  );
 }
 
 function isBerry(manager) {
@@ -97,7 +100,7 @@ function nodeEnvironment(manager, repository) {
   const corepack = manager.declaration !== undefined || isBerry(manager);
   const tool = {
     pnpm: () => pnpmSetup(manager, repository),
-    bun: () => step('oven-sh/setup-bun@v2'),
+    bun: () => step('oven-sh/setup-bun@v2.2.0'),
   }[manager.name];
   return [...(corepack ? run('corepack enable') : []), ...(tool?.() ?? [])];
 }
@@ -219,8 +222,8 @@ function pythonSteps(root, context) {
   const { settings, notes } = pythonVersion(root, context.repository);
   return {
     environment: [
-      ...step('actions/setup-python@v5', settings),
-      ...(context.project.tool === 'uv' ? step('astral-sh/setup-uv@v5') : []),
+      ...step('actions/setup-python@v7.1.0', settings),
+      ...(context.project.tool === 'uv' ? step('astral-sh/setup-uv@v7.6.0') : []),
     ],
     install: pythonInstall(root, context),
     notes,
@@ -235,7 +238,7 @@ function condaSteps(root, context) {
     'auto-activate-base': false,
   };
   return {
-    environment: step('conda-incubator/setup-miniconda@v3', settings),
+    environment: step('conda-incubator/setup-miniconda@v3.3.0', settings),
     install: peerInstall(context.project).flatMap(run),
     runDefaults: LOGIN_SHELL,
   };
@@ -251,7 +254,7 @@ const FAMILY_STEPS = {
       ? condaSteps(root, context)
       : pythonSteps(root, context),
   jvm: () => ({
-    environment: step('actions/setup-java@v4', {
+    environment: step('actions/setup-java@v6.1.0', {
       distribution: 'temurin',
       'java-version': JAVA_VERSION,
     }),
