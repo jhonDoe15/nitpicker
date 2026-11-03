@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 59 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 60 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -282,6 +282,15 @@ Inline suppression `# <name>`.
 
 - **Allowed form:** Read the environment once in the composition root (`main.py`, `settings.py`, a `composition_root/` package) and pass the values in as arguments or a frozen settings dataclass.
 - **Exception:** If this is intended, add `{"rule":"process-env-access","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-process-stream-access"></a>
+
+### `python-rules/process-stream-access`
+
+`<name>` reaches a standard stream outside the composition root.
+
+- **Allowed form:** Take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point (`main.py`, `cli.py`, a `[project.scripts]` target or the `if __name__ == "__main__":` block) passes `sys.stdout` or `sys.stderr`. For an entry point the gate does not recognize, list its file in `python.entryPoints`.
+- **Exception:** If this is intended, add `{"rule":"process-stream-access","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-pydantic-any-field"></a>
 
