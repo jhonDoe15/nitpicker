@@ -1,5 +1,6 @@
 import { existsSync, readFileSync, rmSync } from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { TEST_CONSOLE_REPORT_PATH } from '../quality-areas/reporting/test-report.mjs';
 import { temporaryProjectPath } from './test-run.mjs';
 import {
@@ -19,8 +20,16 @@ const CONSOLE_PRODUCERS = {
   mocha: `${PRODUCER_FOLDER}/runners/mocha-capture.config.mjs`,
 };
 
+const JEST_ASSERT = 'languages/typescript/adapters/test-runners/jest/jest-assert.mjs';
+
 export function consoleProducerPath(options, runner) {
   return path.join(options.policyRoot, CONSOLE_PRODUCERS[runner]);
+}
+
+export function jestAssertImport(options) {
+  const assertUrl = pathToFileURL(path.join(options.policyRoot, JEST_ASSERT)).href;
+  const source = `import { watchJestConsole } from ${JSON.stringify(assertUrl)};\nwatchJestConsole();`;
+  return `--import=data:text/javascript,${encodeURIComponent(source)}`;
 }
 
 function parsedLine(line) {
