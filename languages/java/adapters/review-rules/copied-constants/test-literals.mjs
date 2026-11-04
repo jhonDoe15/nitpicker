@@ -87,13 +87,12 @@ function annotationEnd(tokens, at) {
 }
 
 function annotationRanges(tokens) {
-  const skipped = new Set();
-  for (const [index, token] of tokens.entries()) {
-    const isAnnotation = token.text === '@' && tokens[index - 1]?.kind !== 'identifier';
-    const end = isAnnotation ? annotationEnd(tokens, index) : index - 1;
-    indexes(index, end + 1).forEach((inner) => skipped.add(inner));
-  }
-  return skipped;
+  return new Set(
+    [...tokens.entries()].flatMap(([index, token]) => {
+      const isAnnotation = token.text === '@' && tokens[index - 1]?.kind !== 'identifier';
+      return isAnnotation ? indexes(index, annotationEnd(tokens, index) + 1) : [];
+    }),
+  );
 }
 
 function isTestName(tokens, index, kotlin) {
@@ -159,17 +158,11 @@ function statementEnd(tokens, index, kotlin) {
 }
 
 function statementNames(tokens, index, kotlin) {
-  const names = new Set();
-  for (
-    let at = statementStart(tokens, index, kotlin);
-    at < statementEnd(tokens, index, kotlin);
-    at += 1
-  ) {
-    if (tokens[at].kind === 'identifier') {
-      names.add(tokens[at].text);
-    }
-  }
-  return names;
+  const statement = tokens.slice(
+    statementStart(tokens, index, kotlin),
+    statementEnd(tokens, index, kotlin),
+  );
+  return new Set(statement.filter(({ kind }) => kind === 'identifier').map(({ text }) => text));
 }
 
 function literalAt(tokens, index, kotlin) {
