@@ -1,5 +1,6 @@
 import { renderMessage, UNUSED_OPTION_TEXT } from '../../../../shared/messages/messages.mjs';
 import { RULES_TOOL } from './tool.mjs';
+import { UNUSED_OPTION_SCOPES } from '../../../../shared/unused-api/unused-api-policy.mjs';
 
 const HELPER_CHAIN = ' -> ';
 
@@ -43,11 +44,6 @@ function isDomainPath(path = '') {
 function ownerOf(subject) {
   return subject.slice(0, subject.lastIndexOf('.'));
 }
-
-const UNUSED_OPTION_SCOPES = {
-  private: 'tests do not count',
-  published: "this package's own tests count",
-};
 
 export const STRUCTURE_HINTS = [
   {
@@ -216,7 +212,7 @@ export const STRUCTURE_HINTS = [
     tool: RULES_TOOL,
     rules: ['unused-option'],
     describe: (subject, _libraries, { scope }) =>
-      renderMessage(UNUSED_OPTION_TEXT, { name: subject, scope: UNUSED_OPTION_SCOPES[scope] }),
+      renderMessage(UNUSED_OPTION_TEXT, { name: subject, scope: UNUSED_OPTION_SCOPES.python[scope] }),
     referenceData: { scope: 'private' },
     exception: 'top-level',
   },
