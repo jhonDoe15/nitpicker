@@ -116,6 +116,13 @@ def callerSources = { Project project, sourceSet ->
     dirs.findAll { it.exists() }.collectMany { project.fileTree(it) { include '**/*.kt', '**/*.java' }.files }
 }
 
+def generatedSourceSet = { Project project, sourceSet ->
+    def buildRoot = project.layout.buildDirectory.get().asFile.toPath()
+    def dirs = sourceSet.allSource.srcDirs
+    dirs.any { it.toPath().startsWith(buildRoot) } &&
+        !dirs.any { it.exists() && !it.toPath().startsWith(buildRoot) }
+}
+
 def holdsTests = { Project project, sourceSet ->
     def suites = project.extensions.findByName('testing')?.suites?.names ?: []
     def testClassDirs = project.tasks.withType(Test).collectMany { it.testClassesDirs.files }
@@ -149,7 +156,8 @@ def kotlinCallerGaps = { Project root ->
                     if (!other.projectDir.toPath().startsWith(analysisRoot.toPath())) {
                         gaps << [label: "the project ${other.path} outside the analysis root".toString(), reaches: reach]
                     } else {
-                        other.sourceSets.findAll { !(it.name in ['main', 'test']) }.each { set ->
+                        def written = other.sourceSets.findAll { !generatedSourceSet(other, it) }
+                        written.findAll { !(it.name in ['main', 'test']) }.each { set ->
                             if (!callerSources(other, set).isEmpty()) {
                                 gaps << [label: "the source set ${set.name} of ${other.path}".toString(),
                                          tests: holdsTests(other, set), owner: other.path,
@@ -394,8 +402,9 @@ allprojects {
         def testSourceSets = {
             def testClassDirs = tasks.withType(Test).collectMany { it.testClassesDirs.files }
             sourceSets.findAll { sourceSet ->
-                sourceSet.name != 'main' && (sourceSet.name.toLowerCase().contains('test')
-                    || sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) })
+                def ranByTests = sourceSet.output.classesDirs.files.any { testClassDirs.contains(it) }
+                def namedTest = sourceSet.name.toLowerCase().contains('test') && !generatedSourceSet(project, sourceSet)
+                sourceSet.name != 'main' && (namedTest || ranByTests)
             }
         }
         project.ext.nitpickerTestSourceSets = testSourceSets
@@ -532,6 +541,15 @@ allprojects {
             .toString().split(',')*.trim().findAll { it }
 
         tasks.withType(Test).configureEach { reports.junitXml.outputPerTestCase = true }
+        def runsAotTests = { Test test ->
+            test.systemProperties['spring.aot.enabled']?.toString() == 'true' ||
+                test.jvmArgs.contains('-Dspring.aot.enabled=true')
+        }
+        tasks.configureEach { task ->
+            if (task.class.name.startsWith('org.springframework.boot.gradle.tasks.aot.')) {
+                task.onlyIf { tasks.withType(Test).any(runsAotTests) }
+            }
+        }
 
         def verifyArchunitRan = { String taskName, Collection<File> classesDirs ->
             def archunitClasses = classesDirs.findAll { it.exists() }.collectMany { dir ->

@@ -64,6 +64,16 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   (`ignoreFailures = true`) or retries in some other way. A test case that failed an attempt and
   passed a later one is listed as failing, as `failed, then passed on a rerun` with a hint to fix
   the flaky test. Maven is below.
+- **Spring AOT.** With the GraalVM native plugin, Spring Boot adds the `aot` and `aotTest` source
+  sets, whose sources `processAot` and `processTestAot` generate, and puts the `aotTest` output on
+  the `test` classpath, so `test` would run `processTestAot` (a Spring context start per test
+  context) and compile what it generates. Nitpicker skips both tasks (`onlyIf`), as it skips Spring
+  AOT processing on Maven (`-Dspring-boot.aot.skip=true`), so the tests run on the JVM as usual.
+  When a `Test` task runs its tests in AOT mode (`systemProperty 'spring.aot.enabled', 'true'` or
+  `-Dspring.aot.enabled=true` in its `jvmArgs`; on Maven, in Surefire's `argLine` or system
+  properties), the processing runs. A source set whose source directories are all under the build
+  directory, or do not exist, is generated code: it is never a test source set unless a `Test` task
+  runs its classes, so no tool compiles, lints or counts it.
 - **Integration tests on Gradle.** As on Maven (Surefire and Failsafe in `verify`), a project's
   integration tests are run and counted, following what the project's own build runs: Nitpicker runs
   `test` and every `Test` task that `check` depends on. A test suite of the `jvm-test-suite` plugin
@@ -123,7 +133,9 @@ by field. Per snapshot:
    dependency plugin pinned), with `-Dmaven.test.failure.ignore=true`,
    `-Dsurefire.rerunFailingTestsCount=0` and `-Dfailsafe.rerunFailingTestsCount=0` (no reruns), and
    the project's own
-   Checkstyle, PMD, CPD, SpotBugs and Spotless checks skipped. `dependency:list` writes every
+   Checkstyle, PMD, CPD, SpotBugs and Spotless checks skipped, and Spring AOT processing too
+   (`-Dspring-boot.aot.skip=true`, unless the tests run in AOT mode, see Spring AOT above):
+   `process-test-aot` would compile generated classes into `target/test-classes`. `dependency:list` writes every
    module's resolved classpath (reactor modules as their `target/classes`, or as their packaged jar
    in a `verify` build). Our coverage file (`target/nitpicker-jacoco.exec`) and every project
    `destFile` inside `target` are deleted before the build, so coverage never accumulates across
@@ -1765,8 +1777,9 @@ palantir-java-format, or neither for `none`).
   (main classes), `jdeps-classes.txt` (the main classes, one binary name per line) and
   `jdeps-test.txt` (test classes), which only the [test-only class check](#review-rules) reads. A
   test source set is one a `Test` task runs or one whose name contains `test` (`integrationTest`,
-  `testFixtures`); the task compiles only those, so a `jmh` or `benchmark` source set is neither
-  compiled for it nor counted as a test. Maven runs the same single jdeps call over
+  `testFixtures`) and that is not generated (Spring Boot's `aotTest`, see Spring AOT); the task
+  compiles only those, so a `jmh` or `benchmark` source set is neither compiled for it nor counted
+  as a test. Maven runs the same single jdeps call over
   `target/classes` and `target/test-classes` (`builds/jdeps-reports.mjs`). Neither build holds
   the jdeps output in memory: Gradle splits it line by line as jdeps writes it, Maven writes it to
   a file in the report directory and splits that in 1 MB chunks, so a module of any size works.
