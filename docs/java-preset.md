@@ -69,12 +69,15 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   the `test` classpath, so `test` would run `processTestAot` (a Spring context start per test
   context) and compile what it generates. Nitpicker skips both tasks (`onlyIf`), as it skips Spring
   AOT processing on Maven (`-Dspring-boot.aot.skip=true`), so the tests run on the JVM as usual.
-  When a `Test` task runs its tests in AOT mode (`-Dspring.aot.enabled=true` among its JVM
-  arguments, from `systemProperty`, `jvmArgs` or an argument provider; on Maven, in the `argLine`
-  or system properties of Surefire or Failsafe), the processing runs. A source set with at least one
-  source directory under the build directory and no existing one outside it is generated code: it
-  is never a test source set unless a `Test` task runs its classes, so no tool compiles, lints or
-  counts it.
+  The processing still runs when the tests may run in AOT mode: on Gradle, when a `Test` task has
+  `-Dspring.aot.enabled=true` among its JVM arguments (from `systemProperty`, `jvmArgs` or an
+  argument provider) or in its environment, or when any build script, `gradle.properties` or
+  `spring.properties` of the build mentions `spring.aot.enabled` (a setting made in `doFirst` is
+  only visible that way); on Maven, when the effective `argLine` or system properties of Surefire
+  or Failsafe set it. A source set with at least one source directory under the build directory and
+  no existing one outside it is generated code (unless the build directory holds the project
+  itself): it is never a test source set unless a `Test` task runs its classes, so no tool
+  compiles, lints or counts it.
 - **Integration tests on Gradle.** As on Maven (Surefire and Failsafe in `verify`), a project's
   integration tests are run and counted, following what the project's own build runs: Nitpicker runs
   `test` and every `Test` task that `check` depends on. A test suite of the `jvm-test-suite` plugin
