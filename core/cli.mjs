@@ -40,6 +40,7 @@ import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';
+import { comparisonExitCode } from './diff/reporting/failing-tests/failing-tests.mjs';
 
 const CHECK_COMMANDS = {
   hygiene: runHygieneCli,
@@ -272,10 +273,7 @@ function writeComparisonOutcome({ cli, report, base, outputRoot }) {
   if (options.deferExit) {
     return 0;
   }
-  if (report.summary.newEnforceableFindings > 0) {
-    return 1;
-  }
-  return report.summary.overallStatus === 'completed' ? 0 : 2;
+  return comparisonExitCode(report);
 }
 
 const invokedPath = process.argv[1];

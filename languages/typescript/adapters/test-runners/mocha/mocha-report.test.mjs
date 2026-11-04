@@ -104,7 +104,7 @@ describe('the Mocha report', () => {
       },
     ]);
     expect(formatTestFailures(report, '/p')).toBe(
-      '1 test fails, so coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
+      '1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:\n' +
         '  <unknown test file> > "before all" hook: no db',
     );
   });

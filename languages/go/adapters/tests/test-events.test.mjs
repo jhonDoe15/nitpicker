@@ -111,6 +111,19 @@ describe('parseTestEvents', () => {
     ]);
   });
 
+  it('leads the head failure with the count and what still ran', () => {
+    const [finding] = testRunFindings(parsed, 'head');
+
+    expect(finding.message.split('\n')).toEqual([
+      '2 tests fail; the static analyzers ran, and coverage comes from the tests that ran. ' +
+        'Fix the tests and rerun:',
+      '  example.com/shop.TestPrice/zero',
+      '    price_test.go:12: got 1, want 0',
+      '  example.com/shop/boot',
+      '    panic: missing config',
+    ]);
+  });
+
   it('reports a module where no test ran, unless a build failure stopped them', () => {
     const none = parseTestEvents(
       event({ Action: 'pass', Package: 'example.com/shop', Elapsed: 0 }),

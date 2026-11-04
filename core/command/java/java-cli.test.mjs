@@ -331,7 +331,7 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
       },
     );
 
-    it('stays a tool error on both snapshots when the head tests fail too', () => {
+    it('stays a tool error on both snapshots when the head tests fail too, and exits 1', () => {
       const root = repository(build.redBase.files(failing('works')));
       writeFiles(root, {
         'src/main/java/demo/B.java': 'package demo;\n\npublic final class B {}\n',
@@ -345,10 +345,27 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
         errors: result.json('tool-errors.json').map(({ snapshot, rule }) => `${snapshot} ${rule}`),
         notes: result.json('notes.json'),
       }).toEqual({
-        exitCode: 2,
-        errors: [`head ${build.redBase.headRule}`, 'base tests-failed'],
+        exitCode: 1,
+        errors: ['base tests-failed', 'head tests-failed'],
         notes: [],
       });
+    });
+
+    it('leads the summary with tests that fail only on the head, and exits 1', () => {
+      const root = repository();
+      writeFiles(root, build.redBase.files(failing('works')));
+      commit(root, 'break a test');
+
+      const result = run(root);
+      const lines = result.output.out.split('\n');
+
+      expect(result.exitCode, result.text).toBe(1);
+      expect(lines[lines.indexOf('Quality gate summary') + 1]).toBe(
+        '✖ 1 test fails; the build stopped, so no other check ran. Fix the tests and rerun:',
+      );
+      expect(
+        result.json('tool-errors.json').map(({ snapshot, rule }) => `${snapshot} ${rule}`),
+      ).toEqual(['head tests-failed']);
     });
   });
   it('lets an exception entry for the rule and path allow a new finding', () => {

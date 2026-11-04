@@ -33,10 +33,10 @@ describe('failing tests', () => {
       identity: 'tests-failed',
       classification: 'tool-error',
       message: [
-        'Tests fail in the head snapshot. Make each failing test pass:',
+        '2 tests fail; the static analyzers ran, and coverage and CRAP come from the tests that ran. ' +
+          'Fix the tests and rerun:',
         '  tests/test_a.py::test_x',
         '  tests/test_a.py::test_y',
-        'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
         'Mutation testing (mutmut) leaves out the test modules tests/test_a.py.',
       ].join('\n'),
     });
@@ -49,10 +49,10 @@ describe('failing tests', () => {
     const [{ message }] = testFailureFindings({ testRunner: 'unittest', testFailures });
 
     expect(message.split('\n')).toEqual([
-      'Tests fail in the head snapshot. Make each failing test pass:',
+      '23 tests fail; the static analyzers ran, and coverage and CRAP come from the tests that ran. ' +
+        'Fix the tests and rerun:',
       ...testFailures.slice(0, 20).map(({ id }) => `  ${id}`),
       '  and 3 more',
-      'The static analyzers ran as usual; coverage and CRAP come from the tests that ran.',
     ]);
   });
   it('words the base failure like every other preset', () => {
