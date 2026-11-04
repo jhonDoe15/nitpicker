@@ -571,6 +571,10 @@
     "fix": "Write the character as a unicode escape (\\u0008) or a three-digit octal escape so the digits are not read together.",
     "mayBeIntended": false
   },
+  "SwallowedInterrupt": {
+    "fix": "Call Thread.currentThread().interrupt() before leaving the handler, or rethrow: throw e, or throw a new exception with the cause.",
+    "mayBeIntended": true
+  },
   "SwitchStmtsShouldHaveDefault": {
     "fix": "Make it an exhaustive switch expression, or add a default branch that throws IllegalStateException.",
     "mayBeIntended": false

@@ -1,3 +1,6 @@
+import { CANCELLATION_FILES, SWALLOWED_CANCELLATIONS } from './kotlin-cancellation-data.mjs';
+import { INTERRUPT_FILES, SWALLOWED_INTERRUPTS } from './kotlin-interrupt-data.mjs';
+
 const MAIN = 'src/main/kotlin/demo/orders';
 const TEST = 'src/test/kotlin/demo/orders';
 const SPRING = 'src/test/kotlin/org/springframework';
@@ -216,6 +219,8 @@ export const REVIEW_RULE_FILES = {
   [`${MAIN}/Clock.kt`]: CLOCK,
   [`${MAIN}/Settlement.kt`]: SETTLEMENT,
   [`${MAIN}/Formatting.kt`]: FORMATTING,
+  ...CANCELLATION_FILES,
+  ...INTERRUPT_FILES,
   [`${MAIN}/Pricing.kt`]: PRICING,
   ['src/main/kotlin/org/springframework/boot/context/properties/ConfigurationProperties.kt']:
     CONFIGURATION_PROPERTIES,
@@ -235,6 +240,7 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'ExhaustiveEnumPredicate isOpen',
   'ExhaustiveEnumPredicate isSettled',
   'ExhaustiveEnumPredicate weight',
+  'FixedSleepInTest HandlersTest.pause',
   'FixedSleepInTest WaitingTest.iterates',
   'FixedSleepInTest WaitingTest.sleeps',
   'FixedSleepInTest WaitingTest.sleeps',
@@ -242,6 +248,8 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',
   'StaticForwardingWrapper total',
+  ...SWALLOWED_CANCELLATIONS,
+  ...SWALLOWED_INTERRUPTS,
   'unused-option Envelope.retries',
   'unused-option Mailer.retries',
   'unused-option Outbox.limit',

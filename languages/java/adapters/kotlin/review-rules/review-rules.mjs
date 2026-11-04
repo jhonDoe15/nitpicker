@@ -1,4 +1,8 @@
 import { ENUM_PREDICATE_RULE } from '../../review-rules/enum-predicates.mjs';
+import {
+  SWALLOWED_CANCELLATION_RULE,
+  SWALLOWED_INTERRUPT_RULE,
+} from './handlers/swallowed-handlers.mjs';
 import { LOAD_EFFECT_RULE } from '../../../messages/load-effects.mjs';
 import { FORWARDING_RULE } from './main/forwarding-wrappers.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
@@ -19,6 +23,8 @@ export const KOTLIN_REVIEW_EXCEPTION_RULES = [
   ENUM_PREDICATE_RULE,
   FORWARDING_RULE,
   SINGULAR_PLURAL_RULE,
+  SWALLOWED_INTERRUPT_RULE,
+  SWALLOWED_CANCELLATION_RULE,
   VALIDATION_TARGET_RULE,
   LOAD_EFFECT_RULE,
   ...SPRING_RULES,

@@ -28,7 +28,7 @@ import {
   readKotlinFanOutFindings,
   readKotlinReviewFindings,
 } from '../kotlin/review-rules/review-findings.mjs';
-import { withoutCoveredSourceFindings } from '../kotlin/review-rules/spring/spring-findings.mjs';
+import { withoutCoveredFindings } from '../kotlin/review-rules/review-finding.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';
@@ -143,7 +143,7 @@ export function readKotlinFindings(context, crapLimit) {
       ...readCompilerFindings(reportRoot, manifest.kotlinSourceRoots ?? [], testRoots),
     ]),
   );
-  return withoutCoveredSourceFindings(
+  return withoutCoveredFindings(
     [
       ...ruleFindings,
       ...readSuppressionFindings(projectRoot, {
