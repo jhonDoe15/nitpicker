@@ -6,7 +6,7 @@ import { createGeneratedFilter } from '../../ingest/kotlin-mutants/generated-fil
 import { KOTLIN_REPORTS } from '../kotlin/report-names/kotlin-report-names.mjs';
 import { readKotlinClassLimitFindings } from '../kotlin/kotlin-class-limits.mjs';
 import { withDetektCountRatchets } from '../kotlin/detekt/detekt-counts.mjs';
-import { functionLocator } from './function-locator.mjs';
+import { functionUnitLocator } from './function-locator.mjs';
 import { readSarifReport } from './sarif/sarif-reports.mjs';
 import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {
@@ -147,7 +147,7 @@ export function readKotlinFindings(context, crapLimit) {
       ]),
     ),
     metrics.detektCounts,
-    functionLocator({ ...context, kotlin: true }),
+    functionUnitLocator({ ...context, kotlin: true }),
   );
   return withoutCoveredSourceFindings(
     [
