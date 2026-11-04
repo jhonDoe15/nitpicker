@@ -5,18 +5,17 @@ import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   enabled,
   gradle,
-  maven,
   roots,
   comparable,
   consoleChange,
+  RECEIPT_CONSOLE_FINDING,
 } from '../__tests__/spring-project.mjs';
 
-describe.skipIf(!enabled)('New console output of tests on Gradle and Maven builds', () => {
-  const runs = {};
+describe.skipIf(!enabled)('New console output of tests on Gradle builds', () => {
+  let findings;
 
   beforeAll(() => {
-    runs.gradle = consoleChange({ gradle, policy: {} }, 'pom.xml');
-    runs.maven = consoleChange({ maven, policy: {} }, 'build.gradle', 'settings.gradle');
+    findings = consoleChange({ gradle, policy: {} }, 'pom.xml');
   }, 300_000);
 
   afterAll(() => {
@@ -27,10 +26,10 @@ describe.skipIf(!enabled)('New console output of tests on Gradle and Maven build
 
   it('reports only the line the change adds, not Spring startup, logged warnings or renumbered output', () => {
     expect(
-      runs.gradle.map(({ path: file, message }) => `${file} ${message.split('. Fix')[0]}`),
+      findings.map(({ path: file, message }) => `${file} ${message.split('. Fix')[0]}`),
     ).toEqual([
       '. Tests print new console output: "receipt total drifted by <n> cents" (src/test/java/shop/ReceiptTest.java, test "printsTheDrift")',
     ]);
-    expect(comparable(runs.maven)).toEqual(comparable(runs.gradle));
+    expect(comparable(findings)).toEqual(comparable([RECEIPT_CONSOLE_FINDING]));
   });
 });
