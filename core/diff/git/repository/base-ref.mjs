@@ -1,5 +1,5 @@
 import { configError } from '../../../../shared/config.mjs';
-import { GitCommandError, runGit } from './command.mjs';
+import { GitCommandError, listRemotes, runGit } from './command.mjs';
 
 const COMMIT_ID = /^[0-9a-f]{7,40}$/iu;
 export const CI_TARGET_VARIABLES = [
@@ -15,7 +15,26 @@ const BRANCH_REF_PREFIX = 'refs/heads/';
 
 const HEAD_SYNTAX = /^(?:HEAD|@)(?:$|[~^@{])|@\{/u;
 
+const LOCAL_DEFAULT_BRANCHES = ['main', 'master'];
+
+const NO_BASE_OPTIONS = [
+  'Pass --base <ref>, set "base" in nitpicker.config.json,',
+  'or run nitpicker --all to check the whole project.',
+].join(' ');
+
+const NO_COMMITS_MESSAGE = [
+  'This repository has no commits yet. Commit your files, then run nitpicker --all,',
+  'or compare later changes against that commit.',
+].join(' ');
+
+export function assertHasCommit(repositoryRoot) {
+  if (commitOf(repositoryRoot, 'HEAD') === undefined) {
+    throw new Error(NO_COMMITS_MESSAGE);
+  }
+}
+
 export function resolveBase({ repositoryRoot, explicitBase, configuredBase, environment = {} }) {
+  assertHasCommit(repositoryRoot);
   if (isNonEmpty(explicitBase)) {
     return { baseRef: explicitBase, source: 'argument' };
   }
@@ -35,13 +54,19 @@ export function resolveBase({ repositoryRoot, explicitBase, configuredBase, envi
     return { baseRef: notCheckedOutCommit(repositoryRoot, configuredBase), source: 'config' };
   }
 
-  return remoteBase(repositoryRoot);
+  const remotes = listRemotes(repositoryRoot);
+  const branch = currentBranch(repositoryRoot);
+  const found =
+    remoteBase(repositoryRoot, remotes) ??
+    upstreamBase(repositoryRoot, branch) ??
+    localBranchBase(repositoryRoot, branch);
+  if (found === undefined) {
+    throw noBaseError(remotes, branch);
+  }
+  return found;
 }
 
-function remoteBase(repositoryRoot) {
-  const remotes = runGit(repositoryRoot, ['remote'])
-    .split(/\r?\n/)
-    .filter((remote) => remote.length > 0);
+function remoteBase(repositoryRoot, remotes) {
   const remote = remotes.includes('upstream') ? 'upstream' : 'origin';
   const remoteHead = gitOrUndefined(repositoryRoot, [
     'symbolic-ref',
@@ -53,19 +78,65 @@ function remoteBase(repositoryRoot) {
   }
 
   const fallback = ['origin/main', 'origin/master'].find(
-    (ref) =>
-      gitOrUndefined(repositoryRoot, [
-        'rev-parse',
-        '--verify',
-        '--quiet',
-        `refs/remotes/${ref}^{commit}`,
-      ]) !== undefined,
+    (ref) => commitOf(repositoryRoot, `refs/remotes/${ref}`) !== undefined,
   );
-  if (fallback !== undefined) {
-    return { baseRef: fallback, source: 'fallback' };
-  }
+  return fallback === undefined ? undefined : { baseRef: fallback, source: 'fallback' };
+}
 
-  throw new Error('No base could be determined. Use --base <ref>.');
+function upstreamBase(repositoryRoot, branch) {
+  if (branch === undefined) {
+    return undefined;
+  }
+  const merged = gitOrUndefined(repositoryRoot, [
+    'config',
+    '--get',
+    `branch.${branch}.merge`,
+  ])?.trim();
+  if (merged === undefined || merged === `${BRANCH_REF_PREFIX}${branch}`) {
+    return undefined;
+  }
+  const upstream = gitOrUndefined(repositoryRoot, [
+    'rev-parse',
+    '--abbrev-ref',
+    '--symbolic-full-name',
+    `${branch}@{upstream}`,
+  ])?.trim();
+  return isNonEmpty(upstream) ? { baseRef: upstream, source: 'upstream' } : undefined;
+}
+
+function localBranchBase(repositoryRoot, branch) {
+  if (LOCAL_DEFAULT_BRANCHES.includes(branch)) {
+    return undefined;
+  }
+  const local = LOCAL_DEFAULT_BRANCHES.find(
+    (name) => commitOf(repositoryRoot, `${BRANCH_REF_PREFIX}${name}`) !== undefined,
+  );
+  return local === undefined ? undefined : { baseRef: local, source: 'local-branch' };
+}
+
+function noBaseError(remotes, branch) {
+  const local = LOCAL_DEFAULT_BRANCHES.includes(branch)
+    ? `you are on ${branch}`
+    : 'no local main or master';
+  return new Error(`No base found: ${remoteGap(remotes)}, and ${local}. ${NO_BASE_OPTIONS}`);
+}
+
+function remoteGap(remotes) {
+  if (remotes.length === 0) {
+    return 'no remote';
+  }
+  if (!remotes.includes('origin') && !remotes.includes('upstream')) {
+    return `no origin or upstream remote (remotes: ${remotes.join(', ')})`;
+  }
+  const remote = remotes.includes('upstream') ? 'upstream' : 'origin';
+  return `no ${remote}/HEAD, origin/main or origin/master`;
+}
+
+function currentBranch(repositoryRoot) {
+  const ref = gitOrUndefined(repositoryRoot, ['symbolic-ref', '--quiet', 'HEAD'])?.trim();
+  return ref?.startsWith(BRANCH_REF_PREFIX) === true
+    ? ref.slice(BRANCH_REF_PREFIX.length)
+    : undefined;
 }
 
 function followsHead(repositoryRoot, configuredBase) {

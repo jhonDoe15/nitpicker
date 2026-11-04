@@ -108,6 +108,64 @@ describe('nitpicker CLI', () => {
     );
     expect(output.stderrText).toBe('');
   });
+  it('compares with the local main when the repository has no remote', () => {
+    const repository = createRepository({
+      'quality-policy.json': policy(),
+      'src/main/clean.ts': 'export const clean = true;\n',
+    });
+    const run = (arguments_) => {
+      const output = captureOutput();
+      const exitCode = runCli({
+        arguments_,
+        environment: {},
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        stdout: output.stdout,
+        stderr: output.stderr,
+      });
+      return { exitCode, stdout: output.stdoutText, stderr: output.stderrText };
+    };
+
+    expect(run(['base'])).toEqual({
+      exitCode: 2,
+      stdout: '',
+      stderr:
+        'nitpicker failed: No base found: no remote, and you are on main. Pass --base <ref>, set "base" in nitpicker.config.json, or run nitpicker --all to check the whole project.\n',
+    });
+    fixtureGit(repository.root, ['checkout', '-q', '-b', 'feature']);
+
+    expect(run(['base'])).toEqual({ exitCode: 0, stdout: 'main\n', stderr: '' });
+    expect(run(['--output', makeOutputRoot()])).toEqual({
+      exitCode: 0,
+      stdout: expect.stringMatching(/^Base: main \(local-branch\)\n/u),
+      stderr: '',
+    });
+  });
+  it.each([[['--all']], [[]], [['base']]])(
+    'asks for a first commit before %j in a repository without one',
+    (arguments_) => {
+      const repository = createRepository({ 'quality-policy.json': policy() });
+      fixtureGit(repository.root, ['checkout', '-q', '--orphan', 'empty']);
+      const output = captureOutput();
+
+      const exitCode = runCli({
+        arguments_: arguments_.includes('base')
+          ? arguments_
+          : [...arguments_, '--output', makeOutputRoot()],
+        environment: {},
+        currentProjectRoot: repository.root,
+        analyzers: [fakeAnalyzer()],
+        snapshotAnalyzers: [fakeAnalyzer()],
+        stdout: output.stdout,
+        stderr: output.stderr,
+      });
+
+      expect(exitCode).toBe(2);
+      expect(output.stderrText).toBe(
+        'nitpicker failed: This repository has no commits yet. Commit your files, then run nitpicker --all, or compare later changes against that commit.\n',
+      );
+    },
+  );
   it('works when the project root is passed through a symlink', () => {
     const repository = createRepository({
       'quality-policy.json': policy(),

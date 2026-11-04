@@ -157,6 +157,15 @@ The base ref is the first match of:
 4. the remote's default branch (`refs/remotes/<remote>/HEAD`, using `upstream` if it exists and
    `origin` otherwise)
 5. `origin/main`, then `origin/master`
+6. the branch's upstream (`@{upstream}`), unless it is the same branch on a remote, such as
+   `origin/feature` for `feature`
+7. a local `main`, then `master`, unless you are on one of them
+
+The `Base:` line names the source (`argument`, `ci`, `config`, `remote-head`, `fallback`,
+`upstream` or `local-branch`), and `nitpicker base` prints the ref it would use. So a new repository
+without a remote compares a feature branch with its local `main`. When nothing matches, the error
+lists what was missing and the ways out: `--base <ref>`, `"base"` in `nitpicker.config.json`, or
+`nitpicker --all` to check the whole project. A repository with no commits needs one first.
 
 In CI, fetch enough history to contain the merge base (for example `fetch-depth: 0`). Recipes for
 GitHub Actions (with a composite action), GitLab CI and Jenkins are in [nitpicker in CI](ci.md).
