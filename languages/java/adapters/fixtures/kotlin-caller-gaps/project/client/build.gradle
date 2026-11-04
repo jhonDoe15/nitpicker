@@ -1,0 +1,7 @@
+apply plugin: 'java'
+
+dependencies {
+    implementation 'demo:api'
+    implementation 'demo:core-extra:1.0'
+    implementation group: 'demo', name: 'tools'
+}

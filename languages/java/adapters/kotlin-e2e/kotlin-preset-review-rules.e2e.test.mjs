@@ -22,6 +22,11 @@ import { helpUriProblems } from '../../../../shared/reference/test-support/help-
 
 const REVIEW_TOOLS = new Set(['pmd']);
 const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';
+const INTERNAL_OPTIONS = new Set([
+  'unused-option Envelope.retries',
+  'unused-option Mailer.retries',
+  'unused-option Outbox.limit',
+]);
 
 function reviewFindings(findings) {
   return findings
@@ -102,7 +107,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     );
   });
 
-  it('keeps judging public functions of an unpublished module that has an integration test suite', () => {
+  it('withholds internal but judges public functions of an unpublished module with an integration suite', () => {
     commitFromBranch(project, {
       name: 'integration-suite',
       from: 'review-rules',
@@ -111,6 +116,11 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
 
     const result = diffOf(project, 'integration-suite');
 
-    expect(reviewFindings(result.newFindings)).toEqual(EXPECTED_REVIEW_FINDINGS);
+    expect(reviewFindings(result.newFindings)).toEqual(
+      [
+        ...EXPECTED_REVIEW_FINDINGS.filter((entry) => !INTERNAL_OPTIONS.has(entry)),
+        'unused-option callers-not-analyzed',
+      ].sort(),
+    );
   });
 });

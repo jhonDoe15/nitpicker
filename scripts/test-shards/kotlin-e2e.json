@@ -1,4 +1,5 @@
 {
+  "languages/java/adapters/kotlin-e2e/caller-gaps/caller-gaps.e2e.test.mjs": 40,
   "languages/java/adapters/kotlin-e2e/coverage-and-structure/kotlin-preset-coverage-and-structure-branches.e2e.test.mjs": 130,
   "languages/java/adapters/kotlin-e2e/coverage-and-structure/kotlin-preset-coverage-and-structure-generated-and-init.e2e.test.mjs": 117,
   "languages/java/adapters/kotlin-e2e/coverage-and-structure/kotlin-preset-coverage-and-structure-structure.e2e.test.mjs": 127,
