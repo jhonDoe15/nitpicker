@@ -221,6 +221,40 @@ describe('mutants and branches matched without their function', () => {
     ).toEqual({ added: ['A.bar@10'], kept: [], resolved: [] });
   });
 
+  it('reports growth once when the renamed function takes the name of another legacy function', () => {
+    const crap = ({ name, value, anchor, line }) =>
+      crapFindings(
+        [
+          {
+            path: 'src/A.java',
+            name,
+            identity: `function:${name}:source:${anchor}`,
+            ratchetKey: `function:${name}:crap`,
+            anchor: `function:crap:text:${anchor}`,
+            line,
+            crap: value,
+          },
+        ],
+        { tool: 'crap' },
+      );
+    const base = [
+      ...crap({ name: 'A.foo', value: 20, anchor: 'x', line: 10 }),
+      ...crap({ name: 'A.bar', value: 35, anchor: 'y', line: 40 }),
+    ];
+    const head = crap({ name: 'A.bar', value: 30, anchor: 'x', line: 10 });
+    const touchedCode = touched({ 'src/A.java': [[10, 10]] }, {});
+
+    const result = compareFindings({ baseFindings: base, headFindings: head, touchedCode });
+
+    expect(result.newFindings.map(({ message }) => message)).toEqual([
+      expect.stringContaining('from 20 to 30'),
+    ]);
+    expect(result.newFindings[0].heldAtBase).toBeUndefined();
+    expect(result.unchangedFindings).toEqual([]);
+    expect(result.resolvedFindings.map(({ symbol }) => symbol)).toEqual(['A.bar']);
+    expect(result.resolvedFindings[0].ratchet.value).toBe(35);
+  });
+
   it('keeps an uncovered branch when its function is renamed', () => {
     const branch = (symbol) =>
       branchCoverageFindings([{ path: 'src/A.java', key: 'k', percent: 50, line: 12, symbol }], {
