@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { linkSentence } from '../../../../../shared/messages/test-support/link-sentence.mjs';
 import { MESSAGES } from '../../../../../shared/policy.mjs';
-import { mutationSkipFor } from '../runners/mutation.mjs';
+import { mutationSkipFor } from '../runners/skips/mutation-skips.mjs';
 import { normalizeCrap, normalizeMutation, crapUnknownMessage } from './tests.mjs';
 import {
   coverageFailureFindings,
