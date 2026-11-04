@@ -1,4 +1,4 @@
-import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file.mjs';
+import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
 import { fileURLToPath } from 'node:url';
 
 export const SUPERVISOR = fileURLToPath(new URL('./gradle-supervisor.mjs', import.meta.url));

@@ -1,5 +1,5 @@
 import { toolNameForPath, resolveTool } from '../../../../core/tooling/tool-resolution.mjs';
-import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file.mjs';
+import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
 import { realpathSync, lstatSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { normalizedRelativePath } from './arguments.mjs';

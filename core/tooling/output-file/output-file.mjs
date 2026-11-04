@@ -3,7 +3,7 @@ import { closeSync, fstatSync, mkdtempSync, openSync, readSync, rmSync } from 'n
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { getSystemErrorMap } from 'node:util';
-import { trackTemporaryPath, untrackTemporaryPath } from './temporary-files.mjs';
+import { trackTemporaryPath, untrackTemporaryPath } from '../temporary-files.mjs';
 
 const REMOVE_OPTIONS = { recursive: true, force: true, maxRetries: 3, retryDelay: 100 };
 const DEFAULT_MAX_BUFFER = 1024 * 1024;

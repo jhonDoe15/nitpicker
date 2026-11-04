@@ -1,5 +1,5 @@
 import { withSharedBuildDirectory } from '../../tooling/build-once/build-once.mjs';
-import { spawnSyncWithOutputFile } from '../../tooling/output-file.mjs';
+import { spawnSyncWithOutputFile } from '../../tooling/output-file/output-file.mjs';
 import { headPolicyEnvironment } from '../../../languages/typescript/preset/head-policy.mjs';
 import { analyzerName } from '../reporting/report-model.mjs';
 import { validateAnalyzer, validateInvocation } from './validation/analyzers.mjs';
