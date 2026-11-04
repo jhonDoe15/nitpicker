@@ -407,10 +407,28 @@ describe('a complexity finding fails only when the number rises', () => {
   it.each(cases)('keeps %s baselined after a rename', (_name, build, reported) => {
     const rename = (body) => build(body).replace('total', 'sum');
     const renamed = find(rename, reported === 'total' ? 'sum' : reported, 16);
-    const result = compare(find(build, reported, 16), renamed);
+    const result = compareFindings({
+      baseFindings: find(build, reported, 16),
+      headFindings: renamed,
+      touchedCode: {
+        changedLines: new Map([
+          ['src/legacy.ts', { added: false, ranges: [[1, 1]], inserted: [] }],
+        ]),
+        isStrictRule,
+      },
+    });
 
     expect(result.newFindings).toEqual([]);
     expect(result.resolvedFindings).toEqual([]);
+  });
+
+  it.each(cases)('fails %s that is renamed and grows', (_name, build, reported) => {
+    const rename = (body) => build(body).replace('total', 'sum');
+    const grown = find(rename, reported === 'total' ? 'sum' : reported, 60, '  return 2;');
+    const result = compare(find(build, reported, 16), grown);
+
+    expect(result.newFindings.map(({ rule }) => rule)).toEqual(['nitpicker/cognitive-complexity']);
+    expect(result.resolvedFindings.map(({ symbol }) => symbol)).toEqual(['total']);
   });
 
   it.each(cases)('fails %s that is over the limit for the first time', (_name, build, reported) => {
