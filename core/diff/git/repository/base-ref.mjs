@@ -56,12 +56,13 @@ export function resolveBase({ repositoryRoot, explicitBase, configuredBase, envi
 
   const remotes = listRemotes(repositoryRoot);
   const branch = currentBranch(repositoryRoot);
+  const onDefault = defaultBranchAtHead(repositoryRoot, branch);
   const found =
     remoteBase(repositoryRoot, remotes) ??
     upstreamBase(repositoryRoot, branch) ??
-    localBranchBase(repositoryRoot, branch);
+    localBranchBase(repositoryRoot, onDefault);
   if (found === undefined) {
-    throw noBaseError(remotes, branch);
+    throw noBaseError(remotes, onDefault);
   }
   return found;
 }
@@ -104,20 +105,32 @@ function upstreamBase(repositoryRoot, branch) {
   return isNonEmpty(upstream) ? { baseRef: upstream, source: 'upstream' } : undefined;
 }
 
-function localBranchBase(repositoryRoot, branch) {
-  if (LOCAL_DEFAULT_BRANCHES.includes(branch)) {
-    return undefined;
+function defaultBranchAtHead(repositoryRoot, branch) {
+  if (branch !== undefined) {
+    return LOCAL_DEFAULT_BRANCHES.includes(branch) ? branch : undefined;
   }
-  const local = LOCAL_DEFAULT_BRANCHES.find(
-    (name) => commitOf(repositoryRoot, `${BRANCH_REF_PREFIX}${name}`) !== undefined,
+  const head = commitOf(repositoryRoot, 'HEAD');
+  return LOCAL_DEFAULT_BRANCHES.find(
+    (name) => commitOf(repositoryRoot, `${BRANCH_REF_PREFIX}${name}`) === head,
   );
-  return local === undefined ? undefined : { baseRef: local, source: 'local-branch' };
 }
 
-function noBaseError(remotes, branch) {
-  const local = LOCAL_DEFAULT_BRANCHES.includes(branch)
-    ? `you are on ${branch}`
-    : 'no local main or master';
+function localBranchBase(repositoryRoot, onDefault) {
+  if (onDefault !== undefined) {
+    return undefined;
+  }
+  const local = LOCAL_DEFAULT_BRANCHES.map((name) => `${BRANCH_REF_PREFIX}${name}`).find(
+    (ref) => commitOf(repositoryRoot, ref) !== undefined,
+  );
+  if (local === undefined) {
+    return undefined;
+  }
+  const baseRef = runGit(repositoryRoot, ['rev-parse', '--abbrev-ref', local]).trim();
+  return { baseRef, source: 'local-branch' };
+}
+
+function noBaseError(remotes, onDefault) {
+  const local = onDefault === undefined ? 'no local main or master' : `you are on ${onDefault}`;
   return new Error(`No base found: ${remoteGap(remotes)}, and ${local}. ${NO_BASE_OPTIONS}`);
 }
 
