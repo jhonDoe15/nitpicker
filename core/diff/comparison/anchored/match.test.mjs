@@ -247,7 +247,7 @@ describe('mutants and branches matched without their function', () => {
     const result = compareFindings({ baseFindings: base, headFindings: head, touchedCode });
 
     expect(result.newFindings.map(({ message }) => message)).toEqual([
-      expect.stringContaining('from 20 to 30'),
+      'A.bar CRAP rose from 20 to 30 (limit 9). Put new code in a new function and cover it with tests. If this is intended, add {"rule":"crap-score-limit","paths":["src/A.java"],"function":"A.bar","reason":"..."} to "exceptions" in nitpicker.config.json.',
     ]);
     expect(result.newFindings[0].heldAtBase).toBeUndefined();
     expect(result.unchangedFindings).toEqual([]);
