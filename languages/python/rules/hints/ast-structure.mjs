@@ -212,7 +212,10 @@ export const STRUCTURE_HINTS = [
     tool: RULES_TOOL,
     rules: ['unused-option'],
     describe: (subject, _libraries, { scope }) =>
-      renderMessage(UNUSED_OPTION_TEXT, { name: subject, scope: UNUSED_OPTION_SCOPES.python[scope] }),
+      renderMessage(UNUSED_OPTION_TEXT, {
+        name: subject,
+        scope: UNUSED_OPTION_SCOPES.python[scope],
+      }),
     referenceData: { scope: 'private' },
     exception: 'top-level',
   },
