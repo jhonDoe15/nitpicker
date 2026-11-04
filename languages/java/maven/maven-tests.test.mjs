@@ -369,6 +369,7 @@ describe('runPit', () => {
       outputDirectory: path.join(root, 'classes'),
       testOutputDirectory: path.join(root, 'test-classes'),
       sourceRoots: [],
+      testJvmArgs: [],
     };
     const calls = [];
     const spawn = (command, [argumentFile]) => {
