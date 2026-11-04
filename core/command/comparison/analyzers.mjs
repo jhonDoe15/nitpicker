@@ -1,6 +1,6 @@
-import { selectAnalyzers } from '../diff/execution/run-analyzers.mjs';
-import { partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
-import { selectAnalyzerShard } from '../diff/sharding/sharding.mjs';
+import { selectAnalyzers } from '../../diff/execution/run-analyzers.mjs';
+import { partialRunOf } from '../../diff/reporting/partial-run/partial-run.mjs';
+import { selectAnalyzerShard } from '../../diff/sharding/sharding.mjs';
 
 export function selectComparisonAnalyzers({ options, analyzers }) {
   const selectedAnalyzers =
