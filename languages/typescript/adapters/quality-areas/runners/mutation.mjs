@@ -3,7 +3,6 @@ import { MUTATION_REPORT_PATH } from './mutation-scope.mjs';
 import { readHeadPolicy, readLayout } from '../../../preset/head-policy.mjs';
 import { importPolicyModule, relativeProjectPath, runNodeTool, policyFile } from './tooling.mjs';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import { normalizeMutation, withUnreachedMutantsUncovered } from '../reporting/tests.mjs';
 import { withMutationSourceHashes } from '../reporting/source-hashes.mjs';
 import { rmSync, readFileSync, writeFileSync, existsSync } from 'node:fs';
@@ -22,15 +21,14 @@ import {
   unsupportedMutationRunner,
 } from '../../test-runners/mutation-runner-config.mjs';
 import { runnableTestFiles } from '../../test-runners/test-run.mjs';
-import { strykerPlugins } from '../../mutation-checker/plugin.mjs';
 import {
   layeredStrykerConfig,
   withoutProjectIgnoredMutants,
 } from '../../../preset/project-configs/stryker-project-config.mjs';
 import {
+  mutationCheckerConfig,
   mutationCheckerEngine,
   mutationTypecheck,
-  withNativeChecker,
 } from '../../mutation-checker/native-checker.mjs';
 
 const UNSUPPORTED_RUNNER_RULE = 'mutation-unsupported-runner';
@@ -102,17 +100,7 @@ async function runnerConfig({ options, sourceConfig, targets, createdFiles, test
     engine: mutationCheckerEngine(targets),
   });
   function withChecker(config) {
-    if (!baselineErrors) {
-      return native ? withNativeChecker(config) : config;
-    }
-    return {
-      ...config,
-      checkers: [strykerPlugins[0].name],
-      plugins: [
-        ...config.plugins,
-        fileURLToPath(new URL('../../mutation-checker/plugin.mjs', import.meta.url)),
-      ],
-    };
+    return mutationCheckerConfig(config, { baselineErrors, native });
   }
   const tsconfigFile = relativeProjectPath(options.projectRoot, tsconfigPath);
   if (testRunner.command.launcher === 'craco') {
