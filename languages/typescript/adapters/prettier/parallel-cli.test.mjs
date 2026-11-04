@@ -1,4 +1,12 @@
-import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  readdirSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, describe, expect, it } from 'vitest';
@@ -91,19 +99,9 @@ describe('Prettier parallel CLI listing', () => {
       ['src/generated/types.ts', 'src/legacy/deep/older.ts', 'src/legacy/old.ts'],
     ],
     [
-      ['**/legacy/**', 'src/.hidden/**'],
-      [
-        'src/.hidden/dot.ts',
-        'src/legacy/deep/older.ts',
-        'src/legacy/old.ts',
-        'tests/legacy/old.test.ts',
-      ],
+      ['src/.hidden/**', 'src/legacy/deep', 'root.ts', 'src/missing/**'],
+      ['root.ts', 'src/.hidden/dot.ts', 'src/legacy/deep/older.ts'],
     ],
-    [
-      ['src/*/deep/**', 'root.ts'],
-      ['root.ts', 'src/legacy/deep/older.ts'],
-    ],
-    [['**'], ALL_UNFORMATTED],
   ])(
     'with exclusions %j leaves out what the classic CLI leaves out: %j',
     (exclusions, excluded) => {
@@ -132,34 +130,63 @@ describe('Prettier parallel CLI listing', () => {
     expect(listInParallel(projectRoot, [])).toBeUndefined();
   });
 
-  it('refuses to overwrite a leftover exclusion file', () => {
+  it('leaves the run to the classic CLI and keeps a leftover exclusion file', () => {
     const projectRoot = policyProject({ '.nitpicker-diff-prettier-exclude': '/src/main/**\n' });
 
-    expect(() => listInParallel(projectRoot, ['src/legacy/**'])).toThrow(/EEXIST/u);
+    expect(listInParallel(projectRoot, ['src/legacy/**'])).toBeUndefined();
+    expect(readFileSync(path.join(projectRoot, '.nitpicker-diff-prettier-exclude'), 'utf8')).toBe(
+      '/src/main/**\n',
+    );
   });
 });
 
 describe('exclusionIgnoreLines', () => {
-  it('anchors exclusions whose last segment is a folder name, a file name or a globstar', () => {
-    expect(exclusionIgnoreLines(['src/legacy/**', 'src/legacy', '**/fixtures/**', 'a.ts'])).toEqual(
-      ['/src/legacy/**', '/src/legacy', '/**/fixtures/**', '/a.ts'],
-    );
+  function linesFor(exclusions) {
+    return exclusionIgnoreLines(exclusions, { projectRoot: policyProject(projectFiles), patterns });
+  }
+
+  it('anchors exclusions made of literal folder or file names, with an optional globstar', () => {
+    expect(linesFor(['src/legacy/**', 'src/legacy', 'src/.hidden/**', 'root.ts'])).toEqual([
+      '/src/legacy/**',
+      '/src/legacy',
+      '/src/.hidden/**',
+      '/root.ts',
+    ]);
   });
 
   it.each([
     ['**/*.gen.ts'],
+    ['**/legacy/**'],
+    ['src/*/deep/**'],
     ['src/legacy*'],
+    ['src/***/old.ts'],
     ['src/{a,b}/**'],
     ['src/[ab]/**'],
     ['src/@(a|b)/**'],
+    ['src/a|b/**'],
     ['src/legacy/'],
     ['./src/**'],
     ['../src/**'],
     ['/src/**'],
     ['src\\legacy/**'],
     ['src/legacy /**'],
+    ['**'],
     [''],
   ])('keeps %j on the classic CLI, whose glob semantics an ignore file cannot express', (glob) => {
-    expect(exclusionIgnoreLines(['src/legacy/**', glob])).toBeUndefined();
+    expect(linesFor(['src/legacy/**', glob])).toBeUndefined();
   });
+
+  it.each([['src'], ['src/**'], ['tests']])(
+    'keeps %j on the classic CLI, which never excludes the folder a pattern starts from',
+    (glob) => {
+      expect(linesFor([glob])).toBeUndefined();
+    },
+  );
+
+  it.each([['src/Legacy/**'], ['SRC/legacy'], ['Root.ts']])(
+    'keeps %j on the classic CLI, which matches case-sensitively where an ignore file does not',
+    (glob) => {
+      expect(linesFor([glob])).toBeUndefined();
+    },
+  );
 });
