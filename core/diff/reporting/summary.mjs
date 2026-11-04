@@ -26,10 +26,7 @@ export function renderConsoleSummary(
     ({ classification }) => classification === 'enforceable',
   );
   const hasFailures = violations.length > 0 || report.toolErrors.length > 0;
-  const failingTests = failingHeadTests(report.toolErrors);
-  const otherErrors = withoutSkipNotices(report.toolErrors).filter(
-    (error) => !failingTests.includes(error),
-  );
+  const { failingTests, otherErrors } = splitToolErrors(report.toolErrors);
   const lines = [
     '',
     style(
@@ -64,6 +61,14 @@ export function renderConsoleSummary(
   }
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
   return `${lines.join('\n')}\n`;
+}
+
+function splitToolErrors(toolErrors) {
+  const failingTests = failingHeadTests(toolErrors);
+  return {
+    failingTests,
+    otherErrors: withoutSkipNotices(toolErrors).filter((error) => !failingTests.includes(error)),
+  };
 }
 
 const MAX_HELD_LINES = 10;

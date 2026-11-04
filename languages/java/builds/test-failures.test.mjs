@@ -125,6 +125,14 @@ describe('failingTestsError', () => {
     ]);
   });
 
+  it('cuts a long failure line so the message keeps the log path that follows it', () => {
+    const long = `shop.T.t: ${'x'.repeat(400)}`;
+
+    expect(failingTestsError([{ module: '.', tests: [long] }]).message.split('\n')[1]).toBe(
+      `  ${long.slice(0, 300)}…`,
+    );
+  });
+
   it('lists the tests of every module', () => {
     const error = failingTestsError([
       { module: '.', tests: ['shop.T.a: no'] },

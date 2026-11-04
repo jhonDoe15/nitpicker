@@ -102,8 +102,8 @@ inputs:
 outputs:
   exit-code:
     description: >-
-      The exit code of the gate: 0 passed, 1 new enforceable findings, 2 a tool error or a failure
-      to decide. Empty when the gate did not run.
+      The exit code of the gate: 0 passed, 1 new enforceable findings or failing head tests, 2 a tool
+      error or a failure to decide. Empty when the gate did not run.
     value: ${{ steps.gate.outputs.exit-code }}
   report-directory:
     description: >-
@@ -399,5 +399,5 @@ runs:
       env:
         EXIT_CODE: ${{ steps.gate.outputs.exit-code }}
       run: |
-        echo "nitpicker exited with code ${EXIT_CODE} (1: new enforceable findings, 2: a tool error or a failure to decide)."
+        echo "nitpicker exited with code ${EXIT_CODE} (1: new enforceable findings or failing head tests, 2: a tool error or a failure to decide)."
         exit "$EXIT_CODE"
