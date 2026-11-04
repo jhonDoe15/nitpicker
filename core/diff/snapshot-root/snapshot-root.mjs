@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { withoutAnsi } from '../../../shared/messages/terminal-text.mjs';
 
 function escaped(text) {
   return text.replaceAll(/[\\^$.*+?()[\]{}|]/gu, String.raw`\$&`);
@@ -26,7 +27,7 @@ function namedFinding(finding, snapshotRoot) {
 export function namedToolErrors(toolErrors, snapshotRoot) {
   return toolErrors.map((error) => ({
     ...error,
-    message: withoutSnapshotRoot(error.message, snapshotRoot),
+    message: withoutAnsi(withoutSnapshotRoot(error.message, snapshotRoot)),
   }));
 }
 

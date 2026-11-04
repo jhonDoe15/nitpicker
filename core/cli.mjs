@@ -40,6 +40,7 @@ import { runHygieneCli } from '../shared/hygiene/runner.mjs';
 import { GO_ANALYZER_COMMAND, runGoCli } from '../languages/go/adapters/go-runner.mjs';
 import { redirectToBundledTypeScriptApi } from '../languages/typescript/typescript-api/api-selection.mjs';
 import { describeError } from '../shared/messages/error-chain.mjs';
+import { colorEnabled, displayPath } from '../shared/messages/terminal-text.mjs';
 
 const CHECK_COMMANDS = {
   hygiene: runHygieneCli,
@@ -255,8 +256,8 @@ function resolveRunCacheStore(cli) {
 function writeComparisonOutcome({ cli, report, base, outputRoot }) {
   const { options, environment, stdout } = cli;
   stdout.write(`Base: ${base.baseRef} (${base.source})\n`);
-  const color = environment.NO_COLOR === undefined;
-  const diagnosticsPath = absoluteTextReportPath(outputRoot);
+  const color = colorEnabled(stdout, environment);
+  const diagnosticsPath = displayPath(absoluteTextReportPath(outputRoot));
   stdout.write(renderConsoleSummary(report, { color, details: options.details, diagnosticsPath }));
   stdout.write(renderClosingSections(cli, report));
   if (options.shardCount === undefined) {

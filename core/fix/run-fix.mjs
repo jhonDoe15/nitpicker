@@ -18,6 +18,7 @@ import {
   projectLayerValue,
 } from '../../languages/typescript/adapters/lint-engine/project-layer.mjs';
 import { spawnSync } from 'node:child_process';
+import { withoutAnsi } from '../../shared/messages/terminal-text.mjs';
 
 const eslintPolicy = eslintChecks.find(({ name }) => name === 'eslint-lint');
 
@@ -293,6 +294,6 @@ function fixerError(tool, error) {
   return {
     tool,
     snapshot: 'fix',
-    message: error instanceof Error ? error.message : String(error),
+    message: withoutAnsi(error instanceof Error ? error.message : String(error)),
   };
 }
