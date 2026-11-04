@@ -110,15 +110,19 @@ def projectDependencyClosure = { Project root ->
     }
 }
 
-def callerSources = { Project project, sourceSet ->
+def declaredSourceDirs = { sourceSet ->
     def kotlin = sourceSet instanceof ExtensionAware ? sourceSet.extensions.findByName('kotlin') : null
-    def dirs = (sourceSet.allSource.srcDirs + (kotlin instanceof SourceDirectorySet ? kotlin.srcDirs : []))
-    dirs.findAll { it.exists() }.collectMany { project.fileTree(it) { include '**/*.kt', '**/*.java' }.files }
+    sourceSet.allSource.srcDirs + (kotlin instanceof SourceDirectorySet ? kotlin.srcDirs : [])
+}
+
+def callerSources = { Project project, sourceSet ->
+    declaredSourceDirs(sourceSet).findAll { it.exists() }
+        .collectMany { project.fileTree(it) { include '**/*.kt', '**/*.java' }.files }
 }
 
 def generatedSourceSet = { Project project, sourceSet ->
     def buildRoot = project.layout.buildDirectory.get().asFile.toPath()
-    def dirs = sourceSet.allSource.srcDirs
+    def dirs = declaredSourceDirs(sourceSet)
     dirs.any { it.toPath().startsWith(buildRoot) } &&
         !dirs.any { it.exists() && !it.toPath().startsWith(buildRoot) }
 }
@@ -542,8 +546,7 @@ allprojects {
 
         tasks.withType(Test).configureEach { reports.junitXml.outputPerTestCase = true }
         def runsAotTests = { Test test ->
-            test.systemProperties['spring.aot.enabled']?.toString() == 'true' ||
-                test.jvmArgs.contains('-Dspring.aot.enabled=true')
+            test.allJvmArgs.any { it.toString().equalsIgnoreCase('-Dspring.aot.enabled=true') }
         }
         tasks.configureEach { task ->
             if (task.class.name.startsWith('org.springframework.boot.gradle.tasks.aot.')) {

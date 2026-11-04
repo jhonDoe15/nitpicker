@@ -69,11 +69,12 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   the `test` classpath, so `test` would run `processTestAot` (a Spring context start per test
   context) and compile what it generates. Nitpicker skips both tasks (`onlyIf`), as it skips Spring
   AOT processing on Maven (`-Dspring-boot.aot.skip=true`), so the tests run on the JVM as usual.
-  When a `Test` task runs its tests in AOT mode (`systemProperty 'spring.aot.enabled', 'true'` or
-  `-Dspring.aot.enabled=true` in its `jvmArgs`; on Maven, in Surefire's `argLine` or system
-  properties), the processing runs. A source set whose source directories are all under the build
-  directory, or do not exist, is generated code: it is never a test source set unless a `Test` task
-  runs its classes, so no tool compiles, lints or counts it.
+  When a `Test` task runs its tests in AOT mode (`-Dspring.aot.enabled=true` among its JVM
+  arguments, from `systemProperty`, `jvmArgs` or an argument provider; on Maven, in the `argLine`
+  or system properties of Surefire or Failsafe), the processing runs. A source set with at least one
+  source directory under the build directory and no existing one outside it is generated code: it
+  is never a test source set unless a `Test` task runs its classes, so no tool compiles, lints or
+  counts it.
 - **Integration tests on Gradle.** As on Maven (Surefire and Failsafe in `verify`), a project's
   integration tests are run and counted, following what the project's own build runs: Nitpicker runs
   `test` and every `Test` task that `check` depends on. A test suite of the `jvm-test-suite` plugin
@@ -135,7 +136,8 @@ by field. Per snapshot:
    the project's own
    Checkstyle, PMD, CPD, SpotBugs and Spotless checks skipped, and Spring AOT processing too
    (`-Dspring-boot.aot.skip=true`, unless the tests run in AOT mode, see Spring AOT above):
-   `process-test-aot` would compile generated classes into `target/test-classes`. `dependency:list` writes every
+   `process-test-aot` would copy generated classes into `target/test-classes` and `process-aot`
+   into `target/classes`. `dependency:list` writes every
    module's resolved classpath (reactor modules as their `target/classes`, or as their packaged jar
    in a `verify` build). Our coverage file (`target/nitpicker-jacoco.exec`) and every project
    `destFile` inside `target` are deleted before the build, so coverage never accumulates across
