@@ -9,11 +9,11 @@ const LANGUAGE_TITLES = {
   go: 'Go',
 };
 
-const ENFORCEMENT_TEXT = {
-  true: 'enforced',
+const ENFORCEMENT_TEXT = { true: 'enforced', false: 'not enforced', partial: 'partial' };
+const REPORT_ONLY_TEXT = {
+  true: 'report-only',
   false: 'not enforced',
-  partial: 'partial',
-  reported: 'report-only',
+  partial: 'partial, report-only',
 };
 
 export const GENERATED_BLOCK_START = '<!-- generated:custom-rules begin (npm run gen:checks) -->';
@@ -31,7 +31,12 @@ export function renderCustomRulesTable() {
     `\`${rule.id}\``,
     `\`${rule.check}\``,
     rule.limit,
-    ...LANGUAGES.map((language) => ENFORCEMENT_TEXT[String(rule.enforcedBy[language])]),
+    ...LANGUAGES.map(
+      (language) =>
+        (rule.reportOnly === true ? REPORT_ONLY_TEXT : ENFORCEMENT_TEXT)[
+          String(rule.enforcedBy[language])
+        ],
+    ),
   ]);
   const widths = header.map((title, column) =>
     Math.max(title.length, ...body.map((row) => row[column].length)),

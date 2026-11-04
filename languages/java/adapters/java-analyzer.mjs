@@ -17,6 +17,7 @@ const ENTRY_FILES = [
 ];
 const ARCHUNIT_DIRECTORY = 'languages/java/gradle/archunit';
 const KOTLIN_PSI_DIRECTORY = 'languages/java/gradle/kotlin-psi';
+const DESIGN_DIRECTORY = 'languages/java/gradle/design';
 const RESOURCE_FILES = [
   'languages/java/adapters/gradle-wrapper/gradle-supervisor.mjs',
   'languages/java/gradle/nitpicker.init.gradle',
@@ -49,12 +50,14 @@ function javaSources(directory, entries) {
 function configurationContents() {
   const kotlinPsi = readdirSync(path.join(packageRoot, KOTLIN_PSI_DIRECTORY), { recursive: true });
   const archunit = readdirSync(path.join(packageRoot, ARCHUNIT_DIRECTORY), { recursive: true });
+  const design = readdirSync(path.join(packageRoot, DESIGN_DIRECTORY), { recursive: true });
   return importClosure(
     [
       ...ENTRY_FILES,
       ...RESOURCE_FILES,
       ...javaSources(KOTLIN_PSI_DIRECTORY, kotlinPsi),
       ...javaSources(ARCHUNIT_DIRECTORY, archunit),
+      ...javaSources(DESIGN_DIRECTORY, design),
     ],
     packageRoot,
   );

@@ -62,4 +62,17 @@ describe('import closure', () => {
       ]),
     );
   });
+
+  it('keeps a file it is told to stop at without following its imports', () => {
+    const root = project({
+      'main.mjs': "import './gate.mjs';\nimport './side.mjs';\n",
+      'gate.mjs': "import './behind.mjs';\n",
+      'side.mjs': 'export {};\n',
+      'behind.mjs': 'export {};\n',
+    });
+
+    expect(
+      [...importClosure(['main.mjs'], root, { stopAt: new Set(['gate.mjs']) }).keys()].sort(),
+    ).toEqual(['gate.mjs', 'main.mjs', 'side.mjs']);
+  });
 });

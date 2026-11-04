@@ -100,12 +100,6 @@ export const CO_CHANGE_LIMITS = {
 export const CO_CHANGE_EXAMPLES = 3;
 
 const PERCENT = 100;
-const REPORTED_EVERYWHERE = Object.fromEntries(
-  ['typescript', 'javascript', 'java', 'python', 'kotlin', 'go'].map((language) => [
-    language,
-    'reported',
-  ]),
-);
 
 export const HISTORY_RULES = [
   {
@@ -118,6 +112,7 @@ export const HISTORY_RULES = [
       `(only edits of production code count, and commits of more than ${String(CO_CHANGE_DEFAULTS.maxCommitFiles)} files are ignored);`,
       'opt-in with `history.coChange`, never fails',
     ].join(' '),
-    enforcedBy: REPORTED_EVERYWHERE,
+    enforcedBy: EVERY_LANGUAGE,
+    reportOnly: true,
   },
 ];
