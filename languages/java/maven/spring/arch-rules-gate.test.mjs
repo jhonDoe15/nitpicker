@@ -52,11 +52,15 @@ describe('withDeclaredSpring', () => {
 });
 
 describe('springAotSkip', () => {
-  it('skips Spring AOT processing unless a module runs its tests in AOT mode', () => {
+  const SKIP = ['-Dspring-boot.aot.skip=true'];
+
+  it('skips Spring AOT processing unless Surefire or Failsafe runs tests in AOT mode', () => {
     expect([
-      springAotSkip([{ testJvmArgs: ['-Xmx1g'] }, { testJvmArgs: [] }]),
+      springAotSkip([{ testJvmArgs: ['-Xmx1g'], integrationTestJvmArgs: [] }, { testJvmArgs: [] }]),
       springAotSkip([{ testJvmArgs: ['-Dspring.aot.enabled=true'] }, { testJvmArgs: [] }]),
+      springAotSkip([{ testJvmArgs: [], integrationTestJvmArgs: ['-Dspring.aot.enabled=TRUE'] }]),
+      springAotSkip([{ testJvmArgs: ['-Dspring.aot.enabled=false'] }]),
       springAotSkip([{}]),
-    ]).toEqual([['-Dspring-boot.aot.skip=true'], [], ['-Dspring-boot.aot.skip=true']]);
+    ]).toEqual([SKIP, [], [], SKIP, SKIP]);
   });
 });

@@ -27,10 +27,14 @@ export function springFacts(classpaths) {
   return { spring: usesSpring(classpaths), springArch: runsArchRules(classpaths) };
 }
 
-const AOT_TESTS = '-Dspring.aot.enabled=true';
+const AOT_TESTS = /^-Dspring\.aot\.enabled=true$/iu;
 
 export function springAotSkip(modules) {
-  return modules.some(({ testJvmArgs }) => testJvmArgs?.includes(AOT_TESTS))
+  return modules.some((module) =>
+    [...(module.testJvmArgs ?? []), ...(module.integrationTestJvmArgs ?? [])].some((argument) =>
+      AOT_TESTS.test(argument),
+    ),
+  )
     ? []
     : ['-Dspring-boot.aot.skip=true'];
 }
