@@ -15,7 +15,12 @@ reporter, and turns `Survived` and `NoCoverage` mutants into findings. A mutant 
 disable` comment would hide is reported as an enforceable `mutant-ignored` finding too, so the comment
 cannot be used to switch mutation off, not even for a path with a `nitpicker/no-comments` exception.
 Code that must stay out of mutation testing gets a reviewed `exceptions` entry for `mutant-ignored`
-with its paths in `nitpicker.config.json` instead; that entry is the only way to lift the finding.
+with its paths in `nitpicker.config.json` instead; for a single path or comment, that entry is the only
+way to lift the finding. A project that opts into its own Stryker config with
+`tools.stryker.precedence` can also leave whole mutators out with `mutator.excludedMutations`, which
+removes those mutants from the findings (a mutant a `Stryker disable` comment hides stays a finding); an
+edit of that config is a policy change too (see
+[Mutation testing config](usage.md#mutation-testing-config-typescript-and-javascript-presets)).
 `nitpicker --all` mutates that whole area. When no test loads any mutated file, Stryker collects no
 coverage and runs every test against each mutant; a report with no coverage data and no killed or
 timed-out mutant is therefore read as `NoCoverage`, so unreached code gets the same finding in a
