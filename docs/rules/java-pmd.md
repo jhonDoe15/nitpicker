@@ -2316,7 +2316,7 @@ Switch statements should be exhaustive, to make their control flow easier to fol
 References to System.(out|err).print are usually intended for debugging purposes and can remain in the codebase even in production code.
 
 - **Why it is on:** By using a logger one can enable/disable this behaviour at will (and by priority) and avoid clogging the Standard out log.
-- **Allowed form:** Write through a logger, or take a PrintStream as a parameter so callers choose the stream.
+- **Allowed form:** Use a logger, or write to a PrintStream, Writer or Appendable parameter; only static void main passes System.out. An exception fits only without a main method.
 - **Exception:** If this is intended, add `{"rule":"pmd/SystemPrintln","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#systemprintln)
 

@@ -5359,7 +5359,7 @@
     "T201",
     "Checks for `print` statements.",
     "`print` statements used for debugging should be omitted from production code. They can lead the accidental inclusion of sensitive information in logs, and are not configurable by clients, unlike `logging` statements. `print` statements used to produce output as a part of a command-line interface program are not typically a problem. Selected in the ruff config of the Python preset, with the flake8-print rules (`print`).",
-    "Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.",
+    "Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`.",
     [{ "label": "Ruff rule documentation", "url": "https://docs.astral.sh/ruff/rules/print/" }],
     { "key": "python.exceptions", "rule": "T201" },
     "T203",

@@ -162,7 +162,7 @@ describe('nitpicker with "preset": "python"', () => {
     expect(result.json('new-findings.json').map(({ rule, message }) => [rule, message])).toEqual([
       [
         'T201',
-        '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. If this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
+        '`print` found. Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`. If this is intended, add {"rule":"T201","paths":["src/demo/a.py"],"reason":"..."} to "python.exceptions" in nitpicker.config.json.',
       ],
     ]);
   });

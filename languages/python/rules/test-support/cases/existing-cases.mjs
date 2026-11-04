@@ -112,6 +112,13 @@ export const EXISTING_CASES = [
     mention: 'logging.getLogger',
   },
   {
+    name: 'print names the writer parameter for program output',
+    fixture: 'print',
+    tool: 'ruff',
+    rule: 'T201',
+    mention: 'file=out',
+  },
+  {
     name: 'try in a loop names a helper function',
     fixture: 'try-in-loop',
     tool: 'ruff',

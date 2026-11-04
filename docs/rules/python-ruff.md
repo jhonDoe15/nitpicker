@@ -8291,7 +8291,7 @@ Checks for the presence of debugger calls and imports.
 Checks for `print` statements.
 
 - **Why it is on:** `print` statements used for debugging should be omitted from production code. They can lead the accidental inclusion of sensitive information in logs, and are not configurable by clients, unlike `logging` statements. `print` statements used to produce output as a part of a command-line interface program are not typically a problem. Selected in the ruff config of the Python preset, with the flake8-print rules (`print`).
-- **Allowed form:** Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.
+- **Allowed form:** Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`.
 - **Exception:** If this is intended, add `{"rule":"T201","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 - **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/print/)
 
@@ -8302,7 +8302,7 @@ Checks for `print` statements.
 Checks for `pprint` statements.
 
 - **Why it is on:** Like `print` statements, `pprint` statements used for debugging should be omitted from production code. They can lead the accidental inclusion of sensitive information in logs, and are not configurable by clients, unlike `logging` statements. `pprint` statements used to produce output as a part of a command-line interface program are not typically a problem. Selected in the ruff config of the Python preset, with the flake8-print rules (`p-print`).
-- **Allowed form:** Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`.
+- **Allowed form:** Use `logging`: `logger = logging.getLogger(__name__)`, then `logger.info(...)`. For program output, take a `TextIO` parameter and write with `out.write(...)` or `print(..., file=out)`; the entry point passes `sys.stdout`.
 - **Example of the allowed form:**
 
   ```python

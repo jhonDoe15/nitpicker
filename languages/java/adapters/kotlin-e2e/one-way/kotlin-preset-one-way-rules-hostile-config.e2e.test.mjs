@@ -59,7 +59,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset one-way rules end to end', () 
       'Banned.kt': run,
       'Exiter.kt': 'The method `java.lang.System.exit` has been forbidden in the detekt config.',
       'Printer.kt':
-        'The method `kotlin.io.println` has been forbidden: Log through the application logger (`logger.info(...)`) instead of printing to the console.',
+        'The method `kotlin.io.println` has been forbidden: Log through the application logger (`logger.info(...)`) instead of printing to the console. For program output, write to an `Appendable`, `PrintStream` or `Writer` parameter that the file with `fun main` passes as `System.out`.',
       'Qualified.kt': runBlocking,
       'Sleeper.kt':
         'The method `java.lang.Thread.sleep` has been forbidden: Do not sleep in production code. Schedule the work (`ScheduledExecutorService`) or wait on the condition.',

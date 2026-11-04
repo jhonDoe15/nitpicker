@@ -520,8 +520,8 @@ Keep production logging on the application logger path.
 - **Analyzers:** `eslint-logging`
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-production-console","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
-  - Use the application logger instead of console.{{method}}(). An exception fits only when this module prints the program output.
-  - Use the application logger instead of process.{{stream}}.write(). Program output is written in the composition root. An exception fits only when this module prints the program output.
+  - Use the application logger instead of {{reference}}. Program output goes through a `{ write(text: string): void }` parameter that the composition root fills with process.stdout or process.stderr. An exception fits only when this module is a script that prints the program output.
+  - Reach process.{{stream}} only in the composition root or an entry point: take a `{ write(text: string): void }` parameter and write through it, and let the entry pass process.stdout or process.stderr (and any isTTY or columns value) as an argument. An exception fits only when this module is a script that prints the program output.
 
 <a id="eslint-nitpicker-no-production-imports-in-setup-files"></a>
 
