@@ -3,6 +3,7 @@ import { runCli as nitpickerCli } from '../../cli.mjs';
 import { commit } from '../../diff/git/test-support/git-repository.mjs';
 import { newFindings, usePythonFixtures } from './test-support/python-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const { pythonRepository, run } = usePythonFixtures(nitpickerCli);
 
@@ -113,7 +114,7 @@ describe('nitpicker with "preset": "python" and its architecture checks', () => 
         snapshot: 'head',
         rule: 'import-linter-failed',
         path: '.',
-        message: 'lint-imports could not check the contracts:\nCould not find .importlinter.',
+        message: `lint-imports could not check the contracts:\nCould not find .importlinter.\n${linkSentence('pythonToolFails')}`,
       },
     ]);
   });

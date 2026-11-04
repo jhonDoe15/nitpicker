@@ -89,7 +89,8 @@ describe('finding and parsing the project pyright config under the opt-in', () =
       new RegExp(
         [
           '^The pyright config .*pyrightconfig\\.json could not be parsed \\(.+\\):',
-          'fix it, or remove "project" from tools\\.pyright\\.precedence$',
+          'fix it, or remove "project" from tools\\.pyright\\.precedence\\.',
+          'See https://\\S+#a-project-tool-config-is-missing-or-broken$',
         ].join(' '),
         'u',
       ),

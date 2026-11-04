@@ -11,6 +11,7 @@ import { archunitMatcher } from '../../maven/maven-tests.mjs';
 import { requireTestngRun } from '../../maven/results/maven-test-results.mjs';
 import { childrenNamed, parseXml } from '../../../../shared/ingest/common.mjs';
 import { mavenFrameworkFindings } from '../test-support/maven-framework.mjs';
+import { linkSentence } from '../../../../shared/messages/test-support/link-sentence.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
 const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
@@ -123,7 +124,7 @@ describe.skipIf(!enabled)('Java preset on each test framework', () => {
           `Surefire ran none of the tests in ${root} but the ArchUnit classes: the JUnit Platform on its ` +
           'test classpath makes Surefire use its JUnit Platform provider, which runs TestNG tests only through ' +
           'the TestNG engine. Add org.junit.support:testng-engine to the test dependencies, or run TestNG in ' +
-          'a Surefire execution of its own',
+          `a Surefire execution of its own. ${linkSentence('mavenFails')}`,
       },
     ]);
   });

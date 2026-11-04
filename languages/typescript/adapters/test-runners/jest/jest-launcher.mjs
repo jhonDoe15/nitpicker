@@ -2,6 +2,10 @@ import { findPackageJSON } from 'node:module';
 import { existsSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../../shared/messages/troubleshooting.mjs';
 
 const LAUNCHERS = {
   'react-scripts': { packageName: 'react-scripts', bin: 'bin/react-scripts.js' },
@@ -10,9 +14,10 @@ const LAUNCHERS = {
 
 function missingLauncher(launcher, projectRoot, cause) {
   const { packageName } = LAUNCHERS[launcher];
-  return new Error(
+  return troubleshootingError(
     `The test script runs "${launcher} test", but ${packageName} is not installed in ${projectRoot}. ` +
       'Install the project dependencies, or set "tools.tests.runner" in nitpicker.config.json.',
+    TROUBLESHOOTING_ANCHORS.testRunnerNotInstalled,
     { cause },
   );
 }

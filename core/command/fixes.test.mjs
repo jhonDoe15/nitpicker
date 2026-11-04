@@ -9,6 +9,7 @@ import { fixtureGit } from '../diff/git/test-support/git-repository.mjs';
 import { fakeAnalyzer, useCliFixtures } from './test-support/cli-harness.mjs';
 import { fileURLToPath } from 'node:url';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
+import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
 import { PROJECT_LAYER_VARIABLE } from '../../languages/typescript/adapters/lint-engine/project-layer.mjs';
 
 const { createRepository, makeOutputRoot, makeTemporaryRoot, runCli } =
@@ -140,7 +141,7 @@ Base: ${repository.baseRef} (argument)
 \u001b[1m\u001b[31mQuality gate summary\u001b[0m
 No new enforceable violations, but the run is incomplete:
 \u001b[1m\u001b[31m✖ 1 tool error\u001b[0m
-  \u001b[33meslint-fix (fix)\u001b[0m: eslint-fix failed: fixture ESLint failure
+  \u001b[33meslint-fix (fix)\u001b[0m: eslint-fix failed: fixture ESLint failure. ${linkSentence('fixersFail')}
 \u001b[2mFull diagnostics: ${outputRoot}/report.txt\u001b[0m
 `);
     expect(output.stderrText).toBe('');
@@ -181,7 +182,7 @@ No new enforceable violations, but the run is incomplete:
       {
         tool: 'eslint-fix',
         snapshot: 'fix',
-        message: 'eslint-fix failed: fixture ESLint failure',
+        message: `eslint-fix failed: fixture ESLint failure. ${linkSentence('fixersFail')}`,
       },
     ]);
   });
@@ -363,7 +364,7 @@ Base: ${repository.baseRef} (argument)
     expect(
       runCli({ arguments_: ['--fix', '--all'], stdout: output.stdout, stderr: output.stderr }),
     ).toBe(2);
-    expect(output.stderrText).toEqual('nitpicker failed: --fix cannot be combined with --all\n');
+    expect(output.stderrText).toEqual(`nitpicker failed: --fix cannot be combined with --all\n`);
   });
   it('rejects --all combined with --base', () => {
     const output = captureOutput();

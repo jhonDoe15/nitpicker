@@ -7,6 +7,10 @@ import {
   TEST_ENVIRONMENTS_VARIABLE,
 } from '../../preset/test-environment/resolve-environment.mjs';
 import { lintWithOxlint } from '../oxlint/oxlint-runner.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../../../shared/messages/troubleshooting.mjs';
 import { PROJECT_LAYER_VARIABLE, projectLayerValue } from './project-layer.mjs';
 
 const MAX_ESLINT_OUTPUT_BYTES = 50 * 1024 * 1024;
@@ -97,9 +101,11 @@ function runEslintCli(invocation, patterns, extraEnvironment = {}) {
 function assertEslintCompleted(result, timeoutMs) {
   if (result.error !== undefined) {
     if (result.error.code === 'ETIMEDOUT') {
-      throw new Error(`ESLint timed out after ${String(timeoutMs)} ms`, {
-        cause: result.error,
-      });
+      throw troubleshootingError(
+        `ESLint timed out after ${String(timeoutMs)} ms`,
+        TROUBLESHOOTING_ANCHORS.analyzerTimeout,
+        { cause: result.error },
+      );
     }
     throw result.error;
   }

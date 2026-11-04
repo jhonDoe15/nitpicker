@@ -41,7 +41,10 @@ function mochaReport({ options, mochaReportPath, result, testFiles }) {
     return loadFailure;
   }
   return reportFromMocha(
-    readTestReport(mochaReportPath, result, RUNNER_NAMES.mocha),
+    readTestReport(mochaReportPath, result, {
+      runnerName: RUNNER_NAMES.mocha,
+      snapshot: options.snapshot,
+    }),
     options.projectRoot,
   );
 }

@@ -43,7 +43,7 @@ function installedMembers(root, existingMembers) {
 function installInto(packageManager, dependencyPath, missingLocalPackages) {
   const outcome = installDependencies(packageManager);
   if (!outcome.ok) {
-    throw new Error(failureMessage(packageManager, outcome.detail, missingLocalPackages));
+    throw new Error(failureMessage(packageManager, outcome.detail, { missingLocalPackages }));
   }
   ensureDependencyFolder(packageManager, dependencyPath);
   assertRegularDirectory(dependencyPath);

@@ -67,7 +67,8 @@
     "!shared/reference/checks/**",
     "!languages/*/reference/**",
     "!languages/python/ruff/ruff-rules.json",
-    "skills/**"
+    "skills/**",
+    "CHANGELOG.md"
   ],
   "exports": {
     "./package.json": "./package.json"

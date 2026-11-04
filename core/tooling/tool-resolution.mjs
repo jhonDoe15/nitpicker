@@ -6,9 +6,12 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { CONFIG_FILE_NAME } from '../../shared/config.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  troubleshootingError,
+} from '../../shared/messages/troubleshooting.mjs';
 
 export const PACKAGE_ROOT = realpathSync(path.resolve(import.meta.dirname, '../..'));
-const manifest = readManifest(path.join(PACKAGE_ROOT, 'package.json'));
 
 export const SNAPSHOT_DIRECTORY_NAMES = ['base', 'head'];
 
@@ -20,32 +23,33 @@ export function resolveTool(name, { projectRoot, bin, packageRoot = PACKAGE_ROOT
 
 export function isToolInstalled(name, { projectRoot, packageRoot = PACKAGE_ROOT } = {}) {
   const { from } = owningTool(name, { projectRoot, packageRoot });
-  try {
-    return findPackageJSON(name, pathToFileURL(path.join(from, 'package.json')).href) !== undefined;
-  } catch (error) {
-    if (error?.code === 'ERR_MODULE_NOT_FOUND') {
-      return false;
-    }
-    throw error;
-  }
+  return packageFileOf(name, from) !== undefined;
 }
 
 function owningTool(name, { projectRoot, packageRoot }) {
   const trustedPackageRoot = realpathSync(packageRoot);
-  const owningManifest =
-    trustedPackageRoot === PACKAGE_ROOT
-      ? manifest
-      : readManifest(path.join(trustedPackageRoot, 'package.json'));
+  const owningManifest = readManifest(path.join(trustedPackageRoot, 'package.json'));
   const owningPeers = new Set(Object.keys(owningManifest.peerDependencies ?? {}));
   const from = owningPeers.has(name) ? projectRoot : trustedPackageRoot;
   if (from === undefined) throw new Error(`Project root is required to resolve peer tool ${name}`);
   return { owningManifest, owningPeers, from };
 }
 
+function packageFileOf(name, from) {
+  try {
+    return findPackageJSON(name, pathToFileURL(path.join(from, 'package.json')).href);
+  } catch (error) {
+    if (error?.code === 'ERR_MODULE_NOT_FOUND') {
+      return undefined;
+    }
+    throw error;
+  }
+}
+
 function installedTool(name, { owningManifest, owningPeers, from }) {
-  const packageFile = findPackageJSON(name, pathToFileURL(path.join(from, 'package.json')).href);
+  const packageFile = packageFileOf(name, from);
   if (packageFile === undefined) {
-    throw new Error(missingToolMessage(name, from));
+    throw missingToolError(name, from, owningManifest.peerDependencies?.[name]);
   }
   const root = realpathSync(path.dirname(packageFile));
   if (isAnalyzedSnapshotPath(packageFile) || isAnalyzedSnapshotPath(root))
@@ -61,15 +65,24 @@ function installedTool(name, { owningManifest, owningPeers, from }) {
 }
 
 const VITEST_PACKAGES = new Set(['vitest', '@vitest/coverage-v8']);
+const NPM_10_HINT =
+  'If npm 10 failed to install it with "reading \'edgesOut\'", install with npm 11 ' +
+  '(`npx npm@11 install`) or use Vitest 5';
 
 export function missingToolMessage(name, from) {
   const message = `Required tool ${name} is not installed from ${from}`;
-  if (!VITEST_PACKAGES.has(name)) {
-    return message;
+  return VITEST_PACKAGES.has(name) ? `${message}. ${NPM_10_HINT}` : message;
+}
+
+function missingToolError(name, from, peerRange) {
+  if (peerRange === undefined) {
+    return new Error(missingToolMessage(name, from));
   }
-  return (
-    `${message}. If npm 10 failed to install it with "reading 'edgesOut'", install with npm 11 ` +
-    '(`npx npm@11 install`) or use Vitest 5'
+  const message = `Required tool ${name} is not installed from ${from}`;
+  const hint = VITEST_PACKAGES.has(name) ? ` ${NPM_10_HINT}.` : '';
+  return troubleshootingError(
+    `${message}. Install ${name} ${peerRange} as a dev dependency of the project.${hint}`,
+    TROUBLESHOOTING_ANCHORS.missingPeer,
   );
 }
 
@@ -115,12 +128,7 @@ const PROJECT_MARKERS = ['package.json', CONFIG_FILE_NAME];
 
 export function resolveProjectRoot(cwd = process.cwd()) {
   const current = realpathSync(cwd);
-  const repositoryRoot = realpathSync(
-    execFileSync('git', ['rev-parse', '--show-toplevel'], {
-      cwd: current,
-      encoding: 'utf8',
-    }).trim(),
-  );
+  const repositoryRoot = repositoryRootOf(current);
   const directories = chainOf(current, (directory) => {
     const parent = path.dirname(directory);
     return directory === repositoryRoot || directory === parent ? undefined : parent;
@@ -129,10 +137,32 @@ export function resolveProjectRoot(cwd = process.cwd()) {
     PROJECT_MARKERS.some((marker) => existsSync(path.join(directory, marker))),
   );
   if (projectRoot !== undefined) return projectRoot;
-  throw new Error(
+  throw troubleshootingError(
     `No package.json or ${CONFIG_FILE_NAME} found between ${current} and repository root ${repositoryRoot}. ` +
       `For a Java, Kotlin, Python or Go project, create ${CONFIG_FILE_NAME} with its preset, for example {"preset": "java"}.`,
+    TROUBLESHOOTING_ANCHORS.noProjectFound,
   );
+}
+
+function repositoryRootOf(directory) {
+  try {
+    return realpathSync(
+      execFileSync('git', ['rev-parse', '--show-toplevel'], {
+        cwd: directory,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }).trim(),
+    );
+  } catch (error) {
+    const gitOutput = String(error?.stderr ?? '').trim();
+    const gitSaid = gitOutput === '' ? '' : `\ngit said:\n${gitOutput}`;
+    throw troubleshootingError(
+      `${directory} is not inside a Git repository that git can read (or git is not installed). ` +
+        `nitpicker compares your changes with their merge base, so run it inside a Git checkout.${gitSaid}`,
+      TROUBLESHOOTING_ANCHORS.notAGitRepository,
+      { cause: error },
+    );
+  }
 }
 
 function isAnalyzedSnapshotPath(candidate) {

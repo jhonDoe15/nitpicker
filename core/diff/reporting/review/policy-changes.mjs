@@ -1,6 +1,10 @@
 import { printable } from '../format/text.mjs';
 import { POLICY_FINDING_ID, isPolicyFinding } from './policy-findings.mjs';
 import { policyKindGuidance } from './policy-guidance.mjs';
+import {
+  TROUBLESHOOTING_ANCHORS,
+  withTroubleshooting,
+} from '../../../../shared/messages/troubleshooting.mjs';
 
 const HEADING = 'Policy changed in this change (nitpicker.config.json, head against base):';
 const ACCEPTED_HEADING =
@@ -34,10 +38,11 @@ function groupedByKind(findings) {
 }
 
 function acceptanceLine(digest) {
-  return (
+  return withTroubleshooting(
     'Only a person may accept exactly these changes, after reviewing them: ' +
-    `--accept-policy-change=${digest} at an interactive terminal, ` +
-    `or NITPICKER_ACCEPT_POLICY_CHANGE=${digest} in CI.`
+      `--accept-policy-change=${digest} at an interactive terminal, ` +
+      `or NITPICKER_ACCEPT_POLICY_CHANGE=${digest} in CI.`,
+    TROUBLESHOOTING_ANCHORS.policyLoosened,
   );
 }
 

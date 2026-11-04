@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { FACT_RULE_SETTINGS, factRuleSettings } from './project-rules/fact-rules.mjs';
+import { troubleshootingError } from './messages/troubleshooting.mjs';
 import { suggestionOrAllowed } from './messages/closest-match.mjs';
 
 export const CONFIG_FILE_NAME = 'nitpicker.config.json';
@@ -39,8 +40,8 @@ export const FEATURE_LAYOUT_KEYS = ['sharedRoots', 'featureRoots'];
 
 export const TYPESCRIPT_ONLY_KEYS = ['exceptions', 'react', 'i18n', 'tools'];
 
-export function configError(message) {
-  return new Error(`${CONFIG_FILE_NAME}: ${message}`);
+export function configError(message, anchor) {
+  return troubleshootingError(`${CONFIG_FILE_NAME}: ${message}`, anchor);
 }
 
 export function isNonEmptyString(value) {

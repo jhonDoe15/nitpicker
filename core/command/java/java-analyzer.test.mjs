@@ -13,6 +13,7 @@ import {
   useGradleFixtures,
 } from './test-support/java-cli-harness.mjs';
 import { writeFiles } from '../../diff/git/test-support/fixture-files.mjs';
+import { linkSentence } from '../../../shared/messages/test-support/link-sentence.mjs';
 
 const { kotlinRepository, run, temporaryRoot } = useGradleFixtures(nitpickerCli);
 
@@ -101,7 +102,7 @@ describe('a build without a project that applies the plugin', () => {
         rule: 'gradle-failure',
         path: '.',
         identity: 'gradle-failure',
-        message: `The ${preset} preset found no Gradle project that applies the ${plugin} plugin`,
+        message: `The ${preset} preset found no Gradle project that applies the ${plugin} plugin. ${linkSentence('gradleFails')}`,
         classification: 'tool-error',
       },
     ]);
@@ -222,7 +223,8 @@ Java preset failed in ${error.snapshot}: FAILURE: Build failed with an exception
 Execution failed for task ':test'.
 > There were failing tests. See the report at: build/reports/tests/test/index.html
 ...
-${/(?:warning: ordinary compiler noise\n)+warning: [a-z ]+/}`),
+${/(?:warning: ordinary compiler noise\n)+warning: [a-z ]+/}
+${linkSentence('gradleFails')}`),
       ),
     );
     expect(errors.map(({ message }) => message.length).filter((length) => length > 4003)).toEqual(

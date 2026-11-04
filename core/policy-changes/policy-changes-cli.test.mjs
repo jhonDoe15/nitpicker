@@ -6,6 +6,7 @@ import { fixtureGit, useGitFixtures } from '../diff/git/test-support/git-reposit
 import { runTasksInProcess } from '../diff/execution/test-support/in-process-analyzers.mjs';
 import { writeFiles } from '../diff/git/test-support/fixture-files.mjs';
 import { policyFindings as findingsFor } from '../diff/reporting/review/policy-findings.mjs';
+import { linkSentence } from '../../shared/messages/test-support/link-sentence.mjs';
 
 const fakeAnalyzerPath = path.resolve(
   import.meta.dirname,
@@ -162,15 +163,16 @@ describe('a change that loosens nitpicker.config.json', () => {
     ).toEqual(['exclusion', 'react-disabled', 'threshold']);
     const { policyDigest } = outsideCi.summary;
     const consoleLines = outsideCi.stdoutText.split('\n');
+    const acceptance =
+      '  Only a person may accept exactly these changes, after reviewing them: ' +
+      `--accept-policy-change=${policyDigest} at an interactive terminal, ` +
+      `or NITPICKER_ACCEPT_POLICY_CHANGE=${policyDigest} in CI. ${linkSentence('policyLoosened')}`;
     expect(consoleLines.filter((line) => line.includes('policy-loosened'))).toEqual([
       '  Unapproved policy changes (nitpicker-config/policy-loosened): 3; ' +
         'the gate fails until each is undone or a person accepts the digest.',
+      acceptance,
     ]);
-    expect(consoleLines.filter((line) => line.includes(policyDigest))).toEqual([
-      '  Only a person may accept exactly these changes, after reviewing them: ' +
-        `--accept-policy-change=${policyDigest} at an interactive terminal, ` +
-        `or NITPICKER_ACCEPT_POLICY_CHANGE=${policyDigest} in CI.`,
-    ]);
+    expect(consoleLines.filter((line) => line.includes(policyDigest))).toEqual([acceptance]);
     expect(accepted.stdoutText.split('\n').filter((line) => line.includes('Unapproved'))).toEqual(
       [],
     );
