@@ -17,6 +17,7 @@ import { noDefaultExport, noNull, noPromiseChain } from './rules/syntax/syntax-b
 import { rule as noProductionConsole } from './rules/modules/no-production-console.mjs';
 import { rule as noSelfRecursion } from './rules/control/no-self-recursion.mjs';
 import { rule as noAccumulatingSpread } from './rules/collections/no-accumulating-spread.mjs';
+import { rule as noTaskOutlivingResource } from './rules/lifetimes/no-task-outliving-resource.mjs';
 import { rule as noSilentCatch } from './rules/errors/no-silent-catch.mjs';
 import { rule as noThrow } from './rules/errors/no-throw.mjs';
 import { rule as noUnknownInDomain } from './rules/boundaries/no-unknown-in-domain.mjs';
@@ -124,6 +125,7 @@ export const nitpickerRules = {
     'no-self-recursion': noSelfRecursion,
     'no-accumulating-spread': noAccumulatingSpread,
     'no-silent-catch': noSilentCatch,
+    'no-task-outliving-resource': noTaskOutlivingResource,
     'no-dev-dependency-in-production': noDevDependencyInProduction,
     'no-throw': noThrow,
     'no-unknown-in-domain': noUnknownInDomain,

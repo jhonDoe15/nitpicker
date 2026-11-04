@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import nitpicker.kotlinpsi.bodies.Bodies;
 import nitpicker.kotlinpsi.common.Frame;
+import nitpicker.kotlinpsi.facts.lifetimes.Lifetimes;
 import nitpicker.kotlinpsi.load.LoadCalls;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.psi.*;
@@ -21,6 +22,7 @@ public final class FactsCollector {
   private final Declarations declarations;
   private final Calls calls;
   private final Predicates predicates;
+  private final Lifetimes lifetimes;
   private final Bodies bodies;
   private final LoadCalls loads;
 
@@ -30,6 +32,7 @@ public final class FactsCollector {
     this.declarations = new Declarations(state);
     this.calls = new Calls(state);
     this.predicates = new Predicates(state);
+    this.lifetimes = new Lifetimes(file, state::lineOf);
     this.bodies = new Bodies(text, test, nothing, state.namesOf(HANDLER));
     this.loads = test ? null : new LoadCalls(file, state::lineOf);
   }
@@ -41,6 +44,12 @@ public final class FactsCollector {
   public Map<String, Object> result() {
     Map<String, Object> result = new LinkedHashMap<>(state.result());
     result.putAll(bodies.result());
+    if (!lifetimes.cleanupCalls().isEmpty()) {
+      result.put("cleanupCalls", lifetimes.cleanupCalls());
+    }
+    if (!lifetimes.useLaunches().isEmpty()) {
+      result.put("useLaunches", lifetimes.useLaunches());
+    }
     if (loads != null) {
       result.putAll(loads.result());
     }
@@ -66,7 +75,8 @@ public final class FactsCollector {
 
   private Frame enter(PsiElement element, Frame frame) {
     if (element instanceof KtNamedFunction) {
-      Frame inner = declarations.declareFunction((KtNamedFunction) element, frame);
+      Frame inner = declarations.declareFunction(
+          (KtNamedFunction) element, frame, lifetimes.shieldsWholeBody((KtNamedFunction) element));
       bodies.function(inner, (KtNamedFunction) element);
       return inner;
     }
@@ -110,7 +120,10 @@ public final class FactsCollector {
       declarations.declareProperty((KtProperty) element, frame);
     } else if (element instanceof KtTypeAlias) {
       declarations.declareTypeAlias((KtTypeAlias) element);
+    } else if (element instanceof KtTryExpression) {
+      lifetimes.tryExpression((KtTryExpression) element, frame);
     } else if (element instanceof KtCallExpression) {
+      lifetimes.call((KtCallExpression) element, frame);
       calls.call((KtCallExpression) element, frame);
     } else if (element instanceof KtSuperTypeCallEntry) {
       KtSuperTypeCallEntry entry = (KtSuperTypeCallEntry) element;

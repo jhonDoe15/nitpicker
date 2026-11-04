@@ -7,6 +7,8 @@ import { singularPluralFindings } from './main/member-names.mjs';
 import { unusedOptionFindings } from './main/unused-options/unused-options.mjs';
 import { validationTargetFindings } from './validation/validation-targets.mjs';
 import { buildViews, javaMentions } from './build-view.mjs';
+import { childLifetimeFindings } from './coroutines/resource-lifetime.mjs';
+import { suspendCleanupFindings } from './coroutines/suspend-cleanup.mjs';
 import { productionTypeResolver } from './production-types.mjs';
 import { findingFactory } from './review-finding.mjs';
 import { springFindings } from './spring/spring-findings.mjs';
@@ -70,6 +72,8 @@ export function readKotlinReviewFindings(context) {
     ...enumPredicateFindings(own, { finding, projectRoot, declaredIn: projectFiles }),
     ...forwardingWrapperFindings(own, { finding, declaredIn: projectFiles }),
     ...singularPluralFindings(own, { finding }),
+    ...suspendCleanupFindings(own, { finding, declaredIn: projectFiles }),
+    ...childLifetimeFindings(own, { finding }),
     ...validationTargetFindings(own, { finding }),
     ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...unusedOptionFindings(own, {

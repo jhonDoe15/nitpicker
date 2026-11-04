@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 249 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 250 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -2319,6 +2319,17 @@ References to System.(out|err).print are usually intended for debugging purposes
 - **Allowed form:** Write through a logger, or take a PrintStream as a parameter so callers choose the stream.
 - **Exception:** If this is intended, add `{"rule":"pmd/SystemPrintln","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#systemprintln)
+
+<a id="pmd-taskoutlivestryresource"></a>
+
+### `pmd/TaskOutlivesTryResource`
+
+In main and test sources: a task started inside a try-with-resources block that uses a resource of that try, with nothing waiting for it after it starts and unconditionally before the block ends: `submit`, `execute` or `schedule*` on an `Executor` or `CompletionService`, `Timer.schedule*`, `CompletableFuture.supplyAsync`/`runAsync`, `thenXxxAsync`, `Thread.startVirtualThread`, `new Thread(...).start()` or `Thread.ofVirtual().start(...)`, whose lambda, method reference, anonymous class or task constructor argument reads the resource, when the result is discarded, returned or kept in a variable nothing reads. The message names the call that started the task.
+
+- **Scope:** Main and test sources.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** The task started by {0}() reads a resource of its try-with-resources, but nothing waits for it after it starts, unconditionally, before the block ends, so the resource is closed while the task can still run. Wait inside the block: get() or join() on the future, awaitTermination or close on the executor, take() or a timed poll() on its CompletionService, await() on a latch or barrier, or declare the executor as a later resource of the same try so it closes first and waits. Or open the resource inside the task.
+- **Exception:** If this is intended, add `{"rule":"pmd/TaskOutlivesTryResource","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-testclasswithouttestcases"></a>
 
