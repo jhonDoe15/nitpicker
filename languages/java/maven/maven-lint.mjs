@@ -48,7 +48,8 @@ function writeAuxClasspath({ module, reportDir, classpaths }) {
   return file;
 }
 
-export function runPmd({ module, reportDir, tools, classpaths, configs, spring, spawn }) {
+export function runPmd(options) {
+  const { module, reportDir, tools, classpaths, configs, spring, reactor, spawn } = options;
   const report = path.join(reportDir, 'pmd.sarif');
   const linted = [...module.sourceRoots, ...module.testSourceRoots].filter((root) =>
     existsSync(root),
@@ -63,6 +64,7 @@ export function runPmd({ module, reportDir, tools, classpaths, configs, spring, 
     reportDir,
     configs,
     spring,
+    reactor,
   });
   const rulesets = [
     layers.nitpicker ?? NITPICKER_RULESET,

@@ -85,6 +85,14 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
     expect(located(reviewFindings(runs.maven))).toEqual(runs.markers);
   });
 
+  it('runs the Reactor rules on Maven as on Gradle, from reactor-core on the module classpath', () => {
+    const reactor = (entries) => entries.filter((entry) => / Reactor\w+$/u.test(entry));
+
+    expect(reactor(runs.markers)).toHaveLength(14);
+    expect(reactor(located(reviewFindings(runs.maven)))).toEqual(reactor(runs.markers));
+    expect(reactor(located(reviewFindings(runs.gradle)))).toEqual(reactor(runs.markers));
+  });
+
   it('names Awaitility for a fixed sleep, as the project has it, and calls join(ms) a timed wait', () => {
     const waits = runs.gradle.filter(({ rule }) => rule === 'FixedSleepInTest');
     const timed = waits.filter(({ message }) => message.startsWith('A timed wait, '));

@@ -74,6 +74,11 @@ export const policyFailureMessageCases = [
     'execFile',
   ),
   adapterCase(
+    'synchronous fs call in an async function names the promise API',
+    "import { readFileSync } from 'node:fs'; export async function load(path) { return readFileSync(path, 'utf8'); }",
+    'node:fs/promises',
+  ),
+  adapterCase(
     'path join names the containment check',
     "import { readFileSync } from 'node:fs'; import path from 'node:path'; export function read(name) { return readFileSync(path.join('/srv', name)); }",
     'startsWith',

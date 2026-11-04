@@ -14,6 +14,14 @@ import { inlineSuppressionMessage } from '../../adapters/kotlin/rules/kotlin-sup
 import { kotlinFormatAdvice } from '../../adapters/kotlin/style/kotlin-format-advice.mjs';
 import { ktfmtMessage, ktlintAdvice } from '../../adapters/reporting/kotlin-reports.mjs';
 import { JVM_BUILDS } from '../catalog-rules.mjs';
+import {
+  BLOCKING_RULE,
+  blockingMessage,
+} from '../../adapters/kotlin/review-rules/blocking/blocking-findings.mjs';
+import {
+  TIMEOUT_RULE,
+  timeoutMessage,
+} from '../../adapters/kotlin/review-rules/blocking/timeouts.mjs';
 
 const GUIDE = 'docs/kotlin-preset.md';
 const KOTLIN = {
@@ -64,11 +72,11 @@ function sourceEntries() {
       why: SOURCE_WHY,
       docs: [{ label: 'Kotlin preset guide', path: GUIDE, anchor: 'source-checks' }],
     },
-    Object.entries(KOTLIN_SOURCE_MESSAGES).map(([rule, allowed]) => [
-      rule,
-      asSentence(guideCell(GUIDE, rule, 'flags')),
-      allowed,
-    ]),
+    [
+      ...Object.entries(KOTLIN_SOURCE_MESSAGES),
+      [BLOCKING_RULE, blockingMessage('<call>', '<what blocks>', '<function>')],
+      [TIMEOUT_RULE, timeoutMessage('withTimeout', '<call>')],
+    ].map(([rule, allowed]) => [rule, asSentence(guideCell(GUIDE, rule, 'flags')), allowed]),
   );
 }
 

@@ -49,6 +49,14 @@ describe('production policy scope', () => {
     ]);
   });
 
+  it('checks the handlers of an entry point for sync Node calls and leaves config files alone', () => {
+    const code =
+      "import { readFileSync } from 'node:fs'; export async function load(): Promise<string> { return readFileSync('a', 'utf8'); }";
+
+    expect(ruleIds('src/scripts/run.ts', code)).toEqual(['nitpicker/no-sync-node-api-in-async']);
+    expect(ruleIds('src/app.config.ts', code)).toEqual([]);
+  });
+
   it('keeps the module-state rule out of domain/', () => {
     const code = 'const cache = new Map(); export function put(k, v) { cache.set(k, v); }';
 

@@ -215,6 +215,10 @@
     { "key": "python.exceptions", "rule": "test-without-assertion" },
     "Test `<name>` has no assertion",
     "Assert the outcome: `assert result == expected`, `with pytest.raises(SomeError):`, or call one of the assertion helpers the project tests use.",
+    "timeout-scope-path-without-checkpoint",
+    { "key": "python.exceptions", "rule": "timeout-scope-path-without-checkpoint" },
+    "`<name>` has a path that runs `` without reaching a checkpoint (an `await` that suspends, `async with` or `async for`), so its timeout or cancellation cannot interrupt that path",
+    "Reach a checkpoint on every path through the scope: await the slow work (`await asyncio.to_thread(work)`, `await trio.to_thread.run_sync(work)`, `await anyio.to_thread.run_sync(work)`), or add an explicit checkpoint before it (`await asyncio.sleep(0)`, `await trio.lowlevel.checkpoint()`, `await anyio.lowlevel.checkpoint()`), or move the checkpoint-free path out of the scope. A scope with no checkpoint at all is reported by Ruff ASYNC100.",
     "tls-verification-off",
     { "key": "python.exceptions", "rule": "tls-verification-off" },
     "`<name>` turns off TLS certificate verification, or lets the environment turn it off",
@@ -329,7 +333,8 @@
     [18, 232, 2, 3, 233, 234, 22, 235, -1],
     [18, 236, 2, 3, 237, 238, 22, 239, -1],
     [18, 240, 2, 3, 241, 242, 22, 243, -1],
-    [244, 245, 2, 3, 246, 247, 248, 249, -1],
-    [250, 251, 2, 3, 252, 253, 254, 255, 256]
+    [18, 244, 2, 3, 245, 246, 22, 247, -1],
+    [248, 249, 2, 3, 250, 251, 252, 253, -1],
+    [254, 255, 2, 3, 256, 257, 258, 259, 260]
   ]
 }
