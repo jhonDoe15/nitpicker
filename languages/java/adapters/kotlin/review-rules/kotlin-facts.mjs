@@ -5,7 +5,12 @@ const GENERIC_ARGUMENTS = /<.*$/u;
 
 export function readKotlinFacts(reportRoot) {
   const { files } = readKotlinReport(reportRoot);
-  return { files: files.filter(({ skipped }) => skipped !== true) };
+  return {
+    files: files.filter(({ skipped }) => skipped !== true),
+    skipped: files
+      .filter(({ skipped }) => skipped === true)
+      .map(({ file, test }) => ({ file, test: test === true })),
+  };
 }
 
 export function append(map, key, value) {
@@ -39,4 +44,9 @@ export function annotationNamed(annotations, names) {
 
 export function importsFrom(file, prefix) {
   return file.imports.some(({ path: imported }) => imported.startsWith(prefix));
+}
+
+export function ancestorsOf(qualified) {
+  const parts = qualified.split('.');
+  return parts.map((_, index) => parts.slice(0, index + 1).join('.'));
 }
