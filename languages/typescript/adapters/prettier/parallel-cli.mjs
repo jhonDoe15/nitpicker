@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { unlinkSync, writeFileSync } from 'node:fs';
+import { readdirSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import {
   trackTemporaryPath,
@@ -8,8 +8,8 @@ import {
 
 const EXCLUSION_FILE_NAME = '.nitpicker-diff-prettier-exclude';
 const MAX_OUTPUT_BYTES = 50 * 1024 * 1024;
-const UNTRANSLATABLE_CHARACTERS = /[\s\\{}()[\]!]/u;
-const WILDCARD = /[*?]/u;
+const LITERAL_SEGMENT = /^[\w.-]+$/u;
+const GLOB_CHARACTERS = /[*?[\]{}()!+@|\\]/u;
 
 export function listUnformattedInParallel({
   toolPath,
@@ -19,11 +19,15 @@ export function listUnformattedInParallel({
   patterns,
   exclusions,
 }) {
-  const exclusionLines = exclusionIgnoreLines(exclusions);
+  const exclusionLines = exclusionIgnoreLines(exclusions, { projectRoot, patterns });
   if (exclusionLines === undefined) {
     return undefined;
   }
-  const exclusionPath = writeExclusionFile(projectRoot, exclusionLines);
+  const exclusionFile = writeExclusionFile(projectRoot, exclusionLines);
+  if (exclusionFile.failure !== undefined) {
+    return undefined;
+  }
+  const exclusionPath = exclusionFile.path;
   try {
     const result = spawnSync(
       process.execPath,
@@ -50,22 +54,54 @@ export function listUnformattedInParallel({
   }
 }
 
-export function exclusionIgnoreLines(exclusions) {
-  return exclusions.every(isTranslatableExclusion)
+export function exclusionIgnoreLines(exclusions, { projectRoot, patterns }) {
+  const staticBases = patterns.map(staticBase);
+  return exclusions.every((glob) => isTranslatableExclusion(glob, { projectRoot, staticBases }))
     ? exclusions.map((glob) => `/${glob}`)
     : undefined;
 }
 
-function isTranslatableExclusion(glob) {
+function isTranslatableExclusion(glob, { projectRoot, staticBases }) {
   const segments = glob.split('/');
-  if (
-    glob.length === 0 ||
-    UNTRANSLATABLE_CHARACTERS.test(glob) ||
-    segments.some((segment) => segment === '' || segment === '.' || segment === '..')
-  ) {
-    return false;
+  const folderSegments = segments.at(-1) === '**' ? segments.slice(0, -1) : segments;
+  return (
+    folderSegments.length > 0 &&
+    folderSegments.every((segment) => LITERAL_SEGMENT.test(segment) && !/^\.+$/u.test(segment)) &&
+    !staticBases.some((base) => isAncestorOrSelf(folderSegments, base)) &&
+    !hasCaseVariant(projectRoot, folderSegments)
+  );
+}
+
+function staticBase(pattern) {
+  const segments = pattern.split('/');
+  const firstGlob = segments.findIndex((segment) => GLOB_CHARACTERS.test(segment));
+  return firstGlob === -1 ? segments.slice(0, -1) : segments.slice(0, firstGlob);
+}
+
+function isAncestorOrSelf(segments, base) {
+  return (
+    segments.length <= base.length && segments.every((segment, index) => segment === base[index])
+  );
+}
+
+function hasCaseVariant(projectRoot, segments) {
+  for (const [index, segment] of segments.entries()) {
+    const entryPath = path.resolve(projectRoot, ...segments.slice(0, index + 1));
+    if (!entryPath.startsWith(projectRoot + path.sep)) {
+      return true;
+    }
+    const entries = readdirSync(path.dirname(entryPath), { withFileTypes: true });
+    if (
+      entries.some(({ name }) => name !== segment && name.toLowerCase() === segment.toLowerCase())
+    ) {
+      return true;
+    }
+    const entry = entries.find(({ name }) => name === segment);
+    if (entry === undefined || !entry.isDirectory()) {
+      return false;
+    }
   }
-  return segments.at(-1) === '**' || !WILDCARD.test(segments.at(-1));
+  return false;
 }
 
 function unformattedFilesOf(result) {
@@ -84,17 +120,22 @@ function unformattedFilesOf(result) {
 
 function writeExclusionFile(projectRoot, exclusionLines) {
   if (exclusionLines.length === 0) {
-    return undefined;
+    return { path: undefined };
   }
-  const exclusionPath = path.join(projectRoot, EXCLUSION_FILE_NAME);
-  writeFileSync(exclusionPath, `${exclusionLines.join('\n')}\n`, { flag: 'wx' });
-  return trackTemporaryPath(exclusionPath);
+  const exclusionPath = trackTemporaryPath(path.join(projectRoot, EXCLUSION_FILE_NAME));
+  try {
+    writeFileSync(exclusionPath, `${exclusionLines.join('\n')}\n`, { flag: 'wx' });
+    return { path: exclusionPath };
+  } catch (error) {
+    untrackTemporaryPath(exclusionPath);
+    return { failure: error };
+  }
 }
 
 function removeExclusionFile(exclusionPath) {
   if (exclusionPath === undefined) {
     return;
   }
-  unlinkSync(exclusionPath);
   untrackTemporaryPath(exclusionPath);
+  rmSync(exclusionPath, { force: true });
 }
