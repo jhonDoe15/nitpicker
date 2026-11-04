@@ -32,8 +32,7 @@ export function sourceTextReader(projectRoot) {
   };
 }
 
-function unitOf(unit, text) {
-  const lines = text?.split(/\r?\n/u) ?? [];
+function unitOf(unit, lines) {
   if (unit.end > lines.length) {
     return { name: unit.name };
   }
@@ -50,15 +49,24 @@ function unitOf(unit, text) {
 
 function unitLocatorOver(functions, projectRoot) {
   const sourceText = sourceTextReader(projectRoot);
-  const texts = new Map();
-  return (file, line) => {
-    if (!texts.has(file)) {
-      texts.set(file, sourceText(file));
+  const sources = new Map();
+  const sourceOf = (file) => {
+    if (!sources.has(file)) {
+      const text = sourceText(file);
+      sources.set(file, {
+        lines: text?.split(/\r?\n/u) ?? [],
+        units: [
+          ...functions.filter((unit) => unit.file === file),
+          ...(text === undefined ? [] : declarationUnits(file, text)),
+        ],
+      });
     }
-    const text = texts.get(file);
-    const units = text === undefined ? [] : declarationUnits(file, text);
-    const unit = enclosingFunction([...functions, ...units], file, line);
-    return unit === undefined ? undefined : unitOf(unit, text);
+    return sources.get(file);
+  };
+  return (file, line) => {
+    const { lines, units } = sourceOf(file);
+    const unit = enclosingFunction(units, file, line);
+    return unit === undefined ? undefined : unitOf(unit, lines);
   };
 }
 

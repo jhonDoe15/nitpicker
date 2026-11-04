@@ -322,6 +322,8 @@ describe('detekt count findings on a renamed legacy function', () => {
     expect(newFindings.map(({ message }) => message.split(' which')[0])).toEqual([
       'Function choose has 4 return statements',
     ]);
-    expect(resolvedFindings).toHaveLength(1);
+    expect(resolvedFindings.map(({ message }) => message.split(' which')[0])).toEqual([
+      'Function pick has 3 return statements',
+    ]);
   });
 });
