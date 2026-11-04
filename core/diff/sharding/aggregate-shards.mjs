@@ -21,6 +21,7 @@ import { resolveHeadPolicy } from '../../../languages/typescript/preset/head-pol
 import { renderConsoleSummary } from '../reporting/summary.mjs';
 import { writeGithubOutput } from '../reporting/github/emit.mjs';
 import { describeError } from '../../../shared/messages/error-chain.mjs';
+import { colorEnabled, displayPath, withoutAnsi } from '../../../shared/messages/terminal-text.mjs';
 
 function resolvePolicyRoot({ policyRoot, optionsPolicyRoot, currentProjectRoot }) {
   if (policyRoot !== undefined) {
@@ -167,7 +168,13 @@ function analyzerExclusions(analyzers) {
 }
 
 function mergeEntries(shardReports, property) {
-  return shardReports.flatMap((report) => report[property]);
+  return shardReports
+    .flatMap((report) => report[property])
+    .map((entry) =>
+      typeof entry?.message === 'string'
+        ? { ...entry, message: withoutAnsi(entry.message) }
+        : entry,
+    );
 }
 
 const invokedPath = process.argv[1];
@@ -238,9 +245,9 @@ function reportExitCode(
 ) {
   stdout.write(
     renderConsoleSummary(report, {
-      color: environment.NO_COLOR === undefined,
+      color: colorEnabled(stdout, environment),
       details,
-      diagnosticsPath: absoluteTextReportPath(outputRoot),
+      diagnosticsPath: displayPath(absoluteTextReportPath(outputRoot)),
     }),
   );
   writeGithubOutput({
