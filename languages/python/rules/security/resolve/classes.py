@@ -199,7 +199,7 @@ def annotation_class(annotation, where):
     if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
         try:
             annotation = ast.parse(annotation.value, mode="eval").body
-        except SyntaxError:
+        except (SyntaxError, ValueError):
             return None
     if isinstance(annotation, ast.BinOp) and isinstance(annotation.op, ast.BitOr):
         left = annotation_class(annotation.left, where)
