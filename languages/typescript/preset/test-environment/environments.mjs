@@ -1,12 +1,9 @@
 import path from 'node:path';
+import { isRecord } from '../../../../shared/rules/facts/checks.mjs';
 
 export const DEFAULT_ENVIRONMENT = 'node';
 const DOM_ENVIRONMENTS = new Set(['jsdom', 'happy-dom']);
 const SCRIPT_PATH = /\.[cm]?[jt]sx?$/u;
-
-function isRecord(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
-}
 
 function stringList(value) {
   return Array.isArray(value) && value.every((item) => typeof item === 'string') ? value : [];

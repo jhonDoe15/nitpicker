@@ -10,8 +10,20 @@ const JVM_REUSE_RULES_ONLY = {
   file: 'languages/java/adapters/reuse/jvm-reuse-facts.mjs',
   evidence: /rules: REUSE_RULES/u,
 };
+const JVM_DESIGN_RULES = [
+  'mutable-state-escape',
+  'context-threading',
+  'caller-protocol',
+  'protocol-contract',
+  'forwarding-chain',
+  'disjoint-consumer-groups',
+  'data-clump',
+  'repeated-policy-decision',
+  'foreign-state-decision',
+];
 const JVM_FACT_RULES_NOT_RUN = {
   'shared-used-by-one-feature': JVM_REUSE_RULES_ONLY,
+  ...Object.fromEntries(JVM_DESIGN_RULES.map((id) => [id, JVM_REUSE_RULES_ONLY])),
 };
 const NOT_ENFORCED_ALTHOUGH_EMITTED = {
   java: JVM_FACT_RULES_NOT_RUN,

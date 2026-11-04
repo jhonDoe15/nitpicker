@@ -1,8 +1,5 @@
-import path from 'node:path';
-import { linkPolicyFile } from '../../../../../core/tooling/policy-links.mjs';
 import { exceptionMatcher } from '../../../../../shared/rules/exceptions.mjs';
 import { readHeadPolicy, readLayout } from '../../../preset/head-policy.mjs';
-import { layoutTransformFor } from '../../../preset/tool-configs.mjs';
 import {
   layoutKnipProductionConfig,
   withEntryExports,
@@ -12,41 +9,18 @@ import {
   testOnlyExportFindings,
 } from '../../../preset/unused-api/test-only/test-only-exports.mjs';
 import { loadPackages } from '../../../preset/unused-api/workspace/packages.mjs';
-import { toolErrorFinding } from '../reporting/test-report.mjs';
-import { importPolicyModule, policyFile } from './tooling.mjs';
+import { failure, runProgramAnalysis } from './program/program-analysis.mjs';
 
-const TYPESCRIPT_CONFIG = 'languages/typescript/preset/defaults/tsconfig.quality.json';
 const ANALYZER = 'languages/typescript/preset/unused-api/analyze.mjs';
 
-function failure(options, rule, error) {
-  const message = error instanceof Error ? error.message : String(error);
-  return [toolErrorFinding(options, { rule, message: `${rule} could not run: ${message}` })];
-}
-
-function analyze(options, { analyzeUnusedApi }) {
-  const installed = linkPolicyFile(
-    policyFile(options.policyRoot, TYPESCRIPT_CONFIG),
-    path.join(options.projectRoot, '.nitpicker-diff-unused-api-tsconfig.json'),
-    layoutTransformFor(TYPESCRIPT_CONFIG, readLayout()),
-  );
-  try {
-    return analyzeUnusedApi({
-      projectRoot: options.projectRoot,
-      configPath: installed.targetPath,
-      analyzerName: options.analyzerName,
-    });
-  } finally {
-    installed.remove();
-  }
-}
-
 /** Unused props and options; a failure is a tool error, so the other structure checks still report. */
-export async function runUnusedApi(options) {
-  try {
-    return analyze(options, await importPolicyModule(options, ANALYZER));
-  } catch (error) {
-    return failure(options, 'unused-api', error);
-  }
+export function runUnusedApi(options) {
+  return runProgramAnalysis(options, {
+    rule: 'unused-api',
+    analyzer: ANALYZER,
+    linkName: '.nitpicker-diff-unused-api-tsconfig.json',
+    exportName: 'analyzeUnusedApi',
+  });
 }
 
 function testOnlyFindings(options, { config, normal, knip }) {

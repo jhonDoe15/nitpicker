@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { ts } from '../../../typescript-api/typescript-api.mjs';
+import { isRecord } from '../../../../../shared/rules/facts/checks.mjs';
 
 const NO_INPUT_ERROR_CODES = new Set([18002, 18003]);
 
@@ -36,10 +37,6 @@ function absolutePaths(baseUrl, paths) {
 function withBareLookup(targets, bareTarget) {
   if (targets === undefined) return [bareTarget];
   return Array.isArray(targets) ? [...targets, bareTarget] : targets;
-}
-
-function isRecord(value) {
-  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 function absoluteTarget(baseUrl, target) {

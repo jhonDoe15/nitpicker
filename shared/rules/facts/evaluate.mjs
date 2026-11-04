@@ -17,6 +17,7 @@ import { baselineFromFacts, baselinePathsOf } from './baseline.mjs';
 import { FACT_RULE_LISTS, registeredFactRules } from '../../project-rules/fact-rules.mjs';
 import { reuseModules, withImportRoles } from './reuse-modules.mjs';
 import { validateFacts } from './schema.mjs';
+import { DESIGN_EVALUATORS } from '../design/design-findings.mjs';
 
 const REGISTRY = 'FACT_RULE_LANGUAGES (shared/project-rules/fact-rules.mjs)';
 
@@ -63,6 +64,7 @@ const EVALUATORS = {
         exceptions: options.policy.exceptions ?? [],
       },
     ),
+  ...DESIGN_EVALUATORS,
 };
 
 function missingList(facts, rules, language) {
@@ -148,6 +150,16 @@ function isAllowEntry(entry) {
   );
 }
 
+function isProtocol(entry) {
+  return (
+    isPlainObject(entry) &&
+    typeof entry.type === 'string' &&
+    [entry.open, entry.close].every((names) => isGlobs(names) && names.length > 0) &&
+    (entry.steps === undefined || isGlobs(entry.steps)) &&
+    (entry.reason === undefined || (typeof entry.reason === 'string' && entry.reason !== ''))
+  );
+}
+
 function isOptionalObject(value) {
   return value === undefined || isPlainObject(value);
 }
@@ -159,6 +171,11 @@ const POLICY_SHAPES = [
     'policy.exceptions',
     (policy) => isListOf(policy.exceptions, isException),
     'an array of { rule, paths } entries',
+  ],
+  [
+    'policy.protocols',
+    (policy) => isListOf(policy.protocols, isProtocol),
+    'an array of { type, open, close, steps?, reason? } entries',
   ],
   [
     'policy.testConsole.allow',
