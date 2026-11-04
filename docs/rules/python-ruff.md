@@ -1,6 +1,6 @@
 # Python: ruff rules
 
-The ruff rules in nitpicker's own ruff config, by rule code. This page lists 372 rules. [All pages](README.md).
+The ruff rules in nitpicker's own ruff config, by rule code. This page lists 447 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -105,6 +105,326 @@ Checks for the presence of unused arguments in lambda expression definitions.
 
 - **Exception:** If this is intended, add `{"rule":"ARG005","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 - **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/unused-lambda-argument/)
+
+<a id="ruff-async100"></a>
+
+### `ruff/ASYNC100`
+
+Checks for timeout context managers which do not contain a checkpoint.
+
+- **Why it is on:** Some asynchronous context managers, such as `asyncio.timeout` and `trio.move_on_after`, have no effect unless they contain a checkpoint. The use of such context managers without an `await`, `async with` or `async for` statement is likely a mistake. Selected in the ruff config of the Python preset, with the flake8-async rules (`cancel-scope-no-checkpoint`).
+- **Allowed form:** Put an `await` inside the timeout scope (`async with asyncio.timeout(5): await client.get(url)`), or remove the scope: a timeout fires only at a checkpoint.
+- **Example of the allowed form:**
+
+  ```python
+  import asyncio
+
+
+  async def func():
+      async with asyncio.timeout(2):
+          do_something()
+          await awaitable()
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"ASYNC100","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/cancel-scope-no-checkpoint/)
+
+<a id="ruff-async105"></a>
+
+### `ruff/ASYNC105`
+
+Checks for calls to trio functions that are not immediately awaited.
+
+- **Why it is on:** Many of the functions exposed by trio are asynchronous, and must be awaited to take effect. Calling a trio function without an `await` can lead to `RuntimeWarning` diagnostics and unexpected behaviour. Selected in the ruff config of the Python preset, with the flake8-async rules (`trio-sync-call`).
+- **Allowed form:** Await the trio call: `await trio.sleep(delay)`.
+- **Example of the allowed form:**
+
+  ```python
+  import trio
+
+
+  async def double_sleep(x):
+      await trio.sleep(2 * x)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"ASYNC105","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/trio-sync-call/)
+
+<a id="ruff-async109"></a>
+
+### `ruff/ASYNC109`
+
+Checks for `async` function definitions with `timeout` parameters.
+
+- **Why it is on:** Rather than implementing asynchronous timeout behavior manually, prefer built-in timeout functionality, such as `asyncio.timeout`, `trio.fail_after`, or `anyio.move_on_after`, among others. This rule is highly opinionated to enforce a design pattern called "structured concurrency" that allows for `async` functions to be oblivious to timeouts, instead letting callers to handle the logic with a context manager. Selected in the ruff config of the Python preset, with the flake8-async rules (`async-function-with-timeout`).
+- **Allowed form:** Drop the `timeout` parameter; the caller bounds the call with `async with asyncio.timeout(...)` (`trio.fail_after` or `anyio.fail_after` on those backends). A method that overrides a base signature takes `@typing.override`, and a wrapper of `asyncio.timeout` names its parameter `delay`.
+- **Example of the allowed form:**
+
+  ```python
+  async def long_running_task(): ...
+
+
+  async def main():
+      async with asyncio.timeout(2):
+          await long_running_task()
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"ASYNC109","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/async-function-with-timeout/)
+
+<a id="ruff-async110"></a>
+
+### `ruff/ASYNC110`
+
+Checks for the use of an async sleep function in a `while` loop.
+
+- **Why it is on:** Busy-waiting for a condition in a loop forces a tradeoff between efficiency and latency: shorter sleep times improve responsiveness but waste more CPU cycles, while longer sleep times reduce CPU usage but delay reaction to state changes. Waiting on an `Event` object like `asyncio.Event`, `trio.Event`, or `anyio.Event` eliminates this tradeoff, allowing immediate response with minimal wasted CPU time. Selected in the ruff config of the Python preset, with the flake8-async rules (`async-busy-wait`).
+- **Allowed form:** Wait on an event instead of a sleep loop: `await ready.wait()` on an `asyncio.Event` that the producer sets.
+- **Example of the allowed form:**
+
+  ```python
+  import asyncio
+
+  DONE = asyncio.Event()
+
+
+  async def func():
+      await DONE.wait()
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"ASYNC110","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/async-busy-wait/)
+
+<a id="ruff-async115"></a>
+
+### `ruff/ASYNC115`
+
+Checks for uses of `trio.sleep(0)` or `anyio.sleep(0)`.
+
+- **Why it is on:** `trio.sleep(0)` is equivalent to calling `trio.lowlevel.checkpoint()`. However, the latter better conveys the intent of the code. Selected in the ruff config of the Python preset, with the flake8-async rules (`async-zero-sleep`).
+- **Allowed form:** Yield with `await trio.lowlevel.checkpoint()` (`anyio.lowlevel.checkpoint()`).
+- **Example of the allowed form:**
+
+  ```python
+  import trio.lowlevel
+
+
+  async def func():
+      await trio.lowlevel.checkpoint()
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"ASYNC115","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/async-zero-sleep/)
+
+<a id="ruff-async116"></a>
+
+### `ruff/ASYNC116`
+
+Checks for uses of `trio.sleep()` or `anyio.sleep()` with a delay greater than 24 hours.
+
+- **Why it is on:** Calling `sleep()` with a delay greater than 24 hours is usually intended to sleep indefinitely. Instead of using a large delay, `trio.sleep_forever()` or `anyio.sleep_forever()` better conveys the intent. Selected in the ruff config of the Python preset, with the flake8-async rules (`long-sleep-not-forever`).
+- **Allowed form:** Wait indefinitely with `await trio.sleep_forever()` (`anyio.sleep_forever()`).
+- **Example of the allowed form:**
+
+  ```python
+  import trio
+
+
+  async def func():
+      await trio.sleep_forever()
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"ASYNC116","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/long-sleep-not-forever/)
+
+<a id="ruff-async210"></a>
+
+### `ruff/ASYNC210`
+
+Checks that async functions do not contain blocking HTTP calls.
+
+- **Why it is on:** Blocking an async function via a blocking HTTP call will block the entire event loop, preventing it from executing other tasks while waiting for the HTTP response, negating the benefits of asynchronous programming. Instead of making a blocking HTTP call, use an asynchronous HTTP client library such as `aiohttp` or `httpx`. Selected in the ruff config of the Python preset, with the flake8-async rules (`blocking-http-call-in-async-function`).
+- **Allowed form:** Use an async client (`async with httpx.AsyncClient() as client: await client.get(url)`), or move the blocking call to a worker thread with `await asyncio.to_thread(...)`.
+- **Example of the allowed form:**
+
+  ```python
+  import aiohttp
+
+
+  async def fetch():
+      async with aiohttp.ClientSession() as session:
+          async with session.get("https://example.com/foo/bar") as resp:
+              ...
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"ASYNC210","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/blocking-http-call-in-async-function/)
+
+<a id="ruff-async212"></a>
+
+### `ruff/ASYNC212`
+
+Checks that async functions do not use blocking httpx clients.
+
+- **Why it is on:** Blocking an async function via a blocking HTTP call will block the entire event loop, preventing it from executing other tasks while waiting for the HTTP response, negating the benefits of asynchronous programming. Instead of using the blocking `httpx` client, use the asynchronous client. Selected in the ruff config of the Python preset, with the flake8-async rules (`blocking-http-call-httpx-in-async-function`).
+- **Allowed form:** Use an async client (`async with httpx.AsyncClient() as client: await client.get(url)`), or move the blocking call to a worker thread with `await asyncio.to_thread(...)`.
+- **Example of the allowed form:**
+
+  ```python
+  import httpx
+
+
+  async def fetch():
+      async with httpx.AsyncClient() as client:
+          response = await client.get(...)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"ASYNC212","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/blocking-http-call-httpx-in-async-function/)
+
+<a id="ruff-async220"></a>
+
+### `ruff/ASYNC220`
+
+Checks that async functions do not create subprocesses with blocking methods.
+
+- **Why it is on:** Blocking an async function via a blocking call will block the entire event loop, preventing it from executing other tasks while waiting for the call to complete, negating the benefits of asynchronous programming. Instead of making a blocking call, use an equivalent asynchronous library or function, like [`trio.run_process()`](https://trio.readthedocs.io/en/stable/reference-io.html#trio.run_process) or [`anyio.run_process()`](https://anyio.readthedocs.io/en/latest/api.html#anyio.run_process). Selected in the ruff config of the Python preset, with the flake8-async rules (`create-subprocess-in-async-function`).
+- **Allowed form:** Run the process with `await asyncio.create_subprocess_exec(...)` (`anyio.run_process`), or move the blocking call to a worker thread with `await asyncio.to_thread(...)`.
+- **Example of the allowed form:**
+
+  ```python
+  import asyncio
+
+
+  async def foo():
+      asyncio.create_subprocess_shell(cmd)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"ASYNC220","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/create-subprocess-in-async-function/)
+
+<a id="ruff-async221"></a>
+
+### `ruff/ASYNC221`
+
+Checks that async functions do not run processes with blocking methods.
+
+- **Why it is on:** Blocking an async function via a blocking call will block the entire event loop, preventing it from executing other tasks while waiting for the call to complete, negating the benefits of asynchronous programming. Instead of making a blocking call, use an equivalent asynchronous library or function, like [`trio.run_process()`](https://trio.readthedocs.io/en/stable/reference-io.html#trio.run_process) or [`anyio.run_process()`](https://anyio.readthedocs.io/en/latest/api.html#anyio.run_process). Selected in the ruff config of the Python preset, with the flake8-async rules (`run-process-in-async-function`).
+- **Allowed form:** Run the process with `await asyncio.create_subprocess_exec(...)` (`anyio.run_process`), or move the blocking call to a worker thread with `await asyncio.to_thread(...)`.
+- **Example of the allowed form:**
+
+  ```python
+  import asyncio
+
+
+  async def foo():
+      asyncio.create_subprocess_shell(cmd)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"ASYNC221","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/run-process-in-async-function/)
+
+<a id="ruff-async222"></a>
+
+### `ruff/ASYNC222`
+
+Checks that async functions do not wait on processes with blocking methods.
+
+- **Why it is on:** Blocking an async function via a blocking call will block the entire event loop, preventing it from executing other tasks while waiting for the call to complete, negating the benefits of asynchronous programming. Instead of making a blocking call, use an equivalent asynchronous library or function, like [`trio.to_thread.run_sync()`](https://trio.readthedocs.io/en/latest/reference-core.html#trio.to_thread.run_sync) or [`anyio.to_thread.run_sync()`](https://anyio.readthedocs.io/en/latest/api.html#anyio.to_thread.run_sync). Selected in the ruff config of the Python preset, with the flake8-async rules (`wait-for-process-in-async-function`).
+- **Allowed form:** Run the process with `await asyncio.create_subprocess_exec(...)` (`anyio.run_process`), or move the blocking call to a worker thread with `await asyncio.to_thread(...)`.
+- **Example of the allowed form:**
+
+  ```python
+  import asyncio
+  import os
+
+
+  def wait_for_process():
+      os.waitpid(0)
+
+
+  async def foo():
+      await asyncio.loop.run_in_executor(None, wait_for_process)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"ASYNC222","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/wait-for-process-in-async-function/)
+
+<a id="ruff-async230"></a>
+
+### `ruff/ASYNC230`
+
+Checks that async functions do not open files with blocking methods like `open`.
+
+- **Why it is on:** Blocking an async function via a blocking call will block the entire event loop, preventing it from executing other tasks while waiting for the call to complete, negating the benefits of asynchronous programming. Instead of making a blocking call, use an equivalent asynchronous library or function. Selected in the ruff config of the Python preset, with the flake8-async rules (`blocking-open-call-in-async-function`).
+- **Allowed form:** Read the file with `await anyio.Path(path).read_text()`, or in a worker thread with `await asyncio.to_thread(path.read_text)`.
+- **Example of the allowed form:**
+
+  ```python
+  import anyio
+
+
+  async def foo():
+      async with await anyio.open_file("bar.txt") as f:
+          contents = await f.read()
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"ASYNC230","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/blocking-open-call-in-async-function/)
+
+<a id="ruff-async240"></a>
+
+### `ruff/ASYNC240`
+
+Checks that async functions do not call blocking `os.path` functions or `pathlib.Path` methods.
+
+- **Why it is on:** Calling some `os.path` functions or `pathlib.Path` methods in an async function will block the entire event loop, preventing it from executing other tasks while waiting for the operation. This negates the benefits of asynchronous programming. Instead, run blocking path operations in a separate thread, or use an API that provides asynchronous path operations, such as `aiofiles.os.path`, `anyio.Path`, or `trio.Path`. Selected in the ruff config of the Python preset, with the flake8-async rules (`blocking-path-method-in-async-function`).
+- **Allowed form:** Check the path with `await anyio.Path(path).exists()`, or move the blocking call to a worker thread with `await asyncio.to_thread(...)`.
+- **Exception:** If this is intended, add `{"rule":"ASYNC240","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/blocking-path-method-in-async-function/)
+
+<a id="ruff-async250"></a>
+
+### `ruff/ASYNC250`
+
+Checks that async functions do not contain blocking usage of input from user.
+
+- **Why it is on:** Blocking an async function via a blocking input call will block the entire event loop, preventing it from executing other tasks while waiting for user input, negating the benefits of asynchronous programming. Instead of making a blocking input call directly, wrap the input call in an executor to execute the blocking call on another thread. Selected in the ruff config of the Python preset, with the flake8-async rules (`blocking-input-in-async-function`).
+- **Allowed form:** Read input in a worker thread: `await asyncio.to_thread(input, prompt)`.
+- **Example of the allowed form:**
+
+  ```python
+  import asyncio
+
+
+  async def foo():
+      loop = asyncio.get_running_loop()
+      username = await loop.run_in_executor(None, input, "Username:")
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"ASYNC250","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/blocking-input-in-async-function/)
+
+<a id="ruff-async251"></a>
+
+### `ruff/ASYNC251`
+
+Checks that async functions do not call `time.sleep`.
+
+- **Why it is on:** Blocking an async function via a `time.sleep` call will block the entire event loop, preventing it from executing other tasks while waiting for the `time.sleep`, negating the benefits of asynchronous programming. Instead of `time.sleep`, use `asyncio.sleep`. Selected in the ruff config of the Python preset, with the flake8-async rules (`blocking-sleep-in-async-function`).
+- **Allowed form:** Sleep with `await asyncio.sleep(...)` (the backend's sleep, such as `await trio.sleep(...)`).
+- **Example of the allowed form:**
+
+  ```python
+  import asyncio
+
+
+  async def fetch():
+      await asyncio.sleep(1)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"ASYNC251","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/blocking-sleep-in-async-function/)
 
 <a id="ruff-b002"></a>
 
@@ -2591,6 +2911,140 @@ Checks for redundant `exc_info` keyword arguments in logging statements.
 - **Exception:** If this is intended, add `{"rule":"G202","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 - **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/logging-redundant-exc-info/)
 
+<a id="ruff-log001"></a>
+
+### `ruff/LOG001`
+
+Checks for direct instantiation of `logging.Logger`, as opposed to using `logging.getLogger()`.
+
+- **Why it is on:** The Logger Objects documentation states that: > Note that Loggers should NEVER be instantiated directly, but always > through the module-level function `logging.getLogger(name)`. Selected in the ruff config of the Python preset, with the flake8-logging rules (`direct-logger-instantiation`).
+- **Allowed form:** Create the logger with `logging.getLogger(__name__)`.
+- **Example of the allowed form:**
+
+  ```python
+  import logging
+
+  logger = logging.getLogger(__name__)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"LOG001","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/direct-logger-instantiation/)
+
+<a id="ruff-log002"></a>
+
+### `ruff/LOG002`
+
+Checks for any usage of `__cached__` and `__file__` as an argument to `logging.getLogger()`.
+
+- **Why it is on:** The logging documentation recommends this pattern: Here, `__name__` is the fully qualified module name, such as `foo.bar`, which is the intended format for logger names. Selected in the ruff config of the Python preset, with the flake8-logging rules (`invalid-get-logger-argument`).
+- **Allowed form:** Name the logger after the module: `logging.getLogger(__name__)`, not `__file__` or `__cached__`.
+- **Example of the allowed form:**
+
+  ```python
+  import logging
+
+  logger = logging.getLogger(__name__)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"LOG002","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/invalid-get-logger-argument/)
+
+<a id="ruff-log004"></a>
+
+### `ruff/LOG004`
+
+Checks for `.exception()` logging calls outside of exception handlers.
+
+- **Why it is on:** The documentation states: > This function should only be called from an exception handler. Calling `.exception()` outside of an exception handler attaches `None` as exception information, leading to confusing messages: Selected in the ruff config of the Python preset, with the flake8-logging rules (`log-exception-outside-except-handler`).
+- **Allowed form:** Log a traceback only inside an `except` handler (`logger.exception(...)`); outside one, call `logger.error(...)` without `exc_info`.
+- **Example of the allowed form:**
+
+  ```python
+  import logging
+
+  logging.error("Foobar")
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"LOG004","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/log-exception-outside-except-handler/)
+
+<a id="ruff-log007"></a>
+
+### `ruff/LOG007`
+
+Checks for uses of `logging.exception()` with `exc_info` set to `False`.
+
+- **Why it is on:** The `logging.exception()` method captures the exception automatically, but accepts an optional `exc_info` argument to override this behavior. Setting `exc_info` to `False` disables the automatic capture of the exception and stack trace. Instead of setting `exc_info` to `False`, prefer `logging.error()`, which has equivalent behavior to `logging.exception()` with `exc_info` set to `False`, but is clearer in intent. Selected in the ruff config of the Python preset, with the flake8-logging rules (`exception-without-exc-info`).
+- **Allowed form:** Drop `exc_info=False` from `logger.exception(...)`, or call `logger.error(...)` when the traceback is not wanted.
+- **Example of the allowed form:**
+
+  ```python
+  logging.error("...")
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"LOG007","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/exception-without-exc-info/)
+
+<a id="ruff-log009"></a>
+
+### `ruff/LOG009`
+
+Checks for uses of `logging.WARN`.
+
+- **Why it is on:** The `logging.WARN` constant is an undocumented alias for `logging.WARNING`. Although it’s not explicitly deprecated, `logging.WARN` is not mentioned in the `logging` documentation. Prefer `logging.WARNING` instead. Selected in the ruff config of the Python preset, with the flake8-logging rules (`undocumented-warn`).
+- **Allowed form:** Use `logging.WARNING`; `logging.WARN` is an undocumented alias.
+- **Example of the allowed form:**
+
+  ```python
+  import logging
+
+
+  logging.basicConfig(level=logging.WARNING)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"LOG009","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/undocumented-warn/)
+
+<a id="ruff-log014"></a>
+
+### `ruff/LOG014`
+
+Checks for logging calls with `exc_info=` outside exception handlers.
+
+- **Why it is on:** Using `exc_info=True` outside of an exception handler attaches `None` as the exception information, leading to confusing messages: Selected in the ruff config of the Python preset, with the flake8-logging rules (`exc-info-outside-except-handler`).
+- **Allowed form:** Log a traceback only inside an `except` handler (`logger.exception(...)`); outside one, call `logger.error(...)` without `exc_info`.
+- **Example of the allowed form:**
+
+  ```python
+  import logging
+
+
+  logging.warning("Foobar")
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"LOG014","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/exc-info-outside-except-handler/)
+
+<a id="ruff-log015"></a>
+
+### `ruff/LOG015`
+
+Checks for usages of the following `logging` top-level functions: `debug`, `info`, `warn`, `warning`, `error`, `critical`, `log`, `exception`.
+
+- **Why it is on:** Using the root logger causes the messages to have no source information, making them less useful for debugging. Selected in the ruff config of the Python preset, with the flake8-logging rules (`root-logger-call`).
+- **Allowed form:** Log through a module logger: `logger = logging.getLogger(__name__)`, then `logger.info(...)` (`logger.warning(...)` in place of `warn`).
+- **Example of the allowed form:**
+
+  ```python
+  import logging
+
+  logger = logging.getLogger(__name__)
+  logger.info("Foobar")
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"LOG015","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/root-logger-call/)
+
 <a id="ruff-n801"></a>
 
 ### `ruff/N801`
@@ -3153,6 +3607,601 @@ Checks for `startswith` or `endswith` calls on the same value with different pre
 - **Exception:** If this is intended, add `{"rule":"PIE810","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 - **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/multiple-starts-ends-with/)
 
+<a id="ruff-ple0100"></a>
+
+### `ruff/PLE0100`
+
+Checks for `__init__` methods that are turned into generators by the inclusion of `yield` or `yield from` expressions.
+
+- **Why it is on:** The `__init__` method is the constructor for a given Python class, responsible for initializing, rather than creating, new objects. The `__init__` method has to return `None`. By including a `yield` or `yield from` expression in an `__init__`, the method will return a generator object when called at runtime, resulting in a runtime error. Selected in the ruff config of the Python preset, with the Pylint rules (`yield-in-init`).
+- **Allowed form:** Keep `__init__` a plain initializer that returns `None`; build another value or a generator in a `@classmethod` factory or a separate method.
+- **Exception:** If this is intended, add `{"rule":"PLE0100","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/yield-in-init/)
+
+<a id="ruff-ple0101"></a>
+
+### `ruff/PLE0101`
+
+Checks for `__init__` methods that return values.
+
+- **Why it is on:** The `__init__` method is the constructor for a given Python class, responsible for initializing, rather than creating, new objects. The `__init__` method has to return `None`. Returning any value from an `__init__` method will result in a runtime error. Selected in the ruff config of the Python preset, with the Pylint rules (`return-in-init`).
+- **Allowed form:** Keep `__init__` a plain initializer that returns `None`; build another value or a generator in a `@classmethod` factory or a separate method.
+- **Example of the allowed form:**
+
+  ```python
+  class Example:
+      def __init__(self):
+          self.value = []
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE0101","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/return-in-init/)
+
+<a id="ruff-ple0115"></a>
+
+### `ruff/PLE0115`
+
+Checks for variables which are both declared as both `nonlocal` and `global`.
+
+- **Why it is on:** A `nonlocal` variable is a variable that is defined in the nearest enclosing scope, but not in the global scope, while a `global` variable is a variable that is defined in the global scope. Declaring a variable as both `nonlocal` and `global` is contradictory and will raise a `SyntaxError`. Selected in the ruff config of the Python preset, with the Pylint rules (`nonlocal-and-global`).
+- **Allowed form:** Remove the `global` declaration: pass the value in as an argument and return the new value.
+- **Example of the allowed form:**
+
+  ```python
+  counter = 0
+
+
+  def increment():
+      global counter
+      counter += 1
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE0115","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/nonlocal-and-global/)
+
+<a id="ruff-ple0117"></a>
+
+### `ruff/PLE0117`
+
+Checks for `nonlocal` names without bindings.
+
+- **Why it is on:** `nonlocal` names must be bound to a name in an outer scope. Violating this rule leads to a `SyntaxError` at runtime. Selected in the ruff config of the Python preset, with the Pylint rules (`nonlocal-without-binding`).
+- **Allowed form:** Remove the `nonlocal` declaration and pass the value in, or bind the name in the enclosing function first.
+- **Example of the allowed form:**
+
+  ```python
+  def foo():
+      bar = 1
+
+      def get_bar(self):
+          nonlocal bar
+          ...
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE0117","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/nonlocal-without-binding/)
+
+<a id="ruff-ple0118"></a>
+
+### `ruff/PLE0118`
+
+Checks for uses of names that are declared as `global` prior to the relevant `global` declaration.
+
+- **Why it is on:** The `global` declaration applies to the entire scope. Using a name that's declared as `global` in a given scope prior to the relevant `global` declaration is a `SyntaxError`. Selected in the ruff config of the Python preset, with the Pylint rules (`load-before-global-declaration`).
+- **Allowed form:** Remove the `global` declaration: pass the value in as an argument and return the new value.
+- **Example of the allowed form:**
+
+  ```python
+  counter = 1
+
+
+  def increment():
+      global counter
+      print(f"Adding 1 to {counter}")
+      counter += 1
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE0118","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/load-before-global-declaration/)
+
+<a id="ruff-ple0237"></a>
+
+### `ruff/PLE0237`
+
+Checks for assignments to attributes that are not defined in `__slots__`.
+
+- **Why it is on:** When using `__slots__`, only the specified attributes are allowed. Attempting to assign to an attribute that is not defined in `__slots__` will result in an `AttributeError` at runtime. Selected in the ruff config of the Python preset, with the Pylint rules (`non-slot-assignment`).
+- **Allowed form:** Add the attribute to `__slots__`, or assign only the attributes listed there.
+- **Example of the allowed form:**
+
+  ```python
+  class Student:
+      __slots__ = ("name", "surname")
+
+      def __init__(self, name, surname):
+          self.name = name
+          self.surname = surname
+          self.setup()
+
+      def setup(self):
+          pass
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE0237","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/non-slot-assignment/)
+
+<a id="ruff-ple0241"></a>
+
+### `ruff/PLE0241`
+
+Checks for duplicate base classes in class definitions.
+
+- **Why it is on:** Including duplicate base classes will raise a `TypeError` at runtime. Selected in the ruff config of the Python preset, with the Pylint rules (`duplicate-bases`).
+- **Allowed form:** List each base class once: `class Report(Base):`.
+- **Example of the allowed form:**
+
+  ```python
+  class Foo:
+      pass
+
+
+  class Bar(Foo):
+      pass
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE0241","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/duplicate-bases/)
+
+<a id="ruff-ple0302"></a>
+
+### `ruff/PLE0302`
+
+Checks for "special" methods that have an unexpected method signature.
+
+- **Why it is on:** "Special" methods, like `__len__`, are expected to adhere to a specific, standard function signature. Implementing a "special" method using a non-standard function signature can lead to unexpected and surprising behavior for users of a given class. Selected in the ruff config of the Python preset, with the Pylint rules (`unexpected-special-method-signature`).
+- **Allowed form:** Give the special method the parameters the data model defines: `def __eq__(self, other):`.
+- **Example of the allowed form:**
+
+  ```python
+  class Bookshelf:
+      def __init__(self):
+          self._books = ["Foo", "Bar", "Baz"]
+
+      def __len__(self):
+          return len(self._books)
+
+      def __getitem__(self, index):
+          return self._books[index]
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE0302","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/unexpected-special-method-signature/)
+
+<a id="ruff-ple0303"></a>
+
+### `ruff/PLE0303`
+
+Checks for `__len__` implementations that return values that are not non-negative integers.
+
+- **Why it is on:** The `__len__` method should return a non-negative integer. Returning a different value may cause unexpected behavior. Note: `bool` is a subclass of `int`, so it's technically valid for `__len__` to return `True` or `False`. However, for consistency with other rules, Ruff will still emit a diagnostic when `__len__` returns a `bool`. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-length-return-type`).
+- **Allowed form:** Return the type the data model requires: a non-negative `int` from `__len__`, `bool` from `__bool__`, `int` from `__index__` and `__hash__`, `str` from `__str__`, `bytes` from `__bytes__`.
+- **Example of the allowed form:**
+
+  ```python
+  class Foo:
+      def __len__(self):
+          return 2
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE0303","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/invalid-length-return-type/)
+
+<a id="ruff-ple0304"></a>
+
+### `ruff/PLE0304`
+
+Checks for `__bool__` implementations that return a type other than `bool`.
+
+- **Why it is on:** The `__bool__` method should return a `bool` object. Returning a different type may cause unexpected behavior. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-bool-return-type`).
+- **Allowed form:** Return the type the data model requires: a non-negative `int` from `__len__`, `bool` from `__bool__`, `int` from `__index__` and `__hash__`, `str` from `__str__`, `bytes` from `__bytes__`.
+- **Example of the allowed form:**
+
+  ```python
+  class Foo:
+      def __bool__(self):
+          return True
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE0304","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/invalid-bool-return-type/)
+
+<a id="ruff-ple0305"></a>
+
+### `ruff/PLE0305`
+
+Checks for `__index__` implementations that return non-integer values.
+
+- **Why it is on:** The `__index__` method should return an integer. Returning a different type may cause unexpected behavior. Note: `bool` is a subclass of `int`, so it's technically valid for `__index__` to return `True` or `False`. However, a `DeprecationWarning` (`DeprecationWarning: __index__ returned non-int (type bool)`) for such cases was already introduced, thus this is a conscious difference between the original pylint rule and the current ruff implementation. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-index-return-type`).
+- **Allowed form:** Return the type the data model requires: a non-negative `int` from `__len__`, `bool` from `__bool__`, `int` from `__index__` and `__hash__`, `str` from `__str__`, `bytes` from `__bytes__`.
+- **Example of the allowed form:**
+
+  ```python
+  class Foo:
+      def __index__(self):
+          return 2
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE0305","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/invalid-index-return-type/)
+
+<a id="ruff-ple0307"></a>
+
+### `ruff/PLE0307`
+
+Checks for `__str__` implementations that return a type other than `str`.
+
+- **Why it is on:** The `__str__` method should return a `str` object. Returning a different type may cause unexpected behavior. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-str-return-type`).
+- **Allowed form:** Return the type the data model requires: a non-negative `int` from `__len__`, `bool` from `__bool__`, `int` from `__index__` and `__hash__`, `str` from `__str__`, `bytes` from `__bytes__`.
+- **Example of the allowed form:**
+
+  ```python
+  class Foo:
+      def __str__(self):
+          return "Foo"
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE0307","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/invalid-str-return-type/)
+
+<a id="ruff-ple0308"></a>
+
+### `ruff/PLE0308`
+
+Checks for `__bytes__` implementations that return types other than `bytes`.
+
+- **Why it is on:** The `__bytes__` method should return a `bytes` object. Returning a different type may cause unexpected behavior. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-bytes-return-type`).
+- **Allowed form:** Return the type the data model requires: a non-negative `int` from `__len__`, `bool` from `__bool__`, `int` from `__index__` and `__hash__`, `str` from `__str__`, `bytes` from `__bytes__`.
+- **Example of the allowed form:**
+
+  ```python
+  class Foo:
+      def __bytes__(self):
+          return b"2"
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE0308","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/invalid-bytes-return-type/)
+
+<a id="ruff-ple0309"></a>
+
+### `ruff/PLE0309`
+
+Checks for `__hash__` implementations that return non-integer values.
+
+- **Why it is on:** The `__hash__` method should return an integer. Returning a different type may cause unexpected behavior. Note: `bool` is a subclass of `int`, so it's technically valid for `__hash__` to return `True` or `False`. However, for consistency with other rules, Ruff will still emit a diagnostic when `__hash__` returns a `bool`. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-hash-return-type`).
+- **Allowed form:** Return the type the data model requires: a non-negative `int` from `__len__`, `bool` from `__bool__`, `int` from `__index__` and `__hash__`, `str` from `__str__`, `bytes` from `__bytes__`.
+- **Example of the allowed form:**
+
+  ```python
+  class Foo:
+      def __hash__(self):
+          return 2
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE0309","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/invalid-hash-return-type/)
+
+<a id="ruff-ple0604"></a>
+
+### `ruff/PLE0604`
+
+Checks for the inclusion of invalid objects in `__all__`.
+
+- **Why it is on:** In Python, `__all__` should contain a sequence of strings that represent the names of all "public" symbols exported by a module. Assigning anything other than a `tuple` or `list` of strings to `__all__` is invalid. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-all-object`).
+- **Allowed form:** List the public names as strings in a list or tuple: `__all__ = ["load", "save"]`.
+- **Example of the allowed form:**
+
+  ```python
+  __all__ = ["Foo", "Bar", "Baz"]
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE0604","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/invalid-all-object/)
+
+<a id="ruff-ple0605"></a>
+
+### `ruff/PLE0605`
+
+Checks for invalid assignments to `__all__`.
+
+- **Why it is on:** In Python, `__all__` should contain a sequence of strings that represent the names of all "public" symbols exported by a module. Assigning anything other than a `tuple` or `list` of strings to `__all__` is invalid. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-all-format`).
+- **Allowed form:** List the public names as strings in a list or tuple: `__all__ = ["load", "save"]`.
+- **Example of the allowed form:**
+
+  ```python
+  __all__ = ("Foo",)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE0605","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/invalid-all-format/)
+
+<a id="ruff-ple0643"></a>
+
+### `ruff/PLE0643`
+
+Checks for hard-coded sequence accesses that are known to be out of bounds.
+
+- **Why it is on:** Attempting to access a sequence with an out-of-bounds index will cause an `IndexError` to be raised at runtime. When the sequence and index are defined statically (e.g., subscripts on `list` and `tuple` literals, with integer indexes), such errors can be detected ahead of time. Selected in the ruff config of the Python preset, with the Pylint rules (`potential-index-error`).
+- **Allowed form:** Index inside the sequence, or name the value directly instead of indexing a literal.
+- **Exception:** If this is intended, add `{"rule":"PLE0643","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/potential-index-error/)
+
+<a id="ruff-ple0704"></a>
+
+### `ruff/PLE0704`
+
+Checks for bare `raise` statements outside of exception handlers.
+
+- **Why it is on:** A bare `raise` statement without an exception object will re-raise the last exception that was active in the current scope, and is typically used within an exception handler to re-raise the caught exception. If a bare `raise` is used outside of an exception handler, it will generate an error due to the lack of an active exception. Selected in the ruff config of the Python preset, with the Pylint rules (`misplaced-bare-raise`).
+- **Allowed form:** Raise an explicit exception: `raise ValueError(...)`; a bare `raise` only re-raises inside `except`.
+- **Example of the allowed form:**
+
+  ```python
+  from typing import Any
+
+
+  def is_some(obj: Any) -> bool:
+      if obj is None:
+          raise ValueError("`obj` cannot be `None`")
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE0704","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/misplaced-bare-raise/)
+
+<a id="ruff-ple1142"></a>
+
+### `ruff/PLE1142`
+
+Checks for uses of `await` outside `async` functions.
+
+- **Why it is on:** Using `await` outside an `async` function is a syntax error. Selected in the ruff config of the Python preset, with the Pylint rules (`await-outside-async`).
+- **Allowed form:** Use `await` only inside `async def`; an async generator re-yields with `async for item in source: yield item`, not `yield from`.
+- **Example of the allowed form:**
+
+  ```python
+  import asyncio
+
+
+  async def foo():
+      await asyncio.sleep(1)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE1142","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/await-outside-async/)
+
+<a id="ruff-ple1205"></a>
+
+### `ruff/PLE1205`
+
+Checks for too many positional arguments for a `logging` format string.
+
+- **Why it is on:** A `TypeError` will be raised if the statement is run. Selected in the ruff config of the Python preset, with the Pylint rules (`logging-too-many-args`).
+- **Allowed form:** Match each logging placeholder with one value: `logger.info("Loaded %s items", count)`.
+- **Example of the allowed form:**
+
+  ```python
+  import logging
+
+  try:
+      function()
+  except Exception as e:
+      logging.error("%s error occurred: %s", type(e), e)
+      raise
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE1205","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/logging-too-many-args/)
+
+<a id="ruff-ple1206"></a>
+
+### `ruff/PLE1206`
+
+Checks for too few positional arguments for a `logging` format string.
+
+- **Why it is on:** A `TypeError` will be raised if the statement is run. Selected in the ruff config of the Python preset, with the Pylint rules (`logging-too-few-args`).
+- **Allowed form:** Match each logging placeholder with one value: `logger.info("Loaded %s items", count)`.
+- **Example of the allowed form:**
+
+  ```python
+  import logging
+
+  try:
+      function()
+  except Exception as e:
+      logging.error("%s error occurred: %s", type(e), e)
+      raise
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE1206","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/logging-too-few-args/)
+
+<a id="ruff-ple1507"></a>
+
+### `ruff/PLE1507`
+
+Checks for `os.getenv` calls with an invalid `key` argument.
+
+- **Why it is on:** `os.getenv` only supports strings as the first argument (`key`). If the provided argument is not a string, `os.getenv` will throw a `TypeError` at runtime. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-envvar-value`).
+- **Allowed form:** Pass the variable name as a `str`, in the composition root (`settings.py`): `os.getenv("HOME")`.
+- **Example of the allowed form:**
+
+  ```python
+  import os
+
+  os.getenv("1")
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE1507","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/invalid-envvar-value/)
+
+<a id="ruff-ple1519"></a>
+
+### `ruff/PLE1519`
+
+Checks for methods decorated with `@singledispatch`.
+
+- **Why it is on:** The `@singledispatch` decorator is intended for use with functions, not methods. Instead, use the `@singledispatchmethod` decorator, or migrate the method to a standalone function. Selected in the ruff config of the Python preset, with the Pylint rules (`singledispatch-method`).
+- **Allowed form:** Use `@functools.singledispatchmethod` on methods and `@functools.singledispatch` on plain functions.
+- **Example of the allowed form:**
+
+  ```python
+  from functools import singledispatchmethod
+
+
+  class Class:
+      @singledispatchmethod
+      def method(self, arg): ...
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE1519","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/singledispatch-method/)
+
+<a id="ruff-ple1520"></a>
+
+### `ruff/PLE1520`
+
+Checks for non-method functions decorated with `@singledispatchmethod`.
+
+- **Why it is on:** The `@singledispatchmethod` decorator is intended for use with methods, not functions. Instead, use the `@singledispatch` decorator. Selected in the ruff config of the Python preset, with the Pylint rules (`singledispatchmethod-function`).
+- **Allowed form:** Use `@functools.singledispatchmethod` on methods and `@functools.singledispatch` on plain functions.
+- **Example of the allowed form:**
+
+  ```python
+  from functools import singledispatch
+
+
+  @singledispatch
+  def func(arg): ...
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE1520","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/singledispatchmethod-function/)
+
+<a id="ruff-ple1700"></a>
+
+### `ruff/PLE1700`
+
+Checks for uses of `yield from` in async functions.
+
+- **Why it is on:** Python doesn't support the use of `yield from` in async functions, and will raise a `SyntaxError` in such cases. Instead, considering refactoring the code to use an `async for` loop instead. Selected in the ruff config of the Python preset, with the Pylint rules (`yield-from-in-async-function`).
+- **Allowed form:** Use `await` only inside `async def`; an async generator re-yields with `async for item in source: yield item`, not `yield from`.
+- **Example of the allowed form:**
+
+  ```python
+  async def numbers():
+      async for number in [1, 2, 3, 4, 5]:
+          yield number
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE1700","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/yield-from-in-async-function/)
+
+<a id="ruff-ple2502"></a>
+
+### `ruff/PLE2502`
+
+Checks for bidirectional formatting characters.
+
+- **Why it is on:** The interaction between bidirectional formatting characters and the surrounding code can be surprising to those that are unfamiliar with right-to-left writing systems. In some cases, bidirectional formatting characters can also be used to obfuscate code and introduce or mask security vulnerabilities. Selected in the ruff config of the Python preset, with the Pylint rules (`bidirectional-unicode`).
+- **Allowed form:** Write the character as its escape sequence (`"\b"`, `"\x1a"`, `"\x1b"`, `"\0"`, `"\u200b"`), and remove bidirectional control characters.
+- **Exception:** If this is intended, add `{"rule":"PLE2502","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/bidirectional-unicode/)
+
+<a id="ruff-ple2510"></a>
+
+### `ruff/PLE2510`
+
+Checks for strings that contain the control character `BS`.
+
+- **Why it is on:** Control characters are displayed differently by different text editors and terminals. By using the `\b` sequence in lieu of the `BS` control character, the string will contain the same value, but will render visibly in all editors. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-character-backspace`).
+- **Allowed form:** Write the character as its escape sequence (`"\b"`, `"\x1a"`, `"\x1b"`, `"\0"`, `"\u200b"`), and remove bidirectional control characters.
+- **Example of the allowed form:**
+
+  ```python
+  x = "\b"
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE2510","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/invalid-character-backspace/)
+
+<a id="ruff-ple2512"></a>
+
+### `ruff/PLE2512`
+
+Checks for strings that contain the raw control character `SUB`.
+
+- **Why it is on:** Control characters are displayed differently by different text editors and terminals. By using the `\x1a` sequence in lieu of the `SUB` control character, the string will contain the same value, but will render visibly in all editors. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-character-sub`).
+- **Allowed form:** Write the character as its escape sequence (`"\b"`, `"\x1a"`, `"\x1b"`, `"\0"`, `"\u200b"`), and remove bidirectional control characters.
+- **Example of the allowed form:**
+
+  ```python
+  x = "\x1a"
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE2512","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/invalid-character-sub/)
+
+<a id="ruff-ple2513"></a>
+
+### `ruff/PLE2513`
+
+Checks for strings that contain the raw control character `ESC`.
+
+- **Why it is on:** Control characters are displayed differently by different text editors and terminals. By using the `\x1b` sequence in lieu of the `ESC` control character, the string will contain the same value, but will render visibly in all editors. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-character-esc`).
+- **Allowed form:** Write the character as its escape sequence (`"\b"`, `"\x1a"`, `"\x1b"`, `"\0"`, `"\u200b"`), and remove bidirectional control characters.
+- **Example of the allowed form:**
+
+  ```python
+  x = "\x1b"
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE2513","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/invalid-character-esc/)
+
+<a id="ruff-ple2514"></a>
+
+### `ruff/PLE2514`
+
+Checks for strings that contain the raw control character `NUL` (0 byte).
+
+- **Why it is on:** Control characters are displayed differently by different text editors and terminals. By using the `\0` sequence in lieu of the `NUL` control character, the string will contain the same value, but will render visibly in all editors. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-character-nul`).
+- **Allowed form:** Write the character as its escape sequence (`"\b"`, `"\x1a"`, `"\x1b"`, `"\0"`, `"\u200b"`), and remove bidirectional control characters.
+- **Example of the allowed form:**
+
+  ```python
+  x = "\0"
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE2514","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/invalid-character-nul/)
+
+<a id="ruff-ple2515"></a>
+
+### `ruff/PLE2515`
+
+Checks for strings that contain the zero width space character.
+
+- **Why it is on:** This character is rendered invisibly in some text editors and terminals. By using the `\u200B` sequence, the string will contain the same value, but will render visibly in all editors. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-character-zero-width-space`).
+- **Allowed form:** Write the character as its escape sequence (`"\b"`, `"\x1a"`, `"\x1b"`, `"\0"`, `"\u200b"`), and remove bidirectional control characters.
+- **Example of the allowed form:**
+
+  ```python
+  x = "Dear Sir\u200b/\u200bMadam"  # zero width space
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLE2515","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/invalid-character-zero-width-space/)
+
 <a id="ruff-plr2004"></a>
 
 ### `ruff/PLR2004`
@@ -3176,6 +4225,201 @@ Checks for the use of unnamed numerical constants ("magic") values in comparison
 
 - **Exception:** If this is intended, add `{"rule":"PLR2004","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 - **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/magic-value-comparison/)
+
+<a id="ruff-plw0108"></a>
+
+### `ruff/PLW0108`
+
+Checks for `lambda` definitions that consist of a single function call with the same arguments as the `lambda` itself.
+
+- **Why it is on:** When a `lambda` is used to wrap a function call, and merely propagates the `lambda` arguments to that function, it can typically be replaced with the function itself, removing a level of indirection. Selected in the ruff config of the Python preset, with the Pylint rules (`unnecessary-lambda`).
+- **Allowed form:** Pass the function itself: `key=str` in place of `key=lambda x: str(x)`. A lambda that must look a name up at call time takes an exception.
+- **Example of the allowed form:**
+
+  ```python
+  df.apply(str)
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLW0108","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/unnecessary-lambda/)
+
+<a id="ruff-plw0120"></a>
+
+### `ruff/PLW0120`
+
+Checks for `else` clauses on loops without a `break` statement.
+
+- **Why it is on:** When a loop includes an `else` statement, the code inside the `else` clause will be executed if the loop terminates "normally" (i.e., without a `break`). If a loop always terminates "normally" (i.e., does not contain a `break`), then the `else` clause is redundant, as the code inside the `else` clause will always be executed. Selected in the ruff config of the Python preset, with the Pylint rules (`useless-else-on-loop`).
+- **Allowed form:** Remove the `else` and dedent its body; a loop `else` only matters with a `break`.
+- **Example of the allowed form:**
+
+  ```python
+  for item in items:
+      print(item)
+  print("All items printed")
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLW0120","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/useless-else-on-loop/)
+
+<a id="ruff-plw0127"></a>
+
+### `ruff/PLW0127`
+
+Checks for self-assignment of variables.
+
+- **Why it is on:** Self-assignment of variables is redundant and likely a mistake. Selected in the ruff config of the Python preset, with the Pylint rules (`self-assigning-variable`).
+- **Allowed form:** Assign each name once per statement, to the value you meant, and use `_` for a discarded value.
+- **Example of the allowed form:**
+
+  ```python
+  country = "Poland"
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLW0127","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/self-assigning-variable/)
+
+<a id="ruff-plw0128"></a>
+
+### `ruff/PLW0128`
+
+Checks for declared assignments to the same variable multiple times in the same assignment.
+
+- **Why it is on:** Assigning a variable multiple times in the same assignment is redundant, as the final assignment to the variable is what the value will be. Selected in the ruff config of the Python preset, with the Pylint rules (`redeclared-assigned-name`).
+- **Allowed form:** Assign each name once per statement, to the value you meant, and use `_` for a discarded value.
+- **Example of the allowed form:**
+
+  ```python
+  # this is assuming you want to assign 3 to `a`
+  _, b, a = (1, 2, 3)
+  print(a)  # 3
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLW0128","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/redeclared-assigned-name/)
+
+<a id="ruff-plw0129"></a>
+
+### `ruff/PLW0129`
+
+Checks for `assert` statements that use a string literal as the first argument.
+
+- **Why it is on:** An `assert` on a non-empty string literal will always pass, while an `assert` on an empty string literal will always fail. Selected in the ruff config of the Python preset, with the Pylint rules (`assert-on-string-literal`).
+- **Allowed form:** Assert a condition and put the message after the comma: `assert ready, "not ready"`.
+- **Exception:** If this is intended, add `{"rule":"PLW0129","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/assert-on-string-literal/)
+
+<a id="ruff-plw0131"></a>
+
+### `ruff/PLW0131`
+
+Checks for uses of named expressions (e.g., `a := 42`) that can be replaced by regular assignment statements (e.g., `a = 42`).
+
+- **Why it is on:** While a top-level named expression is syntactically and semantically valid, it's less clear than a regular assignment statement. Named expressions are intended to be used in comprehensions and generator expressions, where assignment statements are not allowed. Selected in the ruff config of the Python preset, with the Pylint rules (`named-expr-without-context`).
+- **Allowed form:** Use a plain assignment (`total = compute()`); keep `:=` inside a condition or comprehension.
+- **Example of the allowed form:**
+
+  ```python
+  a = 42
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLW0131","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/named-expr-without-context/)
+
+<a id="ruff-plw0133"></a>
+
+### `ruff/PLW0133`
+
+Checks for an exception that is not raised.
+
+- **Why it is on:** It's unnecessary to create an exception without raising it. For example, `ValueError("...")` on its own will have no effect (unlike `raise ValueError("...")`) and is likely a mistake. Selected in the ruff config of the Python preset, with the Pylint rules (`useless-exception-statement`).
+- **Allowed form:** Raise the exception: `raise ValueError(...)`.
+- **Example of the allowed form:**
+
+  ```python
+  raise ValueError("...")
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLW0133","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/useless-exception-statement/)
+
+<a id="ruff-plw0177"></a>
+
+### `ruff/PLW0177`
+
+Checks for comparisons against NaN values.
+
+- **Why it is on:** Comparing against a NaN value can lead to unexpected results. For example, `float("NaN") == float("NaN")` will return `False` and, in general, `x == float("NaN")` will always return `False`, even if `x` is `NaN`. To determine whether a value is `NaN`, use `math.isnan` or `np.isnan` instead of comparing against `NaN` directly. Selected in the ruff config of the Python preset, with the Pylint rules (`nan-comparison`).
+- **Allowed form:** Test with `math.isnan(value)` (`numpy.isnan` for arrays).
+- **Example of the allowed form:**
+
+  ```python
+  import math
+
+  if math.isnan(x):
+      pass
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLW0177","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/nan-comparison/)
+
+<a id="ruff-plw0211"></a>
+
+### `ruff/PLW0211`
+
+Checks for static methods that use `self` or `cls` as their first argument. This rule also applies to `__new__` methods, which are implicitly static.
+
+- **Why it is on:** PEP 8 recommends the use of `self` and `cls` as the first arguments for instance methods and class methods, respectively. Naming the first argument of a static method as `self` or `cls` can be misleading, as static methods do not receive an instance or class reference as their first argument. Selected in the ruff config of the Python preset, with the Pylint rules (`bad-staticmethod-argument`).
+- **Allowed form:** Drop `self` or `cls` from the static method, or make it an instance method or a `@classmethod`.
+- **Example of the allowed form:**
+
+  ```python
+  class Wolf:
+      @staticmethod
+      def eat(sheep):
+          pass
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLW0211","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/bad-staticmethod-argument/)
+
+<a id="ruff-plw0245"></a>
+
+### `ruff/PLW0245`
+
+Detects attempts to use `super` without parentheses.
+
+- **Why it is on:** The [`super()` callable](https://docs.python.org/3/library/functions.html#super) can be used inside method definitions to create a proxy object that delegates attribute access to a superclass of the current class. Attempting to access attributes on `super` itself, however, instead of the object returned by a call to `super()`, will raise `AttributeError`. Selected in the ruff config of the Python preset, with the Pylint rules (`super-without-brackets`).
+- **Allowed form:** Call `super()` with parentheses: `super().__init__()`.
+- **Example of the allowed form:**
+
+  ```python
+  class Animal:
+      @staticmethod
+      def speak():
+          return "This animal says something."
+
+
+  class Dog(Animal):
+      @staticmethod
+      def speak():
+          original_speak = super().speak()  # Correct: `super().speak()`
+          return f"{original_speak} But as a dog, it barks!"
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLW0245","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/super-without-brackets/)
+
+<a id="ruff-plw0406"></a>
+
+### `ruff/PLW0406`
+
+Checks for import statements that import the current module.
+
+- **Why it is on:** Importing a module from itself is a circular dependency and results in an `ImportError` exception. Selected in the ruff config of the Python preset, with the Pylint rules (`import-self`).
+- **Allowed form:** Remove the self-import and use the module's names directly.
+- **Exception:** If this is intended, add `{"rule":"PLW0406","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/import-self/)
 
 <a id="ruff-plw0602"></a>
 
@@ -3226,6 +4470,194 @@ Checks for the use of `global` statements to update identifiers.
 
 - **Exception:** If this is intended, add `{"rule":"PLW0603","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 - **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/global-statement/)
+
+<a id="ruff-plw0604"></a>
+
+### `ruff/PLW0604`
+
+Checks for uses of the `global` keyword at the module level.
+
+- **Why it is on:** The `global` keyword is used within functions to indicate that a name refers to a global variable, rather than a local variable. At the module level, all names are global by default, so the `global` keyword is redundant. Selected in the ruff config of the Python preset, with the Pylint rules (`global-at-module-level`).
+- **Allowed form:** Remove the module-level `global`; module names are already global.
+- **Exception:** If this is intended, add `{"rule":"PLW0604","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/global-at-module-level/)
+
+<a id="ruff-plw0642"></a>
+
+### `ruff/PLW0642`
+
+Checks for assignment of `self` and `cls` in instance and class methods respectively.
+
+- **Why it is on:** The identifiers `self` and `cls` are conventional in Python for the first parameter of instance methods and class methods, respectively. Assigning new values to these variables can be confusing for others reading your code; using a different variable name can lead to clearer code. Selected in the ruff config of the Python preset, with the Pylint rules (`self-or-cls-assignment`).
+- **Allowed form:** Bind a new name instead of reassigning `self` or `cls`.
+- **Example of the allowed form:**
+
+  ```python
+  class Version:
+      def add(self, other):
+          new_version = self + other
+          return new_version
+
+      @classmethod
+      def superclass(cls):
+          supercls = cls.__mro__[-1]
+          return supercls
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLW0642","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/self-or-cls-assignment/)
+
+<a id="ruff-plw1501"></a>
+
+### `ruff/PLW1501`
+
+Check for an invalid `mode` argument in `open` calls.
+
+- **Why it is on:** The `open` function accepts a `mode` argument that specifies how the file should be opened (e.g., read-only, write-only, append-only, etc.). Python supports a variety of open modes: `r`, `w`, `a`, and `x`, to control reading, writing, appending, and creating, respectively, along with `b` (binary mode), `+` (read and write), and `U` (universal newlines), the latter of which is only valid alongside `r`. This rule detects both invalid combinations of modes and invalid characters in the mode string itself. Selected in the ruff config of the Python preset, with the Pylint rules (`bad-open-mode`).
+- **Allowed form:** Pass a valid mode: `path.open("r")`, `"w"`, `"a"` or `"rb"`.
+- **Example of the allowed form:**
+
+  ```python
+  with open("file", "r") as f:
+      content = f.read()
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLW1501","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/bad-open-mode/)
+
+<a id="ruff-plw1507"></a>
+
+### `ruff/PLW1507`
+
+Check for shallow `os.environ` copies.
+
+- **Why it is on:** `os.environ` is not a `dict` object, but rather, a proxy object. As such, mutating a shallow copy of `os.environ` will also mutate the original object. See BPO 15373 for more information. Selected in the ruff config of the Python preset, with the Pylint rules (`shallow-copy-environ`).
+- **Allowed form:** Copy the environment with `os.environ.copy()`, in the composition root (`settings.py`).
+- **Example of the allowed form:**
+
+  ```python
+  import os
+
+  env = os.environ.copy()
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLW1507","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/shallow-copy-environ/)
+
+<a id="ruff-plw1508"></a>
+
+### `ruff/PLW1508`
+
+Checks for `os.getenv` calls with invalid default values.
+
+- **Why it is on:** If an environment variable is set, `os.getenv` will return its value as a string. If the environment variable is not set, `os.getenv` will return `None`, or the default value if one is provided. If the default value is not a string or `None`, then it will be inconsistent with the return type of `os.getenv`, which can lead to confusing behavior. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-envvar-default`).
+- **Allowed form:** Pass a `str` default and convert after, in the composition root (`settings.py`): `int(os.getenv("PORT", "8080"))`.
+- **Example of the allowed form:**
+
+  ```python
+  import os
+
+  int(os.getenv("FOO", "1"))
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLW1508","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/invalid-envvar-default/)
+
+<a id="ruff-plw1509"></a>
+
+### `ruff/PLW1509`
+
+Checks for uses of `subprocess.Popen` with a `preexec_fn` argument.
+
+- **Why it is on:** The `preexec_fn` argument is unsafe within threads as it can lead to deadlocks. Furthermore, `preexec_fn` is targeted for deprecation. Instead, consider using task-specific arguments such as `env`, `start_new_session`, and `process_group`. These are not prone to deadlocks and are more explicit. Selected in the ruff config of the Python preset, with the Pylint rules (`subprocess-popen-preexec-fn`).
+- **Allowed form:** Pass `start_new_session=True` (or `process_group=0`) in place of `preexec_fn`.
+- **Example of the allowed form:**
+
+  ```python
+  import subprocess
+
+  subprocess.Popen(foo, start_new_session=True)
+  subprocess.Popen(bar, process_group=0)  # Introduced in Python 3.11
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLW1509","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/subprocess-popen-preexec-fn/)
+
+<a id="ruff-plw1510"></a>
+
+### `ruff/PLW1510`
+
+Checks for uses of `subprocess.run` without an explicit `check` argument.
+
+- **Why it is on:** By default, `subprocess.run` does not check the return code of the process it runs. This can lead to silent failures. Instead, consider using `check=True` to raise an exception if the process fails, or set `check=False` explicitly to mark the behavior as intentional. Selected in the ruff config of the Python preset, with the Pylint rules (`subprocess-run-without-check`).
+- **Allowed form:** Pass `check=True` to raise on process failure, or pass `check=False` and handle `returncode`.
+- **Example of the allowed form:**
+
+  ```python
+  import subprocess
+
+  subprocess.run(["ls", "nonexistent"], check=True)  # Raises exception.
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLW1510","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/subprocess-run-without-check/)
+
+<a id="ruff-plw2101"></a>
+
+### `ruff/PLW2101`
+
+Checks for lock objects that are created and immediately discarded in `with` statements.
+
+- **Why it is on:** Creating a lock (via `threading.Lock` or similar) in a `with` statement has no effect, as locks are only relevant when shared between threads. Instead, assign the lock to a variable outside the `with` statement, and share that variable between threads. Selected in the ruff config of the Python preset, with the Pylint rules (`useless-with-lock`).
+- **Allowed form:** Create the lock once and share it: `self._lock = threading.Lock()`, then `with self._lock:`.
+- **Example of the allowed form:**
+
+  ```python
+  import threading
+
+  counter = 0
+  lock = threading.Lock()
+
+
+  def increment():
+      global counter
+
+      with lock:
+          counter += 1
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLW2101","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/useless-with-lock/)
+
+<a id="ruff-plw2901"></a>
+
+### `ruff/PLW2901`
+
+Checks for variables defined in `for` loops and `with` statements that get overwritten within the body, for example by another `for` loop or `with` statement or by direct assignment.
+
+- **Why it is on:** Redefinition of a loop variable inside the loop's body causes its value to differ from the original loop iteration for the remainder of the block, in a way that will likely cause bugs. In Python, unlike many other languages, `for` loops and `with` statements don't define their own scopes. Therefore, a nested loop that uses the same target variable name as an outer loop will reuse the same actual variable, and the value from the last iteration will "leak out" into the remainder of the enclosing loop. Selected in the ruff config of the Python preset, with the Pylint rules (`redefined-loop-name`).
+- **Allowed form:** Bind the changed value to a new name: `for line in lines: stripped = line.strip()`.
+- **Exception:** If this is intended, add `{"rule":"PLW2901","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/redefined-loop-name/)
+
+<a id="ruff-plw3301"></a>
+
+### `ruff/PLW3301`
+
+Checks for nested `min` and `max` calls.
+
+- **Why it is on:** Nested `min` and `max` calls can be flattened into a single call to improve readability. Selected in the ruff config of the Python preset, with the Pylint rules (`nested-min-max`).
+- **Allowed form:** Call one `max` or `min` with all the arguments: `max(a, b, c)`.
+- **Example of the allowed form:**
+
+  ```python
+  minimum = min(1, 2, 3, 4, 5)
+  maximum = max(1, 2, 3, 4, 5)
+  diff = maximum - minimum
+  ```
+
+- **Exception:** If this is intended, add `{"rule":"PLW3301","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/nested-min-max/)
 
 <a id="ruff-pt001"></a>
 
@@ -6840,6 +8272,17 @@ Checks for use of `zip()` to iterate over keys and values of a dictionary at onc
 
 - **Exception:** If this is intended, add `{"rule":"SIM911","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 - **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/zip-dict-keys-and-values/)
+
+<a id="ruff-t100"></a>
+
+### `ruff/T100`
+
+Checks for the presence of debugger calls and imports.
+
+- **Why it is on:** Debugger calls and imports should be used for debugging purposes only. The presence of a debugger call or import in production code is likely a mistake and may cause unintended behavior, such as exposing sensitive information or causing the program to hang. Instead, consider using a logging library to log information about the program's state, and writing tests to verify that the program behaves as expected. Selected in the ruff config of the Python preset, with the flake8-debugger rules (`debugger`).
+- **Allowed form:** Remove the debugger import or breakpoint before committing; use the project logger.
+- **Exception:** If this is intended, add `{"rule":"T100","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+- **See also:** [Ruff rule documentation](https://docs.astral.sh/ruff/rules/debugger/)
 
 <a id="ruff-t201"></a>
 

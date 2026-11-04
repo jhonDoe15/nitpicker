@@ -78,6 +78,220 @@
       }
     ],
     { "key": "python.exceptions", "rule": "ARG005" },
+    "ASYNC100",
+    "Checks for timeout context managers which do not contain a checkpoint.",
+    "Some asynchronous context managers, such as `asyncio.timeout` and `trio.move_on_after`, have no effect unless they contain a checkpoint. The use of such context managers without an `await`, `async with` or `async for` statement is likely a mistake. Selected in the ruff config of the Python preset, with the flake8-async rules (`cancel-scope-no-checkpoint`).",
+    "Put an `await` inside the timeout scope (`async with asyncio.timeout(5): await client.get(url)`), or remove the scope: a timeout fires only at a checkpoint.",
+    {
+      "code": "import asyncio\n\n\nasync def func():\n    async with asyncio.timeout(2):\n        do_something()\n        await awaitable()",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/cancel-scope-no-checkpoint/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "ASYNC100" },
+    "ASYNC105",
+    "Checks for calls to trio functions that are not immediately awaited.",
+    "Many of the functions exposed by trio are asynchronous, and must be awaited to take effect. Calling a trio function without an `await` can lead to `RuntimeWarning` diagnostics and unexpected behaviour. Selected in the ruff config of the Python preset, with the flake8-async rules (`trio-sync-call`).",
+    "Await the trio call: `await trio.sleep(delay)`.",
+    {
+      "code": "import trio\n\n\nasync def double_sleep(x):\n    await trio.sleep(2 * x)",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/trio-sync-call/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "ASYNC105" },
+    "ASYNC109",
+    "Checks for `async` function definitions with `timeout` parameters.",
+    "Rather than implementing asynchronous timeout behavior manually, prefer built-in timeout functionality, such as `asyncio.timeout`, `trio.fail_after`, or `anyio.move_on_after`, among others. This rule is highly opinionated to enforce a design pattern called \"structured concurrency\" that allows for `async` functions to be oblivious to timeouts, instead letting callers to handle the logic with a context manager. Selected in the ruff config of the Python preset, with the flake8-async rules (`async-function-with-timeout`).",
+    "Drop the `timeout` parameter; the caller bounds the call with `async with asyncio.timeout(...)` (`trio.fail_after` or `anyio.fail_after` on those backends). A method that overrides a base signature takes `@typing.override`, and a wrapper of `asyncio.timeout` names its parameter `delay`.",
+    {
+      "code": "async def long_running_task(): ...\n\n\nasync def main():\n    async with asyncio.timeout(2):\n        await long_running_task()",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/async-function-with-timeout/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "ASYNC109" },
+    "ASYNC110",
+    "Checks for the use of an async sleep function in a `while` loop.",
+    "Busy-waiting for a condition in a loop forces a tradeoff between efficiency and latency: shorter sleep times improve responsiveness but waste more CPU cycles, while longer sleep times reduce CPU usage but delay reaction to state changes. Waiting on an `Event` object like `asyncio.Event`, `trio.Event`, or `anyio.Event` eliminates this tradeoff, allowing immediate response with minimal wasted CPU time. Selected in the ruff config of the Python preset, with the flake8-async rules (`async-busy-wait`).",
+    "Wait on an event instead of a sleep loop: `await ready.wait()` on an `asyncio.Event` that the producer sets.",
+    {
+      "code": "import asyncio\n\nDONE = asyncio.Event()\n\n\nasync def func():\n    await DONE.wait()",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/async-busy-wait/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "ASYNC110" },
+    "ASYNC115",
+    "Checks for uses of `trio.sleep(0)` or `anyio.sleep(0)`.",
+    "`trio.sleep(0)` is equivalent to calling `trio.lowlevel.checkpoint()`. However, the latter better conveys the intent of the code. Selected in the ruff config of the Python preset, with the flake8-async rules (`async-zero-sleep`).",
+    "Yield with `await trio.lowlevel.checkpoint()` (`anyio.lowlevel.checkpoint()`).",
+    {
+      "code": "import trio.lowlevel\n\n\nasync def func():\n    await trio.lowlevel.checkpoint()",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/async-zero-sleep/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "ASYNC115" },
+    "ASYNC116",
+    "Checks for uses of `trio.sleep()` or `anyio.sleep()` with a delay greater than 24 hours.",
+    "Calling `sleep()` with a delay greater than 24 hours is usually intended to sleep indefinitely. Instead of using a large delay, `trio.sleep_forever()` or `anyio.sleep_forever()` better conveys the intent. Selected in the ruff config of the Python preset, with the flake8-async rules (`long-sleep-not-forever`).",
+    "Wait indefinitely with `await trio.sleep_forever()` (`anyio.sleep_forever()`).",
+    {
+      "code": "import trio\n\n\nasync def func():\n    await trio.sleep_forever()",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/long-sleep-not-forever/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "ASYNC116" },
+    "ASYNC210",
+    "Checks that async functions do not contain blocking HTTP calls.",
+    "Blocking an async function via a blocking HTTP call will block the entire event loop, preventing it from executing other tasks while waiting for the HTTP response, negating the benefits of asynchronous programming. Instead of making a blocking HTTP call, use an asynchronous HTTP client library such as `aiohttp` or `httpx`. Selected in the ruff config of the Python preset, with the flake8-async rules (`blocking-http-call-in-async-function`).",
+    "Use an async client (`async with httpx.AsyncClient() as client: await client.get(url)`), or move the blocking call to a worker thread with `await asyncio.to_thread(...)`.",
+    {
+      "code": "import aiohttp\n\n\nasync def fetch():\n    async with aiohttp.ClientSession() as session:\n        async with session.get(\"https://example.com/foo/bar\") as resp:\n            ...",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/blocking-http-call-in-async-function/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "ASYNC210" },
+    "ASYNC212",
+    "Checks that async functions do not use blocking httpx clients.",
+    "Blocking an async function via a blocking HTTP call will block the entire event loop, preventing it from executing other tasks while waiting for the HTTP response, negating the benefits of asynchronous programming. Instead of using the blocking `httpx` client, use the asynchronous client. Selected in the ruff config of the Python preset, with the flake8-async rules (`blocking-http-call-httpx-in-async-function`).",
+    {
+      "code": "import httpx\n\n\nasync def fetch():\n    async with httpx.AsyncClient() as client:\n        response = await client.get(...)",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/blocking-http-call-httpx-in-async-function/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "ASYNC212" },
+    "ASYNC220",
+    "Checks that async functions do not create subprocesses with blocking methods.",
+    "Blocking an async function via a blocking call will block the entire event loop, preventing it from executing other tasks while waiting for the call to complete, negating the benefits of asynchronous programming. Instead of making a blocking call, use an equivalent asynchronous library or function, like [`trio.run_process()`](https://trio.readthedocs.io/en/stable/reference-io.html#trio.run_process) or [`anyio.run_process()`](https://anyio.readthedocs.io/en/latest/api.html#anyio.run_process). Selected in the ruff config of the Python preset, with the flake8-async rules (`create-subprocess-in-async-function`).",
+    "Run the process with `await asyncio.create_subprocess_exec(...)` (`anyio.run_process`), or move the blocking call to a worker thread with `await asyncio.to_thread(...)`.",
+    {
+      "code": "import asyncio\n\n\nasync def foo():\n    asyncio.create_subprocess_shell(cmd)",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/create-subprocess-in-async-function/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "ASYNC220" },
+    "ASYNC221",
+    "Checks that async functions do not run processes with blocking methods.",
+    "Blocking an async function via a blocking call will block the entire event loop, preventing it from executing other tasks while waiting for the call to complete, negating the benefits of asynchronous programming. Instead of making a blocking call, use an equivalent asynchronous library or function, like [`trio.run_process()`](https://trio.readthedocs.io/en/stable/reference-io.html#trio.run_process) or [`anyio.run_process()`](https://anyio.readthedocs.io/en/latest/api.html#anyio.run_process). Selected in the ruff config of the Python preset, with the flake8-async rules (`run-process-in-async-function`).",
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/run-process-in-async-function/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "ASYNC221" },
+    "ASYNC222",
+    "Checks that async functions do not wait on processes with blocking methods.",
+    "Blocking an async function via a blocking call will block the entire event loop, preventing it from executing other tasks while waiting for the call to complete, negating the benefits of asynchronous programming. Instead of making a blocking call, use an equivalent asynchronous library or function, like [`trio.to_thread.run_sync()`](https://trio.readthedocs.io/en/latest/reference-core.html#trio.to_thread.run_sync) or [`anyio.to_thread.run_sync()`](https://anyio.readthedocs.io/en/latest/api.html#anyio.to_thread.run_sync). Selected in the ruff config of the Python preset, with the flake8-async rules (`wait-for-process-in-async-function`).",
+    {
+      "code": "import asyncio\nimport os\n\n\ndef wait_for_process():\n    os.waitpid(0)\n\n\nasync def foo():\n    await asyncio.loop.run_in_executor(None, wait_for_process)",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/wait-for-process-in-async-function/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "ASYNC222" },
+    "ASYNC230",
+    "Checks that async functions do not open files with blocking methods like `open`.",
+    "Blocking an async function via a blocking call will block the entire event loop, preventing it from executing other tasks while waiting for the call to complete, negating the benefits of asynchronous programming. Instead of making a blocking call, use an equivalent asynchronous library or function. Selected in the ruff config of the Python preset, with the flake8-async rules (`blocking-open-call-in-async-function`).",
+    "Read the file with `await anyio.Path(path).read_text()`, or in a worker thread with `await asyncio.to_thread(path.read_text)`.",
+    {
+      "code": "import anyio\n\n\nasync def foo():\n    async with await anyio.open_file(\"bar.txt\") as f:\n        contents = await f.read()",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/blocking-open-call-in-async-function/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "ASYNC230" },
+    "ASYNC240",
+    "Checks that async functions do not call blocking `os.path` functions or `pathlib.Path` methods.",
+    "Calling some `os.path` functions or `pathlib.Path` methods in an async function will block the entire event loop, preventing it from executing other tasks while waiting for the operation. This negates the benefits of asynchronous programming. Instead, run blocking path operations in a separate thread, or use an API that provides asynchronous path operations, such as `aiofiles.os.path`, `anyio.Path`, or `trio.Path`. Selected in the ruff config of the Python preset, with the flake8-async rules (`blocking-path-method-in-async-function`).",
+    "Check the path with `await anyio.Path(path).exists()`, or move the blocking call to a worker thread with `await asyncio.to_thread(...)`.",
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/blocking-path-method-in-async-function/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "ASYNC240" },
+    "ASYNC250",
+    "Checks that async functions do not contain blocking usage of input from user.",
+    "Blocking an async function via a blocking input call will block the entire event loop, preventing it from executing other tasks while waiting for user input, negating the benefits of asynchronous programming. Instead of making a blocking input call directly, wrap the input call in an executor to execute the blocking call on another thread. Selected in the ruff config of the Python preset, with the flake8-async rules (`blocking-input-in-async-function`).",
+    "Read input in a worker thread: `await asyncio.to_thread(input, prompt)`.",
+    {
+      "code": "import asyncio\n\n\nasync def foo():\n    loop = asyncio.get_running_loop()\n    username = await loop.run_in_executor(None, input, \"Username:\")",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/blocking-input-in-async-function/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "ASYNC250" },
+    "ASYNC251",
+    "Checks that async functions do not call `time.sleep`.",
+    "Blocking an async function via a `time.sleep` call will block the entire event loop, preventing it from executing other tasks while waiting for the `time.sleep`, negating the benefits of asynchronous programming. Instead of `time.sleep`, use `asyncio.sleep`. Selected in the ruff config of the Python preset, with the flake8-async rules (`blocking-sleep-in-async-function`).",
+    "Sleep with `await asyncio.sleep(...)` (the backend's sleep, such as `await trio.sleep(...)`).",
+    {
+      "code": "import asyncio\n\n\nasync def fetch():\n    await asyncio.sleep(1)",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/blocking-sleep-in-async-function/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "ASYNC251" },
     "B002",
     "Checks for the attempted use of the unary prefix increment (`++`) or decrement operator (`--`).",
     "Python does not support the unary prefix increment or decrement operator. Writing `++n` is equivalent to `+(+(n))` and writing `--n` is equivalent to `-(-(n))`. In both cases, it is equivalent to `n`. Selected in the ruff config of the Python preset, with the flake8-bugbear rules (`unary-prefix-increment-decrement`).",
@@ -1661,6 +1875,94 @@
       }
     ],
     { "key": "python.exceptions", "rule": "G202" },
+    "LOG001",
+    "Checks for direct instantiation of `logging.Logger`, as opposed to using `logging.getLogger()`.",
+    "The Logger Objects documentation states that: > Note that Loggers should NEVER be instantiated directly, but always > through the module-level function `logging.getLogger(name)`. Selected in the ruff config of the Python preset, with the flake8-logging rules (`direct-logger-instantiation`).",
+    "Create the logger with `logging.getLogger(__name__)`.",
+    { "code": "import logging\n\nlogger = logging.getLogger(__name__)", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/direct-logger-instantiation/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "LOG001" },
+    "LOG002",
+    "Checks for any usage of `__cached__` and `__file__` as an argument to `logging.getLogger()`.",
+    "The logging documentation recommends this pattern: Here, `__name__` is the fully qualified module name, such as `foo.bar`, which is the intended format for logger names. Selected in the ruff config of the Python preset, with the flake8-logging rules (`invalid-get-logger-argument`).",
+    "Name the logger after the module: `logging.getLogger(__name__)`, not `__file__` or `__cached__`.",
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/invalid-get-logger-argument/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "LOG002" },
+    "LOG004",
+    "Checks for `.exception()` logging calls outside of exception handlers.",
+    "The documentation states: > This function should only be called from an exception handler. Calling `.exception()` outside of an exception handler attaches `None` as exception information, leading to confusing messages: Selected in the ruff config of the Python preset, with the flake8-logging rules (`log-exception-outside-except-handler`).",
+    "Log a traceback only inside an `except` handler (`logger.exception(...)`); outside one, call `logger.error(...)` without `exc_info`.",
+    { "code": "import logging\n\nlogging.error(\"Foobar\")", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/log-exception-outside-except-handler/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "LOG004" },
+    "LOG007",
+    "Checks for uses of `logging.exception()` with `exc_info` set to `False`.",
+    "The `logging.exception()` method captures the exception automatically, but accepts an optional `exc_info` argument to override this behavior. Setting `exc_info` to `False` disables the automatic capture of the exception and stack trace. Instead of setting `exc_info` to `False`, prefer `logging.error()`, which has equivalent behavior to `logging.exception()` with `exc_info` set to `False`, but is clearer in intent. Selected in the ruff config of the Python preset, with the flake8-logging rules (`exception-without-exc-info`).",
+    "Drop `exc_info=False` from `logger.exception(...)`, or call `logger.error(...)` when the traceback is not wanted.",
+    { "code": "logging.error(\"...\")", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/exception-without-exc-info/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "LOG007" },
+    "LOG009",
+    "Checks for uses of `logging.WARN`.",
+    "The `logging.WARN` constant is an undocumented alias for `logging.WARNING`. Although it’s not explicitly deprecated, `logging.WARN` is not mentioned in the `logging` documentation. Prefer `logging.WARNING` instead. Selected in the ruff config of the Python preset, with the flake8-logging rules (`undocumented-warn`).",
+    "Use `logging.WARNING`; `logging.WARN` is an undocumented alias.",
+    {
+      "code": "import logging\n\n\nlogging.basicConfig(level=logging.WARNING)",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/undocumented-warn/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "LOG009" },
+    "LOG014",
+    "Checks for logging calls with `exc_info=` outside exception handlers.",
+    "Using `exc_info=True` outside of an exception handler attaches `None` as the exception information, leading to confusing messages: Selected in the ruff config of the Python preset, with the flake8-logging rules (`exc-info-outside-except-handler`).",
+    { "code": "import logging\n\n\nlogging.warning(\"Foobar\")", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/exc-info-outside-except-handler/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "LOG014" },
+    "LOG015",
+    "Checks for usages of the following `logging` top-level functions: `debug`, `info`, `warn`, `warning`, `error`, `critical`, `log`, `exception`.",
+    "Using the root logger causes the messages to have no source information, making them less useful for debugging. Selected in the ruff config of the Python preset, with the flake8-logging rules (`root-logger-call`).",
+    "Log through a module logger: `logger = logging.getLogger(__name__)`, then `logger.info(...)` (`logger.warning(...)` in place of `warn`).",
+    {
+      "code": "import logging\n\nlogger = logging.getLogger(__name__)\nlogger.info(\"Foobar\")",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/root-logger-call/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "LOG015" },
     "N801",
     "Checks for class names that do not follow the `CamelCase` convention.",
     "PEP 8 recommends the use of the `CapWords` (or `CamelCase`) convention for class names: > Class names should normally use the `CapWords` convention. > > The naming convention for functions may be used instead in cases where the interface is > documented and used primarily as a callable. > > Note that there is a separate convention for builtin names: most builtin names are single > words (or two words run together), with the `CapWords` convention used only for exception > names and builtin constants. Selected in the ruff config of the Python preset, with the pep8-naming rules (`invalid-class-name`).",
@@ -2028,6 +2330,394 @@
       }
     ],
     { "key": "python.exceptions", "rule": "PIE810" },
+    "PLE0100",
+    "Checks for `__init__` methods that are turned into generators by the inclusion of `yield` or `yield from` expressions.",
+    "The `__init__` method is the constructor for a given Python class, responsible for initializing, rather than creating, new objects. The `__init__` method has to return `None`. By including a `yield` or `yield from` expression in an `__init__`, the method will return a generator object when called at runtime, resulting in a runtime error. Selected in the ruff config of the Python preset, with the Pylint rules (`yield-in-init`).",
+    "Keep `__init__` a plain initializer that returns `None`; build another value or a generator in a `@classmethod` factory or a separate method.",
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/yield-in-init/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0100" },
+    "PLE0101",
+    "Checks for `__init__` methods that return values.",
+    "The `__init__` method is the constructor for a given Python class, responsible for initializing, rather than creating, new objects. The `__init__` method has to return `None`. Returning any value from an `__init__` method will result in a runtime error. Selected in the ruff config of the Python preset, with the Pylint rules (`return-in-init`).",
+    {
+      "code": "class Example:\n    def __init__(self):\n        self.value = []",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/return-in-init/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0101" },
+    "PLE0115",
+    "Checks for variables which are both declared as both `nonlocal` and `global`.",
+    "A `nonlocal` variable is a variable that is defined in the nearest enclosing scope, but not in the global scope, while a `global` variable is a variable that is defined in the global scope. Declaring a variable as both `nonlocal` and `global` is contradictory and will raise a `SyntaxError`. Selected in the ruff config of the Python preset, with the Pylint rules (`nonlocal-and-global`).",
+    "Remove the `global` declaration: pass the value in as an argument and return the new value.",
+    {
+      "code": "counter = 0\n\n\ndef increment():\n    global counter\n    counter += 1",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/nonlocal-and-global/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0115" },
+    "PLE0117",
+    "Checks for `nonlocal` names without bindings.",
+    "`nonlocal` names must be bound to a name in an outer scope. Violating this rule leads to a `SyntaxError` at runtime. Selected in the ruff config of the Python preset, with the Pylint rules (`nonlocal-without-binding`).",
+    "Remove the `nonlocal` declaration and pass the value in, or bind the name in the enclosing function first.",
+    {
+      "code": "def foo():\n    bar = 1\n\n    def get_bar(self):\n        nonlocal bar\n        ...",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/nonlocal-without-binding/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0117" },
+    "PLE0118",
+    "Checks for uses of names that are declared as `global` prior to the relevant `global` declaration.",
+    "The `global` declaration applies to the entire scope. Using a name that's declared as `global` in a given scope prior to the relevant `global` declaration is a `SyntaxError`. Selected in the ruff config of the Python preset, with the Pylint rules (`load-before-global-declaration`).",
+    {
+      "code": "counter = 1\n\n\ndef increment():\n    global counter\n    print(f\"Adding 1 to {counter}\")\n    counter += 1",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/load-before-global-declaration/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0118" },
+    "PLE0237",
+    "Checks for assignments to attributes that are not defined in `__slots__`.",
+    "When using `__slots__`, only the specified attributes are allowed. Attempting to assign to an attribute that is not defined in `__slots__` will result in an `AttributeError` at runtime. Selected in the ruff config of the Python preset, with the Pylint rules (`non-slot-assignment`).",
+    "Add the attribute to `__slots__`, or assign only the attributes listed there.",
+    {
+      "code": "class Student:\n    __slots__ = (\"name\", \"surname\")\n\n    def __init__(self, name, surname):\n        self.name = name\n        self.surname = surname\n        self.setup()\n\n    def setup(self):\n        pass",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/non-slot-assignment/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0237" },
+    "PLE0241",
+    "Checks for duplicate base classes in class definitions.",
+    "Including duplicate base classes will raise a `TypeError` at runtime. Selected in the ruff config of the Python preset, with the Pylint rules (`duplicate-bases`).",
+    "List each base class once: `class Report(Base):`.",
+    { "code": "class Foo:\n    pass\n\n\nclass Bar(Foo):\n    pass", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/duplicate-bases/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0241" },
+    "PLE0302",
+    "Checks for \"special\" methods that have an unexpected method signature.",
+    "\"Special\" methods, like `__len__`, are expected to adhere to a specific, standard function signature. Implementing a \"special\" method using a non-standard function signature can lead to unexpected and surprising behavior for users of a given class. Selected in the ruff config of the Python preset, with the Pylint rules (`unexpected-special-method-signature`).",
+    "Give the special method the parameters the data model defines: `def __eq__(self, other):`.",
+    {
+      "code": "class Bookshelf:\n    def __init__(self):\n        self._books = [\"Foo\", \"Bar\", \"Baz\"]\n\n    def __len__(self):\n        return len(self._books)\n\n    def __getitem__(self, index):\n        return self._books[index]",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/unexpected-special-method-signature/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0302" },
+    "PLE0303",
+    "Checks for `__len__` implementations that return values that are not non-negative integers.",
+    "The `__len__` method should return a non-negative integer. Returning a different value may cause unexpected behavior. Note: `bool` is a subclass of `int`, so it's technically valid for `__len__` to return `True` or `False`. However, for consistency with other rules, Ruff will still emit a diagnostic when `__len__` returns a `bool`. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-length-return-type`).",
+    "Return the type the data model requires: a non-negative `int` from `__len__`, `bool` from `__bool__`, `int` from `__index__` and `__hash__`, `str` from `__str__`, `bytes` from `__bytes__`.",
+    { "code": "class Foo:\n    def __len__(self):\n        return 2", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/invalid-length-return-type/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0303" },
+    "PLE0304",
+    "Checks for `__bool__` implementations that return a type other than `bool`.",
+    "The `__bool__` method should return a `bool` object. Returning a different type may cause unexpected behavior. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-bool-return-type`).",
+    { "code": "class Foo:\n    def __bool__(self):\n        return True", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/invalid-bool-return-type/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0304" },
+    "PLE0305",
+    "Checks for `__index__` implementations that return non-integer values.",
+    "The `__index__` method should return an integer. Returning a different type may cause unexpected behavior. Note: `bool` is a subclass of `int`, so it's technically valid for `__index__` to return `True` or `False`. However, a `DeprecationWarning` (`DeprecationWarning: __index__ returned non-int (type bool)`) for such cases was already introduced, thus this is a conscious difference between the original pylint rule and the current ruff implementation. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-index-return-type`).",
+    { "code": "class Foo:\n    def __index__(self):\n        return 2", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/invalid-index-return-type/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0305" },
+    "PLE0307",
+    "Checks for `__str__` implementations that return a type other than `str`.",
+    "The `__str__` method should return a `str` object. Returning a different type may cause unexpected behavior. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-str-return-type`).",
+    { "code": "class Foo:\n    def __str__(self):\n        return \"Foo\"", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/invalid-str-return-type/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0307" },
+    "PLE0308",
+    "Checks for `__bytes__` implementations that return types other than `bytes`.",
+    "The `__bytes__` method should return a `bytes` object. Returning a different type may cause unexpected behavior. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-bytes-return-type`).",
+    { "code": "class Foo:\n    def __bytes__(self):\n        return b\"2\"", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/invalid-bytes-return-type/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0308" },
+    "PLE0309",
+    "Checks for `__hash__` implementations that return non-integer values.",
+    "The `__hash__` method should return an integer. Returning a different type may cause unexpected behavior. Note: `bool` is a subclass of `int`, so it's technically valid for `__hash__` to return `True` or `False`. However, for consistency with other rules, Ruff will still emit a diagnostic when `__hash__` returns a `bool`. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-hash-return-type`).",
+    { "code": "class Foo:\n    def __hash__(self):\n        return 2", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/invalid-hash-return-type/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0309" },
+    "PLE0604",
+    "Checks for the inclusion of invalid objects in `__all__`.",
+    "In Python, `__all__` should contain a sequence of strings that represent the names of all \"public\" symbols exported by a module. Assigning anything other than a `tuple` or `list` of strings to `__all__` is invalid. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-all-object`).",
+    "List the public names as strings in a list or tuple: `__all__ = [\"load\", \"save\"]`.",
+    { "code": "__all__ = [\"Foo\", \"Bar\", \"Baz\"]", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/invalid-all-object/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0604" },
+    "PLE0605",
+    "Checks for invalid assignments to `__all__`.",
+    "In Python, `__all__` should contain a sequence of strings that represent the names of all \"public\" symbols exported by a module. Assigning anything other than a `tuple` or `list` of strings to `__all__` is invalid. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-all-format`).",
+    { "code": "__all__ = (\"Foo\",)", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/invalid-all-format/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0605" },
+    "PLE0643",
+    "Checks for hard-coded sequence accesses that are known to be out of bounds.",
+    "Attempting to access a sequence with an out-of-bounds index will cause an `IndexError` to be raised at runtime. When the sequence and index are defined statically (e.g., subscripts on `list` and `tuple` literals, with integer indexes), such errors can be detected ahead of time. Selected in the ruff config of the Python preset, with the Pylint rules (`potential-index-error`).",
+    "Index inside the sequence, or name the value directly instead of indexing a literal.",
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/potential-index-error/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0643" },
+    "PLE0704",
+    "Checks for bare `raise` statements outside of exception handlers.",
+    "A bare `raise` statement without an exception object will re-raise the last exception that was active in the current scope, and is typically used within an exception handler to re-raise the caught exception. If a bare `raise` is used outside of an exception handler, it will generate an error due to the lack of an active exception. Selected in the ruff config of the Python preset, with the Pylint rules (`misplaced-bare-raise`).",
+    "Raise an explicit exception: `raise ValueError(...)`; a bare `raise` only re-raises inside `except`.",
+    {
+      "code": "from typing import Any\n\n\ndef is_some(obj: Any) -> bool:\n    if obj is None:\n        raise ValueError(\"`obj` cannot be `None`\")",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/misplaced-bare-raise/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE0704" },
+    "PLE1142",
+    "Checks for uses of `await` outside `async` functions.",
+    "Using `await` outside an `async` function is a syntax error. Selected in the ruff config of the Python preset, with the Pylint rules (`await-outside-async`).",
+    "Use `await` only inside `async def`; an async generator re-yields with `async for item in source: yield item`, not `yield from`.",
+    {
+      "code": "import asyncio\n\n\nasync def foo():\n    await asyncio.sleep(1)",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/await-outside-async/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE1142" },
+    "PLE1205",
+    "Checks for too many positional arguments for a `logging` format string.",
+    "A `TypeError` will be raised if the statement is run. Selected in the ruff config of the Python preset, with the Pylint rules (`logging-too-many-args`).",
+    "Match each logging placeholder with one value: `logger.info(\"Loaded %s items\", count)`.",
+    {
+      "code": "import logging\n\ntry:\n    function()\nexcept Exception as e:\n    logging.error(\"%s error occurred: %s\", type(e), e)\n    raise",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/logging-too-many-args/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE1205" },
+    "PLE1206",
+    "Checks for too few positional arguments for a `logging` format string.",
+    "A `TypeError` will be raised if the statement is run. Selected in the ruff config of the Python preset, with the Pylint rules (`logging-too-few-args`).",
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/logging-too-few-args/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE1206" },
+    "PLE1507",
+    "Checks for `os.getenv` calls with an invalid `key` argument.",
+    "`os.getenv` only supports strings as the first argument (`key`). If the provided argument is not a string, `os.getenv` will throw a `TypeError` at runtime. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-envvar-value`).",
+    "Pass the variable name as a `str`, in the composition root (`settings.py`): `os.getenv(\"HOME\")`.",
+    { "code": "import os\n\nos.getenv(\"1\")", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/invalid-envvar-value/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE1507" },
+    "PLE1519",
+    "Checks for methods decorated with `@singledispatch`.",
+    "The `@singledispatch` decorator is intended for use with functions, not methods. Instead, use the `@singledispatchmethod` decorator, or migrate the method to a standalone function. Selected in the ruff config of the Python preset, with the Pylint rules (`singledispatch-method`).",
+    "Use `@functools.singledispatchmethod` on methods and `@functools.singledispatch` on plain functions.",
+    {
+      "code": "from functools import singledispatchmethod\n\n\nclass Class:\n    @singledispatchmethod\n    def method(self, arg): ...",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/singledispatch-method/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE1519" },
+    "PLE1520",
+    "Checks for non-method functions decorated with `@singledispatchmethod`.",
+    "The `@singledispatchmethod` decorator is intended for use with methods, not functions. Instead, use the `@singledispatch` decorator. Selected in the ruff config of the Python preset, with the Pylint rules (`singledispatchmethod-function`).",
+    {
+      "code": "from functools import singledispatch\n\n\n@singledispatch\ndef func(arg): ...",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/singledispatchmethod-function/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE1520" },
+    "PLE1700",
+    "Checks for uses of `yield from` in async functions.",
+    "Python doesn't support the use of `yield from` in async functions, and will raise a `SyntaxError` in such cases. Instead, considering refactoring the code to use an `async for` loop instead. Selected in the ruff config of the Python preset, with the Pylint rules (`yield-from-in-async-function`).",
+    {
+      "code": "async def numbers():\n    async for number in [1, 2, 3, 4, 5]:\n        yield number",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/yield-from-in-async-function/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE1700" },
+    "PLE2502",
+    "Checks for bidirectional formatting characters.",
+    "The interaction between bidirectional formatting characters and the surrounding code can be surprising to those that are unfamiliar with right-to-left writing systems. In some cases, bidirectional formatting characters can also be used to obfuscate code and introduce or mask security vulnerabilities. Selected in the ruff config of the Python preset, with the Pylint rules (`bidirectional-unicode`).",
+    "Write the character as its escape sequence (`\"\\b\"`, `\"\\x1a\"`, `\"\\x1b\"`, `\"\\0\"`, `\"\\u200b\"`), and remove bidirectional control characters.",
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/bidirectional-unicode/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE2502" },
+    "PLE2510",
+    "Checks for strings that contain the control character `BS`.",
+    "Control characters are displayed differently by different text editors and terminals. By using the `\\b` sequence in lieu of the `BS` control character, the string will contain the same value, but will render visibly in all editors. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-character-backspace`).",
+    { "code": "x = \"\\b\"", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/invalid-character-backspace/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE2510" },
+    "PLE2512",
+    "Checks for strings that contain the raw control character `SUB`.",
+    "Control characters are displayed differently by different text editors and terminals. By using the `\\x1a` sequence in lieu of the `SUB` control character, the string will contain the same value, but will render visibly in all editors. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-character-sub`).",
+    { "code": "x = \"\\x1a\"", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/invalid-character-sub/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE2512" },
+    "PLE2513",
+    "Checks for strings that contain the raw control character `ESC`.",
+    "Control characters are displayed differently by different text editors and terminals. By using the `\\x1b` sequence in lieu of the `ESC` control character, the string will contain the same value, but will render visibly in all editors. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-character-esc`).",
+    { "code": "x = \"\\x1b\"", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/invalid-character-esc/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE2513" },
+    "PLE2514",
+    "Checks for strings that contain the raw control character `NUL` (0 byte).",
+    "Control characters are displayed differently by different text editors and terminals. By using the `\\0` sequence in lieu of the `NUL` control character, the string will contain the same value, but will render visibly in all editors. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-character-nul`).",
+    { "code": "x = \"\\0\"", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/invalid-character-nul/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE2514" },
+    "PLE2515",
+    "Checks for strings that contain the zero width space character.",
+    "This character is rendered invisibly in some text editors and terminals. By using the `\\u200B` sequence, the string will contain the same value, but will render visibly in all editors. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-character-zero-width-space`).",
+    { "code": "x = \"Dear Sir\\u200b/\\u200bMadam\"  # zero width space", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/invalid-character-zero-width-space/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLE2515" },
     "PLR2004",
     "Checks for the use of unnamed numerical constants (\"magic\") values in comparisons.",
     "The use of \"magic\" values can make code harder to read and maintain, as readers will have to infer the meaning of the value from the context. Such values are discouraged by PEP 8. For convenience, this rule excludes a variety of common values from the \"magic\" value definition, such as `0`, `1`, `\"\"`, and `\"__main__\"`. It also exempts comparisons against `sys.version`, `sys.version_info`, and `sys.implementation.version`. Selected in the ruff config of the Python preset, with the Pylint rules (`magic-value-comparison`).",
@@ -2043,6 +2733,147 @@
       }
     ],
     { "key": "python.exceptions", "rule": "PLR2004" },
+    "PLW0108",
+    "Checks for `lambda` definitions that consist of a single function call with the same arguments as the `lambda` itself.",
+    "When a `lambda` is used to wrap a function call, and merely propagates the `lambda` arguments to that function, it can typically be replaced with the function itself, removing a level of indirection. Selected in the ruff config of the Python preset, with the Pylint rules (`unnecessary-lambda`).",
+    "Pass the function itself: `key=str` in place of `key=lambda x: str(x)`. A lambda that must look a name up at call time takes an exception.",
+    { "code": "df.apply(str)", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/unnecessary-lambda/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW0108" },
+    "PLW0120",
+    "Checks for `else` clauses on loops without a `break` statement.",
+    "When a loop includes an `else` statement, the code inside the `else` clause will be executed if the loop terminates \"normally\" (i.e., without a `break`). If a loop always terminates \"normally\" (i.e., does not contain a `break`), then the `else` clause is redundant, as the code inside the `else` clause will always be executed. Selected in the ruff config of the Python preset, with the Pylint rules (`useless-else-on-loop`).",
+    "Remove the `else` and dedent its body; a loop `else` only matters with a `break`.",
+    {
+      "code": "for item in items:\n    print(item)\nprint(\"All items printed\")",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/useless-else-on-loop/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW0120" },
+    "PLW0127",
+    "Checks for self-assignment of variables.",
+    "Self-assignment of variables is redundant and likely a mistake. Selected in the ruff config of the Python preset, with the Pylint rules (`self-assigning-variable`).",
+    "Assign each name once per statement, to the value you meant, and use `_` for a discarded value.",
+    { "code": "country = \"Poland\"", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/self-assigning-variable/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW0127" },
+    "PLW0128",
+    "Checks for declared assignments to the same variable multiple times in the same assignment.",
+    "Assigning a variable multiple times in the same assignment is redundant, as the final assignment to the variable is what the value will be. Selected in the ruff config of the Python preset, with the Pylint rules (`redeclared-assigned-name`).",
+    {
+      "code": "# this is assuming you want to assign 3 to `a`\n_, b, a = (1, 2, 3)\nprint(a)  # 3",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/redeclared-assigned-name/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW0128" },
+    "PLW0129",
+    "Checks for `assert` statements that use a string literal as the first argument.",
+    "An `assert` on a non-empty string literal will always pass, while an `assert` on an empty string literal will always fail. Selected in the ruff config of the Python preset, with the Pylint rules (`assert-on-string-literal`).",
+    "Assert a condition and put the message after the comma: `assert ready, \"not ready\"`.",
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/assert-on-string-literal/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW0129" },
+    "PLW0131",
+    "Checks for uses of named expressions (e.g., `a := 42`) that can be replaced by regular assignment statements (e.g., `a = 42`).",
+    "While a top-level named expression is syntactically and semantically valid, it's less clear than a regular assignment statement. Named expressions are intended to be used in comprehensions and generator expressions, where assignment statements are not allowed. Selected in the ruff config of the Python preset, with the Pylint rules (`named-expr-without-context`).",
+    "Use a plain assignment (`total = compute()`); keep `:=` inside a condition or comprehension.",
+    { "code": "a = 42", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/named-expr-without-context/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW0131" },
+    "PLW0133",
+    "Checks for an exception that is not raised.",
+    "It's unnecessary to create an exception without raising it. For example, `ValueError(\"...\")` on its own will have no effect (unlike `raise ValueError(\"...\")`) and is likely a mistake. Selected in the ruff config of the Python preset, with the Pylint rules (`useless-exception-statement`).",
+    "Raise the exception: `raise ValueError(...)`.",
+    { "code": "raise ValueError(\"...\")", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/useless-exception-statement/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW0133" },
+    "PLW0177",
+    "Checks for comparisons against NaN values.",
+    "Comparing against a NaN value can lead to unexpected results. For example, `float(\"NaN\") == float(\"NaN\")` will return `False` and, in general, `x == float(\"NaN\")` will always return `False`, even if `x` is `NaN`. To determine whether a value is `NaN`, use `math.isnan` or `np.isnan` instead of comparing against `NaN` directly. Selected in the ruff config of the Python preset, with the Pylint rules (`nan-comparison`).",
+    "Test with `math.isnan(value)` (`numpy.isnan` for arrays).",
+    { "code": "import math\n\nif math.isnan(x):\n    pass", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/nan-comparison/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW0177" },
+    "PLW0211",
+    "Checks for static methods that use `self` or `cls` as their first argument. This rule also applies to `__new__` methods, which are implicitly static.",
+    "PEP 8 recommends the use of `self` and `cls` as the first arguments for instance methods and class methods, respectively. Naming the first argument of a static method as `self` or `cls` can be misleading, as static methods do not receive an instance or class reference as their first argument. Selected in the ruff config of the Python preset, with the Pylint rules (`bad-staticmethod-argument`).",
+    "Drop `self` or `cls` from the static method, or make it an instance method or a `@classmethod`.",
+    {
+      "code": "class Wolf:\n    @staticmethod\n    def eat(sheep):\n        pass",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/bad-staticmethod-argument/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW0211" },
+    "PLW0245",
+    "Detects attempts to use `super` without parentheses.",
+    "The [`super()` callable](https://docs.python.org/3/library/functions.html#super) can be used inside method definitions to create a proxy object that delegates attribute access to a superclass of the current class. Attempting to access attributes on `super` itself, however, instead of the object returned by a call to `super()`, will raise `AttributeError`. Selected in the ruff config of the Python preset, with the Pylint rules (`super-without-brackets`).",
+    "Call `super()` with parentheses: `super().__init__()`.",
+    {
+      "code": "class Animal:\n    @staticmethod\n    def speak():\n        return \"This animal says something.\"\n\n\nclass Dog(Animal):\n    @staticmethod\n    def speak():\n        original_speak = super().speak()  # Correct: `super().speak()`\n        return f\"{original_speak} But as a dog, it barks!\"",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/super-without-brackets/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW0245" },
+    "PLW0406",
+    "Checks for import statements that import the current module.",
+    "Importing a module from itself is a circular dependency and results in an `ImportError` exception. Selected in the ruff config of the Python preset, with the Pylint rules (`import-self`).",
+    "Remove the self-import and use the module's names directly.",
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/import-self/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW0406" },
     "PLW0602",
     "Checks for `global` variables that are not assigned a value in the current scope.",
     "The `global` keyword allows an inner scope to modify a variable declared in the outer scope. If the variable is not modified within the inner scope, there is no need to use `global`. Selected in the ruff config of the Python preset, with the Pylint rules (`global-variable-not-assigned`).",
@@ -2073,6 +2904,139 @@
       }
     ],
     { "key": "python.exceptions", "rule": "PLW0603" },
+    "PLW0604",
+    "Checks for uses of the `global` keyword at the module level.",
+    "The `global` keyword is used within functions to indicate that a name refers to a global variable, rather than a local variable. At the module level, all names are global by default, so the `global` keyword is redundant. Selected in the ruff config of the Python preset, with the Pylint rules (`global-at-module-level`).",
+    "Remove the module-level `global`; module names are already global.",
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/global-at-module-level/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW0604" },
+    "PLW0642",
+    "Checks for assignment of `self` and `cls` in instance and class methods respectively.",
+    "The identifiers `self` and `cls` are conventional in Python for the first parameter of instance methods and class methods, respectively. Assigning new values to these variables can be confusing for others reading your code; using a different variable name can lead to clearer code. Selected in the ruff config of the Python preset, with the Pylint rules (`self-or-cls-assignment`).",
+    "Bind a new name instead of reassigning `self` or `cls`.",
+    {
+      "code": "class Version:\n    def add(self, other):\n        new_version = self + other\n        return new_version\n\n    @classmethod\n    def superclass(cls):\n        supercls = cls.__mro__[-1]\n        return supercls",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/self-or-cls-assignment/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW0642" },
+    "PLW1501",
+    "Check for an invalid `mode` argument in `open` calls.",
+    "The `open` function accepts a `mode` argument that specifies how the file should be opened (e.g., read-only, write-only, append-only, etc.). Python supports a variety of open modes: `r`, `w`, `a`, and `x`, to control reading, writing, appending, and creating, respectively, along with `b` (binary mode), `+` (read and write), and `U` (universal newlines), the latter of which is only valid alongside `r`. This rule detects both invalid combinations of modes and invalid characters in the mode string itself. Selected in the ruff config of the Python preset, with the Pylint rules (`bad-open-mode`).",
+    "Pass a valid mode: `path.open(\"r\")`, `\"w\"`, `\"a\"` or `\"rb\"`.",
+    { "code": "with open(\"file\", \"r\") as f:\n    content = f.read()", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/bad-open-mode/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW1501" },
+    "PLW1507",
+    "Check for shallow `os.environ` copies.",
+    "`os.environ` is not a `dict` object, but rather, a proxy object. As such, mutating a shallow copy of `os.environ` will also mutate the original object. See BPO 15373 for more information. Selected in the ruff config of the Python preset, with the Pylint rules (`shallow-copy-environ`).",
+    "Copy the environment with `os.environ.copy()`, in the composition root (`settings.py`).",
+    { "code": "import os\n\nenv = os.environ.copy()", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/shallow-copy-environ/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW1507" },
+    "PLW1508",
+    "Checks for `os.getenv` calls with invalid default values.",
+    "If an environment variable is set, `os.getenv` will return its value as a string. If the environment variable is not set, `os.getenv` will return `None`, or the default value if one is provided. If the default value is not a string or `None`, then it will be inconsistent with the return type of `os.getenv`, which can lead to confusing behavior. Selected in the ruff config of the Python preset, with the Pylint rules (`invalid-envvar-default`).",
+    "Pass a `str` default and convert after, in the composition root (`settings.py`): `int(os.getenv(\"PORT\", \"8080\"))`.",
+    { "code": "import os\n\nint(os.getenv(\"FOO\", \"1\"))", "language": "python" },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/invalid-envvar-default/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW1508" },
+    "PLW1509",
+    "Checks for uses of `subprocess.Popen` with a `preexec_fn` argument.",
+    "The `preexec_fn` argument is unsafe within threads as it can lead to deadlocks. Furthermore, `preexec_fn` is targeted for deprecation. Instead, consider using task-specific arguments such as `env`, `start_new_session`, and `process_group`. These are not prone to deadlocks and are more explicit. Selected in the ruff config of the Python preset, with the Pylint rules (`subprocess-popen-preexec-fn`).",
+    "Pass `start_new_session=True` (or `process_group=0`) in place of `preexec_fn`.",
+    {
+      "code": "import subprocess\n\nsubprocess.Popen(foo, start_new_session=True)\nsubprocess.Popen(bar, process_group=0)  # Introduced in Python 3.11",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/subprocess-popen-preexec-fn/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW1509" },
+    "PLW1510",
+    "Checks for uses of `subprocess.run` without an explicit `check` argument.",
+    "By default, `subprocess.run` does not check the return code of the process it runs. This can lead to silent failures. Instead, consider using `check=True` to raise an exception if the process fails, or set `check=False` explicitly to mark the behavior as intentional. Selected in the ruff config of the Python preset, with the Pylint rules (`subprocess-run-without-check`).",
+    "Pass `check=True` to raise on process failure, or pass `check=False` and handle `returncode`.",
+    {
+      "code": "import subprocess\n\nsubprocess.run([\"ls\", \"nonexistent\"], check=True)  # Raises exception.",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/subprocess-run-without-check/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW1510" },
+    "PLW2101",
+    "Checks for lock objects that are created and immediately discarded in `with` statements.",
+    "Creating a lock (via `threading.Lock` or similar) in a `with` statement has no effect, as locks are only relevant when shared between threads. Instead, assign the lock to a variable outside the `with` statement, and share that variable between threads. Selected in the ruff config of the Python preset, with the Pylint rules (`useless-with-lock`).",
+    "Create the lock once and share it: `self._lock = threading.Lock()`, then `with self._lock:`.",
+    {
+      "code": "import threading\n\ncounter = 0\nlock = threading.Lock()\n\n\ndef increment():\n    global counter\n\n    with lock:\n        counter += 1",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/useless-with-lock/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW2101" },
+    "PLW2901",
+    "Checks for variables defined in `for` loops and `with` statements that get overwritten within the body, for example by another `for` loop or `with` statement or by direct assignment.",
+    "Redefinition of a loop variable inside the loop's body causes its value to differ from the original loop iteration for the remainder of the block, in a way that will likely cause bugs. In Python, unlike many other languages, `for` loops and `with` statements don't define their own scopes. Therefore, a nested loop that uses the same target variable name as an outer loop will reuse the same actual variable, and the value from the last iteration will \"leak out\" into the remainder of the enclosing loop. Selected in the ruff config of the Python preset, with the Pylint rules (`redefined-loop-name`).",
+    "Bind the changed value to a new name: `for line in lines: stripped = line.strip()`.",
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/redefined-loop-name/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW2901" },
+    "PLW3301",
+    "Checks for nested `min` and `max` calls.",
+    "Nested `min` and `max` calls can be flattened into a single call to improve readability. Selected in the ruff config of the Python preset, with the Pylint rules (`nested-min-max`).",
+    "Call one `max` or `min` with all the arguments: `max(a, b, c)`.",
+    {
+      "code": "minimum = min(1, 2, 3, 4, 5)\nmaximum = max(1, 2, 3, 4, 5)\ndiff = maximum - minimum",
+      "language": "python"
+    },
+    [
+      {
+        "label": "Ruff rule documentation",
+        "url": "https://docs.astral.sh/ruff/rules/nested-min-max/"
+      }
+    ],
+    { "key": "python.exceptions", "rule": "PLW3301" },
     "PT001",
     "Checks for argument-free `@pytest.fixture()` decorators with or without parentheses, depending on the `lint.flake8-pytest-style.fixture-parentheses` setting.",
     "If a `@pytest.fixture()` doesn't take any arguments, the parentheses are optional. Either removing those unnecessary parentheses or requiring them for all fixtures is fine, but it's best to be consistent. The rule defaults to removing unnecessary parentheses, to match the documentation of the official pytest projects. Selected in the ruff config of the Python preset, with the flake8-pytest-style rules (`pytest-fixture-incorrect-parentheses-style`).",
@@ -4386,6 +5350,12 @@
       }
     ],
     { "key": "python.exceptions", "rule": "SIM911" },
+    "T100",
+    "Checks for the presence of debugger calls and imports.",
+    "Debugger calls and imports should be used for debugging purposes only. The presence of a debugger call or import in production code is likely a mistake and may cause unintended behavior, such as exposing sensitive information or causing the program to hang. Instead, consider using a logging library to log information about the program's state, and writing tests to verify that the program behaves as expected. Selected in the ruff config of the Python preset, with the flake8-debugger rules (`debugger`).",
+    "Remove the debugger import or breakpoint before committing; use the project logger.",
+    [{ "label": "Ruff rule documentation", "url": "https://docs.astral.sh/ruff/rules/debugger/" }],
+    { "key": "python.exceptions", "rule": "T100" },
     "T201",
     "Checks for `print` statements.",
     "`print` statements used for debugging should be omitted from production code. They can lead the accidental inclusion of sensitive information in logs, and are not configurable by clients, unlike `logging` statements. `print` statements used to produce output as a part of a command-line interface program are not typically a problem. Selected in the ruff config of the Python preset, with the flake8-print rules (`print`).",
@@ -4512,34 +5482,32 @@
     [0, 15, 2, 16, 17, 5, 18, 19, 20],
     [0, 21, 2, 22, 23, 5, 24, 25, 26],
     [0, 27, 2, 28, 29, 5, 30, 31, 32],
-    [0, 33, 2, 34, 35, -1, 36, 37, 38],
-    [0, 39, 2, 40, 41, -1, 42, 43, 44],
-    [0, 45, 2, 46, 47, -1, 48, 49, 50],
-    [0, 51, 2, 52, 53, -1, 54, 55, 56],
-    [0, 57, 2, 58, 59, 60, 61, 62, 63],
-    [0, 64, 2, 65, 66, -1, 67, 68, 69],
-    [0, 70, 2, 71, 72, -1, 73, 74, 75],
-    [0, 76, 2, 77, 78, -1, 79, 80, 81],
-    [0, 82, 2, 83, 84, -1, 85, 86, 87],
-    [0, 88, 2, 89, 90, -1, 91, 92, 93],
-    [0, 94, 2, 95, 96, -1, 97, 98, 99],
-    [0, 100, 2, 101, 102, -1, 103, 104, 105],
-    [0, 106, 2, 107, 108, -1, 109, 110, 111],
-    [0, 112, 2, 113, 114, -1, 115, 116, 117],
-    [0, 118, 2, 119, 120, -1, 121, 122, 123],
-    [0, 124, 2, 125, 126, -1, 127, 128, 129],
-    [0, 130, 2, 131, 132, -1, 133, 134, 135],
-    [0, 136, 2, 137, 138, -1, 139, 140, 141],
-    [0, 142, 2, 143, 144, -1, 145, 146, 147],
-    [0, 148, 2, 149, 150, -1, 151, 152, 153],
-    [0, 154, 2, 155, 156, -1, 157, 158, 159],
-    [0, 160, 2, 161, 162, -1, 163, 164, 165],
-    [0, 166, 2, 167, 168, -1, 97, 169, 170],
-    [0, 171, 2, 172, 173, -1, 174, 175, 176],
-    [0, 177, 2, 178, 179, -1, 180, 181, 182],
-    [0, 183, 2, 184, 185, -1, 186, 187, 188],
-    [0, 189, 2, 190, 191, -1, 192, 193, 194],
-    [0, 195, 2, 196, 197, -1, 192, 198, 199],
+    [0, 33, 2, 34, 35, 36, 37, 38, 39],
+    [0, 40, 2, 41, 42, 43, 44, 45, 46],
+    [0, 47, 2, 48, 49, 50, 51, 52, 53],
+    [0, 54, 2, 55, 56, 57, 58, 59, 60],
+    [0, 61, 2, 62, 63, 64, 65, 66, 67],
+    [0, 68, 2, 69, 70, 71, 72, 73, 74],
+    [0, 75, 2, 76, 77, 78, 79, 80, 81],
+    [0, 82, 2, 83, 84, 78, 85, 86, 87],
+    [0, 88, 2, 89, 90, 91, 92, 93, 94],
+    [0, 95, 2, 96, 97, 91, 92, 98, 99],
+    [0, 100, 2, 101, 102, 91, 103, 104, 105],
+    [0, 106, 2, 107, 108, 109, 110, 111, 112],
+    [0, 113, 2, 114, 115, 116, -1, 117, 118],
+    [0, 119, 2, 120, 121, 122, 123, 124, 125],
+    [0, 126, 2, 127, 128, 129, 130, 131, 132],
+    [0, 133, 2, 134, 135, -1, 136, 137, 138],
+    [0, 139, 2, 140, 141, -1, 142, 143, 144],
+    [0, 145, 2, 146, 147, -1, 148, 149, 150],
+    [0, 151, 2, 152, 153, -1, 154, 155, 156],
+    [0, 157, 2, 158, 159, 160, 161, 162, 163],
+    [0, 164, 2, 165, 166, -1, 167, 168, 169],
+    [0, 170, 2, 171, 172, -1, 173, 174, 175],
+    [0, 176, 2, 177, 178, -1, 179, 180, 181],
+    [0, 182, 2, 183, 184, -1, 185, 186, 187],
+    [0, 188, 2, 189, 190, -1, 191, 192, 193],
+    [0, 194, 2, 195, 196, -1, 197, 198, 199],
     [0, 200, 2, 201, 202, -1, 203, 204, 205],
     [0, 206, 2, 207, 208, -1, 209, 210, 211],
     [0, 212, 2, 213, 214, -1, 215, 216, 217],
@@ -4548,162 +5516,165 @@
     [0, 230, 2, 231, 232, -1, 233, 234, 235],
     [0, 236, 2, 237, 238, -1, 239, 240, 241],
     [0, 242, 2, 243, 244, -1, 245, 246, 247],
-    [0, 248, 2, 249, 250, -1, -1, 251, 252],
-    [0, 253, 2, 254, 255, -1, 256, 257, 258],
-    [0, 259, 2, 260, 261, 262, 263, 264, 265],
-    [0, 266, 2, 267, 268, -1, 269, 270, 271],
-    [0, 272, 2, 273, 274, -1, 275, 276, 277],
-    [0, 278, 2, 279, 280, -1, 281, 282, 283],
-    [0, 284, 2, 285, 286, -1, 287, 288, 289],
-    [0, 290, 2, 285, 291, -1, 281, 292, 293],
-    [0, 294, 2, 295, 296, -1, 297, 298, 299],
+    [0, 248, 2, 249, 250, -1, 251, 252, 253],
+    [0, 254, 2, 255, 256, -1, 257, 258, 259],
+    [0, 260, 2, 261, 262, -1, 263, 264, 265],
+    [0, 266, 2, 267, 268, -1, 197, 269, 270],
+    [0, 271, 2, 272, 273, -1, 274, 275, 276],
+    [0, 277, 2, 278, 279, -1, 280, 281, 282],
+    [0, 283, 2, 284, 285, -1, 286, 287, 288],
+    [0, 289, 2, 290, 291, -1, 292, 293, 294],
+    [0, 295, 2, 296, 297, -1, 292, 298, 299],
     [0, 300, 2, 301, 302, -1, 303, 304, 305],
     [0, 306, 2, 307, 308, -1, 309, 310, 311],
     [0, 312, 2, 313, 314, -1, 315, 316, 317],
     [0, 318, 2, 319, 320, -1, 321, 322, 323],
-    [0, 324, 2, 325, 326, -1, -1, 327, 328],
-    [0, 329, 2, 330, 331, -1, 332, 333, 334],
-    [0, 335, 2, 336, 337, -1, 338, 339, 340],
-    [0, 341, 2, 342, 343, -1, 344, 345, 346],
-    [0, 347, 2, 348, 349, -1, 350, 351, 352],
+    [0, 324, 2, 325, 326, -1, 327, 328, 329],
+    [0, 330, 2, 331, 332, -1, 333, 334, 335],
+    [0, 336, 2, 337, 338, -1, 339, 340, 341],
+    [0, 342, 2, 343, 344, -1, 345, 346, 347],
+    [0, 348, 2, 349, 350, -1, -1, 351, 352],
     [0, 353, 2, 354, 355, -1, 356, 357, 358],
-    [0, 359, 2, 360, 361, -1, 362, 363, 364],
-    [0, 365, 2, 366, 367, -1, 368, 369, 370],
-    [0, 371, 2, 372, 373, -1, 374, 375, 376],
-    [0, 377, 2, 378, 379, 380, 381, 382, 383],
-    [0, 384, 2, 385, 386, 387, 388, 389, 390],
-    [0, 391, 2, 392, 393, 394, 388, 395, 396],
-    [0, 397, 2, 398, 399, 400, 401, 402, 403],
-    [0, 404, 2, 405, 406, 387, 388, 407, 408],
-    [0, 409, 2, 410, 411, 400, 401, 412, 413],
-    [0, 414, 2, 415, 416, 417, -1, 418, 419],
-    [0, 420, 2, 421, 422, 423, 424, 425, 426],
-    [0, 427, 2, 428, 429, 430, 431, 432, 433],
-    [0, 434, 2, 435, 436, 437, 438, 439, 440],
+    [0, 359, 2, 360, 361, 362, 363, 364, 365],
+    [0, 366, 2, 367, 368, -1, 369, 370, 371],
+    [0, 372, 2, 373, 374, -1, 375, 376, 377],
+    [0, 378, 2, 379, 380, -1, 381, 382, 383],
+    [0, 384, 2, 385, 386, -1, 387, 388, 389],
+    [0, 390, 2, 385, 391, -1, 381, 392, 393],
+    [0, 394, 2, 395, 396, -1, 397, 398, 399],
+    [0, 400, 2, 401, 402, -1, 403, 404, 405],
+    [0, 406, 2, 407, 408, -1, 409, 410, 411],
+    [0, 412, 2, 413, 414, -1, 415, 416, 417],
+    [0, 418, 2, 419, 420, -1, 421, 422, 423],
+    [0, 424, 2, 425, 426, -1, -1, 427, 428],
+    [0, 429, 2, 430, 431, -1, 432, 433, 434],
+    [0, 435, 2, 436, 437, -1, 438, 439, 440],
     [0, 441, 2, 442, 443, -1, 444, 445, 446],
     [0, 447, 2, 448, 449, -1, 450, 451, 452],
     [0, 453, 2, 454, 455, -1, 456, 457, 458],
     [0, 459, 2, 460, 461, -1, 462, 463, 464],
     [0, 465, 2, 466, 467, -1, 468, 469, 470],
     [0, 471, 2, 472, 473, -1, 474, 475, 476],
-    [0, 477, 2, 478, 479, -1, 480, 481, 482],
-    [0, 483, 2, 484, 485, -1, 486, 487, 488],
-    [0, 489, 2, 490, 491, -1, 492, 493, 494],
-    [0, 495, 2, 496, 497, -1, 498, 499, 500],
-    [0, 501, 2, 502, 503, 262, 504, 505, 506],
-    [0, 507, 2, 508, 509, -1, 510, 511, 512],
-    [0, 513, 2, 514, 515, -1, 516, 517, 518],
-    [0, 519, 2, 520, 521, -1, 522, 523, 524],
-    [0, 525, 2, 526, 527, -1, 528, 529, 530],
-    [0, 531, 2, 532, 533, -1, -1, 534, 535],
-    [0, 536, 2, 537, 538, 539, -1, 540, 541],
-    [0, 542, 2, 543, 544, -1, 545, 546, 547],
-    [0, 548, 2, 549, 550, -1, 551, 552, 553],
-    [0, 554, 2, 555, 556, 557, 558, 559, 560],
-    [0, 561, 2, 562, 563, -1, 564, 565, 566],
-    [0, 567, 2, 568, 569, -1, 570, 571, 572],
-    [0, 573, 2, 574, 575, -1, -1, 576, 577],
-    [0, 578, 2, 579, 580, -1, 581, 582, 583],
-    [0, 584, 2, 585, 586, -1, 587, 588, 589],
-    [0, 590, 2, 591, 592, -1, 587, 593, 594],
+    [0, 477, 2, 478, 479, 480, 481, 482, 483],
+    [0, 484, 2, 485, 486, 487, 488, 489, 490],
+    [0, 491, 2, 492, 493, 494, 488, 495, 496],
+    [0, 497, 2, 498, 499, 500, 501, 502, 503],
+    [0, 504, 2, 505, 506, 487, 488, 507, 508],
+    [0, 509, 2, 510, 511, 500, 501, 512, 513],
+    [0, 514, 2, 515, 516, 517, -1, 518, 519],
+    [0, 520, 2, 521, 522, 523, 524, 525, 526],
+    [0, 527, 2, 528, 529, 530, 531, 532, 533],
+    [0, 534, 2, 535, 536, 537, 538, 539, 540],
+    [0, 541, 2, 542, 543, -1, 544, 545, 546],
+    [0, 547, 2, 548, 549, -1, 550, 551, 552],
+    [0, 553, 2, 554, 555, -1, 556, 557, 558],
+    [0, 559, 2, 560, 561, -1, 562, 563, 564],
+    [0, 565, 2, 566, 567, -1, 568, 569, 570],
+    [0, 571, 2, 572, 573, -1, 574, 575, 576],
+    [0, 577, 2, 578, 579, -1, 580, 581, 582],
+    [0, 583, 2, 584, 585, -1, 586, 587, 588],
+    [0, 589, 2, 590, 591, -1, 592, 593, 594],
     [0, 595, 2, 596, 597, -1, 598, 599, 600],
-    [0, 601, 2, 602, 603, -1, 604, 605, 606],
+    [0, 601, 2, 602, 603, 362, 604, 605, 606],
     [0, 607, 2, 608, 609, -1, 610, 611, 612],
     [0, 613, 2, 614, 615, -1, 616, 617, 618],
     [0, 619, 2, 620, 621, -1, 622, 623, 624],
-    [0, 625, 2, 626, 627, -1, 581, 628, 629],
-    [0, 630, 2, 631, 632, -1, 633, 634, 635],
-    [0, 636, 2, 637, 638, -1, 639, 640, 641],
+    [0, 625, 2, 626, 627, -1, 628, 629, 630],
+    [0, 631, 2, 632, 633, -1, -1, 634, 635],
+    [0, 636, 2, 637, 638, 639, -1, 640, 641],
     [0, 642, 2, 643, 644, -1, 645, 646, 647],
     [0, 648, 2, 649, 650, -1, 651, 652, 653],
-    [0, 654, 2, 655, 656, -1, 657, 658, 659],
-    [0, 660, 2, 661, 662, -1, 663, 664, 665],
-    [0, 666, 2, 667, 668, -1, 669, 670, 671],
-    [0, 672, 2, 673, 674, -1, 675, 676, 677],
-    [0, 678, 2, 679, 680, -1, -1, 681, 682],
-    [0, 683, 2, 684, 685, -1, -1, 686, 687],
-    [0, 688, 2, 689, 690, -1, 691, 692, 693],
-    [0, 694, 2, 695, 696, -1, 697, 698, 699],
-    [0, 700, 2, 701, 702, -1, 703, 704, 705],
-    [0, 706, 2, 707, 708, -1, 709, 710, 711],
-    [0, 712, 2, 713, 714, -1, -1, 715, 716],
-    [0, 717, 2, 718, 719, -1, -1, 720, 721],
-    [0, 722, 2, 723, 724, -1, -1, 725, 726],
-    [0, 727, 2, 728, 729, -1, -1, 730, 731],
-    [0, 732, 2, 733, 734, -1, 735, 736, 737],
-    [0, 738, 2, 739, 740, -1, -1, 741, 742],
-    [0, 743, 2, 744, 745, -1, 746, 747, 748],
-    [0, 749, 2, 750, 751, -1, 752, 753, 754],
-    [0, 755, 2, 756, 757, -1, 758, 759, 760],
-    [0, 761, 2, 762, 763, -1, 764, 765, 766],
-    [0, 767, 2, 768, 769, -1, 770, 771, 772],
-    [0, 773, 2, 774, 775, -1, -1, 776, 777],
-    [0, 778, 2, 779, 780, -1, 781, 782, 783],
-    [0, 784, 2, 785, 786, 787, 788, 789, 790],
-    [0, 791, 2, 792, 793, 794, 795, 796, 797],
-    [0, 798, 2, 799, 800, 794, 801, 802, 803],
-    [0, 804, 2, 805, 806, 794, 801, 807, 808],
-    [0, 809, 2, 810, 811, 794, 801, 812, 813],
-    [0, 814, 2, 815, 816, 817, 818, 819, 820],
-    [0, 821, 2, 822, 823, 824, 825, 826, 827],
-    [0, 828, 2, 829, 830, 831, 832, 833, 834],
-    [0, 835, 2, 836, 837, 838, 832, 839, 840],
-    [0, 841, 2, 842, 843, 844, 845, 846, 847],
-    [0, 848, 2, 849, 850, 851, 852, 853, 854],
-    [0, 855, 2, 856, 857, 851, 858, 859, 860],
-    [0, 861, 2, 862, 863, 864, 865, 866, 867],
-    [0, 868, 2, 869, 870, 864, 871, 872, 873],
-    [0, 874, 2, 875, 876, 851, 877, 878, 879],
-    [0, 880, 2, 881, 882, 851, 852, 883, 884],
-    [0, 885, 2, 886, 887, 888, 889, 890, 891],
-    [0, 892, 2, 893, 894, 888, 895, 896, 897],
-    [0, 898, 2, 899, 900, 888, 901, 902, 903],
-    [0, 904, 2, 905, 906, 888, 901, 907, 908],
-    [0, 909, 2, 910, 911, 912, 913, 914, 915],
-    [0, 916, 2, 917, 918, 912, 919, 920, 921],
-    [0, 922, 2, 923, 924, 888, 901, 925, 926],
-    [0, 927, 2, 928, 929, 930, 931, 932, 933],
-    [0, 934, 2, 935, 936, 937, -1, 938, 939],
-    [0, 940, 2, 941, 942, -1, 943, 944, 945],
-    [0, 946, 2, 947, 948, -1, 949, 950, 951],
-    [0, 952, 2, 953, 954, 955, 956, 957, 958],
-    [0, 959, 2, 960, 961, -1, 962, 963, 964],
-    [0, 965, 2, 966, 967, -1, 968, 969, 970],
-    [0, 971, 2, 972, 973, -1, 974, 975, 976],
-    [0, 977, 2, 978, 979, -1, 980, 981, 982],
-    [0, 983, 2, 984, 985, -1, 986, 987, 988],
-    [0, 989, 2, 990, 991, -1, 992, 993, 994],
-    [0, 995, 2, 996, 997, -1, 998, 999, 1000],
-    [0, 1001, 2, 1002, 1003, -1, 1004, 1005, 1006],
-    [0, 1007, 2, 1008, 1009, -1, 1010, 1011, 1012],
-    [0, 1013, 2, 1014, 1015, -1, 1016, 1017, 1018],
-    [0, 1019, 2, 1020, 1021, -1, 1022, 1023, 1024],
-    [0, 1025, 2, 1026, 1027, 1028, 1029, 1030, 1031],
+    [0, 654, 2, 655, 656, 657, 658, 659, 660],
+    [0, 661, 2, 662, 663, -1, 664, 665, 666],
+    [0, 667, 2, 668, 669, -1, 670, 671, 672],
+    [0, 673, 2, 674, 675, -1, -1, 676, 677],
+    [0, 678, 2, 679, 680, -1, 681, 682, 683],
+    [0, 684, 2, 685, 686, -1, 687, 688, 689],
+    [0, 690, 2, 691, 692, -1, 687, 693, 694],
+    [0, 695, 2, 696, 697, -1, 698, 699, 700],
+    [0, 701, 2, 702, 703, -1, 704, 705, 706],
+    [0, 707, 2, 708, 709, -1, 710, 711, 712],
+    [0, 713, 2, 714, 715, -1, 716, 717, 718],
+    [0, 719, 2, 720, 721, -1, 722, 723, 724],
+    [0, 725, 2, 726, 727, -1, 681, 728, 729],
+    [0, 730, 2, 731, 732, -1, 733, 734, 735],
+    [0, 736, 2, 737, 738, -1, 739, 740, 741],
+    [0, 742, 2, 743, 744, -1, 745, 746, 747],
+    [0, 748, 2, 749, 750, -1, 751, 752, 753],
+    [0, 754, 2, 755, 756, -1, 757, 758, 759],
+    [0, 760, 2, 761, 762, -1, 763, 764, 765],
+    [0, 766, 2, 767, 768, -1, 769, 770, 771],
+    [0, 772, 2, 773, 774, -1, 775, 776, 777],
+    [0, 778, 2, 779, 780, -1, -1, 781, 782],
+    [0, 783, 2, 784, 785, -1, -1, 786, 787],
+    [0, 788, 2, 789, 790, -1, 791, 792, 793],
+    [0, 794, 2, 795, 796, -1, 797, 798, 799],
+    [0, 800, 2, 801, 802, -1, 803, 804, 805],
+    [0, 806, 2, 807, 808, -1, 809, 810, 811],
+    [0, 812, 2, 813, 814, -1, -1, 815, 816],
+    [0, 817, 2, 818, 819, -1, -1, 820, 821],
+    [0, 822, 2, 823, 824, -1, -1, 825, 826],
+    [0, 827, 2, 828, 829, -1, -1, 830, 831],
+    [0, 832, 2, 833, 834, -1, 835, 836, 837],
+    [0, 838, 2, 839, 840, -1, -1, 841, 842],
+    [0, 843, 2, 844, 845, -1, 846, 847, 848],
+    [0, 849, 2, 850, 851, -1, 852, 853, 854],
+    [0, 855, 2, 856, 857, -1, 858, 859, 860],
+    [0, 861, 2, 862, 863, -1, 864, 865, 866],
+    [0, 867, 2, 868, 869, -1, 870, 871, 872],
+    [0, 873, 2, 874, 875, -1, -1, 876, 877],
+    [0, 878, 2, 879, 880, -1, 881, 882, 883],
+    [0, 884, 2, 885, 886, 887, 888, 889, 890],
+    [0, 891, 2, 892, 893, 894, 895, 896, 897],
+    [0, 898, 2, 899, 900, 894, 901, 902, 903],
+    [0, 904, 2, 905, 906, 894, 901, 907, 908],
+    [0, 909, 2, 910, 911, 894, 901, 912, 913],
+    [0, 914, 2, 915, 916, 917, 918, 919, 920],
+    [0, 921, 2, 922, 923, 924, 925, 926, 927],
+    [0, 928, 2, 929, 930, 931, 932, 933, 934],
+    [0, 935, 2, 936, 937, 938, 932, 939, 940],
+    [0, 941, 2, 942, 943, 944, 945, 946, 947],
+    [0, 948, 2, 949, 950, 951, 945, 952, 953],
+    [0, 954, 2, 955, 956, 957, 958, 959, 960],
+    [0, 961, 2, 962, 963, 964, 965, 966, 967],
+    [0, 968, 2, 969, 970, 971, 972, 973, 974],
+    [0, 975, 2, 976, 977, 957, 978, 979, 980],
+    [0, 981, 2, 982, 983, 984, 985, 986, 987],
+    [0, 988, 2, 989, 990, 991, 992, 993, 994],
+    [0, 995, 2, 996, 997, 998, 999, 1000, 1001],
+    [0, 1002, 2, 1003, 1004, 998, 1005, 1006, 1007],
+    [0, 1008, 2, 1009, 1010, 1011, 1012, 1013, 1014],
+    [0, 1015, 2, 1016, 1017, 1011, 1018, 1019, 1020],
+    [0, 1021, 2, 1022, 1023, 998, 1024, 1025, 1026],
+    [0, 1027, 2, 1028, 1029, 998, 999, 1030, 1031],
     [0, 1032, 2, 1033, 1034, 1035, 1036, 1037, 1038],
-    [0, 1039, 2, 1040, 1041, 1042, 1043, 1044, 1045],
-    [0, 1046, 2, 1047, 1048, 1049, 1050, 1051, 1052],
-    [0, 1053, 2, 1054, 1055, 1056, 1057, 1058, 1059],
-    [0, 1060, 2, 1061, 1062, 1063, 1064, 1065, 1066],
-    [0, 1067, 2, 1068, 1069, 1070, 1071, 1072, 1073],
-    [0, 1074, 2, 1075, 1076, 1077, 1071, 1078, 1079],
-    [0, 1080, 2, 1081, 1082, 1083, 1084, 1085, 1086],
-    [0, 1087, 2, 1088, 1089, 1090, 1091, 1092, 1093],
-    [0, 1094, 2, 1095, 1096, 1097, 1098, 1099, 1100],
-    [0, 1101, 2, 1102, 1103, 1104, 1105, 1106, 1107],
-    [0, 1108, 2, 1109, 1110, 1111, 1112, 1113, 1114],
-    [0, 1115, 2, 1116, 1117, 1118, 1119, 1120, 1121],
-    [0, 1122, 2, 1123, 1124, 1125, 1126, 1127, 1128],
-    [0, 1129, 2, 1130, 1131, 1125, 1132, 1133, 1134],
-    [0, 1135, 2, 1136, 1137, 1138, 1139, 1140, 1141],
-    [0, 1142, 2, 1143, 1144, 1145, 1146, 1147, 1148],
-    [0, 1149, 2, 1150, 1151, 1152, 1153, 1154, 1155],
-    [0, 1156, 2, 1157, 1158, 1159, 1160, 1161, 1162],
-    [0, 1163, 2, 1164, 1165, 1166, 1167, 1168, 1169],
-    [0, 1170, 2, 1171, 1172, 1173, 1174, 1175, 1176],
-    [0, 1177, 2, 1178, 1179, 1049, 1180, 1181, 1182],
-    [0, 1183, 2, 1184, 1185, 1186, 1187, 1188, 1189],
-    [0, 1190, 2, 1191, 1192, 1193, 1194, 1195, 1196],
-    [0, 1197, 2, 1198, 1199, 1200, 1201, 1202, 1203],
+    [0, 1039, 2, 1040, 1041, 1035, 1042, 1043, 1044],
+    [0, 1045, 2, 1046, 1047, 1035, 1048, 1049, 1050],
+    [0, 1051, 2, 1052, 1053, 1035, 1048, 1054, 1055],
+    [0, 1056, 2, 1057, 1058, 1059, 1060, 1061, 1062],
+    [0, 1063, 2, 1064, 1065, 1059, 1066, 1067, 1068],
+    [0, 1069, 2, 1070, 1071, 1035, 1048, 1072, 1073],
+    [0, 1074, 2, 1075, 1076, 1077, 1078, 1079, 1080],
+    [0, 1081, 2, 1082, 1083, 1084, -1, 1085, 1086],
+    [0, 1087, 2, 1088, 1089, -1, 1090, 1091, 1092],
+    [0, 1093, 2, 1094, 1095, -1, 1096, 1097, 1098],
+    [0, 1099, 2, 1100, 1101, 1102, 1103, 1104, 1105],
+    [0, 1106, 2, 1107, 1108, -1, 1109, 1110, 1111],
+    [0, 1112, 2, 1113, 1114, -1, 1115, 1116, 1117],
+    [0, 1118, 2, 1119, 1120, -1, 1121, 1122, 1123],
+    [0, 1124, 2, 1125, 1126, -1, 1127, 1128, 1129],
+    [0, 1130, 2, 1131, 1132, -1, 1133, 1134, 1135],
+    [0, 1136, 2, 1137, 1138, -1, 1139, 1140, 1141],
+    [0, 1142, 2, 1143, 1144, -1, 1145, 1146, 1147],
+    [0, 1148, 2, 1149, 1150, -1, 1151, 1152, 1153],
+    [0, 1154, 2, 1155, 1156, -1, 1157, 1158, 1159],
+    [0, 1160, 2, 1161, 1162, -1, 1163, 1164, 1165],
+    [0, 1166, 2, 1167, 1168, -1, 1169, 1170, 1171],
+    [0, 1172, 2, 1173, 1174, 1175, -1, 1176, 1177],
+    [0, 1178, 2, 1179, 1180, 1175, 1181, 1182, 1183],
+    [0, 1184, 2, 1185, 1186, 1187, 1188, 1189, 1190],
+    [0, 1191, 2, 1192, 1193, 1194, 1195, 1196, 1197],
+    [0, 1198, 2, 1199, 1200, 1187, 1201, 1202, 1203],
     [0, 1204, 2, 1205, 1206, 1207, 1208, 1209, 1210],
     [0, 1211, 2, 1212, 1213, 1214, 1215, 1216, 1217],
     [0, 1218, 2, 1219, 1220, 1221, 1222, 1223, 1224],
@@ -4713,171 +5684,245 @@
     [0, 1244, 2, 1245, 1246, 1228, 1247, 1248, 1249],
     [0, 1250, 2, 1251, 1252, 1228, 1253, 1254, 1255],
     [0, 1256, 2, 1257, 1258, 1228, 1259, 1260, 1261],
-    [0, 1262, 2, 1263, 1264, 1228, 1265, 1266, 1267],
-    [0, 1268, 2, 1269, 1270, 1228, 1271, 1272, 1273],
-    [0, 1274, 2, 1275, 1276, 1228, 1271, 1277, 1278],
-    [0, 1279, 2, 1280, 1281, 1228, 1282, 1283, 1284],
-    [0, 1285, 2, 1286, 1287, 1228, 1288, 1289, 1290],
-    [0, 1291, 2, 1292, 1293, 1228, 1294, 1295, 1296],
-    [0, 1297, 2, 1298, 1299, 1228, 1300, 1301, 1302],
-    [0, 1303, 2, 1304, 1305, 1228, 1306, 1307, 1308],
-    [0, 1309, 2, 1310, 1311, 1228, 1312, 1313, 1314],
-    [0, 1315, 2, 1316, 1317, 1228, 1318, 1319, 1320],
-    [0, 1321, 2, 1322, 1323, 1228, 1324, 1325, 1326],
-    [0, 1327, 2, 1328, 1329, 1228, 1330, 1331, 1332],
-    [0, 1333, 2, 1334, 1335, 1228, 1336, 1337, 1338],
-    [0, 1339, 2, 1340, 1341, 1228, 1342, 1343, 1344],
-    [0, 1345, 2, 1346, 1347, 1228, 1348, 1349, 1350],
-    [0, 1351, 2, 1352, 1353, 1228, 1354, 1355, 1356],
-    [0, 1357, 2, 1358, 1359, 1228, 1360, 1361, 1362],
-    [0, 1363, 2, 1364, 1365, 1228, 1366, 1367, 1368],
-    [0, 1369, 2, 1370, 1371, 1228, 1372, 1373, 1374],
-    [0, 1375, 2, 1376, 1377, 1228, 1378, 1379, 1380],
-    [0, 1381, 2, 1382, 1383, 1228, 1384, 1385, 1386],
-    [0, 1387, 2, 1388, 1389, 1228, 1390, 1391, 1392],
-    [0, 1393, 2, 1394, 1395, 1228, 1396, 1397, 1398],
-    [0, 1399, 2, 1400, 1401, 1228, 1402, 1403, 1404],
-    [0, 1405, 2, 1406, 1407, 1228, 1408, 1409, 1410],
-    [0, 1411, 2, 1412, 1413, 1228, 1414, 1415, 1416],
-    [0, 1417, 2, 1418, 1419, 1228, 1420, 1421, 1422],
-    [0, 1423, 2, 1424, 1425, 1228, 1426, 1427, 1428],
-    [0, 1429, 2, 1430, 1431, 1228, 1432, 1433, 1434],
-    [0, 1435, 2, 1436, 1437, -1, 1438, 1439, 1440],
-    [0, 1441, 2, 1442, 1443, -1, 1444, 1445, 1446],
-    [0, 1447, 2, 1448, 1449, -1, 1450, 1451, 1452],
-    [0, 1453, 2, 1454, 1455, -1, 1456, 1457, 1458],
-    [0, 1459, 2, 1460, 1461, -1, 1462, 1463, 1464],
-    [0, 1465, 2, 1466, 1467, -1, 1468, 1469, 1470],
-    [0, 1471, 2, 1472, 1473, -1, 1474, 1475, 1476],
-    [0, 1477, 2, 1478, 1479, -1, 1480, 1481, 1482],
-    [0, 1483, 2, 1484, 1485, -1, 1486, 1487, 1488],
-    [0, 1489, 2, 1490, 1491, -1, 1492, 1493, 1494],
-    [0, 1495, 2, 1496, 1497, -1, 1498, 1499, 1500],
-    [0, 1501, 2, 1502, 1503, -1, 1504, 1505, 1506],
-    [0, 1507, 2, 1508, 1509, -1, 1510, 1511, 1512],
-    [0, 1513, 2, 1514, 1515, -1, 1516, 1517, 1518],
-    [0, 1519, 2, 1520, 1521, -1, 1522, 1523, 1524],
-    [0, 1525, 2, 1526, 1527, -1, 1528, 1529, 1530],
-    [0, 1531, 2, 1532, 1533, -1, 1534, 1535, 1536],
-    [0, 1537, 2, 1538, 1539, -1, -1, 1540, 1541],
-    [0, 1542, 2, 1543, 1544, -1, 1545, 1546, 1547],
-    [0, 1548, 2, 1549, 1550, -1, 1551, 1552, 1553],
-    [0, 1554, 2, 1555, 1556, -1, 1557, 1558, 1559],
-    [0, 1560, 2, 1561, 1562, -1, 1563, 1564, 1565],
-    [0, 1566, 2, 1567, 1568, -1, 1569, 1570, 1571],
-    [0, 1572, 2, 1573, 1574, -1, 1575, 1576, 1577],
-    [0, 1578, 2, 1579, 1580, -1, 1581, 1582, 1583],
-    [0, 1584, 2, 1585, 1586, -1, 1587, 1588, 1589],
-    [0, 1590, 2, 1591, 1592, -1, -1, 1593, 1594],
-    [0, 1595, 2, 1596, 1597, -1, 1598, 1599, 1600],
-    [0, 1601, 2, 1602, 1603, -1, 1604, 1605, 1606],
-    [0, 1607, 2, 1608, 1609, -1, 1610, 1611, 1612],
-    [0, 1613, 2, 1614, 1615, -1, 1616, 1617, 1618],
-    [0, 1619, 2, 1620, 1621, -1, 1622, 1623, 1624],
-    [0, 1625, 2, 1626, 1627, -1, 1628, 1629, 1630],
-    [0, 1631, 2, 1632, 1633, -1, 1634, 1635, 1636],
-    [0, 1637, 2, 1638, 1639, -1, 1640, 1641, 1642],
-    [0, 1643, 2, 1644, 1645, -1, -1, 1646, 1647],
-    [0, 1648, 2, 1649, 1650, -1, 1651, 1652, 1653],
-    [0, 1654, 2, 1655, 1656, -1, 1657, 1658, 1659],
-    [0, 1660, 2, 1661, 1662, -1, 1663, 1664, 1665],
-    [0, 1666, 2, 1667, 1668, -1, 1669, 1670, 1671],
-    [0, 1672, 2, 1673, 1674, -1, 1675, 1676, 1677],
-    [0, 1678, 2, 1679, 1680, -1, 1681, 1682, 1683],
-    [0, 1684, 2, 1685, 1686, -1, 1687, 1688, 1689],
-    [0, 1690, 2, 1691, 1692, -1, 1693, 1694, 1695],
-    [0, 1696, 2, 1697, 1698, -1, 1699, 1700, 1701],
-    [0, 1702, 2, 1703, 1704, -1, 1705, 1706, 1707],
-    [0, 1708, 2, 1709, 1710, -1, -1, 1711, 1712],
-    [0, 1713, 2, 1714, 1715, -1, 1716, 1717, 1718],
-    [0, 1719, 2, 1720, 1721, -1, 1722, 1723, 1724],
-    [0, 1725, 2, 1726, 1727, -1, 1728, 1729, 1730],
-    [0, 1731, 2, 1732, 1733, -1, 1734, 1735, 1736],
-    [0, 1737, 2, 1738, 1739, -1, 1740, 1741, 1742],
-    [0, 1743, 2, 1744, 1745, -1, 1746, 1747, 1748],
-    [0, 1749, 2, 1750, 1751, -1, 1752, 1753, 1754],
-    [0, 1755, 2, 1756, 1757, -1, -1, 1758, 1759],
-    [0, 1760, 2, 1761, 1762, 1763, -1, 1764, 1765],
-    [0, 1766, 2, 1767, 1768, 1769, 1770, 1771, 1772],
-    [0, 1773, 2, 1774, 1775, 1776, 1777, 1778, 1779],
-    [0, 1780, 2, 1781, 1782, 1783, 1784, 1785, 1786],
-    [0, 1787, 2, 1788, 1789, 1790, -1, 1791, 1792],
-    [0, 1793, 2, 1794, 1795, 1796, 1797, 1798, 1799],
-    [0, 1800, 2, 1801, 1802, 1796, 1797, 1803, 1804],
-    [0, 1805, 2, 1806, 1807, 1808, 1809, 1810, 1811],
-    [0, 1812, 2, 1813, 1814, 1815, 1816, 1817, 1818],
-    [0, 1819, 2, 1820, 1821, 1815, 1822, 1823, 1824],
-    [0, 1825, 2, 1826, 1827, 1769, 1828, 1829, 1830],
-    [0, 1831, 2, 1832, 1833, 1763, 1834, 1835, 1836],
-    [0, 1837, 2, 1838, 1839, 1840, 1841, 1842, 1843],
-    [0, 1844, 2, 1845, 1846, 1847, -1, 1848, 1849],
-    [0, 1850, 2, 1851, 1852, 1853, 1854, 1855, 1856],
-    [0, 1857, 2, 1851, 1858, 1853, 1859, 1860, 1861],
-    [0, 1862, 2, 1851, 1863, 1853, 1864, 1865, 1866],
-    [0, 1867, 2, 1851, 1868, 1853, 1869, 1870, 1871],
-    [0, 1872, 2, 1851, 1873, 1853, 1874, 1875, 1876],
-    [0, 1877, 2, 1851, 1878, 1853, 1879, 1880, 1881],
-    [0, 1882, 2, 1851, 1883, 1853, 1884, 1885, 1886],
-    [0, 1887, 2, 1888, 1889, 1847, -1, 1890, 1891],
-    [0, 1892, 2, 1893, 1894, 1895, 1896, 1897, 1898],
-    [0, 1899, 2, 1900, 1901, 1808, 1902, 1903, 1904],
-    [0, 1905, 2, 1906, 1907, 1908, 1909, 1910, 1911],
-    [0, 1912, 2, 1913, 1914, 1895, 1915, 1916, 1917],
-    [0, 1918, 2, 1919, 1920, 1895, 1921, 1922, 1923],
-    [0, 1924, 2, 1925, 1926, 1895, 1915, 1927, 1928],
-    [0, 1929, 2, 1930, 1931, 1932, 1933, 1934, 1935],
-    [0, 1936, 2, 1937, 1938, 1939, 1940, 1941, 1942],
-    [0, 1943, 2, 1944, 1945, 1946, 1947, 1948, 1949],
-    [0, 1950, 2, 1951, 1952, 1953, 1954, 1955, 1956],
-    [0, 1957, 2, 1958, 1959, 1953, 1960, 1961, 1962],
-    [0, 1963, 2, 1964, 1965, 1966, 1967, 1968, 1969],
-    [0, 1970, 2, 1971, 1972, 1966, -1, 1973, 1974],
-    [0, 1975, 2, 1976, 1977, 1966, -1, 1978, 1979],
-    [0, 1980, 2, 1981, 1982, 1983, 1984, 1985, 1986],
-    [0, 1987, 2, 1988, 1989, 1990, 1991, 1992, 1993],
-    [0, 1994, 2, 1995, 1996, 1990, -1, 1997, 1998],
-    [0, 1999, 2, 2000, 2001, 2002, -1, 2003, 2004],
-    [0, 2005, 2, 2006, 2007, 2008, 2009, 2010, 2011],
-    [0, 2012, 2, 2013, 2014, 2008, 2015, 2016, 2017],
-    [0, 2018, 2, 2019, 2020, 1840, 2021, 2022, 2023],
-    [0, 2024, 2, 2025, 2026, -1, 2027, 2028, 2029],
-    [0, 2030, 2, 2031, 2032, -1, 2033, 2034, 2035],
-    [0, 2036, 2, 2037, 2038, -1, 2039, 2040, 2041],
-    [0, 2042, 2, 2043, 2044, -1, 2045, 2046, 2047],
-    [0, 2048, 2, 2049, 2050, -1, 2051, 2052, 2053],
-    [0, 2054, 2, 2055, 2056, -1, 2057, 2058, 2059],
-    [0, 2060, 2, 2061, 2062, -1, 2063, 2064, 2065],
-    [0, 2066, 2, 2067, 2068, -1, 2069, 2070, 2071],
-    [0, 2072, 2, 2073, 2074, -1, 2075, 2076, 2077],
-    [0, 2078, 2, 2079, 2080, -1, 2081, 2082, 2083],
-    [0, 2084, 2, 2085, 2086, -1, 2087, 2088, 2089],
-    [0, 2090, 2, 2091, 2092, -1, 2093, 2094, 2095],
-    [0, 2096, 2, 2097, 2098, -1, 2099, 2100, 2101],
-    [0, 2102, 2, 2103, 2104, -1, 2105, 2106, 2107],
-    [0, 2108, 2, 2109, 2110, -1, 2111, 2112, 2113],
-    [0, 2114, 2, 2115, 2116, -1, 2117, 2118, 2119],
-    [0, 2120, 2, 2121, 2122, -1, 2123, 2124, 2125],
-    [0, 2126, 2, 2127, 2128, -1, 2129, 2130, 2131],
-    [0, 2132, 2, 2133, 2134, -1, 2135, 2136, 2137],
-    [0, 2138, 2, 2139, 2140, -1, 2141, 2142, 2143],
-    [0, 2144, 2, 2145, 2146, -1, -1, 2147, 2148],
-    [0, 2149, 2, 2150, 2151, -1, -1, 2152, 2153],
-    [0, 2154, 2, 2155, 2156, -1, 2157, 2158, 2159],
-    [0, 2160, 2, 2161, 2162, -1, 2163, 2164, 2165],
-    [0, 2166, 2, 2167, 2168, -1, 2169, 2170, 2171],
-    [0, 2172, 2, 2173, 2174, -1, 2175, 2176, 2177],
-    [0, 2178, 2, 2179, 2180, -1, 2181, 2182, 2183],
-    [0, 2184, 2, 2185, 2186, -1, 2187, 2188, 2189],
-    [0, 2190, 2, 2191, 2192, -1, 2193, 2194, 2195],
-    [0, 2196, 2, 2197, 2198, 2199, -1, 2200, 2201],
-    [0, 2202, 2, 2203, 2204, 2199, 2205, 2206, 2207],
-    [0, 2208, 2, 2209, 2210, 2211, 2212, 2213, 2214],
-    [0, 2215, 2, 2216, 2217, 2218, 2219, 2220, 2221],
-    [0, 2222, 2, 2223, 2224, 2225, 2226, 2227, 2228],
-    [0, 2229, 2, 2230, 2231, 2232, 2233, 2234, 2235],
-    [0, 2236, 2, 2237, 2238, 2239, 2240, 2241, 2242],
-    [0, 2243, 2, 2244, 2245, 2246, 2247, 2248, 2249],
-    [0, 2250, 2, 2251, 2252, 787, 2253, 2254, 2255],
-    [0, 2256, 2, 2257, 2258, 787, 2259, 2260, 2261]
+    [0, 1262, 2, 1263, 1264, 1265, 1266, 1267, 1268],
+    [0, 1269, 2, 1270, 1271, 1265, 1272, 1273, 1274],
+    [0, 1275, 2, 1276, 1277, 1278, -1, 1279, 1280],
+    [0, 1281, 2, 1282, 1283, 1284, 1285, 1286, 1287],
+    [0, 1288, 2, 1289, 1290, 1291, 1292, 1293, 1294],
+    [0, 1295, 2, 1296, 1297, 1298, 1299, 1300, 1301],
+    [0, 1302, 2, 1303, 1304, 1298, 1299, 1305, 1306],
+    [0, 1307, 2, 1308, 1309, 1310, 1311, 1312, 1313],
+    [0, 1314, 2, 1315, 1316, 1317, 1318, 1319, 1320],
+    [0, 1321, 2, 1322, 1323, 1317, 1324, 1325, 1326],
+    [0, 1327, 2, 1328, 1329, 1291, 1330, 1331, 1332],
+    [0, 1333, 2, 1334, 1335, 1336, -1, 1337, 1338],
+    [0, 1339, 2, 1340, 1341, 1336, 1342, 1343, 1344],
+    [0, 1345, 2, 1346, 1347, 1336, 1348, 1349, 1350],
+    [0, 1351, 2, 1352, 1353, 1336, 1354, 1355, 1356],
+    [0, 1357, 2, 1358, 1359, 1336, 1360, 1361, 1362],
+    [0, 1363, 2, 1364, 1365, 1336, 1366, 1367, 1368],
+    [0, 1369, 2, 1370, 1371, 1372, 1373, 1374, 1375],
+    [0, 1376, 2, 1377, 1378, 1379, 1380, 1381, 1382],
+    [0, 1383, 2, 1384, 1385, 1386, 1387, 1388, 1389],
+    [0, 1390, 2, 1391, 1392, 1393, 1394, 1395, 1396],
+    [0, 1397, 2, 1398, 1399, 1393, 1400, 1401, 1402],
+    [0, 1403, 2, 1404, 1405, 1406, -1, 1407, 1408],
+    [0, 1409, 2, 1410, 1411, 1412, 1413, 1414, 1415],
+    [0, 1416, 2, 1417, 1418, 1419, 1420, 1421, 1422],
+    [0, 1423, 2, 1424, 1425, 1426, 1427, 1428, 1429],
+    [0, 1430, 2, 1431, 1432, 1433, 1434, 1435, 1436],
+    [0, 1437, 2, 1438, 1439, 1440, 1441, 1442, 1443],
+    [0, 1444, 2, 1445, 1446, 1447, -1, 1448, 1449],
+    [0, 1450, 2, 1451, 1452, 1453, 1454, 1455, 1456],
+    [0, 1457, 2, 1458, 1459, 1460, 1461, 1462, 1463],
+    [0, 1464, 2, 1465, 1466, 1467, -1, 1468, 1469],
+    [0, 1470, 2, 1471, 1472, 1473, 1474, 1475, 1476],
+    [0, 1477, 2, 1478, 1479, 1480, 1481, 1482, 1483],
+    [0, 1484, 2, 1485, 1486, 1487, 1488, 1489, 1490],
+    [0, 1491, 2, 1492, 1493, 1494, 1495, 1496, 1497],
+    [0, 1498, 2, 1499, 1500, 1501, 1502, 1503, 1504],
+    [0, 1505, 2, 1506, 1507, 1508, 1509, 1510, 1511],
+    [0, 1512, 2, 1513, 1514, 1515, 1516, 1517, 1518],
+    [0, 1519, 2, 1520, 1521, 1522, -1, 1523, 1524],
+    [0, 1525, 2, 1526, 1527, 1528, 1529, 1530, 1531],
+    [0, 1532, 2, 1533, 1534, 1535, 1536, 1537, 1538],
+    [0, 1539, 2, 1540, 1541, 1542, 1543, 1544, 1545],
+    [0, 1546, 2, 1547, 1548, 1549, 1550, 1551, 1552],
+    [0, 1553, 2, 1554, 1555, 1556, 1557, 1558, 1559],
+    [0, 1560, 2, 1561, 1562, 1563, 1557, 1564, 1565],
+    [0, 1566, 2, 1567, 1568, 1569, 1570, 1571, 1572],
+    [0, 1573, 2, 1574, 1575, 1576, 1577, 1578, 1579],
+    [0, 1580, 2, 1581, 1582, 1583, 1584, 1585, 1586],
+    [0, 1587, 2, 1588, 1589, 1590, 1591, 1592, 1593],
+    [0, 1594, 2, 1595, 1596, 1597, 1598, 1599, 1600],
+    [0, 1601, 2, 1602, 1603, 1604, 1605, 1606, 1607],
+    [0, 1608, 2, 1609, 1610, 1611, 1612, 1613, 1614],
+    [0, 1615, 2, 1616, 1617, 1611, 1618, 1619, 1620],
+    [0, 1621, 2, 1622, 1623, 1624, 1625, 1626, 1627],
+    [0, 1628, 2, 1629, 1630, 1631, 1632, 1633, 1634],
+    [0, 1635, 2, 1636, 1637, 1638, 1639, 1640, 1641],
+    [0, 1642, 2, 1643, 1644, 1645, 1646, 1647, 1648],
+    [0, 1649, 2, 1650, 1651, 1652, 1653, 1654, 1655],
+    [0, 1656, 2, 1657, 1658, 1659, 1660, 1661, 1662],
+    [0, 1663, 2, 1664, 1665, 1535, 1666, 1667, 1668],
+    [0, 1669, 2, 1670, 1671, 1672, 1673, 1674, 1675],
+    [0, 1676, 2, 1677, 1678, 1679, 1680, 1681, 1682],
+    [0, 1683, 2, 1684, 1685, 1686, 1687, 1688, 1689],
+    [0, 1690, 2, 1691, 1692, 1693, 1694, 1695, 1696],
+    [0, 1697, 2, 1698, 1699, 1700, 1701, 1702, 1703],
+    [0, 1704, 2, 1705, 1706, 1707, 1708, 1709, 1710],
+    [0, 1711, 2, 1712, 1713, 1714, 1715, 1716, 1717],
+    [0, 1718, 2, 1719, 1720, 1714, 1721, 1722, 1723],
+    [0, 1724, 2, 1725, 1726, 1714, 1727, 1728, 1729],
+    [0, 1730, 2, 1731, 1732, 1714, 1733, 1734, 1735],
+    [0, 1736, 2, 1737, 1738, 1714, 1739, 1740, 1741],
+    [0, 1742, 2, 1743, 1744, 1714, 1745, 1746, 1747],
+    [0, 1748, 2, 1749, 1750, 1714, 1751, 1752, 1753],
+    [0, 1754, 2, 1755, 1756, 1714, 1757, 1758, 1759],
+    [0, 1760, 2, 1761, 1762, 1714, 1757, 1763, 1764],
+    [0, 1765, 2, 1766, 1767, 1714, 1768, 1769, 1770],
+    [0, 1771, 2, 1772, 1773, 1714, 1774, 1775, 1776],
+    [0, 1777, 2, 1778, 1779, 1714, 1780, 1781, 1782],
+    [0, 1783, 2, 1784, 1785, 1714, 1786, 1787, 1788],
+    [0, 1789, 2, 1790, 1791, 1714, 1792, 1793, 1794],
+    [0, 1795, 2, 1796, 1797, 1714, 1798, 1799, 1800],
+    [0, 1801, 2, 1802, 1803, 1714, 1804, 1805, 1806],
+    [0, 1807, 2, 1808, 1809, 1714, 1810, 1811, 1812],
+    [0, 1813, 2, 1814, 1815, 1714, 1816, 1817, 1818],
+    [0, 1819, 2, 1820, 1821, 1714, 1822, 1823, 1824],
+    [0, 1825, 2, 1826, 1827, 1714, 1828, 1829, 1830],
+    [0, 1831, 2, 1832, 1833, 1714, 1834, 1835, 1836],
+    [0, 1837, 2, 1838, 1839, 1714, 1840, 1841, 1842],
+    [0, 1843, 2, 1844, 1845, 1714, 1846, 1847, 1848],
+    [0, 1849, 2, 1850, 1851, 1714, 1852, 1853, 1854],
+    [0, 1855, 2, 1856, 1857, 1714, 1858, 1859, 1860],
+    [0, 1861, 2, 1862, 1863, 1714, 1864, 1865, 1866],
+    [0, 1867, 2, 1868, 1869, 1714, 1870, 1871, 1872],
+    [0, 1873, 2, 1874, 1875, 1714, 1876, 1877, 1878],
+    [0, 1879, 2, 1880, 1881, 1714, 1882, 1883, 1884],
+    [0, 1885, 2, 1886, 1887, 1714, 1888, 1889, 1890],
+    [0, 1891, 2, 1892, 1893, 1714, 1894, 1895, 1896],
+    [0, 1897, 2, 1898, 1899, 1714, 1900, 1901, 1902],
+    [0, 1903, 2, 1904, 1905, 1714, 1906, 1907, 1908],
+    [0, 1909, 2, 1910, 1911, 1714, 1912, 1913, 1914],
+    [0, 1915, 2, 1916, 1917, 1714, 1918, 1919, 1920],
+    [0, 1921, 2, 1922, 1923, -1, 1924, 1925, 1926],
+    [0, 1927, 2, 1928, 1929, -1, 1930, 1931, 1932],
+    [0, 1933, 2, 1934, 1935, -1, 1936, 1937, 1938],
+    [0, 1939, 2, 1940, 1941, -1, 1942, 1943, 1944],
+    [0, 1945, 2, 1946, 1947, -1, 1948, 1949, 1950],
+    [0, 1951, 2, 1952, 1953, -1, 1954, 1955, 1956],
+    [0, 1957, 2, 1958, 1959, -1, 1960, 1961, 1962],
+    [0, 1963, 2, 1964, 1965, -1, 1966, 1967, 1968],
+    [0, 1969, 2, 1970, 1971, -1, 1972, 1973, 1974],
+    [0, 1975, 2, 1976, 1977, -1, 1978, 1979, 1980],
+    [0, 1981, 2, 1982, 1983, -1, 1984, 1985, 1986],
+    [0, 1987, 2, 1988, 1989, -1, 1990, 1991, 1992],
+    [0, 1993, 2, 1994, 1995, -1, 1996, 1997, 1998],
+    [0, 1999, 2, 2000, 2001, -1, 2002, 2003, 2004],
+    [0, 2005, 2, 2006, 2007, -1, 2008, 2009, 2010],
+    [0, 2011, 2, 2012, 2013, -1, 2014, 2015, 2016],
+    [0, 2017, 2, 2018, 2019, -1, 2020, 2021, 2022],
+    [0, 2023, 2, 2024, 2025, -1, -1, 2026, 2027],
+    [0, 2028, 2, 2029, 2030, -1, 2031, 2032, 2033],
+    [0, 2034, 2, 2035, 2036, -1, 2037, 2038, 2039],
+    [0, 2040, 2, 2041, 2042, -1, 2043, 2044, 2045],
+    [0, 2046, 2, 2047, 2048, -1, 2049, 2050, 2051],
+    [0, 2052, 2, 2053, 2054, -1, 2055, 2056, 2057],
+    [0, 2058, 2, 2059, 2060, -1, 2061, 2062, 2063],
+    [0, 2064, 2, 2065, 2066, -1, 2067, 2068, 2069],
+    [0, 2070, 2, 2071, 2072, -1, 2073, 2074, 2075],
+    [0, 2076, 2, 2077, 2078, -1, -1, 2079, 2080],
+    [0, 2081, 2, 2082, 2083, -1, 2084, 2085, 2086],
+    [0, 2087, 2, 2088, 2089, -1, 2090, 2091, 2092],
+    [0, 2093, 2, 2094, 2095, -1, 2096, 2097, 2098],
+    [0, 2099, 2, 2100, 2101, -1, 2102, 2103, 2104],
+    [0, 2105, 2, 2106, 2107, -1, 2108, 2109, 2110],
+    [0, 2111, 2, 2112, 2113, -1, 2114, 2115, 2116],
+    [0, 2117, 2, 2118, 2119, -1, 2120, 2121, 2122],
+    [0, 2123, 2, 2124, 2125, -1, 2126, 2127, 2128],
+    [0, 2129, 2, 2130, 2131, -1, -1, 2132, 2133],
+    [0, 2134, 2, 2135, 2136, -1, 2137, 2138, 2139],
+    [0, 2140, 2, 2141, 2142, -1, 2143, 2144, 2145],
+    [0, 2146, 2, 2147, 2148, -1, 2149, 2150, 2151],
+    [0, 2152, 2, 2153, 2154, -1, 2155, 2156, 2157],
+    [0, 2158, 2, 2159, 2160, -1, 2161, 2162, 2163],
+    [0, 2164, 2, 2165, 2166, -1, 2167, 2168, 2169],
+    [0, 2170, 2, 2171, 2172, -1, 2173, 2174, 2175],
+    [0, 2176, 2, 2177, 2178, -1, 2179, 2180, 2181],
+    [0, 2182, 2, 2183, 2184, -1, 2185, 2186, 2187],
+    [0, 2188, 2, 2189, 2190, -1, 2191, 2192, 2193],
+    [0, 2194, 2, 2195, 2196, -1, -1, 2197, 2198],
+    [0, 2199, 2, 2200, 2201, -1, 2202, 2203, 2204],
+    [0, 2205, 2, 2206, 2207, -1, 2208, 2209, 2210],
+    [0, 2211, 2, 2212, 2213, -1, 2214, 2215, 2216],
+    [0, 2217, 2, 2218, 2219, -1, 2220, 2221, 2222],
+    [0, 2223, 2, 2224, 2225, -1, 2226, 2227, 2228],
+    [0, 2229, 2, 2230, 2231, -1, 2232, 2233, 2234],
+    [0, 2235, 2, 2236, 2237, -1, 2238, 2239, 2240],
+    [0, 2241, 2, 2242, 2243, -1, -1, 2244, 2245],
+    [0, 2246, 2, 2247, 2248, 2249, -1, 2250, 2251],
+    [0, 2252, 2, 2253, 2254, 2255, 2256, 2257, 2258],
+    [0, 2259, 2, 2260, 2261, 2262, 2263, 2264, 2265],
+    [0, 2266, 2, 2267, 2268, 2269, 2270, 2271, 2272],
+    [0, 2273, 2, 2274, 2275, 2276, -1, 2277, 2278],
+    [0, 2279, 2, 2280, 2281, 2282, 2283, 2284, 2285],
+    [0, 2286, 2, 2287, 2288, 2282, 2283, 2289, 2290],
+    [0, 2291, 2, 2292, 2293, 2294, 2295, 2296, 2297],
+    [0, 2298, 2, 2299, 2300, 2301, 2302, 2303, 2304],
+    [0, 2305, 2, 2306, 2307, 2301, 2308, 2309, 2310],
+    [0, 2311, 2, 2312, 2313, 2255, 2314, 2315, 2316],
+    [0, 2317, 2, 2318, 2319, 2249, 2320, 2321, 2322],
+    [0, 2323, 2, 2324, 2325, 2326, 2327, 2328, 2329],
+    [0, 2330, 2, 2331, 2332, 2333, -1, 2334, 2335],
+    [0, 2336, 2, 2337, 2338, 2339, 2340, 2341, 2342],
+    [0, 2343, 2, 2337, 2344, 2339, 2345, 2346, 2347],
+    [0, 2348, 2, 2337, 2349, 2339, 2350, 2351, 2352],
+    [0, 2353, 2, 2337, 2354, 2339, 2355, 2356, 2357],
+    [0, 2358, 2, 2337, 2359, 2339, 2360, 2361, 2362],
+    [0, 2363, 2, 2337, 2364, 2339, 2365, 2366, 2367],
+    [0, 2368, 2, 2337, 2369, 2339, 2370, 2371, 2372],
+    [0, 2373, 2, 2374, 2375, 2333, -1, 2376, 2377],
+    [0, 2378, 2, 2379, 2380, 2381, 2382, 2383, 2384],
+    [0, 2385, 2, 2386, 2387, 2294, 2388, 2389, 2390],
+    [0, 2391, 2, 2392, 2393, 2394, 2395, 2396, 2397],
+    [0, 2398, 2, 2399, 2400, 2381, 2401, 2402, 2403],
+    [0, 2404, 2, 2405, 2406, 2381, 2407, 2408, 2409],
+    [0, 2410, 2, 2411, 2412, 2381, 2401, 2413, 2414],
+    [0, 2415, 2, 2416, 2417, 2418, 2419, 2420, 2421],
+    [0, 2422, 2, 2423, 2424, 2425, 2426, 2427, 2428],
+    [0, 2429, 2, 2430, 2431, 2432, 2433, 2434, 2435],
+    [0, 2436, 2, 2437, 2438, 2439, 2440, 2441, 2442],
+    [0, 2443, 2, 2444, 2445, 2439, 2446, 2447, 2448],
+    [0, 2449, 2, 2450, 2451, 2452, 2453, 2454, 2455],
+    [0, 2456, 2, 2457, 2458, 2452, -1, 2459, 2460],
+    [0, 2461, 2, 2462, 2463, 2452, -1, 2464, 2465],
+    [0, 2466, 2, 2467, 2468, 2469, 2470, 2471, 2472],
+    [0, 2473, 2, 2474, 2475, 2476, 2477, 2478, 2479],
+    [0, 2480, 2, 2481, 2482, 2476, -1, 2483, 2484],
+    [0, 2485, 2, 2486, 2487, 2488, -1, 2489, 2490],
+    [0, 2491, 2, 2492, 2493, 2494, 2495, 2496, 2497],
+    [0, 2498, 2, 2499, 2500, 2494, 2501, 2502, 2503],
+    [0, 2504, 2, 2505, 2506, 2326, 2507, 2508, 2509],
+    [0, 2510, 2, 2511, 2512, -1, 2513, 2514, 2515],
+    [0, 2516, 2, 2517, 2518, -1, 2519, 2520, 2521],
+    [0, 2522, 2, 2523, 2524, -1, 2525, 2526, 2527],
+    [0, 2528, 2, 2529, 2530, -1, 2531, 2532, 2533],
+    [0, 2534, 2, 2535, 2536, -1, 2537, 2538, 2539],
+    [0, 2540, 2, 2541, 2542, -1, 2543, 2544, 2545],
+    [0, 2546, 2, 2547, 2548, -1, 2549, 2550, 2551],
+    [0, 2552, 2, 2553, 2554, -1, 2555, 2556, 2557],
+    [0, 2558, 2, 2559, 2560, -1, 2561, 2562, 2563],
+    [0, 2564, 2, 2565, 2566, -1, 2567, 2568, 2569],
+    [0, 2570, 2, 2571, 2572, -1, 2573, 2574, 2575],
+    [0, 2576, 2, 2577, 2578, -1, 2579, 2580, 2581],
+    [0, 2582, 2, 2583, 2584, -1, 2585, 2586, 2587],
+    [0, 2588, 2, 2589, 2590, -1, 2591, 2592, 2593],
+    [0, 2594, 2, 2595, 2596, -1, 2597, 2598, 2599],
+    [0, 2600, 2, 2601, 2602, -1, 2603, 2604, 2605],
+    [0, 2606, 2, 2607, 2608, -1, 2609, 2610, 2611],
+    [0, 2612, 2, 2613, 2614, -1, 2615, 2616, 2617],
+    [0, 2618, 2, 2619, 2620, -1, 2621, 2622, 2623],
+    [0, 2624, 2, 2625, 2626, -1, 2627, 2628, 2629],
+    [0, 2630, 2, 2631, 2632, -1, -1, 2633, 2634],
+    [0, 2635, 2, 2636, 2637, -1, -1, 2638, 2639],
+    [0, 2640, 2, 2641, 2642, -1, 2643, 2644, 2645],
+    [0, 2646, 2, 2647, 2648, -1, 2649, 2650, 2651],
+    [0, 2652, 2, 2653, 2654, -1, 2655, 2656, 2657],
+    [0, 2658, 2, 2659, 2660, -1, 2661, 2662, 2663],
+    [0, 2664, 2, 2665, 2666, -1, 2667, 2668, 2669],
+    [0, 2670, 2, 2671, 2672, -1, 2673, 2674, 2675],
+    [0, 2676, 2, 2677, 2678, -1, 2679, 2680, 2681],
+    [0, 2682, 2, 2683, 2684, 2685, -1, 2686, 2687],
+    [0, 2688, 2, 2689, 2690, 2691, -1, 2692, 2693],
+    [0, 2694, 2, 2695, 2696, 2691, 2697, 2698, 2699],
+    [0, 2700, 2, 2701, 2702, 2703, 2704, 2705, 2706],
+    [0, 2707, 2, 2708, 2709, 2710, 2711, 2712, 2713],
+    [0, 2714, 2, 2715, 2716, 2717, 2718, 2719, 2720],
+    [0, 2721, 2, 2722, 2723, 2724, 2725, 2726, 2727],
+    [0, 2728, 2, 2729, 2730, 2731, 2732, 2733, 2734],
+    [0, 2735, 2, 2736, 2737, 2738, 2739, 2740, 2741],
+    [0, 2742, 2, 2743, 2744, 887, 2745, 2746, 2747],
+    [0, 2748, 2, 2749, 2750, 887, 2751, 2752, 2753]
   ]
 }
