@@ -8,6 +8,7 @@ import {
 import {
   commitBranch,
   commitFromBranch,
+  git,
   initializeMavenProject,
   kotlinE2eEnabled,
   kotlinPolicy,
@@ -25,6 +26,13 @@ const RUNTIME_SERIALIZATION = `    <dependency>
       <scope>runtime</scope>
     </dependency>
   </dependencies>`;
+const DISTRIBUTION = `  <distributionManagement>
+    <repository>
+      <id>releases</id>
+      <url>file:///tmp/nitpicker-releases</url>
+    </repository>
+  </distributionManagement>
+</project>`;
 
 function reviewFindings(findings) {
   return findings
@@ -87,6 +95,21 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules on Maven end to e
 
     expect(reviewFindings(result.newEnforceable)).toEqual(
       EXPECTED_REVIEW_FINDINGS.filter((entry) => entry !== 'unused-option Envelope.retries'),
+    );
+  });
+
+  it('counts the tests of a published module as callers of its public functions', () => {
+    const pom = git(project, 'show', 'main:pom.xml');
+    commitFromBranch(project, {
+      name: 'published',
+      from: 'review-rules',
+      files: { 'pom.xml': pom.replace('</project>', DISTRIBUTION) },
+    });
+
+    const result = mavenDiffOf(project, 'published');
+
+    expect(reviewFindings(result.newEnforceable)).toEqual(
+      EXPECTED_REVIEW_FINDINGS.filter((entry) => entry !== 'unused-option price.discount'),
     );
   });
 });

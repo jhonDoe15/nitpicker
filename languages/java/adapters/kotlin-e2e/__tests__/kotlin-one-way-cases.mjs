@@ -140,6 +140,7 @@ export function defineHostileConfigCases(fixture, failureRule) {
       'Wildcard.kt',
     ]);
     expect(extras.map(({ rule, path: file }) => `${rule} ${path.basename(file)}`).sort()).toEqual([
+      'UnsafeCastOperator Compiler.kt',
       'changed-branch-coverage Qualified.kt',
       'changed-branch-coverage Wildcard.kt',
       'detekt.style.ForbiddenMethodCall Annotated.kt',
@@ -158,6 +159,19 @@ export function defineHostileConfigCases(fixture, failureRule) {
       'ktlint.standard:class-signature Holder.kt',
       'ktlint.standard:kdoc Hidden.kt',
       'ktlint.standard:no-wildcard-imports Wildcard.kt',
+      ...[
+        'Annotated',
+        'Compiler',
+        'Compiler',
+        'Exiter',
+        'Hidden',
+        'Printer',
+        'Qualified',
+        'Qualified',
+        'Sleeper',
+        'Wildcard',
+        'Wildcard',
+      ].map((name) => `mutant-nocoverage ${name}.kt`),
     ]);
   });
   it('adds the forbidden calls a project lists to the preset ones, and keeps the preset reason of a call both list', () => {

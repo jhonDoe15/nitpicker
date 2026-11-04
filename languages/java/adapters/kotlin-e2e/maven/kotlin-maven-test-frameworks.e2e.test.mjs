@@ -30,8 +30,8 @@ const plusOneMutants = (rule) => [
 ];
 
 const HALF_AND_PLUS_ONE_UNTESTED = [
-  `jacoco uncovered-method ${CALC} cov:53b7298b94726611`,
-  `jacoco uncovered-method ${CALC} cov:fd0dc3be1c95084e`,
+  `jacoco uncovered-method ${CALC} cov:demo.Calc#plusOne(I)I`,
+  `jacoco uncovered-method ${CALC} cov:demo.Calc#half(I)I`,
   ...halfMutants('mutant-nocoverage'),
   ...plusOneMutants('mutant-nocoverage'),
   'pit mutation-summary . status:Killed 2',
@@ -77,7 +77,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven: each test framework'
       [
         ARCHUNIT,
         `jacoco line-coverage ${CALC} line-coverage 75`,
-        `jacoco uncovered-method ${CALC} cov:fd0dc3be1c95084e`,
+        `jacoco uncovered-method ${CALC} cov:demo.Calc#half(I)I`,
         ...halfMutants('mutant-nocoverage'),
         ...plusOneMutants('mutant-survived'),
         'pit mutation-summary . status:Killed 2',

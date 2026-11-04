@@ -47,6 +47,10 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset on Maven on a base whose tests
         'ktlint ktlint.standard:function-signature Bad.kt',
         'ktlint ktlint.standard:function-signature Bad.kt',
         'ktlint ktlint.standard:function-signature Bad.kt',
+        'pit mutant-nocoverage Bad.kt',
+        'pit mutant-nocoverage Bad.kt',
+        'pit mutant-nocoverage Bad.kt',
+        'pit mutant-nocoverage Bad.kt',
       ],
     },
   });
