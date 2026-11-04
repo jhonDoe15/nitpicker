@@ -2128,9 +2128,10 @@ To always type check with the project's own TypeScript, set the engine:
 
 The engine also picks the compiler Stryker checks mutants with in a comparison. With `native`,
 mutants that do not compile are found with TypeScript 7 (Stryker's native checker), which starts
-much faster; mutation on a small change takes about half as long. It falls back to TypeScript 6
-under the same conditions as the type check, and also under Deno and Bun, where Stryker cannot
-start TypeScript 7. A full run (`--all`) keeps the TypeScript 6 checker, because it checks related
+much faster; mutation on a small change takes about half as long. It uses nitpicker's own
+TypeScript 7, also on a TypeScript 7 project. It falls back to TypeScript 6 under the same
+conditions as the type check, for a selected project config with `references`, and under Deno and
+Bun, where Stryker cannot start TypeScript 7. A full run (`--all`) keeps the TypeScript 6 checker, because it checks related
 mutants together and stays faster once a run has thousands of mutants. Both checkers find the same
 compile errors, so the choice changes how long mutation takes, not its findings.
 
