@@ -2,7 +2,7 @@ import { existsSync, readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { hash, nextOccurrence } from '../../../../../shared/rules/finding-helpers.mjs';
-import { braceDepths, lineOf, lineText, scanKotlinSource } from './kotlin-source.mjs';
+import { lineOf, lineText, scanKotlinSource } from './kotlin-source.mjs';
 import { CAST_MESSAGES, unsafeCasts } from './casts/unsafe-casts.mjs';
 import { REPEATED_STRING_MESSAGE, repeatedStringLiterals } from './literals/repeated-strings.mjs';
 import {
