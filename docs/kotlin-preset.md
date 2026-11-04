@@ -1531,7 +1531,7 @@ mutants are descriptive, as on Gradle.
 
 **Tests.** The Maven Kotlin unit tests sit next to the code (`kotlin-roots.test.mjs`,
 `kotlin-setup.test.mjs`, `java-classes.test.mjs`, `tools/kotlin-arguments.test.mjs`,
-`module/maven-module-kotlin.test.mjs`, `configuration/toolchain-jdk.test.mjs`) and use the
+`module/maven-module-kotlin.test.mjs`, `configuration/toolchain/toolchain-jdk.test.mjs`) and use the
 fixture `languages/java/maven/fixtures/kotlin-single`; the real-Maven end-to-end suites are in
 [Tests](#tests).
 

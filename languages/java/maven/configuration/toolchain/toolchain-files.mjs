@@ -1,7 +1,7 @@
 import { existsSync } from 'node:fs';
 import path from 'node:path';
-import { runMaven } from '../maven-command.mjs';
-import { readInside } from '../../../../shared/conventions/read-inside.mjs';
+import { runMaven } from '../../maven-command.mjs';
+import { readInside } from '../../../../../shared/conventions/read-inside.mjs';
 
 const MAVEN_CONFIG = '.mvn/maven.config';
 const USER_OPTIONS = ['-t', '--toolchains'];

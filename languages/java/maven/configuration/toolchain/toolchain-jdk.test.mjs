@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { parseXml } from '../../../../shared/ingest/common.mjs';
+import { parseXml } from '../../../../../shared/ingest/common.mjs';
 import { jdkRequirements, toolchainJdkHome } from './toolchain-jdk.mjs';
 
 const homes = [];

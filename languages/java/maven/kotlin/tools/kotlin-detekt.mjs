@@ -5,7 +5,7 @@ import { javaCommand, runJava } from '../../maven-command.mjs';
 import { EMPTY_SARIF, kotlinFiles, lintedRoots } from './kotlin-files.mjs';
 import { writeKotlinNotes } from '../../../adapters/reporting/kotlin-notes.mjs';
 import { GRADLE_DIRECTORY } from '../../../builds/java-build.mjs';
-import { toolchainJdkHome } from '../../configuration/toolchain-jdk.mjs';
+import { toolchainJdkHome } from '../../configuration/toolchain/toolchain-jdk.mjs';
 
 const DETEKT_DIRECTORY = path.resolve(GRADLE_DIRECTORY, '../detekt');
 const FINDINGS_EXIT_CODE = 2;
