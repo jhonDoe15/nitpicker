@@ -1,6 +1,10 @@
 import { rulesCases } from './define.mjs';
 
 export const RULES_CASES = [
+  ...rulesCases('type-laundering', [
+    ['type-cast', 'isinstance'],
+    ['explicit-any', 'ParamSpec'],
+  ]),
   ...rulesCases('cancellation', [['cancellation-not-propagated', 'bare `raise`']]),
   ...rulesCases('sql-queries', [['sql-string-formatting', 'query parameters']]),
   ...rulesCases('tls-verification', [['tls-verification-off', 'trust the certificate authority']]),
@@ -46,7 +50,10 @@ export const RULES_CASES = [
   ...rulesCases('catch-log-without-exception', [
     ['catch-log-without-exception', 'logger.exception'],
   ]),
-  ...rulesCases('real-clock-test', [['real-clock-in-test', 'freeze']]),
+  ...rulesCases('real-clock-test', [
+    ['real-clock-in-test', 'freeze'],
+    ['real-clock-in-test', 'tzinfo=timezone.utc'],
+  ]),
   ...rulesCases('random-test', [['random-in-test', 'seed']]),
   ...rulesCases('network-test', [['network-in-test', 'fake']]),
   ...rulesCases('uncollected-tests', [['uncollected-tests', 'python_files']]),

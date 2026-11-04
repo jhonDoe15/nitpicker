@@ -205,6 +205,29 @@ export function pitClasspath(tools, testRuntime) {
   ];
 }
 
+export function javaArgumentFile(args) {
+  return args
+    .map((argument) => {
+      const escaped = argument
+        .replaceAll('\\', '\\\\')
+        .replaceAll('"', '\\"')
+        .replaceAll('\n', '\\n')
+        .replaceAll('\r', '\\r');
+      return `"${escaped}"\n`;
+    })
+    .join('');
+}
+
+function pitArgLine(pitDir, args) {
+  if (args.length === 0) {
+    return [];
+  }
+  const file = path.join(pitDir, 'jvm-arguments');
+  writeFileSync(file, javaArgumentFile(args));
+  const quote = file.includes('"') ? "'" : '"';
+  return ['--argLine', `${quote}@${file}${quote}`];
+}
+
 export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn }) {
   const pitDir = path.join(reportDir, 'pit');
   rmSync(pitDir, { recursive: true, force: true });
@@ -240,6 +263,7 @@ export function runPit({ module, reportDir, tools, classpaths, isArchunit, spawn
       'false',
       '--verbose',
       'false',
+      ...pitArgLine(pitDir, module.testJvmArgs),
     ],
     cwd: module.basedir,
     accept: (result) => result.status === 0,
