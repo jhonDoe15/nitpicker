@@ -78,12 +78,6 @@ export function outputRootFor(projectRoot, outputOption, kind) {
     : path.resolve(projectRoot, outputOption);
 }
 
-export function prepareDiffOutputRoot(projectRoot, outputOption) {
-  const outputRoot = outputRootFor(projectRoot, outputOption, 'diff');
-  clearDiffReports(outputRoot);
-  return outputRoot;
-}
-
 export function writeDiffReports(outputRoot, report, { projectPath, repositoryRoot } = {}) {
   return writeReports(outputRoot, DIFF_REPORTS, {
     report,
