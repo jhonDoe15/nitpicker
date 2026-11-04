@@ -6,7 +6,9 @@ import { oxlintBinary } from './oxlint-process.mjs';
 import { rejectedRuleIds } from './oxlint-translation.mjs';
 import { createProject, lintProject, TYPED_POLICY } from './test-support/oxlint-project.mjs';
 
+const PLUGIN = import.meta.resolve('../../preset/eslint-plugin/index.mjs');
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
+import { nitpickerRules } from ${JSON.stringify(PLUGIN)};
 
 const local = {
   rules: {
@@ -27,8 +29,9 @@ export default [
   {
     files: ['src/**/*.ts'],
     languageOptions: { parser: tseslint.parser },
-    plugins: { local },
+    plugins: { local, nitpicker: nitpickerRules },
     rules: {
+      'nitpicker/require-atomic-updates': ['error', { allowProperties: false }],
       'no-debugger': 'error',
       'no-irregular-whitespace': 'error',
       'local/no-foo': 'error',
@@ -39,6 +42,9 @@ export default [
 `;
 
 const SOURCES = {
+  'src/atomic.ts': 'export async function update(state, load) { state.total += await load(); }',
+  'src/atomic-local.ts':
+    'export async function update(req, verify) { const user = await verify(req.token); req.user = user; }',
   'src/plain.ts': "// eslint-disable-next-line no-debugger\ndebugger;\nconst é = 'ü'; debugger;\n",
   'src/strict/locked.ts': '/* eslint-disable */\ndebugger;\nexport const foo = 1;\n',
   'src/[id].ts': 'debugger;\n',
@@ -67,6 +73,13 @@ afterAll(() => {
 });
 
 describe('lintWithOxlint', () => {
+  it('runs the atomic-update code-path rule through the existing engine', () => {
+    expect(messagesOf('src/atomic.ts')).toEqual([
+      { ruleId: 'nitpicker/require-atomic-updates', line: 1, column: 45 },
+    ]);
+    expect(messagesOf('src/atomic-local.ts')).toEqual([]);
+  });
+
   it('honors disable comments and reports columns in UTF-16 units like ESLint', () => {
     expect(messagesOf('src/plain.ts')).toEqual([{ ruleId: 'no-debugger', line: 3, column: 16 }]);
   });

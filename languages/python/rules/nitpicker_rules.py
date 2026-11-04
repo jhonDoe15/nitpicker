@@ -17,7 +17,7 @@ def load_checks():
     sys.path.insert(0, HERE)
     from boundary import domain_types, guards, paths
     from checks import comments, declarations, parameters, shell, state
-    from concurrency import fan_out
+    from concurrency import atomic_updates, fan_out
     from discovery import helpers, uncollected
     from effects import import_time, reach
     from environment import domain_imports, environment, purity
@@ -43,6 +43,7 @@ def load_checks():
         domain_imports,
         import_time,
         state,
+        atomic_updates,
         shell,
         sql,
         tls,

@@ -40,6 +40,9 @@ const THROW_ERROR_HINT = 'Throw an Error subclass.';
 
 const THROW_ERROR_TEST_HINT = `${THROW_ERROR_HINT} A test double that must throw a non-Error value types it \`unknown\`: \`const value: unknown = 7; throw value;\`.`;
 
+const ATOMIC_UPDATE_HINT =
+  ' Another call can change it during the `await`, and this write then overwrites that change. Await the new value into a local first and then read and write the shared state in one step with no `await` between them (`const delta = await load(); state.total += delta;`). A lock or a queue around the update is not recognized: when the state is already serialized or confined to one task, add a reviewed exception.';
+
 const NO_ASSERTIONS_TEXT = 'Test has no assertions';
 
 const NO_ASSERTIONS_HINT = `${NO_ASSERTIONS_TEXT}. Call \`expect\` in the test body: asserting helpers do not count, so return the value and \`expect\` it in the test.`;
@@ -216,6 +219,7 @@ const MESSAGE_REWRITERS = new Map([
   ['@typescript-eslint/no-floating-promises', floatingPromiseMessage],
   ['nitpicker/naming-convention', appendHint(NAMING_HINT)],
   ['@typescript-eslint/explicit-module-boundary-types', boundaryTypesMessage],
+  ['nitpicker/require-atomic-updates', appendHint(ATOMIC_UPDATE_HINT)],
   ['no-eval', () => EVAL_MESSAGE],
   ['no-param-reassign', appendHint(PARAM_REASSIGN_HINT)],
   ['@typescript-eslint/no-unused-vars', unusedVariableMessage],

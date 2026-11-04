@@ -35,6 +35,10 @@
     "`<name>` uses `Any` in domain code",
     "One of the checks of nitpicker's own Python script. It runs on the Python source and tests and names one allowed form.",
     "Use the real type, a `Protocol`, a `TypeVar` or a frozen dataclass; parse untrusted data at the boundary so the domain only sees typed values.",
+    "atomic-update-across-await",
+    { "key": "python.exceptions", "rule": "atomic-update-across-await" },
+    "`<name>` is updated from a value read before an `await`: another task can change it while this one is suspended, and the write then overwrites that change",
+    "Await the new value into a local first and read and write the shared state in one step with no `await` between them (`delta = await fetch()` then `self.total += delta`), or serialize the whole update with one lock that every task shares (`self.lock = asyncio.Lock()` in `__init__`, then `async with self.lock:`); a lock or semaphore built in the method, a semaphore of more than one slot and a lock passed in are not proof.",
     "blind-suppress",
     { "key": "python.exceptions", "rule": "blind-suppress" },
     "`<name>` ignores every error",
@@ -329,7 +333,8 @@
     [18, 232, 2, 3, 233, 234, 22, 235, -1],
     [18, 236, 2, 3, 237, 238, 22, 239, -1],
     [18, 240, 2, 3, 241, 242, 22, 243, -1],
-    [244, 245, 2, 3, 246, 247, 248, 249, -1],
-    [250, 251, 2, 3, 252, 253, 254, 255, 256]
+    [18, 244, 2, 3, 245, 246, 22, 247, -1],
+    [248, 249, 2, 3, 250, 251, 252, 253, -1],
+    [254, 255, 2, 3, 256, 257, 258, 259, 260]
   ]
 }

@@ -1,6 +1,6 @@
 import ast
 
-from checks.common import dotted_name
+from checks.common import dotted_name, parameter_names
 from honesty.fake_names import (
     CLOCK,
     CLOCK_NAMES,
@@ -103,12 +103,6 @@ def expression_kinds(node, aliases):
     return kinds
 
 
-def parameter_names(function):
-    arguments = function.args
-    every = arguments.posonlyargs + arguments.args + arguments.kwonlyargs
-    return [argument.arg for argument in every]
-
-
 def is_autouse(function, aliases):
     for decorator in function.decorator_list:
         if not isinstance(decorator, ast.Call):
@@ -180,7 +174,7 @@ class Fakes:
         kinds = set()
         for decorator in function.decorator_list:
             kinds |= kinds_in_nodes(ast.walk(decorator), self.aliases)
-        for name in parameter_names(function):
+        for name in sorted(parameter_names(function)):
             kinds |= FIXTURE_KINDS.get(name, set())
             fixture = self.fixtures.get(name)
             if fixture is not None and fixture is not function:
