@@ -50,12 +50,19 @@ function nodeToolPaths(options, { relativeToolPath, absoluteToolPath }) {
   return [resolveTool(name, { projectRoot: options.liveProjectRoot, bin }).binPath];
 }
 
+function withNodeOptions(env, nodeOptions) {
+  return nodeOptions.length === 0
+    ? env
+    : { ...env, NODE_OPTIONS: [env.NODE_OPTIONS ?? '', ...nodeOptions].join(' ').trim() };
+}
+
 export function spawnNodeTool({
   options,
   relativeToolPath,
   absoluteToolPath,
   arguments_,
   nodeArguments = [],
+  nodeOptions = [],
   cwd = options.projectRoot,
   environment = {},
 }) {
@@ -65,7 +72,7 @@ export function spawnNodeTool({
     [...nodeArguments, ...toolPaths, ...arguments_],
     {
       cwd,
-      env: { ...process.env, ...environment },
+      env: withNodeOptions({ ...process.env, ...environment }, nodeOptions),
       encoding: 'utf8',
       maxBuffer: MAX_OUTPUT_BYTES,
     },
