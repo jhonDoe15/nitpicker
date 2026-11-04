@@ -540,13 +540,15 @@ Details that are decisions rather than the table:
 - `copied-constant-in-test` flags a string, integer or float literal in a collected test file that
   equals the value of a module-level `UPPER_SNAKE` constant (`NAME = 50`, `NAME: Final = "eu"`, a
   negative number too) declared in a production module the test imports (`import a.b`,
-  `import a.b as x`, `from a.b import ...`, `from a import b`). A test file, `conftest.py` and a
-  module under a `tests`, `test` or `fixtures` folder declare no constants; booleans, `None`, bytes
+  `import a.b as x`, `from a.b import ...`, `from a import b`). Test files, `test_*.py` and `*_test.py`
+  modules and the test support files (`conftest.py`, the `tests`/`test` folders and `testpaths`, and the
+  `testing`, `fixtures`, `mocks` and other support folders that production code does not import, as
+  for the security rules) declare no constants; booleans, `None`, bytes
   and f-strings are not values. Not reported: the numbers -1, 0, 1 and 2, strings shorter than three
   characters or blank, a literal whose statement also names the constant
   (`assert limits.MAX_ITEMS == 50` pins the value on purpose; a lambda counts as its own statement), docstrings, imports,
   annotations, `ids=` and the argument names of `pytest.mark.parametrize`, and `id=` of
-  `pytest.param`. Integers and floats compare apart (`5000` is not `5000.0`). A value declared in
+  `pytest.param`. Numbers compare by value (`5000` matches `5000.0` and `5_000`), as in the other presets. A value declared in
   two imported modules is one finding naming all of them, sorted, joined by `or`.
 - The boundary is a directory named `adapters` anywhere in the path (`src/shop/adapters/api.py`),
   as in the TypeScript preset; a project that keeps its models elsewhere (`schemas/`,

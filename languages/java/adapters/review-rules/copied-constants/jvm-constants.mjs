@@ -17,7 +17,9 @@ function constantOf(file, parsed, definition) {
   if (definition.kind !== 'const' || !definition.exported || !isConstantName(definition.name)) {
     return undefined;
   }
-  const value = initializerValue(initializerTexts(definition.tokens));
+  const value = initializerValue(initializerTexts(definition.tokens), {
+    kotlin: file.endsWith('.kt'),
+  });
   return value === undefined
     ? undefined
     : {

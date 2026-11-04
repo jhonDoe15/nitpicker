@@ -948,7 +948,9 @@ sources of every module, because the constants live in other files than the test
   statement names the constant (`assertEquals(50, Limits.MAX_ITEMS)` pins a value that is a contract,
   which is the allowed form); annotation arguments; test names (the first argument of `test`, `it`,
   `describe`, `should`, `dynamicTest` and the other spec builders, and a Kotest name before `{`);
-  string templates, text blocks and raw strings; constants of test sources; files under `exclude`.
+  Kotlin string templates (a `$` in a Java string is plain text), text blocks and raw strings;
+  constants of test sources; files under `exclude`. The Kotlin `expect(50) { ... }` of `kotlin.test`
+  is an assertion, so its first argument is checked.
 
 The message names the constant and its file, says to use the name (`Limits.MAX_LENGTH + 1`) and
 names the pin form, and ends with the exception sentence for

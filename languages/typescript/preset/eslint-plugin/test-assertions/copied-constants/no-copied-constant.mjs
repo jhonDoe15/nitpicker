@@ -6,6 +6,7 @@ import {
 } from '../../../../../../shared/rules/copied-constants/copied-constants.mjs';
 import { resolveModuleSpecifier } from '../../../modules/module-resolution.mjs';
 import { isTestFunctionName, registrationRoot } from '../../rules/analysis/test-code-analysis.mjs';
+import { chainOf } from '../../../../../../shared/traversal.mjs';
 import { exportedConstants } from './exported-constants.mjs';
 
 const PIN = 'expect({name}).toBe({value})';
@@ -116,19 +117,16 @@ function literalOf(node) {
     : { node, value: { kind: 'number', value: node.value } };
 }
 
+function isStatement(node) {
+  return (
+    STATEMENT.test(node.type) ||
+    (node.parent?.type === 'ArrowFunctionExpression' && node.parent.body === node)
+  );
+}
+
 function statementOf(node) {
-  let current = node;
-  while (current.parent !== null && current.parent !== undefined) {
-    const { parent } = current;
-    if (
-      STATEMENT.test(current.type) ||
-      (parent.type === 'ArrowFunctionExpression' && parent.body === current)
-    ) {
-      return current;
-    }
-    current = parent;
-  }
-  return current;
+  const chain = chainOf(node, (link) => (isStatement(link) ? undefined : link.parent));
+  return chain.at(-1);
 }
 
 function namesConstant(context, node, entries) {

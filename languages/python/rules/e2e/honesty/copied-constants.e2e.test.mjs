@@ -35,6 +35,11 @@ describe.skipIf(!enabled)('copied-constant-in-test', () => {
       ],
       ['a float', withTest(`${FROM}def test_a():\n    assert f(0.25)\n`), copy('RATIO', 5)],
       [
+        'a float equal to an integer',
+        withTest(`${FROM}def test_a():\n    assert f(50.0)\n`),
+        copy('MAX_ITEMS', 5),
+      ],
+      [
         'a negative number',
         withTest(`${FROM}def test_a():\n    assert f(-40)\n`),
         copy('OFFSET', 5),
@@ -107,7 +112,14 @@ describe.skipIf(!enabled)('copied-constant-in-test', () => {
         ),
         [],
       ],
-      ['another type', withTest(`${FROM}def test_a():\n    assert f(50.0, "50")\n`), []],
+      ['a string of the digits', withTest(`${FROM}def test_a():\n    assert f("50")\n`), []],
+      [
+        'a constant assigned twice',
+        withTest(`${FROM}def test_a():\n    assert f(50)\n`, {
+          'shop/limits.py': 'MAX_ITEMS = 50\nMAX_ITEMS = 60\n',
+        }),
+        [],
+      ],
       ['no import of the module', withTest('def test_a():\n    assert f(50)\n'), []],
       [
         'an import of another module',

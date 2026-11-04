@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import { readCopiedConstantFindings } from './copied-constants.mjs';
+import { COPIED_CONSTANT_RULE, readCopiedConstantFindings } from './copied-constants.mjs';
 
 const roots = [];
 const PROJECT = {
@@ -77,16 +77,21 @@ describe('copied constants in JVM tests', () => {
       ),
     );
 
+    const { message, ...where } = found[0];
+
     expect(found.map(({ line }) => line)).toEqual([4, 5, 6, 7]);
-    expect(found[0]).toMatchObject({
+    expect(where).toEqual({
       tool: 'pmd',
-      rule: 'CopiedConstantInTest',
+      rule: COPIED_CONSTANT_RULE,
       file: 'src/test/java/shop/LimitsTest.java',
+      line: 4,
     });
-    expect(found[0].message).toBe(
+    expect(message).toBe(
       'This literal copies Limits.MAX_ITEMS from src/main/java/shop/Limits.java: when Limits.MAX_ITEMS changes, the test keeps checking the old value or stops testing the case it was written for. Use Limits.MAX_ITEMS (or an expression on it, such as Limits.MAX_ITEMS + 1). If the value is a contract the test pins on purpose, assert it next to the constant: assertEquals(50, Limits.MAX_ITEMS). If this is intended, add {"rule":"pmd/CopiedConstantInTest","paths":["src/test/java/shop/LimitsTest.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
     );
-    expect(found[1].message).toContain('assertEquals("eu-west-1", Limits.DEFAULT_REGION)');
+    expect(found[1].message).toBe(
+      'This literal copies Limits.DEFAULT_REGION from src/main/java/shop/Limits.java: when Limits.DEFAULT_REGION changes, the test keeps checking the old value or stops testing the case it was written for. Use Limits.DEFAULT_REGION (or build the text from it). If the value is a contract the test pins on purpose, assert it next to the constant: assertEquals("eu-west-1", Limits.DEFAULT_REGION). If this is intended, add {"rule":"pmd/CopiedConstantInTest","paths":["src/test/java/shop/LimitsTest.java"],"reason":"..."} to "exceptions" in nitpicker.config.json.',
+    );
   });
 
   it('does not report pins, trivial values, annotations, private or computed constants', () => {
@@ -164,6 +169,44 @@ describe('copied constants in JVM tests', () => {
       '3 This literal copies PORT',
       '7 This literal copies Cart.MAX_LINES',
       '14 This literal copies Limits.MAX_ITEMS',
+    ]);
+  });
+
+  it('reads the expected value of kotlin.test expect and Java strings with a dollar sign', () => {
+    const found = findings({
+      'src/main/java/shop/Money.java':
+        'package shop;\npublic class Money { public static final String SYMBOL = "US$"; }',
+      'src/test/kotlin/shop/LimitsTest.kt':
+        'package shop\nfun t() { Limits.of(); expect(50) { limit() } }',
+      'src/test/java/shop/MoneyTest.java':
+        'package shop;\nclass MoneyTest { void x() { Money m; assertEquals("US$", m.symbol()); } }',
+    });
+
+    expect(found.map(({ file, line }) => `${file}:${String(line)}`)).toEqual([
+      'src/test/java/shop/MoneyTest.java:2',
+      'src/test/kotlin/shop/LimitsTest.kt:2',
+    ]);
+  });
+
+  it('reads Java octal numbers, skips labels after this@ and keeps identities per file', () => {
+    const files = {
+      'src/test/java/shop/ATest.java':
+        'package shop;\nclass ATest { void x() { Limits l; f(062); f(050); } }',
+      'src/test/java/shop/BTest.java':
+        'package shop;\nclass BTest { void x() { Limits l; f(50); } }',
+      'src/test/kotlin/shop/CTest.kt':
+        'package shop\nclass CTest { fun x() { Limits.of(); this@CTest.f(50) } }',
+    };
+    const root = projectWith(files);
+    const read = () =>
+      readCopiedConstantFindings(root, { projects: [PROJECT], kotlin: true }).map(
+        ({ path: file, identity }) => `${file} ${identity}`,
+      );
+
+    expect(read()).toEqual([
+      'src/test/java/shop/ATest.java CopiedConstantInTest:Limits.MAX_ITEMS:number:50',
+      'src/test/java/shop/BTest.java CopiedConstantInTest:Limits.MAX_ITEMS:number:50',
+      'src/test/kotlin/shop/CTest.kt CopiedConstantInTest:Limits.MAX_ITEMS:number:50',
     ]);
   });
 

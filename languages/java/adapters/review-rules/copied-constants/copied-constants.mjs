@@ -108,7 +108,8 @@ function displayName(constant) {
   return constant.owner === undefined ? constant.name : `${constant.owner}.${constant.name}`;
 }
 
-function testFindings(test, constants, finding) {
+function testFindings(test, constants) {
+  const finding = findingFactory();
   const byValue = visibleConstants(test, constants);
   if (byValue.size === 0) {
     return [];
@@ -165,6 +166,5 @@ export function readCopiedConstantFindings(projectRoot, { projects, kotlin = fal
   if (constants.length === 0) {
     return [];
   }
-  const finding = findingFactory();
-  return tests.flatMap((test) => testFindings(test, constants, finding));
+  return tests.flatMap((test) => testFindings(test, constants));
 }

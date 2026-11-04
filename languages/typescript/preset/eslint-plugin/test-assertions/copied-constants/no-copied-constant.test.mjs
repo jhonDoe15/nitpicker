@@ -75,8 +75,9 @@ describe('no-copied-constant', () => {
     expect(messages[0].message).toBe(
       'This literal copies MAX_ITEMS from ../src/limits: when MAX_ITEMS changes, the test keeps checking the old value or stops testing the case it was written for. Use MAX_ITEMS (or an expression on it, such as MAX_ITEMS + 1). If the value is a contract the test pins on purpose, assert it next to the constant: expect(MAX_ITEMS).toBe(50).',
     );
-    expect(messages[1].message).toContain('Use DEFAULT_REGION (or build the text from it)');
-    expect(messages[1].message).toContain('expect(DEFAULT_REGION).toBe("eu-west-1")');
+    expect(messages[1].message).toBe(
+      'This literal copies DEFAULT_REGION from ../src/limits: when DEFAULT_REGION changes, the test keeps checking the old value or stops testing the case it was written for. Use DEFAULT_REGION (or build the text from it). If the value is a contract the test pins on purpose, assert it next to the constant: expect(DEFAULT_REGION).toBe("eu-west-1").',
+    );
   });
 
   it('reports negative numbers, separators, export lists, barrels and aliased re-exports', () => {
@@ -108,8 +109,8 @@ describe('no-copied-constant', () => {
       ].join('\n'),
     );
 
-    expect(message).toContain(
-      'This literal copies BATCH_SIZE (and MAX_ITEMS, OTHER_LIMIT, which hold the same value) from ../src/limits and ../src/other and ../src/same',
+    expect(message).toBe(
+      'This literal copies BATCH_SIZE (and MAX_ITEMS, OTHER_LIMIT, which hold the same value) from ../src/limits and ../src/other and ../src/same: when BATCH_SIZE changes, the test keeps checking the old value or stops testing the case it was written for. Use BATCH_SIZE (or an expression on it, such as BATCH_SIZE + 1). If the value is a contract the test pins on purpose, assert it next to the constant: expect(BATCH_SIZE).toBe(50).',
     );
   });
 
