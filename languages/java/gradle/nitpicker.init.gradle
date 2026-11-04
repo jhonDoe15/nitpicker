@@ -123,8 +123,20 @@ def callerSources = { Project project, sourceSet ->
 def generatedSourceSet = { Project project, sourceSet ->
     def buildRoot = project.layout.buildDirectory.get().asFile.toPath()
     def dirs = declaredSourceDirs(sourceSet)
-    dirs.any { it.toPath().startsWith(buildRoot) } &&
+    !project.projectDir.toPath().startsWith(buildRoot) && dirs.any { it.toPath().startsWith(buildRoot) } &&
         !dirs.any { it.exists() && !it.toPath().startsWith(buildRoot) }
+}
+
+def aotModeMentions = [:]
+def aotModeDeclared = { Project project ->
+    synchronized (aotModeMentions) {
+        aotModeMentions.computeIfAbsent(project.rootDir.absolutePath) {
+            project.fileTree(project.rootDir) {
+                include '**/*.gradle', '**/*.gradle.kts', '**/gradle.properties', '**/spring.properties'
+                exclude '**/build/**', '**/.gradle/**', '**/node_modules/**'
+            }.files.any { it.getText('UTF-8').contains('spring.aot.enabled') }
+        }
+    }
 }
 
 def holdsTests = { Project project, sourceSet ->
@@ -545,12 +557,13 @@ allprojects {
             .toString().split(',')*.trim().findAll { it }
 
         tasks.withType(Test).configureEach { reports.junitXml.outputPerTestCase = true }
+        def aotFlag = { value -> value.toString().toLowerCase().contains('-dspring.aot.enabled=true') }
         def runsAotTests = { Test test ->
-            test.allJvmArgs.any { it.toString().equalsIgnoreCase('-Dspring.aot.enabled=true') }
+            test.allJvmArgs.any(aotFlag) || test.environment.values().any(aotFlag)
         }
         tasks.configureEach { task ->
             if (task.class.name.startsWith('org.springframework.boot.gradle.tasks.aot.')) {
-                task.onlyIf { tasks.withType(Test).any(runsAotTests) }
+                task.onlyIf { aotModeDeclared(project) || tasks.withType(Test).any(runsAotTests) }
             }
         }
 
