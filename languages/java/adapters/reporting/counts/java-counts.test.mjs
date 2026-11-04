@@ -328,7 +328,9 @@ describe('Java count findings on a renamed or overloaded legacy method', () => {
     expect(result.newFindings.map(({ message }) => message.split(' (')[0])).toEqual([
       'Method choose length is 161 lines',
     ]);
-    expect(result.resolvedFindings).toHaveLength(1);
+    expect(result.resolvedFindings.map(({ message }) => message.split(' (')[0])).toEqual([
+      'Method pick length is 160 lines',
+    ]);
   });
 
   it('holds an edited method by its declaration when an overload is added above it', () => {

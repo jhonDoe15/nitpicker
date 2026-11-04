@@ -12,9 +12,9 @@ Everything in `SKILL.md` still applies to the lines you add.
   moved lines' surviving mutants count as new: test the new method with exact values
   (`assertEquals(4, Big.combine(1, 2, 3))`).
 - Rename a legacy method or its class only in a change that leaves the method's body as it was:
-  its limit, count and CRAP findings follow the rename then, but an edit inside the renamed method
-  makes them new. An overload with the same name added above a legacy method doesn't take its
-  findings.
+  its limit, count, CRAP, branch-coverage and surviving-mutant findings follow the rename then, but
+  an edit inside the renamed method makes its limit, count and CRAP findings new. An overload with
+  the same name added above a legacy method doesn't take its findings.
 - A file, class or folder already over its limit must not grow: `File grew from 320 to 321 lines`,
   `Class Sprawl grew from 314 to 315 methods`, `Folder grew from 8 to 9 source files`. Put new code
   in a new class, and a new class in a subpackage. A folder at 6 files fails on the 7th.

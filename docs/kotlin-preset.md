@@ -147,7 +147,7 @@ Kotlin classes (see [Mutation](#mutation)), and jdeps reads every main class dir
   count and the function around the finding go into the identity (`|in:<function>|value:<n>`) and
   the ratchet key, and a finding whose count did not grow stays
   baselined while one that grew fails with `Return statements grew from 3 to 4. Put the new code in a
-new function.` before detekt's message. The count comes from the message (`ReturnCount`, `LongMethod`: "too long (62)",
+  new function.` before detekt's message. The count comes from the message (`ReturnCount`, `LongMethod`: "too long (62)",
   `CyclomaticComplexMethod`, `CognitiveComplexMethod`, `ComplexCondition`, `TooManyFunctions`,
   `NestedScopeFunctions`, `MethodOverloading`, `DestructuringDeclarationWithTooManyEntries`), or,
   for the rules whose message leaves it out (`ThrowsCount`, `NestedBlockDepth`, `LargeClass`,
