@@ -75,6 +75,10 @@
     { "key": "python.exceptions", "rule": "falsy-default" },
     "`<name>` replaces a falsy argument with a default, so `0`, `\"\"`, `[]` and `False` count as not given",
     "Test for `None` only: `limit if limit is not None else DEFAULT_LIMIT`, or `if limit is None: limit = DEFAULT_LIMIT`.",
+    "forwarding-method-alias",
+    { "key": "python.exceptions", "rule": "forwarding-method-alias" },
+    "`<name>` only forwards its parameters to `undefined` and has the same signature",
+    "Call the target method directly and delete the alias.",
     "frozen-dataclass",
     { "key": "python.exceptions", "rule": "frozen-dataclass" },
     "Dataclass <name> is not frozen",
@@ -329,7 +333,8 @@
     [18, 232, 2, 3, 233, 234, 22, 235, -1],
     [18, 236, 2, 3, 237, 238, 22, 239, -1],
     [18, 240, 2, 3, 241, 242, 22, 243, -1],
-    [244, 245, 2, 3, 246, 247, 248, 249, -1],
-    [250, 251, 2, 3, 252, 253, 254, 255, 256]
+    [18, 244, 2, 3, 245, 246, 22, 247, -1],
+    [248, 249, 2, 3, 250, 251, 252, 253, -1],
+    [254, 255, 2, 3, 256, 257, 258, 259, 260]
   ]
 }

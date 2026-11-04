@@ -12,6 +12,8 @@ import { withFanOutDetails } from '../../../messages/fan-out/fan-out-details.mjs
 import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
+const ALIAS_RULE = 'ForwardingMethodAlias';
+const RENAME_ALIAS_RULE = 'ForwardingMethodAliasRename';
 const EMPTY_SARIF = { version: '2.1.0', runs: [] };
 
 export function readSarifReport(file) {
@@ -28,13 +30,27 @@ function preparedReport(file, { reportRoot, roots, sourceRoots, projectRoot }, i
   });
 }
 
+function withOneAliasRule(log) {
+  return {
+    ...log,
+    runs: log.runs.map((run) => ({
+      ...run,
+      results: run.results.map((result) =>
+        result.ruleId === RENAME_ALIAS_RULE ? { ...result, ruleId: ALIAS_RULE } : result,
+      ),
+    })),
+  };
+}
+
 export function sarifFindings(context) {
   const { allSourceRoots, projectRoot } = context;
-  const pmd = withLoadEffectSubjects(
-    preparedReport('pmd.sarif', context, (result) =>
-      result.message?.text?.replace(LINE_NUMBER, 'line'),
+  const pmd = withOneAliasRule(
+    withLoadEffectSubjects(
+      preparedReport('pmd.sarif', context, (result) =>
+        result.message?.text?.replace(LINE_NUMBER, 'line'),
+      ),
+      { projectRoot },
     ),
-    { projectRoot },
   );
   const spotbugs = preparedReport('spotbugs.sarif', context, spotbugsSubject);
   return [

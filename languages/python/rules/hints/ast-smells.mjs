@@ -1,5 +1,16 @@
 import { RULES_TOOL } from './tool.mjs';
 
+function aliasParts(subject) {
+  return subject.split(' -> ');
+}
+
+function visibility(name) {
+  if (name.startsWith('__')) {
+    return 2;
+  }
+  return name.startsWith('_') ? 1 : 0;
+}
+
 const EXPECTED_FAILURES = /xfail|expectedFailure/u;
 
 function skipDescription(subject = '') {
@@ -216,5 +227,22 @@ export const SMELL_HINTS = [
     describe: (subject) => `\`${subject}\` is test support inside the production source`,
     allowed:
       "Move test helpers and fixtures into the tests folder (`tests/support/`, `conftest.py`) so they do not ship with the package. A library's public `testing` module is allowed when the package `__init__.py` imports it or lists it in `__all__`.",
+  },
+  {
+    tool: RULES_TOOL,
+    rules: ['forwarding-method-alias'],
+    describe: (subject = '') => {
+      const [name, target] = aliasParts(subject);
+      return `\`${name}\` only forwards its parameters to \`${target}\` and has the same signature`;
+    },
+    allowed: (subject = '') => {
+      const [name, target] = aliasParts(subject);
+      if (target === undefined) {
+        return 'Call the target method directly and delete the alias.';
+      }
+      return visibility(name) < visibility(target)
+        ? `Rename \`${target}\` to \`${name}\` and delete the alias.`
+        : `Call \`${target}\` directly and delete the alias.`;
+    },
   },
 ];

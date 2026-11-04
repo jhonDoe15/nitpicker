@@ -1023,6 +1023,15 @@
         "`cy.wait(<number>)` sleeps on wall-clock time. Wait on a request alias (`cy.wait('@request')`) or retry an assertion (`cy.get(selector).should('be.visible')`). An exception fits only when a real wait is unavoidable."
       ]
     },
+    "nitpicker/no-forwarding-method-alias": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow a method that only forwards its parameters to another method of its class",
+      "messages": [
+        "`{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Call `{{ target }}` directly and delete `{{ name }}`.",
+        "`{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Rename `{{ target }}` to `{{ name }}` and delete the alias."
+      ]
+    },
     "nitpicker/no-forwarding-wrapper": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -3785,6 +3794,15 @@
         "Do not assert absence by letting a wait time out: `.rejects` passes only after the full timeout, so the test is slow and depends on the delay. Advance fake timers past the delay (`vi.advanceTimersByTime`) and assert absence at once, such as `expect(screen.queryByRole('tooltip')).toBeNull()`. An exception fits only when a real wait is unavoidable.",
         "`waitForTimeout` sleeps on wall-clock time. Wait on a condition instead, such as `await expect(locator).toBeVisible()`. An exception fits only when a real wait is unavoidable.",
         "`cy.wait(<number>)` sleeps on wall-clock time. Wait on a request alias (`cy.wait('@request')`) or retry an assertion (`cy.get(selector).should('be.visible')`). An exception fits only when a real wait is unavoidable."
+      ]
+    },
+    "nitpicker/no-forwarding-method-alias": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow a method that only forwards its parameters to another method of its class",
+      "messages": [
+        "`{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Call `{{ target }}` directly and delete `{{ name }}`.",
+        "`{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Rename `{{ target }}` to `{{ name }}` and delete the alias."
       ]
     },
     "nitpicker/no-forwarding-wrapper": {
@@ -6874,6 +6892,15 @@
         "Do not assert absence by letting a wait time out: `.rejects` passes only after the full timeout, so the test is slow and depends on the delay. Advance fake timers past the delay (`vi.advanceTimersByTime`) and assert absence at once, such as `expect(screen.queryByRole('tooltip')).toBeNull()`. An exception fits only when a real wait is unavoidable.",
         "`waitForTimeout` sleeps on wall-clock time. Wait on a condition instead, such as `await expect(locator).toBeVisible()`. An exception fits only when a real wait is unavoidable.",
         "`cy.wait(<number>)` sleeps on wall-clock time. Wait on a request alias (`cy.wait('@request')`) or retry an assertion (`cy.get(selector).should('be.visible')`). An exception fits only when a real wait is unavoidable."
+      ]
+    },
+    "nitpicker/no-forwarding-method-alias": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow a method that only forwards its parameters to another method of its class",
+      "messages": [
+        "`{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Call `{{ target }}` directly and delete `{{ name }}`.",
+        "`{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Rename `{{ target }}` to `{{ name }}` and delete the alias."
       ]
     },
     "nitpicker/no-forwarding-wrapper": {

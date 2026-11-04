@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 88 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 89 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -308,6 +308,18 @@ Fixed sleeps are non-deterministic; wait on a condition with vi.waitFor or expec
   - Do not assert absence by letting a wait time out: `.rejects` passes only after the full timeout, so the test is slow and depends on the delay. Advance fake timers past the delay (`vi.advanceTimersByTime`) and assert absence at once, such as `expect(screen.queryByRole('tooltip')).toBeNull()`. An exception fits only when a real wait is unavoidable.
   - `waitForTimeout` sleeps on wall-clock time. Wait on a condition instead, such as `await expect(locator).toBeVisible()`. An exception fits only when a real wait is unavoidable.
   - `cy.wait(<number>)` sleeps on wall-clock time. Wait on a request alias (`cy.wait('@request')`) or retry an assertion (`cy.get(selector).should('be.visible')`). An exception fits only when a real wait is unavoidable.
+
+<a id="eslint-nitpicker-no-forwarding-method-alias"></a>
+
+### `eslint/nitpicker/no-forwarding-method-alias`
+
+Disallow a method that only forwards its parameters to another method of its class.
+
+- **Printed as:** `eslint-lint/nitpicker/no-forwarding-method-alias`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-forwarding-method-alias","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - `{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Call `{{ target }}` directly and delete `{{ name }}`.
+  - `{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Rename `{{ target }}` to `{{ name }}` and delete the alias.
 
 <a id="eslint-nitpicker-no-forwarding-wrapper"></a>
 

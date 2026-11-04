@@ -65,6 +65,7 @@ const REVIEW_RULES = new Set([
   'RetryInTest',
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
+  'ForwardingMethodAlias',
   'SingularAndPluralMember',
   'TriStateBoolean',
   'ParameterMutation',
