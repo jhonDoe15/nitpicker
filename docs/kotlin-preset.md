@@ -533,7 +533,7 @@ skipped with a note on stderr.
 | `ValidationAnnotationTarget`             | `review-rules/validation/validation-targets.mjs` | a Bean Validation annotation (`jakarta.validation.constraints`, `javax.validation.constraints`, `org.hibernate.validator.constraints`, or `@Valid`) on a primary-constructor `val` or `var` of a main source without a `field:`, `get:` or `all:` use-site target; Kotlin puts it on the constructor parameter, where Bean Validation does not look. Kotlin-only: a Java record carries the annotation to its field and accessor |
 | `SpringUnusedContext`                    | `review-rules/tests/spring-context.mjs`          | a `@SpringBootTest` class that uses nothing from the context                                                                                                                                                                                                                                                                                                                                                                     |
 | `ExhaustiveEnumPredicate`                | `review-rules/main/enum-predicates.mjs`          | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                                                                                                                                                                                             |
-| `unused-option` (tool `structure`)       | `review-rules/main/unused-options.mjs`           | a defaulted parameter of a private or internal function or constructor that no call sets                                                                                                                                                                                                                                                                                                                                         |
+| `unused-option` (tool `structure`)       | `review-rules/main/unused-options/`              | a defaulted parameter that no call sets, of a public top-level, `object` or companion function or a private or internal function or constructor                                                                                                                                                                                                                                                                                  |
 | `ClassLoadEffect`                        | `review-rules/main/load-effects.mjs`             | a call with an external effect (database, network, files, processes, threads and pools, JVM-wide settings) that runs while a file, `object`, companion object or enum class loads                                                                                                                                                                                                                                                |
 | `UnboundedFanOut` (tool `kotlin-source`) | `review-rules/main/fan-out/`                     | a task started for every element of a collection (`async`, `launch`, `supplyAsync`, `thread`) whose work makes a remote or message call; see the limits below                                                                                                                                                                                                                                                                    |
 
@@ -567,7 +567,8 @@ Limits, all chosen to flag less rather than guess:
   `main`, `valueOf`, `fromString`, `of`, `from`, `invoke` and `copy`; copies such as `copyOf`,
   `unmodifiable*`, `synchronized*` and `checked*`; and functions in or below a class with a Spring
   stereotype (`@Component`, `@Service`, `@Repository`, `@Controller`, `@RestController`, `@ControllerAdvice`,
-  `@Configuration`, `@SpringBootApplication`).
+  `@RestControllerAdvice`, `@Configuration`, `@SpringBootApplication`, `@AutoConfiguration`,
+  `@TestConfiguration`), resolved through the imports or written fully qualified, as in the Spring rules.
 - Singular and plural: both members must have the same element type (the plural a list, set,
   collection or array of it). Only the primary-constructor properties of a `data class` and the
   properties of a `@ConfigurationProperties` class are inspected.
@@ -580,15 +581,43 @@ Limits, all chosen to flag less rather than guess:
   body of a property getter, or the condition of an `if` that has an `else` and is itself one of those.
   Backticked constants (``Status.`in` ``) are matched by their name. A test in a property initializer is
   named after the property (`Holder.isOpen`), as it is in a getter.
-- Unused option: a defaulted parameter of a private or internal function that is not `override`, `open`,
-  `abstract`, `operator`, `infix` or `main`, has no annotation and is not declared in an interface, or of the
-  constructor of a final class without annotations. It is flagged when no call (in main or tests, matched by
-  name, through an import alias or a type alias) sets the parameter by name or position, no callable
-  reference exists and no Java file mentions the name. A call that cannot match the signature is ignored, a
-  call with a spread sets every parameter, and a `copy(name = ...)` call sets that parameter of a data class.
-  Data classes are skipped when the module has `jackson-module-kotlin`, `kotlinx-serialization` or
-  `moshi-kotlin` on its main compile or runtime classpath (`runtimeOnly` counts), since a library may set the defaults; a library that does so
-  without that jar (reflection in a framework) is not seen.
+- Unused option: a defaulted parameter that no call sets by name or position (matched by name and through
+  an import alias). A call that cannot match the signature is ignored, a call with a spread sets every
+  parameter, and a `copy(name = ...)` call sets that parameter of a data class. Functions that are
+  `override`, `open`, `abstract`, `operator`, `infix`, `main` or annotated are never judged, nor are names
+  with a callable reference or that a Java file mentions. Two kinds of declarations are judged:
+  - Public functions at the top level, in a top-level `object` or in the companion object of a top-level
+    class, the Kotlin form of TypeScript's exported functions and Python's module-level functions. Calls in
+    the main sources of every module of the build count, and so do the module's own tests when the module
+    is published (a Gradle `publishing` publication, as for `test-only-export`); callable references and
+    Java sources of every module are checked. An `object` or companion of a Spring-managed class is left
+    alone; the annotation is resolved through the imports as in the Spring rules (`@Component`, `@Service`,
+    `@Repository`, `@Controller`, `@RestController`, `@ControllerAdvice`, `@RestControllerAdvice`,
+    `@Configuration`, `@SpringBootApplication`, `@AutoConfiguration`, `@TestConfiguration`, also written
+    fully qualified), and the forwarding-wrapper rule uses the same check. Public member functions and
+    public constructors are not judged: frameworks build and call them by reflection (Jackson,
+    configuration binding, injection), out of sight of the facts, and TypeScript and Python do not judge
+    them either.
+  - Private and internal functions (not in an interface) and the constructors of final classes without
+    annotations, private or internal. All their callers are in the module, so calls in its main sources and
+    tests count, a type alias of the class counts as its name, and only the module's own facts and Java
+    sources are read. Data classes are skipped when the module has `jackson-module-kotlin`,
+    `kotlinx-serialization` or `moshi-kotlin` on its main compile or runtime classpath (`runtimeOnly`
+    counts), since a library may set the defaults; a library that does so without that jar (reflection in
+    a framework) is not seen.
+
+  Callers the facts do not see switch off the judging of public functions only in the modules they can
+  call. Each such place, read from the Gradle build, reaches the projects it depends on (directly or
+  through other projects): an Android or Multiplatform project; a Kotlin or Java project outside the
+  analysis root; a source set other than `main` and `test` that holds `.kt` or `.java` files (it also
+  reaches its own project); an included build whose build files name a project of this build as
+  `group:name` (an included build that names none, such as a plugin build, reaches nothing); and a file
+  the facts step skipped, which reaches its module and that module's dependencies. Test code (a source set
+  whose name has `test` or `jmh`, a JVM test suite, a source set a `Test` task runs, a skipped test file)
+  only counts for the declarations of its own module when that module is published, since tests count
+  nowhere else. One report-only note (`callers-not-analyzed`) names these places, anchored on the public
+  function of an affected module that comes first by path and line.
+
 - Class-load effects: load time is a top-level property initializer (it runs when the file's facade
   class loads), the property initializers and `init` blocks of an `object` or companion object, an
   enum entry's arguments and body and the enum class's own properties, `init` blocks and
@@ -1081,10 +1110,17 @@ project that meets a kind it does not know takes the exception route and reports
 **What runs.** The Java preset's `nitpickerPit` (PIT 1.17.4 with the test plugins the project's
 framework needs, `pitest-junit5-plugin` 1.2.1 for Kotest and JUnit 5, default mutators, the
 project's own tests) mutates `sourceSets.main.output.classesDirs`, which holds the Kotlin
-classes next to the Java ones; the other class tools keep to `compileJava`'s output. The
-ingester finds a class's source file under both kinds of source root from PIT's `sourceFile`
-(also when the directory does not match the package, as for coverage). PIT's built-in `FKOTLIN`
-filter (on by default) removes only mutants at line 0 of a `.kt` file, which is not enough.
+classes next to the Java ones; the other class tools keep to `compileJava`'s output. PIT's
+minions get the JVM arguments the tests run with, on Gradle and Maven alike: on Gradle the test
+task's `jvmArgs`, `systemProperties`, `minHeapSize`, `maxHeapSize` and `jvmArgumentProviders` (not
+the JaCoCo agent), on Maven maven-surefire-plugin's `argLine` (its configuration, else the
+`argLine` property) followed by its `<systemProperties>` and `<systemPropertyVariables>` as `-D`
+arguments. They reach PIT through a Java argument file, so spaces, quotes and commas survive;
+[Slice 7: mutation with PIT](java-preset.md#slice-7-mutation-with-pit) lists the exact rules and
+what is left out. The ingester finds a class's source file under both kinds of source root from
+PIT's `sourceFile` (also when the directory does not match the package, as for coverage). PIT's
+built-in `FKOTLIN` filter (on by default) removes only mutants at line 0 of a `.kt` file, which is
+not enough.
 
 **The filter.** The `kotlin-psi` program that already writes `kotlin-metrics.json` and
 `kotlin-facts.json` (one parse of the sources, see [Structure limits](#structure-limits)) writes a
@@ -1601,6 +1637,14 @@ fails only when it grows, and a package folder moved to a new path is matched to
 | KT2 | One-way rules and skill (#177)               | This document: done.                                                                                                                                        |
 | KT3 | Structure, CRAP, duplicates, coupling (#178) | Done: structure limits and CRAP from a PSI metrics step (a token-based reader misreads Kotlin), jscpd with the Kotlin format and jdeps over Kotlin classes. |
 | KT4 | Changed coverage and mutation (#179)         | Done: `changed-branch-coverage` on Kotlin with generated-branch filtering; PIT on Kotlin classes, gated after a filter for generated code.                  |
+
+## Tools evaluated and not integrated
+
+- [Infer](infer-evaluation.md): not integrated; the license finding applies to Kotlin too, and its Kotlin
+  support captures `kotlinc` invocations only, not Gradle or Maven Kotlin builds.
+- [BlockHound](blockhound-evaluation.md): not integrated by nitpicker. With the `kotlinx-coroutines-debug`
+  integration on the test classpath it flags a blocking call on `Dispatchers.Default` and accepts it on
+  `Dispatchers.IO`; a project opts in with its own test dependencies and JVM flag.
 
 ## Known limits
 

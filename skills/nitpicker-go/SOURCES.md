@@ -50,6 +50,15 @@ than the others, and this skill teaches its rules before an agent writes Go.
 - **Types: 20 methods, 10 fields; interfaces exempt from the method limit.** The shared class
   limits, with Go wording. Interfaces are small by Go convention ("the bigger the interface, the
   weaker the abstraction"), which is a lint question rather than a size limit.
+- **Editing existing code on its own page.** Every preset skill ships `editing-existing-code.md`.
+  The Go page was written from runs of the real gate against a small legacy module, one branch per
+  edit (growing an over-limit function, adding a parameter, extracting code, adding a helper above
+  it, renaming it, cutting it into another file, `git mv` into another package, adding a function
+  literal above or below another, growing an over-limit type, struct, file, folder and line,
+  editing a vet line, formatting an unformatted file, editing a slow legacy test). Each bullet
+  states what the gate reported, with its own message. Formatting only files that were formatted
+  before matches the Python page: a formatter run rewrites lines, and line-keyed findings on them
+  turn new.
 - **Table-driven tests and the slow-test limits.** Table-driven tests are the Go convention; the
   5 s / 30 s budgets and the integration markers (folders, file suffix, build tag,
   `testing.Short()`) cover the ways Go projects already separate their slow tests.
