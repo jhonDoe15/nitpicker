@@ -170,7 +170,9 @@ message names the fix and both routes. Each rule has a banned and an allowed fix
 |                   | `let` or `apply` that changes nothing                                                                                                             | call the member directly                                                                                                     | `style.UnnecessaryLet`, `style.UnnecessaryApply`                                                   |
 | Nullable handling | `!!`                                                                                                                                              | `?:`, `?.let`, `checkNotNull(value) { "why" }`                                                                               | `potential-bugs.UnsafeCallOnNullableType`                                                          |
 |                   | `value as String` on a nullable value                                                                                                             | handle null first, or `as?`                                                                                                  | `potential-bugs.CastNullableToNonNullableType`                                                     |
+|                   | `value as String?`                                                                                                                                | `value as? String`, which returns null instead of throwing                                                                   | `potential-bugs.CastToNullableType`                                                                |
 |                   | `if (x == null) null else ...`                                                                                                                    | `x?.let { ... }`                                                                                                             | `style.UseLet`                                                                                     |
+| Casts             | `items as MutableList<String>` or `items is MutableList<String>` on a read-only `List`                                                            | `items.toMutableList()`, or ask for the mutable type at its source                                                           | `potential-bugs.DontDowncastCollectionTypes`                                                       |
 | Coroutines        | `GlobalScope`                                                                                                                                     | `coroutineScope { launch { ... } }`, or a scope its owner cancels                                                            | `coroutines.GlobalCoroutineUsage`                                                                  |
 |                   | `runBlocking`                                                                                                                                     | a `suspend` caller (`suspend fun main()`); `runTest` in a test                                                               | `style.ForbiddenMethodCall` (`kotlinx.coroutines.runBlocking`)                                     |
 | Exceptions        | `catch (e: Exception)`, `Throwable`                                                                                                               | catch the specific exception type; `assertFailsWith` in a test                                                               | `exceptions.TooGenericExceptionCaught`                                                             |
@@ -205,6 +207,25 @@ after detekt runs, not by a path glob, so a `test` package inside the main sourc
 `ProcessBuilder("sh", "-c", ...)` is a [source check](#source-checks). The environment ban is lifted
 in the composition root by the gate (a file with a top-level `fun main`, an `@SpringBootApplication`
 class or a Ktor `fun Application.module()`), see [Frameworks](#frameworks).
+
+**Type laundering (decision).** The Kotlin counterpart of the TypeScript `as` ban is the unsafe cast operator,
+which the Kotlin documentation itself calls the "unsafe" cast: `value as T` throws `ClassCastException`
+when the type is wrong, and a generic target (`as List<String>`) is not even checked. The allowed forms
+are an `is` check or `when` (a smart cast), `as?` with the null handled, and `assertIs<T>(value)` in a
+test. So `kotlin-source/UnsafeCastOperator` flags every `as` in main and test sources (an import alias,
+`as?`, `null as T?` as a type hint and `as Any?` are not casts that can fail and pass). Where a more
+specific rule reports the same line, that one stays and the cast finding is dropped: the compiler's
+`kotlinc/unchecked` and `kotlinc/cast`, and detekt's `CastNullableToNonNullableType`, `CastToNullableType`,
+`DontDowncastCollectionTypes` (`items as MutableList<T>` and `items is MutableList<T>` on a read-only
+`List`) and `UnsafeCast`. `Any?` as a parameter type stays allowed: it is the counterpart of TypeScript's
+`unknown`, which is the allowed form there, and what is built from it has to be checked with `is`.
+
+Cases where the cast looks harmless and is still flagged, with the form to use: the `other as Foo` that an
+IDE writes into `equals` after a `javaClass` comparison (`if (other !is Foo) return false`), a reified
+`value as T` (`value as? T`, then handle the null), an upcast to pick an overload (`x as Any`; name the
+parameter type, or call the overload by its name), `mock as Foo` in a test (`assertIs<Foo>(mock)`). A cast
+inside a string template (`"${value as T}"`) is not seen, because the scan masks string bodies. Reflection
+and Java interop that cannot avoid a cast take an `exceptions` entry for `kotlin-source/UnsafeCastOperator`.
 
 **Why these allowed forms (decision).** One function per job: `let` binds a value to a name for a
 block (and is the null-handling form), `apply` configures an object and returns it. `run` and `with`
@@ -278,8 +299,7 @@ fails every token that targets a detekt or ktlint rule: `all`, anything starting
 `detekt.`, `detekt:`, `ktlint`, `ktlint.` or `ktlint:`, a detekt ruleset (`style`, `naming`, ...) and a
 PascalCase rule id (`MagicNumber`), and the compiler warnings the [kotlinc lint](#compiler-warnings)
 reports: `UNCHECKED_CAST`, `DEPRECATION`, `TYPEALIAS_EXPANSION_DEPRECATION` and `USELESS_CAST`, whose
-message gives the exception route of the `kotlinc/<rule>` it hides. Those four are banned in main
-sources only: the kotlinc lint compiles the main sources, so in a test they hide nothing. Other compiler diagnostics stay
+message gives the exception route of the `kotlinc/<rule>` it hides, in main and test sources alike. Other compiler diagnostics stay
 allowed. `unused`, `UNUSED_PARAMETER` and `UNUSED_VARIABLE` are banned in main sources when they would hide `UnusedParameter` (detekt honors them as its aliases): on a function or constructor with parameters, or on a class or file that holds one; on a parameterless declaration or in a test they stay allowed, and the message routes to the `detekt.style.UnusedParameter` exception. A rule-set-qualified token (`style:UnusedParameter`, `style.UnusedParameter`) is banned everywhere. Rule `inline-suppression`, tool `detekt`, one finding per
 token, identified by the token. detekt's own `ForbiddenSuppress` is not used: it cannot report
 `all` or `style`, because the suppression hides its report too. The scan reads the string literals of
@@ -320,6 +340,7 @@ whose first comment says it is generated (`@generated`, "generated ... do not ed
 | `GenericPackageName`            | a package segment `util`, `utils`, `utility`, `helpers`, `manager`, `common`, `commons`, `misc`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | a package named for what it holds; shared pure logic in `shared`                                                       |
 | `LogStringConcatenation`        | an `info`, `warn`, `error`, `log`, `config`, `warning` or `severe` call on a logger (the levels of the Java rule) whose message is a string template, `+` or `format` with a value that is not a compile-time constant (a literal, a `CONSTANT_CASE` name or a `const val` is one)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | placeholders (`log.info("user {}", user)`) or a lambda message (`logger.info { "user $user" }`)                        |
 | `ShellCommand`                  | a shell and its command flag as consecutive literals (`"sh", "-c"`, `"bash", "-c"`, `"cmd", "/c"`, `"powershell", "-Command"`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          | the program with an argument list (`ProcessBuilder("git", "log", ref)`)                                                |
+| `UnsafeCastOperator`            | the cast operator `as` (not `as?`) in main and test sources, outside an import alias; `null as T?` and `as Any?` pass, and a line another cast rule already reports keeps only that finding                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |                                                                                                                        |
 | `IoCallInLoop`                  | a repository, DAO, JDBC or HTTP client call in a `for`, `while` or `do` body or an iterating lambda (`forEach`, `map`, `filter` and similar); paging and polling loops (a `while` or `do` whose condition, `if (...) break` or `?: break` reads what the call returned) and retries (the call in a `try` that leaves the loop) pass; file calls are not checked                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         | fetch or write all items at once (`findAllById`, `saveAll`)                                                            |
 | `CatchOnlyLogsOrReturnsDefault` | a `catch` that neither throws, nor uses the exception, nor answers with an error response; log calls and `printStackTrace` do not count (so it is the one finding for a catch that only logs); an interrupt and a retry loop are skipped                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                | rethrow with the cause, or `Result.failure(e)`                                                                         |
 | `BooleanFlagParameter`          | an unannotated `Boolean` parameter (not a nullable `Boolean?`) of a public function that is the condition of an `if`, a `when` (its subject or a branch of a subject-less one) or a `while`, also as `== true` or in `&&`/`\|\|`, and a name the body rebinds (a loop variable, a lambda parameter, a `val`) is not the flag; private, `internal`, `protected` and `override` functions, functions of a private or `internal` class, local functions, setters, `with*`, `of`/`from`/`valueOf`/`builder` are skipped                                                                                                                                                                                                                                                                                                                                                                     | two functions, an enum or a data class                                                                                 |
@@ -413,8 +434,11 @@ Kotlin sources, generated ones included, with the pinned compiler into a throwaw
 module's compile classpath, its compiled Java classes, its language and API version, JVM target,
 opt-ins, free compiler arguments and compiler plugins, and `-Xrender-internal-diagnostic-names`. The
 arguments that silence warnings (`-nowarn`, `-Werror`, `-Xsuppress-warning`, `-Xwarning-level`) are
-dropped, so a build setting cannot hide them. Three groups of warnings are findings of the tool
-`kotlinc`, on the source roots only, each message naming the allowed form first:
+dropped, so a build setting cannot hide them. A second task, `nitpickerKotlinTestLint`, compiles the
+test sources the same way against the compiled main classes (`-Xfriend-paths` makes `internal` members
+visible), the module's test class path and its compiled Java test classes, and writes `kotlinc-test.json`.
+Three groups of warnings are findings of the tool `kotlinc`, on the main and test source roots, each
+message naming the allowed form first:
 
 | Rule          | Kotlin diagnostics                               | Allowed form                                                               |
 | ------------- | ------------------------------------------------ | -------------------------------------------------------------------------- |
@@ -424,8 +448,10 @@ dropped, so a build setting cannot hide them. Three groups of warnings are findi
 
 Like `-Werror` on changed code: a new warning fails, a legacy one stays baselined (the identity is
 the rule and the message with numbers replaced, not the line). Their `@Suppress` is an
-`inline-suppression` finding. A lint compile that fails (a compiler plugin it could not load, for
-example) is one descriptive `kotlinc/lint-not-run` finding naming the first error.
+`inline-suppression` finding, in test sources too. A lint compile that fails (a compiler plugin it could
+not load, a test class path that does not resolve) is one descriptive `kotlinc/lint-not-run` finding
+naming the first error, one for the main and one for the test compile, so a broken test compile does not
+hide the main warnings.
 
 ## Doc comments
 
@@ -1076,10 +1102,17 @@ project that meets a kind it does not know takes the exception route and reports
 **What runs.** The Java preset's `nitpickerPit` (PIT 1.17.4 with the test plugins the project's
 framework needs, `pitest-junit5-plugin` 1.2.1 for Kotest and JUnit 5, default mutators, the
 project's own tests) mutates `sourceSets.main.output.classesDirs`, which holds the Kotlin
-classes next to the Java ones; the other class tools keep to `compileJava`'s output. The
-ingester finds a class's source file under both kinds of source root from PIT's `sourceFile`
-(also when the directory does not match the package, as for coverage). PIT's built-in `FKOTLIN`
-filter (on by default) removes only mutants at line 0 of a `.kt` file, which is not enough.
+classes next to the Java ones; the other class tools keep to `compileJava`'s output. PIT's
+minions get the JVM arguments the tests run with, on Gradle and Maven alike: on Gradle the test
+task's `jvmArgs`, `systemProperties`, `minHeapSize`, `maxHeapSize` and `jvmArgumentProviders` (not
+the JaCoCo agent), on Maven maven-surefire-plugin's `argLine` (its configuration, else the
+`argLine` property) followed by its `<systemProperties>` and `<systemPropertyVariables>` as `-D`
+arguments. They reach PIT through a Java argument file, so spaces, quotes and commas survive;
+[Slice 7: mutation with PIT](java-preset.md#slice-7-mutation-with-pit) lists the exact rules and
+what is left out. The ingester finds a class's source file under both kinds of source root from
+PIT's `sourceFile` (also when the directory does not match the package, as for coverage). PIT's
+built-in `FKOTLIN` filter (on by default) removes only mutants at line 0 of a `.kt` file, which is
+not enough.
 
 **The filter.** The `kotlin-psi` program that already writes `kotlin-metrics.json` and
 `kotlin-facts.json` (one parse of the sources, see [Structure limits](#structure-limits)) writes a
@@ -1596,6 +1629,14 @@ fails only when it grows, and a package folder moved to a new path is matched to
 | KT2 | One-way rules and skill (#177)               | This document: done.                                                                                                                                        |
 | KT3 | Structure, CRAP, duplicates, coupling (#178) | Done: structure limits and CRAP from a PSI metrics step (a token-based reader misreads Kotlin), jscpd with the Kotlin format and jdeps over Kotlin classes. |
 | KT4 | Changed coverage and mutation (#179)         | Done: `changed-branch-coverage` on Kotlin with generated-branch filtering; PIT on Kotlin classes, gated after a filter for generated code.                  |
+
+## Tools evaluated and not integrated
+
+- [Infer](infer-evaluation.md): not integrated; the license finding applies to Kotlin too, and its Kotlin
+  support captures `kotlinc` invocations only, not Gradle or Maven Kotlin builds.
+- [BlockHound](blockhound-evaluation.md): not integrated by nitpicker. With the `kotlinx-coroutines-debug`
+  integration on the test classpath it flags a blocking call on `Dispatchers.Default` and accepts it on
+  `Dispatchers.IO`; a project opts in with its own test dependencies and JVM flag.
 
 ## Known limits
 
