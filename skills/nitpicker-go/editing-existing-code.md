@@ -11,8 +11,9 @@ Everything in `SKILL.md` still applies to the lines you add.
   too, so make room by extracting the smallest existing block. Extracted code is new code and must
   meet every rule. To pass a function over 3 parameters a new value, add a field to a struct it
   already takes, or let the caller compute it.
-- Keep a legacy function's name, and keep it in its file. Renaming it, or cutting it into another
-  file, makes all its limit findings new, at full size (`ProcessItems has 56 lines; limit is 50`).
+- Keep a legacy function in its file: cutting it into another file makes all its limit findings
+  new, at full size (`ProcessItems has 56 lines; limit is 50`). Rename one only in a change that
+  leaves its body as it was; an edit inside a renamed function makes its limit findings new too.
   `git mv` of a whole file with small edits keeps its size, line and vet findings, also into
   another package. A legacy slow test that moves to another package counts as changed.
 - A function literal is named by its position (`Report.func1`, `Report.func2`). A new literal

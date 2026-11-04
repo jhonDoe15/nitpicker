@@ -95,6 +95,18 @@ describe('function findings matched by their text without the name', () => {
     ).toEqual({ added: [], kept: ['B.bar@10'], resolved: [] });
   });
 
+  it('keeps it when the rename rewrites the whole declaration line', () => {
+    const method = (name) => [`  ${name}() {`, ...BODY, 'return total;', '}'].join('\n');
+
+    expect(
+      compare({
+        base: structure(entry({ file: 'src/a.ts', name: 'K.run', start: 10, text: method('run') })),
+        head: structure(entry({ file: 'src/a.ts', name: 'K.go', start: 10, text: method('go') })),
+        changes: { 'src/a.ts': [[10, 10]] },
+      }),
+    ).toEqual({ added: [], kept: ['K.go@10'], resolved: [] });
+  });
+
   it('reports a copy under a new name while the original stays', () => {
     expect(
       compare({
