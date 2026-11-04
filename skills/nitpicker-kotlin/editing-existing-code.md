@@ -12,9 +12,10 @@ Everything in `SKILL.md` still applies to the lines you add.
 - When an enum or sealed type gains an entry that a legacy `when` must handle and the function is
   over a limit, move the `when` into a new function and call it (`total += weight(kind)`); a branch
   added in place grows the function.
-- Keep a legacy function's name. Renaming it makes all its limit, branch-coverage and
-  `LongMethod` findings new. An overload with the same name added above it makes its limit
-  findings new: add the overload below, or give it its own name.
+- Rename a legacy function only in a change that leaves its body as it was: its limit, CRAP and
+  detekt count findings (`LongMethod`, `ReturnCount`) follow the rename then, but an edit inside
+  the renamed function makes them new. An overload with the same name added above a legacy
+  function doesn't take its findings.
 - Don't add a `return` or `throw` to a function at or over detekt's `ReturnCount` or `ThrowsCount`
   limit (2): one more fails at the limit. Return the new failure from a new function instead.
 - A file, class or folder already over its limit must not grow: `File grew from 320 to 321 lines`,

@@ -147,13 +147,14 @@ Kotlin classes (see [Mutation](#mutation)), and jdeps reads every main class dir
   count and the function around the finding go into the identity (`|in:<function>|value:<n>`) and
   the ratchet key, and a finding whose count did not grow stays
   baselined while one that grew fails with `Return statements grew from 3 to 4. Put the new code in a
-  new function.` before detekt's message. The count comes from the message (`ReturnCount`, `LongMethod`: "too long (62)",
+new function.` before detekt's message. The count comes from the message (`ReturnCount`, `LongMethod`: "too long (62)",
   `CyclomaticComplexMethod`, `CognitiveComplexMethod`, `ComplexCondition`, `TooManyFunctions`,
   `NestedScopeFunctions`, `MethodOverloading`, `DestructuringDeclarationWithTooManyEntries`), or,
   for the rules whose message leaves it out (`ThrowsCount`, `NestedBlockDepth`, `LargeClass`,
   `LoopWithTooManyJumpStatements`, `LongParameterList`), from the Kotlin parser step, which measures
   it as detekt does at the position detekt reports. Renaming a parameter of a long parameter list
-  keeps the finding; adding one fails.
+  keeps the finding; adding one fails. Renaming the function keeps its count findings while its
+  body is unchanged, and an overload added above an edited legacy function does not take its base.
 - **Exceptions.** Two routes, as in the Java preset. Every detekt finding, one-way rule or not, ends
   with the shared exception sentence for its rule as the finding prints it (`If this is intended, add {"rule":"detekt.style.MagicNumber","paths":[...],"reason":"..."} to "exceptions" in nitpicker.config.json.`),
   the same sentence the Java and TypeScript findings end with: an `exceptions` entry lifts that rule

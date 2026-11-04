@@ -1,5 +1,5 @@
 import {
-  anchorAt,
+  unitAt,
   countInMessage,
   countPattern,
   REMEDIES,
@@ -115,6 +115,6 @@ export function withDetektCountRatchets(findings, detektCounts = [], locate = ()
   return withCountRatchets(
     findings,
     (finding) => countOf(index, finding),
-    (finding) => anchorAt(finding, locate),
+    (finding) => unitAt(finding, locate),
   );
 }

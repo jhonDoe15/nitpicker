@@ -1,5 +1,5 @@
 import {
-  anchorAt,
+  unitAt,
   countInMessage,
   countPattern,
   REMEDIES,
@@ -98,5 +98,5 @@ function countOf(finding) {
 }
 
 export function withJavaCountRatchets(findings, locate = () => undefined) {
-  return withCountRatchets(findings, countOf, (finding) => anchorAt(finding, locate));
+  return withCountRatchets(findings, countOf, (finding) => unitAt(finding, locate));
 }
