@@ -15,6 +15,7 @@ import {
   collectTestResults,
   junitLauncherVersion,
   pitClasspath,
+  javaArgumentFile,
   pitTargets,
   pitTests,
   freshExecFiles,
@@ -101,6 +102,14 @@ describe('junitLauncherVersion', () => {
       ]),
     ).toBeUndefined();
     expect(junitLauncherVersion(['/m2/junit-4.13.2.jar'])).toBeUndefined();
+  });
+});
+
+describe('javaArgumentFile', () => {
+  it('quotes each argument on its own line, escaping backslashes, quotes and line breaks', () => {
+    expect(
+      javaArgumentFile(['-Dl=a,b', '-Dg=hello world', '-Dq=say "hi"', '-Dd=C:\\x\\', '-Dn=a\nb']),
+    ).toBe('"-Dl=a,b"\n"-Dg=hello world"\n"-Dq=say \\"hi\\""\n"-Dd=C:\\\\x\\\\"\n"-Dn=a\\nb"\n');
   });
 });
 
