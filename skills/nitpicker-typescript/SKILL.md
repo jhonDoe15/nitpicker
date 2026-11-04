@@ -8,7 +8,7 @@ description: Use before writing or changing TypeScript or React code in a projec
 nitpicker allows one way to write each construct. Write it that way from the start; the gate is a
 backstop. It fails only on findings your change adds, so leave code the task doesn't need alone.
 
-If your change edits a function that existed before it, read
+If your change edits a function, file or folder that existed before it, read
 [editing-existing-code.md](editing-existing-code.md) before you edit.
 
 Before you change code other modules use, fix a bug, or add a UI state, read
@@ -26,7 +26,8 @@ Before you change code other modules use, fix a bug, or add a UI state, read
    most of the project's files), then checks your change against the merge base. It
    takes minutes and prints a progress line for each slow analyzer.
 3. Act on the exit code:
-   - 0: done.
+   - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
+     and you run the gate again without it before you finish.
    - 1: fix every new finding and any tool error listed below them. Re-read the files `--fix`
      changed before editing them, then rerun.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a

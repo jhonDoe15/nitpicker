@@ -1,5 +1,6 @@
 import { existsSync, readdirSync, readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
+import { buildViews } from '../kotlin/review-rules/build-view.mjs';
 import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestCrap } from '../../ingest/crap.mjs';
 import { readDuplicateFindings } from '../metrics/java-duplicates.mjs';
@@ -57,11 +58,12 @@ export function readJavaFindings(projectRoot, options = {}) {
   if (kotlinPreset) {
     requireKotlinManifest(manifest);
   }
+  const kotlinBuild = buildViews();
   const moduleFindings = modules
     .filter((module) => !isEmptyModule(projectRoot, module))
     .flatMap((module) =>
       withModuleIdentity(
-        moduleContextFindings(projectRoot, module, { manifest, modules, options }),
+        moduleContextFindings(projectRoot, module, { manifest, modules, options, kotlinBuild }),
         module,
       ),
     );
@@ -94,7 +96,7 @@ export function readJavaFindings(projectRoot, options = {}) {
   return { findings: withJavaCountRatchets(findings, locate) };
 }
 
-function moduleContextFindings(projectRoot, module, { manifest, modules, options }) {
+function moduleContextFindings(projectRoot, module, { manifest, modules, options, kotlinBuild }) {
   const preset = options.preset ?? 'java';
   const { fileLimits: thresholds, exceptions, modulePath } = options;
   return readModuleFindings(
@@ -107,6 +109,7 @@ function moduleContextFindings(projectRoot, module, { manifest, modules, options
       lintedRoots: lintedRoots(module.manifest),
       allSourceRoots: manifest.sourceRoots,
       modules,
+      kotlinBuild,
       kotlin: preset === 'kotlin' && module.manifest.kotlin === true,
       formatAdvice: options.formatAdvice,
       conventions: options.conventions,
