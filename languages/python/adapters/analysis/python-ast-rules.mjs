@@ -2,6 +2,7 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { normalizeReportPath } from '../../../../shared/ingest/common.mjs';
 import { run } from '../execution/python-process.mjs';
+import { detectTargetVersion } from '../execution/python-project.mjs';
 import { ruffConfigFor } from '../configuration/python-ruff-config.mjs';
 import { fileURLToPath } from 'node:url';
 import { collectionOptions } from '../configuration/pytest/collection-options.mjs';
@@ -19,6 +20,11 @@ const RULES_SCRIPT = path.resolve(
   fileURLToPath(new URL('../', import.meta.url)),
   '../rules/nitpicker_rules.py',
 );
+
+function minimumPython(projectRoot) {
+  const [, major, minor] = /^py(\d)(\d+)$/u.exec(detectTargetVersion(projectRoot)) ?? [];
+  return major === undefined ? undefined : [Number(major), Number(minor)];
+}
 
 export function readTestFiles(reportRoot) {
   const file = path.join(reportRoot, OPTIONS_FILE);
@@ -48,7 +54,8 @@ export function checkRules(context) {
   const list = path.join(context.reportRoot, FILE_LIST);
   const options = path.join(context.reportRoot, OPTIONS_FILE);
   const sources = pythonSources(context);
-  const collection = collectionOptions(readPytestConfig(context.projectRoot));
+  const pytestConfig = readPytestConfig(context.projectRoot);
+  const collection = collectionOptions(pytestConfig);
   const { testRunner } = context.project;
   writeFileSync(list, sources.join('\n'));
   writeFileSync(
@@ -57,6 +64,8 @@ export function checkRules(context) {
       sourceRoots: context.project.sourceRoots,
       testRunner,
       ...collection,
+      xfailStrict: pytestConfig.xfailStrict,
+      minimumPython: minimumPython(context.projectRoot),
       testFiles: sources.filter(testFileMatcher(context.projectRoot)),
       entryFiles: entryFilesOf(sources, context.project.entryPoints),
       entryModules: readEntryModules(context.projectRoot),

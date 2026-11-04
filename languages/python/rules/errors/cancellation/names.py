@@ -103,17 +103,22 @@ def alias_name(value, context, depth):
 
 
 def resolved_name(node, context, depth=0):
-    if isinstance(node, ast.Call) and not node.args and not node.keywords:
-        base = resolved_name(node.func, context, depth)
-        return f"{base}()" if base else None
-    if isinstance(node, ast.Attribute):
-        base = resolved_name(node.value, context, depth)
-        return f"{base}.{node.attr}" if base else None
-    if isinstance(node, ast.Name):
-        name = imported_name(node.id, node, context, depth)
-        if name and context.project.module_path(name.split(".")[0]) is None:
-            return name
-    return None
+    suffixes = []
+    while True:
+        if isinstance(node, ast.Call) and not node.args and not node.keywords:
+            suffixes.append("()")
+            node = node.func
+        elif isinstance(node, ast.Attribute):
+            suffixes.append(f".{node.attr}")
+            node = node.value
+        else:
+            break
+    if not isinstance(node, ast.Name):
+        return None
+    name = imported_name(node.id, node, context, depth)
+    if not name or context.project.module_path(name.split(".")[0]) is not None:
+        return None
+    return name + "".join(reversed(suffixes))
 
 
 def cancellation_type(node, context):
