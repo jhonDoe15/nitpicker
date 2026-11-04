@@ -1,7 +1,7 @@
-import { absoluteTextReportPath } from '../diff/reporting/reporters.mjs';
-import { renderConsoleSummary } from '../diff/reporting/summary.mjs';
-import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
-import { renderClosingSections } from '../exceptions/stale-exceptions.mjs';
+import { absoluteTextReportPath } from '../../diff/reporting/reporters.mjs';
+import { renderConsoleSummary } from '../../diff/reporting/summary.mjs';
+import { writeGithubOutput } from '../../diff/reporting/github/emit.mjs';
+import { renderClosingSections } from '../../exceptions/stale-exceptions.mjs';
 
 function consoleSummary({ cli, report, outputRoot }) {
   const color = cli.environment.NO_COLOR === undefined;
