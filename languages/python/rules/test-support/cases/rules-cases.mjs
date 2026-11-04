@@ -47,6 +47,7 @@ export const RULES_CASES = [
   ...rulesCases('test-without-assertion', [
     ['test-without-assertion', 'assert result == expected'],
   ]),
+  ...rulesCases('copied-constant-in-test', [['copied-constant-in-test', 'next to the constant']]),
   ...rulesCases('catch-log-without-exception', [
     ['catch-log-without-exception', 'logger.exception'],
   ]),
