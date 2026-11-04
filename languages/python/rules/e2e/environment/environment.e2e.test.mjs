@@ -227,7 +227,9 @@ describe.skipIf(!enabled)('clock, randomness and input or output in domain code'
       ['a clock passed in', domain('def stamp(now):\n    return now()\n'), []],
       [
         'a fixed datetime',
-        domain('from datetime import datetime\n\nSTAMP = datetime(2026, 1, 1)\n'),
+        domain(
+          'from datetime import datetime, timezone\n\nSTAMP = datetime(2026, 1, 1, tzinfo=timezone.utc)\n',
+        ),
         [],
       ],
       [
