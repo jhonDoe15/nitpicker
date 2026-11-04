@@ -79,6 +79,9 @@ describe('config exceptions', () => {
       expect(() => validateConfig({ preset, ...liftOf('doc-comment-content') })).toThrow(
         `nitpicker.config.json: "exceptions[0].rule" names doc-comment-content, which the ${preset} preset reports as nitpicker/no-comments: name "nitpicker/no-comments" instead`,
       );
+      expect(() => validateConfig({ preset, ...liftOf('facts/doc-comment-content') })).toThrow(
+        `nitpicker.config.json: "exceptions[0].rule" names facts/doc-comment-content, which the ${preset} preset reports as nitpicker/no-comments: name "nitpicker/no-comments" instead`,
+      );
       expect(() => validateConfig({ preset, ...liftOf('nitpicker/no-comments') })).not.toThrow();
     },
   );
