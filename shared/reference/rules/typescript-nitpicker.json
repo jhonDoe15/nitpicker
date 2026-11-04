@@ -130,6 +130,41 @@
         "url": "https://typescript-eslint.io/rules/naming-convention"
       }
     ],
+    "nitpicker/no-accumulating-spread",
+    "Disallow spreading a reduce accumulator or a loop accumulator into its own next value",
+    [
+      {
+        "message": "Spreading the accumulator copies it on every step, which is quadratic: use Object.fromEntries(xs.map((x) => [x.key, x.value])) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))), or fill a const object in a for...of loop. An exception fits only when the input stays small."
+      },
+      {
+        "message": "Spreading the accumulator copies it on every step, which is quadratic: use xs.flatMap((x) => x.items), map or filter, or push onto a const array in a for...of loop. An exception fits only when the input stays small."
+      },
+      {
+        "message": "Spreading the accumulator copies it on every step, which is quadratic: build it with map, flatMap or filter and wrap the result once (new Set, new Map), or fill a const accumulator in a for...of loop. An exception fits only when the input stays small."
+      },
+      {
+        "message": "Spreading the accumulator copies it on every step, which is quadratic: use Object.fromEntries(xs.map((x) => [x.key, x.value])) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))), or declare the object const before the loop and set its keys. An exception fits only when the input stays small."
+      },
+      {
+        "message": "Spreading the accumulator copies it on every step, which is quadratic: use xs.flatMap((x) => x.items), map or filter, or declare the array const before the loop and push onto it. An exception fits only when the input stays small."
+      },
+      {
+        "message": "Spreading the accumulator copies it on every step, which is quadratic: use Object.fromEntries(xs.map((x) => [x.key, x.value] as const)), new Map(xs.map((x) => [x.key, x] as const)) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))) (drop as const in JavaScript). An exception fits only when the input stays small."
+      },
+      {
+        "message": "Spreading the accumulator copies it on every step, which is quadratic: use xs.flatMap((x) => x.items), map or filter. An exception fits only when the input stays small."
+      },
+      {
+        "message": "Spreading the accumulator copies it on every step, which is quadratic: build it with map, flatMap or filter and wrap the result once (new Set, new Map). An exception fits only when the input stays small."
+      },
+      {
+        "message": "Spreading the accumulator copies it on every step, which is quadratic, and domain/ has no loops: use Object.fromEntries(xs.map((x) => [x.key, x.value] as const)), new Map(xs.map((x) => [x.key, x] as const)) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))) (drop as const in JavaScript). An exception fits only when the input stays small."
+      },
+      {
+        "message": "Spreading the accumulator copies it on every step, which is quadratic, and domain/ has no loops: use xs.flatMap((x) => x.items), map or filter. An exception fits only when the input stays small."
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/no-accumulating-spread" },
     "nitpicker/no-assertion-in-loop",
     "Ban assertions inside loops and iterating callbacks in a test",
     [
@@ -281,17 +316,6 @@
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/no-fixed-sleep-synchronization" },
-    "nitpicker/no-forwarding-method-alias",
-    "Disallow a method that only forwards its parameters to another method of its class",
-    [
-      {
-        "message": "`{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Call `{{ target }}` directly and delete `{{ name }}`."
-      },
-      {
-        "message": "`{{ name }}` only forwards its parameters to `{{ target }}` and has the same parameter and return types. Rename `{{ target }}` to `{{ name }}` and delete the alias."
-      }
-    ],
-    { "key": "exceptions", "rule": "nitpicker/no-forwarding-method-alias" },
     "nitpicker/no-forwarding-wrapper",
     "Disallow a function that only forwards its parameters to another function",
     [
@@ -1012,15 +1036,15 @@
     [0, 69, 2, 3, 70, 5, 71, 7, 72, -1, -1],
     [0, 73, 2, 3, 74, 5, 75, 7, 76, -1, -1],
     [0, 77, 2, 3, 78, 5, 79, 7, 80, -1, -1],
-    [0, 81, 82, 83, 84, 5, 85, 7, 86, 87, -1],
-    [0, 88, 2, 3, 89, 5, 90, 7, 91, -1, -1],
+    [0, 81, 2, 3, 82, 5, 83, 7, 84, -1, -1],
+    [0, 85, 86, 87, 88, 5, 89, 7, 90, 91, -1],
     [0, 92, 2, 3, 93, 5, 94, 7, 95, -1, -1],
     [0, 96, 2, 3, 97, 5, 98, 7, 99, -1, -1],
     [0, 100, 2, 3, 101, 5, 102, 7, 103, -1, -1],
     [0, 104, 2, 3, 105, 5, 106, 7, 107, -1, -1],
     [0, 108, 2, 3, 109, 5, 110, 7, 111, -1, -1],
     [0, 112, 2, 3, 113, 5, 114, 7, 115, -1, -1],
-    [0, 116, 82, 117, 118, 5, 119, 7, 120, -1, -1],
+    [0, 116, 86, 117, 118, 5, 119, 7, 120, -1, -1],
     [0, 121, 2, 3, 122, 5, 123, 7, 124, -1, -1],
     [0, 125, 2, 3, 126, 5, 127, 7, 128, -1, 129],
     [0, 130, 2, 3, 131, 5, 132, 7, 133, -1, -1],
@@ -1035,7 +1059,7 @@
     [0, 166, 2, 3, 167, 5, 168, 7, 169, -1, -1],
     [0, 170, 2, 3, 171, 5, 172, 7, 173, -1, -1],
     [0, 174, 175, 176, 177, 5, 178, 7, 179, -1, -1],
-    [0, 180, 2, 34, 181, 5, 182, 7, 183, 87, -1],
+    [0, 180, 2, 34, 181, 5, 182, 7, 183, 91, -1],
     [0, 184, 2, 3, 185, 5, 186, 7, 187, -1, -1],
     [0, 188, 2, 3, 189, 5, 190, 7, 191, -1, -1],
     [0, 192, 2, 3, 193, 5, 194, 7, 195, -1, -1],
@@ -1062,9 +1086,9 @@
     [0, 278, 2, 3, 279, 5, 280, 7, 281, -1, -1],
     [0, 282, 2, 3, 283, 5, 284, 7, 285, -1, -1],
     [0, 286, 2, 3, 287, 5, 288, 7, 289, -1, -1],
-    [0, 290, 82, 117, 291, 5, 292, 7, 293, -1, -1],
+    [0, 290, 86, 117, 291, 5, 292, 7, 293, -1, -1],
     [0, 294, 2, 3, 295, 5, 296, 7, 297, -1, -1],
-    [0, 298, 82, 117, 299, 5, 300, 7, 301, -1, -1],
+    [0, 298, 86, 117, 299, 5, 300, 7, 301, -1, -1],
     [0, 302, 2, 34, 303, 5, 304, 37, 305, 39, -1],
     [0, 306, 2, 34, 307, 5, 308, 37, 309, 39, -1],
     [0, 310, 2, 34, 311, 5, 312, 37, 313, 39, -1],

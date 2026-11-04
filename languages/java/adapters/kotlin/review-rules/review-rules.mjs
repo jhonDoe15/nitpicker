@@ -3,7 +3,7 @@ import { LOAD_EFFECT_RULE } from '../../../messages/load-effects.mjs';
 import { FORWARDING_RULE } from './main/forwarding/forwarding-wrappers.mjs';
 import { METHOD_ALIAS_RULE } from './main/forwarding/method-aliases.mjs';
 import { SINGULAR_PLURAL_RULE } from './main/member-names.mjs';
-import { UNUSED_OPTION_RULE } from './main/unused-options.mjs';
+import { UNUSED_OPTION_RULE } from './main/unused-options/unused-options.mjs';
 import { VALIDATION_TARGET_RULE } from './validation/validation-targets.mjs';
 import { REVIEW_TOOL } from './review-finding.mjs';
 import { JAVA_ONLY_SPRING_RULE, SPRING_RULES } from './spring/spring-messages.mjs';
