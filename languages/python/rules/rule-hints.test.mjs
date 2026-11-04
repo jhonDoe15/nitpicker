@@ -1,7 +1,9 @@
-import { readdirSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
+import { createRequire } from 'node:module';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { exceptionRoute } from '../../../shared/exceptions/rule-names.mjs';
+import { RUFF_CONFIG } from '../adapters/configuration/python-ruff-config.mjs';
 import { RULE_CASES } from './test-support/python-rule-cases.mjs';
 import {
   applyRuleHints,
@@ -40,6 +42,20 @@ describe('every banned form has a banned and an allowed fixture', () => {
 
     expect(uncovered).toEqual([]);
   });
+});
+
+describe('every selected pitfall rule', () => {
+  const PITFALL = /^(?:ASYNC|DTZ|LOG|PLE|PLW|T10)\d+$/u;
+  const { lint } = createRequire(import.meta.url)('smol-toml').parse(
+    readFileSync(RUFF_CONFIG, 'utf8'),
+  );
+
+  it.each(lint.select.filter((code) => PITFALL.test(code)))(
+    '%s has its own allowed form',
+    (rule) => {
+      expect(hintFor(sample({ tool: 'ruff', rule }))?.rules).toContain(rule);
+    },
+  );
 });
 
 describe('every message names the allowed form', () => {
