@@ -4,6 +4,7 @@ import { readdirSync } from 'node:fs';
 import path from 'node:path';
 import { jscpdVersion } from '../../../core/tooling/jscpd/run-jscpd.mjs';
 import { JAVA_TOOLS } from './gradle-presets.mjs';
+import { DOC_COMMENT_TOOL } from './doc-comments/doc-comment-findings.mjs';
 import { INIT_SCRIPT, readPinnedTools } from '../builds/java-build.mjs';
 import { importClosure } from '../../../shared/import-closure.mjs';
 import { javaExecutionBudget } from './java-runner.mjs';
@@ -95,6 +96,7 @@ function hashConfiguration() {
 }
 
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt', 'kotlin-source', 'kotlinc'];
+const JVM_ANALYZER_TOOLS = [...JAVA_TOOLS, DOC_COMMENT_TOOL];
 
 export function createJavaAnalyzer({ kotlin = false } = {}) {
   const budget = javaExecutionBudget();
@@ -108,7 +110,7 @@ export function createJavaAnalyzer({ kotlin = false } = {}) {
     },
     configurationHash: hashConfiguration(),
     exclusions: [],
-    reportedTools: kotlin ? [...JAVA_TOOLS, ...KOTLIN_TOOLS] : JAVA_TOOLS,
+    reportedTools: kotlin ? [...JVM_ANALYZER_TOOLS, ...KOTLIN_TOOLS] : JVM_ANALYZER_TOOLS,
     timeoutMs: budget.analyzerTimeoutMs,
     createInvocation({ projectRoot, toolRoot }) {
       return {

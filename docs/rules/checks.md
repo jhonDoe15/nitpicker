@@ -51,6 +51,7 @@ A callback breaks its protocol: `source-loader-does-not-merge-published-state`, 
 
 A doc comment that only restates its declaration name, or whose description is longer than the limit.
 
+- **Printed as:** `coding-standards/doc-comment-content` and `facts/doc-comment-content`
 - **Presets:** TypeScript, JavaScript, Java and Kotlin
 - **Analyzers:** `coding-standards` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin)
 - **Why it is on:** A comment that repeats the name adds noise; a long one belongs in names and types.
