@@ -1,0 +1,9 @@
+{
+  "name": "outside-fixture",
+  "version": "1.0.0",
+  "private": true,
+  "dependencies": {
+    "fixture-lib": "file:../fixture-lib",
+    "packed-lib": "file:../packed-lib-1.0.0.tgz"
+  }
+}
