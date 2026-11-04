@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
+import { ownedNativeChecker, ownedNativeMessage } from './native/owned-native-rules.mjs';
 import { reportedRuleKey } from './oxlint-translation.mjs';
 
 const SENTINEL_HINT = / Unused [a-z ]+ should match \/\[\^\\s\\S\]\/\./gu;
@@ -18,15 +19,31 @@ export function eslintShapedResults(stage, diagnostics, naming) {
   const byFile = Map.groupBy(reported, (diagnostic) => diagnostic.filename);
   return [...byFile].map(([filename, fileDiagnostics]) => {
     const filePath = filename.replaceAll('\\', '/');
-    const locate = byteLocator(readFileSync(path.join(stage, filename)));
+    const bytes = readFileSync(stagedFile(stage, filename));
+    const locate = byteLocator(bytes);
     const neutralized = naming.neutralized.get(filePath) ?? new Set();
+    const converted = fileDiagnostics.map((diagnostic) =>
+      eslintMessage(diagnostic, naming, { filePath, locate }),
+    );
+    const keeps = converted.some(({ check }) => check !== undefined)
+      ? ownedNativeChecker(filePath, bytes.toString('utf8'))
+      : undefined;
     return {
       filePath,
-      messages: fileDiagnostics
-        .map((diagnostic) => eslintMessage(diagnostic, naming, locate))
+      messages: converted
+        .filter(({ check }) => check === undefined || keeps(check))
+        .map(({ message }) => message)
         .filter((message) => !isNeutralizerWhitespace(message, neutralized)),
     };
   });
+}
+
+function stagedFile(stage, filename) {
+  const full = path.resolve(stage, filename);
+  if (!full.startsWith(`${stage}${path.sep}`)) {
+    throw new Error(`oxlint reported a file outside its stage: ${filename}`);
+  }
+  return full;
 }
 
 function distinctDiagnostics(diagnostics) {
@@ -62,31 +79,49 @@ function isUnusedEslintDirective(diagnostic) {
   return diagnostic.code === undefined && diagnostic.message.startsWith('Unused eslint-');
 }
 
-function eslintMessage(diagnostic, { ruleNames, messageIdOf }, locate) {
+function reportedPosition(diagnostic, locate) {
   const span = diagnostic.labels?.[0]?.span ?? { offset: 0, length: 0 };
   const start = locate(span.offset);
   const end = locate(span.offset + span.length);
+  return { line: start.line, column: start.column, endLine: end.line, endColumn: end.column };
+}
+
+function eslintMessage(diagnostic, naming, file) {
+  const position = reportedPosition(diagnostic, file.locate);
   const key = reportedRuleKey(diagnostic.code);
-  const position = {
-    line: start.line,
-    column: start.column,
-    endLine: end.line,
-    endColumn: end.column,
-  };
   if (isUnusedEslintDirective(diagnostic)) {
-    return { ruleId: undefined, message: diagnostic.message, severity: 1, ...position };
+    return {
+      message: { ruleId: undefined, message: diagnostic.message, severity: 1, ...position },
+    };
   }
   if (key === undefined) {
-    return { fatal: true, message: diagnostic.message, severity: 2, ...position };
+    return { message: { fatal: true, message: diagnostic.message, severity: 2, ...position } };
   }
-  const ruleId = ruleNames.get(key);
+  const ruleId = naming.ruleNames.get(key);
   if (ruleId === undefined) {
     throw new Error(
       `oxlint reported ${diagnostic.code}: ${diagnostic.message} ${diagnostic.help ?? ''}`.trim(),
     );
   }
+  return ruleMessage({ diagnostic, ruleId, naming, position, file });
+}
+
+function ruleMessage({ diagnostic, ruleId, naming, position, file }) {
+  const { messageIdOf, ruleMessages = {} } = naming;
+  const { filePath, locate } = file;
+  const owned = ownedNativeMessage({ ruleId, diagnostic, ruleMessages, filePath });
+  if (owned !== undefined) {
+    const { messageId, message, check } = owned;
+    const { spreadOffset, ...rest } = check;
+    return {
+      message: { ruleId, messageId, message, severity: 2, ...position },
+      check: { ...rest, spread: locate(spreadOffset) },
+    };
+  }
   const message = withoutSentinelHint(configuredMessage(diagnostic, ruleId));
-  return { ruleId, messageId: messageIdOf(ruleId, message), message, severity: 2, ...position };
+  return {
+    message: { ruleId, messageId: messageIdOf(ruleId, message), message, severity: 2, ...position },
+  };
 }
 
 function configuredMessage(diagnostic, ruleId) {

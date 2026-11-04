@@ -77,12 +77,27 @@ export function installDependencies(packageManager, platform = process.platform)
   return { ok: result.error === undefined && result.status === 0, detail: failureDetail(result) };
 }
 
+const NPM_10_PEER_CRASH = "reading 'edgesOut'";
+const NPM_10_HINT =
+  'npm 10 cannot resolve the optional peer dependencies of Vitest 4. Update npm with `npm install --global npm@11` and run nitpicker again.';
+
+function missingLocalPackagesHint(missing) {
+  return `The base depends on local packages that nitpicker did not find for it: ${missing.join(', ')}.`;
+}
+
 export function failureMessage(
   packageManager,
   detail,
-  anchor = TROUBLESHOOTING_ANCHORS.baseInstallFails,
+  { missingLocalPackages = [], anchor = TROUBLESHOOTING_ANCHORS.baseInstallFails } = {},
 ) {
-  return withTroubleshooting(`${FAILURE_PREFIX} with ${packageManager.name}: ${detail}`, anchor);
+  const hints = [
+    ...(detail.includes(NPM_10_PEER_CRASH) ? [NPM_10_HINT] : []),
+    ...(missingLocalPackages.length > 0 ? [missingLocalPackagesHint(missingLocalPackages)] : []),
+  ];
+  return withTroubleshooting(
+    [`${FAILURE_PREFIX} with ${packageManager.name}: ${detail}`, ...hints].join('\n'),
+    anchor,
+  );
 }
 
 export function missingDependenciesMessage(packageManager, dependencyPath) {
@@ -104,7 +119,7 @@ export function ensureDependencyFolder(packageManager, dependencyPath) {
       failureMessage(
         packageManager,
         "the install created no node_modules folder (Yarn Plug'n'Play is not supported: set `nodeLinker: node-modules`)",
-        TROUBLESHOOTING_ANCHORS.unsupportedYarn,
+        { anchor: TROUBLESHOOTING_ANCHORS.unsupportedYarn },
       ),
     );
   }
