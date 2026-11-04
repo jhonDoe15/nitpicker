@@ -141,11 +141,9 @@ describe('failing head tests', () => {
       toolErrors: [testsFailed('java', JAVA_MESSAGE)],
     });
 
-    expect(renderDiffSummary(alone, context)).toContain(
-      `**✖ ${JAVA_MESSAGE.split('\n')[0].replace(/:$/u, '')}**`,
-    );
-    expect(renderDiffSummary(withFindings, context)).toContain(
-      '**✖ 1 new enforceable finding, and tests fail**',
-    );
+    const headlineOf = (value) => renderDiffSummary(value, context).split('\n')[2];
+
+    expect(headlineOf(alone)).toBe(`**✖ ${JAVA_MESSAGE.split('\n')[0].replace(/:$/u, '')}**`);
+    expect(headlineOf(withFindings)).toBe('**✖ 1 new enforceable finding, and tests fail**');
   });
 });

@@ -55,7 +55,7 @@ describe('assertGradleSucceeded', () => {
       '1 test fails in core; the build stopped, so no other check ran. Fix the tests and rerun:',
       '  shop.CartTest.adds: no',
     ]);
-    expect(error.message.split('\n').at(-1)).toMatch(/^Full Gradle log: /u);
+    expect(error.message.split('\n').at(-1)).toMatch(/^Full Gradle log: \S+$/u);
   });
 
   describe('on a build that succeeded', () => {
