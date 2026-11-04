@@ -56,7 +56,7 @@ function testOutcome({ module, moduleName, failures, testsRan, tolerateFailures 
   if (tolerateFailures === true) {
     return { testsRan, failure };
   }
-  throw failingTestsError(module.basedir, [failure]);
+  throw failingTestsError([failure]);
 }
 
 export function collectTestResults({

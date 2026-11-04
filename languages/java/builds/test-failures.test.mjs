@@ -118,25 +118,29 @@ describe('failingTestsError', () => {
   it('lists at most ten failing tests and counts the rest', () => {
     const tests = Array.from({ length: 12 }, (_, index) => `shop.T.t${String(index)}: no`);
 
-    expect(failingTestsError('/repo', [{ module: '.', tests }]).message.split('\n')).toEqual([
-      'Tests fail in /repo; nitpicker needs a passing test suite for coverage and mutation testing:',
+    expect(failingTestsError([{ module: '.', tests }]).message.split('\n')).toEqual([
+      '12 tests fail; the build stopped, so no other check ran. Fix the tests and rerun:',
       ...tests.slice(0, 10).map((test) => `  ${test}`),
       '  and 2 more',
     ]);
   });
 
   it('lists the tests of every module', () => {
-    const error = failingTestsError('/repo', [
+    const error = failingTestsError([
       { module: '.', tests: ['shop.T.a: no'] },
       { module: 'core', tests: ['shop.U.b: no'] },
     ]);
 
-    expect(error.message.split('\n').slice(1)).toEqual(['  shop.T.a: no', '  shop.U.b: no']);
+    expect(error.message.split('\n')).toEqual([
+      '2 tests fail in core; the build stopped, so no other check ran. Fix the tests and rerun:',
+      '  shop.T.a: no',
+      '  shop.U.b: no',
+    ]);
   });
 
   it('keeps the failures on the error without changing how it compares', () => {
     const failures = [{ module: 'core', tests: ['shop.T.t: no'] }];
-    const error = failingTestsError('/repo', failures);
+    const error = failingTestsError(failures);
 
     expect(error.failures).toBe(failures);
     expect(Object.keys(error)).toEqual([]);
