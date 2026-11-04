@@ -248,10 +248,31 @@ describe('resolveBase', () => {
   it('uses a local master when there is no main, also from a detached HEAD', () => {
     const repositoryRoot = createRepository();
     fixtureGit(repositoryRoot, ['branch', '-q', '-m', 'master']);
-    fixtureGit(repositoryRoot, ['checkout', '-q', '--detach']);
+    fixtureGit(repositoryRoot, ['commit', '-q', '--allow-empty', '-m', 'next']);
+    fixtureGit(repositoryRoot, ['checkout', '-q', '--detach', 'HEAD~1']);
 
     expect(resolveBase({ repositoryRoot, environment: {} })).toEqual({
       baseRef: 'master',
+      source: 'local-branch',
+    });
+  });
+
+  it('does not compare a detached HEAD with the local main it sits on', () => {
+    const repositoryRoot = createRepository();
+    fixtureGit(repositoryRoot, ['checkout', '-q', '--detach']);
+
+    expect(() => resolveBase({ repositoryRoot, environment: {} })).toThrow(
+      'No base found: no remote, and you are on main.',
+    );
+  });
+
+  it('names the local branch so that a tag of the same name cannot shadow it', () => {
+    const repositoryRoot = createRepository();
+    fixtureGit(repositoryRoot, ['tag', 'main']);
+    fixtureGit(repositoryRoot, ['checkout', '-q', '-b', 'feature']);
+
+    expect(resolveBase({ repositoryRoot, environment: {} })).toEqual({
+      baseRef: 'heads/main',
       source: 'local-branch',
     });
   });
