@@ -10,6 +10,16 @@ const REPORT = `<?xml version="1.0" encoding="utf-8"?>
 </testsuite></testsuites>`;
 
 describe('pytest JUnit results', () => {
+  it('reads the line of the failing assertion and the message of a failed case', () => {
+    const [failed] = parseJunit(
+      `<testsuite><testcase classname="tests.test_cart" name="test_total" file="tests/test_cart.py" line="3">` +
+        `<failure message="assert 3 == 4&#10; +  where 3 = total()">def test_total():&#10;&gt;       assert total() == 4&#10;` +
+        `E       assert 3 == 4&#10;&#10;src/cart.py:2: in total&#10;tests/test_cart.py:6: AssertionError</failure></testcase></testsuite>`,
+    );
+
+    expect(failed.failure).toEqual({ line: 6, message: 'assert 3 == 4' });
+  });
+
   it('reads each case with its file, 1-based line, class, function and outcome', () => {
     const [ok, bad, skipped, collection] = parseJunit(REPORT);
 
@@ -34,6 +44,7 @@ describe('pytest JUnit results', () => {
       id: 'tests/test_a.py::test_bad',
       seconds: 0.2,
       outcome: 'failed',
+      failure: { message: 'boom' },
     });
     expect(skipped.outcome).toBe('skipped');
     expect(collection).toEqual({
@@ -46,6 +57,7 @@ describe('pytest JUnit results', () => {
       id: 'tests/test_c.py',
       seconds: 0.1,
       outcome: 'failed',
+      failure: { message: 'collection failure' },
     });
   });
   it('names the failed tests and the modules they are in, once each', () => {

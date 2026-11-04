@@ -38,6 +38,27 @@ function marksOf(testCase) {
       };
 }
 
+const LONGREPR_LOCATION = /^(?<file>[^:\n]+\.py):(?<line>\d+): /gmu;
+
+function failureOf(testCase, file) {
+  const [problem] = FAILED_CHILDREN.flatMap((name) => childrenNamed(testCase, name));
+  if (problem === undefined) {
+    return {};
+  }
+  const lines = [...String(problem.text ?? '').matchAll(LONGREPR_LOCATION)]
+    .filter(({ groups }) => groups.file.replaceAll('\\', '/') === file)
+    .map(({ groups }) => Number(groups.line));
+  const message = String(problem.attrs.message ?? '')
+    .split('\n')
+    .find((line) => line.trim() !== '');
+  return {
+    failure: {
+      ...(lines.length === 0 ? {} : { line: lines.at(-1) }),
+      ...(message === undefined ? {} : { message: message.trim() }),
+    },
+  };
+}
+
 function testCaseOf(testCase) {
   const { classname = '', name = '', file, line, time } = testCase.attrs;
   const collection = classname === '' && file === undefined;
@@ -58,6 +79,7 @@ function testCaseOf(testCase) {
     ),
     seconds: Number(String(time ?? '0').replaceAll(',', '')),
     outcome: outcomeOf(testCase),
+    ...failureOf(testCase, relative),
   };
 }
 

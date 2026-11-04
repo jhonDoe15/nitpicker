@@ -104,7 +104,7 @@ describe('coverage on a node:test project', () => {
     const findings = await runArea('coverage', root);
 
     expect(rulesOf(findings)).toEqual(['tool-error:tests-failed']);
-    expect(findings[0].message).toMatch(/test\/pick\.test\.ts > says no: /u);
+    expect(findings[0].message).toMatch(/test\/pick\.test\.ts:5 > says no: /u);
     expect(findings[0].message).toMatch(
       /test\/broken\.test\.ts > could not run: Error \[ERR_MODULE_NOT_FOUND\]: Cannot find package 'not-installed'/u,
     );

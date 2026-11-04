@@ -96,7 +96,7 @@ const FAILING_COVERAGE_OUTPUT = [
   '',
   'Tool errors:',
   'coverage (head): 1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:',
-  "  test/failing.test.js > fails on purpose: AssertionError: expected 'greeted' to be 'empty-name' // Object.is equality",
+  "  test/failing.test.js:5 > fails on purpose: AssertionError: expected 'greeted' to be 'empty-name' // Object.is equality",
   '',
 ].join('\n');
 

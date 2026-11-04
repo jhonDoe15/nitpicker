@@ -173,7 +173,7 @@ describe.skipIf(!enabled)('integration tests on Gradle and Maven', () => {
   it('fail the build naming the failing cases of a checked integration task', () => {
     expect(runs.failure).toEqual(
       '1 test fails; the build stopped, so no other check ran. Fix the tests and rerun:\n' +
-        '  demo.GreeterIT.saysGoodbye: expected: <Nope> but was: <Goodbye, Ada>',
+        '  demo/GreeterIT.java:10 > demo.GreeterIT.saysGoodbye: expected: <Nope> but was: <Goodbye, Ada>',
     );
   });
 });

@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { formattedValue } from '../../../../../shared/rules/failing-tests/failing-tests.mjs';
 
 const RESULT_EVENTS = new Set(['test:pass', 'test:fail']);
 const CANCELLED_BY_PARENT = 'cancelledByParent';
@@ -28,6 +29,20 @@ function statusOf(failed, data) {
   return failed ? 'failed' : 'passed';
 }
 
+function failureValues(error) {
+  const cause = error?.cause;
+  if (
+    cause === null ||
+    typeof cause !== 'object' ||
+    !('expected' in cause) ||
+    !('actual' in cause)
+  ) {
+    return {};
+  }
+  const values = { expected: formattedValue(cause.expected), actual: formattedValue(cause.actual) };
+  return { failureDetails: [{ ...values, formatted: true }] };
+}
+
 function entryFor(type, data) {
   const details = data.details ?? {};
   const failed = type === 'test:fail';
@@ -36,6 +51,7 @@ function entryFor(type, data) {
     title: data.name,
     status: statusOf(failed, data),
     failureMessages: failed ? [failureMessage(details.error)] : [],
+    ...(failed ? failureValues(details.error) : {}),
     duration: details.duration_ms,
     location: { line: data.line, column: data.column },
   };

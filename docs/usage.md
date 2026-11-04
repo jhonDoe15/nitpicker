@@ -366,8 +366,27 @@ before metric notes (which also show the metric and its value); an overflow coun
 A failing test on the head is a problem with the change, not with a tool, so it exits 1 like a
 violation, and the console summary leads with it: `✖ 1 test fails; coverage, CRAP and mutation were
 skipped. Fix the tests and rerun:` followed by the failing tests. Every preset starts that line the
-same way (the count, what the failure skipped, the ask). Tests that fail only on the base are a note
-(see [A base whose tests fail](#a-base-whose-tests-fail)).
+same way (the count, what the failure skipped, the ask), and lists each failing test the same way:
+the test file and line of the failing assertion when the runner's report has them, the test name,
+the first line of the failure, and the expected and received values (each cut at 200 characters)
+when the report has them and the first line does not already show them:
+
+```
+✖ 1 test fails; coverage, CRAP and mutation were skipped. Fix the tests and rerun:
+  test/cart.test.ts:12 > cart > totals: AssertionError: expected { Object (total) } to deeply equal { Object (total) }
+    expected: { "total": 4, }
+    received: { "total": 3, }
+```
+
+The location comes from the stack of the failure (Vitest, Jest, Mocha, `node:test`, and JUnit XML
+on Gradle and Maven, where it is the class's package folder and the source file name, such as
+`demo/CartTest.java:12`), pytest's report, unittest's traceback, or the `file_test.go:12:` prefix of
+Go's output. Expected and received come from the runner's error (Vitest, Jest, Mocha, `node:test`)
+or from the message of JUnit 4 and 5, AssertJ, Hamcrest, kotlin.test and testify. pytest and
+unittest failures show the values in the failure line itself (`assert 3 == 4`, `AssertionError: 3 != 4`),
+so they get no separate lines. The console shows ten failing tests for each test run and says how
+many more there are; the tool error in `report.txt` lists up to 50.
+Tests that fail only on the base are a note (see [A base whose tests fail](#a-base-whose-tests-fail)).
 
 A tool error never counts as a pass. When a run has both findings and tool errors it exits 1, and the
 tool errors are still listed in the console and reports and recorded in `summary.json`
