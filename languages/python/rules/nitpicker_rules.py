@@ -23,6 +23,7 @@ def load_checks():
     from environment import domain_imports, environment, purity
     from errors import errors
     from honesty import assertions, isolation, skipped
+    from honesty.copied import check as copied
     from security import hashes, loading
     from security.sql import check as sql
     from security.timeouts import check as timeouts
@@ -62,6 +63,7 @@ def load_checks():
         assertions,
         unasserted,
         isolation,
+        copied,
         uncollected,
         helpers,
         lifetimes,
