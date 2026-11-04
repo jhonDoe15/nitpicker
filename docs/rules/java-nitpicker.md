@@ -1,6 +1,6 @@
 # Java and Kotlin: nitpicker rules
 
-The rules nitpicker adds on top of the JVM tools: ArchUnit architecture rules, Spring configuration findings, the formatter check and the suppression scan, in Java and Kotlin projects. This page lists 31 rules. [All pages](README.md).
+The rules nitpicker adds on top of the JVM tools: ArchUnit architecture rules, Spring configuration findings, the formatter check and the suppression scan, in Java and Kotlin projects. This page lists 32 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -225,6 +225,17 @@ A Java file is not formatted with palantir-java-format.
 - **Allowed form:** File is not formatted with palantir-java-format. Format it with palantir-java-format --palantir --replace \<Java files>. Not your formatter: pin "conventions.java.formatter" to "google", "palantir" or "none" in nitpicker.config.json.
 - **Exception:** If this is intended, add `{"rule":"palantir-java-format/format","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [Java preset guide](../java-preset.md#style)
+
+<a id="pmd-copiedconstantintest"></a>
+
+### `pmd/CopiedConstantInTest`
+
+A string or number literal in a test that equals an `UPPER_SNAKE` constant of a main-source class, object or file the test can see.
+
+- **Why it is on:** When the constant changes, a test that holds a copy of its value keeps checking the old value, or a boundary test stops testing the boundary. Nitpicker computes it over the sources of every module and prints it as a PMD rule, like the other test honesty rules.
+- **Allowed form:** This literal copies \<Owner>.\<NAME> from \<file>: when \<Owner>.\<NAME> changes, the test keeps checking the old value or stops testing the case it was written for. Use \<Owner>.\<NAME> (or an expression on it, such as \<Owner>.\<NAME> + 1). If the value is a contract the test pins on purpose, assert it next to the constant: assertEquals(\<value>, \<Owner>.\<NAME>).
+- **Exception:** If this is intended, add `{"rule":"pmd/CopiedConstantInTest","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **See also:** [Java preset guide](../java-preset.md#tests-that-copy-a-constant)
 
 <a id="pmd-inlinesuppression"></a>
 

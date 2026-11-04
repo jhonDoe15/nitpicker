@@ -65,6 +65,12 @@ export const testFailureMessageCases = [
     allowed: 'Fix the cause, such as waiting on the condition instead of a delay',
   }),
   testCase({
+    name: 'copied production constant names using the constant',
+    banned:
+      "import { JAVASCRIPT_PRESET_FILE } from '../../languages/typescript/preset/checks/policy-files.mjs';\nit('x', () => { expect(read()).toBe('languages/javascript/preset/javascript-preset.mjs'); });",
+    allowed: 'Use JAVASCRIPT_PRESET_FILE',
+  }),
+  testCase({
     name: 'first-test-charged setup names beforeAll and the exception path',
     banned:
       "let built;\nasync function build() { built ??= await compile(); return built; }\nit('x', async () => { await build(); });",

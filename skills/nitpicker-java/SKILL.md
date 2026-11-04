@@ -179,6 +179,8 @@ To learn why a rule is on and what form it allows before you write or change cod
   `retryAnalyzer`, `IRetryAnalyzer` or `RetryAnalyzerCount`, nor `setRetryAnalyzer(...)`. A test that
   passes on a later attempt hides a flaky or racy test: wait on the condition instead of a fixed
   delay, isolate shared state. `@RepeatedTest` is fine, since every repetition must pass.
+- Use a production constant by name, never a copy of its value (`pmd/CopiedConstantInTest`):
+  `Limits.MAX_LENGTH + 1`, not `65`. Pin a contract value as `assertEquals(64, Limits.MAX_LENGTH)`.
 - Tests print nothing new (`test-runtime/test-console-output`): no `System.out`/`System.err`, and
   no new `WARN` or `ERROR` log line from the code under test. Fix the cause the line names.
 - In main code, nothing with an outside effect runs while a class loads (`ClassLoadEffect`): no

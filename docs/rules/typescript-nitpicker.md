@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 87 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 88 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -192,6 +192,18 @@ Disallow deprecated declarations and second names for an exported API.
 - **Allowed forms by message:**
   - A `@deprecated` declaration keeps the old API next to its replacement. Delete it and update its callers to the replacement in the same change.
   - `{{ alias }}` is a second exported name for `{{ target }}`. Delete `{{ alias }}` and update its callers to import `{{ target }}`.
+
+<a id="eslint-nitpicker-no-copied-constant"></a>
+
+### `eslint/nitpicker/no-copied-constant`
+
+Disallow a literal in a test that copies the value of a production constant the test imports.
+
+- **Printed as:** `eslint-lint/nitpicker/no-copied-constant`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-copied-constant","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - This literal copies {{name}}{{also}} from {{owner}}: when {{name}} changes, the test keeps checking the old value or stops testing the case it was written for. Use {{name}} (or an expression on it, such as {{name}} + 1). If the value is a contract the test pins on purpose, assert it next to the constant: expect({{name}}).toBe({{value}}).
+  - This literal copies {{name}}{{also}} from {{owner}}: when {{name}} changes, the test keeps checking the old value or stops testing the case it was written for. Use {{name}} (or build the text from it). If the value is a contract the test pins on purpose, assert it next to the constant: expect({{name}}).toBe({{value}}).
 
 <a id="eslint-nitpicker-no-copy-pasted-tests"></a>
 
