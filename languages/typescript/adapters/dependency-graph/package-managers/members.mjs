@@ -5,7 +5,7 @@ import { containedPath } from './contained-path.mjs';
 
 const DEPENDENCY_DIRECTORY = 'node_modules';
 
-function manifestDirectories(root) {
+export function manifestDirectories(root) {
   return projectFilePaths(root)
     .filter((file) => path.basename(file) === 'package.json')
     .map((file) => path.dirname(file))
