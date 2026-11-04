@@ -99,6 +99,7 @@ describe('ESLint snapshot isolation and failures', () => {
         location: { line: 2, column: 3 },
         classification: 'enforceable',
         symbol: 'baseline',
+        anchor: { key: expect.stringMatching(/^count:/u) },
         ratchet: {
           key: 'count:`debugger` statement is not allowed',
           value: 1,

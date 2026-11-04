@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { ts } from '../../typescript-api/typescript-api.mjs';
 import { chainOf } from '../../../../shared/traversal.mjs';
+import { nameFreeHash } from '../../../../shared/rules/finding-helpers.mjs';
 export function commentAt(text, position, endPosition) {
   const isLine = text.startsWith('//', position);
   if (!isLine && !text.startsWith('/*', position)) {
@@ -84,6 +85,17 @@ export function stableSyntaxAnchor(node) {
 
 export function nodeChain(node) {
   return chainOf(node, (current) => current.parent);
+}
+
+export function enclosingFunctionHash(node, symbol) {
+  const owner = nodeChain(node).find(
+    (current) => ts.isFunctionLike(current) && current.body !== undefined,
+  );
+  if (owner === undefined || symbol === undefined) {
+    return undefined;
+  }
+  const lines = owner.getText().split(/\r?\n/u);
+  return nameFreeHash(lines.map((line) => line.trim()).join('\n'), symbol);
 }
 
 export function enclosingSymbol(node) {
