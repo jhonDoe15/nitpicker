@@ -71,6 +71,10 @@
     { "key": "python.exceptions", "rule": "enum-string-constants" },
     "<name> are string constants that belong in one enum",
     "Declare an enum: `class Status(enum.StrEnum): ACTIVE = \"active\"` on Python 3.11+, otherwise `class Status(str, enum.Enum)`.",
+    "explicit-any",
+    { "key": "python.exceptions", "rule": "explicit-any" },
+    "`<name>` is typed with an explicit `Any`",
+    "Write the concrete type, a `Protocol`, a `TypeVar`, a `ParamSpec` or `object` (`dict[str, object]`, `Callable[..., object]`).",
     "falsy-default",
     { "key": "python.exceptions", "rule": "falsy-default" },
     "`<name>` replaces a falsy argument with a default, so `0`, `\"\"`, `[]` and `False` count as not given",
@@ -174,7 +178,7 @@
     "real-clock-in-test",
     { "key": "python.exceptions", "rule": "real-clock-in-test" },
     "`<name>()` reads the real clock in a test",
-    "Freeze or inject the time: pass a fixed `datetime` in, use `freezegun` or `time_machine`, or patch the clock with `monkeypatch`.",
+    "Freeze or inject the time: pass a fixed aware `datetime` in (`datetime(2026, 1, 1, tzinfo=timezone.utc)`), use `freezegun` or `time_machine`, or patch the clock with `monkeypatch`.",
     "repeated-string-literal",
     { "key": "python.exceptions", "rule": "repeated-string-literal" },
     "The string \"<name>\" is repeated three times or more",
@@ -235,6 +239,10 @@
     { "key": "python.exceptions", "rule": "tri-state-boolean" },
     "`<name>` is a boolean that can also be `None`, a third state",
     "Name the three states with an enum (`class Consent(Enum)` with `GRANTED`, `DENIED` and `UNKNOWN`), or take a keyword-only `bool` with a default (`*, urgent: bool = False`) when `None` only means false. A method that overrides a base class takes `@typing.override` and keeps the base signature.",
+    "type-cast",
+    { "key": "python.exceptions", "rule": "type-cast" },
+    "`<name>` asserts a type without checking the value",
+    "Narrow the value with `isinstance` or `match`, or give it the correct type at its source.",
     "unbounded-fan-out",
     { "key": "python.exceptions", "rule": "unbounded-fan-out" },
     "`<name>` starts `<call>` for every element of `<collection>` at once",
@@ -334,7 +342,9 @@
     [18, 236, 2, 3, 237, 238, 22, 239, -1],
     [18, 240, 2, 3, 241, 242, 22, 243, -1],
     [18, 244, 2, 3, 245, 246, 22, 247, -1],
-    [248, 249, 2, 3, 250, 251, 252, 253, -1],
-    [254, 255, 2, 3, 256, 257, 258, 259, 260]
+    [18, 248, 2, 3, 249, 250, 22, 251, -1],
+    [18, 252, 2, 3, 253, 254, 22, 255, -1],
+    [256, 257, 2, 3, 258, 259, 260, 261, -1],
+    [262, 263, 2, 3, 264, 265, 266, 267, 268]
   ]
 }
