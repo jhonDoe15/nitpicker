@@ -32,6 +32,11 @@ export const ONE_WAY_VIOLATIONS = [
 export const HIDDEN_ERROR =
   'from typing import no_type_check\n\n\n@no_type_check\ndef hidden(value: int) -> str:\n    return value * 2\n';
 
+export const UNLINKED_TEST = 'def test_arithmetic():\n    assert 1 + 1 == 2\n';
+
+export const TYPE_ONLY_TEST =
+  'from typing import TYPE_CHECKING\n\nif TYPE_CHECKING:\n    from demo.greeter import greet\n\n\ndef test_arithmetic() -> None:\n    handler: greet | None = None\n    assert handler is None\n';
+
 export const WEAKENED_MYPY = `${readFileSync(path.join(fixture, 'pyproject.toml'), 'utf8')}\n[tool.mypy]\nignore_errors = true\ndisable_error_code = ["return-value"]\nexclude = ["src/demo/typed.py"]\n`;
 
 export const WEAKENED_PYRIGHT = JSON.stringify({

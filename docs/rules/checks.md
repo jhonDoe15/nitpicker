@@ -644,11 +644,11 @@ A test file that prints console error or warn output the base run did not print.
 
 A test that runs no production runtime code.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `test-runtime`
+- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
+- **Analyzers:** `test-runtime` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** A test that never runs the code it is named for cannot fail when that code breaks.
 - **Allowed form:** Import and run the production code the test is about.
-- **Exception:** If this is intended, add `{"rule":"no-production-runtime","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Exception:** If this is intended, add `{"rule":"no-production-runtime","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. With the Python preset: If this is intended, add `{"rule":"no-production-runtime","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="test-runtime-slow-test"></a>
 
@@ -669,8 +669,8 @@ A test the change adds or edits that takes longer than the limit for its kind (u
 
 A test whose only link to production code is a type-only import.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `test-runtime`
+- **Presets:** TypeScript, JavaScript and Python
+- **Analyzers:** `test-runtime` (TypeScript and JavaScript); `python` (Python)
 - **Why it is on:** A type import proves nothing at runtime, so the test cannot fail when the code breaks.
 - **Allowed form:** Import and run the production code the test is about.
-- **Exception:** If this is intended, add `{"rule":"type-only-production-dependency","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Exception:** If this is intended, add `{"rule":"type-only-production-dependency","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. With the Python preset: If this is intended, add `{"rule":"type-only-production-dependency","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.

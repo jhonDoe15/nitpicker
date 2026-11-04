@@ -47,7 +47,7 @@ const comparable = (findings) =>
 
 const slowTests = (findings) =>
   findings
-    .filter(({ tool }) => tool === 'test-runtime')
+    .filter(({ tool, rule }) => tool === 'test-runtime' && rule === 'slow-test')
     .map(({ path: file, message }) => `${file}: ${message.split(' took ')[0]}`);
 
 const coverage = (findings) =>

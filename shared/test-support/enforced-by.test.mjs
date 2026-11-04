@@ -13,9 +13,19 @@ const JVM_REUSE_RULES_ONLY = {
 const JVM_FACT_RULES_NOT_RUN = {
   'shared-used-by-one-feature': JVM_REUSE_RULES_ONLY,
 };
+const JVM_RUNTIME_EDGES_ONLY = {
+  file: 'languages/java/adapters/test-runtime/test-graph.mjs',
+  evidence: /kind: EDGE_KINDS\.RUNTIME/u,
+};
 const NOT_ENFORCED_ALTHOUGH_EMITTED = {
-  java: JVM_FACT_RULES_NOT_RUN,
-  kotlin: JVM_FACT_RULES_NOT_RUN,
+  java: {
+    ...JVM_FACT_RULES_NOT_RUN,
+    'type-only-production-dependency': JVM_RUNTIME_EDGES_ONLY,
+  },
+  kotlin: {
+    ...JVM_FACT_RULES_NOT_RUN,
+    'type-only-production-dependency': JVM_RUNTIME_EDGES_ONLY,
+  },
   go: {
     'inheritance-depth-limit': {
       file: 'languages/go/adapters/configuration/go-config.mjs',

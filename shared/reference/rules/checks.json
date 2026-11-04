@@ -499,12 +499,6 @@
     ["test-runtime"],
     "test-runtime",
     "no-production-runtime",
-    { "typescript": ["test-runtime"], "javascript": ["test-runtime"] },
-    "A test that runs no production runtime code.",
-    "A test that never runs the code it is named for cannot fail when that code breaks.",
-    "Import and run the production code the test is about.",
-    { "key": "exceptions", "rule": "no-production-runtime" },
-    "slow-test",
     {
       "typescript": ["test-runtime"],
       "javascript": ["test-runtime"],
@@ -512,15 +506,29 @@
       "kotlin": ["kotlin"],
       "python": ["python"]
     },
+    "A test that runs no production runtime code.",
+    "A test that never runs the code it is named for cannot fail when that code breaks.",
+    "Import and run the production code the test is about.",
+    {
+      "key": "exceptions",
+      "rule": "no-production-runtime",
+      "presetKeys": { "python": "python.exceptions" }
+    },
+    "slow-test",
     "A test the change adds or edits that takes longer than the limit for its kind (unit or integration).",
     "Slow tests slow every run and are the first to be skipped; most tests should be fast unit tests.",
     "Make the test fast: inject a clock or a fake instead of waiting, or move it to the integration tests, which have a higher limit.",
     "a test the change adds or edits taking more than 5 s (unit) or 30 s (integration); override with `thresholds.unitTestSeconds` and `thresholds.integrationTestSeconds`",
     { "key": "exceptions", "rule": "slow-test" },
     "type-only-production-dependency",
+    { "typescript": ["test-runtime"], "javascript": ["test-runtime"], "python": ["python"] },
     "A test whose only link to production code is a type-only import.",
     "A type import proves nothing at runtime, so the test cannot fail when the code breaks.",
-    { "key": "exceptions", "rule": "type-only-production-dependency" }
+    {
+      "key": "exceptions",
+      "rule": "type-only-production-dependency",
+      "presetKeys": { "python": "python.exceptions" }
+    }
   ],
   "entries": [
     [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, -1, -1, -1, -1, -1],
@@ -573,7 +581,7 @@
     [185, 300, 267, 301, 302, 303, -1, -1, 304, 9, -1, -1, -1, -1, -1],
     [305, 306, 307, 308, 309, 310, -1, -1, 311, 9, 312, -1, -1, -1, -1],
     [313, 314, 315, 316, 317, 318, -1, -1, 319, 9, -1, -1, -1, -1, -1],
-    [313, 320, 321, 322, 323, 324, 325, -1, 326, 9, -1, -1, -1, -1, -1],
-    [313, 327, 315, 328, 329, 318, -1, -1, 330, 9, -1, -1, -1, -1, -1]
+    [313, 320, 315, 321, 322, 323, 324, -1, 325, 9, -1, -1, -1, -1, -1],
+    [313, 326, 327, 328, 329, 318, -1, -1, 330, 9, -1, -1, -1, -1, -1]
   ]
 }

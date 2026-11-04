@@ -54,6 +54,7 @@ describe('moduleManifest', () => {
       sourceRoots: ['src/main/java'],
       kotlinSourceRoots: [],
       testSourceRoots: ['src/test/java'],
+      kotlinTestSourceRoots: [],
       resourceRoots: ['src/main/resources'],
       spring: true,
       springArch: true,
