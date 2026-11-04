@@ -18,6 +18,7 @@ import { suggestionOrAllowed } from '../../shared/messages/closest-match.mjs';
 const TOOL_SETTING_KEYS = new Map([
   ['prettier', ['precedence']],
   ['jscpd', ['precedence']],
+  ['stryker', ['precedence']],
   ['knip', ['precedence']],
   ['dependency-cruiser', ['precedence']],
   ['eslint', ['engine', 'precedence']],
@@ -70,6 +71,7 @@ const NITPICKER_FIRST_REJECTED = new Map([
 export const ORDERED_PRECEDENCE_TOOLS = [
   'prettier',
   'jscpd',
+  'stryker',
   'knip',
   'dependency-cruiser',
   'eslint',

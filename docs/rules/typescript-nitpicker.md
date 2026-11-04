@@ -1,6 +1,6 @@
 # TypeScript and JavaScript: nitpicker ESLint rules
 
-The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 87 rules. [All pages](README.md).
+The ESLint rules nitpicker's own plugin adds to the TypeScript and JavaScript presets (`nitpicker/*`). This page lists 88 rules. [All pages](README.md).
 
 The guide for these rules: [docs/typescript-strict-preset.md](../typescript-strict-preset.md).
 
@@ -133,6 +133,26 @@ Enforce naming conventions for everything across a codebase.
   - {{type}} name `{{name}}` must {{regexMatch}} the RegExp: {{regex}}
   - {{type}} name `{{name}}` must not have a {{position}} underscore.
 - **See also:** [Rule documentation](https://typescript-eslint.io/rules/naming-convention)
+
+<a id="eslint-nitpicker-no-accumulating-spread"></a>
+
+### `eslint/nitpicker/no-accumulating-spread`
+
+Disallow spreading a reduce accumulator or a loop accumulator into its own next value.
+
+- **Printed as:** `eslint-lint/nitpicker/no-accumulating-spread`
+- **Exception:** If this is intended, add `{"rule":"nitpicker/no-accumulating-spread","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+- **Allowed forms by message:**
+  - Spreading the accumulator copies it on every step, which is quadratic: use Object.fromEntries(xs.map((x) => [x.key, x.value])) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))), or fill a const object in a for...of loop. An exception fits only when the input stays small.
+  - Spreading the accumulator copies it on every step, which is quadratic: use xs.flatMap((x) => x.items), map or filter, or push onto a const array in a for...of loop. An exception fits only when the input stays small.
+  - Spreading the accumulator copies it on every step, which is quadratic: build it with map, flatMap or filter and wrap the result once (new Set, new Map), or fill a const accumulator in a for...of loop. An exception fits only when the input stays small.
+  - Spreading the accumulator copies it on every step, which is quadratic: use Object.fromEntries(xs.map((x) => [x.key, x.value])) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))), or declare the object const before the loop and set its keys. An exception fits only when the input stays small.
+  - Spreading the accumulator copies it on every step, which is quadratic: use xs.flatMap((x) => x.items), map or filter, or declare the array const before the loop and push onto it. An exception fits only when the input stays small.
+  - Spreading the accumulator copies it on every step, which is quadratic: use Object.fromEntries(xs.map((x) => [x.key, x.value] as const)), new Map(xs.map((x) => [x.key, x] as const)) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))) (drop as const in JavaScript). An exception fits only when the input stays small.
+  - Spreading the accumulator copies it on every step, which is quadratic: use xs.flatMap((x) => x.items), map or filter. An exception fits only when the input stays small.
+  - Spreading the accumulator copies it on every step, which is quadratic: build it with map, flatMap or filter and wrap the result once (new Set, new Map). An exception fits only when the input stays small.
+  - Spreading the accumulator copies it on every step, which is quadratic, and domain/ has no loops: use Object.fromEntries(xs.map((x) => [x.key, x.value] as const)), new Map(xs.map((x) => [x.key, x] as const)) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))) (drop as const in JavaScript). An exception fits only when the input stays small.
+  - Spreading the accumulator copies it on every step, which is quadratic, and domain/ has no loops: use xs.flatMap((x) => x.items), map or filter. An exception fits only when the input stays small.
 
 <a id="eslint-nitpicker-no-assertion-in-loop"></a>
 

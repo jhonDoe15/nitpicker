@@ -1,6 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
+import { markedLine } from '../../../../core/tooling/child-output.mjs';
 import { chainOf } from '../../../../shared/traversal.mjs';
 import { aliasesFromConfig } from './aliases.mjs';
 import { environmentsFromConfig } from './environments.mjs';
@@ -63,10 +64,10 @@ async function main(argumentsList) {
   const [configFile, projectRoot, ...resolveRoots] = argumentsList;
   try {
     const result = await readEnvironment({ configFile, projectRoot, resolveRoots });
-    process.stdout.write(`\n${RESULT_MARKER}${JSON.stringify({ result })}\n`);
+    process.stdout.write(markedLine(RESULT_MARKER, { result }));
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);
-    process.stdout.write(`\n${RESULT_MARKER}${JSON.stringify({ failure: reason })}\n`);
+    process.stdout.write(markedLine(RESULT_MARKER, { failure: reason }));
   }
   process.exit(0);
 }
