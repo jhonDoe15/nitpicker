@@ -1,6 +1,7 @@
 import { scopeLine } from '../scope/scope-findings.mjs';
 import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mjs';
 import { clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
+import { partialRunLines } from '../diff/reporting/partial-run/partial-run.mjs';
 import { ruleReferenceLines } from '../diff/reporting/text.mjs';
 import { withHelpUris } from '../../shared/reference/store.mjs';
 import {
@@ -47,6 +48,7 @@ function renderTextReport(report, reference) {
     `Enforceable findings: ${String(enforceable.length)}`,
     `Descriptive findings: ${String(descriptive.length)}`,
     `Tool errors: ${String(report.toolErrors.length)}`,
+    ...partialRunLines(report.summary),
   ];
 
   if (report.summary.tools.length === 0) {

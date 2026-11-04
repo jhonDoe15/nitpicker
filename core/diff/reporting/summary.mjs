@@ -8,6 +8,7 @@ import { areaCountLine } from './format/rule-groups/finding-areas.mjs';
 import { byFixOrder, ruleGroupLines, withoutRoute } from './format/rule-groups/rule-groups.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
 import { scopeLine } from '../../scope/scope-findings.mjs';
+import { partialRunLines } from './partial-run/partial-run.mjs';
 import {
   TESTS_FAILED_RULE,
   TESTS_FAILED_SKIPPED_RULE,
@@ -50,6 +51,9 @@ export function renderConsoleSummary(
   appendHeldSummary(lines, report.unchangedFindings, { color, details, diagnosticsPath });
   appendNoteSummary(lines, report.notes, color);
   appendToolErrorSummary(lines, report.toolErrors, color);
+  for (const line of partialRunLines(report.summary)) {
+    lines.push(style(line, [ANSI.bold, ANSI.yellow], color));
+  }
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
   return `${lines.join('\n')}\n`;
 }
