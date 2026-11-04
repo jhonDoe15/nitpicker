@@ -543,8 +543,8 @@ Details that are decisions rather than the table:
   `import a.b as x`, `from a.b import ...`, `from a import b`). A test file, `conftest.py` and a
   module under a `tests`, `test` or `fixtures` folder declare no constants; booleans, `None`, bytes
   and f-strings are not values. Not reported: the numbers -1, 0, 1 and 2, strings shorter than three
-  characters or blank, a literal whose statement also names the constant (`assert limits.MAX_ITEMS ==
-50` pins the value on purpose; a lambda counts as its own statement), docstrings, imports,
+  characters or blank, a literal whose statement also names the constant
+  (`assert limits.MAX_ITEMS == 50` pins the value on purpose; a lambda counts as its own statement), docstrings, imports,
   annotations, `ids=` and the argument names of `pytest.mark.parametrize`, and `id=` of
   `pytest.param`. Integers and floats compare apart (`5000` is not `5000.0`). A value declared in
   two imported modules is one finding naming all of them, sorted, joined by `or`.
