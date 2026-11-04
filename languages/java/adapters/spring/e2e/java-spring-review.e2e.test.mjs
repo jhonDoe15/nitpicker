@@ -147,6 +147,58 @@ describe.skipIf(!enabled)('Review rules on Gradle and Maven builds of a Spring p
     );
   });
 
+  it('names both nestings of a lock-order inversion and the locked write of a field, keyed without lines', () => {
+    const named = (rule) =>
+      runs.maven
+        .filter((finding) => finding.rule === rule)
+        .map(({ message, identity }) => [message.slice(0, message.indexOf(': ')), identity]);
+
+    expect(named('LockOrderInversion').slice(0, 2)).toEqual([
+      [
+        'transfer() takes `audit` while it holds `accounts`, and report() takes `accounts` while it holds `audit`',
+        'fp:nitpicker/subject=Transfers.transfer(): accounts -> audit',
+      ],
+      [
+        'report() takes `accounts` while it holds `audit`, and transfer() takes `audit` while it holds `accounts`',
+        'fp:nitpicker/subject=Transfers.report(): audit -> accounts',
+      ],
+    ]);
+    expect(named('InconsistentFieldLocking')).toEqual([
+      [
+        'bump() writes `count` without a lock, while increment() writes it holding `lock`',
+        'fp:nitpicker/subject=Counters.bump(): count',
+      ],
+      [
+        'reset() writes `count` without a lock, while increment() writes it holding `lock`',
+        'fp:nitpicker/subject=Counters.reset(): count',
+      ],
+      [
+        'reset() writes `hits` without a lock, while increment() writes it holding `lock`',
+        'fp:nitpicker/subject=Counters.reset(): hits',
+      ],
+      [
+        'clear() writes `total` without a lock, while add() writes it holding `guard`',
+        'fp:nitpicker/subject=Counters.clear(): total',
+      ],
+      [
+        'addThenCount() writes `total` without a lock, while add() writes it holding `guard`',
+        'fp:nitpicker/subject=Counters.addThenCount(): total',
+      ],
+      [
+        'rename() writes `label` without a lock, while name() writes it holding `this`',
+        'fp:nitpicker/subject=Counters.rename(): label',
+      ],
+    ]);
+    const inversion = runs.gradle.find(({ rule }) => rule === 'LockOrderInversion')?.message;
+
+    expect(inversion?.slice(inversion.indexOf('If this is intended'))).toBe(
+      [
+        'If this is intended, add {"rule":"pmd/LockOrderInversion","paths":["src/main/java/shop/locking/Transfers.java"],',
+        '"reason":"..."} to "exceptions" in nitpicker.config.json.',
+      ].join(''),
+    );
+  });
+
   it('reports the main classes only tests use and spares the Spring service', () => {
     const testOnly = (findings) =>
       findings

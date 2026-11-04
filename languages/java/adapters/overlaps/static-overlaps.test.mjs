@@ -5,7 +5,12 @@ import { CATALOG_TOOLS, readCatalog } from '../../messages/rule-messages.mjs';
 import { OVERLAP_PAIRS, matchesRule, withoutOverlaps } from './static-overlaps.mjs';
 
 const CHECKS = path.resolve(import.meta.dirname, '../../gradle/errorprone/checks.json');
-const NITPICKER_RULESETS = ['pmd-main-ruleset.xml', 'pmd-test-ruleset.xml', 'spring-ruleset.xml'];
+const NITPICKER_RULESETS = [
+  'pmd-ruleset.xml',
+  'pmd-main-ruleset.xml',
+  'pmd-test-ruleset.xml',
+  'spring-ruleset.xml',
+];
 const nitpickerRules = NITPICKER_RULESETS.flatMap((file) =>
   [
     ...readFileSync(path.resolve(import.meta.dirname, '../../gradle', file), 'utf8').matchAll(
