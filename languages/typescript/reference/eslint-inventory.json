@@ -892,6 +892,23 @@
         "{{type}} name `{{name}}` must not have a {{position}} underscore."
       ]
     },
+    "nitpicker/no-accumulating-spread": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow spreading a reduce accumulator or a loop accumulator into its own next value",
+      "messages": [
+        "Spreading the accumulator copies it on every step, which is quadratic: use Object.fromEntries(xs.map((x) => [x.key, x.value])) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))), or fill a const object in a for...of loop. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: use xs.flatMap((x) => x.items), map or filter, or push onto a const array in a for...of loop. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: build it with map, flatMap or filter and wrap the result once (new Set, new Map), or fill a const accumulator in a for...of loop. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: use Object.fromEntries(xs.map((x) => [x.key, x.value])) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))), or declare the object const before the loop and set its keys. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: use xs.flatMap((x) => x.items), map or filter, or declare the array const before the loop and push onto it. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: use Object.fromEntries(xs.map((x) => [x.key, x.value] as const)), new Map(xs.map((x) => [x.key, x] as const)) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))) (drop as const in JavaScript). An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: use xs.flatMap((x) => x.items), map or filter. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: build it with map, flatMap or filter and wrap the result once (new Set, new Map). An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic, and domain/ has no loops: use Object.fromEntries(xs.map((x) => [x.key, x.value] as const)), new Map(xs.map((x) => [x.key, x] as const)) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))) (drop as const in JavaScript). An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic, and domain/ has no loops: use xs.flatMap((x) => x.items), map or filter. An exception fits only when the input stays small."
+      ]
+    },
     "nitpicker/no-assertion-in-loop": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -3637,6 +3654,23 @@
         "{{type}} name `{{name}}` must have {{count}} {{position}} underscore(s).",
         "{{type}} name `{{name}}` must {{regexMatch}} the RegExp: {{regex}}",
         "{{type}} name `{{name}}` must not have a {{position}} underscore."
+      ]
+    },
+    "nitpicker/no-accumulating-spread": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow spreading a reduce accumulator or a loop accumulator into its own next value",
+      "messages": [
+        "Spreading the accumulator copies it on every step, which is quadratic: use Object.fromEntries(xs.map((x) => [x.key, x.value])) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))), or fill a const object in a for...of loop. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: use xs.flatMap((x) => x.items), map or filter, or push onto a const array in a for...of loop. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: build it with map, flatMap or filter and wrap the result once (new Set, new Map), or fill a const accumulator in a for...of loop. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: use Object.fromEntries(xs.map((x) => [x.key, x.value])) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))), or declare the object const before the loop and set its keys. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: use xs.flatMap((x) => x.items), map or filter, or declare the array const before the loop and push onto it. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: use Object.fromEntries(xs.map((x) => [x.key, x.value] as const)), new Map(xs.map((x) => [x.key, x] as const)) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))) (drop as const in JavaScript). An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: use xs.flatMap((x) => x.items), map or filter. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: build it with map, flatMap or filter and wrap the result once (new Set, new Map). An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic, and domain/ has no loops: use Object.fromEntries(xs.map((x) => [x.key, x.value] as const)), new Map(xs.map((x) => [x.key, x] as const)) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))) (drop as const in JavaScript). An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic, and domain/ has no loops: use xs.flatMap((x) => x.items), map or filter. An exception fits only when the input stays small."
       ]
     },
     "nitpicker/no-assertion-in-loop": {
@@ -6714,6 +6748,23 @@
         "{{type}} name `{{name}}` must have {{count}} {{position}} underscore(s).",
         "{{type}} name `{{name}}` must {{regexMatch}} the RegExp: {{regex}}",
         "{{type}} name `{{name}}` must not have a {{position}} underscore."
+      ]
+    },
+    "nitpicker/no-accumulating-spread": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow spreading a reduce accumulator or a loop accumulator into its own next value",
+      "messages": [
+        "Spreading the accumulator copies it on every step, which is quadratic: use Object.fromEntries(xs.map((x) => [x.key, x.value])) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))), or fill a const object in a for...of loop. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: use xs.flatMap((x) => x.items), map or filter, or push onto a const array in a for...of loop. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: build it with map, flatMap or filter and wrap the result once (new Set, new Map), or fill a const accumulator in a for...of loop. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: use Object.fromEntries(xs.map((x) => [x.key, x.value])) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))), or declare the object const before the loop and set its keys. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: use xs.flatMap((x) => x.items), map or filter, or declare the array const before the loop and push onto it. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: use Object.fromEntries(xs.map((x) => [x.key, x.value] as const)), new Map(xs.map((x) => [x.key, x] as const)) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))) (drop as const in JavaScript). An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: use xs.flatMap((x) => x.items), map or filter. An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic: build it with map, flatMap or filter and wrap the result once (new Set, new Map). An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic, and domain/ has no loops: use Object.fromEntries(xs.map((x) => [x.key, x.value] as const)), new Map(xs.map((x) => [x.key, x] as const)) or Object.fromEntries(parts.flatMap((p) => Object.entries(p))) (drop as const in JavaScript). An exception fits only when the input stays small.",
+        "Spreading the accumulator copies it on every step, which is quadratic, and domain/ has no loops: use xs.flatMap((x) => x.items), map or filter. An exception fits only when the input stays small."
       ]
     },
     "nitpicker/no-assertion-in-loop": {

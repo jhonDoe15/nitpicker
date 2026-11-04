@@ -433,6 +433,21 @@
             }
           }
         },
+        "stryker": {
+          "description": "Settings of stryker.",
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["precedence"],
+          "properties": {
+            "precedence": {
+              "description": "Which config stryker uses: \"project\" is your own config file, \"nitpicker\" is the preset's. List each at most once, highest first.",
+              "type": "array",
+              "minItems": 1,
+              "uniqueItems": true,
+              "items": { "enum": ["project", "nitpicker"] }
+            }
+          }
+        },
         "knip": {
           "description": "Settings of knip.",
           "type": "object",
@@ -1535,6 +1550,7 @@
           "tools": {
             "properties": {
               "prettier": false,
+              "stryker": false,
               "knip": false,
               "dependency-cruiser": false,
               "eslint": false,
@@ -1728,6 +1744,7 @@
           "tools": {
             "properties": {
               "prettier": false,
+              "stryker": false,
               "knip": false,
               "dependency-cruiser": false,
               "eslint": false,
@@ -1890,6 +1907,7 @@
                             "kotlin-source/LogStringConcatenation",
                             "kotlin-source/ShellCommand",
                             "kotlin-source/IoCallInLoop",
+                            "kotlin-source/UnsafeCastOperator",
                             "kotlin-source/CatchOnlyLogsOrReturnsDefault",
                             "kotlin-source/BooleanFlagParameter",
                             "kotlin-source/HardcodedSecret",
@@ -2047,6 +2065,7 @@
           "tools": {
             "properties": {
               "prettier": false,
+              "stryker": false,
               "knip": false,
               "dependency-cruiser": false,
               "eslint": false,
@@ -2206,6 +2225,7 @@
             "properties": {
               "prettier": false,
               "jscpd": false,
+              "stryker": false,
               "knip": false,
               "dependency-cruiser": false,
               "eslint": false,
