@@ -75,6 +75,8 @@ describe('running the rules script', () => {
       keywords: [],
       marks: [],
       testFiles: [],
+      designFiles: ['src/demo/a.py'],
+      distributions: [],
       entryFiles: [],
       entryModules: [],
       boundaryRoots: ['pydantic', 'pydantic_settings'],

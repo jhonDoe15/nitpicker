@@ -7,6 +7,8 @@ import { fileURLToPath } from 'node:url';
 import { collectionOptions } from '../configuration/pytest/collection-options.mjs';
 import { readPytestConfig } from '../configuration/pytest/pytest-config.mjs';
 import { testFileMatcher } from './python-sources.mjs';
+import { designFiles } from './design/design-files.mjs';
+import { designDistributions } from './design/design-distributions.mjs';
 import { entryFilesOf, readEntryModules } from '../../rules/libraries/entry-modules.mjs';
 import { boundaryRoots, detectLibraries } from '../../rules/libraries/project-libraries.mjs';
 
@@ -48,6 +50,7 @@ export function checkRules(context) {
   const list = path.join(context.reportRoot, FILE_LIST);
   const options = path.join(context.reportRoot, OPTIONS_FILE);
   const sources = pythonSources(context);
+  const design = designFiles(context, sources);
   const collection = collectionOptions(readPytestConfig(context.projectRoot));
   const { testRunner } = context.project;
   writeFileSync(list, sources.join('\n'));
@@ -58,6 +61,8 @@ export function checkRules(context) {
       testRunner,
       ...collection,
       testFiles: sources.filter(testFileMatcher(context.projectRoot)),
+      designFiles: design,
+      distributions: designDistributions(context.projectRoot, design),
       entryFiles: entryFilesOf(sources, context.project.entryPoints),
       entryModules: readEntryModules(context.projectRoot),
       boundaryRoots: boundaryRoots(detectLibraries(context.projectRoot)),

@@ -145,6 +145,11 @@ export const POLICY_GUIDANCE = {
     'so the project can relax the checks.',
     'Restore the base precedence.',
   ].join(' '),
+  'protocols-loosened': [
+    'Drops a protocols contract, one of its open or step calls, or accepts another close call,',
+    'so calls that broke the contract may no longer fail.',
+    'Restore the base contract.',
+  ].join(' '),
   'spring-roles-shrank': [
     'Drops a Spring role mapping, so the classes it marked lose that role and its layering checks.',
     'Restore the mapping.',

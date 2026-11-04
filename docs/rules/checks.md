@@ -1,6 +1,6 @@
 # Nitpicker checks
 
-The checks nitpicker runs itself in every preset: function and file size, CRAP, coverage, mutation, duplicates, coupling, dead code, test runtime, repository hygiene and the policy checks on nitpicker.config.json. This page lists 52 rules. [All pages](README.md).
+The checks nitpicker runs itself in every preset: function and file size, CRAP, coverage, mutation, duplicates, coupling, dead code, test runtime, repository hygiene and the policy checks on nitpicker.config.json. This page lists 61 rules. [All pages](README.md).
 
 The guide for these rules: [spec/checks.md](../../spec/checks.md).
 
@@ -12,7 +12,6 @@ Two folders of production code that changed together in most of the commits of t
 
 - **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `change-history`
-- **Scope:** Report-only: it never fails the gate.
 - **Why it is on:** Folders that keep changing together usually share knowledge that has no single owner, so every change has to touch both.
 - **Allowed form:** This is correlation, not proof of coupling: if they share knowledge (a format, a constant, a schema) give it one owner, and if they only ever change as one unit, merge them.
 - **Threshold:** two folders of production code that changed together in at least 5 of the last 300 commits and in at least 60% of the commits of the less-changed one (only edits of production code count, and commits of more than 30 files are ignored); opt-in with `history.coChange`, never fails
@@ -367,6 +366,20 @@ A committed file larger than the limit (lockfiles are exempt).
 - **Threshold:** a file larger than 1 MB (lockfiles are exempt)
 - **Exception:** If this is intended, add `{"rule":"large-file","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
+<a id="structure-caller-protocol"></a>
+
+### `structure/caller-protocol`
+
+The same 3 or more steps on one value of a project class, repeated by 3 or more callables in 2 or more modules.
+
+- **Presets:** TypeScript, JavaScript and Python
+- **Analyzers:** `structure` (TypeScript and JavaScript); `python` (Python)
+- **Scope:** The JavaScript preset enforces this check only in part.
+- **Why it is on:** A sequence every caller has to repeat is knowledge the class should own; each copy can get the order or the cleanup wrong.
+- **Allowed form:** Give the class one operation that runs the steps, and call that.
+- **Threshold:** report-only: the same 3 or more steps on one value of a project class repeated by 3 or more callables in 2 or more modules
+- **Exception:** If this is intended, add `{"rule":"caller-protocol","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
 <a id="structure-class-fields-limit"></a>
 
 ### `structure/class-fields-limit`
@@ -407,6 +420,48 @@ A component file without a story, in a package that has Storybook.
 - **Allowed forms by message:**
   - `componentStoryMissing`: Add \<story> for \<name>.
   - `componentStoryMissingUnenforced`: Add \<story>. Not enforced until more than half of the components have one.
+
+<a id="structure-context-threading"></a>
+
+### `structure/context-threading`
+
+A parameter of a project type with 5 or more fields passed whole through 2 or more callables, one in another module, that together read at most a third of its fields.
+
+- **Presets:** TypeScript, JavaScript and Python
+- **Analyzers:** `structure` (TypeScript and JavaScript); `python` (Python)
+- **Scope:** The JavaScript preset enforces this check only in part.
+- **Why it is on:** Passing a whole context for a few of its fields makes every caller build all of it and hides what the code really needs.
+- **Allowed form:** Pass the values that are read, or a small type with just them.
+- **Threshold:** report-only: a parameter of a project type with 5 or more fields passed whole through 2 or more callables, one in another module, that together read at most a third of its fields
+- **Exception:** If this is intended, add `{"rule":"context-threading","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="structure-data-clump"></a>
+
+### `structure/data-clump`
+
+The same 3 or more typed parameters (names and types) in 3 or more exported functions of 2 or more modules.
+
+- **Presets:** TypeScript, JavaScript and Python
+- **Analyzers:** `structure` (TypeScript and JavaScript); `python` (Python)
+- **Scope:** The JavaScript preset enforces this check only in part.
+- **Why it is on:** Values that always travel together are a concept with no type, so their rules are checked in many places or nowhere.
+- **Allowed form:** Give them one value type that owns their rules, and pass that instead.
+- **Threshold:** report-only: the same 3 or more typed parameters (names and types) in 3 or more exported functions of 2 or more modules
+- **Exception:** If this is intended, add `{"rule":"data-clump","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="structure-disjoint-consumer-groups"></a>
+
+### `structure/disjoint-consumer-groups`
+
+The exported members of one module or class, used from other modules, that split into 2 or more groups no caller module uses together and that share no field or helper.
+
+- **Presets:** TypeScript, JavaScript and Python
+- **Analyzers:** `structure` (TypeScript and JavaScript); `python` (Python)
+- **Scope:** The JavaScript preset enforces this check only in part.
+- **Why it is on:** A module that serves unrelated groups of callers is several modules in one, so a change for one group touches the others.
+- **Allowed form:** Split the module along the groups.
+- **Threshold:** report-only: the exported members of one module or class, used from other modules, split into 2 or more groups of 2 or more members that no caller module uses together and that share no field or helper
+- **Exception:** If this is intended, add `{"rule":"disjoint-consumer-groups","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="structure-duplicate-definition"></a>
 
@@ -472,6 +527,34 @@ A folder with more source files, or more test files, directly in it than the lim
 - **Allowed form:** Group related files into subfolders (packages in Java).
 - **Threshold:** more than 6 source files, or test files, directly in one folder; override with `thresholds.folderFiles`
 - **Exception:** If this is intended, add `{"rule":"folder-files-limit","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="structure-foreign-state-decision"></a>
+
+### `structure/foreign-state-decision`
+
+Two or more functions outside a class with behaviour that branch on the same 2 or more of its fields.
+
+- **Presets:** TypeScript, JavaScript and Python
+- **Analyzers:** `structure` (TypeScript and JavaScript); `python` (Python)
+- **Scope:** The JavaScript preset enforces this check only in part.
+- **Why it is on:** Decisions over the state of a class made outside it spread its rules across the code base.
+- **Allowed form:** Give the class a method that answers the question, and call that.
+- **Threshold:** report-only: 2 or more functions outside a class with behaviour that branch on the same 2 or more of its fields
+- **Exception:** If this is intended, add `{"rule":"foreign-state-decision","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="structure-forwarding-chain"></a>
+
+### `structure/forwarding-chain`
+
+Two or more forwarding hops in a row, each into another module, that pass the same parameters in order and return the result unchanged, with the same parameter and return types.
+
+- **Presets:** TypeScript, JavaScript and Python
+- **Analyzers:** `structure` (TypeScript and JavaScript); `python` (Python)
+- **Scope:** The JavaScript preset enforces this check only in part.
+- **Why it is on:** Layers that only forward add indirection without hiding anything, so every reader has to follow them to find the code that works.
+- **Allowed form:** Call the last function directly, or give the middle layers work of their own.
+- **Threshold:** report-only: 2 or more forwarding hops in a row, each into another module, that pass the same parameters in order and return the result unchanged, with the same parameter and return types
+- **Exception:** If this is intended, add `{"rule":"forwarding-chain","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="structure-function-control-nesting-limit"></a>
 
@@ -563,6 +646,19 @@ A line longer than the limit, except imports, URLs and the text of string litera
 - **Threshold:** a line longer than 120 characters, except imports, URLs and string literal text; override with `thresholds.lineLength` (Java files: the width of the formatter, 100 for google-java-format and 120 for palantir-java-format, or the `java.lineLength` convention (a Checkstyle `LineLength` max, a pin, or measured when no formatter runs); Kotlin files: detekt's)
 - **Exception:** If this is intended, add `{"rule":"line-length-limit","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
+<a id="structure-mutable-state-escape"></a>
+
+### `structure/mutable-state-escape`
+
+A caller in another module that changes (push, add, put, an element assignment) a private mutable field of a class through the value an exported member of that class returned.
+
+- **Presets:** TypeScript, JavaScript and Python
+- **Analyzers:** `structure` (TypeScript and JavaScript); `python` (Python)
+- **Scope:** The JavaScript preset enforces this check only in part.
+- **Why it is on:** An owner that hands out its own mutable state no longer controls it, so its rules can be broken from anywhere.
+- **Allowed form:** Return a copy or a read-only view, or add an operation to the owner that makes the change.
+- **Exception:** If this is intended, add `{"rule":"mutable-state-escape","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
 <a id="structure-new-icon-asset"></a>
 
 ### `structure/new-icon-asset`
@@ -574,6 +670,19 @@ A new icon-sized `.svg` file while an icon package is a dependency.
 - **Why it is on:** Icons from one package look consistent; one-off files pile up.
 - **Allowed form:** Use an icon from \<package> instead of adding \<path>.
 - **Exception:** If this is intended, add `{"rule":"new-icon-asset","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="structure-protocol-contract"></a>
+
+### `structure/protocol-contract`
+
+A call that breaks a lifecycle the project lists in `protocols`: an `open` member without a `close` member on every exit, or a listed step before `open`.
+
+- **Presets:** TypeScript, JavaScript and Python
+- **Analyzers:** `structure` (TypeScript and JavaScript); `python` (Python)
+- **Scope:** The JavaScript preset enforces this check only in part.
+- **Why it is on:** A resource used out of order or left open leaks or fails at run time.
+- **Allowed form:** Call the steps in the listed order and close on every exit, for example in a `finally` block.
+- **Exception:** If this is intended, add `{"rule":"protocol-contract","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="structure-redefined-library-component"></a>
 
@@ -587,6 +696,20 @@ A component named like one the project already renders from a dependency.
 - **Why it is on:** A second copy of a library component diverges from the real one.
 - **Allowed form:** \<name> is already rendered from \<package> in \<count>. Use that one.
 - **Exception:** If this is intended, add `{"rule":"redefined-library-component","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="structure-repeated-policy-decision"></a>
+
+### `structure/repeated-policy-decision`
+
+Two decisions in different modules over the same enum or field that group its constants the same way, with an arm covering 2 or more constants.
+
+- **Presets:** TypeScript, JavaScript and Python
+- **Analyzers:** `structure` (TypeScript and JavaScript); `python` (Python)
+- **Scope:** The JavaScript preset enforces this check only in part.
+- **Why it is on:** A grouping repeated in several places is a rule of its own; a new constant has to be added to every copy.
+- **Allowed form:** Give the type one function that answers the question, and call it from each place.
+- **Threshold:** report-only: two decisions in different modules over the same enum or field that group its constants the same way, with an arm covering 2 or more constants
+- **Exception:** If this is intended, add `{"rule":"repeated-policy-decision","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="structure-sibling-copy-edit"></a>
 

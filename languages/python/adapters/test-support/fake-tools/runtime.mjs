@@ -46,6 +46,13 @@ function rulesScript(call) {
     return false;
   }
   write(call, args[3], readOr(call, 'rules.json', '[]'));
+  if (exists(call, 'design-facts.json')) {
+    write(
+      call,
+      args[3].replace(/rules\.json$/u, 'design-facts.json'),
+      read(call, 'design-facts.json'),
+    );
+  }
   return true;
 }
 
