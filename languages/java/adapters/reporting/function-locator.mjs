@@ -47,24 +47,25 @@ function unitOf(unit, lines) {
   };
 }
 
+function fileSource(functions, sourceText, file) {
+  const text = sourceText(file);
+  return {
+    lines: text?.split(/\r?\n/u) ?? [],
+    units: [
+      ...functions.filter((unit) => unit.file === file),
+      ...(text === undefined ? [] : declarationUnits(file, text)),
+    ],
+  };
+}
+
 function unitLocatorOver(functions, projectRoot) {
   const sourceText = sourceTextReader(projectRoot);
   const sources = new Map();
-  const sourceOf = (file) => {
-    if (!sources.has(file)) {
-      const text = sourceText(file);
-      sources.set(file, {
-        lines: text?.split(/\r?\n/u) ?? [],
-        units: [
-          ...functions.filter((unit) => unit.file === file),
-          ...(text === undefined ? [] : declarationUnits(file, text)),
-        ],
-      });
-    }
-    return sources.get(file);
-  };
   return (file, line) => {
-    const { lines, units } = sourceOf(file);
+    if (!sources.has(file)) {
+      sources.set(file, fileSource(functions, sourceText, file));
+    }
+    const { lines, units } = sources.get(file);
     const unit = enclosingFunction(units, file, line);
     return unit === undefined ? undefined : unitOf(unit, lines);
   };
