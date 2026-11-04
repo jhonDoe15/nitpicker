@@ -1,10 +1,10 @@
 import ast
 import re
+from collections import Counter
 
 CONSTANT_NAME = re.compile(r"^[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)*$")
 TRIVIAL_NUMBERS = {-1, 0, 1, 2}
 MIN_TEXT_LENGTH = 3
-SUPPORT_DIRECTORIES = {"tests", "test", "fixtures", "fixture", "__fixtures__"}
 
 
 def literal_key(node):
@@ -21,7 +21,7 @@ def literal_key(node):
     if isinstance(value, str):
         return "str", value
     if isinstance(value, (int, float)):
-        return type(value).__name__, value
+        return "number", value
     return None
 
 
@@ -32,15 +32,9 @@ def is_trivial(key):
     return value in TRIVIAL_NUMBERS
 
 
-def is_support_path(path):
-    parts = path.split("/")
-    stem = parts[-1]
-    return (
-        stem == "conftest.py"
-        or stem.startswith("test_")
-        or stem.endswith("_test.py")
-        or bool(SUPPORT_DIRECTORIES.intersection(parts[:-1]))
-    )
+def is_test_named(path):
+    stem = path.split("/")[-1]
+    return stem.startswith("test_") or stem.endswith("_test.py")
 
 
 def declared(statement):
@@ -51,21 +45,39 @@ def declared(statement):
     return []
 
 
+def is_constant_name(name):
+    return len(name) >= 2 and bool(CONSTANT_NAME.match(name))
+
+
+def assigned_names(tree):
+    names = [
+        target.id
+        for statement in tree.body
+        for target, _ in declared(statement)
+        if isinstance(target, ast.Name)
+    ]
+    return {name for name, count in Counter(names).items() if count > 1}
+
+
 def module_constants(tree):
+    reassigned = assigned_names(tree)
     found = []
     for statement in tree.body:
         for target, value in declared(statement):
             key = literal_key(value)
-            valid = isinstance(target, ast.Name) and len(target.id) >= 2
-            if valid and key and CONSTANT_NAME.match(target.id) and not is_trivial(key):
+            named = isinstance(target, ast.Name) and is_constant_name(target.id)
+            if named and target.id not in reassigned and key and not is_trivial(key):
                 found.append((target.id, key))
     return found
 
 
 def production_constants(project):
+    from security.support import support_files
+
+    support = project.memo("security-support-files", support_files)
     found = {}
     for path, context in project.contexts.items():
-        if context.tests or is_support_path(path):
+        if context.tests or path in support or is_test_named(path):
             continue
         constants = module_constants(context.tree)
         if constants:

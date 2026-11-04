@@ -1,43 +1,38 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { isConstantName } from '../../../../../../shared/rules/copied-constants/copied-constants.mjs';
+import { chainOf } from '../../../../../../shared/traversal.mjs';
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { resolveModuleSpecifier } from '../../../modules/module-resolution.mjs';
-import { scriptKindOf } from '../../../modules/module-sources.mjs';
+import { isExported, scriptKindOf } from '../../../modules/module-sources.mjs';
 import { readStamped } from '../../../modules/stamped-file-cache.mjs';
+import { readLayout } from '../../../head-policy.mjs';
 
 const MAX_REEXPORT_DEPTH = 4;
-const TEST_FILE = /\.(?:test|spec)\.[cm]?[jt]sx?$/u;
 const DECLARATION_FILE = /\.d\.[cm]?ts$/u;
-const TEST_FOLDERS = new Set([
-  'node_modules',
-  'test',
-  'tests',
-  '__tests__',
-  '__mocks__',
-  '__fixtures__',
-  'fixtures',
-  'test-support',
-  'testing',
-  'e2e',
-]);
 const EMPTY = { constants: new Map(), reexports: [] };
+const layout = readLayout();
+
+function isWrapper(node) {
+  return (
+    ts.isAsExpression(node) ||
+    ts.isSatisfiesExpression(node) ||
+    ts.isParenthesizedExpression(node) ||
+    ts.isTypeAssertionExpression(node)
+  );
+}
 
 function unwrapped(node) {
-  let current = node;
-  while (
-    ts.isAsExpression(current) ||
-    ts.isSatisfiesExpression(current) ||
-    ts.isParenthesizedExpression(current) ||
-    ts.isTypeAssertionExpression(current)
-  ) {
-    current = current.expression;
-  }
-  return current;
+  return chainOf(node, (link) => (isWrapper(link) ? link.expression : undefined)).at(-1);
 }
 
 function numberOf(node) {
   return ts.isNumericLiteral(node) ? Number(node.text.replaceAll('_', '')) : undefined;
+}
+
+function negatedNumber(node) {
+  const negated = numberOf(unwrapped(node.operand));
+  return negated === undefined ? undefined : { kind: 'number', value: -negated };
 }
 
 function literalValue(initializer) {
@@ -49,15 +44,10 @@ function literalValue(initializer) {
     return { kind: 'string', value: node.text };
   }
   if (ts.isPrefixUnaryExpression(node) && node.operator === ts.SyntaxKind.MinusToken) {
-    const negated = numberOf(unwrapped(node.operand));
-    return negated === undefined ? undefined : { kind: 'number', value: -negated };
+    return negatedNumber(node);
   }
   const value = numberOf(node);
   return value === undefined ? undefined : { kind: 'number', value };
-}
-
-function isExported(statement) {
-  return statement.modifiers?.some(({ kind }) => kind === ts.SyntaxKind.ExportKeyword) ?? false;
 }
 
 function localConstants(statement) {
@@ -99,6 +89,18 @@ function reexportOf(statement) {
     : undefined;
 }
 
+function isLocalExportList(statement) {
+  return statement.moduleSpecifier === undefined && statement.exportClause !== undefined;
+}
+
+function listedConstants(statements, locals) {
+  return statements
+    .filter(isLocalExportList)
+    .flatMap(exportedNames)
+    .filter(({ exported, local }) => locals.has(local) && isConstantName(exported))
+    .map(({ exported, local }) => [exported, locals.get(local)]);
+}
+
 function readModule(file) {
   const sourceFile = ts.createSourceFile(
     file,
@@ -108,26 +110,17 @@ function readModule(file) {
     scriptKindOf(file),
   );
   const locals = new Map(sourceFile.statements.flatMap(localConstants));
-  const constants = new Map(
-    sourceFile.statements
-      .filter(isExported)
-      .flatMap(localConstants)
-      .filter(([name]) => isConstantName(name)),
-  );
-  const reexports = [];
-  for (const statement of sourceFile.statements.filter(isValueExport)) {
-    const reexport = reexportOf(statement);
-    if (reexport !== undefined) {
-      reexports.push(reexport);
-    } else if (statement.moduleSpecifier === undefined && statement.exportClause !== undefined) {
-      for (const { exported, local } of exportedNames(statement)) {
-        if (locals.has(local) && isConstantName(exported)) {
-          constants.set(exported, locals.get(local));
-        }
-      }
-    }
-  }
-  return { constants, reexports };
+  const exportStatements = sourceFile.statements.filter(isValueExport);
+  return {
+    constants: new Map([
+      ...sourceFile.statements
+        .filter(isExported)
+        .flatMap(localConstants)
+        .filter(([name]) => isConstantName(name)),
+      ...listedConstants(exportStatements, locals),
+    ]),
+    reexports: exportStatements.map(reexportOf).filter((reexport) => reexport !== undefined),
+  };
 }
 
 const moduleCache = new Map();
@@ -137,47 +130,64 @@ function parsedModule(file) {
 }
 
 function isProductionModule(file, root) {
-  const relative = path.relative(root, file);
-  const parts = (relative.startsWith('..') ? file : relative).split(path.sep);
-  return (
-    !TEST_FILE.test(file) &&
-    !DECLARATION_FILE.test(file) &&
-    !parts.slice(0, -1).some((part) => TEST_FOLDERS.has(part))
+  const relative = path.relative(root, file).replaceAll('\\', '/');
+  if (relative.startsWith('..') || path.isAbsolute(relative) || DECLARATION_FILE.test(file)) {
+    return !DECLARATION_FILE.test(file);
+  }
+  return !(
+    layout.isTestPath(relative) ||
+    layout.isTestFile(relative) ||
+    layout.isFixturePath(relative) ||
+    layout.isGeneratedPath(relative)
   );
 }
 
-function reexported(reexport, inner) {
+function throughReexport(reexport, outer) {
   if (reexport.names === undefined) {
-    return [...inner];
+    return outer;
   }
-  return reexport.names.flatMap(({ exported, local }) =>
-    inner.has(local) && isConstantName(exported) ? [[exported, inner.get(local)]] : [],
-  );
+  return (name) => {
+    const listed = reexport.names.find(({ local }) => local === name);
+    return listed === undefined ? undefined : outer(listed.exported);
+  };
 }
 
-function collect(file, { depth, visited, aliases, root }) {
-  if (visited.has(file) || !isProductionModule(file, root)) {
-    return new Map();
+function reexportSteps(step, { aliases }) {
+  if (step.depth >= MAX_REEXPORT_DEPTH) {
+    return [];
   }
-  visited.add(file);
-  const { constants, reexports } = parsedModule(file);
-  const found = new Map(constants);
-  for (const reexport of depth < MAX_REEXPORT_DEPTH ? reexports : []) {
-    const target = resolveModuleSpecifier(reexport.specifier, file, { aliases });
-    const inner =
-      target.kind === 'file'
-        ? collect(target.path, { depth: depth + 1, visited, aliases, root })
-        : new Map();
-    for (const [name, value] of reexported(reexport, inner)) {
-      if (!found.has(name)) {
-        found.set(name, value);
-      }
-    }
-  }
-  return found;
+  return parsedModule(step.file).reexports.flatMap((reexport) => {
+    const target = resolveModuleSpecifier(reexport.specifier, step.file, { aliases });
+    return target.kind === 'file'
+      ? [
+          {
+            file: target.path,
+            depth: step.depth + 1,
+            rename: throughReexport(reexport, step.rename),
+          },
+        ]
+      : [];
+  });
 }
 
 /** The UPPER_SNAKE constants with one literal value that the production module `file` exports. */
 export function exportedConstants(file, { root, aliases = [] }) {
-  return collect(file, { depth: 0, visited: new Set(), aliases, root });
+  const found = new Map();
+  const visited = new Set();
+  const pending = [{ file, depth: 0, rename: (name) => name }];
+  for (const step of pending) {
+    if (visited.has(step.file) || !isProductionModule(step.file, root)) {
+      continue;
+    }
+    visited.add(step.file);
+    const named = [...parsedModule(step.file).constants].map(([name, value]) => [
+      step.rename(name),
+      value,
+    ]);
+    named
+      .filter(([name]) => name !== undefined && isConstantName(name) && !found.has(name))
+      .forEach(([name, value]) => found.set(name, value));
+    pending.push(...reexportSteps(step, { aliases }));
+  }
+  return found;
 }

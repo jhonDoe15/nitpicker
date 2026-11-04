@@ -179,7 +179,7 @@ To learn why a rule is on and what form it allows before you write or change cod
   racy test: wait on the condition instead of a fixed delay, isolate shared state. `retries = 0` and
   `@RepeatedTest` are fine.
 - Use a production constant by name, never a copy of its value (`pmd/CopiedConstantInTest`):
-  `Limits.MAX_LENGTH + 1`, not `65`. Pin a contract value as `Limits.MAX_LENGTH shouldBe 64`.
+  `Limits.MAX_LENGTH + 1`, not `65`. Pin a contract value as `assertEquals(64, Limits.MAX_LENGTH)`.
 - Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion that can be skipped, inside an `if`,
   a `when`, any loop (also over results), a safe call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that
   swallows the failure, a `runCatching`, or after an early `return`. An `if`/`else` or `when` whose every

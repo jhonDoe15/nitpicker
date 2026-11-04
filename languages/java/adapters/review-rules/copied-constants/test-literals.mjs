@@ -1,8 +1,6 @@
 import { isTrivialValue } from '../../../../../shared/rules/copied-constants/copied-constants.mjs';
 import { tokenValue } from './jvm-values.mjs';
 
-const OPENING = new Set(['(', '[']);
-const CLOSING = new Set([')', ']']);
 const STATEMENT_ENDS = new Set([';', '{', '}']);
 const VALUE_BEFORE = new Set(['identifier', 'number', 'string', 'char']);
 const CLOSES_VALUE = new Set([')', ']']);
@@ -48,40 +46,52 @@ const TEST_NAME_CALLS = new Set([
   'and',
   'feature',
   'scenario',
-  'expect',
   'dynamicTest',
   'dynamicContainer',
 ]);
-const NAME_FOLLOWERS = new Set(['{', '-']);
 
-function annotationEnd(tokens, at) {
-  let index = at + 1;
-  while (tokens[index]?.kind === 'identifier' || ['.', ':'].includes(tokens[index]?.text)) {
-    index += 1;
-  }
-  if (tokens[index]?.text !== '(') {
-    return at;
-  }
+const STATEMENT_WINDOW = 400;
+const ANNOTATION_WINDOW = 4000;
+const NAME_WINDOW = 64;
+const DEPTH_STEP = new Map([
+  ['(', 1],
+  ['[', 1],
+  [')', -1],
+  [']', -1],
+]);
+
+function indexes(from, to) {
+  return Array.from({ length: Math.max(0, to - from) }, (_, offset) => from + offset);
+}
+
+function isAnnotationName(token) {
+  return token?.kind === 'identifier' || token?.text === '.' || token?.text === ':';
+}
+
+function closingParen(tokens, open) {
   let depth = 0;
-  for (let next = index; next < tokens.length; next += 1) {
-    depth += OPENING.has(tokens[next].text) ? 1 : 0;
-    depth -= CLOSING.has(tokens[next].text) ? 1 : 0;
+  for (const at of indexes(open, Math.min(tokens.length, open + ANNOTATION_WINDOW))) {
+    depth += DEPTH_STEP.get(tokens[at].text) ?? 0;
     if (depth === 0) {
-      return next;
+      return at;
     }
   }
-  return tokens.length - 1;
+  return Math.min(tokens.length, open + ANNOTATION_WINDOW) - 1;
+}
+
+function annotationEnd(tokens, at) {
+  const name = indexes(at + 1, Math.min(tokens.length, at + 1 + NAME_WINDOW)).find(
+    (index) => !isAnnotationName(tokens[index]),
+  );
+  return name !== undefined && tokens[name].text === '(' ? closingParen(tokens, name) : at;
 }
 
 function annotationRanges(tokens) {
   const skipped = new Set();
   for (const [index, token] of tokens.entries()) {
-    if (token.text === '@') {
-      const end = annotationEnd(tokens, index);
-      for (let inner = index; inner <= end; inner += 1) {
-        skipped.add(inner);
-      }
-    }
+    const isAnnotation = token.text === '@' && tokens[index - 1]?.kind !== 'identifier';
+    const end = isAnnotation ? annotationEnd(tokens, index) : index - 1;
+    indexes(index, end + 1).forEach((inner) => skipped.add(inner));
   }
   return skipped;
 }
@@ -93,7 +103,8 @@ function isTestName(tokens, index, kotlin) {
     before?.text === '(' && TEST_NAME_CALLS.has(tokens[index - 2]?.text ?? '');
   const isSpecName =
     kotlin &&
-    (NAME_FOLLOWERS.has(after?.text) ||
+    (after?.text === '{' ||
+      (after?.text === '-' && tokens[index + 2]?.text === '{') ||
       (after?.kind === 'identifier' && tokens[index + 2]?.text === '{'));
   return isFirstArgument || isSpecName;
 }
@@ -116,42 +127,35 @@ function breaksLine(earlier, later, kotlin) {
   );
 }
 
+function isBoundary(token, neighbour, { kotlin, backward }) {
+  if (STATEMENT_ENDS.has(token.text)) {
+    return true;
+  }
+  return backward ? breaksLine(token, neighbour, kotlin) : breaksLine(neighbour, token, kotlin);
+}
+
 function statementStart(tokens, index, kotlin) {
+  const from = Math.max(0, index - STATEMENT_WINDOW);
   let depth = 0;
-  for (let at = index - 1; at >= 0; at -= 1) {
-    const token = tokens[at];
-    if (
-      depth === 0 &&
-      (STATEMENT_ENDS.has(token.text) || breaksLine(token, tokens[at + 1], kotlin))
-    ) {
+  for (const at of indexes(from, index).toReversed()) {
+    if (depth === 0 && isBoundary(tokens[at], tokens[at + 1], { kotlin, backward: true })) {
       return at + 1;
     }
-    if (CLOSING.has(token.text)) {
-      depth += 1;
-    } else if (OPENING.has(token.text) && depth > 0) {
-      depth -= 1;
-    }
+    depth = Math.max(0, depth - (DEPTH_STEP.get(tokens[at].text) ?? 0));
   }
-  return 0;
+  return from;
 }
 
 function statementEnd(tokens, index, kotlin) {
+  const to = Math.min(tokens.length, index + STATEMENT_WINDOW);
   let depth = 0;
-  for (let at = index + 1; at < tokens.length; at += 1) {
-    const token = tokens[at];
-    if (
-      depth === 0 &&
-      (STATEMENT_ENDS.has(token.text) || breaksLine(tokens[at - 1], token, kotlin))
-    ) {
+  for (const at of indexes(index + 1, to)) {
+    if (depth === 0 && isBoundary(tokens[at], tokens[at - 1], { kotlin, backward: false })) {
       return at;
     }
-    if (OPENING.has(token.text)) {
-      depth += 1;
-    } else if (CLOSING.has(token.text) && depth > 0) {
-      depth -= 1;
-    }
+    depth = Math.max(0, depth + (DEPTH_STEP.get(tokens[at].text) ?? 0));
   }
-  return tokens.length;
+  return to;
 }
 
 function statementNames(tokens, index, kotlin) {
@@ -168,13 +172,13 @@ function statementNames(tokens, index, kotlin) {
   return names;
 }
 
-function literalAt(tokens, index) {
+function literalAt(tokens, index, kotlin) {
   const token = tokens[index];
   if (token.kind !== 'string' && token.kind !== 'number') {
     return undefined;
   }
   const negated = token.kind === 'number' && isNegation(tokens, index);
-  const value = tokenValue(token.text, { negated });
+  const value = tokenValue(token.text, { negated, kotlin });
   return value === undefined || isTrivialValue(value) ? undefined : value;
 }
 
@@ -182,16 +186,10 @@ function literalAt(tokens, index) {
 export function testLiterals(parsed, { kotlin }) {
   const { tokens, headerEnd } = parsed;
   const skipped = annotationRanges(tokens);
-  const literals = [];
-  for (let index = headerEnd; index < tokens.length; index += 1) {
-    const value = skipped.has(index) ? undefined : literalAt(tokens, index);
-    if (value !== undefined && !isTestName(tokens, index, kotlin)) {
-      literals.push({
-        value,
-        line: tokens[index].line,
-        names: () => statementNames(tokens, index, kotlin),
-      });
-    }
-  }
-  return literals;
+  return indexes(headerEnd, tokens.length).flatMap((index) => {
+    const value = skipped.has(index) ? undefined : literalAt(tokens, index, kotlin);
+    return value === undefined || isTestName(tokens, index, kotlin)
+      ? []
+      : [{ value, line: tokens[index].line, names: () => statementNames(tokens, index, kotlin) }];
+  });
 }
