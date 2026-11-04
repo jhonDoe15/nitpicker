@@ -26,6 +26,7 @@
   "languages/java/adapters/spring/e2e/java-spring-review.e2e.test.mjs": 88,
   "languages/java/adapters/spring/e2e/java-spring-rules.e2e.test.mjs": 29,
   "languages/java/adapters/spring/e2e/spring-arch.e2e.test.mjs": 100,
+  "languages/java/adapters/spring/e2e/spring-boot-aot.e2e.test.mjs": 45,
   "languages/java/adapters/suppressions/escape-hatches.e2e.test.mjs": 94,
   "languages/java/maven/errorprone/maven-errorprone.e2e.test.mjs": 20,
   "languages/java/maven/preset/maven-preset-checkstyle.e2e.test.mjs": 98,

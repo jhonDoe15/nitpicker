@@ -26,3 +26,11 @@ export function buildRunsArchRules(policy, analyzed) {
 export function springFacts(classpaths) {
   return { spring: usesSpring(classpaths), springArch: runsArchRules(classpaths) };
 }
+
+const AOT_TESTS = '-Dspring.aot.enabled=true';
+
+export function springAotSkip(modules) {
+  return modules.some(({ testJvmArgs }) => testJvmArgs?.includes(AOT_TESTS))
+    ? []
+    : ['-Dspring-boot.aot.skip=true'];
+}

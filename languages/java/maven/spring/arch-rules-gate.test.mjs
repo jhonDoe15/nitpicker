@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { runsArchRules, usesSpring, withDeclaredSpring } from './arch-rules-gate.mjs';
+import {
+  runsArchRules,
+  springAotSkip,
+  usesSpring,
+  withDeclaredSpring,
+} from './arch-rules-gate.mjs';
 
 describe('usesSpring', () => {
   const classpaths = (...jars) => ({ mainCompile: jars.map((jar) => `/repo/${jar}`) });
@@ -43,5 +48,15 @@ describe('withDeclaredSpring', () => {
       { spring: false, springArch: true },
       { spring: false, springArch: false },
     ]);
+  });
+});
+
+describe('springAotSkip', () => {
+  it('skips Spring AOT processing unless a module runs its tests in AOT mode', () => {
+    expect([
+      springAotSkip([{ testJvmArgs: ['-Xmx1g'] }, { testJvmArgs: [] }]),
+      springAotSkip([{ testJvmArgs: ['-Dspring.aot.enabled=true'] }, { testJvmArgs: [] }]),
+      springAotSkip([{}]),
+    ]).toEqual([['-Dspring-boot.aot.skip=true'], [], ['-Dspring-boot.aot.skip=true']]);
   });
 });
