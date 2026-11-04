@@ -29,7 +29,7 @@
   "languages/java/adapters/kotlin-e2e/one-way/kotlin-preset-one-way-rules-hostile-config.e2e.test.mjs": 36,
   "languages/java/adapters/kotlin-e2e/red-base/kotlin-red-base.e2e.test.mjs": 215,
   "languages/java/adapters/kotlin-e2e/review-rules/kotlin-preset-review-rules-exceptions.e2e.test.mjs": 46,
-  "languages/java/adapters/kotlin-e2e/review-rules/kotlin-preset-review-rules-findings.e2e.test.mjs": 59,
+  "languages/java/adapters/kotlin-e2e/review-rules/kotlin-preset-review-rules-findings.e2e.test.mjs": 110,
   "languages/java/adapters/kotlin-e2e/review-rules/kotlin-preset-review-rules-serialization.e2e.test.mjs": 56,
   "languages/java/adapters/kotlin-e2e/style/kotlin-style-files.e2e.test.mjs": 14,
   "languages/java/adapters/kotlin-e2e/test-sources/kotlin-test-sources.e2e.test.mjs": 108,
