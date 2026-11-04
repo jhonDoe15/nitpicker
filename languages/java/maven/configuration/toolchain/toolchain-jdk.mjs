@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
-import { childAt, childrenAt, parseXml } from '../../../../shared/ingest/common.mjs';
-import { executionsOf, pluginsOf } from './pom-elements.mjs';
+import { childAt, childrenAt, parseXml } from '../../../../../shared/ingest/common.mjs';
+import { executionsOf, pluginsOf } from '../pom-elements.mjs';
 import { existingFile, globalToolchainsFile, userToolchainsFile } from './toolchain-files.mjs';
 
 const TOOLCHAINS_PLUGIN = 'org.apache.maven.plugins:maven-toolchains-plugin';

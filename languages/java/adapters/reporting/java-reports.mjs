@@ -3,8 +3,7 @@ import path from 'node:path';
 import { buildViews } from '../kotlin/review-rules/build-view.mjs';
 import { ingestArchunit } from '../../ingest/archunit.mjs';
 import { ingestCrap } from '../../ingest/crap.mjs';
-import { readDuplicateFindings } from '../metrics/java-duplicates.mjs';
-import { readKotlinDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
+import { readProjectDuplicateFindings } from '../kotlin/kotlin-duplicates.mjs';
 import {
   isEmptyModule,
   readMainCheckstyle,
@@ -48,13 +47,6 @@ import {
 
 const MODULE_IDENTITY_SEPARATOR = '@';
 const ROOT_MODULE = 'root';
-
-export function readProjectDuplicateFindings(reportRoot, { preset, projectRoot }) {
-  return [
-    ...readDuplicateFindings(reportRoot, { projectRoot }),
-    ...(preset === 'kotlin' ? readKotlinDuplicateFindings(reportRoot, projectRoot) : []),
-  ];
-}
 
 export function readJavaFindings(projectRoot, options = {}) {
   const { reportBase, report, preset = 'java', projectWide = true } = options;
