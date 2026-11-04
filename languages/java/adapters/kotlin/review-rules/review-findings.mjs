@@ -5,6 +5,7 @@ import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
 import { loadEffectFindings } from './main/load-effects.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
 import { unusedOptionFindings } from './main/unused-options/unused-options.mjs';
+import { kotlinDesignFindings } from './design/kotlin-design.mjs';
 import { validationTargetFindings } from './validation/validation-targets.mjs';
 import { buildViews, javaMentions } from './build-view.mjs';
 import { productionTypeResolver } from './production-types.mjs';
@@ -46,7 +47,7 @@ export function readKotlinFanOutFindings(context) {
 }
 
 export function readKotlinReviewFindings(context) {
-  const { manifest, projectRoot, modules = [] } = context;
+  const { manifest, projectRoot, reportRoot, modules = [] } = context;
   const { own, projectFiles, javaRoots, build } = projectView(context);
   const finding = findingFactory();
   const honesty = testHonestyFindings({
@@ -72,10 +73,11 @@ export function readKotlinReviewFindings(context) {
     ...singularPluralFindings(own, { finding }),
     ...validationTargetFindings(own, { finding }),
     ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
+    ...kotlinDesignFindings(reportRoot, { environment: context.environment }),
     ...unusedOptionFindings(own, {
       finding,
       build,
-      reportRoot: context.reportRoot,
+      reportRoot,
       serialization: manifest.kotlinSerialization === true,
       mentionedInJava: javaMentions(projectRoot, [manifest]),
     }),

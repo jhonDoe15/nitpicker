@@ -5,7 +5,6 @@ import static nitpicker.kotlinpsi.common.Psi.*;
 import java.util.*;
 import nitpicker.kotlinpsi.bodies.Initializers;
 import nitpicker.kotlinpsi.common.Frame;
-import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.lexer.KtTokens;
 import org.jetbrains.kotlin.psi.*;

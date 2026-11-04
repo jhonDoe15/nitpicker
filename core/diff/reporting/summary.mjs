@@ -7,6 +7,7 @@ import { singleLine } from './format/text.mjs';
 import { areaCountLine } from './format/rule-groups/finding-areas.mjs';
 import { byFixOrder, ruleGroupLines, withoutRoute } from './format/rule-groups/rule-groups.mjs';
 import { appendReviewSummary } from './review/notices.mjs';
+import { designNoteLines, designNotesHeading, newDesignNotes } from './review/design-notes.mjs';
 import { partialRunLines } from './partial-run/partial-run.mjs';
 import {
   TESTS_FAILED_RULE,
@@ -47,6 +48,7 @@ export function renderConsoleSummary(
     style(text, [ANSI.bold, ANSI.yellow], color),
   );
   appendHeldSummary(lines, report.unchangedFindings, { color, details, diagnosticsPath });
+  appendDesignNotes(lines, report.newFindings, color);
   appendNoteSummary(lines, report.notes, color);
   appendToolErrorSummary(lines, report.toolErrors, color);
   for (const line of partialRunLines(report.summary)) {
@@ -54,6 +56,16 @@ export function renderConsoleSummary(
   }
   lines.push(style(`Full diagnostics: ${diagnosticsPath}`, [ANSI.dim], color));
   return `${lines.join('\n')}\n`;
+}
+
+function appendDesignNotes(lines, newFindings, color) {
+  const notes = newDesignNotes(newFindings);
+  if (notes.length > 0) {
+    lines.push(
+      style(designNotesHeading(notes.length), [ANSI.dim], color),
+      ...designNoteLines(notes),
+    );
+  }
 }
 
 const MAX_HELD_LINES = 10;

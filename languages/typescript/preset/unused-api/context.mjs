@@ -24,7 +24,7 @@ function isSupportPath(relative, layout) {
   );
 }
 
-function isGenerated(sourceFile) {
+export function isGenerated(sourceFile) {
   return GENERATED_MARKER.test(sourceFile.text.slice(0, HEADER_LENGTH));
 }
 
