@@ -96,6 +96,7 @@ describe('test console output on a node:test project', () => {
         "it('saves', () => {",
         "  const write = mock.method(fs, 'writeFileSync', () => {});",
         "  console.warn('saving an empty file');",
+        "  console.assert(pick(false) === 'yes', 'got %s', pick(false));",
         "  fs.writeFileSync('/nowhere/out.txt', pick(false));",
         '  assert.equal(write.mock.callCount(), 1);',
         "  assert.equal(pick(true), 'yes');",
@@ -104,6 +105,7 @@ describe('test console output on a node:test project', () => {
     });
 
     expect(await consoleOutput(project)).toEqual([
+      ['test-console-output', 'test/save.test.js', '"Assertion failed: got no" (test "saves")'],
       ['test-console-output', 'test/save.test.js', '"saving an empty file" (test "saves")'],
     ]);
   });

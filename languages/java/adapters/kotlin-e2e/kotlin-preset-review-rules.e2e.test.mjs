@@ -7,6 +7,8 @@ import {
 } from './test-support/review/kotlin-coroutine-data.mjs';
 import {
   EXPECTED_REVIEW_FINDINGS,
+  integrationSuiteFiles,
+  publishedFiles,
   REVIEW_RULE_FILES,
   runtimeSerializationFiles,
 } from './test-support/review/kotlin-review-data.mjs';
@@ -14,6 +16,7 @@ import {
   commitBranch,
   commitFromBranch,
   diffOf,
+  git,
   initializeProject,
   kotlinE2eEnabled,
   kotlinPolicy,
@@ -128,5 +131,31 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
         entry.startsWith('ChildCoroutineOutlivesResource'),
       ),
     );
+  });
+
+  it('counts the tests of a published module as callers of its public functions', () => {
+    commitFromBranch(project, {
+      name: 'published',
+      from: 'review-rules',
+      files: publishedFiles(git(project, 'show', 'main:build.gradle.kts')),
+    });
+
+    const result = diffOf(project, 'published');
+
+    expect(reviewFindings(result.newEnforceable)).toEqual(
+      EXPECTED_REVIEW_FINDINGS.filter((entry) => entry !== 'unused-option price.discount'),
+    );
+  });
+
+  it('keeps judging public functions of an unpublished module that has an integration test suite', () => {
+    commitFromBranch(project, {
+      name: 'integration-suite',
+      from: 'review-rules',
+      files: integrationSuiteFiles(git(project, 'show', 'main:build.gradle.kts')),
+    });
+
+    const result = diffOf(project, 'integration-suite');
+
+    expect(reviewFindings(result.newFindings)).toEqual(EXPECTED_REVIEW_FINDINGS);
   });
 });
