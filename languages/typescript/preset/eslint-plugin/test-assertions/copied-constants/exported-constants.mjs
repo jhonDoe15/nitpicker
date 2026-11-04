@@ -184,9 +184,12 @@ export function exportedConstants(file, { root, aliases = [] }) {
       step.rename(name),
       value,
     ]);
-    named
-      .filter(([name]) => name !== undefined && isConstantName(name) && !found.has(name))
-      .forEach(([name, value]) => found.set(name, value));
+    const fresh = named.filter(
+      ([name]) => name !== undefined && isConstantName(name) && !found.has(name),
+    );
+    for (const [name, value] of fresh) {
+      found.set(name, value);
+    }
     pending.push(...reexportSteps(step, { aliases }));
   }
   return found;

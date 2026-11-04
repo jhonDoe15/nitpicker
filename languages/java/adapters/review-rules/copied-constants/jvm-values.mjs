@@ -6,7 +6,7 @@ const JAVA_OCTAL = /^0([0-7]+)$/u;
 
 function numberValue(text, kotlin) {
   const plain = text.replaceAll('_', '');
-  const octal = kotlin ? null : JAVA_OCTAL.exec(plain.replace(/[lL]$/u, ''));
+  const octal = kotlin ? undefined : JAVA_OCTAL.exec(plain.replace(/[lL]$/u, ''));
   if (octal) {
     return Number.parseInt(octal[1], 8);
   }
