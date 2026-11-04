@@ -339,6 +339,10 @@ describe('a new throw in a legacy function', () => {
 
     expect(result.newFindings).toEqual([]);
     expect(result.resolvedFindings).toEqual([]);
+    expect(result.unchangedFindings.map(({ symbol, heldAtBase }) => [symbol, heldAtBase])).toEqual([
+      ['read', 2],
+      ['read', 2],
+    ]);
   });
 
   it('keeps the plain message when the base function had no throw', () => {
@@ -420,6 +424,9 @@ describe('a complexity finding fails only when the number rises', () => {
 
     expect(result.newFindings).toEqual([]);
     expect(result.resolvedFindings).toEqual([]);
+    expect(result.unchangedFindings.map(({ symbol, heldAtBase }) => [symbol, heldAtBase])).toEqual([
+      ['sum', 16],
+    ]);
   });
 
   it.each(cases)('fails %s that is renamed and grows', (_name, build, reported) => {
