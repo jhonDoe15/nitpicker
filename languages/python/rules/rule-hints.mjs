@@ -8,6 +8,7 @@ import { TEST_SWITCH_HINTS } from './hints/tests/ast-test-switches.mjs';
 import { PYTEST_HINTS } from './hints/tests/ruff-pytest.mjs';
 import { SECURITY_HINTS } from './hints/security/ruff-security.mjs';
 import { RULES_SECURITY_HINTS } from './hints/security/rules-security.mjs';
+import { PITFALL_HINTS } from './hints/pitfalls/ruff-pitfalls.mjs';
 import { STYLE_HINTS } from './hints/ruff-style.mjs';
 import { RULES_TOOL } from './hints/tool.mjs';
 import { DEFAULT_LIBRARIES } from './libraries/project-libraries.mjs';
@@ -36,6 +37,7 @@ const USE_REPLACEMENT =
 
 export const RULE_HINTS = [
   ...STYLE_HINTS,
+  ...PITFALL_HINTS,
   ...PYTEST_HINTS,
   ...SECURITY_HINTS,
   ...RULES_SECURITY_HINTS,
