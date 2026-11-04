@@ -1,19 +1,9 @@
-import { annotationNamed, append, compactType } from '../kotlin-facts.mjs';
+import { append, compactType } from '../kotlin-facts.mjs';
+import { declaredNames, springManagedOwner } from '../spring/spring-names.mjs';
 
 export const FORWARDING_RULE = 'StaticForwardingWrapper';
 
 const MESSAGE = `This function only passes its parameters, in order, to another function. Call that function directly where this one is used and delete the wrapper. Factories named of or from and copies such as List.copyOf are allowed.`;
-const SPRING_STEREOTYPES = new Set([
-  'Component',
-  'Service',
-  'Repository',
-  'Controller',
-  'RestController',
-  'ControllerAdvice',
-  'RestControllerAdvice',
-  'Configuration',
-  'SpringBootApplication',
-]);
 const SKIPPED_NAMES = new Set(['main', 'valueOf', 'fromString', 'of', 'from', 'invoke', 'copy']);
 const SKIPPED_MODIFIERS = new Set([
   'override',
@@ -30,27 +20,18 @@ const TYPE_NAME = String.raw`[A-Z][A-Z0-9_]*[a-z]\w*`;
 const TYPE_QUALIFIER = new RegExp(`^${TYPE_NAME}(?:\\.${TYPE_NAME})*$`, 'u');
 const STATIC_OWNERS = new Set(['object', 'companion']);
 
-function ownerKinds(file) {
-  return new Map(file.classes.map((klass) => [klass.qualified, klass]));
-}
-
-function ancestorsOf(qualified) {
-  const parts = qualified.split('.');
-  return parts.map((_, index) => parts.slice(0, index + 1).join('.'));
+function ownerKinds(file, declared) {
+  return {
+    kinds: new Map(file.classes.map((klass) => [klass.qualified, klass.kind])),
+    managed: springManagedOwner(file, declared),
+  };
 }
 
 function isStaticLike(fn, owners) {
   if (fn.owner === '') {
     return true;
   }
-  const owner = owners.get(fn.owner);
-  return (
-    owner !== undefined &&
-    STATIC_OWNERS.has(owner.kind) &&
-    !ancestorsOf(fn.owner).some((qualified) =>
-      annotationNamed(owners.get(qualified)?.annotations ?? [], SPRING_STEREOTYPES),
-    )
-  );
+  return STATIC_OWNERS.has(owners.kinds.get(fn.owner)) && !owners.managed(fn.owner);
 }
 
 function candidate(fn, owners) {
@@ -87,10 +68,10 @@ function passesInOrder(fn) {
   );
 }
 
-function targetsOf(files) {
+function targetsOf(files, declared) {
   const targets = new Map();
   for (const file of files) {
-    const owners = ownerKinds(file);
+    const owners = ownerKinds(file, declared);
     for (const fn of file.functions.filter(
       (entry) => !entry.local && isStaticLike(entry, owners),
     )) {
@@ -131,9 +112,13 @@ function forwardsTo(fn, targets) {
 
 export function forwardingWrapperFindings(files, { finding, declaredIn = files }) {
   const main = files.filter(({ test }) => !test);
-  const targets = targetsOf(declaredIn.filter(({ test }) => !test));
+  const declared = declaredNames(declaredIn);
+  const targets = targetsOf(
+    declaredIn.filter(({ test }) => !test),
+    declared,
+  );
   return main.flatMap((file) => {
-    const owners = ownerKinds(file);
+    const owners = ownerKinds(file, declared);
     return file.functions
       .filter((fn) => candidate(fn, owners) && passesInOrder(fn) && forwardsTo(fn, targets))
       .map((fn) => {
