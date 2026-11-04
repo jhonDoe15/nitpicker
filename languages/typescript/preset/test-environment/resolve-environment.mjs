@@ -1,4 +1,4 @@
-import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file.mjs';
+import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
 import path from 'node:path';
 import { markedPayload } from '../../../../core/tooling/child-output.mjs';
 import { readHeadPolicy, readLayout } from '../head-policy.mjs';

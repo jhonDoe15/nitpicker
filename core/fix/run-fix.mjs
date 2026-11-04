@@ -13,7 +13,7 @@ import { prettierExtensions, prettierExclusions, typescriptExtensions } from './
 import { linkPolicyFile } from '../tooling/policy-links.mjs';
 import { PACKAGE_ROOT, resolveTool } from '../tooling/tool-resolution.mjs';
 import { layoutTransformFor } from '../../languages/typescript/preset/tool-configs.mjs';
-import { spawnSyncWithOutputFile } from '../tooling/output-file.mjs';
+import { spawnSyncWithOutputFile } from '../tooling/output-file/output-file.mjs';
 import {
   PROJECT_LAYER_VARIABLE,
   projectLayerValue,

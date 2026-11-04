@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { openOutputFile } from '../../tooling/output-file.mjs';
+import { openOutputFile } from '../../tooling/output-file/output-file.mjs';
 import { parseAnalyzerReport } from '../comparison/finding-schema.mjs';
 import { withoutHostCiOutputs } from '../../tooling/host-environment.mjs';
 

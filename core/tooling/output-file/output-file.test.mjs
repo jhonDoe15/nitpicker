@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { openOutputFile, spawnSyncWithOutputFile } from './output-file.mjs';
-import { removeTrackedTemporaryPaths } from './temporary-files.mjs';
+import { removeTrackedTemporaryPaths } from '../temporary-files.mjs';
 
 const REPORT_BYTES = 3 * 1024 * 1024;
 const GIT_TIMEOUT_MS = 30_000;

@@ -6,7 +6,7 @@ import {
 import { loadDependencyGraph } from '../../dependency-graph/project-dependency-graph.mjs';
 import { existingRoots } from '../../../preset/layout.mjs';
 import { EXCLUDED_PATH_PATTERN } from '../../../preset/dependency-graph/cruise.mjs';
-import { spawnSyncWithOutputFile } from '../../../../../core/tooling/output-file.mjs';
+import { spawnSyncWithOutputFile } from '../../../../../core/tooling/output-file/output-file.mjs';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
 import { lstatSync } from 'node:fs';

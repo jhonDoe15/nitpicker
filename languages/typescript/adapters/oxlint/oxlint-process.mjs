@@ -1,4 +1,4 @@
-import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file.mjs';
+import { spawnSyncWithOutputFile } from '../../../../core/tooling/output-file/output-file.mjs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
