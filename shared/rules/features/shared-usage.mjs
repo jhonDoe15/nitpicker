@@ -1,8 +1,6 @@
 import { MESSAGES, RULE_IDS, renderMessage } from '../../policy.mjs';
 import { exceptionText } from '../exceptions.mjs';
 
-export { DEFAULT_FEATURE_LAYOUT, featureRoles } from './feature-roles.mjs';
-
 function importersByTarget(imports) {
   const importers = new Map();
   for (const { from, to } of imports.filter(({ role }) => role !== 'test')) {
@@ -33,8 +31,8 @@ function consumerRoles(start, importers, roleOf) {
 
 function soleFeature(consumers) {
   const directories = new Set(consumers.map(({ directory }) => directory));
-  const [directory] = directories;
-  return directories.size === 1 && directory !== undefined ? directory : undefined;
+  const [first] = consumers;
+  return directories.size === 1 && first.kind === 'feature' ? first : undefined;
 }
 
 export function sharedUsedByOneFeature({ modules, imports }, { roleOf }) {
@@ -43,10 +41,10 @@ export function sharedUsedByOneFeature({ modules, imports }, { roleOf }) {
     .filter((source) => roleOf(source).kind === 'shared')
     .toSorted()
     .flatMap((source) => {
-      const directory = soleFeature(consumerRoles(source, importers, roleOf));
-      return directory === undefined
+      const feature = soleFeature(consumerRoles(source, importers, roleOf));
+      return feature === undefined
         ? []
-        : [{ source, feature: directory.split('/').at(-1), directory: `${directory}/` }];
+        : [{ source, feature: feature.name, directory: `${feature.directory}/` }];
     });
 }
 

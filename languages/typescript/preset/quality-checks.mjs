@@ -172,6 +172,7 @@ function typeAndArchitectureChecksFor(layout) {
         'languages/typescript/preset/architecture/strict-boundary-rules.mjs',
         'languages/typescript/preset/architecture/domain-packages.mjs',
         'languages/typescript/preset/architecture/strict-layout.mjs',
+        'languages/typescript/preset/coupling/feature-layout.mjs',
         'languages/typescript/preset/defaults/tsconfig.quality.json',
         'languages/typescript/adapters/dependency-graph/project-config/dependency-cruiser-layers.mjs',
         'languages/typescript/adapters/dependency-graph/project-config/graph-layer.mjs',

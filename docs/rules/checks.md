@@ -1,6 +1,6 @@
 # Nitpicker checks
 
-The checks nitpicker runs itself in every preset: function and file size, CRAP, coverage, mutation, duplicates, coupling, dead code, test runtime, repository hygiene and the policy checks on nitpicker.config.json. This page lists 52 rules. [All pages](README.md).
+The checks nitpicker runs itself in every preset: function and file size, CRAP, coverage, mutation, duplicates, coupling, dead code, test runtime, repository hygiene and the policy checks on nitpicker.config.json. This page lists 55 rules. [All pages](README.md).
 
 The guide for these rules: [spec/checks.md](../../spec/checks.md).
 
@@ -86,14 +86,50 @@ A module breaks the runtime boundary of its role: `forbidden-runtime-dependency`
 - **Allowed form:** Depend on the allowed module, move the call to a module whose role may make it, and write the specifier of a dynamic import as a string literal.
 - **Exception:** If this is intended, add `{"rule":"runtime-boundary/<rule>","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
+<a id="coupling-feature-cycle"></a>
+
+### `coupling/feature-cycle`
+
+A runtime import between two features that closes a cycle of features.
+
+- **Presets:** TypeScript, JavaScript and Python
+- **Analyzers:** `coupling` (TypeScript and JavaScript); `python` (Python)
+- **Why it is on:** Features that depend on each other cannot be understood, changed or removed one at a time.
+- **Allowed form:** Break the cycle: move the shared part to a shared root, or invert one dependency through an interface.
+- **Exception:** If this is intended, add `{"rule":"feature-cycle","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="coupling-feature-internal-import"></a>
+
+### `coupling/feature-internal-import`
+
+A production module outside a feature that imports a module behind the public face of that feature.
+
+- **Presets:** TypeScript, JavaScript and Python
+- **Analyzers:** `coupling` (TypeScript and JavaScript); `python` (Python)
+- **Why it is on:** A feature that others reach into cannot change its internals without breaking them.
+- **Allowed form:** Import the feature's public face (its index file or package `__init__`), or export what you need from it.
+- **Exception:** If this is intended, add `{"rule":"feature-internal-import","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="coupling-shared-imports-feature"></a>
+
+### `coupling/shared-imports-feature`
+
+A production module under a shared root that imports a feature module.
+
+- **Presets:** TypeScript, JavaScript and Python
+- **Analyzers:** `coupling` (TypeScript and JavaScript); `python` (Python)
+- **Why it is on:** Shared code that depends on one feature ties every other feature to it.
+- **Allowed form:** Move the code into the feature, or move what it needs from the feature into the shared root.
+- **Exception:** If this is intended, add `{"rule":"shared-imports-feature","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
 <a id="coupling-shared-used-by-one-feature"></a>
 
 ### `coupling/shared-used-by-one-feature`
 
 A module under a shared root that exactly one feature reaches and nothing else uses.
 
-- **Presets:** TypeScript and JavaScript
-- **Analyzers:** `coupling`
+- **Presets:** TypeScript, JavaScript and Python
+- **Analyzers:** `coupling` (TypeScript and JavaScript); `python` (Python)
 - **Why it is on:** `shared` is for code several features use; code with one user belongs with it.
 - **Allowed form:** Move it into \<directory>.
 - **Exception:** If this is intended, add `{"rule":"shared-used-by-one-feature","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.

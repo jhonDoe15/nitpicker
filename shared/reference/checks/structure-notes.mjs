@@ -19,6 +19,21 @@ export const STRUCTURE_NOTES = {
     '`shared` is for code several features use; code with one user belongs with it.',
     'Move the module into the feature that uses it.',
   ],
+  'feature-internal-import': [
+    'A production module outside a feature that imports a module behind the public face of that feature.',
+    'A feature that others reach into cannot change its internals without breaking them.',
+    "Import the feature's public face (its index file or package `__init__`), or export what you need from it.",
+  ],
+  'shared-imports-feature': [
+    'A production module under a shared root that imports a feature module.',
+    'Shared code that depends on one feature ties every other feature to it.',
+    'Move the code into the feature, or move what it needs from the feature into the shared root.',
+  ],
+  'feature-cycle': [
+    'A runtime import between two features that closes a cycle of features.',
+    'Features that depend on each other cannot be understood, changed or removed one at a time.',
+    'Break the cycle: move the shared part to a shared root, or invert one dependency through an interface.',
+  ],
   'duplicate-definition': [
     'A used literal constant, function or type with the same name and text in two modules of a package.',
     'Two copies of one definition drift apart.',

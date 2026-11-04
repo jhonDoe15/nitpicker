@@ -1,9 +1,10 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { acceptedDigest } from '../../../../core/command/test-support/accepted-digest.mjs';
-import { LAYERED_FILES, ORDER_TOTAL } from './test-support/python-preset-data.mjs';
+import { FEATURE_FILES, LAYERED_FILES, ORDER_TOTAL } from './test-support/python-preset-data.mjs';
 import {
   commitBranch,
   gate,
+  git,
   initializeRepository,
   installPackages,
   pythonE2eEnabled,
@@ -12,8 +13,22 @@ import {
   write,
 } from './test-support/python-e2e-support.mjs';
 
+const INTERNAL = 'feature-internal-import';
+const SHARED = 'shared-imports-feature';
+const CYCLE = 'feature-cycle';
+const FEATURE_RULES = [INTERNAL, SHARED, CYCLE, 'package-cycle'];
 const IMPORT_LINTER_OFF_CONFIG =
   '{ "preset": "python", "disable": ["mutation"], "python": { "importLinter": false } }\n';
+const FEATURE_EXCEPTIONS = [INTERNAL, SHARED, CYCLE].map((rule) => ({
+  rule,
+  paths: ['src/shop/**'],
+  reason: 'billing and shipping split next quarter',
+}));
+const EXCEPTED_CONFIG = `${JSON.stringify({
+  preset: 'python',
+  disable: ['mutation'],
+  exceptions: FEATURE_EXCEPTIONS,
+})}\n`;
 
 describe.skipIf(!pythonE2eEnabled)(
   'Python duplicates, coupling and import contracts end to end',
@@ -42,6 +57,16 @@ describe.skipIf(!pythonE2eEnabled)(
       });
       commitBranch(project, 'upward-import', {
         'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    from shop.web import views\n\n    return views.show([1])\n`,
+      });
+      commitBranch(project, 'features', FEATURE_FILES);
+      git(project, 'checkout', '-q', '-b', 'features-later', 'features');
+      write(project, {
+        'src/shop/features/shipping/fees.py': `${FEATURE_FILES['src/shop/features/shipping/fees.py']}\n\ndef free() -> int:\n    return 0\n`,
+      });
+      git(project, 'commit', '-q', '-am', 'features-later');
+      commitBranch(project, 'features-excepted', {
+        ...FEATURE_FILES,
+        'nitpicker.config.json': EXCEPTED_CONFIG,
       });
       commitBranch(project, 'contracts-off', {
         'src/shop/domain/pricing.py': `${LAYERED_FILES['src/shop/domain/pricing.py']}\n\ndef describe() -> str:\n    from shop.web import views\n\n    return views.show([1])\n`,
@@ -107,6 +132,48 @@ describe.skipIf(!pythonE2eEnabled)(
             'contract:Domain is pure:shop.domain.pricing -> shop.web.views -> shop.infra.store',
         },
       ]);
+    });
+    it('fails internal feature imports, shared code importing a feature and a feature cycle', () => {
+      const result = gate(project, 'features');
+      const features = 'src/shop/features';
+      const found = enforceable(result).filter(({ rule }) => FEATURE_RULES.includes(rule));
+
+      expect(result.exitCode, result.text).toBe(1);
+      expect(found.map(({ rule, path: file, identity }) => [rule, file, identity])).toEqual([
+        [
+          INTERNAL,
+          `${features}/shipping/fees.py`,
+          `feature-internal:${features}/billing/_rates.py`,
+        ],
+        [CYCLE, `${features}/shipping/fees.py`, `${features}/billing|${CYCLE}`],
+        [SHARED, 'src/shop/shared/money.py', `${features}/billing|${SHARED}`],
+        [CYCLE, `${features}/billing/invoice.py`, `${features}/shipping|${CYCLE}`],
+      ]);
+      expect(found[0].message).toMatch(
+        /^Import feature billing only through .* to "exceptions" in nitpicker\.config\.json\.$/u,
+      );
+    });
+    it('keeps the feature findings a base already had as unchanged', () => {
+      const result = gate(project, 'features-later', { base: 'features' });
+
+      expect(result.exitCode, result.text).toBe(0);
+      expect(
+        [...result.json('new-findings.json'), ...result.json('resolved-findings.json')].filter(
+          ({ rule }) => FEATURE_RULES.includes(rule),
+        ),
+      ).toEqual([]);
+    });
+    it('drops the findings a top-level exception covers, and then reports the package cycle', () => {
+      const result = gate(project, 'features-excepted');
+      const found = enforceable(result).filter(({ rule }) => FEATURE_RULES.includes(rule));
+
+      expect(found.map(({ rule, path: file }) => [rule, file])).toEqual([
+        ['package-cycle', 'src/shop/features/billing/__init__.py'],
+        ['package-cycle', 'src/shop/features/shipping/__init__.py'],
+      ]);
+      expect(newRules(result).filter((rule) => rule.startsWith('nitpicker-config'))).toEqual(
+        Array.from({ length: 6 }, () => 'nitpicker-config policy-loosened'),
+      );
     });
     it('does not run the contracts when the config turns import-linter off', () => {
       const digest = acceptedDigest(['python.importLinter: not set -> false'], {
