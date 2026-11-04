@@ -430,18 +430,19 @@ through the real tools.
   form) and `RUF100` (every `noqa` is already a finding). `S110` and `S112` are not selected:
   `swallowed-exception` reports what they did, and more, once and under one id. The shared
   one-way rules add the groups `G` (logging calls), `N` (PEP 8 naming), `ERA` (commented-out
-  code), `ARG` (unused arguments), `DTZ` (datetimes without a zone), `PT` (pytest style), `S` (security) and `TRY` (exceptions), and
-  the single rules `PLR2004`, `PLW0602` and `PLW0603`; the last section of this
-  slice lists each one with its allowed form and the rules of those groups that are left off.
-  The groups `RUF`, `G`, `N`, `DTZ`, `PT`, `S` and `TRY` are selected by listing their stable codes, not
-  by prefix, so a later ruff cannot add a rule (or a preview rule) to the gate. `ruffConfigFor`
+  code), `ARG` (unused arguments), `DTZ` (datetimes without a zone), `PT` (pytest style), `S` (security)
+  and `TRY` (exceptions), the pitfall groups `ASYNC`, `LOG`, `PLE`, `PLW` and `T10`, and the single rules
+  `PLR2004`, `PLW0602` and `PLW0603`; the last section of this slice lists each one with its allowed form
+  and the rules of those groups that are left off. The groups `RUF`, `G`, `N`, `DTZ`, `PT`, `S`, `TRY`,
+  `ASYNC`, `LOG`, `PLE`, `PLW` and `T10` are selected by listing their stable codes, not by prefix, so a
+  later ruff cannot add a rule (or a preview rule) to the gate. `ruffConfigFor`
   (`adapters/configuration/python-ruff-config.mjs`) writes the toml into the report directory
   without the codes that the installed ruff does not know or lists as preview or removed
   (`ruff rule --all --output-format json`), which lets ruff 0.9 up to 0.16 run the same selection;
   a prefix such as `E4` or `T20` stays when a known rule starts with it. Test files are the ones
   pytest collects (the `python_files` patterns, `testpaths`, `conftest.py`, any `tests` or `test`
   folder, `test_*.py`, `*_test.py`, and the Django names in a Django project, see
-  [runner parity](#runner-parity)): ruff's `ARG`, `DTZ`, `PLR2004` and `S` findings in them are
+  [runner parity](#runner-parity)): ruff's `ARG`, `DTZ`, `PLR2004`, `S` and `ASYNC251` findings in them are
   dropped after ruff runs (`rules/filters/ruff-allowed-forms.mjs`). The `DTZ` codes are not in the touched-code list of `touched-rules.mjs`, like `ARG`: a datetime site that is added on an edited line is new only when its identity differs from the base's, so the base's findings of the same code in that file stay baselined. `datetime.strptime(...).date()` and `.time()` are allowed (`DTZ007`), since a calendar value has no zone. Security findings (ruff `S` and the
   `sql-string-formatting`, `tls-verification-off`, `weak-hmac`, `http-without-timeout` and
   `unsafe-deserialization` rules) are also dropped in test support that pytest does not collect, as in the
@@ -612,6 +613,7 @@ are listed at the end.
 | Naming                   | PEP 8: `CapWords`, `snake_case`, `UPPER_SNAKE_CASE`, `...Error`                                                                                                                      | ruff `N`                                                                                                                                             |
 | Boundary                 | parse untrusted data once with the project's validator (pydantic by default) in `adapters/`                                                                                          | `handwritten-boundary-guard` (script)                                                                                                                |
 | Types in the domain      | real types, `Protocol`, frozen dataclasses                                                                                                                                           | `any-in-domain`, `pydantic-any-field`, `pydantic-extra-allow` (script)                                                                               |
+| Type checking            | a concrete type, `Protocol`, `TypeVar`, `ParamSpec`, `object` narrowed with `isinstance`; no `typing.cast`, no `Any`                                                                 | `type-cast`, `explicit-any` (script)                                                                                                                 |
 | Pure domain              | clock, ids, random values and results passed in; ports implemented in `adapters/`; no logger or module state                                                                         | `clock-now`, `random-in-domain`, `io-in-domain`, `logger-in-domain`, `module-state-in-domain` (script)                                               |
 | Module state             | state in an object made in the composition root                                                                                                                                      | `module-level-mutable-state` (script), ruff `PLW0602`, `PLW0603`                                                                                     |
 | Import-time effects      | work done in a function the composition root calls, or under `if __name__ == "__main__":`                                                                                            | `import-time-effect` (script)                                                                                                                        |
@@ -640,6 +642,35 @@ are listed at the end.
 | Timeouts                 | `timeout=10` on every request, `urlopen` and plain `requests.Session` call; never `timeout=None`                                                                                     | ruff `S113`, `http-without-timeout` (script)                                                                                                         |
 | Test honesty             | a reason on every skip, no sleeping, no tautologies, fixed time and seeded random values, no network                                                                                 | ruff `PT`, `skipped-test-without-reason`, `sleep-in-test`, `tautological-assert`, `real-clock-in-test`, `random-in-test`, `network-in-test` (script) |
 | Test layout              | tests in files pytest collects; helpers in the tests folder                                                                                                                          | `uncollected-tests`, `test-helper-in-source` (script)                                                                                                |
+
+`type-cast` rejects `typing.cast` (and `typing_extensions.cast`) as a call or as a value
+(`partial(cast, int)`); `explicit-any` rejects every explicit `Any` of those modules. Both apply in
+source and in tests, as the TypeScript preset bans `as` and `any` in tests too. The finding is named
+by what it types: `f(a)`, `f(return)`, `Model.field`, `Alias`, or `cast(str) in f`, so a finding
+added above another does not renumber it; one annotation gives one finding however many `Any` it holds
+(`dict[str, Any] | list[Any]`), and `cast(Any, value)` is one `type-cast` finding. The allowed forms
+are the concrete type, a `Protocol`, a `TypeVar`, a `ParamSpec` for a wrapper's `*args` and `**kwargs`,
+and `object` narrowed with `isinstance` or `match` (`dict[str, object]`, `Callable[..., object]`);
+untrusted input is parsed once in `adapters/` (the cast message names it when the target is a
+container). Both rules take `python.exceptions` entries with paths and a reason. ruff's `ANN401` is
+not selected, since `explicit-any` covers the same `Any` in every position.
+
+- An `Any` inside a node that `any-in-domain` or `pydantic-any-field` already reports (the whole
+  annotation, also over several lines) is not reported again, so one exception for the first rule
+  covers the `explicit-any` on that node too.
+- The implementation signature of a function that has `@overload` siblings is not checked: callers
+  see the overloads, which are.
+- `__getattr__`, `Callable[..., Any]` and test mocks are reported like any other `Any`; write
+  `Callable[..., object]` and a typed fake.
+- Resolution is lexical and conservative: a reassigned or ambiguous imported name (a comprehension
+  variable, a `match` capture, a parameter) is not assumed to refer to typing, while `typing` and
+  `typing_extensions` count as the same module (`try: from typing import cast` /
+  `except ImportError: from typing_extensions import cast`). Dynamic imports, wildcard imports (ruff
+  `F403` bans them), re-exports and arbitrary assignment aliases are not followed.
+- Annotation strings are parsed as expressions; `Literal` string values and `Annotated` metadata are
+  data, not type references. PEP 695/696 type-parameter bounds and defaults, class keywords and
+  subscript targets are read. Unused imports alone do not produce these findings (ruff handles unused
+  imports), and standalone `.pyi` stubs are not read.
 
 Details that are decisions rather than the table:
 
@@ -1107,6 +1138,60 @@ __getattr__` that warns or maps removed names to new ones (a PEP 562 lazy import
 - Other rules of the selected groups that are left off: `TRY003` (long messages in `raise`),
   `TRY300` and `TRY301` (`else` after `try`, `raise` inside `try`), and, for `PT`, `PT009` and `PT027` (`unittest` assertions, which `unittest`
   projects use by design). `PT011` and `PT030` ask for a `match` or a more specific class.
+- The pitfall groups `ASYNC`, `DTZ`, `LOG`, `PLE`, `PLW` and `T10` list every stable code of
+  ruff 0.16.8 (the version CI pins) except these, each with its reason at the end of
+  `nitpicker-ruff.toml`: `PLW1641` (equality without a hash: a mutable class may be unhashable on
+  purpose), `PLE0116` (`continue` in `finally`, which ruff reports only below Python 3.8, and the
+  lint always passes `--target-version py38` or later), and the codes another selected rule
+  already reports at the same site: `PLE1132` (`PIE804`), `PLE1300` and `PLE1307` (`UP031`,
+  `UP032` and `F509`), `PLE1310` (`B005`) and `PLW0711` (`B030`). Every selected pitfall code has
+  its own allowed form (`rules/hints/pitfalls/`). All of them apply to test files too, except
+  `DTZ`, whose findings are dropped there like `ARG`.
+- `ASYNC`: inside `async def`, sleep with `await asyncio.sleep(...)`; call HTTP through an async
+  client (`httpx.AsyncClient`) and processes through `asyncio.create_subprocess_exec`; read files
+  and check paths with `anyio.Path` or `await asyncio.to_thread(...)`, and read `input` with
+  `await asyncio.to_thread(input, prompt)`. A timeout scope holds an `await` (`ASYNC100`). An
+  `async def` takes no `timeout` parameter (`ASYNC109`, from Python 3.11 for asyncio): the caller
+  bounds it with `async with asyncio.timeout(...)`, the one way that composes through every call
+  below it; a method that overrides a base signature takes `@typing.override`, and a wrapper of
+  `asyncio.timeout` names its parameter otherwise (`delay`). Wait on an `asyncio.Event` instead of
+  a sleep loop (`ASYNC110`). For trio and anyio: await `trio.sleep`, `trio.lowlevel.checkpoint()`
+  for a bare yield and `trio.sleep_forever()` for an indefinite wait. These are local checks:
+  `ASYNC100` does not follow a checkpoint through helpers.
+- `DTZ`: pass the zone everywhere a datetime is made: `datetime(2026, 1, 1, tzinfo=timezone.utc)`,
+  `datetime.now(tz=timezone.utc)` (for `now()`, `today()` and `utcnow()`),
+  `datetime.fromtimestamp(value, tz=timezone.utc)` (for `utcfromtimestamp` too) and
+  `datetime.max.replace(tzinfo=timezone.utc)` (`datetime.min` likewise). Parsing (`DTZ007`) uses
+  `%z`, attaches the known zone with `.replace(tzinfo=...)`, or reads a date-only or time-only
+  string with `date.fromisoformat` or `time.fromisoformat`. A date comes from
+  `datetime.now(tz=zone).date()` (`DTZ011`) or `datetime.fromtimestamp(value, tz=zone).date()`
+  (`DTZ012`) with the zone the date is meant in, since `date.today()` is the server's local date.
+  A naive civil time that is meant takes a path exception. Domain code reads no clock at all
+  (`clock-now`), so the `datetime.now(...)` forms belong in adapters and the composition root.
+- One finding per site. Where a nitpicker rule already reports the same problem, the ruff finding
+  is dropped: `DTZ002`, `DTZ003`, `DTZ005` and `DTZ011` on a `clock-now` (domain code) or
+  `real-clock-in-test` line, so the one finding left names one fix (inject the clock, or freeze
+  it); `ASYNC110` on the `while` loop around a `sleep-in-test` call; `PLE1507`, `PLW1507` and
+  `PLW1508` on a `process-env-access` line (read the environment in the composition root, where
+  these report with their own forms); and `PLW0129` on a `tautological-assert` line. Among ruff's
+  own rules, `LOG015` owns the `G010` of `logging.warn`, `ASYNC230` and `ASYNC240` own the `PTH`
+  finding of the same call, and `PLE0115` owns the `PLW0602`/`PLW0603` of its `global`.
+  `ASYNC251` is not reported in test files, where `sleep-in-test` owns sleeping. The rules script
+  lists its sites (`rules-allowances.json`) and `rules/filters/ruff-allowed-forms.mjs` drops
+  them, but only while the owning finding survives `python.exceptions`: an exception for
+  `clock-now` on a path brings `DTZ005` back there.
+- `LOG`: create loggers with `logging.getLogger(__name__)` (not `logging.Logger(...)`, `__file__`
+  or `__cached__`) and log through them, not the root logger (`LOG015`). `logger.exception(...)`
+  and `exc_info` belong inside an `except` handler, without `exc_info=False` (use
+  `logger.error(...)` then); use `logging.WARNING`, not `logging.WARN`.
+- `PLE` and `PLW` check invalid operations and suspicious code: special-method signatures and
+  return types, `__all__` of strings, `global` and `nonlocal` declarations (remove them and pass
+  the value in), logging argument counts, `os.getenv` types, a loop variable overwritten in its
+  body (bind a new name), an exception built and not raised, a lock made inside `with`, nested
+  `max`/`min` and `subprocess.run` without `check` (`check=True`, or `check=False` with the
+  return code handled). `PLW0108` asks to pass the function itself (`key=str`); a lambda that must
+  look a name up at call time takes an exception. `T100` rejects committed debugger imports and
+  breakpoints.
 - The advice follows the project when two forms are valid. Pytest style: the parentheses of
   `@pytest.fixture` (`PT001`) and marks (`PT023`) and the shape of `parametrize` (`PT006`,
   `PT007`) are read from the project's `[tool.ruff.lint.flake8-pytest-style]` table (`pyproject.toml`,
