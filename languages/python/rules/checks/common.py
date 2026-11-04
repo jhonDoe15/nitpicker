@@ -39,6 +39,19 @@ def finding(path, rule, subject, node):
     return {"rule": rule, "path": path, "subject": subject, "line": node.lineno, "end": end}
 
 
+def overlap_sites(found, overlaps):
+    return [
+        {
+            "rule": code,
+            "path": item["path"],
+            "line": item["line"],
+            "owner": item["rule"],
+        }
+        for item in found
+        for code in overlaps.get(item["rule"], ())
+    ]
+
+
 def directories(path):
     return path.split("/")[:-1]
 
