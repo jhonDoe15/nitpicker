@@ -26,7 +26,8 @@ Before you change code other modules use, fix a bug, or add a UI state, read
    most of the project's files), then checks your change against the merge base. It
    takes minutes and prints a progress line for each slow analyzer.
 3. Act on the exit code:
-   - 0: done.
+   - 0: done, unless you narrowed the run with `--analyzer`: then the summary says `Ran only: ...`
+     and you run the gate again without it before you finish.
    - 1: fix every new finding and any tool error listed below them. Re-read the files `--fix`
      changed before editing them, then rerun.
    - 2: no new findings, but a tool failed. Fix the cause it names (usually a failing test or a
