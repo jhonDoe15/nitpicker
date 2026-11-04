@@ -12,6 +12,10 @@ import { appliedJscpdConfig } from '../../tooling/jscpd/config.mjs';
 import { kotlinStyleFiles } from '../../../languages/java/adapters/kotlin/kotlin-tools.mjs';
 import { PRETTIER_PROJECT_FILES } from '../../../languages/typescript/preset/head-policy.mjs';
 import {
+  appliedStrykerConfig,
+  STRYKER_PROJECT_FILES,
+} from '../../../languages/typescript/preset/project-configs/stryker-project-config.mjs';
+import {
   isProjectConfigTool,
   manifestSection,
   packageJsonKey,
@@ -37,6 +41,10 @@ const PACKAGE_JSON = 'package.json';
 const KOTLIN_TOOLS = ['detekt', 'ktlint', 'ktfmt'];
 const GO_TOOLS = ['gofumpt', 'goimports'];
 const SCRIPT_PRESETS = new Set([undefined, 'typescript', 'javascript']);
+const SCRIPT_TOOL_FILES = new Map([
+  ['prettier', PRETTIER_PROJECT_FILES],
+  ['stryker', STRYKER_PROJECT_FILES],
+]);
 
 function usesProjectConfig(config, tool) {
   return (config.tools?.[tool]?.precedence ?? []).includes('project');
@@ -104,12 +112,12 @@ function kotlinFiles(tool, side) {
 }
 
 function isScriptTool(tool) {
-  return tool === 'prettier' || tool === 'eslint' || isProjectConfigTool(tool);
+  return SCRIPT_TOOL_FILES.has(tool) || tool === 'eslint' || isProjectConfigTool(tool);
 }
 
 function scriptCandidates(tool, side) {
-  if (tool === 'prettier') {
-    return PRETTIER_PROJECT_FILES;
+  if (SCRIPT_TOOL_FILES.has(tool)) {
+    return SCRIPT_TOOL_FILES.get(tool);
   }
   return tool === 'eslint' ? eslintConfigFiles(side.root) : projectConfigCandidates(tool);
 }
@@ -162,21 +170,44 @@ function evidenceOf(tool, head, gitBlobId) {
     : {};
 }
 
-function appliedSide(side, optedIn) {
-  if (!optedIn) {
-    return { kind: 'applied', config: {} };
-  }
-  const content = readRealInside(side.root, JSCPD_PROJECT_FILE);
+function jscpdSide(side, optedIn) {
+  const content = optedIn ? readRealInside(side.root, JSCPD_PROJECT_FILE) : undefined;
   return content === undefined
     ? { kind: 'applied', config: {} }
     : appliedJscpdConfig(content.toString('utf8'));
 }
 
-function appliedConfigs(base, head) {
-  const sides = [appliedSide(base, isOptedIn('jscpd', base.config)), appliedSide(head, true)];
-  return sides.every(({ kind }) => kind === 'applied')
-    ? { applied: { base: sides[0].config, head: sides[1].config } }
-    : {};
+function strykerSide(side, optedIn) {
+  try {
+    const { values, file } = optedIn ? appliedStrykerConfig(side.root) : { values: {} };
+    return { kind: 'applied', config: values, file };
+  } catch {
+    return { kind: 'rejected' };
+  }
+}
+
+const APPLIED_SIDES = new Map([
+  ['jscpd', jscpdSide],
+  ['stryker', strykerSide],
+]);
+
+function appliedConfigs(tool, base, head) {
+  const read = APPLIED_SIDES.get(tool);
+  if (read === undefined) {
+    return {};
+  }
+  const sides = [read(base, isOptedIn(tool, base.config)), read(head, true)];
+  if (!sides.every(({ kind }) => kind === 'applied')) {
+    return {};
+  }
+  const files = sides.map(({ file }) => file);
+  return {
+    applied: {
+      base: sides[0].config,
+      head: sides[1].config,
+      ...(tool === 'stryker' ? { files } : {}),
+    },
+  };
 }
 
 function importLinterOn(config) {
@@ -223,7 +254,7 @@ function toolEntries(base, head, { gitBlobId, replacedOptions = replacedEslintOp
     'checkstyle',
     ...KOTLIN_TOOLS,
     ...GO_TOOLS,
-    'prettier',
+    ...SCRIPT_TOOL_FILES.keys(),
     'jscpd',
     'eslint',
     ...PYTHON_TOOLS,
@@ -239,7 +270,7 @@ function toolEntries(base, head, { gitBlobId, replacedOptions = replacedEslintOp
         tool,
         optsIn: !isOptedIn(tool, base.config),
         ...prints,
-        ...(tool === 'jscpd' ? appliedConfigs(base, head) : {}),
+        ...appliedConfigs(tool, base, head),
         ...(tool === 'eslint' ? eslintReview(head, prints, replacedOptions) : {}),
         ...evidenceOf(tool, head, gitBlobId),
         ...(hasProjectConfigChanges(tool) && SCRIPT_PRESETS.has(head.config.preset)
