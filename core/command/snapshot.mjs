@@ -16,9 +16,16 @@ import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
+import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
 
 function stderrWarning(stderr) {
   return (message) => stderr.write(`nitpicker: ${message}\n`);
+}
+
+function snapshotOutputRoot(options, currentProjectRoot) {
+  return options.outputRoot === undefined
+    ? path.join(currentProjectRoot, 'reports/quality/snapshot')
+    : path.resolve(currentProjectRoot, options.outputRoot);
 }
 
 export function runSnapshotCli({
@@ -31,15 +38,12 @@ export function runSnapshotCli({
   environment,
   runTasks,
 }) {
-  const outputRoot =
-    options.outputRoot === undefined
-      ? path.join(currentProjectRoot, 'reports/quality/snapshot')
-      : path.resolve(currentProjectRoot, options.outputRoot);
-  clearSnapshotReports(outputRoot);
+  const outputRoot = snapshotOutputRoot(options, currentProjectRoot);
   const selectedAnalyzers = selectAnalyzers(analyzers, options.analyzerNames);
   if (selectedAnalyzers.length === 0) {
     throw new Error('No quality analyzers are configured.');
   }
+  clearSnapshotReports(outputRoot);
 
   const { repositoryRoot, relativeProjectPath, capturedSha } = captureSnapshot(currentProjectRoot);
   const snapshot = { commitSha: capturedSha, warn: stderrWarning(stderr) };
@@ -51,6 +55,10 @@ export function runSnapshotCli({
       headPolicy,
       runTasks,
     }),
+  );
+  Object.assign(
+    report.summary,
+    partialRunField(partialRunOf(options.analyzerNames, analyzers, selectedAnalyzers)),
   );
   report.text = writeSnapshotReports(outputRoot, report, {
     projectPath: relativeProjectPath,
@@ -66,10 +74,14 @@ export function runSnapshotCli({
     stdout,
     stderr,
   });
-  if (report.summary.enforceableFindings > 0) {
+  return snapshotExitCode(report.summary);
+}
+
+function snapshotExitCode(summary) {
+  if (summary.enforceableFindings > 0) {
     return 1;
   }
-  return report.summary.overallStatus === 'tool-error' ? 2 : 0;
+  return summary.overallStatus === 'tool-error' ? 2 : 0;
 }
 
 function runInSnapshotWorktree({
