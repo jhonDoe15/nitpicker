@@ -1,6 +1,7 @@
 import { renderSnapshotSarifReport } from '../diff/reporting/sarif.mjs';
 import { clearReports, json, writeReports } from '../diff/reporting/reporters.mjs';
 import { designNoteLines } from '../diff/reporting/format/design-notes.mjs';
+import { partialRunLines } from '../diff/reporting/partial-run/partial-run.mjs';
 import { ruleReferenceLines } from '../diff/reporting/text.mjs';
 import { referenceLinks, withHelpUris } from '../../shared/reference/store.mjs';
 import {
@@ -54,6 +55,7 @@ function renderTextReport(report, reference, descriptiveLines) {
     `Enforceable findings: ${String(enforceable.length)}`,
     `Descriptive findings: ${String(descriptive.length)}`,
     `Tool errors: ${String(report.toolErrors.length)}`,
+    ...partialRunLines(report.summary),
   ];
 
   appendToolCountSection(lines, report.summary.tools);
