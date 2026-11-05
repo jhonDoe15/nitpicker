@@ -26,6 +26,13 @@ tester.run('no-orm-schema-sync', rule, {
     `${MIKRO} export async function start(orm) { await orm.schema.ensureDatabase(); }`,
     'export async function start(generator) { await generator.updateSchema(); }',
     `${TYPEORM} export async function start(db) { await db.runMigrations(); }`,
+    `${SEQUELIZE} import { rimraf } from "rimraf"; export const clean = (p) => rimraf.sync(p);`,
+    `${SEQUELIZE} const glob = require("glob"); export const files = glob.sync("*.ts");`,
+    `${SEQUELIZE} import { store } from "./store.js"; export async function start(cache) { await store.sync(); await cache.sync(); }`,
+    `${SEQUELIZE} import { Pool } from "pg"; export async function start(pool) { await pool.sync(); }`,
+    `${TYPEORM} export async function start(redisClient) { await redisClient.synchronize(); }`,
+    'export const flags = { synchronize: true, items: [] };',
+    `${NEST_TYPEORM} export const m = TypeOrmModule.forRootAsync({ useFactory: () => ({ type: "postgres", synchronize: false }) });`,
   ],
   invalid: [
     {
@@ -38,15 +45,15 @@ tester.run('no-orm-schema-sync', rule, {
     },
     {
       code: `${NEST_TYPEORM} export const m = TypeOrmModule.forRoot({ type: "postgres", autoLoadEntities: true, synchronize: process.env.NODE_ENV !== "production" });`,
-      errors: sync('synchronize: true'),
+      errors: sync('synchronize: process.env.NODE_ENV !== "production"'),
     },
     {
       code: `${TYPEORM} const SYNC = true; export const options = { type: "postgres", synchronize: SYNC, dropSchema: !isProduction };`,
-      errors: [...sync('synchronize: true'), ...sync('dropSchema: true')],
+      errors: [...sync('synchronize: SYNC'), ...sync('dropSchema: !isProduction')],
     },
     {
       code: `${TYPEORM} export const options = { type: "sqlite", synchronize: process.env.DB_SYNC };`,
-      errors: sync('synchronize: true'),
+      errors: sync('synchronize: process.env.DB_SYNC'),
     },
     {
       code: `${TYPEORM} export async function start(dataSource) { await dataSource.synchronize(); }`,
@@ -65,8 +72,28 @@ tester.run('no-orm-schema-sync', rule, {
       errors: sync('sequelize.sync()'),
     },
     {
-      code: 'const { Sequelize } = require("sequelize"); module.exports = async (db) => { await db.sync(); };',
+      code: 'const { Sequelize } = require("sequelize"); const db = new Sequelize(url); module.exports = async () => { await db.sync(); };',
       errors: sync('db.sync()'),
+    },
+    {
+      code: 'import { Sequelize as SQ } from "@sequelize/core"; const db = new SQ(url); export const start = () => db.sync({ alter: true });',
+      errors: sync('db.sync()'),
+    },
+    {
+      code: `${SEQUELIZE} class User extends Model {} export const start = () => User.sync();`,
+      errors: sync('User.sync()'),
+    },
+    {
+      code: `${NEST_TYPEORM} export const m = TypeOrmModule.forRootAsync({ useFactory: (config) => ({ autoLoadEntities: true, synchronize: Boolean(config.get("DB_SYNC")) }) });`,
+      errors: sync('synchronize: Boolean(config.get("DB_SYNC"))'),
+    },
+    {
+      code: `${NEST_TYPEORM} export const m = TypeOrmModule.forRootAsync({ useFactory: (config) => { return { url: config.get("URL"), synchronize: true }; } });`,
+      errors: sync('synchronize: true'),
+    },
+    {
+      code: `${TYPEORM} const dataSource = new DataSource(options); export const start = () => dataSource.synchronize();`,
+      errors: sync('dataSource.synchronize()'),
     },
     {
       code: 'export async function start(app) { await app.sequelize.sync(); }',

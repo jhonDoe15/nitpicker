@@ -57,7 +57,7 @@ export const HYGIENE_RULES = [
     id: HYGIENE_RULE_IDS.startSchemaPush,
     check: 'repository-hygiene',
     limit:
-      'a `start`, `start:prod`, `serve` or `prestart` script in `package.json` that pushes the ORM schema (`prisma db push`, `prisma migrate dev`, `drizzle-kit push`, `typeorm schema:sync`, `mikro-orm schema:update`)',
+      'a `start`, `prestart`, `serve` or `start:*` script (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`) in `package.json`, or a script it runs, that pushes the ORM schema (`prisma db push`, `prisma migrate dev`, `drizzle-kit push`, `typeorm schema:sync`, `mikro-orm schema:update`)',
     enforcedBy: EVERY_LANGUAGE,
   },
   {

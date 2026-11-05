@@ -1,35 +1,44 @@
 import { stringValue } from '../analysis/constant-resolution.mjs';
 import {
   callName,
+  isLiteral,
   leafValues,
-  memberName,
   propertyNamed,
   resolvedValue,
-  unwrapped,
 } from '../security/security-values.mjs';
 import {
-  arrayTexts,
+  calleeLabel,
+  constructedName,
   DRIZZLE,
+  moduleScope,
+  ormLocals,
+  SEQUELIZE,
+} from './orm-modules.mjs';
+import {
+  arrayTexts,
+  factoryCall,
   hasKey,
   hasOpaqueSpread,
   isCondition,
   isEnvRead,
-  isKnexShaped,
-  isLiteral,
-  isSequelizeShaped,
+  isOrmOptions,
   isSwitchedOn,
-  isTypeOrmShaped,
-  MIKRO_ORM,
+  isUnconditionalFunction,
   objectOf,
-  ormFamilies,
   propertyKey,
-  SEQUELIZE,
-  TYPEORM,
 } from './orm-options.mjs';
 
 const LOGGED_LEVELS = new Set(['query', 'all']);
 const DEBUG_LEVELS = new Set(['query', 'query-params']);
 const STRING_LEAVES = new Set(['Literal', 'TemplateLiteral']);
+const POSITIONAL_ONLY_ARITY = 3;
+const NEST_ROOT = 'SequelizeModule.forRoot';
+const NEST_ASYNC_ROOT = 'SequelizeModule.forRootAsync';
+const DRIZZLE_LOGGERS = new Set(['DefaultLogger']);
+
+function report(context, node, form) {
+  context.report({ node, messageId: 'queryLogging', data: { form } });
+}
 
 function isConsoleMethod(leaf) {
   return (
@@ -46,16 +55,21 @@ function isStringLike(context, node) {
   );
 }
 
+function entryText(context, entry, key) {
+  const value = propertyNamed(context, entry, key);
+  return value === undefined ? undefined : stringValue(resolvedValue(context, value));
+}
+
 function prismaEntryLogs(context, element) {
   if (stringValue(resolvedValue(context, element)) === 'query') {
     return true;
   }
   const entry = objectOf(context, element);
-  const textOf = (key) => {
-    const value = entry === undefined ? undefined : propertyNamed(context, entry, key);
-    return value === undefined ? undefined : stringValue(resolvedValue(context, value));
-  };
-  return textOf('level') === 'query' && textOf('emit') === 'stdout';
+  if (entry === undefined || entryText(context, entry, 'level') !== 'query') {
+    return false;
+  }
+  const emit = entryText(context, entry, 'emit');
+  return emit === 'stdout' || !hasKey(context, entry, 'emit');
 }
 
 function isClassExtending(context, node, name) {
@@ -80,13 +94,104 @@ function isPrismaOptions(context, object) {
   );
 }
 
-function isDrizzleOptions(object) {
+function isDrizzleOptions(scope, object) {
   const call = object.parent;
+  const names = ormLocals(scope, 'drizzle').add('drizzle');
   return (
+    scope.families.has(DRIZZLE) &&
     call?.type === 'CallExpression' &&
     call.arguments.includes(object) &&
-    callName(call) === 'drizzle'
+    names.has(constructedName(call))
   );
+}
+
+function loggingOn(context, value) {
+  return leafValues(context, value).some(
+    (leaf) =>
+      isLiteral(leaf, true) ||
+      isLiteral(leaf, 'all') ||
+      isCondition(leaf) ||
+      isConsoleMethod(leaf) ||
+      isUnconditionalFunction(leaf) ||
+      arrayTexts(context, leaf).some((text) => LOGGED_LEVELS.has(text)),
+  );
+}
+
+function debugOn(context, value) {
+  return (
+    isSwitchedOn(context, value) ||
+    leafValues(context, value).some((leaf) =>
+      arrayTexts(context, leaf).some((text) => DEBUG_LEVELS.has(text)),
+    )
+  );
+}
+
+function prismaLogsQueries(context, value) {
+  return leafValues(context, value).some((leaf) => {
+    const array = resolvedValue(context, leaf);
+    return (
+      array?.type === 'ArrayExpression' &&
+      array.elements.some((element) => element !== null && prismaEntryLogs(context, element))
+    );
+  });
+}
+
+function drizzleLogs(context, value) {
+  return (
+    isSwitchedOn(context, value) ||
+    leafValues(context, value).some(
+      (leaf) => leaf.type === 'NewExpression' && DRIZZLE_LOGGERS.has(constructedName(leaf)),
+    )
+  );
+}
+
+const PROPERTY_CHECKS = {
+  logging: (scope, object, value) => isOrmOptions(scope, object) && loggingOn(scope.context, value),
+  logQueryParameters: (scope, object, value) =>
+    isOrmOptions(scope, object) && isSwitchedOn(scope.context, value),
+  debug: (scope, object, value) => isOrmOptions(scope, object) && debugOn(scope.context, value),
+  log: (scope, object, value) =>
+    isPrismaOptions(scope.context, object) && prismaLogsQueries(scope.context, value),
+  logger: (scope, object, value) =>
+    isDrizzleOptions(scope, object) && drizzleLogs(scope.context, value),
+};
+
+function optionsArgument(context, args) {
+  if (args.length === POSITIONAL_ONLY_ARITY) {
+    return { missing: true };
+  }
+  const last = args.at(-1);
+  const object = last === undefined ? undefined : objectOf(context, last);
+  if (object !== undefined) {
+    return { object };
+  }
+  return { missing: args.length === 1 && isStringLike(context, last) };
+}
+
+function logsByDefault(context, object) {
+  return !hasKey(context, object, 'logging') && !hasOpaqueSpread(context, object);
+}
+
+function checkDefaultLogging({ context }, node, form) {
+  const { object, missing } = optionsArgument(context, node.arguments);
+  const logs = object === undefined ? missing : logsByDefault(context, object);
+  if (logs) {
+    report(context, node, `${form}\` without \`logging: false`);
+  }
+}
+
+function isSequelizeConstruction(scope, node) {
+  const names = ormLocals(scope, 'Sequelize').add('Sequelize');
+  return scope.families.has(SEQUELIZE) && names.has(constructedName(node));
+}
+
+function checkFactoryResult(scope, object) {
+  const call = factoryCall(object);
+  if (call !== undefined && calleeLabel(call) === NEST_ASYNC_ROOT) {
+    if (logsByDefault(scope.context, object)) {
+      report(scope.context, object, `${NEST_ASYNC_ROOT}(...)\` without \`logging: false`);
+    }
+  }
 }
 
 export const rule = {
@@ -96,112 +201,28 @@ export const rule = {
     schema: [],
     messages: {
       queryLogging:
-        '`{{form}}` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps slow queries, Prisma `log: [{ emit: "event", level: "query" }]` with a handler that filters by duration, or the database\'s own slow-query log. An exception fits only for a local debugging script.',
+        '`{{form}}` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: "event", level: "query" }]` with a handler that filters by duration, or the database\'s own slow-query log. An exception fits only for a local debugging script.',
     },
   },
   create(context) {
-    const families = ormFamilies(context.sourceCode.ast);
-
-    function report(node, form) {
-      context.report({ node, messageId: 'queryLogging', data: { form } });
-    }
-
-    function isSequelizeOptions(object) {
-      return families.has(SEQUELIZE) || isSequelizeShaped(context, object);
-    }
-
-    function isLoggingOptions(object) {
-      return (
-        families.has(TYPEORM) || isTypeOrmShaped(context, object) || isSequelizeOptions(object)
-      );
-    }
-
-    function loggingOn(value) {
-      return leafValues(context, value).some(
-        (leaf) =>
-          isLiteral(leaf, true) ||
-          isLiteral(leaf, 'all') ||
-          isCondition(leaf) ||
-          isConsoleMethod(leaf) ||
-          arrayTexts(context, leaf).some((text) => LOGGED_LEVELS.has(text)),
-      );
-    }
-
-    function debugOn(value) {
-      return (
-        isSwitchedOn(context, value) ||
-        leafValues(context, value).some((leaf) =>
-          arrayTexts(context, leaf).some((text) => DEBUG_LEVELS.has(text)),
-        )
-      );
-    }
-
-    function prismaLogsQueries(value) {
-      return leafValues(context, value).some((leaf) => {
-        const array = resolvedValue(context, leaf);
-        return (
-          array?.type === 'ArrayExpression' &&
-          array.elements.some((element) => element !== null && prismaEntryLogs(context, element))
-        );
-      });
-    }
-
-    const PROPERTY_CHECKS = {
-      logging: (object, value) => isLoggingOptions(object) && loggingOn(value),
-      logQueryParameters: (object, value) =>
-        isSequelizeOptions(object) && isSwitchedOn(context, value),
-      debug: (object, value) =>
-        (families.has(MIKRO_ORM) || isKnexShaped(context, object)) && debugOn(value),
-      log: (object, value) => isPrismaOptions(context, object) && prismaLogsQueries(value),
-      logger: (object, value) =>
-        families.has(DRIZZLE) && isDrizzleOptions(object) && isSwitchedOn(context, value),
-    };
-
-    function optionsArgument(args) {
-      if (args.length === 3) {
-        return { missing: true };
-      }
-      const last = args.at(-1);
-      const object = last === undefined ? undefined : objectOf(context, last);
-      if (object !== undefined) {
-        return { object };
-      }
-      return { missing: args.length === 1 && isStringLike(context, last) };
-    }
-
-    function checkDefaultLogging(node, args, form) {
-      const { object, missing } = optionsArgument(args);
-      const silent =
-        object === undefined
-          ? !missing
-          : hasKey(context, object, 'logging') || hasOpaqueSpread(context, object);
-      if (!silent) {
-        report(node, `${form}\` without \`logging: false`);
-      }
-    }
-
+    const scope = moduleScope(context);
     return {
       Property(node) {
         const key = propertyKey(node);
         const check = key === undefined ? undefined : PROPERTY_CHECKS[key];
-        if (check?.(node.parent, node.value) === true) {
-          report(node, key);
+        if (check?.(scope, node.parent, node.value) === true) {
+          report(context, node, key);
         }
       },
+      ObjectExpression: (node) => checkFactoryResult(scope, node),
       NewExpression(node) {
-        if (families.has(SEQUELIZE) && callName(node) === 'Sequelize') {
-          checkDefaultLogging(node, node.arguments, 'new Sequelize(...)');
+        if (isSequelizeConstruction(scope, node)) {
+          checkDefaultLogging(scope, node, 'new Sequelize(...)');
         }
       },
       CallExpression(node) {
-        const callee = unwrapped(node.callee);
-        const isNestRoot =
-          callee.type === 'MemberExpression' &&
-          memberName(callee) === 'forRoot' &&
-          callee.object.type === 'Identifier' &&
-          callee.object.name === 'SequelizeModule';
-        if (isNestRoot && node.arguments.length === 1) {
-          checkDefaultLogging(node, node.arguments, 'SequelizeModule.forRoot(...)');
+        if (calleeLabel(node) === NEST_ROOT && node.arguments.length === 1) {
+          checkDefaultLogging(scope, node, `${NEST_ROOT}(...)`);
         }
       },
     };
