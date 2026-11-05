@@ -379,7 +379,7 @@ describe('hints for the production policy rules', () => {
     );
 
     expect(message).toBe(
-      `Await this promise: \`await job()\`, or \`await Promise.all([...])\` for several; \`.then()\` and \`.catch()\` do not count. Deliberate fire-and-forget is written \`void job();\`.`,
+      `Await this promise: \`await job()\`, or \`await Promise.all([...])\` for several; \`.then()\` and \`.catch()\` do not count. Deliberate fire-and-forget is written \`void job();\`, and in production code \`job\` is an async function whose whole body is a \`try\` with a \`catch\` that does not rethrow.`,
     );
   });
 

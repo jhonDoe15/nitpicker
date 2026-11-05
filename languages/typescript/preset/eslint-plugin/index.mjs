@@ -48,6 +48,7 @@ import { rule as noCompatibilityShim } from './rules/signatures/no-compatibility
 import { rule as noFalsyDefault } from './rules/signatures/no-falsy-default.mjs';
 import { rule as noParameterMutation } from './rules/signatures/no-parameter-mutation.mjs';
 import { rule as noTriStateBoolean } from './rules/signatures/no-tri-state-boolean.mjs';
+import { rule as noUnhandledVoidPromise } from './rules/promises/no-unhandled-void-promise.mjs';
 import { rule as noRuntimeExclusivePropsCheck } from './rules/react-props/no-runtime-exclusive-props-check.mjs';
 import { rule as noSingularAndPluralProp } from './rules/react-props/no-singular-and-plural-prop.mjs';
 import { rule as reactNoEffectDataFetching } from './rules/react/react-no-effect-data-fetching.mjs';
@@ -89,6 +90,7 @@ export const nitpickerRules = {
     'no-ui-framework-in-domain': noUiFrameworkInDomain,
     'no-null': noNull,
     'no-promise-chain': noPromiseChain,
+    'no-unhandled-void-promise': noUnhandledVoidPromise,
     'container-pause-requires-finally-unpause': containerPauseRequiresFinallyUnpause,
     'bounded-container-teardown': boundedContainerTeardown,
     'no-fixed-sleep-synchronization': noFixedSleepSynchronization,
