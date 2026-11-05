@@ -16,4 +16,4 @@ async def test_patched(monkeypatch, flag):
     time.sleep(1)
     while not flag.ready:
         await asyncio.sleep(1)
-    assert flag.ready
+    assert flag.ready is True
