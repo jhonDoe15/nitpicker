@@ -20,8 +20,12 @@ const GET_CACHE = /^(.+?)\.getCache\(.*\)$/su;
 const AS_MAP = /^(.+?)\.asMap\(\)$/su;
 const THIS = /^this\./u;
 
-function typed(view, invocation, text, fqns) {
-  return text !== undefined && view.is(view.typeOf(invocation.scope, text), fqns);
+function typeAt(view, invocation, text) {
+  return text === undefined ? undefined : view.typeOf(invocation.scope, text);
+}
+
+function isA(view, type, fqns) {
+  return type !== undefined && view.is(type, fqns);
 }
 
 function springCacheWrite(view, invocation) {
@@ -30,8 +34,8 @@ function springCacheWrite(view, invocation) {
   }
   const manager = GET_CACHE.exec(invocation.receiver ?? '')?.[1];
   return (
-    typed(view, invocation, invocation.receiver, SPRING_CACHE) ||
-    typed(view, invocation, manager, CACHE_MANAGER)
+    isA(view, typeAt(view, invocation, invocation.receiver), SPRING_CACHE) ||
+    isA(view, typeAt(view, invocation, manager), CACHE_MANAGER)
   );
 }
 
@@ -74,11 +78,12 @@ function localCacheWrite(view, invocation) {
   const viewOf = AS_MAP.exec(invocation.receiver ?? '')?.[1];
   return (
     (LOCAL_CACHE_WRITES.has(invocation.name) &&
-      typed(view, invocation, invocation.receiver, LOCAL_CACHES)) ||
-    (VIEW_WRITES.has(invocation.name) && typed(view, invocation, viewOf, LOCAL_CACHES)) ||
+      isA(view, typeAt(view, invocation, invocation.receiver), LOCAL_CACHES)) ||
+    (VIEW_WRITES.has(invocation.name) &&
+      isA(view, typeAt(view, invocation, viewOf), LOCAL_CACHES)) ||
     (invocation.name === 'get' &&
       invocation.arguments.length === 2 &&
-      typed(view, invocation, invocation.receiver, LOCAL_CACHES) &&
+      isA(view, typeAt(view, invocation, invocation.receiver), LOCAL_CACHES) &&
       fromWrite(view, invocation)) ||
     (MEMO_WRITES.has(invocation.name) && memoField(view, invocation) && fromWrite(view, invocation))
   );

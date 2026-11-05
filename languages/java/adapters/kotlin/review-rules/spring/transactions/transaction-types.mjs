@@ -12,8 +12,8 @@ export const TRANSACTION_TEMPLATES = group([
 export const TRANSACTIONAL_OPERATOR = group([
   `${SPRING}.transaction.reactive.TransactionalOperator`,
 ]);
-export const TEMPLATE_CALLS = new Set(['execute', 'executeWithoutResult', 'executeAndAwait']);
-export const OPERATOR_CALLS = new Set(['transactional', 'execute', 'executeAndAwait']);
+export const TEMPLATE_CALLS = group(['execute', 'executeWithoutResult', 'executeAndAwait']);
+export const OPERATOR_CALLS = group(['transactional', 'execute', 'executeAndAwait']);
 export const BEANS = group([
   `${SPRING}.stereotype.Component`,
   `${SPRING}.stereotype.Service`,
@@ -31,7 +31,7 @@ export const LOCAL_CACHES = group([
   `${GUAVA}.Cache`,
   `${GUAVA}.LoadingCache`,
 ]);
-export const SPRING_CACHE_WRITES = new Set([
+export const SPRING_CACHE_WRITES = group([
   'put',
   'putIfAbsent',
   'evict',
@@ -39,8 +39,8 @@ export const SPRING_CACHE_WRITES = new Set([
   'clear',
   'invalidate',
 ]);
-export const LOCAL_CACHE_WRITES = new Set(['put', 'putAll', 'invalidate', 'invalidateAll']);
-export const VIEW_WRITES = new Set([
+export const LOCAL_CACHE_WRITES = group(['put', 'putAll', 'invalidate', 'invalidateAll']);
+export const VIEW_WRITES = group([
   'put',
   'putAll',
   'putIfAbsent',
@@ -54,7 +54,7 @@ export const VIEW_WRITES = new Set([
   'set',
   'getOrPut',
 ]);
-export const MEMO_WRITES = new Set([
+export const MEMO_WRITES = group([
   'put',
   'putIfAbsent',
   'computeIfAbsent',
@@ -63,7 +63,7 @@ export const MEMO_WRITES = new Set([
   'set',
   'getOrPut',
 ]);
-export const MAP_TYPES = new Set([
+export const MAP_TYPES = group([
   'Map',
   'MutableMap',
   'HashMap',
