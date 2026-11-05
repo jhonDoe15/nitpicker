@@ -172,6 +172,7 @@ describe('readKotlinSourceFindings', () => {
         'UnboundedFanOut',
         'UnsafeCastOperator',
         'UnsafeDeserialization',
+        'UriCreateDynamic',
         'WeakHash',
       ].map((rule) => `kotlin-source/${rule}`),
     );

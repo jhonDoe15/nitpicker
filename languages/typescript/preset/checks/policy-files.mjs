@@ -75,6 +75,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/signatures/no-falsy-default.mjs',
   'languages/typescript/preset/eslint-plugin/rules/signatures/no-parameter-mutation.mjs',
   'languages/typescript/preset/eslint-plugin/rules/signatures/no-tri-state-boolean.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/parsing/no-unhandled-url-parse.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-props/react-components.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-props/no-runtime-exclusive-props-check.mjs',
   'languages/typescript/preset/eslint-plugin/rules/react-props/no-singular-and-plural-prop.mjs',

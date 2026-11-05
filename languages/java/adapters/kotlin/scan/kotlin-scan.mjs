@@ -30,6 +30,7 @@ import { TEST_MESSAGES, testClassesWithoutTests, testHelpersInSource } from './r
 import { CLIENT_MESSAGES, httpWithoutTimeout, unsafeDeserialization } from './security/clients.mjs';
 import { CRYPTO_MESSAGES, disabledTlsVerification, weakHashes } from './security/crypto.mjs';
 import { SQL_MESSAGES, sqlStringBuilding } from './security/sql.mjs';
+import { URI_MESSAGES, dynamicUris } from './uris/uri-parsing.mjs';
 import { kotlinDeclarations } from './security/sql-values.mjs';
 import { FAN_OUT_MESSAGES } from '../review-rules/main/fan-out/fan-out.mjs';
 
@@ -46,6 +47,7 @@ export const KOTLIN_SOURCE_MESSAGES = {
   ...SQL_MESSAGES,
   ...CRYPTO_MESSAGES,
   ...CLIENT_MESSAGES,
+  ...URI_MESSAGES,
   ...FAN_OUT_MESSAGES,
   ...TRI_STATE_MESSAGES,
   ...PARAMETER_MUTATION_MESSAGES,
@@ -77,6 +79,7 @@ const MAIN_RULES = [
   disabledTlsVerification,
   httpWithoutTimeout,
   unsafeDeserialization,
+  dynamicUris,
   triStateBooleans,
   parameterMutations,
   compatibilityShims,

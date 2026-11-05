@@ -116,6 +116,8 @@ To learn why a rule is on and what form it allows before you write or change cod
   `main.ts` or `server.ts`) and pass them into factories; read `process.env` only there.
 - Parse untrusted input once with zod in `adapters/`; `domain/` takes readonly types it declares.
 - Run programs with `execFile(command, [args])`, never a command string.
+- Parse a URL from runtime text with `URL.parse(text)` or after `URL.canParse(text)`; `new URL(text)`
+  throws on text that is not a URL (`nitpicker/no-unhandled-url-parse`).
 - Each finding names the allowed form. A deliberate exception goes in `nitpicker.config.json`
   `exceptions` (rule, paths, reason), never inline.
 
