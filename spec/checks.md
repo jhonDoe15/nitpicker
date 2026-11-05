@@ -59,6 +59,13 @@ same rule runs as `subprocess-without-timeout` in the Python preset, `pmd/Proces
 in the Java preset and `kotlin-source/ProcessWaitWithoutTimeout` in the Kotlin preset; tests keep
 `nitpicker/require-test-process-timeout` (TypeScript) or their runner's own limits.
 
+Recursive map updates have no TypeScript or JavaScript check: `Map` has no method that runs a
+callback while it updates an entry, so a callback cannot change the map in the middle of an update.
+The same holds for Python's `dict` (`setdefault` takes a value, and a `defaultdict` factory runs
+before the entry is stored and takes no key). The Java and Kotlin presets report it as
+`pmd/RecursiveMapUpdate`: a change to a map inside the function passed to its `computeIfAbsent`,
+`compute`, `computeIfPresent` or `merge` (Kotlin: also `getOrPut` on a `ConcurrentMap`).
+
 ## Entry points
 
 | Check          | Rule                        | Threshold                                         | Status      |

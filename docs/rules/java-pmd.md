@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 252 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 253 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -1561,6 +1561,17 @@ A logger should normally be defined private static final and be associated with 
 - **Allowed form:** Declare it private static final Log LOG = LogFactory.getLog(Foo.class), where Foo is the class that declares it.
 - **Exception:** If this is intended, add `{"rule":"pmd/ProperLogger","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_errorprone.html#properlogger)
+
+<a id="pmd-recursivemapupdate"></a>
+
+### `pmd/RecursiveMapUpdate`
+
+In main sources: a call that changes a map (`put`, `putAll`, `putIfAbsent`, `remove`, `clear`, `compute*`, `merge`, `replace`, `replaceAll`, or `remove`, `removeIf`, `removeAll`, `retainAll`, `clear` on its `keySet()`, `values()` or `entrySet()`) inside the lambda or anonymous class passed to that same map's `computeIfAbsent`, `compute`, `computeIfPresent` or `merge`, also in a callback created there (`whenComplete`, `thenRun`, `subscribe`, ...); and a `this::helper` reference or a same-class helper call there whose method changes the same field. The same map is the same local, or the same field read bare or through `this.`; both sides must be typed `java.util.Map`.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** Change the map after its computeIfAbsent, compute, computeIfPresent or merge returns, not inside the function passed to it or a callback or same-class method that function starts: build the value there and attach the cleanup to the result (map.computeIfAbsent(key, k -> start(k)).whenComplete((r, e) -> map.remove(key, r))). A ConcurrentHashMap otherwise throws IllegalStateException (Recursive update) or deadlocks, and a HashMap throws ConcurrentModificationException.
+- **Exception:** If this is intended, add `{"rule":"pmd/RecursiveMapUpdate","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-redundantfieldinitializer"></a>
 
