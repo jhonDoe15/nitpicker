@@ -1668,6 +1668,39 @@ Off, with the reason:
 - `formatjs/enforce-message-types`: without its type generation option it repeats
   `enforce-placeholders`, so every missing value would be reported twice.
 
+## Server code
+
+The server scope turns on when a server framework (`@nestjs/core`, `express`, `fastify`, `hono`,
+`koa`, `@hapi/hapi`, `restify`, `@adonisjs/core` or `@feathersjs/feathers`) is in `dependencies`
+or `peerDependencies` of the head checkout; a dev dependency alone (a test server in a library)
+does not count. It covers production source, not tests, test support or stories, and in the
+JavaScript preset too. When the project also has a browser framework (React, Vue, Svelte, Solid,
+Angular, Next.js), `*.tsx` and `*.jsx` files are left out, since component code runs in the
+user's browser.
+
+- `nitpicker/no-local-time-zone`: a date computed or formatted in the server's local time zone,
+  whose result changes with the host's `TZ`. It reports the local `Date` methods
+  (`getFullYear`, `getMonth`, `getDate`, `getDay`, `getHours`, `getMinutes`, `getTimezoneOffset`
+  and the matching setters; seconds and milliseconds do not depend on the zone), `toString`,
+  `toDateString` and `toTimeString`, `toLocaleDateString`, `toLocaleTimeString`, `toLocaleString`
+  and `Intl.DateTimeFormat` without a `timeZone` option,
+  `Intl.DateTimeFormat().resolvedOptions().timeZone`, `new Date(year, month, ...)`, and
+  `new Date(text)` or `Date.parse(text)` of a literal date-time without an offset (also a template
+  that ends in a time, `` `${day}T00:00:00` ``). The `Date` methods need the receiver to be the
+  built-in `Date` type, so `TZDate` from `@date-fns/tz` and other subclasses pass. In libraries:
+  luxon `DateTime.now`, `local`, `fromJSDate`, `fromISO`, `fromFormat`, `fromSQL`, `fromMillis`,
+  `fromSeconds`, `fromObject` and `fromRFC2822` without a `zone` (or `setZone`) option; date-fns
+  calendar functions (`format`, `parseISO`, `startOfDay`, `addDays`, `isSameDay`,
+  `differenceInCalendarDays` and the rest of the calendar family) without `{ in: tz(...) }`, unless
+  the date comes from `@date-fns/tz`, `@date-fns/utc` or `date-fns-tz`; and `dayjs()`,
+  `dayjs.unix()`, `moment()` and `moment.unix()` unless `.utc()`, `.tz(zone)` or `.utcOffset()`
+  comes first. A chained call that only reads the instant (`toMillis`, `valueOf`, `toISOString`,
+  `isBefore(other)`) passes, and `{ zone: 'local' }` or `.setZone('system')` counts as local. The
+  allowed forms are the UTC methods (`getUTCFullYear`), `toISOString()`, `Date.UTC`, and an
+  explicit zone: `{ timeZone }`, `{ zone }`, `{ in: tz(zone) }`, `.tz(zone)`. A command-line tool
+  that prints local time on purpose needs an exception for the rule in `nitpicker.config.json`.
+  An exception for it is skipped while the scope is off.
+
 ## No prop, option or export without a caller
 
 New public surface that nothing uses is rejected in review, so it is a check. A finding names the
@@ -1779,6 +1812,8 @@ from a real caller) and the `exceptions` entry that lifts it.
 - The i18n scope lives in `languages/typescript/preset/eslint-config/i18n/i18n-scope.mjs`; see
   "Internationalized messages" above and `docs/internals.md`. Its rules are strict rules too
   (`i18n-rules.mjs` lists them).
+- The server scope lives in `languages/typescript/preset/eslint-config/server/server-scope.mjs`; see
+  "Server code" above. Its rule, `nitpicker/no-local-time-zone`, is a strict rule too.
 - The test rules live in `languages/typescript/preset/eslint-config/strict-tests.mjs` (`strictTestConfigFor(layout)`),
   which `strictPresetConfig()` includes. They follow the layout's test roots and are strict rules,
   so the differential gate holds touched test code to them. The test `no-restricted-syntax` list
