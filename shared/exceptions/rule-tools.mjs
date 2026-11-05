@@ -113,6 +113,6 @@ export const PRESET_TOOLS = {
   javascript: TYPESCRIPT_TOOLS,
   java: JVM_ANALYZER_TOOLS,
   kotlin: JVM_ANALYZER_TOOLS,
-  python: [...SHARED_TOOLS, 'crap', 'coverage-py', 'mutmut', 'duplicates', 'coupling'],
+  python: [...SHARED_TOOLS, 'crap', 'coverage-py', 'mutmut', 'duplicates', 'coupling', 'facts'],
   go: SHARED_TOOLS,
 };
