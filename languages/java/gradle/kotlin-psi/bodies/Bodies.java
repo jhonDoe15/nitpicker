@@ -110,7 +110,8 @@ public final class Bodies {
     }
     locals.add(m("name", local.getName(), "scope", scopes.id(frame), "line", lineOf(local),
         "type", clip(local.getTypeReference()), "initializer", Initializers.callee(local),
-        "alias", Initializers.alias(local)));
+        "alias", Initializers.alias(local), "initializerTypeArguments",
+        Initializers.typeArguments(local.getInitializer())));
   }
 
   private void destructured(KtDestructuringDeclaration declaration, Frame frame) {
@@ -216,6 +217,11 @@ public final class Bodies {
       data.put("elvis", clip(((KtBinaryExpression) parent).getRight()));
     }
     data.put("statement", parent instanceof KtBlockExpression ? Boolean.TRUE : null);
+    KtExpression settled = Positions.settled(outer);
+    boolean branch = (settled != outer || !(parent instanceof KtBlockExpression))
+        && Positions.statementPosition(settled);
+    data.put("branch", branch ? Boolean.TRUE : null);
+    data.put("result", Positions.lambdaResult(settled) ? Boolean.TRUE : null);
     data.put("returned", parent instanceof KtReturnExpression
         || (parent instanceof KtDeclarationWithBody && ((KtDeclarationWithBody) parent).getBodyExpression() == outer)
         ? Boolean.TRUE : null);
