@@ -600,10 +600,10 @@
     ],
     { "key": "exceptions", "rule": "nitpicker/no-silent-catch" },
     "nitpicker/no-singular-and-plural-prop",
-    "Disallow optional alternative props that take one item or a list of the same item",
+    "Disallow optional alternative inputs (props, parameters, options properties, schema entries) that take one item or a list of the same item",
     [
       {
-        "message": "Optional props `{{ singular }}` and `{{ plural }}` are two ways to pass the same data. Keep `{{ plural }}` and pass a single item as a one-element array."
+        "message": "Optional `{{ singular }}` and `{{ plural }}` are two ways to pass the same data. Keep `{{ plural }}` and pass a single item as a one-element array."
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/no-singular-and-plural-prop" },
@@ -1069,7 +1069,7 @@
     [0, 208, 2, 3, 209, 5, 210, 7, 211, -1, -1],
     [0, 212, 2, 3, 213, 5, 214, 7, 215, -1, -1],
     [0, 216, 217, 218, 219, 5, 220, 7, 221, -1, -1],
-    [0, 222, 2, 34, 223, 5, 224, 37, 225, 39, -1],
+    [0, 222, 2, 3, 223, 5, 224, 7, 225, -1, -1],
     [0, 226, 2, 3, 227, 5, 228, 7, 229, -1, -1],
     [0, 230, 2, 3, 231, 5, 232, 7, 233, -1, -1],
     [0, 234, 2, 3, 235, 5, 236, 7, 237, -1, -1],

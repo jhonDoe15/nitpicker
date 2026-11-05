@@ -65,11 +65,6 @@ const reactSyntaxCases = [
     panel('useEffect(() => { log(a); }, []);'),
     'deliberately left out',
   ],
-  [
-    'singular and plural props name the one-element array',
-    'export type PanelProps = { tag?: string; tags?: string[] };',
-    'one-element array',
-  ],
   ['exclusive props check names the discriminated union', exclusivePair, 'discriminated union'],
   [
     'index key names a stable id',

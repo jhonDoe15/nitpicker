@@ -11,7 +11,7 @@ function ruleUrl(path) {
 }
 
 const POLICY = `import tseslint from ${JSON.stringify(import.meta.resolve('typescript-eslint'))};
-import { rule as singularAndPlural } from ${ruleUrl('react-props/no-singular-and-plural-prop.mjs')};
+import { rule as singularAndPlural } from ${ruleUrl('api-shape/no-singular-and-plural-prop.mjs')};
 import { rule as exclusiveProps } from ${ruleUrl('react-props/no-runtime-exclusive-props-check.mjs')};
 import { rule as unionPredicate } from ${ruleUrl('api-shape/exhaustive-union-predicate.mjs')};
 import { rule as hoverNeedsKeyboard } from ${ruleUrl('react-tests/hover-test-needs-keyboard.mjs')};
@@ -62,7 +62,7 @@ const EXPECTED = {
   'src/Panel.tsx': [
     [
       'nitpicker/no-singular-and-plural-prop',
-      `Optional props \`field\` and \`fields\` are two ways to pass the same data. Keep \`fields\` and pass a single item as a one-element array.`,
+      `Optional \`field\` and \`fields\` are two ways to pass the same data. Keep \`fields\` and pass a single item as a one-element array.`,
     ],
     [
       'nitpicker/no-runtime-exclusive-props-check',

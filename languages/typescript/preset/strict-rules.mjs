@@ -45,6 +45,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-self-recursion',
   'nitpicker/no-server-or-worker-per-test',
   'nitpicker/no-shell-string-command',
+  'nitpicker/no-singular-and-plural-prop',
   'nitpicker/no-silent-catch',
   'nitpicker/no-sql-string-building',
   'nitpicker/no-test-retry',

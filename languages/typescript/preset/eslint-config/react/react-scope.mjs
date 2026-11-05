@@ -92,7 +92,6 @@ export async function reactSyntaxConfigFor(layout, react = {}) {
         ),
         ...accessibilityRuleOptions,
         'nitpicker/no-runtime-exclusive-props-check': 'error',
-        'nitpicker/no-singular-and-plural-prop': 'error',
         'nitpicker/react-no-effect-derived-state': 'error',
         'nitpicker/react-no-effect-data-fetching': 'error',
         'nitpicker/react-no-hardcoded-colors': 'error',

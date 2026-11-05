@@ -12,6 +12,7 @@ from review.common import (
     scoped_definitions,
     unwrapped,
 )
+from review.schema_fields import SCHEMA, qualified_kind, schema_inputs
 
 ATTRS_DECORATORS = ("define", "frozen", "mutable")
 RECORD_DECORATORS = {
@@ -133,6 +134,9 @@ def record_kind(context, node, depth=0):
     bases = {last_segment(base) for base in node.bases}
     if TYPED_DICT in bases:
         return TYPED_DICT
+    qualified = qualified_kind(context, node)
+    if qualified is not None:
+        return qualified
     decorators = {
         decorator_target(decorator, context.aliases)
         for decorator in node.decorator_list
@@ -231,7 +235,9 @@ def field_findings(context, scoped):
     path = context.path
     for node, scope in scoped:
         record = record_kind(context, node) if isinstance(node, ast.ClassDef) else None
-        if record is not None:
+        if record == SCHEMA:
+            inputs, kind = schema_inputs(node, context.aliases), "fields"
+        elif record is not None:
             inputs, kind = optional_fields(node, record), "fields"
         elif isinstance(node, FUNCTION_TYPES):
             inputs, kind = optional_parameters(node), "parameters"

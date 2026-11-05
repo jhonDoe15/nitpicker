@@ -8,6 +8,7 @@ import {
   REVIEW_RULE_FILES,
   runtimeSerializationFiles,
 } from './test-support/review/kotlin-review-data.mjs';
+import { PLURAL_FINDINGS } from './test-support/review/kotlin-plural-data.mjs';
 import {
   commitBranch,
   commitFromBranch,
@@ -67,7 +68,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
       'ExhaustiveEnumPredicate isOpen',
       'ExhaustiveEnumPredicate isSettled',
       'ExhaustiveEnumPredicate weight',
-      'SingularAndPluralMember Query.tags',
+      ...PLURAL_FINDINGS,
       'StaticForwardingWrapper absOf',
       'StaticForwardingWrapper total',
     ]);

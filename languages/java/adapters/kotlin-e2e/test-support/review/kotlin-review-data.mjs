@@ -1,3 +1,5 @@
+import { PLURAL_FINDINGS, PLURALS } from './kotlin-plural-data.mjs';
+
 const MAIN = 'src/main/kotlin/demo/orders';
 const TEST = 'src/test/kotlin/demo/orders';
 const SPRING = 'src/test/kotlin/org/springframework';
@@ -36,9 +38,6 @@ fun total(cents: Int) = scaled(cents)
 
 fun scaled(cents: Int): Int = cents * 2
 
-data class Query(val tag: String, val tags: List<String>)
-
-data class Page(val tag: String, val size: Int)
 `;
 
 const FORMATTING = `package demo.orders
@@ -215,6 +214,7 @@ export const REVIEW_RULE_FILES = {
   [`${MAIN}/Status.kt`]: STATUS,
   [`${MAIN}/Clock.kt`]: CLOCK,
   [`${MAIN}/Settlement.kt`]: SETTLEMENT,
+  [`${MAIN}/Plurals.kt`]: PLURALS,
   [`${MAIN}/Formatting.kt`]: FORMATTING,
   [`${MAIN}/Pricing.kt`]: PRICING,
   ['src/main/kotlin/org/springframework/boot/context/properties/ConfigurationProperties.kt']:
@@ -238,7 +238,7 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'FixedSleepInTest WaitingTest.iterates',
   'FixedSleepInTest WaitingTest.sleeps',
   'FixedSleepInTest WaitingTest.sleeps',
-  'SingularAndPluralMember Query.tags',
+  ...PLURAL_FINDINGS,
   'SpringUnusedContext UnusedContextTest',
   'StaticForwardingWrapper absOf',
   'StaticForwardingWrapper total',
