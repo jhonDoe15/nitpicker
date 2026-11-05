@@ -126,6 +126,10 @@ export function summaryMetrics(analyzerName, summary = {}, rule, ignored = []) {
 
 /** The name of the narrowest function of `file` (`{ file, name, start, end }[]`) that holds `line`. */
 export function enclosingFunctionName(functions, file, line) {
+  return enclosingFunction(functions, file, line)?.name;
+}
+
+export function enclosingFunction(functions, file, line) {
   let found;
   for (const candidate of functions) {
     const holds = candidate.file === file && candidate.start <= line && line <= candidate.end;
@@ -136,5 +140,5 @@ export function enclosingFunctionName(functions, file, line) {
       found = candidate;
     }
   }
-  return found?.name;
+  return found;
 }

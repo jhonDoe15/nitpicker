@@ -109,31 +109,9 @@ export const BATCH_WRITES = group([
   'deleteAllInBatch',
 ]);
 export const FLUSHES = group(['saveAndFlush', 'saveAllAndFlush', 'flush']);
-export const COLLECTION_TYPES = group([
-  'List',
-  'MutableList',
-  'ArrayList',
-  'Set',
-  'MutableSet',
-  'HashSet',
-  'LinkedHashSet',
-  'Collection',
-  'MutableCollection',
-  'Iterable',
-  'MutableIterable',
-  'Sequence',
-  'Array',
-  'Map',
-  'MutableMap',
-  'HashMap',
-  'LinkedHashMap',
-  'Stream',
-  'Iterator',
-  'IntRange',
-  'LongRange',
-]);
 export const LIST_TYPES = group([
   'List',
+  'LinkedList',
   'MutableList',
   'ArrayList',
   'Collection',
