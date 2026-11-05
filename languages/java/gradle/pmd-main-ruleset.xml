@@ -647,11 +647,16 @@ return (
     <properties>
       <property name="xpath">
         <value><![CDATA[
-//MethodCall[ArgumentList/@Size = 0]
-  [@MethodName = 'systemDefault' and *[1][pmd-java:typeIs('java.time.ZoneId')]
-   or @MethodName = 'getDefault' and *[1][pmd-java:typeIs('java.util.TimeZone')]
-   or pmd-java:matchesSig('java.time.ZoneId#systemDefault()')
-   or pmd-java:matchesSig('java.util.TimeZone#getDefault()')]
+(
+  //MethodCall[ArgumentList/@Size = 0]
+    [@MethodName = 'systemDefault' and *[1][pmd-java:typeIs('java.time.ZoneId')]
+     or @MethodName = 'getDefault' and *[1][pmd-java:typeIs('java.util.TimeZone')]
+     or pmd-java:matchesSig('java.time.ZoneId#systemDefault()')
+     or pmd-java:matchesSig('java.util.TimeZone#getDefault()')]
+  | //MethodReference
+    [@MethodName = 'systemDefault' and *[1][pmd-java:typeIs('java.time.ZoneId')]
+     or @MethodName = 'getDefault' and *[1][pmd-java:typeIs('java.util.TimeZone')]]
+)
 ]]></value>
       </property>
     </properties>

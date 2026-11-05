@@ -37,6 +37,9 @@ tester.run('no-local-time-zone on date libraries', rule, {
     `${DAYJS}export const stamp = () => dayjs().toISOString();`,
     `${DAYJS}export const ms = (value: string) => dayjs(value).valueOf();`,
     `${DAYJS}export const before = (a: string, b: string) => dayjs(a).isBefore(b);`,
+    `${DAYJS}export const age = (a: string, b: string) => dayjs(a).diff(b, 'hour');`,
+    `${LUXON}export const valid = (text: string) => DateTime.fromISO(text).isValid;`,
+    `${LUXON}import type { DateTimeOptions } from 'luxon';\nexport const at = (text: string, options: DateTimeOptions) => DateTime.fromISO(text, options);`,
     `${MOMENT}export const now = (zone: string) => moment.tz(zone).format();`,
     `${MOMENT}export const now = () => moment.utc().startOf('day');`,
     "const dayjs = require('dayjs');\nexport const now = () => dayjs().utc();",
@@ -91,6 +94,19 @@ tester.run('no-local-time-zone on date libraries', rule, {
     ),
     invalid(
       "import { formatWithOptions } from 'date-fns/fp';\nexport const label = formatWithOptions({}, 'yyyy');",
+      'dateFnsLocal',
+    ),
+    invalid(
+      `${DAYJS}export const days = (a: string, b: string) => dayjs(a).diff(b, 'day');`,
+      'dayjsLocal',
+    ),
+    invalid(`${LUXON}export const at = (year: number) => DateTime.local(year);`, 'luxonLocal'),
+    invalid(
+      `${LUXON}export const at = (text: string, format: string) => DateTime.fromFormat(text, format);`,
+      'luxonLocal',
+    ),
+    invalid(
+      "import { add } from 'date-fns';\nexport const next = (date: Date) => add(date, { days: 1 });",
       'dateFnsLocal',
     ),
     invalid(`${DAYJS}export const label = () => dayjs().format('YYYY-MM-DD');`, 'dayjsLocal', {

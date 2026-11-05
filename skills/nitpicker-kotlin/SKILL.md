@@ -97,8 +97,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   `kotlin-source/ParameterMutation`; private and local functions are exempt). When code moves,
   change every caller and delete the old name: no `@Deprecated` delegate or `typealias Old = New`
   (`kotlin-source/CompatibilityShim`). Time comes from an injected `Clock`; `Calendar`, `Date` and
-  `SimpleDateFormat` are banned, and so are `LocalDate.now()`, `ZoneId.systemDefault()` and
-  `TimeZone.currentSystemDefault()` without a clock or zone (`kotlin-source/DefaultTimeZone`).
+  `SimpleDateFormat` are banned, and so are `now()` on the `java.time` types without a clock or
+  zone, `ZoneId.systemDefault()`, `TimeZone.getDefault()` and `TimeZone.currentSystemDefault()`
+  (`kotlin-source/DefaultTimeZone`); `Calendar`, `GregorianCalendar` and `SimpleDateFormat` need a
+  zone (`kotlin-source/LegacyCalendarApi`).
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
   declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`

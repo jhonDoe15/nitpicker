@@ -5,6 +5,7 @@ import {
   LOCAL_DATE_METHODS,
   LOCAL_STRING_METHODS,
   LOCALE_METHODS,
+  NAMED_ZONE,
   OFFSET_METHOD,
   TRAILING_TIME,
   WITH_OFFSET,
@@ -28,7 +29,7 @@ export function objectKeys(node) {
   if (node?.type !== 'ObjectExpression') {
     return undefined;
   }
-  if (node.properties.some((property) => property.type !== 'Property')) {
+  if (node.properties.some((property) => property.type !== 'Property' || property.computed)) {
     return undefined;
   }
   return new Map(
@@ -132,6 +133,18 @@ function isIntlFormatter(sourceCode, callee) {
   return propertyName(callee) === 'DateTimeFormat' && isGlobal(sourceCode, callee.object, 'Intl');
 }
 
+function readsZoneKey(pattern) {
+  return (
+    pattern.type === 'ObjectPattern' &&
+    pattern.properties.some(
+      (property) =>
+        property.type === 'Property' &&
+        !property.computed &&
+        (property.key.name ?? property.key.value) === 'timeZone',
+    )
+  );
+}
+
 function resolvedOptionsRead(call) {
   const member = call.parent;
   const resolved =
@@ -144,6 +157,9 @@ function resolvedOptionsRead(call) {
     return undefined;
   }
   const read = member.parent.parent;
+  if (read.type === 'VariableDeclarator' && read.init === member.parent) {
+    return readsZoneKey(read.id) ? 'timeZone' : '';
+  }
   return read.type === 'MemberExpression' && read.object === member.parent
     ? propertyName(read)
     : '';
@@ -182,7 +198,12 @@ function isLocalDateTimeText(node) {
   if (!value.complete) {
     return TRAILING_TIME.test(value.text);
   }
-  return value.text !== '' && !DATE_ONLY.test(value.text) && !WITH_OFFSET.test(value.text);
+  return (
+    value.text !== '' &&
+    !DATE_ONLY.test(value.text) &&
+    !WITH_OFFSET.test(value.text) &&
+    !NAMED_ZONE.test(value.text)
+  );
 }
 
 export function constructorProblem(context, node) {
