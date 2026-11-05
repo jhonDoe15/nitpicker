@@ -10,6 +10,7 @@ MINIMUM_PYTHON = (3, 10)
 SKIPPED_RULE = "rules-skipped"
 CHECK_FAILED_RULE = "rules-check-failed"
 ALLOWANCES_REPORT = "rules-allowances.json"
+TOO_DEEP_RULE = "rules-too-deep"
 GUARDED_PREFIXES = ("security.", "signatures.", "concurrency.")
 
 
@@ -22,7 +23,8 @@ def load_checks():
     from effects import import_time, reach
     from environment import domain_imports, environment, purity
     from errors import errors
-    from honesty import assertions, isolation, skipped
+    from honesty import assertions, isolation, skipped, waits
+    from review import fields
     from security import hashes, loading
     from security.sql import check as sql
     from security.timeouts import check as timeouts
@@ -62,8 +64,10 @@ def load_checks():
         assertions,
         unasserted,
         isolation,
+        waits,
         uncollected,
         helpers,
+        fields,
         lifetimes,
         cleanup,
         tri_state,
@@ -101,6 +105,32 @@ def parse_file(path):
         return None
 
 
+def too_deep(path, subject):
+    return {"rule": TOO_DEEP_RULE, "path": path, "subject": subject, "line": 1}
+
+
+def review_findings(project):
+    from review.project.enum_predicates import enum_predicate_findings
+    from review.project.forwarding import forwarding_findings
+    from review.project.index import ProjectIndex
+    from review.project.unused_options import unused_option_findings
+
+    options = project.options
+    index = ProjectIndex(project)
+    checks = {
+        "forwarding-wrapper": lambda: forwarding_findings(index),
+        "exhaustive-enum-predicate": lambda: enum_predicate_findings(index),
+        "unused-option": lambda: unused_option_findings(index, options),
+    }
+    found = []
+    for name, run in checks.items():
+        try:
+            found.extend(run())
+        except RecursionError:
+            found.append(too_deep(".", name))
+    return found
+
+
 def is_guarded(module):
     return getattr(module, "GUARDED", False) or module.__name__.startswith(GUARDED_PREFIXES)
 
@@ -134,26 +164,42 @@ class Results:
         self.support = support
 
 
+def file_results(context, modules):
+    found, allowances, deep = [], [], False
+    for module in modules:
+        try:
+            checked, failures = run_check(module, context)
+            allowed, allowance_failures = run_check(module, context, "allowances")
+        except RecursionError:
+            deep = True
+            continue
+        found.extend(checked + failures + allowance_failures)
+        allowances.extend(allowed)
+    return found + ([too_deep(context.path, "file")] if deep else []), allowances
+
+
 def check_all(paths, options, modules):
     from checks.comments import stub_findings
     from index.project import Project
     from security.support import support_files
 
     project = Project(options, paths)
-    parsed = {path: parse_file(path) for path in paths}
-    for path, source in parsed.items():
+    findings = [item for path in paths for item in stub_findings(path)]
+    for path in paths:
+        try:
+            source = parse_file(path)
+        except RecursionError:
+            findings.append(too_deep(path, "all"))
+            continue
         if source is not None:
             project.add(FileContext(path, source[0], source[1], project))
-    findings = [item for path in paths for item in stub_findings(path)]
     allowances = []
     for context in project.contexts.values():
-        for module in modules:
-            found, failures = run_check(module, context)
-            allowed, allowance_failures = run_check(module, context, "allowances")
-            findings.extend(found + failures + allowance_failures)
-            allowances.extend(allowed)
+        found, allowed = file_results(context, modules)
+        findings.extend(found)
+        allowances.extend(allowed)
     support = project.memo("security-support-files", support_files)
-    return Results(findings, allowances, sorted(support))
+    return Results(findings + review_findings(project), allowances, sorted(support))
 
 
 def read_options(arguments):
