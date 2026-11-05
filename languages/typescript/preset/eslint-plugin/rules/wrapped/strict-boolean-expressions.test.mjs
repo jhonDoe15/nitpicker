@@ -135,7 +135,11 @@ describe('nitpicker/strict-boolean-expressions messages', () => {
   it('names the allowed forms', () => {
     const [nullableMessage] = linter.verify(nullable.code, config, nullable);
     const [numberMessage] = linter.verify(number.code, config, number);
-    expect(nullableMessage?.message).toContain('`value !== undefined`');
-    expect(numberMessage?.message).toContain('`count > 0`');
+    expect(nullableMessage?.message).toBe(
+      'Unexpected nullable number value in conditional: 0 reads as missing. Test the missing case and the number apart: `value !== undefined`, `value !== undefined && value > 0`, or `value ?? fallback` for a default. An exception fits only when 0 must take the same path as a missing value.',
+    );
+    expect(numberMessage?.message).toBe(
+      'Unexpected number value in conditional: 0 and NaN read as false. Compare it instead: `count > 0`, `index !== -1`, `items.length > 0`; for a default write `value ?? fallback`. An exception fits only when 0 must take the same path as a missing value.',
+    );
   });
 });
