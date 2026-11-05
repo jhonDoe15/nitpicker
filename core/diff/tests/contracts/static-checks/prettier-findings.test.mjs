@@ -1,5 +1,6 @@
 import path from 'node:path';
 import { writeFileSync } from 'node:fs';
+import { stripVTControlCharacters } from 'node:util';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HEAD_POLICY_ENV } from '../../../../../shared/head-policy.mjs';
 import { runQualityDiff } from '../../../comparison/run-diff.mjs';
@@ -256,8 +257,10 @@ describe('static differential adapters: Prettier', () => {
       'src/main/fresh.ts': 'export const fresh = "a"\n',
     });
 
-    await expect(runPrettierOn(projectRoot)).rejects.toThrow(
-      /^prettier exited with 2: \[error\] src\/main\/broken\.ts: SyntaxError/u,
+    await expect(runPrettierOn(projectRoot)).rejects.toSatisfy((error) =>
+      /^prettier exited with 2: \[error\] src\/main\/broken\.ts: SyntaxError/u.test(
+        stripVTControlCharacters(error.message),
+      ),
     );
   });
   it.each([
