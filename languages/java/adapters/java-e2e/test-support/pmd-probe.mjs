@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { expect } from 'vitest';
@@ -8,7 +8,6 @@ import { applyRuleMessages } from '../../../messages/rule-messages.mjs';
 import { INIT_SCRIPT } from '../../../builds/java-build.mjs';
 import { writeRulesets } from '../../tool-config/pmd-wrappers.mjs';
 
-const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const ruleset = path.resolve(import.meta.dirname, '../../../gradle/pmd-ruleset.xml');
 
 function scopedRulesets(root) {
@@ -24,7 +23,7 @@ function scopedRulesets(root) {
   return [ruleset, mainRuleset, testsRuleset].join(',');
 }
 
-export function preparePmdProbe(name, copies) {
+export function preparePmdProbe(name) {
   const root = mkdtempSync(path.join(tmpdir(), `nitpicker-${name}-`));
   const version = /^\s*pmd\s*:\s*'([^']+)'/mu.exec(readFileSync(INIT_SCRIPT, 'utf8'))[1];
   const sources = path.join(root, 'src');
@@ -48,25 +47,17 @@ tasks.register('pmdProbe', JavaExec) {
 }
 `,
   );
-  for (const [from, to] of copies) {
-    const directory = path.join(root, to);
-    mkdirSync(directory, { recursive: true });
-    cpSync(from, directory, { recursive: true });
-  }
   return root;
 }
 
-export function runPmdProbe(root) {
+export function runPmdProbe(root, gradle) {
   const result = spawnSync(gradle, ['--console=plain', '--quiet', 'pmdProbe'], {
     cwd: root,
     encoding: 'utf8',
     timeout: 180_000,
   });
-  expect({ status: result.status, signal: result.signal, error: result.error }).toEqual({
-    status: 0,
-    signal: null,
-    error: undefined,
-  });
+  expect(result.error).toBeUndefined();
+  expect(result.status).toBe(0);
 }
 
 export function readPmdProbeFindings(root) {

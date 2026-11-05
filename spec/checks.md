@@ -54,8 +54,9 @@ started once per slot of a count is bounded, while a count read from a collectio
 HTTP deadlines: `nitpicker/require-http-timeout` (strict preset, production source) reports an outbound
 HTTP call that has no timeout, so a server that accepts the connection and never answers hangs it. The same
 rule runs as `http-without-timeout` in the Python preset, `pmd/HttpWithoutTimeout` in the Java preset (main
-sources, with or without Spring; the Spring clients stay with `pmd/SpringHttpClientTimeouts`) and
-`kotlin-source/HttpWithoutTimeout` in the Kotlin preset; each preset's document lists the clients it knows.
+sources, with or without Spring; the clients Spring builds stay with `pmd/SpringHttpClientTimeouts` and
+`pmd/SpringHttpClientPerCall`) and `kotlin-source/HttpWithoutTimeout` in the Kotlin preset; each preset's
+document lists the clients it knows.
 
 ## Entry points
 

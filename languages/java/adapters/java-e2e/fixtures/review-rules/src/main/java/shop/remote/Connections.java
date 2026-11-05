@@ -48,6 +48,22 @@ public final class Connections {
     }
   }
 
+  public byte[] relative(String base) throws IOException {
+    try (InputStream body = new URL(base + "/feed").openStream()) { // violation: HttpWithoutTimeout
+      return body.readAllBytes();
+    }
+  }
+
+  public HttpURLConnection opened(URL url) throws IOException {
+    return (HttpURLConnection) url.openConnection();
+  }
+
+  public byte[] local(String path) throws IOException {
+    try (InputStream body = new URL("file:" + path).openStream()) {
+      return body.readAllBytes();
+    }
+  }
+
   public byte[] resource() throws IOException {
     try (InputStream body = Connections.class.getResource("/defaults.json").openStream()) {
       return body.readAllBytes();
