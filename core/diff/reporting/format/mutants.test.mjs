@@ -17,7 +17,7 @@ const recordedMutmutRun = JSON.parse(
 const WAY_OUT =
   'Add an assertion that would. If no input can tell the two apart, simplify the code so this mutant disappears.';
 const PIT_WAY_OUT =
-  'Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return), simplify the code so this mutant disappears.';
+  'Add an assertion that would. If no input can tell the two apart (a compareTo boundary, a discarded lambda return, a field set to the value it already has, a redundant trim() or sorted()), simplify the code so this mutant disappears.';
 
 function enforceable(findings) {
   return findings.filter(({ classification }) => classification === 'enforceable');
