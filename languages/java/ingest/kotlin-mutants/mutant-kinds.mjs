@@ -2,7 +2,11 @@ const CONDITIONALS = new Set(['NegateConditionalsMutator', 'ConditionalsBoundary
 const SUSPEND_METHOD_END = 'Lkotlin/coroutines/Continuation;)Ljava/lang/Object;';
 
 export function isConditional({ mutatorName }) {
-  return CONDITIONALS.has(mutatorName);
+  return CONDITIONALS.has(mutatorName) || mutatorName.startsWith('RemoveConditionalMutator_');
+}
+
+export function isSwitch({ mutatorName }) {
+  return mutatorName === 'SwitchMutator' || mutatorName.startsWith('RemoveSwitchMutator_');
 }
 
 export function isReturn({ mutatorName }) {

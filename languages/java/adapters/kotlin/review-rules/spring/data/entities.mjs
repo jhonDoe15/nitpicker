@@ -25,7 +25,10 @@ export function membersOf(view, declared) {
     ...declared.primaryParameters.filter(({ property }) => property !== undefined),
     ...view
       .propertiesOf(declared.qualified)
-      .filter(({ computed, delegated }) => computed !== true && delegated !== true),
+      .filter(
+        (member) =>
+          member.computed !== true && member.delegated !== true && member.abstract !== true,
+      ),
   ];
 }
 
@@ -73,7 +76,13 @@ function manyToManyLists(view) {
   return annotatedMembers(view)
     .filter(({ member }) => annotatedWith(view, member, MANY_TO_MANY) !== undefined)
     .filter(({ member }) => annotatedWith(view, member, ORDER_COLUMN) === undefined)
-    .filter(({ member }) => LIST_TYPES.has(typeName(member.type ?? member.initializer)))
+    .filter(({ member }) =>
+      LIST_TYPES.has(
+        typeName(member.type ?? member.initializer)
+          .split('.')
+          .at(-1),
+      ),
+    )
     .map(({ member, owner }) => report('JpaManyToManySet', member, `${owner}.${member.name}`));
 }
 
