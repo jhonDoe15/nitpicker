@@ -99,7 +99,7 @@ An AWS key, a GitHub or Slack token, a `sk_live_`/`sk-proj-` key, a private key 
 
 In main sources, `now()` without arguments on `LocalDate`, `LocalDateTime`, `LocalTime`, `MonthDay`, `OffsetDateTime`, `OffsetTime`, `Year`, `YearMonth` or `ZonedDateTime`, `Clock.systemDefaultZone()`, `ZoneId.systemDefault()`, `TimeZone.getDefault()` and kotlinx.datetime `TimeZone.currentSystemDefault()`: each reads the JVM's default time zone, so the result changes with the server's `TZ` (the Java preset reports the same calls through Error Prone's `JavaTimeDefaultTimeZone` and `pmd/DefaultTimeZone`).
 
-- **Allowed form:** Pass a `Clock` or a zone: `LocalDate.now(clock)` with an injected `Clock` (`Clock.systemUTC()` in production, `Clock.fixed(...)` in tests), `ZoneId.of("UTC")` or a configured zone, and with kotlinx.datetime `TimeZone.UTC` or `TimeZone.of(configuredZone)`. This reads the JVM's default time zone, so the result changes with the server's `TZ` or `-Duser.timezone`.
+- **Allowed form:** Pass a `Clock` or a zone: `LocalDate.now(clock)` with an injected `Clock`, `ZoneId.of("UTC")` or a configured zone; with kotlinx.datetime, `TimeZone.UTC` or `TimeZone.of(zone)`. This reads the JVM default time zone, which changes with the server.
 - **Exception:** If this is intended, add `{"rule":"kotlin-source/DefaultTimeZone","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="kotlin-source-detachedtestcase"></a>
@@ -178,7 +178,7 @@ A repository, DAO, JDBC or HTTP client call in a `for`, `while` or `do` body or 
 
 ### `kotlin-source/LegacyCalendarApi`
 
-In main sources, `Calendar.getInstance(...)` and `GregorianCalendar(...)` without a time zone argument, and `SimpleDateFormat(...)` in a block that never sets `timeZone` (the Java rule of the same name).
+In main sources, `Calendar.getInstance(...)` and `GregorianCalendar(...)` with no argument or only a `Locale`, `GregorianCalendar` with date fields, and `SimpleDateFormat(...)` unless an `apply { timeZone = ... }` follows it or its variable gets `timeZone` or `setTimeZone(...)` in the same block (the Java rule of the same name). Code inside a string template is not read.
 
 - **Allowed form:** Use java.time with an explicit zone: `Instant`, `ZonedDateTime.now(clock)`, and a `DateTimeFormatter` with `withZone(zone)`. `Calendar.getInstance()` and `GregorianCalendar()` without a `TimeZone`, and a `SimpleDateFormat` whose `timeZone` is never set, read the default time zone, and `SimpleDateFormat` is not thread-safe.
 - **Exception:** If this is intended, add `{"rule":"kotlin-source/LegacyCalendarApi","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.

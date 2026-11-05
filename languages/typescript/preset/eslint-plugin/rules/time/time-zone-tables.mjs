@@ -39,8 +39,20 @@ export const LUXON_FACTORIES = [
   'fromObject',
   'fromRFC2822',
 ];
+export const LUXON_OPTION_POSITIONS = {
+  fromJSDate: 1,
+  fromISO: 1,
+  fromFormat: 2,
+  fromSQL: 1,
+  fromMillis: 1,
+  fromSeconds: 1,
+  fromObject: 1,
+  fromRFC2822: 1,
+};
 export const LUXON_ZONE_KEYS = ['zone', 'setZone'];
 export const LOCAL_ZONE_NAMES = ['local', 'system'];
+
+export const CHAIN_READS = ['isValid', 'ts', 'offset', 'zoneName'];
 
 export const DAYJS_FACTORIES = ['', 'unix'];
 
@@ -64,6 +76,7 @@ const CALENDAR_UNITS = 'Day|Week|ISOWeek|Month|Quarter|Year|ISOWeekYear|WeekYear
 
 export const DATE_FNS_CALENDAR = new RegExp(
   [
+    '^(?:add|sub|set|isLeapYear|intlFormat)$',
     '^(?:format|formatDate|formatISO|formatISO9075|formatRFC3339|formatRelative|lightFormat)$',
     '^(?:parse|parseISO)$',
     `^(?:start|end)Of(?:${CALENDAR_UNITS}|Today|Tomorrow|Yesterday)$`,
@@ -84,3 +97,18 @@ export const DATE_ONLY = /^\d{4}(?:-\d{2}(?:-\d{2})?)?$/u;
 export const WITH_OFFSET =
   /^\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?(?:Z|[+-]\d{2}:?\d{2})$/iu;
 export const TRAILING_TIME = /[T ]\d{2}:\d{2}(?::\d{2}(?:\.\d{1,9})?)?$/u;
+export const NAMED_ZONE = /(?:\bGMT|\bUTC|\dZ|[+-]\d{2}:?\d{2})(?:\s*\([^)]*\))?$/iu;
+export const SUB_DAY_UNITS = [
+  'ms',
+  'millisecond',
+  'milliseconds',
+  's',
+  'second',
+  'seconds',
+  'm',
+  'minute',
+  'minutes',
+  'h',
+  'hour',
+  'hours',
+];

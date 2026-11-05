@@ -66,6 +66,10 @@ typedTester.run('no-local-time-zone on Date values', rule, {
     'export const utc = new Date(Date.UTC(2024, 0, 1));',
     "export const parsed = Date.parse('2024-01-01T10:00:00Z');",
     'export const parsed = (text: string) => Date.parse(text);',
+    "export const at = new Date('Tue, 05 Mar 2024 10:00:00 GMT');",
+    "export const at = Date.parse('2024-01-01 10:00:00 UTC');",
+    'export const locale = () => { const { locale } = Intl.DateTimeFormat().resolvedOptions(); return locale; };',
+    "export const label = (date: Date) => date.toLocaleString('en-US', { [String('timeZone')]: 'UTC' });",
     'export const at = (day: string) => new Date(`${day}T00:00:00Z`);',
     'export const zone = (zone: string) => new Intl.DateTimeFormat("en-US", { timeZone: zone }).resolvedOptions().locale;',
     'class Date { getHours() { return 1; } } export const hours = new Date().getHours();',
@@ -118,6 +122,10 @@ typedTester.run('no-local-time-zone on Date values', rule, {
     ),
     typed(
       'export const zone = Intl.DateTimeFormat().resolvedOptions().timeZone;',
+      'serverZoneName',
+    ),
+    typed(
+      'export const zone = () => { const { timeZone } = Intl.DateTimeFormat().resolvedOptions(); return timeZone; };',
       'serverZoneName',
     ),
     typed('export const start = new Date(2024, 0, 1);', 'localConstructor'),

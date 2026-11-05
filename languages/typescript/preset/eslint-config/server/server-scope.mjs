@@ -13,6 +13,10 @@ const SERVER_FRAMEWORKS = [
   'restify',
   '@adonisjs/core',
   '@feathersjs/feathers',
+  '@apollo/server',
+  'graphql-yoga',
+  'elysia',
+  'h3',
 ];
 
 const COMPONENT_FILES = '**/*.{tsx,jsx}';

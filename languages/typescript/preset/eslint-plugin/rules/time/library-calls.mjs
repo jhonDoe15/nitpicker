@@ -4,6 +4,7 @@ import { objectKeys, propertyName, typeNames } from './date-calls.mjs';
 import {
   CHAIN_COMPARISONS,
   CHAIN_INSTANTS,
+  CHAIN_READS,
   CHAIN_ZONE_SETTERS,
   DATE_FNS_CALENDAR,
   DATE_FNS_PACKAGES,
@@ -11,8 +12,10 @@ import {
   DAYJS_PACKAGES,
   LOCAL_ZONE_NAMES,
   LUXON_FACTORIES,
+  LUXON_OPTION_POSITIONS,
   LUXON_PACKAGES,
   LUXON_ZONE_KEYS,
+  SUB_DAY_UNITS,
   WITH_OFFSET,
   ZONE_PACKAGES,
   ZONED_DATE_TYPES,
@@ -62,7 +65,27 @@ function chainedMethod(call) {
     : undefined;
 }
 
+function isSubDayComparison(call) {
+  const [, unit] = call.arguments;
+  return (
+    call.arguments.length <= 1 || (unit?.type === 'Literal' && SUB_DAY_UNITS.includes(unit.value))
+  );
+}
+
+function readsInstant(call) {
+  const member = call.parent;
+  return (
+    member.type === 'MemberExpression' &&
+    member.object === call &&
+    member.parent.type !== 'CallExpression' &&
+    CHAIN_READS.includes(propertyName(member))
+  );
+}
+
 function settlesZone(call, library) {
+  if (readsInstant(call)) {
+    return true;
+  }
   const next = chainedMethod(call);
   if (next === undefined) {
     return false;
@@ -72,7 +95,7 @@ function settlesZone(call, library) {
   }
   return (
     CHAIN_INSTANTS[library].includes(next.name) ||
-    (CHAIN_COMPARISONS[library].includes(next.name) && next.call.arguments.length <= 1)
+    (CHAIN_COMPARISONS[library].includes(next.name) && isSubDayComparison(next.call))
   );
 }
 
@@ -94,10 +117,17 @@ export function luxonProblem(context, call) {
     return undefined;
   }
   const zones = zoneOption(call, LUXON_ZONE_KEYS);
-  const explicit = zones.length > 0 && !zones.some(isLocalZone);
+  const explicit =
+    (zones.length > 0 && !zones.some(isLocalZone)) || hasUnknownOptions(call, factory);
   return explicit || settlesZone(call, 'luxon')
     ? undefined
     : { messageId: 'luxonLocal', data: { name: `DateTime.${factory}` } };
+}
+
+function hasUnknownOptions(call, factory) {
+  const position = LUXON_OPTION_POSITIONS[factory];
+  const options = position === undefined ? undefined : call.arguments[position];
+  return options !== undefined && options.type !== 'Literal' && objectKeys(options) === undefined;
 }
 
 function isZonedArgument(context, node) {
