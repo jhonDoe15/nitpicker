@@ -42,6 +42,7 @@ const MEMBER_ACCESS = [
 const CALL = new RegExp(`${MEMBER_ACCESS}([a-zA-Z_]\\w*)\\s*[({]`, 'gu');
 const WRITE = new RegExp(`${MEMBER_ACCESS}([a-z_]\\w*)\\s*(?:=(?!=)|[-+*/%]=|\\+\\+|--)`, 'gu');
 const SETTER = /^set[A-Z]/u;
+const SET_UP = /^setUp(?:[A-Z]|$)/u;
 const RESETTER = /^(?:reset|clear|restore|unset)(?=[A-Z]|$)/u;
 const SPECIAL_FAMILIES = new Map([
   ['System.setProperty', 'property'],
@@ -142,7 +143,8 @@ function isGlobalSetter(scanned, access) {
 }
 
 function isProjectState(scanned, access, declared) {
-  const isChange = access.kind === 'write' || SETTER.test(access.member);
+  const isChange =
+    access.kind === 'write' || (SETTER.test(access.member) && !SET_UP.test(access.member));
   if (!isChange || PLATFORM_TYPES.has(access.outer) || declared.has(access.outer)) {
     return false;
   }

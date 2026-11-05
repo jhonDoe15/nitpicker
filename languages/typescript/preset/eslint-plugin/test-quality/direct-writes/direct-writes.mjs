@@ -107,8 +107,25 @@ function directWriteKey(sourceCode, node) {
   return undefined;
 }
 
-function isInsideFunction(node) {
-  return ancestorsOf(node).some((ancestor) => FUNCTIONS.has(ancestor.type));
+const FILE_SETUP_CALLS = new Set(['beforeAll', 'beforeEach', 'vi.hoisted', 'vi.mock', 'vi.doMock']);
+
+function setupName(call) {
+  return call.callee.type === 'Identifier' ? call.callee.name : calleeName(call.callee);
+}
+
+function isFileSetup(fn) {
+  const call = fn.parent;
+  return (
+    call?.type === 'CallExpression' &&
+    call.parent?.type === 'ExpressionStatement' &&
+    call.parent.parent?.type === 'Program' &&
+    FILE_SETUP_CALLS.has(setupName(call))
+  );
+}
+
+function runsPerTest(node) {
+  const functions = ancestorsOf(node).filter((ancestor) => FUNCTIONS.has(ancestor.type));
+  return functions.length > 0 && !isFileSetup(functions.at(-1));
 }
 
 function writeMessageId(key) {
@@ -121,7 +138,7 @@ export function createWriteTracker(sourceCode, isRestored) {
   const hookCalls = new Set();
   function record(node) {
     const key = directWriteKey(sourceCode, node);
-    if (key === undefined || !isInsideFunction(node)) {
+    if (key === undefined || !runsPerTest(node)) {
       return;
     }
     if (isRestored(node)) {

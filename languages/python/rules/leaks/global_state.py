@@ -1,6 +1,6 @@
 import ast
 
-from checks.common import call_name, dotted_name, finding
+from checks.common import call_name, dotted_name, finding, last_name
 
 RULE = "global-state-leak-in-test"
 ENVIRON = "os.environ"
@@ -23,6 +23,7 @@ CLEANUP_CALLS = {
     "addClassCleanup",
     "addfinalizer",
     "enterContext",
+    "enter_context",
     "callback",
 }
 PATCH_DICT = ("patch.dict",)
@@ -195,27 +196,56 @@ def teardowns(context, node):
 
 
 def patched_dict(context, node):
-    for block in enclosing(context, node, (ast.With, ast.AsyncWith)):
-        for item in block.items:
-            name = call_name(item.context_expr, context.aliases) or ""
-            if name.endswith(PATCH_DICT):
-                return True
-    return False
+    blocks = enclosing(context, node, (ast.With, ast.AsyncWith))
+    functions = enclosing(context, node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    managers = [item.context_expr for block in blocks for item in block.items]
+    decorators = [part for function in functions for part in function.decorator_list]
+    return any(
+        (call_name(expression, context.aliases) or "").endswith(PATCH_DICT)
+        for expression in managers + decorators
+    )
 
 
-def calls_cleanup(function, aliases):
+def family_word(family):
+    if family == ENVIRON:
+        return "environ"
+    parts = family.split(".")
+    return parts[-1] if family in (TIMEZONE, LOCALE) else parts[-2]
+
+
+def cleanup_restores(call, family, context):
+    text = " ".join(ast.unparse(argument) for argument in call.args)
+    if family_word(family) in text:
+        return True
+    named = {last_name(argument) for argument in call.args}
+    return any(
+        restores(list(ast.walk(function)), family, context, None)
+        for function in functions_of(context.tree)
+        if function.name in named
+    )
+
+
+def cleanup_targets(context):
+    return {
+        last_name(argument)
+        for node in ast.walk(context.tree)
+        if isinstance(node, ast.Call)
+        and (call_name(node, context.aliases) or "").rpartition(".")[2] in CLEANUP_CALLS
+        for argument in node.args
+    }
+
+
+def calls_cleanup(function, family, context):
     return any(
         isinstance(node, ast.Call)
-        and (call_name(node, aliases) or "").rpartition(".")[2] in CLEANUP_CALLS
+        and (call_name(node, context.aliases) or "").rpartition(".")[2] in CLEANUP_CALLS
+        and cleanup_restores(node, family, context)
         for node in ast.walk(function)
     )
 
 
-def is_session_setup(context, functions):
-    conftest = context.path.rsplit("/", 1)[-1] == "conftest.py"
-    if not functions:
-        return conftest
-    return functions[-1].name.startswith("pytest_")
+def is_session_setup(functions):
+    return not functions or functions[-1].name.startswith("pytest_")
 
 
 def own_restore_site(node, function, sites):
@@ -228,9 +258,11 @@ def own_restore_site(node, function, sites):
 
 def is_restored(node, family, context):
     functions = enclosing(context, node, (ast.FunctionDef, ast.AsyncFunctionDef))
-    if is_session_setup(context, functions):
+    if is_session_setup(functions):
         return True
     function = functions[0] if functions else None
+    if function is not None and function.name in cleanup_targets(context):
+        return True
     sites = teardowns(context, node)
     finals = finally_nodes(function) if function else []
     if own_restore_site(node, function, sites) or id(node) in {
@@ -239,7 +271,7 @@ def is_restored(node, family, context):
         return True
     if family == ENVIRON and patched_dict(context, node):
         return True
-    if function is not None and calls_cleanup(function, context.aliases):
+    if function is not None and calls_cleanup(function, family, context):
         return True
     zones = walked(sites) + finals + (after_yield(function) if function else [])
     if not is_test_module(context.tree):

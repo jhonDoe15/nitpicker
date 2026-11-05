@@ -1,16 +1,13 @@
 import { chainName, classesOf } from '../discovery/declarations.mjs';
-import { functionsOf } from '../discovery/functions.mjs';
 import { familyOf, stateChanges } from './state-changes.mjs';
-import { isRestored } from './state-restores.mjs';
+import { functionAround, isRestored } from './state-restores.mjs';
 
 export const GLOBAL_STATE_RULE = 'GlobalStateLeakInTest';
 const GLOBAL_STATE_MESSAGE =
   'This test changes process-wide state and nothing in the class puts it back, so the tests after it pass or fail depending on the order they run in. Save the old value and restore it in finally or in an @AfterEach or @AfterAll function (Kotest afterTest or afterSpec), or let an extension set and restore it: junit-pioneer @SetSystemProperty, @RestoreSystemProperties, @DefaultLocale or @DefaultTimeZone, a system-stubs @SystemStub field, Kotest withSystemProperty { }, or Dispatchers.resetMain() after Dispatchers.setMain.';
 
 function symbolAt(scanned, offset) {
-  const fn = functionsOf(scanned)
-    .filter(({ body }) => body.start <= offset && offset < body.end)
-    .toSorted((left, right) => right.body.start - left.body.start)[0];
+  const fn = functionAround(scanned, offset);
   return chainName(classesOf(scanned), offset, fn?.name);
 }
 

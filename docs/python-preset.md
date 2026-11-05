@@ -1329,9 +1329,10 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   `mock` undo them. A direct change counts as restored when the same state is set again in a `finally` of the same
   function, after `yield` in a fixture, in `tearDown`, `tearDownClass`, `asyncTearDown`, `teardown_method`,
   `teardown_class`, `teardown_function`, `teardown_module` or `tearDownModule` (or a function one of them calls), or
-  by `importlib.reload` of the module; the function may also register a cleanup (`addCleanup`, `request.addfinalizer`,
-  `enterContext`, `ExitStack.callback`). A change inside `with mock.patch.dict(...)`, in a `pytest_*` hook, or at the top
-  level of a `conftest.py` (set once for the whole run) is not reported, and in a test-support module without tests a
+  by `importlib.reload` of the module; a cleanup the function registers (`addCleanup`, `request.addfinalizer`,
+  `enterContext`, `ExitStack.callback`) counts when its arguments name the state (`os.environ.pop`) or a function
+  that restores it, and that function itself is a restore site. A change inside `with mock.patch.dict(...)` or a function decorated with `@mock.patch.dict(...)`, in a
+  `pytest_*` hook, or at the top level of a module (it runs once, at import) is not reported, and in a test-support module without tests a
   restore anywhere in the module counts. `process-env-access` does not run on tests, so it does not overlap.
 - A test function with no assertion is not checked here; the conventions work owns it, together
   with the detection of the project's own assertion helpers.

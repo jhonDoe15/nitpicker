@@ -950,7 +950,9 @@ hop, and type-only imports do not count.
   `console` (`Date.now = ...`, `globalThis.fetch = ...`, also through `Object.defineProperty` or
   `Reflect.set` with a literal name). A write of the same target (any `process.env` write for the
   environment) in `afterEach`, `afterAll`, `onTestFinished` or a `finally`, or in a function that
-  one of those calls, restores it. Top-level code is not checked: it runs once for the whole file.
+  one of those calls, restores it. Top-level code and the callbacks of a top-level `beforeAll`,
+  `beforeEach`, `vi.hoisted`, `vi.mock` or `vi.doMock` are not checked: they set the same state for
+  every test in the file.
   The allowed forms are `vi.stubEnv`, `vi.stubGlobal`, `vi.spyOn` and fake timers, restored as above.
 - `nitpicker/no-switched-off-tests`: no `it.todo`/`test.todo`/`describe.todo` (`vitest/no-disabled-tests`
   already reports `skip`; neither is a way to switch a test off) and no `skipIf(true)`/`runIf(false)`.

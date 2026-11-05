@@ -32,6 +32,11 @@ describe('Kotlin tests that change process-wide state', () => {
         RestAssured.baseURI = "http://localhost"
         Holder.value = 1
         System.getProperty("shop.currency")
+        Fixtures.setUp()
+        Fixtures.setUpDatabase()
+        java.io.File("x").inputStream().use {
+            System.setProperty("shop.channel", "web")
+        }
     }
 
     object Holder {
@@ -50,6 +55,7 @@ describe('Kotlin tests that change process-wide state', () => {
       'LeakTest.leaks@19',
       'LeakTest.leaks@20',
       'LeakTest.leaks@21',
+      'LeakTest.leaks@28',
     ]);
   });
 
@@ -145,6 +151,45 @@ object TimeHelper {
 `;
 
     expect(leaks(text)).toEqual(['ClockSpec@11']);
+  });
+
+  it('looks for the restore in a Kotest spec only in its after blocks, and reads listeners in the constructor', () => {
+    const text = `package demo.orders
+
+import io.kotest.core.spec.style.FunSpec
+import io.kotest.core.spec.style.StringSpec
+import io.kotest.extensions.system.SystemPropertyTestListener
+
+class PropertySpec : StringSpec({
+    "sets" { System.setProperty("a", "b") }
+    "clears" {
+        System.setProperty("a", "b")
+        System.clearProperty("a")
+    }
+})
+
+class ListenedSpec : FunSpec({
+    extensions(SystemPropertyTestListener("a", "b"))
+    test("x") { System.setProperty("a", "c") }
+})
+
+class OuterTest {
+    @org.junit.jupiter.api.Test
+    fun changes() { System.setProperty("a", "b") }
+
+    inner class Inner {
+        @org.junit.jupiter.api.AfterEach
+        fun restore() { System.clearProperty("a") }
+    }
+}
+`;
+
+    expect(leaks(text)).toEqual([
+      'PropertySpec@8',
+      'PropertySpec@10',
+      'PropertySpec@11',
+      'OuterTest.changes@22',
+    ]);
   });
 
   it('leaves a same-name class from another library and a Locale that is not java.util alone', () => {

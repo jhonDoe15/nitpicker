@@ -1,5 +1,5 @@
 import { classesOf } from '../discovery/declarations.mjs';
-import { functionsOf } from '../discovery/functions.mjs';
+import { functionOwners, functionsOf } from '../discovery/functions.mjs';
 import { enclosingHosts } from '../discovery/hosts.mjs';
 import { closeOf, marksFrom } from '../discovery/text-scan.mjs';
 import { familyOf, isJdkGlobal, memberAccesses, memberFamily } from './state-changes.mjs';
@@ -38,7 +38,6 @@ const KOTEST_AFTER = new RegExp(
 const FINALLY = /(?<![\w.])finally\s*\{/gu;
 const LOCAL_CALL = /(?<![\w.])([a-z_]\w*)\s*\(/gu;
 const STUB_FIELD = /@(?:get:|field:)?(?:SystemStub|Rule|ClassRule|RegisterExtension)\b/u;
-const SCOPED_HOSTS = new Set(['finally', 'use']);
 const EXTENSIONS = new Map([
   [
     'System.property',
@@ -84,24 +83,10 @@ const EXTENSIONS = new Map([
   ],
   ['System.in', ['SystemIn', 'TextFromStandardInputStream', 'StdIo', 'withTextFromSystemIn']],
 ]);
-const STUB_TYPES = new Set([
-  'SystemProperties',
-  'RestoreSystemProperties',
-  'ProvideSystemProperty',
-  'ClearSystemProperties',
-  'SystemOut',
-  'SystemOutRule',
-  'SystemErr',
-  'SystemErrRule',
-  'SystemErrAndOut',
-  'SystemIn',
-  'TextFromStandardInputStream',
-]);
-const LISTENER_TYPES = new Set([
-  'SystemPropertyTestListener',
-  'LocaleTestListener',
-  'TimeZoneTestListener',
-]);
+const ANNOTATION_ONLY = new Set(['DefaultLocale', 'DefaultTimeZone', 'StdIo']);
+const TYPED_MARKS = [...new Set([...EXTENSIONS.values()].flat())].filter(
+  (name) => /^[A-Z]/u.test(name) && !ANNOTATION_ONLY.has(name),
+);
 
 function blocks(scanned, pattern, { start: from, end: to }) {
   return [...marksFrom(scanned.code, pattern, from)]
@@ -116,13 +101,14 @@ function inside(range, offset) {
   return range.start <= offset && offset < range.end;
 }
 
-function bodyOf(klass) {
-  return { start: klass.bodyOpen + 1, end: klass.bodyClose };
+function rangeOf(klass) {
+  return { start: klass.offset, end: klass.end };
 }
 
 function afterZones(scanned, klass) {
-  const body = bodyOf(klass);
-  const functions = functionsOf(scanned).filter((fn) => inside(body, fn.offset));
+  const body = rangeOf(klass);
+  const owners = functionOwners(scanned);
+  const functions = functionsOf(scanned).filter((fn) => owners.get(fn.offset) === klass);
   const afters = functions
     .filter(
       (fn) =>
@@ -139,18 +125,17 @@ function afterZones(scanned, klass) {
   return [...zones, ...helpers];
 }
 
-function marksAround(scanned, change, { classes, fn }) {
-  const hosts = enclosingHosts(scanned, 0, change.offset);
-  const classText = classes.map((klass) => scanned.code.slice(klass.bodyOpen, klass.bodyClose));
+function marksAround(scanned, { classes, fn, hosts }) {
+  const classText = classes.map((klass) => scanned.code.slice(klass.offset, klass.end));
   const stubbed = classText.some((text) => STUB_FIELD.test(text));
-  const typed = [...STUB_TYPES, ...LISTENER_TYPES].filter((name) =>
+  const typed = TYPED_MARKS.filter((name) =>
     classText.some((text) => new RegExp(String.raw`\b${name}\b`, 'u').test(text)),
   );
   return new Set([
     ...[...classes, ...(fn === undefined ? [] : [fn])].flatMap(({ annotations }) =>
       annotations.map(({ name }) => name),
     ),
-    ...typed.filter((name) => stubbed || LISTENER_TYPES.has(name)),
+    ...typed.filter((name) => stubbed || name.endsWith('Listener')),
     ...hosts.map(({ name }) => name),
     ...hosts
       .filter(({ name }) => name === 'execute')
@@ -170,31 +155,41 @@ function restoredBy(change, accesses) {
   );
 }
 
-function functionAround(scanned, offset) {
+function usesOwner(hosts, change, extensions) {
+  return hosts.some(
+    ({ name, receiver }) =>
+      name === 'use' &&
+      (receiver.match(/\w+/gu) ?? []).some(
+        (word) => word === change.type || extensions.includes(word),
+      ),
+  );
+}
+
+export function functionAround(scanned, offset) {
   return functionsOf(scanned)
     .filter(({ body }) => inside(body, offset))
     .toSorted((left, right) => right.body.start - left.body.start)[0];
 }
 
 export function isRestored(scanned, change, suites) {
-  const classes = classesOf(scanned).filter(
-    (klass) => klass.bodyOpen >= 0 && inside(bodyOf(klass), change.offset),
-  );
+  const classes = classesOf(scanned).filter((klass) => inside(rangeOf(klass), change.offset));
   const fn = functionAround(scanned, change.offset);
   const scope = fn?.body ?? { start: 0, end: scanned.code.length };
   const sites = [
     ...classes.flatMap((klass) => afterZones(scanned, klass)),
     ...blocks(scanned, FINALLY, scope),
   ];
-  const marks = marksAround(scanned, change, { classes, fn });
+  const hosts = enclosingHosts(scanned, 0, change.offset);
+  const marks = marksAround(scanned, { classes, fn, hosts });
+  const extensions = EXTENSIONS.get(familyOf(change)) ?? [];
   if (
     sites.some((zone) => inside(zone, change.offset)) ||
-    [...SCOPED_HOSTS].some((name) => marks.has(name)) ||
-    (EXTENSIONS.get(familyOf(change)) ?? []).some((name) => marks.has(name))
+    usesOwner(hosts, change, extensions) ||
+    extensions.some((name) => marks.has(name))
   ) {
     return true;
   }
-  const inSuite = suites.some(({ klass }) => inside(bodyOf(klass), change.offset));
+  const inSuite = suites.some(({ klass }) => inside(rangeOf(klass), change.offset));
   const zones = inSuite ? sites : [{ start: 0, end: scanned.code.length }];
   return restoredBy(
     change,
