@@ -1,7 +1,7 @@
 import { rule } from './no-shared-stateful-regex.mjs';
 import { typedRegexProject } from './test-support/typed-project.mjs';
 
-const { tester, typed } = typedRegexProject('nitpicker-stateful-regex-');
+const { tester, typed, typedJs } = typedRegexProject('nitpicker-stateful-regex-');
 
 function shared(name, method, flag = 'g') {
   return [{ messageId: 'sharedRegex', data: { name, method, flag } }];
@@ -25,8 +25,13 @@ tester.run('no-shared-stateful-regex', rule, {
     'export class Router { private readonly route = /^\\/api\\//i; matches(path: string) { return this.route.test(path); } }',
     'export function has(pattern: string, text: string) { return text.includes(pattern); }',
     'export function has(pattern: RegExp, text: string) { return pattern.test(text); }',
+    'export function pick(text: string, strict: boolean) { const word = /\\w+/g; if (strict) { return word.test(text); } else { return word.test(`${text}!`); } }',
+    'export function pick(text: string, strict: boolean) { const word = /\\w+/g; return strict ? word.test(text) : word.exec(text) !== null; }',
+    'export function pick(text: string, kind: number) { const word = /\\w+/g; switch (kind) { case 1: return word.test(text); default: return word.test(`${text}!`); } }',
+    'const WORD = /\\w+/g;\nexport function has(text: string) { try { return WORD.test(text); } finally { WORD.lastIndex = 0; } }',
+    'const WORD = /\\w+/g;\nexport function count(text: string, limit: number) { let total = 0; while (total < limit && WORD.test(text)) { total += 1; } return total; }',
     'export function has(pattern: { test(text: string): boolean }, text: string) { return pattern.test(text); }',
-    typed('export function has(pattern, text) { return pattern.test(text); }', undefined, 'js'),
+    typedJs('export function has(pattern, text) { return pattern.test(text); }'),
   ].map((code) => (typeof code === 'string' ? typed(code) : code)),
   invalid: [
     typed(

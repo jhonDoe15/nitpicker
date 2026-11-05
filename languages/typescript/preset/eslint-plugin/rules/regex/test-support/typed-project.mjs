@@ -29,11 +29,15 @@ export function typedRegexProject(prefix) {
   });
   const tester = typescriptRuleTester({ project: './tsconfig.json', tsconfigRootDir: root });
 
-  function typed(code, errors, extension = 'ts') {
-    const filename = path.join(root, `src/case-${randomUUID()}.${extension}`);
+  function written(filename, code, errors) {
     writeFileSync(filename, code);
     return { filename, code, ...(errors === undefined ? {} : { errors }) };
   }
 
-  return { tester, typed };
+  return {
+    tester,
+    typed: (code, errors) => written(path.join(root, `src/case-${randomUUID()}.ts`), code, errors),
+    typedJs: (code, errors) =>
+      written(path.join(root, `src/case-${randomUUID()}.js`), code, errors),
+  };
 }

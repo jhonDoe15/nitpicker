@@ -6,17 +6,14 @@ import { unwrapped } from './regex-bindings.mjs';
 const PATTERN_METHODS = new Set(['match', 'matchAll', 'search']);
 const RUNTIME_STRING_FLAGS = ts.TypeFlags.String | ts.TypeFlags.TemplateLiteral;
 
-function partsOf(type) {
-  return type.isUnion() ? type.types : [type];
-}
-
 function isStringType(type) {
-  const parts = partsOf(type);
+  const parts = type.isUnion() ? type.types : [type];
   return parts.length > 0 && parts.every((part) => part.flags & ts.TypeFlags.StringLike);
 }
 
 function isRuntimeStringType(type) {
-  return partsOf(type).some((part) => part.flags & RUNTIME_STRING_FLAGS);
+  const parts = type.isUnion() ? type.types : [type];
+  return parts.some((part) => part.flags & RUNTIME_STRING_FLAGS);
 }
 
 function calleeName(callee) {
@@ -64,6 +61,58 @@ function isRegExpConstruction(node) {
   return node.callee.type === 'Identifier' && node.callee.name === 'RegExp';
 }
 
+function isPatternSource(state, node) {
+  return (
+    node.type === 'MemberExpression' &&
+    !node.computed &&
+    node.property.name === 'source' &&
+    state.typeOf(node.object).getSymbol()?.getName() === 'RegExp'
+  );
+}
+
+function isRuntimeValue(state, part) {
+  const target = unwrapped(part);
+  if (isPatternSource(state, target)) {
+    return false;
+  }
+  if (stringValue(resolveConstant(state.context, target)) !== undefined) {
+    return false;
+  }
+  const type = state.checker.getBaseConstraintOfType(state.typeOf(target)) ?? state.typeOf(target);
+  return isRuntimeStringType(type) && dependsOnInput(state.context, target);
+}
+
+function checkConstruction(state, node) {
+  const [pattern] = node.arguments;
+  if (pattern === undefined || !isRegExpConstruction(node)) {
+    return;
+  }
+  const runtime = patternParts(pattern).find((part) => isRuntimeValue(state, part));
+  if (runtime !== undefined) {
+    state.context.report({
+      node: runtime,
+      messageId: 'unescapedValue',
+      data: { value: state.context.sourceCode.getText(unwrapped(runtime)) },
+    });
+  }
+}
+
+function checkStringArgument(state, node) {
+  const method = calleeName(node.callee);
+  const [argument] = node.arguments;
+  if (
+    node.callee.type !== 'MemberExpression' ||
+    !PATTERN_METHODS.has(method) ||
+    argument === undefined ||
+    argument.type === 'SpreadElement'
+  ) {
+    return;
+  }
+  if (isStringType(state.typeOf(node.callee.object)) && isStringType(state.typeOf(argument))) {
+    state.context.report({ node: argument, messageId: 'stringPattern', data: { method } });
+  }
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -75,76 +124,28 @@ export const rule = {
     schema: [],
     messages: {
       stringPattern:
-        '`{{ method }}()` compiles this string as a regex, so `.`, `*`, `?`, `(` and the other metacharacters in it change what matches. Use `includes`, `startsWith`, `indexOf` or `===` for plain text, or pass a RegExp (`/…/` or `new RegExp(pattern)`) when it is meant as a pattern.',
+        'Use `includes`, `startsWith`, `indexOf` or `===` for plain text, or pass a RegExp (`/…/` or `new RegExp(pattern)`) when the string is meant as a pattern. `{{ method }}()` compiles a string argument as a regex, so `.`, `*`, `?`, `(` and the other metacharacters in it change what matches.',
       unescapedValue:
-        "`{{ value }}` is built into this regex unescaped, so the metacharacters in it change the pattern. Escape it first (`RegExp.escape({{ value }})` or the project's escape helper), interpolate a RegExp's `.source` when the value is meant as a pattern, or compare plain text with `includes` or `startsWith`.",
+        "Escape `{{ value }}` with the project's escape helper (`escapeRegExp({{ value }})`, or `RegExp.escape` on a runtime that has it), interpolate a RegExp's `.source` when the value is meant as a pattern, or compare plain text with `includes` or `startsWith`. Built into this regex unescaped, the metacharacters in it change the pattern.",
     },
   },
   create(context) {
-    const { sourceCode } = context;
-    const services = sourceCode.parserServices;
+    const services = context.sourceCode.parserServices;
     if (services?.program === null || services?.program === undefined) {
       return {};
     }
-    const checker = services.program.getTypeChecker();
-
-    function typeOf(node) {
-      return services.getTypeAtLocation(node);
-    }
-
-    function isPatternSource(node) {
-      return (
-        node.type === 'MemberExpression' &&
-        !node.computed &&
-        node.property.name === 'source' &&
-        typeOf(node.object).getSymbol()?.getName() === 'RegExp'
-      );
-    }
-
-    function isRuntimeValue(part) {
-      const target = unwrapped(part);
-      if (isPatternSource(target)) {
-        return false;
-      }
-      if (stringValue(resolveConstant(context, target)) !== undefined) {
-        return false;
-      }
-      const type = checker.getBaseConstraintOfType(typeOf(target)) ?? typeOf(target);
-      return isRuntimeStringType(type) && dependsOnInput(context, target);
-    }
-
-    function checkConstruction(node) {
-      const [pattern] = node.arguments;
-      if (pattern === undefined || !isRegExpConstruction(node)) {
-        return;
-      }
-      const runtime = patternParts(pattern).find(isRuntimeValue);
-      if (runtime !== undefined) {
-        context.report({
-          node: runtime,
-          messageId: 'unescapedValue',
-          data: { value: sourceCode.getText(unwrapped(runtime)) },
-        });
-      }
-    }
-
+    const state = {
+      context,
+      checker: services.program.getTypeChecker(),
+      typeOf: (node) => services.getTypeAtLocation(node),
+    };
     return {
-      NewExpression: checkConstruction,
+      NewExpression(node) {
+        checkConstruction(state, node);
+      },
       CallExpression(node) {
-        checkConstruction(node);
-        const method = calleeName(node.callee);
-        const [argument] = node.arguments;
-        if (
-          node.callee.type !== 'MemberExpression' ||
-          !PATTERN_METHODS.has(method) ||
-          argument === undefined ||
-          argument.type === 'SpreadElement'
-        ) {
-          return;
-        }
-        if (isStringType(typeOf(node.callee.object)) && isStringType(typeOf(argument))) {
-          context.report({ node: argument, messageId: 'stringPattern', data: { method } });
-        }
+        checkConstruction(state, node);
+        checkStringArgument(state, node);
       },
     };
   },

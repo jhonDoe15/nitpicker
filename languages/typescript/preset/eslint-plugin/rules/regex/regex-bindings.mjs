@@ -21,14 +21,26 @@ const LOOPS = new Set([
   'DoWhileStatement',
 ]);
 const CONDITION_LOOPS = new Set(['WhileStatement', 'DoWhileStatement', 'ForStatement']);
-const LOOP_TEST_WRAPPERS = new Set(['AssignmentExpression', 'BinaryExpression', 'UnaryExpression']);
+const LOOP_TEST_WRAPPERS = new Set([
+  'AssignmentExpression',
+  'BinaryExpression',
+  'UnaryExpression',
+  'LogicalExpression',
+]);
+const BRANCH_KEYS = {
+  IfStatement: ['consequent', 'alternate'],
+  ConditionalExpression: ['consequent', 'alternate'],
+  SwitchStatement: ['cases'],
+};
 
 export function unwrapped(node) {
-  let current = node;
-  while (TYPE_WRAPPERS.has(current?.type)) {
-    current = current.expression;
+  const chain = [node];
+  for (const current of chain) {
+    if (TYPE_WRAPPERS.has(current?.type)) {
+      chain.push(current.expression);
+    }
   }
-  return current;
+  return chain.at(-1);
 }
 
 function isRegExpCall(node) {
@@ -39,7 +51,7 @@ function isRegExpCall(node) {
   );
 }
 
-export function creationFlags(context, node) {
+function creationFlags(context, node) {
   const target = unwrapped(node);
   if (target?.type === 'Literal' && target.regex !== undefined) {
     return target.regex.flags;
@@ -54,7 +66,7 @@ export function creationFlags(context, node) {
   return pattern.type === 'Literal' && pattern.regex !== undefined ? pattern.regex.flags : '';
 }
 
-export function statefulFlag(flags) {
+function statefulFlag(flags) {
   return ['g', 'y'].find((flag) => flags?.includes(flag));
 }
 
@@ -145,6 +157,12 @@ function objectPropertyValue(objectExpression, name) {
   return property?.value;
 }
 
+function thisMemberValue(member, name) {
+  const classNode = enclosingClass(member);
+  const isStatic = enclosingScope(member)?.parent?.static === true;
+  return classNode === undefined ? undefined : classMemberValue(classNode, name, isStatic);
+}
+
 function memberValue(context, member) {
   const name = propertyName(member);
   const object = unwrapped(member.object);
@@ -152,10 +170,7 @@ function memberValue(context, member) {
     return undefined;
   }
   if (object.type === 'ThisExpression') {
-    const classNode = enclosingClass(member);
-    const scope = enclosingScope(member);
-    const isStatic = scope?.parent?.static === true;
-    return classNode === undefined ? undefined : classMemberValue(classNode, name, isStatic);
+    return thisMemberValue(member, name);
   }
   if (object.type !== 'Identifier') {
     return undefined;
@@ -205,4 +220,23 @@ export function isInLoopWithout(node, scope, inner) {
     }
   }
   return false;
+}
+
+function branchOf(owner, node) {
+  return (BRANCH_KEYS[owner.type] ?? [])
+    .flatMap((key) => owner[key] ?? [])
+    .flat()
+    .find((branch) => branch.range[0] <= node.range[0] && node.range[1] <= branch.range[1]);
+}
+
+export function areExclusive(left, right) {
+  const shared = ancestorsOf(left).find(
+    (ancestor) => ancestor.range[0] <= right.range[0] && right.range[1] <= ancestor.range[1],
+  );
+  if (shared === undefined) {
+    return false;
+  }
+  const leftBranch = branchOf(shared, left);
+  const rightBranch = branchOf(shared, right);
+  return leftBranch !== undefined && rightBranch !== undefined && leftBranch !== rightBranch;
 }

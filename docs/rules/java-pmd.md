@@ -1515,7 +1515,7 @@ In main sources: `String.replaceAll` with a compile-time constant pattern that h
 
 - **Scope:** Main sources only.
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
-- **Allowed form:** replaceAll compiles its first argument as a regex on every call, and this one has no regex metacharacters, so it is plain text. Use replace(target, replacement): it replaces every occurrence without a regex and reads the replacement literally, while replaceAll reads a dollar sign or backslash in it as a group reference.
+- **Allowed form:** Use replace(target, replacement), which replaces every occurrence of the plain text and reads the replacement literally. This replaceAll pattern has no regex metacharacters, so replaceAll only compiles a regex on every call and reads a dollar sign or backslash in the replacement as a group reference.
 - **Exception:** If this is intended, add `{"rule":"pmd/PlainTextRegex","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-preservestacktrace"></a>
@@ -2504,7 +2504,7 @@ In main sources: a runtime `String` in the regex argument of `String.split`, `sp
 
 - **Scope:** Main sources only.
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
-- **Allowed form:** This argument is compiled as a regex (String.split, matches, replaceAll and replaceFirst take a regex, and so does Pattern.compile), and a runtime String in it is not quoted, so a dot, pipe, dollar sign or other metacharacter in the value changes what matches. Wrap plain text in Pattern.quote(value); for a literal replacement use replace(text, replacement). Pass a value that is meant as a whole pattern to Pattern.compile(pattern) on its own, and keep Pattern.quote around values joined into a pattern.
+- **Allowed form:** Wrap the runtime value in Pattern.quote(value), also when you join it into a Pattern.compile pattern, and use replace(text, replacement) instead of replaceAll for a literal replacement; a value meant as a whole pattern goes to Pattern.compile(pattern) on its own. String.split, matches, replaceAll and replaceFirst compile their argument as a regex, so a dot, pipe, dollar sign or other metacharacter in the value changes what matches.
 - **Exception:** If this is intended, add `{"rule":"pmd/UnquotedRegexValue","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-unsynchronizedstaticformatter"></a>

@@ -1,7 +1,7 @@
 import { rule } from './no-string-as-regex.mjs';
 import { typedRegexProject } from './test-support/typed-project.mjs';
 
-const { tester, typed } = typedRegexProject('nitpicker-string-regex-');
+const { tester, typed, typedJs } = typedRegexProject('nitpicker-string-regex-');
 
 function stringPattern(method) {
   return [{ messageId: 'stringPattern', data: { method } }];
@@ -32,8 +32,11 @@ tester.run('no-string-as-regex', rule, {
     'export function words(names: string[]) { const pattern = names.map(escapeRegExp).join("|"); return new RegExp(`^(?:${pattern})$`); }\ndeclare function escapeRegExp(value: string): string;',
     'export function route() { const name = load(); return new RegExp(`^/${name}/`); }\ndeclare function load(): string;',
     'export function compile(left: string, right: string) { return new RegExp(left + right); }',
-    typed('export function route(name) { return new RegExp(`^/${name}/`); }', undefined, 'js'),
-    typed('export function has(text, pattern) { return text.match(pattern); }', undefined, 'js'),
+    'export function route(name: string) { return new RegExp(`^${RegExp.escape(name)}$`); }\ndeclare global { interface RegExpConstructor { escape(value: string): string } }',
+    "export function route(name: string) { return new RegExp(`^${name.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')}$`); }",
+    'export function route(name: string, upper: boolean) { return new RegExp(`^${upper ? "A" : "b"}$`); }',
+    typedJs('export function route(name) { return new RegExp(`^/${name}/`); }'),
+    typedJs('export function has(text, pattern) { return text.match(pattern); }'),
   ].map((code) => (typeof code === 'string' ? typed(code) : code)),
   invalid: [
     typed(
@@ -69,6 +72,10 @@ tester.run('no-string-as-regex', rule, {
       unescaped('id'),
     ),
     typed(
+      'export function route(name: string) { return new RegExp(`^${escapeHtml(name)}$`); }\ndeclare function escapeHtml(value: string): string;',
+      unescaped('escapeHtml(name)'),
+    ),
+    typed(
       'export function route(names: string[]) { const pattern = names.join("|"); return new RegExp(`^(?:${pattern})$`); }',
       unescaped('pattern'),
     ),
@@ -80,15 +87,13 @@ tester.run('no-string-as-regex', rule, {
       'export function routes(names: string[]) { const found = []; for (const name of names) { found.push(new RegExp(`^/${name}/`)); } return found; }',
       unescaped('name'),
     ),
-    typed(
+    typedJs(
       '/** @param {string} name */\nexport function route(name) { return new RegExp(`^/${name}/`); }',
       unescaped('name'),
-      'js',
     ),
-    typed(
+    typedJs(
       '/** @param {string} text */\nexport function has(text) { return text.match("a.b"); }',
       stringPattern('match'),
-      'js',
     ),
   ],
 });

@@ -2702,8 +2702,13 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   `Pattern.quote(...)` call (`UPPER_CASE` names count as constants, since a static import hides the
   declaration). `Pattern.compile(pattern)` with a whole pattern is the explicit form and passes;
   `Pattern.compile` and `Pattern.matches` are reported only when a runtime value is joined into the
-  pattern with `+`. A local built from constants is still reported (XPath does not follow it); the
-  exception route covers that case. The Kotlin preset has the same rule as
+  pattern with `+`. The String methods do not read as a regex API (a caller writes
+  `line.split(separator)` for plain text), so a lone runtime value is reported there, while
+  `Pattern.compile` is the explicit form for a pattern held in a variable; a field meant as a
+  pattern belongs in a `Pattern` (`PATTERN.matcher(text).matches()`). Numbers, booleans and characters, the condition of a `?:`,
+  `Pattern::quote` and a local of the same method initialized with a constant or a `Pattern.quote`
+  call pass; a local built from constants in another way is still reported (XPath does not follow
+  it), and the exception route covers that case. The Kotlin preset has the same rule as
   `kotlin-source/UnquotedRegexValue`, the TypeScript preset reports `new RegExp` patterns built
   from a parameter (`nitpicker/no-string-as-regex`), and the Python preset reports `re` patterns
   built from an argument (`regex-unescaped-value`).

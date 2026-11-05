@@ -20,6 +20,16 @@ describe('unquotedRegexValues', () => {
     ['a lambda value', 'fun routes(names: List<String>) = names.map { Regex("^$it/") }', 'it'],
     ['a raw string', 'fun route(name: String) = Regex("""^/$name/\\d+""")', 'name'],
     [
+      'an unescape helper',
+      'fun route(name: String) = Regex("^/${unescapeRegex(name)}/")',
+      'unescapeRegex(name)',
+    ],
+    [
+      'a local built from a parameter',
+      'fun route(name: String): Regex {\nval part = "." + name\nreturn Regex("^$part") }',
+      'part',
+    ],
+    [
       'a class property',
       'private val prefix: String = load()\nfun route() = Regex("^$prefix/")',
       'prefix',
@@ -45,8 +55,17 @@ describe('unquotedRegexValues', () => {
     ['an escaped dollar', 'fun total() = Regex("\\$name")'],
     ['a literal', 'val digits = Regex("\\\\d+")'],
     ['a call result', 'fun route() = loadPattern().toRegex()'],
+    ['an escape helper', 'fun route(name: String) = Regex("^/${escapeRegex(name)}/")'],
+    [
+      'a qualified escape helper',
+      'fun route(name: String) = Regex("^/" + Texts.quotePattern(name))',
+    ],
+    [
+      'a literal local',
+      'fun cells(line: String): List<String> {\nval sep = "."\nreturn line.split(Regex("x$sep"))\n}',
+    ],
   ])('allows %s', (_name, line) => {
-    expect(found(unquotedRegexValues, [line])).toEqual([]);
+    expect(found(unquotedRegexValues, line.split('\n'))).toEqual([]);
   });
 
   it('allows a value declared in an object', () => {

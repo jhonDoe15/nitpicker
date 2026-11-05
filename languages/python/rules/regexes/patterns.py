@@ -17,6 +17,10 @@ FUNCTIONS = {
 }
 FUNCTION_TYPES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
 NON_TEXT_TYPES = {"int", "float", "bool", "complex"}
+RECEIVERS = {"self", "cls"}
+NUMBER_CALLS = {"len", "int", "float", "round", "abs", "hash", "id", "ord"}
+ESCAPES = {"re.escape", "regex.escape"}
+ESCAPE_WORDS = ("re", "regex", "pattern")
 MAX_DEPTH = 6
 
 
@@ -57,25 +61,42 @@ def built_values(pattern):
     return []
 
 
-def is_escape(node):
-    if not isinstance(node, ast.Call):
+def callable_name(node, aliases):
+    return dotted_name(node, aliases) or ""
+
+
+def is_escape_name(node, aliases):
+    if not isinstance(node, (ast.Name, ast.Attribute)):
         return False
-    func = node.func
-    name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", "")
-    return "escape" in name.lower()
+    name = callable_name(node, aliases)
+    last = name.rsplit(".", 1)[-1].lower()
+    escape_word = "escape" in last and any(word in last for word in ESCAPE_WORDS[1:])
+    return name in ESCAPES or (last != "unescape" and escape_word)
 
 
-def loaded_names(node):
+def is_number_call(node, aliases):
+    return isinstance(node, ast.Call) and callable_name(node.func, aliases) in NUMBER_CALLS
+
+
+def value_children(node):
+    if isinstance(node, ast.IfExp):
+        return [node.body, node.orelse]
+    return list(ast.iter_child_nodes(node))
+
+
+def loaded_names(node, aliases):
     pending, names = [node], []
     while pending:
         current = pending.pop()
-        if is_escape(current):
+        if is_escape_name(current, aliases):
+            return []
+        if is_number_call(current, aliases):
             continue
         if isinstance(current, ast.Attribute) and current.attr == "pattern":
             continue
         if isinstance(current, ast.Name) and isinstance(current.ctx, ast.Load):
             names.append(current.id)
-        pending.extend(ast.iter_child_nodes(current))
+        pending.extend(value_children(current))
     return names
 
 
@@ -93,9 +114,22 @@ def parameters(function):
     return {argument.arg: argument for argument in every}
 
 
+def annotation_names(annotation):
+    if isinstance(annotation, ast.Constant) and isinstance(annotation.value, str):
+        try:
+            annotation = ast.parse(annotation.value, mode="eval").body
+        except SyntaxError:
+            return set()
+    if isinstance(annotation, ast.BinOp) and isinstance(annotation.op, ast.BitOr):
+        return annotation_names(annotation.left) | annotation_names(annotation.right)
+    if isinstance(annotation, ast.Constant) and annotation.value is None:
+        return {"None"}
+    return {annotation.id} if isinstance(annotation, ast.Name) else {"?"}
+
+
 def is_non_text(argument):
-    annotation = argument.annotation
-    return isinstance(annotation, ast.Name) and annotation.id in NON_TEXT_TYPES
+    names = annotation_names(argument.annotation) - {"None"}
+    return bool(names) and names <= NON_TEXT_TYPES
 
 
 def bound_values(function, name):
@@ -113,18 +147,20 @@ def bound_values(function, name):
     return values
 
 
-def depends_on_input(node, function, depth=0):
+def depends_on_input(node, function, aliases, depth=0):
     if depth > MAX_DEPTH:
         return False
     own = parameters(function)
-    for name in loaded_names(node):
+    for name in loaded_names(node, aliases):
         argument = own.get(name)
+        if name in RECEIVERS:
+            continue
         if argument is not None:
             if not is_non_text(argument):
                 return True
             continue
         values = bound_values(function, name)
-        if any(depends_on_input(value, function, depth + 1) for value in values):
+        if any(depends_on_input(value, function, aliases, depth + 1) for value in values):
             return True
     return False
 
@@ -138,7 +174,7 @@ def runtime_value(call, context):
         (
             value
             for value in built_values(pattern)
-            if not is_text(value) and depends_on_input(value, function)
+            if not is_text(value) and depends_on_input(value, function, context.aliases)
         ),
         None,
     )
