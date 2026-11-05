@@ -45,6 +45,9 @@ class Unbounded(private val feeds: Feeds, private val client: WebClient) {
 
     fun cut(ids: List<String>): Flux<String> = Flux.fromIterable(ids).take(ids.size.toLong()).flatMap { feeds.fetch(it) }
 
+    fun chainedLate(ids: List<String>): Flux<String> =
+        Flux.fromIterable(ids).flatMap { Mono.just(it.trim()) }.flatMap { feeds.fetch(it) }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     fun flowed(ids: List<String>): Flow<String> =
         ids.asFlow().flatMapMerge(Int.MAX_VALUE) { id -> feeds.fetch(id).asFlow() }

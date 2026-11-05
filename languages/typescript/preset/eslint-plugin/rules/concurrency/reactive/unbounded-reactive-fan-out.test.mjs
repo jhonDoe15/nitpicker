@@ -39,6 +39,11 @@ tester.run('unbounded-reactive-fan-out', rule, {
     `${RX}const LIMIT = 4; from(ids).pipe(mergeMap((id) => from(fetch(id)), LIMIT));`,
     `${RX}export function load(ids, limit) { return from(ids).pipe(mergeMap((id) => from(fetch(id)), limit)); }`,
     `${RX}from(ids).pipe(concatMap((id) => from(fetch(id))));`,
+    `${RX}import { first } from "rxjs"; from(ids).pipe(first(), mergeMap((id) => from(fetch(id))));`,
+    `${RX}from(ids).pipe(map((id) => id.trim()), mergeAll());`,
+    `${RX}${HTTP}import { inject } from "@angular/core"; class Feeds { private readonly http = inject(HttpClient); all(ids: string[]) { return from(ids).pipe(mergeMap((id) => this.http.get(id), 4)); } }`,
+    `${RX}declare function load(id: string): Promise<string>; from(ids).pipe(mergeMap((id) => from(load(id))));`,
+    `${RX}declare function load(id: string): Promise<string>; from(ids).pipe(mergeMap(load));`,
     `${RX}import { take } from "rxjs"; from(ids).pipe(take(10), mergeMap((id) => from(fetch(id))));`,
     `${RX}from(ids).pipe(bufferCount(20), mergeMap((batch) => from(fetch(batch.join()))));`,
     `${RX}from(ids).pipe(mergeMap((id) => of(id.trim())));`,
@@ -98,6 +103,14 @@ tester.run('unbounded-reactive-fan-out', rule, {
     {
       code: `${RX}import { take } from "rxjs"; from(ids).pipe(take(ids.length), mergeMap((id) => from(fetch(id))));`,
       errors: operator(),
+    },
+    {
+      code: `${RX}from(ids).pipe(map((id) => from(fetch(id))), mergeAll());`,
+      errors: operator({ operator: 'mergeAll' }),
+    },
+    {
+      code: `${RX}${HTTP}import { inject } from "@angular/core"; class Feeds { private readonly http = inject(HttpClient); all(ids: string[]) { return from(ids).pipe(mergeMap((id) => this.http.get(id))); } }`,
+      errors: operator({ operation: 'this.http.get()' }),
     },
     { code: `${RX}forkJoin(ids.map((id) => from(fetch(id))));`, errors: combinator() },
     {
