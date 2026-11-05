@@ -1,6 +1,6 @@
 import { hash, nextOccurrence } from '../../../../../../../shared/rules/finding-helpers.mjs';
-import { MESSAGE_KIND } from '../fan-out/clients.mjs';
 import { referenceWork, remoteWork } from '../fan-out/reach.mjs';
+import { target, workText } from '../fan-out/work-text.mjs';
 import { reactiveSites, workerOf } from './reactive-sites.mjs';
 
 const RULE = 'UnboundedReactiveFanOut';
@@ -27,14 +27,6 @@ export const REACTIVE_FAN_OUT_MESSAGES = {
     `remote service. ${ALLOWED.operator} ${EXCEPTION}`,
   ].join(' '),
 };
-
-function target(kind) {
-  return kind === MESSAGE_KIND ? 'broker' : 'remote service';
-}
-
-function workText({ call, helper }) {
-  return helper === undefined ? `\`${call}\`` : `\`${helper}\`, which reaches \`${call}\`,`;
-}
 
 function amount(limit) {
   return limit === undefined

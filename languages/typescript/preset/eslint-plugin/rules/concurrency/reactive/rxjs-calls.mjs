@@ -146,20 +146,24 @@ function piped(context, call, before) {
   return grouped ? { grouped } : { source: callee.object };
 }
 
+function upstream(context, step, depth) {
+  if (step?.source === undefined || depth >= MAX_DEPTH) {
+    return undefined;
+  }
+  const target = skipped(resolveConstant(context, skipped(step.source)));
+  if (target?.type !== 'CallExpression') {
+    return undefined;
+  }
+  return (
+    creationSource(context, target) ??
+    upstream(context, piped(context, target, undefined), depth + 1)
+  );
+}
+
 export function pipeSource(context, operator) {
   const pipe = operator.parent;
   const isArgument = pipe?.type === 'CallExpression' && pipe.arguments.includes(operator);
-  let step = isArgument ? piped(context, pipe, pipe.arguments.indexOf(operator)) : undefined;
-  for (let depth = 0; step?.source !== undefined && depth < MAX_DEPTH; depth += 1) {
-    const target = skipped(resolveConstant(context, skipped(step.source)));
-    if (target?.type !== 'CallExpression') {
-      return undefined;
-    }
-    const collection = creationSource(context, target);
-    if (collection !== undefined) {
-      return collection;
-    }
-    step = piped(context, target, undefined);
-  }
-  return undefined;
+  return isArgument
+    ? upstream(context, piped(context, pipe, pipe.arguments.indexOf(operator)), 0)
+    : undefined;
 }

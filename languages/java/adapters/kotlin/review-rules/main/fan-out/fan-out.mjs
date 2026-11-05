@@ -4,9 +4,9 @@ import {
   REACTIVE_FAN_OUT_MESSAGES,
   reactiveFindingsOf,
 } from '../reactive-fan-out/reactive-fan-out.mjs';
-import { MESSAGE_KIND } from './clients.mjs';
 import { projectIndex, remoteWork } from './reach.mjs';
 import { collectionLabel, isFixed, siteOf, starterOf, waitsInside } from './sites.mjs';
+import { target, workText } from './work-text.mjs';
 
 const RULE = 'UnboundedFanOut';
 const TOOL = 'kotlin-source';
@@ -24,14 +24,6 @@ export const FAN_OUT_MESSAGES = {
   ].join(' '),
   ...REACTIVE_FAN_OUT_MESSAGES,
 };
-
-function target(kind) {
-  return kind === MESSAGE_KIND ? 'broker' : 'remote service';
-}
-
-function workText({ call, helper }) {
-  return helper === undefined ? `\`${call}\`` : `\`${helper}\`, which reaches \`${call}\`,`;
-}
 
 export function fanOutMessage({ starter, collection, work }) {
   const started = `\`${starter}\` starts ${workText(work)} for every element of \`${collection}\` at once`;
