@@ -3,6 +3,7 @@ package shop;
 import static shop.Status.CANCELLED;
 import static shop.Status.SHIPPED;
 
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.EnumSet;
 import java.util.Iterator;
@@ -100,6 +101,40 @@ public final class Orders {
       default:
         return false;
     }
+  }
+
+  public static boolean isQueued(Delivery delivery) {
+    return List.of(Status.NEW, Status.PAID).contains(delivery.status()); // violation: ExhaustiveEnumPredicate
+  }
+
+  public static boolean isHandedOver(Status status) {
+    return Arrays.asList(Status.SHIPPED, Status.CANCELLED).contains(status); // violation: ExhaustiveEnumPredicate
+  }
+
+  public static boolean isStarted(Status status) {
+    return !Status.NEW.equals(status) && !status.equals(Status.PAID); // violation: ExhaustiveEnumPredicate
+  }
+
+  public static boolean isLate(Delivery delivery) {
+    return switch (delivery.status()) { // violation: ExhaustiveEnumPredicate
+      case SHIPPED, CANCELLED -> false;
+      default -> true;
+    };
+  }
+
+  public static boolean isBilled(Status status) {
+    return switch (status) {
+      case NEW -> false;
+      case PAID -> true;
+      default -> false;
+    };
+  }
+
+  public static boolean isListed(Status status) {
+    return switch (status) {
+      case NEW, PAID, SHIPPED, CANCELLED -> true;
+      default -> false;
+    };
   }
 
   public static boolean isSettled(Status status) {

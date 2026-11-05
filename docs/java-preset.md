@@ -2104,7 +2104,7 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   `@MapKeyEnumerated(EnumType.STRING)`. It skips static and transient fields, `@Transient`, `@Convert` and Hibernate type
   annotations, entities that put `@Id` on a getter, and enums that an `@Converter(autoApply =
 true)` class in the same file converts, directly or through a generic base class
-  (`extends NameConverter<Shade>`). `JpaIdentityHashCode` reports the first read of a
+(`extends NameConverter<Shade>`). `JpaIdentityHashCode` reports the first read of a
   `@GeneratedValue` field (or its `getX()` getter) inside `hashCode`. Without a hand-written
   `hashCode`, Lombok counts too: `@Data` or `@Value` without `@EqualsAndHashCode`, and
   `@EqualsAndHashCode` over all fields (no arguments, or only `callSuper`), with `of` naming the
@@ -2573,10 +2573,13 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   Library enums (`TimeUnit`, `HttpStatus`) are not the project's to classify. A `switch` (expression
   or statement) is flagged when it has a `default`, every other branch yields one boolean constant
   (`case A, B -> true`, `case A: return true;`, `yield true`) or falls through to such a branch, the
-  `default` yields the other constant, and at least two constants are listed. Adding `default ->
-false` to a switch therefore does not clear the finding; removing the `default` and listing every
-  constant does. The Node side reads the enum from qualified labels (`case Status.NEW`), or else
-  from the one project enum that the file names and that declares every label.
+  `default` yields the other constant, and at least two constants are listed (a label that falls
+  through into `default` is not listed). So adding a `default` that yields `false` does not clear the
+  finding; removing the `default` and listing every constant does. The Node side reads the enum from
+  qualified labels (`case Status.NEW`), else from the declared type of a variable subject
+  (`Status s`), else from every project enum that declares all the labels: the finding is kept only
+  when the switch is partial for each of them, and names the enum when there is one. A `switch
+  (this)` inside the enum itself is one of its own methods and is not flagged, like `this == A`.
 - `StaticForwardingWrapper` skips annotated methods, generic methods, `main`, `valueOf`,
   `fromString`, `of` and `from` (names frameworks and callers look up), methods of Spring
   stereotype and configuration classes, wrappers around `copyOf`, `copyOfRange`, `unmodifiable*`,

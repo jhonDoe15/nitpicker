@@ -18,11 +18,7 @@ def listed_collection(node):
 
 
 def is_wildcard(pattern):
-    return (
-        isinstance(pattern, ast.MatchAs)
-        and pattern.pattern is None
-        and pattern.name is None
-    )
+    return isinstance(pattern, ast.MatchAs) and pattern.pattern is None
 
 
 def pattern_values(pattern):

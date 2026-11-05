@@ -22,9 +22,11 @@ const TYPE_AND_CONSTANT = 2;
 const BARE_CONSTANT = /(?<![\w$.])([A-Z][A-Z0-9_]*)(?![\w$]|\s*\(|\s*\.(?!\s*equals\s*\())/gu;
 const CALLED = /^\s*\(/u;
 const SWITCH_START = /^switch\s*\(/u;
-const CASE_LABELS = /\bcase\b([^:-]*)(?:->|:)/gu;
+const SWITCH_LABEL = /\b(?:case\b([^:-]*)|default\s*)(?:->|:)/gu;
+const DEFAULT_LABEL = /\bdefault\b/u;
+const IDENTIFIER_ONLY = /^[A-Za-z_$][\w$]*$/u;
+const DECLARED_TYPE = String.raw`(?<![\w$.])([A-Z][\w$]*)(?:<[^<>;]*>)?\s+`;
 const BRACE_DEPTH = { '{': 1, '}': -1 };
-const NOT_CONSTANT_LABELS = new Set(['default', 'null']);
 
 function splitTopLevel(text) {
   const parts = [''];
@@ -145,6 +147,7 @@ function comparedConstants(expression, source) {
 function isPartialOf(declared, compared) {
   const constants = declared?.constants ?? [];
   return (
+    compared.size >= MINIMUM_LISTED &&
     constants.length >= MINIMUM_CONSTANTS &&
     compared.size < constants.length &&
     [...compared].every((constant) => constants.includes(constant))
@@ -166,39 +169,67 @@ function switchBody(text, start) {
   return '';
 }
 
-function isNamedIn(text, type) {
-  const name = type.replaceAll('$', String.raw`\$`);
-  return new RegExp(String.raw`(?<![\w$])${name}(?![\w$])`, 'u').test(text);
+function switchEntries(body) {
+  return [...body.matchAll(SWITCH_LABEL)].map((match) => ({
+    labels: match[1],
+    start: match.index,
+    end: match.index + match[0].length,
+  }));
 }
 
-function switchLabels(text, start) {
-  return [...switchBody(text, start).matchAll(CASE_LABELS)]
-    .flatMap(([, labels]) => labels.split(','))
+function listedLabels(body) {
+  const entries = switchEntries(body);
+  const listed = [];
+  let intoDefault = false;
+  for (const [index, entry] of [...entries.entries()].reverse()) {
+    const next = entries[index + 1];
+    const fallsThrough = next !== undefined && body.slice(entry.end, next.start).trim() === '';
+    const isDefault = entry.labels === undefined || DEFAULT_LABEL.test(entry.labels);
+    intoDefault = isDefault || (fallsThrough && intoDefault);
+    listed.push(...(intoDefault ? [] : entry.labels.split(',')));
+  }
+  return listed
     .map((label) => label.split('.').map((part) => part.trim()))
-    .filter((parts) => !NOT_CONSTANT_LABELS.has(parts.join('.')));
+    .filter((parts) => parts.join('.') !== 'null');
 }
 
-function partialSwitch(text, start, enums) {
-  const labels = switchLabels(text, start);
-  const compared = new Set(labels.map((parts) => parts.at(-1)));
+function declaredTypes(text, subject) {
+  if (!IDENTIFIER_ONLY.test(subject)) {
+    return undefined;
+  }
+  const declaration = new RegExp(String.raw`${DECLARED_TYPE}${subject}(?![\w$])\s*[,)=;:]`, 'gu');
+  const types = new Set([...text.matchAll(declaration)].map(([, type]) => type));
+  return types.size === 1 ? [...types] : undefined;
+}
+
+function switchCandidates({ text, start, enums }, labels) {
   const qualified = new Set(
     labels.filter((parts) => parts.length > 1).map((parts) => parts.at(-TYPE_AND_CONSTANT)),
   );
-  const types =
-    qualified.size > 0
-      ? [...qualified]
-      : [...enums().keys()].filter((type) => isNamedIn(text, type));
-  const candidates = types.filter((type) =>
-    [...compared].every((constant) =>
-      declarationFor(enums().get(type), text, type)?.constants.includes(constant),
-    ),
-  );
-  const [type] = candidates;
-  return candidates.length === 1 &&
-    compared.size >= MINIMUM_LISTED &&
-    isPartialOf(declarationFor(enums().get(type), text, type), compared)
-    ? type
-    : undefined;
+  const subject = expressionAt(text, text.indexOf('(', start) + 1).trim();
+  const declared = declaredTypes(text, subject);
+  if (subject === 'this' || qualified.size > 1) {
+    return [];
+  }
+  return qualified.size === 1 ? [...qualified] : (declared ?? [...enums().keys()]);
+}
+
+function partialSwitch(text, start, enums) {
+  const labels = listedLabels(switchBody(text, start));
+  const compared = new Set(labels.map((parts) => parts.at(-1)));
+  const declarations = switchCandidates({ text, start, enums }, labels)
+    .map((type) => [type, declarationFor(enums().get(type), text, type)])
+    .filter(([, declared]) =>
+      [...compared].every((constant) => declared?.constants.includes(constant)),
+    );
+  if (declarations.length === 0 || compared.size < MINIMUM_LISTED) {
+    return undefined;
+  }
+  const isPartial = declarations.every(([, declared]) => isPartialOf(declared, compared));
+  if (!isPartial) {
+    return undefined;
+  }
+  return declarations.length === 1 ? declarations[0][0] : GENERIC_ENUM;
 }
 
 function partialEnum(finding, { projectRoot, enums }) {

@@ -1422,8 +1422,9 @@ members is not reported.
   a string annotation (`tags: "list[str]"`) is read as the annotation it spells.
 - `exhaustive-enum-predicate` (TypeScript: `nitpicker/exhaustive-union-predicate`): an `or` chain of
   `==` or `is`, an `and` chain of `!=` or `is not`, an `in` / `not in` tuple, list or set (also inside
-  `frozenset(...)`, `set(...)`, `tuple(...)` or `list(...)`), or a `match` whose cases return the same
-  `True` or `False` and whose last `case _:` returns the other (no guards, values or `|` of values), that
+  `frozenset(...)`, `set(...)`, `tuple(...)` or `list(...)`), or a `match` whose cases (values or `|`
+  of values, without guards) return the same `True` or `False` and whose last case (`case _:` or a
+  bare capture such as `case other:`) returns the other, that
   compares one plain reference (`status`, `self.status`) with two or more distinct members of one
   project enum, or with values of a `Literal` the parameter is annotated with. A project enum is a
   class of the project, nested ones included (`Order.Kind.A`), that derives from `Enum`, `IntEnum`,
@@ -1433,8 +1434,8 @@ members is not reported.
   through imports and re-exports or as a module attribute (`st.Mode`), also inside `Optional`,
   `Annotated` or a string annotation. Only a value is checked (a `return`, an assignment, an
   augmented assignment, a lambda body, also inside `not`, a conditional expression or another
-  `and`/`or`), never an `if` or `while` condition, and not in a function that returns `TypeGuard`
-  or `TypeIs`. A method of the enum itself may list its own members (`def is_early(self): return
+  `and`/`or`, and a `match` as a whole), never an `if` or `while` condition, and not in a function
+  that returns `TypeGuard` or `TypeIs`. A method of the enum itself may list its own members (`def is_early(self): return
 self in (Stage.A, Stage.B)`), like the boolean each constant declares in the Java preset. Only a
   list of some of the members fails, as in the TypeScript and Java presets, because a member added
   later falls into the default silently; a list of every member is not reported. An alias

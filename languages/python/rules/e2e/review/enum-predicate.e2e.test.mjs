@@ -123,6 +123,11 @@ describe.skipIf(!enabled)('exhaustive-enum-predicate', () => {
       [['f Status', { union: 'Status' }]],
     ],
     [
+      'a match whose last case captures the rest',
+      'def f(s: Status) -> bool:\n    match s:\n        case Status.NEW | Status.PAID:\n            return True\n        case other:\n            return False\n',
+      [['f Status', { union: 'Status' }]],
+    ],
+    [
       'a match over a Literal parameter, one case per value',
       'from typing import Literal\nKind = Literal["a", "b", "c"]\ndef f(k: Kind) -> bool:\n    match k:\n        case "a":\n            return False\n        case "b":\n            return False\n        case _:\n            return True\n',
       [['f Kind', { union: 'Kind' }]],
@@ -166,9 +171,9 @@ describe.skipIf(!enabled)('exhaustive-enum-predicate', () => {
         '',
         'def named(s: Status) -> bool:',
         '    match s:',
-        '        case Status.NEW:',
+        '        case Status.NEW | Status.PAID:',
         '            return True',
-        '        case other:',
+        '        case Status.SHIPPED as shipped:',
         '            return False',
         '',
       ].join('\n'),

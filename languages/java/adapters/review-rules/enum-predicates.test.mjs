@@ -138,26 +138,62 @@ describe('withProjectEnumPredicates', () => {
     expect(filtered(qualified, 'switch')).toHaveLength(1);
   });
 
-  it('drops a switch that lists every constant or one constant, or whose labels match no enum the file names', () => {
+  it('drops a switch that lists every constant or one, over a library enum or over this', () => {
     const every =
       '  boolean a(Status s) { return switch (s) { case NEW, PAID, SHIPPED -> true; default -> false; }; }';
     const library =
       '  boolean a(TimeUnit u) { return switch (u) { case DAYS, HOURS -> true; default -> false; }; }';
-    const unnamed = {
+    const period = {
       'src/main/java/shop/Period.java': 'package shop;\nenum Period { DAYS, HOURS, MINUTES }\n',
     };
-    const twoEnums = {
-      'src/main/java/shop/Phase.java': 'package shop;\nenum Phase { NEW, PAID, LATE }\n',
-    };
-    const ambiguous =
-      '  boolean a(Status s, Phase p) { return switch (s) { case NEW, PAID -> true; default -> false; }; }';
     const single =
       '  boolean a(Status s) { return switch (s) { case NEW -> true; default -> false; }; }';
+    const intoDefault =
+      '  boolean a(Status s) { switch (s) { case NEW: return true; case PAID: default: return false; } }';
+    const self =
+      'boolean a() { return switch (this) { case NEW, PAID -> true; default -> false; }; }';
 
     expect(filtered(every, 'switch')).toEqual([]);
-    expect(filtered(library, 'switch', unnamed)).toEqual([]);
-    expect(filtered(ambiguous, 'switch', twoEnums)).toEqual([]);
+    expect(filtered(library, 'switch', period)).toEqual([]);
     expect(filtered(single, 'switch')).toEqual([]);
+    expect(filtered(intoDefault, 'switch')).toEqual([]);
+    expect(filtered(self, 'switch')).toEqual([]);
+  });
+
+  it('finds the enum of bare labels from the declared subject, or from every enum that has them', () => {
+    const phase = {
+      'src/main/java/shop/Phase.java': 'package shop;\nenum Phase { NEW, PAID, LATE }\n',
+    };
+    const declared =
+      '  boolean a(Status s, Phase p) { return switch (s) { case NEW, PAID -> true; default -> false; }; }';
+    const accessor =
+      '  boolean a(Delivery d) { return switch (d.status()) { case NEW, PAID -> true; default -> false; }; }';
+    const fullInOne =
+      '  boolean a(Delivery d) { return switch (d.status()) { case NEW, PAID, SHIPPED -> true; default -> false; }; }';
+    const intoDefault =
+      '  boolean a(Status s) { switch (s) { case NEW: case PAID: return true; case SHIPPED: default: return false; } }';
+    const messages = (body, extra) => filtered(body, 'switch', extra).map(({ message }) => message);
+
+    expect(messages(declared, phase)).toEqual([
+      'These comparisons list only some constants of Status.',
+    ]);
+    expect(messages(accessor)).toEqual(['These comparisons list only some constants of Status.']);
+    expect(messages(accessor, phase)).toEqual([MESSAGE]);
+    expect(
+      messages(fullInOne, {
+        'src/main/java/shop/Phase.java': 'package shop;\nenum Phase { NEW, PAID, SHIPPED, LATE }\n',
+      }),
+    ).toEqual([]);
+    expect(messages(intoDefault)).toHaveLength(1);
+  });
+
+  it('drops membership that lists one constant of each of two enums', () => {
+    const extra = {
+      'src/main/java/shop/Phase.java': 'package shop;\nenum Phase { EARLY, LATE, DONE }\n',
+    };
+    const body = '  boolean a(Object s) { return Set.of(Status.NEW, Phase.LATE).contains(s); }';
+
+    expect(filtered(body, 'Set.of', extra)).toEqual([]);
   });
 
   it('drops a test that lists every constant', () => {

@@ -63,6 +63,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     });
 
     expect(reviewFindings(result.newEnforceable)).toEqual([
+      'ExhaustiveEnumPredicate isHandedOver',
       'ExhaustiveEnumPredicate isLive',
       'ExhaustiveEnumPredicate isOpen',
       'ExhaustiveEnumPredicate isPending',
