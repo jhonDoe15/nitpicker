@@ -69,6 +69,17 @@ export function captureWorkingTree(repositoryRoot, headSha) {
   }
 }
 
+export function hasSameTree(repositoryRoot, leftSha, rightSha) {
+  const [leftTree, rightTree] = runGit(repositoryRoot, [
+    'rev-parse',
+    `${leftSha}^{tree}`,
+    `${rightSha}^{tree}`,
+  ])
+    .trim()
+    .split('\n');
+  return leftTree === rightTree;
+}
+
 function wholeSeconds(nanoseconds) {
   return Number(nanoseconds / 1_000_000_000n);
 }

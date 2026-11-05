@@ -90,6 +90,10 @@ Using a coding agent? Copy the [agent guidance snippet](agents-snippet.md) into 
 - **Head**: your checkout, including committed, staged, unstaged and untracked changes (ignored
   files are excluded). Your index, branches and files are not touched. In CI the checkout is clean,
   so the same command checks the committed `HEAD`.
+- **No changes**: when the head has the same files as the merge base (before your first edit, after
+  `git stash`, or after you undo a change), no finding can be new, so no analyzer runs. The run
+  prints `No changes since <base> (<merge base>); nothing to check.`, exits 0, and writes the
+  reports with zero counts and `"noChanges": true` in `summary.json`.
 - **Result**: every finding on both sides is fingerprinted. Only findings that are new on the head
   side and enforceable fail the run. Resolved and unchanged findings are reported but never fail.
   Descriptive findings and metric changes are reported only.
