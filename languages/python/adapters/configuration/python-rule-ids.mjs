@@ -13,6 +13,10 @@ const REPLACED_RULES = {
   FBT002: 'boolean-flag-parameter',
 };
 const RULE_LETTERS = /^[A-Z]+/;
+const SHARED_REPLACEMENTS = {
+  'restating-docstring': 'doc-comment-content',
+  'long-docstring': 'doc-comment-content',
+};
 const RUFF_CODE = /"([A-Z]+\d*)"/g;
 const RUFF_CONFIG_TEXT = readFileSync(RUFF_CONFIG, 'utf8');
 export const RUFF_SELECT = codesOf('select');
@@ -60,6 +64,9 @@ export function ruleIdProblem(rule, { projectRuff = false } = {}) {
   const ruffRule = projectRuff ? RUFF_SELECTOR.test(rule) : isRuffRule(rule);
   if (PYTHON_RULES_IDS.includes(rule) || PYRIGHT_RULE.test(rule) || ruffRule) {
     return undefined;
+  }
+  if (Object.hasOwn(SHARED_REPLACEMENTS, rule)) {
+    return `${rule} is now the shared "${SHARED_REPLACEMENTS[rule]}" rule: move the entry to the top-level "exceptions" as "${SHARED_REPLACEMENTS[rule]}"`;
   }
   if (Object.hasOwn(REPLACED_RULES, rule)) {
     return `ruff ${rule} was replaced by "${REPLACED_RULES[rule]}": rename the entry to "${REPLACED_RULES[rule]}"`;

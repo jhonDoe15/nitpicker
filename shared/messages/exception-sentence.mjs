@@ -87,6 +87,11 @@ export function routeFields(message) {
   return exception === undefined ? {} : { exception, exceptionList: route.groups.list };
 }
 
+/** `message` without its trailing exception sentence. */
+export function withoutExceptionRoute(message) {
+  return message.replace(ROUTE_SENTENCE, '').trim();
+}
+
 /** `message` with `text` added so that the exception sentence, if it has one, stays last. */
 export function insertBeforeRoute(message, text) {
   const route = ROUTE_SENTENCE.exec(message);

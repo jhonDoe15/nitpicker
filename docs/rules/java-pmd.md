@@ -1819,11 +1819,11 @@ Write the query in JPQL; native SQL is not checked at startup. If this one needs
 
 ### `pmd/SpringDataNoFlush`
 
-Let the transaction write changes at commit and remove this flush; an early flush defeats JDBC batching and hides ordering bugs.
+Let the transaction write changes at commit and remove this flush; in a batch loop, flush and then call entityManager.clear() every N entities. Any other early flush defeats JDBC batching and hides ordering bugs.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Message in Kotlin:** Let the transaction write changes at commit and remove this flush; an early flush defeats JDBC batching and hides ordering bugs.
+- **Message in Kotlin:** Let the transaction write changes at commit and remove this flush; in a batch loop, flush and then call entityManager.clear() every N entities. Any other early flush defeats JDBC batching and hides ordering bugs.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringDataNoFlush","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springdatanosaveinloop"></a>
@@ -1845,7 +1845,7 @@ Write a multi-part query as one text block (""") instead of joining strings with
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Message in Kotlin:** Write a multi-part query as one raw string (""") instead of joining strings with +.
+- **Message in Kotlin:** Write a multi-part query as one raw string (""") instead of joining strings with +, plus() or string templates.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringDataQueryTextBlock","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springdatarowwriteinloop"></a>

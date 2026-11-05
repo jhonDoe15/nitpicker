@@ -374,7 +374,9 @@
                         "class-fields-limit",
                         "structure/class-fields-limit",
                         "inheritance-depth-limit",
-                        "structure/inheritance-depth-limit"
+                        "structure/inheritance-depth-limit",
+                        "unused-option",
+                        "structure/unused-option"
                       ]
                     }
                   }
@@ -2169,7 +2171,9 @@
                         "class-fields-limit",
                         "structure/class-fields-limit",
                         "inheritance-depth-limit",
-                        "structure/inheritance-depth-limit"
+                        "structure/inheritance-depth-limit",
+                        "unused-option",
+                        "structure/unused-option"
                       ]
                     }
                   }
@@ -2194,8 +2198,7 @@
           "i18n": false,
           "kotlin": false,
           "go": false,
-          "spring": false,
-          "testConsole": false
+          "spring": false
         },
         "allOf": [
           {
