@@ -34,6 +34,7 @@ def load_checks():
     from credentials import hardcoded, logs
     from smells import literals, loops, names
     from tasks import cleanup, lifetimes
+    from waits import timeouts as abandoned_waits
 
     return [
         declarations,
@@ -51,6 +52,7 @@ def load_checks():
         tls,
         hashes,
         timeouts,
+        abandoned_waits,
         loading,
         guards,
         domain_types,

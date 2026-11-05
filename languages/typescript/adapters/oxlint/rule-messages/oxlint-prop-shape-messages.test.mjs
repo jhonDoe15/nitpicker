@@ -16,6 +16,7 @@ import { rule as exclusiveProps } from ${ruleUrl('react-props/no-runtime-exclusi
 import { rule as unionPredicate } from ${ruleUrl('api-shape/exhaustive-union-predicate.mjs')};
 import { rule as hoverNeedsKeyboard } from ${ruleUrl('react-tests/hover-test-needs-keyboard.mjs')};
 import { rule as forwardingWrapper } from ${ruleUrl('api-shape/no-forwarding-wrapper.mjs')};
+import { rule as timeoutAbandons } from ${ruleUrl('async/timeout-abandons-operation.mjs')};
 
 const nitpicker = {
   rules: {
@@ -24,6 +25,7 @@ const nitpicker = {
     'exhaustive-union-predicate': unionPredicate,
     'hover-test-needs-keyboard': hoverNeedsKeyboard,
     'no-forwarding-wrapper': forwardingWrapper,
+    'timeout-abandons-operation': timeoutAbandons,
   },
 };
 
@@ -38,12 +40,17 @@ export default [
       'nitpicker/exhaustive-union-predicate': 'error',
       'nitpicker/hover-test-needs-keyboard': 'error',
       'nitpicker/no-forwarding-wrapper': 'error',
+      'nitpicker/timeout-abandons-operation': 'error',
     },
   },
 ];
 `;
 
 const SOURCES = {
+  'src/race.ts': [
+    'export const run = () =>',
+    '  Promise.race([sendPayment(), new Promise((_, reject) => setTimeout(reject, 10))]);',
+  ].join('\n'),
   'src/Panel.tsx': [
     'export type PanelProps = { field?: string; fields?: string[] };',
     'export function Panel({ icon, image }: { icon?: string; image?: string }) {',
@@ -58,7 +65,11 @@ const SOURCES = {
   ].join('\n'),
 };
 
+const RACE_MESSAGE =
+  '`Promise.race` with a `new Promise` around `setTimeout` does not stop `sendPayment`: when the timeout wins, the call keeps running and repeats its side effects if the caller retries. Create an `AbortController`, abort it from the timeout path and pass `{ signal: controller.signal }` to the operation, or pass `AbortSignal.timeout(ms)` straight to an API that accepts `signal` and drop the race. An exception fits only for background work that is meant to finish after the caller gave up.';
+
 const EXPECTED = {
+  'src/race.ts': [['nitpicker/timeout-abandons-operation', RACE_MESSAGE]],
   'src/Panel.tsx': [
     [
       'nitpicker/no-singular-and-plural-prop',

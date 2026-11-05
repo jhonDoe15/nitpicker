@@ -58,7 +58,7 @@ function reportedViolations(sarifFile, sourceRoot) {
     })
     .sort();
 }
-const REVIEW_MARKER = /\/\/ violation: (\w+)/u;
+const REVIEW_MARKER = /\/\/ violation: ([\w-]+)/u;
 const REVIEW_RULES = new Set([
   'FixedSleepInTest',
   'NegativeWaitInTest',
@@ -66,6 +66,7 @@ const REVIEW_RULES = new Set([
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
   'SingularAndPluralMember',
+  'timeout-abandons-operation',
   'TriStateBoolean',
   'ParameterMutation',
   'CompatibilityShim',
