@@ -79,24 +79,43 @@ describe('reactive fan-out on the recorded fixture facts', () => {
       classification: 'enforceable',
       location: { line: lineOf(UNBOUNDED, 'flatMap(this::load)') },
     });
-    expect(referenced.message).toMatch(
-      /^`flatMap` subscribes to `load`, which reaches `client\.get`, /u,
+    expect(referenced.message).toBe(
+      [
+        '`flatMap` subscribes to `load`, which reaches `client.get`, for every element of `ids`, up to 256 at once',
+        "(Reactor's default concurrency), so a large collection exhausts the remote service's connections or rate",
+        'limit. Pass a concurrency limit (`flatMap({ fetch(it) }, 8)`), use `concatMap` for one call at a time, or',
+        '`buffer(20)` and make one batch call per chunk. An exception fits only when the collection is always small.',
+      ].join(' '),
     );
-    expect(referenced.message).toMatch(/for every element of `ids`, up to 256 at once/u);
   });
 
   it('says every element at once for zip, when, a spread merge and flatMapMerge(Int.MAX_VALUE)', () => {
     const at = (fragment) =>
       findings.find(({ location }) => location.line === lineOf(UNBOUNDED, fragment))?.message;
+    const work = { helper: 'fetch', call: 'client.get', kind: 'remote' };
+    const zipped = { form: 'combinator', collection: 'ids', work };
 
-    expect(at('Mono.zip(')).toMatch(
-      /^`Mono\.zip` subscribes to .* for every element of `ids` at once/u,
+    expect(at('Mono.zip(')).toBe(reactiveFanOutMessage({ ...zipped, operator: 'Mono.zip' }));
+    expect(at('Mono.`when`(')).toBe(reactiveFanOutMessage({ ...zipped, operator: 'Mono.when' }));
+    expect(at('Flux.merge(*')).toBe(reactiveFanOutMessage({ ...zipped, operator: 'Flux.merge' }));
+    expect(at('Flux.merge(calls)')).toBe(
+      reactiveFanOutMessage({ ...zipped, operator: 'Flux.merge', limit: 256 }),
     );
-    expect(at('Mono.`when`(')).toMatch(/^`Mono\.when` .* at once.*collectList\(\)/u);
-    expect(at('Flux.merge(*')).toMatch(/for every element of `ids` at once/u);
-    expect(at('Flux.merge(calls)')).toMatch(/up to 256 at once/u);
-    expect(at('flatMapMerge(Int.MAX_VALUE)')).toMatch(
-      /^`flatMapMerge\(Int\.MAX_VALUE\)` .* at once.*flatMapMerge\(8\)/u,
+    expect(at('flatMapMerge(Int.MAX_VALUE)')).toBe(
+      reactiveFanOutMessage({
+        form: 'flow',
+        operator: 'flatMapMerge(Int.MAX_VALUE)',
+        collection: 'ids.asFlow()',
+        work,
+      }),
+    );
+    expect(at('Mono.zip(')).toBe(
+      [
+        '`Mono.zip` subscribes to `fetch`, which reaches `client.get`, for every element of `ids` at once, so a large',
+        "collection exhausts the remote service's connections or rate limit. Build the list through",
+        '`Flux.fromIterable(items).flatMap({ fetch(it) }, 8).collectList()`, or make one batch call when the API has',
+        'one. An exception fits only when the collection is always small.',
+      ].join(' '),
     );
   });
 
