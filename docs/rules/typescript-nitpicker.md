@@ -58,7 +58,7 @@ Disallow classifying a union by listing only some of its members.
 
 ### `eslint/nitpicker/fake-timers-require-restore`
 
-Require fake timers, and stubs made in test files, to be restored.
+Require fake timers, stubs, and writes to process.env or to globals made in test files, to be restored.
 
 - **Printed as:** `eslint-lint/nitpicker/fake-timers-require-restore`
 - **Exception:** If this is intended, add `{"rule":"nitpicker/fake-timers-require-restore","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
@@ -67,6 +67,8 @@ Require fake timers, and stubs made in test files, to be restored.
   - Fake timers stay on for the tests that follow. Restore them: `afterEach(() => { vi.useRealTimers(); });`. With user-event, create the user with `userEvent.setup({ advanceTimers: vi.advanceTimersByTime })` or its clicks wait forever.
   - This stubbed global stays stubbed for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllGlobals(); });`, or stub it once in a setup file.
   - This stubbed environment variable stays set for the tests that follow. Restore it: `afterEach(() => { vi.unstubAllEnvs(); });`.
+  - This write to `process.env` stays for the tests that follow, so they pass or fail depending on the order they run in. Use `vi.stubEnv(name, value)` with `afterEach(() => { vi.unstubAllEnvs(); })`, or save the old value and put it back in `afterEach` or `finally`.
+  - This global override stays for the tests that follow, so they pass or fail depending on the order they run in. Use `vi.stubGlobal`, `vi.spyOn(object, name)` or `vi.useFakeTimers()` and restore them in `afterEach`, or save the old value and put it back in `afterEach` or `finally`.
 
 <a id="eslint-nitpicker-file-name-casing"></a>
 

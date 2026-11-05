@@ -24,6 +24,7 @@ def load_checks():
     from environment import domain_imports, environment, purity
     from errors import errors
     from honesty import assertions, isolation, skipped, waits
+    from leaks import global_state
     from review import fields
     from security import hashes, loading
     from security.sql import check as sql
@@ -65,6 +66,7 @@ def load_checks():
         assertions,
         unasserted,
         isolation,
+        global_state,
         waits,
         uncollected,
         helpers,
