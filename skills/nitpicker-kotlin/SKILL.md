@@ -98,6 +98,11 @@ To learn why a rule is on and what form it allows before you write or change cod
   change every caller and delete the old name: no `@Deprecated` delegate or `typealias Old = New`
   (`kotlin-source/CompatibilityShim`). Time comes from an injected `Clock`; `Calendar`, `Date` and
   `SimpleDateFormat` are banned.
+- URIs from runtime text: build them with an encoding builder (`UriComponentsBuilder` with
+  `encode()`, `URI(scheme, host, path, fragment)`), or parse where the failure is handled
+  (`runCatching { URI.create(text) }`, a `try` that catches `IllegalArgumentException`);
+  `URI.create(text)` and `URI(text)` on a non-constant string are flagged
+  (`kotlin-source/UriCreateDynamic`).
 - Enums: to sort the entries of one of your enums into two groups, classify every entry with a
   `when` without `else` (adding an entry then fails to compile), or a `Boolean` each entry
   declares. Not `s == PAID || s == SHIPPED` or `s in setOf(PAID, SHIPPED)`

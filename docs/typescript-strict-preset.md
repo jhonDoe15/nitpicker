@@ -618,6 +618,15 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `@param {boolean} [force]` with no default, and `Promise<boolean|undefined>` in `@returns`.
   `[force=false]` (a default given), `@property` tags and dotted option names
   (`@param {boolean} [options.verbose]`) are not reported.
+- `nitpicker/no-unhandled-url-parse`: `new URL(text)` (also with a base) where `text` is not a
+  constant string (a literal, a template or `+` of constants, or a `const` holding one) throws a
+  `TypeError` on text that is not an absolute URL, so one odd stored, user or header value turns
+  the call into an error response. The allowed forms are `URL.parse(text)` (`null` for bad text),
+  a `URL.canParse(text)` check on the same text in the same or an enclosing function, and a `try`
+  with a `catch` around the call in the same function (arrow callbacks inside the `try` count; a
+  nested `function` does not). An already parsed `.href` or `.url` (`new URL(request.url)`) and a
+  module path against `import.meta.url` are not reported. The Java and Kotlin presets report
+  `URI.create(text)` the same way (`pmd/UriCreateDynamic`, `kotlin-source/UriCreateDynamic`).
 - `nitpicker/no-parameter-mutation` (type-aware): a mutating method (`push`, `pop`, `splice`,
   `sort`, `reverse`, `add`, `set`, `delete`, `clear` and the other array, `Set`, `Map` mutators of
   `no-mutating-method-in-domain`) called on a parameter, or an assignment, `++` or `delete` on an

@@ -96,6 +96,11 @@ To learn why a rule is on and what form it allows before you write or change cod
   Time comes from `java.time` with a `Clock` or a zone; `Calendar.getInstance()`,
   `new GregorianCalendar()` and `new SimpleDateFormat(...)` without a time zone are flagged
   (`pmd/LegacyCalendarApi`).
+- URIs from runtime text: build them with an encoding builder
+  (`UriComponentsBuilder...encode().build().toUri()`, `new URI(scheme, host, path, fragment)`), or
+  parse where the failure is handled (`URI.create(text)` in a `try` that catches
+  `IllegalArgumentException`); `URI.create` on a non-constant string is flagged
+  (`pmd/UriCreateDynamic`).
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
 - Enums: to sort the constants of one of your enums into two groups, classify every constant: a
