@@ -66,7 +66,7 @@ export const SPRING_TRANSACTIONAL = group(
 export const JAKARTA_TRANSACTIONAL = group(twins('transaction.Transactional'));
 export const ASYNC = group(inPackage(`${SPRING}.scheduling.annotation`, 'Async'));
 export const SCHEDULED = group(inPackage(`${SPRING}.scheduling.annotation`, 'Scheduled'));
-export const PROXIED = group(
+export const META_PROXIED = group(
   [...SPRING_TRANSACTIONAL, ...ASYNC],
   inPackage(`${SPRING}.cache.annotation`, 'Cacheable', 'CachePut', 'CacheEvict', 'Caching'),
   inPackage(`${SPRING}.retry.annotation`, 'Retryable', 'CircuitBreaker'),
@@ -80,6 +80,9 @@ export const PROXIED = group(
   ),
   inPackage(`${SPRING}.security.access.annotation`, 'Secured'),
   twins('annotation.security.RolesAllowed', 'annotation.security.DenyAll'),
+);
+export const PROXIED = group(
+  [...META_PROXIED],
   inPackage(`${RESILIENCE4J}.retry.annotation`, 'Retry'),
   inPackage(`${RESILIENCE4J}.circuitbreaker.annotation`, 'CircuitBreaker'),
   inPackage(`${RESILIENCE4J}.ratelimiter.annotation`, 'RateLimiter'),

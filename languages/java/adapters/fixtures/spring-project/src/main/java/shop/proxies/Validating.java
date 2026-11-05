@@ -46,4 +46,32 @@ public class Validating {
   public String describe(String text) {
     return described(text);
   }
+
+  @NotBlank
+  public String getLabel() {
+    return "label";
+  }
+
+  public String label() {
+    return getLabel();
+  }
+
+  private static String trimmed(@NotNull String text) {
+    return text.trim();
+  }
+
+  public String trim(String text) {
+    return trimmed(text)
+        + new Object() {
+          String name() {
+            return "inner";
+          }
+
+          @Override
+          public String toString() {
+            name();
+            return "anonymous";
+          }
+        };
+  }
 }

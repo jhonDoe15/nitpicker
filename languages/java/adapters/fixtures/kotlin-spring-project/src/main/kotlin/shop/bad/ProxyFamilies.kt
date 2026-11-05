@@ -95,7 +95,16 @@ class Checkout {
 
     fun plain(text: String) = Unit
 
-    private fun hidden(@NotBlank text: String) = Unit
+    protected fun hidden(@NotBlank text: String) = Unit
+
+    private fun trimmed(@NotBlank text: String) = text.trim()
+
+    fun trim(text: String) = trimmed(text)
+
+    @NotBlank
+    fun getLabel(): String = "label"
+
+    fun label() = getLabel()
 }
 
 data class OrderForm(val sku: String)

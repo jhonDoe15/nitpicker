@@ -15,6 +15,7 @@ import {
   CONSTRAINTS,
   CONTROLLERS,
   JAKARTA_TRANSACTIONAL,
+  META_PROXIED,
   PROXIED,
   SCHEDULED,
   SPRING_PRESET_OPEN,
@@ -26,12 +27,13 @@ const OPEN_MODIFIERS = new Set(['open', 'abstract', 'override']);
 const STATIC_OWNERS = new Set(['object', 'companion']);
 const CONSTRAINT_META = new Set([...CONSTRAINT, ...CONSTRAINTS]);
 const TYPE_USE_ANNOTATION = /@([\w.]+)/gu;
+const GETTER = /^(?:get|is)\p{Lu}/u;
 
 function isProxied(view, annotation) {
   const name = annotation.type ?? annotation.name;
   return (
     view.is(name, PROXIED) ||
-    view.metaAnnotated(typeName(name), PROXIED) ||
+    view.metaAnnotated(typeName(name), META_PROXIED) ||
     view.is(name, view.advised())
   );
 }
@@ -44,12 +46,15 @@ function validates(view, fn) {
   const owner = view.classes.get(fn.owner);
   if (
     owner === undefined ||
+    fn.visibility === 'private' ||
+    STATIC_OWNERS.has(owner.kind) ||
     annotationIn(view.resolve, owner.annotations, VALIDATED) === undefined
   ) {
     return false;
   }
+  const getter = fn.parameters.length === 0 && GETTER.test(fn.name);
   const names = [
-    ...entriesOf(fn).map((entry) => entry.type ?? entry.name),
+    ...(getter ? [] : entriesOf(fn).map((entry) => entry.type ?? entry.name)),
     ...fn.parameters.flatMap((parameter) => [
       ...(parameter.annotationEntries ?? []).map((entry) => entry.type ?? entry.name),
       ...[...(parameter.type ?? '').matchAll(TYPE_USE_ANNOTATION)].map((match) => match[1]),
