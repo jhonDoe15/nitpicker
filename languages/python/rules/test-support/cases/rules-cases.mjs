@@ -65,6 +65,7 @@ export const RULES_CASES = [
   ]),
   ...rulesCases('tri-state-boolean', [['tri-state-boolean', 'enum']]),
   ...rulesCases('falsy-default', [['falsy-default', 'is not None']]),
+  ...rulesCases('number-truthiness', [['number-truthiness', 'count > 0']]),
   ...rulesCases('parameter-mutation', [['parameter-mutation', 'new value']]),
   ...rulesCases('compatibility-shim', [['compatibility-shim', 'delete the old name']]),
 ];

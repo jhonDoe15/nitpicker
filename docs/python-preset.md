@@ -655,6 +655,7 @@ are listed at the end.
 | Boolean flags            | keyword-only (`def send(message, *, urgent=False)`), two functions or an enum                                                                                                        | `boolean-flag-parameter` (script)                                                                                                                                             |
 | Tri-state booleans       | an enum that names the three states, or a keyword-only `bool` with a default (`*, urgent=False`)                                                                                     | `tri-state-boolean` (script)                                                                                                                                                  |
 | Defaulting parameters    | `limit if limit is not None else DEFAULT_LIMIT`                                                                                                                                      | `falsy-default` (script)                                                                                                                                                      |
+| Testing numbers          | `count > 0`, `index != -1`, `count is not None`                                                                                                                                      | `number-truthiness` (script)                                                                                                                                                  |
 | Changing an argument     | build and return a new value, or copy the argument first                                                                                                                             | `parameter-mutation` (script)                                                                                                                                                 |
 | Compatibility shims      | change every caller in the same change and delete the old name                                                                                                                       | `compatibility-shim` (script)                                                                                                                                                 |
 | Input or output per item | one batch call, or `asyncio.gather` bounded by a shared `asyncio.Semaphore`                                                                                                          | `io-in-loop` (script)                                                                                                                                                         |
@@ -1144,6 +1145,17 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   comprehension filter), an unannotated parameter and a parameter of a class that is never falsy
   (`Path`, a project class) are not reported. The allowed form tests `None` only:
   `limit if limit is not None else DEFAULT_LIMIT`.
+- `number-truthiness` reports a name annotated as a number (`int`, `float`, `complex`, `Decimal`,
+  `Fraction`, also `Optional` and `|` members), a parameter or an annotated local, that is tested
+  for truth, where `0` reads as false or missing: `if count:`, `if not record_id:`,
+  `x if retry else y`, `while left:`, `assert total`, a comprehension filter, an `and`/`or` operand
+  in a condition, and `limit or 10` on a parameter that is not optional (the optional one is
+  `falsy-default`'s). Test files are checked too. Not reported: `bool(count)`, the last operand of
+  an `and`/`or` that is not a condition, `count or 0`, a name the function binds again (`count =
+len(rows)`, a loop target), a name of a nested function, and a value whose type is not annotated.
+  The allowed form compares: `count > 0`, `count != 0`, `index != -1`, and `count is not None` for
+  an optional number. This is the counterpart of the TypeScript preset's
+  `nitpicker/strict-boolean-expressions`.
 - `parameter-mutation` reports a parameter annotated as a `list`, `dict`, `set`, `deque`,
   `bytearray`, `defaultdict`, `OrderedDict`, `Counter`, `MutableSequence`, `MutableMapping` or
   `MutableSet` (also `Optional` and `|` members, `typing` aliases and strings) that the function

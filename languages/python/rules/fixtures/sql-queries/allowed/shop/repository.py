@@ -36,7 +36,7 @@ def find(session: object, name: str | None, age: int | None) -> object:
     if name:
         conditions.append("name = :name")
         params["name"] = name
-    if age:
+    if age is not None:
         conditions.append("age = :age")
         params["age"] = age
     statement = "SELECT * FROM people"
