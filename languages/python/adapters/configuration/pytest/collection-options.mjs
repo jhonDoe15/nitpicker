@@ -2,6 +2,7 @@ import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { readPythonDependencies } from '../../../libraries/python-dependencies.mjs';
 import { readPytestConfig } from './pytest-config.mjs';
+import { TOP_LEVEL_TEST_DIRECTORIES } from '../../execution/python-project.mjs';
 
 const TEST_DIRECTORIES = new Set(['tests', 'test']);
 const STANDARD_TEST_FILES = ['test_*.py', '*_test.py'];
@@ -52,6 +53,7 @@ export function isTestFile(file, { pythonFiles, testpaths = [], django = false }
   return (
     name === 'conftest.py' ||
     parts.slice(0, -1).some((part) => TEST_DIRECTORIES.has(part)) ||
+    (parts.length > 1 && TOP_LEVEL_TEST_DIRECTORIES.includes(parts[0])) ||
     (broad && underTestPath(parts, testpaths)) ||
     matchesAny(name, patterns)
   );

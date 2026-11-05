@@ -12,6 +12,7 @@ import {
   INSTALLED_DIRECTORIES,
   NON_SOURCE_DIRECTORIES,
   NON_SOURCE_FILES,
+  TOP_LEVEL_TEST_DIRECTORIES,
 } from '../execution/python-project.mjs';
 import { isGeneratedPython } from '../../libraries/generated-files.mjs';
 import {
@@ -30,9 +31,10 @@ function isPythonFile(file, { wholeProject }) {
   return name.endsWith('.py') && !(wholeProject && NON_SOURCE_FILES.has(name));
 }
 
-function isSkippedDirectory(entry, { wholeProject }) {
+function isSkippedDirectory(entry, { wholeProject, topLevel }) {
   const skipped = wholeProject ? NON_SOURCE_DIRECTORIES : INSTALLED;
-  return entry.name.startsWith('.') || skipped.has(entry.name);
+  const topLevelTests = topLevel && TOP_LEVEL_TEST_DIRECTORIES.includes(entry.name);
+  return entry.name.startsWith('.') || skipped.has(entry.name) || topLevelTests;
 }
 
 function relativePosix(projectRoot, absolute) {
@@ -47,9 +49,14 @@ export function pythonSourceFiles(projectRoot, sourceRoots) {
   const found = sourceRoots
     .filter((directory) => isDirectory(path.join(projectRoot, directory)))
     .flatMap((directory) => {
+      const root = path.join(projectRoot, directory);
       const walked = { wholeProject: directory === WHOLE_PROJECT };
-      return projectFilesUnder(path.join(projectRoot, directory), {
-        skipDirectory: (_, entry) => isSkippedDirectory(entry, walked),
+      return projectFilesUnder(root, {
+        skipDirectory: (absolute, entry) =>
+          isSkippedDirectory(entry, {
+            ...walked,
+            topLevel: walked.wholeProject && path.dirname(absolute) === path.resolve(root),
+          }),
       })
         .filter((file) => isPythonFile(file, walked))
         .map((file) => relativePosix(projectRoot, file));
@@ -114,10 +121,11 @@ export function nonProductionGlobs(
     skippedFolders === PYTHON_SKIPPED_FOLDERS
       ? NON_PRODUCTION_GLOBS
       : productionGlobs(skippedFolders);
+  const topLevel = [...DOCUMENTATION_DIRECTORIES, ...TOP_LEVEL_TEST_DIRECTORIES];
   return [
     ...globs,
     ...(isDjangoProject(projectRoot) ? DJANGO_TEST_FILES.map((name) => `**/${name}`) : []),
-    ...(sourceRoots.includes('.') ? DOCUMENTATION_DIRECTORIES.map((name) => `${name}/**`) : []),
+    ...(sourceRoots.includes('.') ? topLevel.map((name) => `${name}/**`) : []),
   ];
 }
 
@@ -157,7 +165,8 @@ export function listProductionModules(projectRoot, sourceRoots) {
   return existingSourceRoots(projectRoot, sourceRoots).flatMap((root) => {
     const [importRoot] =
       root === '.' ? [path.resolve(projectRoot)] : importRoots(projectRoot, [root]);
-    const skippedAtTop = root === '.' ? DOCUMENTATION_DIRECTORIES : [];
+    const skippedAtTop =
+      root === '.' ? [...DOCUMENTATION_DIRECTORIES, ...TOP_LEVEL_TEST_DIRECTORIES] : [];
     const top = path.resolve(projectRoot, root);
     return productionFiles(top, { skippedAtTop, isTest }).flatMap((absolute) => {
       const file = path.relative(projectRoot, absolute).split(path.sep).join('/');
