@@ -160,6 +160,7 @@ function strictTypedConfigFor(layout, parserOptions) {
         ...controlFlowTypedRules,
         'nitpicker/exhaustive-union-predicate': 'error',
         'nitpicker/no-forwarding-wrapper': 'error',
+        'nitpicker/no-service-locator': ['error', { entryPoints: layout.entryPoints ?? [] }],
         'nitpicker/no-falsy-default': 'error',
       },
     },

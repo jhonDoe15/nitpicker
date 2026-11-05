@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ingestRulesReport } from './rules-report.mjs';
-import { FAN_OUT_SEPARATOR } from '../rules/hints/ast-smells.mjs';
+import { FAN_OUT_SEPARATOR } from '../rules/hints/ast/ast-smells.mjs';
 
 const entry = (overrides) => ({
   rule: 'frozen-dataclass',

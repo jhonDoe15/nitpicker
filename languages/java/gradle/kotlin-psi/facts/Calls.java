@@ -14,6 +14,12 @@ final class Calls {
           "sleep", "parkNanos", "wait", "join", "delay", "continually", "after", "waitForTimeout",
           "until", "pollDelay", "during");
 
+  static final Set<String> LOOKUP_NAMES =
+      Set.of(
+          "get", "getOrNull", "getAll", "inject", "injectOrNull", "getKoin", "koinInject", "koinViewModel",
+          "getInstance", "getProvider", "getBinding", "getExistingBinding", "current", "select",
+          "getReference", "getInjectableReference", "createInstance", "lookup", "lookupLink");
+
   private final State state;
 
   Calls(State state) {
@@ -41,11 +47,56 @@ final class Calls {
       }
     }
     recordCall(name, positional, named, spread, lambda);
+    if (state.locators && LOOKUP_NAMES.contains(name)) {
+      lookup(call, name, positional, lambda, frame);
+    }
     String imported = state.importedPath(name);
     String waitName = imported == null ? name : imported.substring(imported.lastIndexOf('.') + 1);
     if (state.test && WAIT_NAMES.contains(waitName)) {
       wait(call, waitName, imported, arguments, frame);
     }
+  }
+
+  private void lookup(KtCallExpression call, String name, int positional, boolean lambda, Frame frame) {
+    String qualifier = null;
+    if (call.getParent() instanceof KtQualifiedExpression
+        && ((KtQualifiedExpression) call.getParent()).getSelectorExpression() == call) {
+      qualifier = clip(((KtQualifiedExpression) call.getParent()).getReceiverExpression());
+    }
+    state.lookups.add(
+        m(
+            "line", state.lineOf(call.getTextRange().getStartOffset()), "name", name, "qualifier", qualifier,
+            "positional", positional, "lambda", lambda, "delegated", call.getParent() instanceof KtPropertyDelegate,
+            "arguments", arguments(call), "default", inDefaultValue(call), "reference", false,
+            "scopes", frame == null ? List.of() : frame.chain()));
+  }
+
+  void reference(KtCallableReferenceExpression reference, Frame frame) {
+    String name = reference.getCallableReference().getReferencedName();
+    if (!state.locators || !LOOKUP_NAMES.contains(name)) {
+      return;
+    }
+    state.lookups.add(
+        m(
+            "line", state.lineOf(reference.getTextRange().getStartOffset()), "name", name,
+            "qualifier", clip(reference.getReceiverExpression()), "positional", 0, "lambda", false,
+            "delegated", false, "arguments", List.of(), "default", false, "reference", true,
+            "scopes", frame == null ? List.of() : frame.chain()));
+  }
+
+  private static boolean inDefaultValue(PsiElement element) {
+    PsiElement child = element;
+    for (PsiElement parent = element.getParent(); parent != null; parent = parent.getParent()) {
+      if (parent instanceof KtParameter) {
+        return ((KtParameter) parent).getDefaultValue() == child;
+      }
+      if (parent instanceof KtDeclarationWithBody || parent instanceof KtLambdaExpression
+          || parent instanceof KtClassOrObject) {
+        return false;
+      }
+      child = parent;
+    }
+    return false;
   }
 
   private void recordCall(String name, int positional, List<String> named, boolean spread, boolean lambda) {
