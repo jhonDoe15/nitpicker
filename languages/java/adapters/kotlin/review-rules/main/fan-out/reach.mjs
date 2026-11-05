@@ -185,6 +185,17 @@ export function remoteWork(project, view, starter) {
   return open.length === 0 ? undefined : { ...open[0], lines: open.map(({ line }) => line) };
 }
 
+export function referenceWork(project, view, reference) {
+  for (const target of targetsOf(project, view, reference)) {
+    const top = functionScope(target.view, target.fn);
+    const work = top === undefined ? undefined : remoteWork(project, target.view, top);
+    if (work !== undefined) {
+      return { ...work, helper: reference.name, lines: [reference.line] };
+    }
+  }
+  return undefined;
+}
+
 function isVisible(view, declared) {
   const { package: owner } = declared.view.file;
   return (

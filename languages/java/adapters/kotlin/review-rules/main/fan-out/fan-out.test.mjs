@@ -69,7 +69,7 @@ describe('fanOutFindings on the recorded fixture facts', () => {
       classification: 'enforceable',
       location: { line: lineOf(UNBOUNDED, 'pages.relay') },
     });
-    expect(Object.keys(FAN_OUT_MESSAGES)).toEqual(['UnboundedFanOut']);
+    expect(Object.keys(FAN_OUT_MESSAGES)).toEqual(['UnboundedFanOut', 'UnboundedReactiveFanOut']);
   });
 
   it('keeps identities stable when another function of the file is fixed', () => {

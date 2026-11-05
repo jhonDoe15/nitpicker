@@ -392,6 +392,24 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   limiter is recognized by its name only, a client that arrives untyped through a parameter or an
   unlisted library is not recognized, and a collection that is small in practice but not by
   construction is reported; lift such a path with an `exceptions` entry for the rule.
+- Bounded RxJS fan-out (`nitpicker/unbounded-reactive-fan-out`): the RxJS counterpart of
+  `unbounded-fan-out`, for `rxjs` and `rxjs/operators` imports (named or `import * as rx`). It
+  reports `mergeMap`, `flatMap` and `mergeAll` without a concurrency argument (unlimited by default;
+  `Infinity` counts as none) inside a `.pipe(...)` whose source is a collection: `from(xs)`,
+  `of(...xs)`, a `const` holding one, or an earlier `.pipe(...)` on one. With type information,
+  `from(x)` counts only when `x` is an array, a tuple, a `Set`, a `Map` or another iterable, so
+  `from(promise)` passes; without it, `x` must be an array literal, an array method call or a name.
+  It also reports `forkJoin`, `combineLatest`, `zip` and `merge` over `xs.map(...)` (also spread, a
+  `const` holding one or an array filled by `push` in a loop), which subscribe to every element at
+  once. The projected work must make a remote or message call, recognized as in
+  `unbounded-fan-out`, plus Angular's `HttpClient` (`@angular/common/http`, a parameter property or
+  field typed with it) and `ajax` from `rxjs/ajax`; `from(fetch(...))` and `defer(() => fetch(...))`
+  count. Allowed: a numeric concurrency argument (`mergeMap((id) => load(id), 8)`, a `const` or a
+  parameter), `concatMap`, a `bufferCount`, `bufferTime`, `toArray`, `windowCount`, `reduce` or
+  `take` before the operator, `merge(...calls, 4)`, a fixed collection, and a stream that is not a
+  collection (events, `actions$`, route parameters), which this rule leaves alone. Limits: a field
+  set with `inject(HttpClient)` and no type annotation is not recognized, and a standalone `pipe()`
+  composition is not followed.
 - `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
   statement per module (`no-duplicate-imports`; a separate `import type` is fine).
 - Identifier casing (`nitpicker/naming-convention`, which wraps

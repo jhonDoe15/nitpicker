@@ -5,7 +5,7 @@ import { combinatorName, callsOf, mappings, workerOf } from './sites.mjs';
 
 const MAX_HELPER_DEPTH = 3;
 const MAX_TEXT = 50;
-const TARGETS = { remote: 'remote service', message: 'broker' };
+export const TARGETS = { remote: 'remote service', message: 'broker' };
 
 function labelOf(context, call) {
   const text = context.sourceCode.getText(call.callee);
@@ -42,7 +42,7 @@ function inspect(scope, entry) {
   return { helpers };
 }
 
-function remoteIn(scope, worker) {
+export function remoteIn(scope, worker) {
   const seen = new Set();
   const pending = [{ worker, depth: 0, origin: worker.root }];
   for (const entry of pending) {
@@ -62,7 +62,7 @@ function remoteIn(scope, worker) {
   return undefined;
 }
 
-function viaText(found) {
+export function viaText(found) {
   if (found.via === undefined) {
     return '';
   }
@@ -100,7 +100,7 @@ function mentionsPMap(context) {
   return context.sourceCode.text.includes('p-map');
 }
 
-function lazyScope(context) {
+export function lazyScope(context) {
   let bounds;
   let io;
   return {
