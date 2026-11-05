@@ -146,24 +146,28 @@ function piped(context, call, before) {
   return grouped ? { grouped } : { source: callee.object };
 }
 
-function upstream(context, step, depth) {
-  if (step?.source === undefined || depth >= MAX_DEPTH) {
-    return undefined;
+function upstream(context, first) {
+  const pending = [first];
+  for (const step of pending) {
+    const target =
+      step?.source === undefined || pending.length > MAX_DEPTH
+        ? undefined
+        : skipped(resolveConstant(context, skipped(step.source)));
+    if (target?.type === 'CallExpression') {
+      const collection = creationSource(context, target);
+      if (collection !== undefined) {
+        return collection;
+      }
+      pending.push(piped(context, target, undefined));
+    }
   }
-  const target = skipped(resolveConstant(context, skipped(step.source)));
-  if (target?.type !== 'CallExpression') {
-    return undefined;
-  }
-  return (
-    creationSource(context, target) ??
-    upstream(context, piped(context, target, undefined), depth + 1)
-  );
+  return undefined;
 }
 
 export function pipeSource(context, operator) {
   const pipe = operator.parent;
   const isArgument = pipe?.type === 'CallExpression' && pipe.arguments.includes(operator);
   return isArgument
-    ? upstream(context, piped(context, pipe, pipe.arguments.indexOf(operator)), 0)
+    ? upstream(context, piped(context, pipe, pipe.arguments.indexOf(operator)))
     : undefined;
 }
