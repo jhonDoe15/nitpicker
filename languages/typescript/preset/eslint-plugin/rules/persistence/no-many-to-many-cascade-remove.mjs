@@ -27,14 +27,17 @@ export const rule = {
   },
   create(context) {
     const sourceCode = context.sourceCode;
+    const reported = new Set();
 
     function report(node) {
       for (const relation of relationsAt(sourceCode, node)) {
         if (
           relation.kind === MANY_TO_MANY &&
           relation.cascade !== undefined &&
+          !reported.has(relation.cascade.node) &&
           removes(sourceCode, relation)
         ) {
+          reported.add(relation.cascade.node);
           context.report({
             node: relation.cascade.node,
             messageId: relation.orm === MIKRO_ORM ? 'mikroOrmCascade' : 'typeormCascade',

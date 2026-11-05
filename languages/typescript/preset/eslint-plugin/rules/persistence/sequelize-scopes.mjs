@@ -5,24 +5,54 @@ const DEFAULT_SCOPE = 'defaultScope';
 const SCOPE_DECORATOR = 'DefaultScope';
 const ADD_SCOPE = 'addScope';
 
-function returnedObject(sourceCode, scope) {
-  if (scope?.type !== 'ArrowFunctionExpression' && scope?.type !== 'FunctionExpression') {
-    return objectOf(sourceCode, scope);
+const FUNCTION_TYPES = new Set([
+  'ArrowFunctionExpression',
+  'FunctionExpression',
+  'FunctionDeclaration',
+]);
+
+function childNodes(node) {
+  return Object.entries(node)
+    .filter(([key]) => key !== 'parent')
+    .flatMap(([, value]) => (Array.isArray(value) ? value : [value]))
+    .filter((child) => typeof child?.type === 'string' && !FUNCTION_TYPES.has(child.type));
+}
+
+function returnedValues(body) {
+  const pending = [body];
+  const returned = [];
+  for (const node of pending) {
+    if (node.type === 'ReturnStatement') {
+      returned.push(node.argument);
+    } else {
+      pending.push(...childNodes(node));
+    }
+  }
+  return returned;
+}
+
+function returnedObjects(sourceCode, scope) {
+  if (!FUNCTION_TYPES.has(scope?.type)) {
+    return [objectOf(sourceCode, scope)];
   }
   if (scope.body.type !== 'BlockStatement') {
-    return objectOf(sourceCode, scope.body);
+    return [objectOf(sourceCode, scope.body)];
   }
-  const returned = scope.body.body.findLast((statement) => statement.type === 'ReturnStatement');
-  return objectOf(sourceCode, returned?.argument ?? undefined);
+  return returnedValues(scope.body).map((value) => objectOf(sourceCode, value ?? undefined));
 }
 
 function includesAssociations(include) {
-  return include.value.type !== 'ArrayExpression' || include.value.elements.length > 0;
+  const value = include.value;
+  if (value.type === 'Identifier') {
+    return value.name !== 'undefined';
+  }
+  return value.type !== 'ArrayExpression' || value.elements.length > 0;
 }
 
 export function eagerInclude(sourceCode, scope) {
-  const include = propertiesOf(sourceCode, returnedObject(sourceCode, scope)).get('include');
-  return include !== undefined && includesAssociations(include) ? include : undefined;
+  return returnedObjects(sourceCode, scope)
+    .map((object) => propertiesOf(sourceCode, object).get('include'))
+    .find((include) => include !== undefined && includesAssociations(include));
 }
 
 function isDefaultScopeCall(call) {

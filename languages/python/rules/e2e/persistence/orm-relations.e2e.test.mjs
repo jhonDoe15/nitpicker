@@ -79,6 +79,21 @@ describe.skipIf(!enabled)('eager-relationship', () => {
         [],
       ],
       [
+        'an imperative mapping and a declared_attr',
+        'from sqlalchemy.orm import declared_attr, registry, relationship\n\nreg = registry()\nmapper = reg.map_imperatively(Order, t, properties={"lines": relationship(Line, lazy="joined")})\n\n\nclass Mixin:\n    @declared_attr\n    def owner(cls):\n        return relationship("User", lazy="selectin")\n',
+        ['eager-relationship:4 lines', 'eager-relationship:10 Mixin.owner'],
+      ],
+      [
+        'SQLModel options built with dict()',
+        'from sqlmodel import Relationship, SQLModel\n\n\nclass Team(SQLModel, table=True):\n    heroes: list["Hero"] = Relationship(sa_relationship_kwargs=dict(lazy="selectin"))\n',
+        ['eager-relationship:5 Team.heroes'],
+      ],
+      [
+        'a relationship method of an unrelated object',
+        'class Graph:\n    def link(self, graph):\n        return graph.relationship("Line", lazy="joined")\n',
+        [],
+      ],
+      [
         'test code',
         inFile(
           'tests/test_models.py',
@@ -128,6 +143,16 @@ describe.skipIf(!enabled)('many-to-many-cascade-delete', () => {
         'SQLModel link_model with cascade_delete or sa_relationship_kwargs',
         'from sqlmodel import Relationship, SQLModel\n\n\nclass Team(SQLModel, table=True):\n    a: list["Hero"] = Relationship(link_model=HeroTeam, cascade_delete=True)\n    b: list["Hero"] = Relationship(link_model=HeroTeam, sa_relationship_kwargs={"cascade": "all, delete"})\n    c: list["Hero"] = Relationship(cascade_delete=True)\n',
         ['many-to-many-cascade-delete:5 Team.a', 'many-to-many-cascade-delete:6 Team.b'],
+      ],
+      [
+        'secondary given positionally or only in sa_relationship_kwargs',
+        `${ORM}from sqlmodel import Relationship\n\n\nclass Product:\n    a = relationship("Tag", "product_tags", cascade="all")\n    b: list["Tag"] = Relationship(sa_relationship_kwargs={"secondary": "t", "cascade": "delete"})\n`,
+        ['many-to-many-cascade-delete:6 Product.a', 'many-to-many-cascade-delete:7 Product.b'],
+      ],
+      [
+        'secondary=None and viewonly relationships',
+        `${ORM}\n\nclass Product:\n    a = relationship("Tag", secondary=None, cascade="all")\n    b = relationship("Tag", secondary="t", viewonly=True, cascade="all")\n`,
+        [],
       ],
       [
         'Flask-SQLAlchemy db.relationship',

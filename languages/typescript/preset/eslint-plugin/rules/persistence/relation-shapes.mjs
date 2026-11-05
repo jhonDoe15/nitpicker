@@ -7,6 +7,7 @@ import {
   objectOf,
   ormOf,
   propertiesOf,
+  valueOf,
 } from './orm-bindings.mjs';
 
 export const MANY_TO_MANY = 'many-to-many';
@@ -43,19 +44,29 @@ const SCHEMA_RELATIONS = new Map([
 ]);
 const BUILDER_OPTIONS = new Set(['eager', 'cascade']);
 
-function cascadeValues(value) {
-  return value.type === 'ArrayExpression' ? value.elements.filter(Boolean) : [value];
+function cascadeValues(sourceCode, expression) {
+  const value = valueOf(sourceCode, expression);
+  return value.type === 'ArrayExpression'
+    ? value.elements.filter(Boolean).map((element) => valueOf(sourceCode, element))
+    : [value];
 }
 
-function fromProperties(orm, kind, properties) {
+function isTrue(sourceCode, expression) {
+  const value = valueOf(sourceCode, expression);
+  return value?.type === 'Literal' && value.value === true;
+}
+
+function fromProperties(sourceCode, orm, kind, properties) {
   const eager = properties.get('eager');
   const cascade = properties.get('cascade');
   return {
     orm,
     kind,
-    eager: eager?.value.type === 'Literal' && eager.value.value === true ? eager : undefined,
+    eager: eager !== undefined && isTrue(sourceCode, eager.value) ? eager : undefined,
     cascade:
-      cascade === undefined ? undefined : { node: cascade, values: cascadeValues(cascade.value) },
+      cascade === undefined
+        ? undefined
+        : { node: cascade, values: cascadeValues(sourceCode, cascade.value) },
   };
 }
 
@@ -75,12 +86,17 @@ function decoratorRelation(sourceCode, call) {
     return [];
   }
   const kind = DECORATOR_KINDS.get(found.name);
-  return [fromProperties(found.orm, kind, mergedProperties(sourceCode, call.arguments))];
+  return [
+    fromProperties(sourceCode, found.orm, kind, mergedProperties(sourceCode, call.arguments)),
+  ];
 }
 
 function schemaKind(value) {
   if (value.type === 'Literal') {
     return SCHEMA_KINDS.get(value.value);
+  }
+  if (value.type === 'TemplateLiteral' && value.expressions.length === 0) {
+    return SCHEMA_KINDS.get(value.quasis[0].value.cooked);
   }
   return value.type === 'MemberExpression'
     ? SCHEMA_KINDS.get(staticKeyName(value.property, value.computed))
@@ -95,7 +111,7 @@ function schemaEntries(sourceCode, orm, schema) {
     const properties = propertiesOf(sourceCode, objectOf(sourceCode, entry.value));
     const kindProperty = shape.kindKeys.map((key) => properties.get(key)).find(Boolean);
     const kind = kindProperty === undefined ? undefined : schemaKind(kindProperty.value);
-    return kind === undefined ? [] : [fromProperties(orm, kind, properties)];
+    return kind === undefined ? [] : [fromProperties(sourceCode, orm, kind, properties)];
   });
 }
 
@@ -134,12 +150,13 @@ function builderRelation(sourceCode, call) {
     return [];
   }
   const [first] = call.arguments;
+  const node = call.callee.property;
   if (option === 'eager') {
-    const eager = first === undefined || (first.type === 'Literal' && first.value === true);
-    return [{ orm: MIKRO_ORM, kind, eager: eager ? call : undefined, cascade: undefined }];
+    const eager = first === undefined || isTrue(sourceCode, first);
+    return [{ orm: MIKRO_ORM, kind, eager: eager ? node : undefined, cascade: undefined }];
   }
-  const values = call.arguments.flatMap((argument) => cascadeValues(argument));
-  return [{ orm: MIKRO_ORM, kind, eager: undefined, cascade: { node: call, values } }];
+  const values = call.arguments.flatMap((argument) => cascadeValues(sourceCode, argument));
+  return [{ orm: MIKRO_ORM, kind, eager: undefined, cascade: { node, values } }];
 }
 
 export function relationsAt(sourceCode, node) {
@@ -153,7 +170,7 @@ export function cascadeName(sourceCode, value) {
   if (value.type === 'Literal') {
     return value.value === true ? 'true' : String(value.value);
   }
-  if (value.type !== 'MemberExpression' || value.object.type !== 'Identifier') {
+  if (value.type !== 'MemberExpression') {
     return undefined;
   }
   return importedName(sourceCode, value.object, MIKRO_ORM) === 'Cascade'

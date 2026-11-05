@@ -960,7 +960,9 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
 - `many-to-many-cascade-delete` reports a `cascade` with `all`, `delete` or `delete-orphan` on a
   `relationship` with `secondary=` (and on its `backref`), and SQLModel's `cascade_delete=True` or
   `sa_relationship_kwargs={"cascade": ...}` on a `Relationship` with `link_model=`: deleting one
-  owner deletes rows that other owners still share. `single_parent=True` is not reported. Port of
+  owner deletes rows that other owners still share. `secondary` also counts when it is passed
+  positionally or through `sa_relationship_kwargs`; `single_parent=True` and `viewonly=True` are
+  not reported. Port of
   the JVM `JpaManyToManyCascade`. Both rules check production sources only. Django has no eager
   mapping option (`select_related` and `prefetch_related` are per query) and its `on_delete`
   cascades are on foreign keys, not on a `ManyToManyField`, so neither rule applies to it.
