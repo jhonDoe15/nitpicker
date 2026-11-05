@@ -81,6 +81,7 @@ describe('testHonestyFindings', () => {
       'DisabledTest',
       'FocusedTest',
       'RetryInTest',
+      'ServerOrContainerPerTest',
       'AssertionInControlFlow',
       'CoroutineEscapesTest',
     ]);
