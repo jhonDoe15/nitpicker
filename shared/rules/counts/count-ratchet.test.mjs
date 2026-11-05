@@ -79,7 +79,7 @@ describe('withCountRatchets', () => {
     const counted = withCountRatchets(
       [finding('Cyclomatic complexity is 20.', 10), finding('Cyclomatic complexity is 11.', 40)],
       (item) => ({ value: 1, subject: item.message, unit: 'complexity' }),
-      (item) => (item.location.line < 20 ? 'first' : 'second'),
+      (item) => ({ name: item.location.line < 20 ? 'first' : 'second' }),
     );
 
     expect(counted.map(({ ratchet }) => ratchet.key.split(':in:').at(-1))).toEqual([
@@ -90,6 +90,22 @@ describe('withCountRatchets', () => {
       'in:first',
       'in:second',
     ]);
+  });
+
+  it('gives a name-free anchor and a declaration key when the function text is known', () => {
+    const counted = (name, declarationHash) =>
+      withCountRatchets(
+        [finding(`Function ${name} has 3 return statements.`, 4)],
+        returnCount,
+        () => ({ name: `Owner.${name}`, anchorHash: 'body', declarationHash }),
+      )[0];
+    const before = counted('pick', 'd1');
+    const after = counted('choose', 'd2');
+
+    expect(after.anchor).toEqual(before.anchor);
+    expect(before.anchor.key.endsWith(':text:body')).toBe(true);
+    expect(before.ratchet.declarationKey).toBe(`${before.ratchet.key}:declaration:d1`);
+    expect(after.ratchet.key).not.toBe(before.ratchet.key);
   });
 
   it('keys the subject without the line numbers in it', () => {

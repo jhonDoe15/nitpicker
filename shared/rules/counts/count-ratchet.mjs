@@ -1,4 +1,5 @@
 import { withoutExceptionRoute } from '../../messages/exception-sentence.mjs';
+import { nameFreeHash } from '../finding-helpers.mjs';
 
 const COUNT = String.raw`(\d{1,3}(?:,\d{3})+|\d+)`;
 
@@ -42,23 +43,43 @@ function ratchetOf(finding, count, key) {
   };
 }
 
-export function anchorAt(finding, locate) {
+export function unitAt(finding, locate) {
   const line = finding.location?.line;
   return line === undefined ? undefined : locate(finding.path, line);
 }
 
-export function withCountRatchets(findings, countOf, anchorOf) {
+function unitKeys(subject, unit) {
+  const key = `count:${subject}:in:${unit?.name ?? ''}`;
+  return {
+    key,
+    declarationKey:
+      unit?.declarationHash === undefined
+        ? undefined
+        : `${key}:declaration:${unit.declarationHash}`,
+    anchor:
+      unit?.anchorHash === undefined
+        ? undefined
+        : { key: `count:${nameFreeHash(subject, unit.name)}:text:${unit.anchorHash}` },
+  };
+}
+
+export function withCountRatchets(findings, countOf, unitOf) {
   return findings.map((finding) => {
     const count = finding.ratchet === undefined ? countOf(finding) : undefined;
     if (count === undefined) {
       return finding;
     }
-    const anchor = anchorOf(finding) ?? '';
+    const unit = unitOf(finding);
     const subject = `${count.unit}:${count.subject.replaceAll(/\bline \d+\b/gu, 'line')}`;
+    const { key, declarationKey, anchor } = unitKeys(subject, unit);
     return {
       ...finding,
-      identity: `${finding.identity}|in:${anchor}|value:${String(count.value)}`,
-      ratchet: ratchetOf(finding, count, `count:${subject}:in:${anchor}`),
+      identity: `${finding.identity}|in:${unit?.name ?? ''}|value:${String(count.value)}`,
+      ratchet: {
+        ...ratchetOf(finding, count, key),
+        ...(declarationKey === undefined ? {} : { declarationKey }),
+      },
+      ...(anchor === undefined ? {} : { anchor }),
     };
   });
 }
