@@ -72,6 +72,7 @@ const REVIEW_RULES = new Set([
   'LegacyCalendarApi',
   'LogFormatArguments',
   'LogExceptionFirst',
+  'RecursiveMapUpdate',
   'ClassLoadEffect',
   'SpringUnusedContext',
   'TestClassWithoutTestCases',
