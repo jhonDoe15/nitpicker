@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 66 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 67 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -579,6 +579,15 @@ Option \<name> is never set. Remove it, or set it from a real call (tests do not
 
 - **Allowed form:** See the guide: [Python preset guide](../python-preset.md).
 - **Exception:** If this is intended, add `{"rule":"unused-option","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="python-rules-weak-assertion"></a>
+
+### `python-rules/weak-assertion`
+
+`<name>` passes for almost any value.
+
+- **Allowed form:** Assert the exact value, contents or length, or the call arguments: `assert rows == expected`, `m.assert_called_once_with(order_id)`.
+- **Exception:** If this is intended, add `{"rule":"weak-assertion","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-weak-hmac"></a>
 
