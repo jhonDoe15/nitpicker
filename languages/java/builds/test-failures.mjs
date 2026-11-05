@@ -20,7 +20,7 @@ function firstLine(problem) {
   return (text.split('\n').find((line) => line.trim() !== '') ?? '').trim();
 }
 
-const STACK_FRAME = /^\s*at ([\w$.]+)\.[\w$<>-]+\(([^():]+):(\d+)\)/gmu;
+const STACK_FRAME = /^\s*at (?:[^\s(]*\/)?([\w$.]+)\.[\w$<>-]+\(([^():]+):(\d+)\)/gmu;
 
 function stackText(problem) {
   return problem.text || childrenNamed(problem, 'stackTrace')[0]?.text || '';
