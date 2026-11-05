@@ -52,7 +52,7 @@ export function runsInTransaction(view, fn) {
   );
 }
 
-export function templateLambda(view, scope) {
+function templateLambda(view, scope) {
   return (
     scope.k === 'lambda' &&
     TEMPLATE_CALLS.has(scope.host) &&

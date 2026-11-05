@@ -69,7 +69,7 @@ describe.skipIf(!enabled)('Spring rules on a Spring project', () => {
         .filter(({ rule }) => GUARDED_ERROR_PRONE_RULES.has(rule))
         .map(({ rule, path: file, location }) => `${file}:${location.line} ${rule}`),
     ).toEqual([
-      'src/main/java/shop/catalog/ProductRepository.java:11 MissingOverride',
+      'src/main/java/shop/catalog/ProductRepository.java:12 MissingOverride',
       'src/main/java/shop/config/SecretsConfig.java:53 PrivateConstructorForUtilityClass',
     ]);
   });

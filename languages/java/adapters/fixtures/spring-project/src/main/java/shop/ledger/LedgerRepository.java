@@ -22,6 +22,7 @@ public interface LedgerRepository extends JpaRepository<Product, Long> {
 
   List<Product> removeAllByVersion(long version); // violation: SpringDataDerivedQuery, SpringDataWriteWithoutTransaction
 
+  @Override
   void deleteById(Long id);
 
   @Query("select p from Product p where p.version = :version")
