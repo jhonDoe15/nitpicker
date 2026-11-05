@@ -83,6 +83,7 @@ function productionRules({ react, routeHandlers }) {
       },
     ],
     'regexp/no-super-linear-backtracking': 'error',
+    'regexp/no-useless-flag': ['error', { ignore: ['i', 'm', 's'] }],
   };
 }
 

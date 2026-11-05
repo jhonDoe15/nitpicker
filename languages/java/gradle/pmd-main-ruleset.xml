@@ -641,4 +641,50 @@ return (
       </property>
     </properties>
   </rule>
+  <rule name="UnquotedRegexValue" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This argument is compiled as a regex (String.split, matches, replaceAll and replaceFirst take a regex, and so does Pattern.compile), and a runtime String in it is not quoted, so a dot, pipe, dollar sign or other metacharacter in the value changes what matches. Wrap plain text in Pattern.quote(value); for a literal replacement use replace(text, replacement). Pass a value that is meant as a whole pattern to Pattern.compile(pattern) on its own, and keep Pattern.quote around values joined into a pattern.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $quote := 'java.util.regex.Pattern#quote(java.lang.String)',
+    $constants := //FieldDeclaration[pmd-java:modifiers() = 'static'][pmd-java:modifiers() = 'final']
+                    /VariableDeclarator/VariableId/@Name
+return (
+  //MethodCall[pmd-java:matchesSig('java.lang.String#split(_*)')
+              or pmd-java:matchesSig('java.lang.String#splitWithDelimiters(_*)')
+              or pmd-java:matchesSig('java.lang.String#matches(java.lang.String)')
+              or pmd-java:matchesSig('java.lang.String#replaceAll(java.lang.String,java.lang.String)')
+              or pmd-java:matchesSig('java.lang.String#replaceFirst(java.lang.String,java.lang.String)')]
+    /ArgumentList/*[1]
+  | //MethodCall[pmd-java:matchesSig('java.util.regex.Pattern#compile(_*)')
+                 or pmd-java:matchesSig('java.util.regex.Pattern#matches(java.lang.String,java.lang.CharSequence)')]
+    /ArgumentList/*[1][self::InfixExpression[@Operator = '+']]
+)[let $argument := .
+  return descendant-or-self::*
+    [not(self::InfixExpression[@Operator = '+'])]
+    [ancestor::*[not(self::InfixExpression[@Operator = '+'])][1] is $argument/..]
+    [pmd-java:typeIs('java.lang.String')]
+    [not(@CompileTimeConstant = true())]
+    [not(self::MethodCall[pmd-java:matchesSig($quote)])]
+    [descendant-or-self::VariableAccess[not(@Name = $constants)][not(matches(@Name, '^[A-Z][A-Z0-9_]*$'))]
+                                       [not(ancestor::MethodCall[pmd-java:matchesSig($quote)])]
+     or descendant-or-self::FieldAccess[*[1][self::ThisExpression]]
+                                       [not(ancestor::MethodCall[pmd-java:matchesSig($quote)])]]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="PlainTextRegex" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="replaceAll compiles its first argument as a regex on every call, and this one has no regex metacharacters, so it is plain text. Use replace(target, replacement): it replaces every occurrence without a regex and reads the replacement literally, while replaceAll reads a dollar sign or backslash in it as a group reference.">
+    <priority>3</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[pmd-java:matchesSig('java.lang.String#replaceAll(java.lang.String,java.lang.String)')]
+  [ArgumentList/*[1][@CompileTimeConstant = true()][not(matches(@ConstValue, '[\\^$.|?*+()\[\]{}]'))]]
+]]></value>
+      </property>
+    </properties>
+  </rule>
 </ruleset>

@@ -53,6 +53,7 @@ const BANNED_GUARDS = {
   'Literals.kt': `${PACKAGE}fun labels(): List<String> = listOf("shipping", "shipping", "shipping")\n`,
   'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
   'Prefetch.kt': prefetch('body'),
+  'Routes.kt': `${PACKAGE}fun route(name: String): Regex = Regex("^/$name/")\n\nfun clean(text: String): String = text.replace(Regex("abc"), "")\n`,
 };
 
 const BANNED_TESTS = {
@@ -77,6 +78,7 @@ const ALLOWED_GUARDS = {
   'Literals.kt': `${PACKAGE}private const val SHIPPING = "shipping"\n\nfun labels(): List<String> = listOf(SHIPPING, SHIPPING, SHIPPING)\n\nfun kind(text: String): Int = when (text) {\n    "shipping-pending" -> 1\n    "shipping-sent", "shipping-pending" -> 2\n    else -> 3\n}\n\nfun more(): Map<String, Int> = mapOf("shipping-pending" to 1)\n`,
   'App.kt': `${PACKAGE}fun main() {\n    ProcessBuilder("serve", "--port", System.getenv("PORT")).inheritIO().start()\n}\n`,
   'Prefetch.kt': prefetch('limited', LIMITED),
+  'Routes.kt': `${PACKAGE}fun route(name: String): Regex = Regex("^/${'$'}{Regex.escape(name)}/")\n\nfun clean(text: String): String = text.replace("abc", "")\n`,
 };
 
 const ALLOWED_TESTS = {
@@ -112,6 +114,8 @@ const EXPECTED_BANNED = [
   'kotlin-source/GeneratedOnHandWrittenCode Marked.kt',
   'kotlin-source/TestClassWithoutTestCases EmptyTest.kt',
   'kotlin-source/UnboundedFanOut Prefetch.kt',
+  'kotlin-source/UnquotedRegexValue Routes.kt',
+  'kotlin-source/PlainTextRegex Routes.kt',
   'kotlinc/deprecation Casts.kt',
   'kotlinc/unchecked Casts.kt',
   'kotlinc/cast Casts.kt',
