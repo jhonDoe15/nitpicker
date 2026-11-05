@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { routeOf, run } from '../../test-support/facts.mjs';
+import { routed, run } from '../../test-support/facts.mjs';
 import { RECURSIVE_MAP_UPDATE_RULE, recursiveMapUpdateFindings } from './recursive-map-update.mjs';
 
 const FIXTURES = path.resolve(import.meta.dirname, '../../../../fixtures');
@@ -12,6 +12,7 @@ const SOURCE = path.join(
 const { files } = JSON.parse(
   readFileSync(path.join(FIXTURES, 'kotlin-map-update-facts.json'), 'utf8'),
 );
+const FILE = 'src/main/kotlin/demo/orders/InFlight.kt';
 const lines = readFileSync(SOURCE, 'utf8').split('\n');
 
 function lineOf(fragment) {
@@ -33,6 +34,7 @@ describe('recursive map updates in Kotlin', () => {
       `views.counts ${String(lineOf('this.counts.keys.remove("stale")'))}`,
       `minus.counts ${String(lineOf('counts -= "stale"'))}`,
       `getOrPutConcurrent.inProgress ${String(lineOf('{ load(key) }.whenComplete { _, _ -> inProgress.remove(key) }'))}`,
+      `getOrPutDeclared.pending ${String(lineOf('pending.remove("old")'))}`,
       `reference.inProgress ${String(lineOf('::startAndForget'))}`,
       `helper.inProgress ${String(lineOf('{ startAndForget(it) }'))}`,
       `local.cache ${String(lineOf('cache.remove(k)'))}`,
@@ -58,23 +60,35 @@ describe('recursive map updates in Kotlin', () => {
     const [first] = findings;
 
     expect(first.tool).toBe('pmd');
-    expect(first.message).toContain(
-      'Change `inProgress` after `inProgress.computeIfAbsent` returns, not inside the function passed to it',
-    );
-    expect(first.message).toContain(
-      '`inProgress.computeIfAbsent(key) { start(it) }.whenComplete { r, _ -> inProgress.remove(key, r) }`',
-    );
-    expect(first.message).toContain('IllegalStateException (Recursive update)');
-    expect(routeOf(first.message)).toBe(
-      `If this is intended, add {"rule":"pmd/${RECURSIVE_MAP_UPDATE_RULE}","paths":["src/main/kotlin/demo/orders/InFlight.kt"],"reason":"..."} to "exceptions" in nitpicker.config.json.`,
+    expect(first.message).toBe(
+      routed(
+        [
+          'Change `inProgress` after `inProgress.computeIfAbsent` returns, not inside the function passed to it',
+          'or a callback or same-class function that function starts: build the value there and attach the cleanup',
+          'to the result (`inProgress.computeIfAbsent(key) { start(it) }.whenComplete { r, _ -> inProgress.remove(key, r) }`).',
+          'A ConcurrentHashMap then throws IllegalStateException (Recursive update) or deadlocks,',
+          'and a HashMap throws ConcurrentModificationException.',
+        ].join(' '),
+        RECURSIVE_MAP_UPDATE_RULE,
+        FILE,
+      ),
     );
   });
 
   it('explains that getOrPut stores the value after its function returns', () => {
     const getOrPut = findings.find(({ symbol }) => symbol === 'getOrPutConcurrent.inProgress');
 
-    expect(getOrPut.message).toContain(
-      '`getOrPut` stores the value only after the function returns',
+    expect(getOrPut.message).toBe(
+      routed(
+        [
+          'Change `inProgress` after `inProgress.getOrPut` returns, not inside the function passed to it',
+          'or a callback or same-class function that function starts: build the value there and attach the cleanup',
+          'to the result (`inProgress.computeIfAbsent(key) { start(it) }.whenComplete { r, _ -> inProgress.remove(key, r) }`).',
+          '`getOrPut` stores the value only after the function returns, so a change made inside it is lost or undone.',
+        ].join(' '),
+        RECURSIVE_MAP_UPDATE_RULE,
+        FILE,
+      ),
     );
   });
 

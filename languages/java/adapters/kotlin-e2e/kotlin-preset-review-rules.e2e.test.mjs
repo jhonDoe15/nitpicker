@@ -9,7 +9,7 @@ import {
   runtimeSerializationFiles,
 } from './test-support/review/kotlin-review-data.mjs';
 import {
-  MAP_UPDATE_FILES,
+  mapUpdateFiles,
   MAP_UPDATE_FINDINGS,
 } from './test-support/review/kotlin-map-update-data.mjs';
 import {
@@ -40,7 +40,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
 
   beforeAll(() => {
     project = initializeProject();
-    commitBranch(project, 'review-rules', { ...REVIEW_RULE_FILES, ...MAP_UPDATE_FILES });
+    commitBranch(project, 'review-rules', { ...REVIEW_RULE_FILES, ...mapUpdateFiles() });
   });
   afterAll(() => {
     removeProject(project);

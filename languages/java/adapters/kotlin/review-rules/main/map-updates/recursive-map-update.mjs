@@ -26,8 +26,9 @@ const VIEW_WRITES = new Set([
   'clear',
   'minusAssign',
 ]);
-const VIEW = /^(.+?)\s*\.\s*(?:keys|values|entries)$/u;
-const SELF = /^this(?:@[\p{L}_][\p{L}\p{N}_]*)?\s*\.\s*(.+)$/u;
+const VIEW = /^(.+)\.(?:keys|values|entries)$/u;
+const SELF = /^this(?:@[\p{L}_][\p{L}\p{N}_]*)?\.(.+)$/u;
+const SPACE = /\s+/gu;
 const IDENTIFIER = /^[\p{L}_][\p{L}\p{N}_]*$/u;
 const CONCURRENT = /^(?:java\.util\.concurrent\.)?Concurrent(?:Hash|SkipList)?Map\b/u;
 const BOUNDARIES = new Set(['fun', 'class', 'object']);
@@ -51,13 +52,14 @@ function mapRef(text) {
   if (text === undefined) {
     return undefined;
   }
-  const self = SELF.exec(text);
-  const name = self === null ? text : self[1];
+  const compact = text.replaceAll(SPACE, '');
+  const self = SELF.exec(compact);
+  const name = self === null ? compact : self[1];
   return IDENTIFIER.test(name) ? { name, member: self !== null } : undefined;
 }
 
 function written(invocation) {
-  const viewed = VIEW.exec(invocation.receiver ?? '');
+  const viewed = VIEW.exec((invocation.receiver ?? '').replaceAll(SPACE, ''));
   if (viewed !== null) {
     return VIEW_WRITES.has(invocation.name) ? mapRef(viewed[1]) : undefined;
   }
@@ -143,7 +145,7 @@ function referencedBy(view, invocation) {
       (call) =>
         call.scope === invocation.scope &&
         call.line === invocation.line &&
-        call.arguments.some(({ text }) => reference.test(text.replaceAll(/\s+/gu, ''))),
+        call.arguments.some(({ text }) => reference.test(text.replaceAll(SPACE, ''))),
     )
     .flatMap((call) => {
       const host = computeHost(view, call.scope, call);
