@@ -1,8 +1,10 @@
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import path from 'node:path';
 import * as prettier from 'prettier';
 import { describe, expect, it } from 'vitest';
 import { prettierExclusions } from '../../../core/fix/extensions.mjs';
+import { readLayout } from './head-policy.mjs';
 import {
   builtInExcludedGlobs,
   defaultResolvedLayout,
@@ -232,5 +234,21 @@ describe('layout.excludedGlobs', () => {
     expect(layout.isExcluded('src/vendor/a.ts')).toBe(true);
     expect(new RegExp(layout.excludePattern).test('src/hidden/big.ts')).toBe(true);
     expect(layout.isSourceFile('src/shown.ts')).toBe(true);
+  });
+});
+
+describe('the layout read from the head policy file', () => {
+  it('is resolved once per policy content and again when the file changes', () => {
+    const root = mkdtempSync(path.join(tmpdir(), 'nitpicker-layout-policy-'));
+    const environment = { NITPICKER_POLICY: path.join(root, 'policy.json') };
+    try {
+      writeFileSync(environment.NITPICKER_POLICY, '{"layout":{"entryPoints":["a.mjs"]}}');
+      const first = readLayout(environment);
+      expect(readLayout(environment)).toBe(first);
+      writeFileSync(environment.NITPICKER_POLICY, '{"layout":{"entryPoints":["b.mjs"]}}');
+      expect(readLayout(environment).entryPoints).toEqual(['b.mjs']);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
   });
 });

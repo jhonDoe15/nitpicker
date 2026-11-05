@@ -14,7 +14,19 @@ function insideRoot(projectRoot, name) {
 
 export function readProjectFile(projectRoot, name) {
   const full = insideRoot(projectRoot, name);
-  return full !== undefined && existsSync(full) ? readFileSync(full, 'utf8') : undefined;
+  if (full === undefined || !existsSync(full)) {
+    return undefined;
+  }
+  try {
+    return readFileSync(full, 'utf8');
+  } catch (error) {
+    throw new Error(
+      `${name} could not be read (${error.code ?? error.message}): fix or remove it`,
+      {
+        cause: error,
+      },
+    );
+  }
 }
 
 export function parseToml(text) {

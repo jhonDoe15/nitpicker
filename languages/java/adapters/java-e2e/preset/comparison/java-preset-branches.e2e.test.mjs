@@ -53,7 +53,7 @@ describe.skipIf(!enabled)('Java preset end to end', () => {
     expect(result.failed).toBe(true);
     expect(summarize(result.newEnforceable)).toEqual([
       'jacoco changed-branch-coverage Branchy.java',
-      ...repeated(4, 'pit mutant-nocoverage Branchy.java'),
+      ...repeated(6, 'pit mutant-nocoverage Branchy.java'),
     ]);
     expect([...new Set(summarize(result.unchangedFindings))].sort()).toEqual(BASELINED_FINDINGS);
   }, 180_000);

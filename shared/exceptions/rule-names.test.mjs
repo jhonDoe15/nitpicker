@@ -46,6 +46,7 @@ describe('toolPrefixError', () => {
     ['pmd/UnusedPrivateField', 'java', undefined],
     ['facts/doc-comment-content', 'java', undefined],
     ['facts/doc-comment-content', 'kotlin', undefined],
+    ['facts/doc-comment-content', 'python', undefined],
     [
       'facts/doc-comment-content',
       'typescript',

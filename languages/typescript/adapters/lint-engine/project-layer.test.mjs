@@ -34,9 +34,9 @@ function sorted(findings) {
   );
 }
 
-function lint(engine, precedence) {
+async function lint(engine, precedence) {
   return sorted(
-    lintLayered({
+    await lintLayered({
       projectRoot: root,
       policy: headPolicyFor({ engine, precedence, liveProjectRoot: root }),
     }),
@@ -48,8 +48,8 @@ afterAll(() => {
 });
 
 describe.each(['eslint', 'oxlint'])('the ESLint project config on %s', (engine) => {
-  it('is not read without the opt-in', () => {
-    expect(lint(engine, undefined)).toEqual(
+  it('is not read without the opt-in', async () => {
+    expect(await lint(engine, undefined)).toEqual(
       sorted([
         ...ALWAYS,
         ...NITPICKER_CONSOLE,
@@ -58,12 +58,14 @@ describe.each(['eslint', 'oxlint'])('the ESLint project config on %s', (engine) 
     );
   });
 
-  it('with the project first takes its options for nitpicker rules, adds its rules and ignores, and switches nothing off', () => {
-    expect(lint(engine, ['project', 'nitpicker'])).toEqual(sorted([...ALWAYS, ...PROJECT_RULES]));
+  it('with the project first takes its options for nitpicker rules, adds its rules and ignores, and switches nothing off', async () => {
+    expect(await lint(engine, ['project', 'nitpicker'])).toEqual(
+      sorted([...ALWAYS, ...PROJECT_RULES]),
+    );
   });
 
-  it('with nitpicker first keeps nitpicker settings and adds the project rules and ignores', () => {
-    expect(lint(engine, ['nitpicker', 'project'])).toEqual(
+  it('with nitpicker first keeps nitpicker settings and adds the project rules and ignores', async () => {
+    expect(await lint(engine, ['nitpicker', 'project'])).toEqual(
       sorted([...ALWAYS, ...NITPICKER_CONSOLE, ...PROJECT_RULES]),
     );
   });
