@@ -1,7 +1,9 @@
 package nitpicker.kotlinpsi.bodies;
 
+import java.util.ArrayList;
 import java.util.List;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
+import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.lexer.KtTokens;
 import org.jetbrains.kotlin.psi.*;
 
@@ -22,6 +24,45 @@ final class Positions {
         return current;
       }
     }
+  }
+
+  static List<Object> arms(PsiElement start) {
+    List<Object> arms = new ArrayList<>();
+    PsiElement child = start;
+    for (PsiElement up = start.getParent(); up != null && !bodyOwner(up); up = up.getParent()) {
+      int arm = armOf(up, child, start);
+      if (arm >= 0) {
+        arms.add(up.getTextOffset() + ":" + arm);
+      }
+      child = up;
+    }
+    return arms.isEmpty() ? null : arms;
+  }
+
+  private static boolean bodyOwner(PsiElement element) {
+    return element instanceof KtDeclarationWithBody && !(element instanceof KtFunctionLiteral)
+        || element instanceof KtClassOrObject || element instanceof KtFile;
+  }
+
+  private static int armOf(PsiElement up, PsiElement child, PsiElement start) {
+    if (up instanceof KtIfExpression) {
+      KtIfExpression branching = (KtIfExpression) up;
+      return inside(branching.getThen(), start) ? 0 : inside(branching.getElse(), start) ? 1 : -1;
+    }
+    if (up instanceof KtWhenExpression && child instanceof KtWhenEntry) {
+      KtWhenEntry entry = (KtWhenEntry) child;
+      return inside(entry.getExpression(), start) ? ((KtWhenExpression) up).getEntries().indexOf(entry) : -1;
+    }
+    if (up instanceof KtTryExpression) {
+      KtTryExpression attempt = (KtTryExpression) up;
+      return child == attempt.getTryBlock() ? 0 : child instanceof KtCatchClause
+          ? attempt.getCatchClauses().indexOf(child) + 1 : -1;
+    }
+    return -1;
+  }
+
+  private static boolean inside(PsiElement container, PsiElement start) {
+    return container != null && PsiTreeUtil.isAncestor(container, start, false);
   }
 
   static boolean statementPosition(KtExpression expression) {
