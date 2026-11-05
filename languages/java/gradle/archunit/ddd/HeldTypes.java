@@ -51,7 +51,7 @@ final class HeldTypes {
         && !field.isMetaAnnotatedWith(ASSOCIATION_ANNOTATION);
   }
 
-  private static Map<String, JavaType> bindingsOf(JavaType supertype, Map<String, JavaType> outer) {
+  static Map<String, JavaType> bindingsOf(JavaType supertype, Map<String, JavaType> outer) {
     Map<String, JavaType> next = new HashMap<>();
     if (!(supertype instanceof JavaParameterizedType)) {
       return next;
