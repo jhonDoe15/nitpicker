@@ -7,6 +7,10 @@ const ALLOWED = {
     'Inject the bean you need through the constructor instead of looking it up in the ApplicationContext or BeanFactory. Use ObjectProvider for optional or prototype beans.',
   SpringNoLazyInjection:
     'Remove @Lazy from this injection point. It hides a dependency cycle; break the cycle with a new component or an event instead.',
+  SpringStaticPostProcessorBean:
+    'Move this @Bean function into a companion object, mark it @JvmStatic and give it only Environment or ObjectProvider parameters. A post-processor or @ConfigurationPropertiesBinding bean is created before post-processing is ready, so an instance function creates its configuration class, and each parameter its bean, too early; those beans then miss proxies such as @Transactional and @Async.',
+  SpringOrderedProvider:
+    'Use orderedStream() on the ObjectProvider, so the beans come in @Order and Ordered order. Iterating the provider itself (a for loop, forEach, map, toList, stream() or iterator()) gives them in registration order.',
   SpringLiteConfiguration:
     'Write @Configuration(proxyBeanMethods = false) and take dependencies as @Bean function parameters instead of calling other @Bean functions.',
   SpringNoComponentScan:

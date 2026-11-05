@@ -25,6 +25,10 @@ Beans and configuration:
   with a new component or an event.
 - `@Configuration(proxyBeanMethods = false)`; `@Bean` methods take their dependencies as
   parameters. No `@ComponentScan` or `scanBasePackages`.
+- A `@Bean` method that returns a `BeanPostProcessor` or `BeanFactoryPostProcessor`, or carries
+  `@ConfigurationPropertiesBinding`, is `static` and takes only `Environment` or `ObjectProvider<T>`.
+- Customizers and other beans taken from an `ObjectProvider` go through `orderedStream()`, never
+  `stream()`, `forEach`, `iterator()` or a for-each loop, which ignore `@Order`.
 - Configuration comes in through a `@ConfigurationProperties` record. No `@Value` outside
   configuration classes, no `System.getenv`, `System.getProperty` or `Environment.getProperty` in
   beans or helper classes (JVM properties such as `java.*` are fine). `@Profile` only on
@@ -91,7 +95,9 @@ JPA and Spring Data:
   for large inputs), also through a helper, `saveAll(List.of(x))` or a `@Modifying` update per row.
   The one loop allowed is the JPA batch loop that calls `persist`, then `flush` and `clear` on the
   `EntityManager`. No other `flush` or `saveAndFlush`.
-- Filter in the query, not with `findAll().stream()`. Query text is constant (a text block) and
+- Filter and count in the query, not after `findAll()`: not with `stream()`, `size()`, a local
+  that holds the list, or a reactive `filter`, `count`, `any`, `hasElements`, `take` or
+  `collectList()`. Query text is constant (a text block) and
   values are bind parameters, in JPQL and JDBC alike.
 - Native SQL only when JPQL can't express it, marked on that one method with
   `@SuppressWarnings("PMD.SpringDataNativeQuery")`, `EntityManager.createNativeQuery` too.
