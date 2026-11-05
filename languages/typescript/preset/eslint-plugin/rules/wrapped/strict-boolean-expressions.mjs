@@ -5,20 +5,9 @@ import { withReportFilter } from './report-filter.mjs';
 
 const baseRule = tseslint.plugin.rules['strict-boolean-expressions'];
 
-const COMPUTED_OPERATORS = new Set([
-  '-',
-  '+',
-  '*',
-  '/',
-  '%',
-  '**',
-  '&',
-  '|',
-  '^',
-  '<<',
-  '>>',
-  '>>>',
-]);
+const BIT_OPERATORS = new Set(['&', '|', '^', '<<', '>>', '>>>']);
+const ARITHMETIC_OPERATORS = new Set(['-', '+', '*', '/', '%', '**']);
+const ALWAYS_SETTLED = new Set(['conditionErrorObject', 'conditionErrorNullish']);
 const COMPARATOR_NAME = /^(?:compare|localeCompare$)/u;
 
 const NUMBER_FORMS =
@@ -48,12 +37,37 @@ function returnedValue(node) {
     : value;
 }
 
-function isComputedNumber(node) {
+function isBitTest(node) {
   const value = returnedValue(node);
+  return value.type === 'BinaryExpression' && BIT_OPERATORS.has(value.operator);
+}
+
+function isComparison(node) {
+  const value = unwrapped(node);
   if (value.type === 'BinaryExpression') {
-    return COMPUTED_OPERATORS.has(value.operator);
+    return ARITHMETIC_OPERATORS.has(value.operator);
   }
   return value.type === 'CallExpression' && COMPARATOR_NAME.test(calleeName(value.callee));
+}
+
+function isLogical(node, operators) {
+  return node?.type === 'LogicalExpression' && operators.includes(node.operator);
+}
+
+function orChainTop(node) {
+  let top;
+  for (const parent of ancestorsOf(node)) {
+    if (!isLogical(parent, ['||'])) {
+      return top;
+    }
+    top = parent;
+  }
+  return top;
+}
+
+function isComparatorChainLink(node) {
+  const top = orChainTop(node);
+  return top !== undefined && isComparison(node) && unwrapped(top.right).type !== 'Literal';
 }
 
 function isZero(node) {
@@ -63,10 +77,10 @@ function isZero(node) {
 function fallsBackToZero(node) {
   let child = node;
   for (const parent of ancestorsOf(node)) {
-    if (parent.type !== 'LogicalExpression' || parent.operator !== '||') {
+    if (!isLogical(parent, ['||', '&&'])) {
       return false;
     }
-    if (parent.left === child && isZero(parent.right)) {
+    if (parent.operator === '||' && parent.left === child && isZero(parent.right)) {
       return true;
     }
     child = parent;
@@ -80,8 +94,14 @@ function isUntyped(node, context) {
   return (context.sourceCode.parserServices.getTypeAtLocation(node).flags & UNTYPED) !== 0;
 }
 
-function keepsReport({ node }, context) {
-  return !(isComputedNumber(node) || fallsBackToZero(node) || isUntyped(node, context));
+function keepsReport({ node, messageId }, context) {
+  return !(
+    ALWAYS_SETTLED.has(messageId) ||
+    isBitTest(node) ||
+    isComparatorChainLink(node) ||
+    fallsBackToZero(node) ||
+    isUntyped(node, context)
+  );
 }
 
 const { messages } = baseRule.meta;
