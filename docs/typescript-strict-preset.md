@@ -403,6 +403,40 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   do not count. `await Promise.allSettled(...)` with its result dropped hides every rejection, and
   `new Promise((resolve) => resolve(value))` wraps a value that `Promise.resolve(value)` or an
   async function returns directly.
+- An `'error'` listener on every socket, file stream, child process and client the code creates
+  (`nitpicker/require-error-listener`, production code). Node.js throws an `'error'` event that
+  has no listener, so a dropped connection, a missing file or a failed spawn stops the whole
+  process. The rule reports a value kept in a variable or an instance field (`this.client = ...`,
+  `this.client ??= ...`, `#client`, `client = new ImapFlow(...)`) when it comes from
+  `fs.createReadStream`/`createWriteStream`, `net`/`tls` `connect`, `createConnection` and
+  `new Socket()`, `dgram.createSocket`, `http(s).request`/`get`, `http2.connect`,
+  `child_process.spawn`/`fork`, the `zlib` stream factories, `worker_threads` `Worker`, node-redis
+  `createClient`/`createCluster`, `pg` `Client`/`Pool`, `ws` `WebSocket` and `ImapFlow` (also
+  behind a ternary, `??` or chained setters such as `.setTimeout(...)`), and the socket handed to a
+  `net` or `tls` `createServer` callback or `'connection'` listener (an inline function or one
+  declared in the file). In TypeScript files the type checker also catches `new` of a project class
+  that extends one of those (`class Mailer extends ImapFlow`, `class Link extends net.Socket`);
+  JavaScript files use the import table only. Allowed: `.on`/`.once`/`addListener`/
+  `prependListener('error', ...)` on the variable anywhere in its scope, or on the field anywhere in
+  the class (also after chained calls such as `.setTimeout(...)` or `.on('data', ...)`); passing it
+  to `pipeline` or `finished` (`node:stream`, `node:stream/promises`), as the first argument of
+  `events.once`/`events.on`, a `node:stream/consumers` reader, `Readable.from`/`Readable.toWeb` or
+  NestJS `StreamableFile`; `readline.createInterface({ input })`; `for await` over it or
+  `toArray()`/`forEach()`; a project function or constructor whose parameter gets an `'error'`
+  listener, a `for await` or a `pipeline`/`finished`/`once` call, also through a parameter property
+  (`constructor(private socket: Socket)`) or up to three helpers deep (read through the type
+  checker, so imported helpers count; without type information any call to a function of the file,
+  a relative import or a `this` method hands the value over); a Fastify `reply.send(stream)`; and a
+  value that is returned, yielded, exported, assigned to another name or field, or destructured from
+  `this`, which leaves the listener to its new owner. In-memory streams (`new PassThrough()`,
+  `new Readable(...)`) and plain `EventEmitter`s emit `'error'` only when the code itself does, so
+  they are not reported; neither are `ioredis` (it logs instead of throwing), `exec`/`execFile`
+  (they attach their own listener) or servers (`http.createServer`, `net.createServer`,
+  `WebSocketServer`), which fail at startup. `stream.pipe(dest)` does not count, since `pipe`
+  forwards no errors, and neither does an object holding the value passed to a library
+  (`new RedisStore({ client })`). Known limits: a static field, a parameter default and a
+  constructor function outside a `class` are not read, and a variable assigned twice counts a
+  listener on either value for both.
 - Bounded fan-out (`nitpicker/unbounded-fan-out`): `Promise.all`, `allSettled`, `any` and `race`
   (also through a `const P = Promise` alias) over `xs.map(...)`, `xs.flatMap(...)`,
   `Array.from(xs, ...)`, `Array.from({ length: xs.length }, ...)`, a `const` holding one of those,
