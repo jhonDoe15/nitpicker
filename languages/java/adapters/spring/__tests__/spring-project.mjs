@@ -75,6 +75,7 @@ const REVIEW_RULES = new Set([
   'TestClassWithoutTestCases',
   'test-only-export',
   'UnboundedFanOut',
+  'UnboundedReactiveFanOut',
 ]);
 const roots = [];
 const RECEIPT_TEST_FILE = 'src/test/java/shop/ReceiptTest.java';

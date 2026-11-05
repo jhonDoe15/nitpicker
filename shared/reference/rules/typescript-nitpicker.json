@@ -1015,7 +1015,18 @@
         "message": "{{combinator}} starts {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Run each call through a limiter created once outside the loop (`const limit = pLimit(8)`, then `limit(() => send(item))`), await fixed-size chunks, or make one batch call when the API has one. An exception fits only when the collection is always small."
       }
     ],
-    { "key": "exceptions", "rule": "nitpicker/unbounded-fan-out" }
+    { "key": "exceptions", "rule": "nitpicker/unbounded-fan-out" },
+    "nitpicker/unbounded-reactive-fan-out",
+    "Bound the concurrency of remote calls that RxJS subscribes per element",
+    [
+      {
+        "message": "`{{operator}}` without a concurrency argument subscribes to {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Pass a concurrency limit (`mergeMap((item) => load(item), 8)`), use `concatMap` for one call at a time, or `bufferCount(20)` and make one batch call per chunk. An exception fits only when the collection is always small."
+      },
+      {
+        "message": "`{{operator}}` subscribes to {{operation}}{{via}} for every element of `{{collection}}` at once, so a large collection exhausts the {{target}}'s connections or rate limit. Build the result with `from(items).pipe(mergeMap((item) => load(item), 8), toArray())`, or make one batch call when the API has one. An exception fits only when the collection is always small."
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/unbounded-reactive-fan-out" }
   ],
   "entries": [
     [0, 1, 2, 3, 4, 5, 6, 7, 8, -1, -1],
@@ -1105,6 +1116,7 @@
     [0, 356, 357, 358, 359, 5, 360, 7, 361, -1, -1],
     [0, 362, 2, 3, 363, 5, 364, 7, 365, -1, -1],
     [0, 366, 2, 3, 367, 5, 368, 7, 369, -1, -1],
-    [0, 370, 2, 3, 371, 5, 372, 7, 373, -1, -1]
+    [0, 370, 2, 3, 371, 5, 372, 7, 373, -1, -1],
+    [0, 374, 2, 3, 375, 5, 376, 7, 377, -1, -1]
   ]
 }

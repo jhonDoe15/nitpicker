@@ -1,5 +1,9 @@
 import { hash, nextOccurrence } from '../../../../../../../shared/rules/finding-helpers.mjs';
 import { springViews } from '../../spring/view/spring-view.mjs';
+import {
+  REACTIVE_FAN_OUT_MESSAGES,
+  reactiveFindingsOf,
+} from '../reactive-fan-out/reactive-fan-out.mjs';
 import { MESSAGE_KIND } from './clients.mjs';
 import { projectIndex, remoteWork } from './reach.mjs';
 import { collectionLabel, isFixed, siteOf, starterOf, waitsInside } from './sites.mjs';
@@ -18,6 +22,7 @@ export const FAN_OUT_MESSAGES = {
     'A task started for every element of a collection makes a remote or message call,',
     `${CONSEQUENCE} connections or rate limit of the remote service. ${ALLOWED}`,
   ].join(' '),
+  ...REACTIVE_FAN_OUT_MESSAGES,
 };
 
 function target(kind) {
@@ -85,7 +90,7 @@ export function fanOutFindings({ own, projectFiles, projectRoot, javaRoots }) {
     springViews({ files: projectFiles, projectFiles, projectRoot, javaRoots }),
   );
   const reported = springViews({ files: own, projectFiles, projectRoot, javaRoots }).flatMap(
-    (view) => findingsOf(project, view),
+    (view) => [...findingsOf(project, view), ...reactiveFindingsOf(project, view)],
   );
   return {
     findings: reported.map(({ finding }) => finding),
