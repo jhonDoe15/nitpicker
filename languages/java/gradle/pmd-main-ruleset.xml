@@ -653,7 +653,8 @@ let $computes := ('computeIfAbsent', 'compute', 'computeIfPresent', 'merge'),
     $views := ('keySet', 'values', 'entrySet'),
     $viewWrites := ('remove', 'removeIf', 'removeAll', 'retainAll', 'clear'),
     $mapRef := function($ref) {
-      $ref[self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression]]][pmd-java:typeIs('java.util.Map')]
+      $ref[self::VariableAccess or self::FieldAccess[*[1][self::ThisExpression[not(*)]]]]
+        [pmd-java:typeIs('java.util.Map')]
     },
     $written := function($call) {
       if ($call/@MethodName = $viewWrites
@@ -675,11 +676,17 @@ return (
                 and exists($mapRef($map))
                 and (local-name($map) = local-name($ref) or empty($method//VariableId[@Name = $ref/@Name]))
                 and ($ref[self::FieldAccess] or empty($callback//VariableId[@Name = $ref/@Name])))]
-  | //*[self::MethodReference[*[1][self::ThisExpression or self::TypeExpression]][parent::ArgumentList]
-        | self::MethodCall[*[1][self::ArgumentList or self::ThisExpression]][ancestor::LambdaExpression]]
+  | //*[self::MethodReference[parent::ArgumentList]
+          [*[1][self::ThisExpression[not(*)]
+                or self::TypeExpression[ClassType/@SimpleName = ancestor::*[self::ClassDeclaration
+                     or self::EnumDeclaration or self::RecordDeclaration][1]/@SimpleName]]]
+        | self::MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]][ancestor::LambdaExpression]]
     [let $site := .,
          $body := ancestor::*[self::ClassBody or self::EnumBody or self::RecordBody][1],
-         $helpers := $body/MethodDeclaration[@Name = $site/@MethodName][Block],
+         $arity := if (self::MethodReference)
+                   then (if (parent::ArgumentList/parent::MethodCall/@MethodName = 'computeIfAbsent') then 1 else 2)
+                   else ArgumentList/@Size,
+         $helpers := $body/MethodDeclaration[@Name = $site/@MethodName][FormalParameters/@Size = $arity][Block],
          $callbacks := if (self::MethodReference) then . else ancestor::LambdaExpression
      return some $callback in $callbacks satisfies
        let $map := $compute($callback),

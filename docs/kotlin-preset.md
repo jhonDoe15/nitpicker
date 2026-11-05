@@ -661,11 +661,14 @@ Limits, all chosen to flag less rather than guess:
   `putIfAbsent`, `remove`, `clear`, `compute*`, `merge`, `replace`, `replaceAll`, `getOrPut`,
   `map[key] = value`, `+=` and `-=` on the map, or `remove`, `removeIf`, `removeAll`, `retainAll`,
   `clear` and `-=` on its `keys`, `values` or `entries`. The map is the same local or parameter, or
-  the same property read bare or through `this.`; a lambda parameter or local of the same name keeps
-  a call off. `getOrPut` counts only on a receiver typed `ConcurrentHashMap`, `ConcurrentMap` or
+  the same property read bare, through `this.` or through `this@Outer.`, resolved to the nearest
+  enclosing class that declares it, so an inner class's `counts` is not the outer `counts`; a lambda
+  parameter or local of the same name keeps a call off. A bare name inside a `with`, `apply` or `run`
+  lambda on another receiver may be that receiver's property, so it is not followed past that lambda
+  (`this@Outer.map` is). `getOrPut` counts only on a receiver typed `ConcurrentHashMap`, `ConcurrentMap` or
   `ConcurrentSkipListMap` (declared or from its initializer): there the value is stored only after the
   function returns, so a cleanup that runs inside it is undone. Same-class helpers, called from the
-  lambda or passed as `::helper`, are followed one level and only for a property map. A lambda inside
+  lambda or passed as `::helper`, are followed one level, by name, and only for a property map. A lambda inside
   a local function or an `object` expression is not followed.
 - Fan-out: `UnboundedFanOut` is the rule the TypeScript and Python presets call `unbounded-fan-out`,
   printed as `kotlin-source/UnboundedFanOut` (the id an `exceptions` entry names). A task is an

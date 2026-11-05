@@ -94,6 +94,18 @@ public class InFlight {
     return counts.computeIfAbsent(String.valueOf(counts.remove(key)), k -> 1);
   }
 
+  public CompletableFuture<String> overloadedHelper(String key) {
+    return inProgress.computeIfAbsent(key, k -> startAndForget(k, 1));
+  }
+
+  public class Batch {
+    private final Map<String, Integer> counts = new HashMap<>();
+
+    public int outerMap(String key) {
+      return InFlight.this.counts.computeIfAbsent(key, k -> counts.remove(k));
+    }
+  }
+
   private int bump(String k) {
     return counts.put(k, 1);
   }
@@ -104,6 +116,10 @@ public class InFlight {
 
   private CompletableFuture<String> startAndForget(String key) {
     return CompletableFuture.supplyAsync(() -> load(key)).whenComplete((r, e) -> inProgress.remove(key));
+  }
+
+  private CompletableFuture<String> startAndForget(String key, int attempts) {
+    return CompletableFuture.supplyAsync(() -> load(key + attempts));
   }
 
   private String load(String key) {

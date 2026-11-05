@@ -2698,8 +2698,10 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   at once removes the entry while the map is still computing it. The allowed form attaches the
   cleanup to the value `computeIfAbsent` returns
   (`map.computeIfAbsent(key, k -> start(k)).whenComplete((r, e) -> map.remove(key, r))`). Helpers are
-  followed one level, in the same class, and only for a field map; a local or parameter of the same
-  name that shadows the field keeps a call off. A key expression (`map.computeIfAbsent(map.remove(k), ...)`)
+  followed one level and only for a field map: a method of the same class with that name and as many
+  parameters as the call passes (or as the function takes, for a `this::helper` or
+  `EnclosingClass::helper` reference). A local or parameter of the same name that shadows the field
+  keeps a call off, and `Outer.this.map` is never taken for the inner class's `map`. A key expression (`map.computeIfAbsent(map.remove(k), ...)`)
   runs before the function and is not reported. Error Prone and SpotBugs, as enabled, check only
   check-then-act sequences and `ComputeIfAbsentAmbiguousReference`.
 - `test-only-export` (`adapters/review-rules/test-only-classes.mjs`, run project-wide) reads
