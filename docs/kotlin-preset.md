@@ -743,7 +743,8 @@ guessed at.
   source text of files that import `io.mockk` or `org.mockito`. The class under test is the type of an
   `@InjectMockKs` or `@InjectMocks` property, or else the test class name without `Test`, `Tests`, `IT` or
   `Spec`; it must be declared in the project's main sources. A spy is reported only when the test stubs one of
-  its methods; a spy that is only verified is fine. `mockkStatic("java.time.LocalDate")`, `mockkObject` of a
+  its methods (a local spy, in the block that declares it); a spy that is only verified and a
+  `CALLS_REAL_METHODS` mock, the way to test an abstract class, are fine. `mockkStatic("java.time.LocalDate")`, `mockkObject` of a
   library object and other library code are not reported. Allowed: pass the collaborators in through the
   constructor and give the test fakes of them, test a helper through the public function that calls it, and
   pass a function, an interface or a `Clock` instead of mocking an `object` or a top-level function.

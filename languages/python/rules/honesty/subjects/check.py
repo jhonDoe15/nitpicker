@@ -4,11 +4,12 @@ from checks.common import call_name, dotted_name, finding, string_value
 from honesty.subjects.targets import (
     defined_names,
     instance_names,
-    is_subject_class,
     is_subject_target,
+    subject_class,
     subject_path,
     subject_stem,
     target_text,
+    visible_instances,
 )
 
 RULE = "mocked-subject-in-test"
@@ -49,12 +50,21 @@ def argument(node, position, keyword):
     return node.args[position] if len(node.args) > position else None
 
 
+def instance_method(owner, attribute, context, state):
+    instances = visible_instances(context, state.node, state.instances)
+    built = instances.get(target_text(owner))
+    if built is None or attribute not in state.subject.classes[built]:
+        return None
+    return f"{target_text(owner)}.{attribute}"
+
+
 def object_target(owner, attribute, context, state):
     attribute = string_value(attribute) if attribute is not None else None
     if owner is None or attribute is None:
         return None
-    if target_text(owner) in state.instances:
-        return f"{target_text(owner)}.{attribute}"
+    method = instance_method(owner, attribute, context, state)
+    if method is not None:
+        return method
     dotted = dotted_name(owner, context.aliases)
     target = f"{dotted}.{attribute}" if dotted else None
     return target if is_subject_target(target, state.subject) else None
@@ -78,7 +88,8 @@ def patched_targets(node, name, context, state):
             )
         ]
     if name == PATCH_MULTIPLE:
-        module = string_value(argument(node, 0, "target")) or ""
+        first = argument(node, 0, "target")
+        module = string_value(first) or dotted_name(first, context.aliases) or ""
         return [
             string_target(ast.Constant(f"{module}.{item.arg}"), state)
             for item in node.keywords
@@ -95,12 +106,12 @@ def patched_targets(node, name, context, state):
 def mocked_class(node, name, context, state):
     if name not in MOCK_FACTORIES and name != AUTOSPEC:
         return None
-    spec = node.args[0] if name == AUTOSPEC and node.args else None
+    spec = node.args[0] if node.args else None
     spec = spec or next(
         (item.value for item in node.keywords if item.arg in SPEC_KEYWORDS), None
     )
     dotted = dotted_name(spec, context.aliases) if spec is not None else None
-    return dotted if is_subject_class(dotted, state.subject) else None
+    return dotted if subject_class(dotted, state.subject) else None
 
 
 def assigned_mocks(context, state):
@@ -111,16 +122,20 @@ def assigned_mocks(context, state):
             call_name(node.value, context.aliases) or ""
         ) not in MOCK_FACTORIES | {AUTOSPEC}:
             continue
+        state.node = node
         for target in node.targets:
-            owner = target.value if isinstance(target, ast.Attribute) else None
-            if owner is not None and target_text(owner) in state.instances:
-                yield finding(context.path, RULE, target_text(target), node)
+            if not isinstance(target, ast.Attribute):
+                continue
+            method = instance_method(target.value, target.attr, context, state)
+            if method is not None:
+                yield finding(context.path, RULE, method, node)
 
 
 class State:
     def __init__(self, subject, instances):
         self.subject = subject
         self.instances = instances
+        self.node = None
 
 
 def check(context):
@@ -135,6 +150,7 @@ def check(context):
         name = mock_name(call_name(node, context.aliases) or "")
         if not name:
             continue
+        state.node = node
         targets = patched_targets(node, name, context, state)
         targets.append(mocked_class(node, name, context, state))
         found.extend(

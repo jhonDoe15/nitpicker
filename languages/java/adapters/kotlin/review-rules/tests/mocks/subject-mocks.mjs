@@ -6,11 +6,23 @@ import {
   MOCKED_SUBJECT_RULE,
   STATIC_MOCK_RULE,
 } from '../../../../../messages/mocks/project-mocks.mjs';
-import { isStubbed, mockSites, subjectsOf } from './mock-sites.mjs';
+import { isStubbed, mockSites, scopeOf, subjectsOf } from './mock-sites.mjs';
 
-const MOCKING_IMPORT = /^[ \t]*import\s+(?:io\.mockk|org\.mockito)\./mu;
-const STATIC_CALL =
-  /(?<![\w.]|\bfun\s+)(?:Mockito\s*\.\s*)?(mockkObject|mockkStatic|mockkConstructor|mockStatic|mockConstruction)\s*\(/gu;
+const MOCKING_IMPORT = new RegExp(
+  String.raw`^[ \t]*import\s+(?:io\.mockk|org\.mockito|com\.ninjasquad\.springmockk|org\.springframework\.(?:boot\.test\.mock|test\.context\.bean\.override))\.`,
+  'mu',
+);
+const STATIC_CALLS = [
+  'mockkObject',
+  'mockkStatic',
+  'mockkConstructor',
+  'mockStatic',
+  'mockConstruction',
+].join('|');
+const STATIC_CALL = new RegExp(
+  String.raw`(?<![\w.]|\bfun\s+)(?:(?:Mockito|io\.mockk)\s*\.\s*)?(${STATIC_CALLS})\s*\(`,
+  'gu',
+);
 const FIRST_ARGUMENT_ONLY = new Set(['mockStatic', 'mockConstruction']);
 const CLASS_LITERAL = /^([\w.]+)::class(?:\.java)?$/u;
 const FUNCTION_REFERENCE = /^([\w.]*)::(\w+)$/u;
@@ -18,11 +30,11 @@ const OBJECT_NAME = /^[A-Z][\w]*(?:\.[A-Za-z]\w*)*$/u;
 const STRING_LITERAL = /^"[^"]*"$/u;
 const COMPANION = /\.Companion$/u;
 
-function subjectMessage(type) {
+export function subjectMessage(type) {
   return `This test mocks ${type}, the class it tests, so it checks the mock instead of the code: a mock of it, or a spy whose own methods are stubbed (every, whenever, doReturn). Test the real object: pass fakes or mocks of its collaborators in through the constructor, and test a helper through the public method that calls it.`;
 }
 
-function staticMessage(call, target) {
+export function staticMessage(call, target) {
   return `${call} replaces ${target}, code of this project, for the whole test, so the test runs a fake of the project's own code and depends on how that code is called. Pass the dependency in instead: an instance, a function or a Clock the test can replace. Keep mockkStatic, mockkObject and mockStatic for library code that cannot be passed in.`;
 }
 
@@ -75,11 +87,17 @@ function staticSites(scanned, file, checks) {
     const open = match.index + match[0].length - 1;
     const { parts } = splitArguments(code, open);
     const used = FIRST_ARGUMENT_ONLY.has(match[1]) ? parts.slice(0, 1) : parts;
+    const seen = new Set();
     return used.flatMap((part) => {
       const target = staticTarget(code.slice(part.start, part.end), scanned, part);
-      if (target === undefined || !checks[target.kind](target.name, file)) {
+      if (
+        target === undefined ||
+        seen.has(target.name) ||
+        !checks[target.kind](target.name, file)
+      ) {
         return [];
       }
+      seen.add(target.name);
       const name = target.name.split('.').at(-1);
       return [
         {
@@ -101,7 +119,9 @@ function subjectSites(scanned, file, checks) {
     const reported =
       subjects.has(site.type) &&
       checks.type(site.type, file) &&
-      (!site.spy || (site.name !== undefined && isStubbed(code, site.name)));
+      (!site.spy ||
+        (site.name !== undefined &&
+          isStubbed(site.local ? scopeOf(code, site.offset) : code, site.name)));
     const key = site.name ?? `@${String(site.offset)}`;
     if (!reported || seen.has(key)) {
       return [];

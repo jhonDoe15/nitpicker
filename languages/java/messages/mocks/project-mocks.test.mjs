@@ -55,7 +55,7 @@ const mockAt = (rule, line, text) => ({
   tool: 'pmd',
   rule,
   path: TEST_FILE,
-  identity: `${String(line)}`,
+  identity: String(line),
   location: { line, column: columnOf(line, text) },
   message:
     rule === MOCKED_SUBJECT_RULE
