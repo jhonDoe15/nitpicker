@@ -1933,10 +1933,10 @@
       "kotlin": "Write the query in JPQL; native SQL is not checked at startup. If this one needs SQL, mark this function with @Suppress(\"PMD.SpringDataNativeQuery\"), the only inline suppression nitpicker accepts."
     },
     "SpringDataNoFlush",
-    "Let the transaction write changes at commit and remove this flush; an early flush defeats JDBC batching and hides ordering bugs.",
+    "Let the transaction write changes at commit and remove this flush; in a batch loop, flush and then call entityManager.clear() every N entities. Any other early flush defeats JDBC batching and hides ordering bugs.",
     { "key": "exceptions", "rule": "pmd/SpringDataNoFlush" },
     {
-      "kotlin": "Let the transaction write changes at commit and remove this flush; an early flush defeats JDBC batching and hides ordering bugs."
+      "kotlin": "Let the transaction write changes at commit and remove this flush; in a batch loop, flush and then call entityManager.clear() every N entities. Any other early flush defeats JDBC batching and hides ordering bugs."
     },
     "SpringDataNoSaveInLoop",
     "Collect the entities and call saveAll or deleteAll once, instead of saving or deleting one entity per loop iteration.",
@@ -1948,7 +1948,7 @@
     "Write a multi-part query as one text block (\"\"\") instead of joining strings with +.",
     { "key": "exceptions", "rule": "pmd/SpringDataQueryTextBlock" },
     {
-      "kotlin": "Write a multi-part query as one raw string (\"\"\") instead of joining strings with +."
+      "kotlin": "Write a multi-part query as one raw string (\"\"\") instead of joining strings with +, plus() or string templates."
     },
     "SpringDataRowWriteInLoop",
     "Write one set-based @Query that takes the whole list, for example where id in :ids, and call it once after the loop instead of one repository update or delete per iteration.",
