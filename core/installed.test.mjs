@@ -89,7 +89,7 @@ suite('packed nitpicker in a separate consumer', () => {
   });
 
   describe.runIf(supportsRedirect())('a consumer on TypeScript 7', () => {
-    const typeScript7 = manifest.dependencies['typescript-native'].replace('npm:typescript@', '');
+    const typeScript7 = manifest.dependencies['@typescript/native'].replace('npm:typescript@', '');
     const jsApi = manifest.dependencies['typescript-js-api'].replace('npm:typescript@', '');
     const twiceSource = (expression) =>
       `export function twice(value: number): number {\n  return ${expression};\n}\n`;
