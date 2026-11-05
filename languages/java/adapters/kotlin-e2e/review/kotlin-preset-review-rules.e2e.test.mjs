@@ -107,13 +107,15 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     commitFromBranch(project, {
       name: 'published',
       from: 'review-rules',
-      files: publishedFiles(git(project, 'show', 'main:build.gradle.kts')),
+      files: publishedFiles(lookupBuild(git(project, 'show', 'main:build.gradle.kts'))),
     });
 
     const result = diffOf(project, 'published');
 
     expect(reviewFindings(result.newEnforceable)).toEqual(
-      EXPECTED_REVIEW_FINDINGS.filter((entry) => entry !== 'unused-option price.discount'),
+      [...EXPECTED_REVIEW_FINDINGS, ...EXPECTED_LOOKUP_FINDINGS]
+        .filter((entry) => entry !== 'unused-option price.discount')
+        .sort(),
     );
   });
 
@@ -121,11 +123,13 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     commitFromBranch(project, {
       name: 'integration-suite',
       from: 'review-rules',
-      files: integrationSuiteFiles(git(project, 'show', 'main:build.gradle.kts')),
+      files: integrationSuiteFiles(lookupBuild(git(project, 'show', 'main:build.gradle.kts'))),
     });
 
     const result = diffOf(project, 'integration-suite');
 
-    expect(reviewFindings(result.newFindings)).toEqual(EXPECTED_REVIEW_FINDINGS);
+    expect(reviewFindings(result.newFindings)).toEqual(
+      [...EXPECTED_REVIEW_FINDINGS, ...EXPECTED_LOOKUP_FINDINGS].sort(),
+    );
   });
 });
