@@ -64,6 +64,20 @@ gradle -I languages/java/gradle/nitpicker.init.gradle nitpickerJava   (per snaps
   (`ignoreFailures = true`) or retries in some other way. A test case that failed an attempt and
   passed a later one is listed as failing, as `failed, then passed on a rerun` with a hint to fix
   the flaky test. Maven is below.
+- **Spring AOT.** With the GraalVM native plugin, Spring Boot adds the `aot` and `aotTest` source
+  sets, whose sources `processAot` and `processTestAot` generate, and puts the `aotTest` output on
+  the `test` classpath, so `test` would run `processTestAot` (a Spring context start per test
+  context) and compile what it generates. Nitpicker skips both tasks (`onlyIf`), as it skips Spring
+  AOT processing on Maven (`-Dspring-boot.aot.skip=true`), so the tests run on the JVM as usual.
+  The processing still runs when the tests may run in AOT mode: on Gradle, when a `Test` task has
+  `-Dspring.aot.enabled=true` among its JVM arguments (from `systemProperty`, `jvmArgs` or an
+  argument provider) or in its environment, or when any build script, `gradle.properties` or
+  `spring.properties` of the build mentions `spring.aot.enabled` (a setting made in `doFirst` is
+  only visible that way); on Maven, when the effective `argLine` or system properties of Surefire
+  or Failsafe set it. A source set with at least one source directory under the build directory and
+  no existing one outside it is generated code (unless the build directory holds the project
+  itself): it is never a test source set unless a `Test` task runs its classes, so no tool
+  compiles, lints or counts it.
 - **Integration tests on Gradle.** As on Maven (Surefire and Failsafe in `verify`), a project's
   integration tests are run and counted, following what the project's own build runs: Nitpicker runs
   `test` and every `Test` task that `check` depends on. A test suite of the `jvm-test-suite` plugin
@@ -123,7 +137,10 @@ by field. Per snapshot:
    dependency plugin pinned), with `-Dmaven.test.failure.ignore=true`,
    `-Dsurefire.rerunFailingTestsCount=0` and `-Dfailsafe.rerunFailingTestsCount=0` (no reruns), and
    the project's own
-   Checkstyle, PMD, CPD, SpotBugs and Spotless checks skipped. `dependency:list` writes every
+   Checkstyle, PMD, CPD, SpotBugs and Spotless checks skipped, and Spring AOT processing too
+   (`-Dspring-boot.aot.skip=true`, unless the tests run in AOT mode, see Spring AOT above):
+   `process-test-aot` would copy generated classes into `target/test-classes` and `process-aot`
+   into `target/classes`. `dependency:list` writes every
    module's resolved classpath (reactor modules as their `target/classes`, or as their packaged jar
    in a `verify` build). Our coverage file (`target/nitpicker-jacoco.exec`) and every project
    `destFile` inside `target` are deleted before the build, so coverage never accumulates across
@@ -296,7 +313,8 @@ comma-separated>` changes that. Those classes are excluded from the regular `tes
   profile can produce enforceable findings.
 - **What runs.** `nitpickerPit` runs the pinned `pitest-command-line` (1.17.4) with the test
   plugins the project's framework needs (`pitest-junit5-plugin` 1.2.1, `pitest-testng-plugin`
-  1.0.0, both pinned, added on the conditions below), default mutators, XML output, two threads, to
+  1.0.0, both pinned, added on the conditions below), nitpicker's mutator list (see
+  [Mutators](mutation-testing.md#java-and-kotlin-mutators)), XML output, two threads, to
   `pit/mutations.xml` in the report directory. Tests are named class by class (`--targetTests`), and
   `--mutableCodePaths` limits mutation to the main classes. Every test task the build checks (`test`
   and each task `check` depends on) is a run of its own, `nitpickerPit<Task>`, with that task's test
@@ -341,7 +359,8 @@ a passing test suite ...`) instead of Gradle's own failure output. Projects with
   TestNG of its own: PIT refuses to run a TestNG project without it. Maven builds put the same
   plugins on PIT's classpath on the same conditions. See [Test frameworks](#test-frameworks).
 - **Equivalent mutants.** A survived mutant's message names the common equivalent cases (a
-  `compareTo` boundary, a discarded lambda return) and the way out: simplify the code, or add an
+  `compareTo` boundary, a discarded lambda return, a field set to the value it already has, a
+  redundant `trim()` or `sorted()`) and the way out: simplify the code, or add an
   exception for `pit/mutant-survived`.
 - **Ingester.** `languages/java/ingest/pit.mjs` (`ingestPit`). PIT statuses map to the names the
   Stryker-based area uses: `SURVIVED` and `NO_COVERAGE` give enforceable `mutant-survived` and
@@ -353,7 +372,10 @@ a passing test suite ...`) instead of Gradle's own failure output. Projects with
   package left out: the class is its simple name, `Lcom/shop/Order;` in the descriptor becomes
   `LOrder;` and `com/shop/Order::total` in the description becomes `Order::total` (the symbol
   likewise). The path already tells classes apart, and the gate maps a renamed path to its base
-  counterpart, so moving a class to another package keeps its legacy mutants matched. There is no
+  counterpart, so moving a class to another package keeps its legacy mutants matched. The numbers
+  javac gives synthetic names (`lambda$count$0`, the anonymous class `Order$1`) are dropped from the
+  class, the method and the description too, so adding a lambda or an anonymous class elsewhere in
+  the class, which renumbers the others, keeps their mutants matched. There is no
   line number: `n` is the mutant's position among those with the same key and status, ordered by
   line and then block index, so the numbering follows source order and not PIT's (multi-threaded)
   report order. Edits above a mutant keep it; a second identical mutation in the same method is a
@@ -361,6 +383,12 @@ a passing test suite ...`) instead of Gradle's own failure output. Projects with
   then shows as one resolved and one new; this mirrors the TypeScript area's occurrence counter.
   Unlike Stryker, PIT's report has no source text for the mutant, so the key cannot include a hash
   of the mutated expression.
+- **Timeouts.** A loop condition forced to `true` (`REMOVE_CONDITIONALS`) or a loop counter that no
+  longer moves (`REMOVE_INCREMENTS`) runs until PIT's timeout (4 s plus 1.25 times the normal test
+  time) or until the minion runs out of memory. Such mutants are descriptive `mutant-timeout` or
+  `mutant-runtimeerror` findings and never fail the gate, but loop-heavy code with slow tests makes
+  PIT take longer than the measurement in
+  [Mutators](mutation-testing.md#java-and-kotlin-mutators) suggests.
 - **Path.** The source file of the mutated class, found under the manifest's source roots from the
   class's package and PIT's `sourceFile`. Mutants of classes without a source file there
   (generated code) are skipped.
@@ -688,7 +716,18 @@ default, and their messages name it:
 | Checkstyle (`checkstyle`) | Checkstyle XML | `ingestCheckstyle` | enforceable (`error`, `warning`); descriptive (`info`) | Hash of check class (rule), path and message text; repeats of the same message in a file get `#2`, `#3` in order. No line number; the path is part of the hash, so a renamed file shows its findings as resolved plus new. |
 
 Messages that embed a measured value (for example "found 120" in a line-length violation) change
-identity when the value changes: editing such a line counts as a resolved plus a new finding.
+identity when the value changes: editing such a line counts as a resolved plus a new finding. A
+count rule is the exception: it carries a ratchet keyed by the message without its count, so a
+legacy finding whose count fell or stayed is held and one whose count grew fails with
+`Lines grew from 160 to 161. Put the new code in a new function.` before the tool's message. Of the
+shipped rules that covers Checkstyle `VariableDeclarationUsageDistance` and PMD
+`AvoidDuplicateLiterals`; it also covers the Checkstyle size, metrics and depth checks
+(`MethodLength`, `ParameterNumber`, `ExecutableStatementCount`, `CyclomaticComplexity`,
+`NPathComplexity`, `JavaNCSS`, `NestedIfDepth` and the rest), `ReturnCount`, `ThrowsCount` and
+`MultipleStringLiterals`, and PMD `CognitiveComplexity`, `CyclomaticComplexity`, `NPathComplexity`,
+`NcssCount` and `CouplingBetweenObjects`, when the project's own config adds them. Renaming a
+method keeps its count findings while its body is unchanged, and an overload added above an edited
+legacy method does not take its base.
 
 - **Wildcard imports follow the project.** Wildcard and explicit imports are both valid, so
   the `java.wildcardImports` convention (`explicit` or `wildcard`, default `explicit`) marks a file
@@ -1772,8 +1811,9 @@ palantir-java-format, or neither for `none`).
   (main classes), `jdeps-classes.txt` (the main classes, one binary name per line) and
   `jdeps-test.txt` (test classes), which only the [test-only class check](#review-rules) reads. A
   test source set is one a `Test` task runs or one whose name contains `test` (`integrationTest`,
-  `testFixtures`); the task compiles only those, so a `jmh` or `benchmark` source set is neither
-  compiled for it nor counted as a test. Maven runs the same single jdeps call over
+  `testFixtures`) and that is not generated (Spring Boot's `aotTest`, see Spring AOT); the task
+  compiles only those, so a `jmh` or `benchmark` source set is neither compiled for it nor counted
+  as a test. Maven runs the same single jdeps call over
   `target/classes` and `target/test-classes` (`builds/jdeps-reports.mjs`). Neither build holds
   the jdeps output in memory: Gradle splits it line by line as jdeps writes it, Maven writes it to
   a file in the report directory and splits that in 1 MB chunks, so a module of any size works.
@@ -1993,21 +2033,37 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   also covers `forEachRemaining(repository::save)` and a `Consumer` variable holding
   `repository::save` that a loop calls or a `forEach` receives. `SpringDataBatchOfOne` fires on
   `saveAll`/`deleteAll`/`deleteAllById` called in a loop with a one-element `List.of`, `Set.of`,
-  `Collections.singletonList` or `singleton`, inline or through a variable declared in the loop.
+  `Collections.singletonList` or `singleton`, inline or through a variable declared in the loop, also
+  through `stream()`, `filter`, `map`, `toList()`, `collect(...)` and the like or a cast
+  (`List.of(o).stream().filter(...).toList()`), or a fresh `new ArrayList<>()` (any empty `Collection`
+  constructor) given exactly one `add` of a single element in the loop body and no other change;
+  `List.of(array)` with one `Object[]` argument holds the array's elements and is not reported,
+  inline or in a variable.
   `SpringDataRowWriteInLoop` fires, in a loop, on any other repository call whose result is
-  discarded (a `@Modifying` update, a `deleteBy...`), on a call whose name starts with a write verb
+  discarded (a `@Modifying` update, a `deleteBy...`; also the body of an `ifPresent`,
+  `ifPresentOrElse` or `executeWithoutResult` lambda, while the value of a `map` lambda is kept), on a call whose name starts with a write verb
   (`update`, `delete`, `remove`, `mark`, `set`, `rename`, `insert`, `upsert`, `increment`,
   `decrement`, `reset`, `clear`, `purge`, `archive`, `touch`) even when its result is used
-  (`count += repository.markSold(id)`), on `Query.executeUpdate()` and on
-  `forEach(repository::method)`. It never fires on read names (`find`, `get`, `read`, `count`,
+  (`count += repository.markSold(id)`), on `Query.executeUpdate()` (not when the query binds an
+  `Iterable` with `setParameter` to the name of an `in :ids` or `= any(:ids)` clause and binds no loop
+  variable besides, which updates a chunk at once; the query may be held in a local and bound in
+  separate statements, its text may be a constant, and a one-element `List.of(id)` is not a chunk) and on
+  `forEach(repository::method)`. A method reference is reported even over chunks
+  (`chunks.forEach(repository::retireAll)`): PMD does not see the referenced method's parameters, so
+  write that loop as a lambda (`chunks.forEach(chunk -> repository.retireAll(chunk))`). It never fires on read names (`find`, `get`, `read`, `count`,
   `exists`, `query`, `stream`, `search`, `load`, `fetch`, `list`, `is`, `has`) or on a call that
-  receives a collection (a chunk of ids is already set-based); the `saveAll`/`deleteAll` family
+  receives a collection as its first argument, or one and no loop variable (a chunk of ids is already
+  set-based; `retain(id, kept)` still writes one row per `id`); the `saveAll`/`deleteAll` family
   and `flush` are left to the other rules. `SpringDataSaveInLoopHelper` follows one level: a loop
   (or a `forEach`, `map` or `peek` callback on a stream, `Iterable`, `Iterator` or `Map`) that calls
   `store(x)` or `this::store` of the same class, where `store` saves or deletes through a
-  repository or `EntityManager`. A per-row `try`/`catch` around the call still counts: per-row
+  repository or `EntityManager`; a call that passes an `Iterable` to an overload whose parameter is
+  one too is a batch and is skipped, while a parameter typed `Object`, `Serializable` or a type
+  parameter takes the element and the list alike and is followed. A per-row `try`/`catch` around the call still counts: per-row
   error handling is done with `saveAll` per batch and error handling per batch, or an exception
-  for the import. All of them skip a loop that also calls `EntityManager.clear()`.
+  for the import. All of them skip a loop, or a `forEach` lambda, that also calls
+  `EntityManager.clear()`. Whether `clear()` runs every so many items or on every item is not
+  checked.
 - `SpringDataFilterInQuery` fires on `repository.findAll()` without arguments followed by
   `.stream().filter/count/anyMatch/...`, `.size()` or `.isEmpty()`.
 - `SpringTransactionalCheckedRollback` reports the `throws` clause of a `@Transactional` method
@@ -2054,7 +2110,8 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   the value type of a map need `@Enumerated(EnumType.STRING)`, an enum map key
   `@MapKeyEnumerated(EnumType.STRING)`. It skips static and transient fields, `@Transient`, `@Convert` and Hibernate type
   annotations, entities that put `@Id` on a getter, and enums that an `@Converter(autoApply =
-true)` class in the same file converts. `JpaIdentityHashCode` reports the first read of a
+true)` class in the same file converts, directly or through a generic base class
+(`extends NameConverter<Shade>`). `JpaIdentityHashCode` reports the first read of a
   `@GeneratedValue` field (or its `getX()` getter) inside `hashCode`. Without a hand-written
   `hashCode`, Lombok counts too: `@Data` or `@Value` without `@EqualsAndHashCode`, and
   `@EqualsAndHashCode` over all fields (no arguments, or only `callSuper`), with `of` naming the
@@ -2099,15 +2156,20 @@ arguments or more), and skips a call from one `@Transactional`
 method to another with a plain `@Transactional` (same transaction) and matches a `this::name` reference by name. `SpringDataNoSaveInLoop` covers
 `for`, `while` and `do` loops and `forEach`, `map` and `peek` callbacks on a stream, an `Iterable`
 or a `Map`, lambdas and method references (`forEach(repository::save)`) alike; `Optional.map` and
-`ifPresent` run at most once and are not loops. It and `SpringDataNoFlush` skip a loop that also
-calls `EntityManager.clear()`, the JPA batch idiom.
+`ifPresent` run at most once and are not loops. It and `SpringDataNoFlush` skip a loop or an
+iterating lambda that also calls `EntityManager.clear()`, the JPA batch idiom; for
+`SpringDataNoFlush` that is the nearest loop or `forEach`, `map`, `peek` or `flatMap` lambda on a
+stream, `Iterable`, `Map` or `Iterator` around the `flush()` (an `Optional.map` lambda is not a loop).
 `SpringNoSwallowedTransactionException` reports catching `Exception`, `RuntimeException`,
 `Throwable`, `DataAccessException`, `TransactionException` or `PersistenceException`, not narrower
 exceptions such as `NumberFormatException`. `SpringQueryConcatenation` does not follow SQL that
 comes from a helper method, a parameter or a field. `SpringDataSaveInLoopHelper` follows one helper
 level (matched by name and argument count, varargs-aware), and `SpringNoPostConstructIo` follows private helpers two levels deep.
 `JpaEnumString` sees an `autoApply` converter only in the same file; an enum converted by a
-converter in another file needs an exception. `SpringPermitAllAnyRequest` does not resolve a
+converter in another file needs an exception. A converter that extends a base class of the same file
+converts the type argument the base passes on to `AttributeConverter` (`LabelConverter<K, E>` with
+`AttributeConverter<E, String>` converts the second argument; a non-generic base converts its own
+argument); a base in another file exempts every type argument of the subclass. `SpringPermitAllAnyRequest` does not resolve a
 pattern held in a variable (`var all = "/**"`) or an `access(...)` that allows everyone.
 `SpringCsrfDisabled` and `SpringPermitAllAnyRequest` match a chain by the name of its starting
 variable within one method. Layering, entities in controller signatures and test placement need a
