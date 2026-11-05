@@ -565,10 +565,14 @@ Limits, all chosen to flag less rather than guess:
 - Singular and plural: both members must have the same element type (the plural a list, set,
   collection or array of it). Inspected: the primary-constructor properties of a `data class`, the
   properties of a `@ConfigurationProperties` class, the public and internal primary-constructor
-  properties of any other class (not `private` or `protected` ones, and not JPA entities, embeddables
-  or mapped superclasses), and two parameters with default values of a public function or
-  constructor (not `override` or local ones). Required parameters
-  (`fun hasRole(role: String, roles: Set<String>)`) are not reported.
+  properties of any other class that declares no functions (not `private` or `protected` ones, and
+  not JPA entities, embeddables, mapped superclasses or Spring `@Component`, `@Service`,
+  `@Repository`, `@Controller`, `@RestController` or `@Configuration` classes), and two parameters
+  with default values of a public function or constructor (not `protected`, `override` or local
+  ones). A default is the Kotlin form of an optional input, so
+  required parameters (`fun hasRole(role: String, roles: Set<String>)`, a lookup) are not
+  reported. Two members whose meanings differ (`owner` beside `owners` for the co-owners) are the
+  case for an exception with a reason.
 - Spring context: any injected or mock bean, `MockMvc`, `WebTestClient`, `TestRestTemplate`,
   `CapturedOutput`, `ApplicationEvents`, `ApplicationContext` or a `webEnvironment` with a random or defined
   port counts as use.

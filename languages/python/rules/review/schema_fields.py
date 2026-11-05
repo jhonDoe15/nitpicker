@@ -8,6 +8,12 @@ QUALIFIED_RECORD_BASES = {"msgspec.Struct"}
 FIELDS_MODULE = "marshmallow.fields."
 LIST_FIELD = "marshmallow.fields.List"
 NESTED_FIELD = "marshmallow.fields.Nested"
+FIELD_ALIASES = {
+    f"{FIELDS_MODULE}Str": f"{FIELDS_MODULE}String",
+    f"{FIELDS_MODULE}Int": f"{FIELDS_MODULE}Integer",
+    f"{FIELDS_MODULE}Bool": f"{FIELDS_MODULE}Boolean",
+}
+OUTPUT_ONLY = "dump_only"
 
 
 def keyword_value(call, name):
@@ -19,6 +25,7 @@ def bare(node, aliases):
     if not isinstance(node, ast.Call):
         return node
     name = dotted_name(node.func, aliases)
+    name = FIELD_ALIASES.get(name, name)
     return ast.Call(
         func=ast.Name(id=name or ast.dump(node.func), ctx=ast.Load()),
         args=[bare(argument, aliases) for argument in node.args],
@@ -52,7 +59,8 @@ def schema_field(statement, aliases):
         return None
     name = dotted_name(statement.value.func, aliases) or ""
     is_field = name.startswith(FIELDS_MODULE)
-    if not is_field or keyword_value(statement.value, "required"):
+    output_only = keyword_value(statement.value, OUTPUT_ONLY)
+    if not is_field or output_only or keyword_value(statement.value, "required"):
         return None
     return statement.targets[0].id, field_shape(statement.value, aliases)
 

@@ -132,6 +132,10 @@ tester.run('no-singular-and-plural-prop', rule, {
       errors: [pair('field', 'fields')],
     },
     {
+      code: 'export type SearchOptions = { tag?: string | undefined; tags?: string[] | null | undefined };',
+      errors: [pair('tag', 'tags')],
+    },
+    {
       code: 'export interface SearchRequest { child?: Node; children?: Node[] }',
       errors: [pair('child', 'children')],
     },

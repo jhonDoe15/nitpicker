@@ -6,6 +6,14 @@ export const SINGULAR_PLURAL_RULE = 'SingularAndPluralMember';
 const MESSAGE = `A member and its plural (tag and tags) are two ways to pass the same data. Keep the plural and pass one item as a one-element list.`;
 const CONFIGURATION_PROPERTIES = new Set(['ConfigurationProperties']);
 const PERSISTENT = new Set(['Entity', 'Embeddable', 'MappedSuperclass']);
+const COMPONENTS = new Set([
+  'Component',
+  'Service',
+  'Repository',
+  'Controller',
+  'RestController',
+  'Configuration',
+]);
 const HIDDEN = new Set(['private', 'protected']);
 const COLLECTION =
   /^(?:kotlin\.collections\.|java\.util\.)?(?:Mutable)?(?:List|Set|Collection|Iterable|SortedSet)<(?:out)?(.+)>$/u;
@@ -18,6 +26,8 @@ const PRIMITIVE_ARRAYS = new Map(
 );
 const NULLABLE = /\?$/u;
 const OVERRIDE = 'override';
+const PROTECTED = 'protected';
+const CONSTRUCTOR = '<init>';
 
 function elementOf(type) {
   const text = bareType(type);
@@ -33,15 +43,21 @@ function isVisibleProperty(parameter) {
   );
 }
 
-function primaryMembers(klass, configuration) {
+function isPlainValueClass(file, klass) {
+  return (
+    klass.kind === 'class' &&
+    klass.visibility !== 'private' &&
+    !annotationNamed(klass.annotations, PERSISTENT) &&
+    !annotationNamed(klass.annotations, COMPONENTS) &&
+    !file.functions.some(({ owner, name }) => owner === klass.qualified && name !== CONSTRUCTOR)
+  );
+}
+
+function primaryMembers(file, klass, configuration) {
   if (klass.data || configuration) {
     return klass.primaryParameters.filter(({ property }) => property !== undefined);
   }
-  const plain =
-    klass.kind === 'class' &&
-    klass.visibility !== 'private' &&
-    !annotationNamed(klass.annotations, PERSISTENT);
-  return plain ? klass.primaryParameters.filter(isVisibleProperty) : [];
+  return isPlainValueClass(file, klass) ? klass.primaryParameters.filter(isVisibleProperty) : [];
 }
 
 function bodyMembers(file, klass) {
@@ -55,7 +71,7 @@ function classMembers(file, klass, configurationClasses) {
     (qualified) => klass.qualified === qualified || klass.qualified.startsWith(`${qualified}.`),
   );
   return [
-    ...primaryMembers(klass, configuration),
+    ...primaryMembers(file, klass, configuration),
     ...(configuration ? bodyMembers(file, klass) : []),
   ];
 }
@@ -79,7 +95,12 @@ function pluralFindings(members) {
 }
 
 function isExportedFunction(fn) {
-  return fn.visibility === 'public' && !fn.local && !fn.modifiers.includes(OVERRIDE);
+  return (
+    fn.visibility === 'public' &&
+    !fn.local &&
+    !fn.modifiers.includes(OVERRIDE) &&
+    !fn.modifiers.includes(PROTECTED)
+  );
 }
 
 function scopeOf(owner, name) {

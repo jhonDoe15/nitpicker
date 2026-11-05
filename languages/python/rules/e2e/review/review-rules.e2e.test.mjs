@@ -117,6 +117,11 @@ describe.skipIf(!enabled)('singular-and-plural-field', () => {
       ],
     ],
     [
+      'marshmallow field aliases and output-only fields',
+      'from marshmallow import Schema, fields\n\n\nclass Q(Schema):\n    tag = fields.String()\n    tags = fields.List(fields.Str())\n    label = fields.Str(dump_only=True)\n    labels = fields.List(fields.Str())\n',
+      ['singular-and-plural-field src/mod.py:4 Q.tags'],
+    ],
+    [
       'a marshmallow schema with a required field or other element types',
       'import marshmallow as ma\n\n\nclass Q(ma.Schema):\n    tag = ma.fields.Str(required=True)\n    tags = ma.fields.List(ma.fields.Str())\n    box = ma.fields.Int()\n    boxes = ma.fields.List(ma.fields.Str())\n',
       [],

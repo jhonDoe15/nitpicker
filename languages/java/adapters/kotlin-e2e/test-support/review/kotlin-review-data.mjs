@@ -37,7 +37,6 @@ fun absOf(value: Int) = Math.abs(value)
 fun total(cents: Int) = scaled(cents)
 
 fun scaled(cents: Int): Int = cents * 2
-
 `;
 
 const FORMATTING = `package demo.orders

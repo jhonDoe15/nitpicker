@@ -78,6 +78,7 @@ describe('singular and plural members in Kotlin', () => {
     ['a private class', { visibility: 'private' }, 'public'],
     ['an entity', { annotations: [{ name: 'Entity', text: '@Entity' }] }, 'public'],
     ['an object', { kind: 'object' }, 'public'],
+    ['a Spring stereotype', { annotations: [{ name: 'Service', text: '@Service' }] }, 'public'],
   ])('allows a plain class with %s', (_name, overrides, visibility) => {
     const plain = klass('Router', {
       primaryParameters: [
@@ -88,6 +89,20 @@ describe('singular and plural members in Kotlin', () => {
     });
 
     expect(findingsFor([plain])).toEqual([]);
+  });
+
+  it('allows a plain class with behaviour, such as a router over a default and all routes', () => {
+    const router = klass('Router', {
+      primaryParameters: [
+        member('route', 'String', { visibility: 'public' }),
+        member('routes', 'List<String>', { visibility: 'public' }),
+      ],
+    });
+    const resolve = fn('resolve', { owner: 'Router' });
+
+    expect(
+      run(singularPluralFindings, [file({ classes: [router], functions: [resolve] })]),
+    ).toEqual([]);
   });
 
   it('reports defaulted constructor parameters of a public class', () => {
@@ -134,6 +149,7 @@ describe('singular and plural members in Kotlin', () => {
     ['an internal function', { visibility: 'internal' }, true],
     ['a local function', { local: true }, true],
     ['an override', { modifiers: ['override'] }, true],
+    ['a protected function', { modifiers: ['protected'] }, true],
   ])('allows %s', (_name, overrides, defaulted) => {
     const send = fn('contains', {
       parameters: [

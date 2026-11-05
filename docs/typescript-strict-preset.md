@@ -600,8 +600,11 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `nullish(...)`, `Type.Optional(...)` and `pipe(...)` count, and so do `X.array()` and length
   checks on the array). Required inputs (`contains(role: string, roles: string[])`), inputs that
   differ in type, a member typed `never` in a discriminated union and members in different union
-  branches are not reported. Aliases and interfaces in the same file are followed; types imported
-  from other files are not.
+  branches are not reported. `| undefined` and `| null` are dropped from both types before they are
+  compared. Aliases and interfaces in the same file are followed; types imported from other files
+  are not. JavaScript files carry no type annotations, so there only the schema entries are checked.
+  Two members whose meanings differ (`owner?: User` for the main owner beside `owners?: User[]` for
+  the co-owners) are the case for an exception with a reason.
 - `nitpicker/no-forwarding-wrapper` (type-aware): a module-level named function or `const` arrow
   whose body is one `return` (or an expression body) of a call that passes exactly its own
   parameters, in order, unchanged (`export const loadUser = (id: string) => fetchUser(id)`; an

@@ -129,8 +129,17 @@ let $boxes := map { 'boolean': 'Boolean', 'byte': 'Byte', 'char': 'Character', '
         or pmd-java:typeIs('jakarta.persistence.MappedSuperclass')
         or pmd-java:typeIs('javax.persistence.MappedSuperclass')])
     },
+    $component := function($class) {
+      exists($class/ModifierList/Annotation[
+        pmd-java:typeIs('org.springframework.stereotype.Component')
+        or pmd-java:typeIs('org.springframework.stereotype.Service')
+        or pmd-java:typeIs('org.springframework.stereotype.Repository')
+        or pmd-java:typeIs('org.springframework.stereotype.Controller')
+        or pmd-java:typeIs('org.springframework.web.bind.annotation.RestController')
+        or pmd-java:typeIs('org.springframework.context.annotation.Configuration')])
+    },
     $dto := function($class) {
-      not($entity($class)) and (
+      not($entity($class)) and not($component($class)) and (
         exists($class/ModifierList/Annotation[
           pmd-java:typeIs('lombok.Value') or pmd-java:typeIs('lombok.Data') or pmd-java:typeIs('lombok.Builder')
           or pmd-java:typeIs('lombok.experimental.SuperBuilder')
@@ -157,7 +166,7 @@ let $boxes := map { 'boolean': 'Boolean', 'byte': 'Byte', 'char': 'Character', '
     $exported := function($executable) {
       $executable/(self::MethodDeclaration | self::ConstructorDeclaration)[pmd-java:modifiers() = 'public']
         [not(ModifierList/Annotation[pmd-java:typeIs('java.lang.Override')])]
-        [not(parent::RecordBody)]
+        [not(self::ConstructorDeclaration and parent::RecordBody)]
         [ancestor::*[self::ClassDeclaration or self::InterfaceDeclaration or self::EnumDeclaration
                      or self::RecordDeclaration][1][pmd-java:modifiers() = 'public']]
     },
@@ -183,7 +192,8 @@ return (
           satisfies
             let $own := $typeOf($other)
             return $plural = $plurals($nameOf($other))
-              and $own[self::ClassType or self::PrimitiveType] and $simple($own) = $simple($element))]
+              and $own[self::ClassType or self::PrimitiveType] and $simple($own) = $simple($element)
+              and not($own/TypeArguments) and not($element/TypeArguments))]
 ]]></value>
       </property>
     </properties>

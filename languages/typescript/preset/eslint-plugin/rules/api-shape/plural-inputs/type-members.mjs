@@ -3,6 +3,7 @@ import { staticKeyName } from '../../analysis/static-shapes.mjs';
 const MAX_EXPANSIONS = 200;
 const EXPANDING_TYPES = new Set(['TSUnionType', 'TSIntersectionType', 'TSTypeReference']);
 const ARRAY_NAMES = new Set(['Array', 'ReadonlyArray']);
+const EMPTY_TYPES = new Set(['TSUndefinedKeyword', 'TSNullKeyword']);
 
 function elementTypeOf(declared) {
   const type =
@@ -19,7 +20,16 @@ function elementTypeOf(declared) {
   return isArrayReference ? (type.typeArguments ?? type.typeParameters)?.params[0] : undefined;
 }
 
-export function typedInput(annotation, node, sourceCode) {
+function withoutEmpty(annotation) {
+  if (annotation.type !== 'TSUnionType') {
+    return annotation;
+  }
+  const kept = annotation.types.filter((type) => !EMPTY_TYPES.has(type.type));
+  return kept.length === 1 ? kept[0] : annotation;
+}
+
+export function typedInput(declared, node, sourceCode) {
+  const annotation = withoutEmpty(declared);
   const element = elementTypeOf(annotation);
   return {
     node,

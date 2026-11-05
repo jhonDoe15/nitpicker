@@ -85,7 +85,10 @@ export const rule = {
         }
       },
       CallExpression(node) {
-        inputSets.push(schemaEntryInputs(sourceCode, node));
+        const inputs = schemaEntryInputs(sourceCode, node);
+        if (inputs.size > 1) {
+          inputSets.push(inputs);
+        }
       },
       'Program:exit'(program) {
         for (const fn of exportedFunctions(program)) {
