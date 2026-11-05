@@ -308,9 +308,7 @@ describe('readJavaFindings', () => {
       const result = {
         ruleId: 'AvoidDuplicateLiterals',
         message: { text },
-        locations: [
-          { physicalLocation: { artifactLocation: { uri }, region: { startLine: line } } },
-        ],
+        locations: [{ physicalLocation: { artifactLocation: { uri }, region: { startLine: 4 } } }],
       };
       writeFileSync(
         path.join(rootReports(root), 'pmd.sarif'),

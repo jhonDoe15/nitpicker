@@ -23,6 +23,9 @@ function failingTestsHeadline(report) {
 }
 
 function headline(report) {
+  if (report.summary.noChanges === true && report.toolErrors.length === 0) {
+    return '✓ No changes since the merge base; nothing to check';
+  }
   const enforceable = report.newFindings.filter(
     ({ classification }) => classification === 'enforceable',
   );
