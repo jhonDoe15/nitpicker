@@ -1,5 +1,6 @@
+import { isCallerObject } from '../analysis/mutation/caller-objects.mjs';
 import { mutatedOwner, staticName } from '../analysis/mutation/mutating-methods.mjs';
-import { changedParameter } from './parameter-owners.mjs';
+import { changedParameter, isObjectAssign } from './parameter-owners.mjs';
 
 function isMutableIndexed(services, node) {
   const checker = services.program.getTypeChecker();
@@ -24,28 +25,59 @@ function unwrapped(node) {
   return chain.at(-1);
 }
 
+function isElementWrite(services, target) {
+  return (
+    isMutableIndexed(services, target.object) &&
+    (target.computed || target.property.name === 'length')
+  );
+}
+
+function callerParameter(scope, object, mutation) {
+  const { services, sourceCode } = scope;
+  const crossesProperty = (member) => isCallerObject(services, member.object, member.property.name);
+  return changedParameter(sourceCode, object, mutation, crossesProperty);
+}
+
 function checkWrite(scope, node, written) {
   const { context, services, sourceCode } = scope;
   const target = unwrapped(written);
-  const writesElement =
-    target.type === 'MemberExpression' && (target.computed || target.property.name === 'length');
-  if (
-    writesElement &&
-    changedParameter(sourceCode, target.object, node) !== undefined &&
-    isMutableIndexed(services, target.object)
-  ) {
+  if (target.type !== 'MemberExpression' || callerParameter(scope, target.object, node) === undefined) {
+    return;
+  }
+  if (isElementWrite(services, target)) {
     const name = `${textOf(sourceCode, target.object)}[…]`;
     context.report({ node, messageId: 'parameterMutation', data: { name } });
+    return;
+  }
+  const property = staticName(target, services);
+  if (property !== undefined && isCallerObject(services, target.object, property)) {
+    const name = textOf(sourceCode, target);
+    context.report({ node, messageId: 'propertyWrite', data: { name } });
+  }
+}
+
+function checkAssign(scope, node) {
+  const { context, services, sourceCode } = scope;
+  const [first] = node.arguments;
+  if (
+    first !== undefined &&
+    first.type !== 'SpreadElement' &&
+    callerParameter(scope, first, node) !== undefined &&
+    isCallerObject(services, first)
+  ) {
+    const name = `Object.assign(${textOf(sourceCode, first)}, …)`;
+    context.report({ node, messageId: 'propertyWrite', data: { name } });
   }
 }
 
 function checkCall(scope, node) {
   const { callee } = node;
   const { context, services, sourceCode } = scope;
-  if (
-    callee.type !== 'MemberExpression' ||
-    changedParameter(sourceCode, callee.object, node) === undefined
-  ) {
+  if (isObjectAssign(node)) {
+    checkAssign(scope, node);
+    return;
+  }
+  if (callee.type !== 'MemberExpression' || callerParameter(scope, callee.object, node) === undefined) {
     return;
   }
   const method = staticName(callee, services);
@@ -60,13 +92,15 @@ export const rule = {
     type: 'problem',
     docs: {
       description:
-        'Disallow changing an array, Set, Map or indexed object that a parameter holds in place',
+        'Disallow changing an array, Set, Map, indexed object or project object that a parameter holds in place',
       requiresTypeChecking: true,
     },
     schema: [],
     messages: {
       parameterMutation:
         '`{{ name }}` changes the value the caller passed in. Build and return a new value instead (`[...items, item]`, `new Set([...set, item])`, `{ ...table, [key]: value }`, `items.toSorted()`), or copy the parameter first (`const copy = [...items]`).',
+      propertyWrite:
+        '`{{ name }}` writes to the object the caller passed in, so a frozen or shared object breaks. Build a new object instead (`{ ...options, timeout: 5000 }`), or copy the parameter first (`const next = { ...options }`). An exception fits only when this function fills an object its caller hands it to be filled.',
     },
   },
   create(context) {

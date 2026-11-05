@@ -1,6 +1,8 @@
 import ast
 
 from checks.common import dotted_name, finding
+from review.common import unwrapped
+from review.fields import TYPED_DICT, base_class, record_kind
 from signatures.annotations import (
     FUNCTION_TYPES,
     decorator_names,
@@ -93,16 +95,24 @@ FIXED_SIGNATURE_DECORATORS = {"override", "overload"}
 ANY_MUTATORS = set().union(*CONTAINERS.values())
 
 
-def container_kind(annotation):
-    return next(
+def is_typed_dict(annotation, context):
+    if annotation is None:
+        return False
+    found = base_class(context, unwrapped(annotation))
+    return found is not None and record_kind(found[0], found[1]) == TYPED_DICT
+
+
+def container_kind(annotation, context):
+    named = next(
         (KIND_BY_NAME[name] for name in members_of(annotation) if name in KIND_BY_NAME),
         None,
     )
+    return "dict" if named is None and is_typed_dict(annotation, context) else named
 
 
-def container_parameters(function):
+def container_parameters(function, context):
     kinds = {
-        argument.arg: container_kind(argument.annotation)
+        argument.arg: container_kind(argument.annotation, context)
         for argument in parameters_of(function)
     }
     return {name: kind for name, kind in kinds.items() if kind is not None}
@@ -235,7 +245,7 @@ def function_findings(function, context):
         return []
     return [
         item
-        for name, kind in container_parameters(function).items()
+        for name, kind in container_parameters(function, context).items()
         for item in parameter_findings(function, name, kind, context)
     ]
 
