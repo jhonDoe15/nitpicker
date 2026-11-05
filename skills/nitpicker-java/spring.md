@@ -41,6 +41,11 @@ Beans and configuration:
   Caffeine cache that has a size and an expiry.
 - HTTP clients are built once, from the injected builders, with timeouts. No database or HTTP calls
   in `@PostConstruct`; use an `ApplicationRunner`.
+- Executors, schedulers, Netty event loops and clients are their own `@Bean` (a
+  `ThreadPoolTaskExecutor` with a queue capacity) so Spring closes them. A bean that builds one in a
+  field releases it in `@PreDestroy`: `shutdown()`, then `shutdownNow()` when `awaitTermination`
+  times out. A startup method that binds a port or starts a server after starting threads shuts
+  them down in a `catch` and rethrows. Never `Executors.newCachedThreadPool()`.
 - `@Scheduled`, `@Async`, the cache annotations, `@PreAuthorize` and `@Retryable` need their
   `@Enable...` on a `@Configuration` class. Secrets have no default (`${jwt.secret}`).
 

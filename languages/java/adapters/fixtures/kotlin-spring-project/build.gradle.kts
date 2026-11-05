@@ -34,4 +34,6 @@ dependencies {
     compileOnly("jakarta.validation:jakarta.validation-api:3.0.2")
     compileOnly("jakarta.transaction:jakarta.transaction-api:2.0.1")
     compileOnly("org.slf4j:slf4j-api:2.0.17")
+    compileOnly("io.netty:netty-transport:4.1.124.Final")
+    compileOnly("org.apache.kafka:kafka-clients:3.9.1")
 }

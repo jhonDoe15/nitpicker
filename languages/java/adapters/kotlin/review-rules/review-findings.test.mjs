@@ -243,6 +243,7 @@ describe('Kotlin exception rules for the review rules', () => {
       'pmd/SingularAndPluralMember',
       'pmd/ValidationAnnotationTarget',
       'pmd/ClassLoadEffect',
+      'pmd/UnboundedThreadPool',
       ...SPRING_RULES.map((rule) => `pmd/${rule}`),
       'pmd/SpringQueryConcatenation',
       'unused-option',

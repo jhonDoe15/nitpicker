@@ -50,6 +50,7 @@ export const PERSISTENCE_INJECTION = group(
   twins('persistence.PersistenceContext', 'persistence.PersistenceUnit'),
 );
 export const POST_CONSTRUCT = group(twins('annotation.PostConstruct'));
+export const PRE_DESTROY = group(twins('annotation.PreDestroy'));
 export const SINGLETON_SCOPES = group(
   inPackage(`${SPRING}.web.context.annotation`, 'RequestScope', 'SessionScope'),
 );
