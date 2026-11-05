@@ -48,14 +48,14 @@ const SOURCES = {
 let root;
 let findings;
 
-beforeAll(() => {
+beforeAll(async () => {
   root = realpathSync(mkdtempSync(path.join(tmpdir(), 'nitpicker-oxlint-messages-')));
   writeFileSync(path.join(root, 'policy.mjs'), POLICY);
   for (const [relativePath, text] of Object.entries(SOURCES)) {
     mkdirSync(path.dirname(path.join(root, relativePath)), { recursive: true });
     writeFileSync(path.join(root, relativePath), text);
   }
-  const results = lintWithOxlint({
+  const results = await lintWithOxlint({
     options: { projectRoot: root, patterns: ['test/**/*.ts'] },
     environment: {
       ...process.env,
