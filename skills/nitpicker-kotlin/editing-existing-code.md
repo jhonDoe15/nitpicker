@@ -31,6 +31,8 @@ Everything in `SKILL.md` still applies to the lines you add.
   (``Private property `leftover` is unused``), so renaming it makes the finding new: fix it in the
   same change. Another finding of the same rule in the same file is new, and the report may place
   it on the legacy line.
+- A count finding (a function length, complexity, parameter or return count) stays baselined while
+  its count does not grow; any increase fails.
 - Moving a file to another package, or renaming the file, keeps its detekt, CRAP and size
   findings. After a package move, findings that name the class (`coupling/test-only-export`) count
   as new; a renamed file whose one top-level declaration keeps its name fails
