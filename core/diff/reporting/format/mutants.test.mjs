@@ -28,9 +28,8 @@ function summaryOf(findings) {
 }
 
 function entriesOf(findings) {
-  return summaryOf(findings)
-    .split('\n')
-    .filter((line) => line.startsWith('  '));
+  const [violations] = summaryOf(findings).split(/\nDesign notes? for review/u);
+  return violations.split('\n').filter((line) => line.startsWith('  '));
 }
 
 function topLevelMutant(status, line) {
