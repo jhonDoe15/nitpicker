@@ -125,7 +125,7 @@ export const SMELL_HINTS = [
   {
     tool: RULES_TOOL,
     rules: ['hardcoded-secret'],
-    describe: (subject) => `\`${subject}\` holds a hardcoded secret`,
+    describe: (subject) => `The value of \`${subject}\` is a hardcoded secret`,
     allowed:
       'Read the secret from the environment in the composition root (`os.environ["API_TOKEN"]`) and pass it in; keep placeholders such as `"changeme"` out of production code.',
   },
