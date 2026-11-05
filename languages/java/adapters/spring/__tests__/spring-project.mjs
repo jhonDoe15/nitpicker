@@ -70,6 +70,7 @@ const REVIEW_RULES = new Set([
   'ParameterMutation',
   'CompatibilityShim',
   'LegacyCalendarApi',
+  'RecursiveMapUpdate',
   'ClassLoadEffect',
   'SpringUnusedContext',
   'SpringProxySelfCall',
