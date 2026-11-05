@@ -1,5 +1,13 @@
 import { nitpickerCheckstyleConfig } from './configuration/checkstyle-config.mjs';
-import { chmodSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import {
+  chmodSync,
+  mkdirSync,
+  mkdtempSync,
+  readdirSync,
+  readFileSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it, vi } from 'vitest';
@@ -277,6 +285,7 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
     for (const directory of [mainRoot, testRoot, reportDir]) {
       mkdirSync(directory, { recursive: true });
     }
+    writeFileSync(path.join(mainRoot, 'Demo.java'), 'class Demo {}\n');
     const module = { basedir, sourceRoots: [mainRoot], testSourceRoots: [testRoot] };
     const classpaths = { mainCompile: [], testCompile: [] };
     runPmd({
@@ -324,5 +333,29 @@ describe.skipIf(process.platform === 'win32')('runPmd', () => {
       main: [shipped('pmd-main-ruleset.xml')],
       tests: [shipped('pmd-test-ruleset.xml')],
     });
+  });
+
+  it('writes an empty report and runs nothing for a module whose roots hold no Java file', () => {
+    const basedir = mkdtempSync(path.join(tmpdir(), 'nitpicker-maven-pmd-'));
+    roots.push(basedir);
+    const mainRoot = path.join(basedir, 'src/main/java');
+    const reportDir = path.join(basedir, 'report');
+    for (const directory of [mainRoot, reportDir]) {
+      mkdirSync(directory, { recursive: true });
+    }
+    writeFileSync(path.join(mainRoot, 'Demo.kt'), 'class Demo\n');
+    runPmd({
+      module: { basedir, sourceRoots: [mainRoot], testSourceRoots: [] },
+      reportDir,
+      tools: { pmd: ['pmd.jar'] },
+      classpaths: { mainCompile: [], testCompile: [] },
+      configs: { pmd: {} },
+      spring: false,
+    });
+
+    expect(readdirSync(reportDir)).toEqual(['pmd.sarif']);
+    expect(readFileSync(path.join(reportDir, 'pmd.sarif'), 'utf8')).toBe(
+      '{"version":"2.1.0","runs":[]}',
+    );
   });
 });

@@ -75,7 +75,11 @@ function written(list, entries) {
   return list.plain ? entries.map(({ value }) => value) : entries;
 }
 
-export function writeDetektLists(projectRoot, projectConfigPath) {
+export function writeDetektLists(
+  projectRoot,
+  projectConfigPath,
+  target = path.join(projectRoot, LISTS_FILE),
+) {
   const nitpicker = parseOrEmpty(readFileSync(NITPICKER_CONFIG, 'utf8'));
   const project = parseOrEmpty(readFileSync(projectConfigPath, 'utf8'));
   const lists = {};
@@ -92,7 +96,6 @@ export function writeDetektLists(projectRoot, projectConfigPath) {
   if (Object.keys(lists).length === 0) {
     return undefined;
   }
-  const target = path.join(projectRoot, LISTS_FILE);
   mkdirSync(path.dirname(target), { recursive: true });
   writeFileSync(target, yaml().stringify(lists));
   return target;

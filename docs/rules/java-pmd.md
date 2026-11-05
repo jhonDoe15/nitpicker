@@ -12,7 +12,7 @@ Unless an entry says otherwise:
 
 - **Presets:** Java and Kotlin
 - **Analyzers:** `java` (Java); `kotlin` (Kotlin)
-- **Builds:** Gradle and Maven (Java); Gradle (Kotlin)
+- **Builds:** Gradle and Maven
 
 <a id="pmd-abstractclasswithoutabstractmethod"></a>
 
@@ -2065,7 +2065,7 @@ Make this proxied method public, non-final and non-static, in a non-final class.
 
 - **Scope:** Main sources of a project with Spring on the compile classpath.
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
-- **Message in Kotlin:** Make this proxied function public, and let Spring subclass it: apply the kotlin("plugin.spring") compiler plugin (or write open class and open fun), and keep it out of objects and companion objects. Spring never proxies private, final or static functions, and nitpicker keeps proxied functions public.
+- **Message in Kotlin:** Make this proxied function public, and let Spring subclass it: apply the Kotlin spring compiler plugin (kotlin("plugin.spring") on Gradle, \<compilerPlugins>\<plugin>spring\</plugin> with the kotlin-maven-allopen dependency on Maven) or write open class and open fun, and keep it out of objects and companion objects. Spring never proxies private, final or static functions, and nitpicker keeps proxied functions public.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringProxyMethodVisibility","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springproxyselfcall"></a>

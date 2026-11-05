@@ -15,7 +15,7 @@
     "detekt",
     "detekt.complexity.ComplexCondition",
     { "kotlin": ["kotlin"] },
-    { "java": ["gradle", "maven"], "kotlin": ["gradle"] },
+    { "java": ["gradle", "maven"], "kotlin": ["gradle", "maven"] },
     "Complex conditions should be simplified and extracted into well-named methods if necessary.",
     "One of detekt's default rules. The Kotlin preset builds upon detekt's defaults, so a rule that is on by default is part of the one way, and a project's detekt config can tune it but only nitpicker's own file can pin it.",
     [
