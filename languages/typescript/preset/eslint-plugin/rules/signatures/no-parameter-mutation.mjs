@@ -34,14 +34,19 @@ function isElementWrite(services, target) {
 
 function callerParameter(scope, object, mutation) {
   const { services, sourceCode } = scope;
-  const crossesProperty = (member) => isCallerObject(services, member.object, member.property.name);
-  return changedParameter(sourceCode, object, mutation, crossesProperty);
+  function crossesProperty(member) {
+    return isCallerObject(services, member.object, member.property.name);
+  }
+  return changedParameter({ sourceCode, crossesProperty }, object, mutation);
 }
 
 function checkWrite(scope, node, written) {
   const { context, services, sourceCode } = scope;
   const target = unwrapped(written);
-  if (target.type !== 'MemberExpression' || callerParameter(scope, target.object, node) === undefined) {
+  if (
+    target.type !== 'MemberExpression' ||
+    callerParameter(scope, target.object, node) === undefined
+  ) {
     return;
   }
   if (isElementWrite(services, target)) {
@@ -77,7 +82,10 @@ function checkCall(scope, node) {
     checkAssign(scope, node);
     return;
   }
-  if (callee.type !== 'MemberExpression' || callerParameter(scope, callee.object, node) === undefined) {
+  if (
+    callee.type !== 'MemberExpression' ||
+    callerParameter(scope, callee.object, node) === undefined
+  ) {
     return;
   }
   const method = staticName(callee, services);

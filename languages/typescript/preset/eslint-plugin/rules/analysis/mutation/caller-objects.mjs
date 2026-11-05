@@ -1,6 +1,6 @@
 const ANONYMOUS = new Set(['__type', '__object']);
 
-function isProjectFile(program, sourceFile) {
+export function isProjectFile(program, sourceFile) {
   return (
     !program.isSourceFileFromExternalLibrary(sourceFile) &&
     !program.isSourceFileDefaultLibrary(sourceFile) &&
@@ -22,13 +22,16 @@ function isInstance(type) {
 }
 
 function hasOnlyProjectBases(scope, type) {
-  const target = type.target ?? type;
-  if (!target.isClassOrInterface?.()) {
-    return true;
+  const pending = [type];
+  for (const current of pending) {
+    const target = current.target ?? current;
+    if (target.isClassOrInterface?.() === true) {
+      pending.push(...scope.checker.getBaseTypes(target));
+    }
   }
-  return scope.checker
-    .getBaseTypes(target)
-    .every((base) => !isInstance(base) && isNamedProjectShape(scope, base));
+  return pending
+    .slice(1)
+    .every((base) => !isInstance(base) && declaredInProject(scope.program, base.getSymbol()));
 }
 
 function isNamedProjectShape(scope, type) {
@@ -47,19 +50,17 @@ function isAnonymousProjectShape(scope, type, property) {
   return projectProperties || hasMutableIndex(scope.checker, type);
 }
 
-function isCallerShape(scope, type, property) {
-  if (type.isTypeParameter()) {
-    const constraint = scope.checker.getBaseConstraintOfType(type);
-    return constraint !== undefined && isCallerShape(scope, constraint, property);
-  }
-  if (type.isUnion()) {
-    return type.types.some((part) => isCallerShape(scope, part, property));
-  }
-  if (type.isIntersection()) {
-    return type.types.every((part) => isCallerShape(scope, part, property));
-  }
-  const symbol = type.getSymbol();
-  if (symbol === undefined || isInstance(type)) {
+function resolved(checker, type) {
+  return type.isTypeParameter() ? checker.getBaseConstraintOfType(type) : type;
+}
+
+function partsOf(type, combined) {
+  return combined ? type.types : [type];
+}
+
+function isCallerPart(scope, type, property) {
+  const symbol = type?.getSymbol();
+  if (symbol === undefined || isInstance(type) || type.isUnionOrIntersection()) {
     return false;
   }
   return ANONYMOUS.has(symbol.getName())
@@ -70,6 +71,18 @@ function isCallerShape(scope, type, property) {
 export function isCallerObject(services, node, property) {
   const { program } = services;
   const checker = program.getTypeChecker();
-  const type = checker.getNonNullableType(services.getTypeAtLocation(node));
-  return isCallerShape({ program, checker }, type, property);
+  const scope = { program, checker };
+  const type = resolved(checker, checker.getNonNullableType(services.getTypeAtLocation(node)));
+  if (type === undefined) {
+    return false;
+  }
+  return partsOf(type, type.isUnion()).some((alternative) => {
+    const choice = resolved(checker, alternative);
+    return (
+      choice !== undefined &&
+      partsOf(choice, choice.isIntersection()).every((part) =>
+        isCallerPart(scope, resolved(checker, part), property),
+      )
+    );
+  });
 }

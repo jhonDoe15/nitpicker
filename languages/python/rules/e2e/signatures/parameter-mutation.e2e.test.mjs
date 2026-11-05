@@ -181,7 +181,8 @@ describe.skipIf(!enabled)('parameter-mutation', () => {
         'a TypedDict from another module and a derived TypedDict',
         {
           files: {
-            'movies.py': 'from typing import TypedDict\n\n\nclass Movie(TypedDict):\n    title: str\n',
+            'movies.py':
+              'from typing import TypedDict\n\n\nclass Movie(TypedDict):\n    title: str\n',
             'mod.py':
               'from .movies import Movie\n\n\nclass Film(Movie):\n    year: int\n\n\ndef rename(movie: Movie, film: Film) -> None:\n    movie["title"] = "x"\n    film["year"] = 1\n',
           },

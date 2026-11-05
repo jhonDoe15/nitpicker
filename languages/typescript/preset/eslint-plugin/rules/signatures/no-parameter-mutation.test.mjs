@@ -138,12 +138,19 @@ tester.run('no-parameter-mutation', rule, {
 });
 
 function written(code, name, extension = 'ts') {
-  return { ...typed(code, undefined, extension), errors: [{ messageId: 'propertyWrite', data: { name } }] };
+  return {
+    ...typed(code, undefined, extension),
+    errors: [{ messageId: 'propertyWrite', data: { name } }],
+  };
 }
 
 tester.run('no-parameter-mutation property writes', rule, {
   valid: [
-    typed('/** @param {Error} error */\nexport function wrap(error) { error.message = "x"; }', undefined, 'js'),
+    typed(
+      '/** @param {Error} error */\nexport function wrap(error) { error.message = "x"; }',
+      undefined,
+      'js',
+    ),
     typed('export function wrap(options) { options.size = 1; }', undefined, 'js'),
   ],
   invalid: [
@@ -155,7 +162,10 @@ tester.run('no-parameter-mutation property writes', rule, {
     written('export function grow(o: { size: number }) { o.size++; }', 'o.size'),
     written('export function grow(o: { size: number }) { o["size"] = 2; }', 'o["size"]'),
     written('export function drop(o: { size?: number }) { delete o.size; }', 'o.size'),
-    written('export function set(o: { retry: { count: number } }) { o.retry.count = 3; }', 'o.retry.count'),
+    written(
+      'export function set(o: { retry: { count: number } }) { o.retry.count = 3; }',
+      'o.retry.count',
+    ),
     written(
       'export function fill(o: { size?: number }) { Object.assign(o, { size: 1 }); }',
       'Object.assign(o, …)',
@@ -214,7 +224,10 @@ tester.run('no-parameter-mutation property writes', rule, {
       'message.id',
       'js',
     ),
-    written('export class Store { save(record: { id?: string }) { record.id = "x"; } }', 'record.id'),
+    written(
+      'export class Store { save(record: { id?: string }) { record.id = "x"; } }',
+      'record.id',
+    ),
     typed(
       'export function add(input: { items: string[] }) { input.items.push("x"); }',
       'input.items.push',
