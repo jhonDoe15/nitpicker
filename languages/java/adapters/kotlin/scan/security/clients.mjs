@@ -9,24 +9,25 @@ const OPEN_CONNECTION = /\.\s*openConnection\s*\(\s*\)/g;
 const URL_READ = /\.\s*(?:readText|readBytes|openStream)\s*\(/g;
 const HTTP_CAST = /^\s*as\??\s+(?:java\.net\.)?(?:javax\.net\.ssl\.)?Https?URLConnection\b/;
 const READ_TIMEOUT = /\breadTimeout\s*=|\bsetReadTimeout\s*\(/;
-const NO_TIMEOUT_CLIENT =
-  /\bRestTemplate\s*\(\s*\)|\bHttp(?:Async)?Clients\s*\.\s*create\w*\s*\(\s*\)/g;
-const CLIENT_BUILDERS = [
-  {
-    start: /\bHttp(?:Async)?(?:Clients\s*\.\s*custom|ClientBuilder\s*\.\s*create)\s*\(/g,
-    allowed: [
-      'setDefaultRequestConfig',
-      'setDefaultSocketConfig',
-      'setConnectionManager',
-      'setIOReactorConfig',
-    ],
-  },
-  {
-    start: /\bClientBuilder\s*\.\s*newBuilder\s*\(/g,
-    allowed: ['readTimeout', 'property', 'withConfig'],
-  },
-];
-const JAX_RS_CLIENT = /\bClientBuilder\s*\.\s*newClient\s*\(\s*\)/g;
+const PLAIN_TEMPLATE = /\bRestTemplate\s*\(\s*\)/g;
+const APACHE_FACTORY = /\bHttp(?:Async)?Clients\s*\.\s*create\w*\s*\(\s*\)/g;
+const PER_REQUEST_CONFIG =
+  /\.\s*(?:setConfig|setRequestConfig)\s*\(|\.\s*(?:config|requestConfig)\s*=[^=]/;
+const APACHE_BUILDER = {
+  start: /\bHttp(?:Async)?(?:Clients\s*\.\s*custom|ClientBuilder\s*\.\s*create)\s*\(/g,
+  allowed: [
+    'setDefaultRequestConfig',
+    'setDefaultSocketConfig',
+    'setConnectionManager',
+    'setIOReactorConfig',
+  ],
+};
+const JAX_RS_BUILDER = {
+  start: /\bClientBuilder\s*\.\s*newBuilder\s*\(/g,
+  allowed: ['readTimeout', 'property', 'withConfig'],
+};
+const JAX_RS_CLIENT =
+  /(?:\b(?:val|var)\s+(\w+)\s*(?::[^=]*)?=\s*)?\bClientBuilder\s*\.\s*newClient\s*\(\s*\)/g;
 const CLIENT_PROPERTY = /\.\s*property\s*\(/;
 const UNSAFE_READERS = [
   /\bXMLDecoder\s*\(/g,
@@ -68,7 +69,10 @@ function untimedBuilds(code, start, allowed) {
 function copiesRequest(code, match) {
   const open = match.index + match[0].length - 1;
   const inside = code.slice(open + 1, closingIndex(code, open));
-  return inside.replace(/\([^()]*\)|\{[^{}]*\}|<[^<>]*>/g, '').includes(',');
+  return inside
+    .replace(/,\s*$/, '')
+    .replace(/\([^()]*\)|\{[^{}]*\}|\[[^[\]]*\]|<[^<>]*>/g, '')
+    .includes(',');
 }
 
 function requestsWithoutTimeout(code) {
@@ -77,16 +81,35 @@ function requestsWithoutTimeout(code) {
     .map(({ index }) => index);
 }
 
-function clientsWithoutTimeout(code) {
-  const builders = CLIENT_BUILDERS.flatMap(({ start, allowed }) =>
-    untimedBuilds(code, start, allowed).map(({ index }) => index),
-  );
-  const jaxRs = [...code.matchAll(JAX_RS_CLIENT)].flatMap(({ index }) => {
-    const block = enclosingOpen(code, index);
+function builtIndexes(code, { start, allowed }) {
+  return untimedBuilds(code, start, allowed).map(({ index }) => index);
+}
+
+function apacheClients(code) {
+  if (PER_REQUEST_CONFIG.test(code)) {
+    return [];
+  }
+  return [
+    ...[...code.matchAll(APACHE_FACTORY)].map(({ index }) => index),
+    ...builtIndexes(code, APACHE_BUILDER),
+  ];
+}
+
+function handedOn(scope, name) {
+  return name !== undefined && new RegExp(`[(,]\\s*${name}\\s*[,)]`).test(scope);
+}
+
+function jaxRsClients(code) {
+  return [...code.matchAll(JAX_RS_CLIENT)].flatMap((match) => {
+    const block = enclosingOpen(code, match.index);
     const scope = block === -1 ? code : code.slice(block, closingIndex(code, block));
-    return CLIENT_PROPERTY.test(scope) ? [] : [index];
+    const at = match.index + match[0].search(/ClientBuilder/);
+    return CLIENT_PROPERTY.test(scope) || handedOn(scope, match[1]) ? [] : [at];
   });
-  return [...builders, ...jaxRs];
+}
+
+function clientsWithoutTimeout(code) {
+  return [...apacheClients(code), ...builtIndexes(code, JAX_RS_BUILDER), ...jaxRsClients(code)];
 }
 
 function statementStart(code, offset) {
@@ -124,7 +147,7 @@ export function httpWithoutTimeout(scanned) {
     ...connectionsWithoutTimeout(code),
     ...urlReads(code),
     ...clientsWithoutTimeout(code),
-    ...[...code.matchAll(NO_TIMEOUT_CLIENT)].map(({ index }) => index),
+    ...[...code.matchAll(PLAIN_TEMPLATE)].map(({ index }) => index),
   ];
   return [...new Set(offsets)]
     .toSorted((left, right) => left - right)

@@ -1,4 +1,4 @@
-import { readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { applyFindingPolicy } from '../../../../../../shared/findings/finding-policy.mjs';
@@ -10,6 +10,7 @@ import {
 } from '../../test-support/pmd-probe.mjs';
 
 const enabled = process.env.NITPICKER_JAVA_E2E === '1';
+const gradle = process.env.NITPICKER_GRADLE ?? 'gradle';
 const fixtures = path.resolve(import.meta.dirname, '../../fixtures/pmd-categories');
 const categories = new Set([
   'AddEmptyString',
@@ -57,17 +58,17 @@ let shifted;
 
 describe.skipIf(!enabled)('pinned PMD additional categories', () => {
   beforeAll(() => {
-    root = preparePmdProbe('pmd-categories', [
-      [fixtures, 'src/main/java/demo'],
-      [fixtures, 'src/test/java/demo'],
-    ]);
-    runPmdProbe(root);
+    root = preparePmdProbe('pmd-categories');
+    for (const role of ['main', 'test']) {
+      cpSync(fixtures, path.join(root, 'src', role, 'java/demo'), { recursive: true });
+    }
+    runPmdProbe(root, gradle);
     findings = readPmdProbeFindings(root);
     for (const role of ['main', 'test']) {
       const file = path.join(root, 'src', role, 'java/demo/Banned.java');
       writeFileSync(file, `\n\n\n\n\n${readFileSync(file, 'utf8')}`);
     }
-    runPmdProbe(root);
+    runPmdProbe(root, gradle);
     shifted = readPmdProbeFindings(root);
   });
 

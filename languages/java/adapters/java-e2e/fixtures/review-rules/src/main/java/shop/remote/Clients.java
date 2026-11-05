@@ -54,6 +54,12 @@ public final class Clients {
     return client;
   }
 
+  public Client jaxRsConfigured() {
+    Client client = ClientBuilder.newClient();
+    withTimeouts(client);
+    return client;
+  }
+
   public Client jaxRsBuilder() {
     return ClientBuilder.newBuilder().connectTimeout(2, TimeUnit.SECONDS).build(); // violation: HttpWithoutTimeout
   }
@@ -63,5 +69,10 @@ public final class Clients {
         .connectTimeout(2, TimeUnit.SECONDS)
         .readTimeout(5, TimeUnit.SECONDS)
         .build();
+  }
+
+  private static void withTimeouts(Client client) {
+    client.property("jersey.config.client.connectTimeout", 2_000);
+    client.property("jersey.config.client.readTimeout", 5_000);
   }
 }

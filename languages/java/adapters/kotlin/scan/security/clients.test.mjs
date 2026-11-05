@@ -42,6 +42,10 @@ describe('httpWithoutTimeout', () => {
     ],
     ['a JAX-RS client', ['val client = ClientBuilder.newClient().target(url)']],
     [
+      'a request with a trailing comma',
+      ['val request = HttpRequest.newBuilder(', '    uri,', ').build()'],
+    ],
+    [
       'a JAX-RS builder without a read timeout',
       ['val client = ClientBuilder.newBuilder().connectTimeout(2, TimeUnit.SECONDS).build()'],
     ],
@@ -113,6 +117,14 @@ describe('httpWithoutTimeout', () => {
     [
       'a JAX-RS builder with a read timeout',
       ['val client = ClientBuilder.newBuilder().readTimeout(5, TimeUnit.SECONDS).build()'],
+    ],
+    [
+      'a JAX-RS client handed to a helper',
+      ['val client = ClientBuilder.newClient()', 'withTimeouts(client)'],
+    ],
+    [
+      'an Apache client whose requests carry a config',
+      ['val client = HttpClients.createDefault()', 'get.setConfig(deadline)'],
     ],
     [
       'a copied request, which keeps its timeout',
