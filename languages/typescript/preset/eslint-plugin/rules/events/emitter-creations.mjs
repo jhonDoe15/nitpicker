@@ -1,6 +1,13 @@
+import { chainOf } from '../analysis/ancestry.mjs';
+import { resolveConstant, stringValue } from '../analysis/constant-resolution.mjs';
 import { bindingsOf, importedFunction, isModuleValue } from '../security/imported-names.mjs';
-import { typeServices, unwrapped } from '../security/security-values.mjs';
-import { EMITTER_SOURCES, isEmitterType } from './emitter-modules.mjs';
+import { memberName, typeServices, unwrapped } from '../security/security-values.mjs';
+import {
+  EMITTER_SOURCES,
+  isChainableMethod,
+  isEmitterType,
+  isListenMethod,
+} from './emitter-modules.mjs';
 
 const TYPESCRIPT_FILE = /\.[cm]?tsx?$/u;
 const MODULE_PATH = /\/node_modules\/(?:@types\/)?((?:@[^/]+\/)?[^/]+)\//gu;
@@ -66,7 +73,42 @@ function isTypedEmitter(context, node) {
   return classChain(services.getTypeAtLocation(node)).some(isEmitterClass);
 }
 
+export function listensForErrors(context, call) {
+  const event = stringValue(resolveConstant(context, call.arguments[0]));
+  return isListenMethod(memberName(call.callee)) && event === 'error';
+}
+
+function chainedCalls(node) {
+  return chainOf(unwrapped(node), (current) =>
+    current.type === 'CallExpression' &&
+    current.callee.type === 'MemberExpression' &&
+    isChainableMethod(memberName(current.callee))
+      ? unwrapped(current.callee.object)
+      : undefined,
+  );
+}
+
+function branchesOf(node) {
+  const target = unwrapped(node);
+  if (target?.type === 'ConditionalExpression') {
+    return [target.consequent, target.alternate];
+  }
+  return target?.type === 'LogicalExpression' ? [target.left, target.right] : [target];
+}
+
+function isUnheardCreation(scope, node) {
+  const chain = chainedCalls(node);
+  const heard = chain.slice(0, -1).some((call) => listensForErrors(scope.context, call));
+  return !heard && isDirectCreation(scope, chain.at(-1));
+}
+
 export function isEmitterCreation(scope, node) {
+  return branchesOf(node).some(
+    (branch) => branch !== undefined && isUnheardCreation(scope, branch),
+  );
+}
+
+function isDirectCreation(scope, node) {
   const target = unwrapped(node);
   if (target?.type === 'CallExpression') {
     return sourceOf(scope, target, 'factories') !== undefined;

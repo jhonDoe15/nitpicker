@@ -133,6 +133,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/events/emitter-creations.mjs',
   'languages/typescript/preset/eslint-plugin/rules/events/emitter-modules.mjs',
   'languages/typescript/preset/eslint-plugin/rules/events/error-handling.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/events/helpers/helper-bodies.mjs',
   'languages/typescript/preset/eslint-plugin/rules/events/require-error-listener.mjs',
   'languages/typescript/preset/eslint-plugin/rules/security/http/http-clients.mjs',
   'languages/typescript/preset/eslint-plugin/rules/security/http/http-config.mjs',

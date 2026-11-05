@@ -43,9 +43,6 @@ export const EMITTER_SOURCES = [
       'createBrotliDecompress',
     ],
   }),
-  source(nodeModule('stream'), {
-    constructors: ['Readable', 'Writable', 'Duplex', 'Transform', 'PassThrough'],
-  }),
   source(nodeModule('worker_threads'), { constructors: ['Worker'] }),
   source(['redis', '@redis/client'], { factories: ['createClient', 'createCluster'] }),
   source(['pg'], { constructors: ['Client', 'Pool'] }),
@@ -57,11 +54,9 @@ const EMITTER_TYPES = new Map([
   [
     'node',
     new Set([
-      'Readable',
-      'Writable',
-      'Duplex',
-      'Transform',
-      'PassThrough',
+      'ReadStream',
+      'WriteStream',
+      'ClientRequest',
       'ChildProcess',
       'Worker',
       'Socket',
@@ -100,23 +95,30 @@ const CHAINABLE_METHODS = new Set([
 
 const CONSUMING_METHODS = new Set(['toArray', 'forEach', 'reduce', 'some', 'every', 'find']);
 
-function handler(modules, names, owner) {
-  return { modules: new Set(modules), names: new Set(names), owner };
+function handler(modules, names, { owner, first = false } = {}) {
+  return { modules: new Set(modules), names: new Set(names), owner, first };
 }
 
 const STREAM_WAITERS = new Set(['pipeline', 'finished']);
 
 export const HANDLING_CALLS = [
   handler([...nodeModule('stream'), ...nodeModule('stream/promises')], [...STREAM_WAITERS]),
-  handler(nodeModule('events'), ['once', 'on']),
-  handler(nodeModule('stream/consumers'), ['text', 'json', 'buffer', 'arrayBuffer', 'blob']),
+  handler(nodeModule('events'), ['once', 'on'], { first: true }),
+  handler(nodeModule('stream/consumers'), ['text', 'json', 'buffer', 'arrayBuffer', 'blob'], {
+    first: true,
+  }),
+  handler(['@nestjs/common'], ['StreamableFile'], { first: true }),
+];
+
+export const INPUT_READERS = [
   handler([...nodeModule('readline'), ...nodeModule('readline/promises')], ['createInterface']),
-  handler(['@nestjs/common'], ['StreamableFile']),
 ];
 
 export const HANDLING_STATICS = [
-  handler(nodeModule('events'), ['once', 'on'], 'EventEmitter'),
-  handler(nodeModule('stream'), [...STREAM_WAITERS], 'promises'),
+  handler(nodeModule('events'), ['once', 'on'], { owner: 'EventEmitter', first: true }),
+  handler(nodeModule('stream'), [...STREAM_WAITERS], { owner: 'promises' }),
+  handler(nodeModule('stream'), ['from', 'toWeb'], { owner: 'Readable', first: true }),
+  handler(nodeModule('stream'), ['toWeb'], { owner: 'Duplex', first: true }),
 ];
 
 const HANDLING_LIBRARIES = new Set(['fastify', '@nestjs/common']);
