@@ -37,8 +37,8 @@ describe('projectProxyAnnotations', () => {
         'shop/Reported.java': 'package shop;\n@Audited\npublic @interface Reported {}\n',
         'shop/Retried.java': [
           'package shop;',
-          'import io.github.resilience4j.retry.annotation.*;',
-          '@Retry(name = "remote") @interface Retried {}',
+          'import org.springframework.cache.annotation.*;',
+          '@Cacheable("rates") @interface Retried {}',
         ].join('\n'),
         'shop/Plain.java': [
           'package shop;',
@@ -51,6 +51,37 @@ describe('projectProxyAnnotations', () => {
       proxied: ['shop.Audited', 'shop.Reported', 'shop.Retried'],
       constraints: [],
     });
+  });
+
+  it('leaves out an annotation that only carries a Resilience4j or Micrometer one, which their aspects never see', () => {
+    expect(
+      project({
+        'shop/Retried.java': [
+          'package shop;',
+          'import io.github.resilience4j.retry.annotation.Retry;',
+          'import io.micrometer.core.annotation.Timed;',
+          '@Retry(name = "remote") @Timed public @interface Retried {}',
+        ].join('\n'),
+      }).proxied,
+    ).toEqual([]);
+  });
+
+  it('names an imported nested annotation by its binary name', () => {
+    expect(
+      project({
+        'shop/marks/Outer.java': [
+          'package shop.marks;',
+          'public class Outer {',
+          '  @org.springframework.scheduling.annotation.Async public @interface Later {}',
+          '}',
+        ].join('\n'),
+        'shop/Soon.java': [
+          'package shop;',
+          'import shop.marks.Outer.Later;',
+          '@Later public @interface Soon {}',
+        ].join('\n'),
+      }).proxied,
+    ).toEqual(['shop.Soon', 'shop.marks.Outer$Later']);
   });
 
   it('names a nested annotation type by its binary name', () => {
@@ -100,6 +131,28 @@ describe('projectProxyAnnotations', () => {
         ].join('\n'),
       }).proxied,
     ).toEqual(['shop.Logged', 'shop.marks.Timed', 'shop.marks.Traced']);
+  });
+
+  it('reads pointcuts from text blocks and string constants, past other strings', () => {
+    expect(
+      project({
+        'shop/Timing.java': [
+          'package shop;',
+          'import org.aspectj.lang.annotation.*;',
+          '@Aspect',
+          'class Timing {',
+          '  static final String LABEL = "🚀🚀 launch";',
+          '  static final String WATCHED = "@annotation(shop.Watched)";',
+          '  @Around(WATCHED)',
+          '  Object watch() { return null; }',
+          '  @Before("""',
+          '      @annotation(shop.Marked)',
+          '      """)',
+          '  void mark() {}',
+          '}',
+        ].join('\n'),
+      }).proxied,
+    ).toEqual(['shop.Marked', 'shop.Watched']);
   });
 
   it('finds the constraint annotations the project declares, composed ones too', () => {

@@ -102,6 +102,13 @@ export function typeDeclarations(text, packageName) {
   });
 }
 
+function binaryName(parts) {
+  const outer = parts.findIndex((part) => /^\p{Lu}/u.test(part));
+  return outer < 0
+    ? parts.join('.')
+    : [parts.slice(0, outer + 1).join('.'), ...parts.slice(outer + 1)].join('$');
+}
+
 /** The candidate qualified names of an annotation or type name written in a Java source. */
 export function javaResolver(text, packageName, declaredTypes) {
   const explicit = new Map();
@@ -117,7 +124,7 @@ export function javaResolver(text, packageName, declaredTypes) {
   return (name) => {
     const [first, ...rest] = name.split('.');
     if (explicit.has(first)) {
-      return [[explicit.get(first), ...rest].join(rest.length > 0 ? '$' : '.')];
+      return [binaryName([...explicit.get(first).split('.'), ...rest])];
     }
     if (local.has(first)) {
       return [[local.get(first), ...rest].join('$')];

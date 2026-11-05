@@ -489,10 +489,16 @@ let $proxyNames := (
     $proxyAnnotation := function($annotation) {
       exists($annotation[some $name in $proxyNames satisfies pmd-java:typeIs($name)])
     },
+    $typeOf := function($node) {
+      $node/ancestor::*[self::ClassDeclaration or self::AnonymousClassDeclaration
+        or self::EnumDeclaration or self::RecordDeclaration][1]
+    },
     $validated := function($method) {
-      exists($method/ancestor::ClassDeclaration[1]/ModifierList/Annotation[
+      exists($typeOf($method)/self::ClassDeclaration/ModifierList/Annotation[
         pmd-java:typeIs('org.springframework.validation.annotation.Validated')])
-      and exists(($method/ModifierList/Annotation | $method/FormalParameters//Annotation)[
+      and exists($method[not(@Visibility = 'private' or pmd-java:modifiers() = 'static')])
+      and exists(($method[not(@Arity = 0 and matches(@Name, '^(get|is)\p{Lu}'))]/ModifierList/Annotation
+                  | $method/FormalParameters//Annotation)[
         some $name in $constraintNames satisfies pmd-java:typeIs($name)])
     },
     $hidden := function($method) {
@@ -562,10 +568,16 @@ let $proxyNames := (
     $proxyAnnotation := function($annotation) {
       exists($annotation[some $name in $proxyNames satisfies pmd-java:typeIs($name)])
     },
+    $typeOf := function($node) {
+      $node/ancestor::*[self::ClassDeclaration or self::AnonymousClassDeclaration
+        or self::EnumDeclaration or self::RecordDeclaration][1]
+    },
     $validated := function($method) {
-      exists($method/ancestor::ClassDeclaration[1]/ModifierList/Annotation[
+      exists($typeOf($method)/self::ClassDeclaration/ModifierList/Annotation[
         pmd-java:typeIs('org.springframework.validation.annotation.Validated')])
-      and exists(($method/ModifierList/Annotation | $method/FormalParameters//Annotation)[
+      and exists($method[not(@Visibility = 'private' or pmd-java:modifiers() = 'static')])
+      and exists(($method[not(@Arity = 0 and matches(@Name, '^(get|is)\p{Lu}'))]/ModifierList/Annotation
+                  | $method/FormalParameters//Annotation)[
         some $name in $constraintNames satisfies pmd-java:typeIs($name)])
     },
     $proxied := function($method, $callerTransactional) {
@@ -583,7 +595,7 @@ return (
     let $name := @MethodName,
         $arity := count(ArgumentList/*),
         $callerTransactional := $transactional(.)
-    return exists(ancestor::ClassDeclaration[1]/ClassBody/MethodDeclaration[@Name = $name]
+    return exists($typeOf(.)/self::ClassDeclaration/ClassBody/MethodDeclaration[@Name = $name]
       [@Arity = $arity or (@Varargs and $arity >= @Arity - 1)]
       [$proxied(., $callerTransactional)])
   ]
@@ -591,7 +603,7 @@ return (
   //MethodReference[*[1][self::ThisExpression[not(*)]]][
     let $name := @MethodName,
         $callerTransactional := $transactional(.)
-    return exists(ancestor::ClassDeclaration[1]/ClassBody/MethodDeclaration[@Name = $name]
+    return exists($typeOf(.)/self::ClassDeclaration/ClassBody/MethodDeclaration[@Name = $name]
       [$proxied(., $callerTransactional)])
   ]
 )
