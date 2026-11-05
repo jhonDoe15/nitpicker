@@ -107,6 +107,9 @@ To learn why a rule is on and what form it allows before you write or change cod
   `of` or `from` are fine.
 - A data class or `@ConfigurationProperties` class has `tags` or `tag`, not both
   (`pmd/SingularAndPluralMember`); one item is a one-element list.
+- A stream, reader, JAR file or connection you open is closed with `.use { }`, also one used
+  once: `resource.inputStream.use { it.readBytes() }`, not `resource.inputStream.readBytes()`
+  (`kotlin-source/UnclosedInlineResource`; Java sources: `pmd/UnclosedInlineResource`).
 - A validation annotation on a constructor property takes the field target:
   `data class OrderRequest(@field:NotBlank val item: String)`, not `@NotBlank val item`, which
   lands on the constructor parameter where `@Valid` never looks (`pmd/ValidationAnnotationTarget`).
