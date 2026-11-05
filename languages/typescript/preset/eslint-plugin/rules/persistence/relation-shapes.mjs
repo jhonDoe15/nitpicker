@@ -56,7 +56,7 @@ function isTrue(sourceCode, expression) {
   return value?.type === 'Literal' && value.value === true;
 }
 
-function fromProperties(sourceCode, orm, kind, properties) {
+function fromProperties(sourceCode, { orm, kind }, properties) {
   const eager = properties.get('eager');
   const cascade = properties.get('cascade');
   return {
@@ -87,7 +87,11 @@ function decoratorRelation(sourceCode, call) {
   }
   const kind = DECORATOR_KINDS.get(found.name);
   return [
-    fromProperties(sourceCode, found.orm, kind, mergedProperties(sourceCode, call.arguments)),
+    fromProperties(
+      sourceCode,
+      { orm: found.orm, kind },
+      mergedProperties(sourceCode, call.arguments),
+    ),
   ];
 }
 
@@ -111,7 +115,7 @@ function schemaEntries(sourceCode, orm, schema) {
     const properties = propertiesOf(sourceCode, objectOf(sourceCode, entry.value));
     const kindProperty = shape.kindKeys.map((key) => properties.get(key)).find(Boolean);
     const kind = kindProperty === undefined ? undefined : schemaKind(kindProperty.value);
-    return kind === undefined ? [] : [fromProperties(sourceCode, orm, kind, properties)];
+    return kind === undefined ? [] : [fromProperties(sourceCode, { orm, kind }, properties)];
   });
 }
 
