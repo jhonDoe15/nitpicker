@@ -13,6 +13,8 @@ const global = { messageId: 'unrestoredGlobalWrite' };
 tester.run('fake-timers-require-restore direct writes', rule, {
   valid: [
     "process.env.TZ = 'UTC'; it('a', () => {});",
+    "beforeAll(() => { process.env.NODE_ENV = 'test'; }); beforeEach(() => { window.matchMedia = vi.fn(); });",
+    "vi.hoisted(() => { process.env.MODE = 'x'; }); vi.mock('./a', () => { globalThis.flag = true; return {}; });",
     "it('a', () => { vi.stubEnv('MODE', 'x'); });",
     "const saved = { ...process.env }; afterEach(() => { process.env = saved; }); it('a', () => { process.env.MODE = 'x'; });",
     "it('a', () => { const old = process.env.MODE; process.env.MODE = 'x'; try { run(); } finally { process.env.MODE = old; } });",
@@ -41,7 +43,10 @@ tester.run('fake-timers-require-restore direct writes', rule, {
       code: "function set(name, value) { process.env[name] = value; } it('a', () => { set('MODE', 'x'); });",
       errors: [env],
     },
-    { code: "beforeEach(() => { process.env = { MODE: 'x' }; });", errors: [env] },
+    {
+      code: "describe('x', () => { beforeEach(() => { process.env = { MODE: 'x' }; }); });",
+      errors: [env],
+    },
     {
       code: "it('a', () => { Date.now = () => 0; Math.random = () => 0.5; globalThis.fetch = fake; console.error = noop; });",
       errors: [global, global, global, global],

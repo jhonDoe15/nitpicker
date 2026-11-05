@@ -149,7 +149,8 @@ let $typeOf := function($n) {
           $imports := $unit/ImportDeclaration[@Static = false()][@ImportOnDemand = false()][@ImportedSimpleName = $type],
           $owned := function($package) { $prefix != '' and ($package = $prefix or starts-with($package, concat($prefix, '.'))) }
       return $type != '' and not($type = ('System', 'Thread', 'Runtime'))
-        and ($n/self::FieldAccess or matches(string($n/@MethodName), '^set[A-Z]'))
+        and ($n/self::FieldAccess
+             or (matches(string($n/@MethodName), '^set[A-Z]') and not(matches(string($n/@MethodName), '^setUp([A-Z]|$)'))))
         and not($unit//(ClassDeclaration | EnumDeclaration | RecordDeclaration | InterfaceDeclaration)[@SimpleName = $type])
         and (if ($qualifier != '') then $owned($qualifier)
              else if (exists($imports)) then (some $import in $imports satisfies $owned(string($import/@PackageName)))
@@ -171,6 +172,8 @@ return
                                                                 'TestFactory', 'TestTemplate')],
        $zones := ($sites | (if (exists($tests)) then () else $classes[last()])),
        $hosts := ancestor::LambdaExpression/parent::ArgumentList/parent::MethodCall,
+       $resources := ancestor::Block[parent::TryStatement[ResourceList]]/../ResourceList
+                       //(ClassType/@SimpleName | AmbiguousName/@Name | MethodCall/@MethodName),
        $marks := (($classes | ancestor::MethodDeclaration)/ModifierList/Annotation/@SimpleName,
                   $classes/ClassBody/FieldDeclaration[ModifierList/Annotation/@SimpleName
                                                       = ('SystemStub', 'Rule', 'ClassRule', 'RegisterExtension')]
@@ -191,7 +194,7 @@ return
        }
    return not(
      exists(ancestor::* intersect $sites)
-     or exists(ancestor::Block[parent::TryStatement[ResourceList]])
+     or $resources = ($type, $extensions($family))
      or $marks = $extensions($family)
      or (some $restore in $zones//(MethodCall | FieldAccess[@AccessType = 'WRITE'])[not(. is $change)]
          satisfies ($familyOf($restore) = $family
