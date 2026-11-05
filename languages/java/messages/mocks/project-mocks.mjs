@@ -15,7 +15,7 @@ const GENERIC_TYPES = {
 };
 const TYPE_NAME = /^[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)*/u;
 const WILDCARD_IMPORT = /^\s*import\s+([\w.]+)\.\*\s*;/gmu;
-const NOT_MAIN = /(?:^|\/)(?:src\/(?!main\/)[^/]+|tests?)\//u;
+const NOT_MAIN = /(?:^|\/)src\/(?!main\/|\w+Main\/)[^/]+\/|^tests?\//u;
 const SOURCE_EXTENSIONS = ['.java', '.kt'];
 const KOTLIN_FACADE = /Kt$/u;
 const CLASS_LITERAL = /\.class$/u;

@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { productionTypeResolver } from '../../production-types.mjs';
 import { findingFactory } from '../../review-finding.mjs';
 import { file, fn, klass, testFile } from '../../test-support/facts.mjs';
-import { subjectMockFindings } from './subject-mocks.mjs';
+import { staticMessage, subjectMessage, subjectMockFindings } from './subject-mocks.mjs';
 
 const roots = [];
 const TEST_FILE = 'src/test/kotlin/demo/OrderServiceTest.kt';
@@ -28,7 +28,14 @@ import org.mockito.kotlin.whenever
 import java.time.Clock
 `;
 const MAIN_FILES = [
-  file({ classes: [klass('OrderService'), klass('Pricing'), klass('Ids', { kind: 'object' })] }),
+  file({
+    classes: [
+      klass('OrderService'),
+      klass('Pricing'),
+      klass('Repo'),
+      klass('Ids', { kind: 'object' }),
+    ],
+  }),
   file({ file: 'src/main/kotlin/demo/Totals.kt', functions: [fn('total')] }),
 ];
 
@@ -38,19 +45,30 @@ afterEach(() => {
   }
 });
 
-function findingsFor(body, testPath = TEST_FILE) {
+function rawFindings(text, testPath = TEST_FILE) {
   const projectRoot = mkdtempSync(path.join(tmpdir(), 'nitpicker-subject-mocks-'));
   roots.push(projectRoot);
   mkdirSync(path.dirname(path.join(projectRoot, testPath)), { recursive: true });
-  writeFileSync(path.join(projectRoot, testPath), `${HEAD}\n${body}`);
-  const tested = testFile({ file: testPath, imports: [] });
-  const projectFiles = [...MAIN_FILES, tested];
+  writeFileSync(path.join(projectRoot, testPath), text);
+  const projectFiles = [...MAIN_FILES, testFile({ file: testPath, imports: [] })];
   return subjectMockFindings(projectFiles, {
     finding: findingFactory(),
     projectRoot,
     projectFiles,
     isProduction: productionTypeResolver({ files: projectFiles, projectRoot }),
-  }).map(({ rule, location, message }) => ({ rule, line: location.line - HEAD.split('\n').length, message }));
+  });
+}
+
+function findingsFor(body, testPath = TEST_FILE) {
+  return rawFindings(`${HEAD}\n${body}`, testPath).map(({ rule, location, message }) => ({
+    rule,
+    line: location.line - HEAD.split('\n').length,
+    message,
+  }));
+}
+
+function routed(message, rule = 'MockedSubjectInTest') {
+  return findingFactory()({ rule, file: TEST_FILE, line: 1, message }).message;
 }
 
 function summary(body, testPath) {
@@ -74,9 +92,7 @@ describe('subjectMockFindings', () => {
       'MockedSubjectInTest@5',
       'MockedSubjectInTest@6',
     ]);
-    expect(findingsFor(body)[0].message).toMatch(
-      /^This test mocks OrderService, the class it tests/u,
-    );
+    expect(findingsFor(body)[0].message).toBe(routed(subjectMessage('OrderService')));
   });
 
   it('reports a spy of the subject only when its own methods are stubbed', () => {
@@ -86,13 +102,15 @@ describe('subjectMockFindings', () => {
   private val verified = spyk(OrderService(Pricing()))
   private val mockito = spy(OrderService(Pricing()))
   private val real = Mockito.mock(OrderService::class.java, Mockito.CALLS_REAL_METHODS)
+  @Mock(answer = Answers.CALLS_REAL_METHODS) lateinit var partial: OrderService
 
   fun stubs() {
     every { annotated.total() } returns 1
     every { stubbed.total() } returns 2
     doReturn(3).whenever(mockito).total()
     verify { verified.total() }
-    real.total()
+    every { real.total() } returns 4
+    every { partial.total() } returns 5
   }
 }
 `;
@@ -101,6 +119,60 @@ describe('subjectMockFindings', () => {
       'MockedSubjectInTest@3',
       'MockedSubjectInTest@5',
     ]);
+  });
+
+  it('matches the stubbing of a local spy in its own function only', () => {
+    const body = `class OrderServiceTest {
+  fun a() {
+    val svc = spyk(OrderService(Pricing()))
+    svc.total()
+  }
+
+  fun b() {
+    val svc = mockk<Pricing>()
+    every { svc.price() } returns 1
+    val stubbed = spyk(OrderService(Pricing()))
+    every { stubbed.total() } returns 2
+  }
+}
+`;
+    expect(summary(body)).toEqual(['MockedSubjectInTest@10']);
+  });
+
+  it('reads Spring mock annotations, use-site targets, nested generics and the lambda form', () => {
+    const body = `class RepoTest {
+  @field:MockK lateinit var annotated: Repo
+  private val nested = mockk<Repo<List<String>>>()
+  private val declared: Repo<String> = mockk()
+  private val stubbed = mock<Repo<String>> { on { size() } doReturn 1 }
+  private val named = spyk(recordPrivateCalls = true, objToCopy = Repo<String>())
+
+  fun stubs() {
+    every { named.size() } returns 2
+    mockkStatic(Repo::class, Repo::class)
+  }
+}
+`;
+    expect(summary(body, 'src/test/kotlin/demo/RepoTest.kt')).toEqual([
+      'MockedSubjectInTest@2',
+      'MockedSubjectInTest@3',
+      'MockedSubjectInTest@4',
+      'MockedSubjectInTest@5',
+      'MockedSubjectInTest@6',
+      'StaticMockOfProjectType@10',
+    ]);
+  });
+
+  it('scans a file that imports only a Spring mock annotation', () => {
+    const springOnly = `package demo
+
+import org.springframework.boot.test.mock.mockito.MockBean
+
+class OrderServiceTest {
+  @MockBean lateinit var service: OrderService
+}
+`;
+    expect(rawFindings(springOnly).map(({ location }) => location.line)).toEqual([6]);
   });
 
   it('takes the subject from an injected property over the class name', () => {
@@ -138,8 +210,8 @@ describe('subjectMockFindings', () => {
       'StaticMockOfProjectType@6',
       'StaticMockOfProjectType@7',
     ]);
-    expect(found[0].message).toMatch(
-      /^mockkObject replaces Ids, code of this project, for the whole test/u,
+    expect(found[0].message).toBe(
+      routed(staticMessage('mockkObject', 'Ids'), 'StaticMockOfProjectType'),
     );
   });
 

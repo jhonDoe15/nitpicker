@@ -1,4 +1,4 @@
-import { braceDepths, splitArguments } from '../../../scan/kotlin-brackets.mjs';
+import { braceDepths, closingIndex, splitArguments } from '../../../scan/kotlin-brackets.mjs';
 
 const NAMED_SUBJECT = /^(.+?)(?:Tests|Test|IT|Spec)$/u;
 const CLASS_HEADER = /\bclass\s+([A-Za-z_]\w*)/gu;
@@ -14,19 +14,22 @@ const SPY_ANNOTATIONS = new Set(['Spy', 'SpyK', 'SpyBean', 'MockitoSpyBean', 'Sp
 const INJECT_ANNOTATIONS = new Set(['InjectMocks', 'InjectMockKs']);
 const ANNOTATED_PROPERTY = new RegExp(
   [
-    String.raw`((?:@[\w.]+(?:\([^()]*\))?\s+)+)`,
+    String.raw`((?:@(?:\w+:)?[\w.]+(?:\([^()]*\))?\s+)+)`,
     String.raw`(?:(?:private|protected|internal|public|lateinit|override|open|final)\s+)*`,
-    String.raw`(?:val|var)\s+(\w+)\s*(?::\s*([\w.]+)|=\s*([A-Z][\w.]*)\s*(?:<[^()]*>)?\s*\()`,
+    String.raw`(?:val|var)\s+(\w+)\s*(?::\s*([\w.]+)|=\s*([A-Z][\w.]*)(?:\s*<[^()]*>)?\s*\()`,
   ].join(''),
   'gu',
 );
-const ANNOTATION = /@([\w.]+)(\([^()]*\))?/gu;
+const ANNOTATION = /@(?:\w+:)?([\w.]+)(\([^()]*\))?/gu;
 const CREATION =
-  /(?<![\w.]|\bfun\s+)(?:Mockito\s*\.\s*)?(mockk|mock|spyk|spy)\s*(?:<\s*([\w.]+)[^<>]*>)?\s*\(/gu;
+  /(?<![\w.]|\bfun\s+)(?:(?:Mockito|io\.mockk)\s*\.\s*)?(mockk|mock|spyk|spy)(?:\s*<\s*([\w.]+)(?:<(?:[^<>]|<[^<>]*>)*>)?(?:[^\w.<>][^<>]*)?>)?\s*[({]/gu;
 const CLASS_LITERAL = /^([\w.]+)::class(?:\.java)?$/u;
-const CONSTRUCTOR_CALL = /^([A-Z][\w.]*)\s*(?:<[^()]*>)?\s*\(/u;
+const CONSTRUCTOR_CALL = /^([A-Z][\w.]*)(?:\s*<[^()]*>)?\s*\(/u;
 const IDENTIFIER = /^[a-z_]\w*$/u;
-const BINDING = /(?:(?:val|var)\s+(\w+)\s*(?::\s*([\w.]+)\??)?|(?:this\s*\.\s*)?(\w+))\s*=\s*$/u;
+const BINDING =
+  /(?:(?:val|var)\s+(\w+)(?:\s*:\s*([\w.]+)(?:<(?:[^<>=]|<[^<>=]*>)*>)?\??)?|(?:this\s*\.\s*)?(\w+))\s*=\s*$/u;
+const BINDING_WINDOW = 200;
+const NAMED_ARGUMENT = /^\s*\w+\s*=(?!=)/u;
 const REAL_METHODS = /\bCALLS_REAL_METHODS\b/u;
 const BACKTICK = '`';
 const SPY_CALLS = new Set(['spyk', 'spy']);
@@ -76,7 +79,7 @@ function declaredTypes(code) {
 }
 
 function argumentType(text, types) {
-  const trimmed = text.trim();
+  const trimmed = text.replace(NAMED_ARGUMENT, '').trim();
   const literal = CLASS_LITERAL.exec(trimmed) ?? CONSTRUCTOR_CALL.exec(trimmed);
   if (literal !== null) {
     return simpleName(literal[1]);
@@ -86,16 +89,27 @@ function argumentType(text, types) {
 
 function creationSite(code, match, types) {
   const open = match.index + match[0].length - 1;
-  const texts = splitArguments(code, open).parts.map(({ start, end }) => code.slice(start, end));
-  const binding = BINDING.exec(code.slice(Math.max(0, match.index - 200), match.index));
+  const texts =
+    code[open] === '('
+      ? splitArguments(code, open).parts.map(({ start, end }) => code.slice(start, end))
+      : [];
+  const binding = BINDING.exec(code.slice(Math.max(0, match.index - BINDING_WINDOW), match.index));
   const name = binding?.[1] ?? binding?.[3];
   const type =
     simpleName(match[2]) ??
-    (texts.length > 0 ? argumentType(texts[0], types) : undefined) ??
+    texts.map((text) => argumentType(text, types)).find(Boolean) ??
     simpleName(binding?.[2]) ??
     types.get(name);
-  const spy = SPY_CALLS.has(match[1]) || texts.some((text) => REAL_METHODS.test(text));
-  return { offset: match.index, name, type, spy };
+  if (texts.some((text) => REAL_METHODS.test(text))) {
+    return { offset: match.index, type: undefined };
+  }
+  return {
+    offset: match.index,
+    name,
+    type,
+    spy: SPY_CALLS.has(match[1]),
+    local: binding?.[1] !== undefined,
+  };
 }
 
 export function mockSites(code) {
@@ -103,10 +117,10 @@ export function mockSites(code) {
   const annotated = annotatedProperties(code).flatMap((property) => {
     const mock = property.annotations.find(({ name }) => MOCK_ANNOTATIONS.has(name));
     const spy = property.annotations.some(({ name }) => SPY_ANNOTATIONS.has(name));
-    if (mock === undefined && !spy) {
+    if ((mock === undefined && !spy) || mock?.realMethods === true) {
       return [];
     }
-    return [{ ...property, spy: spy || mock.realMethods }];
+    return [{ ...property, spy, local: false }];
   });
   const created = [...code.matchAll(CREATION)].map((match) => creationSite(code, match, types));
   return [...annotated, ...created].filter(({ type }) => type !== undefined);
@@ -114,6 +128,18 @@ export function mockSites(code) {
 
 function escaped(name) {
   return name.replaceAll('$', String.raw`\$`);
+}
+
+export function scopeOf(code, offset) {
+  const depths = braceDepths(code);
+  const depth = depths[offset];
+  if (depth <= 1) {
+    return code;
+  }
+  const open = [...code.slice(0, offset)].findLastIndex(
+    (character, index) => character === '{' && depths[index] === depth - 1,
+  );
+  return open < 0 ? code : code.slice(open, closingIndex(code, open) + 1);
 }
 
 export function isStubbed(code, name) {
