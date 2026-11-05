@@ -1322,18 +1322,23 @@ t)`, `asyncio.timeout(t)`, `fail_after(t)`, `wait(t)`) inside `pytest.raises` or
   `assertIsInstance(x, object)` and the like: asserts that cannot fail.
 - `server-or-container-per-test` (Java and Kotlin: `ServerOrContainerPerTest`; TypeScript:
   `nitpicker/no-server-or-worker-per-test` and `nitpicker/no-node-process-per-test`) reports a
-  container, server, process or git repository started for each test: a call into
-  `testcontainers`, `uvicorn.run` or `uvicorn.Server`, `subprocess.Popen`,
+  container, server, process or git repository started for each test: a `testcontainers` class
+  named `*Container` or `DockerCompose`, `uvicorn.run` or `uvicorn.Server`, `subprocess.Popen`,
   `asyncio.create_subprocess_exec`, `multiprocessing.Process`, an `http.server`, `socketserver`,
   `werkzeug` or `wsgiref` server, `aiohttp.web.run_app`, `git.Repo.init`/`clone_from`, `pygit2`
-  or `dulwich` repository creation, or a `subprocess.run`-style `git init`/`git clone`. It is
-  reported in a fixture with the default `function` scope that runs for two or more tests (the
-  tests that request it by parameter or `usefixtures`, the cases of a literal `parametrize`, the
-  function-scoped fixtures that request it, and every test in reach of an `autouse` fixture; a
-  `conftest.py` fixture counts the tests under its folder), in `setup_method`, `setUp`,
-  `asyncSetUp` and `setup_function`, and when two or more tests of one module or class make the
-  same call with the same arguments. A fixture with a wider `scope` and a fixture used once are
-  not reported.
+  or `dulwich` repository creation, or a `subprocess.run`-style `git init`/`git clone` (also after
+  `-C path`). A process the function waits for (`.wait()`, `.communicate()`) is a short command,
+  not a server, and is not counted. It is reported in a fixture with the default `function` scope
+  that runs two or more times: the tests that request it by parameter, `usefixtures` or a module
+  `pytestmark`, the cases of a literal `parametrize`, the `params` of the fixture, the
+  function-scoped fixtures that request it, and every test in reach of an `autouse` fixture. A
+  test counts for the closest fixture of that name (its class, its module, then the nearest
+  `conftest.py` above it), so a fake that overrides it lower down takes those tests away. It is
+  also reported in `setup_method`, `setUp`, `asyncSetUp` of a test class and `setup_function`,
+  and when two or more tests of one module or class make the same call with the same arguments.
+  A fixture with a wider `scope` and a fixture used once are not reported. Fixtures that a
+  `conftest.py` loads from another module (`pytest_plugins`, a star import) and
+  `request.getfixturevalue(...)` are not followed.
 - A test function with no assertion is not checked here; the conventions work owns it, together
   with the detection of the project's own assertion helpers.
 - Touched code: a new finding is reported per site, and the rules in `touched-rules.mjs` (every

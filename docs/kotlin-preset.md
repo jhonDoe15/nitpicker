@@ -758,24 +758,30 @@ guessed at.
 - `ServerOrContainerPerTest`: a container, server or process started for each test, the Kotlin
   side of the Java rule. Reported: a property annotated `@Container` (Testcontainers) or
   `@RegisterExtension` holding a `WireMockExtension`, declared in a class body (not a companion
-  object or `object`) of a class without `@TestInstance(PER_CLASS)`, and a `@Rule` (or
-  `@get:Rule`) property holding a container, a WireMock or OkHttp mock server, an
-  `EmbeddedKafkaRule` or a `MockServerRule`; a Kotest `ContainerExtension` in
-  `ContainerLifecycleMode.Test`, `LifecycleMode.EveryTest` or a `perTest()` listener; a `start()`
-  in `@BeforeEach`, `@Before`, `@BeforeMethod`, an `override fun beforeTest`, `beforeEach` or
+  object or `object`) of a class without `@TestInstance(PER_CLASS)`, a `@Rule` (or `@get:Rule`)
+  property holding a container, a WireMock or OkHttp mock server, an `EmbeddedKafkaRule` or a
+  `MockServerRule`, and a property of such a class that starts its value
+  (`MockWebServer().apply { start() }`); a Kotest `ContainerExtension` in
+  `ContainerLifecycleMode.Test`, `LifecycleMode.EveryTest` or a `perTest()` listener; a start in
+  `@BeforeEach`, `@Before`, `@BeforeMethod`, an `override fun beforeTest`, `beforeEach` or
   `beforeAny`, a Kotest `beforeTest { }`, `beforeEach { }` or `beforeAny { }`, or a function of
   the class one of them calls, on an object made for each test; and the same start in two or
-  more tests of a class. The started types are matched through the imports: any Testcontainers
-  class named `*Container`, WireMock, OkHttp `MockWebServer`, embedded Redis, Jetty, Tomcat and
+  more tests of a class. A start is `x.start()`, also at the end of a builder chain
+  (`GenericContainer(...).withEnv(...).start()`) or inside `apply`, `also`, `let`, `run` or `use`
+  on the object. The started types are matched through the imports: any Testcontainers class
+  named `*Container`, WireMock, OkHttp `MockWebServer`, embedded Redis, Jetty, Tomcat and
   `ProcessBuilder`, a JDK `HttpServer.create`, and the calls `SpringApplication.run`,
   `runApplication`, `SpringApplicationBuilder(...).run`, `Runtime.getRuntime().exec`,
   `startClientAndServer` and Ktor's `embeddedServer(...).start`. An object made for each test is
-  a new object, a local, a property the hook assigns, an instance property of a JUnit class
-  without `PER_CLASS`, or a property that `@AfterEach`, `@After`, `@AfterMethod` or a Kotest
-  `afterTest`/`afterEach`/`afterAny` stops; a start on a companion or Kotest spec property is left
-  alone, since a second `start()` does nothing. Two starts are the same when the statement, and
-  the declaration of a local it starts, read the same apart from comments and spacing. A
-  property is matched by name in the file, so a shadowing local is not told apart.
+  a new object, a local, a property the class's hook assigns, an instance property of a JUnit
+  class without `PER_CLASS`, or a property that the class's `@AfterEach`, `@After`,
+  `@AfterMethod` or Kotest `afterTest`/`afterEach`/`afterAny` stops; a start on a companion or
+  Kotest spec property is left alone, since a second `start()` does nothing. The receiver is
+  looked up as a local of the hook or test first, then as a property of its class, its companion
+  object and the enclosing classes, so a same-named property of another class does not count.
+  Two starts are the same when the statement, and the declaration of a local it starts, read the
+  same apart from comments and spacing. A start in a helper that tests (not hooks) call is not
+  followed.
 - `AssertionInControlFlow`: an assertion inside a construct that can skip it, in a JUnit test or a Kotest
   test body: an `if` or `else`, a `when`, any loop (`for`, `while`, `do`, `repeat`, `forEach`,
   `forEachIndexed`, `onEach` and the other iteration calls), a safe call (`?.let`, `?.also`, `?.run`,

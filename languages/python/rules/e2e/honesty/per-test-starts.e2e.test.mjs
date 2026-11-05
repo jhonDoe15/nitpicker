@@ -208,4 +208,94 @@ def setup_function():
 
     expect(startsOf({ 'tests/test_git.py': code, 'src/app.py': production })).toEqual([]);
   });
+
+  it('counts only the tests a fixture serves, past closer overrides', () => {
+    const root = `import pytest
+from testcontainers.postgres import PostgresContainer
+
+
+@pytest.fixture
+def database():
+    with PostgresContainer("postgres:16") as container:
+        yield container
+`;
+    const fake = `import pytest
+
+
+@pytest.fixture
+def database():
+    return {}
+`;
+    const unit = `def test_reads(database):
+    assert database == {}
+
+
+def test_writes(database):
+    assert database == {}
+`;
+    const integration = `def test_migrates(database):
+    assert database
+`;
+
+    expect(
+      startsOf({
+        'conftest.py': root,
+        'tests/unit/conftest.py': fake,
+        'tests/unit/test_repository.py': unit,
+        'tests/test_migrations.py': integration,
+      }),
+    ).toEqual([]);
+  });
+
+  it('reports pytestmark, fixture params and git options, not helpers and short commands', () => {
+    const code = `import subprocess
+import sys
+
+import pytest
+from testcontainers.core.waiting_utils import wait_for_logs
+
+pytestmark = pytest.mark.usefixtures("repository")
+
+
+@pytest.fixture
+def repository(tmp_path):
+    subprocess.run(["git", "-C", str(tmp_path), "init"], check=True)
+    return tmp_path
+
+
+@pytest.fixture(params=["a", "b"])
+def server(request):
+    return subprocess.Popen([sys.executable, "-m", "http.server", request.param])
+
+
+@pytest.fixture
+def ready(server):
+    wait_for_logs(server, "ready")
+    version = subprocess.Popen([sys.executable, "--version"])
+    version.wait()
+    return server
+
+
+class Helper:
+    def setUp(self):
+        subprocess.Popen(["redis-server"])
+
+
+def test_one(ready):
+    assert ready
+
+
+def test_two():
+    assert subprocess.Popen([sys.executable, "-c", "pass"]).wait() == 0
+
+
+def test_three():
+    assert subprocess.Popen([sys.executable, "-c", "pass"]).wait() == 0
+`;
+
+    expect(startsOf({ 'tests/test_tools.py': code })).toEqual([
+      `${RULE} tests/test_tools.py:12 subprocess.run`,
+      `${RULE} tests/test_tools.py:18 subprocess.Popen`,
+    ]);
+  });
 });

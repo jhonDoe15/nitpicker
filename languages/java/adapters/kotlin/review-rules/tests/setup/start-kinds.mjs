@@ -1,5 +1,12 @@
 import { importsOf } from '../discovery/imports.mjs';
-import { closeOf, execAt, lineEndOf, marksFrom, remembered } from '../discovery/text-scan.mjs';
+import {
+  closeOf,
+  execAt,
+  lineEndOf,
+  marksFrom,
+  remembered,
+  repeatUntil,
+} from '../discovery/text-scan.mjs';
 
 const SERVER_TYPES = new Set([
   'com.github.tomakehurst.wiremock.WireMockServer',
@@ -16,10 +23,11 @@ const ALWAYS_NEW_TYPES = new Set(['java.lang.ProcessBuilder']);
 const IMPLICIT = new Map([['ProcessBuilder', 'java.lang.ProcessBuilder']]);
 const CONTAINER_PACKAGE = 'org.testcontainers.';
 const HTTP_SERVER = 'com.sun.net.httpserver.HttpServer';
-const CREATION = /(?<![\w.`])([A-Z]\w*)\s*(?:<[^(){}]*>)?\s*\(/gu;
+const CREATION = /(?<![\w.`])([A-Z]\w*)(?:\s*<[^(){}]*>)?\s*\(/gu;
 const FACTORY = /(?<![\w.`])(HttpServer|HttpsServer)\s*\.\s*create\s*\(/gu;
 const DECLARATION = /(?<![\w.`])(?:val|var)\s+([A-Za-z_]\w*)\s*(?::\s*([\w.]+))?/gu;
 const CHAINED = /^\s*(?:\?\.|\.)/u;
+const MAX_CHAIN_LINES = 40;
 const ALWAYS_NEW_CALLS = [
   {
     name: 'SpringApplication.run',
@@ -28,7 +36,7 @@ const ALWAYS_NEW_CALLS = [
   },
   {
     name: 'runApplication',
-    pattern: /(?<![\w.`])runApplication\s*(?:<[^(){}]*>)?\s*\(/gu,
+    pattern: /(?<![\w.`])runApplication(?:\s*<[^(){}]*>)?\s*\(/gu,
     needs: 'org.springframework.boot.runApplication',
   },
   {
@@ -92,13 +100,18 @@ export function expressionEnd(scanned, from) {
     }
     state.end = Math.max(state.end, lineEndOf(code, closeOf(scanned, index)));
   }
-  while (CHAINED.test(code.slice(state.end + 1, lineEndOf(code, state.end + 1)))) {
-    state.end = lineEndOf(code, state.end + 1);
-  }
+  repeatUntil(MAX_CHAIN_LINES, () => {
+    const next = lineEndOf(code, state.end + 1);
+    if (!CHAINED.test(code.slice(state.end + 1, next))) {
+      return true;
+    }
+    state.end = next;
+    return false;
+  });
   return state.end;
 }
 
-export function createsHeavy(scanned, from, to) {
+function createsHeavy(scanned, from, to) {
   const text = scanned.code.slice(from, to);
   const kinds = [...text.matchAll(CREATION)].map((match) => heavyKind(scanned, match[1]));
   const factory = [...text.matchAll(FACTORY)].some((match) =>
@@ -116,7 +129,7 @@ export function declarationsOf(scanned) {
       const kind =
         (match[2] === undefined ? undefined : heavyKind(scanned, match[2])) ??
         (initializer === null ? undefined : createsHeavy(scanned, after, end));
-      return kind === undefined ? [] : [{ name: match[1], offset: match.index, end, kind }];
+      return [{ name: match[1], offset: match.index, end, kind }];
     }),
   );
 }

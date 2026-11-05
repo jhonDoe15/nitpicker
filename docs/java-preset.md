@@ -2578,9 +2578,11 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   or on an instance field of a `PER_CLASS` class, is left alone, since these starts do nothing
   once the server or container runs. `SpringApplication.run`, `ProcessBuilder.start`,
   `Runtime.exec`, `startClientAndServer` and an `EmbeddedKafkaBroker` start something new on
-  every call. Two starts in different test methods count as the same when their statements, and
-  the declaration of a local they start, have the same names and literals; tests that start
-  servers with different settings are left alone. The TypeScript preset has the same check in
+  every call. A container is also found through a raw or `var` local, a field, or a builder chain
+  on a new container (`new GenericContainer<>(...).withEnv(...).start()`). A start in a helper
+  that test methods (not hooks) call is not followed. Two starts in different test methods count
+  as the same when their statements, and the declaration of a local they start, have the same
+  names and literals; tests that start servers with different settings are left alone. The TypeScript preset has the same check in
   `nitpicker/no-server-or-worker-per-test` and `nitpicker/no-node-process-per-test`.
 - `ExhaustiveEnumPredicate` needs at least two comparisons with distinct constants of one enum on
   one subject. A condition in an `if` or a loop, or a predicate passed as an argument, is not a
