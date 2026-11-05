@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 249 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 251 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -2024,6 +2024,17 @@ Put @Transactional on a service method, not on a controller; a controller transa
 - **Message in Kotlin:** Put @Transactional on a service function, not on a controller; a controller transaction spans the whole request and response serialization.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringNoTransactionalController","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
+<a id="pmd-springorderedprovider"></a>
+
+### `pmd/SpringOrderedProvider`
+
+Use orderedStream() on the ObjectProvider, so the beans come in @Order and Ordered order. stream(), forEach, iterator() and a for-each loop give them in registration order.
+
+- **Scope:** Main sources of a project with Spring on the compile classpath.
+- **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
+- **Message in Kotlin:** Use orderedStream() on the ObjectProvider, so the beans come in @Order and Ordered order. Iterating the provider itself (a for loop, forEach, map, toList, stream() or iterator()) gives them in registration order.
+- **Exception:** If this is intended, add `{"rule":"pmd/SpringOrderedProvider","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
 <a id="pmd-springpasswordencoder"></a>
 
 ### `pmd/SpringPasswordEncoder`
@@ -2110,6 +2121,17 @@ Use fixedDelay or cron instead of fixedRate, so a slow run never overlaps the ne
 - **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
 - **Message in Kotlin:** Use fixedDelay or cron instead of fixedRate, so a slow run never overlaps the next one.
 - **Exception:** If this is intended, add `{"rule":"pmd/SpringScheduledFixedDelay","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="pmd-springstaticpostprocessorbean"></a>
+
+### `pmd/SpringStaticPostProcessorBean`
+
+Make this @Bean method static and give it only Environment or ObjectProvider parameters. A post-processor or @ConfigurationPropertiesBinding bean is created before post-processing is ready, so an instance method creates its configuration class, and each parameter its bean, too early; those beans then miss proxies such as @Transactional and @Async.
+
+- **Scope:** Main sources of a project with Spring on the compile classpath.
+- **Why it is on:** One of nitpicker's Spring rules: it names the one form Spring code should take, and runs only when Spring is on the compile classpath.
+- **Message in Kotlin:** Move this @Bean function into a companion object, mark it @JvmStatic and give it only Environment or ObjectProvider parameters. A post-processor or @ConfigurationPropertiesBinding bean is created before post-processing is ready, so an instance function creates its configuration class, and each parameter its bean, too early; those beans then miss proxies such as @Transactional and @Async.
+- **Exception:** If this is intended, add `{"rule":"pmd/SpringStaticPostProcessorBean","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-springtransactionalannotation"></a>
 
