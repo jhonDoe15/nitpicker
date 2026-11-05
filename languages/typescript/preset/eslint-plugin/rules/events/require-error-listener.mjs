@@ -3,38 +3,19 @@ import { ancestorsOf } from '../analysis/ancestry.mjs';
 import { findVariable, isFunctionNode, stringValue } from '../analysis/constant-resolution.mjs';
 import { memberName, unwrapped } from '../security/security-values.mjs';
 import { createBindings, isEmitterCreation, isServerCreation } from './emitter-creations.mjs';
-import { CONNECTION_EVENTS, LISTEN_METHODS } from './emitter-modules.mjs';
+import { isConnectionEvent, isListenMethod } from './emitter-modules.mjs';
 import { referencesOutcome } from './error-handling.mjs';
 
-const CLASSES = new Set(['ClassBody']);
-
-function fieldKey(member) {
-  if (member?.type !== 'MemberExpression' || member.computed) {
-    return undefined;
-  }
-  const { property } = member;
-  if (property.type === 'PrivateIdentifier') {
-    return `#${property.name}`;
-  }
-  return property.type === 'Identifier' ? property.name : undefined;
-}
-
-function thisField(member) {
-  return member?.type === 'MemberExpression' && member.object.type === 'ThisExpression'
-    ? fieldKey(member)
-    : undefined;
-}
-
-function definitionKey(definition) {
-  if (definition.computed) {
-    return undefined;
-  }
-  const { key } = definition;
+function privateAware(key) {
   return key.type === 'PrivateIdentifier' ? `#${key.name}` : key.name;
 }
 
-function enclosingClass(node) {
-  return ancestorsOf(node).find((ancestor) => CLASSES.has(ancestor.type));
+function thisField(member) {
+  const isField =
+    member?.type === 'MemberExpression' &&
+    member.object.type === 'ThisExpression' &&
+    !member.computed;
+  return isField ? privateAware(member.property) : undefined;
 }
 
 function fieldReferences(classBody, key, written) {
@@ -53,26 +34,95 @@ function isExported(declarator) {
   return declarator.parent?.parent?.type === 'ExportNamedDeclaration';
 }
 
-function connectionListener(context, call, bindingsFor) {
+function isServerReceiver(scope, receiver) {
+  const target = unwrapped(receiver);
+  if (target.type !== 'Identifier') {
+    return isServerCreation(scope, target);
+  }
+  const definition = findVariable(scope.context, target, target.name)?.defs.at(0);
+  return definition?.type === 'Variable' && isServerCreation(scope, definition.node.init);
+}
+
+function connectionListener(scope, call) {
   const { callee } = call;
-  if (isServerCreation(context, call, bindingsFor)) {
+  if (isServerCreation(scope, call)) {
     return call.arguments.findLast(isFunctionNode);
   }
   const listens =
     callee.type === 'MemberExpression' &&
-    LISTEN_METHODS.has(memberName(callee)) &&
-    CONNECTION_EVENTS.has(stringValue(call.arguments[0])) &&
-    isServerReceiver(context, callee.object, bindingsFor);
+    isListenMethod(memberName(callee)) &&
+    isConnectionEvent(stringValue(call.arguments[0])) &&
+    isServerReceiver(scope, callee.object);
   return listens && isFunctionNode(call.arguments[1]) ? call.arguments[1] : undefined;
 }
 
-function isServerReceiver(context, receiver, bindingsFor) {
-  const target = unwrapped(receiver);
-  if (target.type !== 'Identifier') {
-    return isServerCreation(context, target, bindingsFor);
+function check(scope, { node, name, references }) {
+  if (referencesOutcome(scope, references) === 'unhandled') {
+    scope.context.report({ node, messageId: 'missingListener', data: { name } });
   }
-  const definition = findVariable(context, target, target.name)?.defs.at(0);
-  return definition?.type === 'Variable' && isServerCreation(context, definition.node.init, bindingsFor);
+}
+
+function checkVariable(scope, node, identifier) {
+  const variable = findVariable(scope.context, identifier, identifier.name);
+  if (variable !== undefined) {
+    const references = variableReferences(variable, identifier);
+    check(scope, { node, name: identifier.name, references });
+  }
+}
+
+function checkField(scope, node, { key, written }) {
+  const classBody = ancestorsOf(node).find((ancestor) => ancestor.type === 'ClassBody');
+  if (classBody !== undefined) {
+    const references = fieldReferences(classBody, key, written);
+    check(scope, { node, name: `this.${key}`, references });
+  }
+}
+
+function checkAssignment(scope, node) {
+  if (node.operator !== '=' || !isEmitterCreation(scope, node.right)) {
+    return;
+  }
+  const key = thisField(node.left);
+  if (key !== undefined) {
+    checkField(scope, node.right, { key, written: node.left });
+  } else if (node.left.type === 'Identifier') {
+    checkVariable(scope, node.right, node.left);
+  }
+}
+
+function checkConnection(scope, node) {
+  const listener = connectionListener(scope, node);
+  const socket = listener?.params[0];
+  if (socket?.type !== 'Identifier') {
+    return;
+  }
+  const variable = scope.context.sourceCode
+    .getDeclaredVariables(listener)
+    .find((entry) => entry.name === socket.name);
+  check(scope, { node: socket, name: socket.name, references: variableReferences(variable) });
+}
+
+function visitors(scope) {
+  return {
+    VariableDeclarator(node) {
+      const stored = node.id.type === 'Identifier' && !isExported(node);
+      if (stored && isEmitterCreation(scope, node.init)) {
+        checkVariable(scope, node.init, node.id);
+      }
+    },
+    AssignmentExpression(node) {
+      checkAssignment(scope, node);
+    },
+    PropertyDefinition(node) {
+      const instance = !node.static && !node.computed;
+      if (instance && isEmitterCreation(scope, node.value)) {
+        checkField(scope, node.value, { key: privateAware(node.key), written: undefined });
+      }
+    },
+    'CallExpression, NewExpression'(node) {
+      checkConnection(scope, node);
+    },
+  };
 }
 
 export const rule = {
@@ -88,62 +138,6 @@ export const rule = {
     },
   },
   create(context) {
-    let bindingsFor;
-
-    function check(node, name, references) {
-      if (referencesOutcome(context, references, bindingsFor) === 'unhandled') {
-        context.report({ node, messageId: 'missingListener', data: { name } });
-      }
-    }
-
-    function checkVariable(node, identifier) {
-      const variable = findVariable(context, identifier, identifier.name);
-      if (variable !== undefined) {
-        check(node, identifier.name, variableReferences(variable, identifier));
-      }
-    }
-
-    function checkField(node, key, written) {
-      const classBody = enclosingClass(node);
-      if (classBody !== undefined) {
-        check(node, `this.${key}`, fieldReferences(classBody, key, written));
-      }
-    }
-
-    return {
-      Program(program) {
-        bindingsFor = createBindings(program);
-      },
-      VariableDeclarator(node) {
-        if (node.id.type === 'Identifier' && !isExported(node) && isEmitterCreation(context, node.init, bindingsFor)) {
-          checkVariable(node.init, node.id);
-        }
-      },
-      AssignmentExpression(node) {
-        if (node.operator !== '=' || !isEmitterCreation(context, node.right, bindingsFor)) {
-          return;
-        }
-        const key = thisField(node.left);
-        if (key !== undefined) {
-          checkField(node.right, key, node.left);
-        } else if (node.left.type === 'Identifier') {
-          checkVariable(node.right, node.left);
-        }
-      },
-      PropertyDefinition(node) {
-        const key = definitionKey(node);
-        if (key !== undefined && !node.static && isEmitterCreation(context, node.value, bindingsFor)) {
-          checkField(node.value, key, undefined);
-        }
-      },
-      'CallExpression, NewExpression'(node) {
-        const listener = connectionListener(context, node, bindingsFor);
-        const socket = listener?.params[0];
-        if (socket?.type === 'Identifier') {
-          const variable = context.sourceCode.getDeclaredVariables(listener).find((entry) => entry.name === socket.name);
-          check(socket, socket.name, variableReferences(variable, socket));
-        }
-      },
-    };
+    return visitors({ context, bindingsFor: createBindings(context.sourceCode.ast) });
   },
 };

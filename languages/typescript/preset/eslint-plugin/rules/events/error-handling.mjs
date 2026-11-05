@@ -1,16 +1,17 @@
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
+import { chainOf } from '../analysis/ancestry.mjs';
 import { resolveConstant, stringValue } from '../analysis/constant-resolution.mjs';
 import { isTypeWrapper, memberName, typeServices } from '../security/security-values.mjs';
 import { calledName, importedName, moduleOfFile } from './emitter-creations.mjs';
 import {
-  CHAINABLE_METHODS,
-  CONSUMING_METHODS,
   HANDLING_CALLS,
-  HANDLING_LIBRARIES,
   HANDLING_STATICS,
-  HELPER_HANDLING_NAMES,
-  LISTEN_METHODS,
-  STREAM_WAITERS,
+  isChainableMethod,
+  isConsumingMethod,
+  isHandlingLibrary,
+  isHelperHandlingName,
+  isListenMethod,
+  isStreamWaiter,
 } from './emitter-modules.mjs';
 
 const ESCAPES = new Map([
@@ -26,73 +27,67 @@ const ESCAPES = new Map([
 const CALLS = new Set(['CallExpression', 'NewExpression']);
 
 function outerOf(node) {
-  let current = node;
-  while (isTypeWrapper(current.parent) && current.parent.expression === current) {
-    current = current.parent;
-  }
-  return current;
-}
-
-function isErrorEvent(context, node) {
-  return stringValue(resolveConstant(context, node)) === 'error';
+  return chainOf(node, (current) =>
+    isTypeWrapper(current.parent) && current.parent.expression === current
+      ? current.parent
+      : undefined,
+  ).at(-1);
 }
 
 function methodCall(member) {
-  const call = member.parent;
+  const call = member?.parent;
   return call?.type === 'CallExpression' && call.callee === member ? call : undefined;
 }
 
-function chainHandles(context, firstCall) {
-  let call = firstCall;
-  while (call !== undefined) {
-    const method = memberName(call.callee);
-    if (LISTEN_METHODS.has(method) && isErrorEvent(context, call.arguments[0])) {
-      return true;
-    }
-    if (!CHAINABLE_METHODS.has(method)) {
-      return false;
-    }
-    const next = outerOf(call).parent;
-    call = next?.type === 'MemberExpression' && next.object === outerOf(call) ? methodCall(next) : undefined;
+function nextChainedCall(call) {
+  if (!isChainableMethod(memberName(call.callee))) {
+    return undefined;
   }
-  return false;
+  const outer = outerOf(call);
+  const next = outer.parent;
+  return next?.type === 'MemberExpression' && next.object === outer ? methodCall(next) : undefined;
+}
+
+function listensForErrors(context, call) {
+  const event = stringValue(resolveConstant(context, call.arguments[0]));
+  return isListenMethod(memberName(call.callee)) && event === 'error';
 }
 
 function receiverOutcome(context, member) {
-  const call = methodCall(member);
-  if (call === undefined) {
-    return 'neutral';
-  }
-  return chainHandles(context, call) || CONSUMING_METHODS.has(memberName(member))
-    ? 'handled'
-    : 'neutral';
+  const calls = chainOf(methodCall(member), nextChainedCall);
+  const handled =
+    calls.some((call) => listensForErrors(context, call)) ||
+    (calls.length > 0 && isConsumingMethod(memberName(member)));
+  return handled ? 'handled' : 'neutral';
 }
 
-function handlingCall(context, call, bindingsFor) {
-  const direct = HANDLING_CALLS.some((entry) =>
-    entry.names.has(calledName(context, call, bindingsFor(entry.modules))),
-  );
-  const { callee } = call;
-  const isStatic =
+function isStaticHandler(scope, callee) {
+  return (
     callee.type === 'MemberExpression' &&
     HANDLING_STATICS.some(
       (entry) =>
         entry.names.has(memberName(callee)) &&
-        importedName(context, callee.object, bindingsFor(entry.modules)) === entry.owner,
-    );
-  return direct || isStatic;
+        importedName(scope.context, callee.object, scope.bindingsFor(entry.modules)) ===
+          entry.owner,
+    )
+  );
 }
 
-function tsReceiver(node) {
-  let current = node.expression;
-  while (
+function isHandlingCall(scope, call) {
+  const direct = HANDLING_CALLS.some((entry) =>
+    entry.names.has(calledName(scope.context, call, scope.bindingsFor(entry.modules))),
+  );
+  return direct || isStaticHandler(scope, call.callee);
+}
+
+function chainedReceiver(expression) {
+  return chainOf(expression, (current) =>
     ts.isCallExpression(current) &&
     ts.isPropertyAccessExpression(current.expression) &&
-    CHAINABLE_METHODS.has(current.expression.name.text)
-  ) {
-    current = current.expression.expression;
-  }
-  return current;
+    isChainableMethod(current.expression.name.text)
+      ? current.expression.expression
+      : undefined,
+  ).at(-1);
 }
 
 function tsNameOf(expression) {
@@ -108,10 +103,10 @@ function isNamed(node, name) {
 
 function tsPasses(node, name) {
   const callee = tsNameOf(node.expression);
-  if (!HELPER_HANDLING_NAMES.has(callee)) {
+  if (!isHelperHandlingName(callee)) {
     return false;
   }
-  return STREAM_WAITERS.has(callee)
+  return isStreamWaiter(callee)
     ? node.arguments.some((argument) => isNamed(argument, name))
     : isNamed(node.arguments[0], name);
 }
@@ -121,11 +116,11 @@ function tsListens(node, name) {
   const event = node.arguments[0];
   return (
     ts.isPropertyAccessExpression(callee) &&
-    LISTEN_METHODS.has(callee.name.text) &&
+    isListenMethod(callee.name.text) &&
     event !== undefined &&
     ts.isStringLiteralLike(event) &&
     event.text === 'error' &&
-    isNamed(tsReceiver(callee), name)
+    isNamed(chainedReceiver(callee.expression), name)
   );
 }
 
@@ -149,61 +144,72 @@ function tsHandles(body, name) {
   return false;
 }
 
-function helperOutcome(context, call, index) {
+function resolvedDeclaration(context, call) {
   const services = typeServices(context);
   const tsCall = services?.esTreeNodeToTSNodeMap.get(call);
-  const declaration =
-    tsCall === undefined ? undefined : services.program.getTypeChecker().getResolvedSignature(tsCall)?.declaration;
-  const fileName = declaration?.getSourceFile().fileName;
-  if (fileName === undefined) {
+  return tsCall === undefined
+    ? undefined
+    : services.program.getTypeChecker().getResolvedSignature(tsCall)?.declaration;
+}
+
+function helperOutcome(context, call, index) {
+  const declaration = resolvedDeclaration(context, call);
+  const source = declaration?.getSourceFile();
+  if (source === undefined) {
     return 'neutral';
   }
-  const library = moduleOfFile(fileName);
-  if (library !== undefined || declaration.getSourceFile().isDeclarationFile) {
-    return HANDLING_LIBRARIES.has(library) ? 'handled' : 'neutral';
+  const library = moduleOfFile(source.fileName);
+  if (library !== undefined || source.isDeclarationFile) {
+    return isHandlingLibrary(library) ? 'handled' : 'neutral';
   }
   const parameter = declaration.parameters?.[index];
   const named = parameter !== undefined && ts.isIdentifier(parameter.name);
-  return named && declaration.body !== undefined && tsHandles(declaration.body, parameter.name.text)
-    ? 'handled'
-    : 'neutral';
+  const handles =
+    named && declaration.body !== undefined && tsHandles(declaration.body, parameter.name.text);
+  return handles ? 'handled' : 'neutral';
 }
 
-function argumentOutcome(context, call, argument, bindingsFor) {
-  if (handlingCall(context, call, bindingsFor)) {
+function argumentOutcome(scope, call, argument) {
+  if (isHandlingCall(scope, call)) {
     return 'handled';
   }
   const index = call.arguments.indexOf(argument);
-  return index === -1 ? 'neutral' : helperOutcome(context, call, index);
+  return index === -1 ? 'neutral' : helperOutcome(scope.context, call, index);
 }
 
-function wrappedArgumentOutcome(context, property, bindingsFor) {
+function wrappedArgumentOutcome(scope, property) {
   const object = property.parent;
   const call = object?.parent;
   const isArgument = CALLS.has(call?.type) && call.arguments.includes(object);
-  return isArgument && handlingCall(context, call, bindingsFor) ? 'handled' : 'neutral';
+  return isArgument && isHandlingCall(scope, call) ? 'handled' : 'neutral';
 }
 
-export function referenceOutcome(context, reference, bindingsFor) {
+function escapeOutcome(parent, node) {
+  return ESCAPES.has(parent.type) && parent[ESCAPES.get(parent.type)] === node
+    ? 'escaped'
+    : 'neutral';
+}
+
+function referenceOutcome(scope, reference) {
   const node = outerOf(reference);
   const { parent } = node;
   if (parent.type === 'MemberExpression' && parent.object === node) {
-    return receiverOutcome(context, parent);
+    return receiverOutcome(scope.context, parent);
   }
   if (parent.type === 'ForOfStatement' && parent.await && parent.right === node) {
     return 'handled';
   }
   if (CALLS.has(parent.type) && parent.callee !== node) {
-    return argumentOutcome(context, parent, node, bindingsFor);
+    return argumentOutcome(scope, parent, node);
   }
   if (parent.type === 'Property' && parent.value === node) {
-    return wrappedArgumentOutcome(context, parent, bindingsFor);
+    return wrappedArgumentOutcome(scope, parent);
   }
-  return ESCAPES.has(parent.type) && parent[ESCAPES.get(parent.type)] === node ? 'escaped' : 'neutral';
+  return escapeOutcome(parent, node);
 }
 
-export function referencesOutcome(context, references, bindingsFor) {
-  const outcomes = new Set(references.map((reference) => referenceOutcome(context, reference, bindingsFor)));
+export function referencesOutcome(scope, references) {
+  const outcomes = new Set(references.map((reference) => referenceOutcome(scope, reference)));
   if (outcomes.has('handled')) {
     return 'handled';
   }
