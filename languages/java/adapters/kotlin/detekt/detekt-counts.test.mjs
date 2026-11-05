@@ -8,6 +8,7 @@ import {
   removeTemporaryProjects,
   rootReports,
 } from '../../reporting/test-support/kotlin-report-project.mjs';
+import { isJavaTouchedRule } from '../../touched-rules.mjs';
 
 afterEach(removeTemporaryProjects);
 
@@ -29,15 +30,18 @@ function result(rule, text, line, column = 9) {
   };
 }
 
-function detektOf({ results, detektCounts = [] }) {
+function detektOf({ results, detektCounts = [], functions = [], source }) {
   const root = projectWithKotlinReports();
+  if (source !== undefined) {
+    writeFileSync(path.join(root, FILE), source);
+  }
   writeFileSync(
     path.join(rootReports(root), 'detekt.sarif'),
     JSON.stringify({ runs: [{ tool: { driver: { name: 'detekt' } }, results }] }),
   );
   writeFileSync(
     path.join(rootReports(root), 'kotlin-metrics.json'),
-    JSON.stringify({ functions: [], files: [], types: [], detektCounts }),
+    JSON.stringify({ functions, files: [], types: [], detektCounts }),
   );
   return kotlinFindings(root, 'detekt');
 }
@@ -252,5 +256,74 @@ describe('detekt count findings on a legacy function', () => {
     });
 
     expect(finding.ratchet.value).toBe(5);
+  });
+});
+
+describe('detekt count findings on a renamed legacy function', () => {
+  const RETURNS = ['        if (flag) return 1', '        if (!flag) return 2', '        return 3'];
+
+  function pick(name, returns = RETURNS) {
+    const source = ['package demo', '', 'class Bad {', `    fun ${name}(flag: Boolean): Int {`];
+    return {
+      source: `${[...source, ...returns, '    }', '}'].join('\n')}\n`,
+      functions: [
+        {
+          file: FILE,
+          name: `Bad.${name}`,
+          start: 4,
+          end: 5 + returns.length,
+          lines: 2 + returns.length,
+          statements: returns.length,
+          maxControlNesting: 1,
+          parameters: 1,
+          complexity: 3,
+        },
+      ],
+      results: [
+        result(
+          'style.ReturnCount',
+          `Function ${name} has ${String(returns.length)} return statements which exceeds the limit of 2.`,
+          4,
+        ),
+      ],
+    };
+  }
+
+  function compareRenamed(base, head, inserted = []) {
+    return compareFindings({
+      baseFindings: detektOf(base),
+      headFindings: detektOf(head),
+      touchedCode: {
+        changedLines: new Map([[FILE, { added: false, ranges: [[4, 4], ...inserted], inserted }]]),
+        isStrictRule: isJavaTouchedRule,
+      },
+    });
+  }
+
+  it('keeps the count of a function renamed without other edits', () => {
+    const { newFindings, resolvedFindings, unchangedFindings } = compareRenamed(
+      pick('pick'),
+      pick('choose'),
+    );
+
+    expect(newFindings).toEqual([]);
+    expect(resolvedFindings).toEqual([]);
+    expect(unchangedFindings.map(({ message }) => message.split(' which')[0])).toEqual([
+      'Function choose has 3 return statements',
+    ]);
+  });
+
+  it('fails a renamed function whose count grew', () => {
+    const grown = ['        if (flag) return 0', ...RETURNS];
+    const { newFindings, resolvedFindings } = compareRenamed(pick('pick'), pick('choose', grown), [
+      [5, 5],
+    ]);
+
+    expect(newFindings.map(({ message }) => message.split(' which')[0])).toEqual([
+      'Function choose has 4 return statements',
+    ]);
+    expect(resolvedFindings.map(({ message }) => message.split(' which')[0])).toEqual([
+      'Function pick has 3 return statements',
+    ]);
   });
 });

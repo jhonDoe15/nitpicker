@@ -718,7 +718,9 @@ shipped rules that covers Checkstyle `VariableDeclarationUsageDistance` and PMD
 (`MethodLength`, `ParameterNumber`, `ExecutableStatementCount`, `CyclomaticComplexity`,
 `NPathComplexity`, `JavaNCSS`, `NestedIfDepth` and the rest), `ReturnCount`, `ThrowsCount` and
 `MultipleStringLiterals`, and PMD `CognitiveComplexity`, `CyclomaticComplexity`, `NPathComplexity`,
-`NcssCount` and `CouplingBetweenObjects`, when the project's own config adds them.
+`NcssCount` and `CouplingBetweenObjects`, when the project's own config adds them. Renaming a
+method keeps its count findings while its body is unchanged, and an overload added above an edited
+legacy method does not take its base.
 
 - **Wildcard imports follow the project.** Wildcard and explicit imports are both valid, so
   the `java.wildcardImports` convention (`explicit` or `wildcard`, default `explicit`) marks a file

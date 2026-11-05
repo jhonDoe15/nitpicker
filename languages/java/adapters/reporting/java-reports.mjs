@@ -23,7 +23,7 @@ import { readClassLimitFindings } from '../size/class-limits.mjs';
 import {
   declarationUnits,
   functionLocator,
-  modulesFunctionLocator,
+  modulesUnitLocator,
   sourceTextReader,
   structureFunctions,
 } from './function-locator.mjs';
@@ -92,7 +92,7 @@ export function readJavaFindings(projectRoot, options = {}) {
     ],
     { preset, javaStyle: options.javaStyle },
   );
-  const locate = modulesFunctionLocator(projectRoot, modules, kotlinPreset);
+  const locate = modulesUnitLocator(projectRoot, modules, kotlinPreset);
   return { findings: withJavaCountRatchets(findings, locate) };
 }
 

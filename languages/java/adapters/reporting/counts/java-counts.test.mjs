@@ -9,6 +9,7 @@ import {
   rootReports,
 } from '../test-support/kotlin-report-project.mjs';
 import { withJavaCountRatchets } from './java-counts.mjs';
+import { isJavaTouchedRule } from '../../touched-rules.mjs';
 
 afterEach(removeTemporaryProjects);
 
@@ -240,5 +241,116 @@ describe('Java count findings on legacy code', () => {
       ])[0].ratchet.key;
 
     expect(keyOf('A, B')).toBe(keyOf('A, C'));
+  });
+});
+
+describe('Java count findings on a renamed or overloaded legacy method', () => {
+  const BODY = ['    int total = 0;', '    total += flag;', '    return total;', '  }'];
+
+  function method({ name, parameter = 'int flag', lines, body = BODY }) {
+    return { declaration: `  int ${name}(${parameter}) {`, name, parameter, lines, body };
+  }
+
+  function legacyClass(...methods) {
+    return (root) => {
+      const source = ['package demo;', '', 'class Legacy {'];
+      const units = [];
+      for (const each of methods) {
+        units.push({ ...each, start: source.length + 1 });
+        source.push(each.declaration, ...each.body);
+      }
+      writeFileSync(path.join(root, FILE), `${[...source, '}'].join('\n')}\n`);
+      writeFileSync(
+        path.join(rootReports(root), 'structure.json'),
+        JSON.stringify(
+          units.map((unit) => ({
+            file: FILE,
+            name: `Legacy.${unit.name}`,
+            start: unit.start,
+            end: unit.start + unit.body.length,
+            lines: unit.body.length + 1,
+            complexity: 1,
+            signature: `Legacy.${unit.name}(${unit.parameter.split(' ')[0]})`,
+          })),
+        ),
+      );
+      checkstyleOf(
+        root,
+        'sizes.MethodLengthCheck',
+        units.map(
+          (unit) =>
+            `Method ${unit.name} length is ${String(unit.lines)} lines (max allowed is 150).`,
+        ),
+        units.map((unit) => unit.start),
+      );
+    };
+  }
+
+  function compareTouched(base, head, ranges, inserted = []) {
+    return compareFindings({
+      baseFindings: findingsOf(base),
+      headFindings: findingsOf(head),
+      touchedCode: {
+        changedLines: new Map([[FILE, { added: false, ranges, inserted }]]),
+        isStrictRule: isJavaTouchedRule,
+      },
+    });
+  }
+
+  it('keeps the count of a method renamed without other edits', () => {
+    const result = compareTouched(
+      legacyClass(method({ name: 'pick', lines: 160 })),
+      legacyClass(method({ name: 'choose', lines: 160 })),
+      [[4, 4]],
+    );
+
+    expect(result.newFindings).toEqual([]);
+    expect(result.resolvedFindings).toEqual([]);
+    expect(result.unchangedFindings.map(({ message }) => message.split(' (')[0])).toEqual([
+      'Method choose length is 160 lines',
+    ]);
+  });
+
+  it('fails a renamed method whose count grew', () => {
+    const grown = [
+      '    int total = 0;',
+      '    total += flag;',
+      '    total += flag;',
+      ...BODY.slice(2),
+    ];
+    const result = compareTouched(
+      legacyClass(method({ name: 'pick', lines: 160 })),
+      legacyClass(method({ name: 'choose', lines: 161, body: grown })),
+      [[4, 4]],
+      [[7, 7]],
+    );
+
+    expect(result.newFindings.map(({ message }) => message.split(' (')[0])).toEqual([
+      'Method choose length is 161 lines',
+    ]);
+    expect(result.resolvedFindings.map(({ message }) => message.split(' (')[0])).toEqual([
+      'Method pick length is 160 lines',
+    ]);
+  });
+
+  it('holds an edited method by its declaration when an overload is added above it', () => {
+    const edited = ['    int total = 1;', ...BODY.slice(1)];
+    const result = compareTouched(
+      legacyClass(method({ name: 'pick', lines: 160 })),
+      legacyClass(
+        method({ name: 'pick', parameter: 'String text', lines: 155 }),
+        method({ name: 'pick', lines: 158, body: edited }),
+      ),
+      [[4, 9]],
+      [[4, 8]],
+    );
+
+    expect(result.newFindings.map(({ message }) => message.split(' (')[0])).toEqual([
+      'Method pick length is 155 lines',
+    ]);
+    expect(result.newFindings[0].location.line).toBe(4);
+    expect(
+      result.unchangedFindings.map(({ location, heldAtBase }) => [location.line, heldAtBase]),
+    ).toEqual([[9, 160]]);
   });
 });
