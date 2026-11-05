@@ -72,6 +72,7 @@ const REVIEW_RULES = new Set([
   'LegacyCalendarApi',
   'UnquotedRegexValue',
   'PlainTextRegex',
+  'RecursiveMapUpdate',
   'ClassLoadEffect',
   'SpringUnusedContext',
   'TestClassWithoutTestCases',

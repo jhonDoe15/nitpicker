@@ -99,6 +99,10 @@ To learn why a rule is on and what form it allows before you write or change cod
 - Regexes: `split`, `matches`, `replaceAll` and `replaceFirst` take a regex, so wrap a runtime
   value in `Pattern.quote(value)` (also when you join it into a `Pattern.compile` pattern), and use
   `replace` for plain text (`pmd/UnquotedRegexValue`, `pmd/PlainTextRegex`).
+- Maps: the function passed to `computeIfAbsent`, `compute`, `computeIfPresent` or `merge` never
+  changes the same map, not even from a callback it starts (`pmd/RecursiveMapUpdate`). Attach the
+  cleanup to the returned value:
+  `map.computeIfAbsent(key, k -> start(k)).whenComplete((r, e) -> map.remove(key, r))`.
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
 - Enums: to sort the constants of one of your enums into two groups, classify every constant: a
