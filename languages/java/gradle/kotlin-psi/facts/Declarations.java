@@ -1,6 +1,7 @@
 package nitpicker.kotlinpsi.facts;
 
 import static nitpicker.kotlinpsi.common.Psi.*;
+import static nitpicker.kotlinpsi.common.Signatures.*;
 
 import java.util.*;
 import java.util.regex.Matcher;
@@ -89,20 +90,10 @@ final class Declarations {
             "annotations", annotationTexts(klass), "supers", supertypes(klass), "superCall", superCall,
             "primaryParameters", constructor, "entries", entries, "superClass", superClass(klass),
             "constructorAnnotations", primary == null ? null : annotationEntries(primary),
-            "genericSupers", genericSupers(klass)));
+            "genericSupers", genericSupers(klass), "typeBounds", typeBounds(klass.getTypeParameters())));
     return new Frame(frame, m("k", "class", "name", simple, "qualified", qualified,
         "supers", supertypes(klass), "visibility", own, "object", klass instanceof KtObjectDeclaration,
         "annotations", annotationNames(klass)));
-  }
-
-  private static List<Object> genericSupers(KtClassOrObject klass) {
-    List<Object> texts = new ArrayList<>();
-    for (KtSuperTypeListEntry entry : klass.getSuperTypeListEntries()) {
-      if (entry.getTypeReference() != null && entry.getTypeReference().getText().contains("<")) {
-        texts.add(entry.getTypeReference().getText());
-      }
-    }
-    return texts.isEmpty() ? null : texts;
   }
 
   private static String superClass(KtClassOrObject klass) {
@@ -163,18 +154,14 @@ final class Declarations {
             "emptyBody", body instanceof KtBlockExpression && ((KtBlockExpression) body).getStatements().isEmpty(),
             "expressionBody", body != null && !(body instanceof KtBlockExpression) ? Boolean.TRUE : null,
             "returns", body instanceof KtNameReferenceExpression ? nameOf(body) : null,
-            "forward", forward(function)));
-    return new Frame(frame, m("k", "fun", "name", function.getName(), "topLevel", owner == null && !local,
+            "forward", forward(function), "typeBounds", typeBounds(function.getTypeParameters())));
+    Map<String, Object> scope = m("k", "fun", "name", function.getName(), "topLevel", owner == null && !local,
         "annotations", annotationNames(function), "receiver", clip(function.getReceiverTypeReference()),
-        "parameters", parameterTypes(function)));
-  }
-
-  private static List<Object> parameterTypes(KtNamedFunction function) {
-    List<Object> types = new ArrayList<>();
-    for (KtParameter parameter : function.getValueParameters()) {
-      types.add(m("type", clip(parameter.getTypeReference()), "vararg", parameter.isVarArg()));
+        "parameters", parameterTypes(function));
+    if (function.getName() == null) {
+      scope.putAll(Scopes.hostData(function));
     }
-    return types;
+    return new Frame(frame, scope);
   }
 
   Frame declareConstructor(KtSecondaryConstructor constructor, Frame frame) {
@@ -214,7 +201,16 @@ final class Declarations {
             "delegated", property.getDelegate() != null, "computed", computed(property),
             "annotations", annotationNames(property),
             "annotationEntries", annotationEntries(property), "initializer", Initializers.callee(property),
-            "literal", Initializers.literal(property)));
+            "literal", Initializers.literal(property), "literalText", Initializers.literalText(property),
+            "abstract", isAbstract(property) ? Boolean.TRUE : null,
+            "initializerQualifier", Initializers.qualifier(property.getInitializer()),
+            "initializerTypeArguments", Initializers.typeArguments(property.getInitializer())));
+  }
+
+  private static boolean isAbstract(KtProperty property) {
+    KtClassOrObject holder = PsiTreeUtil.getParentOfType(property, KtClassOrObject.class);
+    return property.hasModifier(KtTokens.ABSTRACT_KEYWORD)
+        || holder instanceof KtClass && ((KtClass) holder).isInterface();
   }
 
   private static Boolean computed(KtProperty property) {

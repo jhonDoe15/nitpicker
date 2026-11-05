@@ -27,3 +27,9 @@ export function runGit(repositoryRoot, args, { environment } = {}) {
   }
   return result.stdout;
 }
+
+export function listRemotes(repositoryRoot) {
+  return runGit(repositoryRoot, ['remote'])
+    .split(/\r?\n/)
+    .filter((remote) => remote.length > 0);
+}
