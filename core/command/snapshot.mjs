@@ -17,6 +17,7 @@ import { realpathSync } from 'node:fs';
 import { runGit } from '../diff/git/repository/command.mjs';
 import { writeGithubOutput } from '../diff/reporting/github/emit.mjs';
 import { captureWorkingTree } from '../diff/git/repository/git.mjs';
+import { assertHasCommit } from '../diff/git/repository/base-ref.mjs';
 import { partialRunField, partialRunOf } from '../diff/reporting/partial-run/partial-run.mjs';
 
 function stderrWarning(stderr) {
@@ -120,6 +121,7 @@ function captureSnapshot(currentProjectRoot) {
     runGit(currentProjectRoot, ['rev-parse', '--show-toplevel']).trim(),
   );
   const relativeProjectPath = path.relative(repositoryRoot, currentProjectRoot) || '.';
+  assertHasCommit(repositoryRoot);
   const headSha = runGit(repositoryRoot, ['rev-parse', 'HEAD^{commit}']).trim();
   const capturedSha = captureWorkingTree(repositoryRoot, headSha);
   return { repositoryRoot, relativeProjectPath, capturedSha };
