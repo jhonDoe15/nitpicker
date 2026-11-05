@@ -231,7 +231,8 @@ function isInternalFunction(owner) {
   );
 }
 
-export function changedParameter(sourceCode, target, mutation, crossesProperty = () => false) {
+export function changedParameter(walk, target, mutation) {
+  const { sourceCode, crossesProperty } = walk;
   const root = chainRoot(target, crossesProperty);
   const named = root === undefined ? undefined : variableNamed(sourceCode, root);
   const variable = named === undefined ? undefined : aliasedParameter(sourceCode, named);
