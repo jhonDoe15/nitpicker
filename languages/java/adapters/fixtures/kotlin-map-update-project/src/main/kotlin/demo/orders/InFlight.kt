@@ -2,11 +2,13 @@ package demo.orders
 
 import java.util.concurrent.CompletableFuture
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.ConcurrentMap
 
 class InFlight {
     private val inProgress = ConcurrentHashMap<String, CompletableFuture<String>>()
     private val counts = HashMap<String, Int>()
     private val seen: MutableMap<String, Int> = mutableMapOf()
+    private val pending: ConcurrentMap<String, Int> = ConcurrentHashMap()
 
     fun nested(key: String): CompletableFuture<String> =
         inProgress.computeIfAbsent(key) { k ->
@@ -39,6 +41,11 @@ class InFlight {
 
     fun getOrPutConcurrent(key: String): CompletableFuture<String> = inProgress.getOrPut(key) {
         CompletableFuture.supplyAsync { load(key) }.whenComplete { _, _ -> inProgress.remove(key) }
+    }
+
+    fun getOrPutDeclared(key: String): Int = pending.getOrPut(key) {
+        pending.remove("old")
+        1
     }
 
     fun getOrPutPlain(key: String): Int = seen.getOrPut(key) {
