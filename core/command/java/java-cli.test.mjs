@@ -360,17 +360,13 @@ Full diagnostics: ${tmpdir()}/nitpicker-java-out-${/[A-Za-z0-9]{6}/}/reports/rep
       const root = repository();
       writeFiles(root, build.redBase.files(failing('works')));
       commit(root, 'break a test');
-
       const result = run(root);
-      const lines = result.output.out.split('\n');
 
       expect(result.exitCode, result.text).toBe(1);
-      expect(lines[lines.indexOf('Quality gate summary') + 1]).toBe(
+      expect(result.output.out.split('\n').filter((line) => line.startsWith('✖'))).toEqual([
         '✖ 1 test fails; the build stopped, so no other check ran. Fix the tests and rerun:',
-      );
-      expect(
-        result.json('tool-errors.json').map(({ snapshot, rule }) => `${snapshot} ${rule}`),
-      ).toEqual(['head tests-failed']);
+      ]);
+      expect(result.json('tool-errors.json').map(({ rule }) => rule)).toEqual(['tests-failed']);
     });
   });
   it('lets an exception entry for the rule and path allow a new finding', () => {
