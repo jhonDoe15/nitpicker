@@ -32,6 +32,11 @@ Beans and configuration:
   event.
 - `@Configuration(proxyBeanMethods = false)`, `@Bean` functions take dependencies as parameters. No
   `@ComponentScan` or `scanBasePackages`.
+- A `@Bean` function that returns a `BeanPostProcessor` or `BeanFactoryPostProcessor`, or carries
+  `@ConfigurationPropertiesBinding`, sits in a `companion object` with `@JvmStatic` and takes only
+  `Environment` or `ObjectProvider<T>`.
+- Beans taken from an `ObjectProvider` go through `orderedStream()`, never a `for` loop, `forEach`,
+  `map`, `toList`, `stream()` or `iterator()` on the provider, which ignore `@Order`.
 - Configuration comes in through a `@ConfigurationProperties` data class: `data class
 RemoteProperties(val url: String, val timeout: Duration)`. `@Value` only in a `@Configuration`
   class (`"\${shop.token}"`); no `System.getProperty`, `Environment.getProperty` or `env["key"]` in
@@ -102,6 +107,7 @@ true, flushAutomatically = true)`.
 - Never `save` or `delete` one entity per iteration of a loop, `forEach` or `map`: call `saveAll`
   once, per chunk for large inputs. No `flush` or `saveAndFlush` except in the JPA batch loop: a
   `for` or `while` loop that calls `persist`, then `flush` and `clear` on the `EntityManager`.
-  Filter in the query, not `findAll().filter { ... }`. Native SQL only when JPQL can't express it,
+  Filter and count in the query, not after `findAll()`, a `Flux` or `Flow` one included
+  (`filter`, `count`, `firstOrNull`, `hasElements`, `take`, `toList().size`). Native SQL only when JPQL can't express it,
   marked on that one function with `@Suppress("PMD.SpringDataNativeQuery")`,
   `EntityManager.createNativeQuery` too.
