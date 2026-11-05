@@ -46,13 +46,23 @@ function signTests(...cases) {
   return `from calc.sign import sign\n\n\n${tests.join('\n\n')}`;
 }
 
+const LIBRARY_ONLY_TESTED = {
+  rule: 'test-only-export',
+  paths: ['calc/**'],
+  reason: 'The fixture library has no production caller',
+};
+
+function configWith(settings) {
+  return `${JSON.stringify({ preset: 'python', exceptions: [LIBRARY_ONLY_TESTED], ...settings })}\n`;
+}
+
 describe.skipIf(!pythonE2eEnabled)('Python preset on a nose2 project', () => {
   let nose2;
   afterAll(removeRepositories);
   beforeAll(() => {
     nose2 = project(
       {
-        'nitpicker.config.json': '{ "preset": "python" }\n',
+        'nitpicker.config.json': configWith({}),
         'nose2.cfg': '[unittest]\nstart-dir = tests\n',
         'tests/__init__.py': '',
       },
@@ -124,7 +134,7 @@ describe.skipIf(!pythonE2eEnabled)(
     beforeAll(() => {
       processes = project(
         {
-          'nitpicker.config.json': '{ "preset": "python", "disable": ["mutation"] }\n',
+          'nitpicker.config.json': configWith({ disable: ['mutation'] }),
           '.coveragerc': '[run]\nconcurrency = multiprocessing\n',
         },
         ['coverage'],

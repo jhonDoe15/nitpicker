@@ -18,7 +18,7 @@ import {
   MAVEN_PLUGINS,
   resolveTools,
 } from './maven-tools.mjs';
-import { buildRunsArchRules } from './spring/arch-rules-gate.mjs';
+import { buildRunsArchRules, springAotSkip } from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
 import { processorTool } from './errorprone/maven-errorprone.mjs';
@@ -65,6 +65,7 @@ export function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn 
       '-Dmaven.test.skip=false',
       ...TEST_RERUNS_OFF,
       ...PROJECT_CHECKS_OFF,
+      ...springAotSkip(modules),
     ],
   });
 }

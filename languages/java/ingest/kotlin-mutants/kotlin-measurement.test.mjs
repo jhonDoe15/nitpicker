@@ -49,31 +49,38 @@ const droppedByRule = () => {
 
 describe('the Kotlin mutation filter on the measurement fixture', () => {
   it('counts what the unfiltered report would fail the gate with', () => {
-    expect(counts()).toEqual({ Survived: 42, Killed: 180, NoCoverage: 17, Timeout: 3 });
+    expect(counts()).toEqual({ Survived: 84, Killed: 362, NoCoverage: 18, Timeout: 26 });
   });
 
-  it('leaves out 45 survivors and uncovered mutants, by rule', () => {
+  it('leaves out 83 survivors and uncovered mutants, by rule', () => {
     expect(droppedByRule()).toEqual({
       'coroutine-throw-on-failure': 25,
-      'generated-accessor': 7,
+      'state-machine-branch': 20,
+      'coroutine-state-field': 17,
+      'generated-accessor': 8,
       'suspend-lambda-result': 6,
       'null-check-intrinsic': 2,
       'inline-function-body': 2,
-      'state-machine-branch': 1,
+      'exhaustive-when-last-branch': 1,
       'generated-member': 1,
       'default-impls-twin': 1,
     });
   });
 
-  it('leaves out the 45 mutants of compiler-generated code that would fail the gate and keeps 14', () => {
+  it('leaves out the 83 mutants of compiler-generated code that would fail the gate and keeps 19', () => {
     const options = { generated: createGeneratedFilter(facts) };
 
-    expect(counts(options)).toEqual({ Survived: 14, Killed: 150, GeneratedCode: 78 });
+    expect(counts(options)).toEqual({ Survived: 19, Killed: 268, Timeout: 11, GeneratedCode: 192 });
     expect(leftovers(options)).toEqual([
       [
         'More.kt:112',
         'mutant-survived',
         'MoreKt|failing(I)I|ConditionalsBoundaryMutator|changed conditional boundary#1',
+      ],
+      [
+        'More.kt:112',
+        'mutant-survived',
+        'MoreKt|failing(I)I|RemoveConditionalMutator_ORDER_ELSE|removed conditional - replaced comparison check with false#1',
       ],
       [
         'More.kt:73',
@@ -96,9 +103,24 @@ describe('the Kotlin mutation filter on the measurement fixture', () => {
         'MoreKt|rangeSum(I)I|ConditionalsBoundaryMutator|changed conditional boundary#2',
       ],
       [
+        'More.kt:10',
+        'mutant-survived',
+        'MoreKt|rangeSum(I)I|RemoveConditionalMutator_ORDER_IF|removed conditional - replaced comparison check with true#1',
+      ],
+      [
+        'More.kt:120',
+        'mutant-survived',
+        'MoreKt|unreachable(LColor;)I|RemoveConditionalMutator_EQUAL_IF|removed conditional - replaced equality check with true#1',
+      ],
+      [
         'More.kt:77',
         'mutant-survived',
         'MoreKt|uses(LStringReader;)I|VoidMethodCallMutator|removed call to CloseableKt::closeFinally#1',
+      ],
+      [
+        'Flow.kt:22',
+        'mutant-survived',
+        'FlowKt|maybe(LList;)LInteger;|ConditionalsBoundaryMutator|changed conditional boundary#1',
       ],
       [
         'Coro.kt:44',
@@ -121,14 +143,19 @@ describe('the Kotlin mutation filter on the measurement fixture', () => {
         'CoroKt|grade(I)LString;|ConditionalsBoundaryMutator|changed conditional boundary#4',
       ],
       [
+        'Coro.kt:44',
+        'mutant-survived',
+        'CoroKt|grade(I)LString;|RemoveConditionalMutator_ORDER_IF|removed conditional - replaced comparison check with true#1',
+      ],
+      [
+        'Coro.kt:45',
+        'mutant-survived',
+        'CoroKt|grade(I)LString;|RemoveConditionalMutator_ORDER_IF|removed conditional - replaced comparison check with true#2',
+      ],
+      [
         'Coro.kt:26',
         'mutant-survived',
         'CoroKt|safeFetch(ILContinuation;)LObject;|ConditionalsBoundaryMutator|changed conditional boundary#1',
-      ],
-      [
-        'Flow.kt:22',
-        'mutant-survived',
-        'FlowKt|maybe(LList;)LInteger;|ConditionalsBoundaryMutator|changed conditional boundary#1',
       ],
       [
         'Nulls.kt:29',

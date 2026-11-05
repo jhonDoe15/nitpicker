@@ -86,9 +86,17 @@ final class Declarations {
             "annotations", annotationTexts(klass), "supers", supertypes(klass), "superCall", superCall,
             "primaryParameters", constructor, "entries", entries, "superClass", superClass(klass),
             "constructorAnnotations", primary == null ? null : annotationEntries(primary),
-            "genericSupers", genericSupers(klass)));
+            "genericSupers", genericSupers(klass), "typeBounds", typeBounds(klass.getTypeParameters())));
     return new Frame(frame, m("k", "class", "name", simple, "qualified", qualified,
         "supers", supertypes(klass), "visibility", own));
+  }
+
+  private static List<Object> typeBounds(List<KtTypeParameter> parameters) {
+    List<Object> bounds = new ArrayList<>();
+    for (KtTypeParameter parameter : parameters) {
+      bounds.add(m("name", parameter.getName(), "bound", clip(parameter.getExtendsBound())));
+    }
+    return bounds.isEmpty() ? null : bounds;
   }
 
   private static List<Object> genericSupers(KtClassOrObject klass) {
@@ -159,8 +167,12 @@ final class Declarations {
             "emptyBody", body instanceof KtBlockExpression && ((KtBlockExpression) body).getStatements().isEmpty(),
             "expressionBody", body != null && !(body instanceof KtBlockExpression) ? Boolean.TRUE : null,
             "returns", body instanceof KtNameReferenceExpression ? nameOf(body) : null,
-            "forward", forward(function)));
-    return new Frame(frame, m("k", "fun", "name", function.getName()));
+            "forward", forward(function), "typeBounds", typeBounds(function.getTypeParameters())));
+    Map<String, Object> scope = m("k", "fun", "name", function.getName());
+    if (function.getName() == null) {
+      scope.putAll(Scopes.hostData(function));
+    }
+    return new Frame(frame, scope);
   }
 
   Frame declareConstructor(KtSecondaryConstructor constructor, Frame frame) {
@@ -200,7 +212,16 @@ final class Declarations {
             "delegated", property.getDelegate() != null, "computed", computed(property),
             "annotations", annotationNames(property),
             "annotationEntries", annotationEntries(property), "initializer", Initializers.callee(property),
-            "literal", Initializers.literal(property)));
+            "literal", Initializers.literal(property), "literalText", Initializers.literalText(property),
+            "abstract", isAbstract(property) ? Boolean.TRUE : null,
+            "initializerQualifier", Initializers.qualifier(property.getInitializer()),
+            "initializerTypeArguments", Initializers.typeArguments(property.getInitializer())));
+  }
+
+  private static boolean isAbstract(KtProperty property) {
+    KtClassOrObject holder = PsiTreeUtil.getParentOfType(property, KtClassOrObject.class);
+    return property.hasModifier(KtTokens.ABSTRACT_KEYWORD)
+        || holder instanceof KtClass && ((KtClass) holder).isInterface();
   }
 
   private static Boolean computed(KtProperty property) {

@@ -157,6 +157,12 @@
       "rule": "nitpicker/no-default-export",
       "paths": ["languages/typescript/adapters/test-runners/node-test/node-test-reporter.mjs"],
       "reason": "node --test-reporter loads a reporter only through the module's default export."
+    },
+    {
+      "rule": "unused-dependency",
+      "paths": ["package.json"],
+      "packages": ["@typescript/native"],
+      "reason": "TypeScript 7 is loaded by path, not imported: the type check opens its unstable/sync API through resolveTool, and Stryker's TypeScript checker imports @typescript/native from inside node_modules, which knip does not scan."
     }
   ],
   "tools": {
