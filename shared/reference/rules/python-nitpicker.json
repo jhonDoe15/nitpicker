@@ -59,6 +59,10 @@
     { "key": "python.exceptions", "rule": "compatibility-shim" },
     "`<name>` keeps an old name working",
     "When code moves or is renamed, change every caller in the same change and delete the old name: keep no alias, forwarding function, module `__getattr__`, `@deprecated` marker or deprecation warning. A published library keeps the deprecation of its public names, and that path takes an exception.",
+    "copied-constant-in-test",
+    { "key": "python.exceptions", "rule": "copied-constant-in-test" },
+    "This literal copies <name>: when the constant changes, the test keeps checking the old value or stops testing the case it was written for",
+    "Use `<name>` (or an expression on it, such as `<name> + 1`). If the value is a contract the test pins on purpose, assert it next to the constant (`assert <name> == <value>`).",
     "credential-shape",
     { "key": "python.exceptions", "rule": "credential-shape" },
     "A string has the shape of a credential",
@@ -351,9 +355,10 @@
     [18, 244, 2, 3, 245, 246, 22, 247, -1],
     [18, 248, 2, 3, 249, 250, 22, 251, -1],
     [18, 252, 2, 3, 253, 254, 22, 255, -1],
-    [18, 256, 2, 3, 257, 258, 22, -1, -1],
-    [18, 259, 2, 3, 260, 261, 22, 262, -1],
-    [263, 264, 2, 3, 265, 266, 267, 268, -1],
-    [269, 270, 2, 3, 271, 272, 273, 274, 275]
+    [18, 256, 2, 3, 257, 258, 22, 259, -1],
+    [18, 260, 2, 3, 261, 262, 22, -1, -1],
+    [18, 263, 2, 3, 264, 265, 22, 266, -1],
+    [267, 268, 2, 3, 269, 270, 271, 272, -1],
+    [273, 274, 2, 3, 275, 276, 277, 278, 279]
   ]
 }

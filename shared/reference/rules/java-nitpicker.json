@@ -115,6 +115,18 @@
     "File is not formatted with palantir-java-format. Format it with palantir-java-format --palantir --replace <Java files>. Not your formatter: pin \"conventions.java.formatter\" to \"google\", \"palantir\" or \"none\" in nitpicker.config.json.",
     { "key": "exceptions", "rule": "palantir-java-format/format" },
     "pmd",
+    "CopiedConstantInTest",
+    "A string or number literal in a test that equals an `UPPER_SNAKE` constant of a main-source class, object or file the test can see.",
+    "When the constant changes, a test that holds a copy of its value keeps checking the old value, or a boundary test stops testing the boundary. Nitpicker computes it over the sources of every module and prints it as a PMD rule, like the other test honesty rules.",
+    "This literal copies <Owner>.<NAME> from <file>: when <Owner>.<NAME> changes, the test keeps checking the old value or stops testing the case it was written for. Use <Owner>.<NAME> (or an expression on it, such as <Owner>.<NAME> + 1). If the value is a contract the test pins on purpose, assert it next to the constant: assertEquals(<value>, <Owner>.<NAME>).",
+    { "key": "exceptions", "rule": "pmd/CopiedConstantInTest" },
+    [
+      {
+        "label": "Java preset guide",
+        "path": "docs/java-preset.md",
+        "anchor": "tests-that-copy-a-constant"
+      }
+    ],
     "An inline suppression of pmd in a Java source.",
     "Do not silence PMD inline: fix the finding. PMD also honors \"all\", \"unused\", \"serial\" and \"fallthrough\". The one accepted marker is @SuppressWarnings(\"PMD.SpringDataNativeQuery\") on a repository method that needs native SQL.",
     { "key": "exceptions", "rule": "pmd/InlineSuppression" },
@@ -303,17 +315,18 @@
     [75, 76, 2, 3, -1, -1, 77, 78, 79, 80, -1, -1, -1],
     [81, 82, 2, 3, -1, -1, 83, 84, 85, 86, 87, -1, -1],
     [88, 82, 2, 3, -1, -1, 89, 90, 91, 92, 87, -1, -1],
-    [93, 76, 2, 3, -1, -1, 94, 78, 95, 96, -1, -1, -1],
-    [97, 76, 2, 3, -1, -1, 98, 78, 99, 100, -1, -1, -1],
-    [101, 102, 2, 3, -1, -1, 103, 104, -1, 105, 106, 30, 107],
-    [101, 108, 2, 3, -1, -1, 109, 104, -1, 110, 106, 30, 111],
-    [101, 112, 2, 3, -1, -1, 113, 104, -1, 114, 106, 30, 115],
-    [101, 116, 2, 3, -1, -1, 117, 104, -1, 118, 106, 30, 119],
-    [101, 120, 2, 3, -1, -1, 121, 104, -1, 122, 106, 30, 123],
-    [101, 124, 2, 3, -1, -1, 125, 104, -1, 126, 106, 30, 127],
-    [101, 128, 2, 3, -1, -1, 129, 104, -1, 130, 106, 30, 131],
-    [101, 132, 2, 3, -1, -1, 133, 104, -1, 134, 106, 30, 135],
-    [101, 136, 2, 3, -1, -1, 137, 104, -1, 138, 106, 30, 139],
-    [140, 141, 2, 3, -1, -1, 142, 143, -1, 144, 145, -1, 146]
+    [93, 94, 2, 3, -1, -1, 95, 96, 97, 98, 99, -1, -1],
+    [93, 76, 2, 3, -1, -1, 100, 78, 101, 102, -1, -1, -1],
+    [103, 76, 2, 3, -1, -1, 104, 78, 105, 106, -1, -1, -1],
+    [107, 108, 2, 3, -1, -1, 109, 110, -1, 111, 112, 30, 113],
+    [107, 114, 2, 3, -1, -1, 115, 110, -1, 116, 112, 30, 117],
+    [107, 118, 2, 3, -1, -1, 119, 110, -1, 120, 112, 30, 121],
+    [107, 122, 2, 3, -1, -1, 123, 110, -1, 124, 112, 30, 125],
+    [107, 126, 2, 3, -1, -1, 127, 110, -1, 128, 112, 30, 129],
+    [107, 130, 2, 3, -1, -1, 131, 110, -1, 132, 112, 30, 133],
+    [107, 134, 2, 3, -1, -1, 135, 110, -1, 136, 112, 30, 137],
+    [107, 138, 2, 3, -1, -1, 139, 110, -1, 140, 112, 30, 141],
+    [107, 142, 2, 3, -1, -1, 143, 110, -1, 144, 112, 30, 145],
+    [146, 147, 2, 3, -1, -1, 148, 149, -1, 150, 151, -1, 152]
   ]
 }

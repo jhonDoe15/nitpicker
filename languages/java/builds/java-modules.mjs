@@ -75,6 +75,8 @@ function moduleProject(projectRoot, moduleDir, { reportDirectory }) {
     qualifier: prefix,
     sourceRoots: roots('sourceRoots'),
     kotlinSourceRoots: roots('kotlinSourceRoots'),
+    testSourceRoots: roots('testSourceRoots'),
+    kotlinTestSourceRoots: roots('kotlinTestSourceRoots'),
     resourceRoots: roots('resourceRoots'),
   };
 }

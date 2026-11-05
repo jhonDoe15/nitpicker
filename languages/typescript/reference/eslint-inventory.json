@@ -956,6 +956,15 @@
         "`{{ alias }}` is a second exported name for `{{ target }}`. Delete `{{ alias }}` and update its callers to import `{{ target }}`."
       ]
     },
+    "nitpicker/no-copied-constant": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow a literal in a test that copies the value of a production constant the test imports.",
+      "messages": [
+        "This literal copies {{name}}{{also}} from {{owner}}: when {{name}} changes, the test keeps checking the old value or stops testing the case it was written for. Use {{name}} (or an expression on it, such as {{name}} + 1). If the value is a contract the test pins on purpose, assert it next to the constant: expect({{name}}).toBe({{value}}).",
+        "This literal copies {{name}}{{also}} from {{owner}}: when {{name}} changes, the test keeps checking the old value or stops testing the case it was written for. Use {{name}} (or build the text from it). If the value is a contract the test pins on purpose, assert it next to the constant: expect({{name}}).toBe({{value}})."
+      ]
+    },
     "nitpicker/no-copy-pasted-tests": {
       "tools": ["eslint-lint"],
       "forms": [],
@@ -3718,6 +3727,15 @@
       "messages": [
         "A `@deprecated` declaration keeps the old API next to its replacement. Delete it and update its callers to the replacement in the same change.",
         "`{{ alias }}` is a second exported name for `{{ target }}`. Delete `{{ alias }}` and update its callers to import `{{ target }}`."
+      ]
+    },
+    "nitpicker/no-copied-constant": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow a literal in a test that copies the value of a production constant the test imports.",
+      "messages": [
+        "This literal copies {{name}}{{also}} from {{owner}}: when {{name}} changes, the test keeps checking the old value or stops testing the case it was written for. Use {{name}} (or an expression on it, such as {{name}} + 1). If the value is a contract the test pins on purpose, assert it next to the constant: expect({{name}}).toBe({{value}}).",
+        "This literal copies {{name}}{{also}} from {{owner}}: when {{name}} changes, the test keeps checking the old value or stops testing the case it was written for. Use {{name}} (or build the text from it). If the value is a contract the test pins on purpose, assert it next to the constant: expect({{name}}).toBe({{value}})."
       ]
     },
     "nitpicker/no-copy-pasted-tests": {
@@ -6812,6 +6830,15 @@
       "messages": [
         "A `@deprecated` declaration keeps the old API next to its replacement. Delete it and update its callers to the replacement in the same change.",
         "`{{ alias }}` is a second exported name for `{{ target }}`. Delete `{{ alias }}` and update its callers to import `{{ target }}`."
+      ]
+    },
+    "nitpicker/no-copied-constant": {
+      "tools": ["eslint-lint"],
+      "forms": [],
+      "description": "Disallow a literal in a test that copies the value of a production constant the test imports.",
+      "messages": [
+        "This literal copies {{name}}{{also}} from {{owner}}: when {{name}} changes, the test keeps checking the old value or stops testing the case it was written for. Use {{name}} (or an expression on it, such as {{name}} + 1). If the value is a contract the test pins on purpose, assert it next to the constant: expect({{name}}).toBe({{value}}).",
+        "This literal copies {{name}}{{also}} from {{owner}}: when {{name}} changes, the test keeps checking the old value or stops testing the case it was written for. Use {{name}} (or build the text from it). If the value is a contract the test pins on purpose, assert it next to the constant: expect({{name}}).toBe({{value}})."
       ]
     },
     "nitpicker/no-copy-pasted-tests": {

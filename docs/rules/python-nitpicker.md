@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 66 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 67 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -102,6 +102,15 @@ A package that is in a dependency cycle with other packages.
 
 - **Allowed form:** When code moves or is renamed, change every caller in the same change and delete the old name: keep no alias, forwarding function, module `__getattr__`, `@deprecated` marker or deprecation warning. A published library keeps the deprecation of its public names, and that path takes an exception.
 - **Exception:** If this is intended, add `{"rule":"compatibility-shim","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-copied-constant-in-test"></a>
+
+### `python-rules/copied-constant-in-test`
+
+This literal copies \<name>: when the constant changes, the test keeps checking the old value or stops testing the case it was written for.
+
+- **Allowed form:** Use `<name>` (or an expression on it, such as `<name> + 1`). If the value is a contract the test pins on purpose, assert it next to the constant (`assert <name> == <value>`).
+- **Exception:** If this is intended, add `{"rule":"copied-constant-in-test","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-credential-shape"></a>
 
