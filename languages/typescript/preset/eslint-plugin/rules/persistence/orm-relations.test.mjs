@@ -28,10 +28,32 @@ tester.run('no-eager-relation', noEagerRelation, {
     `${sequelize}Order.init({}, { sequelize, scopes: { withCustomer: { include: [Customer] } } });`,
     `${sequelize}Order.init({}, { sequelize, defaultScope: { where: { active: true } } });`,
     `${sequelize}Order.init({}, { sequelize, defaultScope: { include: [] } });`,
+    `${sequelize}Order.init({}, { sequelize, defaultScope: { include: undefined } });`,
+    `${scoped}@DefaultScope(() => { const nested = () => ({ include: [A] }); return { where: {} }; })\n@Table class Order {}`,
     'const config = { defaultScope: { include: [Customer] } };',
     `${typeorm}new EntitySchema({ name: 'order', relations: { customer: { type: 'many-to-one', target: 'customer' } } });`,
   ],
   invalid: [
+    flagged(
+      `${typeorm}const eager = true;\nclass Order { @ManyToOne(() => Customer, { eager }) customer: Customer; }`,
+      'typeormEager',
+    ),
+    flagged(
+      `${typeorm}const shared = { eager: true };\nclass Order { @ManyToOne(() => A, shared) a: A; @ManyToOne(() => B, shared) b: B; }`,
+      'typeormEager',
+    ),
+    flagged(
+      `${typeorm}new EntitySchema({ name: 'order', relations: { customer: { type: \`many-to-one\`, target: 'customer', eager: true as const } } });`,
+      'typeormEager',
+    ),
+    flagged(
+      "import { Model } from '@sequelize/core';\nOrder.init({}, { sequelize, defaultScope: { include: [Customer] } });",
+      'sequelizeDefaultScope',
+    ),
+    flagged(
+      `${scoped}@DefaultScope(() => { if (archived) { return { include: [Archive] }; } return {}; })\n@Table class Order {}`,
+      'sequelizeDefaultScope',
+    ),
     flagged(
       `${typeorm}@Entity() class Order { @ManyToOne(() => Customer, { eager: true }) customer: Customer; }`,
       'typeormEager',
@@ -137,6 +159,26 @@ tester.run('no-many-to-many-cascade-remove', noManyToManyCascadeRemove, {
     'function ManyToMany(options) { return options; }\nclass Post { @ManyToMany({ cascade: true }) tags; }',
   ],
   invalid: [
+    flagged(
+      `${typeorm}class Post { @ManyToMany(() => Tag, { cascade: ['remove'] as const }) tags: Tag[]; }`,
+      'typeormCascade',
+    ),
+    flagged(
+      `${typeorm}const removing = ['insert', 'remove'] as const;\nclass Post { @ManyToMany(() => Tag, { cascade: removing }) tags: Tag[]; }`,
+      'typeormCascade',
+    ),
+    flagged(
+      `${mikro}class Post { @ManyToMany({ entity: () => Tag, cascade: [Cascade.ALL as Cascade] }) tags = new Collection<Tag>(this); }`,
+      'mikroOrmCascade',
+    ),
+    flagged(
+      "import * as o from '@mikro-orm/core';\nclass Post { @o.ManyToMany(() => Tag, { cascade: [o.Cascade.ALL] }) tags = new o.Collection<Tag>(this); }",
+      'mikroOrmCascade',
+    ),
+    flagged(
+      "const o = require('@mikro-orm/core');\nclass Post { @o.ManyToMany(() => Tag, { cascade: [o.Cascade.REMOVE] }) tags; }",
+      'mikroOrmCascade',
+    ),
     flagged(
       `${typeorm}class Post { @ManyToMany(() => Tag, { cascade: true }) @JoinTable() tags: Tag[]; }`,
       'typeormCascade',

@@ -20,14 +20,19 @@ export const rule = {
   },
   create(context) {
     const sourceCode = context.sourceCode;
+    const reported = new Set();
+
+    function report(node, messageId) {
+      if (!reported.has(node)) {
+        reported.add(node);
+        context.report({ node, messageId });
+      }
+    }
 
     function reportRelations(node) {
       for (const relation of relationsAt(sourceCode, node)) {
         if (relation.eager !== undefined) {
-          context.report({
-            node: relation.eager,
-            messageId: relation.orm === MIKRO_ORM ? 'mikroOrmEager' : 'typeormEager',
-          });
+          report(relation.eager, relation.orm === MIKRO_ORM ? 'mikroOrmEager' : 'typeormEager');
         }
       }
     }
@@ -36,7 +41,7 @@ export const rule = {
       const scope = defaultScopeOf(sourceCode, node);
       const include = scope === undefined ? undefined : eagerInclude(sourceCode, scope);
       if (include !== undefined) {
-        context.report({ node: include, messageId: 'sequelizeDefaultScope' });
+        report(include, 'sequelizeDefaultScope');
       }
     }
 

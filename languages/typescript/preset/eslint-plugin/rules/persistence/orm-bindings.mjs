@@ -8,7 +8,7 @@ export const SEQUELIZE = 'Sequelize';
 const ORM_PACKAGES = new Map([
   [TYPEORM, ['typeorm']],
   [MIKRO_ORM, ['@mikro-orm']],
-  [SEQUELIZE, ['sequelize', 'sequelize-typescript']],
+  [SEQUELIZE, ['sequelize', 'sequelize-typescript', '@sequelize/core']],
 ]);
 const DECORATED_ORMS = [TYPEORM, MIKRO_ORM];
 
@@ -85,6 +85,13 @@ function unwrapped(node) {
     }
   }
   return chain.at(-1);
+}
+
+export function valueOf(sourceCode, expression) {
+  const node = unwrapped(expression);
+  return node?.type === 'Identifier'
+    ? (unwrapped(constantInitializer(sourceCode, node)) ?? node)
+    : node;
 }
 
 export function objectOf(sourceCode, expression) {

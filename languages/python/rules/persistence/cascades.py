@@ -14,7 +14,7 @@ from persistence.relationships import (
 RULE = "many-to-many-cascade-delete"
 GUARDED = True
 DELETING_CASCADES = {"all", "delete", "delete-orphan"}
-LINK_OPTIONS = {RELATIONSHIP: "secondary", SQLMODEL: "link_model"}
+LINK_OPTIONS = {RELATIONSHIP: ("secondary",), SQLMODEL: ("link_model", "secondary")}
 
 
 def is_true(value):
@@ -31,9 +31,14 @@ def deleting_cascade(options):
     return flag if is_true(flag) else None
 
 
+def is_none(value):
+    return isinstance(value, ast.Constant) and value.value is None
+
+
 def is_many_to_many(relation):
-    link = LINK_OPTIONS.get(relation.kind)
-    return link is not None and link in relation.options
+    links = [relation.options.get(name) for name in LINK_OPTIONS.get(relation.kind, ())]
+    linked = any(link is not None and not is_none(link) for link in links)
+    return linked and not is_true(relation.options.get("viewonly"))
 
 
 def paired_backref(relation, context):
