@@ -111,7 +111,7 @@ export function headPolicyFor({ engine, precedence, liveProjectRoot }) {
   return resolveHeadPolicy({ tools: { eslint } }, liveProjectRoot);
 }
 
-export function lintLayered({
+export async function lintLayered({
   projectRoot,
   liveProjectRoot = projectRoot,
   policy,
@@ -121,7 +121,7 @@ export function lintLayered({
   try {
     writeFileSync(path.join(directory, 'policy.json'), JSON.stringify(policy));
     vi.stubEnv(HEAD_POLICY_ENV, path.join(directory, 'policy.json'));
-    const results = runLintEngine({
+    const results = await runLintEngine({
       options: {
         projectRoot,
         liveProjectRoot,

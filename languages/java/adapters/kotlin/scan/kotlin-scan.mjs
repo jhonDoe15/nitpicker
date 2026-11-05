@@ -3,6 +3,7 @@ import path from 'node:path';
 import { pathInside } from '../../../../../shared/filesystem.mjs';
 import { hash, nextOccurrence } from '../../../../../shared/rules/finding-helpers.mjs';
 import { braceDepths, lineOf, lineText, scanKotlinSource } from './kotlin-source.mjs';
+import { CAST_MESSAGES, unsafeCasts } from './casts/unsafe-casts.mjs';
 import { REPEATED_STRING_MESSAGE, repeatedStringLiterals } from './literals/repeated-strings.mjs';
 import { CALL_MESSAGES, ioInLoops, logTemplates, shellCommands } from './rules/calls.mjs';
 import { CATCH_MESSAGES, booleanFlags, catchOnlyLogs } from './rules/catches.mjs';
@@ -13,12 +14,9 @@ import {
   commentedOutCode,
   generatedFile,
 } from './rules/markers.mjs';
-import {
-  SECRET_MESSAGES,
-  credentialLiterals,
-  hardcodedSecrets,
-  secretsInLogs,
-} from './rules/secrets.mjs';
+import { credentialLiterals, hardcodedSecrets } from './rules/secrets/hardcoded-secrets.mjs';
+import { SECRET_MESSAGES } from './rules/secrets/secret-names.mjs';
+import { secretsInLogs } from './rules/secrets/secrets-in-logs.mjs';
 import {
   COMPATIBILITY_SHIM_MESSAGES,
   compatibilityShims,
@@ -41,6 +39,7 @@ export const KOTLIN_SOURCE_MESSAGES = {
   ...MARKER_MESSAGES,
   ...DECLARATION_MESSAGES,
   ...CALL_MESSAGES,
+  ...CAST_MESSAGES,
   ...CATCH_MESSAGES,
   ...SECRET_MESSAGES,
   ...TEST_MESSAGES,
@@ -66,6 +65,7 @@ const MAIN_RULES = [
   logTemplates,
   shellCommands,
   ioInLoops,
+  unsafeCasts,
   catchOnlyLogs,
   booleanFlags,
   hardcodedSecrets,
@@ -82,7 +82,7 @@ const MAIN_RULES = [
   compatibilityShims,
   repeatedStringLiterals,
 ];
-const TEST_RULES = [testClassesWithoutTests];
+const TEST_RULES = [testClassesWithoutTests, unsafeCasts];
 
 const TOP_LEVEL_MAIN = /(?<![\w.])fun\s+main\s*\(/g;
 const ROOT_MARKERS = [

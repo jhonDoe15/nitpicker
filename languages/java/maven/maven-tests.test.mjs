@@ -15,11 +15,14 @@ import {
   collectTestResults,
   junitLauncherVersion,
   pitClasspath,
+  javaArgumentFile,
   pitTargets,
   pitTests,
   freshExecFiles,
   runJacocoReport,
+  runPit,
 } from './maven-tests.mjs';
+import { readPitMutators } from '../builds/java-build.mjs';
 
 const roots = [];
 
@@ -101,6 +104,14 @@ describe('junitLauncherVersion', () => {
       ]),
     ).toBeUndefined();
     expect(junitLauncherVersion(['/m2/junit-4.13.2.jar'])).toBeUndefined();
+  });
+});
+
+describe('javaArgumentFile', () => {
+  it('quotes each argument on its own line, escaping backslashes, quotes and line breaks', () => {
+    expect(
+      javaArgumentFile(['-Dl=a,b', '-Dg=hello world', '-Dq=say "hi"', '-Dd=C:\\x\\', '-Dn=a\nb']),
+    ).toBe('"-Dl=a,b"\n"-Dg=hello world"\n"-Dq=say \\"hi\\""\n"-Dd=C:\\\\x\\\\"\n"-Dn=a\\nb"\n');
   });
 });
 
@@ -347,5 +358,34 @@ describe('runJacocoReport', () => {
     expect(readFileSync(path.join(reportDir, 'jacoco.xml'), 'utf8')).toBe(
       '<?xml version="1.0"?><report name="shop:it"></report>',
     );
+  });
+});
+
+describe('runPit', () => {
+  it('passes the mutators listed in the Gradle init script', () => {
+    const root = tree({ 'classes/demo/A.class': '', 'test-classes/demo/ATest.class': '' });
+    const module = {
+      basedir: root,
+      outputDirectory: path.join(root, 'classes'),
+      testOutputDirectory: path.join(root, 'test-classes'),
+      sourceRoots: [],
+      testJvmArgs: [],
+    };
+    const calls = [];
+    const spawn = (command, [argumentFile]) => {
+      calls.push(readFileSync(argumentFile.slice(1), 'utf8').split('\n'));
+      return { status: 0, stdout: '', stderr: '' };
+    };
+    runPit({
+      module,
+      reportDir: root,
+      tools: { pit: [] },
+      classpaths: { testRuntime: [] },
+      isArchunit: () => false,
+      spawn,
+    });
+    const [tokens] = calls;
+
+    expect(tokens[tokens.indexOf('"--mutators"') + 1]).toBe(`"${readPitMutators().join(',')}"`);
   });
 });

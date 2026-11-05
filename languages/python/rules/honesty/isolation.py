@@ -1,7 +1,8 @@
 import ast
 
-from checks.common import call_name, dotted_name, finding
+from checks.common import call_name, dotted_name, finding, overlap_sites
 from honesty.fakes import CLOCK, NETWORK, RANDOM, SLEEP, fakes_of
+from honesty.sleeps import star_modules, starred_name, wall_clock_waits
 
 CLOCK_CALLS = {
     "datetime.datetime.now",
@@ -96,7 +97,7 @@ INTEGRATION_DIRECTORIES = {
     "acceptance",
     "smoke",
 }
-SLEEP_CALLS = {"time.sleep"}
+CLOCK_OVERLAPS = {"real-clock-in-test": ("DTZ002", "DTZ003", "DTZ005", "DTZ011")}
 
 
 def is_random(name, node):
@@ -121,16 +122,6 @@ def is_clock(name, _node):
     return name in CLOCK_CALLS
 
 
-def is_sleep(name, node):
-    if name == "asyncio.sleep":
-        return not (
-            node.args
-            and isinstance(node.args[0], ast.Constant)
-            and node.args[0].value == 0
-        )
-    return name in SLEEP_CALLS
-
-
 def is_integration(path):
     return bool(INTEGRATION_DIRECTORIES.intersection(path.split("/")[:-1]))
 
@@ -148,11 +139,13 @@ def sleeping_functions(project):
 
 def sleepers_of(context):
     names = set()
+    waits = wall_clock_waits(context)
+    stars = star_modules(context.tree)
     for node in ast.walk(context.tree):
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
             for part in ast.walk(node):
                 name = call_name(part, context.aliases)
-                if name and is_sleep(name, part):
+                if name and waits(starred_name(name, part, stars), part):
                     names.add(node.name)
     return names
 
@@ -166,10 +159,13 @@ def sleeping_helper(name, project):
 
 
 def rule_checks(context):
+    def sleeps_inside(name):
+        return sleeping_helper(name, context.project)
+
     checks = [
         ("real-clock-in-test", is_clock, CLOCK),
         ("random-in-test", is_random, RANDOM),
-        ("sleep-in-test", is_sleep, SLEEP),
+        ("sleep-in-test", wall_clock_waits(context, sleeps_inside), SLEEP),
     ]
     if not is_integration(context.path):
         checks.append(("network-in-test", is_network, NETWORK))
@@ -180,15 +176,35 @@ def check(context):
     if not context.tests:
         return []
     fakes = fakes_of(context)
+    stars = star_modules(context.tree)
+    checks = rule_checks(context)
     found = []
     for node in ast.walk(context.tree):
         name = call_name(node, context.aliases)
         if not name:
             continue
-        for rule, matches, kind in rule_checks(context):
-            is_helper = rule == "sleep-in-test" and sleeping_helper(
-                name, context.project
-            )
-            if (matches(name, node) or is_helper) and kind not in fakes.kinds_at(node):
+        name = starred_name(name, node, stars)
+        for rule, matches, kind in checks:
+            if matches(name, node) and kind not in fakes.kinds_at(node):
                 found.append(finding(context.path, rule, name, node))
     return found
+
+
+def busy_wait_sites(context, sleeps):
+    return [
+        {
+            "rule": "ASYNC110",
+            "path": context.path,
+            "line": node.lineno,
+            "owner": "sleep-in-test",
+        }
+        for node in ast.walk(context.tree)
+        if isinstance(node, ast.While)
+        and any(statement.lineno in sleeps for statement in node.body)
+    ]
+
+
+def allowances(context):
+    found = check(context)
+    sleeps = {item["line"] for item in found if item["rule"] == "sleep-in-test"}
+    return overlap_sites(found, CLOCK_OVERLAPS) + busy_wait_sites(context, sleeps)

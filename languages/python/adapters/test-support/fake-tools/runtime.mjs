@@ -33,6 +33,9 @@ export function coverage(call) {
     }
     const status = Number(lines(call, 'test-exit.txt')[0] ?? 0);
     writeJunit(call, status);
+    if (env.NITPICKER_CONSOLE_REPORT !== undefined) {
+      write(call, env.NITPICKER_CONSOLE_REPORT, '{"entries":[]}');
+    }
     out(call, status === 0 ? '1 passed\n' : '1 failed: test_greet\n');
     result.status = status;
   } else if (args[0] !== 'combine') {
@@ -89,7 +92,8 @@ function importScan(call) {
   if (!call.args.some((argument) => argument.endsWith('import-scan.py'))) {
     return false;
   }
-  out(call, readOr(call, 'import-scan.json', '{}'));
+  const request = JSON.parse(read(call, call.args.at(-1)));
+  out(call, request.facts === true ? '{}' : readOr(call, 'import-scan.json', '{}'));
   return true;
 }
 
