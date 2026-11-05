@@ -457,8 +457,8 @@ return (
     [*[1][pmd-java:typeIs('reactor.core.publisher.Flux')]]
     [$fromCollection(*[1])]
     [$worker(ArgumentList/*[1])]
-  | //MethodCall[@MethodName = ('zip', 'zipDelayError', 'when', 'whenDelayError', 'merge', 'mergeDelayError',
-        'mergeSequential', 'mergeSequentialDelayError')]
+  | //MethodCall[@MethodName = ('zip', 'zipDelayError', 'when', 'whenDelayError')
+                 or (@MethodName = ('merge', 'mergeSequential') and ArgumentList/@Size = 1)]
       [*[1][self::TypeExpression][$publisher(.)]]
       [let $sources := ArgumentList/*[1],
            $built := ($sources, $sources/self::VariableAccess

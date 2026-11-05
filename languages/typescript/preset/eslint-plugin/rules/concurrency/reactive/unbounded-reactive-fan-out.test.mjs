@@ -39,6 +39,7 @@ tester.run('unbounded-reactive-fan-out', rule, {
     `${RX}const LIMIT = 4; from(ids).pipe(mergeMap((id) => from(fetch(id)), LIMIT));`,
     `${RX}export function load(ids, limit) { return from(ids).pipe(mergeMap((id) => from(fetch(id)), limit)); }`,
     `${RX}from(ids).pipe(concatMap((id) => from(fetch(id))));`,
+    `${RX}import { take } from "rxjs"; from(ids).pipe(take(10), mergeMap((id) => from(fetch(id))));`,
     `${RX}from(ids).pipe(bufferCount(20), mergeMap((batch) => from(fetch(batch.join()))));`,
     `${RX}from(ids).pipe(mergeMap((id) => of(id.trim())));`,
     `${RX}from(["a", "b"]).pipe(mergeMap((id) => from(fetch(id))));`,
@@ -92,6 +93,10 @@ tester.run('unbounded-reactive-fan-out', rule, {
     },
     {
       code: `${RX}import * as rx from "rxjs"; rx.from(ids).pipe(rx.mergeMap((id) => rx.from(fetch(id))));`,
+      errors: operator(),
+    },
+    {
+      code: `${RX}import { take } from "rxjs"; from(ids).pipe(take(ids.length), mergeMap((id) => from(fetch(id))));`,
       errors: operator(),
     },
     { code: `${RX}forkJoin(ids.map((id) => from(fetch(id))));`, errors: combinator() },

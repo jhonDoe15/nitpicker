@@ -54,6 +54,39 @@ public final class Feeds {
     return Flux.merge(ids.stream().map(this::fetch).toList()); // violation: UnboundedReactiveFanOut
   }
 
+  public Flux<String> sequential(List<String> ids) {
+    return Flux.mergeSequential(ids.stream().map(this::fetch).toList()); // violation: UnboundedReactiveFanOut
+  }
+
+  public Mono<List<String>> zippedLate(List<String> ids) {
+    return Mono.zipDelayError(ids.stream().map(this::fetch).toList(), parts -> Arrays.stream(parts).map(String.class::cast).toList()); // violation: UnboundedReactiveFanOut
+  }
+
+  public Mono<Void> joinedLate(List<String> ids) {
+    return Mono.whenDelayError(ids.stream().map(this::fetch).toList()); // violation: UnboundedReactiveFanOut
+  }
+
+  public Flux<String> mergedLocal(List<String> ids) {
+    List<Mono<String>> calls = ids.stream().map(this::fetch).toList();
+    return Flux.merge(calls); // violation: UnboundedReactiveFanOut
+  }
+
+  public Flux<String> referencedArray(String[] ids) {
+    return Flux.fromArray(ids).flatMap(this::fetch); // violation: UnboundedReactiveFanOut
+  }
+
+  public Flux<List<Object>> pairedDirect(List<String> ids) {
+    return Flux.zip(ids.stream().map(this::fetch).toList(), Arrays::asList); // violation: UnboundedReactiveFanOut
+  }
+
+  public Flux<String> cutToSize(List<String> ids) {
+    return Flux.fromIterable(ids).take(ids.size()).flatMap(this::fetch); // violation: UnboundedReactiveFanOut
+  }
+
+  public Flux<String> varargs(List<String> ids) {
+    return Flux.merge(ids.stream().map(this::fetch).toArray(Mono[]::new)); // violation: UnboundedReactiveFanOut
+  }
+
   public Flux<String> limited(List<String> ids) {
     return Flux.fromIterable(ids).flatMap(this::fetch, 8);
   }
@@ -92,6 +125,22 @@ public final class Feeds {
 
   public Mono<String> chained(String id) {
     return fetch(id).flatMap(this::fetch);
+  }
+
+  public Flux<String> firstTen(List<String> ids) {
+    return Flux.fromIterable(ids).take(10).flatMap(this::fetch);
+  }
+
+  public Flux<String> mergedMirrors() {
+    return Flux.merge(MIRRORS.stream().map(this::fetch).toList());
+  }
+
+  public Flux<String> sequentialLimited(List<String> ids) {
+    return Flux.mergeSequential(ids.stream().map(this::fetch).toList(), 4, 32);
+  }
+
+  public Flux<String> pairOfTwo(String first, String second) {
+    return Flux.merge(fetch(first), fetch(second));
   }
 
   private Mono<String> fetch(String id) {

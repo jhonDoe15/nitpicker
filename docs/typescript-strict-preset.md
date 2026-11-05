@@ -405,8 +405,8 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `unbounded-fan-out`, plus Angular's `HttpClient` (`@angular/common/http`, a parameter property or
   field typed with it) and `ajax` from `rxjs/ajax`; `from(fetch(...))` and `defer(() => fetch(...))`
   count. Allowed: a numeric concurrency argument (`mergeMap((id) => load(id), 8)`, a `const` or a
-  parameter), `concatMap`, a `bufferCount`, `bufferTime`, `toArray`, `windowCount`, `reduce` or
-  `take` before the operator, `merge(...calls, 4)`, a fixed collection, and a stream that is not a
+  parameter), `concatMap`, a `bufferCount`, `bufferTime`, `toArray`, `windowCount` or `reduce`
+  before the operator, a `take` or `takeLast` there whose count does not read a `length` or `size`, `merge(...calls, 4)`, a fixed collection, and a stream that is not a
   collection (events, `actions$`, route parameters), which this rule leaves alone. Limits: a field
   set with `inject(HttpClient)` and no type annotation is not recognized, and a standalone `pipe()`
   composition is not followed.
