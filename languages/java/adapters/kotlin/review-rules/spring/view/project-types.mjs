@@ -162,6 +162,23 @@ export function projectClass(context, candidates) {
   return candidates.map((candidate) => context.classes.get(candidate)).find(Boolean);
 }
 
+export function extendsType(context, start, fqns) {
+  const queue = [{ names: start.resolve, type: start.text }];
+  const seen = new Set();
+  for (const { names, type } of queue) {
+    if (resolvesTo(names, type, fqns)) {
+      return true;
+    }
+    const found = projectClass(context, names(typeName(type)));
+    if (found !== undefined && !seen.has(found) && queue.length < SEARCH_LIMIT) {
+      seen.add(found);
+      const own = resolverOf(context, found.file);
+      queue.push(...found.declared.supers.map((next) => ({ names: own, type: next })));
+    }
+  }
+  return false;
+}
+
 export function projectFunctions(context, candidates, name) {
   const queue = [projectClass(context, candidates)].filter(Boolean);
   for (const found of queue) {
