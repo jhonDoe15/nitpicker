@@ -21,8 +21,13 @@ const ANNOTATED_PROPERTY = new RegExp(
   'gu',
 );
 const ANNOTATION = /@(?:\w+:)?([\w.]+)(\([^()]*\))?/gu;
-const CREATION =
-  /(?<![\w.]|\bfun\s+)(?:(?:Mockito|io\.mockk)\s*\.\s*)?(mockk|mock|spyk|spy)(?:\s*<\s*([\w.]+)(?:<(?:[^<>]|<[^<>]*>)*>)?(?:[^\w.<>][^<>]*)?>)?\s*[({]/gu;
+const CREATION = new RegExp(
+  [
+    String.raw`(?<![\w.]|\bfun\s+)(?:(?:Mockito|io\.mockk)\s*\.\s*)?(mockk|mock|spyk|spy)`,
+    String.raw`(?:\s*<\s*([\w.]+)(?:<(?:[^<>]|<[^<>]*>)*>)?(?:[^\w.<>][^<>]*)?>)?\s*[({]`,
+  ].join(''),
+  'gu',
+);
 const CLASS_LITERAL = /^([\w.]+)::class(?:\.java)?$/u;
 const CONSTRUCTOR_CALL = /^([A-Z][\w.]*)(?:\s*<[^()]*>)?\s*\(/u;
 const IDENTIFIER = /^[a-z_]\w*$/u;
