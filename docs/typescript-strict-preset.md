@@ -635,10 +635,13 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   `options.retry.count = 3` and `Object.assign(options, defaults)`, also through a simple alias
   (`const o = options`, `const o = options ?? {}`, `options = options ?? {}`). Only an object
   whose type is declared in the project or is an anonymous object type counts (an interface, a
-  type alias, `Partial<Options>`, a record, a JSDoc `@typedef` or `{{ ... }}` type); a class
-  instance, a type from a library or `lib.*.d.ts` (`Error`, `RegExp`, a framework request), and an
-  interface or intersection that extends one are left alone, since middleware writes to those
-  are the norm. The allowed form is a new object (`{ ...options, retries: 3 }`) or a copy first
+  type alias, `Partial<Options>`, a record, a JSDoc `@typedef` or `{{ ... }}` type), and every
+  member of a union must be one; a class instance, a class itself (`typeof Counter`), an enum, a
+  function or callable type, a type from a library or `lib.*.d.ts` (`Error`, `RegExp`, a
+  framework request), and an interface or intersection that extends one are left alone, since
+  middleware writes to those are the norm. `as`, `satisfies` and `!` around the target count as
+  the parameter (`(options as Options).size = 1`). The allowed form is a new object
+  (`{ ...options, retries: 3 }`) or a copy first
   (`const next = { ...options }`, `options = { ...options }` or `Object.assign({}, options)`).
   A function that fills an object its caller hands it to be filled takes a config exception.
   The same aliases and nested named properties apply to the indexed and mutating-method forms

@@ -78,6 +78,11 @@ tester.run('no-parameter-mutation', rule, {
     'export function rename(user: { name: string }) { let next = user; next = { ...next }; next.name = "x"; return next; }',
     'export function count(input: { items: string[] }) { return input.items.length; }',
     'export function fill(o: { size?: number }) { o = { ...o }; o.size ||= 1; return o; }',
+    'export class Counter { static count = 0; }\nexport function reset(counter: typeof Counter) { counter.count = 0; }',
+    'export enum Level { Low }\nexport function reset(level: typeof Level) { return level.Low; }',
+    'export function tag(run: { (): void; label?: string }) { run.label = "x"; }',
+    'export function wrap(error: Error | { message: string }) { error.message = "x"; }',
+    'export function touch(options: { size?: number }) { return Object.assign(options); }',
     'export function rename(state: { items: string[] }) { state.items.length; }',
     'export function total(items: number[]) { return items.reduce((sum, item) => sum + item, 0); }',
     'export function index(items: string[]) { return items.reduce((table: Record<string, number>, item) => { table[item] = 1; return table; }, {}); }',
@@ -174,6 +179,22 @@ tester.run('no-parameter-mutation property writes', rule, {
     written(
       'export function fill(o: { inner: { size?: number } }) { Object.assign(o.inner, { size: 1 }); }',
       'Object.assign(o.inner, …)',
+    ),
+    written(
+      'export function f(o: { a: number }) { (o as { a: number }).a = 1; }',
+      '(o as { a: number }).a',
+    ),
+    written(
+      'export function f(o: { a: number }) { (o satisfies { a: number }).a = 1; }',
+      '(o satisfies { a: number }).a',
+    ),
+    written(
+      'export function f(o: { a: number }) { (<{ a: number }>o).a = 1; }',
+      '(<{ a: number }>o).a',
+    ),
+    written(
+      'export function f(o: { a: number }) { Object.assign(o as { a: number }, { a: 1 }); }',
+      'Object.assign(o, …)',
     ),
     written(
       'export function fill(options: { size?: number }) { const o = options; Object.assign(o, { size: 1 }); }',

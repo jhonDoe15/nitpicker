@@ -170,11 +170,13 @@ describe.skipIf(!enabled)('parameter-mutation', () => {
     const [actual, expected] = outcomes([
       [
         'key writes, del and dict methods on a TypedDict',
-        'from typing import NotRequired, TypedDict\n\n\nclass Movie(TypedDict):\n    title: str\n    year: NotRequired[int]\n\n\ndef tag(movie: Movie) -> None:\n    movie["year"] = 1\n\n\ndef clear(movie: Movie | None) -> None:\n    if movie is not None:\n        del movie["year"]\n\n\ndef fill(movie: "Movie") -> None:\n    movie.setdefault("year", 1)\n',
+        'from typing import Generic, NotRequired, TypedDict, TypeVar, Union\n\nT = TypeVar("T")\n\n\nclass Movie(TypedDict):\n    title: str\n    year: NotRequired[int]\n\n\nclass Box(TypedDict, Generic[T]):\n    value: T\n\n\ndef tag(movie: Movie) -> None:\n    movie["year"] = 1\n\n\ndef clear(movie: Movie | None) -> None:\n    if movie is not None:\n        del movie["year"]\n\n\ndef fill(movie: "Movie") -> None:\n    movie.setdefault("year", 1)\n\n\ndef pick(movie: Union[Movie, int], box: Box[int]) -> None:\n    if isinstance(movie, dict):\n        movie["year"] = 1\n    box["value"] = 1\n',
         [
-          'parameter-mutation:10 movie[...] (tag)',
-          'parameter-mutation:15 movie[...] (clear)',
-          'parameter-mutation:19 movie.setdefault (fill)',
+          'parameter-mutation:16 movie[...] (tag)',
+          'parameter-mutation:21 movie[...] (clear)',
+          'parameter-mutation:25 movie.setdefault (fill)',
+          'parameter-mutation:30 movie[...] (pick)',
+          'parameter-mutation:31 box[...] (pick)',
         ],
       ],
       [

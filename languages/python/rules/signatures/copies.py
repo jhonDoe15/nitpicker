@@ -21,8 +21,13 @@ COPY_CONSTRUCTORS = {
 COPY_CALLS = {"copy.copy", "copy.deepcopy"}
 
 
+def is_constructor(func):
+    name = func.attr if isinstance(func, ast.Attribute) else getattr(func, "id", "")
+    return name[:1].isupper()
+
+
 def unpacks(call, name):
-    return any(
+    return is_constructor(call.func) and any(
         keyword.arg is None
         and isinstance(keyword.value, ast.Name)
         and keyword.value.id == name
