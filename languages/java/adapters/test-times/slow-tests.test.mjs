@@ -71,8 +71,18 @@ describe('testCasesOf', () => {
     ])}</testsuites>`.replace('<?xml version="1.0" encoding="UTF-8"?>\n', '');
 
     expect(testCasesOf(xml, 'test')).toEqual([
-      { task: 'test', className: 'shop.OrderTest', name: '[1] 1', seconds: 0.25 },
-      { task: 'test', className: 'shop.OrderTest', name: 'positive(int)[2]', seconds: 1234.5 },
+      {
+        task: 'test',
+        className: 'shop.OrderTest',
+        name: '[1] 1',
+        seconds: expect.closeTo(0.25, 10),
+      },
+      {
+        task: 'test',
+        className: 'shop.OrderTest',
+        name: 'positive(int)[2]',
+        seconds: expect.closeTo(1234.5, 10),
+      },
     ]);
   });
 });

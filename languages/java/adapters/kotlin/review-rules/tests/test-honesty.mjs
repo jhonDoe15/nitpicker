@@ -9,6 +9,7 @@ import { FOCUSED_RULE } from './honesty/focused-tests.mjs';
 import { honestyReports } from './honesty/honesty-reports.mjs';
 import { RETRY_RULE } from './honesty/retries/retry-tests.mjs';
 import { DISABLED_RULE } from './honesty/skipped-tests.mjs';
+import { FLOAT_EQUALITY_RULE, floatEqualityReports } from './floats/float-equality.mjs';
 import { projectFlags } from './project-flags.mjs';
 
 export const HONESTY_RULES = [
@@ -17,6 +18,7 @@ export const HONESTY_RULES = [
   RETRY_RULE,
   CONTROL_FLOW_RULE,
   ESCAPING_RULE,
+  FLOAT_EQUALITY_RULE,
 ];
 
 const CONTEXT_MARKERS = new RegExp(
@@ -44,6 +46,7 @@ export function fileReports(scanned, project) {
   return [
     ...honestyReports(scanned, suites, project),
     ...coroutineReports(scanned, suites, project),
+    ...floatEqualityReports(scanned, suites),
   ].toSorted((left, right) => left.offset - right.offset);
 }
 

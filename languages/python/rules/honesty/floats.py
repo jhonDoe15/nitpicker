@@ -1,0 +1,120 @@
+import ast
+import math
+
+from checks.common import finding, last_name
+
+RULE = "float-equality-in-test"
+EQUALITY = (ast.Eq, ast.NotEq)
+EQUALITY_METHODS = {
+    "assertEqual",
+    "assertEquals",
+    "assertNotEqual",
+    "assertNotEquals",
+    "assertListEqual",
+    "assertTupleEqual",
+    "assertDictEqual",
+    "assertSequenceEqual",
+}
+TRUTH_METHODS = {"assertTrue", "assertFalse"}
+SIGNS = (ast.USub, ast.UAdd)
+
+
+def is_fraction(node):
+    if isinstance(node, ast.UnaryOp) and isinstance(node.op, SIGNS):
+        node = node.operand
+    if not isinstance(node, ast.Constant) or type(node.value) is not float:
+        return False
+    return math.isfinite(node.value) and not node.value.is_integer()
+
+
+def fractions_in(node):
+    found = []
+    pending = [node]
+    while pending:
+        item = pending.pop()
+        if is_fraction(item):
+            found.append(item)
+        elif isinstance(item, (ast.List, ast.Tuple)):
+            pending.extend(item.elts)
+        elif isinstance(item, ast.Dict):
+            pending.extend(item.values)
+    return found
+
+
+def is_tolerant(node):
+    return isinstance(node, ast.Call) and last_name(node.func) == "approx"
+
+
+def compared_pairs(compare):
+    operands = [compare.left, *compare.comparators]
+    return [
+        (operands[index], operands[index + 1])
+        for index, op in enumerate(compare.ops)
+        if isinstance(op, EQUALITY)
+    ]
+
+
+def pairs_within(expression):
+    return [
+        pair
+        for compare in ast.walk(expression)
+        if isinstance(compare, ast.Compare)
+        for pair in compared_pairs(compare)
+    ]
+
+
+def arguments(call, names):
+    keywords = {keyword.arg: keyword.value for keyword in call.keywords}
+    positional = call.args[: len(names)]
+    return [
+        *positional,
+        *(keywords[name] for name in names[len(positional) :] if name in keywords),
+    ]
+
+
+def method_pairs(call):
+    if not isinstance(call.func, ast.Attribute):
+        return []
+    method = call.func.attr
+    compared = arguments(call, ["first", "second"])
+    if method in EQUALITY_METHODS and len(compared) == 2:
+        return [tuple(compared)]
+    condition = arguments(call, ["expr"])
+    if method in TRUTH_METHODS and condition:
+        return pairs_within(condition[0])
+    return []
+
+
+def equality_pairs(node):
+    if isinstance(node, ast.Assert):
+        return pairs_within(node.test)
+    if isinstance(node, ast.Call):
+        return method_pairs(node)
+    return []
+
+
+def exact_fractions(pair):
+    if any(is_tolerant(side) for side in pair):
+        return []
+    return [literal for side in pair for literal in fractions_in(side)]
+
+
+def subject(context, literal):
+    return ast.get_source_segment(context.text, literal) or repr(literal.value)
+
+
+def reported_literals(tree):
+    literals = {}
+    for node in ast.walk(tree):
+        for pair in equality_pairs(node):
+            literals.update((id(literal), literal) for literal in exact_fractions(pair))
+    return literals.values()
+
+
+def check(context):
+    if not context.tests:
+        return []
+    return [
+        finding(context.path, RULE, subject(context, literal), literal)
+        for literal in reported_literals(context.tree)
+    ]

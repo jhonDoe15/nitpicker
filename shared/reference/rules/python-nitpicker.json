@@ -79,6 +79,10 @@
     { "key": "python.exceptions", "rule": "falsy-default" },
     "`<name>` replaces a falsy argument with a default, so `0`, `\"\"`, `[]` and `False` count as not given",
     "Test for `None` only: `limit if limit is not None else DEFAULT_LIMIT`, or `if limit is None: limit = DEFAULT_LIMIT`.",
+    "float-equality-in-test",
+    { "key": "python.exceptions", "rule": "float-equality-in-test" },
+    "`<name>` is compared exactly in a test, so rounding makes it fail",
+    "Compare with a tolerance: `assert total == pytest.approx(0.3)` (it also takes lists and dicts), `math.isclose(total, 0.3)`, or `self.assertAlmostEqual(total, 0.3)`.",
     "forwarding-wrapper",
     { "key": "python.exceptions", "rule": "forwarding-wrapper" },
     "`<name>` only forwards its parameters to `<target>`, with the same parameter and return types",
@@ -351,9 +355,10 @@
     [18, 244, 2, 3, 245, 246, 22, 247, -1],
     [18, 248, 2, 3, 249, 250, 22, 251, -1],
     [18, 252, 2, 3, 253, 254, 22, 255, -1],
-    [18, 256, 2, 3, 257, 258, 22, -1, -1],
-    [18, 259, 2, 3, 260, 261, 22, 262, -1],
-    [263, 264, 2, 3, 265, 266, 267, 268, -1],
-    [269, 270, 2, 3, 271, 272, 273, 274, 275]
+    [18, 256, 2, 3, 257, 258, 22, 259, -1],
+    [18, 260, 2, 3, 261, 262, 22, -1, -1],
+    [18, 263, 2, 3, 264, 265, 22, 266, -1],
+    [267, 268, 2, 3, 269, 270, 271, 272, -1],
+    [273, 274, 2, 3, 275, 276, 277, 278, 279]
   ]
 }

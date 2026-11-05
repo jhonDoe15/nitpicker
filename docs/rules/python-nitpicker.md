@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 66 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 67 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -147,6 +147,15 @@ These comparisons list only some members of `<enum>`, so a member added later is
 
 - **Allowed form:** Test for `None` only: `limit if limit is not None else DEFAULT_LIMIT`, or `if limit is None: limit = DEFAULT_LIMIT`.
 - **Exception:** If this is intended, add `{"rule":"falsy-default","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-float-equality-in-test"></a>
+
+### `python-rules/float-equality-in-test`
+
+`<name>` is compared exactly in a test, so rounding makes it fail.
+
+- **Allowed form:** Compare with a tolerance: `assert total == pytest.approx(0.3)` (it also takes lists and dicts), `math.isclose(total, 0.3)`, or `self.assertAlmostEqual(total, 0.3)`.
+- **Exception:** If this is intended, add `{"rule":"float-equality-in-test","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-forwarding-wrapper"></a>
 

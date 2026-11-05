@@ -66,6 +66,16 @@ const HONESTY_ROWS = [
   ],
   ['todo tests name writing the test', "it.todo('later');", 'write the test'],
   [
+    'float equality names toBeCloseTo',
+    "it('x', () => { expect(run()).toBe(0.1); });",
+    '`toBeCloseTo(0.1)`',
+  ],
+  [
+    'float equality names the exception route',
+    "it('x', () => { expect(run()).toBe(0.1); });",
+    '{"rule":"nitpicker/no-float-equality-in-tests","paths":["test/orders.test.ts"],"reason":"..."}',
+  ],
+  [
     'an unowned timer assertion names awaiting the callback',
     "it('x', () => { setTimeout(() => { expect(run()).toBe(1); }, 10); });",
     'Await a promise the callback resolves',

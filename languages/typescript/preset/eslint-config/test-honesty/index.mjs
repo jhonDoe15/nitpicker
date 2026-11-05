@@ -65,6 +65,7 @@ function honestyRulesBlock(layout, { files, assertionFunctionNames }) {
       'nitpicker/fake-timers-require-restore': 'error',
       'nitpicker/no-real-time-random-or-network': 'error',
       'nitpicker/no-switched-off-tests': 'error',
+      'nitpicker/no-float-equality-in-tests': 'error',
       'nitpicker/no-assertion-in-loop': ['error', { assertionFunctionNames }],
       'nitpicker/no-unowned-async-assertion': 'error',
       'vitest/no-restricted-matchers': ['error', restrictedMatchers],

@@ -23,7 +23,7 @@ def load_checks():
     from effects import import_time, reach
     from environment import domain_imports, environment, purity
     from errors import errors
-    from honesty import assertions, isolation, skipped, waits
+    from honesty import assertions, floats, isolation, skipped, waits
     from review import fields
     from security import hashes, loading
     from security.sql import check as sql
@@ -63,6 +63,7 @@ def load_checks():
         fan_out,
         skipped,
         assertions,
+        floats,
         unasserted,
         isolation,
         waits,
