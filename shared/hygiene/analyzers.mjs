@@ -66,6 +66,10 @@ export function createCheckAnalyzer({
   };
 }
 
+function comparedBase({ snapshot, baselineRoot }) {
+  return snapshot === 'head' && baselineRoot !== undefined ? ['--baseline-root', baselineRoot] : [];
+}
+
 export function createHygieneAnalyzers(entryPath) {
   return [
     createCheckAnalyzer({
@@ -73,6 +77,7 @@ export function createHygieneAnalyzers(entryPath) {
       command: 'hygiene',
       runner: HYGIENE_RUNNER,
       entryPath,
+      extraArguments: comparedBase,
     }),
   ];
 }
