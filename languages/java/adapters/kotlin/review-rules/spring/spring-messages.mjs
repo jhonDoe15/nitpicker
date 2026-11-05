@@ -93,11 +93,11 @@ const ALLOWED = {
   SpringDataNoSaveInLoop:
     'Collect the entities and call saveAll or deleteAll once, instead of saving or deleting one entity per loop iteration.',
   SpringDataNoFlush:
-    'Let the transaction write changes at commit and remove this flush; an early flush defeats JDBC batching and hides ordering bugs.',
+    'Let the transaction write changes at commit and remove this flush; in a batch loop, flush and then call entityManager.clear() every N entities. Any other early flush defeats JDBC batching and hides ordering bugs.',
   SpringDataNamedParameters:
     'Bind query parameters by name (:email), not by position (?1); positions break silently when parameters are reordered.',
   SpringDataQueryTextBlock:
-    'Write a multi-part query as one raw string (""") instead of joining strings with +.',
+    'Write a multi-part query as one raw string (""") instead of joining strings with +, plus() or string templates.',
   SpringDataBatchOfOne:
     'Collect the entities of the whole loop and call saveAll or deleteAll once. Calling it with a one-element list on each iteration is still one write per entity.',
   SpringDataRowWriteInLoop:
