@@ -56,6 +56,13 @@ const UNTYPED_DJANGO = ['import-untyped', 'misc'].map((rule) => ({
   paths: ['polls/tests.py', 'backend/polls/tests.py'],
   reason: 'Django ships no type information',
 }));
+const GRADES_ONLY_TESTED = [
+  {
+    rule: 'test-only-export',
+    paths: ['polls/**', 'backend/polls/**'],
+    reason: 'The fixture app has no view that grades',
+  },
+];
 
 function enforceable(result) {
   return summarize(
@@ -84,6 +91,7 @@ function djangoProject(packages) {
   write(root, {
     'nitpicker.config.json': JSON.stringify({
       preset: 'python',
+      exceptions: GRADES_ONLY_TESTED,
       python: { exceptions: UNTYPED_DJANGO },
     }),
     '.gitignore': '.venv/\n__pycache__/\nmutants/\n',
@@ -109,6 +117,7 @@ function nestedDjangoProject(packages) {
   write(root, {
     'nitpicker.config.json': JSON.stringify({
       preset: 'python',
+      exceptions: GRADES_ONLY_TESTED,
       python: { sourceRoots: ['backend/polls'], exceptions: UNTYPED_DJANGO },
     }),
     '.gitignore': '.venv/\n__pycache__/\nmutants/\n',

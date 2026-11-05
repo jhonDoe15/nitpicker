@@ -11,6 +11,9 @@ import {
 } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { runCli } from '../../../../../core/cli.mjs';
+import { readConfigFile } from '../../../../../core/configuration/config.mjs';
+import { policyChangeFields } from '../../../../../core/policy-changes/describe-policy-changes.mjs';
+import { readPolicyScope } from '../../../../../core/policy-changes/policy-scope.mjs';
 import { withoutHelpUris } from '../../../../../core/diff/reporting/test-support/report-reading.mjs';
 import { fileURLToPath } from 'node:url';
 
@@ -101,6 +104,25 @@ export function gate(root, branch, { extra = [], environment = {}, base = 'main'
     return withoutHelpUris(JSON.parse(readFileSync(file, 'utf8')));
   }
   return { exitCode, json, text: output.text, reports };
+}
+
+export function policyChangesOf(root, branch) {
+  git(root, 'checkout', '-q', branch);
+  const base = mkdtempSync(path.join(tmpdir(), 'nitpicker-python-e2e-base-'));
+  git(root, 'worktree', 'add', '-q', '--detach', base, 'main');
+  try {
+    const headConfig = readConfigFile(root);
+    const scope = readPolicyScope({
+      baseConfig: {},
+      headConfig,
+      baseProjectRoot: base,
+      headProjectRoot: root,
+      moves: {},
+    });
+    return policyChangeFields({}, headConfig, scope);
+  } finally {
+    git(root, 'worktree', 'remove', '--force', base);
+  }
 }
 
 export function summarize(findings) {

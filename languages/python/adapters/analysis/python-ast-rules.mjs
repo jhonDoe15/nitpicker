@@ -2,12 +2,13 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { normalizeReportPath } from '../../../../shared/ingest/common.mjs';
 import { run } from '../execution/python-process.mjs';
+import { readPackageFacts } from '../../rules/libraries/package-facts.mjs';
 import { ruffConfigFor } from '../configuration/python-ruff-config.mjs';
 import { fileURLToPath } from 'node:url';
 import { collectionOptions } from '../configuration/pytest/collection-options.mjs';
 import { readPytestConfig } from '../configuration/pytest/pytest-config.mjs';
-import { testFileMatcher } from './python-sources.mjs';
-import { entryFilesOf, readEntryModules } from '../../rules/libraries/entry-modules.mjs';
+import { listProductionModules, testFileMatcher } from './python-sources.mjs';
+import { entryFilesOf } from '../../rules/libraries/entry-modules.mjs';
 import { boundaryRoots, detectLibraries } from '../../rules/libraries/project-libraries.mjs';
 
 export const RULES_REPORT = 'rules.json';
@@ -44,25 +45,27 @@ export function pythonSources(context) {
     .filter((file) => file !== undefined);
 }
 
+function rulesOptions({ projectRoot, project }, sources, collection) {
+  const modules = listProductionModules(projectRoot, project.sourceRoots);
+  return {
+    sourceRoots: project.sourceRoots,
+    testRunner: project.testRunner,
+    ...collection,
+    testFiles: sources.filter(testFileMatcher(projectRoot)),
+    entryFiles: entryFilesOf(sources, project.entryPoints),
+    boundaryRoots: boundaryRoots(detectLibraries(projectRoot)),
+    modules: Object.fromEntries(modules.map(({ file, module }) => [file, module])),
+    ...readPackageFacts(projectRoot),
+  };
+}
+
 export function checkRules(context) {
   const list = path.join(context.reportRoot, FILE_LIST);
   const options = path.join(context.reportRoot, OPTIONS_FILE);
   const sources = pythonSources(context);
   const collection = collectionOptions(readPytestConfig(context.projectRoot));
-  const { testRunner } = context.project;
   writeFileSync(list, sources.join('\n'));
-  writeFileSync(
-    options,
-    JSON.stringify({
-      sourceRoots: context.project.sourceRoots,
-      testRunner,
-      ...collection,
-      testFiles: sources.filter(testFileMatcher(context.projectRoot)),
-      entryFiles: entryFilesOf(sources, context.project.entryPoints),
-      entryModules: readEntryModules(context.projectRoot),
-      boundaryRoots: boundaryRoots(detectLibraries(context.projectRoot)),
-    }),
-  );
+  writeFileSync(options, JSON.stringify(rulesOptions(context, sources, collection)));
   run(
     context,
     ['python', '-I', RULES_SCRIPT, list, path.join(context.reportRoot, RULES_REPORT), options],

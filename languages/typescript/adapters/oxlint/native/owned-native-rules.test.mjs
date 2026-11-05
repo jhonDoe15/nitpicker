@@ -142,7 +142,7 @@ afterAll(() => {
 });
 
 describe('the owned native rule inside a project', () => {
-  it('honours a disable directive that names the owned rule and reads past a byte order mark', () => {
+  it('honours a disable directive that names the owned rule and reads past a byte order mark', async () => {
     const root = createProject('nitpicker-owned-native-', {
       'policy.mjs': POLICY,
       'src/a.ts': [
@@ -153,7 +153,7 @@ describe('the owned native rule inside a project', () => {
       'src/b.ts': '\uFEFFexport const c = (xs) => xs.reduce((acc, x) => [...acc, x], []);',
     });
     roots.push(root);
-    const messages = lintProject({ root, patterns: ['src/**/*.ts'] }).flatMap((result) =>
+    const messages = (await lintProject({ root, patterns: ['src/**/*.ts'] })).flatMap((result) =>
       result.messages.map(({ ruleId, messageId, line, column }) => ({
         file: path.relative(root, result.filePath),
         ruleId,
