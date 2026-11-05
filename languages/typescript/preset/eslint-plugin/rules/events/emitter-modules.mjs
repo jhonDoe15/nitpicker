@@ -53,7 +53,7 @@ export const EMITTER_SOURCES = [
   source(['imapflow'], { constructors: ['ImapFlow'] }),
 ];
 
-export const EMITTER_TYPES = new Map([
+const EMITTER_TYPES = new Map([
   [
     'node',
     new Set([
@@ -73,9 +73,9 @@ export const EMITTER_TYPES = new Map([
   ['ws', new Set(['WebSocket'])],
 ]);
 
-export const CONNECTION_EVENTS = new Set(['connection', 'secureConnection']);
+const CONNECTION_EVENTS = new Set(['connection', 'secureConnection']);
 
-export const LISTEN_METHODS = new Set([
+const LISTEN_METHODS = new Set([
   'on',
   'once',
   'addListener',
@@ -83,7 +83,7 @@ export const LISTEN_METHODS = new Set([
   'prependOnceListener',
 ]);
 
-export const CHAINABLE_METHODS = new Set([
+const CHAINABLE_METHODS = new Set([
   ...LISTEN_METHODS,
   'setEncoding',
   'setTimeout',
@@ -98,13 +98,13 @@ export const CHAINABLE_METHODS = new Set([
   'uncork',
 ]);
 
-export const CONSUMING_METHODS = new Set(['toArray', 'forEach', 'reduce', 'some', 'every', 'find']);
+const CONSUMING_METHODS = new Set(['toArray', 'forEach', 'reduce', 'some', 'every', 'find']);
 
 function handler(modules, names, owner) {
   return { modules: new Set(modules), names: new Set(names), owner };
 }
 
-export const STREAM_WAITERS = new Set(['pipeline', 'finished']);
+const STREAM_WAITERS = new Set(['pipeline', 'finished']);
 
 export const HANDLING_CALLS = [
   handler([...nodeModule('stream'), ...nodeModule('stream/promises')], [...STREAM_WAITERS]),
@@ -119,6 +119,38 @@ export const HANDLING_STATICS = [
   handler(nodeModule('stream'), [...STREAM_WAITERS], 'promises'),
 ];
 
-export const HANDLING_LIBRARIES = new Set(['fastify', '@nestjs/common']);
+const HANDLING_LIBRARIES = new Set(['fastify', '@nestjs/common']);
 
-export const HELPER_HANDLING_NAMES = new Set([...STREAM_WAITERS, 'once', 'on']);
+const HELPER_HANDLING_NAMES = new Set([...STREAM_WAITERS, 'once', 'on']);
+
+export function isEmitterType(module, name) {
+  return EMITTER_TYPES.get(module)?.has(name) === true;
+}
+
+export function isConnectionEvent(name) {
+  return CONNECTION_EVENTS.has(name);
+}
+
+export function isListenMethod(name) {
+  return LISTEN_METHODS.has(name);
+}
+
+export function isChainableMethod(name) {
+  return CHAINABLE_METHODS.has(name);
+}
+
+export function isConsumingMethod(name) {
+  return CONSUMING_METHODS.has(name);
+}
+
+export function isStreamWaiter(name) {
+  return STREAM_WAITERS.has(name);
+}
+
+export function isHandlingLibrary(name) {
+  return HANDLING_LIBRARIES.has(name);
+}
+
+export function isHelperHandlingName(name) {
+  return HELPER_HANDLING_NAMES.has(name);
+}

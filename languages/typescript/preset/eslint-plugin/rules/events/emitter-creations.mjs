@@ -1,6 +1,6 @@
 import { bindingsOf, importedFunction, isModuleValue } from '../security/imported-names.mjs';
 import { typeServices, unwrapped } from '../security/security-values.mjs';
-import { EMITTER_SOURCES, EMITTER_TYPES } from './emitter-modules.mjs';
+import { EMITTER_SOURCES, isEmitterType } from './emitter-modules.mjs';
 
 const TYPESCRIPT_FILE = /\.[cm]?tsx?$/u;
 const MODULE_PATH = /\/node_modules\/(?:@types\/)?((?:@[^/]+\/)?[^/]+)\//gu;
@@ -28,9 +28,9 @@ export function calledName(context, node, bindings) {
   return importedFunction(context, callee, bindings);
 }
 
-function sourceOf(context, node, bindingsFor, field) {
+function sourceOf(scope, node, field) {
   return EMITTER_SOURCES.find((entry) =>
-    entry[field].has(calledName(context, node, bindingsFor(entry.modules))),
+    entry[field].has(calledName(scope.context, node, scope.bindingsFor(entry.modules))),
   );
 }
 
@@ -54,10 +54,8 @@ function classChain(type) {
 
 function isEmitterClass(type) {
   const symbol = type.getSymbol();
-  const names = EMITTER_TYPES.get(
-    moduleOfFile(symbol?.declarations?.[0]?.getSourceFile().fileName ?? ''),
-  );
-  return names?.has(symbol.getName()) === true;
+  const fileName = symbol?.declarations?.[0]?.getSourceFile().fileName;
+  return fileName !== undefined && isEmitterType(moduleOfFile(fileName), symbol.getName());
 }
 
 function isTypedEmitter(context, node) {
@@ -68,22 +66,21 @@ function isTypedEmitter(context, node) {
   return classChain(services.getTypeAtLocation(node)).some(isEmitterClass);
 }
 
-export function isEmitterCreation(context, node, bindingsFor) {
+export function isEmitterCreation(scope, node) {
   const target = unwrapped(node);
   if (target?.type === 'CallExpression') {
-    return sourceOf(context, target, bindingsFor, 'factories') !== undefined;
+    return sourceOf(scope, target, 'factories') !== undefined;
   }
   if (target?.type !== 'NewExpression') {
     return false;
   }
   return (
-    sourceOf(context, target, bindingsFor, 'constructors') !== undefined ||
-    isTypedEmitter(context, target)
+    sourceOf(scope, target, 'constructors') !== undefined || isTypedEmitter(scope.context, target)
   );
 }
 
-export function isServerCreation(context, node, bindingsFor) {
+export function isServerCreation(scope, node) {
   const target = unwrapped(node);
   const isCreation = target?.type === 'CallExpression' || target?.type === 'NewExpression';
-  return isCreation && sourceOf(context, target, bindingsFor, 'servers') !== undefined;
+  return isCreation && sourceOf(scope, target, 'servers') !== undefined;
 }
