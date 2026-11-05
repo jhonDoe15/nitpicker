@@ -284,7 +284,7 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
 `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/RetryInTest`, `pmd/AssertionInControlFlow`,
 `pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
-`pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ValidationAnnotationTarget`, `pmd/ClassLoadEffect`, `unused-option`), a class limit, a file
+`pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ValidationAnnotationTarget`, `pmd/ClassLoadEffect`, `pmd/RecursiveMapUpdate`, `unused-option`), a class limit, a file
 limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
 `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
 `function-parameters-limit`, `crap-score-limit`, `crap-coverage-unknown` or `changed-branch-coverage`
@@ -528,6 +528,7 @@ skipped with a note on stderr.
 | `ExhaustiveEnumPredicate`                        | `review-rules/main/enum-predicates.mjs`          | a test that lists only some constants of an enum (`==` chains, `in setOf(...)`), so a constant added later falls into the other case                                                                                                                                                                                                                                                                                             |
 | `unused-option` (tool `structure`)               | `review-rules/main/unused-options/`              | a defaulted parameter that no call sets, of a public top-level, `object` or companion function or a private or internal function or constructor                                                                                                                                                                                                                                                                                  |
 | `ClassLoadEffect`                                | `review-rules/main/load-effects.mjs`             | a call with an external effect (database, network, files, processes, threads and pools, JVM-wide settings) that runs while a file, `object`, companion object or enum class loads                                                                                                                                                                                                                                                |
+| `RecursiveMapUpdate`                             | `review-rules/main/map-updates/`                 | a change to a map inside the lambda passed to that same map's `computeIfAbsent`, `compute`, `computeIfPresent`, `merge`, or `getOrPut` on a `ConcurrentMap`, also in a callback created there or a same-class function it calls or references; see the limits below                                                                                                                                                              |
 | `UnboundedFanOut` (tool `kotlin-source`)         | `review-rules/main/fan-out/`                     | a task started for every element of a collection (`async`, `launch`, `supplyAsync`, `thread`) whose work makes a remote or message call; see the limits below                                                                                                                                                                                                                                                                    |
 | `UnboundedReactiveFanOut` (tool `kotlin-source`) | `review-rules/main/reactive-fan-out/`            | a Reactor `flatMap` over a collection without a concurrency argument, `Mono.zip`/`Mono.when`/`Flux.merge` over a list built per element, or `flatMapMerge(Int.MAX_VALUE)`, whose element work makes a remote or message call; see the limits below                                                                                                                                                                               |
 
@@ -657,6 +658,19 @@ Limits, all chosen to flag less rather than guess:
   (`the companion object of Registry loads and creates a Registry (in load, which init calls)`), and
   the identity is the owner, member and call name, with no line number. Kotlin builds with Maven are
   not supported by the Kotlin preset; their Java files get the PMD rule through the Java preset.
+- Map updates: `RecursiveMapUpdate` is the Java rule of the same name. A change is `put`, `putAll`,
+  `putIfAbsent`, `remove`, `clear`, `compute*`, `merge`, `replace`, `replaceAll`, `getOrPut`,
+  `map[key] = value`, `+=` and `-=` on the map, or `remove`, `removeIf`, `removeAll`, `retainAll`,
+  `clear` and `-=` on its `keys`, `values` or `entries`. The map is the same local or parameter, or
+  the same property read bare, through `this.` or through `this@Outer.`, resolved to the nearest
+  enclosing class that declares it, so an inner class's `counts` is not the outer `counts`; a lambda
+  parameter or local of the same name keeps a call off. A bare name inside a `with`, `apply` or `run`
+  lambda on another receiver may be that receiver's property, so it is not followed past that lambda
+  (`this@Outer.map` is). `getOrPut` counts only on a receiver typed `ConcurrentHashMap`,
+  `ConcurrentMap` or `ConcurrentSkipListMap` (declared or from its initializer): there the value is
+  stored only after the function returns, so a cleanup that runs inside it is undone. Same-class
+  helpers, called from the lambda or passed as `::helper`, are followed one level, by name, and only
+  for a property map. A lambda inside a local function or an `object` expression is not followed.
 - Fan-out: `UnboundedFanOut` is the rule the TypeScript and Python presets call `unbounded-fan-out`,
   printed as `kotlin-source/UnboundedFanOut` (the id an `exceptions` entry names). A task is an
   `async` or `launch` lambda, `CompletableFuture.supplyAsync`/`runAsync` on the default pool or an
