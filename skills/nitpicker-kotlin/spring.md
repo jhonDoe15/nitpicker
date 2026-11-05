@@ -49,7 +49,9 @@ RemoteProperties(val url: String, val timeout: Duration)`. `@Value` only in a `@
 - `@Scheduled`, `@Async`, cache annotations, `@PreAuthorize` and `@Retryable` need their
   `@Enable...` on a `@Configuration` class.
 
-Proxies (`@Transactional`, `@Async`, `@Cacheable`, `@Retryable`, `@PreAuthorize`):
+Proxies (`@Transactional`, `@Async`, `@Cacheable`, `@Retryable`, `@PreAuthorize`, `@RolesAllowed`,
+Resilience4j, Micrometer `@Timed`, constraints in a `@Validated` class, and annotations of your own
+that carry one of these or that an `@Aspect` matches):
 
 - Spring subclasses the bean and Kotlin is final by default: apply `kotlin("plugin.spring")` or
   write `open class` and `open fun`. A proxied function is public and never in an `object` or

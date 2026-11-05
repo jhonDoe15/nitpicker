@@ -72,6 +72,8 @@ const REVIEW_RULES = new Set([
   'LegacyCalendarApi',
   'ClassLoadEffect',
   'SpringUnusedContext',
+  'SpringProxySelfCall',
+  'SpringProxyMethodVisibility',
   'TestClassWithoutTestCases',
   'test-only-export',
   'UnboundedFanOut',
