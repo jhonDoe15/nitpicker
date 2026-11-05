@@ -1147,8 +1147,9 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
 - `parameter-mutation` reports a parameter annotated as a `list`, `dict`, `set`, `deque`,
   `bytearray`, `defaultdict`, `OrderedDict`, `Counter`, `MutableSequence`, `MutableMapping` or
   `MutableSet`, or a project `TypedDict` (a class that derives from `TypedDict`, resolved
-  through imports and subclasses, and treated as a `dict`; the functional `TypedDict("Name", {...})`
-  form is not resolved), also `Optional` and `|` members, `typing` aliases and strings, that
+  through imports, subclasses, generic forms (`Box[int]`) and `Union` members, and treated as a
+  `dict`; the functional `TypedDict("Name", {...})` form is not resolved), also `Optional` and
+  `|` members, `typing` aliases and strings, that
   the function changes in place: `.append`, `.extend`, `.insert`, `.remove`, `.pop`, `.clear`, `.sort`, `.reverse`,
   `.update`, `.setdefault`, `.popitem`, `.add`, `.discard` and the other mutating methods of its type,
   an item or slice assignment (`p[k] = v`, `p[:] = x`, `p[k][j] = v`), `del p[k]`, an in-place operator
@@ -1158,8 +1159,8 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   every target of `del a[0], b[k]` and of a tuple assignment, and the same operations on a one-hop
   alias (`alias = items`, `self.items = items`). A rebind makes the parameter a copy only when the
   right side is one (`list(p)`, `[*p]`, `{**p}`, `p.copy()`, `sorted(p)`, `p[:]`, `p + [x]`,
-  `copy.copy`, `copy.deepcopy`, a comprehension, a call that unpacks the parameter itself, such
-  as `Movie(**p)`) and it comes before the first change; `p = p or []`
+  `copy.copy`, `copy.deepcopy`, a comprehension, a class call that unpacks the parameter
+  itself, such as `Movie(**p)`) and it comes before the first change; `p = p or []`
   and `if p is None: p = []` keep the caller's list on the other branch and are reported. A
   comprehension variable or lambda parameter named like the parameter is its own scope. Not
   reported: `self` and `cls`, unannotated and read-only (`Sequence`, `Mapping`) parameters,

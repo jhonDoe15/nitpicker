@@ -1,10 +1,11 @@
 import ast
 
-from checks.common import dotted_name, finding
+from checks.common import dotted_name, finding, last_name
 from review.common import unwrapped
 from review.fields import TYPED_DICT, base_class, record_kind
 from signatures.annotations import (
     FUNCTION_TYPES,
+    subscript_arguments,
     decorator_names,
     is_hook,
     members_of,
@@ -15,6 +16,8 @@ from signatures.copies import copy_positions
 from signatures.scopes import key_of, position, visible_nodes
 
 RULE = "parameter-mutation"
+UNION_NAMES = {"Union", "Optional"}
+MAX_UNION_MEMBERS = 24
 CONTAINERS = {
     "list": {"append", "extend", "insert", "remove", "pop", "clear", "sort", "reverse"},
     "dict": {"update", "setdefault", "pop", "popitem", "clear"},
@@ -95,11 +98,29 @@ FIXED_SIGNATURE_DECORATORS = {"override", "overload"}
 ANY_MUTATORS = set().union(*CONTAINERS.values())
 
 
+def annotation_classes(annotation):
+    pending, found = [unwrapped(annotation)], []
+    for node in pending:
+        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+            pending.extend([unwrapped(node.left), unwrapped(node.right)])
+        elif isinstance(node, ast.Subscript) and last_name(node.value) in UNION_NAMES:
+            pending.extend(map(unwrapped, subscript_arguments(node)))
+        elif isinstance(node, ast.Subscript):
+            found.append(node.value)
+        else:
+            found.append(node)
+    return found[:MAX_UNION_MEMBERS]
+
+
 def is_typed_dict(annotation, context):
     if annotation is None:
         return False
-    found = base_class(context, unwrapped(annotation))
-    return found is not None and record_kind(found[0], found[1]) == TYPED_DICT
+    return any(
+        found is not None and record_kind(found[0], found[1]) == TYPED_DICT
+        for found in (
+            base_class(context, node) for node in annotation_classes(annotation)
+        )
+    )
 
 
 def container_kind(annotation, context):

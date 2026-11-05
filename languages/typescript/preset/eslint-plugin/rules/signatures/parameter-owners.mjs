@@ -26,7 +26,12 @@ const COPY_METHODS = new Set([
 const COPY_CONSTRUCTORS = new Set(['Set', 'Map', 'Array']);
 const COPY_FUNCTIONS = new Set(['structuredClone', 'from']);
 const FRESH_CONTAINERS = new Set(['Set', 'Map']);
-const WRAPPERS = new Set(['TSNonNullExpression', 'TSAsExpression', 'TSSatisfiesExpression']);
+const WRAPPERS = new Set([
+  'TSNonNullExpression',
+  'TSAsExpression',
+  'TSSatisfiesExpression',
+  'TSTypeAssertion',
+]);
 
 function calleeName(call) {
   const { callee } = call;
@@ -40,8 +45,18 @@ function calleeName(call) {
     : undefined;
 }
 
+export function withoutAssertion(node) {
+  const chain = [node];
+  for (const current of chain) {
+    if (WRAPPERS.has(current.type)) {
+      chain.push(current.expression);
+    }
+  }
+  return chain.at(-1);
+}
+
 function chainStep(node, crossesProperty) {
-  if (node.type === 'TSNonNullExpression') {
+  if (WRAPPERS.has(node.type)) {
     return node.expression;
   }
   if (node.type !== 'MemberExpression') {
@@ -65,13 +80,12 @@ function chainRoot(node, crossesProperty) {
 function aliasSource(node) {
   const chain = [node];
   for (const current of chain) {
-    if (WRAPPERS.has(current.type)) {
-      chain.push(current.expression);
-    } else if (current.type === 'LogicalExpression' && ['??', '||'].includes(current.operator)) {
-      chain.push(current.left);
+    const inner = withoutAssertion(current);
+    if (inner.type === 'LogicalExpression' && ['??', '||'].includes(inner.operator)) {
+      chain.push(inner.left);
     }
   }
-  const source = chain.at(-1);
+  const source = withoutAssertion(chain.at(-1));
   return source.type === 'Identifier' ? source : undefined;
 }
 

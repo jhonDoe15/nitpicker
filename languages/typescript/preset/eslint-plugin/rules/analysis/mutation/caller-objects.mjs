@@ -1,4 +1,7 @@
+import { ts } from '../../../../../typescript-api/typescript-api.mjs';
+
 const ANONYMOUS = new Set(['__type', '__object']);
+const NOT_DATA = ts.SymbolFlags.Class | ts.SymbolFlags.Enum | ts.SymbolFlags.Function;
 
 export function isProjectFile(program, sourceFile) {
   return (
@@ -60,7 +63,14 @@ function partsOf(type, combined) {
 
 function isCallerPart(scope, type, property) {
   const symbol = type?.getSymbol();
-  if (symbol === undefined || isInstance(type) || type.isUnionOrIntersection()) {
+  if (
+    symbol === undefined ||
+    isInstance(type) ||
+    type.isUnionOrIntersection() ||
+    (symbol.flags & NOT_DATA) !== 0 ||
+    type.getCallSignatures().length > 0 ||
+    type.getConstructSignatures().length > 0
+  ) {
     return false;
   }
   return ANONYMOUS.has(symbol.getName())
@@ -76,7 +86,7 @@ export function isCallerObject(services, node, property) {
   if (type === undefined) {
     return false;
   }
-  return partsOf(type, type.isUnion()).some((alternative) => {
+  return partsOf(type, type.isUnion()).every((alternative) => {
     const choice = resolved(checker, alternative);
     return (
       choice !== undefined &&

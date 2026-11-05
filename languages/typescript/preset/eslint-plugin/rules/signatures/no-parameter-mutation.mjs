@@ -1,6 +1,6 @@
 import { isCallerObject } from '../analysis/mutation/caller-objects.mjs';
 import { mutatedOwner, staticName } from '../analysis/mutation/mutating-methods.mjs';
-import { changedParameter, isObjectAssign } from './parameter-owners.mjs';
+import { changedParameter, isObjectAssign, withoutAssertion } from './parameter-owners.mjs';
 
 function isMutableIndexed(services, node) {
   const checker = services.program.getTypeChecker();
@@ -13,16 +13,6 @@ function isMutableIndexed(services, node) {
 
 function textOf(sourceCode, node) {
   return sourceCode.getText(node).replaceAll(/\s+/g, ' ');
-}
-
-function unwrapped(node) {
-  const chain = [node];
-  for (const current of chain) {
-    if (current.type === 'TSNonNullExpression') {
-      chain.push(current.expression);
-    }
-  }
-  return chain.at(-1);
 }
 
 function isElementWrite(services, target) {
@@ -42,7 +32,7 @@ function callerParameter(scope, object, mutation) {
 
 function checkWrite(scope, node, written) {
   const { context, services, sourceCode } = scope;
-  const target = unwrapped(written);
+  const target = withoutAssertion(written);
   if (
     target.type !== 'MemberExpression' ||
     callerParameter(scope, target.object, node) === undefined
@@ -63,9 +53,11 @@ function checkWrite(scope, node, written) {
 
 function checkAssign(scope, node) {
   const { context, services, sourceCode } = scope;
-  const [first] = node.arguments;
+  const [written, ...sources] = node.arguments;
+  const first = written === undefined ? undefined : withoutAssertion(written);
   if (
     first !== undefined &&
+    sources.length > 0 &&
     first.type !== 'SpreadElement' &&
     callerParameter(scope, first, node) !== undefined &&
     isCallerObject(services, first)
