@@ -66,36 +66,39 @@ function listens(node, target) {
   );
 }
 
-function delegates(state, node, target) {
-  const index = node.arguments.findIndex((argument) => isTarget(argument, target));
-  if (index === -1 || state.depth >= MAX_DEPTH) {
-    return false;
-  }
-  const declaration = state.checker.getResolvedSignature(node)?.declaration;
-  return declarationHandles({ ...state, depth: state.depth + 1 }, declaration, index) === 'handled';
+function isCall(node) {
+  return ts.isCallExpression(node) || ts.isNewExpression(node);
 }
 
-function handlesNode(state, node, target) {
+function handlesNode(node, target) {
   if (ts.isForOfStatement(node) && node.awaitModifier !== undefined) {
     return isTarget(node.expression, target);
   }
-  const isCall = ts.isCallExpression(node) || ts.isNewExpression(node);
-  return (
-    isCall && (passes(node, target) || listens(node, target) || delegates(state, node, target))
-  );
+  return ts.isCallExpression(node) && (passes(node, target) || listens(node, target));
 }
 
-function handles(state, root, target) {
+function delegation(checker, node, { target, depth }) {
+  const index = isCall(node)
+    ? (node.arguments?.findIndex((argument) => isTarget(argument, target)) ?? -1)
+    : -1;
+  return index === -1
+    ? []
+    : [{ declaration: checker.getResolvedSignature(node)?.declaration, index, depth: depth + 1 }];
+}
+
+function inspectBody(checker, root, scope) {
   const pending = [root];
+  const next = [];
   for (const node of pending) {
-    if (handlesNode(state, node, target)) {
-      return true;
+    if (handlesNode(node, scope.target)) {
+      return { handled: true, next };
     }
+    next.push(...delegation(checker, node, scope));
     ts.forEachChild(node, (child) => {
       pending.push(child);
     });
   }
-  return false;
+  return { handled: false, next };
 }
 
 function parameterTarget(declaration, parameter) {
@@ -106,31 +109,42 @@ function parameterTarget(declaration, parameter) {
   };
 }
 
-function declarationHandles(state, declaration, index) {
+function inspect(checker, { declaration, index, depth }) {
   const source = declaration?.getSourceFile();
   if (source === undefined) {
-    return 'neutral';
+    return { handled: false, next: [] };
   }
   const library = moduleOfFile(source.fileName);
   if (library !== undefined || source.isDeclarationFile) {
-    return isHandlingLibrary(library) ? 'handled' : 'neutral';
+    return { handled: isHandlingLibrary(library), next: [] };
   }
   const parameter = declaration.parameters?.[index];
-  if (
-    parameter === undefined ||
-    !ts.isIdentifier(parameter.name) ||
-    declaration.body === undefined
-  ) {
-    return 'neutral';
+  const readable =
+    parameter !== undefined && ts.isIdentifier(parameter.name) && declaration.body !== undefined;
+  if (!readable) {
+    return { handled: false, next: [] };
   }
   const { target, root } = parameterTarget(declaration, parameter);
-  return handles(state, root, target) ? 'handled' : 'neutral';
+  return inspectBody(checker, root, { target, depth });
 }
 
 export function helperOutcome(services, call, index) {
   const tsCall = services.esTreeNodeToTSNodeMap.get(call);
   const checker = services.program.getTypeChecker();
-  const declaration =
-    tsCall === undefined ? undefined : checker.getResolvedSignature(tsCall)?.declaration;
-  return declarationHandles({ checker, depth: 0 }, declaration, index);
+  const pending = [
+    {
+      declaration:
+        tsCall === undefined ? undefined : checker.getResolvedSignature(tsCall)?.declaration,
+      index,
+      depth: 0,
+    },
+  ];
+  for (const item of pending) {
+    const { handled, next } = inspect(checker, item);
+    if (handled) {
+      return 'handled';
+    }
+    pending.push(...next.filter((entry) => entry.depth <= MAX_DEPTH));
+  }
+  return 'neutral';
 }
