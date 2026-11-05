@@ -38,8 +38,9 @@ The first match wins:
 4. `git symbolic-ref refs/remotes/<remote>/HEAD`, using the remote `upstream` if it exists and
    `origin` otherwise.
 5. `origin/main`, then `origin/master`, whichever exists.
-
-Never use `@{upstream}`: on a feature branch it resolves to the same branch.
+6. `@{upstream}`, but only when it names another branch: a feature branch pushed with
+   `git push -u` tracks its own copy (`origin/feature`), which is not a base.
+7. A local `main`, then `master`, unless HEAD is on one of them, for repositories without a remote.
 
 ## Config file
 

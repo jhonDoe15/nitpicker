@@ -28,7 +28,11 @@ import {
 import { ownSourceRoots } from '../adapters/red-base/tests-failed.mjs';
 import { moduleManifest, relativeTo, writeManifest } from './manifest/maven-manifest.mjs';
 import { runSpringArch } from './spring/maven-spring-arch.mjs';
-import { buildRunsArchRules, withDeclaredSpring } from './spring/arch-rules-gate.mjs';
+import {
+  buildRunsArchRules,
+  springAotSkip,
+  withDeclaredSpring,
+} from './spring/arch-rules-gate.mjs';
 import { writeSpringRoles } from '../adapters/spring-arch/spring-roles.mjs';
 import { MAVEN_PRESETS } from '../adapters/gradle-presets.mjs';
 import { processorTool, runErrorProne } from './errorprone/maven-errorprone.mjs';
@@ -83,6 +87,7 @@ export function buildAndTest({ projectRoot, maven, work, pinned, modules, spawn,
       '-Dmaven.test.skip=false',
       ...TEST_RERUNS_OFF,
       ...PROJECT_CHECKS_OFF,
+      ...springAotSkip(modules),
     ],
   });
 }
