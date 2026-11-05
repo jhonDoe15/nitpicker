@@ -198,7 +198,7 @@ Such a test is in the unit test source set (`test` on Gradle, the one test sourc
 
 ### `archunit/spring-typed-request-field`
 
-A project type that a controller binds from the request (a `@RequestBody`, `@RequestPart` or `@ModelAttribute` parameter, or the payload of a `@MessageMapping` or `@SubscribeMapping` method) has a field typed `Object`, `JsonNode` (or a subtype such as `ObjectNode`), a `Map` whose values are `Object`, `?` or raw, or a collection, array, `Optional` or map of those, or a `@JsonAnySetter` method or field, also in a nested type.
+A project type that a controller binds from the request (a `@RequestBody`, `@RequestPart`, `@ModelAttribute` or `HttpEntity` parameter, or the payload of a `@MessageMapping` or `@SubscribeMapping` method) has a field typed `Object`, `JsonNode` (or a subtype such as `ObjectNode`), a `Map` whose values are `Object` or `?`, a raw `Map` or collection, a project class extending `HashMap<String, Object>`, or a collection, array, `Optional` or map of those, or a `@JsonAnySetter` method or field, also in a nested type.
 
 - **Why it is on:** One of nitpicker's own architecture rules, run with ArchUnit over the compiled classes: it keeps the package-by-feature layout, the layering and the aggregate boundaries that the TypeScript preset keeps with its import rules.
 - **Allowed form:** Type \<Type>.\<field> with a record or an enum and validate it: \<Controller>.\<method> binds it from the request, and an Object, JsonNode or Map\<String, Object> field, or a collection of those, skips validation and lets a client send any shape. A Map with typed values, such as Map\<String, String>, is fine.

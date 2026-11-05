@@ -33,6 +33,7 @@ data class CreateOrder(
     val lines: List<OrderLine>,
     val labels: Map<String, String>,
     @field:JsonIgnore val cache: Any? = null,
+    @get:JsonIgnore val secret: Any? = null,
 )
 
 data class OrderLine(val sku: String, val options: List<Any?>, val tags: Set<String>)

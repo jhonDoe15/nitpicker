@@ -4,6 +4,7 @@ import java.security.Principal;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.http.HttpEntity;
 import org.springframework.messaging.handler.annotation.MessageMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -52,7 +53,13 @@ public class IntakeController implements IntakeApi {
   public void imported(ImportJob job) {}
 
   @MessageMapping("/intake/chat")
-  public void chat(ChatMessage message, Principal principal) {}
+  public void chat(ChatMessage message, Principal principal, @CurrentMember Member member) {}
+
+  @PostMapping("/intake/deliveries")
+  public void delivery(HttpEntity<Delivery> delivery) {}
+
+  @PostMapping("/intake/trees")
+  public void tree(@RequestBody TreeNode tree) {}
 
   public void helper(Unbound unbound) {}
 }
