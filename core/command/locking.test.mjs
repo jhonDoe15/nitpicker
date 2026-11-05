@@ -1,4 +1,5 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { runCli as nitpickerCli } from '../cli.mjs';
 import { policy } from '../diff/execution/test-support/analyzer-findings.mjs';
@@ -15,6 +16,7 @@ describe('nitpicker progress and run lock', () => {
       'quality-policy.json': policy(),
       'src/main/clean.ts': 'export const clean = true;\n',
     });
+    writeFileSync(path.join(repository.root, 'src/main/edited.ts'), 'export const edited = 1;\n');
     const cacheDirectory = makeTemporaryRoot('nitpicker-cli-cache-');
     const run = (extra = {}) => {
       const output = captureOutput();

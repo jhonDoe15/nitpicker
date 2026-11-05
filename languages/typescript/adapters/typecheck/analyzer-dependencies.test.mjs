@@ -18,6 +18,20 @@ describe('analyzers that need the installed dependencies in the snapshot', () =>
     expect(typecheck.requiresDependencies).toBe(true);
   });
 
+  it('runs ESLint analyzers with the package policy side by side, and the others one at a time', () => {
+    const analyzer = (policyFromPackage) =>
+      createEslintAnalyzer({
+        name: 'eslint-lint',
+        configRelativePath: 'eslint.config.mjs',
+        policyFromPackage,
+      });
+
+    expect([analyzer(true).concurrencyGroup, analyzer(false).concurrencyGroup]).toEqual([
+      undefined,
+      'eslint-snapshot-dependencies',
+    ]);
+  });
+
   it('leaves formatting without them', () => {
     const format = createStaticCheckAnalyzer({
       name: 'prettier-format',

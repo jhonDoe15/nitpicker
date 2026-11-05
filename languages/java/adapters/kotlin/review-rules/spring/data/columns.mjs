@@ -1,5 +1,5 @@
 import { annotationIn, typeArguments, typeName } from '../spring-names.mjs';
-import { entriesOf, report } from '../spring-scopes.mjs';
+import { entriesOf, factoryType, report } from '../spring-scopes.mjs';
 import {
   COLUMN_HOLDERS,
   ELEMENT_COLLECTION,
@@ -10,15 +10,13 @@ import {
   MAP_KEY_ENUMERATED,
   NOT_COLUMNS,
 } from './data-types.mjs';
+import { simpleName } from '../view/member-types.mjs';
 import { annotatedWith, membersOf } from './entities.mjs';
 
 const STRING = /\bSTRING\b/u;
 const MAPS = new Set(['Map', 'MutableMap', 'HashMap', 'LinkedHashMap', 'SortedMap', 'TreeMap']);
 const AUTO_APPLY = /^autoApply$/u;
-
-function simpleName(type) {
-  return typeName(type).split('.').at(-1);
-}
+const CONVERTER_DEPTH = 4;
 
 function projectEnums(projectFiles) {
   return new Set(
@@ -30,23 +28,89 @@ function projectEnums(projectFiles) {
   );
 }
 
-function autoApplied(projectFiles) {
-  return new Set(
-    projectFiles
-      .flatMap((file) => file.classes)
-      .filter((declared) =>
-        declared.annotations.some(
-          (annotation) =>
-            simpleName(annotation.type ?? annotation.name) === 'Converter' &&
-            annotation.arguments.some(
-              ({ name, text }) => AUTO_APPLY.test(name ?? '') && text === 'true',
-            ),
-        ),
-      )
-      .flatMap((declared) => declared.genericSupers ?? [])
-      .filter((text) => simpleName(text) === 'AttributeConverter')
-      .map((text) => simpleName(typeArguments(text)[0])),
+function autoApply(declared) {
+  return declared.annotations.some(
+    (annotation) =>
+      simpleName(annotation.type ?? annotation.name) === 'Converter' &&
+      annotation.arguments.some(
+        ({ name, text }) => (name === undefined || AUTO_APPLY.test(name)) && text === 'true',
+      ),
   );
+}
+
+function directConverter(declared) {
+  return (declared.genericSupers ?? []).find((text) => simpleName(text) === 'AttributeConverter');
+}
+
+function basesOf(classes, declared) {
+  return (declared.supers ?? [])
+    .map((text) => classes.get(simpleName(text)))
+    .filter((base) => base !== undefined && base !== declared);
+}
+
+function passedDown(type, base, child) {
+  const index =
+    type === undefined
+      ? -1
+      : (base.typeBounds ?? []).findIndex(({ name }) => name === typeName(type));
+  if (index < 0) {
+    return type;
+  }
+  const written = (child.genericSupers ?? []).find(
+    (text) => simpleName(text) === simpleName(base.name),
+  );
+  return written === undefined ? undefined : typeArguments(written)[index];
+}
+
+function typeAlong(path) {
+  return path
+    .slice(0, -1)
+    .reduceRight(
+      (type, child, index) => passedDown(type, path[index + 1], child),
+      typeArguments(directConverter(path.at(-1)))[0],
+    );
+}
+
+function convertedType(classes, declared) {
+  const paths = [[declared]];
+  for (const path of paths) {
+    const last = path.at(-1);
+    const type = directConverter(last) === undefined ? undefined : typeAlong(path);
+    if (type !== undefined) {
+      return type;
+    }
+    if (directConverter(last) === undefined && path.length <= CONVERTER_DEPTH) {
+      paths.push(
+        ...basesOf(classes, last)
+          .filter((base) => !path.includes(base))
+          .map((base) => [...path, base]),
+      );
+    }
+  }
+  return undefined;
+}
+
+function autoApplied(view, projectFiles) {
+  const declared = projectFiles.flatMap((file) => file.classes);
+  const classes = new Map(declared.map((entry) => [entry.name, entry]));
+  return new Set([
+    ...view.javaConverted(),
+    ...declared
+      .filter((entry) => autoApply(entry))
+      .map((entry) => convertedType(classes, entry))
+      .filter((type) => type !== undefined)
+      .map((type) => simpleName(type)),
+  ]);
+}
+
+function inferredType(member) {
+  if (member.type !== undefined) {
+    return member.type;
+  }
+  const factory = factoryType(member.initializer);
+  return factory !== undefined && member.initializerTypeArguments !== undefined
+    ? `${factory}${member.initializerTypeArguments}`
+    : member.initializerQualifier;
 }
 
 function stored(view, member, fqns) {
@@ -79,11 +143,12 @@ function isEnumType(view, context, type) {
 function enumColumns(view, member, context) {
   const isEnum = isEnumType.bind(undefined, view, context);
   const string = stored(view, member, ENUMERATED);
+  const type = inferredType(member);
   if (annotatedWith(view, member, ELEMENT_COLLECTION) === undefined) {
-    return isEnum(member.type) && !string ? ['value'] : [];
+    return isEnum(type) && !string ? ['value'] : [];
   }
-  const [first, second] = typeArguments(member.type);
-  if (!MAPS.has(simpleName(member.type))) {
+  const [first, second] = typeArguments(type);
+  if (!MAPS.has(simpleName(type))) {
     return isEnum(first) && !string ? ['value'] : [];
   }
   return [
@@ -99,7 +164,7 @@ function holders(view, fqns) {
 }
 
 function enumStrings(view, { projectFiles }) {
-  const context = { enums: projectEnums(projectFiles), converted: autoApplied(projectFiles) };
+  const context = { enums: projectEnums(projectFiles), converted: autoApplied(view, projectFiles) };
   return holders(view, COLUMN_HOLDERS).flatMap((declared) =>
     membersOf(view, declared)
       .filter((member) => annotatedWith(view, member, NOT_COLUMNS) === undefined)
