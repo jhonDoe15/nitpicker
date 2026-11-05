@@ -10,6 +10,7 @@ import { FIXED_SLEEP_RULE, withWaitAdvice } from '../../../messages/wait-advice.
 import { dropSleepsInFakes } from '../../../messages/latency-fakes.mjs';
 import { withFanOutDetails } from '../../../messages/fan-out/fan-out-details.mjs';
 import { withLoadEffectSubjects } from '../../../messages/load-effects.mjs';
+import { withoutTransactionAwareCacheWrites } from '../../spring/caches/transaction-aware.mjs';
 
 const LINE_NUMBER = /\bline \d+\b/g;
 const EMPTY_SARIF = { version: '2.1.0', runs: [] };
@@ -41,10 +42,13 @@ export function sarifFindings(context) {
     ...withFanOutDetails(
       withWaitAdvice(
         dropSleepsInFakes(
-          dropInheritedVersions(ingestSarif(pmd, { tool: 'pmd' }).findings, {
-            projectRoot,
-            sourceRoots: allSourceRoots,
-          }),
+          dropInheritedVersions(
+            withoutTransactionAwareCacheWrites(ingestSarif(pmd, { tool: 'pmd' }).findings, {
+              projectRoot,
+              roots: springRoots(context),
+            }),
+            { projectRoot, sourceRoots: allSourceRoots },
+          ),
           {
             rule: FIXED_SLEEP_RULE,
             projectRoot,
@@ -58,6 +62,14 @@ export function sarifFindings(context) {
     ...ingestSarif(dropEntityAssociations(spotbugs, projectRoot), {
       tool: 'spotbugs',
     }).findings.map(withExposureAdvice),
+  ];
+}
+
+export function springRoots({ allSourceRoots, manifest }) {
+  return [
+    ...(allSourceRoots ?? []),
+    ...(manifest?.sourceRoots ?? []),
+    ...(manifest?.kotlinSourceRoots ?? []),
   ];
 }
 
