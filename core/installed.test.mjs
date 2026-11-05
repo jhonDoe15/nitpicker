@@ -1,10 +1,9 @@
 import { createRequire } from 'node:module';
-import { spawnSync } from 'node:child_process';
 import {
   existsSync,
   lstatSync,
-  mkdtempSync,
   mkdirSync,
+  mkdtempSync,
   readFileSync,
   readdirSync,
   realpathSync,
@@ -16,6 +15,7 @@ import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { PACKAGE_ROOT } from './tooling/tool-resolution.mjs';
 import { supportsRedirect } from '../languages/typescript/typescript-api/api-redirect.mjs';
+import { consumerCommands, eslintVersionOf } from './test-support/installed-consumer.mjs';
 import {
   checkoutOutput,
   expectedDirtyFindings,
@@ -37,44 +37,8 @@ const installer = 'npm@11';
 const cleanSource = 'export function example() {\n  return 1;\n}\n';
 const violation = 'export function example(){\n  debugger;\n  return 1\n}\n';
 
-function expectedEslintVersion(typeScriptVersion) {
-  const plugins = [
-    '@eslint/js',
-    '@vitest/eslint-plugin',
-    'eslint-plugin-formatjs',
-    'eslint-plugin-functional',
-    'eslint-plugin-jsx-a11y-x',
-    'eslint-plugin-react-dom',
-    'eslint-plugin-react-hooks',
-    'eslint-plugin-react-web-api',
-    'eslint-plugin-react-x',
-    'eslint-plugin-regexp',
-    'eslint-plugin-testing-library',
-    'typescript-eslint',
-  ].map((name) => `${name}@${manifest.dependencies[name]}`);
-  return (
-    `eslint@${manifest.dependencies.eslint};typescript@${typeScriptVersion};` +
-    `plugins:${[...plugins, `nitpicker-plugin@${manifest.version}`].join(',')};` +
-    `oxlint@${manifest.dependencies.oxlint},oxlint-tsgolint@${manifest.dependencies['oxlint-tsgolint']}`
-  );
-}
-
-function command(cwd, executable, args) {
-  const result = spawnSync(executable, args, {
-    cwd,
-    encoding: 'utf8',
-    env: { ...process.env, NO_COLOR: '1' },
-    timeout: 180_000,
-  });
-  if (result.error) throw result.error;
-  return { status: result.status, output: `${result.stdout}${result.stderr}` };
-}
-
-function checked(cwd, executable, args) {
-  const result = command(cwd, executable, args);
-  expect(result.status, `${executable} ${args.join(' ')}\n${result.output}`).toBe(0);
-  return result.output.trim();
-}
+const expectedEslintVersion = eslintVersionOf(manifest);
+const { command, checked } = consumerCommands({ ...process.env, NO_COLOR: '1' });
 
 function write(root, relative, contents) {
   const target = path.join(root, relative);
@@ -125,13 +89,14 @@ suite('packed nitpicker in a separate consumer', () => {
   });
 
   describe.runIf(supportsRedirect())('a consumer on TypeScript 7', () => {
-    const typeScript7 = manifest.dependencies['typescript-native'].replace('npm:typescript@', '');
+    const typeScript7 = manifest.dependencies['@typescript/native'].replace('npm:typescript@', '');
     const jsApi = manifest.dependencies['typescript-js-api'].replace('npm:typescript@', '');
     const twiceSource = (expression) =>
       `export function twice(value: number): number {\n  return ${expression};\n}\n`;
     const analyzers = 'typescript-typecheck eslint-lint structure dependency-architecture'.split(
       ' ',
     );
+    const mergeFile = 'src/main/merge.ts';
     let root;
     const runs = {};
     const output = (name) => path.join(root, 'reports', name);
@@ -147,10 +112,16 @@ suite('packed nitpicker in a separate consumer', () => {
       ]);
     const report = (name) =>
       JSON.parse(readFileSync(path.join(output(name), 'summary.json'), 'utf8'));
+    const findings = (name) =>
+      JSON.parse(readFileSync(path.join(output(name), 'new-findings.json'), 'utf8'));
     const added = (name) =>
-      JSON.parse(readFileSync(path.join(output(name), 'new-findings.json'), 'utf8')).map(
-        ({ tool, rule }) => `${tool}/${rule}`,
-      );
+      findings(name)
+        .filter(({ path: file }) => file !== mergeFile)
+        .map(({ tool, rule }) => `${tool}/${rule}`);
+    const spreads = (name) =>
+      findings(name)
+        .filter(({ rule }) => rule === 'nitpicker/no-accumulating-spread')
+        .map(({ path: file, location }) => `${file}:${location.line}`);
 
     beforeAll(() => {
       root = mkdtempSync(path.join(tmpdir(), 'nitpicker consumer-ts7-'));
@@ -195,6 +166,13 @@ suite('packed nitpicker in a separate consumer', () => {
         'src/main/cycle.ts',
         `import { example } from './example.js';\n\n${twiceSource('value * example()')}`,
       );
+      write(
+        root,
+        mergeFile,
+        'export function merge(parts: readonly object[]): object {\n  let merged = {};\n' +
+          '  for (const part of parts) {\n    merged = { ...merged, ...part };\n  }\n' +
+          '  return merged;\n}\n',
+      );
       runs.native = gate('native');
       write(
         root,
@@ -215,6 +193,7 @@ suite('packed nitpicker in a separate consumer', () => {
         'eslint-lint/@typescript-eslint/no-unused-vars',
         'typescript-typecheck/TS2322',
       ]);
+      expect(spreads('native')).toEqual([`${mergeFile}:2`]);
       expect(report('native').tools.find(({ name }) => name === 'eslint-lint').version).toBe(
         expectedEslintVersion(`js-api-${jsApi}`),
       );
@@ -223,6 +202,7 @@ suite('packed nitpicker in a separate consumer', () => {
       expect(runs.project.status, runs.project.output).toBe(1);
       expect(report('project').overallStatus).toBe('completed');
       expect(added('project')).toEqual(added('native'));
+      expect(spreads('project')).toEqual(spreads('native'));
     });
   });
 
@@ -278,7 +258,6 @@ suite('packed nitpicker in a separate consumer', () => {
           'install',
           '--no-audit',
           '--no-fund',
-          '--prefer-offline',
           ...(strategy ? [`--install-strategy=${strategy}`] : []),
         ]);
         checked(root, 'git', ['add', '.']);
@@ -294,6 +273,7 @@ suite('packed nitpicker in a separate consumer', () => {
         checked(root, 'git', ['switch', '-c', 'feature']);
         packageLocation = path.join(root, 'node_modules/nitpicker');
         before = listing(packageLocation);
+        write(root, 'src/main/example.ts', cleanSource.replace('return 1', 'return 2'));
         clean = invoke([
           '--base',
           'main',
