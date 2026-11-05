@@ -31,7 +31,7 @@ async def nap():
 
 
 async def spawn():
-    subprocess.run(["git", "status"], check=True)
+    subprocess.run(["git", "status"], check=True, timeout=30)
     os.popen("git status")
     os.waitpid(0, 0)
 

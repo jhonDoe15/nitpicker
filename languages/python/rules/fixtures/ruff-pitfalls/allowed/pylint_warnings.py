@@ -32,11 +32,11 @@ def catch(run):
 def spawn():
     subprocess.Popen(["ls"], start_new_session=True)
     subprocess.Popen(["ls"], process_group=0)
-    subprocess.run(["git", "status"], check=True)
+    subprocess.run(["git", "status"], check=True, timeout=30)
 
 
 def is_clean():
-    result = subprocess.run(["git", "diff", "--quiet"], check=False)
+    result = subprocess.run(["git", "diff", "--quiet"], check=False, timeout=30)
     return result.returncode == 0
 
 

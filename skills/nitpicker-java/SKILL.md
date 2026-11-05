@@ -82,6 +82,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   (`Executors.newFixedThreadPool(8)`), take a `Semaphore` permit around each call, or work through
   fixed-size batches; never `supplyAsync` per element on the default pool or a cached or
   virtual-thread executor.
+- Child processes: wait with a deadline and destroy the child when it runs over,
+  `if (!process.waitFor(30, TimeUnit.SECONDS)) process.destroyForcibly()`, reading the output on
+  another thread first; never `waitFor()` or `getInputStream().readAllBytes()` alone
+  (`pmd/ProcessWaitWithoutTimeout`; a build wrapper that only runs a child to completion takes an exception).
 - Types: declare interfaces (`List<String> out = new ArrayList<>()`, not `ArrayList<String> out`).
 - Mutable state: don't return or store a caller's array or collection directly. Return
   `data.clone()` or `List.copyOf(items)`, and copy in the constructor.

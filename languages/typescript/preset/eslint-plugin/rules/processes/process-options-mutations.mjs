@@ -1,4 +1,4 @@
-import { chainOf, variableNamed } from '../../../analysis/ancestry.mjs';
+import { chainOf, variableNamed } from '../analysis/ancestry.mjs';
 
 const TYPE_WRAPPERS = new Set(['TSAsExpression', 'TSSatisfiesExpression', 'TSNonNullExpression']);
 

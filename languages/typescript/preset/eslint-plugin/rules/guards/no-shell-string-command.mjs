@@ -1,6 +1,10 @@
 import { variableNamed } from '../analysis/ancestry.mjs';
 import { resolveConstant, stringValue } from '../analysis/constant-resolution.mjs';
-import { importedCalleeName, moduleBindings } from '../analysis/subprocess-calls.mjs';
+import {
+  importedCalleeName,
+  moduleBindings,
+  withPromisified,
+} from '../analysis/subprocess-calls.mjs';
 
 const CHILD_PROCESS = new Set(['child_process', 'node:child_process']);
 const SHELL_STRING_CALLS = new Set(['exec', 'execSync']);
@@ -68,30 +72,6 @@ function shellCommand(context, call) {
   return command === undefined || command === null || command.type === 'SpreadElement'
     ? undefined
     : { program, flag: stringValue(list.elements[flagIndex]), command };
-}
-
-function isPromisify(callee) {
-  return (
-    (callee.type === 'Identifier' && callee.name === 'promisify') ||
-    (callee.type === 'MemberExpression' && callee.property.name === 'promisify')
-  );
-}
-
-function withPromisified(program, bindings) {
-  const named = new Map(bindings.named);
-  const declarators = program.body
-    .flatMap((statement) =>
-      statement.type === 'VariableDeclaration' ? statement.declarations : [],
-    )
-    .filter(({ id, init }) => id.type === 'Identifier' && init?.type === 'CallExpression');
-  for (const { id, init } of declarators) {
-    const [wrapped] = init.arguments;
-    const name = wrapped === undefined ? undefined : importedCalleeName(wrapped, bindings);
-    if (isPromisify(init.callee) && name !== undefined) {
-      named.set(id.name, name);
-    }
-  }
-  return { ...bindings, named };
 }
 
 function isFixedCommand(sourceCode, command) {
