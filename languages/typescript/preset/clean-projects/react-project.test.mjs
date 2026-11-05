@@ -110,7 +110,10 @@ describe('the react-project fixture', () => {
       'class-component': ['react-x/no-class-component'],
       'conditional-hook': ['react-hooks/rules-of-hooks'],
       'derived-state': ['nitpicker/react-no-effect-derived-state'],
-      'effect-fetch': ['nitpicker/react-no-effect-data-fetching'],
+      'effect-fetch': [
+        'nitpicker/no-unhandled-void-promise',
+        'nitpicker/react-no-effect-data-fetching',
+      ],
       inaccessible: [
         'jsx-a11y/alt-text',
         'jsx-a11y/click-events-have-key-events',
@@ -135,7 +138,12 @@ describe('the react-project fixture', () => {
       'conditional-hook': [naming, folder],
       'css-properties.ts': [folder],
       'derived-state': [naming, folder],
-      'effect-fetch': [naming, folder, 'nitpicker/require-http-timeout'],
+      'effect-fetch': [
+        naming,
+        'nitpicker/no-unhandled-void-promise',
+        folder,
+        'nitpicker/require-http-timeout',
+      ],
       'hard-coded-color': [naming, folder],
       inaccessible: [naming, folder],
       'index-key': [naming, folder],

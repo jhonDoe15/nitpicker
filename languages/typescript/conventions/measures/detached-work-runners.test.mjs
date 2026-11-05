@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { detectConventions } from '../../../shared/conventions/detect.mjs';
-import { describeConventions, validateConventions } from '../../../shared/conventions/settings.mjs';
+import { detectConventions } from '../../../../shared/conventions/detect.mjs';
+import { describeConventions, validateConventions } from '../../../../shared/conventions/settings.mjs';
 import {
   DETACHED_WORK_RUNNERS_CONVENTION,
   detachedWorkRunnerNames,
-} from './typescript-conventions.mjs';
+} from './detached-work-runners.mjs';
 
 const definition = DETACHED_WORK_RUNNERS_CONVENTION;
 
