@@ -1,199 +1,146 @@
-import { constantInitializer } from '../analysis/ancestry.mjs';
+import { looseForm, unvalidatedRoot } from './schema-fields/field-walk.mjs';
+import { ajvSchemaArgument, jsonSchemaFindings } from './schema-fields/json-schema-fields.mjs';
+import { calledExport, propertyName } from './schema-fields/library-nodes.mjs';
+import { isShapeMethod, SCHEMA_FORMS } from './schema-fields/schema-forms.mjs';
+import {
+  opaqueTypeFields,
+  presenceOnlyDecorators,
+  typiaTypeArgument,
+} from './schema-fields/typed-fields.mjs';
 
-const OBJECT_SCHEMA_FACTORIES = new Set(['object', 'strictObject', 'looseObject']);
-const CONTAINER_FACTORIES = new Set([
-  'record',
-  'array',
-  'set',
-  'map',
-  'tuple',
-  'optional',
-  'nullable',
-  'nullish',
-  'readonly',
-]);
-const SHAPE_METHODS = new Set(['extend', 'safeExtend', 'augment']);
-const ELEMENT_METHOD = 'array';
-const LOOSE_OBJECT_METHODS = new Set(['passthrough', 'loose']);
-const MAX_ALIAS_DEPTH = 3;
-const UNVALIDATED_FACTORIES = new Set(['unknown', 'any']);
-const NON_VALIDATING_METHODS = new Set([
-  'optional',
-  'nullable',
-  'nullish',
-  'default',
-  'prefault',
-  'catch',
-  'describe',
-  'meta',
-  'readonly',
-  'brand',
-]);
-const CUSTOM_FACTORY = new Set(['custom']);
-const ZOD_NAMES = new Set(['z', 'zod']);
+const CLASS_VALIDATOR_EXAMPLE = '@IsString() @MinLength(1) or @IsEmail()';
+const TYPIA_EXAMPLE = "string & tags.MinLength<1> or string & tags.Format<'email'>";
 
-function memberName(callee) {
-  if (callee.type !== 'MemberExpression' || callee.computed) return undefined;
-  return callee.property.type === 'Identifier' ? callee.property.name : undefined;
+function shapeOf(sourceCode, node) {
+  const called = calledExport(sourceCode, node);
+  if (called !== undefined) {
+    return called.library.forms.objects.includes(called.name)
+      ? { owner: called.library }
+      : undefined;
+  }
+  return isShapeMethod(propertyName(node.callee)) ? { owner: undefined } : undefined;
 }
 
-function isZod(sourceCode, identifier) {
-  if (ZOD_NAMES.has(identifier.name)) return true;
-  const variable = sourceCode
-    .getScope(identifier)
-    .references.find((reference) => reference.identifier === identifier)?.resolved;
-  return (
-    variable?.defs.some(
-      (definition) =>
-        definition.type === 'ImportBinding' &&
-        typeof definition.parent.source.value === 'string' &&
-        /^zod(\/|$)/.test(definition.parent.source.value),
-    ) ?? false
-  );
+function reportField(context, node, data) {
+  context.report({ node, messageId: 'unvalidatedField', data });
 }
 
-function isZodCall(sourceCode, node, names) {
-  if (node.type !== 'CallExpression') return false;
-  const name = memberName(node.callee);
-  return (
-    name !== undefined &&
-    names.has(name) &&
-    node.callee.object.type === 'Identifier' &&
-    isZod(sourceCode, node.callee.object)
-  );
+function reportLeaf(context, node, leaf) {
+  if (leaf.cast) {
+    context.report({ node, messageId: 'customWithoutValidator' });
+    return;
+  }
+  reportField(context, node, { factory: leaf.display, example: leaf.library.forms.example });
 }
 
-function withoutNonValidatingCalls(sourceCode, expression) {
-  const pending = [expression];
+function shapeValues(shape, owner) {
+  const values = [];
+  const pending = [shape];
   for (const current of pending) {
-    if (
-      current.type === 'CallExpression' &&
-      NON_VALIDATING_METHODS.has(memberName(current.callee)) &&
-      !isZodCall(sourceCode, current, CONTAINER_FACTORIES)
-    ) {
-      pending.push(current.callee.object);
+    const properties = current.properties.filter((property) => property.type === 'Property');
+    const nested = owner?.forms.stringLeaves === undefined ? [] : properties;
+    pending.push(
+      ...nested.map(({ value }) => value).filter((value) => value.type === 'ObjectExpression'),
+    );
+    values.push(
+      ...properties.map(({ value }) => value).filter((value) => !pending.includes(value)),
+    );
+  }
+  return values;
+}
+
+function checkShape(context, node) {
+  const found = shapeOf(context.sourceCode, node);
+  const [shape] = node.arguments;
+  if (found === undefined || shape?.type !== 'ObjectExpression') {
+    return;
+  }
+  const { owner } = found;
+  for (const value of shapeValues(shape, owner)) {
+    const leaf = unvalidatedRoot(context.sourceCode, value, owner);
+    if (leaf !== undefined) {
+      reportLeaf(context, value, leaf);
     }
   }
-  return pending.at(-1);
 }
 
-function isUnvalidatedLeaf(sourceCode, root) {
-  if (isZodCall(sourceCode, root, UNVALIDATED_FACTORIES)) {
-    return true;
+function checkLooseObject(context, node) {
+  const loose = looseForm(context.sourceCode, node);
+  if (loose === undefined) {
+    return;
   }
-  return isZodCall(sourceCode, root, CUSTOM_FACTORY) && root.arguments.length === 0;
+  context.report({
+    node,
+    messageId: 'looseObject',
+    data: { form: loose.form.form, allowed: loose.library.forms.allowed },
+  });
 }
 
-function nestedSchemas(sourceCode, root, depth) {
-  if (root.type === 'Identifier') {
-    const initializer = depth < MAX_ALIAS_DEPTH ? constantInitializer(sourceCode, root) : undefined;
-    return initializer ? [initializer] : [];
-  }
-  if (isZodCall(sourceCode, root, CONTAINER_FACTORIES)) {
-    return root.arguments;
-  }
-  return root.type === 'CallExpression' &&
-    memberName(root.callee) === ELEMENT_METHOD &&
-    root.arguments.length === 0
-    ? [root.callee.object]
-    : [];
-}
-
-function unvalidatedRoot(sourceCode, expression) {
-  const pending = [{ node: expression, depth: 0 }];
-  for (const { node, depth } of pending) {
-    const root = withoutNonValidatingCalls(sourceCode, node);
-    if (isUnvalidatedLeaf(sourceCode, root)) {
-      return root;
-    }
-    const children = nestedSchemas(sourceCode, root, depth);
-    pending.push(...children.map((child) => ({ node: child, depth: depth + 1 })));
-  }
-  return undefined;
-}
-
-function chainRoot(expression) {
-  const chain = [expression];
-  for (const current of chain) {
-    if (current.type === 'CallExpression') {
-      chain.push(current.callee);
-    }
-    if (current.type === 'MemberExpression') {
-      chain.push(current.object);
+function checkJsonSchema(context, node) {
+  const schema = ajvSchemaArgument(context.sourceCode, node);
+  const { allowed, example } = SCHEMA_FORMS.ajv;
+  for (const finding of schema === undefined ? [] : jsonSchemaFindings(schema)) {
+    if (finding.kind === 'loose') {
+      context.report({
+        node: finding.node,
+        messageId: 'looseObject',
+        data: { form: finding.text, allowed },
+      });
+    } else {
+      reportField(context, finding.node, { factory: finding.text, example });
     }
   }
-  return chain.at(-1);
 }
 
-function isOnZod(sourceCode, node) {
-  const root = chainRoot(node);
-  return root.type === 'Identifier' && isZod(sourceCode, root);
+function checkTypiaType(context, node) {
+  const { sourceCode } = context;
+  const type = typiaTypeArgument(sourceCode, node);
+  for (const field of type === undefined ? [] : opaqueTypeFields(sourceCode.ast, type)) {
+    const text = sourceCode.getText(field.typeAnnotation.typeAnnotation);
+    reportField(context, field, { factory: `The type ${text}`, example: TYPIA_EXAMPLE });
+  }
 }
 
-function isLooseCall(sourceCode, node) {
-  const name = memberName(node.callee);
-  if (name === 'looseObject') {
-    return isZodCall(sourceCode, node, OBJECT_SCHEMA_FACTORIES);
+function checkDecorators(context, node) {
+  const decorators = presenceOnlyDecorators(context.sourceCode, node);
+  if (decorators !== undefined) {
+    reportField(context, node, {
+      factory: `${decorators} alone`,
+      example: CLASS_VALIDATOR_EXAMPLE,
+    });
   }
-  if (LOOSE_OBJECT_METHODS.has(name)) {
-    return isOnZod(sourceCode, node);
-  }
-  return (
-    name === 'catchall' &&
-    isOnZod(sourceCode, node) &&
-    unvalidatedRoot(sourceCode, node.arguments[0]) !== undefined
-  );
 }
 
 export const rule = {
   meta: {
     type: 'problem',
     docs: {
-      description: 'Disallow z.unknown() and z.any() as a field of a z.object schema',
+      description:
+        'Disallow unchecked fields (z.unknown(), v.any(), Joi.any(), Type.Unknown() and the like) and objects that keep unknown keys in the schemas of every validation library the preset knows',
     },
     schema: [],
     messages: {
       unvalidatedField:
-        '{{factory}}() as a field only checks that the key exists and hands the value on unchecked. Validate the field in the schema, e.g. z.string().trim().min(1) or z.email(). An exception fits only when the field is genuinely opaque.',
+        '{{factory}} lets any value of this field through unchecked. Validate the field in the schema, e.g. {{example}}. An exception fits only when the field is genuinely opaque.',
       customWithoutValidator:
         'z.custom() without a check function is a cast, not a validator. Pass the check, z.custom<T>((value) => ...), or build the schema from validating parts. An exception fits only when the value is genuinely opaque.',
       looseObject:
-        'z.looseObject(), .loose() and .passthrough() let unknown keys through unvalidated, and .catchall(z.unknown()) does the same. Use z.object({...}), which drops unknown keys, or z.strictObject({...}) to reject them. An exception fits only when the extra keys are genuinely opaque.',
+        '{{form}} lets unknown keys through unvalidated. Use {{allowed}}. An exception fits only when the extra keys are genuinely opaque.',
     },
   },
   create(context) {
-    const sourceCode = context.sourceCode;
-
-    function reportLooseObject(node) {
-      if (isLooseCall(sourceCode, node)) {
-        context.report({ node, messageId: 'looseObject' });
-      }
-    }
-
     return {
       CallExpression(node) {
-        reportLooseObject(node);
-        const [shape] = node.arguments;
-        const definesShape =
-          isZodCall(sourceCode, node, OBJECT_SCHEMA_FACTORIES) ||
-          SHAPE_METHODS.has(memberName(node.callee));
-        if (!definesShape || shape?.type !== 'ObjectExpression') {
-          return;
-        }
-        for (const property of shape.properties) {
-          if (property.type !== 'Property') continue;
-          const root = unvalidatedRoot(sourceCode, property.value);
-          if (root !== undefined) {
-            context.report({
-              node: property.value,
-              messageId:
-                memberName(root.callee) === 'custom'
-                  ? 'customWithoutValidator'
-                  : 'unvalidatedField',
-              data: { factory: `z.${memberName(root.callee)}` },
-            });
-          }
-        }
+        checkLooseObject(context, node);
+        checkShape(context, node);
+        checkJsonSchema(context, node);
+        checkTypiaType(context, node);
+      },
+      PropertyDefinition(node) {
+        checkDecorators(context, node);
+      },
+      AccessorProperty(node) {
+        checkDecorators(context, node);
       },
     };
   },
