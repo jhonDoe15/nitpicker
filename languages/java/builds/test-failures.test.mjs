@@ -85,6 +85,18 @@ describe('failedCaseEntries', () => {
     ]);
   });
 
+  it('reads frames that Gradle prefixes with a class loader or module', () => {
+    const failure =
+      '<failure message="boom">java.lang.AssertionError: boom\n' +
+      '\tat java.base@21.0.12/java.lang.reflect.Method.invoke(Method.java:580)\n' +
+      '\tat app//demo.GreeterTest.greets(GreeterTest.java:22)\n' +
+      '</failure>';
+
+    expect(detailsOf(caseWith('demo.GreeterTest', failure))).toEqual([
+      { name: 'demo.GreeterTest.adds', message: 'boom', file: 'demo/GreeterTest.java', line: 22 },
+    ]);
+  });
+
   it.each([
     [
       'AssertJ',
