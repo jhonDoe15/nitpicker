@@ -40,7 +40,13 @@ describe.skipIf(!enabled)('orm-schema-sync', () => {
         ],
         [
           'Flask-SQLAlchemy db.create_all in an app factory',
-          'from flask import Flask\n\nfrom app.extensions import db\n\n\ndef create_app() -> Flask:\n    app = Flask(__name__)\n    db.init_app(app)\n    with app.app_context():\n        db.create_all()\n    return app\n',
+          {
+            files: {
+              'app/extensions.py': 'from flask_sqlalchemy import SQLAlchemy\n\ndb = SQLAlchemy()\n',
+              'app/factory.py':
+                'from flask import Flask\n\nfrom app.extensions import db\n\n\ndef create_app() -> Flask:\n    app = Flask(__name__)\n    db.init_app(app)\n    with app.app_context():\n        db.create_all()\n    return app\n',
+            },
+          },
           ['orm-schema-sync:10 db.create_all'],
         ],
         [
@@ -91,8 +97,18 @@ describe.skipIf(!enabled)('orm-schema-sync', () => {
           [],
         ],
         [
-          'create_tables without peewee',
-          'def start(store) -> None:\n    store.create_tables(["a"])\n    store.create_all()\n',
+          'create_tables without peewee, create_all on a db without Flask-SQLAlchemy',
+          'def start(store, db) -> None:\n    store.create_tables(["a"])\n    db.create_all()\n',
+          [],
+        ],
+        [
+          'an Alembic migration',
+          'from alembic import op\n\nfrom app.models import Base\n\n\ndef upgrade() -> None:\n    Base.metadata.create_all(bind=op.get_bind())\n',
+          [],
+        ],
+        [
+          'a CLI command and a script entry point',
+          'import click\n\nfrom app.models import Base\n\n\n@click.command()\ndef init_db(engine) -> None:\n    Base.metadata.create_all(engine)\n\n\ndef main(engine) -> None:\n    pass\n\n\nif __name__ == "__main__":\n    Base.metadata.drop_all(None)\n',
           [],
         ],
       ]),
@@ -135,13 +151,17 @@ describe.skipIf(!enabled)('orm-query-logging', () => {
         ],
         [
           'query loggers set to log statements',
-          'import logging\n\n\ndef configure() -> None:\n    logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)\n    logging.getLogger("peewee").setLevel("DEBUG")\n',
-          ['orm-query-logging:5 sqlalchemy.engine logger', 'orm-query-logging:6 peewee logger'],
+          'import logging\nfrom logging import DEBUG\n\n\ndef configure() -> None:\n    logging.getLogger("sqlalchemy.engine").setLevel(logging.INFO)\n    logging.getLogger("peewee").setLevel("DEBUG")\n    logging.getLogger("sqlalchemy").setLevel(DEBUG)\n',
+          [
+            'orm-query-logging:6 sqlalchemy.engine logger',
+            'orm-query-logging:7 peewee logger',
+            'orm-query-logging:8 sqlalchemy logger',
+          ],
         ],
         [
           'a Django LOGGING setting',
-          'LOGGING = {\n    "version": 1,\n    "loggers": {"django.db.backends": {"level": "DEBUG", "handlers": ["console"]}},\n}\n',
-          ['orm-query-logging:3 django.db.backends logger'],
+          'DEBUG = False\nLOGGING = {\n    "version": 1,\n    "loggers": {"django.db.backends": {"level": "DEBUG" if DEBUG else "INFO"}},\n}\n',
+          ['orm-query-logging:4 django.db.backends logger'],
         ],
       ]),
     );

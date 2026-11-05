@@ -28,6 +28,11 @@ tester.run('no-orm-query-logging', rule, {
     `${PRISMA} export const prisma = new PrismaClient({ log: [{ emit: "event", level: "query" }] });`,
     `${DRIZZLE} export const db = drizzle(pool, { logger: false });`,
     `${DRIZZLE} export const db = drizzle(pool, { logger: new SlowQueryLogger() });`,
+    `${TYPEORM} export const server = app.listen({ logging: true, port: 1 });`,
+    `${SEQUELIZE} export const sock = { logging: console.log, logQueryParameters: true };`,
+    `${MIKRO} export const argv = yargs({ debug: true });`,
+    `${SEQUELIZE} export const db = new Sequelize(url, { benchmark: true, logging: (sql, ms) => ms > 500 && logger.warn({ ms }, "slow") });`,
+    `${PRISMA} export const prisma = new PrismaClient({ log: [{ emit: "event", level: "query" }, "error"] });`,
   ],
   invalid: [
     {
@@ -101,6 +106,30 @@ tester.run('no-orm-query-logging', rule, {
     {
       code: `${DRIZZLE} export const db = drizzle(pool, { logger: true });`,
       errors: logs('logger'),
+    },
+    {
+      code: 'import { drizzle as dz, DefaultLogger } from "drizzle-orm/node-postgres"; export const db = dz(pool, { logger: new DefaultLogger() });',
+      errors: logs('logger'),
+    },
+    {
+      code: `${SEQUELIZE} export const db = new Sequelize(url, { logging: (sql) => logger.debug(sql) });`,
+      errors: logs('logging'),
+    },
+    {
+      code: 'import { Sequelize as SQ } from "@sequelize/core"; export const db = new SQ("postgres://db/app");',
+      errors: logs('new Sequelize(...)` without `logging: false'),
+    },
+    {
+      code: `${NEST_SEQUELIZE} export const m = SequelizeModule.forRootAsync({ useFactory: () => ({ dialect: "postgres", autoLoadModels: false }) });`,
+      errors: logs('SequelizeModule.forRootAsync(...)` without `logging: false'),
+    },
+    {
+      code: 'import { PrismaClient } from "@prisma/client"; export const prisma = new PrismaClient({ log: [{ level: "query" }] });',
+      errors: logs('log'),
+    },
+    {
+      code: 'module.exports = { client: "mysql2", debug: process.env.DB_DEBUG === "1" };',
+      errors: logs('debug'),
     },
   ],
 });

@@ -19,6 +19,11 @@ GENERATE_SCHEMAS = "Tortoise.generate_schemas"
 PONY_MAPPING = "generate_mapping"
 FUNCTION_NODES = (ast.FunctionDef, ast.AsyncFunctionDef, ast.Lambda)
 SUBJECT_LENGTH = 60
+FLASK_MODULE = "flask_sqlalchemy"
+MIGRATION_MODULE = "alembic"
+MIGRATION_FOLDERS = {"migrations", "versions", "alembic"}
+COMMAND_DECORATOR = "command"
+MAIN_GUARD = "__main__"
 
 
 def subject_of(node):
@@ -26,34 +31,84 @@ def subject_of(node):
     return text if len(text) <= SUBJECT_LENGTH else last_name(node) or "call"
 
 
-def in_function(node, context):
+def ancestors(node, context):
     parent = context.parents.get(id(node))
     while parent is not None:
-        if isinstance(parent, FUNCTION_NODES):
-            return True
+        yield parent
         parent = context.parents.get(id(parent))
+
+
+def in_function(node, context):
+    return any(
+        isinstance(parent, FUNCTION_NODES) for parent in ancestors(node, context)
+    )
+
+
+def is_main_guard(node):
+    test = node.test if isinstance(node, ast.If) else None
+    return isinstance(test, ast.Compare) and any(
+        isinstance(side, ast.Constant) and side.value == MAIN_GUARD
+        for side in [test.left, *test.comparators]
+    )
+
+
+def is_command(node):
+    if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+        return False
+    for decorator in node.decorator_list:
+        target = decorator.func if isinstance(decorator, ast.Call) else decorator
+        if (last_name(target) or "").endswith(COMMAND_DECORATOR):
+            return True
     return False
 
 
-def is_metadata_owner(owner):
+def in_script(node, context):
+    return any(
+        is_main_guard(parent) or is_command(parent)
+        for parent in ancestors(node, context)
+    )
+
+
+def imported_modules(context):
+    names, modules = context.aliases[:2]
+    return list(names.values()) + list(modules.values())
+
+
+def project_imports(project):
+    return {
+        module
+        for context in project.contexts.values()
+        for module in imported_modules(context)
+    }
+
+
+def imports_anywhere(context, prefixes):
+    found = context.project.memo("orm-imported-modules", project_imports)
+    return any(module.startswith(prefixes) for module in found)
+
+
+def is_migration(context):
+    folders = set(context.path.split("/")[:-1])
+    return bool(folders & MIGRATION_FOLDERS) or any(
+        module.startswith(MIGRATION_MODULE) for module in imported_modules(context)
+    )
+
+
+def is_metadata_owner(owner, context):
     name = (last_name(owner) or "").lower()
-    return name.endswith(METADATA) or name in FLASK_OWNERS
+    if name.endswith(METADATA):
+        return True
+    return name in FLASK_OWNERS and imports_anywhere(context, (FLASK_MODULE,))
 
 
 def metadata_change(node, context):
     if not isinstance(node, ast.Attribute) or node.attr not in METADATA_METHODS:
         return False
     owner = node.value
-    if not is_metadata_owner(owner):
+    if not is_metadata_owner(owner, context):
         return False
     import_time = isinstance(owner, ast.Attribute) and owner.attr == METADATA
     return in_function(node, context) or not import_time
-
-
-def imports_table_library(context):
-    names, modules = context.aliases[:2]
-    found = list(names.values()) + list(modules.values())
-    return any(module.startswith(TABLE_MODULES) for module in found)
 
 
 def switched_on(call, name, context):
@@ -74,13 +129,17 @@ def call_change(call, context, tables):
 
 
 def check(context):
-    if exempt(context):
+    if exempt(context) or is_migration(context):
         return []
-    tables = imports_table_library(context)
+    tables = imports_anywhere(context, TABLE_MODULES)
     found = []
     for node in ast.walk(context.tree):
         if metadata_change(node, context):
-            found.append(finding(context.path, RULE, subject_of(node), node))
+            found.append((node, subject_of(node)))
         elif isinstance(node, ast.Call) and call_change(node, context, tables):
-            found.append(finding(context.path, RULE, subject_of(node.func), node))
-    return found
+            found.append((node, subject_of(node.func)))
+    return [
+        finding(context.path, RULE, subject, node)
+        for node, subject in found
+        if not in_script(node, context)
+    ]

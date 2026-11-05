@@ -1,22 +1,29 @@
+import { findVariable } from '../analysis/constant-resolution.mjs';
 import { memberName, propertyNamed, unwrapped } from '../security/security-values.mjs';
 import {
-  callForm,
+  constructedName,
+  initializerOf,
+  isForeignReceiver,
+  MIKRO_ORM,
+  moduleScope,
+  ormLocals,
+  SEQUELIZE,
+  shortText,
+  TYPEORM,
+} from './orm-modules.mjs';
+import {
   hasKey,
   hasOpaqueSpread,
-  isOrmModule,
+  isOrmOptions,
   isSwitchedOn,
-  isTypeOrmShaped,
-  MIKRO_ORM,
   objectOf,
-  ormFamilies,
-  packageImports,
   propertyKey,
-  rootName,
-  SEQUELIZE,
-  TYPEORM,
 } from './orm-options.mjs';
 
-const SEQUELIZE_RECEIVER = /sequelize/iu;
+const SEQUELIZE_TEXT = /sequelize/iu;
+const DATA_SOURCE_TEXT = /data_?source|connection|database|\borm\b|^(?:this\.)?db$/iu;
+const DATA_SOURCE_FACTORIES = new Set(['createConnection', 'initialize']);
+const MODEL_NAME = /^[A-Z]/u;
 const TYPEORM_METHODS = new Set(['synchronize', 'dropDatabase']);
 const MIKRO_ORM_METHODS = new Set([
   'updateSchema',
@@ -26,6 +33,104 @@ const MIKRO_ORM_METHODS = new Set([
 ]);
 const ENSURE_OPTIONS = ['create', 'clear'];
 const SYNC_KEYS = new Set(['synchronize', 'dropSchema']);
+
+function report(context, node, form) {
+  context.report({ node, messageId: 'schemaSync', data: { form } });
+}
+
+function isSequelizeConstruction(scope, init) {
+  const names = ormLocals(scope, 'Sequelize').add('Sequelize');
+  return init?.type === 'NewExpression' && names.has(constructedName(init));
+}
+
+function isModel(scope, receiver) {
+  const target = unwrapped(receiver);
+  if (target.type !== 'Identifier' || !MODEL_NAME.test(target.name)) {
+    return false;
+  }
+  const binding = scope.bindings.get(target.name);
+  const declared = findVariable(scope.context, target, target.name)?.defs[0]?.type === 'ClassName';
+  return declared || binding?.source.startsWith('.') === true;
+}
+
+function isSequelizeInstance(scope, receiver) {
+  return (
+    SEQUELIZE_TEXT.test(scope.context.sourceCode.getText(receiver)) ||
+    isSequelizeConstruction(scope, initializerOf(scope, receiver)) ||
+    (scope.families.has(SEQUELIZE) && isModel(scope, receiver))
+  );
+}
+
+function isDataSource(scope, receiver) {
+  const init = initializerOf(scope, receiver);
+  const made =
+    (init?.type === 'NewExpression' && constructedName(init) === 'DataSource') ||
+    (init?.type === 'CallExpression' && DATA_SOURCE_FACTORIES.has(constructedName(init)));
+  return made || DATA_SOURCE_TEXT.test(scope.context.sourceCode.getText(receiver));
+}
+
+function ensuresSchema(context, call) {
+  const options = objectOf(context, call.arguments[0]);
+  return (
+    options !== undefined &&
+    ENSURE_OPTIONS.some((key) => {
+      const value = propertyNamed(context, options, key);
+      return value !== undefined && isSwitchedOn(context, value);
+    })
+  );
+}
+
+function isSchemaCall(scope, call, method, receiver) {
+  if (method === 'sync') {
+    return isSequelizeInstance(scope, receiver);
+  }
+  if (TYPEORM_METHODS.has(method)) {
+    return scope.families.has(TYPEORM) && isDataSource(scope, receiver);
+  }
+  if (MIKRO_ORM_METHODS.has(method)) {
+    return scope.families.has(MIKRO_ORM);
+  }
+  return (
+    method === 'ensureDatabase' &&
+    scope.families.has(MIKRO_ORM) &&
+    ensuresSchema(scope.context, call)
+  );
+}
+
+function syncsModels(scope, object) {
+  return (
+    scope.families.has(SEQUELIZE) &&
+    !hasKey(scope.context, object, 'synchronize') &&
+    !hasOpaqueSpread(scope.context, object)
+  );
+}
+
+function checkProperty(scope, node) {
+  const { context } = scope;
+  const key = propertyKey(node);
+  const object = node.parent;
+  const watched = SYNC_KEYS.has(key) || key === 'autoLoadModels';
+  if (!watched || !isOrmOptions(scope, object) || !isSwitchedOn(context, node.value)) {
+    return;
+  }
+  if (SYNC_KEYS.has(key)) {
+    report(context, node, `${key}: ${shortText(context, node.value, 'true')}`);
+  } else if (syncsModels(scope, object)) {
+    report(context, node, 'autoLoadModels: true` without `synchronize: false');
+  }
+}
+
+function checkCall(scope, node) {
+  const callee = unwrapped(node.callee);
+  const method = callee.type === 'MemberExpression' ? memberName(callee) : undefined;
+  if (method === undefined || isForeignReceiver(scope, callee.object)) {
+    return;
+  }
+  if (isSchemaCall(scope, node, method, callee.object)) {
+    const receiver = shortText(scope.context, callee.object, undefined);
+    report(scope.context, node, receiver === undefined ? `${method}()` : `${receiver}.${method}()`);
+  }
+}
 
 export const rule = {
   meta: {
@@ -41,80 +146,10 @@ export const rule = {
     },
   },
   create(context) {
-    const program = context.sourceCode.ast;
-    const families = ormFamilies(program);
-    const imports = packageImports(program);
-
-    function report(node, form) {
-      context.report({ node, messageId: 'schemaSync', data: { form } });
-    }
-
-    function isForeign(receiver) {
-      const source = imports.get(rootName(receiver));
-      return source !== undefined && !isOrmModule(source);
-    }
-
-    function isSequelizeSync(receiver) {
-      return (
-        families.has(SEQUELIZE) || SEQUELIZE_RECEIVER.test(context.sourceCode.getText(receiver))
-      );
-    }
-
-    function ensuresSchema(call) {
-      const options = objectOf(context, call.arguments[0]);
-      return (
-        options !== undefined &&
-        ENSURE_OPTIONS.some((key) => {
-          const value = propertyNamed(context, options, key);
-          return value !== undefined && isSwitchedOn(context, value);
-        })
-      );
-    }
-
-    function isSchemaCall(call, method, receiver) {
-      if (method === 'sync') {
-        return isSequelizeSync(receiver);
-      }
-      if (TYPEORM_METHODS.has(method)) {
-        return families.has(TYPEORM);
-      }
-      if (MIKRO_ORM_METHODS.has(method)) {
-        return families.has(MIKRO_ORM);
-      }
-      return method === 'ensureDatabase' && families.has(MIKRO_ORM) && ensuresSchema(call);
-    }
-
-    function syncsModels(object) {
-      return (
-        families.has(SEQUELIZE) &&
-        !hasKey(context, object, 'synchronize') &&
-        !hasOpaqueSpread(context, object)
-      );
-    }
-
+    const scope = moduleScope(context);
     return {
-      Property(node) {
-        const key = propertyKey(node);
-        const object = node.parent;
-        const ormOptions =
-          families.has(TYPEORM) || families.has(SEQUELIZE) || isTypeOrmShaped(context, object);
-        if (SYNC_KEYS.has(key) && ormOptions && isSwitchedOn(context, node.value)) {
-          report(node, `${key}: true`);
-        }
-        if (key === 'autoLoadModels' && isSwitchedOn(context, node.value) && syncsModels(object)) {
-          report(node, 'autoLoadModels: true` without `synchronize: false');
-        }
-      },
-      CallExpression(node) {
-        const callee = unwrapped(node.callee);
-        const method = callee.type === 'MemberExpression' ? memberName(callee) : undefined;
-        if (method === undefined || isForeign(callee.object)) {
-          return;
-        }
-        if (isSchemaCall(node, method, callee.object)) {
-          report(node, callForm(context, callee.object, method));
-        }
-      },
+      Property: (node) => checkProperty(scope, node),
+      CallExpression: (node) => checkCall(scope, node),
     };
   },
 };

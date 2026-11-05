@@ -125,6 +125,7 @@ export const POLICY_FILES = [
   'languages/typescript/preset/eslint-plugin/rules/guards/no-unsafe-path-join.mjs',
   'languages/typescript/preset/eslint-plugin/rules/database/no-orm-query-logging.mjs',
   'languages/typescript/preset/eslint-plugin/rules/database/no-orm-schema-sync.mjs',
+  'languages/typescript/preset/eslint-plugin/rules/database/orm-modules.mjs',
   'languages/typescript/preset/eslint-plugin/rules/database/orm-options.mjs',
   'languages/typescript/preset/eslint-plugin/rules/concurrency/bounds.mjs',
   'languages/typescript/preset/eslint-plugin/rules/concurrency/client-modules.mjs',

@@ -14,7 +14,7 @@ ECHO = "echo"
 ECHO_DEBUG = "debug"
 FLASK_ECHO = "SQLALCHEMY_ECHO"
 ENGINE_OPTIONS = "engine_options"
-INFO_LOGGERS = {"sqlalchemy.engine", "sqlalchemy.engine.Engine"}
+INFO_LOGGERS = {"sqlalchemy", "sqlalchemy.engine", "sqlalchemy.engine.Engine"}
 DEBUG_LOGGERS = {"peewee", "tortoise.db_client", "django.db.backends"}
 LEVELS = {"DEBUG": 10, "INFO": 20}
 SET_LEVEL = "setLevel"
@@ -22,8 +22,14 @@ GET_LOGGER = "getLogger"
 
 
 def level_of(node):
+    if isinstance(node, ast.IfExp):
+        levels = [level_of(node.body), level_of(node.orelse)]
+        known = [level for level in levels if level is not None]
+        return min(known) if known else None
     if isinstance(node, ast.Attribute):
         return LEVELS.get(node.attr)
+    if isinstance(node, ast.Name):
+        return LEVELS.get(node.id)
     text = string_value(node)
     if text is not None:
         return LEVELS.get(text.upper())

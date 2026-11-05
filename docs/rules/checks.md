@@ -371,7 +371,7 @@ A committed file larger than the limit (lockfiles are exempt).
 
 ### `repository-hygiene/start-schema-push`
 
-A `start`, `start:prod`, `serve` or `prestart` script in `package.json` that pushes the ORM schema (`prisma db push`, `prisma migrate dev`, `drizzle-kit push`, `typeorm schema:sync`, `mikro-orm schema:update`).
+A `start`, `prestart`, `serve` or `start:*` script (not `start:dev`, `start:local`, `start:watch`, `start:debug` or `start:test`) in `package.json`, or a script it runs, that pushes the ORM schema (`prisma db push`, `prisma migrate dev`, `drizzle-kit push`, `typeorm schema:sync`, `mikro-orm schema:update`).
 
 - **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
 - **Analyzers:** `repository-hygiene`
