@@ -3,7 +3,7 @@ import { BEAN, group, LAZY, VALUE } from '../spring-types.mjs';
 
 const SPRING = 'org.springframework';
 const CONFIG = `${SPRING}.beans.factory.config`;
-const POST_PROCESSORS = group(
+const POST_PROCESSOR_TYPES = group(
   [
     'BeanPostProcessor',
     'BeanFactoryPostProcessor',
@@ -67,7 +67,7 @@ function postProcessorBean(view, fn) {
   const type = beanType(view, fn);
   return (
     has(view, fn, PROPERTIES_BINDING) ||
-    (type !== undefined && view.extendsType(type, POST_PROCESSORS))
+    (type !== undefined && view.extendsType(type, POST_PROCESSOR_TYPES))
   );
 }
 

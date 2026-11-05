@@ -1329,10 +1329,10 @@ let $loaded := function($node) {
 },
     $held := function($node) {
   some $access in $node[self::VariableAccess] satisfies
-    (let $name := $access/@Name,
-         $body := $access/ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer][1]
-     return count($body//VariableAccess[@Name = $name]) = 1
-       and exists($body//LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name][$loaded(*[2])]))
+    (let $name := $access/@Name
+     return some $block in $access/ancestor::Block satisfies
+       (exists($block/LocalVariableDeclaration/VariableDeclarator[VariableId/@Name = $name][$loaded(*[2])])
+        and count($block//VariableAccess[@Name = $name]) = 1))
 },
     $source := function($node) { $loaded($node) or $held($node) },
     $list := function($node) {
