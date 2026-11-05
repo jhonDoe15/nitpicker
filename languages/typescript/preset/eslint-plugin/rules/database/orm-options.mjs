@@ -67,8 +67,6 @@ const BRANCHES = new Set([
   'SwitchStatement',
 ]);
 
-export { isLiteral };
-
 export function isEnvRead(node) {
   const target = unwrapped(node);
   const owner = target?.type === 'MemberExpression' ? unwrapped(target.object) : undefined;
@@ -139,7 +137,7 @@ function textOf(context, object, key) {
   return value === undefined ? undefined : stringValue(resolvedValue(context, value));
 }
 
-export function isTypeOrmShaped(context, object) {
+function isTypeOrmShaped(context, object) {
   return (
     TYPEORM_KEYS.some((key) => hasKey(context, object, key)) ||
     TYPEORM_DRIVERS.has(textOf(context, object, 'type'))
@@ -150,7 +148,7 @@ function isSequelizeShaped(context, object) {
   return hasKey(context, object, 'dialect');
 }
 
-export function isKnexShaped(context, object) {
+function isKnexShaped(context, object) {
   return KNEX_CLIENTS.has(textOf(context, object, 'client'));
 }
 

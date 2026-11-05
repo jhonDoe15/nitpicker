@@ -473,7 +473,7 @@ Disallow ORM options that log every SQL query.
 - **Printed as:** `eslint-lint/nitpicker/no-orm-query-logging`
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-orm-query-logging","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
-  - `{{form}}` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps slow queries, Prisma `log: [{ emit: "event", level: "query" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.
+  - `{{form}}` logs every SQL query: the logs fill with personal data and bound values, and every query pays for the log line. A value guarded by an environment check still logs in every other environment. Turn query logging off (`logging: false`) and log slow queries instead: TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function that keeps only slow queries, Prisma `log: [{ emit: "event", level: "query" }]` with a handler that filters by duration, or the database's own slow-query log. An exception fits only for a local debugging script.
 - **See also:** [Spring counterpart `spring/unsafe-diagnostics`](java-nitpicker.md#springunsafe-diagnostics)
 
 <a id="eslint-nitpicker-no-orm-schema-sync"></a>

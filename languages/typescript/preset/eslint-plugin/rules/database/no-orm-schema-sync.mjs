@@ -80,7 +80,7 @@ function ensuresSchema(context, call) {
   );
 }
 
-function isSchemaCall(scope, call, method, receiver) {
+function isSchemaCall(scope, call, { method, receiver }) {
   if (method === 'sync') {
     return isSequelizeInstance(scope, receiver);
   }
@@ -126,7 +126,7 @@ function checkCall(scope, node) {
   if (method === undefined || isForeignReceiver(scope, callee.object)) {
     return;
   }
-  if (isSchemaCall(scope, node, method, callee.object)) {
+  if (isSchemaCall(scope, node, { method, receiver: callee.object })) {
     const receiver = shortText(scope.context, callee.object, undefined);
     report(scope.context, node, receiver === undefined ? `${method}()` : `${receiver}.${method}()`);
   }
@@ -148,8 +148,12 @@ export const rule = {
   create(context) {
     const scope = moduleScope(context);
     return {
-      Property: (node) => checkProperty(scope, node),
-      CallExpression: (node) => checkCall(scope, node),
+      Property(node) {
+        checkProperty(scope, node);
+      },
+      CallExpression(node) {
+        checkCall(scope, node);
+      },
     };
   },
 };
