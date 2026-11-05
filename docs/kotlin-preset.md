@@ -594,8 +594,9 @@ Limits, all chosen to flag less rather than guess:
   Callers the facts do not see switch off the judging of public functions only in the modules they can
   call. Each such place, read from the Gradle build, reaches the projects it depends on (directly or
   through other projects): an Android or Multiplatform project; a Kotlin or Java project outside the
-  analysis root; a source set other than `main` and `test` that holds `.kt` or `.java` files (it also
-  reaches its own project); an included build whose build files name a project of this build as
+  analysis root; a source set other than `main` and `test` that holds `.kt` or `.java` files and is not
+  generated (Spring Boot's `aot` and `aotTest`, see the Java preset's Spring AOT) (it also reaches its
+  own project); an included build whose build files name a project of this build as
   `group:name` (an included build that names none, such as a plugin build, reaches nothing); and a file
   the facts step skipped, which reaches its module and that module's dependencies. Test code (a source set
   whose name has `test` or `jmh`, a JVM test suite, a source set a `Test` task runs, a skipped test file)
