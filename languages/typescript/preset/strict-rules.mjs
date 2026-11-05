@@ -58,6 +58,7 @@ export const strictEslintRuleIds = [
   'nitpicker/no-unvalidated-schema-field',
   'nitpicker/no-weak-hash',
   'nitpicker/preserve-error-cause',
+  'nitpicker/require-error-listener',
   'nitpicker/require-http-timeout',
   'nitpicker/require-test-process-timeout',
   'nitpicker/test-tsconfig-pins-lib-and-types',
