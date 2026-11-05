@@ -18,7 +18,7 @@ writeFileSync(
       moduleResolution: 'bundler',
       noEmit: true,
       types: [],
-      lib: ['ES2022'],
+      lib: ['ES2022', 'ESNext.Disposable'],
     },
     include: ['src'],
   }),
@@ -66,6 +66,9 @@ const catching = (body) =>
 
 tester.run('no-unhandled-void-promise', rule, {
   valid: [
+    typed(
+      'const send = (async (id: string) => { try { await report(id); } catch (error) { logger.error(error); } });\nexport function start() { void send("a"); }',
+    ),
     typed(`${catching('await report(id);')}\nexport function start() { void send('a'); }`),
     typed(
       'export function start() { void (async () => { try { await report("a"); } catch (error) { logger.error(error); } })(); }',
@@ -101,20 +104,36 @@ tester.run('no-unhandled-void-promise', rule, {
     ),
   ],
   invalid: [
-    typed("export function start() { void report('a'); }", { invalid: true }),
     typed(
-      "import { sendRaw } from './jobs';\nexport function start() { void sendRaw('a'); }",
+      `async function send(id: string) { try { await report(id); } catch (error) { report('b'); } }\nexport function start() { void send('a'); }`,
       { invalid: true },
     ),
+    typed(
+      `async function send(id: string) { try { await report(id); } catch (error) { logger.error(error); } finally { logger.flush(); } }\nexport function start() { void send('a'); }`,
+      { invalid: true },
+    ),
+    typed(
+      `async function send(id: string) { try { await report(id); } catch (error) { const retry = async () => { await report(id); }; retry(); } }\nexport function start() { void send('a'); }`,
+      { invalid: true },
+    ),
+    typed(
+      `async function send(id: string) { try { await report(id); } catch (error) { await using handle = { [Symbol.asyncDispose]: () => report(id) }; logger.error(handle); } }\nexport function start() { void send('a'); }`,
+      { invalid: true },
+    ),
+    typed(
+      'let send = async (id: string) => { try { await report(id); } catch (error) { logger.error(error); } };\nsend = async (id: string) => { await report(id); };\nexport function start() { void send("a"); }',
+      { invalid: true },
+    ),
+    typed("export function start() { void report('a'); }", { invalid: true }),
+    typed("import { sendRaw } from './jobs';\nexport function start() { void sendRaw('a'); }", {
+      invalid: true,
+    }),
     typed(
       "import { runDetached } from './jobs';\nexport function start() { void runDetached(() => report('a')); }",
       { invalid: true },
     ),
-    typed("export function start(job: Promise<void>) { void job; }", { invalid: true }),
-    typed(
-      "export function start(job: Promise<void> | undefined) { void job; }",
-      { invalid: true },
-    ),
+    typed('export function start(job: Promise<void>) { void job; }', { invalid: true }),
+    typed('export function start(job: Promise<void> | undefined) { void job; }', { invalid: true }),
     typed("export function start() { void Promise.all([report('a')]); }", { invalid: true }),
     typed("export function start() { void report('a'); }", {
       invalid: true,
@@ -144,10 +163,9 @@ tester.run('no-unhandled-void-promise', rule, {
       `async function send(id: string) { try { await report(id); } finally { logger.error(id); } }\nexport function start() { void send('a'); }`,
       { invalid: true },
     ),
-    typed(
-      "export function start() { void (async () => { await report('a'); })(); }",
-      { invalid: true },
-    ),
+    typed("export function start() { void (async () => { await report('a'); })(); }", {
+      invalid: true,
+    }),
     typed(
       'interface Sender { send(id: string): Promise<void> }\nexport function start(sender: Sender) { void sender.send("a"); }',
       { invalid: true },

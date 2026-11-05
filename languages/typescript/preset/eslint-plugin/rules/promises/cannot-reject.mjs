@@ -1,8 +1,5 @@
 import { ts } from '../../../../typescript-api/typescript-api.mjs';
-
-function partsOf(type) {
-  return type.isUnion() ? type.types : [type];
-}
+import { partsOf } from '../analysis/narrowing/type-parts.mjs';
 
 export function isThenable(checker, node) {
   return partsOf(checker.getTypeAtLocation(node)).some((part) => {
@@ -18,12 +15,25 @@ function isAsync(fn) {
   return (fn.modifiers ?? []).some(({ kind }) => kind === ts.SyntaxKind.AsyncKeyword);
 }
 
-function functionOf(declaration) {
-  const initialized =
-    ts.isVariableDeclaration(declaration) ||
+function isConstant(declaration) {
+  return (
+    ts.isVariableDeclarationList(declaration.parent) &&
+    (declaration.parent.flags & ts.NodeFlags.BlockScoped) === ts.NodeFlags.Const
+  );
+}
+
+function isInitialized(declaration) {
+  return (
+    (ts.isVariableDeclaration(declaration) && isConstant(declaration)) ||
     ts.isPropertyDeclaration(declaration) ||
-    ts.isPropertyAssignment(declaration);
-  const fn = initialized ? declaration.initializer : declaration;
+    ts.isPropertyAssignment(declaration)
+  );
+}
+
+function functionOf(declaration) {
+  const fn = isInitialized(declaration)
+    ? declaration.initializer && ts.skipOuterExpressions(declaration.initializer)
+    : declaration;
   return fn !== undefined && ts.isFunctionLike(fn) ? fn : undefined;
 }
 
@@ -40,12 +50,25 @@ function returnsPromise(checker, node) {
   );
 }
 
+function dropsPromise(checker, node) {
+  return ts.isExpressionStatement(node) && isThenable(checker, node.expression);
+}
+
+function isAwaitUsing(node) {
+  return (
+    ts.isVariableDeclarationList(node) &&
+    (node.flags & ts.NodeFlags.AwaitUsing) === ts.NodeFlags.AwaitUsing
+  );
+}
+
 function raises(checker, node) {
   return (
     ts.isThrowStatement(node) ||
     ts.isAwaitExpression(node) ||
+    isAwaitUsing(node) ||
     (ts.isForOfStatement(node) && node.awaitModifier !== undefined) ||
-    returnsPromise(checker, node)
+    returnsPromise(checker, node) ||
+    dropsPromise(checker, node)
   );
 }
 
@@ -75,9 +98,7 @@ function isCatchingStatement(checker, statement) {
     ts.isTryStatement(statement) &&
     statement.catchClause !== undefined &&
     !anyInside(statement.tryBlock, (node) => returnsPromise(checker, node), false) &&
-    !guardedParts(statement).some((part) =>
-      anyInside(part, (node) => raises(checker, node), true),
-    )
+    !guardedParts(statement).some((part) => anyInside(part, (node) => raises(checker, node), true))
   );
 }
 
