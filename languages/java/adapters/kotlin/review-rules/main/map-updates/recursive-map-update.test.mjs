@@ -5,18 +5,28 @@ import { routed, run } from '../../test-support/facts.mjs';
 import { RECURSIVE_MAP_UPDATE_RULE, recursiveMapUpdateFindings } from './recursive-map-update.mjs';
 
 const FIXTURES = path.resolve(import.meta.dirname, '../../../../fixtures');
-const SOURCE = path.join(
-  FIXTURES,
-  'kotlin-map-update-project/src/main/kotlin/demo/orders/InFlight.kt',
-);
+const PROJECT = path.join(FIXTURES, 'kotlin-map-update-project');
 const { files } = JSON.parse(
   readFileSync(path.join(FIXTURES, 'kotlin-map-update-facts.json'), 'utf8'),
 );
 const FILE = 'src/main/kotlin/demo/orders/InFlight.kt';
-const lines = readFileSync(SOURCE, 'utf8').split('\n');
+const NESTED = 'src/main/kotlin/demo/orders/Batches.kt';
+
+function lineIn(file, fragment) {
+  const lines = readFileSync(path.join(PROJECT, file), 'utf8').split('\n');
+  return lines.findIndex((text) => text.includes(fragment)) + 1;
+}
 
 function lineOf(fragment) {
-  return lines.findIndex((text) => text.includes(fragment)) + 1;
+  return lineIn(FILE, fragment);
+}
+
+function findingsIn(file) {
+  return run(
+    recursiveMapUpdateFindings,
+    files.filter((entry) => entry.file === file),
+    { declaredIn: files },
+  );
 }
 
 function located(findings) {
@@ -24,7 +34,7 @@ function located(findings) {
 }
 
 describe('recursive map updates in Kotlin', () => {
-  const findings = run(recursiveMapUpdateFindings, files);
+  const findings = findingsIn(FILE);
 
   it('reports a change of the same map inside a compute, merge or concurrent getOrPut function', () => {
     expect(located(findings)).toEqual([
@@ -90,6 +100,13 @@ describe('recursive map updates in Kotlin', () => {
         FILE,
       ),
     );
+  });
+
+  it('tells a map of an inner class from the outer map of the same name, and stops at a with or apply receiver', () => {
+    expect(located(findingsIn(NESTED))).toEqual([
+      `outerThroughLabel.counts ${String(lineIn(NESTED, 'this@Batches.counts.remove(it)'))}`,
+      `outer.counts ${String(lineIn(NESTED, 'fun outer('))}`,
+    ]);
   });
 
   it('leaves test sources alone', () => {

@@ -27,13 +27,14 @@ const VIEW_WRITES = new Set([
   'minusAssign',
 ]);
 const VIEW = /^(.+)\.(?:keys|values|entries)$/u;
-const SELF = /^this(?:@[\p{L}_][\p{L}\p{N}_]*)?\.(.+)$/u;
+const SELF = /^this(?:@([\p{L}_][\p{L}\p{N}_]*))?\.(.+)$/u;
 const SPACE = /\s+/gu;
 const IDENTIFIER = /^[\p{L}_][\p{L}\p{N}_]*$/u;
 const CONCURRENT = /^(?:java\.util\.concurrent\.)?Concurrent(?:Hash|SkipList)?Map\b/u;
 const BOUNDARIES = new Set(['fun', 'class', 'object']);
 const OWNERS = new Set(['class', 'object']);
-const MEMBER = 'member';
+const MEMBER = 'member:';
+const REBINDING_HOSTS = new Set(['apply', 'run', 'with']);
 
 function message(map, host) {
   const allowed = `\`${map}.computeIfAbsent(key) { start(it) }.whenComplete { r, _ -> ${map}.remove(key, r) }\``;
@@ -54,8 +55,8 @@ function mapRef(text) {
   }
   const compact = text.replaceAll(SPACE, '');
   const self = SELF.exec(compact);
-  const name = self === null ? compact : self[1];
-  return IDENTIFIER.test(name) ? { name, member: self !== null } : undefined;
+  const name = self === null ? compact : self[2];
+  return IDENTIFIER.test(name) ? { name, member: self !== null, label: self?.[1] } : undefined;
 }
 
 function written(invocation) {
@@ -66,9 +67,28 @@ function written(invocation) {
   return WRITES.has(invocation.name) ? mapRef(invocation.receiver) : undefined;
 }
 
+function declares(view, owner, name) {
+  const primary = view.classes.get(owner.qualified)?.primaryParameters ?? [];
+  return (
+    view.memberPropertiesOf(owner.qualified).some((property) => property.name === name) ||
+    primary.some((parameter) => parameter.name === name && parameter.property !== undefined)
+  );
+}
+
+function memberKey(view, scopeId, ref) {
+  const owners = view.chain(scopeId).filter(({ k }) => OWNERS.has(k));
+  const named = ref.label === undefined ? owners : owners.filter(({ name }) => name === ref.label);
+  const owner = named.find((candidate) => declares(view, candidate, ref.name)) ?? named[0];
+  return `${MEMBER}${owner?.qualified ?? ''}`;
+}
+
+function isMember(key) {
+  return typeof key === 'string';
+}
+
 function binding(view, scopeId, ref) {
   if (ref.member) {
-    return MEMBER;
+    return memberKey(view, scopeId, ref);
   }
   const declaring = view
     .chain(scopeId)
@@ -77,7 +97,7 @@ function binding(view, scopeId, ref) {
         view.declaresLocally(scope.id, ref.name) &&
         (scope.parent === undefined || !view.declaresLocally(scope.parent, ref.name)),
     );
-  return declaring === undefined ? MEMBER : declaring.id;
+  return declaring === undefined ? memberKey(view, scopeId, ref) : declaring.id;
 }
 
 function computeHost(view, scopeId, { name, receiver }) {
@@ -88,10 +108,15 @@ function computeHost(view, scopeId, { name, receiver }) {
   return CONCURRENT.test(type ?? '') ? name : undefined;
 }
 
-function callbacksAround(view, scopeId) {
+function rebinds(scope) {
+  const receiver = scope.host === 'with' ? scope.argument : scope.qualifier;
+  return REBINDING_HOSTS.has(scope.host) && receiver !== undefined && receiver !== 'this';
+}
+
+function callbacksAround(view, scopeId, bare = false) {
   const found = [];
   for (const scope of view.chain(scopeId)) {
-    if (BOUNDARIES.has(scope.k)) {
+    if (BOUNDARIES.has(scope.k) || (bare && scope.k === 'lambda' && rebinds(scope))) {
       return found;
     }
     const host =
@@ -113,11 +138,11 @@ function boundaryOf(view, scopeId) {
 function memberWrites(view, funScope) {
   return view.file.invocations.flatMap((invocation) => {
     const ref = written(invocation);
-    return ref !== undefined &&
-      boundaryOf(view, invocation.scope)?.id === funScope.id &&
-      binding(view, invocation.scope, ref) === MEMBER
-      ? [ref.name]
-      : [];
+    if (ref === undefined || boundaryOf(view, invocation.scope)?.id !== funScope.id) {
+      return [];
+    }
+    const key = binding(view, invocation.scope, ref);
+    return isMember(key) ? [`${ref.name}\0${key}`] : [];
   });
 }
 
@@ -160,19 +185,19 @@ function hit(view, invocation) {
   const ref = written(invocation);
   if (ref !== undefined) {
     const key = binding(view, invocation.scope, ref);
-    return callbacksAround(view, invocation.scope).find(
+    return callbacksAround(view, invocation.scope, !ref.member).find(
       (callback) => callback.map.name === ref.name && callback.key === key,
     );
   }
   const callbacks = invocation.reference
     ? referencedBy(view, invocation)
     : callbacksAround(view, invocation.scope);
-  const members = callbacks.filter(({ key }) => key === MEMBER);
+  const members = callbacks.filter(({ key }) => isMember(key));
   if (members.length === 0) {
     return undefined;
   }
   const changed = new Set(helperWrites(view, invocation));
-  return members.find((callback) => changed.has(callback.map.name));
+  return members.find((callback) => changed.has(`${callback.map.name}\0${callback.key}`));
 }
 
 function findingsOf(view, finding) {
