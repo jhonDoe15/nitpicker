@@ -16,16 +16,11 @@ const GROUPS = new Set([
   'collectList',
   'collectMap',
   'reduce',
-  'take',
-  'limitRequest',
 ]);
+const WINDOWS = new Set(['take', 'limitRequest']);
+const SIZE = /\.(?:size|lastIndex|length)\b|\.count\(\)/u;
 const ALL_AT_ONCE = new Set(['zip', 'zipDelayError', 'when', 'whenDelayError']);
-const UP_TO_LIMIT = new Set([
-  'merge',
-  'mergeDelayError',
-  'mergeSequential',
-  'mergeSequentialDelayError',
-]);
+const UP_TO_LIMIT = new Set(['merge', 'mergeSequential']);
 const MAPS = new Set(['map', 'mapNotNull', 'mapIndexed']);
 const FLUX = /^(?:reactor\.core\.publisher\.)?Flux$/u;
 const PUBLISHER = /^(?:reactor\.core\.publisher\.)?(Mono|Flux)$/u;
@@ -102,9 +97,26 @@ function sourceOf(view, invocation) {
   );
 }
 
-function grouped(source, invocation) {
+function cutToSize(view, source, name) {
+  const prefix = compact(`${source.receiver ?? ''}.${source.name}(`);
+  const cut = view.file.invocations.find(
+    (candidate) =>
+      candidate.name === name &&
+      candidate.scope === source.scope &&
+      compact(candidate.receiver).startsWith(prefix),
+  );
+  return (
+    cut !== undefined &&
+    cut.arguments.length > 0 &&
+    cut.arguments.every(({ text }) => !SIZE.test(text))
+  );
+}
+
+function grouped(view, source, invocation) {
   const after = source.after ?? [];
-  return after.slice(0, after.indexOf(invocation.name)).some((name) => GROUPS.has(name));
+  return after
+    .slice(0, after.indexOf(invocation.name))
+    .some((name) => GROUPS.has(name) || (WINDOWS.has(name) && cutToSize(view, source, name)));
 }
 
 function operatorSite(view, invocation) {
@@ -112,7 +124,7 @@ function operatorSite(view, invocation) {
     return undefined;
   }
   const source = sourceOf(view, invocation);
-  if (source === undefined || grouped(source, invocation)) {
+  if (source === undefined || grouped(view, source, invocation)) {
     return undefined;
   }
   const collection = SOURCES.has(source.name) ? source.arguments[0].text : source.receiver;
@@ -164,7 +176,9 @@ function mappedSource(view, invocation, text) {
 
 function combinatorSite(view, invocation) {
   const type = PUBLISHER.exec(invocation.receiver ?? '')?.[1];
-  const known = ALL_AT_ONCE.has(invocation.name) || UP_TO_LIMIT.has(invocation.name);
+  const known =
+    ALL_AT_ONCE.has(invocation.name) ||
+    (UP_TO_LIMIT.has(invocation.name) && invocation.arguments?.length === 1);
   const [first] = invocation.arguments ?? [];
   if (type === undefined || !known || first === undefined || first.lambda) {
     return undefined;

@@ -695,18 +695,21 @@ Limits, all chosen to flag less rather than guess:
   `pmd/UnboundedReactiveFanOut` and the TypeScript preset's `unbounded-reactive-fan-out`. It reports a
   Reactor `flatMap` or `flatMapSequential` without a concurrency argument whose chain starts at
   `Flux.fromIterable`, `fromStream`, `fromArray` or `toFlux()` on a collection (up to 256 calls at
-  once, Reactor's default); `Mono.zip`, `Mono.when`, `Flux.zip` and their `DelayError` forms over
+  once, Reactor's default); `Mono.zip`, `Mono.zipDelayError`, `Mono.when`, `Mono.whenDelayError` and `Flux.zip` over
   `items.map { ... }` or a local holding one (every call at once); `Flux.merge` and
-  `Flux.mergeSequential` over such a list (up to 256 at once, or all at once for a spread
+  `Flux.mergeSequential` with that list as their only argument (up to 256 at once, or all at once for a spread
   `*list.toTypedArray()`); and `flatMapMerge(Int.MAX_VALUE)` on a Flow. The element work, a lambda
   or a `this::helper`/`::helper` reference, must reach a remote or message call as `UnboundedFanOut`
   decides it. These pass: a concurrency argument (`flatMap({ fetch(it) }, 8)`), `concatMap`, a
-  `buffer`, `window`, `collectList`, `reduce`, `take` or `limitRequest` before the operator, a fixed
+  `buffer`, `window`, `collectList` or `reduce` before the operator, a `take` or `limitRequest` there
+  whose size does not read the collection's size (`take(10)` passes, `take(ids.size.toLong())` does not), a fixed
   collection (the same builders and properties as `UnboundedFanOut`), two publishers passed one by
   one, a `Flux` that does not start from a collection, a call inside `withPermit`, and
   `flatMapMerge` with its default of 16 or a smaller limit (raising the default through the
   `kotlinx.coroutines.flow.defaultConcurrency` system property is not visible in the source). A
-  reference to another object's method (`feeds::fetch`) is not followed. A call this rule reports is
+  reference to another object's method (`feeds::fetch`) is not followed. The operator is read from
+  the receiver text, so an import alias (`import reactor.core.publisher.Flux as F`) or a static import
+  of `fromIterable` is not recognized, and a `Flux` held in a local is not followed. A call this rule reports is
   not reported again by `IoCallInLoop`.
 - Not covered: Android and Kotlin Multiplatform modules (the facts step is registered for
   `org.jetbrains.kotlin.jvm` only), and source-set `exclude` patterns (every `.kt` file under a source

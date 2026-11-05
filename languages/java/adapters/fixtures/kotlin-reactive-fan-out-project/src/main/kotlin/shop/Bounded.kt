@@ -36,6 +36,11 @@ class Bounded(private val feeds: Feeds) {
 
     fun two(first: String, second: String): Flux<String> = Flux.merge(feeds.fetch(first), feeds.fetch(second))
 
+    fun firstTen(ids: List<String>): Flux<String> = Flux.fromIterable(ids).take(10).flatMap { feeds.fetch(it) }
+
+    fun sequentialLimited(ids: List<String>): Flux<String> =
+        Flux.mergeSequential(ids.map { feeds.fetch(it) }, 4, 32)
+
     @OptIn(ExperimentalCoroutinesApi::class)
     fun flowDefault(ids: List<String>): Flow<String> = ids.asFlow().flatMapMerge { id -> feeds.fetch(id).asFlow() }
 

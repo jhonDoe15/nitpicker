@@ -2390,7 +2390,7 @@ In main sources: a stream `map`/`forEach`/`flatMap` lambda (also a `this::helper
 
 ### `pmd/UnboundedReactiveFanOut`
 
-In main sources, when Reactor is on the classpath: `flatMap` or `flatMapSequential` without a concurrency argument over `Flux.fromIterable`, `fromStream` or `fromArray` of a collection, and `Mono.zip`, `Mono.when`, `Flux.zip`, `Flux.merge` or `Flux.mergeSequential` (and their `DelayError` forms) over a list built per element of a collection, when the element work makes a remote or message call. See the notes below.
+In main sources, when Reactor is on the classpath: `flatMap` or `flatMapSequential` without a concurrency argument over `Flux.fromIterable`, `fromStream` or `fromArray` of a collection, and `Mono.zip`, `Mono.zipDelayError`, `Mono.when`, `Mono.whenDelayError`, `Flux.zip`, or a one-argument `Flux.merge` or `Flux.mergeSequential`, over a list built per element of a collection, when the element work makes a remote or message call. See the notes below.
 
 - **Scope:** Main sources only.
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.

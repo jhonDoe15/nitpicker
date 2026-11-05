@@ -5,7 +5,7 @@ import {
   resolveConstant,
 } from '../../analysis/constant-resolution.mjs';
 import { memberName } from '../../security/security-values.mjs';
-import { skipped } from '../io-origin.mjs';
+import { descendants, skipped } from '../io-origin.mjs';
 
 const RXJS_MODULES = new Set(['rxjs', 'rxjs/operators']);
 const ARRAY_RESULTS = new Set([
@@ -34,9 +34,9 @@ const GROUPS = new Set([
   'windowCount',
   'windowTime',
   'reduce',
-  'take',
-  'takeLast',
 ]);
+const WINDOWS = new Set(['take', 'takeLast']);
+const SIZES = new Set(['length', 'size']);
 const ITERABLES = new Set([
   'Set',
   'Map',
@@ -133,6 +133,20 @@ function creationSource(context, call) {
   return name === 'of' && spread ? first.argument : undefined;
 }
 
+function readsSize(node) {
+  return [...descendants(node)].some(
+    (child) => child.type === 'MemberExpression' && SIZES.has(memberName(child)),
+  );
+}
+
+function groups(context, operator) {
+  const name = rxjsName(context, operator.callee);
+  if (WINDOWS.has(name)) {
+    return operator.arguments.length > 0 && !operator.arguments.some(readsSize);
+  }
+  return GROUPS.has(name);
+}
+
 function piped(context, call, before) {
   const callee = skipped(call.callee);
   if (callee.type !== 'MemberExpression' || memberName(callee) !== 'pipe') {
@@ -140,8 +154,7 @@ function piped(context, call, before) {
   }
   const operators = before === undefined ? call.arguments : call.arguments.slice(0, before);
   const grouped = operators.some(
-    (operator) =>
-      operator.type === 'CallExpression' && GROUPS.has(rxjsName(context, operator.callee)),
+    (operator) => operator.type === 'CallExpression' && groups(context, operator),
   );
   return grouped ? { grouped } : { source: callee.object };
 }
