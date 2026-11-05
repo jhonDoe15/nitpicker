@@ -648,9 +648,11 @@ return (
       <property name="xpath">
         <value><![CDATA[
 let $caught := ('IllegalArgumentException', 'RuntimeException', 'Exception', 'Throwable')
-return //MethodCall[pmd-java:matchesSig('java.net.URI#create(java.lang.String)')]
-  [not(ArgumentList/*[1][@CompileTimeConstant = true()])]
-  [let $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer
+return (
+  //MethodCall[pmd-java:matchesSig('java.net.URI#create(java.lang.String)')]
+    [not(ArgumentList/*[1][@CompileTimeConstant = true()])]
+  | //MethodReference[@MethodName = 'create'][*[1][self::TypeExpression][pmd-java:typeIsExactly('java.net.URI')]]
+)[let $scope := ancestor::*[self::MethodDeclaration or self::ConstructorDeclaration or self::Initializer
                              or self::FieldDeclaration or self::EnumConstant
                              or self::CompactConstructorDeclaration][1]
    return not(ancestor::*[self::Block or self::ResourceList]

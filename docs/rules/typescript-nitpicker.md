@@ -760,7 +760,7 @@ Require new URL(text) on runtime text to be checked with URL.canParse, parsed wi
 - **Printed as:** `eslint-lint/nitpicker/no-unhandled-url-parse`
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-unhandled-url-parse","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
-  - Parse this text with `URL.parse(text)` (null when it is not a URL), check `URL.canParse(text)` first, or build the URL in a `try` whose catch handles the failure. `new URL(text)` throws a TypeError on text that is not an absolute URL (no scheme, a bad host, `//` against a base), so one odd stored, user or header value turns this call into an error response. A constant is fine, and so are an already parsed `.href` or `.url` and `new URL(path, import.meta.url)`.
+  - Parse this text with `URL.parse(text)` (null when it is not a URL), check `URL.canParse(text)` first, or build the URL in a `try` whose catch handles the failure. `new URL(text)` throws a TypeError on text that is not an absolute URL (no scheme, a bad host, `//` against a base), so one odd stored, user or header value turns this call into an error response. Constant text and a base are fine, and so are a `URL` value, an already parsed `.href`, `.url` or `.origin`, and `new URL(path, import.meta.url)`.
 
 <a id="eslint-nitpicker-no-uninjectable-delay"></a>
 

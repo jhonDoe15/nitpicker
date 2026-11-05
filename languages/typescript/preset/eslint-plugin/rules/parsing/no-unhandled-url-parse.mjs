@@ -1,12 +1,52 @@
 import { ancestorsOf } from '../analysis/ancestry.mjs';
-import { isFunctionNode, resolveConstant, stringValue } from '../analysis/constant-resolution.mjs';
+import {
+  findVariable,
+  isFunctionNode,
+  resolveConstant,
+  stringValue,
+} from '../analysis/constant-resolution.mjs';
 
-const MAX_PARTS = 32;
-const PARSED_MEMBERS = new Set(['href', 'url']);
+const MAX_PARTS = 100;
+const PARSED_MEMBERS = new Set(['href', 'url', 'origin']);
+const WRAPPERS = new Set(['TSNonNullExpression', 'TSAsExpression', 'TSSatisfiesExpression']);
 const NAMED_FUNCTIONS = new Set(['FunctionDeclaration', 'FunctionExpression']);
 
 function isUrlIdentifier(node) {
   return node.type === 'Identifier' && node.name === 'URL';
+}
+
+function isUrlConstructor(node) {
+  return (
+    isUrlIdentifier(node) ||
+    (node.type === 'MemberExpression' &&
+      node.object.type === 'Identifier' &&
+      node.object.name === 'globalThis' &&
+      isUrlIdentifier(node.property))
+  );
+}
+
+function bare(node) {
+  const chain = [node];
+  for (const current of chain) {
+    if (WRAPPERS.has(current.type)) {
+      chain.push(current.expression);
+    }
+  }
+  return chain.at(-1);
+}
+
+function annotatedType(definition) {
+  const holder = definition.type === 'Variable' ? definition.node.id : definition.name;
+  return holder.typeAnnotation?.typeAnnotation;
+}
+
+function isUrlTyped(context, node) {
+  if (node.type !== 'Identifier') {
+    return false;
+  }
+  const definitions = findVariable(context, node, node.name)?.defs ?? [];
+  const type = definitions.length === 1 ? annotatedType(definitions[0]) : undefined;
+  return type?.type === 'TSTypeReference' && isUrlIdentifier(type.typeName);
 }
 
 function isCanParse(node) {
@@ -51,13 +91,45 @@ function isParsedMember(node) {
   );
 }
 
-function isModuleBase(node) {
+function isUrlValue(context, node) {
+  const value = bare(node);
+  const resolved = resolveConstant(context, value);
+  return (
+    isParsedMember(value) ||
+    isUrlTyped(context, value) ||
+    (resolved?.type === 'NewExpression' && isUrlConstructor(resolved.callee))
+  );
+}
+
+function isSafeText(context, node) {
+  return isConstantText(context, node) || isUrlValue(context, node);
+}
+
+function isImportMetaUrl(node) {
   return (
     node?.type === 'MemberExpression' &&
     node.object.type === 'MetaProperty' &&
     node.object.meta.name === 'import' &&
     node.property.name === 'url'
   );
+}
+
+function isModuleBase(context, node) {
+  const chain = [node];
+  for (const current of chain) {
+    const value = current === undefined ? undefined : resolveConstant(context, current);
+    if (isImportMetaUrl(value)) {
+      return true;
+    }
+    if (
+      value?.type === 'NewExpression' &&
+      isUrlConstructor(value.callee) &&
+      chain.length < MAX_PARTS
+    ) {
+      chain.push(value.arguments[1]);
+    }
+  }
+  return false;
 }
 
 function inBlock(block, node) {
@@ -82,7 +154,7 @@ function functionOf(node) {
 }
 
 function isGuarded(sourceCode, candidate, guards) {
-  const text = sourceCode.getText(candidate.argument);
+  const text = sourceCode.getText(bare(candidate.argument));
   const scopes = new Set([candidate.node, ...ancestorsOf(candidate.node)]);
   return guards.some((guard) => guard.text === text && scopes.has(guard.scope));
 }
@@ -97,7 +169,7 @@ export const rule = {
     schema: [],
     messages: {
       unhandledUrlParse:
-        'Parse this text with `URL.parse(text)` (null when it is not a URL), check `URL.canParse(text)` first, or build the URL in a `try` whose catch handles the failure. `new URL(text)` throws a TypeError on text that is not an absolute URL (no scheme, a bad host, `//` against a base), so one odd stored, user or header value turns this call into an error response. A constant is fine, and so are an already parsed `.href` or `.url` and `new URL(path, import.meta.url)`.',
+        'Parse this text with `URL.parse(text)` (null when it is not a URL), check `URL.canParse(text)` first, or build the URL in a `try` whose catch handles the failure. `new URL(text)` throws a TypeError on text that is not an absolute URL (no scheme, a bad host, `//` against a base), so one odd stored, user or header value turns this call into an error response. Constant text and a base are fine, and so are a `URL` value, an already parsed `.href`, `.url` or `.origin`, and `new URL(path, import.meta.url)`.',
     },
   },
   create(context) {
@@ -109,12 +181,11 @@ export const rule = {
       NewExpression(node) {
         const [argument, base] = node.arguments;
         if (
-          !isUrlIdentifier(node.callee) ||
+          !isUrlConstructor(node.callee) ||
           argument === undefined ||
           argument.type === 'SpreadElement' ||
-          isModuleBase(base) ||
-          isParsedMember(argument) ||
-          isConstantText(context, argument) ||
+          isModuleBase(context, base) ||
+          (isSafeText(context, argument) && (base === undefined || isSafeText(context, base))) ||
           isInsideTry(node)
         ) {
           return;
@@ -124,7 +195,7 @@ export const rule = {
       CallExpression(node) {
         const [argument] = node.arguments;
         if (isCanParse(node) && argument !== undefined) {
-          guards.push({ text: sourceCode.getText(argument), scope: functionOf(node) });
+          guards.push({ text: sourceCode.getText(bare(argument)), scope: functionOf(node) });
         }
       },
       'Program:exit'() {

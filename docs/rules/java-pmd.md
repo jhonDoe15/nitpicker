@@ -2544,7 +2544,7 @@ Unused Private Method detects when a private method is declared but is unused.
 
 ### `pmd/UriCreateDynamic`
 
-In main sources: `URI.create(text)` where `text` is not a compile-time constant (a literal, a text block, a `static final` constant or constants joined with `+`). A call inside a `try` of the same method, lambda or initializer whose `catch` takes `IllegalArgumentException`, `RuntimeException`, `Exception` or `Throwable` is not flagged; a `try` around an anonymous or local class does not count.
+In main sources: `URI.create(text)` where `text` is not a compile-time constant (a literal, a text block, a `static final` constant or constants joined with `+`), and the method reference `URI::create`. A call in a `try` whose `catch` takes `IllegalArgumentException`, `RuntimeException`, `Exception` or `Throwable` is not flagged when the `try` is in the same method, constructor or initializer; lambdas inside the `try` count, an anonymous or local class does not.
 
 - **Scope:** Main sources only.
 - **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
