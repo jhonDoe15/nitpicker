@@ -1,49 +1,10 @@
+import { CONSTRAINT_NAMES } from './constraint-names.mjs';
+
 export const VALIDATION_TARGET_RULE = 'ValidationAnnotationTarget';
 
-const CONSTRAINT_PACKAGES = new Set([
-  'jakarta.validation.constraints',
-  'javax.validation.constraints',
-  'org.hibernate.validator.constraints',
-]);
+const CONSTRAINT_PACKAGES = new Set(Object.keys(CONSTRAINT_NAMES));
 const CASCADE_PACKAGES = new Set(['jakarta.validation', 'javax.validation']);
-const CONSTRAINTS = new Set([
-  'AssertFalse',
-  'AssertTrue',
-  'DecimalMax',
-  'DecimalMin',
-  'Digits',
-  'Email',
-  'Future',
-  'FutureOrPresent',
-  'Max',
-  'Min',
-  'Negative',
-  'NegativeOrZero',
-  'NotBlank',
-  'NotEmpty',
-  'NotNull',
-  'Null',
-  'Past',
-  'PastOrPresent',
-  'Pattern',
-  'Positive',
-  'PositiveOrZero',
-  'Size',
-  'CodePointLength',
-  'CreditCardNumber',
-  'Currency',
-  'EAN',
-  'ISBN',
-  'Length',
-  'LuhnCheck',
-  'Mod10Check',
-  'Mod11Check',
-  'Normalized',
-  'Range',
-  'URL',
-  'UUID',
-  'UniqueElements',
-]);
+const CONSTRAINTS = new Set(Object.values(CONSTRAINT_NAMES).flat());
 const VISIBLE_TARGETS = new Set(['field', 'get', 'all']);
 const QUALIFIED = /^[a-z_]\w*(?:\.\w+)+$/u;
 

@@ -11,16 +11,56 @@ import {
 import {
   ASYNC,
   COMPLETABLE_FUTURE,
+  CONSTRAINT,
+  CONSTRAINTS,
   CONTROLLERS,
   JAKARTA_TRANSACTIONAL,
   PROXIED,
   SCHEDULED,
   SPRING_PRESET_OPEN,
   SPRING_TRANSACTIONAL,
+  VALIDATED,
 } from '../spring-types.mjs';
 
 const OPEN_MODIFIERS = new Set(['open', 'abstract', 'override']);
 const STATIC_OWNERS = new Set(['object', 'companion']);
+const CONSTRAINT_META = new Set([...CONSTRAINT, ...CONSTRAINTS]);
+const TYPE_USE_ANNOTATION = /@([\w.]+)/gu;
+
+function isProxied(view, annotation) {
+  const name = annotation.type ?? annotation.name;
+  return (
+    view.is(name, PROXIED) ||
+    view.metaAnnotated(typeName(name), PROXIED) ||
+    view.is(name, view.advised())
+  );
+}
+
+function isConstraint(view, name) {
+  return view.is(name, CONSTRAINTS) || view.metaAnnotated(typeName(name), CONSTRAINT_META);
+}
+
+function validates(view, fn) {
+  const owner = view.classes.get(fn.owner);
+  if (
+    owner === undefined ||
+    annotationIn(view.resolve, owner.annotations, VALIDATED) === undefined
+  ) {
+    return false;
+  }
+  const names = [
+    ...entriesOf(fn).map((entry) => entry.type ?? entry.name),
+    ...fn.parameters.flatMap((parameter) => [
+      ...(parameter.annotationEntries ?? []).map((entry) => entry.type ?? entry.name),
+      ...[...(parameter.type ?? '').matchAll(TYPE_USE_ANNOTATION)].map((match) => match[1]),
+    ]),
+  ];
+  return names.some((name) => isConstraint(view, name));
+}
+
+function proxiedFunction(view, fn) {
+  return entriesOf(fn).some((annotation) => isProxied(view, annotation)) || validates(view, fn);
+}
 
 export function pluginOpener(view, allOpen) {
   if (allOpen === undefined) {
@@ -51,7 +91,7 @@ function closed(fn, owner, opened) {
 function proxyVisibility(view, { allOpen }) {
   const opened = pluginOpener(view, allOpen);
   const functions = view.file.functions
-    .filter((fn) => annotationIn(view.resolve, entriesOf(fn), PROXIED) !== undefined)
+    .filter((fn) => proxiedFunction(view, fn))
     .filter((fn) => {
       const owner = view.classes.get(fn.owner);
       if (owner?.kind === 'interface') {
@@ -69,7 +109,7 @@ function proxyVisibility(view, { allOpen }) {
     .map((fn) => report('SpringProxyMethodVisibility', fn, `${fn.owner}.${fn.name}`));
   const classes = view.file.classes
     .filter((declared) => declared.kind !== 'interface')
-    .filter((declared) => annotationIn(view.resolve, declared.annotations, PROXIED) !== undefined)
+    .filter((declared) => declared.annotations.some((annotation) => isProxied(view, annotation)))
     .filter(
       (declared) =>
         STATIC_OWNERS.has(declared.kind) ||
@@ -106,12 +146,12 @@ function selfCalls(view) {
           fn.name === invocation.name &&
           (reference || acceptsArguments(fn, invocation.arguments.length)),
       )
-      .find((fn) =>
-        entriesOf(fn).some(
-          (annotation) =>
-            view.is(annotation.type ?? annotation.name, PROXIED) &&
-            !exempt(view, annotation, callerTransactional),
-        ),
+      .find(
+        (fn) =>
+          entriesOf(fn).some(
+            (annotation) =>
+              isProxied(view, annotation) && !exempt(view, annotation, callerTransactional),
+          ) || validates(view, fn),
       );
     return target === undefined || target === caller
       ? []

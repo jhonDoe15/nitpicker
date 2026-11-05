@@ -254,7 +254,8 @@ def rulesetExcluding = { String name, String description, List<String> rules, Co
 }
 
 def mainRulesOnMainSources = { File mainRules, File rulesetDir, boolean spring, Collection<File> testDirectories ->
-    def rules = [mainRules] + (spring ? [new File(rulesetDir, 'spring-ruleset.xml')] : [])
+    def springRules = nitpickerArgument('nitpicker.pmd.springRules') ?: new File(rulesetDir, 'spring-ruleset.xml').absolutePath
+    def rules = [mainRules] + (spring ? [new File(springRules)] : [])
     rulesetExcluding('nitpicker-main', "Nitpicker's main-only rules on main sources only.",
         rules.collect { "  <rule ref=\"${escapeXml(it.absolutePath)}\"/>".toString() }, testDirectories)
 }
