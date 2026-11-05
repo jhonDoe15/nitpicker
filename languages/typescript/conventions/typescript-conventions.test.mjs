@@ -4,7 +4,7 @@ import { describeConventions, validateConventions } from '../../../shared/conven
 import {
   DETACHED_WORK_RUNNERS_CONVENTION,
   detachedWorkRunnerNames,
-} from './detached-work-runners.mjs';
+} from './typescript-conventions.mjs';
 
 const definition = DETACHED_WORK_RUNNERS_CONVENTION;
 
@@ -27,9 +27,9 @@ function detect(pinned) {
 describe('detached-work runners', () => {
   it('names no runner unless the config pins one', () => {
     expect(detachedWorkRunnerNames()).toEqual([]);
-    expect(detachedWorkRunnerNames({ 'typescript.detachedWorkRunners': ['runDetached'] })).toEqual(
-      ['runDetached'],
-    );
+    expect(detachedWorkRunnerNames({ 'typescript.detachedWorkRunners': ['runDetached'] })).toEqual([
+      'runDetached',
+    ]);
   });
 
   it('is never measured from the project files', () => {

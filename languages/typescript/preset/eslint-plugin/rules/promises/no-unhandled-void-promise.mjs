@@ -17,7 +17,9 @@ function calleeName(callee) {
   if (inner.type === 'Identifier') {
     return inner.name;
   }
-  return inner.type === 'MemberExpression' && !inner.computed && inner.property.type === 'Identifier'
+  return inner.type === 'MemberExpression' &&
+    !inner.computed &&
+    inner.property.type === 'Identifier'
     ? inner.property.name
     : undefined;
 }
