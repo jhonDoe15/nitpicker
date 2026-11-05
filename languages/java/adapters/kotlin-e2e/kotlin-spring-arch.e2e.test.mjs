@@ -47,6 +47,12 @@ const EXPECTED = [
   'spring-shared-pure shop.shared.Totals shop.orders.OrderDto Totals.kt',
   'spring-test-placement shop.OrderFlowTest  OrderFlowTest.kt',
   'spring-test-placement shop.orders.OrderControllerIT  OrderControllerIT.kt',
+  'spring-typed-request-field shop.intake.ChatMessage ChatMessage.meta:field:IntakeController.chat Intake.kt',
+  'spring-typed-request-field shop.intake.CreateOrder CreateOrder.attributes:field:IntakeController.create Intake.kt',
+  'spring-typed-request-field shop.intake.CreateOrder CreateOrder.payload:field:IntakeController.create Intake.kt',
+  'spring-typed-request-field shop.intake.Freeform Freeform.points:field:IntakeController.shapes Intake.kt',
+  'spring-typed-request-field shop.intake.OrderLine OrderLine.options:field:IntakeController.create Intake.kt',
+  'spring-typed-request-field shop.intake.Profile Profile.put:any-setter:IntakeController.profile Intake.kt',
 ];
 
 describe.skipIf(!enabled)('Spring architecture rules on a Kotlin Spring project', () => {
