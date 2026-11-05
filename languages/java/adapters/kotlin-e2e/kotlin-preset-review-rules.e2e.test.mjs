@@ -26,6 +26,7 @@ import { helpUriProblems } from '../../../../shared/reference/test-support/help-
 
 const REVIEW_TOOLS = new Set(['pmd']);
 const ORDERS_TESTS = 'src/test/kotlin/demo/orders/*';
+const ALL_FINDINGS = [...EXPECTED_REVIEW_FINDINGS, ...GLOBAL_STATE_FINDINGS].sort();
 
 function reviewFindings(findings) {
   return findings
@@ -49,9 +50,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     const result = diffOf(project, 'review-rules');
 
     expect(result.failed).toBe(true);
-    expect(reviewFindings(result.newEnforceable)).toEqual(
-      [...EXPECTED_REVIEW_FINDINGS, ...GLOBAL_STATE_FINDINGS].sort(),
-    );
+    expect(reviewFindings(result.newEnforceable)).toEqual(ALL_FINDINGS);
     expect(helpUriProblems(result.newFindings)).toEqual([]);
   });
 
@@ -91,7 +90,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     const result = diffOf(project, 'runtime-serialization');
 
     expect(reviewFindings(result.newEnforceable)).toEqual(
-      EXPECTED_REVIEW_FINDINGS.filter((entry) => entry !== 'unused-option Envelope.retries'),
+      ALL_FINDINGS.filter((entry) => entry !== 'unused-option Envelope.retries'),
     );
   });
 
@@ -105,7 +104,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     const result = diffOf(project, 'published');
 
     expect(reviewFindings(result.newEnforceable)).toEqual(
-      EXPECTED_REVIEW_FINDINGS.filter((entry) => entry !== 'unused-option price.discount'),
+      ALL_FINDINGS.filter((entry) => entry !== 'unused-option price.discount'),
     );
   });
 
@@ -118,6 +117,6 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
 
     const result = diffOf(project, 'integration-suite');
 
-    expect(reviewFindings(result.newFindings)).toEqual(EXPECTED_REVIEW_FINDINGS);
+    expect(reviewFindings(result.newFindings)).toEqual(ALL_FINDINGS);
   });
 });
