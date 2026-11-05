@@ -133,6 +133,16 @@ let $perClass := function($type) {
       or pmd-java:matchesSig('java.lang.Runtime#exec(_*)')
       or pmd-java:matchesSig('org.mockserver.integration.ClientAndServer#startClientAndServer(_*)')
       or pmd-java:matchesSig('org.springframework.kafka.test.EmbeddedKafkaBroker#afterPropertiesSet()')],
+    $container := function($node) {
+      $node/pmd-java:typeIs('org.testcontainers.containers.GenericContainer')
+        or $node/pmd-java:typeIs('org.testcontainers.containers.ComposeContainer')
+        or $node/pmd-java:typeIs('org.testcontainers.containers.DockerComposeContainer')
+    },
+    $chainRoot := function($expression) {
+      $expression/descendant-or-self::ConstructorCall[
+        every $link in (ancestor::* intersect $expression/descendant-or-self::*)
+        satisfies $link[self::MethodCall]]
+    },
     $starters := //MethodCall[
       pmd-java:matchesSig('org.testcontainers.lifecycle.Startable#start()')
       or pmd-java:matchesSig('com.github.tomakehurst.wiremock.WireMockServer#start()')
@@ -144,17 +154,20 @@ let $perClass := function($type) {
       or pmd-java:matchesSig('io.undertow.Undertow#start()')
       or pmd-java:matchesSig('io.javalin.Javalin#start(_*)')
       or pmd-java:matchesSig('redis.embedded.RedisServer#start()')
-      or (@MethodName = 'start'
-        and *[1][self::ConstructorCall][pmd-java:typeIs('org.testcontainers.containers.GenericContainer')
-          or pmd-java:typeIs('org.testcontainers.containers.ComposeContainer')
-          or pmd-java:typeIs('org.testcontainers.containers.DockerComposeContainer')])],
+      or (@MethodName = 'start' and ArgumentList[not(*)]
+        and (exists($chainRoot(*[1])[$container(.)])
+          or (let $name := *[1][self::VariableAccess or self::FieldAccess[ThisExpression]]/@Name
+              return (ancestor::MethodDeclaration[1]//LocalVariableDeclaration
+                  | ancestor::ClassBody[1]/FieldDeclaration)
+                [VariableDeclarator/VariableId/@Name = $name]
+                [ClassType[$container(.)] or $chainRoot(VariableDeclarator/*[2])[$container(.)]])))],
     $fresh := $alwaysNew | $starters[
       let $receiver := *[1][self::VariableAccess or self::FieldAccess[ThisExpression]],
           $name := $receiver/@Name,
           $method := ancestor::MethodDeclaration[1],
           $type := ancestor::ClassBody[1]/..,
           $field := ancestor::ClassBody[1]/FieldDeclaration[VariableDeclarator/VariableId/@Name = $name]
-      return *[1][self::ConstructorCall]
+      return exists($chainRoot(*[1]))
         or ($receiver[self::VariableAccess]
             and $method//LocalVariableDeclaration/VariableDeclarator/VariableId[@Name = $name])
         or ($field and not($receiver[self::VariableAccess]

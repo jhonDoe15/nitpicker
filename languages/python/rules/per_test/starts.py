@@ -40,24 +40,51 @@ def parameters(function):
     return {name for name in names if name not in {"self", "cls"}}
 
 
-def used_fixtures(function, owner, aliases):
+def usefixtures_names(marks, aliases):
     names = set()
-    for node in [function, *([owner] if owner else [])]:
-        for decorator in node.decorator_list:
-            if not isinstance(decorator, ast.Call):
-                continue
-            if (dotted_name(decorator.func, aliases) or "").endswith("usefixtures"):
-                names.update(constant(item, None) for item in decorator.args)
+    for mark in marks:
+        if isinstance(mark, ast.Call) and (dotted_name(mark.func, aliases) or "").endswith(
+            "usefixtures"
+        ):
+            names.update(constant(item, None) for item in mark.args)
     return names - {None}
+
+
+def module_marks(tree):
+    for node in tree.body:
+        if isinstance(node, ast.Assign) and any(
+            isinstance(target, ast.Name) and target.id == "pytestmark" for target in node.targets
+        ):
+            value = node.value
+            return list(value.elts) if isinstance(value, (ast.List, ast.Tuple)) else [value]
+    return []
+
+
+def used_fixtures(function, owner, context):
+    marks = [*function.decorator_list, *(owner.decorator_list if owner else [])]
+    return usefixtures_names(marks + module_marks(context.tree), context.aliases)
+
+
+def param_count(decorator):
+    params = keyword(decorator, "params")
+    if isinstance(params, (ast.List, ast.Tuple)):
+        return max(1, len(params.elts))
+    return 1
+
+
+def parametrize_values(decorator):
+    if len(decorator.args) >= 2:
+        return decorator.args[1]
+    return keyword(decorator, "argvalues")
 
 
 def case_count(function, aliases):
     count = 1
     for decorator in function.decorator_list:
-        if not isinstance(decorator, ast.Call) or len(decorator.args) < 2:
+        if not isinstance(decorator, ast.Call):
             continue
         if (dotted_name(decorator.func, aliases) or "").endswith("parametrize"):
-            values = decorator.args[1]
+            values = parametrize_values(decorator)
             if isinstance(values, (ast.List, ast.Tuple)):
                 count *= max(1, len(values.elts))
     return count
@@ -82,6 +109,21 @@ def visible(fixture, path, owner):
     return fixture["owner"] is None or fixture["owner"] is owner
 
 
+def closeness(fixture):
+    if fixture["conftest"] is not None:
+        return (0, len(fixture["conftest"]))
+    return (1 if fixture["owner"] is None else 2, 0)
+
+
+def serves(fixture, found, path, owner):
+    candidates = [
+        other
+        for other in found["fixtures"]
+        if other["name"] == fixture["name"] and visible(other, path, owner)
+    ]
+    return bool(candidates) and max(candidates, key=closeness) is fixture
+
+
 def fixture_record(context, owner, function, decorator):
     scope = keyword(decorator, "scope")
     name = constant(keyword(decorator, "name"), None) or function.name
@@ -94,7 +136,8 @@ def fixture_record(context, owner, function, decorator):
         "per_test": scope is None or constant(scope, None) == "function",
         "autouse": constant(keyword(decorator, "autouse"), False) is True,
         "requests": parameters(function) - {"request"},
-        "heavy": heavy_calls(function, context.aliases),
+        "heavy": heavy_calls(function, context),
+        "params": param_count(decorator),
         "function": function,
     }
 
@@ -114,7 +157,7 @@ def index(project):
                         "path": context.path,
                         "owner": owner,
                         "requests": parameters(function)
-                        | used_fixtures(function, owner, context.aliases),
+                        | used_fixtures(function, owner, context),
                         "cases": case_count(function, context.aliases),
                     }
                 )
@@ -128,13 +171,13 @@ def runs(fixture, found, depth=0):
     total = sum(
         test["cases"]
         for test in found["tests"]
-        if visible(fixture, test["path"], test["owner"])
+        if serves(fixture, found, test["path"], test["owner"])
         and (fixture["autouse"] or name in test["requests"])
     )
     for other in found["fixtures"]:
         if other is fixture or not other["per_test"] or name not in other["requests"]:
             continue
-        if visible(fixture, other["path"], other["owner"]):
+        if serves(fixture, found, other["path"], other["owner"]):
             total += runs(other, found, depth + 1)
     return total
 
@@ -145,7 +188,7 @@ def fixture_findings(context):
     for fixture in found["fixtures"]:
         if fixture["path"] != context.path or not fixture["per_test"] or not fixture["heavy"]:
             continue
-        if runs(fixture, found) >= 2:
+        if runs(fixture, found) * fixture["params"] >= 2:
             name, node = fixture["heavy"][0]
             reported.append(finding(context.path, RULE, name, node))
     return reported
@@ -155,9 +198,9 @@ def hook_findings(context):
     return [
         finding(context.path, RULE, name, node)
         for owner, function in members(context.tree)
-        if (owner is not None and function.name in HOOKS)
+        if (owner is not None and function.name in HOOKS and is_test_class(owner))
         or (owner is None and function.name in MODULE_HOOKS)
-        for name, node in heavy_calls(function, context.aliases)
+        for name, node in heavy_calls(function, context)
     ]
 
 
@@ -168,7 +211,7 @@ def repeated_findings(context):
             continue
         if decorator_named(function, context.aliases, "fixture") is not None:
             continue
-        for name, node in heavy_calls(function, context.aliases):
+        for name, node in heavy_calls(function, context):
             key = (owner.name if owner else None, call_key(node))
             groups.setdefault(key, []).append((function, name, node))
     return [

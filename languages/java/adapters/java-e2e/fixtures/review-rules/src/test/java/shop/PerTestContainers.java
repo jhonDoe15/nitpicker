@@ -33,6 +33,10 @@ abstract class ContainerPerTestCases {
     assigned = new GenericContainer<>("redis:7");
     assigned.start(); // violation: ServerOrContainerPerTest
     new GenericContainer<>("redis:7").start(); // violation: ServerOrContainerPerTest
+    new GenericContainer<>("redis:7").withEnv("MODE", "test").start(); // violation: ServerOrContainerPerTest
+    var inferred = new PostgreSQLContainer<>("postgres:16");
+    inferred.start(); // violation: ServerOrContainerPerTest
+    SHARED.withEnv("MODE", "test").start();
     startCache();
   }
 

@@ -1,15 +1,10 @@
-import {
-  chainName,
-  classesOf,
-  enclosingClasses,
-  headerBefore,
-} from '../discovery/declarations.mjs';
+import { chainName, classesOf, headerBefore } from '../discovery/declarations.mjs';
 import { functionsOf } from '../discovery/functions.mjs';
-import { enclosingHosts, statementStart } from '../discovery/hosts.mjs';
+import { statementStart } from '../discovery/hosts.mjs';
 import { importsOf } from '../discovery/imports.mjs';
-import { isSpecType } from '../discovery/kotest/kotest-specs.mjs';
 import { testBodies } from '../discovery/test-units.mjs';
 import { closeOf, escaped } from '../discovery/text-scan.mjs';
+import { memberClass, ownerOf, perTestInstances, resolveReceiver } from './receivers.mjs';
 import { startSites } from './start-sites.mjs';
 import { declarationsOf, expressionEnd, imports } from './start-kinds.mjs';
 
@@ -27,6 +22,8 @@ const PROPERTY = /(?<![\w.`])(?:val|var)\s+([A-Za-z_]\w*)/gu;
 const PER_TEST_MODE =
   /(?<![\w`])(?:ContainerLifecycleMode\s*\.\s*Test|LifecycleMode\s*\.\s*EveryTest)\b/gu;
 const PER_TEST_LISTENER = /\.\s*perTest\s*\(\s*\)/gu;
+const ASSIGNED = String.raw`\s*=(?!=)`;
+const STOPPED = String.raw`\s*(?:!!)?\s*\??\.\s*(?:stop|close|shutdown)\s*\(`;
 const CONTAINER = 'org.testcontainers.junit.jupiter.Container';
 const RULE = 'org.junit.Rule';
 const REGISTER_EXTENSION = 'org.junit.jupiter.api.extension.RegisterExtension';
@@ -62,8 +59,6 @@ function inside(ranges, offset) {
 }
 
 function calledHelpers(scanned, hooks) {
-  const classes = classesOf(scanned);
-  const owner = (offset) => enclosingClasses(classes, offset).at(-1);
   return functionsOf(scanned).filter((fn) => {
     const call = new RegExp(
       String.raw`(?<![\w.\x60])(?:this\s*\.\s*)?${escaped(fn.name)}\s*\(`,
@@ -72,7 +67,7 @@ function calledHelpers(scanned, hooks) {
     return hooks.some(
       (hook) =>
         !inside([hook], fn.offset) &&
-        owner(hook.start) === owner(fn.offset) &&
+        ownerOf(scanned, hook.start) === ownerOf(scanned, fn.offset) &&
         [...scanned.code.slice(hook.start, hook.end).matchAll(call)].length > 0,
     );
   });
@@ -96,25 +91,7 @@ function lifecycle(scanned) {
   };
 }
 
-function memberClass(scanned, offset) {
-  const klass = enclosingClasses(classesOf(scanned), offset).at(-1);
-  if (klass === undefined) {
-    return undefined;
-  }
-  return enclosingHosts(scanned, klass.bodyOpen, offset).length === 1 ? klass : undefined;
-}
-
-function perTestInstances(klass) {
-  return (
-    klass?.kind === 'class' &&
-    !klass.supers.some(({ name }) => isSpecType(name)) &&
-    !klass.annotations.some(
-      ({ name, args }) => name === 'TestInstance' && args.includes('PER_CLASS'),
-    )
-  );
-}
-
-function mentions(scanned, ranges, name, tail) {
+function mentions(scanned, { ranges, name, tail }) {
   const pattern = new RegExp(
     String.raw`(?<![\w.\x60])(?:this\s*\.\s*)?${escaped(name)}${tail}`,
     'u',
@@ -122,21 +99,28 @@ function mentions(scanned, ranges, name, tail) {
   return ranges.some(({ start, end }) => pattern.test(scanned.code.slice(start, end)));
 }
 
-function isFresh(scanned, site, range, phases) {
-  if (site.receiver === undefined || site.always) {
+function sameOwner(scanned, ranges, offset) {
+  const owner = ownerOf(scanned, offset);
+  return ranges.filter(({ start }) => ownerOf(scanned, start) === owner);
+}
+
+function isFresh({ scanned, phases }, site, range) {
+  if (site.receiver === undefined) {
     return true;
   }
-  const declarations = declarationsOf(scanned).filter(({ name }) => name === site.receiver);
+  const resolved = resolveReceiver(scanned, site, range);
+  const kind = resolved?.declaration.kind;
+  if (kind === undefined) {
+    return false;
+  }
+  const hooks = sameOwner(scanned, phases.hooks, site.offset);
+  const teardowns = sameOwner(scanned, phases.teardowns, site.offset);
   return (
-    declarations.some(({ offset }) => range.start <= offset && offset < range.end) ||
-    mentions(scanned, phases.hooks, site.receiver, String.raw`\s*=(?!=)`) ||
-    mentions(
-      scanned,
-      phases.teardowns,
-      site.receiver,
-      String.raw`\s*(?:!!)?\s*\??\.\s*(?:stop|close|shutdown)\s*\(`,
-    ) ||
-    declarations.some(({ offset }) => perTestInstances(memberClass(scanned, offset)))
+    kind === 'always' ||
+    resolved.local ||
+    mentions(scanned, { ranges: hooks, name: site.receiver, tail: ASSIGNED }) ||
+    mentions(scanned, { ranges: teardowns, name: site.receiver, tail: STOPPED }) ||
+    perTestInstances(memberClass(scanned, resolved.declaration.offset))
   );
 }
 
@@ -152,17 +136,18 @@ function withoutComments(scanned, start, end) {
   return kept.replaceAll(/\s+/gu, ' ').trim();
 }
 
-function statementKey(scanned, offset) {
-  const start = statementStart(scanned.code, offset);
-  return withoutComments(scanned, start, expressionEnd(scanned, start));
+function statementKey(scanned, offset, range) {
+  const start = Math.max(statementStart(scanned.code, offset), range.start);
+  const end = Math.min(expressionEnd(scanned, start), range.end);
+  return withoutComments(scanned, start, end);
 }
 
 function siteKey(scanned, site, range) {
-  const local = declarationsOf(scanned).find(
-    ({ name, offset }) => name === site.receiver && range.start <= offset && offset < range.end,
-  );
-  const declared = local === undefined ? '' : `${statementKey(scanned, local.offset)} `;
-  return `${declared}${statementKey(scanned, site.offset)}`;
+  const resolved = site.receiver === undefined ? undefined : resolveReceiver(scanned, site, range);
+  const declared = resolved?.local
+    ? `${statementKey(scanned, resolved.declaration.offset, range)} `
+    : '';
+  return `${declared}${statementKey(scanned, site.offset, range)}`;
 }
 
 function report(scanned, offset, detail) {
@@ -170,20 +155,24 @@ function report(scanned, offset, detail) {
   return { offset, symbol, key: `${symbol}:${detail}` };
 }
 
-function hookStarts(scanned, sites, phases) {
+function hookStarts(context, sites) {
+  const { scanned, phases } = context;
   return sites.flatMap((site) => {
     const hook = phases.hooks.find(({ start, end }) => start <= site.offset && site.offset < end);
-    return hook !== undefined && isFresh(scanned, site, hook, phases)
+    const inProperty =
+      site.receiver === undefined && perTestInstances(memberClass(scanned, site.offset));
+    return inProperty || (hook !== undefined && isFresh(context, site, hook))
       ? [report(scanned, site.offset, `start:${site.name}`)]
       : [];
   });
 }
 
-function repeatedStarts(scanned, suites, sites, phases) {
+function repeatedStarts(context, suites, sites) {
+  const { scanned } = context;
   const keyed = testBodies(scanned, suites).flatMap((test) =>
     sites
       .filter(({ offset }) => test.body.start <= offset && offset < test.body.end)
-      .filter((site) => isFresh(scanned, site, test.body, phases))
+      .filter((site) => isFresh(context, site, test.body))
       .map((site) => ({
         site,
         test,
@@ -203,7 +192,9 @@ function repeatedStarts(scanned, suites, sites, phases) {
 function annotatedProperty(scanned, match) {
   const names = new Set(headerBefore(scanned, match.index).annotations.map(({ name }) => name));
   const klass = memberClass(scanned, match.index);
-  const heavy = declarationsOf(scanned).some(({ offset }) => offset === match.index);
+  const heavy = declarationsOf(scanned).some(
+    ({ offset, kind }) => offset === match.index && kind !== undefined,
+  );
   const initializer = scanned.code.slice(match.index, expressionEnd(scanned, match.index));
   return (
     (names.has('Container') && imports(scanned, CONTAINER) && perTestInstances(klass)) ||
@@ -236,12 +227,12 @@ function extensionReports(scanned) {
 
 export function perTestStarts(scanned, suites) {
   const sites = startSites(scanned);
-  const phases = lifecycle(scanned);
+  const context = { scanned, phases: lifecycle(scanned) };
   const found = [
     ...propertyReports(scanned),
     ...extensionReports(scanned),
-    ...hookStarts(scanned, sites, phases),
-    ...repeatedStarts(scanned, suites, sites, phases),
+    ...hookStarts(context, sites),
+    ...repeatedStarts(context, suites, sites),
   ];
   const seen = new Set();
   return found

@@ -273,4 +273,81 @@ class EngineTest {
 
     expect(starts(text)).toEqual([]);
   });
+
+  it('resolves a receiver in its own class, not a same-named property of another class', () => {
+    const text = `${JUNIT}import okhttp3.mockwebserver.MockWebServer
+
+@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+class SharedServerTest {
+    private val server = MockWebServer()
+
+    @BeforeEach
+    fun start() {
+        server.start()
+    }
+
+    @Test
+    fun calls() {}
+}
+
+class CompanionServerTest {
+    @BeforeEach
+    fun start() {
+        server.start()
+    }
+
+    @Test
+    fun calls() {}
+
+    companion object {
+        val server = MockWebServer()
+    }
+}
+
+class FreshServerTest {
+    private val server = MockWebServer()
+
+    @BeforeEach
+    fun start() {
+        server.start()
+    }
+
+    @Test
+    fun calls() {}
+}
+`;
+
+    expect(starts(text)).toEqual(['FreshServerTest@49']);
+  });
+
+  it('reports one-line tests, fluent chains, scope functions and started properties', () => {
+    const text = `${JUNIT}import okhttp3.mockwebserver.MockWebServer
+
+class FluentTest {
+    private val started = MockWebServer().apply { start() }
+
+    @BeforeEach
+    fun start() {
+        GenericContainer("redis:7").withEnv("A", "b").start()
+        GenericContainer("redis:7").also { it.start() }
+        MockWebServer().use { it.start() }
+    }
+
+    @Test
+    fun first() { MockWebServer().start() }
+
+    @Test
+    fun second() { MockWebServer().start() }
+}
+`;
+
+    expect(starts(text)).toEqual([
+      'FluentTest@18',
+      'FluentTest@22',
+      'FluentTest@23',
+      'FluentTest@24',
+      'FluentTest.first@28',
+      'FluentTest.second@31',
+    ]);
+  });
 });
