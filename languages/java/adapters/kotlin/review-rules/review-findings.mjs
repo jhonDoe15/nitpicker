@@ -3,6 +3,7 @@ import { enumPredicateFindings } from './main/enum-predicates.mjs';
 import { fanOutFindings } from './main/fan-out/fan-out.mjs';
 import { forwardingWrapperFindings } from './main/forwarding-wrappers.mjs';
 import { loadEffectFindings } from './main/load-effects.mjs';
+import { recursiveMapUpdateFindings } from './main/map-updates/recursive-map-update.mjs';
 import { singularPluralFindings } from './main/member-names.mjs';
 import { unboundedPoolFindings } from './main/thread-pools/unbounded-pools.mjs';
 import { unusedOptionFindings } from './main/unused-options/unused-options.mjs';
@@ -74,6 +75,7 @@ export function readKotlinReviewFindings(context) {
     ...validationTargetFindings(own, { finding }),
     ...loadEffectFindings(own, { finding, declaredIn: projectFiles }),
     ...unboundedPoolFindings(own, { finding }),
+    ...recursiveMapUpdateFindings(own, { finding, declaredIn: projectFiles }),
     ...unusedOptionFindings(own, {
       finding,
       build,
