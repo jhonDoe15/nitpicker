@@ -21,12 +21,21 @@ COPY_CONSTRUCTORS = {
 COPY_CALLS = {"copy.copy", "copy.deepcopy"}
 
 
-def is_copy(node, context):
+def unpacks(call, name):
+    return any(
+        keyword.arg is None
+        and isinstance(keyword.value, ast.Name)
+        and keyword.value.id == name
+        for keyword in call.keywords
+    )
+
+
+def is_copy(node, context, name):
     if isinstance(node, ast.Call):
         func = node.func
         if isinstance(func, ast.Name) and func.id in COPY_CONSTRUCTORS:
             return True
-        if any(keyword.arg is None for keyword in node.keywords):
+        if unpacks(node, name):
             return True
         if isinstance(func, ast.Attribute) and func.attr in {"copy", "__copy__"}:
             return True
@@ -71,7 +80,7 @@ def copy_positions(nodes, name, context):
             isinstance(target, ast.Name) and target.id == name
             for target in node.targets
         )
-        and is_copy(node.value, context)
+        and is_copy(node.value, context, name)
         and not under_test_of(node, name, context)
     ]
 
