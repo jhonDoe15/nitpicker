@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 249 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 250 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -947,6 +947,17 @@ Do not use hard coded values for cryptographic operations.
 - **Allowed form:** Read the key at run time from the deployment's secret store; keep no key bytes in source.
 - **Exception:** If this is intended, add `{"rule":"pmd/HardCodedCryptoKey","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_security.html#hardcodedcryptokey)
+
+<a id="pmd-httpwithouttimeout"></a>
+
+### `pmd/HttpWithoutTimeout`
+
+In main sources: an HTTP call with no deadline: `HttpRequest.newBuilder()`/`newBuilder(uri)` built without `.timeout(...)` in the chain or on the builder variable (a copy made with `newBuilder(request, filter)` keeps its timeout); `(HttpURLConnection) url.openConnection()`, or `openConnection()` on a URL built from `new URL(...)` or `uri.toURL()` in the same method, where the method never calls `setReadTimeout`; `openStream()` on such a URL; the no-argument Apache factories `HttpClients.createDefault()`, `createSystem()`, `createMinimal()` (classic 4.x and 5.x, and `HttpAsyncClients`); an Apache `HttpClients.custom()` or `HttpClientBuilder.create()` built without `setDefaultRequestConfig`, `setDefaultSocketConfig`, `setConnectionManager` or `setIOReactorConfig`; JAX-RS `ClientBuilder.newClient()` (`jakarta` and `javax`) without a `property(...)` call on it, and `ClientBuilder.newBuilder()` built without `readTimeout`, `property` or `withConfig`. A builder or connection handed to another method (a helper that sets the timeout) or returned unbuilt is not flagged, nor a URL from `getResource`, `toUri()`/`toURI()` or a non-HTTP literal, nor an Apache client passed to a Spring `HttpComponentsClientHttpRequestFactory` that gets `setReadTimeout`.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** Give the call a deadline: HttpRequest.newBuilder(uri).timeout(Duration.ofSeconds(10)) for java.net.http, setConnectTimeout and setReadTimeout on an HttpURLConnection, setDefaultRequestConfig(RequestConfig.custom().setResponseTimeout(...)) on the Apache client builder, connectTimeout and readTimeout on a JAX-RS ClientBuilder, or OkHttp, which sets timeouts by default. This HTTP call has no timeout, so a server that never answers hangs it for good.
+- **Exception:** If this is intended, add `{"rule":"pmd/HttpWithoutTimeout","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-idempotentoperations"></a>
 
