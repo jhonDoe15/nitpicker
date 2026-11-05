@@ -214,7 +214,9 @@ export const rule = {
           report(context, node, key);
         }
       },
-      ObjectExpression: (node) => checkFactoryResult(scope, node),
+      ObjectExpression(node) {
+        checkFactoryResult(scope, node);
+      },
       NewExpression(node) {
         if (isSequelizeConstruction(scope, node)) {
           checkDefaultLogging(scope, node, 'new Sequelize(...)');

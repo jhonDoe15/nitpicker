@@ -66,7 +66,7 @@ function statementBindings(statement) {
   });
 }
 
-export function isOrmModule(source) {
+function isOrmModule(source) {
   return FAMILIES.some(([, matches]) => matches(source));
 }
 
@@ -86,7 +86,7 @@ export function ormLocals(scope, name) {
   return new Set(locals);
 }
 
-export function rootName(node) {
+function rootName(node) {
   const steps = chainOf(unwrapped(node), (current) => {
     if (current.type === 'MemberExpression') {
       return unwrapped(current.object);

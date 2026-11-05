@@ -47,7 +47,9 @@ function reachedSegments(scripts, start) {
     const next = own
       .flatMap((segment) => calledScripts(scripts, segment))
       .filter((called) => !visited.has(called) && visited.size < MAX_SCRIPTS);
-    next.forEach((called) => visited.add(called));
+    for (const called of next) {
+      visited.add(called);
+    }
     pending.push(...next);
   }
   return segments;
