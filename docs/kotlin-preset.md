@@ -142,11 +142,18 @@ Kotlin classes (see [Mutation](#mutation)), and jdeps reads every main class dir
 - **Identity.** The message text through `partialFingerprints["nitpicker/subject"]`, like PMD,
   with every number replaced by `#`: it names the offending member where detekt says so
   (``Private property `unused` is unused.``), and repeats of one message in a file get `#2`, `#3`
-  in report order. A line never takes part, so a moved finding stays baselined. A measured value
-  does not take part either (`LongMethod`: "too long (62)", `TooManyFunctions`, complexity,
-  nesting depth), so a legacy finding that improves or stays the same stays baselined and only a
-  finding that is new fails. A legacy finding whose value gets worse is not new either; limits on
-  size and complexity are the structure analyzer's job (KT3).
+  in report order. A line never takes part, so a moved finding stays baselined.
+- **Counts.** A count rule holds a legacy finding at its base count, like the structure limits: the
+  count and the function around the finding go into the identity (`|in:<function>|value:<n>`) and
+  the ratchet key, and a finding whose count did not grow stays
+  baselined while one that grew fails with `Return statements grew from 3 to 4. Put the new code in a
+  new function.` before detekt's message. The count comes from the message (`ReturnCount`, `LongMethod`: "too long (62)",
+  `CyclomaticComplexMethod`, `CognitiveComplexMethod`, `ComplexCondition`, `TooManyFunctions`,
+  `NestedScopeFunctions`, `MethodOverloading`, `DestructuringDeclarationWithTooManyEntries`), or,
+  for the rules whose message leaves it out (`ThrowsCount`, `NestedBlockDepth`, `LargeClass`,
+  `LoopWithTooManyJumpStatements`, `LongParameterList`), from the Kotlin parser step, which measures
+  it as detekt does at the position detekt reports. Renaming a parameter of a long parameter list
+  keeps the finding; adding one fails.
 - **Exceptions.** Two routes, as in the Java preset. Every detekt finding, one-way rule or not, ends
   with the shared exception sentence for its rule as the finding prints it (`If this is intended, add {"rule":"detekt.style.MagicNumber","paths":[...],"reason":"..."} to "exceptions" in nitpicker.config.json.`),
   the same sentence the Java and TypeScript findings end with: an `exceptions` entry lifts that rule

@@ -27,6 +27,8 @@ Everything in `SKILL.md` still applies to the lines you add.
   unchanged, also when you edit its line. Many messages name the field, method or class, so
   renaming that symbol makes its findings new: fix them in the same change. Another finding of the
   same rule in the same file is new, and the report may place it on the legacy line.
+- A count finding (a repeated literal, a method length or complexity) stays baselined while its
+  count does not grow; any increase fails.
 - Moving a file to another package keeps its PMD, Error Prone, CRAP, size and mutation findings;
   its Checkstyle findings and those that name the class (`coupling/test-only-export`) count as new.
   Don't move or rename a file the task doesn't need moved.
