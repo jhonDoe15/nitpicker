@@ -146,18 +146,22 @@ function piped(context, call, before) {
   return grouped ? { grouped } : { source: callee.object };
 }
 
+function stepTarget(context, step, depth) {
+  return step?.source === undefined || depth > MAX_DEPTH
+    ? undefined
+    : skipped(resolveConstant(context, skipped(step.source)));
+}
+
 function upstream(context, first) {
   const pending = [first];
   for (const step of pending) {
-    const target =
-      step?.source === undefined || pending.length > MAX_DEPTH
-        ? undefined
-        : skipped(resolveConstant(context, skipped(step.source)));
+    const target = stepTarget(context, step, pending.length);
+    const collection =
+      target?.type === 'CallExpression' ? creationSource(context, target) : undefined;
+    if (collection !== undefined) {
+      return collection;
+    }
     if (target?.type === 'CallExpression') {
-      const collection = creationSource(context, target);
-      if (collection !== undefined) {
-        return collection;
-      }
       pending.push(piped(context, target, undefined));
     }
   }
