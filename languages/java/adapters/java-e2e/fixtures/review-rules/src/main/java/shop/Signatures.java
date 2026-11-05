@@ -1,6 +1,7 @@
 package shop;
 
 import java.text.SimpleDateFormat;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Calendar;
@@ -121,6 +122,14 @@ public final class Signatures {
 
   public static Calendar localized() {
     return Calendar.getInstance(Locale.ROOT); // violation: LegacyCalendarApi
+  }
+
+  public static ZoneId serverZone() {
+    return ZoneId.systemDefault(); // violation: DefaultTimeZone
+  }
+
+  public static String serverZoneId() {
+    return TimeZone.getDefault().getID(); // violation: DefaultTimeZone
   }
 
   public static SimpleDateFormat utcFormat() {

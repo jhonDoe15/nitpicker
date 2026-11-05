@@ -95,7 +95,8 @@ To learn why a rule is on and what form it allows before you write or change cod
   (`pmd/CompatibilityShim`; a Javadoc `@deprecated` without the annotation is no way around it).
   Time comes from `java.time` with a `Clock` or a zone; `Calendar.getInstance()`,
   `new GregorianCalendar()` and `new SimpleDateFormat(...)` without a time zone are flagged
-  (`pmd/LegacyCalendarApi`).
+  (`pmd/LegacyCalendarApi`), and so are `ZoneId.systemDefault()` and `TimeZone.getDefault()`
+  (`pmd/DefaultTimeZone`).
 - Data and results: `record` for data, a `sealed interface` of records for an outcome, and an
   exhaustive `switch` expression over it. A `switch` statement needs `default`.
 - Enums: to sort the constants of one of your enums into two groups, classify every constant: a
