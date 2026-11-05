@@ -194,6 +194,11 @@ describe.skipIf(!enabled)('parameter-mutation', () => {
         'from typing import TypedDict\n\n\nclass Movie(TypedDict):\n    title: str\n\n\nclass Box:\n    title: str\n\n\ndef rename(movie: Movie, box: Box) -> Movie:\n    box.title = "x"\n    return {**movie, "title": "x"}\n\n\ndef retitle(movie: Movie) -> Movie:\n    movie = Movie(**movie)\n    movie["title"] = "x"\n    return movie\n',
         [],
       ],
+      [
+        'a call that unpacks something else is not a copy',
+        'from typing import TypedDict\n\n\nclass Movie(TypedDict):\n    title: str\n\n\ndef keep(movie: Movie, **extra: str) -> Movie:\n    return movie\n\n\ndef retitle(movie: Movie, extra: dict[str, str]) -> None:\n    movie = keep(movie, **extra)\n    movie["title"] = "x"\n',
+        ['parameter-mutation:14 movie[...] (retitle)'],
+      ],
     ]);
     expect(actual).toEqual(expected);
   });

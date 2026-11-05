@@ -77,6 +77,7 @@ tester.run('no-parameter-mutation', rule, {
     'export function run(user: { name: string }) { const fill = (target: { name: string }) => { target.name = "x"; }; fill(user); }',
     'export function rename(user: { name: string }) { let next = user; next = { ...next }; next.name = "x"; return next; }',
     'export function count(input: { items: string[] }) { return input.items.length; }',
+    'export function fill(o: { size?: number }) { o = { ...o }; o.size ||= 1; return o; }',
     'export function rename(state: { items: string[] }) { state.items.length; }',
     'export function total(items: number[]) { return items.reduce((sum, item) => sum + item, 0); }',
     'export function index(items: string[]) { return items.reduce((table: Record<string, number>, item) => { table[item] = 1; return table; }, {}); }',
@@ -173,6 +174,10 @@ tester.run('no-parameter-mutation property writes', rule, {
     written(
       'export function fill(o: { inner: { size?: number } }) { Object.assign(o.inner, { size: 1 }); }',
       'Object.assign(o.inner, …)',
+    ),
+    written(
+      'export function fill(options: { size?: number }) { const o = options; Object.assign(o, { size: 1 }); }',
+      'Object.assign(o, …)',
     ),
     written(
       'interface Options { length?: number }\nexport function fill(options: Options) { options.length ??= 8; }',

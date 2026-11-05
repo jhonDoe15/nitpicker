@@ -641,6 +641,9 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   are the norm. The allowed form is a new object (`{ ...options, retries: 3 }`) or a copy first
   (`const next = { ...options }`, `options = { ...options }` or `Object.assign({}, options)`).
   A function that fills an object its caller hands it to be filled takes a config exception.
+  The same aliases and nested named properties apply to the indexed and mutating-method forms
+  (`const list = items; list.push(x)`, `input.items.push(x)`, `input.items[0] = x`), with the
+  same project or anonymous type check on each named step.
   `domain/` files keep the stricter
   `no-mutating-method-in-domain` and do not get this rule. The shared method tables are in
   `eslint-plugin/rules/analysis/mutation/mutating-methods.mjs`.
