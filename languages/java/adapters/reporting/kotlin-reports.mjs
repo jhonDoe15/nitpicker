@@ -7,7 +7,7 @@ import { KOTLIN_REPORTS } from '../kotlin/report-names/kotlin-report-names.mjs';
 import { readKotlinClassLimitFindings } from '../kotlin/kotlin-class-limits.mjs';
 import { withDetektCountRatchets } from '../kotlin/detekt/detekt-counts.mjs';
 import { functionUnitLocator } from './function-locator.mjs';
-import { readSarifReport, springRoots } from './sarif/sarif-reports.mjs';
+import { readSarifReport } from './sarif/sarif-reports.mjs';
 import { kotlinFormatAdvice } from '../kotlin/style/kotlin-format-advice.mjs';
 import {
   readKotlinCrapFindings,
@@ -31,7 +31,8 @@ import {
   readKotlinReviewFindings,
 } from '../kotlin/review-rules/review-findings.mjs';
 import { withoutCoveredSourceFindings } from '../kotlin/review-rules/spring/spring-findings.mjs';
-import { withoutTransactionAwareCacheWrites } from '../spring/caches/transaction-aware.mjs';
+import { withoutTransactionAwareCacheWrites } from '../spring/transactions/transaction-aware.mjs';
+import { springRoots } from '../spring/transactions/transaction-filters.mjs';
 
 const DETEKT_TOOL = 'detekt';
 const DETEKT_REPORT = 'detekt.sarif';

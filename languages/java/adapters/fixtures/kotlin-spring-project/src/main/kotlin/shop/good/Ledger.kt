@@ -27,6 +27,20 @@ interface EntryRepository : JpaRepository<Shipment, Long> {
     fun deleteCandidates(status: Status): List<Shipment>
 
     override fun deleteById(id: Long)
+
+    @Query("select s from Shipment s where s.id > :id")
+    fun updatedSince(id: Long): List<Shipment>
+}
+
+@Transactional
+abstract class EntryBase
+
+@Service
+class InheritedEntries(private val entries: EntryRepository) : EntryBase() {
+    fun move(from: Shipment, to: Shipment) {
+        entries.save(from)
+        entries.save(to)
+    }
 }
 
 @Service
@@ -57,6 +71,42 @@ class EntryService(
         } catch (e: IllegalStateException) {
             entries.save(failure)
         }
+    }
+
+    fun guard(shipment: Shipment, skip: Boolean) {
+        if (skip) {
+            entries.save(shipment)
+            return
+        }
+        entries.delete(shipment)
+    }
+
+    fun check(shipment: Shipment, failure: Shipment, broken: Boolean) {
+        if (broken) {
+            entries.save(failure)
+            throw IllegalStateException("broken")
+        }
+        entries.save(shipment)
+    }
+
+    fun choose(first: Shipment, second: Shipment, early: Boolean): Shipment =
+        if (early) entries.save(first) else entries.save(second)
+
+    fun branch(shipment: Shipment, keep: Boolean) {
+        if (keep) {
+            entries.save(shipment)
+        } else {
+            forget(shipment)
+        }
+    }
+
+    fun recent(id: Long): List<Shipment> {
+        entries.updatedSince(id)
+        return entries.updatedSince(id + 1)
+    }
+
+    private fun forget(shipment: Shipment) {
+        entries.delete(shipment)
     }
 
     fun once(items: List<Shipment>) {
@@ -118,9 +168,21 @@ class EntryCache(
         return found
     }
 
+    @Transactional(propagation = Propagation.SUPPORTS)
+    fun peek(name: String, shipment: Shipment): Shipment {
+        caches.getCache("prices")?.put(name, shipment)
+        return shipment
+    }
+
     @Transactional(propagation = Propagation.NOT_SUPPORTED)
     fun outside(name: String, shipment: Shipment) {
         recent.put(name, entries.save(shipment))
+    }
+
+    companion object {
+        fun prime(cache: Cache<String, Shipment>, shipment: Shipment) {
+            cache.put("first", shipment)
+        }
     }
 
     private fun afterCommit(action: () -> Unit) {

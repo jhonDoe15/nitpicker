@@ -1,4 +1,4 @@
-import { annotationIn, argumentOf, isTrue } from '../spring-names.mjs';
+import { annotationIn, argumentOf, isTrue, typeName } from '../spring-names.mjs';
 import { acceptsArguments, entriesOf, isSelfCall, ownerOf } from '../spring-scopes.mjs';
 import { JAKARTA_TRANSACTIONAL, SPRING_TRANSACTIONAL } from '../spring-types.mjs';
 import { TEMPLATE_CALLS, TRANSACTION_TEMPLATES } from './transaction-types.mjs';
@@ -90,14 +90,41 @@ function calledFrom(view, fn, accepts) {
   );
 }
 
-export function helpersOf(view, fn) {
-  return view.file.functions.filter(
-    (helper) =>
-      helper !== fn &&
-      helper.owner === fn.owner &&
-      helper.visibility !== 'public' &&
-      calledFrom(view, helper, (place) => place.fn === fn),
-  );
+export function helperCalls(view, fn) {
+  return view.file.invocations.flatMap((invocation) => {
+    if (!isSelfCall(view, invocation) || placeOf(view, invocation.scope).fn !== fn) {
+      return [];
+    }
+    const helper = view.file.functions.find(
+      (candidate) =>
+        candidate !== fn &&
+        candidate.name === invocation.name &&
+        candidate.owner === fn.owner &&
+        candidate.visibility !== 'public' &&
+        acceptsArguments(candidate, invocation.arguments.length),
+    );
+    return helper === undefined ? [] : [{ call: invocation, helper }];
+  });
+}
+
+const TRANSACTIONAL_NAME = /(?:^|\.)Transactional$/u;
+const SEARCH_LIMIT = 16;
+
+export function inheritsTransactional(view, declared) {
+  const queue = [declared];
+  for (const current of queue) {
+    if (
+      current !== declared &&
+      current.annotations.some(({ type, name }) => TRANSACTIONAL_NAME.test(type ?? name))
+    ) {
+      return true;
+    }
+    const supers = (current.supers ?? [])
+      .map((type) => view.projectClass(typeName(type))?.declared)
+      .filter((next) => next !== undefined && !queue.includes(next));
+    queue.push(...(queue.length < SEARCH_LIMIT ? supers : []));
+  }
+  return false;
 }
 
 export function inWritingTransaction(view, scopeId) {

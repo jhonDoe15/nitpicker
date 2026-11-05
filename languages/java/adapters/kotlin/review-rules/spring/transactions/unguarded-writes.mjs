@@ -1,7 +1,7 @@
 import { INHERITED_METHODS, JPA_QUERY, MODIFYING, NATIVE_QUERY } from '../data/data-types.mjs';
 import { annotationIn } from '../spring-names.mjs';
 import { entriesOf, has, report } from '../spring-scopes.mjs';
-import { anyTransactional, helpersOf, placeOf } from './scope.mjs';
+import { anyTransactional, helperCalls, inheritsTransactional, placeOf } from './scope.mjs';
 import {
   BEANS,
   JPA_REPOSITORY,
@@ -26,6 +26,7 @@ function repositoryWritesWithoutTransaction(view) {
   return view.file.classes
     .filter((declared) => declared.kind === 'interface' && view.isRepository(declared.qualified))
     .filter((declared) => !anyTransactional(view, declared.annotations))
+    .filter((declared) => !inheritsTransactional(view, declared))
     .flatMap((declared) =>
       view
         .functionsOf(declared.qualified)
@@ -44,19 +45,33 @@ function usesOperator(view, fn) {
   );
 }
 
-function writeSites(view, fn) {
-  const owners = new Set([fn, ...helpersOf(view, fn)]);
+function directWrites(view, fn) {
   return view.file.invocations.filter(
-    (invocation) =>
-      owners.has(placeOf(view, invocation.scope).fn) && databaseWrite(view, invocation),
+    (invocation) => placeOf(view, invocation.scope).fn === fn && databaseWrite(view, invocation),
+  );
+}
+
+function armsOf(site) {
+  return (site.arms ?? []).map((entry) => {
+    const [at, arm, end] = entry.split(':');
+    return { at, arm, end: end === undefined ? undefined : Number(end) };
+  });
+}
+
+function leaves(left, right) {
+  const shared = new Set(armsOf(right).map(({ at }) => at));
+  return armsOf(left).some(
+    ({ at, end }) => end !== undefined && !shared.has(at) && right.line > end,
   );
 }
 
 function exclusive(left, right) {
-  const arms = new Map((left.arms ?? []).map((entry) => entry.split(':')));
-  return (right.arms ?? [])
-    .map((entry) => entry.split(':'))
-    .some(([at, arm]) => arms.has(at) && arms.get(at) !== arm);
+  const arms = new Map(armsOf(left).map(({ at, arm }) => [at, arm]));
+  return (
+    armsOf(right).some(({ at, arm }) => arms.has(at) && arms.get(at) !== arm) ||
+    leaves(left, right) ||
+    leaves(right, left)
+  );
 }
 
 function writesTwice(sites) {
@@ -65,17 +80,26 @@ function writesTwice(sites) {
   );
 }
 
+function writesMoreThanOnce(view, fn) {
+  const calls = helperCalls(view, fn).filter(({ helper }) => directWrites(view, helper).length > 0);
+  return (
+    writesTwice([...directWrites(view, fn), ...calls.map(({ call }) => call)]) ||
+    calls.some(({ helper }) => writesTwice(directWrites(view, helper)))
+  );
+}
+
 function multiWrites(view) {
   return view.file.classes
     .filter((declared) => declared.kind === 'class')
     .filter((declared) => annotationIn(view.resolve, declared.annotations, BEANS) !== undefined)
     .filter((declared) => !anyTransactional(view, declared.annotations))
+    .filter((declared) => !inheritsTransactional(view, declared))
     .flatMap((declared) =>
       view
         .functionsOf(declared.qualified)
         .filter((fn) => fn.visibility === 'public' && fn.hasBody !== false)
         .filter((fn) => !anyTransactional(view, entriesOf(fn)) && !usesOperator(view, fn))
-        .filter((fn) => writesTwice(writeSites(view, fn)))
+        .filter((fn) => writesMoreThanOnce(view, fn))
         .map((fn) =>
           report('SpringMultiWriteWithoutTransaction', fn, `${declared.qualified}.${fn.name}`),
         ),

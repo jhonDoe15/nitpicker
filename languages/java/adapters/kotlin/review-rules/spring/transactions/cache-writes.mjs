@@ -19,6 +19,7 @@ import { databaseWrite } from './writes.mjs';
 const GET_CACHE = /^(.+?)\.getCache\(.*\)$/su;
 const AS_MAP = /^(.+?)\.asMap\(\)$/su;
 const THIS = /^this\./u;
+const LEADING = /^\w+(?=\.)/u;
 
 function typeAt(view, invocation, text) {
   return text === undefined ? undefined : view.typeOf(invocation.scope, text);
@@ -32,10 +33,12 @@ function springCacheWrite(view, invocation) {
   if (!SPRING_CACHE_WRITES.has(invocation.name)) {
     return false;
   }
-  const manager = GET_CACHE.exec(invocation.receiver ?? '')?.[1];
+  const receiver = view.receiverOf(invocation);
+  const at = { scope: receiver?.scope ?? invocation.scope };
+  const manager = GET_CACHE.exec(receiver?.text ?? '')?.[1];
   return (
-    isA(view, typeAt(view, invocation, invocation.receiver), SPRING_CACHE) ||
-    isA(view, typeAt(view, invocation, manager), CACHE_MANAGER)
+    isA(view, typeAt(view, at, receiver?.text), SPRING_CACHE) ||
+    isA(view, typeAt(view, at, manager), CACHE_MANAGER)
   );
 }
 
@@ -52,11 +55,15 @@ function writeTexts(view, invocation) {
 
 function fromWrite(view, invocation) {
   const texts = writeTexts(view, invocation);
-  return invocation.arguments.some(({ text }) =>
-    texts.some((written) =>
-      written.endsWith('(') || written.includes('::') ? text.includes(written) : text === written,
-    ),
-  );
+  return invocation.arguments.some(({ text }) => {
+    const lead = LEADING.exec(text)?.[0];
+    return (
+      (lead !== undefined && texts.includes(lead)) ||
+      texts.some((written) =>
+        written.endsWith('(') || written.includes('::') ? text.includes(written) : text === written,
+      )
+    );
+  });
 }
 
 function memoField(view, invocation) {

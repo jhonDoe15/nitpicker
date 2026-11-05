@@ -30,36 +30,51 @@ function ledger(folder) {
     .map(({ location, rule, symbol }) => `${String(location.line)} ${rule} ${symbol}`);
 }
 
-function javaRules() {
+function javaRules({ raw = false } = {}) {
   const text = readFileSync(RULESET, 'utf8');
   return new Map(
-    [...text.matchAll(RULE_BODY)].map(([body, name]) => [name, body.replaceAll(/\s+/gu, ' ')]),
+    [...text.matchAll(RULE_BODY)].map(([body, name]) => [
+      name,
+      raw ? body : body.replaceAll(/\s+/gu, ' '),
+    ]),
   );
+}
+
+function definition(body, name) {
+  return new RegExp(String.raw`\$${name} := (function\([\s\S]*?\n\})`, 'u').exec(body)?.[1];
 }
 
 describe('Spring writes and transactions in Kotlin', () => {
   it('reports writes without a transaction and cache writes inside one', () => {
     expect(ledger('bad')).toEqual([
-      '22 SpringDataWriteWithoutTransaction EntryRepository.reset',
-      '24 SpringDataWriteWithoutTransaction EntryRepository.deleteByVersion',
-      '24 SpringDataDerivedQuery EntryRepository.deleteByVersion',
-      '26 SpringDataWriteWithoutTransaction EntryRepository.removeAllByVersion',
-      '26 SpringDataDerivedQuery EntryRepository.removeAllByVersion',
-      '30 SpringDataDerivedQuery EntryNotes.deleteByVersion',
-      '40 SpringMultiWriteWithoutTransaction EntryService.move',
-      '45 SpringMultiWriteWithoutTransaction EntryService.replace',
-      '50 SpringMultiWriteWithoutTransaction EntryService.settle',
-      '55 SpringMultiWriteWithoutTransaction EntryService.purge',
-      '76 SpringCacheWriteInTransaction EntryCache.reprice.put',
-      '77 SpringCacheWriteInTransaction EntryCache.reprice.evict',
-      '81 SpringLocalCacheWriteInTransaction EntryCache.remember.put',
-      '82 SpringLocalCacheWriteInTransaction EntryCache.remember.remove',
-      '83 SpringLocalCacheWriteInTransaction EntryCache.remember.set',
-      '85 SpringLocalCacheWriteInTransaction EntryCache.remember.putIfAbsent',
-      '86 SpringLocalCacheWriteInTransaction EntryCache.remember.getOrPut',
-      '91 SpringCacheWriteInTransaction EntryCache.refresh',
-      '94 SpringLocalCacheWriteInTransaction EntryCache.note.invalidate',
-      '107 SpringLocalCacheWriteInTransaction EntryJobs.run.invalidate',
+      '25 SpringDataWriteWithoutTransaction EntryRepository.reset',
+      '27 SpringDataWriteWithoutTransaction EntryRepository.deleteByVersion',
+      '27 SpringDataDerivedQuery EntryRepository.deleteByVersion',
+      '29 SpringDataWriteWithoutTransaction EntryRepository.removeAllByVersion',
+      '29 SpringDataDerivedQuery EntryRepository.removeAllByVersion',
+      '33 SpringDataDerivedQuery EntryNotes.deleteByVersion',
+      '44 SpringMultiWriteWithoutTransaction EntryService.move',
+      '49 SpringMultiWriteWithoutTransaction EntryService.replace',
+      '54 SpringMultiWriteWithoutTransaction EntryService.settle',
+      '59 SpringMultiWriteWithoutTransaction EntryService.purge',
+      '64 SpringMultiWriteWithoutTransaction EntryService.tidy',
+      '72 SpringMultiWriteWithoutTransaction EntryService.forgetBoth',
+      '77 SpringMultiWriteWithoutTransaction EntryService.expire',
+      '99 SpringCacheWriteInTransaction EntryCache.reprice.put',
+      '100 SpringCacheWriteInTransaction EntryCache.reprice.evict',
+      '104 SpringLocalCacheWriteInTransaction EntryCache.remember.put',
+      '105 SpringLocalCacheWriteInTransaction EntryCache.remember.remove',
+      '106 SpringLocalCacheWriteInTransaction EntryCache.remember.set',
+      '108 SpringLocalCacheWriteInTransaction EntryCache.remember.putIfAbsent',
+      '109 SpringLocalCacheWriteInTransaction EntryCache.remember.getOrPut',
+      '110 SpringLocalCacheWriteInTransaction EntryCache.remember.set',
+      '111 SpringLocalCacheWriteInTransaction EntryCache.remember.putAll',
+      '112 SpringLocalCacheWriteInTransaction EntryCache.remember.invalidateAll',
+      '113 SpringCacheWriteInTransaction EntryCache.remember.evict',
+      '118 SpringCacheWriteInTransaction EntryCache.refresh',
+      '121 SpringCacheWriteInTransaction EntryCache.rename',
+      '124 SpringLocalCacheWriteInTransaction EntryCache.note.invalidate',
+      '137 SpringLocalCacheWriteInTransaction EntryJobs.run.invalidate',
     ]);
   });
 
@@ -69,7 +84,7 @@ describe('Spring writes and transactions in Kotlin', () => {
 
   it('shares one write list with the Java rules', () => {
     const quoted = REPOSITORY_WRITES.map((name) => `'${name}'`).join(', ');
-    const verb = WRITE_VERB.source.replace('(?:', '(');
+    const verb = WRITE_VERB.source.replaceAll('(?:', '(');
     const rules = javaRules();
     const users = [
       'SpringTransactionalReadOnlyWrite',
@@ -78,6 +93,24 @@ describe('Spring writes and transactions in Kotlin', () => {
     ];
 
     expect(users.filter((name) => !rules.get(name).includes(quoted))).toEqual([]);
-    expect(users.filter((name) => !rules.get(name).includes(`'${verb}'`))).toEqual([]);
+    expect(
+      [...users, 'SpringDataRowWriteInLoop'].filter(
+        (name) => !rules.get(name).includes(`'${verb}'`),
+      ),
+    ).toEqual([]);
+  });
+
+  it.each([
+    ['write', ['SpringMultiWriteWithoutTransaction', 'SpringLocalCacheWriteInTransaction']],
+    ...['writing', 'runsInTransaction', 'inTransaction'].map((name) => [
+      name,
+      ['SpringCacheWriteInTransaction', 'SpringLocalCacheWriteInTransaction'],
+    ]),
+  ])('keeps the Java $%s function the same in every rule that copies it', (name, users) => {
+    const rules = javaRules({ raw: true });
+    const copies = users.map((rule) => definition(rules.get(rule), name));
+
+    expect(copies.map((copy) => copy?.startsWith('function('))).toEqual(users.map(() => true));
+    expect(new Set(copies).size).toBe(1);
   });
 });
