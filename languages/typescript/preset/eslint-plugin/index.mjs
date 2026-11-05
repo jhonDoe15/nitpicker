@@ -63,6 +63,7 @@ import { rule as reactTestNoImplementationDetails } from './rules/react-tests/re
 
 import { rule as unboundedFanOut } from './rules/concurrency/unbounded-fan-out.mjs';
 import { rule as unboundedReactiveFanOut } from './rules/concurrency/reactive/unbounded-reactive-fan-out.mjs';
+import { rule as requireErrorListener } from './rules/events/require-error-listener.mjs';
 import { rule as noModuleLevelMutableState } from './rules/guards/no-module-level-mutable-state.mjs';
 import { rule as noProcessAccessOutsideCompositionRoot } from './rules/guards/no-process-access-outside-composition-root.mjs';
 import { rule as noShellStringCommand } from './rules/guards/no-shell-string-command.mjs';
@@ -111,6 +112,7 @@ export const nitpickerRules = {
     'no-sql-string-building': noSqlStringBuilding,
     'no-unsafe-deserialization': noUnsafeDeserialization,
     'no-weak-hash': noWeakHash,
+    'require-error-listener': requireErrorListener,
     'require-http-timeout': requireHttpTimeout,
     'no-unknown-main-folder': noUnknownMainFolder,
     'unbounded-fan-out': unboundedFanOut,
