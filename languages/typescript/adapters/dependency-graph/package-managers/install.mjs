@@ -69,8 +69,20 @@ export function installDependencies(packageManager, platform = process.platform)
   return { ok: result.error === undefined && result.status === 0, detail: failureDetail(result) };
 }
 
-export function failureMessage(packageManager, detail) {
-  return `${FAILURE_PREFIX} with ${packageManager.name}: ${detail}`;
+const NPM_10_PEER_CRASH = "reading 'edgesOut'";
+const NPM_10_HINT =
+  'npm 10 cannot resolve the optional peer dependencies of Vitest 4. Update npm with `npm install --global npm@11` and run nitpicker again.';
+
+function missingLocalPackagesHint(missing) {
+  return `The base depends on local packages that nitpicker did not find for it: ${missing.join(', ')}.`;
+}
+
+export function failureMessage(packageManager, detail, missingLocalPackages = []) {
+  const hints = [
+    ...(detail.includes(NPM_10_PEER_CRASH) ? [NPM_10_HINT] : []),
+    ...(missingLocalPackages.length > 0 ? [missingLocalPackagesHint(missingLocalPackages)] : []),
+  ];
+  return [`${FAILURE_PREFIX} with ${packageManager.name}: ${detail}`, ...hints].join('\n');
 }
 
 export function missingDependenciesMessage(packageManager, dependencyPath) {

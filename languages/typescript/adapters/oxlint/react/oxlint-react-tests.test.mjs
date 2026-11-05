@@ -81,8 +81,8 @@ const OXLINT_TIMEOUT_MS = 30_000;
 describe('the React test rules under the oxlint engine', () => {
   let results;
 
-  beforeAll(() => {
-    results = lintWithOxlint({
+  beforeAll(async () => {
+    results = await lintWithOxlint({
       options: { projectRoot: root, patterns: ['test/**/*.ts', 'test/**/*.tsx'] },
       environment: {
         ...process.env,

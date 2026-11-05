@@ -23,7 +23,7 @@ afterAll(() => {
 });
 
 describe('lintWithOxlint with tsconfig baseUrl', () => {
-  it.each(PROJECTS)('resolves aliases for $name', ({ target }) => {
+  it.each(PROJECTS)('resolves aliases for $name', async ({ target }) => {
     const root = createProject('nitpicker-oxlint-baseurl-test-', {
       'policy.mjs': TYPED_POLICY,
       'tsconfig.json': JSON.stringify({
@@ -39,7 +39,7 @@ describe('lintWithOxlint with tsconfig baseUrl', () => {
     });
     roots.push(root);
 
-    const results = lintProject({
+    const results = await lintProject({
       root,
       patterns: ['src/consumer.ts'],
       projectConfigName: 'tsconfig.nitpicker.json',
