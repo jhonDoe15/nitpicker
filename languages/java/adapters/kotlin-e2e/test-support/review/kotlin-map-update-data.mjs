@@ -1,16 +1,17 @@
 import { readFileSync } from 'node:fs';
 import path from 'node:path';
 
-const SOURCES = [
-  'src/main/kotlin/demo/orders/InFlight.kt',
-  'src/main/kotlin/demo/orders/Batches.kt',
-];
-const PROJECT = path.resolve(import.meta.dirname, '../../../fixtures/kotlin-map-update-project');
+const SOURCES = path.resolve(
+  import.meta.dirname,
+  '../../../fixtures/kotlin-map-update-project/src/main/kotlin/demo/orders',
+);
+const MAIN = 'src/main/kotlin/demo/orders';
 
 export function mapUpdateFiles() {
-  return Object.fromEntries(
-    SOURCES.map((source) => [source, readFileSync(path.join(PROJECT, source), 'utf8')]),
-  );
+  return {
+    [`${MAIN}/InFlight.kt`]: readFileSync(path.join(SOURCES, 'InFlight.kt'), 'utf8'),
+    [`${MAIN}/Batches.kt`]: readFileSync(path.join(SOURCES, 'Batches.kt'), 'utf8'),
+  };
 }
 
 export const MAP_UPDATE_FINDINGS = [
