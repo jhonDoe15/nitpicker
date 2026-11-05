@@ -24,7 +24,7 @@ public final class Links {
   }
 
   public static URI cover(String path) {
-    return URI.create(path); // violation: UriCreateDynamic
+    return URI.create(path.strip()); // violation: UriCreateDynamic
   }
 
   public static URI joined(String path) {
