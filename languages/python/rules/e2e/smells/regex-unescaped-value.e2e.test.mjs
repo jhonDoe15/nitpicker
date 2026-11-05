@@ -45,6 +45,11 @@ describe.skipIf(!enabled)('regex-unescaped-value', () => {
         'from re import findall\n\n\ndef words(name):\n    return findall(pattern=f"^{name}", string="x")\n',
         ['regex-unescaped-value:5 name'],
       ],
+      [
+        'an HTML escape',
+        'import html\nimport re\n\n\ndef route(name):\n    return re.compile(f"^{html.escape(name)}$")\n',
+        ['regex-unescaped-value:6 html.escape(name)'],
+      ],
     ]);
     expect(actual).toEqual(expected);
   });
@@ -66,6 +71,16 @@ describe.skipIf(!enabled)('regex-unescaped-value', () => {
       [
         'a compiled pattern source',
         `${RE}def anchored(inner: re.Pattern[str]):\n    return re.compile(f"^(?:{inner.pattern})$")\n`,
+        [],
+      ],
+      [
+        'an escaped alternation',
+        `${RE}def words(items):\n    return re.compile(f"^({'|'.join(map(re.escape, items))})$")\n`,
+        [],
+      ],
+      [
+        'a class constant, a length and a nullable number',
+        `${RE}class Cells:\n    SEP = ","\n\n    def split(self, text, items, n: int | None):\n        return re.split(f"{self.SEP}{len(items)}{n}", text)\n`,
         [],
       ],
       ['module level code', `${RE}PREFIX = "api"\nROUTE = re.compile(f"^{PREFIX}")\n`, []],

@@ -109,4 +109,26 @@ public final class Regexes {
   public String[] lineSeparator(String text) {
     return text.split(System.lineSeparator());
   }
+
+  public String[] splitQuotedLocal(String line, String separator) {
+    String quoted = Pattern.quote(separator);
+    return line.split(quoted);
+  }
+
+  public String[] splitLiteralLocal(String line) {
+    String separator = ".";
+    return line.split(separator);
+  }
+
+  public String[] splitChoice(String line, boolean tabs) {
+    return line.split(tabs ? "\\t" : ",");
+  }
+
+  public String[] splitCount(String line, int count) {
+    return line.split("x{" + Integer.toString(count) + "}");
+  }
+
+  public Pattern compileQuotedNames(List<String> names) {
+    return Pattern.compile("^(?:" + String.join("|", names.stream().map(Pattern::quote).toList()) + ")$");
+  }
 }

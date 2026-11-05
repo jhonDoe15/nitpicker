@@ -619,7 +619,7 @@ Disallow reusing a regex with the g or y flag across calls through test(), exec(
 - **Printed as:** `eslint-lint/nitpicker/no-shared-stateful-regex`
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-shared-stateful-regex","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
-  - `{{ name }}` has the `{{ flag }}` flag and is reused across calls, so `{{ method }}()` starts at the `lastIndex` the previous call left and the result depends on call order. Drop `{{ flag }}` when one match is enough, walk all matches with `text.matchAll(pattern)`, or create the regex where it is used.
+  - Create the regex where it is used, drop `{{ flag }}` when one match is enough, or walk every match with `text.matchAll(pattern)`, which leaves `pattern` untouched. `{{ name }}` has the `{{ flag }}` flag and is reused across calls, so `{{ method }}()` starts at the `lastIndex` the previous call left and the result depends on call order.
 
 <a id="eslint-nitpicker-no-shared-test-state"></a>
 
@@ -690,8 +690,8 @@ Disallow passing a string to match(), matchAll() or search(), and building a reg
 - **Printed as:** `eslint-lint/nitpicker/no-string-as-regex`
 - **Exception:** If this is intended, add `{"rule":"nitpicker/no-string-as-regex","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
-  - `{{ method }}()` compiles this string as a regex, so `.`, `*`, `?`, `(` and the other metacharacters in it change what matches. Use `includes`, `startsWith`, `indexOf` or `===` for plain text, or pass a RegExp (`/…/` or `new RegExp(pattern)`) when it is meant as a pattern.
-  - `{{ value }}` is built into this regex unescaped, so the metacharacters in it change the pattern. Escape it first (`RegExp.escape({{ value }})` or the project's escape helper), interpolate a RegExp's `.source` when the value is meant as a pattern, or compare plain text with `includes` or `startsWith`.
+  - Use `includes`, `startsWith`, `indexOf` or `===` for plain text, or pass a RegExp (`/…/` or `new RegExp(pattern)`) when the string is meant as a pattern. `{{ method }}()` compiles a string argument as a regex, so `.`, `*`, `?`, `(` and the other metacharacters in it change what matches.
+  - Escape `{{ value }}` with the project's escape helper (`escapeRegExp({{ value }})`, or `RegExp.escape` on a runtime that has it), interpolate a RegExp's `.source` when the value is meant as a pattern, or compare plain text with `includes` or `startsWith`. Built into this regex unescaped, the metacharacters in it change the pattern.
 
 <a id="eslint-nitpicker-no-switched-off-tests"></a>
 

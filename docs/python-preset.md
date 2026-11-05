@@ -1170,11 +1170,14 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   call (`compile`, `match`, `search`, `fullmatch`, `sub`, `subn`, `split`, `findall`, `finditer`,
   also imported by name or passed as `pattern=`) through an f-string, `+`, `%` or `str.format`,
   without `re.escape`: a `.`, `|` or `$` in the value changes the pattern. The value counts when it
-  reads a parameter of the enclosing function or lambda, directly or through a local assigned from
+  reads a parameter of the enclosing function or lambda (not `self` or `cls`), directly or through a local assigned from
   one, a `for` target or a comprehension over one. An `int`, `float`, `bool` or `complex` parameter,
-  a call to a function whose name contains `escape`, a compiled pattern's `.pattern`, module
-  constants and module-level code are not reported, and neither is a value passed as the whole
-  pattern (`re.compile(pattern)`). The Java and Kotlin presets report the same mistake as
+  `re.escape` (also passed to `map` or used in a comprehension) or a helper whose name contains
+  `escape` and `regex` or `pattern`, a `len()` or `int()` call, the condition of a conditional
+  expression, a compiled pattern's `.pattern`, module constants and module-level code are not
+  reported, and neither is a value passed as the whole
+  pattern (`re.compile(pattern)`): the issue suggested reporting a non-constant whole pattern as a
+  note, but a lone value is meant as a pattern far more often than not. The Java and Kotlin presets report the same mistake as
   `UnquotedRegexValue`, the TypeScript preset as `nitpicker/no-string-as-regex`. The plain-text form
   (`re.sub("abc", "", s)` for `s.replace("abc", "")`) is ruff's `RUF055`, still a preview rule in
   the pinned ruff, so it is not selected yet.

@@ -26,10 +26,15 @@ const ESCAPED =
 const CONSTANT = /^(?:[A-Z]\w*\.)*[A-Z][A-Z0-9_]*$/;
 const PATTERN_SOURCE = /\.\s*pattern(?:\s*\(\s*\))?$/;
 const ROOT_NAME = /^[A-Za-z_]\w*/;
+const CALLED_NAME = /^(?:[A-Za-z_]\w*\s*\.\s*)*([A-Za-z_]\w*)\s*\(/;
+const LITERAL_END = /^[ \t]*(?:$|[;}\n]|\/\/)/;
+const NUMBER = /^-?\d[\w.]*/;
 const NON_TEXT_TYPES = 'Int|Long|Short|Byte|Double|Float|Boolean|Char|UInt|ULong';
-const OWNER_BEFORE = /\bobject\b[^{};]*$/;
+const OWNER_BEFORE = /\b(?:companion\s+object|object\s+[A-Za-z_]\w*)\b[^{};]*$/;
 const TEMPLATE_ENTRY = /\$(?:\{|([A-Za-z_]\w*))/g;
 const METACHARACTERS = /[\\^$.|?*+()[\]{}]/;
+const OWNER_LOOKBEHIND = 200;
+const UNICODE_ESCAPE_LENGTH = 5;
 const ESCAPES = { t: '\t', b: '\b', n: '\n', r: '\r', "'": "'", '"': '"', '\\': '\\', $: '$' };
 
 function trimmed(code, { start, end }) {
@@ -50,10 +55,10 @@ function plusOperands(code, depths, part) {
 
 function closingBrace(text, open) {
   let depth = 0;
-  for (let index = open; index < text.length; index += 1) {
-    depth += { '{': 1, '}': -1 }[text[index]] ?? 0;
+  for (const [offset, char] of text.slice(open).split('').entries()) {
+    depth += { '{': 1, '}': -1 }[char] ?? 0;
     if (depth === 0) {
-      return index;
+      return open + offset;
     }
   }
   return text.length;
@@ -88,10 +93,29 @@ function isOwnedDeclaration(code, index) {
     return true;
   }
   const open = enclosingOpen(code, index);
-  return OWNER_BEFORE.test(code.slice(Math.max(0, open - 200), open));
+  return OWNER_BEFORE.test(code.slice(Math.max(0, open - OWNER_LOOKBEHIND), open));
 }
 
-function isConstantName(code, name) {
+function isEscapeHelper(text) {
+  const name = CALLED_NAME.exec(text)?.[1].toLowerCase() ?? '';
+  return /escape|quote/.test(name) && !name.startsWith('un') && /reg|pattern/.test(name);
+}
+
+function isLiteralValue(scanned, index) {
+  const rest = scanned.code.slice(index);
+  const value = /^[^=\n]*=\s*/.exec(rest);
+  if (value === null) {
+    return false;
+  }
+  const start = index + value[0].length;
+  const literal = literalAt(scanned, start);
+  const end = literal === undefined || literal.template ? undefined : literal.end;
+  const after = end ?? start + (NUMBER.exec(scanned.code.slice(start))?.[0].length ?? 0);
+  return after > start && LITERAL_END.test(scanned.code.slice(after));
+}
+
+function isConstantName(scanned, name) {
+  const { code } = scanned;
   const typed = new RegExp(String.raw`(?<![\w.])${name}\s*:\s*(?:${NON_TEXT_TYPES})\b`);
   if (typed.test(code)) {
     return true;
@@ -103,30 +127,36 @@ function isConstantName(code, name) {
   return (
     declared.length > 0 &&
     !parameter.test(code) &&
-    declared.every((match) => match[1] !== undefined || isOwnedDeclaration(code, match.index))
+    declared.every(
+      (match) =>
+        match[1] !== undefined ||
+        isOwnedDeclaration(code, match.index) ||
+        isLiteralValue(scanned, match.index),
+    )
   );
 }
 
-function isRuntimeExpression(code, text) {
-  if (ESCAPED.test(text) || CONSTANT.test(text) || PATTERN_SOURCE.test(text)) {
+function isRuntimeExpression(scanned, text) {
+  const quoted = ESCAPED.test(text) || isEscapeHelper(text);
+  if (quoted || CONSTANT.test(text) || PATTERN_SOURCE.test(text)) {
     return false;
   }
   if (/^-?\d/.test(text)) {
     return false;
   }
   const root = ROOT_NAME.exec(text)?.[0];
-  return root !== undefined && !isConstantName(code, root);
+  return root !== undefined && !isConstantName(scanned, root);
 }
 
 function runtimeInOperand(scanned, operand, alone) {
   const literal = literalAt(scanned, operand.start);
   if (literal !== undefined && literal.end === operand.end) {
     return literal.template
-      ? templateEntries(literal).find((entry) => isRuntimeExpression(scanned.code, entry.text))
+      ? templateEntries(literal).find((entry) => isRuntimeExpression(scanned, entry.text))
       : undefined;
   }
   const text = scanned.source.slice(operand.start, operand.end).trim();
-  if (alone || !isRuntimeExpression(scanned.code, text)) {
+  if (alone || !isRuntimeExpression(scanned, text)) {
     return undefined;
   }
   return { text, offset: operand.start };
@@ -151,10 +181,11 @@ function receiverPart(scanned, dot) {
   }
   const depths = parenDepths(scanned.code);
   const level = depths[end - 1];
-  let open = end - 1;
-  while (open > 0 && !(scanned.code[open] === '(' && depths[open] === level)) {
-    open -= 1;
-  }
+  const chars = scanned.code.slice(0, end - 1).split('');
+  const open = Math.max(
+    0,
+    chars.findLastIndex((char, index) => char === '(' && depths[index] === level),
+  );
   const head = scanned.code.slice(0, open).trimEnd();
   return /[\w)\]]$/.test(head) ? undefined : { start: open + 1, end: end - 1 };
 }
@@ -192,7 +223,7 @@ function decoded(literal) {
     return literal.text;
   }
   return literal.text.replaceAll(/\\(u[0-9a-fA-F]{4}|.)/g, (_all, escape) =>
-    escape.length === 5
+    escape.length === UNICODE_ESCAPE_LENGTH
       ? String.fromCodePoint(Number.parseInt(escape.slice(1), 16))
       : (ESCAPES[escape] ?? `\\${escape}`),
   );
