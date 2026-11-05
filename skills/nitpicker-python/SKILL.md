@@ -108,6 +108,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   instead of `time.sleep` and fake network, database and disk access. A test over budget is run
   again alone without coverage and fails only if it is still over. Lift a legitimate one in the
   top-level `exceptions` with `{ "rule": "slow-test", "paths": [...], "reason": "..." }`.
+- Never patch the module a test is named after (`mocked-subject-in-test`): in `test_cart.py`, no
+  `patch("shop.cart.total")`, no `patch.object(cart, "helper")` on a `Cart`, no `Mock(spec=Cart)`.
+  Pass the collaborators in and fake them, test a helper through the public function that calls
+  it, and patch only what the module imports (`patch("shop.cart.requests.get")`).
 - Dependencies: every package production code imports is a production dependency of the project
   (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
   dependency nothing uses.

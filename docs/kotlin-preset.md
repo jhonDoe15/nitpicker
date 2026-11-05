@@ -283,7 +283,7 @@ the TypeScript preset, `{ "rule", "paths", "reason" }`, all required:
 `kotlin-source/<Rule>` of the [source checks](#source-checks), `kotlinc/deprecation`,
 `kotlinc/unchecked` or `kotlinc/cast`, one of the [review rules](#review-rules) (`pmd/FixedSleepInTest`,
 `pmd/NegativeWaitInTest`, `pmd/DisabledTest`, `pmd/FocusedTest`, `pmd/RetryInTest`, `pmd/AssertionInControlFlow`,
-`pmd/CoroutineEscapesTest`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
+`pmd/CoroutineEscapesTest`, `pmd/MockedSubjectInTest`, `pmd/StaticMockOfProjectType`, `pmd/SpringUnusedContext`, `pmd/ExhaustiveEnumPredicate`,
 `pmd/StaticForwardingWrapper`, `pmd/SingularAndPluralMember`, `pmd/ValidationAnnotationTarget`, `pmd/ClassLoadEffect`, `unused-option`), a class limit, a file
 limit or `test-runtime/slow-test`; for the structure, CRAP and coverage findings below,
 `function-lines-limit`, `function-statements-limit`, `function-control-nesting-limit`,
@@ -521,6 +521,8 @@ skipped with a note on stderr.
 | `RetryInTest`                            | `review-rules/tests/honesty/retries/`            | a retry set in test code: `@RetryingTest`, `@RepeatedIfExceptionsTest`, TestNG `retryAnalyzer`, `IRetryAnalyzer`, `RetryAnalyzerCount`, `setRetryAnalyzer`, Kotest `retries`                                                                                                                                                                                                                                                     |
 | `AssertionInControlFlow`                 | `review-rules/tests/honesty/`                    | an assertion that can be skipped: inside an `if` or a `when` whose branches do not all assert, a loop, a safe call, `&&`, `\|\|`, `?:`, a swallowing `try` or `runCatching`, or after an early return                                                                                                                                                                                                                            |
 | `CoroutineEscapesTest`                   | `review-rules/tests/coroutines/`                 | a `launch`, `async`, `launchIn`, `stateIn` or `shareIn` on a scope the test does not own (`CoroutineScope(...)`, a scope field, `viewModelScope`) that nothing joins, awaits or cancels                                                                                                                                                                                                                                          |
+| `MockedSubjectInTest`                    | `review-rules/tests/mocks/`                      | a mock of the class under test (`mockk<OrderService>()`, `mock<OrderService>()`, `mock(OrderService::class.java)`, `@MockK`, `@Mock`), or a spy of it whose own methods the test stubs (`spyk(...)`, `spy(...)`, `@SpyK`, `@Spy`, with `every`, `coEvery`, `justRun`, `whenever`, `` `when` ``, `given` or `stub`) |
+| `StaticMockOfProjectType`                | `review-rules/tests/mocks/`                      | `mockkObject`, `mockkStatic` (class, `"pkg.FileKt"` or `::function`), `mockkConstructor`, `mockStatic` or `mockConstruction` of code declared in the project's main sources |
 | `StaticForwardingWrapper`                | `review-rules/main/forwarding-wrappers.mjs`      | a function whose body only passes its parameters, in order, to another function                                                                                                                                                                                                                                                                                                                                                  |
 | `SingularAndPluralMember`                | `review-rules/main/member-names.mjs`             | a member and its plural form (`tag` and `tags`) in one class                                                                                                                                                                                                                                                                                                                                                                     |
 | `ValidationAnnotationTarget`             | `review-rules/validation/validation-targets.mjs` | a Bean Validation annotation (`jakarta.validation.constraints`, `javax.validation.constraints`, `org.hibernate.validator.constraints`, or `@Valid`) on a primary-constructor `val` or `var` of a main source without a `field:`, `get:` or `all:` use-site target; Kotlin puts it on the constructor parameter, where Bean Validation does not look. Kotlin-only: a Java record carries the annotation to its field and accessor |
@@ -737,6 +739,14 @@ guessed at.
   assumption on a real condition depend on the environment and are not reported. Allowed: run the test,
   delete it, or limit it to the environment it needs.
 - `FocusedTest`: Kotest only (JUnit has no focus). Reported at the outermost focused registration.
+- `MockedSubjectInTest` and `StaticMockOfProjectType`: the Kotlin forms of the Java rules, read from the test
+  source text of files that import `io.mockk` or `org.mockito`. The class under test is the type of an
+  `@InjectMockKs` or `@InjectMocks` property, or else the test class name without `Test`, `Tests`, `IT` or
+  `Spec`; it must be declared in the project's main sources. A spy is reported only when the test stubs one of
+  its methods; a spy that is only verified is fine. `mockkStatic("java.time.LocalDate")`, `mockkObject` of a
+  library object and other library code are not reported. Allowed: pass the collaborators in through the
+  constructor and give the test fakes of them, test a helper through the public function that calls it, and
+  pass a function, an interface or a `Clock` instead of mocking an `object` or a top-level function.
 - `RetryInTest`: a retry set in test code, so a flaky test cannot pass on a later attempt. JVM forms, in
   any test source: JUnit Pioneer `@RetryingTest` and rerunner-jupiter `@RepeatedIfExceptionsTest` (also
   through an import alias or in an `@[...]` group; any retry annotation is reported, `@RetryingTest(1)`

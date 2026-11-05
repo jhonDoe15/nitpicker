@@ -1,6 +1,6 @@
 # Python: nitpicker rules
 
-The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 66 rules. [All pages](README.md).
+The Python rules nitpicker's own script checks (`python-rules/*`), the coupling and import-cycle findings, the ruff format check and the finding for a run in which no tests ran. This page lists 67 rules. [All pages](README.md).
 
 The guide for these rules: [docs/python-preset.md](../python-preset.md).
 
@@ -237,6 +237,15 @@ The value of `<name>` is a hardcoded secret.
 
 - **Allowed form:** Return a result that says what happened, or raise a domain error, and let `adapters/` or the composition root log it.
 - **Exception:** If this is intended, add `{"rule":"logger-in-domain","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
+
+<a id="python-rules-mocked-subject-in-test"></a>
+
+### `python-rules/mocked-subject-in-test`
+
+`<name>` is part of the module this test is named after, so the test replaces the code it should check.
+
+- **Allowed form:** Run the real code: pass its collaborators in (a parameter, a constructor argument or a fixture) and give the test a fake of them, test a helper through the public function that calls it, and patch only what the module imports (`patch("shop.cart.requests.get")`).
+- **Exception:** If this is intended, add `{"rule":"mocked-subject-in-test","paths":["<path>"],"reason":"..."}` to "python.exceptions" in nitpicker.config.json.
 
 <a id="python-rules-module-level-mutable-state"></a>
 
