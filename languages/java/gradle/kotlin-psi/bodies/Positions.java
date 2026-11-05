@@ -2,6 +2,8 @@ package nitpicker.kotlinpsi.bodies;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntUnaryOperator;
+import nitpicker.kotlinpsi.common.Lines;
 import org.jetbrains.kotlin.com.intellij.psi.PsiElement;
 import org.jetbrains.kotlin.com.intellij.psi.util.PsiTreeUtil;
 import org.jetbrains.kotlin.lexer.KtTokens;
@@ -26,17 +28,30 @@ final class Positions {
     }
   }
 
-  static List<Object> arms(PsiElement start) {
+  static List<Object> arms(PsiElement start, Lines lines) {
+    IntUnaryOperator end = offset -> lines.index(offset) + 1;
     List<Object> arms = new ArrayList<>();
     PsiElement child = start;
     for (PsiElement up = start.getParent(); up != null && !bodyOwner(up); up = up.getParent()) {
       int arm = armOf(up, child, start);
       if (arm >= 0) {
-        arms.add(up.getTextOffset() + ":" + arm);
+        arms.add(up.getTextOffset() + ":" + arm + leaves(up, arm, end));
       }
       child = up;
     }
     return arms.isEmpty() ? null : arms;
+  }
+
+  private static String leaves(PsiElement up, int arm, IntUnaryOperator end) {
+    if (!(up instanceof KtIfExpression)) {
+      return "";
+    }
+    KtExpression branch = arm == 0 ? ((KtIfExpression) up).getThen() : ((KtIfExpression) up).getElse();
+    KtExpression last = branch instanceof KtBlockExpression && !((KtBlockExpression) branch).getStatements().isEmpty()
+        ? ((KtBlockExpression) branch).getStatements().get(((KtBlockExpression) branch).getStatements().size() - 1)
+        : branch;
+    return last instanceof KtReturnExpression || last instanceof KtThrowExpression
+        ? ":" + end.applyAsInt(up.getTextRange().getEndOffset() - 1) : "";
   }
 
   private static boolean bodyOwner(PsiElement element) {

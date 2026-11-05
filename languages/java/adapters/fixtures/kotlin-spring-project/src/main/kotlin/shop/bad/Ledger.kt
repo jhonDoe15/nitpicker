@@ -4,12 +4,15 @@ import com.github.benmanes.caffeine.cache.Cache
 import jakarta.persistence.EntityManager
 import java.util.concurrent.ConcurrentHashMap
 import org.springframework.cache.CacheManager
+import org.springframework.cache.annotation.CacheEvict
 import org.springframework.cache.annotation.CachePut
+import org.springframework.cache.annotation.Caching
 import org.springframework.data.jpa.repository.JpaRepository
 import org.springframework.data.jpa.repository.Modifying
 import org.springframework.data.jpa.repository.Query
 import org.springframework.data.repository.ListCrudRepository
 import org.springframework.jdbc.core.JdbcTemplate
+import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate
 import org.springframework.jdbc.core.simple.JdbcClient
 import org.springframework.stereotype.Component
 import org.springframework.stereotype.Service
@@ -36,6 +39,7 @@ class EntryService(
     private val jdbc: JdbcTemplate,
     private val client: JdbcClient,
     private val entityManager: EntityManager,
+    private val named: NamedParameterJdbcTemplate,
 ) {
     fun move(from: Order, to: Order) {
         entries.save(from)
@@ -57,6 +61,24 @@ class EntryService(
         entries.deleteById(id)
     }
 
+    fun tidy(order: Order, audit: Order) {
+        try {
+            entries.save(order)
+        } finally {
+            entries.save(audit)
+        }
+    }
+
+    fun forgetBoth(first: Order, second: Order) {
+        forget(first)
+        forget(second)
+    }
+
+    fun expire(id: Long) {
+        named.update("delete from order_audit where order_id = :id", mapOf("id" to id))
+        jdbc.batchUpdate("update orders set version = 0")
+    }
+
     private fun forget(order: Order) {
         entries.delete(order)
     }
@@ -70,6 +92,7 @@ class EntryCache(
     private val recent: Cache<String, Order>,
 ) {
     private val byName = ConcurrentHashMap<String, Order>()
+    private val codes = ConcurrentHashMap<String, Int>()
 
     fun reprice(name: String, order: Order) {
         entries.save(order)
@@ -84,11 +107,18 @@ class EntryCache(
         val saved = entries.save(order)
         byName.putIfAbsent(name, saved)
         byName.getOrPut(name) { entries.save(order) }
+        codes[name] = saved.hashCode()
+        recent.putAll(mapOf(name to order))
+        recent.invalidateAll()
+        caches.getCache("names")?.let { it.evict(name) }
         note(name)
     }
 
     @CachePut("prices")
     fun refresh(order: Order): Order = entries.save(order)
+
+    @Caching(put = [CachePut("prices")], evict = [CacheEvict("names")])
+    fun rename(order: Order): Order = entries.save(order)
 
     private fun note(name: String) {
         recent.invalidate(name)

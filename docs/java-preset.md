@@ -2075,20 +2075,25 @@ when the code is right, for example `{ "rule": "pmd/SpringDataNoSaveInLoop", "pa
   `SpringNoSwallowedTransactionException` also covers a private or package-private helper of a
   `@Transactional` class, and a helper that a `@Transactional` method of the same class calls.
 - Writes and transactions share one list of writes: a repository or `EntityManager` write named as
-  above, `JdbcTemplate` or `NamedParameterJdbcTemplate` `update` and `batchUpdate`, `JdbcClient`
+  above (a verb name counts when the verb is followed by an uppercase letter, a digit, `_` or
+  nothing, so `updatedSince` is a read), `JdbcTemplate` or `NamedParameterJdbcTemplate` `update` and `batchUpdate`, `JdbcClient`
   `update()` and `Query.executeUpdate()`. `SpringDataWriteWithoutTransaction` reports a method
   declared on a Spring Data repository that is annotated `@Modifying`, or named as a derived delete
   (`deleteBy...`, `removeAllBy...`) on a `JpaRepository`, when neither the method nor the interface
   carries `@Transactional` (Spring Data opens transactions only for the methods it inherits).
+  Nitpicker drops both rules' findings when a superclass or interface in the project sources carries
+  `@Transactional`.
   `SpringMultiWriteWithoutTransaction` reports a public method of a `@Service`, `@Component` or
   `@Repository` class without `@Transactional` on it or the class that makes two or more of those
-  writes, counting the private helpers it calls once; writes inside
+  writes, counting each call of a non-public helper that writes, and a helper's own writes; writes inside
   `TransactionTemplate.execute`/`executeWithoutResult` or `TransactionalOperator.execute` do not
   count, a method that uses `TransactionalOperator.transactional` is left alone, and two writes on
-  different branches of one `if`, `?:`, `switch` or `try`/`catch` count once. One `saveAll` is one
+  different branches of one `if`, `?:`, `switch` or `try`/`catch` count once, as do a write in an
+  `if` branch that ends in `return` or `throw` and a write after that `if`; a `finally` block always
+  runs, so its write counts. One `saveAll` is one
   write. `SpringCacheWriteInTransaction` reports, in a writing transaction (`@Transactional` without
   `readOnly = true` or a `NOT_SUPPORTED`, `NEVER` or `SUPPORTS` propagation, on the method or, for a
-  public method, on the class; a `TransactionTemplate` callback; a non-public helper that such a
+  public non-static method, on the class; a `TransactionTemplate` callback; a non-public helper that such a
   method calls), `put`, `putIfAbsent`, `evict`, `evictIfPresent`, `clear` and `invalidate` on a
   Spring `Cache`, and `@CachePut`, `@CacheEvict` without `beforeInvocation = true` or a `@Caching`
   with `put` or `evict` on such a method. Nitpicker drops it when the main sources configure a

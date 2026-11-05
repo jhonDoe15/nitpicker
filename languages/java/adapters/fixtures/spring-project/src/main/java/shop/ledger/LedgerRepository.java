@@ -25,6 +25,9 @@ public interface LedgerRepository extends JpaRepository<Product, Long> {
   @Override
   void deleteById(Long id);
 
+  @Query("select p from Product p where p.version > :version")
+  List<Product> updatedSince(@Param("version") long version);
+
   @Query("select p from Product p where p.version = :version")
   List<Product> deleteCandidates(@Param("version") long version);
 }

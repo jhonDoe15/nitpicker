@@ -618,7 +618,7 @@ return //MethodDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.springfr
     (@MethodName = ('save', 'saveAll', 'saveAndFlush', 'saveAllAndFlush', 'delete', 'deleteAll', 'deleteById',
       'deleteAllById', 'deleteAllInBatch', 'persist', 'merge', 'remove')
      and *[1][pmd-java:typeIs('org.springframework.data.repository.Repository') or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))])
-    or (matches(@MethodName, '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)')
+    or (matches(@MethodName, '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)([A-Z\d_]|$)')
      and *[1][pmd-java:typeIs('org.springframework.data.repository.Repository')])]
 ]]></value></property></properties>
   </rule>
@@ -636,7 +636,7 @@ let $transactional := function($annotations) {
       'deleteAllById', 'deleteAllInBatch', 'persist', 'merge', 'remove')
    and exists($call/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
      or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]))
-  or (matches($call/@MethodName, '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)')
+  or (matches($call/@MethodName, '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)([A-Z\d_]|$)')
    and exists($call/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]))
   or ($call/@MethodName = ('update', 'batchUpdate')
    and exists($call/*[1][pmd-java:typeIs('org.springframework.jdbc.core.JdbcOperations')
@@ -654,15 +654,25 @@ let $transactional := function($annotations) {
     $writes := function($body) {
   $body//(MethodCall | MethodReference)[$write(.)][not($inTemplate(.))]
 },
+    $leaves := function($write, $other) {
+  exists($write/ancestor::*[parent::IfStatement][not(. is ../*[1])]
+    [self::ReturnStatement or self::ThrowStatement
+      or self::Block[*[last()][self::ReturnStatement or self::ThrowStatement]]]
+    [$other >> .. and not($other/ancestor::* intersect ..)])
+},
     $exclusive := function($a, $b) {
   let $common := ($a/ancestor::* intersect $b/ancestor::*)[last()],
       $paths := ($a/ancestor-or-self::* | $b/ancestor-or-self::*)
   return exists($common[self::IfStatement or self::ConditionalExpression or self::SwitchStatement
       or self::SwitchExpression][not(*[1] intersect $paths)])
     or exists($common[self::TryStatement][CatchClause intersect $paths])
+    or $leaves($a, $b) or $leaves($b, $a)
+},
+    $twice := function($sites) {
+  some $a in $sites, $b in $sites satisfies (not($a is $b) and not($exclusive($a, $b)))
 }
 return
-//ClassDeclaration[ModifierList/Annotation[
+//ClassDeclaration[@Interface = false()][ModifierList/Annotation[
     pmd-java:typeIs('org.springframework.stereotype.Component')
     or pmd-java:typeIs('org.springframework.stereotype.Service')
     or pmd-java:typeIs('org.springframework.stereotype.Repository')]]
@@ -672,12 +682,11 @@ return
   [not(.//(MethodCall | MethodReference)[@MethodName = ('transactional', 'execute')]
     [*[1][pmd-java:typeIs('org.springframework.transaction.reactive.TransactionalOperator')]])]
   [let $method := .,
-       $helpers := parent::ClassBody/MethodDeclaration[@Visibility != 'public'][Block]
-         [let $name := @Name, $arity := @Arity
-          return exists($method//MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]]
-            [@MethodName = $name][count(ArgumentList/*) = $arity][not($inTemplate(.))])],
-       $sites := ($writes($method/Block), $helpers/Block ! $writes(.))
-   return some $a in $sites, $b in $sites satisfies (not($a is $b) and not($exclusive($a, $b)))]
+       $helpers := parent::ClassBody/MethodDeclaration[@Visibility != 'public'][Block][exists($writes(Block))],
+       $calls := $method//MethodCall[*[1][self::ArgumentList or self::ThisExpression[not(*)]]][not($inTemplate(.))]
+         [let $call := . return exists($helpers[@Name = $call/@MethodName][@Arity = count($call/ArgumentList/*)])],
+       $sites := ($writes($method/Block), $calls)
+   return $twice($sites) or (some $helper in $helpers[@Name = $calls/@MethodName] satisfies $twice($writes($helper/Block)))]
 ]]></value></property></properties>
   </rule>
 
@@ -694,7 +703,7 @@ let $writing := function($annotations) {
 },
     $runsInTransaction := function($method) {
   $writing($method/ModifierList/Annotation)
-  or ($method/@Visibility = 'public'
+  or ($method/@Visibility = 'public' and not($method/pmd-java:modifiers() = 'static')
     and not($method/ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')
       or pmd-java:typeIs('jakarta.transaction.Transactional') or pmd-java:typeIs('javax.transaction.Transactional')])
     and $writing($method/parent::ClassBody/parent::ClassDeclaration/ModifierList/Annotation))
@@ -739,7 +748,7 @@ let $writing := function($annotations) {
 },
     $runsInTransaction := function($method) {
   $writing($method/ModifierList/Annotation)
-  or ($method/@Visibility = 'public'
+  or ($method/@Visibility = 'public' and not($method/pmd-java:modifiers() = 'static')
     and not($method/ModifierList/Annotation[pmd-java:typeIs('org.springframework.transaction.annotation.Transactional')
       or pmd-java:typeIs('jakarta.transaction.Transactional') or pmd-java:typeIs('javax.transaction.Transactional')])
     and $writing($method/parent::ClassBody/parent::ClassDeclaration/ModifierList/Annotation))
@@ -763,7 +772,7 @@ let $writing := function($annotations) {
       'deleteAllById', 'deleteAllInBatch', 'persist', 'merge', 'remove')
    and exists($call/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')
      or (pmd-java:typeIs('jakarta.persistence.EntityManager') or pmd-java:typeIs('javax.persistence.EntityManager'))]))
-  or (matches($call/@MethodName, '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)')
+  or (matches($call/@MethodName, '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)([A-Z\d_]|$)')
    and exists($call/*[1][pmd-java:typeIs('org.springframework.data.repository.Repository')]))
   or ($call/@MethodName = ('update', 'batchUpdate')
    and exists($call/*[1][pmd-java:typeIs('org.springframework.jdbc.core.JdbcOperations')
@@ -1463,7 +1472,7 @@ let $loop := function($node) {
       [descendant-or-self::VariableAccess[@Name = $variables]])
 },
     $read := '^(find|get|read|count|exists|query|stream|search|load|fetch|list|is|has)',
-    $write := '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)',
+    $write := '^(update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)([A-Z\d_]|$)',
     $standard := ('save', 'saveAndFlush', 'saveAll', 'saveAllAndFlush', 'delete', 'deleteById', 'deleteAll',
       'deleteAllById', 'deleteAllInBatch', 'deleteAllByIdInBatch', 'flush')
 return (

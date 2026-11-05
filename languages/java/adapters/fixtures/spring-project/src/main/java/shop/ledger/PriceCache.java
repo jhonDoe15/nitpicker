@@ -6,6 +6,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.CachePut;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
@@ -20,6 +21,7 @@ public class PriceCache {
   private final CacheManager caches;
   private final Cache<String, Product> recent;
   private final Map<String, Product> byName = new ConcurrentHashMap<>();
+  private final Map<String, Integer> codes = new ConcurrentHashMap<>();
 
   public PriceCache(LedgerRepository ledger, CacheManager caches, Cache<String, Product> recent) {
     this.ledger = ledger;
@@ -40,6 +42,9 @@ public class PriceCache {
     Product saved = ledger.save(product);
     byName.putIfAbsent(name, saved); // violation: SpringLocalCacheWriteInTransaction
     recent.get(name, key -> ledger.save(product)); // violation: SpringLocalCacheWriteInTransaction
+    codes.put(name, saved.hashCode()); // violation: SpringLocalCacheWriteInTransaction
+    recent.putAll(Map.of(name, product)); // violation: SpringLocalCacheWriteInTransaction
+    recent.invalidateAll(); // violation: SpringLocalCacheWriteInTransaction
     note(name, product);
   }
 
@@ -63,6 +68,21 @@ public class PriceCache {
   @CachePut("prices") // violation: SpringCacheWriteInTransaction
   public Product refresh(Product product) {
     return ledger.save(product);
+  }
+
+  @Caching(put = @CachePut("prices"), evict = @CacheEvict("names")) // violation: SpringCacheWriteInTransaction
+  public Product rename(Product product) {
+    return ledger.save(product);
+  }
+
+  @Transactional(propagation = Propagation.SUPPORTS)
+  public Product peek(String name, Product product) {
+    caches.getCache("prices").put(name, product);
+    return product;
+  }
+
+  public static void prime(Cache<String, Product> cache, Product product) {
+    cache.put("first", product);
   }
 
   @CacheEvict(value = "prices", beforeInvocation = true)

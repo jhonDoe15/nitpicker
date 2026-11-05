@@ -1,10 +1,7 @@
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
+import { project, removeProjects } from '../test-support/spring-config-projects.mjs';
 import { withoutTransactionAwareCacheWrites } from './transaction-aware.mjs';
 
-const roots = [];
 const FINDINGS = [
   { tool: 'pmd', rule: 'SpringCacheWriteInTransaction', path: 'src/main/java/shop/Prices.java' },
   {
@@ -14,28 +11,14 @@ const FINDINGS = [
   },
 ];
 
-function project(files) {
-  const root = mkdtempSync(path.join(tmpdir(), 'cache-aware-'));
-  roots.push(root);
-  for (const [name, text] of Object.entries(files)) {
-    mkdirSync(path.dirname(path.join(root, name)), { recursive: true });
-    writeFileSync(path.join(root, name), text);
-  }
-  return root;
-}
-
 function rules(files, sourceRoots = ['src/main/java', 'src/main/kotlin']) {
   return withoutTransactionAwareCacheWrites(FINDINGS, {
-    projectRoot: project(files),
+    projectRoot: project(files, { jpa: false }),
     roots: sourceRoots,
   }).map(({ rule }) => rule);
 }
 
-afterEach(() => {
-  for (const root of roots.splice(0)) {
-    rmSync(root, { recursive: true, force: true });
-  }
-});
+afterEach(removeProjects);
 
 describe('transaction-aware cache managers', () => {
   it.each([
@@ -61,8 +44,12 @@ describe('transaction-aware cache managers', () => {
   it('keeps every finding when the setting is off, commented out or outside the source roots', () => {
     expect(
       rules({
-        'src/main/java/shop/CacheConfig.java':
-          'class CacheConfig {\n  // manager.setTransactionAware(true);\n  void off(M m) { m.setTransactionAware(false); }\n}\n',
+        'src/main/java/shop/CacheConfig.java': [
+          'class CacheConfig {',
+          '  // manager.setTransactionAware(true);',
+          '  void off(M m) { m.setTransactionAware(false); }',
+          '}',
+        ].join('\n'),
         'docs/TransactionAwareCacheManagerProxy.java':
           'class TransactionAwareCacheManagerProxy {}\n',
       }),

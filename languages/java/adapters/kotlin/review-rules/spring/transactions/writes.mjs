@@ -15,12 +15,29 @@ export const REPOSITORY_WRITES = [
   'merge',
   'remove',
 ];
-export const WRITE_VERB =
-  /^(?:update|delete|remove|mark|set|rename|insert|upsert|increment|decrement|reset|clear|purge|archive|touch)/u;
+const VERBS = [
+  'update',
+  'delete',
+  'remove',
+  'mark',
+  'set',
+  'rename',
+  'insert',
+  'upsert',
+  'increment',
+  'decrement',
+  'reset',
+  'clear',
+  'purge',
+  'archive',
+  'touch',
+];
+export const WRITE_VERB = new RegExp(String.raw`^(?:${VERBS.join('|')})(?:[A-Z\d_]|$)`, 'u');
 const WRITES = new Set(REPOSITORY_WRITES);
 const JDBC_WRITES = new Set(['update', 'batchUpdate']);
 const QUERY_FACTORY = /^\w+\.create(?:Native|Named)?Query\(/u;
 const JDBC_CLIENT_CHAIN = /^\w+\.sql\(/u;
+const ROOT = /^\w+/u;
 
 function receiverType(view, invocation) {
   return invocation.receiver === undefined
@@ -42,7 +59,7 @@ export function repositoryWrite(view, invocation) {
 }
 
 function rootType(view, invocation) {
-  const root = /^\w+/u.exec(invocation.receiver ?? '')?.[0];
+  const root = ROOT.exec(invocation.receiver ?? '')?.[0];
   return root === undefined ? undefined : view.typeOf(invocation.scope, root);
 }
 
