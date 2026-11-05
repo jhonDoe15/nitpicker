@@ -162,8 +162,8 @@ export function projectClass(context, candidates) {
   return candidates.map((candidate) => context.classes.get(candidate)).find(Boolean);
 }
 
-export function extendsType(context, resolve, text, fqns) {
-  const queue = [{ names: resolve, type: text }];
+export function extendsType(context, start, fqns) {
+  const queue = [{ names: start.resolve, type: start.text }];
   const seen = new Set();
   for (const { names, type } of queue) {
     if (resolvesTo(names, type, fqns)) {

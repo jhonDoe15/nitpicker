@@ -86,6 +86,24 @@ public class ReactiveReports {
     return all.size();
   }
 
+  public Mono<Product> sameNameElsewhere(Flux<Product> recent) {
+    {
+      Flux<Product> all = products.findAll();
+      all.subscribe();
+    }
+    {
+      Flux<Product> all = recent;
+      return all.next();
+    }
+  }
+
+  public Runnable inLambda() {
+    return () -> {
+      Flux<Product> all = products.findAll();
+      all.count().subscribe(); // violation: SpringDataFilterInQuery
+    };
+  }
+
   public Flux<String> names() {
     return products.findAll().map(Product::toString);
   }
