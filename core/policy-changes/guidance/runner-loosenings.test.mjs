@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { describePolicyChanges } from './describe-policy-changes.mjs';
-import { createPolicyScope, rootSets } from './policy-scope.mjs';
+import { describePolicyChanges } from '../describe-policy-changes.mjs';
+import { createPolicyScope, rootSets } from '../policy-scope.mjs';
 
 const runners = (names) => ({ conventions: { 'typescript.detachedWorkRunners': names } });
 
