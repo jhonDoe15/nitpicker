@@ -86,8 +86,7 @@ function elementOf(sourceCode, schema) {
   if (ARRAY_FACTORIES.has(libraryCallName(sourceCode, node)) && node.arguments.length === 1) {
     return unwrapped(sourceCode, node.arguments[0]);
   }
-  const isArrayMethod =
-    methodCallName(sourceCode, node) === 'array' && node.arguments.length === 0;
+  const isArrayMethod = methodCallName(sourceCode, node) === 'array' && node.arguments.length === 0;
   return isArrayMethod ? unwrapped(sourceCode, node.callee.object) : undefined;
 }
 

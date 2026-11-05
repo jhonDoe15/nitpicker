@@ -4,7 +4,7 @@ const MAX_EXPANSIONS = 200;
 const EXPANDING_TYPES = new Set(['TSUnionType', 'TSIntersectionType', 'TSTypeReference']);
 const ARRAY_NAMES = new Set(['Array', 'ReadonlyArray']);
 
-export function elementTypeOf(declared) {
+function elementTypeOf(declared) {
   const type =
     declared.type === 'TSTypeOperator' && declared.operator === 'readonly'
       ? declared.typeAnnotation
@@ -83,7 +83,5 @@ function optionalMembers(members, sourceCode) {
 }
 
 export function memberInputSets(typeNode, declarations, sourceCode) {
-  return branchesOf(typeNode, declarations).map((members) =>
-    optionalMembers(members, sourceCode),
-  );
+  return branchesOf(typeNode, declarations).map((members) => optionalMembers(members, sourceCode));
 }

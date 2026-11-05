@@ -1,5 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { file, fn, klass, parameter, property, routeOf, run, summary } from '../test-support/facts.mjs';
+import {
+  file,
+  fn,
+  klass,
+  parameter,
+  property,
+  routeOf,
+  run,
+  summary,
+} from '../test-support/facts.mjs';
 import { SINGULAR_PLURAL_RULE, singularPluralFindings } from './member-names.mjs';
 
 const member = (name, type, overrides = {}) =>

@@ -112,11 +112,13 @@ function functionGroups(file) {
 
 function pluralMembers(file) {
   const found = new Map();
-  for (const { scope, members } of [...classGroups(file), ...functionGroups(file)]) {
-    for (const member of pluralFindings(members)) {
-      if (!found.has(member)) {
-        found.set(member, `${scope}.${member.name}`);
-      }
+  const groups = [...classGroups(file), ...functionGroups(file)];
+  const pairs = groups.flatMap(({ scope, members }) =>
+    pluralFindings(members).map((member) => [member, `${scope}.${member.name}`]),
+  );
+  for (const [member, symbol] of pairs) {
+    if (!found.has(member)) {
+      found.set(member, symbol);
     }
   }
   return [...found];

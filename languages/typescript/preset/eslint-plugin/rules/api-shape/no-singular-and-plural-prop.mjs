@@ -39,6 +39,13 @@ function isExported(declaration) {
   return declaration.parent.type === 'ExportNamedDeclaration';
 }
 
+function reportPairs(context, inputSets) {
+  const pairs = new Map(inputSets.flatMap(pluralPairs).map((pair) => [pair.node, pair]));
+  for (const { singular, plural, node } of pairs.values()) {
+    context.report({ node, messageId: 'singularAndPlural', data: { singular, plural } });
+  }
+}
+
 export const rule = {
   meta: {
     type: 'problem',
@@ -57,16 +64,6 @@ export const rule = {
     const declarations = new Map();
     const typeCandidates = [];
     const inputSets = [];
-    const reported = new Set();
-
-    function report(inputs) {
-      for (const { singular, plural, node } of pluralPairs(inputs)) {
-        if (!reported.has(node)) {
-          reported.add(node);
-          context.report({ node, messageId: 'singularAndPlural', data: { singular, plural } });
-        }
-      }
-    }
 
     return {
       ...componentVisitor(({ node }) => {
@@ -98,9 +95,7 @@ export const rule = {
         for (const candidate of typeCandidates) {
           inputSets.push(...memberInputSets(candidate, declarations, sourceCode));
         }
-        for (const inputs of inputSets) {
-          report(inputs);
-        }
+        reportPairs(context, inputSets);
       },
     };
   },

@@ -1,4 +1,4 @@
-export const IRREGULAR_PLURALS = new Map([
+const IRREGULAR_PLURALS = new Map([
   ['analysis', ['analyses']],
   ['axis', ['axes']],
   ['child', ['children']],

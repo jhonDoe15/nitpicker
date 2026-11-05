@@ -18,6 +18,6 @@ describe('plural names', () => {
   it('reads an irregular word only as the last word of the name', () => {
     expect(pluralsOf('human')).toEqual(['humans', 'humanes']);
     expect(pluralsOf('chairman')).toEqual(['chairmans', 'chairmanes']);
-    expect(pluralsOf('chairMan')).toContain('chairMen');
+    expect(pluralsOf('chairMan')).toEqual(['chairMans', 'chairManes', 'chairMen']);
   });
 });

@@ -21,30 +21,36 @@ function isPublicMethod(member) {
   );
 }
 
-function functionsOf(node) {
+function valueFunctions(node) {
   if (node === null || node === undefined) {
     return [];
   }
   if (FUNCTION_TYPES.has(node.type)) {
     return [node];
   }
-  if (CLASS_TYPES.has(node.type)) {
-    return node.body.body.filter(isPublicMethod).map((member) => member.value);
-  }
-  if (node.type === 'VariableDeclaration') {
-    return node.declarations.flatMap((declarator) => functionsOf(declarator.init));
-  }
-  return [];
+  return CLASS_TYPES.has(node.type)
+    ? node.body.body.filter(isPublicMethod).map((member) => member.value)
+    : [];
+}
+
+function functionsOf(node) {
+  return node.type === 'VariableDeclaration'
+    ? node.declarations.flatMap((declarator) => valueFunctions(declarator.init))
+    : valueFunctions(node);
 }
 
 function declaredNames(node) {
   if (node.type === 'VariableDeclaration') {
     return node.declarations.flatMap((declarator) =>
-      declarator.id.type === 'Identifier' ? [[declarator.id.name, functionsOf(declarator.init)]] : [],
+      declarator.id.type === 'Identifier'
+        ? [[declarator.id.name, valueFunctions(declarator.init)]]
+        : [],
     );
   }
   const named = FUNCTION_TYPES.has(node.type) || CLASS_TYPES.has(node.type);
-  return named && node.id !== null && node.id !== undefined ? [[node.id.name, functionsOf(node)]] : [];
+  return named && node.id !== null && node.id !== undefined
+    ? [[node.id.name, functionsOf(node)]]
+    : [];
 }
 
 function localFunctions(program) {
@@ -59,7 +65,10 @@ function localFunctions(program) {
 }
 
 function exportedFrom(statement, locals) {
-  if (statement.type === 'ExportDefaultDeclaration' && statement.declaration.type === 'Identifier') {
+  if (
+    statement.type === 'ExportDefaultDeclaration' &&
+    statement.declaration.type === 'Identifier'
+  ) {
     return locals.get(statement.declaration.name) ?? [];
   }
   if (statement.type === 'ExportNamedDeclaration' && statement.declaration === null) {
