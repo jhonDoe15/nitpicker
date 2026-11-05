@@ -1,6 +1,6 @@
 # Java and Kotlin: PMD rules
 
-PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 251 rules. [All pages](README.md).
+PMD's bestpractices, design, errorprone, multithreading, performance and security categories, as far as nitpicker's rulesets keep them, and the rules nitpicker adds to them, for Java sources in the Java and Kotlin presets. This page lists 253 rules. [All pages](README.md).
 
 The guide for these rules: [docs/java-preset.md](../java-preset.md).
 
@@ -1507,6 +1507,17 @@ In public methods and constructors: a change to a parameter in place: a mutating
 - **Allowed form:** This changes the collection, map or array the caller passed in. Build and return a new one (List.copyOf, a stream, new ArrayList\<>(items) filled and returned), or copy the parameter first and change the copy.
 - **Exception:** If this is intended, add `{"rule":"pmd/ParameterMutation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
+<a id="pmd-plaintextregex"></a>
+
+### `pmd/PlainTextRegex`
+
+In main sources: `String.replaceAll` with a compile-time constant pattern that has no regex metacharacters (`content.replaceAll("\r", "")`).
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** replaceAll compiles its first argument as a regex on every call, and this one has no regex metacharacters, so it is plain text. Use replace(target, replacement): it replaces every occurrence without a regex and reads the replacement literally, while replaceAll reads a dollar sign or backslash in it as a group reference.
+- **Exception:** If this is intended, add `{"rule":"pmd/PlainTextRegex","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
 <a id="pmd-preservestacktrace"></a>
 
 ### `pmd/PreserveStackTrace`
@@ -2484,6 +2495,17 @@ Reports explicit array creation when a varargs is expected.
 - **Allowed form:** Pass the elements directly: Arrays.asList("a", "b") instead of wrapping them in new String[] { ... }.
 - **Exception:** If this is intended, add `{"rule":"pmd/UnnecessaryVarargsArrayCreation","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. The message gives no exception route because the flagged code is a defect; an entry still lifts it if a reviewer agrees.
 - **See also:** [PMD rule documentation](https://docs.pmd-code.org/pmd-doc-7.7.0/pmd_rules_java_bestpractices.html#unnecessaryvarargsarraycreation)
+
+<a id="pmd-unquotedregexvalue"></a>
+
+### `pmd/UnquotedRegexValue`
+
+In main sources: a runtime `String` in the regex argument of `String.split`, `splitWithDelimiters`, `matches`, `replaceAll` or `replaceFirst`, or a runtime `String` joined with `+` into the pattern of `Pattern.compile` or `Pattern.matches`, not wrapped in `Pattern.quote`. A value is runtime when it reads a parameter, a local variable or a field that is not `static final` (an `UPPER_CASE` name counts as a constant); compile-time constants, numbers and calls that read no variable (`System.lineSeparator()`) pass. A whole pattern passed on its own to `Pattern.compile(pattern)` passes.
+
+- **Scope:** Main sources only.
+- **Why it is on:** A PMD rule nitpicker defines: it names one allowed form where the language offers several, and reports the other forms.
+- **Allowed form:** This argument is compiled as a regex (String.split, matches, replaceAll and replaceFirst take a regex, and so does Pattern.compile), and a runtime String in it is not quoted, so a dot, pipe, dollar sign or other metacharacter in the value changes what matches. Wrap plain text in Pattern.quote(value); for a literal replacement use replace(text, replacement). Pass a value that is meant as a whole pattern to Pattern.compile(pattern) on its own, and keep Pattern.quote around values joined into a pattern.
+- **Exception:** If this is intended, add `{"rule":"pmd/UnquotedRegexValue","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="pmd-unsynchronizedstaticformatter"></a>
 

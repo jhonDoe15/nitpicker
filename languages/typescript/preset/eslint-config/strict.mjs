@@ -161,6 +161,7 @@ function strictTypedConfigFor(layout, parserOptions) {
         'nitpicker/exhaustive-union-predicate': 'error',
         'nitpicker/no-forwarding-wrapper': 'error',
         'nitpicker/no-falsy-default': 'error',
+        'nitpicker/no-string-as-regex': 'error',
       },
     },
     {
@@ -196,6 +197,7 @@ export function strictConfig(parserOptions) {
 export const strictProductionRules = {
   'nitpicker/no-branch-in-composition-root': 'error',
   'nitpicker/no-module-level-let': 'error',
+  'nitpicker/no-shared-stateful-regex': 'error',
   'nitpicker/no-uninjectable-delay': 'error',
   'nitpicker/no-unvalidated-schema-field': 'error',
 };

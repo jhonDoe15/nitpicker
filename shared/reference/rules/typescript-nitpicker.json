@@ -570,6 +570,14 @@
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/no-server-or-worker-per-test" },
+    "nitpicker/no-shared-stateful-regex",
+    "Disallow reusing a regex with the g or y flag across calls through test(), exec() or a sticky match()",
+    [
+      {
+        "message": "`{{ name }}` has the `{{ flag }}` flag and is reused across calls, so `{{ method }}()` starts at the `lastIndex` the previous call left and the result depends on call order. Drop `{{ flag }}` when one match is enough, walk all matches with `text.matchAll(pattern)`, or create the regex where it is used."
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/no-shared-stateful-regex" },
     "nitpicker/no-shared-test-state",
     "Ban initialised let state shared by the tests of a file",
     [
@@ -615,6 +623,17 @@
       }
     ],
     { "key": "exceptions", "rule": "nitpicker/no-sql-string-building" },
+    "nitpicker/no-string-as-regex",
+    "Disallow passing a string to match(), matchAll() or search(), and building a regex from an unescaped runtime string",
+    [
+      {
+        "message": "`{{ method }}()` compiles this string as a regex, so `.`, `*`, `?`, `(` and the other metacharacters in it change what matches. Use `includes`, `startsWith`, `indexOf` or `===` for plain text, or pass a RegExp (`/…/` or `new RegExp(pattern)`) when it is meant as a pattern."
+      },
+      {
+        "message": "`{{ value }}` is built into this regex unescaped, so the metacharacters in it change the pattern. Escape it first (`RegExp.escape({{ value }})` or the project's escape helper), interpolate a RegExp's `.source` when the value is meant as a pattern, or compare plain text with `includes` or `startsWith`."
+      }
+    ],
+    { "key": "exceptions", "rule": "nitpicker/no-string-as-regex" },
     "nitpicker/no-switched-off-tests",
     "Ban test forms that switch a test off",
     [
@@ -1068,9 +1087,9 @@
     [0, 204, 2, 3, 205, 5, 206, 7, 207, -1, -1],
     [0, 208, 2, 3, 209, 5, 210, 7, 211, -1, -1],
     [0, 212, 2, 3, 213, 5, 214, 7, 215, -1, -1],
-    [0, 216, 217, 218, 219, 5, 220, 7, 221, -1, -1],
-    [0, 222, 2, 34, 223, 5, 224, 37, 225, 39, -1],
-    [0, 226, 2, 3, 227, 5, 228, 7, 229, -1, -1],
+    [0, 216, 2, 3, 217, 5, 218, 7, 219, -1, -1],
+    [0, 220, 221, 222, 223, 5, 224, 7, 225, -1, -1],
+    [0, 226, 2, 34, 227, 5, 228, 37, 229, 39, -1],
     [0, 230, 2, 3, 231, 5, 232, 7, 233, -1, -1],
     [0, 234, 2, 3, 235, 5, 236, 7, 237, -1, -1],
     [0, 238, 2, 3, 239, 5, 240, 7, 241, -1, -1],
@@ -1086,11 +1105,11 @@
     [0, 278, 2, 3, 279, 5, 280, 7, 281, -1, -1],
     [0, 282, 2, 3, 283, 5, 284, 7, 285, -1, -1],
     [0, 286, 2, 3, 287, 5, 288, 7, 289, -1, -1],
-    [0, 290, 86, 117, 291, 5, 292, 7, 293, -1, -1],
+    [0, 290, 2, 3, 291, 5, 292, 7, 293, -1, -1],
     [0, 294, 2, 3, 295, 5, 296, 7, 297, -1, -1],
     [0, 298, 86, 117, 299, 5, 300, 7, 301, -1, -1],
-    [0, 302, 2, 34, 303, 5, 304, 37, 305, 39, -1],
-    [0, 306, 2, 34, 307, 5, 308, 37, 309, 39, -1],
+    [0, 302, 2, 3, 303, 5, 304, 7, 305, -1, -1],
+    [0, 306, 86, 117, 307, 5, 308, 7, 309, -1, -1],
     [0, 310, 2, 34, 311, 5, 312, 37, 313, 39, -1],
     [0, 314, 2, 34, 315, 5, 316, 37, 317, 39, -1],
     [0, 318, 2, 34, 319, 5, 320, 37, 321, 39, -1],
@@ -1099,12 +1118,14 @@
     [0, 330, 2, 34, 331, 5, 332, 37, 333, 39, -1],
     [0, 334, 2, 34, 335, 5, 336, 37, 337, 39, -1],
     [0, 338, 2, 34, 339, 5, 340, 37, 341, 39, -1],
-    [0, 342, 343, 344, 345, 5, 346, 7, 347, -1, -1],
-    [0, 348, 2, 3, 349, 5, 350, 7, 351, -1, -1],
-    [0, 352, 2, 3, 353, 5, 354, 7, 355, -1, -1],
-    [0, 356, 357, 358, 359, 5, 360, 7, 361, -1, -1],
-    [0, 362, 2, 3, 363, 5, 364, 7, 365, -1, -1],
-    [0, 366, 2, 3, 367, 5, 368, 7, 369, -1, -1],
-    [0, 370, 2, 3, 371, 5, 372, 7, 373, -1, -1]
+    [0, 342, 2, 34, 343, 5, 344, 37, 345, 39, -1],
+    [0, 346, 2, 34, 347, 5, 348, 37, 349, 39, -1],
+    [0, 350, 351, 352, 353, 5, 354, 7, 355, -1, -1],
+    [0, 356, 2, 3, 357, 5, 358, 7, 359, -1, -1],
+    [0, 360, 2, 3, 361, 5, 362, 7, 363, -1, -1],
+    [0, 364, 365, 366, 367, 5, 368, 7, 369, -1, -1],
+    [0, 370, 2, 3, 371, 5, 372, 7, 373, -1, -1],
+    [0, 374, 2, 3, 375, 5, 376, 7, 377, -1, -1],
+    [0, 378, 2, 3, 379, 5, 380, 7, 381, -1, -1]
   ]
 }

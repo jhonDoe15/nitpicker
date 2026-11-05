@@ -69,6 +69,10 @@ To learn why a rule is on and what form it allows before you write or change cod
 - `domain/` is pure and takes parsed, typed values, never `unknown`. Decisions go here. No I/O or
   `process`; time, IDs and randomness are parameters. Code that drives injected async deps
   (retries, worker pools, abort) is `adapters/`; the decisions it needs are domain functions.
+- Regexes: don't reuse a `g` or `y` regex with `test()` or `exec()` across calls
+  (`nitpicker/no-shared-stateful-regex`); use `includes` or `startsWith` instead of `match` or
+  `search` with a string, and escape a parameter before building it into `new RegExp(...)`
+  (`nitpicker/no-string-as-regex`).
 - `src/main/composition-root.mjs` (or `main`/`server`) only passes things in, through named
   functions. A new feature is a new directory, never a new `if`, `?:` or `??` in a shared entry
   point: lookups and their missing-value checks go in the feature's `adapters/`.
