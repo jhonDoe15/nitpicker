@@ -159,6 +159,8 @@ describe.skipIf(!kotlinE2eEnabled)(
       commitBranch(project, 'guards-banned', guardFiles(BANNED_GUARDS, BANNED_TESTS));
       commitBranch(project, 'guards-allowed', guardFiles(ALLOWED_GUARDS, ALLOWED_TESTS));
       banned = diffOf(project, 'guards-banned');
+    });
+    beforeAll(() => {
       allowed = diffOf(project, 'guards-allowed');
     });
     afterAll(() => {
