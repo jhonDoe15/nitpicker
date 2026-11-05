@@ -28,6 +28,7 @@ import {
 import { TRI_STATE_MESSAGES, triStateBooleans } from './signatures/tri-state.mjs';
 import { TEST_MESSAGES, testClassesWithoutTests, testHelpersInSource } from './rules/tests.mjs';
 import { CLIENT_MESSAGES, httpWithoutTimeout, unsafeDeserialization } from './security/clients.mjs';
+import { PROCESS_MESSAGES, processWaitsWithoutTimeout } from './processes/process-waits.mjs';
 import { CRYPTO_MESSAGES, disabledTlsVerification, weakHashes } from './security/crypto.mjs';
 import { SQL_MESSAGES, sqlStringBuilding } from './security/sql.mjs';
 import { kotlinDeclarations } from './security/sql-values.mjs';
@@ -46,6 +47,7 @@ export const KOTLIN_SOURCE_MESSAGES = {
   ...SQL_MESSAGES,
   ...CRYPTO_MESSAGES,
   ...CLIENT_MESSAGES,
+  ...PROCESS_MESSAGES,
   ...FAN_OUT_MESSAGES,
   ...TRI_STATE_MESSAGES,
   ...PARAMETER_MUTATION_MESSAGES,
@@ -76,6 +78,7 @@ const MAIN_RULES = [
   weakHashes,
   disabledTlsVerification,
   httpWithoutTimeout,
+  processWaitsWithoutTimeout,
   unsafeDeserialization,
   triStateBooleans,
   parameterMutations,

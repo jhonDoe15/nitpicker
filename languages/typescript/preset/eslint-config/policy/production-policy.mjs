@@ -93,6 +93,7 @@ function productionGuardRules({ react, security }) {
       { allowImportMetaEnv: react, allowBundlerEnv: react },
     ],
     'nitpicker/no-shell-string-command': 'error',
+    'nitpicker/require-process-timeout': 'error',
     'nitpicker/no-unsafe-path-join': 'error',
     'nitpicker/unbounded-fan-out': 'error',
     ...securityRules({ react, security }),
