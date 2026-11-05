@@ -1,6 +1,10 @@
 import { rulesCases } from './define.mjs';
 
 export const RULES_CASES = [
+  ...rulesCases('type-laundering', [
+    ['type-cast', 'isinstance'],
+    ['explicit-any', 'ParamSpec'],
+  ]),
   ...rulesCases('cancellation', [['cancellation-not-propagated', 'bare `raise`']]),
   ...rulesCases('sql-queries', [['sql-string-formatting', 'query parameters']]),
   ...rulesCases('tls-verification', [['tls-verification-off', 'trust the certificate authority']]),
@@ -39,6 +43,7 @@ export const RULES_CASES = [
   ...rulesCases('todo-without-issue', [['todo-without-issue', '# todo(#123)']]),
   ...rulesCases('skipped-test', [['skipped-test-without-reason', 'reason=']]),
   ...rulesCases('sleep-in-test', [['sleep-in-test', 'fake clock']]),
+  ...rulesCases('negative-wait-in-test', [['negative-wait-in-test', 'event.is_set()']]),
   ...rulesCases('tautological-assert', [['tautological-assert', 'result of the code under test']]),
   ...rulesCases('test-without-assertion', [
     ['test-without-assertion', 'assert result == expected'],
@@ -46,7 +51,10 @@ export const RULES_CASES = [
   ...rulesCases('catch-log-without-exception', [
     ['catch-log-without-exception', 'logger.exception'],
   ]),
-  ...rulesCases('real-clock-test', [['real-clock-in-test', 'freeze']]),
+  ...rulesCases('real-clock-test', [
+    ['real-clock-in-test', 'freeze'],
+    ['real-clock-in-test', 'tzinfo=timezone.utc'],
+  ]),
   ...rulesCases('random-test', [['random-in-test', 'seed']]),
   ...rulesCases('network-test', [['network-in-test', 'fake']]),
   ...rulesCases('uncollected-tests', [['uncollected-tests', 'python_files']]),
