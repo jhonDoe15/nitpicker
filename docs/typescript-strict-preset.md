@@ -392,6 +392,29 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   limiter is recognized by its name only, a client that arrives untyped through a parameter or an
   unlisted library is not recognized, and a collection that is small in practice but not by
   construction is reported; lift such a path with an `exceptions` entry for the rule.
+- No schema change by the ORM at startup (`nitpicker/no-orm-schema-sync`, the TypeScript and
+  JavaScript counterpart of the Spring rule `spring/ddl-auto`): TypeORM `synchronize` or
+  `dropSchema` on (in `DataSource`, `TypeOrmModule.forRoot` or a plain options object with
+  `entities`, `migrations` or a driver `type`), `dataSource.synchronize()` and `dropDatabase()`,
+  Sequelize `sync()` with or without `force`/`alter`, `@nestjs/sequelize` `autoLoadModels` without
+  `synchronize: false`, and MikroORM `updateSchema`, `createSchema`, `dropSchema`,
+  `refreshDatabase` and `ensureDatabase({ create: true })`. A value set from the environment or a
+  condition (`synchronize: process.env.NODE_ENV !== 'production'`) is reported too: it still
+  changes the schema in every other environment. Allowed: migrations (`migrationsRun`,
+  `typeorm migration:run`, `sequelize-cli db:migrate`, `orm.migrator.up()`,
+  `prisma migrate deploy`). The repository check `start-schema-push` reports the same thing in a
+  `start` script (`prisma db push`, `drizzle-kit push`, `typeorm schema:sync`).
+- No query logging left on (`nitpicker/no-orm-query-logging`, the counterpart of
+  `spring/unsafe-diagnostics`): TypeORM `logging: true`, `'all'` or a list with `'query'`;
+  Sequelize `logging: console.log` or `true`, `logQueryParameters: true`, and `new Sequelize(...)`
+  or `SequelizeModule.forRoot(...)` without `logging: false` (Sequelize logs every query by
+  default); Prisma `log` with `'query'` or `{ emit: 'stdout', level: 'query' }`; MikroORM `debug:
+true` or a list with `'query'`; Knex `debug: true`; Drizzle `logger: true`. Conditions and
+  environment reads are reported as above. Allowed: `logging: false` with slow-query logging
+  (TypeORM `maxQueryExecutionTime`, Sequelize `benchmark: true` with a logging function, Prisma
+  `{ emit: 'event', level: 'query' }` with a handler that filters by duration) or the database's
+  own slow-query log. Both rules skip tests; a local script under the source roots takes an
+  `exceptions` entry.
 - `===` and `!==` only (`eqeqeq`). Braces on every `if`, `else` and loop body (`curly`). One import
   statement per module (`no-duplicate-imports`; a separate `import type` is fine).
 - Identifier casing (`nitpicker/naming-convention`, which wraps
