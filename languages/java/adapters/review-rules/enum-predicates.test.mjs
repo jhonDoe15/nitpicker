@@ -92,6 +92,74 @@ describe('withProjectEnumPredicates', () => {
     expect(filtered(body, 'EnumSet.of')).toHaveLength(1);
   });
 
+  it('keeps membership in Set.of, List.of and Arrays.asList and equals chains', () => {
+    const forms = [
+      ['  boolean a(Status s) { return Set.of(Status.NEW, Status.PAID).contains(s); }', 'Set.of'],
+      ['  boolean a(Status s) { return List.of(Status.NEW, Status.PAID).contains(s); }', 'List.of'],
+      [
+        '  boolean a(Status s) { return Arrays.asList(Status.NEW, Status.PAID).contains(s); }',
+        'Arrays',
+      ],
+      [
+        '  boolean a(Status s) { return s.equals(Status.NEW) || Status.PAID.equals(s); }',
+        's.equals',
+      ],
+      [
+        '  boolean a(Status s) { return Objects.equals(s, Status.NEW) || s.equals(Status.PAID); }',
+        'Objects',
+      ],
+    ];
+
+    expect(forms.map(([body, start]) => filtered(body, start).length)).toEqual([1, 1, 1, 1, 1]);
+  });
+
+  it('reads equals on a statically imported constant', () => {
+    const body = '  boolean a(Status s) { return NEW.equals(s) || PAID.equals(s); }';
+    const every =
+      '  boolean a(Status s) { return NEW.equals(s) || PAID.equals(s) || SHIPPED.equals(s); }';
+    const wildcard = 'import static shop.Status.*;\n';
+
+    expect(filtered(body, 'NEW.equals', {}, wildcard)).toHaveLength(1);
+    expect(filtered(every, 'NEW.equals', {}, wildcard)).toEqual([]);
+  });
+
+  it('keeps a boolean switch with a default over some constants and names the enum', () => {
+    const arrow =
+      '  boolean a(Status s) { return switch (s) { case NEW, PAID -> true; default -> false; }; }';
+    const statement =
+      '  boolean a(Status s) { switch (s) { case NEW: return false; case PAID: return false; default: return true; } }';
+    const qualified =
+      '  boolean a(Status s) { return switch (s) { case Status.NEW, Status.PAID -> true; case null, default -> false; }; }';
+
+    expect(filtered(arrow, 'switch').map(({ message }) => message)).toEqual([
+      'These comparisons list only some constants of Status.',
+    ]);
+    expect(filtered(statement, 'switch')).toHaveLength(1);
+    expect(filtered(qualified, 'switch')).toHaveLength(1);
+  });
+
+  it('drops a switch that lists every constant or one constant, or whose labels match no enum the file names', () => {
+    const every =
+      '  boolean a(Status s) { return switch (s) { case NEW, PAID, SHIPPED -> true; default -> false; }; }';
+    const library =
+      '  boolean a(TimeUnit u) { return switch (u) { case DAYS, HOURS -> true; default -> false; }; }';
+    const unnamed = {
+      'src/main/java/shop/Period.java': 'package shop;\nenum Period { DAYS, HOURS, MINUTES }\n',
+    };
+    const twoEnums = {
+      'src/main/java/shop/Phase.java': 'package shop;\nenum Phase { NEW, PAID, LATE }\n',
+    };
+    const ambiguous =
+      '  boolean a(Status s, Phase p) { return switch (s) { case NEW, PAID -> true; default -> false; }; }';
+    const single =
+      '  boolean a(Status s) { return switch (s) { case NEW -> true; default -> false; }; }';
+
+    expect(filtered(every, 'switch')).toEqual([]);
+    expect(filtered(library, 'switch', unnamed)).toEqual([]);
+    expect(filtered(ambiguous, 'switch', twoEnums)).toEqual([]);
+    expect(filtered(single, 'switch')).toEqual([]);
+  });
+
   it('drops a test that lists every constant', () => {
     const body =
       '  boolean any(Status s) { return s == Status.NEW || s == Status.PAID || s == Status.SHIPPED; }';

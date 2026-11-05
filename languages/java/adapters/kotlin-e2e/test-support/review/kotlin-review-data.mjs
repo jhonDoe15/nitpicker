@@ -26,6 +26,12 @@ fun isFinal(status: Status): Boolean =
         Status.SHIPPED, Status.CANCELLED -> true
     }
 
+fun isPending(status: Status): Boolean =
+    when (status) {
+        Status.NEW, Status.PAID -> true
+        else -> false
+    }
+
 val Status.isLive: Boolean get() = this == Status.NEW || this == Status.PAID
 
 fun weight(status: Status) = if (status == Status.NEW || status == Status.PAID) 1 else 0
@@ -233,6 +239,7 @@ export const EXPECTED_REVIEW_FINDINGS = [
   'ClassLoadEffect seeded',
   'ExhaustiveEnumPredicate isLive',
   'ExhaustiveEnumPredicate isOpen',
+  'ExhaustiveEnumPredicate isPending',
   'ExhaustiveEnumPredicate isSettled',
   'ExhaustiveEnumPredicate weight',
   'FixedSleepInTest WaitingTest.iterates',

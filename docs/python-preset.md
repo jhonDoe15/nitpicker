@@ -1421,7 +1421,9 @@ members is not reported.
   count (`child`/`children`, `index`/`indices`, `person`/`people`, `sub_index`/`sub_indices`), and
   a string annotation (`tags: "list[str]"`) is read as the annotation it spells.
 - `exhaustive-enum-predicate` (TypeScript: `nitpicker/exhaustive-union-predicate`): an `or` chain of
-  `==` or `is`, an `and` chain of `!=` or `is not`, or an `in` / `not in` tuple, list or set, that
+  `==` or `is`, an `and` chain of `!=` or `is not`, an `in` / `not in` tuple, list or set (also inside
+  `frozenset(...)`, `set(...)`, `tuple(...)` or `list(...)`), or a `match` whose cases return the same
+  `True` or `False` and whose last `case _:` returns the other (no guards, values or `|` of values), that
   compares one plain reference (`status`, `self.status`) with two or more distinct members of one
   project enum, or with values of a `Literal` the parameter is annotated with. A project enum is a
   class of the project, nested ones included (`Order.Kind.A`), that derives from `Enum`, `IntEnum`,
@@ -1438,7 +1440,9 @@ self in (Stage.A, Stage.B)`), like the boolean each constant declares in the Jav
   later falls into the default silently; a list of every member is not reported. An alias
   (`DEFAULT = A`, or a second name with the value of an earlier member) is not a member of its own.
   Enums from libraries are not checked. The allowed form is a `match` with `case _:
-assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(value)`.
+assert_never(value)`, or an `if`/`elif` chain ending in `else: assert_never(value)`; a `case _:`
+  that returns a boolean keeps the finding. A named constant set declared once (`OPEN = frozenset(...)`,
+  then `s in OPEN`) is one classification point and is not flagged.
 - `forwarding-wrapper` (TypeScript: `nitpicker/no-forwarding-wrapper`): an undecorated
   module-level function whose body (after a docstring) is `return target(...)`, or `return await
 target(...)` in an `async def`, passing its own parameters in order (by position or as

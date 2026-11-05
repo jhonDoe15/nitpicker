@@ -187,4 +187,45 @@ final class Predicates {
     membership(expression, selector.getValueArguments().get(0).getArgumentExpression(),
         expression.getReceiverExpression(), frame);
   }
+
+  private Boolean yielded(KtExpression expression) {
+    KtExpression plain = KtPsiUtil.safeDeparenthesize(expression);
+    if (plain instanceof KtBlockExpression && ((KtBlockExpression) plain).getStatements().size() == 1) {
+      plain = KtPsiUtil.safeDeparenthesize(((KtBlockExpression) plain).getStatements().get(0));
+    }
+    if (!(plain instanceof KtConstantExpression)) {
+      return null;
+    }
+    String text = plain.getText();
+    return "true".equals(text) ? Boolean.TRUE : "false".equals(text) ? Boolean.FALSE : null;
+  }
+
+  void when(KtWhenExpression expression, Frame frame) {
+    KtExpression subject = expression.getSubjectExpression();
+    KtWhenEntry fallback = expression.getEntries().isEmpty() ? null
+        : expression.getEntries().get(expression.getEntries().size() - 1);
+    Boolean otherwise = fallback == null || !fallback.isElse() ? null : yielded(fallback.getExpression());
+    if (state.test || subject == null || expression.getSubjectVariable() != null || otherwise == null) {
+      return;
+    }
+    List<Object> elements = new ArrayList<>();
+    for (KtWhenEntry entry : expression.getEntries()) {
+      if (entry == fallback) {
+        continue;
+      }
+      if (entry.isElse() || !Boolean.valueOf(!otherwise).equals(yielded(entry.getExpression()))) {
+        return;
+      }
+      for (KtWhenCondition condition : entry.getConditions()) {
+        if (!(condition instanceof KtWhenConditionWithExpression)) {
+          return;
+        }
+        elements.add(clip(((KtWhenConditionWithExpression) condition).getExpression()));
+      }
+    }
+    state.predicates.add(
+        m("kind", "when", "line", state.lineOf(expression.getTextRange().getStartOffset()),
+            "symbol", symbolAt(frame, expression), "holder", holder(expression),
+            "subject", clip(subject), "subjectStable", stable(subject), "elements", elements));
+  }
 }

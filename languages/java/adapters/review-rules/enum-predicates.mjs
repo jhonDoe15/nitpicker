@@ -12,13 +12,19 @@ import {
 export const ENUM_PREDICATE_RULE = 'ExhaustiveEnumPredicate';
 const GENERIC_ENUM = 'an enum of the project';
 const MINIMUM_CONSTANTS = 3;
+const MINIMUM_LISTED = 2;
 const ENUM_HEADER = /\benum\s+(\w+)/gu;
 const ANNOTATION = /@[\w.]+(?:\s*\([^()]*\))?/gu;
 const IDENTIFIER = /^[A-Za-z_$][\w$]*/u;
 const DOTTED_NAME = /[A-Za-z_$][\w$]*(?:\s*\.\s*[A-Za-z_$][\w$]*)+/gu;
 const TYPE_NAME = /^[A-Z]/u;
 const TYPE_AND_CONSTANT = 2;
-const BARE_CONSTANT = /(?<![\w$.])([A-Z][A-Z0-9_]*)(?![\w$]|\s*[.(])/gu;
+const BARE_CONSTANT = /(?<![\w$.])([A-Z][A-Z0-9_]*)(?![\w$]|\s*\(|\s*\.(?!\s*equals\s*\())/gu;
+const CALLED = /^\s*\(/u;
+const SWITCH_START = /^switch\s*\(/u;
+const CASE_LABELS = /\bcase\b([^:-]*)(?:->|:)/gu;
+const BRACE_DEPTH = { '{': 1, '}': -1 };
+const NOT_CONSTANT_LABELS = new Set(['default', 'null']);
 
 function splitTopLevel(text) {
   const parts = [''];
@@ -107,13 +113,12 @@ function staticOwner(imports, name, enums) {
 
 function qualifiedConstants(expression) {
   return [...expression.matchAll(DOTTED_NAME)]
-    .map(([name]) =>
-      name
-        .split('.')
-        .map((part) => part.trim())
-        .slice(-TYPE_AND_CONSTANT),
-    )
-    .filter(([type]) => TYPE_NAME.test(type));
+    .map(({ 0: name, index }) => {
+      const parts = name.split('.').map((part) => part.trim());
+      const called = CALLED.test(expression.slice(index + name.length));
+      return (called ? parts.slice(0, -1) : parts).slice(-TYPE_AND_CONSTANT);
+    })
+    .filter((parts) => parts.length === TYPE_AND_CONSTANT && TYPE_NAME.test(parts[0]));
 }
 
 function importedConstants(expression, { text, enums }) {
@@ -137,20 +142,77 @@ function comparedConstants(expression, source) {
   return byType;
 }
 
+function isPartialOf(declared, compared) {
+  const constants = declared?.constants ?? [];
+  return (
+    constants.length >= MINIMUM_CONSTANTS &&
+    compared.size < constants.length &&
+    [...compared].every((constant) => constants.includes(constant))
+  );
+}
+
+function switchBody(text, start) {
+  const open = text.indexOf('{', start);
+  const body = open < 0 ? '' : text.slice(open + 1);
+  let depth = 1;
+  let end = 0;
+  for (const character of body) {
+    depth += BRACE_DEPTH[character] ?? 0;
+    if (depth === 0) {
+      return body.slice(0, end);
+    }
+    end += character.length;
+  }
+  return '';
+}
+
+function isNamedIn(text, type) {
+  const name = type.replaceAll('$', String.raw`\$`);
+  return new RegExp(String.raw`(?<![\w$])${name}(?![\w$])`, 'u').test(text);
+}
+
+function switchLabels(text, start) {
+  return [...switchBody(text, start).matchAll(CASE_LABELS)]
+    .flatMap(([, labels]) => labels.split(','))
+    .map((label) => label.split('.').map((part) => part.trim()))
+    .filter((parts) => !NOT_CONSTANT_LABELS.has(parts.join('.')));
+}
+
+function partialSwitch(text, start, enums) {
+  const labels = switchLabels(text, start);
+  const compared = new Set(labels.map((parts) => parts.at(-1)));
+  const qualified = new Set(
+    labels.filter((parts) => parts.length > 1).map((parts) => parts.at(-TYPE_AND_CONSTANT)),
+  );
+  const types =
+    qualified.size > 0
+      ? [...qualified]
+      : [...enums().keys()].filter((type) => isNamedIn(text, type));
+  const candidates = types.filter((type) =>
+    [...compared].every((constant) =>
+      declarationFor(enums().get(type), text, type)?.constants.includes(constant),
+    ),
+  );
+  const [type] = candidates;
+  return candidates.length === 1 &&
+    compared.size >= MINIMUM_LISTED &&
+    isPartialOf(declarationFor(enums().get(type), text, type), compared)
+    ? type
+    : undefined;
+}
+
 function partialEnum(finding, { projectRoot, enums }) {
   const text = readJavaSource(path.join(projectRoot, finding.path));
   if (text === undefined || finding.location === undefined) {
     return undefined;
   }
-  const expression = expressionAt(text, offsetOf(text, finding.location));
+  const start = offsetOf(text, finding.location);
+  if (SWITCH_START.test(text.slice(start))) {
+    return partialSwitch(text, start, enums);
+  }
+  const expression = expressionAt(text, start);
   for (const [type, compared] of comparedConstants(expression, { text, enums })) {
-    const declared = declarationFor(enums().get(type), text, type);
-    const constants = declared?.constants ?? [];
-    const isPartial =
-      constants.length >= MINIMUM_CONSTANTS &&
-      compared.size < constants.length &&
-      [...compared].every((constant) => constants.includes(constant));
-    if (isPartial) {
+    if (isPartialOf(declarationFor(enums().get(type), text, type), compared)) {
       return type;
     }
   }
