@@ -63,6 +63,8 @@ const REVIEW_RULES = new Set([
   'FixedSleepInTest',
   'NegativeWaitInTest',
   'RetryInTest',
+  'MockedSubjectInTest',
+  'StaticMockOfProjectType',
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',
   'SingularAndPluralMember',

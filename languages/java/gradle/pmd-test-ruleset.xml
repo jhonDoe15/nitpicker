@@ -106,4 +106,69 @@
       </property>
     </properties>
   </rule>
+  <rule name="MockedSubjectInTest" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="This test mocks the class it tests, so it checks the mock instead of the code: a mock of it, or a spy whose own methods are stubbed. Test the real object: pass fakes or mocks of its collaborators in through the constructor, and test a helper through the public method that calls it.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+let $injected := //FieldDeclaration[ModifierList/Annotation[pmd-java:typeIs('org.mockito.InjectMocks')]]
+                     /ClassType/@SimpleName,
+    $named := for $name in /CompilationUnit/ClassDeclaration/@SimpleName[matches(., '^.+(Tests?|IT|Spec)$')]
+                return replace($name, '^(.+?)(Tests|Test|IT|Spec)$', '$1'),
+    $subjects := if (exists($injected)) then $injected else $named,
+    $mockCalls := //MethodCall[pmd-java:matchesSig('org.mockito.Mockito#mock(_*)')],
+    $spyCalls := (//MethodCall[pmd-java:matchesSig('org.mockito.Mockito#spy(_*)')]
+                  | $mockCalls[ArgumentList//*[@Name = 'CALLS_REAL_METHODS']]),
+    $mockAnnotated := //(FieldDeclaration | FormalParameter)
+      [ModifierList/Annotation[pmd-java:typeIs('org.mockito.Mock')
+         or pmd-java:typeIs('org.springframework.test.context.bean.override.mockito.MockitoBean')
+         or pmd-java:typeIs('org.springframework.boot.test.mock.mockito.MockBean')]],
+    $spyAnnotated := (//(FieldDeclaration | FormalParameter)
+      [ModifierList/Annotation[pmd-java:typeIs('org.mockito.Spy')
+         or pmd-java:typeIs('org.springframework.test.context.bean.override.mockito.MockitoSpyBean')
+         or pmd-java:typeIs('org.springframework.boot.test.mock.mockito.SpyBean')]]
+      | $mockAnnotated[ModifierList/Annotation//*[@Name = 'CALLS_REAL_METHODS']]),
+    $stubbed := (
+      //MethodCall[pmd-java:matchesSig('org.mockito.Mockito#when(_)')
+                   or pmd-java:matchesSig('org.mockito.BDDMockito#given(_)')]
+        /ArgumentList/MethodCall/*[1][self::VariableAccess or self::FieldAccess]/@Name,
+      //MethodCall[pmd-java:matchesSig('org.mockito.stubbing.Stubber#when(_)')
+                   or pmd-java:matchesSig('org.mockito.stubbing.LenientStubber#when(_)')
+                   or pmd-java:matchesSig('org.mockito.BDDMockito$BDDStubber#given(_)')]
+        /ArgumentList/*[1][self::VariableAccess or self::FieldAccess]/@Name),
+    $declared := //(FieldDeclaration | LocalVariableDeclaration)
+      [VariableDeclarator/VariableId/@Name = $stubbed][ClassType/@SimpleName = $subjects]
+return
+  ($mockCalls except $spyCalls)
+    /(ArgumentList/ClassLiteral/ClassType
+      | self::*[not(ArgumentList/ClassLiteral)]/parent::VariableDeclarator/../ClassType)
+    [@SimpleName = $subjects]
+  | ($mockAnnotated except $spyAnnotated)/ClassType[@SimpleName = $subjects]
+  | $spyAnnotated[(VariableDeclarator/VariableId | VariableId)/@Name = $stubbed]
+      /ClassType[@SimpleName = $subjects]
+  | $spyCalls/parent::VariableDeclarator[VariableId/@Name = $stubbed]
+      /(../ClassType | self::*[not(../ClassType)]/*[last()]/ArgumentList/*[1]
+                         /(self::ConstructorCall | self::ClassLiteral)/ClassType)
+      [@SimpleName = $subjects]
+  | $declared[some $assigned in $spyCalls/parent::AssignmentExpression/*[1]/@Name
+              satisfies $assigned = VariableDeclarator/VariableId/@Name]/ClassType
+]]></value>
+      </property>
+    </properties>
+  </rule>
+  <rule name="StaticMockOfProjectType" language="java" class="net.sourceforge.pmd.lang.rule.xpath.XPathRule"
+        message="A static or constructor mock (mockStatic, mockConstruction) replaces a class of this project, for the whole thread, so the test runs a fake of the project's own code and depends on how that code is called. Pass the dependency in instead: an instance, a function or a Clock the test can replace. Keep static mocks for library types that cannot be passed in.">
+    <priority>2</priority>
+    <properties>
+      <property name="xpath">
+        <value><![CDATA[
+//MethodCall[pmd-java:matchesSig('org.mockito.Mockito#mockStatic(_*)')
+             or pmd-java:matchesSig('org.mockito.Mockito#mockConstruction(_*)')
+             or pmd-java:matchesSig('org.mockito.Mockito#mockConstructionWithAnswer(_*)')]
+  /ArgumentList/*[1][self::ClassLiteral]/ClassType
+]]></value>
+      </property>
+    </properties>
+  </rule>
 </ruleset>
