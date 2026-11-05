@@ -28,7 +28,13 @@ const AFTER_NAMES = new Set([
   'close',
   'tearDown',
 ]);
-const KOTEST_AFTER = /(?<![\w.])(?:afterTest|afterEach|afterSpec|afterContainer|afterAny|afterInvocation|finalizeSpec)\s*(?:\([^()]*\)\s*)?\{/gu;
+const KOTEST_AFTER = new RegExp(
+  [
+    String.raw`(?<![\w.])(?:afterTest|afterEach|afterSpec|afterContainer|afterAny|afterInvocation`,
+    String.raw`|finalizeSpec)\s*(?:\([^()]*\)\s*)?\{`,
+  ].join(''),
+  'gu',
+);
 const FINALLY = /(?<![\w.])finally\s*\{/gu;
 const LOCAL_CALL = /(?<![\w.])([a-z_]\w*)\s*\(/gu;
 const STUB_FIELD = /@(?:get:|field:)?(?:SystemStub|Rule|ClassRule|RegisterExtension)\b/u;
@@ -97,7 +103,7 @@ const LISTENER_TYPES = new Set([
   'TimeZoneTestListener',
 ]);
 
-function blocks(scanned, pattern, from, to) {
+function blocks(scanned, pattern, { start: from, end: to }) {
   return [...marksFrom(scanned.code, pattern, from)]
     .filter(({ index }) => index < to)
     .map(({ index, 0: text }) => {
@@ -120,11 +126,10 @@ function afterZones(scanned, klass) {
   const afters = functions
     .filter(
       (fn) =>
-        AFTER_NAMES.has(fn.name) ||
-        fn.annotations.some(({ name }) => AFTER_ANNOTATIONS.has(name)),
+        AFTER_NAMES.has(fn.name) || fn.annotations.some(({ name }) => AFTER_ANNOTATIONS.has(name)),
     )
     .map(({ body: range }) => range);
-  const zones = [...afters, ...blocks(scanned, KOTEST_AFTER, body.start, body.end)];
+  const zones = [...afters, ...blocks(scanned, KOTEST_AFTER, body)];
   const called = new Set(
     zones.flatMap(({ start, end }) =>
       [...scanned.code.slice(start, end).matchAll(LOCAL_CALL)].map((match) => match[1]),
@@ -134,7 +139,7 @@ function afterZones(scanned, klass) {
   return [...zones, ...helpers];
 }
 
-function marksAround(scanned, change, classes, fn) {
+function marksAround(scanned, change, { classes, fn }) {
   const hosts = enclosingHosts(scanned, 0, change.offset);
   const classText = classes.map((klass) => scanned.code.slice(klass.bodyOpen, klass.bodyClose));
   const stubbed = classText.some((text) => STUB_FIELD.test(text));
@@ -179,9 +184,9 @@ export function isRestored(scanned, change, suites) {
   const scope = fn?.body ?? { start: 0, end: scanned.code.length };
   const sites = [
     ...classes.flatMap((klass) => afterZones(scanned, klass)),
-    ...blocks(scanned, FINALLY, scope.start, scope.end),
+    ...blocks(scanned, FINALLY, scope),
   ];
-  const marks = marksAround(scanned, change, classes, fn);
+  const marks = marksAround(scanned, change, { classes, fn });
   if (
     sites.some((zone) => inside(zone, change.offset)) ||
     [...SCOPED_HOSTS].some((name) => marks.has(name)) ||
