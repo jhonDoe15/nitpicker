@@ -1,10 +1,10 @@
 import ast
 
 from checks.common import dotted_name, finding, last_name
-from review.common import unwrapped
 from review.fields import TYPED_DICT, base_class, record_kind
 from signatures.annotations import (
     FUNCTION_TYPES,
+    TRANSPARENT_WRAPPERS,
     subscript_arguments,
     decorator_names,
     is_hook,
@@ -98,18 +98,39 @@ FIXED_SIGNATURE_DECORATORS = {"override", "overload"}
 ANY_MUTATORS = set().union(*CONTAINERS.values())
 
 
+def parsed(node):
+    if not (isinstance(node, ast.Constant) and isinstance(node.value, str)):
+        return node
+    try:
+        return ast.parse(node.value.strip(), mode="eval").body
+    except (SyntaxError, ValueError, RecursionError, MemoryError):
+        return None
+
+
+def annotation_parts(node):
+    if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
+        return [node.left, node.right], None
+    if isinstance(node, ast.Subscript):
+        arguments = subscript_arguments(node)
+        wrapper = last_name(node.value)
+        if wrapper in UNION_NAMES:
+            return arguments, None
+        if wrapper in TRANSPARENT_WRAPPERS:
+            return arguments[:1], None
+        return [], node.value
+    return [], node
+
+
 def annotation_classes(annotation):
-    pending, found = [unwrapped(annotation)], []
+    pending, found = [annotation], []
     for node in pending:
-        if isinstance(node, ast.BinOp) and isinstance(node.op, ast.BitOr):
-            pending.extend([unwrapped(node.left), unwrapped(node.right)])
-        elif isinstance(node, ast.Subscript) and last_name(node.value) in UNION_NAMES:
-            pending.extend(map(unwrapped, subscript_arguments(node)))
-        elif isinstance(node, ast.Subscript):
-            found.append(node.value)
-        else:
-            found.append(node)
-    return found[:MAX_UNION_MEMBERS]
+        if len(pending) > MAX_UNION_MEMBERS:
+            break
+        parts, named = annotation_parts(parsed(node))
+        pending.extend(parts)
+        if named is not None:
+            found.append(named)
+    return found
 
 
 def is_typed_dict(annotation, context):
