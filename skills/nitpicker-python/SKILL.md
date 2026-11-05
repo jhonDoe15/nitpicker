@@ -108,6 +108,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   instead of `time.sleep` and fake network, database and disk access. A test over budget is run
   again alone without coverage and fails only if it is still over. Lift a legitimate one in the
   top-level `exceptions` with `{ "rule": "slow-test", "paths": [...], "reason": "..." }`.
+- Tests put back what they change for the whole process (`global-state-leak-in-test`): set environment
+  variables and attributes with `monkeypatch.setenv`/`monkeypatch.setattr` or `mock.patch.dict(os.environ, ...)`,
+  not `os.environ[...] =`, `settings.DEBUG = True`, `time.tzset()` or `locale.setlocale(...)`; or restore the old
+  value in `finally`, after `yield` in a fixture, or in `tearDown`.
 - Dependencies: every package production code imports is a production dependency of the project
   (pyproject, Pipfile, requirements or setup.cfg); test-only packages go in a dev group; remove a
   dependency nothing uses.

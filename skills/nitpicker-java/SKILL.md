@@ -179,6 +179,11 @@ To learn why a rule is on and what form it allows before you write or change cod
   `retryAnalyzer`, `IRetryAnalyzer` or `RetryAnalyzerCount`, nor `setRetryAnalyzer(...)`. A test that
   passes on a later attempt hides a flaky or racy test: wait on the condition instead of a fixed
   delay, isolate shared state. `@RepeatedTest` is fine, since every repetition must pass.
+- A test puts back the process-wide state it changes (`GlobalStateLeakInTest`): a system property, the default
+  `Locale` or `TimeZone`, `System.out`/`err`/`in`, a default handler or security provider, or a static field or static
+  setter of a project class. Set it through junit-pioneer (`@SetSystemProperty`, `@RestoreSystemProperties`,
+  `@DefaultLocale`, `@DefaultTimeZone`) or system-stubs, or save the old value and restore it in `finally` or
+  `@AfterEach`/`@AfterAll`.
 - Tests print nothing new (`test-runtime/test-console-output`): no `System.out`/`System.err`, and
   no new `WARN` or `ERROR` log line from the code under test. Fix the cause the line names.
 - In main code, nothing with an outside effect runs while a class loads (`ClassLoadEffect`): no

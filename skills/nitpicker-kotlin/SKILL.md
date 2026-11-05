@@ -182,6 +182,10 @@ To learn why a rule is on and what form it allows before you write or change cod
   package config, `TestConfig(retries = n)`). A test that passes on a later attempt hides a flaky or
   racy test: wait on the condition instead of a fixed delay, isolate shared state. `retries = 0` and
   `@RepeatedTest` are fine.
+- A test puts back the process-wide state it changes (`pmd/GlobalStateLeakInTest`): a system property, the default
+  `Locale` or `TimeZone`, `System.out`, `Dispatchers.setMain`, or a property of a project `object`. Restore it in
+  `finally`, an `@AfterEach`/`@AfterTest` function or Kotest `afterTest { }` (`Dispatchers.resetMain()`), or use an
+  extension that restores it (junit-pioneer `@RestoreSystemProperties`, Kotest `withSystemProperty { }`).
 - Assert unconditionally (`pmd/AssertionInControlFlow`): no assertion that can be skipped, inside an `if`,
   a `when`, any loop (also over results), a safe call (`?.let`), `takeIf`, `&&`, `||`, `?:`, a `try` that
   swallows the failure, a `runCatching`, or after an early `return`. An `if`/`else` or `when` whose every

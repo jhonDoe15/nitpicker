@@ -9,6 +9,10 @@ import {
   runtimeSerializationFiles,
 } from './test-support/review/kotlin-review-data.mjs';
 import {
+  GLOBAL_STATE_FILES,
+  GLOBAL_STATE_FINDINGS,
+} from './test-support/review/kotlin-global-state-data.mjs';
+import {
   commitBranch,
   commitFromBranch,
   diffOf,
@@ -35,7 +39,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
 
   beforeAll(() => {
     project = initializeProject();
-    commitBranch(project, 'review-rules', REVIEW_RULE_FILES);
+    commitBranch(project, 'review-rules', { ...REVIEW_RULE_FILES, ...GLOBAL_STATE_FILES });
   });
   afterAll(() => {
     removeProject(project);
@@ -45,7 +49,9 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
     const result = diffOf(project, 'review-rules');
 
     expect(result.failed).toBe(true);
-    expect(reviewFindings(result.newEnforceable)).toEqual(EXPECTED_REVIEW_FINDINGS);
+    expect(reviewFindings(result.newEnforceable)).toEqual(
+      [...EXPECTED_REVIEW_FINDINGS, ...GLOBAL_STATE_FINDINGS].sort(),
+    );
     expect(helpUriProblems(result.newFindings)).toEqual([]);
   });
 
@@ -55,6 +61,7 @@ describe.skipIf(!kotlinE2eEnabled)('Kotlin preset review rules end to end', () =
         ...kotlinPolicy,
         exceptions: [
           { rule: 'pmd/FixedSleepInTest', glob: ORDERS_TESTS },
+          { rule: 'pmd/GlobalStateLeakInTest', glob: ORDERS_TESTS },
           { rule: 'pmd/SpringUnusedContext', glob: ORDERS_TESTS },
           { rule: 'unused-option', glob: 'src/main/kotlin/demo/orders/*' },
           { rule: 'pmd/ClassLoadEffect', glob: 'src/main/kotlin/demo/orders/Inventory.kt' },
