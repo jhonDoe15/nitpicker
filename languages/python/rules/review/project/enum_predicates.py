@@ -9,6 +9,7 @@ from review.common import (
     scoped_definitions,
     unwrapped,
 )
+from review.project.enum_match import listed_collection, match_values
 from review.project.index import MAX_REEXPORT_DEPTH
 
 ENUM_BASES = {"Enum", "IntEnum", "StrEnum", "ReprEnum"}
@@ -149,17 +150,20 @@ class EnumPredicates:
         return None
 
     def comparisons(self, context, node):
+        if isinstance(node, ast.Match):
+            values = match_values(node)
+            return [
+                self.comparison(context, node.subject, value) for value in values or []
+            ]
         if (
             isinstance(node, ast.Compare)
             and len(node.ops) == 1
             and isinstance(node.ops[0], MEMBERSHIP)
         ):
-            values = node.comparators[0]
-            if isinstance(values, (ast.Tuple, ast.List, ast.Set)) and values.elts:
-                return [
-                    self.comparison(context, node.left, value) for value in values.elts
-                ]
-            return None
+            values = listed_collection(node.comparators[0])
+            return [
+                self.comparison(context, node.left, value) for value in values or []
+            ]
         if not isinstance(node, ast.BoolOp) or type(node.op) not in CHAIN_OPERATORS:
             return None
         operators = CHAIN_OPERATORS[type(node.op)]
@@ -232,6 +236,8 @@ def slot_values(owner):
             continue
         if isinstance(node, VALUE_SLOTS) and node.value is not None:
             values.append(node.value)
+        elif isinstance(node, ast.Match):
+            values.append(node)
         elif isinstance(node, ast.Lambda):
             values.append(node.body)
         pending.extend(ast.iter_child_nodes(node))
