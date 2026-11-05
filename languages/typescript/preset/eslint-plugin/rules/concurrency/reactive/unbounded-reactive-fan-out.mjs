@@ -11,10 +11,20 @@ const EXCEPTION = 'An exception fits only when the collection is always small.';
 const CONSEQUENCE =
   "at once, so a large collection exhausts the {{target}}'s connections or rate limit.";
 
+function mappedBefore(context, call, collection) {
+  const operators = call.parent.arguments;
+  const previous = operators[operators.indexOf(call) - 1];
+  const isMap = previous?.type === 'CallExpression' && rxjsName(context, previous.callee) === 'map';
+  const worker = isMap ? workerOf(context, previous.arguments[0]) : undefined;
+  return worker === undefined ? [] : [{ collection, worker }];
+}
+
 function operatorSites(context, call, name) {
   if (name === 'mergeAll') {
     const source = call.arguments.length === 0 ? pipeSource(context, call) : undefined;
-    return source === undefined ? [] : mappings(context, source);
+    return source === undefined
+      ? []
+      : [...mappings(context, source), ...mappedBefore(context, call, source)];
   }
   const [project, ...rest] = call.arguments;
   const limit = rest.find((argument) => !isUnlimited(context, argument));

@@ -166,7 +166,7 @@ let $clientTypes := function($r) {
         or pmd-java:typeIs('com.rabbitmq.client.Channel')]
     },
     $remoteCall := function($n) {
-      exists($n/descendant-or-self::MethodCall[@MethodName != ('close', 'toString', 'equals', 'hashCode', 'getClass', 'mutate', 'builder')]
+      exists($n/descendant-or-self::MethodCall[not(@MethodName = ('close', 'toString', 'equals', 'hashCode', 'getClass', 'mutate', 'builder'))]
         [$clientTypes(*[1])])
     },
     $viaHelpers := function($n, $pred) {
@@ -227,7 +227,10 @@ let $clientTypes := function($r) {
       or exists($chain($s)/self::MethodCall[@MethodName = ('stream', 'asList', 'of')][*[1][self::TypeExpression]]
            [ArgumentList/*[1][self::MethodCall[@MethodName = ('values', 'of', 'asList')][*[1][self::TypeExpression]]
                               or self::ArrayAllocation]])
-      or exists($chain($s)/self::MethodCall[@MethodName = ('of', 'asList', 'copyOf', 'values', 'ofEntries')][*[1][self::TypeExpression]])
+      or exists($chain($s)/self::MethodCall[*[1][self::TypeExpression]]
+           [@MethodName = ('of', 'values', 'ofEntries')
+            or @MethodName = 'asList' and (ArgumentList/@Size != 1
+              or ArgumentList/*[1][self::StringLiteral or self::NumericLiteral or self::CharLiteral])])
       or exists($chain($s)/self::MethodCall[@MethodName = ('range', 'rangeClosed')][*[1][self::TypeExpression]]
            [not(ArgumentList/*[$mentionsSize(.)])])
       or exists($chain($s)/(self::ArrayAllocation[ArrayInitializer] | self::ArrayInitializer))
@@ -362,7 +365,7 @@ let $clientTypes := function($r) {
         or pmd-java:typeIs('com.rabbitmq.client.Channel')]
     },
     $remoteCall := function($n) {
-      exists($n/descendant-or-self::MethodCall[@MethodName != ('close', 'toString', 'equals', 'hashCode', 'getClass', 'mutate', 'builder')]
+      exists($n/descendant-or-self::MethodCall[not(@MethodName = ('close', 'toString', 'equals', 'hashCode', 'getClass', 'mutate', 'builder'))]
         [$clientTypes(*[1])])
     },
     $viaHelpers := function($n, $pred) {
@@ -407,7 +410,10 @@ let $clientTypes := function($r) {
       or exists($chain($s)/self::MethodCall[@MethodName = ('stream', 'asList', 'of')][*[1][self::TypeExpression]]
            [ArgumentList/*[1][self::MethodCall[@MethodName = ('values', 'of', 'asList')][*[1][self::TypeExpression]]
                               or self::ArrayAllocation]])
-      or exists($chain($s)/self::MethodCall[@MethodName = ('of', 'asList', 'copyOf', 'values', 'ofEntries')][*[1][self::TypeExpression]])
+      or exists($chain($s)/self::MethodCall[*[1][self::TypeExpression]]
+           [@MethodName = ('of', 'values', 'ofEntries')
+            or @MethodName = 'asList' and (ArgumentList/@Size != 1
+              or ArgumentList/*[1][self::StringLiteral or self::NumericLiteral or self::CharLiteral])])
       or exists($chain($s)/self::MethodCall[@MethodName = ('range', 'rangeClosed')][*[1][self::TypeExpression]]
            [not(ArgumentList/*[$mentionsSize(.)])])
       or exists($chain($s)/(self::ArrayAllocation[ArrayInitializer] | self::ArrayInitializer))

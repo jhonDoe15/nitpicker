@@ -41,6 +41,9 @@ class Bounded(private val feeds: Feeds) {
     fun sequentialLimited(ids: List<String>): Flux<String> =
         Flux.mergeSequential(ids.map { feeds.fetch(it) }, 4, 32)
 
+    fun chainedPure(ids: List<String>): Flux<String> =
+        Flux.fromIterable(ids).flatMap({ feeds.fetch(it) }, 4).flatMap { Mono.just(it.trim()) }
+
     @OptIn(ExperimentalCoroutinesApi::class)
     fun flowDefault(ids: List<String>): Flow<String> = ids.asFlow().flatMapMerge { id -> feeds.fetch(id).asFlow() }
 

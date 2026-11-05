@@ -87,6 +87,10 @@ public final class Feeds {
     return Flux.merge(ids.stream().map(this::fetch).toArray(Mono[]::new)); // violation: UnboundedReactiveFanOut
   }
 
+  public Flux<String> copied(List<String> ids) {
+    return Flux.fromIterable(List.copyOf(ids)).flatMap(this::fetch); // violation: UnboundedReactiveFanOut
+  }
+
   public Flux<String> limited(List<String> ids) {
     return Flux.fromIterable(ids).flatMap(this::fetch, 8);
   }
@@ -141,6 +145,10 @@ public final class Feeds {
 
   public Flux<String> pairOfTwo(String first, String second) {
     return Flux.merge(fetch(first), fetch(second));
+  }
+
+  public Flux<String> described(List<String> ids) {
+    return Flux.fromIterable(ids).flatMap(id -> Mono.just(id + client.toString()));
   }
 
   private Mono<String> fetch(String id) {

@@ -53,7 +53,7 @@ export function workerOf(context, callback) {
     return { root: target, fn: target };
   }
   const resolved = resolveFunction(context, target);
-  if (resolved !== undefined) {
+  if (resolved?.body) {
     return { root: resolved, fn: resolved };
   }
   const reference = ['Identifier', 'MemberExpression'].includes(target?.type);

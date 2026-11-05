@@ -2644,7 +2644,7 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   `Executors.newCachedThreadPool`, `newVirtualThreadPerTaskExecutor`, `newThreadPerTaskExecutor`
   or `ForkJoinPool.commonPool`; a parameter, an injected executor or a fixed pool is never
   reported. These pass: a `Semaphore` acquired in the loop body, the task or a helper; a source
-  that is fixed (`List.of`, `Arrays.asList`, `Stream.of`, an array initializer, enum `values()`, a
+  that is fixed (`List.of`, `Arrays.asList` of listed values, `Stream.of`, an array initializer, enum `values()`, a
   `final` field holding one of those) or cut to size (`limit` or `subList` whose size does not
   read the collection's own size, so `Math.min(20, items.size())` passes and `items.size()` does
   not; a chunk variable over `partition`, `chunked` or `batches`; a local holding a cut list); a

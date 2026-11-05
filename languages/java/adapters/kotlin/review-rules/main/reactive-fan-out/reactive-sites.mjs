@@ -35,14 +35,31 @@ function compact(text) {
   return (text ?? '').replaceAll(/\s+/gu, '');
 }
 
+function onSameLine(invocation) {
+  return (candidate) =>
+    candidate.scope === invocation.scope &&
+    candidate.line === invocation.line &&
+    candidate.name === invocation.name;
+}
+
+function takesLambda(invocation) {
+  return (invocation.arguments ?? []).some(
+    ({ lambda, text }) => lambda || text.trim().startsWith('{'),
+  );
+}
+
 function lambdaOf(view, invocation) {
-  return view.file.scopes.find(
+  const callers = view.file.invocations.filter(
+    (candidate) => onSameLine(invocation)(candidate) && takesLambda(candidate),
+  );
+  const lambdas = view.file.scopes.filter(
     (scope) =>
       scope.k === 'lambda' &&
       scope.host === invocation.name &&
       scope.parent === invocation.scope &&
       scope.line === invocation.line,
   );
+  return lambdas.length === callers.length ? lambdas[callers.indexOf(invocation)] : undefined;
 }
 
 export function workerOf(view, invocation) {

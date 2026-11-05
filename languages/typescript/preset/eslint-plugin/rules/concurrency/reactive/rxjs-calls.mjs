@@ -34,6 +34,17 @@ const GROUPS = new Set([
   'windowCount',
   'windowTime',
   'reduce',
+  'first',
+  'last',
+  'single',
+  'count',
+  'min',
+  'max',
+  'every',
+  'isEmpty',
+  'find',
+  'findIndex',
+  'elementAt',
 ]);
 const WINDOWS = new Set(['take', 'takeLast']);
 const SIZES = new Set(['length', 'size']);
