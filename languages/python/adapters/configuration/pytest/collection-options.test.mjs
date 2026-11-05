@@ -38,6 +38,9 @@ describe('telling a test file from a source file', () => {
     ['conftest.py', defaults, true],
     ['src/app/checks_a.py', { ...defaults, pythonFiles: ['checks_*.py'] }, true],
     ['src/app/testing.py', defaults, false],
+    ['testing/helpers.py', defaults, true],
+    ['src/shop/testing/helpers.py', defaults, false],
+    ['testing.py', defaults, false],
     ['src/app/service.py', defaults, false],
     ['src/app/testsuite.py', defaults, false],
   ])('%s with %j is %s', (file, settings, expected) => {
