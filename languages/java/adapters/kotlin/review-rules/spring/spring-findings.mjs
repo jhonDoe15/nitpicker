@@ -14,9 +14,11 @@ import { springViews } from './view/spring-view.mjs';
 import { ERROR_LEAK_RULES } from './web/error-leaks.mjs';
 import { SECURITY_RULES } from './web/security.mjs';
 import { WEB_RULES } from './web/web.mjs';
+import { WIRING_RULES } from './wiring/wiring.mjs';
 
 const RULES = [
   ...BEAN_RULES,
+  ...WIRING_RULES,
   ...CLIENT_RULES,
   ...CONFIGURATION_RULES,
   ...PROXY_RULES,
