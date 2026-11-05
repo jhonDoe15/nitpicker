@@ -51,8 +51,8 @@ A callback breaks its protocol: `source-loader-does-not-merge-published-state`, 
 
 A doc comment that only restates its declaration name, or whose description is longer than the limit.
 
-- **Presets:** TypeScript, JavaScript, Java and Kotlin
-- **Analyzers:** `coding-standards` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin)
+- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
+- **Analyzers:** `coding-standards` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** A comment that repeats the name adds noise; a long one belongs in names and types.
 - **Threshold:** a doc comment or docstring that only restates its declaration name (a tag or section with text, such as `@param id the account` or `Args:`, says more), or a description longer than 5 lines, tags, sections and code examples not counted (TypeScript and JavaScript report it as `nitpicker/no-comments`)
 - **Exception:** If this is intended, add `{"rule":"doc-comment-content","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json. With the TypeScript and JavaScript presets: If this is intended, add `{"rule":"nitpicker/no-comments","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
@@ -184,8 +184,8 @@ Unused file.
 An export, module or main class that only tests use (a re-export is not an import).
 
 - **Printed as:** `dead-code/test-only-export` and `coupling/test-only-export`
-- **Presets:** TypeScript, JavaScript, Java and Kotlin
-- **Analyzers:** `dead-code` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin)
+- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
+- **Analyzers:** `dead-code` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Code that only tests call is not part of the product, and its tests prove nothing about it.
 - **Exception:** If this is intended, add `{"rule":"test-only-export","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 - **Allowed forms by message:**
@@ -414,8 +414,8 @@ A component file without a story, in a package that has Storybook.
 
 A used literal constant, function or type with the same name and text in two modules of a package.
 
-- **Presets:** TypeScript, JavaScript, Java and Kotlin
-- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin)
+- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
+- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Scope:** The JavaScript preset enforces this check only in part.
 - **Why it is on:** Two copies of one definition drift apart.
 - **Allowed form:** Define it once in one module and import it where it is used.
@@ -427,8 +427,8 @@ A used literal constant, function or type with the same name and text in two mod
 
 Two different exports with one name, imported by the same module, which keeps the name for one of them.
 
-- **Presets:** TypeScript, JavaScript, Java and Kotlin
-- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin)
+- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
+- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Scope:** The JavaScript preset enforces this check only in part.
 - **Why it is on:** Two things with one name make an import ambiguous to read.
 - **Allowed form:** Rename one of the exports.
@@ -594,8 +594,8 @@ A component named like one the project already renders from a dependency.
 
 A function or class edited so that it drifts from its same-named copy in another module while that copy is left unedited.
 
-- **Presets:** TypeScript, JavaScript, Java and Kotlin
-- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin)
+- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
+- **Analyzers:** `structure` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Editing one of two near-identical copies leaves the other with the old bug.
 - **Allowed form:** Edit it there too, or merge the copies.
 - **Threshold:** a function or class edited so that it drifts from its same-named copy in another module of the package, at least 80% the same tokens before and after, while that copy is left unedited (Java and Kotlin: top-level classes and static, `object` and top-level functions)
@@ -607,8 +607,8 @@ A function or class edited so that it drifts from its same-named copy in another
 
 A property of the options parameter of an exported function that no call sets; in Kotlin, a defaulted parameter of a private or internal function that no call names or fills.
 
-- **Presets:** TypeScript and Kotlin
-- **Analyzers:** `structure` (TypeScript); `kotlin` (Kotlin)
+- **Presets:** TypeScript, Kotlin and Python
+- **Analyzers:** `structure` (TypeScript); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** An option nobody sets is dead surface that every reader has to understand.
 - **Allowed form:** Remove it, or set it from a real call (\<scope>).
 - **Exception:** If this is intended, add `{"rule":"unused-option","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
@@ -632,8 +632,8 @@ A prop the project declares that no caller passes (a spread of a non-literal pas
 A test file that prints console error or warn output the base run did not print.
 
 - **Printed as:** `test-console/test-console-output` and `test-runtime/test-console-output`
-- **Presets:** TypeScript, JavaScript, Java and Kotlin
-- **Analyzers:** `test-console` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin)
+- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
+- **Analyzers:** `test-console` (TypeScript and JavaScript); `java` (Java); `kotlin` (Kotlin); `python` (Python)
 - **Why it is on:** Console noise hides real warnings and usually points at a leaked timer or an unhandled error.
 - **Allowed form:** Fix the cause (for example a timer that outlives the test), or allow a third-party message in "testConsole.allow" of nitpicker.config.json.
 - **Exception:** If this is intended, add `{"rule":"test-console-output","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
