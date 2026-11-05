@@ -83,6 +83,7 @@ describe('testHonestyFindings', () => {
       'RetryInTest',
       'AssertionInControlFlow',
       'CoroutineEscapesTest',
+      'WeakAssertionInTest',
     ]);
   });
 

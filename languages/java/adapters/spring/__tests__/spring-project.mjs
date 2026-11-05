@@ -62,6 +62,7 @@ const REVIEW_MARKER = /\/\/ violation: (\w+)/u;
 const REVIEW_RULES = new Set([
   'FixedSleepInTest',
   'NegativeWaitInTest',
+  'WeakAssertionInTest',
   'RetryInTest',
   'ExhaustiveEnumPredicate',
   'StaticForwardingWrapper',

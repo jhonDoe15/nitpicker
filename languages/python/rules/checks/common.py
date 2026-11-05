@@ -16,6 +16,7 @@ LOG_METHODS = {
     "log",
 }
 ALIAS_PASSES = 3
+SHOWN_LENGTH = 30
 LOGGER_MODULES = {"logging", "structlog", "loguru"}
 LOGURU_LOGGER = "loguru.logger"
 TYPE_CHECKING_NAMES = {
@@ -27,6 +28,10 @@ LOGGER_FACTORIES = {"getLogger", "get_logger", "LoggerAdapter", "wrap_logger"}
 LOG_OWNER = re.compile(
     r"^_*(?:log|logger|logging|LOG|LOGGER)$|_(?:log|logger|LOG|LOGGER)$|[a-z0-9](?:Logger|Log)$"
 )
+
+
+def shown(value, length=SHOWN_LENGTH):
+    return value[:length] + "..." if len(value) > length else value
 
 
 def finding(path, rule, subject, node):

@@ -45,6 +45,7 @@ export const RULES_CASES = [
   ...rulesCases('sleep-in-test', [['sleep-in-test', 'fake clock']]),
   ...rulesCases('negative-wait-in-test', [['negative-wait-in-test', 'event.is_set()']]),
   ...rulesCases('tautological-assert', [['tautological-assert', 'result of the code under test']]),
+  ...rulesCases('weak-assertion', [['weak-assertion', 'assert rows == expected']]),
   ...rulesCases('test-without-assertion', [
     ['test-without-assertion', 'assert result == expected'],
   ]),

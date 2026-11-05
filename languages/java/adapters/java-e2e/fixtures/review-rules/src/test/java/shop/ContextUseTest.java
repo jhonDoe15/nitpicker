@@ -24,16 +24,16 @@ class ContextUseTest {
 
   @Test
   void readsTheStartupOutput(CapturedOutput output) {
-    assertThat(output.getOut()).isNotNull();
+    assertThat(output.getOut()).doesNotContain("Exception in thread");
   }
 
   @Test
   void recordsEvents(ApplicationEvents events) {
-    assertThat(events.stream()).isNotNull();
+    assertThat(events.stream(String.class)).isEmpty();
   }
 
   @Test
   void injectsThroughASetter() {
-    assertThat(service).isNotNull();
+    assertThat(service).isInstanceOf(OrderService.class);
   }
 }
