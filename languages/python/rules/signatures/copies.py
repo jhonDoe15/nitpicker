@@ -26,6 +26,8 @@ def is_copy(node, context):
         func = node.func
         if isinstance(func, ast.Name) and func.id in COPY_CONSTRUCTORS:
             return True
+        if any(keyword.arg is None for keyword in node.keywords):
+            return True
         if isinstance(func, ast.Attribute) and func.attr in {"copy", "__copy__"}:
             return True
         return dotted_name(func, context.aliases) in COPY_CALLS
