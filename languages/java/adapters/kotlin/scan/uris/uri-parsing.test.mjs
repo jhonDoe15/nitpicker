@@ -38,6 +38,26 @@ describe('dynamicUris', () => {
       'a function declared inside a try',
       '    try {\n        fun parse() {\n            URI.create(text)\n        }\n        return parse()\n    } catch (e: Exception) {\n        return null\n    }',
     ],
+    [
+      'a var set from a literal and reassigned',
+      '    var base = "https://a"\n    base = path\n    return URI.create(base)',
+    ],
+    [
+      'a parameter named like a literal property',
+      '    return URI.create(text)\n}\n\nclass Holder {\n    val text = "https://a"',
+    ],
+    [
+      'a lambda parameter named like a literal val',
+      '    val u = "https://a"\n    return listOf(text).map { u -> URI.create(u) }',
+    ],
+    [
+      'an object property read from the environment',
+      '    return URI.create(Config.URL)\n}\n\nobject Config {\n    val URL = System.getenv("URL")',
+    ],
+    ['a property of a value', '    return URI.create(path.URL)'],
+    ['a parameter in capitals', '    return URI.create(BASE)\n}\n\nfun other(BASE: String) {'],
+    ['a function reference to URI.create', '    return listOf(text).map(URI::create)'],
+    ['a constructor reference', '    return listOf(text).map(::URI)'],
   ])('flags %s', (_name, body) => {
     expect(found(body)).toHaveLength(1);
   });
@@ -80,6 +100,11 @@ describe('dynamicUris', () => {
     ['a try expression', '    return try { URI.create(text) } catch (e: Exception) { null }'],
     ['a comment', '    // URI.create(text)\n    return null'],
     ['text in a string', '    return "URI.create(text)"'],
+    ['runCatching with parentheses', '    return runCatching() { URI.create(text) }.getOrNull()'],
+    [
+      'a function reference in a handled try',
+      '    try {\n        return listOf(text).map(URI::create)\n    } catch (e: IllegalArgumentException) {\n        return null\n    }',
+    ],
   ])('passes %s', (_name, body) => {
     expect(found(body)).toEqual([]);
   });

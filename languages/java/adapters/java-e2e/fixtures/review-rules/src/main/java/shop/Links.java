@@ -12,7 +12,6 @@ public final class Links {
   private static final URI BLOCK = URI.create("""
       https://shop.example/block""");
   private static final URI CONFIGURED = URI.create(System.getenv("SHOP_URL")); // violation: UriCreateDynamic
-  private final String base = "x";
 
   private Links() {}
 
@@ -40,10 +39,22 @@ public final class Links {
     }
   }
 
+  public static List<URI> mapped(List<String> texts) {
+    return texts.stream().map(URI::create).toList(); // violation: UriCreateDynamic
+  }
+
   public static List<URI> all(List<String> texts) {
     try {
       return texts.stream().map(text -> URI.create(text)).toList();
     } catch (RuntimeException e) {
+      return List.of();
+    }
+  }
+
+  public static List<URI> mappedInTry(List<String> texts) {
+    try {
+      return texts.stream().map(URI::create).toList();
+    } catch (IllegalArgumentException e) {
       return List.of();
     }
   }

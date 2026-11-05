@@ -1,6 +1,5 @@
 import {
   closingIndex,
-  enclosingOpen,
   inImport,
   literalAt,
   parenDepths,
@@ -17,6 +16,8 @@ export const URI_MESSAGES = {
 const URI_IMPORT = /^[ \t]*import\s+java\.net\.(?:URI\b(?!\s+as\b)|\*)/m;
 const CREATE = /(?<![\w.])(java\.net\.)?URI\s*\.\s*create\s*\(/g;
 const CONSTRUCTOR = /(?<![\w.])(java\.net\.)?URI\s*\(/g;
+const REFERENCE =
+  /(?<![\w.])(java\.net\.)?URI\s*::\s*create\b|(?<![\w.:])::\s*(java\.net\.)?URI\b/g;
 const DECLARED = /\b(?:fun|class|object|interface)\s+$/;
 const CREATE_CAUGHT = new Set([
   'IllegalArgumentException',
@@ -26,11 +27,14 @@ const CREATE_CAUGHT = new Set([
 ]);
 const CONSTRUCTOR_CAUGHT = new Set(['URISyntaxException', 'Exception', 'Throwable']);
 const TRY_BEFORE = /\btry\s*$/;
-const RESULT_BEFORE = /(?<![\w.])(?:\w+\s*\??\.\s*)?runCatching\s*$/;
+const RESULT_BEFORE = /(?<![\w.])(?:\w+\s*\??\.\s*)?runCatching\s*(?:\(\s*\)\s*)?$/;
 const FUNCTION_BEFORE = /\bfun\b[^{};=]*\)\s*(?::[^{};=]+)?$/;
 const CATCH_AFTER = /^\s*catch\s*\(\s*(?:[A-Za-z_]\w*|`[^`]+`)\s*:\s*([\w.]+)\s*\)\s*\{/;
+const BRACES = /[{}]/g;
+const HEADER_WINDOW = 1000;
+const MODIFIER_WINDOW = 20;
 const NAME = /^[A-Za-z_]\w*$/;
-const QUALIFIED_CONSTANT = /^(?:[A-Za-z_]\w*\.)+[A-Z][A-Z0-9_]*$/;
+const QUALIFIED = /^(?:[A-Z]\w*\.)+([A-Z][A-Z0-9_]*)$/;
 const SCREAMING = /^[A-Z][A-Z0-9_]*$/;
 
 function trimmedPart(code, { start, end }) {
@@ -44,6 +48,23 @@ function isPlainLiteral(scanned, part) {
   return literal !== undefined && !literal.template && literal.end === part.end;
 }
 
+function innermostOpens(code) {
+  const opens = new Int32Array(code.length + 1).fill(-1);
+  const stack = [-1];
+  let cursor = 0;
+  for (const { index, 0: brace } of code.matchAll(BRACES)) {
+    opens.fill(stack.at(-1), cursor, index + 1);
+    cursor = index + 1;
+    if (brace === '{') {
+      stack.push(index);
+    } else if (stack.length > 1) {
+      stack.pop();
+    }
+  }
+  opens.fill(stack.at(-1), cursor);
+  return opens;
+}
+
 function plusOperands(file, part) {
   const { code } = file.scanned;
   const level = file.depths[part.start];
@@ -55,18 +76,7 @@ function plusOperands(file, part) {
   return starts.map((start, index) => trimmedPart(code, { start, end: ends[index] }));
 }
 
-function declarationsOf(code, name) {
-  const declared = new RegExp(
-    String.raw`\b(?:(const)\s+)?(?:val|var)\s+${name}\b\s*(?::\s*[\w.?]+\s*)?(=(?!=)\s*)?`,
-    'g',
-  );
-  return [...code.matchAll(declared)].map((match) => ({
-    constant: match[1] === 'const',
-    value: match[2] === undefined ? -1 : match.index + match[0].length,
-  }));
-}
-
-function isConstantValue(scanned, at) {
+function isLiteralLine(scanned, at) {
   const literal = literalAt(scanned, at);
   if (literal === undefined || literal.template) {
     return false;
@@ -76,22 +86,54 @@ function isConstantValue(scanned, at) {
   return rest === '' || rest === ';';
 }
 
-function isConstantName(scanned, name) {
-  const declarations = declarationsOf(scanned.code, name);
-  if (declarations.length === 0) {
-    return SCREAMING.test(name);
-  }
-  return declarations.every(
-    ({ constant, value }) => constant || (value !== -1 && isConstantValue(scanned, value)),
+function isParameterName(code, name) {
+  const typed = new RegExp(String.raw`(?<![\w.])${name}\s*:(?!:)`, 'g');
+  const declared = /\b(?:val|var)\s+$/;
+  const lambda = new RegExp(String.raw`[{,]\s*${name}\s*(?:,[\w\s,]*)?->`);
+  return (
+    lambda.test(code) ||
+    [...code.matchAll(typed)].some(
+      ({ index }) => !declared.test(code.slice(Math.max(0, index - MODIFIER_WINDOW), index)),
+    )
   );
 }
 
-function isConstantOperand(scanned, part) {
-  const text = scanned.code.slice(part.start, part.end);
+function resolveName(scanned, name) {
+  const { code } = scanned;
+  const declared = new RegExp(
+    String.raw`\b(?:(const)\s+)?(val|var)\s+${name}\b\s*(?::\s*[\w.?]+\s*)?(=(?!=)\s*)?`,
+    'g',
+  );
+  const declarations = [...code.matchAll(declared)];
+  if (declarations.length === 0) {
+    return SCREAMING.test(name) && !isParameterName(code, name);
+  }
   return (
-    isPlainLiteral(scanned, part) ||
-    QUALIFIED_CONSTANT.test(text) ||
-    (NAME.test(text) && isConstantName(scanned, text))
+    !isParameterName(code, name) &&
+    declarations.every(
+      (match) =>
+        match[1] === 'const' ||
+        (match[2] === 'val' &&
+          match[3] !== undefined &&
+          isLiteralLine(scanned, match.index + match[0].length)),
+    )
+  );
+}
+
+function isConstantName(file, name) {
+  if (!file.names.has(name)) {
+    file.names.set(name, resolveName(file.scanned, name));
+  }
+  return file.names.get(name);
+}
+
+function isConstantOperand(file, part) {
+  const text = file.scanned.code.slice(part.start, part.end);
+  const qualified = QUALIFIED.exec(text);
+  return (
+    isPlainLiteral(file.scanned, part) ||
+    (qualified !== null && isConstantName(file, qualified[1])) ||
+    (NAME.test(text) && isConstantName(file, text))
   );
 }
 
@@ -108,14 +150,15 @@ function caughtTypes(code, tryOpen) {
   return types;
 }
 
-function isHandled(code, offset, caught) {
-  const opens = [enclosingOpen(code, offset)];
+function isHandled(file, offset, caught) {
+  const { code } = file.scanned;
+  const opens = [file.opens[offset]];
   for (const open of opens) {
     if (open === -1) {
       return false;
     }
-    opens.push(enclosingOpen(code, open));
-    const before = code.slice(0, open);
+    opens.push(file.opens[open]);
+    const before = code.slice(Math.max(0, open - HEADER_WINDOW), open);
     if (RESULT_BEFORE.test(before)) {
       return true;
     }
@@ -134,22 +177,36 @@ function onlyArgument(code, match) {
   return parts.length === 1 ? trimmedPart(code, parts[0]) : undefined;
 }
 
+function isSkipped(file, match) {
+  const { code } = file.scanned;
+  const qualified = match.slice(1).some((group) => group !== undefined);
+  return (
+    (!qualified && !file.imported) ||
+    inImport(code, match.index) ||
+    DECLARED.test(code.slice(Math.max(0, match.index - MODIFIER_WINDOW), match.index))
+  );
+}
+
 function callsOf(file, pattern, caught) {
-  const { scanned, imported } = file;
-  const { code } = scanned;
+  const { code } = file.scanned;
   return [...code.matchAll(pattern)].flatMap((match) => {
     const argument = onlyArgument(code, match);
-    const skipped =
-      (match[1] === undefined && !imported) ||
-      inImport(code, match.index) ||
-      DECLARED.test(code.slice(0, match.index)) ||
-      argument === undefined;
-    return skipped ||
-      plusOperands(file, argument).every((operand) => isConstantOperand(scanned, operand)) ||
-      isHandled(code, match.index, caught)
+    return isSkipped(file, match) ||
+      argument === undefined ||
+      plusOperands(file, argument).every((operand) => isConstantOperand(file, operand)) ||
+      isHandled(file, match.index, caught)
       ? []
       : [{ rule: URI_RULE, offset: match.index }];
   });
+}
+
+function referencesOf(file) {
+  return [...file.scanned.code.matchAll(REFERENCE)].flatMap((match) =>
+    isSkipped(file, match) ||
+    isHandled(file, match.index, match[0].endsWith('create') ? CREATE_CAUGHT : CONSTRUCTOR_CAUGHT)
+      ? []
+      : [{ rule: URI_RULE, offset: match.index }],
+  );
 }
 
 export function dynamicUris(scanned) {
@@ -157,9 +214,12 @@ export function dynamicUris(scanned) {
     scanned,
     imported: URI_IMPORT.test(scanned.code),
     depths: parenDepths(scanned.code),
+    opens: innermostOpens(scanned.code),
+    names: new Map(),
   };
   return [
     ...callsOf(file, CREATE, CREATE_CAUGHT),
     ...callsOf(file, CONSTRUCTOR, CONSTRUCTOR_CAUGHT),
+    ...referencesOf(file),
   ];
 }

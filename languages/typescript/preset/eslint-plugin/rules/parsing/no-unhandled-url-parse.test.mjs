@@ -39,6 +39,12 @@ tester.run('no-unhandled-url-parse', rule, {
       '}',
     ].join('\n'),
     'class URLish {} export function make(text: string) { return new URLish(text); }',
+    'export function copy(url: URL) { return new URL(url); }',
+    'export function api(base: URL) { return new URL("/api", base); }',
+    'const ROOT = new URL("../", import.meta.url); export function file(name: string) { return new URL(name, ROOT); }',
+    'export function page(path: string) { return new URL("/x", window.location.origin); }',
+    'export function parse(text?: string) { if (!text || !URL.canParse(text)) { return undefined; } return new URL(text!); }',
+    `const A = "a"; export const long = new URL(${'A + '.repeat(30)}"https://a");`,
   ],
   invalid: [
     flagged('export function parse(text: string) { return new URL(text); }'),
@@ -50,6 +56,9 @@ tester.run('no-unhandled-url-parse', rule, {
     ),
     flagged('export function local(path: string) { return new URL(path, "http://localhost"); }'),
     flagged('export const configured = new URL(process.env.API_URL ?? "");'),
+    flagged('export const api = new URL("/api", process.env.API_BASE);'),
+    flagged('export function api(base: string) { return new URL("/api", base); }'),
+    flagged('export function parse(text: string) { return new globalThis.URL(text); }'),
     flagged(
       'export function parse(text: string) { return URL.canParse(other) ? new URL(text) : undefined; }',
     ),
