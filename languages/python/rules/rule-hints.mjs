@@ -3,6 +3,7 @@ import { FUNCTION_EXCEPTION_RULES } from '../../../shared/policy.mjs';
 import { definedField } from '../../../shared/messages/messages.mjs';
 import { ASYNC_HINTS } from './hints/ast-async.mjs';
 import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
+import { TYPING_HINTS } from './hints/typing/ast-typing.mjs';
 import { SMELL_HINTS } from './hints/ast-smells.mjs';
 import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
 import { SIGNATURE_HINTS } from './hints/signatures/ast-signatures.mjs';
@@ -24,7 +25,6 @@ const HINTED_TOOLS = [
   'coupling',
   'import-linter',
   'dependencies',
-  'test-runtime',
   'mutmut',
 ];
 
@@ -42,6 +42,7 @@ export const RULE_HINTS = [
   ...SECURITY_HINTS,
   ...RULES_SECURITY_HINTS,
   ...STRUCTURE_HINTS,
+  ...TYPING_HINTS,
   ...ASYNC_HINTS,
   ...SMELL_HINTS,
   ...SIGNATURE_HINTS,
@@ -79,14 +80,22 @@ export function hintFor(finding) {
 
 const PYTHON_EXCEPTIONS_KEY = 'python.exceptions';
 
-export function describeRuleFinding(rule, subject, libraries = DEFAULT_LIBRARIES) {
+export function describeRuleFinding(
+  rule,
+  subject,
+  { libraries = DEFAULT_LIBRARIES, data = {} } = {},
+) {
   return RULE_HINTS.find((hint) => hint.tool === RULES_TOOL && hint.rules.includes(rule)).describe(
     subject,
     libraries,
+    data,
   );
 }
 
 function allowedText(hint, finding, libraries) {
+  if (hint.allowedFor !== undefined) {
+    return hint.allowedFor(finding.data ?? hint.referenceData);
+  }
   return typeof hint.allowed === 'function'
     ? hint.allowed(finding.subject, libraries, finding.path)
     : hint.allowed;
@@ -108,20 +117,25 @@ function canBeLifted(finding) {
 }
 
 export function withHint(finding, libraries = DEFAULT_LIBRARIES) {
-  const { subject, ...rest } = finding;
+  const { subject, hintData, ...rest } = finding;
   const hint = hintFor(rest);
   if (hint === undefined && !canBeLifted(rest)) {
     return rest;
   }
   const routed = hint?.exception === false || RULES_ROUTED_BY_A_SETTING.has(rest.rule);
   const allowed =
-    hint === undefined ? undefined : allowedText(hint, { subject, path: rest.path }, libraries);
+    hint?.allowed === undefined && hint?.allowedFor === undefined
+      ? undefined
+      : allowedText(hint, { subject, path: rest.path, data: hintData }, libraries);
+  const lifted = exceptionRoute({
+    rule: rest.rule,
+    path: rest.path,
+    key: hint?.exception === 'top-level' ? 'exceptions' : PYTHON_EXCEPTIONS_KEY,
+  });
   const sentences = [
     `${rest.message.replace(/\.$/, '')}.`,
-    ...(allowed === undefined ? [] : [allowed]),
-    ...(routed
-      ? []
-      : [exceptionRoute({ rule: rest.rule, path: rest.path, key: PYTHON_EXCEPTIONS_KEY })]),
+    ...(allowed === undefined || rest.message.includes(allowed) ? [] : [allowed]),
+    ...(routed ? [] : [lifted]),
   ];
   return { ...rest, message: sentences.join(' '), ...definedField('allowedForm', allowed) };
 }

@@ -10,6 +10,10 @@ export function allowedForm(text) {
   return `${ALLOWED_OPEN}${text}${ALLOWED_CLOSE}`;
 }
 
+export const UNUSED_OPTION_FIX = 'Remove it, or set it from a real call ({scope}).';
+
+export const UNUSED_OPTION_TEXT = `Option {name} is never set. ${allowedForm(UNUSED_OPTION_FIX)}`;
+
 export const BASE_MESSAGES = {
   functionStructure: '{name} has {value} {metric}; limit is {limit}',
   functionStatements: `{name} has {value} statements; limit is {limit}. ${allowedForm('Split by responsibility and name each part for what it checks or does.')}`,
@@ -21,7 +25,7 @@ export const BASE_MESSAGES = {
   crapCoverageUnknownPlain: `{name} has unknown coverage and no CRAP score: no test runs it. ${allowedForm('Add a test that calls it.')}`,
   changedBranchCoverage: 'Branch coverage is {percent}%; minimum is {minimum}%',
   unusedProp: `Prop {name} is never passed. ${allowedForm('Remove it, or pass it from a real caller ({scope}).')} ${EXCEPTION_HINT}`,
-  unusedOption: `Option {name} is never set. ${allowedForm('Remove it, or set it from a real call ({scope}).')} ${EXCEPTION_HINT}`,
+  unusedOption: `${UNUSED_OPTION_TEXT} ${EXCEPTION_HINT}`,
   testOnlyExport: `Export {name} is only imported by tests. ${allowedForm('Remove `export`, or import it from production code.')} ${EXCEPTION_HINT}`,
   testOnlyReexport: `Export {name} is only imported by tests, and {reexporter} re-exports it, which is not a use. ${allowedForm('Remove the re-export and `export`, or import it from production code. If a host or tool loads {reexporter} instead of importing it, list it in "layout.entryPoints".')} ${EXCEPTION_HINT}`,
   testOnlyModule: `Module {name} is only imported by tests. ${allowedForm('Move it to a test-support/ folder, or import it from production code.')} ${EXCEPTION_HINT}`,

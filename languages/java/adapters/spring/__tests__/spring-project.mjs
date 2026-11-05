@@ -94,6 +94,12 @@ const RECEIPT_CONSOLE_FINDING = {
   ].join(' '),
   classification: 'enforceable',
   tokens: ['receipt', 'total', 'drifted', 'by', '<n>', 'cents'],
+  exception: {
+    rule: 'test-runtime/test-console-output',
+    paths: [RECEIPT_TEST_FILE],
+    reason: '...',
+  },
+  exceptionList: 'exceptions',
 };
 const RECEIPT_TEST = `package shop;
 

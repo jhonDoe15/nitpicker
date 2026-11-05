@@ -245,6 +245,7 @@ describe('source root detection', () => {
       'zeta/__init__.py': '',
       'alpha/__init__.py': '',
       'tests/__init__.py': '',
+      'testing/__init__.py': '',
       '.hidden/__init__.py': '',
       'docs/__init__.py': '',
       'data/readme.txt': '',
