@@ -79,6 +79,16 @@ export const STRUCTURE_NOTES = {
     'Build output is generated, so committing it creates noise and merge conflicts.',
     'Remove the folder from version control and add it to `.gitignore`.',
   ],
+  'migration-order': [
+    'A migration the change adds that sorts before the newest migration on the base branch, or an Alembic or Django migration that forks the history.',
+    'A database that already ran the newer migration skips the older one or refuses to start.',
+    'Create the migration again with a current version, or point it at the latest migration.',
+  ],
+  'migration-hardcoded-name': [
+    'A migration that names the `public` schema, a database or an owner role.',
+    'Another install keeps its tables in another schema, or has another database name or roles.',
+    'Leave the schema out, target the current database, and leave out the owner or use `CURRENT_USER`.',
+  ],
   'unused-dependency': [
     'A dependency in `package.json` that nothing imports or runs.',
     'Unused dependencies add install time and attack surface.',

@@ -1,6 +1,6 @@
 # Nitpicker checks
 
-The checks nitpicker runs itself in every preset: function and file size, CRAP, coverage, mutation, duplicates, coupling, dead code, test runtime, repository hygiene and the policy checks on nitpicker.config.json. This page lists 52 rules. [All pages](README.md).
+The checks nitpicker runs itself in every preset: function and file size, CRAP, coverage, mutation, duplicates, coupling, dead code, test runtime, repository hygiene and the policy checks on nitpicker.config.json. This page lists 54 rules. [All pages](README.md).
 
 The guide for these rules: [spec/checks.md](../../spec/checks.md).
 
@@ -366,6 +366,30 @@ A committed file larger than the limit (lockfiles are exempt).
 - **Allowed form:** Keep large data outside the repository (artifact storage, Git LFS).
 - **Threshold:** a file larger than 1 MB (lockfiles are exempt)
 - **Exception:** If this is intended, add `{"rule":"large-file","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="repository-hygiene-migration-hardcoded-name"></a>
+
+### `repository-hygiene/migration-hardcoded-name`
+
+A migration that names the `public` schema, a database or an owner role.
+
+- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
+- **Analyzers:** `repository-hygiene`
+- **Why it is on:** Another install keeps its tables in another schema, or has another database name or roles.
+- **Allowed form:** Leave the schema out, target the current database, and leave out the owner or use `CURRENT_USER`.
+- **Exception:** If this is intended, add `{"rule":"migration-hardcoded-name","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
+
+<a id="repository-hygiene-migration-order"></a>
+
+### `repository-hygiene/migration-order`
+
+A migration the change adds that sorts before the newest migration on the base branch, or an Alembic or Django migration that forks the history.
+
+- **Presets:** TypeScript, JavaScript, Java, Kotlin and Python
+- **Analyzers:** `repository-hygiene`
+- **Why it is on:** A database that already ran the newer migration skips the older one or refuses to start.
+- **Allowed form:** Create the migration again with a current version, or point it at the latest migration.
+- **Exception:** If this is intended, add `{"rule":"migration-order","paths":["<path>"],"reason":"..."}` to "exceptions" in nitpicker.config.json.
 
 <a id="structure-class-fields-limit"></a>
 
