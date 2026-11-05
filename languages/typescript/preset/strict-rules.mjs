@@ -60,6 +60,7 @@ export const strictEslintRuleIds = [
   'nitpicker/preserve-error-cause',
   'nitpicker/require-http-timeout',
   'nitpicker/require-test-process-timeout',
+  'nitpicker/strict-boolean-expressions',
   'nitpicker/test-tsconfig-pins-lib-and-types',
   'nitpicker/unbounded-fan-out',
   'no-duplicate-imports',

@@ -2680,6 +2680,9 @@ classpath) and `published` (a library module that is deployed, see `test-only-ex
   which asks for the annotation; once added, `CompatibilityShim` reports it, so the two together
   forbid both forms. A call of a deprecated API is reported by the compiler's deprecation lint. Java
   has no alias declaration, so the TypeScript `export const Old = New` form has no counterpart.
+- A number tested for truth (`if (count)`), which the TypeScript preset reports as
+  `nitpicker/strict-boolean-expressions` and the Python preset as `number-truthiness`, has no
+  counterpart: a Java condition must be a `boolean`, so the compiler rejects it.
 - `LegacyCalendarApi` is the part of the naive-datetime check that Error Prone does not cover:
   `JavaTimeDefaultTimeZone` (`now()` without a clock or zone) and `JavaUtilDate`
   (`java.util.Date`) are on by default. It reports only the overloads without a zone;

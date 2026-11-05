@@ -642,6 +642,21 @@ only the library follows the project. Nitpicker reads `dependencies`, `peerDepen
   fallback of `undefined` or `null`, a condition (`if (a || b)`), and a value that is not a
   parameter. In the JavaScript preset the type comes from JSDoc; without JSDoc types the rule sees
   nothing.
+- `nitpicker/strict-boolean-expressions` (type-aware, wraps typescript-eslint's
+  `strict-boolean-expressions`; production and test files): a number tested for truthiness
+  (`if (count)`, `retry ? a : b`, `!id`, `index && ...`, `cells[0] || ''`, a `filter` callback
+  that returns a number), where `0` reads as false or missing. Write the comparison: `count > 0`,
+  `index !== -1`, `items.length > 0`, `id !== undefined` for an optional number, and
+  `value ?? fallback` for a default. A union that mixes a number with a string, or other mixed
+  members (`string | number`), is reported too. Strings, objects, `any`/`unknown` and nullable
+  booleans and strings stay allowed (`allowString`, `allowNullableString`, `allowNullableObject`,
+  `allowNullableBoolean`, `allowAny`). Not reported: a computed number (`a - b || a.name.localeCompare(b.name)`
+  in a sort comparator, a `compare...` call, a bit test `flags & MASK`), and a `|| 0` fallback,
+  which gives the same result as `?? 0`. A number that may be `0` on an optional parameter with a
+  non-zero `||` default is also reported by `nitpicker/no-falsy-default`; the fix is the same.
+  When `0` must take the same path as a missing value, add an exception for the rule. In the
+  JavaScript preset the type comes from JSDoc and inference (`checkJs`); an untyped value is `any`
+  and is not reported.
 - `nitpicker/no-compatibility-shim`: a doc comment with a `@deprecated` tag, and an exported
   `const Old = New`, `type Old = New` or `export { New as Old }` whose target `New` is also
   exported from the same module (two public names for one thing). Generic aliases, aliases of

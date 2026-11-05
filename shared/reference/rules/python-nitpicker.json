@@ -147,6 +147,10 @@
     { "key": "python.exceptions", "rule": "not-type-checking" },
     "`<name>` hides code from the type checkers",
     "Put the code in the normal flow; `if TYPE_CHECKING:` is only for imports that annotations need.",
+    "number-truthiness",
+    { "key": "python.exceptions", "rule": "number-truthiness" },
+    "`<name>` is a number tested for truth, so `0` reads as false or missing",
+    "Compare the number: `count > 0`, `count != 0`, `index != -1`; test an optional number with `count is not None`, and default it with `count if count is not None else DEFAULT`. An exception fits only when `0` must take the same path as a missing value.",
     "parameter-mutation",
     { "key": "python.exceptions", "rule": "parameter-mutation" },
     "`<name>` changes the argument the caller passed in",
@@ -351,9 +355,10 @@
     [18, 244, 2, 3, 245, 246, 22, 247, -1],
     [18, 248, 2, 3, 249, 250, 22, 251, -1],
     [18, 252, 2, 3, 253, 254, 22, 255, -1],
-    [18, 256, 2, 3, 257, 258, 22, -1, -1],
-    [18, 259, 2, 3, 260, 261, 22, 262, -1],
-    [263, 264, 2, 3, 265, 266, 267, 268, -1],
-    [269, 270, 2, 3, 271, 272, 273, 274, 275]
+    [18, 256, 2, 3, 257, 258, 22, 259, -1],
+    [18, 260, 2, 3, 261, 262, 22, -1, -1],
+    [18, 263, 2, 3, 264, 265, 22, 266, -1],
+    [267, 268, 2, 3, 269, 270, 271, 272, -1],
+    [273, 274, 2, 3, 275, 276, 277, 278, 279]
   ]
 }
