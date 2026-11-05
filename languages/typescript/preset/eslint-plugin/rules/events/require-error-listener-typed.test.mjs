@@ -78,8 +78,8 @@ function typed(code, name, extension = 'ts') {
 
 const MAILER =
   'import { ImapFlow } from "imapflow"; class Mailer extends ImapFlow {} export async function open() { const client = new Mailer(); await client.connect(); }';
-const PROJECT_STREAM =
-  'import { Readable } from "node:stream"; class Lines extends Readable {} export function read(out: NodeJS.WritableStream) { const lines = new Lines(); lines.pipe(out); }';
+const PROJECT_SOCKET =
+  'import { Socket } from "node:net"; class Link extends Socket {} export function open(port: number) { const link = new Link(); link.connect(port); }';
 
 tester.run('require-error-listener with types', rule, {
   valid: [
@@ -115,7 +115,11 @@ tester.run('require-error-listener with types', rule, {
   ],
   invalid: [
     typed(MAILER, 'client'),
-    typed(PROJECT_STREAM, 'lines'),
+    typed(PROJECT_SOCKET, 'link'),
+    typed(
+      'import { createReadStream } from "node:fs"; function watch(stream: NodeJS.EventEmitter) { stream.on("data", () => {}); } export function read(path: string) { const stream = createReadStream(path); watch(stream); }',
+      'stream',
+    ),
     typed(
       'import { createReadStream } from "node:fs"; import { ignore } from "./guards"; export function read(path: string) { const stream = createReadStream(path); ignore(stream); }',
       'stream',

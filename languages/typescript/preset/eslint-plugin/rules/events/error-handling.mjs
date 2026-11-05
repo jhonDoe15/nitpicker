@@ -1,18 +1,20 @@
-import { ts } from '../../../../typescript-api/typescript-api.mjs';
 import { chainOf } from '../analysis/ancestry.mjs';
-import { resolveConstant, stringValue } from '../analysis/constant-resolution.mjs';
-import { isTypeWrapper, memberName, typeServices } from '../security/security-values.mjs';
-import { calledName, importedName, moduleOfFile } from './emitter-creations.mjs';
+import { findVariable } from '../analysis/constant-resolution.mjs';
+import {
+  isTypeWrapper,
+  memberName,
+  staticKey,
+  typeServices,
+} from '../security/security-values.mjs';
+import { calledName, importedName, listensForErrors } from './emitter-creations.mjs';
 import {
   HANDLING_CALLS,
   HANDLING_STATICS,
+  INPUT_READERS,
   isChainableMethod,
   isConsumingMethod,
-  isHandlingLibrary,
-  isHelperHandlingName,
-  isListenMethod,
-  isStreamWaiter,
 } from './emitter-modules.mjs';
+import { helperOutcome } from './helpers/helper-bodies.mjs';
 
 const ESCAPES = new Map([
   ['ReturnStatement', 'argument'],
@@ -48,11 +50,6 @@ function nextChainedCall(call) {
   return next?.type === 'MemberExpression' && next.object === outer ? methodCall(next) : undefined;
 }
 
-function listensForErrors(context, call) {
-  const event = stringValue(resolveConstant(context, call.arguments[0]));
-  return isListenMethod(memberName(call.callee)) && event === 'error';
-}
-
 function receiverOutcome(context, member) {
   const calls = chainOf(methodCall(member), nextChainedCall);
   const handled =
@@ -61,11 +58,17 @@ function receiverOutcome(context, member) {
   return handled ? 'handled' : 'neutral';
 }
 
-function isStaticHandler(scope, callee) {
+function fitsPosition(entry, call, argument) {
+  return !entry.first || call.arguments[0] === argument;
+}
+
+function isStaticHandler(scope, call, argument) {
+  const { callee } = call;
   return (
     callee.type === 'MemberExpression' &&
     HANDLING_STATICS.some(
       (entry) =>
+        fitsPosition(entry, call, argument) &&
         entry.names.has(memberName(callee)) &&
         importedName(scope.context, callee.object, scope.bindingsFor(entry.modules)) ===
           entry.owner,
@@ -73,115 +76,77 @@ function isStaticHandler(scope, callee) {
   );
 }
 
-function isHandlingCall(scope, call) {
-  const direct = HANDLING_CALLS.some((entry) =>
+function isCallTo(scope, call, entries) {
+  return entries.find((entry) =>
     entry.names.has(calledName(scope.context, call, scope.bindingsFor(entry.modules))),
   );
-  return direct || isStaticHandler(scope, call.callee);
 }
 
-function chainedReceiver(expression) {
-  return chainOf(expression, (current) =>
-    ts.isCallExpression(current) &&
-    ts.isPropertyAccessExpression(current.expression) &&
-    isChainableMethod(current.expression.name.text)
-      ? current.expression.expression
-      : undefined,
-  ).at(-1);
-}
-
-function tsNameOf(expression) {
-  if (ts.isIdentifier(expression)) {
-    return expression.text;
-  }
-  return ts.isPropertyAccessExpression(expression) ? expression.name.text : undefined;
-}
-
-function isNamed(node, name) {
-  return node !== undefined && ts.isIdentifier(node) && node.text === name;
-}
-
-function tsPasses(node, name) {
-  const callee = tsNameOf(node.expression);
-  if (!isHelperHandlingName(callee)) {
-    return false;
-  }
-  return isStreamWaiter(callee)
-    ? node.arguments.some((argument) => isNamed(argument, name))
-    : isNamed(node.arguments[0], name);
-}
-
-function tsListens(node, name) {
-  const callee = node.expression;
-  const event = node.arguments[0];
+function isHandlingCall(scope, call, argument) {
+  const direct = isCallTo(scope, call, HANDLING_CALLS);
   return (
-    ts.isPropertyAccessExpression(callee) &&
-    isListenMethod(callee.name.text) &&
-    event !== undefined &&
-    ts.isStringLiteralLike(event) &&
-    event.text === 'error' &&
-    isNamed(chainedReceiver(callee.expression), name)
+    (direct !== undefined && fitsPosition(direct, call, argument)) ||
+    isStaticHandler(scope, call, argument)
   );
 }
 
-function tsHandlesNode(node, name) {
-  if (ts.isForOfStatement(node) && node.awaitModifier !== undefined) {
-    return isNamed(node.expression, name);
-  }
-  return ts.isCallExpression(node) && (tsPasses(node, name) || tsListens(node, name));
-}
+const PROJECT_DEFINITIONS = new Set(['FunctionName', 'ClassName']);
 
-function tsHandles(body, name) {
-  const pending = [body];
-  for (const node of pending) {
-    if (tsHandlesNode(node, name)) {
-      return true;
-    }
-    ts.forEachChild(node, (child) => {
-      pending.push(child);
-    });
+function isProjectCallee(context, callee) {
+  if (callee.type === 'MemberExpression') {
+    return callee.object.type === 'ThisExpression';
   }
-  return false;
-}
-
-function resolvedDeclaration(context, call) {
-  const services = typeServices(context);
-  const tsCall = services?.esTreeNodeToTSNodeMap.get(call);
-  return tsCall === undefined
-    ? undefined
-    : services.program.getTypeChecker().getResolvedSignature(tsCall)?.declaration;
-}
-
-function helperOutcome(context, call, index) {
-  const declaration = resolvedDeclaration(context, call);
-  const source = declaration?.getSourceFile();
-  if (source === undefined) {
-    return 'neutral';
+  if (callee.type !== 'Identifier') {
+    return false;
   }
-  const library = moduleOfFile(source.fileName);
-  if (library !== undefined || source.isDeclarationFile) {
-    return isHandlingLibrary(library) ? 'handled' : 'neutral';
-  }
-  const parameter = declaration.parameters?.[index];
-  const named = parameter !== undefined && ts.isIdentifier(parameter.name);
-  const handles =
-    named && declaration.body !== undefined && tsHandles(declaration.body, parameter.name.text);
-  return handles ? 'handled' : 'neutral';
+  const definition = findVariable(context, callee, callee.name)?.defs.at(0);
+  const source = definition?.parent?.source?.value;
+  return (
+    PROJECT_DEFINITIONS.has(definition?.type) ||
+    (definition?.type === 'ImportBinding' && typeof source === 'string' && source.startsWith('.'))
+  );
 }
 
 function argumentOutcome(scope, call, argument) {
-  if (isHandlingCall(scope, call)) {
+  if (isHandlingCall(scope, call, argument)) {
     return 'handled';
   }
   const index = call.arguments.indexOf(argument);
-  return index === -1 ? 'neutral' : helperOutcome(scope.context, call, index);
+  const services = typeServices(scope.context);
+  if (index === -1) {
+    return 'neutral';
+  }
+  if (services === undefined) {
+    return isProjectCallee(scope.context, call.callee) ? 'escaped' : 'neutral';
+  }
+  return helperOutcome(services, call, index);
 }
 
-function wrappedArgumentOutcome(scope, property) {
+const CONTAINERS = new Set(['ObjectExpression', 'ArrayExpression', 'Property', 'SpreadElement']);
+
+function containerRoot(node) {
+  return chainOf(node, (current) =>
+    CONTAINERS.has(current.parent?.type) ? current.parent : undefined,
+  ).at(-1);
+}
+
+function isReaderInput(scope, property) {
   const object = property.parent;
-  const call = object?.parent;
-  const isArgument = CALLS.has(call?.type) && call.arguments.includes(object);
-  return isArgument && isHandlingCall(scope, call) ? 'handled' : 'neutral';
+  const call = object.parent;
+  return (
+    staticKey(property) === 'input' &&
+    CALLS.has(call?.type) &&
+    call.arguments[0] === object &&
+    isCallTo(scope, call, INPUT_READERS) !== undefined
+  );
+}
+
+function containedOutcome(scope, node) {
+  if (node.parent.type === 'Property' && isReaderInput(scope, node.parent)) {
+    return 'handled';
+  }
+  const root = containerRoot(node);
+  return escapeOutcome(root.parent, root);
 }
 
 function escapeOutcome(parent, node) {
@@ -202,8 +167,8 @@ function referenceOutcome(scope, reference) {
   if (CALLS.has(parent.type) && parent.callee !== node) {
     return argumentOutcome(scope, parent, node);
   }
-  if (parent.type === 'Property' && parent.value === node) {
-    return wrappedArgumentOutcome(scope, parent);
+  if ((parent.type === 'Property' && parent.value === node) || parent.type === 'ArrayExpression') {
+    return containedOutcome(scope, node);
   }
   return escapeOutcome(parent, node);
 }

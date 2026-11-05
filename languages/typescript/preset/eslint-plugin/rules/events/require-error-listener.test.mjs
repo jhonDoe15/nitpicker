@@ -36,6 +36,14 @@ tester.run('require-error-listener', rule, {
     'import { createServer } from "node:net"; export function serve() { return createServer((socket) => { socket.on("error", fail); socket.pipe(socket); }); }',
     'import net from "node:net"; export function serve() { const server = net.createServer(); server.on("connection", (socket) => { socket.on("error", fail); }); return server; }',
     'import http from "node:http"; export function serve(app) { const server = http.createServer(app); server.listen(3000); }',
+    'import { PassThrough } from "node:stream"; export function tee(out) { const copy = new PassThrough(); copy.pipe(out); copy.end("x"); }',
+    'import { connect } from "node:net"; export function open(port) { const socket = connect(port).setTimeout(5).on("error", fail); socket.write("x"); }',
+    'import { createClient } from "redis"; export class Cache { client = createClient(); start() { const { client } = this; client.on("error", fail); } }',
+    'import { createClient } from "redis"; export class Cache { 1 = createClient(); }',
+    'import { createReadStream } from "node:fs"; import { Readable } from "node:stream"; export function web(path) { const file = createReadStream(path); return new Response(Readable.toWeb(file)); }',
+    'import { createReadStream } from "node:fs"; export function open(path) { const stream = createReadStream(path); return { stream, path }; }',
+    'import { createReadStream } from "node:fs"; function watch(stream) { stream.on("error", fail); } export function open(path) { const stream = createReadStream(path); watch(stream); stream.resume(); }',
+    'import { spawn } from "node:child_process"; import { supervise } from "./supervise.js"; export function run() { const child = spawn("ls"); supervise(child); }',
     'import { WebSocketServer } from "ws"; export function serve() { const server = new WebSocketServer({ port: 1 }); server.on("connection", (socket) => socket.send("hi")); }',
   ],
   invalid: [
@@ -72,8 +80,40 @@ tester.run('require-error-listener', rule, {
       errors: missing('gzip'),
     },
     {
-      code: 'import { PassThrough } from "node:stream"; export function tee(out) { const copy = new PassThrough(); copy.pipe(out); copy.end("x"); }',
-      errors: missing('copy'),
+      code: 'import { connect } from "node:net"; export function open(port) { const socket = connect(port).setTimeout(5); socket.write("x"); }',
+      errors: missing('socket'),
+    },
+    {
+      code: 'import { connect } from "node:net"; export function open(port, tls) { const socket = tls ? connect(port) : connect(port + 1); socket.write("x"); }',
+      errors: missing('socket'),
+    },
+    {
+      code: 'import { createClient } from "redis"; export class Cache { "client" = createClient(); start() { this.client.connect(); } }',
+      errors: missing('this.client'),
+    },
+    {
+      code: 'import { createClient } from "redis"; export class Cache { start() { this.client ??= createClient(); this["client"].connect(); } }',
+      errors: missing('this.client'),
+    },
+    {
+      code: 'import { connect } from "node:net"; export class Link { socket = connect(1); start() { function later() { this.socket.on("error", fail); } return later; } }',
+      errors: missing('this.socket'),
+    },
+    {
+      code: 'import { connect } from "node:net"; import { once } from "node:events"; export async function open(port, other) { const socket = connect(port); await once(other, "ready", { signal: socket }); }',
+      errors: missing('socket'),
+    },
+    {
+      code: 'import { createWriteStream } from "node:fs"; import readline from "node:readline"; export function ask(input, path) { const output = createWriteStream(path); return readline.createInterface({ input, output }); }',
+      errors: missing('output'),
+    },
+    {
+      code: 'import net from "node:net"; function handle(socket) { socket.write("hi"); } export function serve() { return net.createServer(handle); }',
+      errors: missing('socket'),
+    },
+    {
+      code: 'import net from "node:net"; const CONNECTION = "connection"; export function serve() { const server = net.createServer(); server.on(CONNECTION, (socket) => socket.write("hi")); return server; }',
+      errors: missing('socket'),
     },
     {
       code: 'import { Worker } from "node:worker_threads"; export function start() { const worker = new Worker("./job.js"); worker.postMessage(1); }',

@@ -1,26 +1,54 @@
 import { depthFirst, objectChildren } from '../../../../../../shared/traversal.mjs';
 import { ancestorsOf } from '../analysis/ancestry.mjs';
-import { findVariable, isFunctionNode, stringValue } from '../analysis/constant-resolution.mjs';
+import {
+  findVariable,
+  isFunctionNode,
+  resolveConstant,
+  resolveFunction,
+  stringValue,
+} from '../analysis/constant-resolution.mjs';
 import { memberName, unwrapped } from '../security/security-values.mjs';
 import { createBindings, isEmitterCreation, isServerCreation } from './emitter-creations.mjs';
 import { isConnectionEvent, isListenMethod } from './emitter-modules.mjs';
 import { referencesOutcome } from './error-handling.mjs';
 
-function privateAware(key) {
-  return key.type === 'PrivateIdentifier' ? `#${key.name}` : key.name;
+const ASSIGNMENTS = new Set(['=', '??=', '||=']);
+const OWN_THIS = new Set(['MethodDefinition', 'PropertyDefinition']);
+
+function keyName(key, computed) {
+  if (key.type === 'PrivateIdentifier') {
+    return `#${key.name}`;
+  }
+  return !computed && key.type === 'Identifier' ? key.name : stringValue(key);
 }
 
 function thisField(member) {
-  const isField =
-    member?.type === 'MemberExpression' &&
-    member.object.type === 'ThisExpression' &&
-    !member.computed;
-  return isField ? privateAware(member.property) : undefined;
+  const isField = member?.type === 'MemberExpression' && member.object.type === 'ThisExpression';
+  return isField ? keyName(member.property, member.computed) : undefined;
+}
+
+function hasOtherThis(node, root) {
+  if (node === root) {
+    return false;
+  }
+  const isFunction = node.type === 'FunctionDeclaration' || node.type === 'FunctionExpression';
+  return node.type === 'ClassBody' || (isFunction && !OWN_THIS.has(node.parent?.type));
+}
+
+function isThisAlias(node) {
+  return (
+    node.type === 'ThisExpression' &&
+    node.parent?.type === 'VariableDeclarator' &&
+    node.parent.init === node
+  );
 }
 
 function fieldReferences(classBody, key, written) {
-  return [...depthFirst(classBody, objectChildren)].filter(
-    (node) => node !== written && thisField(node) === key,
+  const nodes = depthFirst(classBody, (node) =>
+    hasOtherThis(node, classBody) ? [] : objectChildren(node),
+  );
+  return [...nodes].filter(
+    (node) => node !== written && (thisField(node) === key || isThisAlias(node)),
   );
 }
 
@@ -43,17 +71,22 @@ function isServerReceiver(scope, receiver) {
   return definition?.type === 'Variable' && isServerCreation(scope, definition.node.init);
 }
 
+function listenerFunction(context, node) {
+  return isFunctionNode(node) ? node : resolveFunction(context, node);
+}
+
 function connectionListener(scope, call) {
+  const { context } = scope;
   const { callee } = call;
   if (isServerCreation(scope, call)) {
-    return call.arguments.findLast(isFunctionNode);
+    return call.arguments.map((argument) => listenerFunction(context, argument)).findLast(Boolean);
   }
   const listens =
     callee.type === 'MemberExpression' &&
     isListenMethod(memberName(callee)) &&
-    isConnectionEvent(stringValue(call.arguments[0])) &&
+    isConnectionEvent(stringValue(resolveConstant(context, call.arguments[0]))) &&
     isServerReceiver(scope, callee.object);
-  return listens && isFunctionNode(call.arguments[1]) ? call.arguments[1] : undefined;
+  return listens ? listenerFunction(context, call.arguments[1]) : undefined;
 }
 
 function check(scope, { node, name, references }) {
@@ -79,7 +112,7 @@ function checkField(scope, node, { key, written }) {
 }
 
 function checkAssignment(scope, node) {
-  if (node.operator !== '=' || !isEmitterCreation(scope, node.right)) {
+  if (!ASSIGNMENTS.has(node.operator) || !isEmitterCreation(scope, node.right)) {
     return;
   }
   const key = thisField(node.left);
@@ -114,9 +147,9 @@ function visitors(scope) {
       checkAssignment(scope, node);
     },
     PropertyDefinition(node) {
-      const instance = !node.static && !node.computed;
-      if (instance && isEmitterCreation(scope, node.value)) {
-        checkField(scope, node.value, { key: privateAware(node.key), written: undefined });
+      const key = keyName(node.key, node.computed);
+      if (key !== undefined && !node.static && isEmitterCreation(scope, node.value)) {
+        checkField(scope, node.value, { key, written: undefined });
       }
     },
     'CallExpression, NewExpression'(node) {
