@@ -27,9 +27,9 @@ afterAll(() => {
 });
 
 describe.each(['eslint', 'oxlint'])('the ESLint project config on %s', (engine) => {
-  it('applies only its settings for nitpicker rules to the policy checks besides eslint-lint', () => {
+  it('applies only its settings for nitpicker rules to the policy checks besides eslint-lint', async () => {
     const root = projects.create({ ...SOURCES, ...PROJECT_FILES });
-    const findings = lintLayered({
+    const findings = await lintLayered({
       projectRoot: root,
       policy: headPolicyFor({ engine, precedence: PROJECT, liveProjectRoot: root }),
       configRelativePath: 'languages/typescript/preset/eslint-config/policies/errors.config.mjs',
@@ -38,21 +38,21 @@ describe.each(['eslint', 'oxlint'])('the ESLint project config on %s', (engine) 
     expect(rulesOf(findings)).toEqual(NITPICKER_RULES);
   });
 
-  it('fails the analyzer for a config ESLint rejects', () => {
+  it('fails the analyzer for a config ESLint rejects', async () => {
     const root = projects.create({
       ...SOURCES,
       'eslint.config.mjs': "export default [{ rules: { eqeqeq: 'loud' } }];\n",
     });
     const policy = headPolicyFor({ engine, precedence: PROJECT, liveProjectRoot: root });
 
-    expect(() => lintLayered({ projectRoot: root, policy })).toThrow(
+    await expect(lintLayered({ projectRoot: root, policy })).rejects.toThrow(
       /"eqeqeq".*Expected severity of "off", 0, "warn", 1, "error", or 2\./su,
     );
   });
 });
 
 describe('the ESLint project config of a base snapshot', () => {
-  it('is read from the head checkout', () => {
+  it('is read from the head checkout', async () => {
     const head = projects.create({ ...SOURCES, ...PROJECT_FILES });
     const base = projects.create({
       ...SOURCES,
@@ -69,7 +69,7 @@ describe('the ESLint project config of a base snapshot', () => {
 
     expect(basePolicy.tools.eslint).toEqual(headPolicy.tools.eslint);
     expect(
-      rulesOf(lintLayered({ projectRoot: base, liveProjectRoot: head, policy: basePolicy })),
+      rulesOf(await lintLayered({ projectRoot: base, liveProjectRoot: head, policy: basePolicy })),
     ).toEqual([...NITPICKER_RULES, 'src/equal.ts eqeqeq', 'src/named.ts house/no-bar'].toSorted());
   });
 });

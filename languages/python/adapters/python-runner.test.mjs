@@ -437,7 +437,9 @@ describe('runner arguments', () => {
       '--exclude',
       'gen/**',
       '--snapshot',
-      'base',
+      'head',
+      '--baseline-moves-file',
+      '/m/moves.json',
     ]);
 
     expect(parsed).toEqual({
@@ -445,7 +447,12 @@ describe('runner arguments', () => {
       projectRoot: '/snapshot',
       liveRoot: '/live',
       settings: { formatter: 'black' },
-      policy: { exclude: ['gen/**'], exceptions: [], snapshot: 'base' },
+      policy: {
+        exclude: ['gen/**'],
+        exceptions: [],
+        snapshot: 'head',
+        baselineMovesFile: '/m/moves.json',
+      },
     });
   });
 

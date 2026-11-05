@@ -16,7 +16,10 @@ export function pythonRulesEntries() {
         summary: describedBy(hint),
         why: "One of the checks of nitpicker's own Python script. It runs on the Python source and tests and names one allowed form.",
         allowed: allowedOf(hint),
-        exception: { key: 'python.exceptions', rule },
+        exception:
+          hint.exception === 'top-level'
+            ? { key: 'exceptions', rule }
+            : { key: 'python.exceptions', rule },
         docs: [{ label: 'Python preset guide', path: 'docs/python-preset.md' }],
       }),
     ),

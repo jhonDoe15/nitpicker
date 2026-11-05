@@ -106,6 +106,7 @@ function defaultModule(basedir, coordinates, packaging) {
     failsafeReports: path.join(target, 'failsafe-reports'),
     runsFailsafe: false,
     testJvmArgs: [],
+    integrationTestJvmArgs: [],
     published: false,
     jacocoDestFiles: [],
     archunitIncludes: undefined,
@@ -143,6 +144,7 @@ describe('readReactor', () => {
       failsafeReports: `${root}/core/out/it-tests`,
       runsFailsafe: true,
       testJvmArgs: [],
+      integrationTestJvmArgs: [],
       published: false,
       jacocoDestFiles: [`${root}/core/out/mine.exec`],
       archunitIncludes: '**/*Rules.class',
@@ -252,6 +254,18 @@ describe('testJvmArgs', () => {
 
     expect(soloModule(inBuild(plugin('maven-surefire-plugin', executions))).testJvmArgs).toEqual([
       '-Dfrom=default',
+    ]);
+  });
+
+  it('reads the Failsafe integration-test system properties apart from the Surefire ones', () => {
+    const properties =
+      '<configuration><systemPropertyVariables><spring.aot.enabled>true</spring.aot.enabled>' +
+      '</systemPropertyVariables></configuration>';
+    const module = soloModule(inBuild(failsafe(`<execution>${IT_GOAL}${properties}</execution>`)));
+
+    expect([module.testJvmArgs, module.integrationTestJvmArgs]).toEqual([
+      [],
+      ['-Dspring.aot.enabled=true'],
     ]);
   });
 });

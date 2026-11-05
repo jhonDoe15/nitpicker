@@ -22,6 +22,7 @@ import { readClassLimitFindings } from '../size/class-limits.mjs';
 import {
   declarationUnits,
   functionLocator,
+  modulesUnitLocator,
   sourceTextReader,
   structureFunctions,
 } from './function-locator.mjs';
@@ -44,6 +45,7 @@ import {
   sourceFileOf,
   sourceLocator,
 } from './kotlin-reports.mjs';
+import { withJavaCountRatchets } from './counts/java-counts.mjs';
 
 const MODULE_IDENTITY_SEPARATOR = '@';
 const ROOT_MODULE = 'root';
@@ -64,32 +66,32 @@ export function readJavaFindings(projectRoot, options = {}) {
         module,
       ),
     );
-  return {
-    findings: applyRuleMessages(
-      [
-        ...moduleFindings,
-        ...(projectWide ? readProjectDuplicateFindings(reportBase, { preset, projectRoot }) : []),
-        ...(projectWide
-          ? projectWideFindings(projectRoot, {
-              projects: modules.map((module) => ({
-                reportRoot: module.reportRoot,
-                qualifier: module.key === ROOT_MODULE ? '' : module.dir,
-                sourceRoots: module.manifest.sourceRoots ?? [],
-                kotlinSourceRoots: module.manifest.kotlinSourceRoots ?? [],
-                resourceRoots: module.manifest.resourceRoots ?? [],
-              })),
-              mergedRoot: path.join(reportBase, 'project'),
-              manifest,
-              kotlin: kotlinPreset,
-              policy: options,
-            })
-          : []),
-        ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
-        ...springFindings(projectRoot, manifest, options),
-      ],
-      { preset, javaStyle: options.javaStyle },
-    ),
-  };
+  const findings = applyRuleMessages(
+    [
+      ...moduleFindings,
+      ...(projectWide ? readProjectDuplicateFindings(reportBase, { preset, projectRoot }) : []),
+      ...(projectWide
+        ? projectWideFindings(projectRoot, {
+            projects: modules.map((module) => ({
+              reportRoot: module.reportRoot,
+              qualifier: module.key === ROOT_MODULE ? '' : module.dir,
+              sourceRoots: module.manifest.sourceRoots ?? [],
+              kotlinSourceRoots: module.manifest.kotlinSourceRoots ?? [],
+              resourceRoots: module.manifest.resourceRoots ?? [],
+            })),
+            mergedRoot: path.join(reportBase, 'project'),
+            manifest,
+            kotlin: kotlinPreset,
+            policy: options,
+          })
+        : []),
+      ...readInlineSuppressionFindings(projectRoot, lintedRoots(manifest)),
+      ...springFindings(projectRoot, manifest, options),
+    ],
+    { preset, javaStyle: options.javaStyle },
+  );
+  const locate = modulesUnitLocator(projectRoot, modules, kotlinPreset);
+  return { findings: withJavaCountRatchets(findings, locate) };
 }
 
 function moduleContextFindings(projectRoot, module, { manifest, modules, options, kotlinBuild }) {
