@@ -1,5 +1,6 @@
 import { FILE_NAME_CONVENTION } from './file-name-casing.mjs';
 import { ASSERTION_HELPERS_CONVENTION } from './measures/assertion-helpers.mjs';
+import { DETACHED_WORK_RUNNERS_CONVENTION } from './detached-work-runners.mjs';
 import { DATA_CONVENTIONS } from './measures/data-conventions.mjs';
 import { JSX_CONVENTIONS } from './measures/jsx-conventions.mjs';
 import { PRETTIER_CONVENTIONS } from './prettier-conventions.mjs';
@@ -10,6 +11,7 @@ const SHARED_CONVENTIONS = [
   ...DATA_CONVENTIONS,
   FILE_NAME_CONVENTION,
   ASSERTION_HELPERS_CONVENTION,
+  DETACHED_WORK_RUNNERS_CONVENTION,
 ];
 
 export const JAVASCRIPT_CONVENTIONS = SHARED_CONVENTIONS;
