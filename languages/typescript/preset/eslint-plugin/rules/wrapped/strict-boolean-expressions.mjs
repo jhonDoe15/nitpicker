@@ -41,11 +41,15 @@ function calleeName(callee) {
   return callee.type === 'MemberExpression' && !callee.computed ? callee.property.name : '';
 }
 
-function isComputedNumber(node) {
+function returnedValue(node) {
   const value = unwrapped(node);
-  if (value.type === 'ArrowFunctionExpression' && value.expression) {
-    return isComputedNumber(value.body);
-  }
+  return value.type === 'ArrowFunctionExpression' && value.expression
+    ? unwrapped(value.body)
+    : value;
+}
+
+function isComputedNumber(node) {
+  const value = returnedValue(node);
   if (value.type === 'BinaryExpression') {
     return COMPUTED_OPERATORS.has(value.operator);
   }

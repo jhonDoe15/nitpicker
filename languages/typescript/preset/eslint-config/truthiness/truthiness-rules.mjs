@@ -1,4 +1,4 @@
-export const TRUTHINESS_RULE = 'nitpicker/strict-boolean-expressions';
+const TRUTHINESS_RULE = 'nitpicker/strict-boolean-expressions';
 
 export const truthinessRuleOptions = {
   allowAny: true,
