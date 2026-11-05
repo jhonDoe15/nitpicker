@@ -83,7 +83,7 @@ function writingCallKey(sourceCode, call) {
   });
 }
 
-export function enclosingFunctionName(node) {
+function enclosingFunctionName(node) {
   const owner = ancestorsOf(node).find((ancestor) => FUNCTIONS.has(ancestor.type));
   if (owner?.type === 'FunctionDeclaration') {
     return owner.id?.name;
@@ -94,7 +94,7 @@ export function enclosingFunctionName(node) {
     : undefined;
 }
 
-export function directWriteKey(sourceCode, node) {
+function directWriteKey(sourceCode, node) {
   if (node.type === 'AssignmentExpression') {
     return targetKey(sourceCode, node.left);
   }
@@ -107,10 +107,43 @@ export function directWriteKey(sourceCode, node) {
   return undefined;
 }
 
-export function isInsideFunction(node) {
+function isInsideFunction(node) {
   return ancestorsOf(node).some((ancestor) => FUNCTIONS.has(ancestor.type));
 }
 
-export function writeMessageId(key) {
+function writeMessageId(key) {
   return key === ENV_KEY ? 'unrestoredEnvWrite' : 'unrestoredGlobalWrite';
+}
+
+export function createWriteTracker(sourceCode, isRestored) {
+  const writes = [];
+  const restoredKeys = new Set();
+  const hookCalls = new Set();
+  function record(node) {
+    const key = directWriteKey(sourceCode, node);
+    if (key === undefined || !isInsideFunction(node)) {
+      return;
+    }
+    if (isRestored(node)) {
+      restoredKeys.add(key);
+    } else {
+      writes.push({ node, key });
+    }
+  }
+  return {
+    record,
+    call(node) {
+      record(node);
+      if (node.callee.type === 'Identifier' && isRestored(node)) {
+        hookCalls.add(node.callee.name);
+      }
+    },
+    unrestored() {
+      const viaHelpers = writes.filter(({ node }) => hookCalls.has(enclosingFunctionName(node)));
+      const restored = new Set([...restoredKeys, ...viaHelpers.map(({ key }) => key)]);
+      return writes
+        .filter(({ key }) => !restored.has(key))
+        .map(({ node, key }) => ({ node, messageId: writeMessageId(key) }));
+    },
+  };
 }

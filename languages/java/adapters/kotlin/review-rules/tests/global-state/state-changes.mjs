@@ -1,8 +1,12 @@
+import { compactType } from '../../kotlin-facts.mjs';
 import { classesOf } from '../discovery/declarations.mjs';
 import { importsOf, packageOf } from '../discovery/imports.mjs';
 
 const GLOBAL_SETTERS = new Map([
-  ['System', ['java.lang', ['setProperty', 'clearProperty', 'setProperties', 'setOut', 'setErr', 'setIn']]],
+  [
+    'System',
+    ['java.lang', ['setProperty', 'clearProperty', 'setProperties', 'setOut', 'setErr', 'setIn']],
+  ],
   ['Thread', ['java.lang', ['setDefaultUncaughtExceptionHandler']]],
   ['Locale', ['java.util', ['setDefault']]],
   ['TimeZone', ['java.util', ['setDefault']]],
@@ -12,7 +16,10 @@ const GLOBAL_SETTERS = new Map([
   ['ProxySelector', ['java.net', ['setDefault']]],
   ['ResponseCache', ['java.net', ['setDefault']]],
   ['SSLContext', ['javax.net.ssl', ['setDefault']]],
-  ['HttpsURLConnection', ['javax.net.ssl', ['setDefaultSSLSocketFactory', 'setDefaultHostnameVerifier']]],
+  [
+    'HttpsURLConnection',
+    ['javax.net.ssl', ['setDefaultSSLSocketFactory', 'setDefaultHostnameVerifier']],
+  ],
   ['Dispatchers', ['kotlinx.coroutines', ['setMain']]],
 ]);
 const IMPLICIT_PACKAGES = new Set(['java.lang']);
@@ -26,6 +33,8 @@ const COUNTRY_ROOTS = new Set(
     .split(' '),
 );
 const HOSTED_ROOTS = new Set(['github', 'gitlab', 'bitbucket']);
+const HOSTED_DEPTH = 3;
+const COUNTRY_DEPTH = 2;
 const MEMBER_ACCESS = [
   '(?<![\\w.$`])',
   String.raw`((?:[a-z]\w*\s*\.\s*)*)((?:[A-Z]\w*\s*\.\s*)*[A-Z]\w*)\s*\.\s*(?:Companion\s*\.\s*)?`,
@@ -43,10 +52,6 @@ const SPECIAL_FAMILIES = new Map([
   ['Security.removeProvider', 'provider'],
 ]);
 
-function compact(text) {
-  return text.replaceAll(/\s+/gu, '');
-}
-
 function lowerFirst(text) {
   return text.slice(0, 1).toLowerCase() + text.slice(1);
 }
@@ -63,22 +68,28 @@ export function memberFamily(type, member) {
 }
 
 function accessAt(match, kind) {
-  const types = compact(match[2])
+  const types = compactType(match[2])
     .split('.')
     .filter((name, index) => index === 0 || name !== 'Companion');
   return {
     offset: match.index,
     kind,
-    qualifier: compact(match[1]).replace(/\.$/u, ''),
+    qualifier: compactType(match[1]).replace(/\.$/u, ''),
     outer: types[0],
     type: types.at(-1),
     member: match[3],
   };
 }
 
+function shiftedBy(from) {
+  return function shifted(access) {
+    return { ...access, offset: access.offset + from };
+  };
+}
+
 export function memberAccesses(code, from = 0, to = code.length) {
   const text = code.slice(from, to);
-  const shifted = (access) => ({ ...access, offset: access.offset + from });
+  const shifted = shiftedBy(from);
   return [
     ...[...text.matchAll(CALL)].map((match) => shifted(accessAt(match, 'call'))),
     ...[...text.matchAll(WRITE)].map((match) => shifted(accessAt(match, 'write'))),
@@ -91,8 +102,8 @@ export function familyOf(access) {
 
 function projectRoot(scanned) {
   const parts = packageOf(scanned).split('.').filter(Boolean);
-  const hosted = HOSTED_ROOTS.has(parts[1]) ? 3 : 0;
-  const depth = hosted || (COUNTRY_ROOTS.has(parts[0]) ? 2 : 1);
+  const hosted = HOSTED_ROOTS.has(parts[1]) ? HOSTED_DEPTH : 0;
+  const depth = hosted || (COUNTRY_ROOTS.has(parts[0]) ? COUNTRY_DEPTH : 1);
   return parts.slice(0, depth).join('.');
 }
 
@@ -150,7 +161,6 @@ export function isJdkGlobal(access) {
 export function stateChanges(scanned) {
   const declared = new Set(classesOf(scanned).map(({ name }) => name));
   return memberAccesses(scanned.code).filter(
-    (access) =>
-      isGlobalSetter(scanned, access) || isProjectState(scanned, access, declared),
+    (access) => isGlobalSetter(scanned, access) || isProjectState(scanned, access, declared),
   );
 }

@@ -1,10 +1,5 @@
 import { ancestorsOf } from '../rules/analysis/ancestry.mjs';
-import {
-  directWriteKey,
-  enclosingFunctionName,
-  isInsideFunction,
-  writeMessageId,
-} from './direct-writes/direct-writes.mjs';
+import { createWriteTracker } from './direct-writes/direct-writes.mjs';
 
 const RESTORING_HOOKS = new Set(['afterEach', 'afterAll', 'onTestFinished']);
 const USER_EVENT_PACKAGE = '@testing-library/user-event';
@@ -92,22 +87,8 @@ export const rule = {
     const aliases = new Set(['vi', 'vitest']);
     const calls = [];
     const restored = new Set();
-    const writes = [];
-    const restoredWrites = new Set();
-    const hookCalls = new Set();
     const state = { usesUserEvent: false };
-    const sourceCode = context.sourceCode;
-    function recordWrite(node) {
-      const key = directWriteKey(sourceCode, node);
-      if (key === undefined || !isInsideFunction(node)) {
-        return;
-      }
-      if (isRestoredByHookOrFinally(node)) {
-        restoredWrites.add(key);
-      } else {
-        writes.push({ node, key });
-      }
-    }
+    const writes = createWriteTracker(context.sourceCode, isRestoredByHookOrFinally);
     return {
       ImportDeclaration(node) {
         state.usesUserEvent ||= node.source.value === USER_EVENT_PACKAGE;
@@ -120,13 +101,10 @@ export const rule = {
           }
         }
       },
-      AssignmentExpression: recordWrite,
-      UnaryExpression: recordWrite,
+      AssignmentExpression: writes.record,
+      UnaryExpression: writes.record,
       CallExpression(node) {
-        recordWrite(node);
-        if (node.callee.type === 'Identifier' && isRestoredByHookOrFinally(node)) {
-          hookCalls.add(node.callee.name);
-        }
+        writes.call(node);
         const method = viMember(node.callee, aliases);
         if (checked.has(method)) {
           calls.push({ node, method });
@@ -141,14 +119,8 @@ export const rule = {
             context.report({ node, messageId: messageIdFor(method, state) });
           }
         }
-        const viaHelpers = writes.filter(({ node }) => hookCalls.has(enclosingFunctionName(node)));
-        for (const { key } of viaHelpers) {
-          restoredWrites.add(key);
-        }
-        for (const { node, key } of writes) {
-          if (!restoredWrites.has(key)) {
-            context.report({ node, messageId: writeMessageId(key) });
-          }
+        for (const { node, messageId } of writes.unrestored()) {
+          context.report({ node, messageId });
         }
       },
     };
