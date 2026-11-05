@@ -1,6 +1,7 @@
 import { declaredNames, nameResolver, resolvesTo, typeName } from '../spring-names.mjs';
 import { declaresLocally, implicitReceiver, receiverOf, typeOf } from './local-types.mjs';
 import {
+  extendsType,
   isJavaEnum,
   isRepositoryType,
   javaConverted,
@@ -40,6 +41,7 @@ function fileView(file, context) {
     classes,
     is: (text, fqns) => resolvesTo(resolve, text, fqns),
     isRepository: (text) => isRepositoryType(context, resolve, text),
+    extendsType: (text, fqns) => extendsType(context, { resolve, text }, fqns),
     projectClass: (text) => projectClass(context, resolve(text)),
     projectFunctions: (text, name) => projectFunctions(context, resolve(typeName(text)), name),
     isJavaEnum: (candidates) => isJavaEnum(context, candidates),
