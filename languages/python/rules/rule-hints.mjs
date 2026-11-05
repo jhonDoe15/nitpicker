@@ -4,6 +4,7 @@ import { ASYNC_HINTS } from './hints/ast-async.mjs';
 import { STRUCTURE_HINTS } from './hints/ast-structure.mjs';
 import { TYPING_HINTS } from './hints/typing/ast-typing.mjs';
 import { SMELL_HINTS } from './hints/ast-smells.mjs';
+import { ORM_HINTS } from './hints/orm/ast-orm.mjs';
 import { PYTEST_HINTS } from './hints/ruff-pytest.mjs';
 import { SIGNATURE_HINTS } from './hints/signatures/ast-signatures.mjs';
 import { SECURITY_HINTS } from './hints/security/ruff-security.mjs';
@@ -45,6 +46,7 @@ export const RULE_HINTS = [
   ...ASYNC_HINTS,
   ...SMELL_HINTS,
   ...SIGNATURE_HINTS,
+  ...ORM_HINTS,
   { tool: 'mypy', rules: ['import-not-found', 'import-untyped'], allowed: INSTALL_PACKAGE },
   ...['pyright', 'basedpyright'].map((tool) => ({
     tool,

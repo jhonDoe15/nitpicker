@@ -19,6 +19,7 @@ def load_checks():
     from boundary import domain_types, guards, paths
     from checks import comments, declarations, parameters, shell, state
     from concurrency import fan_out
+    from orm_config import query_logging, schema_sync
     from discovery import helpers, uncollected
     from effects import import_time, reach
     from environment import domain_imports, environment, purity
@@ -52,6 +53,8 @@ def load_checks():
         hashes,
         timeouts,
         loading,
+        schema_sync,
+        query_logging,
         guards,
         domain_types,
         paths,
