@@ -1145,16 +1145,20 @@ self.items.append(item)`), also through a package `__init__` that re-exports it 
   comprehension filter), an unannotated parameter and a parameter of a class that is never falsy
   (`Path`, a project class) are not reported. The allowed form tests `None` only:
   `limit if limit is not None else DEFAULT_LIMIT`.
-- `number-truthiness` reports a name annotated as a number (`int`, `float`, `complex`, `Decimal`,
-  `Fraction`, also `Optional` and `|` members), a parameter or an annotated local, that is tested
-  for truth, where `0` reads as false or missing: `if count:`, `if not record_id:`,
-  `x if retry else y`, `while left:`, `assert total`, a comprehension filter, an `and`/`or` operand
-  in a condition, and `limit or 10` on a parameter that is not optional (the optional one is
-  `falsy-default`'s). Test files are checked too. Not reported: `bool(count)`, the last operand of
-  an `and`/`or` that is not a condition, `count or 0`, a name the function binds again (`count =
-len(rows)`, a loop target), a name of a nested function, and a value whose type is not annotated.
-  The allowed form compares: `count > 0`, `count != 0`, `index != -1`, and `count is not None` for
-  an optional number. This is the counterpart of the TypeScript preset's
+- `number-truthiness` reports a number (`int`, `float`, `complex`, `Decimal`, `Fraction`, also
+  `Optional` and `|` members) that is tested for truth, where `0` reads as false or missing: a
+  parameter or annotated local, and a number field of a class in the same module read through a
+  parameter of that class or through `self` (`message.retry`, `self.size`). Reported forms:
+  `if count:`, `if not record_id:`, `x if retry else y`, `while left:`, `assert total`, a
+  comprehension filter, an operand of `and`/`or` in a condition, any operand of `and` but the
+  last, and an operand of `or` but the last, such as `limit or 10` on a required parameter (an
+  optional one is `falsy-default`'s). Test files are checked too. Not reported: `bool(count)`, the
+  last operand of an `and`/`or` outside a condition, an `or` that ends in `0` (`count or 0`), a name
+  the function binds again (`count = len(rows)`, a loop target, an import, a nested `def`, an
+  `except ... as` or a `match` capture; `count -= 1` and `count = count - 1` keep it a number), a
+  name of a nested function, a field of a class from another module, and a value whose type is
+  not annotated. The allowed form compares: `count > 0`, `count != 0`, `index != -1`, and
+  `count is not None` for an optional number. This is the counterpart of the TypeScript preset's
   `nitpicker/strict-boolean-expressions`.
 - `parameter-mutation` reports a parameter annotated as a `list`, `dict`, `set`, `deque`,
   `bytearray`, `defaultdict`, `OrderedDict`, `Counter`, `MutableSequence`, `MutableMapping` or

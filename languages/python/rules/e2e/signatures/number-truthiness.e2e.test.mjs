@@ -46,6 +46,21 @@ describe.skipIf(!enabled)('number-truthiness', () => {
         ['number-truthiness:3 run(total)'],
       ],
       [
+        'a countdown that steps the number',
+        'def drain(left: int) -> None:\n    while left:\n        left = left - 1\n',
+        ['number-truthiness:2 drain(left)'],
+      ],
+      [
+        'a number field of a class in the module',
+        'class Message:\n    retry: int\n    id: int | None\n\n\ndef header(message: Message | None) -> str:\n    return "r" if message.retry else ""\n\n\ndef save(message: Message) -> bool:\n    return not message.id\n',
+        ['number-truthiness:7 header(message.retry)', 'number-truthiness:11 save(message.id)'],
+      ],
+      [
+        'a number field read through self',
+        'class Pager:\n    size: int\n\n    def empty(self) -> bool:\n        return not self.size\n',
+        ['number-truthiness:5 Pager.empty(self.size)'],
+      ],
+      [
         'a method in a test file',
         inFile(
           'tests/test_mod.py',
@@ -88,6 +103,16 @@ describe.skipIf(!enabled)('number-truthiness', () => {
       [
         'a nested function with its own parameter',
         'def outer(count: int) -> object:\n    def inner(count):\n        return 1 if count else 2\n    return inner\n',
+        [],
+      ],
+      [
+        'names bound again by an import, a def, an except clause and a match capture',
+        'def a(n: int) -> int:\n    import os as n\n    return 1 if n else 2\n\n\ndef b(n: int) -> int:\n    def n() -> None:\n        return None\n    return 1 if n else 2\n\n\ndef c(n: int) -> int:\n    try:\n        return 0\n    except ValueError as n:\n        return 1 if n else 2\n\n\ndef d(n: int, o: object) -> int:\n    match o:\n        case [n]:\n            pass\n    return 1 if n else 2\n',
+        [],
+      ],
+      [
+        'a field that is not a number and a static method',
+        'class Pager:\n    name: str\n    size: int\n\n    def label(self) -> str:\n        return self.name if self.name else "none"\n\n    @staticmethod\n    def check(size) -> bool:\n        return not size\n',
         [],
       ],
       ['a len call', 'def run(rows: list[int]) -> int:\n    return 1 if len(rows) else 2\n', []],

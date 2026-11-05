@@ -81,6 +81,9 @@ const allowed = [
   'export function find(masks: number[], flags: number) { return masks.find((mask) => flags & mask); }',
   'export function keep(items: unknown[], test: any) { return items.filter(test); }',
   'export function run(value: unknown) { return value ? 1 : 2; }',
+  'export function run(a: number | undefined, b: boolean) { return (b && a) || 0; }',
+  'export function run(user: { id: number }) { if (user) { return 1; } return 2; }',
+  'export function run(none: undefined) { return none ? 1 : 2; }',
   typed('export function run(count) { return count ? 1 : 2; }', undefined, 'js'),
 ].map((code) => (typeof code === 'string' ? typed(code) : code));
 
@@ -111,6 +114,13 @@ const banned = [
   typed('export function run(count: number) { return count || 10; }', NUMBER),
   typed('export function run(value: string | number) { return value ? 1 : 2; }', OTHER),
   typed('export function run(rows: number[]) { return rows.filter((row) => row); }', NUMBER),
+  typed('export function run(start: number, end: number) { return end - start ? 1 : 2; }', NUMBER),
+  typed('export function run(rows: number[]) { return rows.filter((row) => row - 1); }', NUMBER),
+  typed('export function run(start: number, end: number) { return end - start || 1; }', NUMBER),
+  typed(
+    'export function run(a: number) { return compareTo(a) ? 1 : 2; }\ndeclare function compareTo(a: number): number;',
+    NUMBER,
+  ),
   typed(
     '/** @param {number} count */\nexport function run(count) { return count ? 1 : 2; }',
     NUMBER,

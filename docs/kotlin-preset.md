@@ -369,7 +369,8 @@ whose first comment says it is generated (`@generated`, "generated ... do not ed
 
 A number tested for truth (`if (count)`), which the TypeScript preset reports as
 `nitpicker/strict-boolean-expressions` and the Python preset as `number-truthiness`, has no rule here:
-an `if`, `while` or `when` condition must be a `Boolean`, so the compiler rejects it.
+an `if` or `while` condition and a `when` branch without a subject must be a `Boolean`, so the compiler
+rejects it.
 
 A `TODO` without an issue is detekt's `ForbiddenComment` (a one-way rule). A repeated literal is
 `kotlin-source/RepeatedStringLiteral`, not detekt's `StringLiteralDuplication` (pinned `active: false`
