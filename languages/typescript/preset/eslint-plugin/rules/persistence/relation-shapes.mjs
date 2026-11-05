@@ -111,12 +111,15 @@ function memberCallName(call) {
 }
 
 function builderKind(call) {
-  for (let current = call.callee.object; memberCallName(current) !== undefined;) {
-    const kind = BUILDER_KINDS.get(memberCallName(current));
-    if (kind !== undefined) {
-      return kind;
+  const chain = [call.callee.object];
+  for (const current of chain) {
+    const name = memberCallName(current);
+    if (BUILDER_KINDS.has(name)) {
+      return BUILDER_KINDS.get(name);
     }
-    current = current.callee.object;
+    if (name !== undefined) {
+      chain.push(current.callee.object);
+    }
   }
   return undefined;
 }

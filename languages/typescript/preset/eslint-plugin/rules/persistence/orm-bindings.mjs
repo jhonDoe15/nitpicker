@@ -78,11 +78,13 @@ const TYPE_WRAPPERS = new Set([
 ]);
 
 function unwrapped(node) {
-  let current = node;
-  while (TYPE_WRAPPERS.has(current?.type)) {
-    current = current.expression;
+  const chain = [node];
+  for (const current of chain) {
+    if (TYPE_WRAPPERS.has(current?.type)) {
+      chain.push(current.expression);
+    }
   }
-  return current;
+  return chain.at(-1);
 }
 
 export function objectOf(sourceCode, expression) {
@@ -97,20 +99,18 @@ export function objectOf(sourceCode, expression) {
   return undefined;
 }
 
-export function propertiesOf(sourceCode, object, depth = 0) {
-  const found = new Map();
-  for (const property of object?.properties ?? []) {
-    if (property.type === 'SpreadElement') {
-      const spread = depth < 2 ? objectOf(sourceCode, property.argument) : undefined;
-      for (const [key, value] of propertiesOf(sourceCode, spread, depth + 1)) {
-        found.set(key, value);
-      }
-      continue;
-    }
-    const key = staticKeyName(property.key, property.computed);
-    if (key !== undefined) {
-      found.set(key, property);
-    }
-  }
-  return found;
+function spreadProperties(sourceCode, property) {
+  const spread = objectOf(sourceCode, property.argument);
+  return (spread?.properties ?? []).filter((inner) => inner.type === 'Property');
+}
+
+export function propertiesOf(sourceCode, object) {
+  const properties = (object?.properties ?? []).flatMap((property) =>
+    property.type === 'SpreadElement' ? spreadProperties(sourceCode, property) : [property],
+  );
+  return new Map(
+    properties
+      .map((property) => [staticKeyName(property.key, property.computed), property])
+      .filter(([key]) => key !== undefined),
+  );
 }
